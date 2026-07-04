@@ -2912,6 +2912,38 @@ main = 0
 }
 
 #[test]
+fn check_source_path_searches_sibling_module_ifaces_chirho() {
+    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should exist");
+    let lib_path_chirho = temp_dir_chirho.path().join("SiblingLibChirho.hs");
+    let main_path_chirho = temp_dir_chirho.path().join("SiblingMainChirho.hs");
+    std::fs::write(
+        &lib_path_chirho,
+        "\
+module SiblingLibChirho where
+data FooChirho = MkFooChirho
+fChirho :: FooChirho -> FooChirho
+fChirho xChirho = xChirho
+",
+    )
+    .expect("sibling lib source should be written");
+    std::fs::write(
+        &main_path_chirho,
+        "\
+module SiblingMainChirho where
+import SiblingLibChirho
+valueChirho :: FooChirho
+valueChirho = fChirho MkFooChirho
+",
+    )
+    .expect("main source should be written");
+
+    let summary_chirho =
+        check_source_path_chirho(&main_path_chirho, ExecutionModeChirho::BatchChirho)
+            .expect("check path should use sibling module interfaces");
+    assert_eq!(summary_chirho.module_name_chirho, "SiblingMainChirho");
+}
+
+#[test]
 fn check_source_file_cpp_preprocesses_mixed_case_language_pragma_chirho() {
     use std::fs;
 

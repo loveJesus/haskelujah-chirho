@@ -14,8 +14,8 @@ use haskelujah_backend_cranelift_chirho::{
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use haskelujah_driver_chirho::{
-    compile_source_chirho, eval_source_with_machine_chirho, render_diagnostics_chirho,
-    render_summary_chirho,
+    check_source_path_with_source_map_chirho, compile_source_chirho,
+    eval_source_with_machine_chirho, render_diagnostics_chirho, render_summary_chirho,
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
@@ -122,37 +122,25 @@ fn main_chirho() -> ExitCode {
 
             {
                 let mut sm_chirho = SourceMapChirho::new_chirho();
-                let source_file_result_chirho =
-                    haskelujah_syntax_chirho::SourceFileChirho::from_path_with_map_chirho(
-                        &mut sm_chirho,
-                        &path_chirho,
-                    );
-                match source_file_result_chirho {
-                    Ok(source_file_chirho) => {
-                        match haskelujah_driver_chirho::check_source_file_chirho(
-                            source_file_chirho,
-                            execution_mode_chirho,
-                        ) {
-                            Ok(check_summary_chirho) => {
-                                println!("{}", render_summary_chirho(&check_summary_chirho));
-                                ExitCode::SUCCESS
-                            }
-                            Err(diagnostic_bundle_chirho) => {
-                                let use_color_chirho = atty_is_terminal_chirho();
-                                eprint!(
-                                    "{}",
-                                    render_diagnostics_chirho(
-                                        &diagnostic_bundle_chirho,
-                                        &sm_chirho,
-                                        use_color_chirho,
-                                    )
-                                );
-                                ExitCode::from(1)
-                            }
-                        }
+                match check_source_path_with_source_map_chirho(
+                    &path_chirho,
+                    execution_mode_chirho,
+                    &mut sm_chirho,
+                ) {
+                    Ok(check_summary_chirho) => {
+                        println!("{}", render_summary_chirho(&check_summary_chirho));
+                        ExitCode::SUCCESS
                     }
-                    Err(error_chirho) => {
-                        eprintln!("error reading `{path_chirho}`: {error_chirho}");
+                    Err(diagnostic_bundle_chirho) => {
+                        let use_color_chirho = atty_is_terminal_chirho();
+                        eprint!(
+                            "{}",
+                            render_diagnostics_chirho(
+                                &diagnostic_bundle_chirho,
+                                &sm_chirho,
+                                use_color_chirho,
+                            )
+                        );
                         ExitCode::from(1)
                     }
                 }

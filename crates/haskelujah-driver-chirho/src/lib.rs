@@ -2333,6 +2333,18 @@ pub fn check_source_path_chirho(
     execution_mode_chirho: ExecutionModeChirho,
 ) -> Result<CheckSummaryChirho, DiagnosticBundleChirho> {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
+    check_source_path_with_source_map_chirho(
+        path_chirho,
+        execution_mode_chirho,
+        &mut source_map_chirho,
+    )
+}
+
+pub fn check_source_path_with_source_map_chirho(
+    path_chirho: impl AsRef<Path>,
+    execution_mode_chirho: ExecutionModeChirho,
+    source_map_chirho: &mut SourceMapChirho,
+) -> Result<CheckSummaryChirho, DiagnosticBundleChirho> {
     let source_chirho = read_haskell_source_file_chirho(&path_chirho).map_err(|error_chirho| {
         DiagnosticChirho::error_no_span_chirho(format!(
             "unable to read `{}`: {error_chirho}",
@@ -2340,12 +2352,20 @@ pub fn check_source_path_chirho(
         ))
     })?;
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
-        &mut source_map_chirho,
+        source_map_chirho,
         path_chirho.as_ref().to_path_buf(),
         source_chirho,
     );
 
-    check_source_file_chirho(source_file_chirho, execution_mode_chirho)
+    if let Some(search_dir_chirho) = path_chirho.as_ref().parent() {
+        check_source_file_with_search_path_chirho(
+            source_file_chirho,
+            execution_mode_chirho,
+            search_dir_chirho,
+        )
+    } else {
+        check_source_file_chirho(source_file_chirho, execution_mode_chirho)
+    }
 }
 
 pub fn check_source_file_chirho(
@@ -2377,6 +2397,85 @@ pub fn check_source_file_chirho(
         RuntimePlanChirho::for_module_chirho(execution_mode_chirho, module_name_chirho.clone());
 
     // Skip backend generation — use lightweight stubs for the summary.
+    let llvm_preview_chirho = compile_to_llvm_ir_stub_chirho(&module_name_chirho);
+    let wasm_stub_size_chirho = compile_to_wasm_stub_chirho(&module_name_chirho).len();
+
+    Ok(CheckSummaryChirho {
+        source_path_chirho,
+        module_name_chirho,
+        runtime_plan_chirho,
+        backend_plan_chirho: BackendPlanChirho {
+            llvm_preview_chirho,
+            wasm_stub_size_chirho,
+        },
+        warnings_chirho: frontend_result_chirho.warnings_chirho,
+    })
+}
+
+fn check_source_file_with_search_path_chirho(
+    source_file_chirho: SourceFileChirho,
+    execution_mode_chirho: ExecutionModeChirho,
+    search_dir_chirho: &Path,
+) -> Result<CheckSummaryChirho, DiagnosticBundleChirho> {
+    let source_path_chirho = source_file_chirho.path_chirho().to_path_buf();
+    let raw_source_chirho = source_file_chirho.contents_chirho().to_string();
+    let source_chirho = preprocess_cpp_chirho(&raw_source_chirho);
+    let file_id_chirho = source_file_chirho.file_id_chirho();
+    let file_name_chirho = source_path_chirho
+        .file_name()
+        .map(|name_chirho| name_chirho.to_string_lossy().to_string())
+        .unwrap_or_else(|| source_path_chirho.to_string_lossy().to_string());
+
+    let mut sibling_source_map_chirho = SourceMapChirho::new_chirho();
+    let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let mut imported_types_chirho = std::collections::HashMap::new();
+    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
+    if source_imports_stdlib_chirho(&source_chirho) {
+        merge_stdlib_frontend_artifacts_chirho(
+            &mut all_ifaces_chirho,
+            &mut imported_types_chirho,
+            &mut imported_type_synonyms_chirho,
+            &mut imported_type_families_chirho,
+        );
+    }
+
+    scan_sibling_module_ifaces_chirho(
+        search_dir_chirho,
+        &mut sibling_source_map_chirho,
+        &mut all_ifaces_chirho,
+        &file_name_chirho,
+    );
+    for _round_chirho in 0..5 {
+        let prev_count_chirho = all_ifaces_chirho.len();
+        scan_hierarchical_modules_chirho(
+            search_dir_chirho,
+            search_dir_chirho,
+            &mut sibling_source_map_chirho,
+            &mut all_ifaces_chirho,
+            &file_name_chirho,
+        );
+        if all_ifaces_chirho.len() == prev_count_chirho {
+            break;
+        }
+    }
+
+    let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
+        &source_chirho,
+        file_id_chirho,
+        &all_ifaces_chirho,
+        &imported_types_chirho,
+        &imported_type_synonyms_chirho,
+        &imported_type_families_chirho,
+    )?;
+
+    let module_name_chirho = frontend_result_chirho
+        .module_chirho
+        .name_chirho
+        .text_chirho()
+        .to_string();
+    let runtime_plan_chirho =
+        RuntimePlanChirho::for_module_chirho(execution_mode_chirho, module_name_chirho.clone());
     let llvm_preview_chirho = compile_to_llvm_ir_stub_chirho(&module_name_chirho);
     let wasm_stub_size_chirho = compile_to_wasm_stub_chirho(&module_name_chirho).len();
 
@@ -2686,6 +2785,65 @@ pub fn compile_source_chirho(
     )
 }
 
+fn scan_sibling_module_ifaces_chirho(
+    search_dir_chirho: &Path,
+    source_map_chirho: &mut SourceMapChirho,
+    ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
+    skip_file_chirho: &str,
+) {
+    if !search_dir_chirho.is_dir() {
+        return;
+    }
+    let Ok(entries_chirho) = std::fs::read_dir(search_dir_chirho) else {
+        return;
+    };
+    for entry_chirho in entries_chirho.flatten() {
+        let path_chirho = entry_chirho.path();
+        if !path_chirho
+            .extension()
+            .is_some_and(|extension_chirho| extension_chirho == "hs")
+        {
+            continue;
+        }
+        if path_chirho
+            .file_name()
+            .map(|name_chirho| name_chirho.to_string_lossy().to_string())
+            == Some(skip_file_chirho.to_string())
+        {
+            continue;
+        }
+        let Ok(sibling_source_chirho) = read_haskell_source_file_chirho(&path_chirho) else {
+            continue;
+        };
+        let sibling_name_chirho = path_chirho
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        let sibling_file_chirho = SourceFileChirho::from_source_map_chirho(
+            source_map_chirho,
+            &sibling_name_chirho,
+            &sibling_source_chirho,
+        );
+        let sibling_fid_chirho = sibling_file_chirho.file_id_chirho();
+        let iface_result_chirho = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let parser_chirho =
+                ParserChirho::new_chirho(&sibling_source_chirho, sibling_fid_chirho);
+            let green_chirho = parser_chirho.parse_chirho();
+            let sibling_module_chirho = lower_module_chirho(&green_chirho, sibling_fid_chirho);
+            build_iface_with_imports_chirho(&sibling_module_chirho, ifaces_chirho)
+        }));
+        if let Ok(iface_chirho) = iface_result_chirho {
+            if !ifaces_chirho
+                .iter()
+                .any(|existing_chirho| existing_chirho.name_chirho == iface_chirho.name_chirho)
+            {
+                ifaces_chirho.push(iface_chirho);
+            }
+        }
+    }
+}
+
 /// Compile a source file, also searching sibling `.hs` files in the same directory
 /// to build module interfaces for cross-module imports (like GHC test companion files).
 pub fn compile_source_with_search_path_chirho(
@@ -2714,55 +2872,12 @@ pub fn compile_source_with_search_path_chirho(
         );
     }
 
-    // Scan sibling .hs files and build interfaces from them.
-    if search_dir_chirho.is_dir() {
-        if let Ok(entries_chirho) = std::fs::read_dir(search_dir_chirho) {
-            for entry_chirho in entries_chirho.flatten() {
-                let p_chirho = entry_chirho.path();
-                if p_chirho
-                    .extension()
-                    .is_some_and(|e_chirho| e_chirho == "hs")
-                    && p_chirho
-                        .file_name()
-                        .map(|n_chirho| n_chirho.to_string_lossy().to_string())
-                        != Some(file_name_chirho.to_string())
-                {
-                    if let Ok(sibling_source_chirho) = read_haskell_source_file_chirho(&p_chirho) {
-                        let sibling_name_chirho = p_chirho
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                            .to_string();
-                        let sibling_file_chirho = SourceFileChirho::from_source_map_chirho(
-                            source_map_chirho,
-                            &sibling_name_chirho,
-                            &sibling_source_chirho,
-                        );
-                        let sibling_fid_chirho = sibling_file_chirho.file_id_chirho();
-                        // Quick parse to get module name and exports.
-                        // Wrap in catch_unwind to handle panics in complex files.
-                        let iface_result_chirho =
-                            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                                let parser_chirho = ParserChirho::new_chirho(
-                                    &sibling_source_chirho,
-                                    sibling_fid_chirho,
-                                );
-                                let green_chirho = parser_chirho.parse_chirho();
-                                let sibling_module_chirho =
-                                    lower_module_chirho(&green_chirho, sibling_fid_chirho);
-                                build_iface_with_imports_chirho(
-                                    &sibling_module_chirho,
-                                    &all_ifaces_chirho,
-                                )
-                            }));
-                        if let Ok(iface_chirho) = iface_result_chirho {
-                            all_ifaces_chirho.push(iface_chirho);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    scan_sibling_module_ifaces_chirho(
+        search_dir_chirho,
+        source_map_chirho,
+        &mut all_ifaces_chirho,
+        file_name_chirho,
+    );
 
     // Scan ALL subdirectories recursively for hierarchical module imports
     // (e.g., Debug/SimpleReflect/Expr.hs for `import Debug.SimpleReflect.Expr`).
