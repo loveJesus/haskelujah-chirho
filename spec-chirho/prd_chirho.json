@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.87",
+    "prd_version_chirho": "2.2.88",
     "date_chirho": "2026-07-04",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -98,7 +98,8 @@
       "gpt_chirho (Codex) — WI-010 T15807a visible kind application representative fixed by erasing type-level visible apps from ordinary spines and preserving forall standalone kind bodies v2.2.84",
       "gpt_chirho (Codex) — WI-010 T12734a VTA wildcard/source-forall equality scheme fix v2.2.85",
       "gpt_chirho (Codex) — WI-010 check-path sibling module interface search for T14934 v2.2.86",
-      "gpt_chirho (Codex) — WI-010 T22560d type-application boundary before RHS kind annotation v2.2.87"
+      "gpt_chirho (Codex) — WI-010 T22560d type-application boundary before RHS kind annotation v2.2.87",
+      "gpt_chirho (Codex) — WI-010 T12045a kind-position type synonym expansion v2.2.88"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -131,7 +132,7 @@
     ]
   },
   "current_state_chirho": {
-    "measured_date_chirho": "2026-07-04 (targeted WI-010 T22560d type-application/kind-annotation gate; no heavy sweeps)",
+    "measured_date_chirho": "2026-07-04",
     "driver_lib_tests_chirho": {
       "passed_chirho": 1609,
       "failed_chirho": 73,
@@ -149,24 +150,21 @@
     },
     "binary_freshness_trap_chirho": "cargo test does NOT rebuild target/debug/haskelujah — ALWAYS compare the binary mtime against the latest commit before CLI-based gating (this bit both claude and gpt on 2026-07-01: gpt's package smokes ran a stale binary)",
     "latest_targeted_gate_chirho": {
-      "date_chirho": "2026-07-04",
-      "scope_chirho": "WI-010 T22560d type synonym RHS kind annotation after type application.",
+      "scope_chirho": "WI-010 targeted kind-position type synonym expansion",
+      "result_chirho": "landed partial T12045a fix: FreeCat :: Cat k -> Cat k advances; T12045a now fails later on F Type type-family kind reduction",
       "commands_chirho": [
-        "cargo test -j1 -p haskelujah-parser lower_type_alias_rhs_kind_annotation_keeps_full_function_rhs_chirho -- --test-threads=1",
-        "cargo test -j1 -p haskelujah-typing type_alias_visible_kind_binder_proxy_function_rhs_chirho -- --test-threads=1",
+        "cargo test -j1 -p haskelujah-typing standalone_kind_signature_expands_local_kind_synonym_application_chirho -- --test-threads=1",
         "cargo build -j1 --bin haskelujah",
-        "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T22560a.hs",
-        "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T22560b.hs",
-        "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T22560c.hs",
+        "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T12045a.hs",
         "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T22560d.hs",
         "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T12734a.hs",
         "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T15807a.hs",
         "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T14934.hs",
         "timeout 40 ./target/debug/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T2045.hs",
-        "./target/debug/haskelujah run <best-effort warm-up>",
         "B=./target/debug/haskelujah bash /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/probe_chirho.sh"
       ],
-      "result_chirho": "T22560d now checks. The type parser no longer treats an inline type argument followed by `::` as an unseparated value declaration unless a real declaration boundary precedes it, so `Proxy k :: Type` lowers as `(Proxy k) :: Type` rather than dropping `k`. T22560a/b/c, T12734a, T15807a, T14934, and T2045 also check. Full probe remains PASS=70 FAIL=0. No broad bucket-count reduction claimed without a resource-approved sweep."
+      "probe_chirho": "PASS=70 FAIL=0",
+      "resource_guard_chirho": "single build/test lane; no full driver or ghc_bulk sweep"
     },
     "workspace_chirho": {
       "crates_chirho": 25,
@@ -938,7 +936,7 @@
       "title_chirho": "GHC-suite burn-down by bucket (typecheck/should_compile toward >95%)",
       "pillar_chirho": "PILLAR-4",
       "priority_chirho": "P1-rolling",
-      "status_chirho": "partially landed v2.2.87: T11348, T15807a, T12734a, T14934, and T22560d check. T22560d was fixed by preserving inline type-application arguments before RHS kind annotations such as `Proxy k :: Type`; T2045 was also reverified green. No broad bucket-count reduction claimed without a resource-approved sweep.",
+      "status_chirho": "partially landed v2.2.88: T11348, T15807a, T12734a, T14934, T22560d check, and T12045a advances past `FreeCat :: Cat k -> Cat k`. T12045a is not fully green yet; the residual is type-family kind reduction for `F Type ~ Type -> Type` at `T2 @Type Maybe`. No broad bucket-count reduction claimed without a resource-approved sweep.",
       "owner_chirho": "gpt_chirho/claude_chirho triage for now; future fleet can take one bucket per agent only if L.J. re-adds it. Parser bucket includes gpt scaffold notes: green-tree checkpoint-stack panic hardening, layout-in-closes intervening contexts",
       "problem_chirho": "The GHC suite scoreboard is currently not a trustworthy generated artifact: no persisted results, no threshold, no timeout, hand-edited public numbers disagree, and some audit numbers were measured on a binary behind HEAD. Resource guard forbids broad re-runs without L.J. approval.",
       "fix_design_chirho": [
@@ -967,7 +965,7 @@
             "T15807a",
             "T22560d"
           ],
-          "action_chirho": "T11348 fixed in v2.2.82. T12734a advanced in v2.2.83 past `l ': ls` promoted-list-cons parsing/kinding and fixed in v2.2.85 by source-order forall seeding plus equality-rewritten schemes for VTA wildcard instantiation. T15807a fixed in v2.2.84 by erasing type-level visible applications from ordinary spines and preserving standalone forall kind-signature body kinds. T22560d fixed in v2.2.87 by keeping inline type-application arguments before RHS kind annotations (`Proxy k :: Type`). Continue representative burn-down before changing the bucket count."
+          "action_chirho": "T11348 fixed in v2.2.82. T12734a advanced in v2.2.83 past `l ': ls` promoted-list-cons parsing/kinding and fixed in v2.2.85 by source-order forall seeding plus equality-rewritten schemes for VTA wildcard instantiation. T15807a fixed in v2.2.84 by erasing type-level visible applications from ordinary spines and preserving standalone forall kind-signature body kinds. T22560d fixed in v2.2.87 by keeping inline type-application arguments before RHS kind annotations (`Proxy k :: Type`). Continue representative burn-down before changing the bucket count. T12045a advanced in v2.2.88 by expanding saturated local type synonyms when interpreting standalone kind signatures (`type Cat k = k -> k -> Type`; `data FreeCat :: Cat k -> Cat k`). Its remaining failure belongs to type-family/type-level reduction."
         },
         {
           "bucket_chirho": "type-family / type-level reduction",
@@ -976,7 +974,7 @@
             "AppendSymbol identity cases",
             "TypeLits families"
           ],
-          "action_chirho": "Builtin family axioms plus occurs-check deferral around stuck type-family apps."
+          "action_chirho": "Builtin family axioms plus occurs-check deferral around stuck type-family apps. T12045a residual after v2.2.88: reduce `F Type` to `Type -> Type` and `F (Type -> Type)` to `Type` in kind-indexed visible type applications."
         },
         {
           "bucket_chirho": "bidirectional / higher-rank / given equalities",

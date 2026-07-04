@@ -552,6 +552,12 @@ impl KindEnvChirho {
 }
 
 /// Kind inference context with fresh variable generation.
+#[derive(Debug, Clone)]
+struct KindTypeSynonymChirho {
+    params_chirho: Vec<String>,
+    rhs_chirho: TypeChirho,
+}
+
 struct KindInferCtxChirho {
     env_chirho: KindEnvChirho,
     subst_chirho: KindSubstChirho,
@@ -560,6 +566,8 @@ struct KindInferCtxChirho {
     /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
     kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
     local_kind_decl_names_chirho: std::collections::HashSet<String>,
+    type_kind_synonyms_chirho: HashMap<String, KindTypeSynonymChirho>,
+    expanding_type_kind_synonyms_chirho: Vec<String>,
 }
 
 /// Error codes for kind diagnostics.
@@ -575,6 +583,8 @@ impl KindInferCtxChirho {
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             kind_var_cache_chirho: std::collections::HashMap::new(),
             local_kind_decl_names_chirho: std::collections::HashSet::new(),
+            type_kind_synonyms_chirho: HashMap::new(),
+            expanding_type_kind_synonyms_chirho: Vec::new(),
         }
     }
 
@@ -680,6 +690,21 @@ impl KindInferCtxChirho {
     /// `data V :: N -> Type where`).  This converts the *type-level*
     /// representation of a kind back into a `KindChirho`.
     fn type_to_kind_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
+        if let Some((name_chirho, expanded_chirho)) =
+            self.expand_type_kind_synonym_once_chirho(ty_chirho)
+        {
+            if !self
+                .expanding_type_kind_synonyms_chirho
+                .contains(&name_chirho)
+            {
+                self.expanding_type_kind_synonyms_chirho
+                    .push(name_chirho.clone());
+                let kind_chirho = self.type_to_kind_chirho(&expanded_chirho);
+                self.expanding_type_kind_synonyms_chirho.pop();
+                return kind_chirho;
+            }
+        }
+
         match ty_chirho {
             TypeChirho::ConChirho(name_chirho)
                 if name_chirho.text_chirho() == "Type" || name_chirho.text_chirho() == "*" =>
@@ -769,6 +794,291 @@ impl KindInferCtxChirho {
             _ => {
                 // Fallback: treat unknown shapes as *.
                 KindChirho::StarChirho
+            }
+        }
+    }
+
+    fn lookup_type_kind_synonym_chirho(&self, name_chirho: &str) -> Option<&KindTypeSynonymChirho> {
+        self.type_kind_synonyms_chirho.get(name_chirho).or_else(|| {
+            name_chirho
+                .rsplit_once('.')
+                .and_then(|(_qualifier_chirho, bare_chirho)| {
+                    self.type_kind_synonyms_chirho.get(bare_chirho)
+                })
+        })
+    }
+
+    fn collect_type_app_spine_chirho(
+        ty_chirho: &TypeChirho,
+        args_chirho: &mut Vec<TypeChirho>,
+    ) -> TypeChirho {
+        match ty_chirho {
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                args_chirho.push(arg_chirho.as_ref().clone());
+                Self::collect_type_app_spine_chirho(fun_chirho, args_chirho)
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                Self::collect_type_app_spine_chirho(inner_chirho, args_chirho)
+            }
+            _ => ty_chirho.clone(),
+        }
+    }
+
+    fn expand_type_kind_synonym_once_chirho(
+        &self,
+        ty_chirho: &TypeChirho,
+    ) -> Option<(String, TypeChirho)> {
+        let mut args_chirho = Vec::new();
+        let head_chirho = Self::collect_type_app_spine_chirho(ty_chirho, &mut args_chirho);
+        args_chirho.reverse();
+
+        let TypeChirho::ConChirho(name_chirho) = head_chirho else {
+            return None;
+        };
+        let synonym_name_chirho = name_chirho.full_name_chirho();
+        let synonym_chirho = self.lookup_type_kind_synonym_chirho(&synonym_name_chirho)?;
+        if args_chirho.len() < synonym_chirho.params_chirho.len() {
+            return None;
+        }
+
+        let mut expanded_chirho = synonym_chirho.rhs_chirho.clone();
+        for (param_chirho, arg_chirho) in
+            synonym_chirho.params_chirho.iter().zip(args_chirho.iter())
+        {
+            expanded_chirho = Self::substitute_type_kind_synonym_param_chirho(
+                &expanded_chirho,
+                param_chirho,
+                arg_chirho,
+            );
+        }
+        for arg_chirho in args_chirho.iter().skip(synonym_chirho.params_chirho.len()) {
+            expanded_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(expanded_chirho),
+                arg_chirho: Box::new(arg_chirho.clone()),
+                span_chirho: ty_chirho.span_chirho(),
+            };
+        }
+
+        if &expanded_chirho == ty_chirho {
+            None
+        } else {
+            Some((synonym_name_chirho, expanded_chirho))
+        }
+    }
+
+    fn substitute_type_kind_synonym_param_chirho(
+        ty_chirho: &TypeChirho,
+        param_chirho: &str,
+        arg_chirho: &TypeChirho,
+    ) -> TypeChirho {
+        match ty_chirho {
+            TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == param_chirho => {
+                arg_chirho.clone()
+            }
+            TypeChirho::VarChirho(_)
+            | TypeChirho::ConChirho(_)
+            | TypeChirho::WildcardChirho { .. }
+            | TypeChirho::LitChirho { .. } => ty_chirho.clone(),
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho: inner_arg_chirho,
+                span_chirho,
+            } => TypeChirho::AppChirho {
+                fun_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    fun_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                arg_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    inner_arg_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::FunChirho {
+                arg_chirho: fun_arg_chirho,
+                mult_chirho,
+                result_chirho,
+                span_chirho,
+            } => TypeChirho::FunChirho {
+                arg_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    fun_arg_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                mult_chirho: mult_chirho.clone(),
+                result_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    result_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::TupleChirho {
+                elements_chirho,
+                span_chirho,
+            } => TypeChirho::TupleChirho {
+                elements_chirho: elements_chirho
+                    .iter()
+                    .map(|element_chirho| {
+                        Self::substitute_type_kind_synonym_param_chirho(
+                            element_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )
+                    })
+                    .collect(),
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::ListChirho {
+                element_chirho,
+                span_chirho,
+            } => TypeChirho::ListChirho {
+                element_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    element_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::ParenChirho {
+                inner_chirho,
+                span_chirho,
+            } => TypeChirho::ParenChirho {
+                inner_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    inner_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+                span_chirho,
+            } => TypeChirho::QualChirho {
+                context_chirho: context_chirho
+                    .iter()
+                    .map(|constraint_chirho| {
+                        Self::substitute_constraint_kind_synonym_param_chirho(
+                            constraint_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )
+                    })
+                    .collect(),
+                body_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    body_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho,
+            } => {
+                if vars_chirho
+                    .iter()
+                    .any(|var_chirho| var_chirho.text_chirho() == param_chirho)
+                {
+                    ty_chirho.clone()
+                } else {
+                    TypeChirho::ForallChirho {
+                        vars_chirho: vars_chirho.clone(),
+                        body_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                            body_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )),
+                        span_chirho: *span_chirho,
+                    }
+                }
+            }
+            TypeChirho::PromotedConChirho { .. } => ty_chirho.clone(),
+            TypeChirho::PromotedListChirho {
+                elements_chirho,
+                span_chirho,
+            } => TypeChirho::PromotedListChirho {
+                elements_chirho: elements_chirho
+                    .iter()
+                    .map(|element_chirho| {
+                        Self::substitute_type_kind_synonym_param_chirho(
+                            element_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )
+                    })
+                    .collect(),
+                span_chirho: *span_chirho,
+            },
+        }
+    }
+
+    fn substitute_constraint_kind_synonym_param_chirho(
+        constraint_chirho: &ConstraintChirho,
+        param_chirho: &str,
+        arg_chirho: &TypeChirho,
+    ) -> ConstraintChirho {
+        match constraint_chirho {
+            ConstraintChirho::ClassChirho {
+                class_chirho,
+                args_chirho,
+                span_chirho,
+            } => ConstraintChirho::ClassChirho {
+                class_chirho: class_chirho.clone(),
+                args_chirho: args_chirho
+                    .iter()
+                    .map(|arg_ty_chirho| {
+                        Self::substitute_type_kind_synonym_param_chirho(
+                            arg_ty_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )
+                    })
+                    .collect(),
+                span_chirho: *span_chirho,
+            },
+            ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
+                context_chirho,
+                body_chirho,
+                span_chirho,
+            } => {
+                if vars_chirho
+                    .iter()
+                    .any(|var_chirho| var_chirho.text_chirho() == param_chirho)
+                {
+                    constraint_chirho.clone()
+                } else {
+                    ConstraintChirho::QuantifiedChirho {
+                        vars_chirho: vars_chirho.clone(),
+                        context_chirho: context_chirho
+                            .iter()
+                            .map(|inner_chirho| {
+                                Self::substitute_constraint_kind_synonym_param_chirho(
+                                    inner_chirho,
+                                    param_chirho,
+                                    arg_chirho,
+                                )
+                            })
+                            .collect(),
+                        body_chirho: Box::new(
+                            Self::substitute_constraint_kind_synonym_param_chirho(
+                                body_chirho,
+                                param_chirho,
+                                arg_chirho,
+                            ),
+                        ),
+                        span_chirho: *span_chirho,
+                    }
+                }
             }
         }
     }
@@ -1154,6 +1464,16 @@ impl KindInferCtxChirho {
             let existing_chirho = existing_chirho.clone();
             self.unify_chirho(&existing_chirho, &kind_chirho, "type alias", span_chirho);
         }
+        self.type_kind_synonyms_chirho.insert(
+            name_chirho.to_string(),
+            KindTypeSynonymChirho {
+                params_chirho: type_vars_chirho
+                    .iter()
+                    .map(|type_var_chirho| type_var_chirho.text_chirho().to_string())
+                    .collect(),
+                rhs_chirho: rhs_ty_chirho.clone(),
+            },
+        );
         self.env_chirho
             .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
@@ -2273,6 +2593,66 @@ mod tests_chirho {
         assert_eq!(
             result_chirho.env_chirho.lookup_chirho("StringPair"),
             Some(&KindChirho::StarChirho)
+        );
+    }
+
+    #[test]
+    fn standalone_kind_signature_expands_local_kind_synonym_application_chirho() {
+        let module_chirho = mk_module_chirho(vec![
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho: mk_name_chirho("Cat"),
+                type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("k"))],
+                rhs_chirho: mk_fun_chirho(
+                    TypeChirho::VarChirho(mk_name_chirho("k")),
+                    mk_fun_chirho(
+                        TypeChirho::VarChirho(mk_name_chirho("k")),
+                        TypeChirho::ConChirho(mk_name_chirho("Type")),
+                    ),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::DataDeclChirho {
+                name_chirho: mk_name_chirho("FreeCat"),
+                type_vars_chirho: vec![],
+                constructors_chirho: vec![],
+                deriving_chirho: vec![],
+                kind_sig_chirho: Some(mk_fun_chirho(
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho("Cat")),
+                        TypeChirho::VarChirho(mk_name_chirho("k")),
+                    ),
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho("Cat")),
+                        TypeChirho::VarChirho(mk_name_chirho("k")),
+                    ),
+                )),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ]);
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "local kind synonym applications should expand in standalone kind signatures: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            result_chirho.env_chirho.lookup_chirho("FreeCat"),
+            Some(&KindChirho::arrow_chirho(
+                KindChirho::arrow_chirho(
+                    KindChirho::StarChirho,
+                    KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+                ),
+                KindChirho::arrow_chirho(
+                    KindChirho::StarChirho,
+                    KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+                )
+            ))
         );
     }
 
