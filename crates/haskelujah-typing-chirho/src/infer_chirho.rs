@@ -5742,6 +5742,24 @@ impl InferCtxChirho {
                     .or_default()
                     .push(resolved_pred_chirho.class_name_chirho.clone());
             }
+            if let Some(sub_goals_chirho) =
+                self.class_env_chirho.resolve_chirho(&resolved_pred_chirho)
+            {
+                for sub_goal_chirho in sub_goals_chirho {
+                    if self.pred_entailed_by_givens_chirho(
+                        &sub_goal_chirho,
+                        &resolved_given_preds_chirho,
+                    ) {
+                        continue;
+                    }
+                    if let TyChirho::VarChirho(v_chirho) = &sub_goal_chirho.ty_chirho {
+                        var_classes_chirho
+                            .entry(*v_chirho)
+                            .or_default()
+                            .push(sub_goal_chirho.class_name_chirho.clone());
+                    }
+                }
+            }
 
             resolved_preds_chirho.push((resolved_pred_chirho, *span_chirho));
         }
@@ -5760,16 +5778,33 @@ impl InferCtxChirho {
                     .insert_chirho(*var_chirho, TyChirho::ConChirho("IO".to_string()));
                 continue;
             }
-            // All constraints on this var must be defaultable classes
+            let has_numeric_trigger_chirho = classes_chirho.iter().any(|c_chirho| {
+                numeric_default_trigger_classes_chirho.contains(&c_chirho.as_str())
+            });
+            // Haskelujah leniency: if a literal-driven type variable also has
+            // user-class constraints, prefer Int only when Int satisfies every
+            // collected class. This keeps ordinary Num-only defaulting on the
+            // Report path while accepting small local examples like
+            // `Describable a => Describable [a]` with `[42]`.
             let all_defaultable_chirho = classes_chirho
                 .iter()
                 .all(|c_chirho| defaultable_classes_chirho.contains(&c_chirho.as_str()));
             if !all_defaultable_chirho {
+                if has_numeric_trigger_chirho {
+                    let int_ty_chirho = TyChirho::int_chirho();
+                    let int_satisfies_all_chirho =
+                        classes_chirho.iter().all(|class_name_chirho| {
+                            self.class_env_chirho.entails_chirho(&PredChirho::new_chirho(
+                                class_name_chirho,
+                                int_ty_chirho.clone(),
+                            ))
+                        });
+                    if int_satisfies_all_chirho {
+                        default_subst_chirho.insert_chirho(*var_chirho, int_ty_chirho);
+                    }
+                }
                 continue;
             }
-            let has_numeric_trigger_chirho = classes_chirho.iter().any(|c_chirho| {
-                numeric_default_trigger_classes_chirho.contains(&c_chirho.as_str())
-            });
             if !has_numeric_trigger_chirho {
                 continue;
             }
