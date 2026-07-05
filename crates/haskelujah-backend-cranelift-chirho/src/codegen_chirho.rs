@@ -144,6 +144,7 @@ fn compile_core_to_object_inner_chirho(
         put_str_ln_func_id_chirho,
         print_int_func_id_chirho,
         append_str_func_id_chirho,
+        strcmp_func_id_chirho,
         alloc_func_id_chirho,
         show_int_func_id_chirho,
         show_bool_func_id_chirho,
@@ -211,6 +212,20 @@ fn compile_core_to_object_inner_chirho(
                 LinkageChirho::Import,
                 &append_str_sig_chirho,
             )
+            .ok();
+
+        let mut strcmp_sig_chirho = obj_module_chirho.make_signature();
+        strcmp_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        strcmp_sig_chirho
+            .params
+            .push(AbiParamChirho::new(cl_types_chirho::I64));
+        strcmp_sig_chirho
+            .returns
+            .push(AbiParamChirho::new(cl_types_chirho::I32));
+        let strcmp_func_id_chirho = obj_module_chirho
+            .declare_function("strcmp", LinkageChirho::Import, &strcmp_sig_chirho)
             .ok();
 
         let mut alloc_sig_chirho = obj_module_chirho.make_signature();
@@ -455,6 +470,7 @@ fn compile_core_to_object_inner_chirho(
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
             append_str_func_id_chirho,
+            strcmp_func_id_chirho,
             alloc_func_id_chirho,
             show_int_func_id_chirho,
             show_bool_func_id_chirho,
@@ -630,6 +646,7 @@ fn compile_core_to_object_inner_chirho(
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
             append_str_func_id_chirho,
+            strcmp_func_id_chirho,
             alloc_func_id_chirho,
             show_int_func_id_chirho,
             show_bool_func_id_chirho,
@@ -1615,6 +1632,7 @@ fn define_function_body_chirho(
     put_str_ln_func_id_chirho: Option<cranelift_module::FuncId>,
     print_int_func_id_chirho: Option<cranelift_module::FuncId>,
     append_str_func_id_chirho: Option<cranelift_module::FuncId>,
+    strcmp_func_id_chirho: Option<cranelift_module::FuncId>,
     alloc_func_id_chirho: Option<cranelift_module::FuncId>,
     show_int_func_id_chirho: Option<cranelift_module::FuncId>,
     show_bool_func_id_chirho: Option<cranelift_module::FuncId>,
@@ -1718,6 +1736,8 @@ fn define_function_body_chirho(
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let append_str_fref_chirho = append_str_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
+        let strcmp_fref_chirho = strcmp_func_id_chirho
+            .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let alloc_fref_chirho = alloc_func_id_chirho
             .map(|fid_chirho| module_chirho.declare_func_in_func(fid_chirho, builder_chirho.func));
         let show_int_fref_chirho = show_int_func_id_chirho
@@ -1784,6 +1804,7 @@ fn define_function_body_chirho(
             put_str_ln_ref_chirho: put_str_ln_fref_chirho,
             print_int_ref_chirho: print_int_fref_chirho,
             append_str_ref_chirho: append_str_fref_chirho,
+            strcmp_ref_chirho: strcmp_fref_chirho,
             alloc_ref_chirho: alloc_fref_chirho,
             show_int_ref_chirho: show_int_fref_chirho,
             show_bool_ref_chirho: show_bool_fref_chirho,
@@ -2091,6 +2112,7 @@ fn lower_binding_chirho(
     put_str_ln_func_id_chirho: Option<cranelift_module::FuncId>,
     print_int_func_id_chirho: Option<cranelift_module::FuncId>,
     append_str_func_id_chirho: Option<cranelift_module::FuncId>,
+    strcmp_func_id_chirho: Option<cranelift_module::FuncId>,
     alloc_func_id_chirho: Option<cranelift_module::FuncId>,
     show_int_func_id_chirho: Option<cranelift_module::FuncId>,
     show_bool_func_id_chirho: Option<cranelift_module::FuncId>,
@@ -2211,6 +2233,7 @@ fn lower_binding_chirho(
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
             append_str_func_id_chirho,
+            strcmp_func_id_chirho,
             alloc_func_id_chirho,
             show_int_func_id_chirho,
             show_bool_func_id_chirho,
@@ -2251,6 +2274,7 @@ fn lower_binding_chirho(
         put_str_ln_func_id_chirho,
         print_int_func_id_chirho,
         append_str_func_id_chirho,
+        strcmp_func_id_chirho,
         alloc_func_id_chirho,
         show_int_func_id_chirho,
         show_bool_func_id_chirho,

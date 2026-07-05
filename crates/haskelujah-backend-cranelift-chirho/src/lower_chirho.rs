@@ -92,6 +92,8 @@ pub struct LowerCtxChirho<'a> {
     pub print_int_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_append_str_chirho`
     pub append_str_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
+    /// Optional FuncRef for C `strcmp`.
+    pub strcmp_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_alloc_chirho` (boxed constructors)
     pub alloc_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Optional FuncRef for RTS `haskelujah_show_int_chirho` (int → string)
@@ -791,7 +793,8 @@ fn lower_case_chirho(
         };
         let alt_body_block_chirho = alt_body_blocks_chirho[idx_chirho];
 
-        let expected_val_chirho = alt_expected_value_chirho(builder_chirho, &alt_chirho.con_chirho);
+        let expected_val_chirho =
+            alt_expected_value_chirho(builder_chirho, ctx_chirho, &alt_chirho.con_chirho);
         let eq_val_chirho = builder_chirho.ins().icmp(
             IntCcChirho::Equal,
             scrut_cmp_i64_chirho,
@@ -957,7 +960,8 @@ fn lower_tail_case_chirho(
         };
         let alt_body_block_chirho = alt_body_blocks_chirho[idx_chirho];
 
-        let expected_val_chirho = alt_expected_value_chirho(builder_chirho, &alt_chirho.con_chirho);
+        let expected_val_chirho =
+            alt_expected_value_chirho(builder_chirho, ctx_chirho, &alt_chirho.con_chirho);
         let eq_val_chirho = builder_chirho.ins().icmp(
             IntCcChirho::Equal,
             scrut_cmp_i64_chirho,
@@ -1311,6 +1315,7 @@ fn load_constructor_field_chirho(
 /// Compute the expected i64 value for a case alternative constructor/literal.
 fn alt_expected_value_chirho(
     builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &LowerCtxChirho<'_>,
     con_chirho: &AltConChirho,
 ) -> ClValueChirho {
     match con_chirho {
@@ -1328,7 +1333,15 @@ fn alt_expected_value_chirho(
                     .ins()
                     .iconst(cl_types_chirho::I64, bits_chirho)
             }
-            CoreLitChirho::StringChirho(_) => builder_chirho.ins().iconst(cl_types_chirho::I64, 0),
+            CoreLitChirho::StringChirho(s_chirho) => ctx_chirho
+                .string_globals_chirho
+                .get(s_chirho.as_str())
+                .map(|global_chirho| {
+                    builder_chirho
+                        .ins()
+                        .global_value(cl_types_chirho::I64, *global_chirho)
+                })
+                .unwrap_or_else(|| builder_chirho.ins().iconst(cl_types_chirho::I64, 0)),
         },
         AltConChirho::DataConChirho(name_chirho) => {
             let tag_chirho = con_tag_for_chirho(name_chirho);
@@ -2541,6 +2554,52 @@ pub fn lower_primop_chirho(
                 .ins()
                 .call(append_str_ref_chirho, &[lhs_chirho, rhs_chirho]);
             builder_chirho.inst_results(append_call_chirho)[0]
+        }
+        "eqStr#" => {
+            let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
+            let zero_i64_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+            let Some(strcmp_ref_chirho) = ctx_chirho.strcmp_ref_chirho else {
+                let eq_chirho =
+                    builder_chirho
+                        .ins()
+                        .icmp(IntCcChirho::Equal, lhs_chirho, rhs_chirho);
+                return builder_chirho
+                    .ins()
+                    .uextend(cl_types_chirho::I64, eq_chirho);
+            };
+            let lhs_is_null_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::Equal, lhs_chirho, zero_i64_chirho);
+            let rhs_is_null_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::Equal, rhs_chirho, zero_i64_chirho);
+            let any_null_chirho = builder_chirho
+                .ins()
+                .bor(lhs_is_null_chirho, rhs_is_null_chirho);
+            let pointer_eq_chirho =
+                builder_chirho
+                    .ins()
+                    .icmp(IntCcChirho::Equal, lhs_chirho, rhs_chirho);
+            let strcmp_call_chirho = builder_chirho
+                .ins()
+                .call(strcmp_ref_chirho, &[lhs_chirho, rhs_chirho]);
+            let strcmp_result_chirho = builder_chirho.inst_results(strcmp_call_chirho)[0];
+            let zero_i32_chirho = builder_chirho.ins().iconst(cl_types_chirho::I32, 0);
+            let string_eq_chirho = builder_chirho.ins().icmp(
+                IntCcChirho::Equal,
+                strcmp_result_chirho,
+                zero_i32_chirho,
+            );
+            let eq_chirho =
+                builder_chirho
+                    .ins()
+                    .select(any_null_chirho, pointer_eq_chirho, string_eq_chirho);
+            builder_chirho
+                .ins()
+                .uextend(cl_types_chirho::I64, eq_chirho)
         }
 
         // ── unpack# — convert C string to [Char] cons-list ───────────────
