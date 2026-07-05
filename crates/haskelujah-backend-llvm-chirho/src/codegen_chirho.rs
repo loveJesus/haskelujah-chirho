@@ -2537,7 +2537,9 @@ impl LlvmCodegenChirho {
             } => {
                 if args_chirho.len() == 2 {
                     let lhs_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let lhs_chirho = self.emit_force_thunk_chirho(&lhs_chirho);
                     let rhs_chirho = self.compile_expr_chirho(&args_chirho[1]);
+                    let rhs_chirho = self.emit_force_thunk_chirho(&rhs_chirho);
                     if name_chirho == "++#" {
                         let tmp_chirho = self.fresh_tmp_chirho();
                         writeln!(
@@ -2593,6 +2595,7 @@ impl LlvmCodegenChirho {
                     tmp_chirho
                 } else if args_chirho.len() == 1 && name_chirho == "negate#" {
                     let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
                     let tmp_chirho = self.fresh_tmp_chirho();
                     writeln!(
                         self.output_chirho,
@@ -2614,6 +2617,7 @@ impl LlvmCodegenChirho {
                         _ => "haskelujah_show_int_chirho",
                     };
                     let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
                     let tmp_chirho = self.fresh_tmp_chirho();
                     writeln!(
                         self.output_chirho,
@@ -2623,6 +2627,7 @@ impl LlvmCodegenChirho {
                     tmp_chirho
                 } else if args_chirho.len() == 1 && name_chirho == "not#" {
                     let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+                    let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
                     let cmp_tmp_chirho = self.fresh_tmp_chirho();
                     writeln!(
                         self.output_chirho,
