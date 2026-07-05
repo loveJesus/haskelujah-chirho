@@ -95,6 +95,23 @@ pub struct InferResultChirho {
     pub type_families_chirho: TypeFamilyEnvChirho,
     /// Diagnostics collected during inference.
     pub diagnostics_chirho: DiagnosticBundleChirho,
+    /// Evidence-threading P2 (design-evidence-threading-chirho.md): per-name,
+    /// source-order occurrence records for references whose instantiated scheme
+    /// carried class predicates, finalized through the module's composed
+    /// substitution (unification + Report defaulting). Only records whose
+    /// predicate type resolved to a CONCRETE head key survive finalization.
+    pub method_occurrences_chirho: Vec<MethodOccurrenceRecordChirho>,
+}
+
+/// Evidence-threading P2: one concrete class-instantiation fact about the
+/// `ordinal`-th source reference of `name` (per-name counter, source order).
+/// `ty_key_chirho` is the instance-head key (e.g. "Int", "[]", "Maybe").
+#[derive(Debug, Clone, PartialEq)]
+pub struct MethodOccurrenceRecordChirho {
+    pub name_chirho: String,
+    pub ordinal_chirho: u32,
+    pub class_name_chirho: String,
+    pub ty_key_chirho: String,
 }
 
 /// The inference context — carries mutable state during inference.
@@ -107,6 +124,12 @@ pub struct InferCtxChirho {
     class_env_chirho: ClassEnvChirho,
     /// Deferred (wanted) typeclass predicates collected during inference.
     deferred_preds_chirho: Vec<(PredChirho, SpanChirho)>,
+    /// Evidence-threading P2: raw occurrence captures — (name, per-name ordinal,
+    /// class, instantiated predicate type). Finalized against the composed
+    /// substitution when the public entry builds `InferResultChirho`.
+    occurrence_captures_chirho: Vec<(String, u32, String, TyChirho)>,
+    /// Evidence-threading P2: per-name reference counters (source order).
+    occurrence_counters_chirho: HashMap<String, u32>,
     /// Given predicates currently in scope from explicit type signatures.
     given_preds_chirho: Vec<PredChirho>,
     /// Accumulated diagnostics.
@@ -454,6 +477,8 @@ impl InferCtxChirho {
             env_chirho,
             class_env_chirho,
             deferred_preds_chirho: Vec::new(),
+            occurrence_captures_chirho: Vec::new(),
+            occurrence_counters_chirho: HashMap::new(),
             given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
@@ -2534,7 +2559,31 @@ impl InferCtxChirho {
                     );
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
-                        let ty_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
+                        // Evidence-threading P2: instantiate via parts so each
+                        // predicate's fresh class variable can be captured as an
+                        // occurrence record (finalized after solving/defaulting).
+                        let (ty_chirho, instantiated_preds_chirho) =
+                            self.instantiate_scheme_parts_chirho(&scheme_chirho);
+                        if !instantiated_preds_chirho.is_empty() {
+                            let counter_chirho = self
+                                .occurrence_counters_chirho
+                                .entry(text_chirho.to_string())
+                                .or_insert(0);
+                            let ordinal_chirho = *counter_chirho;
+                            *counter_chirho += 1;
+                            for pred_inst_chirho in &instantiated_preds_chirho {
+                                self.occurrence_captures_chirho.push((
+                                    text_chirho.to_string(),
+                                    ordinal_chirho,
+                                    pred_inst_chirho.class_name_chirho.clone(),
+                                    pred_inst_chirho.ty_chirho.clone(),
+                                ));
+                            }
+                        }
+                        for pred_inst_chirho in instantiated_preds_chirho {
+                            self.deferred_preds_chirho
+                                .push((pred_inst_chirho, span_chirho));
+                        }
                         (SubstChirho::empty_chirho(), ty_chirho)
                     }
                     None => {
@@ -2612,7 +2661,31 @@ impl InferCtxChirho {
                     );
                 match scheme_opt_chirho {
                     Some(scheme_chirho) => {
-                        let ty_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
+                        // Evidence-threading P2: instantiate via parts so each
+                        // predicate's fresh class variable can be captured as an
+                        // occurrence record (finalized after solving/defaulting).
+                        let (ty_chirho, instantiated_preds_chirho) =
+                            self.instantiate_scheme_parts_chirho(&scheme_chirho);
+                        if !instantiated_preds_chirho.is_empty() {
+                            let counter_chirho = self
+                                .occurrence_counters_chirho
+                                .entry(text_chirho.to_string())
+                                .or_insert(0);
+                            let ordinal_chirho = *counter_chirho;
+                            *counter_chirho += 1;
+                            for pred_inst_chirho in &instantiated_preds_chirho {
+                                self.occurrence_captures_chirho.push((
+                                    text_chirho.to_string(),
+                                    ordinal_chirho,
+                                    pred_inst_chirho.class_name_chirho.clone(),
+                                    pred_inst_chirho.ty_chirho.clone(),
+                                ));
+                            }
+                        }
+                        for pred_inst_chirho in instantiated_preds_chirho {
+                            self.deferred_preds_chirho
+                                .push((pred_inst_chirho, span_chirho));
+                        }
                         (SubstChirho::empty_chirho(), ty_chirho)
                     }
                     None => (SubstChirho::empty_chirho(), self.fresh_var_chirho()),
@@ -5674,6 +5747,39 @@ impl InferCtxChirho {
         default_subst_chirho
     }
 
+    /// Evidence-threading P2: finalize raw occurrence captures against the
+    /// composed substitution (unification + Report defaulting), keeping only
+    /// records whose predicate type resolved to a concrete instance-head key.
+    fn finalize_occurrence_records_chirho(
+        &self,
+        final_subst_chirho: &SubstChirho,
+    ) -> Vec<MethodOccurrenceRecordChirho> {
+        fn head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
+            match ty_chirho {
+                TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
+                TyChirho::ListChirho(_) => Some("[]".to_string()),
+                TyChirho::TupleChirho(items_chirho) => Some(format!(
+                    "({})",
+                    ",".repeat(items_chirho.len().saturating_sub(1))
+                )),
+                TyChirho::AppChirho(fun_chirho, _) => head_key_chirho(fun_chirho),
+                _ => None,
+            }
+        }
+        self.occurrence_captures_chirho
+            .iter()
+            .filter_map(|(name_chirho, ordinal_chirho, class_chirho, ty_chirho)| {
+                let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                head_key_chirho(&resolved_chirho).map(|key_chirho| MethodOccurrenceRecordChirho {
+                    name_chirho: name_chirho.clone(),
+                    ordinal_chirho: *ordinal_chirho,
+                    class_name_chirho: class_chirho.clone(),
+                    ty_key_chirho: key_chirho,
+                })
+            })
+            .collect()
+    }
+
     /// Consume the context and return the final result.
     pub fn finish_chirho(self) -> InferResultChirho {
         InferResultChirho {
@@ -5682,6 +5788,7 @@ impl InferCtxChirho {
             class_env_chirho: self.class_env_chirho,
             type_families_chirho: self.type_families_chirho,
             diagnostics_chirho: self.diagnostics_chirho,
+            method_occurrences_chirho: Vec::new(),
         }
     }
 }
@@ -19632,8 +19739,15 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     if !default_subst_chirho.is_empty_chirho() {
         ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
     }
+    let composed_subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
+    // Evidence-threading P2: finalize occurrence records through the composed
+    // substitution (so Report defaulting from check_deferred_preds_chirho is
+    // reflected) before the context is consumed.
+    let method_occurrences_chirho =
+        ctx_chirho.finalize_occurrence_records_chirho(&composed_subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
-    result_chirho.subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
+    result_chirho.subst_chirho = composed_subst_chirho;
+    result_chirho.method_occurrences_chirho = method_occurrences_chirho;
     result_chirho
 }
 
@@ -19829,6 +19943,39 @@ mod tests_chirho {
         assert_eq!(
             ctx_chirho.deferred_preds_chirho[0].0.class_name_chirho,
             "Num"
+        );
+    }
+
+    #[test]
+    fn occurrence_record_captures_concrete_eq_char_chirho() {
+        // Evidence-threading P2 pin: `(==) 'a' 'b'` must yield a finalized
+        // occurrence record (name "==", ordinal 0, class Eq, key Char).
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let app_chirho = ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::AppChirho {
+                fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("=="))),
+                arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::CharChirho(
+                    'a',
+                    SpanChirho::DUMMY_CHIRHO,
+                ))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::CharChirho(
+                'b',
+                SpanChirho::DUMMY_CHIRHO,
+            ))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let (subst_chirho, _ty_chirho) = ctx_chirho.infer_expr_chirho(&app_chirho);
+        let records_chirho = ctx_chirho.finalize_occurrence_records_chirho(&subst_chirho);
+        assert!(
+            records_chirho.iter().any(|record_chirho| {
+                record_chirho.name_chirho == "=="
+                    && record_chirho.ordinal_chirho == 0
+                    && record_chirho.class_name_chirho == "Eq"
+                    && record_chirho.ty_key_chirho == "Char"
+            }),
+            "expected a concrete Eq/Char record for `==`, got: {records_chirho:?}"
         );
     }
 
