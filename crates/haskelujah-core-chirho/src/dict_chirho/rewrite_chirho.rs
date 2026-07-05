@@ -1379,7 +1379,7 @@ impl DictPassCtxChirho {
                 if rewritten_fun_chirho.is_none() && rewritten_arg_chirho.is_none() {
                     return None;
                 }
-                Some(CoreExprChirho::AppChirho {
+                let rebuilt_chirho = CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(rewritten_fun_chirho.unwrap_or_else(|| {
                         self.rewrite_method_refs_with_locals_chirho(
                             fun_chirho,
@@ -1398,7 +1398,17 @@ impl DictPassCtxChirho {
                             local_instance_dicts_chirho,
                         )
                     })),
-                })
+                };
+                Some(
+                    self.try_dispatch_semigroup_monoid_body_chirho(
+                        &rebuilt_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                    .unwrap_or(rebuilt_chirho),
+                )
             }
             CoreExprChirho::TyAppChirho {
                 expr_chirho: inner_chirho,
@@ -2674,6 +2684,87 @@ impl DictPassCtxChirho {
         Some(result_chirho)
     }
 
+    fn try_dispatch_semigroup_monoid_body_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let (method_id_chirho, args_chirho, type_key_hint_chirho) =
+            self.collect_method_app_chirho(expr_chirho)?;
+        let method_name_chirho = self.names_chirho.get(&method_id_chirho)?;
+        if self
+            .local_shadow_ids_chirho
+            .borrow()
+            .contains(&method_id_chirho)
+        {
+            return None;
+        }
+        let short_name_chirho = method_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(method_name_chirho);
+        let method_key_chirho = short_name_chirho
+            .strip_prefix('(')
+            .and_then(|name_chirho| name_chirho.strip_suffix(')'))
+            .unwrap_or(short_name_chirho);
+
+        let (prefix_chirho, dispatch_indices_chirho): (&str, &[usize]) = match method_key_chirho {
+            "<>" => ("$prim_Semigroup_<>_", &[0usize, 1usize]),
+            // Monoid.mappend has the same operational body as Semigroup.(<>)
+            // for every generated ground row, including newtype-erased wrappers.
+            "mappend" => ("$prim_Semigroup_<>_", &[0usize, 1usize]),
+            "mconcat" => ("$prim_Monoid_mconcat_", &[0usize]),
+            _ => return None,
+        };
+
+        let mut key_chirho = type_key_hint_chirho.or_else(|| {
+            dispatch_indices_chirho.iter().find_map(|idx_chirho| {
+                args_chirho.get(*idx_chirho).and_then(|arg_chirho| {
+                    self.infer_type_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
+                })
+            })
+        })?;
+
+        if method_key_chirho == "mconcat"
+            && key_chirho.starts_with('[')
+            && key_chirho.ends_with(']')
+            && key_chirho.len() > 2
+        {
+            key_chirho = key_chirho[1..key_chirho.len() - 1].to_string();
+        }
+
+        let inst_id_chirho =
+            self.lookup_dispatch_body_name_id_chirho(&format!("{prefix_chirho}{key_chirho}"))?;
+        let mut result_chirho = CoreExprChirho::VarChirho(inst_id_chirho);
+        for arg_chirho in &args_chirho {
+            let rewritten_arg_chirho = self
+                .try_rewrite_typed_method_arg_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_instance_dicts_chirho,
+                    &key_chirho,
+                )
+                .unwrap_or_else(|| {
+                    self.rewrite_method_refs_with_locals_chirho(
+                        arg_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                });
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(rewritten_arg_chirho),
+            };
+        }
+        Some(result_chirho)
+    }
+
     fn try_rewrite_annotated_method_app_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -3051,6 +3142,15 @@ impl DictPassCtxChirho {
                 // per-type instance body from the dispatch argument's type key
                 // (normalized to the instance head, e.g. `Maybe Int` -> `Maybe`).
                 if let Some(dispatched_chirho) = self.try_dispatch_hk_method_chirho(
+                    expr_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ) {
+                    return dispatched_chirho;
+                }
+                if let Some(dispatched_chirho) = self.try_dispatch_semigroup_monoid_body_chirho(
                     expr_chirho,
                     dict_vars_chirho,
                     evidence_classes_chirho,
