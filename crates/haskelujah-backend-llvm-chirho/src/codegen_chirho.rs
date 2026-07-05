@@ -1113,6 +1113,11 @@ impl LlvmCodegenChirho {
                         .get(id_chirho)
                         .and_then(
                             |name_chirho| match (name_chirho.as_str(), args_chirho.len()) {
+                                (name_chirho, 2)
+                                    if name_chirho.starts_with("$prim_Eq_==_") =>
+                                {
+                                    Some(ShowBuiltinKindChirho::BoolChirho)
+                                }
                                 ("not", 1)
                                 | ("not#", 1)
                                 | ("==", 2)
@@ -1121,6 +1126,11 @@ impl LlvmCodegenChirho {
                                 | ("<=", 2)
                                 | (">", 2)
                                 | (">=", 2) => Some(ShowBuiltinKindChirho::BoolChirho),
+                                (name_chirho, 2)
+                                    if name_chirho.starts_with("$prim_Ord_compare_") =>
+                                {
+                                    Some(ShowBuiltinKindChirho::OrderingChirho)
+                                }
                                 ("compare", 2)
                                 | ("$sel_Ord_compare", 2)
                                 | ("$sel_Ord_compare", 3) => {
