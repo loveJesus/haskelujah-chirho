@@ -872,7 +872,7 @@ mod tests_chirho {
     use super::*;
     use crate::expr_chirho::{CoreLitChirho, InlineAnnotationChirho};
     use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
-    use haskelujah_typing_chirho::ty_chirho::SchemePredChirho;
+    use haskelujah_typing_chirho::ty_chirho::{SchemePredChirho, TyVarChirho};
 
     fn dummy_binder_chirho(name_chirho: &str, id_chirho: u32) -> BinderChirho {
         BinderChirho {
@@ -880,6 +880,19 @@ mod tests_chirho {
             name_chirho: name_chirho.to_string(),
             ty_chirho: TyChirho::int_chirho(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    }
+
+    fn num_var_scheme_chirho() -> SchemeChirho {
+        let var_chirho = TyChirho::VarChirho(TyVarChirho(0));
+        SchemeChirho {
+            vars_chirho: vec![TyVarChirho(0)],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Num".to_string(),
+                ty_chirho: var_chirho.clone(),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_n_chirho([var_chirho.clone(), var_chirho.clone()], var_chirho),
         }
     }
 
@@ -1114,14 +1127,18 @@ mod tests_chirho {
         assert!(!ctx_chirho.instance_dicts_chirho.is_empty());
 
         // Check Eq Int dict exists
-        assert!(ctx_chirho
-            .instance_dicts_chirho
-            .contains_key(&("Eq".to_string(), "Int".to_string())));
+        assert!(
+            ctx_chirho
+                .instance_dicts_chirho
+                .contains_key(&("Eq".to_string(), "Int".to_string()))
+        );
 
         // Check Num Int dict exists
-        assert!(ctx_chirho
-            .instance_dicts_chirho
-            .contains_key(&("Num".to_string(), "Int".to_string())));
+        assert!(
+            ctx_chirho
+                .instance_dicts_chirho
+                .contains_key(&("Num".to_string(), "Int".to_string()))
+        );
 
         // Find the $fEqInt binding
         let eq_int_binding_chirho = ctx_chirho
@@ -1220,26 +1237,38 @@ mod tests_chirho {
         ctx_chirho.build_layouts_chirho(&class_env_chirho);
         ctx_chirho.generate_selectors_chirho();
 
-        // Build dict_vars: Num class has a dict at id 99
-        let mut dict_vars_chirho = HashMap::new();
-        dict_vars_chirho.insert("Num".to_string(), CoreIdChirho(99));
+        let binding_chirho = CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("add", 8),
+            rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(5)),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let result_chirho =
+            ctx_chirho.add_dict_params_chirho(&binding_chirho, &num_var_scheme_chirho());
 
-        // Rewrite a reference to "+" (id 5)
-        let expr_chirho = CoreExprChirho::VarChirho(CoreIdChirho(5));
-        let result_chirho = ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
-
-        // Should be: ($sel_Num_+ $dNum) i.e. App(Var(sel_id), Var(99))
-        if let CoreExprChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
-        } = &result_chirho
+        // Should be: ($sel_Num_+ $dNum) where $dNum is the local evidence binder.
+        if let CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } = &result_chirho.rhs_chirho
         {
-            // The function should be the selector
-            assert!(matches!(**fun_chirho, CoreExprChirho::VarChirho(_)));
-            // The arg should be the dict variable
-            assert_eq!(**arg_chirho, CoreExprChirho::VarChirho(CoreIdChirho(99)));
+            if let CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } = body_chirho.as_ref()
+            {
+                // The function should be the selector
+                assert!(matches!(**fun_chirho, CoreExprChirho::VarChirho(_)));
+                // The arg should be the locally-proven Num dictionary
+                assert_eq!(
+                    **arg_chirho,
+                    CoreExprChirho::VarChirho(binder_chirho.id_chirho)
+                );
+            } else {
+                panic!("expected method ref to be rewritten to selector application");
+            }
         } else {
-            panic!("expected method ref to be rewritten to App");
+            panic!("expected Num dictionary lambda");
         }
     }
 
@@ -1272,42 +1301,48 @@ mod tests_chirho {
         ctx_chirho.build_layouts_chirho(&class_env_chirho);
         ctx_chirho.generate_selectors_chirho();
 
-        let mut dict_vars_chirho = HashMap::new();
-        dict_vars_chirho.insert("Num".to_string(), CoreIdChirho(99));
-
         // Expression: (+) x y → App(App(+, x), y)
-        let expr_chirho = CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(5))),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(6))),
-            }),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(7))),
+        let binding_chirho = CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("add", 8),
+            rhs_chirho: CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(5))),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(6))),
+                }),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(7))),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
         };
-
-        let result_chirho = ctx_chirho.rewrite_method_refs_chirho(&expr_chirho, &dict_vars_chirho);
+        let result_chirho =
+            ctx_chirho.add_dict_params_chirho(&binding_chirho, &num_var_scheme_chirho());
 
         // The "+" reference should be rewritten, "x" and "y" should not
-        if let CoreExprChirho::AppChirho { fun_chirho, .. } = &result_chirho {
-            if let CoreExprChirho::AppChirho {
-                fun_chirho: inner_fun_chirho,
-                arg_chirho: inner_arg_chirho,
-            } = fun_chirho.as_ref()
-            {
-                // inner_fun should be ($sel_Num_+ $dNum), which is an App
-                assert!(matches!(
-                    **inner_fun_chirho,
-                    CoreExprChirho::AppChirho { .. }
-                ));
-                // inner_arg should be unchanged x
-                assert_eq!(
-                    **inner_arg_chirho,
-                    CoreExprChirho::VarChirho(CoreIdChirho(6))
-                );
+        if let CoreExprChirho::LamChirho { body_chirho, .. } = &result_chirho.rhs_chirho {
+            if let CoreExprChirho::AppChirho { fun_chirho, .. } = body_chirho.as_ref() {
+                if let CoreExprChirho::AppChirho {
+                    fun_chirho: inner_fun_chirho,
+                    arg_chirho: inner_arg_chirho,
+                } = fun_chirho.as_ref()
+                {
+                    // inner_fun should be ($sel_Num_+ $dNum), which is an App
+                    assert!(matches!(
+                        **inner_fun_chirho,
+                        CoreExprChirho::AppChirho { .. }
+                    ));
+                    // inner_arg should be unchanged x
+                    assert_eq!(
+                        **inner_arg_chirho,
+                        CoreExprChirho::VarChirho(CoreIdChirho(6))
+                    );
+                } else {
+                    panic!("expected nested App");
+                }
             } else {
-                panic!("expected nested App");
+                panic!("expected rewritten method application");
             }
         } else {
-            panic!("expected outer App");
+            panic!("expected Num dictionary lambda");
         }
     }
 

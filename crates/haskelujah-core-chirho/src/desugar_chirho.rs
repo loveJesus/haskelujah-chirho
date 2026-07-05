@@ -5806,8 +5806,58 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
-        // Should be let x = getLine in (putStrLn x)
-        assert!(matches!(core_chirho, CoreExprChirho::LetChirho { .. }));
+        // do-bind lowers to real monadic bind, not a let:
+        // (>>=) getLine (\x -> putStrLn x)
+        match core_chirho {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                match fun_chirho.as_ref() {
+                    CoreExprChirho::AppChirho {
+                        fun_chirho: bind_fun_chirho,
+                        arg_chirho: get_line_arg_chirho,
+                    } => {
+                        assert!(matches!(
+                            bind_fun_chirho.as_ref(),
+                            CoreExprChirho::VarChirho(_)
+                        ));
+                        assert!(matches!(
+                            get_line_arg_chirho.as_ref(),
+                            CoreExprChirho::VarChirho(_)
+                        ));
+                    }
+                    other_chirho => panic!("expected bind application, got {other_chirho:?}"),
+                }
+                match arg_chirho.as_ref() {
+                    CoreExprChirho::LamChirho {
+                        binder_chirho,
+                        body_chirho,
+                    } => match body_chirho.as_ref() {
+                        CoreExprChirho::AppChirho {
+                            fun_chirho: put_str_ln_fun_chirho,
+                            arg_chirho: put_str_ln_arg_chirho,
+                        } => {
+                            assert!(matches!(
+                                put_str_ln_fun_chirho.as_ref(),
+                                CoreExprChirho::VarChirho(_)
+                            ));
+                            assert_eq!(
+                                put_str_ln_arg_chirho.as_ref(),
+                                &CoreExprChirho::VarChirho(binder_chirho.id_chirho)
+                            );
+                        }
+                        other_chirho => {
+                            panic!("expected putStrLn application, got {other_chirho:?}")
+                        }
+                    },
+                    other_chirho => {
+                        panic!("expected bind continuation lambda, got {other_chirho:?}")
+                    }
+                }
+            }
+            other_chirho => panic!("expected do-bind application, got {other_chirho:?}"),
+        }
     }
 
     #[test]
