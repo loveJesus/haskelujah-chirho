@@ -1278,6 +1278,48 @@ mod tests_chirho {
     }
 
     #[test]
+    fn method_ref_uses_transitive_superclass_dict_chirho() {
+        let mut class_env_chirho = ClassEnvChirho::new_chirho();
+        class_env_chirho.seed_standard_chirho();
+
+        let mut names_chirho = HashMap::new();
+        names_chirho.insert(CoreIdChirho(5), "==".to_string());
+
+        let mut ctx_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+        ctx_chirho.build_layouts_chirho(&class_env_chirho);
+        ctx_chirho.generate_selectors_chirho();
+
+        let binding_chirho = CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("eq_from_integral", 8),
+            rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(5)),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        };
+        let integral_var_chirho = TyChirho::VarChirho(TyVarChirho(0));
+        let scheme_chirho = SchemeChirho {
+            vars_chirho: vec![TyVarChirho(0)],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Integral".to_string(),
+                ty_chirho: integral_var_chirho.clone(),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(integral_var_chirho, TyChirho::bool_chirho()),
+        };
+
+        let result_chirho = ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
+
+        let rhs_debug_chirho = format!("{:#?}", result_chirho.rhs_chirho);
+        assert!(
+            rhs_debug_chirho.contains("name_chirho: \"$dNum\""),
+            "{rhs_debug_chirho}"
+        );
+        assert!(
+            rhs_debug_chirho.contains("name_chirho: \"$dEq\""),
+            "{rhs_debug_chirho}"
+        );
+    }
+
+    #[test]
     fn non_method_var_unchanged_in_rewrite_chirho() {
         let mut names_chirho = HashMap::new();
         names_chirho.insert(CoreIdChirho(5), "x".to_string());

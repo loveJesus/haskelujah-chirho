@@ -937,6 +937,9 @@ impl DictPassCtxChirho {
         }
 
         if let CoreExprChirho::VarChirho(id_chirho) = current_chirho {
+            if self.local_shadow_ids_chirho.borrow().contains(id_chirho) {
+                return None;
+            }
             if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {
                 args_chirho.reverse();
                 return Some((*id_chirho, classes_chirho, args_chirho));
@@ -944,6 +947,23 @@ impl DictPassCtxChirho {
         }
 
         None
+    }
+
+    fn is_class_method_name_chirho(&self, name_chirho: &str) -> bool {
+        let short_name_chirho = name_chirho.rsplit('.').next().unwrap_or(name_chirho);
+        let stripped_name_chirho = short_name_chirho
+            .strip_prefix('(')
+            .and_then(|n_chirho| n_chirho.strip_suffix(')'))
+            .unwrap_or(short_name_chirho);
+
+        self.method_selectors_chirho.contains_key(name_chirho)
+            || self.method_selectors_chirho.contains_key(short_name_chirho)
+            || self
+                .method_selectors_chirho
+                .contains_key(stripped_name_chirho)
+            || self
+                .class_method_selector_for_name_chirho(name_chirho)
+                .is_some()
     }
 
     /// Try to rewrite a method Var reference into a dictionary projection.
@@ -1174,6 +1194,23 @@ impl DictPassCtxChirho {
             {
                 changed_chirho = true;
                 rewritten_args_chirho.push(rewritten_chirho);
+            } else if Self::first_value_lambda_binder_id_chirho(arg_chirho).is_some() {
+                let payload_type_key_chirho =
+                    Self::payload_type_key_from_value_key_chirho(&type_key_chirho)
+                        .unwrap_or_else(|| type_key_chirho.clone());
+                let lambda_type_keys_chirho = Self::extend_first_lambda_type_key_chirho(
+                    arg_chirho,
+                    &payload_type_key_chirho,
+                    local_type_keys_chirho,
+                );
+                changed_chirho = true;
+                rewritten_args_chirho.push(self.rewrite_method_refs_with_locals_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    &lambda_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
             } else {
                 rewritten_args_chirho.push(self.rewrite_method_refs_with_locals_chirho(
                     arg_chirho,
@@ -1580,6 +1617,261 @@ impl DictPassCtxChirho {
             }
         }
         extended_chirho
+    }
+
+    fn first_value_lambda_binder_id_chirho(expr_chirho: &CoreExprChirho) -> Option<CoreIdChirho> {
+        let mut current_chirho = expr_chirho;
+        while let CoreExprChirho::TyLamChirho { body_chirho, .. } = current_chirho {
+            current_chirho = body_chirho;
+        }
+        match current_chirho {
+            CoreExprChirho::LamChirho { binder_chirho, .. } => Some(binder_chirho.id_chirho),
+            _ => None,
+        }
+    }
+
+    fn expr_has_list_case_on_var_chirho(
+        expr_chirho: &CoreExprChirho,
+        var_id_chirho: CoreIdChirho,
+    ) -> bool {
+        match expr_chirho {
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                alts_chirho,
+                ..
+            } => {
+                matches!(scrutinee_chirho.as_ref(), CoreExprChirho::VarChirho(id_chirho) if *id_chirho == var_id_chirho)
+                    && alts_chirho.iter().any(|alt_chirho| {
+                        matches!(
+                            &alt_chirho.con_chirho,
+                            AltConChirho::DataConChirho(con_name_chirho) if con_name_chirho == ":"
+                        )
+                    })
+                    || Self::expr_has_list_case_on_var_chirho(scrutinee_chirho, var_id_chirho)
+                    || alts_chirho.iter().any(|alt_chirho| {
+                        Self::expr_has_list_case_on_var_chirho(
+                            &alt_chirho.rhs_chirho,
+                            var_id_chirho,
+                        )
+                    })
+            }
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                Self::expr_has_list_case_on_var_chirho(fun_chirho, var_id_chirho)
+                    || Self::expr_has_list_case_on_var_chirho(arg_chirho, var_id_chirho)
+            }
+            CoreExprChirho::LamChirho { body_chirho, .. }
+            | CoreExprChirho::TyLamChirho { body_chirho, .. }
+            | CoreExprChirho::TyAppChirho {
+                expr_chirho: body_chirho,
+                ..
+            } => Self::expr_has_list_case_on_var_chirho(body_chirho, var_id_chirho),
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                binds_chirho.iter().any(|(_, rhs_chirho)| {
+                    Self::expr_has_list_case_on_var_chirho(rhs_chirho, var_id_chirho)
+                }) || Self::expr_has_list_case_on_var_chirho(body_chirho, var_id_chirho)
+            }
+            CoreExprChirho::ConAppChirho { args_chirho, .. }
+            | CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
+                args_chirho.iter().any(|arg_chirho| {
+                    Self::expr_has_list_case_on_var_chirho(arg_chirho, var_id_chirho)
+                })
+            }
+            CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => false,
+        }
+    }
+
+    fn first_value_lambda_param_expects_list_chirho(expr_chirho: &CoreExprChirho) -> bool {
+        let mut current_chirho = expr_chirho;
+        while let CoreExprChirho::TyLamChirho { body_chirho, .. } = current_chirho {
+            current_chirho = body_chirho;
+        }
+        if let CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } = current_chirho
+        {
+            return Self::expr_has_list_case_on_var_chirho(body_chirho, binder_chirho.id_chirho);
+        }
+        false
+    }
+
+    fn record_local_call_arg_type_key_chirho(
+        inferred_chirho: &mut HashMap<CoreIdChirho, String>,
+        conflicts_chirho: &mut HashSet<CoreIdChirho>,
+        param_id_chirho: CoreIdChirho,
+        type_key_chirho: String,
+    ) {
+        if conflicts_chirho.contains(&param_id_chirho) {
+            return;
+        }
+        if let Some(existing_chirho) = inferred_chirho.get(&param_id_chirho) {
+            if existing_chirho != &type_key_chirho {
+                inferred_chirho.remove(&param_id_chirho);
+                conflicts_chirho.insert(param_id_chirho);
+            }
+        } else {
+            inferred_chirho.insert(param_id_chirho, type_key_chirho);
+        }
+    }
+
+    fn collect_local_call_arg_type_keys_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        local_function_params_chirho: &HashMap<CoreIdChirho, (CoreIdChirho, bool)>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        inferred_chirho: &mut HashMap<CoreIdChirho, String>,
+        conflicts_chirho: &mut HashSet<CoreIdChirho>,
+    ) {
+        let mut args_chirho = Vec::new();
+        let mut head_chirho = expr_chirho;
+        while let CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } = head_chirho
+        {
+            args_chirho.push(arg_chirho.as_ref());
+            head_chirho = fun_chirho.as_ref();
+        }
+        if let CoreExprChirho::VarChirho(head_id_chirho) = head_chirho {
+            if let Some((param_id_chirho, param_expects_list_chirho)) =
+                local_function_params_chirho.get(head_id_chirho)
+            {
+                if let Some(first_arg_chirho) = args_chirho.last() {
+                    if let Some(type_key_chirho) = self
+                        .infer_strict_dispatch_key_for_rewrite_chirho(
+                            first_arg_chirho,
+                            local_type_keys_chirho,
+                        )
+                        .or_else(|| {
+                            if self.expr_contains_numeric_default_marker_chirho(first_arg_chirho) {
+                                Some("Int".to_string())
+                            } else {
+                                None
+                            }
+                        })
+                    {
+                        let type_key_chirho =
+                            if *param_expects_list_chirho && !type_key_chirho.starts_with('[') {
+                                format!("[{type_key_chirho}]")
+                            } else {
+                                type_key_chirho
+                            };
+                        Self::record_local_call_arg_type_key_chirho(
+                            inferred_chirho,
+                            conflicts_chirho,
+                            *param_id_chirho,
+                            type_key_chirho,
+                        );
+                    }
+                }
+            }
+        }
+
+        match expr_chirho {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                self.collect_local_call_arg_type_keys_chirho(
+                    fun_chirho,
+                    local_function_params_chirho,
+                    local_type_keys_chirho,
+                    inferred_chirho,
+                    conflicts_chirho,
+                );
+                self.collect_local_call_arg_type_keys_chirho(
+                    arg_chirho,
+                    local_function_params_chirho,
+                    local_type_keys_chirho,
+                    inferred_chirho,
+                    conflicts_chirho,
+                );
+            }
+            CoreExprChirho::LamChirho { body_chirho, .. }
+            | CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                self.collect_local_call_arg_type_keys_chirho(
+                    body_chirho,
+                    local_function_params_chirho,
+                    local_type_keys_chirho,
+                    inferred_chirho,
+                    conflicts_chirho,
+                );
+            }
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                for (_, rhs_chirho) in binds_chirho {
+                    self.collect_local_call_arg_type_keys_chirho(
+                        rhs_chirho,
+                        local_function_params_chirho,
+                        local_type_keys_chirho,
+                        inferred_chirho,
+                        conflicts_chirho,
+                    );
+                }
+                self.collect_local_call_arg_type_keys_chirho(
+                    body_chirho,
+                    local_function_params_chirho,
+                    local_type_keys_chirho,
+                    inferred_chirho,
+                    conflicts_chirho,
+                );
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                alts_chirho,
+                ..
+            } => {
+                self.collect_local_call_arg_type_keys_chirho(
+                    scrutinee_chirho,
+                    local_function_params_chirho,
+                    local_type_keys_chirho,
+                    inferred_chirho,
+                    conflicts_chirho,
+                );
+                for alt_chirho in alts_chirho {
+                    self.collect_local_call_arg_type_keys_chirho(
+                        &alt_chirho.rhs_chirho,
+                        local_function_params_chirho,
+                        local_type_keys_chirho,
+                        inferred_chirho,
+                        conflicts_chirho,
+                    );
+                }
+            }
+            CoreExprChirho::ConAppChirho { args_chirho, .. }
+            | CoreExprChirho::PrimOpChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho {
+                    self.collect_local_call_arg_type_keys_chirho(
+                        arg_chirho,
+                        local_function_params_chirho,
+                        local_type_keys_chirho,
+                        inferred_chirho,
+                        conflicts_chirho,
+                    );
+                }
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => self.collect_local_call_arg_type_keys_chirho(
+                inner_chirho,
+                local_function_params_chirho,
+                local_type_keys_chirho,
+                inferred_chirho,
+                conflicts_chirho,
+            ),
+            CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => {}
+        }
     }
 
     /// Dispatch a higher-kinded class method to the correct per-type instance
@@ -2019,32 +2311,33 @@ impl DictPassCtxChirho {
                 }
                 // Check if this var references a constrained user binding
                 // that needs dict arguments inserted at the call site.
-                if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {
-                    let mut result_chirho = CoreExprChirho::VarChirho(*id_chirho);
-                    for class_name_chirho in classes_chirho {
-                        if let Some(dict_id_chirho) = Self::fallback_dict_for_class_chirho(
-                            class_name_chirho,
-                            dict_vars_chirho,
-                            evidence_classes_chirho,
-                        ) {
-                            result_chirho = CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(result_chirho),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
-                            };
+                if !self.local_shadow_ids_chirho.borrow().contains(id_chirho) {
+                    if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {
+                        let mut result_chirho = CoreExprChirho::VarChirho(*id_chirho);
+                        for class_name_chirho in classes_chirho {
+                            if let Some(dict_id_chirho) = Self::fallback_dict_for_class_chirho(
+                                class_name_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                            ) {
+                                result_chirho = CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(result_chirho),
+                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+                                };
+                            }
                         }
+                        return result_chirho;
                     }
-                    result_chirho
-                } else {
-                    // Rewrite a standalone method reference (not applied to args).
-                    // This uses the default dict from dict_vars_chirho.
-                    self.try_rewrite_method_var_chirho(
-                        *id_chirho,
-                        dict_vars_chirho,
-                        evidence_classes_chirho,
-                        local_instance_dicts_chirho,
-                        None,
-                    )
                 }
+                // Rewrite a standalone method reference (not applied to args).
+                // This uses the default dict from dict_vars_chirho.
+                self.try_rewrite_method_var_chirho(
+                    *id_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_instance_dicts_chirho,
+                    None,
+                )
             }
             CoreExprChirho::LitChirho(_) => expr_chirho.clone(),
             CoreExprChirho::AppChirho {
@@ -2515,6 +2808,8 @@ impl DictPassCtxChirho {
                 // Shadow let/where-bound IDs so method rewriting skips them
                 let mut added_chirho = Vec::new();
                 let mut let_type_keys_chirho = local_type_keys_chirho.clone();
+                let mut local_function_params_chirho: HashMap<CoreIdChirho, (CoreIdChirho, bool)> =
+                    HashMap::new();
                 for (b_chirho, _) in binds_chirho {
                     if !self
                         .local_shadow_ids_chirho
@@ -2529,6 +2824,45 @@ impl DictPassCtxChirho {
                     if let Some(type_key_chirho) = self.binder_type_key_chirho(b_chirho) {
                         let_type_keys_chirho
                             .entry(b_chirho.id_chirho)
+                            .or_insert(type_key_chirho);
+                    }
+                }
+                for (b_chirho, r_chirho) in binds_chirho {
+                    if let Some(param_id_chirho) =
+                        Self::first_value_lambda_binder_id_chirho(r_chirho)
+                    {
+                        local_function_params_chirho.insert(
+                            b_chirho.id_chirho,
+                            (
+                                param_id_chirho,
+                                Self::first_value_lambda_param_expects_list_chirho(r_chirho),
+                            ),
+                        );
+                    }
+                }
+                if !local_function_params_chirho.is_empty() {
+                    let mut inferred_param_keys_chirho: HashMap<CoreIdChirho, String> =
+                        HashMap::new();
+                    let mut conflicting_param_keys_chirho: HashSet<CoreIdChirho> = HashSet::new();
+                    self.collect_local_call_arg_type_keys_chirho(
+                        body_chirho,
+                        &local_function_params_chirho,
+                        &let_type_keys_chirho,
+                        &mut inferred_param_keys_chirho,
+                        &mut conflicting_param_keys_chirho,
+                    );
+                    for (_, r_chirho) in binds_chirho {
+                        self.collect_local_call_arg_type_keys_chirho(
+                            r_chirho,
+                            &local_function_params_chirho,
+                            &let_type_keys_chirho,
+                            &mut inferred_param_keys_chirho,
+                            &mut conflicting_param_keys_chirho,
+                        );
+                    }
+                    for (param_id_chirho, type_key_chirho) in inferred_param_keys_chirho {
+                        let_type_keys_chirho
+                            .entry(param_id_chirho)
                             .or_insert(type_key_chirho);
                     }
                 }
@@ -2946,69 +3280,72 @@ impl DictPassCtxChirho {
             }
         }
 
-        // Superclass extraction: for each dict binder whose class has
-        // superclasses, generate let-bindings that extract the superclass
-        // dicts from the subclass dict.  This is needed after context
-        // reduction removes redundant predicates (e.g. Eq a removed
-        // when Num a is present, since Num has Eq as a superclass).
+        // Superclass extraction: compute the transitive superclass closure for
+        // each dict binder. Context reduction can leave a binding with only a
+        // subclass predicate (for example Integral) while the body still uses a
+        // superclass method such as (==).
         let mut super_let_binds_chirho: Vec<(BinderChirho, CoreExprChirho)> = Vec::new();
         {
-            // Collect classes that have dict binders (unresolved predicates)
-            let classes_with_binders_chirho: Vec<String> = dict_binders_chirho
-                .iter()
-                .filter_map(|b_chirho| {
-                    // The dict binder name is "$dClassName"
-                    let name_chirho = &b_chirho.name_chirho;
-                    name_chirho
-                        .strip_prefix("$d")
-                        .map(|s_chirho| s_chirho.to_string())
-                })
-                .collect();
-
-            // Collect (class, super, sel_id, sub_dict_id) tuples before
-            // mutating self via fresh_binder_chirho.
-            let mut extractions_chirho: Vec<(String, String, CoreIdChirho, CoreIdChirho)> =
-                Vec::new();
-            for class_name_chirho in &classes_with_binders_chirho {
-                if let Some(layout_chirho) = self.layouts_chirho.get(class_name_chirho) {
-                    for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-                        let already_has_binder_chirho =
-                            classes_with_binders_chirho.contains(super_name_chirho);
-                        if !already_has_binder_chirho {
-                            if let Some(sel_id_chirho) = self
-                                .super_selectors_chirho
-                                .get(&(class_name_chirho.clone(), super_name_chirho.clone()))
-                            {
-                                if let Some(sub_dict_id_chirho) =
-                                    dict_vars_chirho.get(class_name_chirho)
-                                {
-                                    extractions_chirho.push((
-                                        class_name_chirho.clone(),
-                                        super_name_chirho.clone(),
-                                        *sel_id_chirho,
-                                        *sub_dict_id_chirho,
-                                    ));
-                                }
-                            }
-                        }
-                    }
+            let mut available_dicts_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
+            let mut pending_classes_chirho = Vec::new();
+            for dict_binder_chirho in &dict_binders_chirho {
+                if let Some(class_name_chirho) = dict_binder_chirho.name_chirho.strip_prefix("$d") {
+                    let class_name_chirho = class_name_chirho.to_string();
+                    available_dicts_chirho
+                        .insert(class_name_chirho.clone(), dict_binder_chirho.id_chirho);
+                    pending_classes_chirho.push(class_name_chirho);
                 }
             }
-            // Now create binders and let-bindings
-            for (_class_chirho, super_name_chirho, sel_id_chirho, sub_dict_id_chirho) in
-                extractions_chirho
-            {
-                let super_dict_binder_chirho = self.fresh_binder_chirho(
-                    &format!("$d{}", super_name_chirho),
-                    TyChirho::ConChirho(format!("$Dict_{}", super_name_chirho)),
-                );
-                let extraction_chirho = CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(sub_dict_id_chirho)),
+
+            while let Some(class_name_chirho) = pending_classes_chirho.pop() {
+                let Some(sub_dict_id_chirho) =
+                    available_dicts_chirho.get(&class_name_chirho).copied()
+                else {
+                    continue;
                 };
-                evidence_classes_chirho.insert(super_name_chirho.clone());
-                dict_vars_chirho.insert(super_name_chirho, super_dict_binder_chirho.id_chirho);
-                super_let_binds_chirho.push((super_dict_binder_chirho, extraction_chirho));
+                let super_names_chirho = self
+                    .layouts_chirho
+                    .get(&class_name_chirho)
+                    .map(|layout_chirho| {
+                        layout_chirho
+                            .super_slots_chirho
+                            .iter()
+                            .map(|(super_name_chirho, _)| super_name_chirho.clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                for super_name_chirho in super_names_chirho {
+                    if available_dicts_chirho.contains_key(&super_name_chirho) {
+                        continue;
+                    }
+                    let Some(sel_id_chirho) = self
+                        .super_selectors_chirho
+                        .get(&(class_name_chirho.clone(), super_name_chirho.clone()))
+                        .copied()
+                    else {
+                        continue;
+                    };
+
+                    let super_dict_binder_chirho = self.fresh_binder_chirho(
+                        &format!("$d{}", super_name_chirho),
+                        TyChirho::ConChirho(format!("$Dict_{}", super_name_chirho)),
+                    );
+                    let extraction_chirho = CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(sub_dict_id_chirho)),
+                    };
+                    evidence_classes_chirho.insert(super_name_chirho.clone());
+                    dict_vars_chirho.insert(
+                        super_name_chirho.clone(),
+                        super_dict_binder_chirho.id_chirho,
+                    );
+                    available_dicts_chirho.insert(
+                        super_name_chirho.clone(),
+                        super_dict_binder_chirho.id_chirho,
+                    );
+                    pending_classes_chirho.push(super_name_chirho);
+                    super_let_binds_chirho.push((super_dict_binder_chirho, extraction_chirho));
+                }
             }
         }
 
@@ -3042,11 +3379,13 @@ impl DictPassCtxChirho {
         // rewritten body actually references. Unused extraction lets can keep
         // an otherwise-resolved entry point abstracted over a dead subclass
         // dictionary.
-        let used_super_ids_chirho = crate::simplify_chirho::free_vars_chirho(&rhs_chirho);
+        let mut used_super_ids_chirho = crate::simplify_chirho::free_vars_chirho(&rhs_chirho);
         for (binder_chirho, extraction_chirho) in super_let_binds_chirho.iter().rev() {
             if !used_super_ids_chirho.contains(&binder_chirho.id_chirho) {
                 continue;
             }
+            used_super_ids_chirho
+                .extend(crate::simplify_chirho::free_vars_chirho(extraction_chirho));
             rhs_chirho = CoreExprChirho::LetChirho {
                 rec_chirho: false,
                 binds_chirho: vec![(binder_chirho.clone(), extraction_chirho.clone())],
@@ -3187,15 +3526,7 @@ impl DictPassCtxChirho {
             if !is_extra_imported_chirho {
                 continue;
             }
-            let is_class_method_chirho = self.method_selectors_chirho.contains_key(&name_chirho)
-                || self.method_selectors_chirho.contains_key(short_name_chirho)
-                || self
-                    .method_selectors_chirho
-                    .contains_key(stripped_name_chirho)
-                || self
-                    .class_method_selector_for_name_chirho(&name_chirho)
-                    .is_some();
-            if is_class_method_chirho {
+            if self.is_class_method_name_chirho(&name_chirho) {
                 continue;
             }
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(&name_chirho) {

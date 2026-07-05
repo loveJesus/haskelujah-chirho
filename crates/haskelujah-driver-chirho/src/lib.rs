@@ -23,9 +23,7 @@ use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_chirho;
 use haskelujah_backend_wasm_chirho::compile_to_wasm_stub_chirho;
-use haskelujah_core_chirho::{
-    CoreModuleChirho, SimplifyConfigChirho, desugar_module_chirho, simplify_module_chirho,
-};
+use haskelujah_core_chirho::{CoreModuleChirho, SimplifyConfigChirho, simplify_module_chirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
 use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
 use haskelujah_naming_chirho::resolve_chirho::resolve_module_with_imports_chirho;
@@ -3118,8 +3116,27 @@ fn extract_module_name_from_source_chirho(source_chirho: &str) -> Option<String>
 /// Monad-chain operators (>>=, >>, return, pure, fail) are deliberately
 /// EXCLUDED — they have dedicated dispatch machinery and INV-001 protection.
 const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
-    "==", "/=", "<", "<=", ">", ">=", "compare", "max", "min", "+", "-", "*", "negate", "abs",
-    "signum", "fromInteger", "div", "mod", "quot", "rem", "show",
+    "==",
+    "/=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "compare",
+    "max",
+    "min",
+    "+",
+    "-",
+    "*",
+    "negate",
+    "abs",
+    "signum",
+    "fromInteger",
+    "div",
+    "mod",
+    "quot",
+    "rem",
+    "show",
 ];
 
 /// Evidence-threading P2b: join typing occurrence records to desugar occurrence
@@ -3170,9 +3187,7 @@ fn join_occurrence_evidence_chirho(
                 .class_env_chirho
                 .classes_chirho
                 .get(&record_chirho.class_name_chirho)
-                .is_some_and(|class_chirho| {
-                    class_chirho.methods_chirho.contains_key(name_chirho)
-                });
+                .is_some_and(|class_chirho| class_chirho.methods_chirho.contains_key(name_chirho));
             if !owns_chirho {
                 continue;
             }
@@ -3185,9 +3200,9 @@ fn join_occurrence_evidence_chirho(
                 } else {
                     record_chirho.ty_key_chirho.clone()
                 };
-                evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
-                    (record_chirho.class_name_chirho.clone(), ty_key_chirho)
-                });
+                evidence_chirho
+                    .entry(*occ_id_chirho)
+                    .or_insert_with(|| (record_chirho.class_name_chirho.clone(), ty_key_chirho));
             }
         }
     }
