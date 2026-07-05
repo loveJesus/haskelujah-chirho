@@ -1110,9 +1110,6 @@ impl DictPassCtxChirho {
         }
 
         if let CoreExprChirho::VarChirho(id_chirho) = current_chirho {
-            if self.local_shadow_ids_chirho.borrow().contains(id_chirho) {
-                return None;
-            }
             if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {
                 args_chirho.reverse();
                 return Some((*id_chirho, classes_chirho, args_chirho));
@@ -3028,23 +3025,21 @@ impl DictPassCtxChirho {
                 }
                 // Check if this var references a constrained user binding
                 // that needs dict arguments inserted at the call site.
-                if !self.local_shadow_ids_chirho.borrow().contains(id_chirho) {
-                    if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {
-                        let mut result_chirho = CoreExprChirho::VarChirho(*id_chirho);
-                        for class_name_chirho in classes_chirho {
-                            if let Some(dict_id_chirho) = Self::fallback_dict_for_class_chirho(
-                                class_name_chirho,
-                                dict_vars_chirho,
-                                evidence_classes_chirho,
-                            ) {
-                                result_chirho = CoreExprChirho::AppChirho {
-                                    fun_chirho: Box::new(result_chirho),
-                                    arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
-                                };
-                            }
+                if let Some(classes_chirho) = self.dict_param_bindings_chirho.get(id_chirho) {
+                    let mut result_chirho = CoreExprChirho::VarChirho(*id_chirho);
+                    for class_name_chirho in classes_chirho {
+                        if let Some(dict_id_chirho) = Self::fallback_dict_for_class_chirho(
+                            class_name_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                        ) {
+                            result_chirho = CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(result_chirho),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+                            };
                         }
-                        return result_chirho;
                     }
+                    return result_chirho;
                 }
                 // Rewrite a standalone method reference (not applied to args).
                 // This uses the default dict from dict_vars_chirho.
