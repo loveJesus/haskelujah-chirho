@@ -333,12 +333,10 @@ impl DictPassCtxChirho {
                         app_chirho = fun_chirho.as_ref();
                     }
                     args_chirho.reverse();
-                    return args_chirho.iter().find_map(|arg_chirho| {
-                        self.infer_strict_dispatch_key_for_rewrite_chirho(
-                            arg_chirho,
-                            local_type_keys_chirho,
-                        )
-                    });
+                    return self.infer_dict_param_call_type_key_chirho(
+                        &args_chirho,
+                        local_type_keys_chirho,
+                    );
                 }
                 None
             }
@@ -989,6 +987,20 @@ impl DictPassCtxChirho {
         }
 
         None
+    }
+
+    fn infer_dict_param_call_type_key_chirho(
+        &self,
+        args_chirho: &[&CoreExprChirho],
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+    ) -> Option<String> {
+        args_chirho.iter().find_map(|a_chirho| {
+            self.infer_strict_dispatch_key_for_rewrite_chirho(a_chirho, local_type_keys_chirho)
+                .or_else(|| {
+                    self.expr_contains_numeric_default_marker_chirho(a_chirho)
+                        .then(|| "Int".to_string())
+                })
+        })
     }
 
     fn is_class_method_name_chirho(&self, name_chirho: &str) -> bool {
@@ -3094,22 +3106,10 @@ impl DictPassCtxChirho {
                     self.collect_dict_param_app_chirho(expr_chirho)
                 {
                     // Infer the type key from the actual arguments
-                    let type_key_chirho = args_chirho
-                        .iter()
-                        .find_map(|a_chirho| {
-                            self.infer_strict_dispatch_key_for_rewrite_chirho(
-                                a_chirho,
-                                local_type_keys_chirho,
-                            )
-                        })
-                        .or_else(|| {
-                            args_chirho
-                                .iter()
-                                .any(|a_chirho| {
-                                    self.expr_contains_numeric_default_marker_chirho(a_chirho)
-                                })
-                                .then(|| "Int".to_string())
-                        });
+                    let type_key_chirho = self.infer_dict_param_call_type_key_chirho(
+                        &args_chirho,
+                        local_type_keys_chirho,
+                    );
 
                     // Build dict args: for each required class, select the
                     // type-appropriate dict if we can infer the type
