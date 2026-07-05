@@ -3852,13 +3852,39 @@ impl InferCtxChirho {
                 self.bind_pat_chirho(inner_chirho, ty_chirho)
             }
             PatChirho::ViewChirho {
+                expr_chirho,
                 pat_chirho: inner_pat_chirho,
-                ..
+                span_chirho,
             } => {
-                // View pattern (expr -> pat): bind the result pattern's variables.
-                // The result of applying the view expression has a fresh type.
+                // View pattern (expr -> pat): the view expression must accept
+                // the scrutinee type and produce the inner pattern type.
                 let result_ty_chirho = self.fresh_var_chirho();
-                self.bind_pat_chirho(inner_pat_chirho, &result_ty_chirho)
+                let (view_subst_chirho, view_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                self.apply_subst_all_chirho(&view_subst_chirho);
+
+                let expected_view_ty_chirho = TyChirho::fun_chirho(
+                    view_subst_chirho.apply_ty_chirho(ty_chirho),
+                    view_subst_chirho.apply_ty_chirho(&result_ty_chirho),
+                );
+                let mut subst_chirho = view_subst_chirho.clone();
+                match self.unify_normalized_chirho(
+                    &view_subst_chirho.apply_ty_chirho(&view_ty_chirho),
+                    &expected_view_ty_chirho,
+                    *span_chirho,
+                ) {
+                    Ok(su_chirho) => {
+                        subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&su_chirho);
+                    }
+                    Err(err_chirho) => {
+                        self.report_unify_error_chirho(&err_chirho);
+                    }
+                }
+
+                let inner_ty_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
+                let inner_subst_chirho = self.bind_pat_chirho(inner_pat_chirho, &inner_ty_chirho);
+                self.apply_subst_all_chirho(&inner_subst_chirho);
+                inner_subst_chirho.compose_chirho(&subst_chirho)
             }
             PatChirho::TypeAnnotChirho {
                 pat_chirho: inner_pat_chirho,
@@ -21052,6 +21078,77 @@ mod tests_chirho {
             "addChirho should have Num predicate, got: {scheme_chirho}"
         );
         assert_eq!(scheme_chirho.preds_chirho[0].class_name_chirho, "Num");
+    }
+
+    #[test]
+    fn infer_view_pattern_expression_keeps_num_predicate_chirho() {
+        let module_chirho = ModuleChirho {
+            name_chirho: dummy_name_chirho("ViewPattern"),
+            exports_chirho: None,
+            imports_chirho: vec![],
+            decls_chirho: vec![
+                DeclChirho::FunBindChirho {
+                    name_chirho: dummy_name_chirho("doubleChirho"),
+                    matches_chirho: vec![MatchArmChirho {
+                        pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("x"))],
+                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::AppChirho {
+                            fun_chirho: Box::new(ExprChirho::AppChirho {
+                                fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("+"))),
+                                arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            }),
+                            arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        where_binds_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                DeclChirho::FunBindChirho {
+                    name_chirho: dummy_name_chirho("fChirho"),
+                    matches_chirho: vec![MatchArmChirho {
+                        pats_chirho: vec![PatChirho::ViewChirho {
+                            expr_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                "doubleChirho",
+                            ))),
+                            pat_chirho: Box::new(PatChirho::VarChirho(dummy_name_chirho("n"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }],
+                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                            dummy_name_chirho("n"),
+                        )),
+                        where_binds_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            extensions_chirho: vec!["ViewPatterns".to_string()],
+            inline_pragmas_chirho: std::collections::HashMap::new(),
+            specialize_pragmas_chirho: std::collections::HashMap::new(),
+            foreign_exports_chirho: vec![],
+            deriving_via_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let result_chirho = infer_module_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "view pattern should infer without errors: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+        let scheme_chirho = result_chirho
+            .env_chirho
+            .lookup_chirho("fChirho")
+            .expect("fChirho should be in environment");
+        assert!(
+            scheme_chirho
+                .preds_chirho
+                .iter()
+                .any(|pred_chirho| pred_chirho.class_name_chirho == "Num"),
+            "view pattern expression should keep Num predicate, got: {scheme_chirho}"
+        );
     }
 
     #[test]

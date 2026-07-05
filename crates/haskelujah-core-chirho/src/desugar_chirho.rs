@@ -3187,6 +3187,15 @@ impl DesugarCtxChirho {
                             );
                             fresh_chirho
                         };
+                        if matches!(
+                            &rhs_chirho,
+                            CoreExprChirho::VarChirho(id_chirho)
+                                if *id_chirho == binder_chirho.id_chirho
+                        ) {
+                            // Avoid returning the lazy view thunk when the RHS is exactly
+                            // the view binder, e.g. `f (view -> n) = n`.
+                            return applied_chirho;
+                        }
                         CoreExprChirho::LetChirho {
                             rec_chirho: false,
                             binds_chirho: vec![(binder_chirho, applied_chirho)],
@@ -6432,6 +6441,34 @@ mod tests_chirho {
         assert!(matches!(
             nested_alts_chirho[1].rhs_chirho,
             CoreExprChirho::CaseChirho { .. }
+        ));
+    }
+
+    #[test]
+    fn desugar_view_pattern_exact_binder_rhs_uses_view_app_chirho() {
+        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+        let n_id_chirho = ctx_chirho.fresh_id_chirho("n");
+        ctx_chirho.bind_in_scope_chirho("n", n_id_chirho);
+        let scrut_id_chirho = ctx_chirho.fresh_id_chirho("scrut");
+        let pat_chirho = PatChirho::ViewChirho {
+            expr_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("double"))),
+            pat_chirho: Box::new(PatChirho::VarChirho(dummy_name_chirho("n"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let rhs_chirho = CoreExprChirho::VarChirho(n_id_chirho);
+
+        let core_chirho = ctx_chirho.wrap_view_pat_chirho(rhs_chirho, &pat_chirho, scrut_id_chirho);
+
+        let CoreExprChirho::AppChirho {
+            fun_chirho: _,
+            arg_chirho,
+        } = core_chirho
+        else {
+            panic!("expected direct view application for exact binder RHS");
+        };
+        assert!(matches!(
+            arg_chirho.as_ref(),
+            CoreExprChirho::VarChirho(id_chirho) if *id_chirho == scrut_id_chirho
         ));
     }
 
