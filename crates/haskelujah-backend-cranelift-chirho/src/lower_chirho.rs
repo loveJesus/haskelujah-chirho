@@ -2801,9 +2801,13 @@ fn infer_print_arg_kind_chirho(
                     .toplevel_names_chirho
                     .get(id_chirho)
                     .and_then(|name_chirho| {
-                        if (name_chirho == "compare" && args_chirho.len() == 2)
+                        if name_chirho.starts_with("$prim_Eq_==_") && args_chirho.len() == 2 {
+                            Some(ShowIntArgKindChirho::BoolChirho)
+                        } else if (name_chirho == "compare" && args_chirho.len() == 2)
                             || (name_chirho == "$sel_Ord_compare"
                                 && matches!(args_chirho.len(), 2 | 3))
+                            || (name_chirho.starts_with("$prim_Ord_compare_")
+                                && args_chirho.len() == 2)
                         {
                             Some(ShowIntArgKindChirho::OrderingChirho)
                         } else {
