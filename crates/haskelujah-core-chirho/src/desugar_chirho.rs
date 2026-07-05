@@ -2998,15 +2998,12 @@ impl DesugarCtxChirho {
             );
             let false_rhs_chirho =
                 self.desugar_string_case_eq_chain_chirho(scrutinee_id_chirho, rest_alts_chirho);
-            let eq_id_chirho = self.resolve_var_chirho("==");
-            let cond_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::VarChirho(eq_id_chirho)),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(scrutinee_id_chirho)),
-                }),
-                arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                    text_chirho,
-                ))),
+            let cond_chirho = CoreExprChirho::PrimOpChirho {
+                name_chirho: "eqStr#".to_string(),
+                args_chirho: vec![
+                    CoreExprChirho::VarChirho(scrutinee_id_chirho),
+                    CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(text_chirho)),
+                ],
             };
             let bool_binder_chirho = self.fresh_binder_chirho(
                 "str_case_match",

@@ -3898,7 +3898,7 @@ impl MachineChirho {
         }
 
         // Force primitive operands before dispatch so string/list thunks used by
-        // desugared string equality reach EqInt# as StringChirho values.
+        // desugared string equality reach string-capable primops as StringChirho values.
         let mut resolved_args_chirho: Vec<ValueChirho> = args_chirho
             .iter()
             .cloned()
@@ -3907,7 +3907,9 @@ impl MachineChirho {
 
         let is_string_compare_primop_chirho = matches!(
             op_chirho,
-            PrimOpKindChirho::EqIntChirho
+            PrimOpKindChirho::EqStrChirho
+                | PrimOpKindChirho::LtStrChirho
+                | PrimOpKindChirho::EqIntChirho
                 | PrimOpKindChirho::NeIntChirho
                 | PrimOpKindChirho::LtIntChirho
                 | PrimOpKindChirho::LeIntChirho
