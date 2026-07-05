@@ -21,11 +21,11 @@
 use std::collections::HashMap;
 
 use crate::gc_chirho::{
-    extract_roots_from_stack_chirho, extract_roots_from_values_chirho, GcConfigChirho,
-    GcStateChirho, GcStatsChirho,
+    GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_stack_chirho,
+    extract_roots_from_values_chirho,
 };
 use crate::heap_chirho::HeapChirho;
-use crate::prim_chirho::{apply_prim_binop_chirho, PrimErrorChirho};
+use crate::prim_chirho::{PrimErrorChirho, apply_prim_binop_chirho};
 use crate::stack_chirho::{FrameChirho, PrimOpKindChirho, StackChirho};
 use crate::value_chirho::{
     ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTagChirho, ValueChirho,
@@ -2572,6 +2572,9 @@ impl MachineChirho {
                         ValueChirho::HeapPtrChirho(a_chirho) => {
                             self.heap_chirho.follow_ind_chirho(*a_chirho)
                         }
+                        ValueChirho::StringChirho(s_chirho) => {
+                            self.alloc_char_list_from_string_chirho(s_chirho)
+                        }
                         _ => {
                             let nil_chirho = ClosureChirho::con_chirho(
                                 self.lookup_con_tag_chirho("[]", 0),
@@ -2584,31 +2587,38 @@ impl MachineChirho {
 
                     // Collect xs elements
                     let mut xs_elems_chirho: Vec<ValueChirho> = Vec::new();
-                    if let ValueChirho::HeapPtrChirho(a_chirho) = &args_chirho[0] {
-                        let mut cur_chirho = self.heap_chirho.follow_ind_chirho(*a_chirho);
-                        for _ in 0..10000 {
-                            let forced_chirho = match self.force_addr_to_whnf_chirho(cur_chirho) {
-                                Ok(a_chirho) => a_chirho,
-                                Err(_) => cur_chirho,
-                            };
-                            let cl_chirho = self.heap_chirho.read_chirho(forced_chirho).clone();
-                            if cl_chirho.info_chirho.name_chirho == "[]" {
-                                break;
-                            } else if cl_chirho.info_chirho.name_chirho == ":"
-                                && cl_chirho.payload_chirho.len() >= 2
-                            {
-                                xs_elems_chirho.push(cl_chirho.payload_chirho[0].clone());
-                                match &cl_chirho.payload_chirho[1] {
-                                    ValueChirho::HeapPtrChirho(tail_chirho) => {
-                                        cur_chirho =
-                                            self.heap_chirho.follow_ind_chirho(*tail_chirho);
+                    match &args_chirho[0] {
+                        ValueChirho::HeapPtrChirho(a_chirho) => {
+                            let mut cur_chirho = self.heap_chirho.follow_ind_chirho(*a_chirho);
+                            for _ in 0..10000 {
+                                let forced_chirho = match self.force_addr_to_whnf_chirho(cur_chirho)
+                                {
+                                    Ok(a_chirho) => a_chirho,
+                                    Err(_) => cur_chirho,
+                                };
+                                let cl_chirho = self.heap_chirho.read_chirho(forced_chirho).clone();
+                                if cl_chirho.info_chirho.name_chirho == "[]" {
+                                    break;
+                                } else if cl_chirho.info_chirho.name_chirho == ":"
+                                    && cl_chirho.payload_chirho.len() >= 2
+                                {
+                                    xs_elems_chirho.push(cl_chirho.payload_chirho[0].clone());
+                                    match &cl_chirho.payload_chirho[1] {
+                                        ValueChirho::HeapPtrChirho(tail_chirho) => {
+                                            cur_chirho =
+                                                self.heap_chirho.follow_ind_chirho(*tail_chirho);
+                                        }
+                                        _ => break,
                                     }
-                                    _ => break,
+                                } else {
+                                    break;
                                 }
-                            } else {
-                                break;
                             }
                         }
+                        ValueChirho::StringChirho(s_chirho) => {
+                            xs_elems_chirho.extend(s_chirho.chars().map(ValueChirho::CharChirho));
+                        }
+                        _ => {}
                     }
 
                     // Build result: prepend xs elements (reversed) onto ys
@@ -3983,6 +3993,25 @@ impl MachineChirho {
             }
         }
         result_chirho
+    }
+
+    fn alloc_char_list_from_string_chirho(&mut self, s_chirho: &str) -> HeapAddrChirho {
+        let nil_tag_chirho = self.lookup_con_tag_chirho("[]", 0);
+        let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
+        let nil_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
+        let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_chirho);
+        for ch_chirho in s_chirho.chars().rev() {
+            let cons_chirho = ClosureChirho::con_chirho(
+                cons_tag_chirho,
+                ":",
+                vec![
+                    ValueChirho::CharChirho(ch_chirho),
+                    ValueChirho::HeapPtrChirho(tail_addr_chirho),
+                ],
+            );
+            tail_addr_chirho = self.heap_chirho.alloc_chirho(cons_chirho);
+        }
+        tail_addr_chirho
     }
 
     /// Resolve a value through HeapPtr indirections and Box/I#/D#/C#
