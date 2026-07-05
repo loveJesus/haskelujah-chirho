@@ -310,6 +310,7 @@ impl LowerCtxChirho {
         let mut exports_chirho: Option<Vec<ExportSpecChirho>> = None;
         let mut imports_chirho = Vec::new();
         let mut decls_chirho = Vec::new();
+        let mut standalone_kind_sigs_chirho: HashMap<String, TypeChirho> = HashMap::new();
 
         for child_chirho in &children_chirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
@@ -342,12 +343,24 @@ impl LowerCtxChirho {
                         );
                     }
                     SyntaxKindChirho::TypeSigDeclChirho => {
-                        let decls_from_sig_chirho = self.lower_type_sigs_chirho(
-                            n_chirho,
-                            child_chirho.start_chirho,
-                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
-                        );
-                        decls_chirho.extend(decls_from_sig_chirho);
+                        let span_chirho =
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        if let Some((name_chirho, kind_chirho)) = self
+                            .lower_standalone_kind_sig_chirho(
+                                n_chirho,
+                                child_chirho.start_chirho,
+                                span_chirho,
+                            )
+                        {
+                            standalone_kind_sigs_chirho.insert(name_chirho, kind_chirho);
+                        } else {
+                            let decls_from_sig_chirho = self.lower_type_sigs_chirho(
+                                n_chirho,
+                                child_chirho.start_chirho,
+                                span_chirho,
+                            );
+                            decls_chirho.extend(decls_from_sig_chirho);
+                        }
                     }
                     _ => {
                         if let Some(decl_chirho) =
@@ -364,6 +377,8 @@ impl LowerCtxChirho {
         // Merge consecutive FunBindChirho with the same name into a single
         // multi-equation binding.  In Haskell, `f pat1 = rhs1; f pat2 = rhs2`
         // must be grouped before further analysis.
+        let decls_chirho =
+            self.attach_standalone_kind_sigs_chirho(decls_chirho, &standalone_kind_sigs_chirho);
         let decls_chirho = merge_fun_binds_chirho(decls_chirho);
 
         let end_chirho = start_chirho + root_chirho.text_len_chirho();
@@ -1007,6 +1022,120 @@ impl LowerCtxChirho {
                 name_chirho,
                 ty_chirho: ty_chirho.clone(),
                 span_chirho,
+            })
+            .collect()
+    }
+
+    fn lower_standalone_kind_sig_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> Option<(String, TypeChirho)> {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut saw_type_keyword_chirho = false;
+        let mut saw_double_colon_chirho = false;
+        let mut name_chirho = None;
+        let mut type_children_chirho = Vec::new();
+
+        for child_chirho in &children_chirho {
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    if !saw_double_colon_chirho
+                        && tok_chirho.kind_chirho() == TokenKindChirho::TypeKeywordChirho
+                    {
+                        saw_type_keyword_chirho = true;
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                        saw_double_colon_chirho = true;
+                    } else if saw_double_colon_chirho {
+                        type_children_chirho.push(child_chirho);
+                    } else if saw_type_keyword_chirho
+                        && name_chirho.is_none()
+                        && tok_chirho.kind_chirho() != TokenKindChirho::LeftParenChirho
+                        && tok_chirho.kind_chirho() != TokenKindChirho::RightParenChirho
+                    {
+                        let s_chirho =
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                    }
+                }
+                GreenElementChirho::NodeChirho(_) if saw_double_colon_chirho => {
+                    type_children_chirho.push(child_chirho);
+                }
+                _ => {}
+            }
+        }
+
+        if !saw_type_keyword_chirho || !saw_double_colon_chirho {
+            return None;
+        }
+        let name_chirho = name_chirho?;
+        let kind_chirho = if let Some(tc_chirho) = type_children_chirho.first() {
+            if let GreenElementChirho::NodeChirho(n_chirho) = tc_chirho.element_chirho {
+                self.lower_type_chirho(n_chirho, tc_chirho.start_chirho)
+            } else {
+                self.type_from_flat_children_chirho(&type_children_chirho, span_chirho)
+            }
+        } else {
+            return None;
+        };
+
+        Some((name_chirho.text_chirho().to_string(), kind_chirho))
+    }
+
+    fn attach_standalone_kind_sigs_chirho(
+        &self,
+        decls_chirho: Vec<DeclChirho>,
+        standalone_kind_sigs_chirho: &HashMap<String, TypeChirho>,
+    ) -> Vec<DeclChirho> {
+        decls_chirho
+            .into_iter()
+            .map(|decl_chirho| match decl_chirho {
+                DeclChirho::DataDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    constructors_chirho,
+                    deriving_chirho,
+                    kind_sig_chirho,
+                    span_chirho,
+                } => {
+                    let attached_kind_sig_chirho = kind_sig_chirho.or_else(|| {
+                        standalone_kind_sigs_chirho
+                            .get(name_chirho.text_chirho())
+                            .cloned()
+                    });
+                    DeclChirho::DataDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        constructors_chirho,
+                        deriving_chirho,
+                        kind_sig_chirho: attached_kind_sig_chirho,
+                        span_chirho,
+                    }
+                }
+                DeclChirho::NewtypeDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    constructor_chirho,
+                    deriving_chirho,
+                    kind_sig_chirho,
+                    span_chirho,
+                } => {
+                    let attached_kind_sig_chirho = kind_sig_chirho.or_else(|| {
+                        standalone_kind_sigs_chirho
+                            .get(name_chirho.text_chirho())
+                            .cloned()
+                    });
+                    DeclChirho::NewtypeDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        constructor_chirho,
+                        deriving_chirho,
+                        kind_sig_chirho: attached_kind_sig_chirho,
+                        span_chirho,
+                    }
+                }
+                other_chirho => other_chirho,
             })
             .collect()
     }
@@ -14090,6 +14219,50 @@ foo = 1
             }
             other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
         }
+    }
+
+    #[test]
+    fn lower_standalone_kind_sig_attaches_to_following_data_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE StandaloneKindSignatures #-}\n\
+module M where\n\
+type MyList :: * -> *\n\
+data MyList a = Nil | Cons a (MyList a)\n",
+        );
+        assert!(
+            module_chirho
+                .decls_chirho
+                .iter()
+                .all(|decl_chirho| !matches!(
+                    decl_chirho,
+                    DeclChirho::TypeSigChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "type"
+                            || name_chirho.text_chirho() == "MyList"
+                )),
+            "standalone kind sig should not lower as ordinary value signatures: {:?}",
+            module_chirho.decls_chirho
+        );
+        let data_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::DataDeclChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "MyList"
+                )
+            })
+            .expect("expected MyList data declaration");
+        let DeclChirho::DataDeclChirho {
+            kind_sig_chirho, ..
+        } = data_decl_chirho
+        else {
+            panic!("expected DataDecl, got {:?}", data_decl_chirho);
+        };
+        let kind_sig_chirho = kind_sig_chirho
+            .as_ref()
+            .expect("standalone kind sig should attach to data declaration");
+        assert_eq!(type_shape_chirho(kind_sig_chirho), "(* -> *)");
     }
 
     #[test]
