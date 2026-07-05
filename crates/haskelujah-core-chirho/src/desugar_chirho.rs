@@ -1924,7 +1924,9 @@ impl DesugarCtxChirho {
                     )
                 };
 
-                let fallback_rhs_chirho = if con_chirho != AltConChirho::DefaultChirho {
+                let fallback_rhs_chirho = if con_chirho != AltConChirho::DefaultChirho
+                    && Self::pat_nested_cases_can_use_fallback_chirho(pat_ref_chirho)
+                {
                     let mut fallback_arms_chirho: Vec<MatchArmChirho> = arms_chirho
                         .iter()
                         .skip(1)
@@ -2826,6 +2828,12 @@ impl DesugarCtxChirho {
         result_chirho
     }
 
+    fn pat_nested_cases_can_use_fallback_chirho(pat_chirho: &PatChirho) -> bool {
+        Self::outer_sub_pats_chirho(pat_chirho)
+            .iter()
+            .any(Self::is_nested_con_pat_chirho)
+    }
+
     fn desugar_case_expr_with_scrutinee_chirho(
         &mut self,
         scrut_chirho: CoreExprChirho,
@@ -2877,6 +2885,7 @@ impl DesugarCtxChirho {
             let con_chirho = self.pat_to_alt_con_chirho(pat_ref_chirho);
             let fallback_rhs_chirho = if con_chirho != AltConChirho::DefaultChirho
                 && idx_chirho + 1 < alts_chirho.len()
+                && Self::pat_nested_cases_can_use_fallback_chirho(pat_ref_chirho)
             {
                 Some(self.desugar_case_expr_with_scrutinee_chirho(
                     CoreExprChirho::VarChirho(wild_chirho.id_chirho),
@@ -5546,12 +5555,10 @@ mod tests_chirho {
             CoreExprChirho::LamChirho { .. }
         ));
         // Name map should contain the binder's name
-        assert!(
-            output_chirho
-                .names_chirho
-                .values()
-                .any(|n_chirho| n_chirho == "f")
-        );
+        assert!(output_chirho
+            .names_chirho
+            .values()
+            .any(|n_chirho| n_chirho == "f"));
     }
 
     #[test]
@@ -5790,7 +5797,7 @@ mod tests_chirho {
         assert!(matches!(core_chirho, CoreExprChirho::CaseChirho { .. }));
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
             assert_eq!(alts_chirho.len(), 2); // True branch + default
-            // Default branch should be another case
+                                              // Default branch should be another case
             assert!(matches!(
                 alts_chirho[1].rhs_chirho,
                 CoreExprChirho::CaseChirho { .. }
@@ -6426,6 +6433,125 @@ mod tests_chirho {
             nested_alts_chirho[1].rhs_chirho,
             CoreExprChirho::CaseChirho { .. }
         ));
+    }
+
+    #[test]
+    fn desugar_case_nil_then_nested_tuple_cons_uses_head_binder_chirho() {
+        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+        let tuple_pat_chirho = PatChirho::TupleChirho {
+            elements_chirho: vec![
+                PatChirho::VarChirho(dummy_name_chirho("k")),
+                PatChirho::VarChirho(dummy_name_chirho("v")),
+            ],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let expr_chirho = ExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("xs"))),
+            alts_chirho: vec![
+                haskelujah_ast_chirho::expr_chirho::AltChirho {
+                    pat_chirho: PatChirho::ListChirho {
+                        elements_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
+                        LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
+                    )),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                haskelujah_ast_chirho::expr_chirho::AltChirho {
+                    pat_chirho: PatChirho::InfixConChirho {
+                        left_chirho: Box::new(tuple_pat_chirho),
+                        op_chirho: dummy_name_chirho(":"),
+                        right_chirho: Box::new(PatChirho::VarChirho(dummy_name_chirho("rest"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
+                        dummy_name_chirho("v"),
+                    )),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
+
+        let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho else {
+            panic!("expected outer CaseChirho");
+        };
+        assert_eq!(alts_chirho.len(), 2);
+        let cons_alt_chirho = &alts_chirho[1];
+        assert!(matches!(
+            cons_alt_chirho.con_chirho,
+            AltConChirho::DataConChirho(ref s_chirho) if s_chirho == ":"
+        ));
+        assert_eq!(cons_alt_chirho.binders_chirho.len(), 2);
+        let head_id_chirho = cons_alt_chirho.binders_chirho[0].id_chirho;
+        let CoreExprChirho::CaseChirho {
+            scrutinee_chirho, ..
+        } = &cons_alt_chirho.rhs_chirho
+        else {
+            panic!("expected nested tuple CaseChirho in cons alternative");
+        };
+        assert!(matches!(
+            scrutinee_chirho.as_ref(),
+            CoreExprChirho::VarChirho(id_chirho) if *id_chirho == head_id_chirho
+        ));
+    }
+
+    #[test]
+    fn desugar_case_nil_first_does_not_record_dead_method_fallback_chirho() {
+        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+        ctx_chirho.set_method_occurrence_names_chirho(std::collections::HashSet::from([
+            "==".to_string()
+        ]));
+        let eq_expr_chirho = ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::AppChirho {
+                fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("=="))),
+                arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("k"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("a"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let expr_chirho = ExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("xs"))),
+            alts_chirho: vec![
+                haskelujah_ast_chirho::expr_chirho::AltChirho {
+                    pat_chirho: PatChirho::ListChirho {
+                        elements_chirho: vec![],
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
+                        LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
+                    )),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                haskelujah_ast_chirho::expr_chirho::AltChirho {
+                    pat_chirho: PatChirho::InfixConChirho {
+                        left_chirho: Box::new(PatChirho::VarChirho(dummy_name_chirho("a"))),
+                        op_chirho: dummy_name_chirho(":"),
+                        right_chirho: Box::new(PatChirho::VarChirho(dummy_name_chirho("rest"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    rhs_chirho: RhsChirho::UnguardedChirho(eq_expr_chirho),
+                    where_binds_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let _core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
+
+        let eq_occurrences_chirho = ctx_chirho
+            .method_occurrences_chirho
+            .values()
+            .filter(|(name_chirho, _)| name_chirho == "==")
+            .count();
+        assert_eq!(eq_occurrences_chirho, 1);
     }
 
     #[test]
