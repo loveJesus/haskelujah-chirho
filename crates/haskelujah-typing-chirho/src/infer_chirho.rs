@@ -22,7 +22,7 @@ use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredC
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{unify_chirho, UnifyErrorChirho};
+use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -132,6 +132,13 @@ pub struct InferCtxChirho {
     /// class, instantiated predicate type). Finalized against the composed
     /// substitution when the public entry builds `InferResultChirho`.
     occurrence_captures_chirho: Vec<(String, u32, String, TyChirho)>,
+    /// Evidence-threading P2: default keys learned when generalized predicates
+    /// carry additional numeric-class evidence for an occurrence type variable.
+    occurrence_default_hints_chirho: HashMap<TyVarChirho, String>,
+    /// Evidence-threading P2: variables whose predicates were generalized into
+    /// a binding scheme. Unhinted occurrences on these variables must stay
+    /// polymorphic so the dict pass can use the binding's dictionary argument.
+    occurrence_generalized_vars_chirho: HashSet<TyVarChirho>,
     /// Evidence-threading P2: per-name reference counters (source order).
     occurrence_counters_chirho: HashMap<String, u32>,
     /// Given predicates currently in scope from explicit type signatures.
@@ -482,6 +489,8 @@ impl InferCtxChirho {
             class_env_chirho,
             deferred_preds_chirho: Vec::new(),
             occurrence_captures_chirho: Vec::new(),
+            occurrence_default_hints_chirho: HashMap::new(),
+            occurrence_generalized_vars_chirho: HashSet::new(),
             occurrence_counters_chirho: HashMap::new(),
             given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
@@ -1115,6 +1124,35 @@ impl InferCtxChirho {
             .map(|(p_chirho, _)| p_chirho)
             .collect();
 
+        // Evidence-threading P2: top-level generalization can absorb
+        // `(Num a, Fractional a)` into the binding scheme before module-end
+        // defaulting sees it. Preserve the fractional evidence for any method
+        // occurrence captured on the same bare variable so `negate 5.5`
+        // dispatches through the Double row instead of the class-only Int
+        // fallback used for truly unconstrained methods.
+        let fractional_default_classes_chirho: &[&str] =
+            &["Fractional", "Floating", "RealFrac", "RealFloat"];
+        let mut pred_classes_by_var_chirho: HashMap<TyVarChirho, Vec<&str>> = HashMap::new();
+        for pred_chirho in &scheme_preds_chirho {
+            if let TyChirho::VarChirho(var_chirho) = &pred_chirho.ty_chirho {
+                pred_classes_by_var_chirho
+                    .entry(*var_chirho)
+                    .or_default()
+                    .push(pred_chirho.class_name_chirho.as_str());
+            }
+        }
+        for (var_chirho, classes_chirho) in pred_classes_by_var_chirho {
+            if classes_chirho
+                .iter()
+                .any(|class_chirho| fractional_default_classes_chirho.contains(class_chirho))
+            {
+                self.occurrence_default_hints_chirho
+                    .insert(var_chirho, "Double".to_string());
+            } else {
+                self.occurrence_generalized_vars_chirho.insert(var_chirho);
+            }
+        }
+
         // IO defaulting: when a predicate is Monad/Applicative/Functor on a
         // bare type variable with no other non-IO-defaultable constraints,
         // default the variable to IO (like GHC's ExtendedDefaultRules).
@@ -1199,6 +1237,34 @@ impl InferCtxChirho {
         self.env_chirho.apply_subst_chirho(subst_chirho);
         for (pred_chirho, _span_chirho) in &mut self.deferred_preds_chirho {
             pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
+        }
+        for (_name_chirho, _ordinal_chirho, _class_chirho, ty_chirho) in
+            &mut self.occurrence_captures_chirho
+        {
+            *ty_chirho = subst_chirho.apply_ty_chirho(ty_chirho);
+        }
+        if !self.occurrence_default_hints_chirho.is_empty() {
+            let mut updated_hints_chirho = HashMap::new();
+            for (var_chirho, key_chirho) in self.occurrence_default_hints_chirho.drain() {
+                match subst_chirho.apply_ty_chirho(&TyChirho::VarChirho(var_chirho)) {
+                    TyChirho::VarChirho(updated_var_chirho) => {
+                        updated_hints_chirho.insert(updated_var_chirho, key_chirho);
+                    }
+                    _ => {}
+                }
+            }
+            self.occurrence_default_hints_chirho = updated_hints_chirho;
+        }
+        if !self.occurrence_generalized_vars_chirho.is_empty() {
+            let mut updated_vars_chirho = HashSet::new();
+            for var_chirho in self.occurrence_generalized_vars_chirho.drain() {
+                if let TyChirho::VarChirho(updated_var_chirho) =
+                    subst_chirho.apply_ty_chirho(&TyChirho::VarChirho(var_chirho))
+                {
+                    updated_vars_chirho.insert(updated_var_chirho);
+                }
+            }
+            self.occurrence_generalized_vars_chirho = updated_vars_chirho;
         }
         for pred_chirho in &mut self.given_preds_chirho {
             pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
@@ -5838,7 +5904,24 @@ impl InferCtxChirho {
             .iter()
             .filter_map(|(name_chirho, ordinal_chirho, class_chirho, ty_chirho)| {
                 let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                let hinted_key_chirho = match &resolved_chirho {
+                    TyChirho::VarChirho(var_chirho) => self
+                        .occurrence_default_hints_chirho
+                        .get(var_chirho)
+                        .cloned(),
+                    _ => None,
+                };
+                if hinted_key_chirho.is_none()
+                    && matches!(
+                        &resolved_chirho,
+                        TyChirho::VarChirho(var_chirho)
+                            if self.occurrence_generalized_vars_chirho.contains(var_chirho)
+                    )
+                {
+                    return None;
+                }
                 let key_chirho = head_key_chirho(&resolved_chirho)
+                    .or(hinted_key_chirho)
                     .or_else(|| default_occurrence_key_chirho(class_chirho))?;
                 Some(MethodOccurrenceRecordChirho {
                     name_chirho: name_chirho.clone(),
@@ -20269,6 +20352,35 @@ mod tests_chirho {
     }
 
     #[test]
+    fn occurrence_record_defaults_fractional_literal_method_to_double_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let app_chirho = ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("negate"))),
+            arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::FloatChirho(
+                5.5,
+                SpanChirho::DUMMY_CHIRHO,
+            ))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let (subst_chirho, _ty_chirho) = ctx_chirho.infer_expr_chirho(&app_chirho);
+        let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
+        if !default_subst_chirho.is_empty_chirho() {
+            ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
+        }
+        let composed_subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
+        let records_chirho = ctx_chirho.finalize_occurrence_records_chirho(&composed_subst_chirho);
+        assert!(
+            records_chirho.iter().any(|record_chirho| {
+                record_chirho.name_chirho == "negate"
+                    && record_chirho.ordinal_chirho == 0
+                    && record_chirho.class_name_chirho == "Num"
+                    && record_chirho.ty_key_chirho == "Double"
+            }),
+            "expected Num/Double evidence for `negate 5.5`, got: {records_chirho:?}"
+        );
+    }
+
+    #[test]
     fn infer_literal_string_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let expr_chirho = ExprChirho::LitChirho(LitChirho::StringChirho(
@@ -20738,10 +20850,12 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         assert!(matches!(final_ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 2);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     #[test]
@@ -20988,10 +21102,12 @@ mod tests_chirho {
                 if matches!(elem_chirho.as_ref(), TyChirho::VarChirho(_))
         ));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 3);
-        assert!(ctx_chirho
-            .deferred_preds_chirho
-            .iter()
-            .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num"));
+        assert!(
+            ctx_chirho
+                .deferred_preds_chirho
+                .iter()
+                .all(|(pred_chirho, _)| pred_chirho.class_name_chirho == "Num")
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -21690,9 +21806,11 @@ mod tests_chirho {
             "Class with superclass should not error: {:?}",
             result_chirho.diagnostics_chirho
         );
-        assert!(result_chirho
-            .class_env_chirho
-            .has_class_chirho("MyOrdChirho"));
+        assert!(
+            result_chirho
+                .class_env_chirho
+                .has_class_chirho("MyOrdChirho")
+        );
         let supers_chirho = result_chirho
             .class_env_chirho
             .superclasses_chirho("MyOrdChirho");
