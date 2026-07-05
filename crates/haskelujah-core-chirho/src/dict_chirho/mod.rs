@@ -175,10 +175,15 @@ impl DictPassCtxChirho {
     /// Look up an existing CoreId by name, or create a fresh one.
     /// This is used when generating references to bindings that may
     /// already exist (e.g. `$prim_` bindings from desugaring).
+    /// Evidence-threading P2b: per-occurrence ids share the method's NAME but
+    /// must never be chosen as the binding id for generated prelude bodies —
+    /// only the canonical shared id may anchor a generated binding.
     fn resolve_or_fresh_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
-        // Search for an existing ID with this name
+        // Search for an existing ID with this name (skipping occurrence ids)
         for (id_chirho, existing_name_chirho) in &self.names_chirho {
-            if existing_name_chirho == name_chirho {
+            if existing_name_chirho == name_chirho
+                && !self.method_occurrence_canon_chirho.contains_key(id_chirho)
+            {
                 return *id_chirho;
             }
         }

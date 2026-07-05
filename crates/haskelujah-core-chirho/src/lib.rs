@@ -24,11 +24,13 @@ pub mod pretty_chirho;
 mod proptest_chirho;
 pub mod simplify_chirho;
 
-pub use desugar_chirho::{DesugarOutputChirho, desugar_module_chirho};
+pub use desugar_chirho::{
+    DesugarOutputChirho, desugar_module_chirho, desugar_module_with_method_occurrences_chirho,
+};
 pub use dict_chirho::{
     DictPassResultChirho, dict_pass_module_chirho, dict_pass_module_full_chirho,
     dict_pass_module_full_with_extra_dict_param_names_chirho,
-    dict_pass_module_with_con_types_chirho,
+    dict_pass_module_full_with_method_occurrences_chirho, dict_pass_module_with_con_types_chirho,
 };
 pub use expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,

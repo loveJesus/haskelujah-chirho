@@ -1933,12 +1933,16 @@ impl DictPassCtxChirho {
             .map(|(id_chirho, _)| *id_chirho)
     }
 
-    /// Evidence-threading P1: if `head_id` is a method OCCURRENCE id, return the
-    /// replacement head expression — the evidence-dispatched `$prim` row when
-    /// occurrence evidence names one that exists, else the canonical shared id.
+    /// Evidence-threading P1/P2b: if `head_id` is a method OCCURRENCE id, return
+    /// the replacement head expression — the evidence-dispatched `$prim` row when
+    /// one exists, else the existing keyed selector/instance dispatch driven by
+    /// the PROVEN type key, else the canonical shared id (today's path).
     fn occurrence_head_replacement_chirho(
         &self,
         head_id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
         let (method_name_chirho, canonical_id_chirho) =
             self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
@@ -1952,6 +1956,15 @@ impl DictPassCtxChirho {
             if let Some(prim_id_chirho) = self.find_global_id_by_name_chirho(&prim_name_chirho) {
                 return Some(CoreExprChirho::VarChirho(prim_id_chirho));
             }
+            // Keyed fallback: reuse the existing selector/instance dispatch with
+            // the proven key so selector-backed instances (Eq/Num Int, ...) work.
+            return Some(self.try_rewrite_method_var_chirho(
+                *canonical_id_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+                Some(ty_key_chirho),
+            ));
         }
         Some(CoreExprChirho::VarChirho(*canonical_id_chirho))
     }
@@ -1985,9 +1998,12 @@ impl DictPassCtxChirho {
                 // body-backed `$prim_{class}_{method}_{key}` row; no evidence →
                 // restore the canonical shared id. Either way recurse once so
                 // today's logic applies to the replacement (never an occ id).
-                if let Some(replacement_chirho) =
-                    self.occurrence_head_replacement_chirho(*id_chirho)
-                {
+                if let Some(replacement_chirho) = self.occurrence_head_replacement_chirho(
+                    *id_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_instance_dicts_chirho,
+                ) {
                     return self.rewrite_method_refs_with_locals_chirho(
                         &replacement_chirho,
                         dict_vars_chirho,
@@ -2052,9 +2068,12 @@ impl DictPassCtxChirho {
                         spine_head_chirho = spine_fun_chirho.as_ref();
                     }
                     if let CoreExprChirho::VarChirho(head_id_chirho) = spine_head_chirho {
-                        if let Some(new_head_chirho) =
-                            self.occurrence_head_replacement_chirho(*head_id_chirho)
-                        {
+                        if let Some(new_head_chirho) = self.occurrence_head_replacement_chirho(
+                            *head_id_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_instance_dicts_chirho,
+                        ) {
                             let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
                                 new_head_chirho,
                                 |fun_acc_chirho, spine_arg_chirho| CoreExprChirho::AppChirho {
@@ -3416,7 +3435,72 @@ impl DictPassCtxChirho {
     }
 
     /// Finish the transform and return the result.
-    pub fn finish_chirho(self, module_chirho: CoreModuleChirho) -> DictPassResultChirho {
+    /// Evidence-threading P2b: total safety-net sweep enforcing the guaranteed-
+    /// elimination invariant — any occurrence id that survived rewriting (some
+    /// specialized paths clone subtrees without the occurrence intercepts) is
+    /// restored to its canonical shared id so no occ id ever reaches STG.
+    fn canonicalize_surviving_occurrences_chirho(&self, expr_chirho: &mut CoreExprChirho) {
+        match expr_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => {
+                if let Some((_name_chirho, canonical_id_chirho)) =
+                    self.method_occurrence_canon_chirho.get(id_chirho)
+                {
+                    *id_chirho = *canonical_id_chirho;
+                }
+            }
+            CoreExprChirho::LitChirho(_) => {}
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                self.canonicalize_surviving_occurrences_chirho(fun_chirho);
+                self.canonicalize_surviving_occurrences_chirho(arg_chirho);
+            }
+            CoreExprChirho::LamChirho { body_chirho, .. }
+            | CoreExprChirho::TyLamChirho { body_chirho, .. } => {
+                self.canonicalize_surviving_occurrences_chirho(body_chirho);
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ..
+            } => {
+                self.canonicalize_surviving_occurrences_chirho(inner_chirho);
+            }
+            CoreExprChirho::LetChirho {
+                binds_chirho,
+                body_chirho,
+                ..
+            } => {
+                for (_binder_chirho, rhs_chirho) in binds_chirho.iter_mut() {
+                    self.canonicalize_surviving_occurrences_chirho(rhs_chirho);
+                }
+                self.canonicalize_surviving_occurrences_chirho(body_chirho);
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                alts_chirho,
+                ..
+            } => {
+                self.canonicalize_surviving_occurrences_chirho(scrutinee_chirho);
+                for alt_chirho in alts_chirho.iter_mut() {
+                    self.canonicalize_surviving_occurrences_chirho(&mut alt_chirho.rhs_chirho);
+                }
+            }
+            CoreExprChirho::PrimOpChirho { args_chirho, .. }
+            | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+                for arg_chirho in args_chirho.iter_mut() {
+                    self.canonicalize_surviving_occurrences_chirho(arg_chirho);
+                }
+            }
+        }
+    }
+
+    pub fn finish_chirho(self, mut module_chirho: CoreModuleChirho) -> DictPassResultChirho {
+        if !self.method_occurrence_canon_chirho.is_empty() {
+            for binding_chirho in module_chirho.bindings_chirho.iter_mut() {
+                self.canonicalize_surviving_occurrences_chirho(&mut binding_chirho.rhs_chirho);
+            }
+        }
         DictPassResultChirho {
             module_chirho,
             names_chirho: self.names_chirho,

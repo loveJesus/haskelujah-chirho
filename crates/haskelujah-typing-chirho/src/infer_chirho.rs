@@ -101,6 +101,10 @@ pub struct InferResultChirho {
     /// substitution (unification + Report defaulting). Only records whose
     /// predicate type resolved to a CONCRETE head key survive finalization.
     pub method_occurrences_chirho: Vec<MethodOccurrenceRecordChirho>,
+    /// Evidence-threading P2b: total pred-carrying references counted per name
+    /// (source order). Consumers must join records only for names whose total
+    /// matches their own occurrence count (conservative alignment check).
+    pub method_occurrence_totals_chirho: HashMap<String, u32>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about the
@@ -5786,6 +5790,7 @@ impl InferCtxChirho {
             type_families_chirho: self.type_families_chirho,
             diagnostics_chirho: self.diagnostics_chirho,
             method_occurrences_chirho: Vec::new(),
+            method_occurrence_totals_chirho: HashMap::new(),
         }
     }
 }
@@ -19742,9 +19747,11 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     // reflected) before the context is consumed.
     let method_occurrences_chirho =
         ctx_chirho.finalize_occurrence_records_chirho(&composed_subst_chirho);
+    let method_occurrence_totals_chirho = ctx_chirho.occurrence_counters_chirho.clone();
     let mut result_chirho = ctx_chirho.finish_chirho();
     result_chirho.subst_chirho = composed_subst_chirho;
     result_chirho.method_occurrences_chirho = method_occurrences_chirho;
+    result_chirho.method_occurrence_totals_chirho = method_occurrence_totals_chirho;
     result_chirho
 }
 

@@ -3113,6 +3113,87 @@ fn extract_module_name_from_source_chirho(source_chirho: &str) -> Option<String>
     None
 }
 
+/// Evidence-threading P2b: standard single-param class methods whose free
+/// references get per-occurrence ids so typing evidence can drive dispatch.
+/// Monad-chain operators (>>=, >>, return, pure, fail) are deliberately
+/// EXCLUDED — they have dedicated dispatch machinery and INV-001 protection.
+const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
+    "==", "/=", "<", "<=", ">", ">=", "compare", "max", "min", "+", "-", "*", "negate", "abs",
+    "signum", "fromInteger", "div", "mod", "quot", "rem", "show",
+];
+
+/// Evidence-threading P2b: join typing occurrence records to desugar occurrence
+/// ids by (name, source-order ordinal). Names whose reference counts disagree
+/// between the two phases are dropped wholesale (conservative alignment).
+/// workflow: monadic-dispatch-chirho (evidence-threading)
+fn join_occurrence_evidence_chirho(
+    infer_result_chirho: &InferResultChirho,
+    method_occurrences_chirho: &std::collections::HashMap<
+        haskelujah_core_chirho::CoreIdChirho,
+        (String, haskelujah_core_chirho::CoreIdChirho),
+    >,
+) -> std::collections::HashMap<haskelujah_core_chirho::CoreIdChirho, (String, String)> {
+    let mut occ_ids_by_name_chirho: std::collections::HashMap<
+        String,
+        Vec<haskelujah_core_chirho::CoreIdChirho>,
+    > = std::collections::HashMap::new();
+    for (occ_id_chirho, (name_chirho, _canon_chirho)) in method_occurrences_chirho {
+        occ_ids_by_name_chirho
+            .entry(name_chirho.clone())
+            .or_default()
+            .push(*occ_id_chirho);
+    }
+    for ids_chirho in occ_ids_by_name_chirho.values_mut() {
+        ids_chirho.sort_by_key(|id_chirho| id_chirho.0);
+    }
+    let mut evidence_chirho: std::collections::HashMap<
+        haskelujah_core_chirho::CoreIdChirho,
+        (String, String),
+    > = std::collections::HashMap::new();
+    for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
+        if infer_result_chirho
+            .method_occurrence_totals_chirho
+            .get(name_chirho)
+            .copied()
+            != Some(ids_chirho.len() as u32)
+        {
+            continue;
+        }
+        for record_chirho in infer_result_chirho
+            .method_occurrences_chirho
+            .iter()
+            .filter(|record_chirho| &record_chirho.name_chirho == name_chirho)
+        {
+            // Only the pred belonging to the class that DECLARES this method
+            // drives dispatch (e.g. `==` -> Eq, not an incidental Num pred).
+            let owns_chirho = infer_result_chirho
+                .class_env_chirho
+                .classes_chirho
+                .get(&record_chirho.class_name_chirho)
+                .is_some_and(|class_chirho| {
+                    class_chirho.methods_chirho.contains_key(name_chirho)
+                });
+            if !owns_chirho {
+                continue;
+            }
+            if let Some(occ_id_chirho) = ids_chirho.get(record_chirho.ordinal_chirho as usize) {
+                // The engine's body-backed instance rows are keyed "Int"; typing
+                // defaults ambiguous numerics to "Integer" per the Report. Map
+                // the evidence key onto the backed row at this boundary only.
+                let ty_key_chirho = if record_chirho.ty_key_chirho == "Integer" {
+                    "Int".to_string()
+                } else {
+                    record_chirho.ty_key_chirho.clone()
+                };
+                evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
+                    (record_chirho.class_name_chirho.clone(), ty_key_chirho)
+                });
+            }
+        }
+    }
+    evidence_chirho
+}
+
 /// Run the back-end pipeline phases (5 through 7) on an already-front-end-compiled
 /// module, producing a [`CompileResultChirho`].
 ///
@@ -3122,8 +3203,20 @@ fn compile_backend_chirho(
     infer_result_chirho: InferResultChirho,
     extra_dict_param_names_chirho: std::collections::HashSet<String>,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
-    // Phase 5: Desugar AST → Core IR
-    let desugar_output_chirho = desugar_module_chirho(&module_chirho);
+    // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
+    // per-occurrence ids for the standard method-name set).
+    let desugar_output_chirho =
+        haskelujah_core_chirho::desugar_module_with_method_occurrences_chirho(
+            &module_chirho,
+            EVIDENCE_METHOD_NAMES_CHIRHO
+                .iter()
+                .map(|name_chirho| name_chirho.to_string())
+                .collect(),
+        );
+    let occurrence_evidence_chirho = join_occurrence_evidence_chirho(
+        &infer_result_chirho,
+        &desugar_output_chirho.method_occurrences_chirho,
+    );
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
     let con_types_chirho = build_con_type_map_chirho(&module_chirho);
@@ -3180,7 +3273,7 @@ fn compile_backend_chirho(
         }
     }
     let dict_result_chirho =
-        haskelujah_core_chirho::dict_pass_module_full_with_extra_dict_param_names_chirho(
+        haskelujah_core_chirho::dict_pass_module_full_with_method_occurrences_chirho(
             &desugar_output_chirho.module_chirho,
             desugar_output_chirho.names_chirho,
             &infer_result_chirho.env_chirho,
@@ -3188,6 +3281,8 @@ fn compile_backend_chirho(
             con_types_chirho,
             newtype_info_chirho,
             extra_dict_param_names_chirho,
+            desugar_output_chirho.method_occurrences_chirho,
+            occurrence_evidence_chirho,
         );
     let core_chirho = dict_result_chirho.module_chirho;
 

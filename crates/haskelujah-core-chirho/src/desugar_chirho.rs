@@ -5432,6 +5432,20 @@ pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> DesugarOutputChirh
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 
+/// Evidence-threading P2b: like [`desugar_module_chirho`] but allocates fresh
+/// per-occurrence CoreIds for free references of the given class-method names
+/// (recorded in `DesugarOutputChirho::method_occurrences_chirho`).
+/// workflow: monadic-dispatch-chirho (evidence-threading)
+pub fn desugar_module_with_method_occurrences_chirho(
+    module_chirho: &ModuleChirho,
+    method_names_chirho: HashSet<String>,
+) -> DesugarOutputChirho {
+    let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+    ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
+    ctx_chirho.set_method_occurrence_names_chirho(method_names_chirho);
+    ctx_chirho.desugar_module_chirho(module_chirho)
+}
+
 /// Map a source-level operator name to a primop name, if it is a known
 /// built-in primitive. Returns `None` for user-defined operators.
 ///
