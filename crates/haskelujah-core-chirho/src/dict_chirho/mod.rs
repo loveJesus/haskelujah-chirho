@@ -99,6 +99,13 @@ pub struct DictPassCtxChirho {
     /// incorrectly treats Prelude class methods such as `show` as ordinary
     /// dictionary-parameterized functions.
     extra_dict_param_names_chirho: HashSet<String>,
+    /// Evidence-threading P1: occurrence id → (method name, canonical shared id)
+    /// from `DesugarOutputChirho::method_occurrences_chirho`. Empty by default.
+    method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    /// Evidence-threading P1: occurrence id → (class name, instance type key).
+    /// Populated by later phases (typing bridge / defaulting); when present the
+    /// occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
@@ -146,6 +153,8 @@ impl DictPassCtxChirho {
             con_types_chirho,
             dict_param_bindings_chirho: HashMap::new(),
             extra_dict_param_names_chirho: HashSet::new(),
+            method_occurrence_canon_chirho: HashMap::new(),
+            occurrence_evidence_chirho: HashMap::new(),
             super_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
@@ -744,11 +753,42 @@ pub fn dict_pass_module_full_with_extra_dict_param_names_chirho(
     newtype_info_chirho: HashMap<String, (String, String)>,
     extra_dict_param_names_chirho: HashSet<String>,
 ) -> DictPassResultChirho {
+    dict_pass_module_full_with_method_occurrences_chirho(
+        module_chirho,
+        names_chirho,
+        type_env_chirho,
+        class_env_chirho,
+        con_types_chirho,
+        newtype_info_chirho,
+        extra_dict_param_names_chirho,
+        HashMap::new(),
+        HashMap::new(),
+    )
+}
+
+/// Evidence-threading P1 entry: like the `extra_dict_param_names` variant but
+/// also threads the desugar occurrence table and (optional) occurrence
+/// evidence. With both maps empty this is behavior-identical to the older
+/// entries. workflow: monadic-dispatch-chirho (evidence-threading P1)
+#[allow(clippy::too_many_arguments)]
+pub fn dict_pass_module_full_with_method_occurrences_chirho(
+    module_chirho: &CoreModuleChirho,
+    names_chirho: HashMap<CoreIdChirho, String>,
+    type_env_chirho: &TyEnvChirho,
+    class_env_chirho: &ClassEnvChirho,
+    con_types_chirho: HashMap<String, String>,
+    newtype_info_chirho: HashMap<String, (String, String)>,
+    extra_dict_param_names_chirho: HashSet<String>,
+    method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+) -> DictPassResultChirho {
     let max_id_chirho = find_max_id_chirho(module_chirho);
     let mut ctx_chirho =
         DictPassCtxChirho::new_chirho(max_id_chirho + 1, names_chirho, con_types_chirho);
     ctx_chirho.newtype_info_chirho = newtype_info_chirho;
     ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
+    ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
+    ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)
@@ -1338,5 +1378,124 @@ mod tests_chirho {
         // Layouts should be populated
         assert!(result_chirho.layouts_chirho.contains_key("Eq"));
         assert!(result_chirho.layouts_chirho.contains_key("Num"));
+    }
+
+    /// Evidence-threading P1 helpers: a module whose `main` applies a method
+    /// OCCURRENCE id (50) of `==` to two Int literals; canonical shared id 60;
+    /// a body-backed `$prim_Eq_==_Int` row exists as id 100.
+    fn occurrence_test_module_chirho() -> (
+        CoreModuleChirho,
+        HashMap<CoreIdChirho, String>,
+        HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    ) {
+        let mut names_chirho = HashMap::new();
+        names_chirho.insert(CoreIdChirho(0), "main".to_string());
+        names_chirho.insert(CoreIdChirho(50), "==".to_string());
+        names_chirho.insert(CoreIdChirho(60), "==".to_string());
+        names_chirho.insert(CoreIdChirho(100), "$prim_Eq_==_Int".to_string());
+        let main_rhs_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(50))),
+                arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1))),
+            }),
+            arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2))),
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "OccTest".to_string(),
+            bindings_chirho: vec![
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("$prim_Eq_==_Int", 100),
+                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(7)),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+                CoreBindingChirho {
+                    binder_chirho: dummy_binder_chirho("main", 0),
+                    rhs_chirho: main_rhs_chirho,
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                },
+            ],
+            names_chirho: names_chirho.clone(),
+            specialize_pragmas_chirho: HashMap::new(),
+            foreign_exports_chirho: Vec::new(),
+        };
+        let mut canon_chirho = HashMap::new();
+        canon_chirho.insert(CoreIdChirho(50), ("==".to_string(), CoreIdChirho(60)));
+        (module_chirho, names_chirho, canon_chirho)
+    }
+
+    fn app_spine_head_id_chirho(expr_chirho: &CoreExprChirho) -> Option<CoreIdChirho> {
+        let mut current_chirho = expr_chirho;
+        while let CoreExprChirho::AppChirho { fun_chirho, .. } = current_chirho {
+            current_chirho = fun_chirho.as_ref();
+        }
+        match current_chirho {
+            CoreExprChirho::VarChirho(id_chirho) => Some(*id_chirho),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn evidence_occurrence_dispatches_to_prim_row_chirho() {
+        let (module_chirho, names_chirho, canon_chirho) = occurrence_test_module_chirho();
+        let mut evidence_chirho = HashMap::new();
+        evidence_chirho.insert(CoreIdChirho(50), ("Eq".to_string(), "Int".to_string()));
+        let result_chirho = dict_pass_module_full_with_method_occurrences_chirho(
+            &module_chirho,
+            names_chirho,
+            &TyEnvChirho::new_chirho(),
+            &ClassEnvChirho::new_chirho(),
+            HashMap::new(),
+            HashMap::new(),
+            HashSet::new(),
+            canon_chirho,
+            evidence_chirho,
+        );
+        let main_chirho = result_chirho
+            .module_chirho
+            .bindings_chirho
+            .iter()
+            .find(|b_chirho| b_chirho.binder_chirho.name_chirho == "main")
+            .expect("main binding should exist");
+        let head_id_chirho = app_spine_head_id_chirho(&main_chirho.rhs_chirho)
+            .expect("main body should stay an application spine");
+        assert_eq!(
+            result_chirho
+                .names_chirho
+                .get(&head_id_chirho)
+                .map(String::as_str),
+            Some("$prim_Eq_==_Int"),
+            "evidence must dispatch the occurrence head to the $prim row"
+        );
+    }
+
+    #[test]
+    fn occurrence_without_evidence_restores_canonical_chirho() {
+        let (module_chirho, names_chirho, canon_chirho) = occurrence_test_module_chirho();
+        let result_chirho = dict_pass_module_full_with_method_occurrences_chirho(
+            &module_chirho,
+            names_chirho,
+            &TyEnvChirho::new_chirho(),
+            &ClassEnvChirho::new_chirho(),
+            HashMap::new(),
+            HashMap::new(),
+            HashSet::new(),
+            canon_chirho,
+            HashMap::new(),
+        );
+        let main_chirho = result_chirho
+            .module_chirho
+            .bindings_chirho
+            .iter()
+            .find(|b_chirho| b_chirho.binder_chirho.name_chirho == "main")
+            .expect("main binding should exist");
+        let head_id_chirho = app_spine_head_id_chirho(&main_chirho.rhs_chirho)
+            .expect("main body should stay an application spine");
+        assert_eq!(
+            head_id_chirho,
+            CoreIdChirho(60),
+            "without evidence the occurrence must be restored to the canonical id (guaranteed elimination)"
+        );
     }
 }

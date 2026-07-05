@@ -35,6 +35,11 @@ pub struct DesugarOutputChirho {
     pub module_chirho: CoreModuleChirho,
     /// Maps every CoreIdChirho to the source name it originated from.
     pub names_chirho: HashMap<CoreIdChirho, String>,
+    /// Evidence-threading P1 (design-evidence-threading-chirho.md): per-occurrence
+    /// ids for class-method references. Maps each fresh occurrence CoreId to
+    /// `(method name, canonical shared CoreId)`. Empty unless the caller opted in
+    /// via `set_method_occurrence_names_chirho` — behavior-neutral by default.
+    pub method_occurrences_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
 }
 
 /// A registered pattern synonym definition used during desugaring.
@@ -70,6 +75,12 @@ pub struct DesugarCtxChirho {
     con_field_names_chirho: HashMap<String, Vec<String>>,
     /// Pattern synonym definitions: maps synonym name → definition.
     pat_syns_chirho: HashMap<String, PatSynDefChirho>,
+    /// Evidence-threading P1: names (class methods) whose free references get a
+    /// FRESH occurrence CoreId per reference instead of the shared cache id.
+    /// Empty by default — `resolve_var_chirho` then behaves exactly as before.
+    method_occurrence_names_chirho: HashSet<String>,
+    /// Evidence-threading P1: occurrence id → (method name, canonical shared id).
+    method_occurrences_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
 }
 
 impl DesugarCtxChirho {
@@ -83,7 +94,15 @@ impl DesugarCtxChirho {
             con_strictness_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
             pat_syns_chirho: HashMap::new(),
+            method_occurrence_names_chirho: HashSet::new(),
+            method_occurrences_chirho: HashMap::new(),
         }
+    }
+
+    /// Opt in to evidence-threading occurrence ids for the given method names.
+    /// workflow: monadic-dispatch-chirho (evidence-threading P1)
+    pub fn set_method_occurrence_names_chirho(&mut self, names_chirho: HashSet<String>) {
+        self.method_occurrence_names_chirho = names_chirho;
     }
 
     /// Generate a fresh Core ID and record its name.
@@ -655,6 +674,27 @@ impl DesugarCtxChirho {
     fn resolve_var_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
         if let Some(id_chirho) = self.lookup_scope_chirho(name_chirho) {
             id_chirho
+        } else if self.method_occurrence_names_chirho.contains(name_chirho) {
+            // Evidence-threading P1: give each free reference of an opted-in
+            // class method its OWN occurrence id (the shared cache id below
+            // merges all `==`/`+` references, which blinds per-occurrence
+            // evidence). The canonical shared id is still allocated/cached so
+            // the dict pass can fall back to today's behavior.
+            let canonical_id_chirho =
+                if let Some(&id_chirho) = self.free_var_cache_chirho.get(name_chirho) {
+                    id_chirho
+                } else {
+                    let id_chirho = self.fresh_id_chirho(name_chirho);
+                    self.free_var_cache_chirho
+                        .insert(name_chirho.to_string(), id_chirho);
+                    id_chirho
+                };
+            let occurrence_id_chirho = self.fresh_id_chirho(name_chirho);
+            self.method_occurrences_chirho.insert(
+                occurrence_id_chirho,
+                (name_chirho.to_string(), canonical_id_chirho),
+            );
+            occurrence_id_chirho
         } else if let Some(&id_chirho) = self.free_var_cache_chirho.get(name_chirho) {
             id_chirho
         } else {
@@ -1494,6 +1534,7 @@ impl DesugarCtxChirho {
                     .collect(),
             },
             names_chirho: self.names_chirho.clone(),
+            method_occurrences_chirho: self.method_occurrences_chirho.clone(),
         }
     }
 

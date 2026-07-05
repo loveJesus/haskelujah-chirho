@@ -1923,6 +1923,39 @@ impl DictPassCtxChirho {
     /// inferred from the expression (e.g. a constructor application like
     /// `Red`), the type-specific instance dictionary is selected instead
     /// of the default one in `dict_vars_chirho`.
+    /// Evidence-threading P1: immutable name → id scan over the ctx name map
+    /// (used to resolve `$prim_{class}_{method}_{key}` targets for occurrence
+    /// evidence; returns None when no such generated row exists).
+    fn find_global_id_by_name_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
+        self.names_chirho
+            .iter()
+            .find(|(_, existing_chirho)| existing_chirho.as_str() == name_chirho)
+            .map(|(id_chirho, _)| *id_chirho)
+    }
+
+    /// Evidence-threading P1: if `head_id` is a method OCCURRENCE id, return the
+    /// replacement head expression — the evidence-dispatched `$prim` row when
+    /// occurrence evidence names one that exists, else the canonical shared id.
+    fn occurrence_head_replacement_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+    ) -> Option<CoreExprChirho> {
+        let (method_name_chirho, canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
+        if let Some((class_name_chirho, ty_key_chirho)) =
+            self.occurrence_evidence_chirho.get(&head_id_chirho)
+        {
+            let prim_name_chirho = format!(
+                "$prim_{}_{}_{}",
+                class_name_chirho, method_name_chirho, ty_key_chirho
+            );
+            if let Some(prim_id_chirho) = self.find_global_id_by_name_chirho(&prim_name_chirho) {
+                return Some(CoreExprChirho::VarChirho(prim_id_chirho));
+            }
+        }
+        Some(CoreExprChirho::VarChirho(*canonical_id_chirho))
+    }
+
     pub(super) fn rewrite_method_refs_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -1947,6 +1980,22 @@ impl DictPassCtxChirho {
     ) -> CoreExprChirho {
         match expr_chirho {
             CoreExprChirho::VarChirho(id_chirho) => {
+                // Evidence-threading P1 (design-evidence-threading-chirho.md):
+                // per-occurrence method ids. Evidence present → dispatch to the
+                // body-backed `$prim_{class}_{method}_{key}` row; no evidence →
+                // restore the canonical shared id. Either way recurse once so
+                // today's logic applies to the replacement (never an occ id).
+                if let Some(replacement_chirho) =
+                    self.occurrence_head_replacement_chirho(*id_chirho)
+                {
+                    return self.rewrite_method_refs_with_locals_chirho(
+                        &replacement_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                    );
+                }
                 if let Some(dispatched_chirho) =
                     self.try_dispatch_contextual_return_pure_var_chirho(*id_chirho)
                 {
@@ -1986,6 +2035,43 @@ impl DictPassCtxChirho {
                 fun_chirho,
                 arg_chirho,
             } => {
+                // Evidence-threading P1: canonicalize/dispatch method-occurrence
+                // heads on PURE App spines before the specialized App handlers
+                // (which key on ids/names of the shared canonical form). TyApp-
+                // headed spines fall through — their head Var is handled by the
+                // Var arm during normal recursion.
+                {
+                    let mut spine_args_chirho: Vec<&CoreExprChirho> = Vec::new();
+                    let mut spine_head_chirho: &CoreExprChirho = expr_chirho;
+                    while let CoreExprChirho::AppChirho {
+                        fun_chirho: spine_fun_chirho,
+                        arg_chirho: spine_arg_chirho,
+                    } = spine_head_chirho
+                    {
+                        spine_args_chirho.push(spine_arg_chirho.as_ref());
+                        spine_head_chirho = spine_fun_chirho.as_ref();
+                    }
+                    if let CoreExprChirho::VarChirho(head_id_chirho) = spine_head_chirho {
+                        if let Some(new_head_chirho) =
+                            self.occurrence_head_replacement_chirho(*head_id_chirho)
+                        {
+                            let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
+                                new_head_chirho,
+                                |fun_acc_chirho, spine_arg_chirho| CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(fun_acc_chirho),
+                                    arg_chirho: Box::new((*spine_arg_chirho).clone()),
+                                },
+                            );
+                            return self.rewrite_method_refs_with_locals_chirho(
+                                &rebuilt_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            );
+                        }
+                    }
+                }
                 if let Some((head_id_chirho, args_chirho)) =
                     Self::collect_app_head_var_chirho(expr_chirho)
                 {
