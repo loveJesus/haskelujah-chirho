@@ -1485,6 +1485,7 @@ impl KindInferCtxChirho {
         type_vars_chirho: &[TyVarChirho],
         result_kind_chirho: Option<&TypeChirho>,
         span_chirho: SpanChirho,
+        poly_kinds_enabled_chirho: bool,
     ) {
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
@@ -1500,7 +1501,13 @@ impl KindInferCtxChirho {
 
         let result_kind_chirho = result_kind_chirho
             .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
-            .unwrap_or(KindChirho::StarChirho);
+            .unwrap_or_else(|| {
+                if poly_kinds_enabled_chirho {
+                    self.fresh_kind_chirho()
+                } else {
+                    KindChirho::StarChirho
+                }
+            });
         let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho);
 
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
@@ -1762,6 +1769,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                     type_vars_chirho,
                     result_kind_chirho.as_ref(),
                     *span_chirho,
+                    poly_kinds_enabled_chirho,
                 );
             }
             DeclChirho::ClassDeclChirho {
@@ -2842,6 +2850,65 @@ mod tests_chirho {
         assert!(
             !result_chirho.diagnostics_chirho.has_errors_chirho(),
             "type family result kind should make later applications kind-check: {:?}",
+            result_chirho
+                .diagnostics_chirho
+                .diagnostics_chirho()
+                .iter()
+                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn polykinds_unannotated_type_family_result_stays_flexible_chirho() {
+        let mut module_chirho = mk_module_chirho(vec![
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho: mk_name_chirho("FamilyChirho"),
+                type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
+                result_kind_chirho: None,
+                equations_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::DataDeclChirho {
+                name_chirho: mk_name_chirho("IndexedChirho"),
+                type_vars_chirho: vec![],
+                constructors_chirho: vec![],
+                deriving_chirho: vec![],
+                kind_sig_chirho: Some(mk_fun_chirho(
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho("FamilyChirho")),
+                        TypeChirho::VarChirho(mk_name_chirho("k")),
+                    ),
+                    TypeChirho::ConChirho(mk_name_chirho("Type")),
+                )),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::TypeSigChirho {
+                name_chirho: mk_name_chirho("useIndexedChirho"),
+                ty_chirho: mk_fun_chirho(
+                    mk_app_chirho(
+                        TypeChirho::ConChirho(mk_name_chirho("IndexedChirho")),
+                        TypeChirho::ConChirho(mk_name_chirho("Maybe")),
+                    ),
+                    mk_fun_chirho(
+                        mk_app_chirho(
+                            TypeChirho::ConChirho(mk_name_chirho("IndexedChirho")),
+                            TypeChirho::ConChirho(mk_name_chirho("Int")),
+                        ),
+                        TypeChirho::ConChirho(mk_name_chirho("Type")),
+                    ),
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ]);
+        module_chirho
+            .extensions_chirho
+            .push("PolyKinds".to_string());
+
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "unannotated PolyKinds type-family result should remain flexible at use sites: {:?}",
             result_chirho
                 .diagnostics_chirho
                 .diagnostics_chirho()
