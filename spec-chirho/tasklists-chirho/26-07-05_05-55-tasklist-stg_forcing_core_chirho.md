@@ -7,4 +7,4 @@
 - [x] Reproduce the narrow PAP/higher-order representative.
 - [x] Patch the nested higher-order dictionary-specialization path before runtime forcing.
 - [x] Run targeted gates, origin-68, and full probe.
-- [ ] Log, commit, push, and release the slot.
+- [x] Log, commit, push, and release the slot.
