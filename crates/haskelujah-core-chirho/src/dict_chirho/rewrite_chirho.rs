@@ -51,6 +51,47 @@ impl DictPassCtxChirho {
         }
     }
 
+    fn key_token_is_type_var_chirho(token_chirho: &str) -> bool {
+        token_chirho.strip_prefix('t').is_some_and(|rest_chirho| {
+            !rest_chirho.is_empty()
+                && rest_chirho
+                    .chars()
+                    .all(|c_chirho| c_chirho.is_ascii_digit())
+        })
+    }
+
+    fn type_key_has_type_var_chirho(type_key_chirho: &str) -> bool {
+        type_key_chirho
+            .split(|c_chirho: char| !(c_chirho.is_ascii_alphanumeric() || c_chirho == '_'))
+            .any(Self::key_token_is_type_var_chirho)
+    }
+
+    fn concrete_local_type_key_chirho(type_key_chirho: String) -> Option<String> {
+        if type_key_chirho.is_empty() || Self::type_key_has_type_var_chirho(&type_key_chirho) {
+            None
+        } else {
+            Some(type_key_chirho)
+        }
+    }
+
+    fn concrete_binder_type_key_chirho(&self, binder_chirho: &BinderChirho) -> Option<String> {
+        self.binder_type_key_chirho(binder_chirho)
+            .and_then(Self::concrete_local_type_key_chirho)
+    }
+
+    fn infer_local_value_binding_type_key_chirho(
+        &self,
+        rhs_chirho: &CoreExprChirho,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+    ) -> Option<String> {
+        self.infer_type_key_for_rewrite_chirho(rhs_chirho, local_type_keys_chirho)
+            .or_else(|| {
+                self.expr_contains_numeric_default_marker_chirho(rhs_chirho)
+                    .then(|| "Int".to_string())
+            })
+            .and_then(Self::concrete_local_type_key_chirho)
+    }
+
     fn seed_value_binder_type_keys_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -3458,7 +3499,7 @@ impl DictPassCtxChirho {
                 let mut let_type_keys_chirho = local_type_keys_chirho.clone();
                 let mut local_function_params_chirho: HashMap<CoreIdChirho, (CoreIdChirho, bool)> =
                     HashMap::new();
-                for (b_chirho, _) in binds_chirho {
+                for (b_chirho, r_chirho) in binds_chirho {
                     if !self
                         .local_shadow_ids_chirho
                         .borrow()
@@ -3469,10 +3510,15 @@ impl DictPassCtxChirho {
                             .insert(b_chirho.id_chirho);
                         added_chirho.push(b_chirho.id_chirho);
                     }
-                    if let Some(type_key_chirho) = self.binder_type_key_chirho(b_chirho) {
-                        let_type_keys_chirho
-                            .entry(b_chirho.id_chirho)
-                            .or_insert(type_key_chirho);
+                    if let Some(type_key_chirho) =
+                        self.concrete_binder_type_key_chirho(b_chirho).or_else(|| {
+                            self.infer_local_value_binding_type_key_chirho(
+                                r_chirho,
+                                &let_type_keys_chirho,
+                            )
+                        })
+                    {
+                        let_type_keys_chirho.insert(b_chirho.id_chirho, type_key_chirho);
                     }
                 }
                 for (b_chirho, r_chirho) in binds_chirho {
