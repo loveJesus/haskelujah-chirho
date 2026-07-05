@@ -7,3 +7,9 @@
 - [x] Patch the narrow dict-pass/defaulting path without broad numeric rewrites.
 - [x] Run targeted watch-surface tests and probe.
 - [x] Commit, push, and hand off for watch-surface acceptance.
+
+## Follow-Up Churn Chirho
+
+- [x] Narrow generated Map/IORef/STM strict defaults so source-level functions named `mapInsert` are not rewritten.
+- [x] Re-run original six fixed targets plus four Map/BST churn cases.
+- [x] Re-run fresh CLI warm-up and 70-case probe.

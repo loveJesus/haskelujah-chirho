@@ -577,7 +577,21 @@ impl DictPassCtxChirho {
         &self,
         head_id_chirho: CoreIdChirho,
     ) -> Option<&'static [usize]> {
+        let is_generated_head_chirho = self
+            .generated_bindings_chirho
+            .iter()
+            .any(|binding_chirho| binding_chirho.binder_chirho.id_chirho == head_id_chirho);
+        if !is_generated_head_chirho {
+            return None;
+        }
         let head_name_chirho = self.short_name_for_id_chirho(head_id_chirho)?;
+        if self
+            .body_backed_names_chirho
+            .get(head_name_chirho)
+            .is_some_and(|source_id_chirho| *source_id_chirho == head_id_chirho)
+        {
+            return None;
+        }
         match head_name_chirho {
             "newIORef" | "newTVar" | "newTVarIO" => Some(&[0]),
             "writeIORef" | "writeTVar" => Some(&[1]),
