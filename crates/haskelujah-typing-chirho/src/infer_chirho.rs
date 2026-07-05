@@ -15791,18 +15791,17 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     // ReaderT monad transformer
     // -----------------------------------------------------------------------
 
-    // ReaderT :: (r -> m a) -> ReaderT r m a
-    // runReaderT :: ReaderT r m a -> r -> m a
+    // ReaderT :: (r -> a) -> ReaderT r m a
+    // runReaderT :: ReaderT r m a -> r -> a
+    // The current Core shim erases the inner monad and stores a first-order
+    // environment function, so these schemes mirror the runtime shape.
     {
         let rt_r_chirho = TyVarChirho(3530);
         let rt_m_chirho = TyVarChirho(3531);
         let rt_a_chirho = TyVarChirho(3532);
         let rt_fn_ty_chirho = TyChirho::fun_chirho(
             TyChirho::VarChirho(rt_r_chirho),
-            TyChirho::AppChirho(
-                Box::new(TyChirho::VarChirho(rt_m_chirho)),
-                Box::new(TyChirho::VarChirho(rt_a_chirho)),
-            ),
+            TyChirho::VarChirho(rt_a_chirho),
         );
         let readert_ty_chirho = mk_reader_t_ty_chirho(
             TyChirho::VarChirho(rt_r_chirho),
@@ -15939,7 +15938,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // runReader :: ReaderT r Identity a -> r -> Identity a  (alias surface)
+    // runReader :: ReaderT r m a -> r -> a  (alias surface)
     {
         let rnr_r_chirho = TyVarChirho(3545);
         let rnr_m_chirho = TyVarChirho(3546);
@@ -15958,10 +15957,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                     readert_ty_chirho,
                     TyChirho::fun_chirho(
                         TyChirho::VarChirho(rnr_r_chirho),
-                        TyChirho::AppChirho(
-                            Box::new(TyChirho::VarChirho(rnr_m_chirho)),
-                            Box::new(TyChirho::VarChirho(rnr_a_chirho)),
-                        ),
+                        TyChirho::VarChirho(rnr_a_chirho),
                     ),
                 ),
             },
@@ -16235,7 +16231,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     //   bindWriterT, execWriterT, execWriter)
     // -----------------------------------------------------------------------
 
-    // WriterT :: forall w m a. m (a, w) -> WriterT w m a
+    // WriterT :: forall w m a. (a, w) -> WriterT w m a
     {
         let wt_w_chirho = TyVarChirho(3580);
         let wt_m_chirho = TyVarChirho(3581);
@@ -16251,17 +16247,13 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             TyChirho::VarChirho(wt_a_chirho),
             TyChirho::VarChirho(wt_w_chirho),
         ]);
-        let m_tuple_aw_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::VarChirho(wt_m_chirho)),
-            Box::new(tuple_aw_chirho),
-        );
         env_chirho.bind_chirho(
             "WriterT".to_string(),
             SchemeChirho {
                 vars_chirho: vec![wt_w_chirho, wt_m_chirho, wt_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    m_tuple_aw_chirho,
+                    tuple_aw_chirho,
                     TyChirho::AppChirho(
                         Box::new(writert_wma_chirho),
                         Box::new(TyChirho::VarChirho(wt_a_chirho)),
@@ -16271,7 +16263,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // runWriterT :: forall w m a. WriterT w m a -> m (a, w)
+    // runWriterT :: forall w m a. WriterT w m a -> (a, w)
     {
         let rwt_w_chirho = TyVarChirho(3583);
         let rwt_m_chirho = TyVarChirho(3584);
@@ -16287,10 +16279,6 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             TyChirho::VarChirho(rwt_a_chirho),
             TyChirho::VarChirho(rwt_w_chirho),
         ]);
-        let m_tuple_aw_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::VarChirho(rwt_m_chirho)),
-            Box::new(tuple_aw_chirho),
-        );
         env_chirho.bind_chirho(
             "runWriterT".to_string(),
             SchemeChirho {
@@ -16301,7 +16289,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                         Box::new(writert_wma_chirho),
                         Box::new(TyChirho::VarChirho(rwt_a_chirho)),
                     ),
-                    m_tuple_aw_chirho,
+                    tuple_aw_chirho,
                 ),
             },
         );
@@ -16392,10 +16380,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(rwt_a_chirho),
-                    TyChirho::AppChirho(
-                        Box::new(writert_wma_chirho),
-                        Box::new(TyChirho::VarChirho(rwt_a_chirho)),
-                    ),
+                    writert_wma_chirho,
                 ),
             },
         );
@@ -16451,7 +16436,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // execWriterT :: forall w m a. Monad m => WriterT w m a -> m w
+    // execWriterT :: forall w m a. Monad m => WriterT w m a -> w
     {
         let ewt_w_chirho = TyVarChirho(3597);
         let ewt_m_chirho = TyVarChirho(3598);
@@ -16477,10 +16462,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                 }],
                 ty_chirho: TyChirho::fun_chirho(
                     writert_wma_chirho,
-                    TyChirho::AppChirho(
-                        Box::new(TyChirho::VarChirho(ewt_m_chirho)),
-                        Box::new(TyChirho::VarChirho(ewt_w_chirho)),
-                    ),
+                    TyChirho::VarChirho(ewt_w_chirho),
                 ),
             },
         );
