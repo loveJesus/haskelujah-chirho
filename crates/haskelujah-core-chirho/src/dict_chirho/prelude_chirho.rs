@@ -1424,6 +1424,195 @@ impl DictPassCtxChirho {
             });
         }
 
+        // Integer is represented by the same runtime integer payload as Int, so
+        // its Num methods can reuse the strict integer primops.
+        {
+            let integer_ty_chirho = TyChirho::ConChirho("Integer".to_string());
+
+            for (method_chirho, primop_chirho) in [("+", "+#"), ("-", "-#"), ("*", "*#")] {
+                let prim_name_chirho = format!("$prim_Num_{}_Integer", method_chirho);
+                let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+                let a_chirho = self.fresh_binder_chirho("a", integer_ty_chirho.clone());
+                let b_chirho = self.fresh_binder_chirho("b", integer_ty_chirho.clone());
+                self.generated_bindings_chirho.push(CoreBindingChirho {
+                    binder_chirho: BinderChirho {
+                        id_chirho: prim_id_chirho,
+                        name_chirho: prim_name_chirho,
+                        ty_chirho: TyChirho::fun_chirho(
+                            integer_ty_chirho.clone(),
+                            TyChirho::fun_chirho(
+                                integer_ty_chirho.clone(),
+                                integer_ty_chirho.clone(),
+                            ),
+                        ),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: a_chirho.clone(),
+                        body_chirho: Box::new(CoreExprChirho::LamChirho {
+                            binder_chirho: b_chirho.clone(),
+                            body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                                name_chirho: primop_chirho.to_string(),
+                                args_chirho: vec![
+                                    CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                                    CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                                ],
+                            }),
+                        }),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                });
+            }
+
+            for (method_chirho, primop_chirho) in [("negate", "negate#"), ("fromInteger", "id#")] {
+                let prim_name_chirho = format!("$prim_Num_{}_Integer", method_chirho);
+                let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+                let n_chirho = self.fresh_binder_chirho("n", integer_ty_chirho.clone());
+                let body_chirho = if primop_chirho == "id#" {
+                    CoreExprChirho::VarChirho(n_chirho.id_chirho)
+                } else {
+                    CoreExprChirho::PrimOpChirho {
+                        name_chirho: primop_chirho.to_string(),
+                        args_chirho: vec![CoreExprChirho::VarChirho(n_chirho.id_chirho)],
+                    }
+                };
+                self.generated_bindings_chirho.push(CoreBindingChirho {
+                    binder_chirho: BinderChirho {
+                        id_chirho: prim_id_chirho,
+                        name_chirho: prim_name_chirho,
+                        ty_chirho: TyChirho::fun_chirho(
+                            integer_ty_chirho.clone(),
+                            integer_ty_chirho.clone(),
+                        ),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                    rhs_chirho: CoreExprChirho::LamChirho {
+                        binder_chirho: n_chirho,
+                        body_chirho: Box::new(body_chirho),
+                    },
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                });
+            }
+
+            let abs_name_chirho = "$prim_Num_abs_Integer";
+            let abs_id_chirho = self.resolve_or_fresh_id_chirho(abs_name_chirho);
+            let n_chirho = self.fresh_binder_chirho("n", integer_ty_chirho.clone());
+            let abs_wild_chirho = self.fresh_binder_chirho("$abs", TyChirho::bool_chirho());
+            let abs_body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "<#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(n_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                    ],
+                }),
+                bind_chirho: abs_wild_chirho,
+                result_ty_chirho: integer_ty_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::PrimOpChirho {
+                            name_chirho: "negate#".to_string(),
+                            args_chirho: vec![CoreExprChirho::VarChirho(n_chirho.id_chirho)],
+                        },
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DefaultChirho,
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::VarChirho(n_chirho.id_chirho),
+                    },
+                ],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: abs_id_chirho,
+                    name_chirho: abs_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(
+                        integer_ty_chirho.clone(),
+                        integer_ty_chirho.clone(),
+                    ),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: n_chirho,
+                    body_chirho: Box::new(abs_body_chirho),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+
+            let signum_name_chirho = "$prim_Num_signum_Integer";
+            let signum_id_chirho = self.resolve_or_fresh_id_chirho(signum_name_chirho);
+            let n_chirho = self.fresh_binder_chirho("n", integer_ty_chirho.clone());
+            let positive_wild_chirho =
+                self.fresh_binder_chirho("$positive", TyChirho::bool_chirho());
+            let negative_wild_chirho =
+                self.fresh_binder_chirho("$negative", TyChirho::bool_chirho());
+            let negative_case_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "<#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(n_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                    ],
+                }),
+                bind_chirho: negative_wild_chirho,
+                result_ty_chirho: integer_ty_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(-1)),
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DefaultChirho,
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                    },
+                ],
+            };
+            let signum_body_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: ">#".to_string(),
+                    args_chirho: vec![
+                        CoreExprChirho::VarChirho(n_chirho.id_chirho),
+                        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                    ],
+                }),
+                bind_chirho: positive_wild_chirho,
+                result_ty_chirho: integer_ty_chirho.clone(),
+                alts_chirho: vec![
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                        binders_chirho: vec![],
+                        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                    },
+                    CoreAltChirho {
+                        con_chirho: AltConChirho::DefaultChirho,
+                        binders_chirho: vec![],
+                        rhs_chirho: negative_case_chirho,
+                    },
+                ],
+            };
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: signum_id_chirho,
+                    name_chirho: signum_name_chirho.to_string(),
+                    ty_chirho: TyChirho::fun_chirho(integer_ty_chirho.clone(), integer_ty_chirho),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::LamChirho {
+                    binder_chirho: n_chirho,
+                    body_chirho: Box::new(signum_body_chirho),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
+
         // fromIntegral :: Int -> Double
         {
             let int_ty_chirho = TyChirho::int_chirho();
