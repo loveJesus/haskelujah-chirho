@@ -28,6 +28,25 @@ mod tests_chirho {
             .to_path_buf()
     }
 
+    fn run_heavy_cabal_test_on_large_stack_chirho<FChirho, RChirho>(
+        name_chirho: &'static str,
+        work_chirho: FChirho,
+    ) -> RChirho
+    where
+        FChirho: FnOnce() -> RChirho + Send + 'static,
+        RChirho: Send + 'static,
+    {
+        // Real Hackage package tests can recurse deeply through parser/kind/type
+        // phases; keep the harness from aborting before the compiler returns.
+        std::thread::Builder::new()
+            .name(name_chirho.to_string())
+            .stack_size(64 * 1024 * 1024)
+            .spawn(work_chirho)
+            .expect("heavy Cabal project test should spawn larger-stack worker")
+            .join()
+            .unwrap_or_else(|panic_payload_chirho| std::panic::resume_unwind(panic_payload_chirho))
+    }
+
     #[test]
     fn extract_module_name_simple_chirho() {
         assert_eq!(
@@ -1484,8 +1503,12 @@ treeWordSizeChirho = wordSize\n",
             return;
         }
 
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        let result_chirho = run_heavy_cabal_test_on_large_stack_chirho(
+            "quickcheck_random_state_alias_mismatch_chirho",
+            move || {
+                compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho())
+            },
+        );
         match result_chirho {
             Ok(result_chirho) => {
                 assert!(
@@ -1516,8 +1539,12 @@ treeWordSizeChirho = wordSize\n",
             return;
         }
 
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        let result_chirho = run_heavy_cabal_test_on_large_stack_chirho(
+            "quickcheck_property_result_shadow_mismatch_chirho",
+            move || {
+                compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho())
+            },
+        );
         match result_chirho {
             Ok(result_chirho) => {
                 assert!(
@@ -1549,8 +1576,12 @@ treeWordSizeChirho = wordSize\n",
             return;
         }
 
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        let result_chirho = run_heavy_cabal_test_on_large_stack_chirho(
+            "quickcheck_qualified_state_record_label_mismatches_chirho",
+            move || {
+                compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho())
+            },
+        );
         match result_chirho {
             Ok(result_chirho) => {
                 assert!(
@@ -1581,8 +1612,12 @@ treeWordSizeChirho = wordSize\n",
             return;
         }
 
-        let result_chirho =
-            compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho());
+        let result_chirho = run_heavy_cabal_test_on_large_stack_chirho(
+            "quickcheck_template_haskell_runio_scope_gap_chirho",
+            move || {
+                compile_cabal_project_chirho(&cabal_path_chirho, &PackageIndexChirho::new_chirho())
+            },
+        );
         match result_chirho {
             Ok(result_chirho) => {
                 assert!(
