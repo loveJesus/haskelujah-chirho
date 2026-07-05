@@ -5051,9 +5051,28 @@ impl LowerCtxChirho {
                 if type_nodes_chirho.is_empty() {
                     return self.placeholder_type_chirho();
                 }
-                let mut result_chirho = self.lower_type_from_child_chirho(type_nodes_chirho[0]);
-                for tc_chirho in &type_nodes_chirho[1..] {
-                    let arg_chirho = self.lower_type_from_child_chirho(tc_chirho);
+                let lowered_types_chirho = type_nodes_chirho
+                    .iter()
+                    .map(|tc_chirho| self.lower_type_from_child_chirho(tc_chirho))
+                    .collect::<Vec<_>>();
+                if let [left_chirho, op_chirho, right_chirho] = lowered_types_chirho.as_slice() {
+                    if is_qualified_symbol_type_operator_chirho(op_chirho) {
+                        return TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::AppChirho {
+                                fun_chirho: Box::new(op_chirho.clone()),
+                                arg_chirho: Box::new(left_chirho.clone()),
+                                span_chirho,
+                            }),
+                            arg_chirho: Box::new(right_chirho.clone()),
+                            span_chirho,
+                        };
+                    }
+                }
+                let mut type_iter_chirho = lowered_types_chirho.into_iter();
+                let mut result_chirho = type_iter_chirho
+                    .next()
+                    .unwrap_or_else(|| self.placeholder_type_chirho());
+                for arg_chirho in type_iter_chirho {
                     result_chirho = TypeChirho::AppChirho {
                         fun_chirho: Box::new(result_chirho),
                         arg_chirho: Box::new(arg_chirho),
@@ -5482,6 +5501,8 @@ impl LowerCtxChirho {
                                 let k_chirho = tok_chirho.kind_chirho();
                                 if k_chirho == TokenKindChirho::VarSymChirho
                                     || k_chirho == TokenKindChirho::ConSymChirho
+                                    || k_chirho == TokenKindChirho::QualifiedVarSymChirho
+                                    || k_chirho == TokenKindChirho::QualifiedConSymChirho
                                     || k_chirho == TokenKindChirho::ConIdChirho
                                     || k_chirho == TokenKindChirho::VarIdChirho
                                     || k_chirho == TokenKindChirho::TildeChirho
@@ -9416,6 +9437,19 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::WildcardTypeChirho
             | SyntaxKindChirho::LitTypeChirho
     )
+}
+
+fn is_qualified_symbol_type_operator_chirho(ty_chirho: &TypeChirho) -> bool {
+    let name_chirho = match ty_chirho {
+        TypeChirho::ConChirho(name_chirho) | TypeChirho::VarChirho(name_chirho) => name_chirho,
+        _ => return false,
+    };
+    let text_chirho = name_chirho.text_chirho();
+    name_chirho.full_name_chirho() != text_chirho
+        && !text_chirho.is_empty()
+        && text_chirho
+            .chars()
+            .all(|char_chirho| !char_chirho.is_alphanumeric() && char_chirho != '_')
 }
 
 fn is_expr_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
@@ -14537,6 +14571,98 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
                 )),
             "closed type-family equations should not lower as value bindings: {:?}",
             module_chirho.decls_chirho
+        );
+    }
+
+    #[test]
+    fn lower_qualified_symbol_type_operator_keeps_operator_head_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE DataKinds #-}\n{-# LANGUAGE TypeOperators #-}\nmodule M where\nimport GHC.TypeLits as L\nimport Data.Proxy\nf :: Proxy (2 L.* 3) -> Proxy 6\nf = id\n",
+        );
+        let sig_ty_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find_map(|decl_chirho| match decl_chirho {
+                DeclChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
+                } if name_chirho.text_chirho() == "f" => Some(ty_chirho),
+                _ => None,
+            })
+            .expect("expected f type signature");
+
+        fn collect_type_spine_chirho<'a>(
+            ty_chirho: &'a TypeChirho,
+            args_chirho: &mut Vec<&'a TypeChirho>,
+        ) -> &'a TypeChirho {
+            match ty_chirho {
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    args_chirho.push(arg_chirho);
+                    collect_type_spine_chirho(fun_chirho, args_chirho)
+                }
+                _ => ty_chirho,
+            }
+        }
+
+        fn contains_l_star_head_chirho(ty_chirho: &TypeChirho) -> bool {
+            let mut args_chirho = Vec::new();
+            let head_chirho = collect_type_spine_chirho(ty_chirho, &mut args_chirho);
+            if matches!(
+                head_chirho,
+                TypeChirho::ConChirho(name_chirho)
+                    if name_chirho.full_name_chirho() == "L.*" && args_chirho.len() == 2
+            ) {
+                return true;
+            }
+            match ty_chirho {
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    contains_l_star_head_chirho(fun_chirho)
+                        || contains_l_star_head_chirho(arg_chirho)
+                }
+                TypeChirho::FunChirho {
+                    arg_chirho,
+                    result_chirho,
+                    ..
+                } => {
+                    contains_l_star_head_chirho(arg_chirho)
+                        || contains_l_star_head_chirho(result_chirho)
+                }
+                TypeChirho::TupleChirho {
+                    elements_chirho, ..
+                } => elements_chirho.iter().any(contains_l_star_head_chirho),
+                TypeChirho::ListChirho { element_chirho, .. }
+                | TypeChirho::ParenChirho {
+                    inner_chirho: element_chirho,
+                    ..
+                } => contains_l_star_head_chirho(element_chirho),
+                TypeChirho::QualChirho { body_chirho, .. }
+                | TypeChirho::ForallChirho { body_chirho, .. } => {
+                    contains_l_star_head_chirho(body_chirho)
+                }
+                TypeChirho::PromotedListChirho {
+                    elements_chirho, ..
+                } => elements_chirho.iter().any(contains_l_star_head_chirho),
+                TypeChirho::ConChirho(_)
+                | TypeChirho::VarChirho(_)
+                | TypeChirho::PromotedConChirho { .. }
+                | TypeChirho::WildcardChirho { .. }
+                | TypeChirho::LitChirho { .. } => false,
+            }
+        }
+
+        assert!(
+            contains_l_star_head_chirho(sig_ty_chirho),
+            "qualified type operator `L.*` should be the infix type head, got {:?}",
+            sig_ty_chirho
         );
     }
 

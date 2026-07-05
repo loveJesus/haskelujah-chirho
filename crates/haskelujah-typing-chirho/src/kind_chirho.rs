@@ -112,6 +112,13 @@ impl fmt::Display for KindChirho {
     }
 }
 
+fn is_builtin_typelit_or_typenat_kind_name_chirho(name_chirho: &str) -> bool {
+    matches!(
+        name_chirho,
+        "Nat" | "Symbol" | "+" | "*" | "^" | "-" | "Div" | "Mod" | "<=?" | "AppendSymbol" | "Log2"
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Kind substitution
 // ---------------------------------------------------------------------------
@@ -357,6 +364,16 @@ impl KindEnvChirho {
         // (->) :: * -> * -> *
         env_chirho.bind_chirho("->".to_string(), star2_chirho.clone());
 
+        // Built-in type-level literal families. Nat/Symbol literals and their
+        // family results are represented as ordinary type-level constants here.
+        for name_chirho in &["Nat", "Symbol"] {
+            env_chirho.bind_chirho(name_chirho.to_string(), KindChirho::StarChirho);
+        }
+        for name_chirho in &["+", "*", "^", "-", "Div", "Mod", "<=?", "AppendSymbol"] {
+            env_chirho.bind_chirho(name_chirho.to_string(), star2_chirho.clone());
+        }
+        env_chirho.bind_chirho("Log2".to_string(), star_to_star_chirho.clone());
+
         // Poly-kinded builtins that appear in imported package signatures.
         // We model them with free kind variables so each use site can
         // instantiate them independently via `instantiate_kind_chirho`.
@@ -540,7 +557,17 @@ impl KindEnvChirho {
     }
 
     pub fn lookup_chirho(&self, name_chirho: &str) -> Option<&KindChirho> {
-        self.kinds_chirho.get(name_chirho)
+        self.kinds_chirho.get(name_chirho).or_else(|| {
+            name_chirho
+                .rsplit_once('.')
+                .and_then(|(_qualifier_chirho, bare_name_chirho)| {
+                    if is_builtin_typelit_or_typenat_kind_name_chirho(bare_name_chirho) {
+                        self.kinds_chirho.get(bare_name_chirho)
+                    } else {
+                        None
+                    }
+                })
+        })
     }
 
     /// Apply a substitution to all kinds in the environment.
@@ -2113,6 +2140,21 @@ mod tests_chirho {
         );
         assert_eq!(
             env_chirho.lookup_chirho("Either"),
+            Some(&KindChirho::arrow_n_chirho(
+                vec![KindChirho::StarChirho, KindChirho::StarChirho],
+                KindChirho::StarChirho
+            ))
+        );
+        assert_eq!(
+            env_chirho.lookup_chirho("GHC.TypeNats.*"),
+            Some(&KindChirho::arrow_n_chirho(
+                vec![KindChirho::StarChirho, KindChirho::StarChirho],
+                KindChirho::StarChirho
+            )),
+            "qualified TypeNats operator lookup should reuse the bare builtin family kind"
+        );
+        assert_eq!(
+            env_chirho.lookup_chirho("AppendSymbol"),
             Some(&KindChirho::arrow_n_chirho(
                 vec![KindChirho::StarChirho, KindChirho::StarChirho],
                 KindChirho::StarChirho
