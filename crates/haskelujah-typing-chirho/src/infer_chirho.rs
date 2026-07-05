@@ -8975,16 +8975,19 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // isJust :: forall a. Maybe a -> Bool
+    // isJust :: forall f a. f a -> Bool
+    // These generated helpers inspect the `Nothing`/`Just` constructor shape,
+    // so allow local Maybe-like declarations without conflating tycons globally.
     let is_just_a_chirho = TyVarChirho(1020);
+    let is_just_f_chirho = TyVarChirho(10200);
     env_chirho.bind_chirho(
         "isJust".to_string(),
         SchemeChirho {
-            vars_chirho: vec![is_just_a_chirho],
+            vars_chirho: vec![is_just_f_chirho, is_just_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::AppChirho(
-                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(is_just_f_chirho)),
                     Box::new(TyChirho::VarChirho(is_just_a_chirho)),
                 ),
                 TyChirho::bool_chirho(),
@@ -8992,16 +8995,17 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // isNothing :: forall a. Maybe a -> Bool
+    // isNothing :: forall f a. f a -> Bool
     let is_nothing_a_chirho = TyVarChirho(1021);
+    let is_nothing_f_chirho = TyVarChirho(10201);
     env_chirho.bind_chirho(
         "isNothing".to_string(),
         SchemeChirho {
-            vars_chirho: vec![is_nothing_a_chirho],
+            vars_chirho: vec![is_nothing_f_chirho, is_nothing_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::AppChirho(
-                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::VarChirho(is_nothing_f_chirho)),
                     Box::new(TyChirho::VarChirho(is_nothing_a_chirho)),
                 ),
                 TyChirho::bool_chirho(),
@@ -9009,18 +9013,19 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // fromMaybe :: forall a. a -> Maybe a -> a
+    // fromMaybe :: forall f a. a -> f a -> a
     let from_maybe_a_chirho = TyVarChirho(1022);
+    let from_maybe_f_chirho = TyVarChirho(10202);
     env_chirho.bind_chirho(
         "fromMaybe".to_string(),
         SchemeChirho {
-            vars_chirho: vec![from_maybe_a_chirho],
+            vars_chirho: vec![from_maybe_f_chirho, from_maybe_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(from_maybe_a_chirho),
                 TyChirho::fun_chirho(
                     TyChirho::AppChirho(
-                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::VarChirho(from_maybe_f_chirho)),
                         Box::new(TyChirho::VarChirho(from_maybe_a_chirho)),
                     ),
                     TyChirho::VarChirho(from_maybe_a_chirho),
@@ -9029,13 +9034,14 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // maybe :: forall a b. b -> (a -> b) -> Maybe a -> b
+    // maybe :: forall f a b. b -> (a -> b) -> f a -> b
     let maybe_a_chirho = TyVarChirho(1023);
     let maybe_b_chirho = TyVarChirho(1024);
+    let maybe_f_chirho = TyVarChirho(10203);
     env_chirho.bind_chirho(
         "maybe".to_string(),
         SchemeChirho {
-            vars_chirho: vec![maybe_a_chirho, maybe_b_chirho],
+            vars_chirho: vec![maybe_f_chirho, maybe_a_chirho, maybe_b_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
@@ -9045,7 +9051,7 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
                         TyChirho::VarChirho(maybe_b_chirho),
                     ),
                     TyChirho::AppChirho(
-                        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                        Box::new(TyChirho::VarChirho(maybe_f_chirho)),
                         Box::new(TyChirho::VarChirho(maybe_a_chirho)),
                     ),
                 ],
