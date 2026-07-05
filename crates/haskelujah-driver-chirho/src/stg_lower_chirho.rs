@@ -164,13 +164,13 @@ impl LowerCtxChirho {
     fn io_primop_value_arity_chirho(name_chirho: &str) -> Option<u16> {
         match name_chirho {
             "getLine" | "getLine#" | "getChar" | "getContents" | "getContents#" | "retry"
-            | "retry#" => Some(0),
+            | "retry#" | "undefined" => Some(0),
             "putStrLn" | "putStrLn#" | "putStr" | "putStr#" | "putChar" | "putChar#" | "print"
             | "interact" | "readFile" | "readFile#" | "return" | "pure" | "returnIO#"
             | "newIORef" | "newIORef#" | "readIORef" | "readIORef#" | "newSTRef" | "newSTRef#"
             | "readSTRef" | "readSTRef#" | "runST" | "runST#" | "newTVar" | "newTVar#"
             | "newTVarIO" | "newTVarIO#" | "readTVar" | "readTVar#" | "readTVarIO"
-            | "readTVarIO#" | "atomically" | "atomically#" | "error" | "undefined" | "seq"
+            | "readTVarIO#" | "atomically" | "atomically#" | "error" | "seq"
             | "deepseq" | "evaluate" | "force" | "force#" | "throw" | "throw#" | "throwIO"
             | "throwIO#" | "try" | "try#" => Some(1),
             "writeFile" | "writeFile#" | "appendFile" | "appendFile#" | ">>=" | "bindIO#"
