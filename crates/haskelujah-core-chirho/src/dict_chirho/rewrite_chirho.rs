@@ -1169,35 +1169,59 @@ impl DictPassCtxChirho {
         let type_key_chirho = args_chirho.iter().rev().find_map(|arg_chirho| {
             self.infer_strict_dispatch_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
         })?;
+        let payload_type_key_chirho =
+            Self::payload_type_key_from_value_key_chirho(&type_key_chirho);
 
         let mut changed_chirho = false;
         let mut rewritten_args_chirho = Vec::with_capacity(args_chirho.len());
         for arg_chirho in &args_chirho {
-            if let Some(rewritten_chirho) = self
-                .try_rewrite_typed_dict_param_arg_chirho(
-                    arg_chirho,
-                    dict_vars_chirho,
-                    evidence_classes_chirho,
-                    local_type_keys_chirho,
-                    local_instance_dicts_chirho,
-                    &type_key_chirho,
-                )
-                .or_else(|| {
-                    self.try_rewrite_typed_method_arg_chirho(
+            let rewritten_typed_arg_chirho = payload_type_key_chirho
+                .as_deref()
+                .and_then(|payload_key_chirho| {
+                    self.try_rewrite_typed_dict_param_arg_chirho(
                         arg_chirho,
                         dict_vars_chirho,
                         evidence_classes_chirho,
+                        local_type_keys_chirho,
+                        local_instance_dicts_chirho,
+                        payload_key_chirho,
+                    )
+                    .or_else(|| {
+                        self.try_rewrite_typed_method_arg_chirho(
+                            arg_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_instance_dicts_chirho,
+                            payload_key_chirho,
+                        )
+                    })
+                })
+                .or_else(|| {
+                    self.try_rewrite_typed_dict_param_arg_chirho(
+                        arg_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_type_keys_chirho,
                         local_instance_dicts_chirho,
                         &type_key_chirho,
                     )
-                })
-            {
+                    .or_else(|| {
+                        self.try_rewrite_typed_method_arg_chirho(
+                            arg_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_instance_dicts_chirho,
+                            &type_key_chirho,
+                        )
+                    })
+                });
+            if let Some(rewritten_chirho) = rewritten_typed_arg_chirho {
                 changed_chirho = true;
                 rewritten_args_chirho.push(rewritten_chirho);
             } else if Self::first_value_lambda_binder_id_chirho(arg_chirho).is_some() {
-                let payload_type_key_chirho =
-                    Self::payload_type_key_from_value_key_chirho(&type_key_chirho)
-                        .unwrap_or_else(|| type_key_chirho.clone());
+                let payload_type_key_chirho = payload_type_key_chirho
+                    .clone()
+                    .unwrap_or_else(|| type_key_chirho.clone());
                 let lambda_type_keys_chirho = Self::extend_first_lambda_type_key_chirho(
                     arg_chirho,
                     &payload_type_key_chirho,
