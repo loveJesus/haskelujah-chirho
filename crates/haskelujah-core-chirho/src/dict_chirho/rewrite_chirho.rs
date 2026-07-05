@@ -2465,6 +2465,48 @@ impl DictPassCtxChirho {
         }
     }
 
+    fn collect_module_call_arg_type_keys_chirho(
+        &self,
+        module_chirho: &CoreModuleChirho,
+    ) -> HashMap<CoreIdChirho, String> {
+        let mut local_function_params_chirho: HashMap<CoreIdChirho, (CoreIdChirho, bool)> =
+            HashMap::new();
+        for binding_chirho in &module_chirho.bindings_chirho {
+            if let Some(param_id_chirho) =
+                Self::first_value_lambda_binder_id_chirho(&binding_chirho.rhs_chirho)
+            {
+                local_function_params_chirho.insert(
+                    binding_chirho.binder_chirho.id_chirho,
+                    (
+                        param_id_chirho,
+                        Self::first_value_lambda_param_expects_list_chirho(
+                            &binding_chirho.rhs_chirho,
+                        ),
+                    ),
+                );
+            }
+        }
+
+        if local_function_params_chirho.is_empty() {
+            return HashMap::new();
+        }
+
+        let mut inferred_param_keys_chirho: HashMap<CoreIdChirho, String> = HashMap::new();
+        let mut conflicting_param_keys_chirho: HashSet<CoreIdChirho> = HashSet::new();
+        let empty_type_keys_chirho: HashMap<CoreIdChirho, String> = HashMap::new();
+        for binding_chirho in &module_chirho.bindings_chirho {
+            self.collect_local_call_arg_type_keys_chirho(
+                &binding_chirho.rhs_chirho,
+                &local_function_params_chirho,
+                &empty_type_keys_chirho,
+                &mut inferred_param_keys_chirho,
+                &mut conflicting_param_keys_chirho,
+            );
+        }
+
+        inferred_param_keys_chirho
+    }
+
     /// Dispatch a higher-kinded class method to the correct per-type instance
     /// body based on the type key of its dispatch argument.
     /// The method otherwise resolves to a monomorphic default binding, which is
@@ -3813,6 +3855,19 @@ impl DictPassCtxChirho {
         binding_chirho: &CoreBindingChirho,
         scheme_chirho: &SchemeChirho,
     ) -> CoreBindingChirho {
+        self.add_dict_params_with_local_type_keys_chirho(
+            binding_chirho,
+            scheme_chirho,
+            &HashMap::new(),
+        )
+    }
+
+    pub fn add_dict_params_with_local_type_keys_chirho(
+        &mut self,
+        binding_chirho: &CoreBindingChirho,
+        scheme_chirho: &SchemeChirho,
+        extra_local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+    ) -> CoreBindingChirho {
         // Create dictionary binders and build the class→dict_id mapping.
         // For ground predicates (concrete types like Int, Char, Bool) with
         // known instance dictionaries, resolve directly instead of
@@ -3906,6 +3961,17 @@ impl DictPassCtxChirho {
             &scheme_chirho.ty_chirho,
             &mut local_type_keys_chirho,
         );
+        for (id_chirho, type_key_chirho) in extra_local_type_keys_chirho {
+            let should_insert_chirho =
+                local_type_keys_chirho
+                    .get(id_chirho)
+                    .is_none_or(|existing_chirho| {
+                        Self::concrete_local_type_key_chirho(existing_chirho.clone()).is_none()
+                    });
+            if should_insert_chirho {
+                local_type_keys_chirho.insert(*id_chirho, type_key_chirho.clone());
+            }
+        }
 
         let mut local_instance_dicts_chirho: HashMap<(String, String), CoreIdChirho> =
             HashMap::new();
@@ -4254,13 +4320,19 @@ impl DictPassCtxChirho {
 
         // Transform each binding
         let mut bindings_chirho = Vec::new();
+        let module_call_arg_type_keys_chirho =
+            self.collect_module_call_arg_type_keys_chirho(module_chirho);
 
         for binding_chirho in &module_chirho.bindings_chirho {
             let name_chirho = &binding_chirho.binder_chirho.name_chirho;
 
             // Look up the type scheme for this binding
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(name_chirho) {
-                let transformed_chirho = self.add_dict_params_chirho(binding_chirho, scheme_chirho);
+                let transformed_chirho = self.add_dict_params_with_local_type_keys_chirho(
+                    binding_chirho,
+                    scheme_chirho,
+                    &module_call_arg_type_keys_chirho,
+                );
                 bindings_chirho.push(transformed_chirho);
             } else {
                 // Binding not in type env (e.g. $prim_ instance method
