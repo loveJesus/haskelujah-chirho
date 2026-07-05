@@ -11091,15 +11091,6 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    let mk_st_ty_chirho = |state_token_ty_chirho: TyChirho, inner_ty_chirho: TyChirho| {
-        TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ST".to_string())),
-                Box::new(state_token_ty_chirho),
-            )),
-            Box::new(inner_ty_chirho),
-        )
-    };
     let mk_state_t_ty_chirho =
         |state_ty_chirho: TyChirho, monad_ty_chirho: TyChirho, inner_ty_chirho: TyChirho| {
             TyChirho::AppChirho(
@@ -11146,95 +11137,79 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     };
 
     // ── Control.Monad.ST operations ──
-    // newSTRef :: a -> ST s (STRef s a)  (simplified: STRef s a ≈ Int at runtime)
+    // The current Core shims model ST as identity and STRef as an integer
+    // handle, so these schemes intentionally mirror those first-order bodies.
+    // newSTRef :: a -> Int
     {
-        let s_chirho = TyChirho::VarChirho(TyVarChirho(3279));
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3280));
         env_chirho.bind_chirho(
             "newSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3279), TyVarChirho(3280)],
+                vars_chirho: vec![TyVarChirho(3280)],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(
-                    a_chirho,
-                    mk_st_ty_chirho(s_chirho, TyChirho::int_chirho()),
-                ),
+                ty_chirho: TyChirho::fun_chirho(a_chirho, TyChirho::int_chirho()),
             },
         );
     }
 
-    // readSTRef :: STRef s a -> ST s a  (simplified: STRef s a ≈ Int)
+    // readSTRef :: Int -> a
     {
-        let s_chirho = TyChirho::VarChirho(TyVarChirho(3285));
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3281));
         env_chirho.bind_chirho(
             "readSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3285), TyVarChirho(3281)],
+                vars_chirho: vec![TyVarChirho(3281)],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::int_chirho(),
-                    mk_st_ty_chirho(s_chirho, a_chirho),
-                ),
+                ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), a_chirho),
             },
         );
     }
 
-    // writeSTRef :: STRef s a -> a -> ST s ()  (simplified)
+    // writeSTRef :: Int -> a -> ()
     {
-        let s_chirho = TyChirho::VarChirho(TyVarChirho(3286));
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3282));
         env_chirho.bind_chirho(
             "writeSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3286), TyVarChirho(3282)],
+                vars_chirho: vec![TyVarChirho(3282)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![TyChirho::int_chirho(), a_chirho],
-                    mk_st_ty_chirho(s_chirho, TyChirho::unit_chirho()),
+                    TyChirho::unit_chirho(),
                 ),
             },
         );
     }
 
-    // modifySTRef :: STRef s a -> (a -> a) -> ST s ()  (simplified: STRef s a ≈ Int)
+    // modifySTRef :: Int -> (a -> a) -> ()
     {
-        let s_chirho = TyChirho::VarChirho(TyVarChirho(3287));
         let a_chirho = TyChirho::VarChirho(TyVarChirho(3284));
         env_chirho.bind_chirho(
             "modifySTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3287), TyVarChirho(3284)],
+                vars_chirho: vec![TyVarChirho(3284)],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         TyChirho::int_chirho(),
                         TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
                     ],
-                    mk_st_ty_chirho(s_chirho, TyChirho::unit_chirho()),
+                    TyChirho::unit_chirho(),
                 ),
             },
         );
     }
 
-    // runST :: forall a. (forall s. ST s a) -> a
+    // runST :: a -> a
     {
-        let s_var_chirho = TyVarChirho(3288);
         let a_var_chirho = TyVarChirho(3283);
-        let s_chirho = TyChirho::VarChirho(s_var_chirho);
         let a_chirho = TyChirho::VarChirho(a_var_chirho);
         env_chirho.bind_chirho(
             "runST".to_string(),
             SchemeChirho {
                 vars_chirho: vec![a_var_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::ForallChirho {
-                        vars_chirho: vec![s_var_chirho],
-                        body_chirho: Box::new(mk_st_ty_chirho(s_chirho, a_chirho.clone())),
-                    },
-                    a_chirho,
-                ),
+                ty_chirho: TyChirho::fun_chirho(a_chirho.clone(), a_chirho),
             },
         );
     }
@@ -18590,129 +18565,73 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // Data.STRef functions with proper STRef shapes
-    // newSTRef :: forall s a. a -> ST s (STRef s a)
+    // Data.STRef functions use the same simplified runtime shapes as the
+    // generated Prelude shims above: ST is identity, STRef is an Int handle.
+    // newSTRef :: forall a. a -> Int
     {
-        let s_chirho = TyVarChirho(7416);
         let a_chirho = TyVarChirho(7417);
-        let stref_sa_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("STRef".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(a_chirho)),
-        );
-        let st_sa_stref_sa_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ST".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(stref_sa_chirho),
-        );
         env_chirho.bind_chirho(
             "newSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![s_chirho, a_chirho],
+                vars_chirho: vec![a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(a_chirho),
-                    st_sa_stref_sa_chirho,
+                    TyChirho::int_chirho(),
                 ),
             },
         );
     }
 
-    // readSTRef :: forall s a. STRef s a -> ST s a
+    // readSTRef :: forall a. Int -> a
     {
-        let s_chirho = TyVarChirho(7418);
         let a_chirho = TyVarChirho(7419);
-        let stref_sa_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("STRef".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(a_chirho)),
-        );
-        let st_sa_a_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ST".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(a_chirho)),
-        );
         env_chirho.bind_chirho(
             "readSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![s_chirho, a_chirho],
+                vars_chirho: vec![a_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_chirho(stref_sa_chirho, st_sa_a_chirho),
-            },
-        );
-    }
-
-    // writeSTRef :: forall s a. STRef s a -> a -> ST s ()
-    {
-        let s_chirho = TyVarChirho(7420);
-        let a_chirho = TyVarChirho(7421);
-        let stref_sa_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("STRef".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(a_chirho)),
-        );
-        let st_sa_unit_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ST".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(TyChirho::unit_chirho()),
-        );
-        env_chirho.bind_chirho(
-            "writeSTRef".to_string(),
-            SchemeChirho {
-                vars_chirho: vec![s_chirho, a_chirho],
-                preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_n_chirho(
-                    vec![stref_sa_chirho, TyChirho::VarChirho(a_chirho)],
-                    st_sa_unit_chirho,
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::int_chirho(),
+                    TyChirho::VarChirho(a_chirho),
                 ),
             },
         );
     }
 
-    // modifySTRef :: forall s a. STRef s a -> (a -> a) -> ST s ()
+    // writeSTRef :: forall a. Int -> a -> ()
     {
-        let s_chirho = TyVarChirho(7422);
+        let a_chirho = TyVarChirho(7421);
+        env_chirho.bind_chirho(
+            "writeSTRef".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![TyChirho::int_chirho(), TyChirho::VarChirho(a_chirho)],
+                    TyChirho::unit_chirho(),
+                ),
+            },
+        );
+    }
+
+    // modifySTRef :: forall a. Int -> (a -> a) -> ()
+    {
         let a_chirho = TyVarChirho(7423);
-        let stref_sa_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("STRef".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(TyChirho::VarChirho(a_chirho)),
-        );
-        let st_sa_unit_chirho = TyChirho::AppChirho(
-            Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ST".to_string())),
-                Box::new(TyChirho::VarChirho(s_chirho)),
-            )),
-            Box::new(TyChirho::unit_chirho()),
-        );
         env_chirho.bind_chirho(
             "modifySTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![s_chirho, a_chirho],
+                vars_chirho: vec![a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
-                        stref_sa_chirho,
+                        TyChirho::int_chirho(),
                         TyChirho::fun_chirho(
                             TyChirho::VarChirho(a_chirho),
                             TyChirho::VarChirho(a_chirho),
                         ),
                     ],
-                    st_sa_unit_chirho,
+                    TyChirho::unit_chirho(),
                 ),
             },
         );
