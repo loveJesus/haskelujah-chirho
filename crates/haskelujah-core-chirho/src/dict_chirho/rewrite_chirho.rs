@@ -1017,6 +1017,42 @@ impl DictPassCtxChirho {
                             };
                         }
                     }
+                    if self
+                        .class_param_count_chirho
+                        .get(&class_name_chirho)
+                        .copied()
+                        .unwrap_or(1)
+                        > 1
+                    {
+                        let prefix_chirho = format!("{type_key_chirho}_");
+                        let mut dict_ids_chirho = Vec::new();
+                        for ((dict_class_chirho, dict_key_chirho), dict_id_chirho) in
+                            local_instance_dicts_chirho
+                        {
+                            if dict_class_chirho == &class_name_chirho
+                                && dict_key_chirho.starts_with(&prefix_chirho)
+                                && !dict_ids_chirho.contains(dict_id_chirho)
+                            {
+                                dict_ids_chirho.push(*dict_id_chirho);
+                            }
+                        }
+                        for ((dict_class_chirho, dict_key_chirho), dict_id_chirho) in
+                            &self.instance_dicts_chirho
+                        {
+                            if dict_class_chirho == &class_name_chirho
+                                && dict_key_chirho.starts_with(&prefix_chirho)
+                                && !dict_ids_chirho.contains(dict_id_chirho)
+                            {
+                                dict_ids_chirho.push(*dict_id_chirho);
+                            }
+                        }
+                        if let [dict_id_chirho] = dict_ids_chirho.as_slice() {
+                            return CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
+                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                            };
+                        }
+                    }
                 }
 
                 // Fall back only to dictionaries backed by real local evidence.
