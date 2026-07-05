@@ -1036,6 +1036,9 @@ impl DictPassCtxChirho {
 
         // Check if the innermost function is a class method Var
         if let CoreExprChirho::VarChirho(id_chirho) = current_chirho {
+            if self.dict_param_bindings_chirho.contains_key(id_chirho) {
+                return None;
+            }
             if let Some(name_chirho) = self.names_chirho.get(id_chirho) {
                 if self
                     .class_method_selector_for_name_chirho(name_chirho)
