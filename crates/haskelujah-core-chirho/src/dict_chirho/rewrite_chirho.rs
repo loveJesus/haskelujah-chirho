@@ -573,6 +573,81 @@ impl DictPassCtxChirho {
         })
     }
 
+    fn strict_numeric_default_arg_indices_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+    ) -> Option<&'static [usize]> {
+        let head_name_chirho = self.short_name_for_id_chirho(head_id_chirho)?;
+        match head_name_chirho {
+            "newIORef" | "newTVar" | "newTVarIO" => Some(&[0]),
+            "writeIORef" | "writeTVar" => Some(&[1]),
+            "mapSingleton" => Some(&[0, 1]),
+            "mapInsert" => Some(&[0, 1]),
+            "mapInsertWith" => Some(&[1, 2]),
+            "mapLookup" | "mapDelete" | "mapMember" | "mapNotMember" => Some(&[0]),
+            "mapFindWithDefault" => Some(&[0, 1]),
+            "mapAdjust" => Some(&[1]),
+            _ => None,
+        }
+    }
+
+    fn try_rewrite_strict_numeric_args_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        args_chirho: &[&CoreExprChirho],
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let strict_arg_indices_chirho =
+            self.strict_numeric_default_arg_indices_chirho(head_id_chirho)?;
+        let mut defaulted_any_arg_chirho = false;
+        let mut rewritten_args_chirho = Vec::with_capacity(args_chirho.len());
+
+        for (idx_chirho, arg_chirho) in args_chirho.iter().enumerate() {
+            if strict_arg_indices_chirho.contains(&idx_chirho)
+                && self.print_arg_needs_int_default_chirho(arg_chirho)
+            {
+                defaulted_any_arg_chirho = true;
+                rewritten_args_chirho.push(self.rewrite_expr_with_int_numeric_default_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            } else {
+                rewritten_args_chirho.push(self.rewrite_method_refs_with_locals_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            }
+        }
+
+        if !defaulted_any_arg_chirho {
+            return None;
+        }
+
+        let rewritten_head_chirho = self.rewrite_method_refs_with_locals_chirho(
+            &CoreExprChirho::VarChirho(head_id_chirho),
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+        );
+        Some(rewritten_args_chirho.into_iter().fold(
+            rewritten_head_chirho,
+            |fun_acc_chirho, arg_chirho| CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(fun_acc_chirho),
+                arg_chirho: Box::new(arg_chirho),
+            },
+        ))
+    }
+
     fn is_constructor_headed_app_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
         let mut cur_chirho = expr_chirho;
         while let CoreExprChirho::AppChirho { fun_chirho, .. } = cur_chirho {
@@ -2849,6 +2924,16 @@ impl DictPassCtxChirho {
                         )
                         .or_else(|| {
                             self.try_rewrite_modify_ioref_numeric_default_chirho(
+                                head_id_chirho,
+                                &args_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            )
+                        })
+                        .or_else(|| {
+                            self.try_rewrite_strict_numeric_args_chirho(
                                 head_id_chirho,
                                 &args_chirho,
                                 dict_vars_chirho,
