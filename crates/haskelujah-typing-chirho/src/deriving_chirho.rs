@@ -598,7 +598,7 @@ fn derive_via_chirho(
     module_chirho: &ModuleChirho,
     type_name_chirho: &NameChirho,
     class_name_chirho: &NameChirho,
-    _via_type_chirho: &TypeChirho,
+    via_type_chirho: &TypeChirho,
 ) -> DeclChirho {
     // Find the constructor name for this newtype/data type
     let con_name_str_chirho = find_first_con_name_chirho(module_chirho, type_name_chirho)
@@ -609,7 +609,7 @@ fn derive_via_chirho(
     // Generate methods based on the class
     let methods_chirho = match class_text_chirho {
         "Show" => derive_via_show_methods_chirho(&con_name_str_chirho),
-        "Eq" => derive_via_eq_methods_chirho(&con_name_str_chirho),
+        "Eq" => derive_via_eq_methods_chirho(&con_name_str_chirho, via_type_chirho),
         "Ord" => derive_via_ord_methods_chirho(&con_name_str_chirho),
         "Num" => derive_via_num_methods_chirho(&con_name_str_chirho),
         _ => vec![], // Fallback: empty methods (default implementations)
@@ -677,16 +677,19 @@ fn derive_via_show_methods_chirho(con_name_str_chirho: &str) -> Vec<LocalBindChi
 }
 
 /// DerivingVia Eq: `(==) (Con x) (Con y) = (==) x y`
-fn derive_via_eq_methods_chirho(con_name_str_chirho: &str) -> Vec<LocalBindChirho> {
+fn derive_via_eq_methods_chirho(
+    con_name_str_chirho: &str,
+    via_type_chirho: &TypeChirho,
+) -> Vec<LocalBindChirho> {
     let match_chirho = MatchArmChirho {
         pats_chirho: vec![
             con_pat_chirho(con_name_str_chirho, &["x1".to_string()]),
             con_pat_chirho(con_name_str_chirho, &["y1".to_string()]),
         ],
-        rhs_chirho: RhsChirho::UnguardedChirho(infix_chirho(
+        rhs_chirho: RhsChirho::UnguardedChirho(eq_expr_for_type_chirho(
             var_expr_chirho("x1"),
-            "==",
             var_expr_chirho("y1"),
+            via_type_chirho,
         )),
         where_binds_chirho: vec![],
         span_chirho: gen_span_chirho(),
@@ -836,6 +839,33 @@ fn infix_chirho(left_chirho: ExprChirho, op_chirho: &str, right_chirho: ExprChir
     }
 }
 
+fn eq_primop_for_type_chirho(ty_chirho: &TypeChirho) -> Option<&'static str> {
+    match ty_chirho {
+        TypeChirho::ConChirho(name_chirho) => match name_chirho.text_chirho() {
+            "Int" | "Integer" => Some("==#"),
+            "Double" | "Float" => Some("eqFloat#"),
+            "String" => Some("eqStr#"),
+            _ => None,
+        },
+        TypeChirho::ListChirho { element_chirho, .. } => match element_chirho.as_ref() {
+            TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Char" => {
+                Some("eqStr#")
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn eq_expr_for_type_chirho(
+    left_chirho: ExprChirho,
+    right_chirho: ExprChirho,
+    ty_chirho: &TypeChirho,
+) -> ExprChirho {
+    let op_chirho = eq_primop_for_type_chirho(ty_chirho).unwrap_or("==");
+    infix_chirho(left_chirho, op_chirho, right_chirho)
+}
+
 /// Get the constructor name from a ConDeclChirho.
 fn con_name_chirho(con_chirho: &ConDeclChirho) -> &str {
     match con_chirho {
@@ -950,7 +980,8 @@ fn derive_eq_chirho(
 
     for con_chirho in constructors_chirho {
         let name_chirho = con_name_chirho(con_chirho);
-        let field_count_chirho = con_field_count_chirho(con_chirho);
+        let field_types_chirho = con_field_types_chirho(con_chirho);
+        let field_count_chirho = field_types_chirho.len();
         let a_vars_chirho = field_vars_chirho("a", field_count_chirho);
         let b_vars_chirho = field_vars_chirho("b", field_count_chirho);
 
@@ -962,11 +993,15 @@ fn derive_eq_chirho(
             con_expr_chirho("True")
         } else {
             let mut eq_exprs_chirho: Vec<ExprChirho> = Vec::new();
-            for (a_chirho, b_chirho) in a_vars_chirho.iter().zip(b_vars_chirho.iter()) {
-                eq_exprs_chirho.push(infix_chirho(
+            for ((a_chirho, b_chirho), field_ty_chirho) in a_vars_chirho
+                .iter()
+                .zip(b_vars_chirho.iter())
+                .zip(field_types_chirho.iter())
+            {
+                eq_exprs_chirho.push(eq_expr_for_type_chirho(
                     var_expr_chirho(a_chirho),
-                    "==",
                     var_expr_chirho(b_chirho),
+                    field_ty_chirho,
                 ));
             }
             // Chain with &&

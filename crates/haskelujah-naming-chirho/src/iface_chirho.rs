@@ -1024,6 +1024,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "ceiling",
             "round",
             "truncate",
+            // Internal primops used by generated deriving methods.
+            "==#",
+            "eqFloat#",
+            "eqStr#",
             // Boolean
             "not",
             "otherwise",

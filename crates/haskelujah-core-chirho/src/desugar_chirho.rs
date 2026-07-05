@@ -5459,6 +5459,9 @@ fn builtin_primop_name_chirho(op_chirho: &str) -> Option<&'static str> {
     match op_chirho {
         // +, -, * are handled by the Num class dict transform
         // / is handled by the Fractional class dict transform
+        "==#" => Some("==#"),
+        "eqFloat#" => Some("eqFloat#"),
+        "eqStr#" => Some("eqStr#"),
         "div" => Some("div#"),
         "mod" => Some("mod#"),
         "<" => Some("<#"),
