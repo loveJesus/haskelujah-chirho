@@ -354,6 +354,7 @@ impl DictPassCtxChirho {
             return false;
         }
         self.expr_contains_numeric_default_marker_chirho(expr_chirho)
+            || self.is_defaultable_numeric_dict_param_expr_chirho(expr_chirho)
     }
 
     fn is_numeric_dict_param_expr_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
@@ -366,6 +367,20 @@ impl DictPassCtxChirho {
             matches!(
                 class_name_chirho.as_str(),
                 "Num" | "Integral" | "Real" | "Eq" | "Ord" | "Show"
+            )
+        })
+    }
+
+    fn is_defaultable_numeric_dict_param_expr_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
+        let Some((_fn_id_chirho, classes_chirho, _args_chirho)) =
+            self.collect_dict_param_app_chirho(expr_chirho)
+        else {
+            return false;
+        };
+        classes_chirho.iter().any(|class_name_chirho| {
+            matches!(
+                class_name_chirho.as_str(),
+                "Num" | "Integral" | "Real" | "Fractional" | "Floating" | "RealFrac" | "RealFloat"
             )
         })
     }
@@ -483,6 +498,33 @@ impl DictPassCtxChirho {
                 local_type_keys_chirho,
                 local_instance_dicts_chirho,
             )),
+        })
+    }
+
+    fn try_rewrite_prim_show_int_arg_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        args_chirho: &[&CoreExprChirho],
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let head_name_chirho = self.names_chirho.get(&head_id_chirho)?;
+        if head_name_chirho != "$prim_Show_show_Int" || args_chirho.len() != 1 {
+            return None;
+        }
+        let rewritten_arg_chirho = self.rewrite_expr_with_type_key_chirho(
+            args_chirho[0],
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+            "Int",
+        )?;
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(head_id_chirho)),
+            arg_chirho: Box::new(rewritten_arg_chirho),
         })
     }
 
@@ -1179,6 +1221,336 @@ impl DictPassCtxChirho {
         Some(result_chirho)
     }
 
+    // See spec-chirho/workflows-chirho/stg-forcing-core-chirho.md: prove nested
+    // PAP-looking residues are missing evidence before changing runtime forcing.
+    fn rewrite_expr_with_type_key_chirho(
+        &self,
+        expr_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+        type_key_chirho: &str,
+    ) -> Option<CoreExprChirho> {
+        if let Some(rewritten_chirho) = self
+            .try_rewrite_typed_dict_param_arg_chirho(
+                expr_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+                type_key_chirho,
+            )
+            .or_else(|| {
+                self.try_rewrite_typed_method_arg_chirho(
+                    expr_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                )
+            })
+        {
+            return Some(rewritten_chirho);
+        }
+
+        match expr_chirho {
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } => {
+                let rewritten_fun_chirho = self.rewrite_expr_with_type_key_chirho(
+                    fun_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                );
+                let rewritten_arg_chirho = self.rewrite_expr_with_type_key_chirho(
+                    arg_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                );
+                if rewritten_fun_chirho.is_none() && rewritten_arg_chirho.is_none() {
+                    return None;
+                }
+                Some(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(rewritten_fun_chirho.unwrap_or_else(|| {
+                        self.rewrite_method_refs_with_locals_chirho(
+                            fun_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                        )
+                    })),
+                    arg_chirho: Box::new(rewritten_arg_chirho.unwrap_or_else(|| {
+                        self.rewrite_method_refs_with_locals_chirho(
+                            arg_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                        )
+                    })),
+                })
+            }
+            CoreExprChirho::TyAppChirho {
+                expr_chirho: inner_chirho,
+                ty_chirho,
+            } => self
+                .rewrite_expr_with_type_key_chirho(
+                    inner_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                )
+                .map(|rewritten_inner_chirho| CoreExprChirho::TyAppChirho {
+                    expr_chirho: Box::new(rewritten_inner_chirho),
+                    ty_chirho: ty_chirho.clone(),
+                }),
+            CoreExprChirho::LamChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                let lambda_type_keys_chirho = Self::extend_first_lambda_type_key_chirho(
+                    expr_chirho,
+                    type_key_chirho,
+                    local_type_keys_chirho,
+                );
+                self.rewrite_expr_with_type_key_chirho(
+                    body_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    &lambda_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                )
+                .map(|rewritten_body_chirho| CoreExprChirho::LamChirho {
+                    binder_chirho: binder_chirho.clone(),
+                    body_chirho: Box::new(rewritten_body_chirho),
+                })
+            }
+            CoreExprChirho::TyLamChirho {
+                ty_var_chirho,
+                body_chirho,
+            } => self
+                .rewrite_expr_with_type_key_chirho(
+                    body_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                )
+                .map(|rewritten_body_chirho| CoreExprChirho::TyLamChirho {
+                    ty_var_chirho: ty_var_chirho.clone(),
+                    body_chirho: Box::new(rewritten_body_chirho),
+                }),
+            CoreExprChirho::LetChirho {
+                rec_chirho,
+                binds_chirho,
+                body_chirho,
+            } => {
+                let mut changed_chirho = false;
+                let rewritten_binds_chirho = binds_chirho
+                    .iter()
+                    .map(|(binder_chirho, rhs_chirho)| {
+                        let rewritten_rhs_chirho = self.rewrite_expr_with_type_key_chirho(
+                            rhs_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                            type_key_chirho,
+                        );
+                        if rewritten_rhs_chirho.is_some() {
+                            changed_chirho = true;
+                        }
+                        (
+                            binder_chirho.clone(),
+                            rewritten_rhs_chirho.unwrap_or_else(|| {
+                                self.rewrite_method_refs_with_locals_chirho(
+                                    rhs_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                )
+                            }),
+                        )
+                    })
+                    .collect();
+                let rewritten_body_chirho = self.rewrite_expr_with_type_key_chirho(
+                    body_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                );
+                if rewritten_body_chirho.is_some() {
+                    changed_chirho = true;
+                }
+                if !changed_chirho {
+                    return None;
+                }
+                Some(CoreExprChirho::LetChirho {
+                    rec_chirho: *rec_chirho,
+                    binds_chirho: rewritten_binds_chirho,
+                    body_chirho: Box::new(rewritten_body_chirho.unwrap_or_else(|| {
+                        self.rewrite_method_refs_with_locals_chirho(
+                            body_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                        )
+                    })),
+                })
+            }
+            CoreExprChirho::CaseChirho {
+                scrutinee_chirho,
+                bind_chirho,
+                result_ty_chirho,
+                alts_chirho,
+            } => {
+                let rewritten_scrutinee_chirho = self.rewrite_expr_with_type_key_chirho(
+                    scrutinee_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                    type_key_chirho,
+                );
+                let mut changed_chirho = rewritten_scrutinee_chirho.is_some();
+                let rewritten_alts_chirho = alts_chirho
+                    .iter()
+                    .map(|alt_chirho| {
+                        let rewritten_rhs_chirho = self.rewrite_expr_with_type_key_chirho(
+                            &alt_chirho.rhs_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                            type_key_chirho,
+                        );
+                        if rewritten_rhs_chirho.is_some() {
+                            changed_chirho = true;
+                        }
+                        CoreAltChirho {
+                            con_chirho: alt_chirho.con_chirho.clone(),
+                            binders_chirho: alt_chirho.binders_chirho.clone(),
+                            rhs_chirho: rewritten_rhs_chirho.unwrap_or_else(|| {
+                                self.rewrite_method_refs_with_locals_chirho(
+                                    &alt_chirho.rhs_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                )
+                            }),
+                        }
+                    })
+                    .collect();
+                if !changed_chirho {
+                    return None;
+                }
+                Some(CoreExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(rewritten_scrutinee_chirho.unwrap_or_else(|| {
+                        self.rewrite_method_refs_with_locals_chirho(
+                            scrutinee_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                        )
+                    })),
+                    bind_chirho: bind_chirho.clone(),
+                    result_ty_chirho: result_ty_chirho.clone(),
+                    alts_chirho: rewritten_alts_chirho,
+                })
+            }
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho,
+            } => {
+                let mut changed_chirho = false;
+                let rewritten_args_chirho = args_chirho
+                    .iter()
+                    .map(|arg_chirho| {
+                        let rewritten_arg_chirho = self.rewrite_expr_with_type_key_chirho(
+                            arg_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                            type_key_chirho,
+                        );
+                        if rewritten_arg_chirho.is_some() {
+                            changed_chirho = true;
+                        }
+                        rewritten_arg_chirho.unwrap_or_else(|| {
+                            self.rewrite_method_refs_with_locals_chirho(
+                                arg_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            )
+                        })
+                    })
+                    .collect();
+                changed_chirho.then(|| CoreExprChirho::PrimOpChirho {
+                    name_chirho: name_chirho.clone(),
+                    args_chirho: rewritten_args_chirho,
+                })
+            }
+            CoreExprChirho::ConAppChirho {
+                con_name_chirho,
+                args_chirho,
+            } => {
+                let mut changed_chirho = false;
+                let rewritten_args_chirho = args_chirho
+                    .iter()
+                    .map(|arg_chirho| {
+                        let rewritten_arg_chirho = self.rewrite_expr_with_type_key_chirho(
+                            arg_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                            type_key_chirho,
+                        );
+                        if rewritten_arg_chirho.is_some() {
+                            changed_chirho = true;
+                        }
+                        rewritten_arg_chirho.unwrap_or_else(|| {
+                            self.rewrite_method_refs_with_locals_chirho(
+                                arg_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            )
+                        })
+                    })
+                    .collect();
+                changed_chirho.then(|| CoreExprChirho::ConAppChirho {
+                    con_name_chirho: con_name_chirho.clone(),
+                    args_chirho: rewritten_args_chirho,
+                })
+            }
+            CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => None,
+        }
+    }
+
     fn try_rewrite_typed_higher_order_args_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -1201,10 +1573,35 @@ impl DictPassCtxChirho {
             return None;
         }
         args_chirho.reverse();
+        let CoreExprChirho::VarChirho(head_id_chirho) = head_chirho else {
+            return None;
+        };
+        let head_name_chirho = self.names_chirho.get(head_id_chirho);
+        if head_name_chirho.is_some_and(|name_chirho| {
+            name_chirho.starts_with("$prim_") || name_chirho.starts_with("$sel_")
+        }) || head_name_chirho
+            .and_then(|name_chirho| self.class_method_selector_for_name_chirho(name_chirho))
+            .is_some()
+            || self.dict_param_bindings_chirho.contains_key(head_id_chirho)
+        {
+            return None;
+        }
 
-        let type_key_chirho = args_chirho.iter().rev().find_map(|arg_chirho| {
-            self.infer_strict_dispatch_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
-        })?;
+        let type_key_chirho = args_chirho
+            .iter()
+            .rev()
+            .find_map(|arg_chirho| {
+                self.infer_strict_dispatch_key_for_rewrite_chirho(
+                    arg_chirho,
+                    local_type_keys_chirho,
+                )
+            })
+            .or_else(|| {
+                args_chirho
+                    .iter()
+                    .any(|arg_chirho| self.expr_contains_numeric_default_marker_chirho(arg_chirho))
+                    .then(|| "Int".to_string())
+            })?;
         let payload_type_key_chirho =
             Self::payload_type_key_from_value_key_chirho(&type_key_chirho);
 
@@ -1214,7 +1611,7 @@ impl DictPassCtxChirho {
             let rewritten_typed_arg_chirho = payload_type_key_chirho
                 .as_deref()
                 .and_then(|payload_key_chirho| {
-                    self.try_rewrite_typed_dict_param_arg_chirho(
+                    self.rewrite_expr_with_type_key_chirho(
                         arg_chirho,
                         dict_vars_chirho,
                         evidence_classes_chirho,
@@ -1222,18 +1619,9 @@ impl DictPassCtxChirho {
                         local_instance_dicts_chirho,
                         payload_key_chirho,
                     )
-                    .or_else(|| {
-                        self.try_rewrite_typed_method_arg_chirho(
-                            arg_chirho,
-                            dict_vars_chirho,
-                            evidence_classes_chirho,
-                            local_instance_dicts_chirho,
-                            payload_key_chirho,
-                        )
-                    })
                 })
                 .or_else(|| {
-                    self.try_rewrite_typed_dict_param_arg_chirho(
+                    self.rewrite_expr_with_type_key_chirho(
                         arg_chirho,
                         dict_vars_chirho,
                         evidence_classes_chirho,
@@ -1241,15 +1629,6 @@ impl DictPassCtxChirho {
                         local_instance_dicts_chirho,
                         &type_key_chirho,
                     )
-                    .or_else(|| {
-                        self.try_rewrite_typed_method_arg_chirho(
-                            arg_chirho,
-                            dict_vars_chirho,
-                            evidence_classes_chirho,
-                            local_instance_dicts_chirho,
-                            &type_key_chirho,
-                        )
-                    })
                 });
             if let Some(rewritten_chirho) = rewritten_typed_arg_chirho {
                 changed_chirho = true;
@@ -2466,6 +2845,16 @@ impl DictPassCtxChirho {
                                 local_instance_dicts_chirho,
                             )
                         })
+                        .or_else(|| {
+                            self.try_rewrite_prim_show_int_arg_chirho(
+                                head_id_chirho,
+                                &args_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            )
+                        })
                     {
                         return rewritten_chirho;
                     }
@@ -3113,21 +3502,40 @@ impl DictPassCtxChirho {
             CoreExprChirho::PrimOpChirho {
                 name_chirho,
                 args_chirho,
-            } => CoreExprChirho::PrimOpChirho {
-                name_chirho: name_chirho.clone(),
-                args_chirho: args_chirho
-                    .iter()
-                    .map(|a_chirho| {
-                        self.rewrite_method_refs_with_locals_chirho(
-                            a_chirho,
-                            dict_vars_chirho,
-                            evidence_classes_chirho,
-                            local_type_keys_chirho,
-                            local_instance_dicts_chirho,
-                        )
-                    })
-                    .collect(),
-            },
+            } => {
+                let show_type_key_chirho = match name_chirho.as_str() {
+                    "showInt#" => Some("Int"),
+                    _ => None,
+                };
+                CoreExprChirho::PrimOpChirho {
+                    name_chirho: name_chirho.clone(),
+                    args_chirho: args_chirho
+                        .iter()
+                        .map(|a_chirho| {
+                            show_type_key_chirho
+                                .and_then(|type_key_chirho| {
+                                    self.rewrite_expr_with_type_key_chirho(
+                                        a_chirho,
+                                        dict_vars_chirho,
+                                        evidence_classes_chirho,
+                                        local_type_keys_chirho,
+                                        local_instance_dicts_chirho,
+                                        type_key_chirho,
+                                    )
+                                })
+                                .unwrap_or_else(|| {
+                                    self.rewrite_method_refs_with_locals_chirho(
+                                        a_chirho,
+                                        dict_vars_chirho,
+                                        evidence_classes_chirho,
+                                        local_type_keys_chirho,
+                                        local_instance_dicts_chirho,
+                                    )
+                                })
+                        })
+                        .collect(),
+                }
+            }
             CoreExprChirho::ConAppChirho {
                 con_name_chirho,
                 args_chirho,
