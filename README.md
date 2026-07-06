@@ -43,17 +43,17 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 
 | Metric | Value |
 |---|---|
-| GHC Compat | **833/938 (88.8%)** typecheck/should_compile |
-| Curated Tests | **537/537 (100%)** compile-and-run correctness tests |
-| Total Tests | Cached/live pass and failure counts from `spec-chirho/stats-chirho.sh`; do not claim zero failures without a fresh failure count |
-| Hackage Packages | **140 verified** (strict 50s timeout) including **parsec** (25 modules) + **mtl** (24 modules) + **QuickCheck** (18 modules) + **binary** + **cereal** + **hashable** + **multiset** + **lens-family-core** |
+| Driver test suite | **1734 / 1735 (0 failures)** integration + eval-correctness tests (`cargo test -p haskelujah-driver-chirho --lib`, verified 2026-07) |
+| GHC `should_compile` | **833/938 (88.8%)** at the last full sweep; many GHC regression tests since fixed (T11348, T12045a, T12734a, T14934, T15807a, T22560) — a fresh full count is pending |
+| Real Hackage packages | Compile end-to-end: **constraints-0.14.4, transformers-0.6.3.0, mtl-2.3.2, deepseq-1.5.2.0** (verified 2026-07), plus a broader corpus (parsec, mtl, QuickCheck, binary, cereal, hashable, lens-family-core) tracked in `spec-chirho/` |
+| Total tests | Run `bash spec-chirho/stats-chirho.sh` for the single source of truth (~2,400 cached workspace pass count); do not claim zero failures without a fresh count |
 | Workspace | 25 crates (compiler + MCP + LSP + GUI + editor + runtime) |
-| Codebase | ~176,000 lines of Rust |
-| Module interfaces | 380+ synthetic Haskell modules |
+| Codebase | ~224,000 lines of Rust |
+| Module interfaces | 499 synthetic Haskell modules |
 | Rust edition | 2024 (rustc 1.93.0+) |
 | License | MIT OR Apache-2.0 |
 
-> Run `bash spec-chirho/stats-chirho.sh` for cached stats, or `bash spec-chirho/stats-chirho.sh --run-tests` to refresh pass/fail/ignored counts from `cargo test --workspace --quiet`.
+> Run `bash spec-chirho/stats-chirho.sh` for cached stats, or `bash spec-chirho/stats-chirho.sh --run-tests` to refresh pass/fail/ignored counts from `cargo test --workspace --quiet`. Published GHC-compatibility numbers come from timed, generated artifacts — not from ad-hoc claims.
 
 ## Features
 
@@ -78,7 +78,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 - Incremental compilation with fingerprinting and artifact caching
 - SCC-based binding group analysis for correct polymorphic generalization
 - 40+ GHC extensions: LambdaCase, RecordWildCards, ViewPatterns, PatternSynonyms, DerivingVia, DerivingStrategies, TupleSections, MagicHash, TypedHoles, PartialTypeSignatures, GHC2021/GHC2024, and more
-- 110+ synthetic module interfaces for common Haskell libraries
+- 499 synthetic module interfaces for common Haskell libraries
 
 **Optimization passes:**
 - Inlining (INLINE/NOINLINE/INLINABLE pragmas)
@@ -261,9 +261,9 @@ haskelujah clean .          # Remove build artifacts
 | REPL | GHCi | `haskelujah repl` |
 | Lazy evaluation | Full | **Lazy** (Cranelift + LLVM + STG) — infinite lists work! |
 | Garbage collection | Generational GC | **Mark-sweep GC active** (Rust RTS staticlib) |
-| Type classes | Full dictionary passing | Type checking OK, runtime partial |
+| Type classes | Full dictionary passing | Type checking + **evidence-threaded runtime dispatch** — class methods (`==`, `+`, `compare`, `<>`, `show`, …) resolve in local / recursive / do-let / lambda contexts; driver eval suite green |
 | GADTs | Full | 91.5% type checking, compilation for simple cases |
-| Template Haskell | Full | Partial (makeLenses works) |
+| Template Haskell | Full | Partial (`makeLenses` + `mkName` splices work) |
 | FFI | Full C interop | Basic libc (puts, printf, malloc) |
 
 ### Working Program Examples
@@ -292,7 +292,7 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 ## Project Structure
 
-- `crates/` -- all 21 workspace crates
+- `crates/` -- all 25 workspace crates
 - `spec-chirho/` -- specifications, progress database, phase archive
 - `AGENTS.md` -- authoritative project spec, naming convention, and priorities
 
@@ -307,15 +307,15 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 - **Lazy evaluation**: Both Cranelift and LLVM backends have lazy constructor fields — infinite lists like `take 5 (repeat 42)` work! STG interpreter has full laziness.
 - **Garbage collection**: Mark-sweep GC is active (threshold 1000 allocations). Root tracking via `gc_root_push` at allocation sites.
-- **Type class dicts at runtime**: Type checking supports full typeclasses; compiled code uses simplified dictionary elision. Complex polymorphic dispatch is partial.
+- **Type class dicts at runtime**: An evidence-threading pass carries the type checker's resolved instances into the dict pass, so class methods dispatch correctly in binder, recursive, and local scopes (the driver eval suite is green). Some higher-kinded/contextual instances still use simplified representations; monad-transformer surface types are GHC-shaped with simplified runtime shims.
 - **String as [Char]**: String literals are C strings internally. `unpack`/`pack` works but isn't transparent.
 - **Template Haskell**: Basic splices and `makeLenses` work; full TH is incomplete.
 - **FFI**: Basic libc interop. Full C header parsing not yet implemented.
 
 ## Roadmap
 
-- **Lazy let-bindings** — thunkify non-recursive let-bound expressions for full GHC semantics
-- **Lazy let-bindings** — thunkify non-recursive let-bound expressions for full GHC semantics
+- **Evidence-threading completion** — extend the dict-pass v2 evidence table to higher-kinded and contextual instances, retiring the remaining ad-hoc dispatch intercepts
+- **Backend dispatch parity** — bring native (Cranelift/LLVM) class-method dispatch to full parity with the STG interpreter
 - **Integrated IDE** — Zed-like editor extensible via Haskell (like Emacs uses Lisp), LSP support
 - **Cross-compilation** — target selection from CLI (Linux, macOS, Windows, embedded)
 - **Full Hackage** — compile real-world packages (aeson, lens, servant)
