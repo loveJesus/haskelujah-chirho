@@ -44,7 +44,7 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Metric | Value |
 |---|---|
 | Driver test suite | **1734 / 1735 (0 failures)** integration + eval-correctness tests (`cargo test -p haskelujah-driver-chirho --lib`, verified 2026-07) |
-| GHC `should_compile` | **833/938 (88.8%)** at the last full sweep; many GHC regression tests since fixed (T11348, T12045a, T12734a, T14934, T15807a, T22560) — a fresh full count is pending |
+| GHC `should_compile` | **850/938 (90.6%)** — fresh timed measurement (`haskelujah check`, 15s/file, 2026-07), up from 833/938 (88.8%) at the prior sweep |
 | Real Hackage packages | Compile end-to-end: **constraints-0.14.4, transformers-0.6.3.0, mtl-2.3.2, deepseq-1.5.2.0** (verified 2026-07), plus a broader corpus (parsec, mtl, QuickCheck, binary, cereal, hashable, lens-family-core) tracked in `spec-chirho/` |
 | Total tests | Run `bash spec-chirho/stats-chirho.sh` for the single source of truth (~2,400 cached workspace pass count); do not claim zero failures without a fresh count |
 | Workspace | 25 crates (compiler + MCP + LSP + GUI + editor + runtime) |
@@ -246,7 +246,7 @@ haskelujah clean .          # Remove build artifacts
 
 | Feature | GHC | Haskelujah Chirho |
 |---------|-----|-------------------|
-| Type checking | Reference | 88.8% compatible (833/938) |
+| Type checking | Reference | 90.6% compatible (850/938 `should_compile`) |
 | Compilation speed | ~1-5s for small files | ~0.2-0.4s |
 | Runtime (fib 42) | 1.26s (-O2) | 0.91s CL/LLVM (**38% faster**) |
 | Ackermann(3,11) | 0.26s | 0.62s CL, 1.03s LLVM |
