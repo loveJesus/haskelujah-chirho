@@ -53,6 +53,28 @@ Mechanism, pinned in current source:
       run, cargo fmt --check clean, zero warnings
 - [ ] Land per-cluster with room announcement; log step in progress DB (single-writer window)
 
+## Insertion points (mapped read-only, 2026-07-26 ~10:40)
+
+- Extension plumbing is STRING-based, not an enum: pragma walk extracts names during CST
+  lowering (`crates/haskelujah-parser-chirho/src/lower_chirho.rs:160-175`), known-extension
+  whitelist at `lower_chirho.rs:17288` (add "RecursiveDo").
+- ARCHITECTURAL FINDING (brick 1): extensions become visible only AT LOWERING, but
+  `rec`/`mdo` keyword-ness is a LEXER decision and `rec`-opens-a-block is a LAYOUT decision —
+  both run before lowering. This ordering gap is precisely why `mdo` was hardcoded as an
+  unconditional keyword. Fix: a GHC-style LANGUAGE-pragma pre-scan over the raw source
+  header feeding lexer + layout with the extension set. Announce in room before landing.
+- Lexer keyword site: `crates/haskelujah-parser-chirho/src/lexer_chirho.rs:1333`
+  (`"do" | "mdo" => DoChirho`) — split; `rec` contextual, `mdo` gated on RecursiveDo.
+- Layout: keyword-class match ~`layout_chirho.rs:441` (Of/Where class), after-keyword state
+  flags ~`:520-530`, do-position logic `:848` — `rec` joins the block-opening class.
+- CST: `parse_do_stmt_chirho` at `cst_parser_chirho.rs:3404` gains the RecStmt arm;
+  `parse_do_expr_chirho` at `:3355` is the mdo entry.
+- Naming seeds to upgrade: `crates/haskelujah-naming-chirho/src/iface_chirho.rs:2020-2022`
+  (mfix value + MonadFix class placeholder → real class scheme).
+- Shared-tree caution: claude_chirho's uncommitted `validity_chirho.rs` also consumes the
+  extension string set — the pre-scan must feed the SAME set, not fork a second source of
+  truth, and must not disturb their read path.
+
 ## Builder discipline
 
 Implementation starts only after claude_chirho posts builder-free (their validity_chirho.rs
