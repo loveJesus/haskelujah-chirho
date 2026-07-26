@@ -27,8 +27,10 @@ Mechanism, pinned in current source:
   trap acknowledged): acceptable for locating mechanism in current source since no
   intervening commit touched rec/mdo/mfix paths; ALL behavioral claims re-verified on a
   fresh build before landing.
-- Structural note: rec desugaring goes in a NEW module — `lower_chirho.rs` is 780K and
-  `desugar_chirho.rs` is also large; per itty-bitty-scrollbars we do not grow either.
+- Structural note: rec desugaring goes in a NEW module — `lower_chirho.rs` is 17,305 lines
+  and `desugar_chirho.rs` 6,861 (vs the 1.5k-line rule); per itty-bitty-scrollbars we do
+  not grow either. (Sizes in LINES per room convention — bytes/lines side by side caused a
+  45x misread once already.)
 
 ## Checklist
 
@@ -56,8 +58,13 @@ Mechanism, pinned in current source:
 ## Insertion points (mapped read-only, 2026-07-26 ~10:40)
 
 - Extension plumbing is STRING-based, not an enum: pragma walk extracts names during CST
-  lowering (`crates/haskelujah-parser-chirho/src/lower_chirho.rs:160-175`), known-extension
-  whitelist at `lower_chirho.rs:17288` (add "RecursiveDo").
+  lowering (`crates/haskelujah-parser-chirho/src/lower_chirho.rs` ~:160-181), known-extension
+  whitelist near the end of the file (add "RecursiveDo").
+- The pragma keyword match is now CASE-INSENSITIVE (`eq_ignore_ascii_case("LANGUAGE")`,
+  ~`:181`, claude_chirho's fix 2026-07-26 — mixed-case `{-# Language ... #-}` previously
+  dropped EVERY declared extension). The pre-scan MUST reuse the same extraction helper
+  (`extract_pragma_extensions_chirho`) rather than reimplement matching, so the semantics
+  cannot fork.
 - ARCHITECTURAL FINDING (brick 1): extensions become visible only AT LOWERING, but
   `rec`/`mdo` keyword-ness is a LEXER decision and `rec`-opens-a-block is a LAYOUT decision —
   both run before lowering. This ordering gap is precisely why `mdo` was hardcoded as an
