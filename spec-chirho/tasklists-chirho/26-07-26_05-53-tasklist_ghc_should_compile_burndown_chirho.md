@@ -74,6 +74,32 @@ already unsound on 81.6% of GHC's rejection corpus. **Do not land Cluster A as a
 standalone "compat win."** Soundness is now the bigger gap and should lead.
 Every typechecker change must re-measure BOTH corpora.
 
+### Soundness triage — the 626 misses, clustered by GHC's OWN expected error
+The corpus ships 710 `.stderr` files (GHC's expected diagnosis), so the misses can be
+clustered by what GHC actually says. First-match priority, 60 of the 626 have no `.stderr`:
+
+| Files | GHC says | What we are missing |
+|-------|----------|---------------------|
+| 118 | `Couldn't match type` | core unification rigor |
+| 70 | `Illegal … / not allowed` | well-formedness + validity checks |
+| 56 | kind errors | kind checking rigor |
+| 54 | `No instance for` | instance resolution not enforced |
+| 42 | `Could not deduce` | missing-constraint checking |
+| 26 | rigid type variable / escape | skolem escape not detected |
+| 11 | `Ambiguous type` | ambiguity check |
+| 10 | `Not in scope` | scoping |
+| 7 | overlapping instances | overlap check |
+| 169 | long tail | many distinct validity checks, 2-3 files each |
+
+The long tail is not one bug — it is a list of checks GHC performs and we never wrote:
+newtype constructor with a context, type-synonym arity, family injectivity violation,
+"not a visible associated type", family parameter-count mismatch, conflicting class
+definitions, 65-tuple limit, `main` not defined in `Main`, and so on.
+
+**Why this cluster is attractive regardless of the strategy call:** validity checks only
+ADD rejections for programs GHC also rejects, so they raise should_fail without putting
+should_compile at risk — the opposite risk profile from Cluster A.
+
 ### Also found (cheap, unrelated): RecursiveDo is entirely unimplemented
 A 6-line `rec`-in-do program fails with `unbound variable: ``` (empty name). Not a
 RecordWildCards bug as the failing test T4404 suggests — plain `rec` alone reproduces it.
