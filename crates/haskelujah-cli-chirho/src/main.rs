@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
 use haskelujah_backend_cranelift_chirho::{
-    compile_core_to_object_executable_chirho, TargetConfigChirho,
+    TargetConfigChirho, compile_core_to_object_executable_chirho,
 };
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
@@ -916,8 +916,7 @@ fn init_command_chirho(name_arg_chirho: Option<String>) -> ExitCode {
         name = project_name_chirho
     );
 
-    let main_content_chirho =
-        "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
+    let main_content_chirho = "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
 -- believes in him should not perish but have eternal life. -- John 3:16\n\
 \n\
 module Main where\n\
@@ -951,8 +950,7 @@ main = do\n\
     // Create tests/ directory with a sample test
     let tests_dir_chirho = project_dir_chirho.join("tests");
     let _ = fs::create_dir_all(&tests_dir_chirho);
-    let test_content_chirho =
-        "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
+    let test_content_chirho = "-- For God so loved the world that he gave his only begotten Son, that whoever\n\
 -- believes in him should not perish but have eternal life. -- John 3:16\n\
 \n\
 module Main where\n\

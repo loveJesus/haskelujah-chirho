@@ -3114,7 +3114,7 @@ impl ClassEnvChirho {
         let mt_t_chirho = TyVarChirho(9060); // the transformer type constructor
         let mt_m_chirho = TyVarChirho(9061); // the inner monad
         let mt_a_chirho = TyVarChirho(9062); // the value type
-                                             // m a
+        // m a
         let mt_ma_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::VarChirho(mt_m_chirho)),
             Box::new(TyChirho::VarChirho(mt_a_chirho)),
@@ -3476,7 +3476,9 @@ mod tests_chirho {
         env_chirho.seed_standard_chirho();
 
         // No instance Num Bool
-        assert!(!env_chirho.entails_chirho(&PredChirho::new_chirho("Num", TyChirho::bool_chirho())));
+        assert!(
+            !env_chirho.entails_chirho(&PredChirho::new_chirho("Num", TyChirho::bool_chirho()))
+        );
     }
 
     #[test]

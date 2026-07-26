@@ -5822,13 +5822,13 @@ impl InferCtxChirho {
             if !all_defaultable_chirho {
                 if has_numeric_trigger_chirho {
                     let int_ty_chirho = TyChirho::int_chirho();
-                    let int_satisfies_all_chirho =
-                        classes_chirho.iter().all(|class_name_chirho| {
-                            self.class_env_chirho.entails_chirho(&PredChirho::new_chirho(
+                    let int_satisfies_all_chirho = classes_chirho.iter().all(|class_name_chirho| {
+                        self.class_env_chirho
+                            .entails_chirho(&PredChirho::new_chirho(
                                 class_name_chirho,
                                 int_ty_chirho.clone(),
                             ))
-                        });
+                    });
                     if int_satisfies_all_chirho {
                         default_subst_chirho.insert_chirho(*var_chirho, int_ty_chirho);
                     }
@@ -15921,10 +15921,8 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
             Box::new(TyChirho::VarChirho(rt_m_chirho)),
             Box::new(TyChirho::VarChirho(rt_a_chirho)),
         );
-        let rt_fn_ty_chirho = TyChirho::fun_chirho(
-            TyChirho::VarChirho(rt_r_chirho),
-            rt_inner_ty_chirho,
-        );
+        let rt_fn_ty_chirho =
+            TyChirho::fun_chirho(TyChirho::VarChirho(rt_r_chirho), rt_inner_ty_chirho);
         let readert_ty_chirho = mk_reader_t_ty_chirho(
             TyChirho::VarChirho(rt_r_chirho),
             TyChirho::VarChirho(rt_m_chirho),

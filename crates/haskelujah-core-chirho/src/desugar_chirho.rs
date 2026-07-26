@@ -5564,10 +5564,12 @@ mod tests_chirho {
             CoreExprChirho::LamChirho { .. }
         ));
         // Name map should contain the binder's name
-        assert!(output_chirho
-            .names_chirho
-            .values()
-            .any(|n_chirho| n_chirho == "f"));
+        assert!(
+            output_chirho
+                .names_chirho
+                .values()
+                .any(|n_chirho| n_chirho == "f")
+        );
     }
 
     #[test]
@@ -5806,7 +5808,7 @@ mod tests_chirho {
         assert!(matches!(core_chirho, CoreExprChirho::CaseChirho { .. }));
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
             assert_eq!(alts_chirho.len(), 2); // True branch + default
-                                              // Default branch should be another case
+            // Default branch should be another case
             assert!(matches!(
                 alts_chirho[1].rhs_chirho,
                 CoreExprChirho::CaseChirho { .. }

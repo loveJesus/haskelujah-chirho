@@ -6197,10 +6197,7 @@ fn eval_monad_bind_dispatch_chirho() {
             "main = case (Just 10 >>= (\\x -> Just (x - 1))) of { Just x -> x; Nothing -> 0 }\n",
             9,
         ),
-        (
-            "main = sum ([1,2,3] >>= (\\x -> [x, x * 10]))\n",
-            66,
-        ),
+        ("main = sum ([1,2,3] >>= (\\x -> [x, x * 10]))\n", 66),
         (
             "main = case ((Left 7 :: Either Int Int) >>= (\\x -> Right (x * 2))) of { Right x -> x; Left e -> e }\n",
             7,

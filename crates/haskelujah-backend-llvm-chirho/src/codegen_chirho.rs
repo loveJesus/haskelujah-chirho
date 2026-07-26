@@ -26,7 +26,7 @@ use haskelujah_core_chirho::{
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 #[cfg(test)]
-use haskelujah_rts_chirho::{pack_native_header_chirho, ObjectKindChirho};
+use haskelujah_rts_chirho::{ObjectKindChirho, pack_native_header_chirho};
 
 const BOXED_CONSTRUCTOR_TAG_MASK_CHIRHO: i64 = 1;
 const BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO: i64 = !1_i64;
@@ -1113,9 +1113,7 @@ impl LlvmCodegenChirho {
                         .get(id_chirho)
                         .and_then(
                             |name_chirho| match (name_chirho.as_str(), args_chirho.len()) {
-                                (name_chirho, 2)
-                                    if name_chirho.starts_with("$prim_Eq_==_") =>
-                                {
+                                (name_chirho, 2) if name_chirho.starts_with("$prim_Eq_==_") => {
                                     Some(ShowBuiltinKindChirho::BoolChirho)
                                 }
                                 ("not", 1)

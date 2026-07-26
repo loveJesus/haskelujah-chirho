@@ -170,9 +170,9 @@ impl LowerCtxChirho {
             | "newIORef" | "newIORef#" | "readIORef" | "readIORef#" | "newSTRef" | "newSTRef#"
             | "readSTRef" | "readSTRef#" | "runST" | "runST#" | "newTVar" | "newTVar#"
             | "newTVarIO" | "newTVarIO#" | "readTVar" | "readTVar#" | "readTVarIO"
-            | "readTVarIO#" | "atomically" | "atomically#" | "error" | "seq"
-            | "deepseq" | "evaluate" | "force" | "force#" | "throw" | "throw#" | "throwIO"
-            | "throwIO#" | "try" | "try#" => Some(1),
+            | "readTVarIO#" | "atomically" | "atomically#" | "error" | "seq" | "deepseq"
+            | "evaluate" | "force" | "force#" | "throw" | "throw#" | "throwIO" | "throwIO#"
+            | "try" | "try#" => Some(1),
             "writeFile" | "writeFile#" | "appendFile" | "appendFile#" | ">>=" | "bindIO#"
             | ">>" | "thenIO#" | "writeIORef" | "writeIORef#" | "modifyIORef" | "modifyIORef#"
             | "writeSTRef" | "writeSTRef#" | "modifySTRef" | "modifySTRef#" | "writeTVar"
@@ -2191,9 +2191,11 @@ mod tests_chirho {
 
         let result_chirho = lower_and_run_chirho(&module_chirho, None, HashSet::new());
         assert!(result_chirho.is_err());
-        assert!(result_chirho
-            .unwrap_err()
-            .contains("no binding named 'main'"));
+        assert!(
+            result_chirho
+                .unwrap_err()
+                .contains("no binding named 'main'")
+        );
     }
 
     #[test]
