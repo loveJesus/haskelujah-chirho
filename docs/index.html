@@ -138,10 +138,13 @@
               <h3>GHC Drop-in Compatibility</h3>
               <p>
                 The pipeline is end-to-end and the current push is closing the
-                gap to being a drop-in GHC replacement —
-                <strong>850 / 938 (90.6%)</strong> of the GHC
-                <code>should_compile</code> corpus type-checks today, and every
-                fix is gated so it never regresses working programs.
+                gap to being a drop-in GHC replacement. Being a drop-in means
+                two things, so we measure both:
+                <strong>850 / 938 (90.6%)</strong> of GHC's
+                <code>should_compile</code> corpus type-checks today, and
+                <strong>141 / 767 (18.4%)</strong> of GHC's
+                <code>should_fail</code> corpus is correctly rejected. Every fix
+                is gated so it never regresses working programs.
               </p>
             </article>
             <article class="status-card-chirho" data-reveal-chirho>
@@ -168,10 +171,13 @@
               <p class="status-card__label-chirho">Honest Edges</p>
               <h3>Where It Is Still Growing</h3>
               <p>
-                Backends are beta and native class-method dispatch is catching
-                up to the STG interpreter. Some higher-kinded and contextual
-                instances still use simplified representations. Kept explicit,
-                testable, and documented.
+                The biggest gap is soundness, not features: we accept 626
+                programs GHC correctly rejects. Ordinary errors are caught, but
+                many validity and constraint checks are simply not written yet —
+                so build code you believe is correct, and do not yet rely on us
+                to tell you your code is wrong. Backends are beta and native
+                class-method dispatch is catching up to the STG interpreter.
+                Kept explicit, testable, and documented.
               </p>
             </article>
           </div>
@@ -331,10 +337,13 @@
             <article class="highlight-card-chirho" data-reveal-chirho>
               <h3>What Still Bites</h3>
               <p>
-                Native (Cranelift/LLVM) class-method dispatch is still catching
-                up to the STG interpreter, some higher-kinded and contextual
-                instances use simplified representations, and monad-transformer
-                runtime shims are simplified beneath GHC-shaped surface types.
+                Rejection is far behind acceptance — only 18.4% of GHC's
+                <code>should_fail</code> corpus is caught, so unsound programs
+                can slip through. Native (Cranelift/LLVM) class-method dispatch
+                is still catching up to the STG interpreter, some higher-kinded
+                and contextual instances use simplified representations, and
+                monad-transformer runtime shims are simplified beneath
+                GHC-shaped surface types.
               </p>
             </article>
             <article class="highlight-card-chirho" data-reveal-chirho>

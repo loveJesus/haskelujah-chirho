@@ -44,7 +44,8 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | Metric | Value |
 |---|---|
 | Driver test suite | **1734 / 1735 (0 failures)** integration + eval-correctness tests (`cargo test -p haskelujah-driver-chirho --lib`, verified 2026-07) |
-| GHC `should_compile` | **850/938 (90.6%)** — fresh timed measurement (`haskelujah check`, 15s/file, 2026-07), up from 833/938 (88.8%) at the prior sweep |
+| GHC `should_compile` (do we **accept** what GHC accepts?) | **850/938 (90.6%)** — fresh timed measurement (`haskelujah check`, 15s/file, 2026-07), up from 833/938 (88.8%) at the prior sweep |
+| GHC `should_fail` (do we **reject** what GHC rejects?) | **141/767 (18.4%)** — we silently accept 626 programs GHC rejects. This axis has not been worked yet; it is the honest counterweight to the number above ([artifact](spec-chirho/ghc-should-fail-measurement-chirho.txt)) |
 | Real Hackage packages | Compile end-to-end: **constraints-0.14.4, transformers-0.6.3.0, mtl-2.3.2, deepseq-1.5.2.0** (verified 2026-07), plus a broader corpus (parsec, mtl, QuickCheck, binary, cereal, hashable, lens-family-core) tracked in `spec-chirho/` |
 | Total tests | Run `bash spec-chirho/stats-chirho.sh` for the single source of truth (~2,400 cached workspace pass count); do not claim zero failures without a fresh count |
 | Workspace | 25 crates (compiler + MCP + LSP + GUI + editor + runtime) |
@@ -54,6 +55,12 @@ Haskelujah Chirho is everything you need to develop, build, and ship Haskell —
 | License | MIT OR Apache-2.0 |
 
 > Run `bash spec-chirho/stats-chirho.sh` for cached stats, or `bash spec-chirho/stats-chirho.sh --run-tests` to refresh pass/fail/ignored counts from `cargo test --workspace --quiet`. Published GHC-compatibility numbers come from timed, generated artifacts — not from ad-hoc claims.
+>
+> **Read both compatibility rows together.** A drop-in GHC replacement has to accept what
+> GHC accepts *and* reject what GHC rejects. Quoting `should_compile` alone would overstate
+> compatibility, because a compiler that accepted everything would score 100% on that axis
+> and 0% on the other. We are strong on acceptance and weak on rejection, and soundness is
+> now the leading workstream.
 
 ## Features
 
@@ -246,7 +253,8 @@ haskelujah clean .          # Remove build artifacts
 
 | Feature | GHC | Haskelujah Chirho |
 |---------|-----|-------------------|
-| Type checking | Reference | 90.6% compatible (850/938 `should_compile`) |
+| Type checking — accepts valid code | Reference | 90.6% (850/938 `should_compile`) |
+| Type checking — rejects invalid code | Reference | 18.4% (141/767 `should_fail`) — accepts 626 programs GHC rejects |
 | Compilation speed | ~1-5s for small files | ~0.2-0.4s |
 | Runtime (fib 42) | 1.26s (-O2) | 0.91s CL/LLVM (**38% faster**) |
 | Ackermann(3,11) | 0.26s | 0.62s CL, 1.03s LLVM |
@@ -305,6 +313,7 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 ## Current Limitations
 
+- **Type-checker soundness (biggest gap)**: We accept 626 of the 767 programs in GHC's `typecheck/should_fail` corpus that GHC correctly rejects. The checker catches ordinary errors (a plain `Int`/`Bool` mismatch is rejected) but misses many validity and constraint checks — instance resolution is not enforced on 54 of them, 42 need a missing-constraint check, 70 are well-formedness rules GHC has and we never wrote (newtype constructor with a context, type-synonym arity, family injectivity, non-visible associated types). Use Haskelujah to build code you believe is correct; do not yet rely on it to *tell you* your code is wrong.
 - **Lazy evaluation**: Both Cranelift and LLVM backends have lazy constructor fields — infinite lists like `take 5 (repeat 42)` work! STG interpreter has full laziness.
 - **Garbage collection**: Mark-sweep GC is active (threshold 1000 allocations). Root tracking via `gc_root_push` at allocation sites.
 - **Type class dicts at runtime**: An evidence-threading pass carries the type checker's resolved instances into the dict pass, so class methods dispatch correctly in binder, recursive, and local scopes (the driver eval suite is green). Some higher-kinded/contextual instances still use simplified representations; monad-transformer surface types are GHC-shaped with simplified runtime shims.
@@ -314,6 +323,7 @@ See [AGENTS.md](AGENTS.md) for the full convention.
 
 ## Roadmap
 
+- **Type-checker soundness (leading workstream)** — burn down the 626 `should_fail` misses, starting with the validity and constraint checks that add rejections without risking the `should_compile` number
 - **Evidence-threading completion** — extend the dict-pass v2 evidence table to higher-kinded and contextual instances, retiring the remaining ad-hoc dispatch intercepts
 - **Backend dispatch parity** — bring native (Cranelift/LLVM) class-method dispatch to full parity with the STG interpreter
 - **Integrated IDE** — Zed-like editor extensible via Haskell (like Emacs uses Lisp), LSP support
