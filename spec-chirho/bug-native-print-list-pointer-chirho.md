@@ -31,7 +31,67 @@ $ haskelujah compile ND.hs --cranelift --output nd2 && ./nd2
                                  =>  4308279329       same fault, other backend
 ```
 
-## SCOPE IS BROADER THAN THIS FILENAME — read this section
+## ROOT CAUSE — VERIFIED. `print`'s fallback renders EVERY value as an Int.
+
+This supersedes both earlier framings in this file. The mechanism is now read directly out
+of the emitted IR, and the simplest repro is not a list at all:
+
+```haskell
+main = print (id True)      -- native prints  1        interpreter prints  True
+main = print (id (1.5::Double))
+                            -- native prints  460943421861   (raw bit pattern)
+```
+
+`print` in the LLVM backend has a syntactic fast path and a fallback
+(`codegen_chirho.rs:2012-2018`). The fallback calls the generic `show`, and that function is
+emitted as:
+
+```llvm
+define i64 @haskelujah_show(i64 %v) {
+  %t1 = call i64 @haskelujah_enter_thunk_chirho(i64 %v)
+  %t2 = call i64 @haskelujah_show_int_chirho(i64 %t1)   ; <-- unconditional
+  ret i64 %t2
+}
+```
+
+It forces the thunk and renders **whatever comes back as an Int**. Identical in every
+program dumped. That single line explains all the variety:
+
+| value reaching the fallback | forced representation | printed as |
+|---|---|---|
+| `Bool` | constructor tag | `1` |
+| derived-`Show` constructor | constructor tag | `82` |
+| `Double` | raw bits | `460943421861` |
+| list | heap pointer | `50885298529` |
+| `Int` | the integer | **correct — by coincidence** |
+
+`Int` being right is an accident of the value already being an integer, which is exactly why
+this survived: the one type anyone tests first is the one type that works.
+
+**A separate, smaller fault also confirmed:** an *explicit* `show` call resolves its
+dictionary correctly for scalars (`show (id True)` → `True`, `show (id 1.5)` → `1.5`) but
+NOT for lists (`putStrLn (show (id [1,2,3]))` → pointer). So list rendering is broken on
+both the explicit and the fallback path, while scalars are broken only on the fallback path.
+
+### How I got here, including the wrong turn
+
+I first wrote that the fault was "syntax-directed classification at the call site". That was
+a description of the *fast path*, not the bug. I then claimed the generic `show` was
+unconditionally `show_int` and made a falsifiable prediction — `show (id True)` should print
+a number. **It printed `True`, so the prediction failed and the claim was wrong as stated.**
+The resolution: explicit `show` and `print`'s fallback are *different paths*, and only the
+latter goes through the Int-rendering generic. Testing the prediction is what separated
+them; asserting it would have shipped a third wrong mechanism.
+
+### Fix direction
+
+Make the fallback dispatch on the forced value's runtime tag rather than calling
+`show_int`. The per-type renderers already exist in the emitted module
+(`$prim_Show_show_Int`, `_Char`, `_Bool`, `_Double`) along with the class selector
+`$sel_Show_show` — so the machinery is present and simply not consulted. List rendering
+needs `Show [a]` from `Show a` and is the larger part of the job.
+
+## Earlier framing — kept for the record, superseded above
 
 The filename says "list pointer" because that is how I first hit it. Further probing shows
 lists are only the most obvious instance. The real fault is:
