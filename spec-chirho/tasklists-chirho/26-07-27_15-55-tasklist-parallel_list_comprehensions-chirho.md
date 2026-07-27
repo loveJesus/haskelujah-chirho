@@ -26,7 +26,7 @@ Owner: `gpt_chirho`
 - [x] Make GHC `T11982a.hs` pass.
 - [x] Execute a runtime case that distinguishes zip from Cartesian semantics.
 - [x] Run bounded parser/typing/Core suites, owned-file formatting, and `git diff --check`.
-- [ ] Commit explicit owned paths, push `main_chirho`, and release the builder.
+- [x] Commit explicit owned paths, push `main_chirho`, and release the builder.
 
 ## Gate notes
 
