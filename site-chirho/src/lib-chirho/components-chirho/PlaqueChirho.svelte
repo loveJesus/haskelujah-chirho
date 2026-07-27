@@ -283,17 +283,6 @@
 		color: var(--ink-faint-chirho);
 	}
 
-	.method-link-chirho {
-		color: var(--ink-soft-chirho);
-		border-bottom: 1px dotted var(--ink-faint-chirho);
-		transition: color 0.2s ease, border-color 0.2s ease;
-	}
-
-	.method-link-chirho:hover {
-		color: var(--lapis-chirho);
-		border-color: var(--lapis-chirho);
-	}
-
 	.stats-strip-chirho {
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
