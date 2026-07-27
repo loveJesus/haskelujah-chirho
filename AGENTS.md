@@ -24,7 +24,7 @@ lex → layout → CST parse → AST lower → name resolve → kind infer → t
 
 ### Test Coverage
 
-**2500+ tests passing** (GHC typecheck/should_compile: 833/938, 88.8%), 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats)
+**2500+ tests passing**, 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats). GHC compatibility: NEVER quote inline numbers here — read both committed measurement artifacts in `spec-chirho/ghc-should-*-measurement-chirho.txt` and quote their `# QUOTE-AS:` lines verbatim (both axes, always together)
 
 ### Completed
 
