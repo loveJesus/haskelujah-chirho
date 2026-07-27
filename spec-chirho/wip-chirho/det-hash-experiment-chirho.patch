@@ -1,0 +1,913 @@
+# WIP patch: deterministic hash collections in the type checker (John 3:16)
+# Generated 2026-07-27 from an incomplete experiment. See
+# spec-chirho/bug-nondeterministic-typecheck-chirho.md. NOT applied to the tree.
+#
+diff --git a/crates/haskelujah-driver-chirho/src/lib.rs b/crates/haskelujah-driver-chirho/src/lib.rs
+index 875c4014..34d53315 100644
+--- a/crates/haskelujah-driver-chirho/src/lib.rs
++++ b/crates/haskelujah-driver-chirho/src/lib.rs
+@@ -10,6 +10,7 @@ pub mod splice_chirho;
+ pub mod stg_lower_chirho;
+ 
+ use std::io;
++use haskelujah_typing_chirho::det_hash_chirho::NewDeterministicChirho as _;
+ use std::path::{Path, PathBuf};
+ use std::process::Command;
+ use std::sync::OnceLock;
+@@ -37,7 +38,7 @@ use haskelujah_typing_chirho::infer_chirho::{
+     infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
+ };
+ 
+-type ImportedTypeSynonymsChirho = std::collections::HashMap<String, (Vec<String>, TypeChirho)>;
++type ImportedTypeSynonymsChirho = haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, (Vec<String>, TypeChirho)>;
+ type ImportedTypeFamiliesChirho = TypeFamilyEnvChirho;
+ 
+ /// Seed builtin type family equations that packages commonly depend on.
+@@ -45,7 +46,7 @@ type ImportedTypeFamiliesChirho = TypeFamilyEnvChirho;
+ /// use it transitively (aeson, resourcet, vector-builder, etc.).
+ fn seed_builtin_type_families_chirho() -> ImportedTypeFamiliesChirho {
+     use haskelujah_typing_chirho::TyChirho;
+-    let mut families_chirho = ImportedTypeFamiliesChirho::new();
++    let mut families_chirho = ImportedTypeFamiliesChirho::default();
+ 
+     // type instance PrimState (ST s) = s
+     let s_var_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::TyVarChirho(9900));
+@@ -126,7 +127,7 @@ static STDLIB_FRONTEND_ARTIFACTS_CHIRHO: OnceLock<Result<FrontendSeedArtifactsCh
+ 
+ fn merge_stdlib_frontend_artifacts_chirho(
+     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
+-    imported_types_chirho: &mut std::collections::HashMap<
++    imported_types_chirho: &mut haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+     >,
+@@ -1408,9 +1409,9 @@ fn collect_safe_unqualified_imported_type_names_chirho(
+ fn collect_preferred_qualified_type_names_chirho(
+     module_chirho: &ModuleChirho,
+     ifaces_chirho: &[ModuleIfaceChirho],
+-) -> std::collections::HashMap<String, String> {
++) -> haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, String> {
+     let local_type_names_chirho = collect_local_type_names_chirho(module_chirho);
+-    let mut exporters_by_type_name_chirho: std::collections::HashMap<
++    let mut exporters_by_type_name_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         std::collections::HashSet<String>,
+     > = std::collections::HashMap::new();
+@@ -1456,7 +1457,7 @@ fn qualify_imported_ast_type_chirho(
+     qualifiable_type_names_chirho: &std::collections::HashSet<String>,
+     qualifier_chirho: &str,
+     unqualified_type_names_chirho: &std::collections::HashSet<String>,
+-    preferred_qualified_type_names_chirho: &std::collections::HashMap<String, String>,
++    preferred_qualified_type_names_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, String>,
+ ) -> TypeChirho {
+     match ty_chirho {
+         TypeChirho::ConChirho(name_chirho) => {
+@@ -1611,7 +1612,7 @@ fn qualify_imported_ty_chirho(
+     qualifiable_type_names_chirho: &std::collections::HashSet<String>,
+     qualifier_chirho: &str,
+     unqualified_type_names_chirho: &std::collections::HashSet<String>,
+-    preferred_qualified_type_names_chirho: &std::collections::HashMap<String, String>,
++    preferred_qualified_type_names_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, String>,
+ ) -> haskelujah_typing_chirho::TyChirho {
+     match ty_chirho {
+         haskelujah_typing_chirho::TyChirho::ConChirho(name_chirho) => {
+@@ -1715,7 +1716,7 @@ fn qualify_imported_scheme_for_iface_chirho(
+     qualifiable_type_names_chirho: &std::collections::HashSet<String>,
+     qualifier_chirho: &str,
+     unqualified_type_names_chirho: &std::collections::HashSet<String>,
+-    preferred_qualified_type_names_chirho: &std::collections::HashMap<String, String>,
++    preferred_qualified_type_names_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, String>,
+ ) -> haskelujah_typing_chirho::SchemeChirho {
+     if qualifiable_type_names_chirho.is_empty() {
+         return scheme_chirho.clone();
+@@ -1778,7 +1779,7 @@ pub fn run_frontend_chirho(
+     source_chirho: &str,
+     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+     ifaces_chirho: &[ModuleIfaceChirho],
+-    imported_types_chirho: &std::collections::HashMap<
++    imported_types_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::SchemeChirho,
+     >,
+@@ -1798,7 +1799,7 @@ pub fn run_frontend_with_type_synonyms_chirho(
+     source_chirho: &str,
+     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+     ifaces_chirho: &[ModuleIfaceChirho],
+-    imported_types_chirho: &std::collections::HashMap<
++    imported_types_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::SchemeChirho,
+     >,
+@@ -1819,7 +1820,7 @@ pub fn run_frontend_with_type_synonyms_and_type_families_chirho(
+     source_chirho: &str,
+     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+     ifaces_chirho: &[ModuleIfaceChirho],
+-    imported_types_chirho: &std::collections::HashMap<
++    imported_types_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::SchemeChirho,
+     >,
+@@ -1843,7 +1844,7 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
+     source_chirho: &str,
+     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+     ifaces_chirho: &[ModuleIfaceChirho],
+-    imported_types_chirho: &std::collections::HashMap<
++    imported_types_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::SchemeChirho,
+     >,
+@@ -1904,7 +1905,7 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
+     let mut merged_imported_types_chirho = imported_types_chirho.clone();
+     let mut merged_imported_type_synonyms_chirho = imported_type_synonyms_chirho.clone();
+     let merged_imported_type_families_chirho = imported_type_families_chirho.clone();
+-    let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
++    let mut merged_imported_record_field_names_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         Vec<String>,
+     > = std::collections::HashMap::new();
+@@ -2216,7 +2217,7 @@ fn check_module_linearity_chirho(
+     let mut warnings_chirho = Vec::new();
+ 
+     // Collect type signatures: name → AST type
+-    let mut type_sigs_chirho: std::collections::HashMap<String, &AstTypeChirho> =
++    let mut type_sigs_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, &AstTypeChirho> =
+         std::collections::HashMap::new();
+     for decl_chirho in &module_chirho.decls_chirho {
+         if let DeclChirho::TypeSigChirho {
+@@ -2530,7 +2531,7 @@ fn extract_first_fun_arg_chirho(
+ /// dictionary when a class method is applied to a constructor value.
+ fn build_con_type_map_chirho(
+     module_chirho: &ModuleChirho,
+-) -> std::collections::HashMap<String, String> {
++) -> haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, String> {
+     let mut map_chirho = std::collections::HashMap::new();
+     for decl_chirho in &module_chirho.decls_chirho {
+         if let haskelujah_ast_chirho::decl_chirho::DeclChirho::DataDeclChirho {
+@@ -2594,7 +2595,7 @@ fn build_con_type_map_chirho(
+ /// Build a mapping from newtype type name to (constructor name, underlying type key).
+ fn build_newtype_info_chirho(
+     module_chirho: &ModuleChirho,
+-) -> std::collections::HashMap<String, (String, String)> {
++) -> haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, (String, String)> {
+     let mut map_chirho = std::collections::HashMap::new();
+     for decl_chirho in &module_chirho.decls_chirho {
+         if let haskelujah_ast_chirho::decl_chirho::DeclChirho::NewtypeDeclChirho {
+@@ -3154,12 +3155,12 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
+ /// workflow: monadic-dispatch-chirho (evidence-threading)
+ fn join_occurrence_evidence_chirho(
+     infer_result_chirho: &InferResultChirho,
+-    method_occurrences_chirho: &std::collections::HashMap<
++    method_occurrences_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         haskelujah_core_chirho::CoreIdChirho,
+         (String, haskelujah_core_chirho::CoreIdChirho),
+     >,
+-) -> std::collections::HashMap<haskelujah_core_chirho::CoreIdChirho, (String, String)> {
+-    let mut occ_ids_by_name_chirho: std::collections::HashMap<
++) -> haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<haskelujah_core_chirho::CoreIdChirho, (String, String)> {
++    let mut occ_ids_by_name_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         Vec<haskelujah_core_chirho::CoreIdChirho>,
+     > = std::collections::HashMap::new();
+@@ -3172,7 +3173,7 @@ fn join_occurrence_evidence_chirho(
+     for ids_chirho in occ_ids_by_name_chirho.values_mut() {
+         ids_chirho.sort_by_key(|id_chirho| id_chirho.0);
+     }
+-    let mut evidence_chirho: std::collections::HashMap<
++    let mut evidence_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         haskelujah_core_chirho::CoreIdChirho,
+         (String, String),
+     > = std::collections::HashMap::new();
+@@ -3343,7 +3344,7 @@ pub fn compile_modules_chirho(
+     // Accumulated type schemes from all previously-compiled modules,
+     // keyed by unqualified name. Downstream modules receive all upstream
+     // exports so that type inference can resolve cross-module references.
+-    let mut imported_types_chirho: std::collections::HashMap<
++    let mut imported_types_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::SchemeChirho,
+     > = std::collections::HashMap::new();
+@@ -3594,7 +3595,7 @@ pub fn eval_modules_chirho(
+ 
+     fn remap_expr_chirho(
+         expr_chirho: &mut CoreExprChirho,
+-        remap_chirho: &std::collections::HashMap<CoreIdChirho, CoreIdChirho>,
++        remap_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<CoreIdChirho, CoreIdChirho>,
+     ) {
+         match expr_chirho {
+             CoreExprChirho::VarChirho(id_chirho) => {
+@@ -3657,7 +3658,7 @@ pub fn eval_modules_chirho(
+ 
+     // Phase 1: Offset each module's IDs into non-overlapping ranges.
+     let mut merged_bindings_chirho = Vec::new();
+-    let mut merged_names_chirho: std::collections::HashMap<CoreIdChirho, String> =
++    let mut merged_names_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<CoreIdChirho, String> =
+         std::collections::HashMap::new();
+     let mut merged_newtype_cons_chirho = std::collections::HashSet::new();
+     let mut id_offset_chirho: u32 = 0;
+@@ -3690,7 +3691,7 @@ pub fn eval_modules_chirho(
+     }
+ 
+     // Phase 2: Build canonical name → definition CoreId (first wins).
+-    let mut def_name_to_id_chirho: std::collections::HashMap<String, CoreIdChirho> =
++    let mut def_name_to_id_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, CoreIdChirho> =
+         std::collections::HashMap::new();
+     for binding_chirho in &merged_bindings_chirho {
+         def_name_to_id_chirho
+@@ -3776,7 +3777,7 @@ pub fn eval_modules_chirho(
+         collect_binder_ids_chirho(&binding_chirho.rhs_chirho, &mut all_binder_ids_chirho);
+     }
+ 
+-    let mut remap_chirho: std::collections::HashMap<CoreIdChirho, CoreIdChirho> =
++    let mut remap_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<CoreIdChirho, CoreIdChirho> =
+         std::collections::HashMap::new();
+     for (id_chirho, name_chirho) in &merged_names_chirho {
+         if all_binder_ids_chirho.contains(id_chirho) {
+@@ -4206,18 +4207,18 @@ fn filter_seeded_type_synonyms_for_source_chirho(
+ 
+ fn filter_seeded_imported_types_for_source_chirho(
+     source_chirho: &str,
+-    imported_types_chirho: &std::collections::HashMap<
++    imported_types_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::SchemeChirho,
+     >,
+-) -> std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho> {
++) -> haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, haskelujah_typing_chirho::SchemeChirho> {
+     let imported_modules_chirho: std::collections::HashSet<String> =
+         extract_imports_chirho(source_chirho).into_iter().collect();
+     if imported_modules_chirho.is_empty() {
+         return std::collections::HashMap::new();
+     }
+ 
+-    let mut qualified_bare_schemes_chirho: std::collections::HashMap<
++    let mut qualified_bare_schemes_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         Vec<haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
+     > = std::collections::HashMap::new();
+@@ -4307,14 +4308,14 @@ fn parse_boot_iface_chirho(
+     source_map_chirho: &mut SourceMapChirho,
+     boot_path_chirho: &str,
+     existing_ifaces_chirho: &[ModuleIfaceChirho],
+-    existing_types_chirho: &std::collections::HashMap<
++    existing_types_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+     >,
+ ) -> Result<
+     (
+         ModuleIfaceChirho,
+-        std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
++        haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
+     ),
+     String,
+ > {
+@@ -4426,7 +4427,7 @@ pub fn compile_project_dir_chirho(
+     let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
+         haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+     let mut all_warnings_chirho: Vec<String> = Vec::new();
+-    let mut imported_types_chirho: std::collections::HashMap<
++    let mut imported_types_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+     > = std::collections::HashMap::new();
+@@ -4626,7 +4627,7 @@ pub struct CabalBuildResultChirho {
+ struct FrontendSeedArtifactsChirho {
+     ifaces_chirho: Vec<ModuleIfaceChirho>,
+     imported_types_chirho:
+-        std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
++        haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
+     imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
+     imported_type_families_chirho: ImportedTypeFamiliesChirho,
+ }
+@@ -4844,7 +4845,7 @@ fn discover_executable_modules_chirho(
+ fn module_cpp_options_map_for_module_files_chirho(
+     module_files_chirho: &[(String, PathBuf)],
+     cpp_options_chirho: &[String],
+-) -> std::collections::HashMap<PathBuf, Vec<String>> {
++) -> haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<PathBuf, Vec<String>> {
+     let mut module_cpp_options_chirho = std::collections::HashMap::new();
+     for (_, path_chirho) in module_files_chirho {
+         module_cpp_options_chirho.insert(path_chirho.clone(), cpp_options_chirho.to_vec());
+@@ -4855,7 +4856,7 @@ fn module_cpp_options_map_for_module_files_chirho(
+ fn package_module_cpp_options_map_chirho(
+     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+     project_dir_chirho: &Path,
+-) -> std::collections::HashMap<PathBuf, Vec<String>> {
++) -> haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<PathBuf, Vec<String>> {
+     let mut module_cpp_options_chirho = std::collections::HashMap::new();
+ 
+     for library_chirho in iter_package_libraries_chirho(package_chirho) {
+@@ -4891,10 +4892,10 @@ fn package_module_cpp_options_map_chirho(
+ 
+ fn compile_module_files_with_frontend_seed_chirho(
+     module_files_chirho: &[(String, PathBuf)],
+-    module_cpp_options_chirho: &std::collections::HashMap<PathBuf, Vec<String>>,
++    module_cpp_options_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<PathBuf, Vec<String>>,
+     source_map_chirho: &mut SourceMapChirho,
+     extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
+-    initial_imported_types_chirho: std::collections::HashMap<
++    initial_imported_types_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+     >,
+@@ -5438,7 +5439,7 @@ fn scan_package_hs_files_chirho(
+ fn insert_exported_schemes_into_imports_chirho(
+     iface_chirho: &ModuleIfaceChirho,
+     infer_result_chirho: &InferResultChirho,
+-    imported_types_chirho: &mut std::collections::HashMap<
++    imported_types_chirho: &mut haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+     >,
+@@ -5484,7 +5485,7 @@ fn collect_frontend_artifacts_from_module_sources_chirho(
+     module_sources_chirho: Vec<(String, String, String)>,
+     source_map_chirho: &mut SourceMapChirho,
+     extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
+-    initial_imported_types_chirho: std::collections::HashMap<
++    initial_imported_types_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+     >,
+@@ -5618,7 +5619,7 @@ fn compile_module_sources_with_extra_ifaces_chirho(
+     module_sources_chirho: Vec<(String, String, String)>,
+     source_map_chirho: &mut SourceMapChirho,
+     extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
+-    initial_imported_types_chirho: std::collections::HashMap<
++    initial_imported_types_chirho: haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<
+         String,
+         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
+     >,
+@@ -5847,7 +5848,7 @@ fn merge_compile_results_core_chirho(
+ 
+     fn remap_expr_chirho(
+         expr_chirho: &mut CoreExprChirho,
+-        remap_chirho: &std::collections::HashMap<CoreIdChirho, CoreIdChirho>,
++        remap_chirho: &haskelujah_typing_chirho::det_hash_chirho::HashMapChirho<CoreIdChirho, CoreIdChirho>,
+     ) {
+         match expr_chirho {
+             CoreExprChirho::VarChirho(id_chirho) => {
+diff --git a/crates/haskelujah-typing-chirho/src/class_chirho.rs b/crates/haskelujah-typing-chirho/src/class_chirho.rs
+index df6533cf..0a00d1de 100644
+--- a/crates/haskelujah-typing-chirho/src/class_chirho.rs
++++ b/crates/haskelujah-typing-chirho/src/class_chirho.rs
+@@ -13,7 +13,7 @@
+ //!   supporting instance resolution / context reduction
+ 
+ use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
+-use std::collections::HashMap;
++use crate::det_hash_chirho::{HashMapChirho as HashMap, NewDeterministicChirho as _, map_from_chirho};
+ use std::fmt;
+ 
+ use crate::subst_chirho::SubstChirho;
+@@ -395,7 +395,7 @@ impl ClassEnvChirho {
+             name_chirho: "Eq".to_string(),
+             supers_chirho: vec![],
+             var_chirho: eq_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "==".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![eq_var_chirho],
+@@ -420,7 +420,7 @@ impl ClassEnvChirho {
+             name_chirho: "Ord".to_string(),
+             supers_chirho: vec!["Eq".to_string()],
+             var_chirho: ord_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "compare".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![ord_var_chirho],
+@@ -445,7 +445,7 @@ impl ClassEnvChirho {
+             name_chirho: "Show".to_string(),
+             supers_chirho: vec![],
+             var_chirho: show_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "show".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![show_var_chirho],
+@@ -467,7 +467,7 @@ impl ClassEnvChirho {
+             name_chirho: "Num".to_string(),
+             supers_chirho: vec!["Eq".to_string(), "Show".to_string()],
+             var_chirho: num_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "+".to_string(),
+                     SchemeChirho {
+@@ -566,7 +566,7 @@ impl ClassEnvChirho {
+             name_chirho: "Fractional".to_string(),
+             supers_chirho: vec!["Num".to_string()],
+             var_chirho: frac_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "/".to_string(),
+                     SchemeChirho {
+@@ -615,7 +615,7 @@ impl ClassEnvChirho {
+             name_chirho: "Bits".to_string(),
+             supers_chirho: vec![],
+             var_chirho: bits_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     ".&.".to_string(),
+                     SchemeChirho {
+@@ -799,7 +799,7 @@ impl ClassEnvChirho {
+             name_chirho: "FiniteBits".to_string(),
+             supers_chirho: vec!["Bits".to_string()],
+             var_chirho: finite_bits_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "finiteBitSize".to_string(),
+                     SchemeChirho {
+@@ -849,7 +849,7 @@ impl ClassEnvChirho {
+             name_chirho: "Functor".to_string(),
+             supers_chirho: vec![],
+             var_chirho: f_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 // fmap :: (a -> b) -> f a -> f b
+                 (
+                     "fmap".to_string(),
+@@ -893,7 +893,7 @@ impl ClassEnvChirho {
+             name_chirho: "Applicative".to_string(),
+             supers_chirho: vec!["Functor".to_string()],
+             var_chirho: app_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 // pure :: a -> f a
+                 (
+                     "pure".to_string(),
+@@ -956,7 +956,7 @@ impl ClassEnvChirho {
+             name_chirho: "Monad".to_string(),
+             supers_chirho: vec!["Applicative".to_string()],
+             var_chirho: m_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 // (>>=) :: m a -> (a -> m b) -> m b
+                 (
+                     ">>=".to_string(),
+@@ -1028,7 +1028,7 @@ impl ClassEnvChirho {
+             name_chirho: "Foldable".to_string(),
+             supers_chirho: vec![],
+             var_chirho: foldable_t_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "foldMap".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![foldable_t_chirho, foldable_a_chirho, foldable_m_chirho],
+@@ -1111,7 +1111,7 @@ impl ClassEnvChirho {
+             name_chirho: "Traversable".to_string(),
+             supers_chirho: vec!["Functor".to_string(), "Foldable".to_string()],
+             var_chirho: trav_t_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "traverse".to_string(),
+                     SchemeChirho {
+@@ -1168,7 +1168,7 @@ impl ClassEnvChirho {
+             name_chirho: "Read".to_string(),
+             supers_chirho: vec![],
+             var_chirho: read_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "read".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![read_var_chirho],
+@@ -1190,7 +1190,7 @@ impl ClassEnvChirho {
+             name_chirho: "IsOption".to_string(),
+             supers_chirho: vec![],
+             var_chirho: is_option_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "defaultValue".to_string(),
+                     SchemeChirho {
+@@ -1239,7 +1239,7 @@ impl ClassEnvChirho {
+             name_chirho: "Enum".to_string(),
+             supers_chirho: vec![],
+             var_chirho: enum_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "toEnum".to_string(),
+                     SchemeChirho {
+@@ -1296,7 +1296,7 @@ impl ClassEnvChirho {
+             name_chirho: "Bounded".to_string(),
+             supers_chirho: vec![],
+             var_chirho: bounded_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "minBound".to_string(),
+                     SchemeChirho {
+@@ -1325,7 +1325,7 @@ impl ClassEnvChirho {
+             name_chirho: "Floating".to_string(),
+             supers_chirho: vec!["Fractional".to_string()],
+             var_chirho: floating_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "pi".to_string(),
+                     SchemeChirho {
+@@ -1526,7 +1526,7 @@ impl ClassEnvChirho {
+             name_chirho: "MonadFail".to_string(),
+             supers_chirho: vec!["Monad".to_string()],
+             var_chirho: monad_fail_m_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "fail".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![monad_fail_m_chirho, monad_fail_a_chirho],
+@@ -1651,7 +1651,7 @@ impl ClassEnvChirho {
+             name_chirho: "MonadZip".to_string(),
+             supers_chirho: vec!["Monad".to_string()],
+             var_chirho: monadzip_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "mzipWith".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![
+@@ -1697,7 +1697,7 @@ impl ClassEnvChirho {
+             name_chirho: "RandomGen".to_string(),
+             supers_chirho: vec![],
+             var_chirho: randomgen_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "split".to_string(),
+                     SchemeChirho {
+@@ -1752,7 +1752,7 @@ impl ClassEnvChirho {
+             name_chirho: "SplitGen".to_string(),
+             supers_chirho: vec!["RandomGen".to_string()],
+             var_chirho: splitgen_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "splitGen".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![splitgen_var_chirho],
+@@ -1777,7 +1777,7 @@ impl ClassEnvChirho {
+             name_chirho: "Contravariant".to_string(),
+             supers_chirho: vec![],
+             var_chirho: contravariant_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "contramap".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![
+@@ -1863,7 +1863,7 @@ impl ClassEnvChirho {
+             name_chirho: "Integral".to_string(),
+             supers_chirho: vec!["Num".to_string()],
+             var_chirho: integral_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "div".to_string(),
+                     SchemeChirho {
+@@ -1943,7 +1943,7 @@ impl ClassEnvChirho {
+             name_chirho: "NFData".to_string(),
+             supers_chirho: vec![],
+             var_chirho: nfdata_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "rnf".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![nfdata_var_chirho],
+@@ -2777,7 +2777,7 @@ impl ClassEnvChirho {
+             name_chirho: "Alternative".to_string(),
+             supers_chirho: vec!["Applicative".to_string()],
+             var_chirho: alt_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "empty".to_string(),
+                     SchemeChirho {
+@@ -2834,7 +2834,7 @@ impl ClassEnvChirho {
+             name_chirho: "MonadPlus".to_string(),
+             supers_chirho: vec!["Monad".to_string(), "Alternative".to_string()],
+             var_chirho: mp_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "mzero".to_string(),
+                     SchemeChirho {
+@@ -2891,7 +2891,7 @@ impl ClassEnvChirho {
+             name_chirho: "Semigroup".to_string(),
+             supers_chirho: vec![],
+             var_chirho: sg_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "<>".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![sg_var_chirho],
+@@ -2916,7 +2916,7 @@ impl ClassEnvChirho {
+             name_chirho: "Monoid".to_string(),
+             supers_chirho: vec!["Semigroup".to_string()],
+             var_chirho: mon_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "mappend".to_string(),
+                     SchemeChirho {
+@@ -3131,7 +3131,7 @@ impl ClassEnvChirho {
+             name_chirho: "MonadTrans".to_string(),
+             supers_chirho: vec![],
+             var_chirho: mt_t_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "lift".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![mt_t_chirho, mt_m_chirho, mt_a_chirho],
+@@ -3154,7 +3154,7 @@ impl ClassEnvChirho {
+             name_chirho: "IsString".to_string(),
+             supers_chirho: vec![],
+             var_chirho: is_string_var_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "fromString".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![is_string_var_chirho],
+@@ -3193,7 +3193,7 @@ impl ClassEnvChirho {
+             name_chirho: "IsList".to_string(),
+             supers_chirho: vec![],
+             var_chirho: is_list_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "fromList".to_string(),
+                     SchemeChirho {
+@@ -3250,7 +3250,7 @@ impl ClassEnvChirho {
+             name_chirho: "Generic".to_string(),
+             supers_chirho: vec![],
+             var_chirho: generic_var_chirho,
+-            methods_chirho: HashMap::from([
++            methods_chirho: map_from_chirho([
+                 (
+                     "from".to_string(),
+                     SchemeChirho {
+@@ -3514,7 +3514,7 @@ mod tests_chirho {
+             name_chirho: "Convert".to_string(),
+             supers_chirho: vec![],
+             var_chirho: a_chirho,
+-            methods_chirho: HashMap::from([(
++            methods_chirho: map_from_chirho([(
+                 "convert".to_string(),
+                 SchemeChirho {
+                     vars_chirho: vec![a_chirho, b_chirho],
+diff --git a/crates/haskelujah-typing-chirho/src/env_chirho.rs b/crates/haskelujah-typing-chirho/src/env_chirho.rs
+index 3ce84f36..cd2cf547 100644
+--- a/crates/haskelujah-typing-chirho/src/env_chirho.rs
++++ b/crates/haskelujah-typing-chirho/src/env_chirho.rs
+@@ -6,7 +6,9 @@
+ //! Maps names to their type schemes. Supports lexical scoping via
+ //! a scope stack that can be pushed/popped for let bindings and lambdas.
+ 
+-use std::collections::HashMap;
++use crate::det_hash_chirho::{
++    HashMapChirho as HashMap, HashSetChirho as HashSet, NewDeterministicChirho as _,
++};
+ 
+ use crate::subst_chirho::SubstChirho;
+ use crate::ty_chirho::{SchemeChirho, TyVarChirho};
+@@ -78,7 +80,7 @@ impl TyEnvChirho {
+     /// Iterate over all bindings across all scopes (outermost first).
+     /// If a name appears in multiple scopes, only the innermost is yielded.
+     pub fn all_bindings_chirho(&self) -> Vec<(&String, &SchemeChirho)> {
+-        let mut seen_chirho = std::collections::HashSet::new();
++        let mut seen_chirho = HashSet::new();
+         let mut result_chirho = Vec::new();
+         for scope_chirho in self.scopes_chirho.iter().rev() {
+             for (name_chirho, scheme_chirho) in scope_chirho {
+@@ -92,7 +94,7 @@ impl TyEnvChirho {
+ 
+     /// Collect all visible names across all scopes (deduplicated, innermost wins).
+     pub fn all_names_chirho(&self) -> Vec<&str> {
+-        let mut seen_chirho = std::collections::HashSet::new();
++        let mut seen_chirho = HashSet::new();
+         let mut names_chirho = Vec::new();
+         for scope_chirho in self.scopes_chirho.iter().rev() {
+             for name_chirho in scope_chirho.keys() {
+diff --git a/crates/haskelujah-typing-chirho/src/exhaust_chirho.rs b/crates/haskelujah-typing-chirho/src/exhaust_chirho.rs
+index 295ca4c6..a15d1c17 100644
+--- a/crates/haskelujah-typing-chirho/src/exhaust_chirho.rs
++++ b/crates/haskelujah-typing-chirho/src/exhaust_chirho.rs
+@@ -15,7 +15,9 @@
+ //! match site. Nested pattern decomposition (the full Maranget matrix
+ //! algorithm) is a future enhancement.
+ 
+-use std::collections::{HashMap, HashSet};
++use crate::det_hash_chirho::{
++    HashMapChirho as HashMap, HashSetChirho as HashSet,
++};
+ 
+ use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+ use haskelujah_ast_chirho::expr_chirho::{
+diff --git a/crates/haskelujah-typing-chirho/src/infer_chirho.rs b/crates/haskelujah-typing-chirho/src/infer_chirho.rs
+index d57ded4e..a71b97c2 100644
+--- a/crates/haskelujah-typing-chirho/src/infer_chirho.rs
++++ b/crates/haskelujah-typing-chirho/src/infer_chirho.rs
+@@ -6,7 +6,9 @@
+ //! Implements Hindley-Milner type inference with let-generalization.
+ //! Walks the AST and produces typed bindings via unification.
+ 
+-use std::collections::{HashMap, HashSet};
++use crate::det_hash_chirho::{
++    HashMapChirho as HashMap, HashSetChirho as HashSet, NewDeterministicChirho as _,
++};
+ 
+ use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+ use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho, RhsChirho, StmtChirho};
+@@ -1174,8 +1176,8 @@ impl InferCtxChirho {
+             &["Monad", "Applicative", "Functor", "MonadIO", "MonadFail"];
+         let mut io_default_subst_chirho = SubstChirho::empty_chirho();
+         // Group predicates by type variable
+-        let mut var_pred_classes_chirho: std::collections::HashMap<TyVarChirho, Vec<&str>> =
+-            std::collections::HashMap::new();
++        let mut var_pred_classes_chirho: HashMap<TyVarChirho, Vec<&str>> =
++            HashMap::new();
+         for pred_chirho in &scheme_preds_chirho {
+             if let TyChirho::VarChirho(v_chirho) = &pred_chirho.ty_chirho {
+                 var_pred_classes_chirho
+@@ -3823,7 +3825,7 @@ impl InferCtxChirho {
+                     self.apply_subst_all_chirho(&s_chirho);
+                 }
+                 if *has_wildcard_chirho {
+-                    let explicit_names_chirho: std::collections::HashSet<String> = fields_chirho
++                    let explicit_names_chirho: HashSet<String> = fields_chirho
+                         .iter()
+                         .map(|f_chirho| record_field_key_chirho(&f_chirho.name_chirho))
+                         .collect();
+@@ -5361,7 +5363,7 @@ impl InferCtxChirho {
+                             // Newtype GADT: convert the full type signature.
+                             let con_ty_chirho = self.ast_type_to_ty_chirho(
+                                 ty_chirho,
+-                                &mut std::collections::HashMap::new(),
++                                &mut HashMap::new(),
+                             );
+                             let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
+                             self.env_chirho.bind_chirho(
+@@ -5724,8 +5726,8 @@ impl InferCtxChirho {
+ 
+         // Phase 1: resolve all predicates and collect constraints per type variable
+         let mut resolved_preds_chirho: Vec<(PredChirho, SpanChirho)> = Vec::new();
+-        let mut var_classes_chirho: std::collections::HashMap<TyVarChirho, Vec<String>> =
+-            std::collections::HashMap::new();
++        let mut var_classes_chirho: HashMap<TyVarChirho, Vec<String>> =
++            HashMap::new();
+ 
+         for (pred_chirho, span_chirho) in &preds_chirho {
+             let resolved_ty_chirho = final_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
+@@ -6178,7 +6180,7 @@ fn build_infix_app_expr_chirho(
+ /// Collect variable references from an expression (shallow walk).
+ fn collect_expr_refs_chirho(
+     expr_chirho: &haskelujah_ast_chirho::expr_chirho::ExprChirho,
+-    refs_chirho: &mut std::collections::HashSet<String>,
++    refs_chirho: &mut HashSet<String>,
+ ) {
+     use haskelujah_ast_chirho::expr_chirho::ExprChirho;
+     match expr_chirho {
+@@ -6362,7 +6364,7 @@ fn collect_expr_refs_chirho(
+ 
+ fn collect_local_bind_refs_chirho(
+     bind_chirho: &haskelujah_ast_chirho::expr_chirho::LocalBindChirho,
+-    refs_chirho: &mut std::collections::HashSet<String>,
++    refs_chirho: &mut HashSet<String>,
+ ) {
+     match bind_chirho {
+         haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+@@ -6384,7 +6386,7 @@ fn collect_local_bind_refs_chirho(
+ 
+ fn collect_rhs_refs_chirho(
+     rhs_chirho: &haskelujah_ast_chirho::expr_chirho::RhsChirho,
+-    refs_chirho: &mut std::collections::HashSet<String>,
++    refs_chirho: &mut HashSet<String>,
+ ) {
+     use haskelujah_ast_chirho::expr_chirho::RhsChirho;
+     match rhs_chirho {
+@@ -6402,8 +6404,8 @@ fn collect_rhs_refs_chirho(
+ 
+ fn collect_module_shadowed_names_chirho(
+     module_chirho: &ModuleChirho,
+-) -> std::collections::HashSet<String> {
+-    let mut names_chirho = std::collections::HashSet::new();
++) -> HashSet<String> {
++    let mut names_chirho = HashSet::new();
+     for decl_chirho in &module_chirho.decls_chirho {
+         match decl_chirho {
+             DeclChirho::FunBindChirho { name_chirho, .. }
+@@ -6485,9 +6487,9 @@ fn binding_groups_chirho(
+     fun_names_chirho: &[String],
+     fun_decls_chirho: &[(usize, &[haskelujah_ast_chirho::expr_chirho::MatchArmChirho])],
+ ) -> Vec<Vec<usize>> {
+-    let name_set_chirho: std::collections::HashSet<&str> =
++    let name_set_chirho: HashSet<&str> =
+         fun_names_chirho.iter().map(|s| s.as_str()).collect();
+-    let name_to_idx_chirho: std::collections::HashMap<&str, usize> = fun_names_chirho
++    let name_to_idx_chirho: HashMap<&str, usize> = fun_names_chirho
+         .iter()
+         .enumerate()
+         .map(|(i, s)| (s.as_str(), i))
+@@ -6497,7 +6499,7 @@ fn binding_groups_chirho(
+     let n_chirho = fun_names_chirho.len();
+     let mut adj_chirho: Vec<Vec<usize>> = vec![Vec::new(); n_chirho];
+     for (i_chirho, (_, matches_chirho)) in fun_decls_chirho.iter().enumerate() {
+-        let mut refs_chirho = std::collections::HashSet::new();
++        let mut refs_chirho = HashSet::new();
+         for arm_chirho in *matches_chirho {
+             collect_rhs_refs_chirho(&arm_chirho.rhs_chirho, &mut refs_chirho);
+             for wb_chirho in &arm_chirho.where_binds_chirho {
+diff --git a/crates/haskelujah-typing-chirho/src/kind_chirho.rs b/crates/haskelujah-typing-chirho/src/kind_chirho.rs
+index 4610535e..df8f53cf 100644
+--- a/crates/haskelujah-typing-chirho/src/kind_chirho.rs
++++ b/crates/haskelujah-typing-chirho/src/kind_chirho.rs
+@@ -16,7 +16,9 @@
+ //! This module implements kind inference with unification variables,
+ //! analogous to type inference but at the kind level.
+ 
+-use std::collections::HashMap;
++use crate::det_hash_chirho::{
++    HashMapChirho as HashMap, HashSetChirho as HashSet, NewDeterministicChirho as _,
++};
+ use std::fmt;
+ 
+ use haskelujah_ast_chirho::decl_chirho::{AstKindChirho, DeclChirho, TyVarChirho};
+@@ -591,8 +593,8 @@ struct KindInferCtxChirho {
+     next_var_chirho: u32,
+     diagnostics_chirho: DiagnosticBundleChirho,
+     /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
+-    kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
+-    local_kind_decl_names_chirho: std::collections::HashSet<String>,
++    kind_var_cache_chirho: HashMap<String, KindVarChirho>,
++    local_kind_decl_names_chirho: HashSet<String>,
+     type_kind_synonyms_chirho: HashMap<String, KindTypeSynonymChirho>,
+     expanding_type_kind_synonyms_chirho: Vec<String>,
+ }
+@@ -608,8 +610,8 @@ impl KindInferCtxChirho {
+             subst_chirho: KindSubstChirho::empty_chirho(),
+             next_var_chirho: 0,
+             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
+-            kind_var_cache_chirho: std::collections::HashMap::new(),
+-            local_kind_decl_names_chirho: std::collections::HashSet::new(),
++            kind_var_cache_chirho: HashMap::new(),
++            local_kind_decl_names_chirho: HashSet::new(),
+             type_kind_synonyms_chirho: HashMap::new(),
+             expanding_type_kind_synonyms_chirho: Vec::new(),
+         }
+@@ -1610,7 +1612,7 @@ pub struct KindResultChirho {
+ /// Run kind inference on a module's type declarations and type signatures.
+ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
+     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+-    let local_kind_decl_names_chirho: std::collections::HashSet<String> = module_chirho
++    let local_kind_decl_names_chirho: HashSet<String> = module_chirho
+         .decls_chirho
+         .iter()
+         .filter_map(|decl_chirho| match decl_chirho {
+@@ -1646,7 +1648,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
+         // Snapshot the env keys so we can remove per-declaration locals
+         // (type variables) after processing this declaration, preventing
+         // scope leaks into subsequent declarations.
+-        let env_keys_before_chirho: std::collections::HashSet<String> =
++        let env_keys_before_chirho: HashSet<String> =
+             ctx_chirho.env_chirho.kinds_chirho.keys().cloned().collect();
+         match decl_chirho {
+             DeclChirho::DataDeclChirho {
+diff --git a/crates/haskelujah-typing-chirho/src/lib.rs b/crates/haskelujah-typing-chirho/src/lib.rs
+index 180e6096..7cf627e8 100644
+--- a/crates/haskelujah-typing-chirho/src/lib.rs
++++ b/crates/haskelujah-typing-chirho/src/lib.rs
+@@ -8,6 +8,7 @@
+ //! and let-generalization.
+ 
+ pub mod class_chirho;
++pub mod det_hash_chirho;
+ pub mod deriving_chirho;
+ pub mod env_chirho;
+ pub mod exhaust_chirho;
+diff --git a/crates/haskelujah-typing-chirho/src/linearity_chirho.rs b/crates/haskelujah-typing-chirho/src/linearity_chirho.rs
+index 044ab37f..45ed6b9a 100644
+--- a/crates/haskelujah-typing-chirho/src/linearity_chirho.rs
++++ b/crates/haskelujah-typing-chirho/src/linearity_chirho.rs
+@@ -7,7 +7,7 @@
+ //! that variables bound by linear function arrows (`%1 ->` or `⊸`) are used
+ //! exactly once. Violations produce warnings (not errors, for now).
+ 
+-use std::collections::HashMap;
++use crate::det_hash_chirho::{HashMapChirho as HashMap, NewDeterministicChirho as _};
+ 
+ use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, StmtChirho};
+ use haskelujah_ast_chirho::pat_chirho::PatChirho;
+diff --git a/crates/haskelujah-typing-chirho/src/subst_chirho.rs b/crates/haskelujah-typing-chirho/src/subst_chirho.rs
+index b21fc511..1c4c1d26 100644
+--- a/crates/haskelujah-typing-chirho/src/subst_chirho.rs
++++ b/crates/haskelujah-typing-chirho/src/subst_chirho.rs
+@@ -6,7 +6,7 @@
+ //! A substitution maps type variables to types. Applying a substitution
+ //! replaces every occurrence of each mapped variable with its image.
+ 
+-use std::collections::HashMap;
++use crate::det_hash_chirho::{HashMapChirho as HashMap, NewDeterministicChirho as _};
+ 
+ use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+ 

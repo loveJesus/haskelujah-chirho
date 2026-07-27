@@ -1,0 +1,103 @@
+// For God so loved the world, that he gave his only begotten Son, that whosoever
+// believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+
+//! Deterministic hash collections for the type checker.
+//!
+//! `std::collections::HashMap` seeds its hasher from the OS **once per process**, so
+//! iteration order differs between runs of the same binary. Anywhere the type checker
+//! iterates a hash collection and the order reaches unification, defaulting, or constraint
+//! solving, that randomness becomes a different accept/reject decision — the same source
+//! file compiling on one run and failing on the next.
+//!
+//! That was not hypothetical: `T25266.hs` from GHC's `should_compile` corpus passed 9 times
+//! and failed 11 times out of 20 with the same binary and no flags, producing exactly two
+//! byte-distinct outputs chosen per process. See
+//! `spec-chirho/bug-nondeterministic-typecheck-chirho.md`.
+//!
+//! A compiler's observable behaviour must not depend on a hash seed. These aliases pin the
+//! hasher to a fixed seed so iteration order is a function of insertion order alone, which
+//! makes compilation reproducible. GHC solves the same problem the same way — it keeps
+//! deterministic map variants precisely for output that must not vary run to run.
+//!
+//! The `NewDeterministicChirho` trait exists so the ~240 existing `HashMap::new()` call
+//! sites keep compiling unchanged: `new()` is an inherent method only on the
+//! `RandomState` specialisation, so with a custom hasher an in-scope trait method of the
+//! same name resolves instead.
+
+use std::collections::hash_map::DefaultHasher;
+use std::hash::BuildHasherDefault;
+
+/// Fixed-seed hasher. Deterministic within a build, unlike `RandomState`.
+pub type DetBuildHasherChirho = BuildHasherDefault<DefaultHasher>;
+
+/// Drop-in `HashMap` whose iteration order does not vary between processes.
+pub type HashMapChirho<KChirho, VChirho> =
+    std::collections::HashMap<KChirho, VChirho, DetBuildHasherChirho>;
+
+/// Drop-in `HashSet` whose iteration order does not vary between processes.
+pub type HashSetChirho<TChirho> = std::collections::HashSet<TChirho, DetBuildHasherChirho>;
+
+
+/// Replacement for `HashMap::from([..])`, which exists only on the `RandomState`
+/// specialisation. Purely textual substitution at the call site — no paren surgery.
+pub fn map_from_chirho<KChirho, VChirho, const N_CHIRHO: usize>(
+    entries_chirho: [(KChirho, VChirho); N_CHIRHO],
+) -> HashMapChirho<KChirho, VChirho>
+where
+    KChirho: std::cmp::Eq + std::hash::Hash,
+{
+    entries_chirho.into_iter().collect()
+}
+
+/// Restores `::new()` for the fixed-seed collections.
+pub trait NewDeterministicChirho {
+    fn new() -> Self;
+}
+
+impl<KChirho, VChirho> NewDeterministicChirho for HashMapChirho<KChirho, VChirho> {
+    fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<TChirho> NewDeterministicChirho for HashSetChirho<TChirho> {
+    fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[cfg(test)]
+mod tests_chirho {
+    use super::*;
+
+    /// The property the whole module exists for: iteration order must be a function of
+    /// insertion order, not of a per-process seed. Two independently built maps with the
+    /// same insertions must iterate identically.
+    #[test]
+    fn iteration_order_is_stable_across_maps_chirho() {
+        let build_chirho = || {
+            let mut m_chirho: HashMapChirho<String, usize> = NewDeterministicChirho::new();
+            for i_chirho in 0..64 {
+                m_chirho.insert(format!("key_{i_chirho}_chirho"), i_chirho);
+            }
+            m_chirho.keys().cloned().collect::<Vec<_>>()
+        };
+        assert_eq!(
+            build_chirho(),
+            build_chirho(),
+            "fixed-seed maps must iterate in the same order"
+        );
+    }
+
+    #[test]
+    fn set_iteration_order_is_stable_chirho() {
+        let build_chirho = || {
+            let mut s_chirho: HashSetChirho<String> = NewDeterministicChirho::new();
+            for i_chirho in 0..64 {
+                s_chirho.insert(format!("elem_{i_chirho}_chirho"));
+            }
+            s_chirho.iter().cloned().collect::<Vec<_>>()
+        };
+        assert_eq!(build_chirho(), build_chirho());
+    }
+}

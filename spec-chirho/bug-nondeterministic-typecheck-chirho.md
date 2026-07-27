@@ -67,6 +67,63 @@ Note this is not the same defect as
 runtime; this one is an unstable accept/reject decision at compile time. They should not be
 conflated.
 
+## ATTEMPTED FIX — 2026-07-27, reverted. Read this before trying again.
+
+I implemented the deterministic-collections fix and **backed it out**. The tree is green;
+the work is preserved at `spec-chirho/wip-chirho/det-hash-experiment-chirho.patch`
+(913 lines, not applied).
+
+### What worked
+
+A shim (`det_hash_chirho.rs`) pinning the hasher to a fixed seed:
+
+```rust
+pub type DetBuildHasherChirho = BuildHasherDefault<DefaultHasher>;
+pub type HashMapChirho<K, V> = std::collections::HashMap<K, V, DetBuildHasherChirho>;
+pub trait NewDeterministicChirho { fn new() -> Self; }   // see below
+```
+
+Two tricks made it nearly free at the call sites:
+
+1. **The `new()` trait.** `HashMap::new()` is inherent only on the `RandomState`
+   specialisation, so with a custom hasher an in-scope trait method of the same name
+   resolves instead. That kept **~240 existing `HashMap::new()` call sites compiling
+   unchanged** instead of needing `::default()` everywhere.
+2. **A free `map_from_chirho([..])`** replacing `HashMap::from([..])` (33 sites), which is
+   also `RandomState`-only. A free function makes it a pure textual substitution with no
+   paren surgery.
+
+Result in the typing crate: **builds clean, 257 tests pass, 0 failures, 0 warnings**
+(255 before, +2 new tests asserting iteration order is stable across independently built
+maps). Only 7 import sites needed editing.
+
+### Why it was reverted
+
+The deterministic type **leaks through public API signatures**. `infer_module_with_imports_…`
+takes `&HashMap<String, SchemeChirho>`; once that alias is deterministic, every caller must
+match. Retyping the driver produced a ragged boundary — some maps deterministic, some still
+`std` — and the error count went **2 → 4 → 35 and climbing**, reaching types produced by the
+naming crate.
+
+That makes this a **deliberate workspace-wide refactor, not a patch**: the alias has to be
+adopted at the crate boundary (or workspace-wide) in one intentional pass, with the full
+driver suite as the gate. Landing it half-finished in a shared tree at the end of a long
+session would have left the driver non-compiling for other agents.
+
+### What the next attempt should do differently
+
+- Decide the boundary **first**: either (a) adopt `HashMapChirho` workspace-wide, or
+  (b) keep public signatures on `std::collections::HashMap` and use deterministic maps
+  strictly for internal, order-sensitive structures. (b) is smaller but only helps if the
+  order-sensitive iteration is genuinely internal — which is **not yet established**.
+- **Confirm the cause before paying for the refactor.** The typing-crate-only build was
+  never measured against `T25266.hs`, because the release binary could not link until the
+  driver compiled. So this experiment has **not** yet demonstrated that fixed-seed hashing
+  actually fixes the flip. Do that first, on a branch, before touching crate boundaries.
+
+That last point is the honest status: the fix is *plausible and well-scoped*, and it is
+still **unverified**.
+
 ## How to confirm and fix
 
 1. **Confirm cheaply**: swap the hash collections in the typing crate for `BTreeMap`/
