@@ -1915,21 +1915,41 @@ impl InferCtxChirho {
             // explicit forall binders first, then any remaining free variables
             // from the surrounding signature scope.
             let mut combined_vars_chirho = outer_forall_vars_chirho;
-            for var_chirho in var_map_chirho.values().copied() {
-                if free_in_ty_chirho.contains(&var_chirho)
-                    && !combined_vars_chirho.contains(&var_chirho)
-                {
-                    combined_vars_chirho.push(var_chirho);
-                }
-            }
+            // DETERMINISM: `var_map_chirho` is a HashMap, so collecting the remainder in
+            // `values()` order made the QUANTIFICATION ORDER depend on a per-process hash
+            // seed. `instantiate_scheme_parts_chirho` then substitutes fresh vars per qvar
+            // IN LIST ORDER, so which fresh metavariable stands for which quantified var
+            // swapped between runs — with an identical allocation COUNT, i.e. state
+            // divergence carrying no allocation signature. Sorting by var id gives
+            // FIRST-APPEARANCE order, because ids are allocated in signature-traversal
+            // order; that is both deterministic and the TypeApplications-correct order for
+            // implicit quantification. Explicit `forall` binders keep SOURCE order above
+            // and are deliberately not sorted.
+            // Root candidate traced by claude2_chirho; see
+            // spec-chirho/bug-nondeterministic-typecheck-chirho.md
+            let mut remainder_vars_chirho: Vec<TyVarChirho> = var_map_chirho
+                .values()
+                .copied()
+                .filter(|var_chirho| {
+                    free_in_ty_chirho.contains(var_chirho)
+                        && !combined_vars_chirho.contains(var_chirho)
+                })
+                .collect();
+            remainder_vars_chirho.sort_unstable();
+            remainder_vars_chirho.dedup();
+            combined_vars_chirho.extend(remainder_vars_chirho);
             combined_vars_chirho
         } else {
-            // No explicit forall: quantify over all free vars from var_map
-            var_map_chirho
+            // No explicit forall: quantify over all free vars from var_map.
+            // Sorted for the same reason as above — see the comment in the other branch.
+            let mut implicit_vars_chirho: Vec<TyVarChirho> = var_map_chirho
                 .values()
                 .copied()
                 .filter(|v_chirho| free_in_ty_chirho.contains(v_chirho))
-                .collect()
+                .collect();
+            implicit_vars_chirho.sort_unstable();
+            implicit_vars_chirho.dedup();
+            implicit_vars_chirho
         };
 
         SchemeChirho {
