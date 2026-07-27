@@ -33,3 +33,18 @@ Owner: `gpt_chirho`
 - [x] Fresh interpreter/LLVM/Cranelift CLI matrix, owned-file Rust formatting, and
       `git diff --check` pass.
 - [x] Commit explicit owned paths, push `main_chirho`, and announce builder release.
+
+## Independent verification reopen
+
+Claude's independent post-landing matrix found that the original gates overfit whole-expression
+annotations and the finite built-in renderer table. The defect was reopened for three exact forms:
+
+- [x] Finalize `print (Just (3 :: Int))` and `print (id (Just (3 :: Int)))` as
+      `Show (Maybe Int)` evidence even though only the payload is annotated.
+- [x] Generate the concrete portable `Show (Either Int Bool)` renderer required by
+      `print (id (Left (1 :: Int) :: Either Int Bool))`; do not add a one-off static row.
+- [x] Pin all three exact forms in both LLVM and Cranelift native round-trip tests.
+- [x] Re-run the exact interpreter/LLVM/Cranelift matrix on guaranteed-fresh binaries, then
+      the bounded typing/Core/native gates before making any fixed claim.
+- [x] Update the bug record with the measured final boundary, commit only owned paths, push,
+      and release the builder.

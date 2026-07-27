@@ -128,3 +128,87 @@ fn evidenced_print_rewrites_to_show_instance_then_put_str_ln_chirho() {
         Some("$prim_Show_show_Bool")
     );
 }
+
+#[test]
+fn evidenced_print_materializes_missing_flat_either_show_binding_chirho() {
+    let mut names_chirho = HashMap::new();
+    names_chirho.insert(CoreIdChirho(0), "main".to_string());
+    names_chirho.insert(CoreIdChirho(50), "print".to_string());
+    names_chirho.insert(CoreIdChirho(60), "print".to_string());
+    names_chirho.insert(CoreIdChirho(101), "putStrLn".to_string());
+    let module_chirho = CoreModuleChirho {
+        name_chirho: "PrintEitherEvidenceTest".to_string(),
+        bindings_chirho: vec![
+            CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("putStrLn", 101),
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(8)),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            },
+            CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", 0),
+                rhs_chirho: CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(50))),
+                    arg_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                        con_name_chirho: "Left".to_string(),
+                        args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1))],
+                    }),
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            },
+        ],
+        names_chirho: names_chirho.clone(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: Vec::new(),
+    };
+    let mut canonical_occurrences_chirho = HashMap::new();
+    canonical_occurrences_chirho.insert(CoreIdChirho(50), ("print".to_string(), CoreIdChirho(60)));
+    let mut evidence_chirho = HashMap::new();
+    evidence_chirho.insert(
+        CoreIdChirho(50),
+        ("Show".to_string(), "Either Int Bool".to_string()),
+    );
+
+    let result_chirho = dict_pass_module_full_with_method_occurrences_chirho(
+        &module_chirho,
+        names_chirho,
+        &TyEnvChirho::new_chirho(),
+        &ClassEnvChirho::new_chirho(),
+        HashMap::new(),
+        HashMap::new(),
+        HashSet::new(),
+        canonical_occurrences_chirho,
+        evidence_chirho,
+    );
+
+    assert!(
+        result_chirho
+            .module_chirho
+            .bindings_chirho
+            .iter()
+            .any(|binding_chirho| {
+                binding_chirho.binder_chirho.name_chirho == "$prim_Show_show_Either Int Bool"
+            }),
+        "proven Either Int Bool evidence should materialize a portable Show body"
+    );
+    let main_chirho = result_chirho
+        .module_chirho
+        .bindings_chirho
+        .iter()
+        .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "main")
+        .expect("main binding should exist");
+    let shown_arg_chirho = match &main_chirho.rhs_chirho {
+        CoreExprChirho::AppChirho { arg_chirho, .. } => arg_chirho.as_ref(),
+        other_chirho => panic!("expected evidenced print rewrite, got {other_chirho:?}"),
+    };
+    let show_head_chirho = app_spine_head_id_chirho(shown_arg_chirho)
+        .expect("shown Either argument should be an application");
+    assert_eq!(
+        result_chirho
+            .names_chirho
+            .get(&show_head_chirho)
+            .map(String::as_str),
+        Some("$prim_Show_show_Either Int Bool")
+    );
+}

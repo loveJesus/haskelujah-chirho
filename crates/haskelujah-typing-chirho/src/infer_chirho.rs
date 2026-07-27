@@ -6810,6 +6810,30 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
     );
 
+    // Nothing :: forall a. Maybe a
+    // Just :: forall a. a -> Maybe a
+    let maybe_arg_chirho = TyVarChirho(1042);
+    let maybe_ty_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("Maybe".to_string())),
+        Box::new(TyChirho::VarChirho(maybe_arg_chirho)),
+    );
+    env_chirho.bind_chirho(
+        "Nothing".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![maybe_arg_chirho],
+            preds_chirho: vec![],
+            ty_chirho: maybe_ty_chirho.clone(),
+        },
+    );
+    env_chirho.bind_chirho(
+        "Just".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![maybe_arg_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(maybe_arg_chirho), maybe_ty_chirho),
+        },
+    );
+
     let th_name_ty_chirho = TyChirho::ConChirho("Name".to_string());
     let th_type_ty_chirho = TyChirho::ConChirho("Type".to_string());
     let th_kind_ty_chirho = TyChirho::ConChirho("Kind".to_string());
@@ -20665,6 +20689,44 @@ mod tests_chirho {
             .collect::<Vec<_>>();
 
         assert_eq!(keys_chirho, vec!["[Int]", "Maybe String", "(Int,String)"]);
+    }
+
+    #[test]
+    fn print_occurrence_uses_payload_annotation_for_maybe_key_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let annotated_payload_chirho = ExprChirho::AnnChirho {
+            expr_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
+                3,
+                SpanChirho::DUMMY_CHIRHO,
+            ))),
+            ty_chirho: TypeChirho::ConChirho(dummy_name_chirho("Int")),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let maybe_value_chirho = ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho("Just"))),
+            arg_chirho: Box::new(annotated_payload_chirho),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let print_app_chirho = ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("print"))),
+            arg_chirho: Box::new(maybe_value_chirho),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let (subst_chirho, _ty_chirho) = ctx_chirho.infer_expr_chirho(&print_app_chirho);
+        let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
+        let composed_subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
+        let records_chirho = ctx_chirho.finalize_occurrence_records_chirho(&composed_subst_chirho);
+
+        assert!(
+            records_chirho.iter().any(|record_chirho| {
+                record_chirho.name_chirho == "print"
+                    && record_chirho.ordinal_chirho == 0
+                    && record_chirho.class_name_chirho == "Show"
+                    && record_chirho.ty_key_chirho == "Maybe Int"
+            }),
+            "payload annotation should resolve print evidence to Maybe Int, got: {records_chirho:?}"
+        );
     }
 
     #[test]

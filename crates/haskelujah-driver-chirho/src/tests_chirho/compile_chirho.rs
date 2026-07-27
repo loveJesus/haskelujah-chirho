@@ -7166,11 +7166,13 @@ main = do
   print (id (1.5 :: Double))
   print (id ("hi" :: String))
   print (id ([1,2,3] :: [Int]))
-  print (id (Just 3 :: Maybe Int))
+  print (Just (3 :: Int))
+  print (id (Just (3 :: Int)))
   print (id ([True,False] :: [Bool]))
   print (id ((1,"x") :: (Int,String)))
   print (id ((1,2,3) :: (Int,Int,Int)))
   print (id (Right "ok" :: Either Int String))
+  print (id (Left (1 :: Int) :: Either Int Bool))
   print (id RedChirho)
   print (id (MixChirho 2 True))
 "#;
@@ -7182,7 +7184,7 @@ main = do
     );
     assert_eq!(
         stdout_chirho,
-        "True\n'x'\n1.5\n\"hi\"\n[1,2,3]\nJust 3\n[True,False]\n(1,\"x\")\n(1,2,3)\nRight \"ok\"\nRedChirho\nMixChirho 2 True\n"
+        "True\n'x'\n1.5\n\"hi\"\n[1,2,3]\nJust 3\nJust 3\n[True,False]\n(1,\"x\")\n(1,2,3)\nRight \"ok\"\nLeft 1\nRedChirho\nMixChirho 2 True\n"
     );
 }
 
@@ -8162,11 +8164,13 @@ main = do
   print (id (1.5 :: Double))
   print (id ("hi" :: String))
   print (id ([1,2,3] :: [Int]))
-  print (id (Just 3 :: Maybe Int))
+  print (Just (3 :: Int))
+  print (id (Just (3 :: Int)))
   print (id ([True,False] :: [Bool]))
   print (id ((1,"x") :: (Int,String)))
   print (id ((1,2,3) :: (Int,Int,Int)))
   print (id (Right "ok" :: Either Int String))
+  print (id (Left (1 :: Int) :: Either Int Bool))
   print (id RedChirho)
   print (id (MixChirho 2 True))
 "#;
@@ -8178,7 +8182,7 @@ main = do
     );
     assert_eq!(
         stdout_chirho,
-        "True\n'x'\n1.5\n\"hi\"\n[1,2,3]\nJust 3\n[True,False]\n(1,\"x\")\n(1,2,3)\nRight \"ok\"\nRedChirho\nMixChirho 2 True\n"
+        "True\n'x'\n1.5\n\"hi\"\n[1,2,3]\nJust 3\nJust 3\n[True,False]\n(1,\"x\")\n(1,2,3)\nRight \"ok\"\nLeft 1\nRedChirho\nMixChirho 2 True\n"
     );
 }
 

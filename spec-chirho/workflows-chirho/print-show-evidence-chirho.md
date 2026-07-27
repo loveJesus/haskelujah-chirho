@@ -15,7 +15,10 @@ flowchart TD
     join_chirho --> validate_chirho{Show constrains print's own scheme?}
     validate_chirho -->|no| fallback_chirho[Preserve canonical print path]
     validate_chirho -->|yes| instance_chirho{Concrete Show binding exists?}
-    instance_chirho -->|no| fallback_chirho
+    instance_chirho -->|no| materialize_chirho{Supported flat structured key?}
+    materialize_chirho -->|no| fallback_chirho
+    materialize_chirho -->|yes| generate_chirho[Generate portable Show binding from proven key]
+    generate_chirho --> rewrite_chirho
     instance_chirho -->|yes| rewrite_chirho[Rewrite to putStrLn applied to concrete show binding]
     rewrite_chirho --> core_show_chirho[Portable Core renderer: case, scalar show primops, string append]
     core_show_chirho --> llvm_chirho[LLVM lowering]
@@ -30,6 +33,10 @@ flowchart TD
   referenced function's own type scheme.
 - Concrete structured keys retain their full shape, including lists, tuples, `Maybe`, and
   `Either`; unresolved type variables never become invented instance keys.
+- Prelude constructor schemes propagate payload annotations through `Just`/`Nothing` to the
+  enclosing `Maybe` type before occurrence evidence is finalized.
+- Missing flat `Maybe`/`Either` renderers are generated deterministically only from proven
+  evidence and only when every field has a backend-neutral scalar renderer.
 - The dictionary pass rewrites only when the exact generated `Show` binding exists.
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.

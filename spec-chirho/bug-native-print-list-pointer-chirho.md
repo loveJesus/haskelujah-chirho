@@ -1,38 +1,58 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# FIXED — native print now consumes solved Show evidence
+# FIXED — native print carries solved Show evidence through Maybe and Either
 
-**Fixed and verified 2026-07-27.** Native `print` now carries the type checker's concrete
-`Show` evidence into the dictionary pass. Both LLVM and Cranelift render hidden scalar,
-structured, and user-derived values instead of applying the old integer fallback.
+**Fixed after independent verification reopened the defect 2026-07-27.** Native `print`
+carries concrete `Show` evidence for booleans, characters, doubles, strings, lists, tuples,
+`Maybe`, `Either`, and the tested user-derived values. The independently reported exact forms
+now agree across the interpreter, LLVM, and Cranelift:
+
+```haskell
+print (Just (3 :: Int))
+print (id (Just (3 :: Int)))
+print (id (Left (1 :: Int) :: Either Int Bool))
+```
+
+All three paths render `Just 3`, `Just 3`, and `Left 1`. The reopen isolated two genuine
+gaps: `Just`/`Nothing` lacked precise polymorphic constructor schemes, so a payload-only
+annotation did not finalize the surrounding `Maybe`; and the dictionary pass relied on a
+finite structured-renderer table even when typing proved a new concrete `Show` key.
 
 ## Verified resolution
 
 The repair is compiler-driven; it does not inspect runtime tags:
 
-1. Type inference retains full concrete `Show` keys such as `[Int]`, `Maybe String`, and
-   `(Int,String)` in occurrence records.
-2. The driver admits constrained functions only when the evidence class constrains that
+1. Type inference seeds `Nothing :: forall a. Maybe a` and
+   `Just :: forall a. a -> Maybe a`, allowing payload annotations to constrain the
+   enclosing constructor application.
+2. Type inference retains full concrete `Show` keys such as `[Int]`, `Maybe Int`,
+   `Either Int Bool`, and `(Int,String)` in occurrence records.
+3. The driver admits constrained functions only when the evidence class constrains that
    function's own scheme. This admits `print :: Show a => a -> IO ()` without admitting
    incidental predicates.
-3. The dictionary pass rewrites an evidenced `print value` to
+4. For proven flat `Maybe`/`Either` keys absent from the finite bootstrap table, the
+   dictionary pass deterministically generates a portable renderer when every field has a
+   supported scalar renderer. `Either Int Bool` is therefore evidence-driven, not a one-off row.
+5. The dictionary pass rewrites an evidenced `print value` to
    `putStrLn ($prim_Show_show_<ConcreteKey> value)` only when that exact binding exists.
-4. Structured builtin instances render through portable Core cases, scalar show primops, and
+6. Structured builtin instances render through portable Core cases, scalar show primops, and
    string append rather than interpreter-only compound primops.
-5. The STG path maps every scalar renderer used by that Core, including `showChar#`, so
+7. The STG path maps every scalar renderer used by that Core, including `showChar#`, so
    interpreter and native output agree.
-6. Cranelift no longer resolves local binders as string globals merely because a binder name
+8. Cranelift no longer resolves local binders as string globals merely because a binder name
    matches a string literal. Its runtime also distinguishes actual thunk allocations from
    constructor headers before interpreting thunk-state bits.
-7. RTS string append owns both input byte strings before any allocation that can trigger
+9. RTS string append owns both input byte strings before any allocation that can trigger
    collection.
 
-The LLVM and Cranelift round-trip matrix now prints exact Haskell syntax for `Bool`, `Char`,
-`Double`, `String`, `[Int]`, `[Bool]`, `Maybe Int`, pairs, triples, `Either`, a nullary
-derived constructor, and a derived product constructor. The STG interpreter remains correct.
+The LLVM and Cranelift round-trip matrix prints exact Haskell syntax for `Bool`, `Char`,
+`Double`, `String`, `[Int]`, `[Bool]`, pairs, triples, both bootstrap and evidence-generated
+`Either` rows, the exact payload-annotated `Maybe` forms above, a nullary derived constructor,
+and a derived product constructor. The STG interpreter remains correct.
 
-This is still bounded by the compiler's available `Show` instances. An unresolved or unsupported
-instance is not invented; general polymorphic dictionary construction remains separate work.
+This is still bounded by the compiler's available `Show` instances and portable renderer
+components. An unresolved, nested, or unsupported instance is not invented; general
+polymorphic dictionary construction remains separate work.
 
 Workflow:
 `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`

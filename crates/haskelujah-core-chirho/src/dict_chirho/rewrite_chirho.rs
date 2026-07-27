@@ -4313,6 +4313,11 @@ impl DictPassCtxChirho {
         // Generate built-in $prim_ bindings for standard class methods
         self.generate_builtin_prim_bindings_chirho();
 
+        // Proven occurrence evidence can demand a concrete structured row that
+        // is not part of the finite bootstrap table (for example
+        // `Show (Either Int Bool)`). Generate only portable, body-backed rows.
+        self.generate_evidenced_show_bindings_chirho();
+
         // Generate Prelude function bindings (not, id, const)
         self.generate_prelude_bindings_chirho();
 

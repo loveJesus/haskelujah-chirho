@@ -7,6 +7,8 @@
 //! backends do not. These generators keep shared instances backend-agnostic by
 //! using cases, scalar show primops, and string append instead.
 
+use std::collections::BTreeSet;
+
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use super::DictPassCtxChirho;
@@ -72,7 +74,58 @@ fn placeholder_ty_chirho(type_key_chirho: &str) -> TyChirho {
     }
 }
 
+fn scalar_show_key_supported_chirho(type_key_chirho: &str) -> bool {
+    matches!(
+        type_key_chirho,
+        "Int" | "Bool" | "Char" | "Double" | "String" | "[Char]"
+    )
+}
+
 impl DictPassCtxChirho {
+    /// Materialize portable structured `Show` bodies demanded by proven typing
+    /// evidence but absent from the finite bootstrap table. This remains
+    /// conservative: only flat constructor applications whose fields already
+    /// have portable scalar renderers are generated.
+    ///
+    /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
+    pub(super) fn generate_evidenced_show_bindings_chirho(&mut self) {
+        let type_keys_chirho = self
+            .occurrence_evidence_chirho
+            .values()
+            .filter_map(|(class_name_chirho, type_key_chirho)| {
+                (class_name_chirho == "Show").then_some(type_key_chirho.clone())
+            })
+            .collect::<BTreeSet<_>>();
+
+        for type_key_chirho in type_keys_chirho {
+            let prim_name_chirho = format!("$prim_Show_show_{type_key_chirho}");
+            if self
+                .lookup_body_backed_name_id_chirho(&prim_name_chirho)
+                .is_some()
+            {
+                continue;
+            }
+
+            if let Some(inner_key_chirho) = type_key_chirho.strip_prefix("Maybe ")
+                && scalar_show_key_supported_chirho(inner_key_chirho)
+            {
+                self.generate_show_maybe_binding_chirho(&prim_name_chirho, &type_key_chirho);
+                continue;
+            }
+
+            if let Some(arguments_chirho) = type_key_chirho.strip_prefix("Either ") {
+                let argument_keys_chirho = arguments_chirho.split_whitespace().collect::<Vec<_>>();
+                if argument_keys_chirho.len() == 2
+                    && argument_keys_chirho
+                        .iter()
+                        .all(|key_chirho| scalar_show_key_supported_chirho(key_chirho))
+                {
+                    self.generate_show_either_binding_chirho(&prim_name_chirho, &type_key_chirho);
+                }
+            }
+        }
+    }
+
     fn push_show_binding_chirho(
         &mut self,
         prim_name_chirho: &str,
