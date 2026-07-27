@@ -51,6 +51,9 @@ export class CastPlayerChirho {
 
 	async loadChirho(urlChirho: string): Promise<void> {
 		const resChirho = await fetch(urlChirho);
+		if (!resChirho.ok) {
+			throw new Error(`cast fetch failed: ${resChirho.status}`);
+		}
 		const bodyChirho = await resChirho.text();
 		const linesChirho = bodyChirho.split('\n').filter((lChirho) => lChirho.trim().length > 0);
 		let idleLimitChirho = this.optsChirho.idleLimitChirho ?? 2.5;
@@ -75,6 +78,9 @@ export class CastPlayerChirho {
 			} catch {
 				// skip malformed event lines
 			}
+		}
+		if (rawChirho.length === 0) {
+			throw new Error('cast parsed to zero events — wrong content served?');
 		}
 		// compress idle gaps so replays never stall
 		let shiftChirho = 0;

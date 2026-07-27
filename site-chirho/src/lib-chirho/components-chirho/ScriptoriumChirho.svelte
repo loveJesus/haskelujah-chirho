@@ -14,6 +14,7 @@
 	let startedChirho = $state(false);
 	let playingChirho = $state(false);
 	let endedChirho = $state(false);
+	let loadingChirho = $state(false);
 	let speedChirho = $state(1.5);
 	let loadFailedChirho = $state(false);
 	let copiedChirho = $state(false);
@@ -22,6 +23,7 @@
 
 	async function ensureLoadedChirho(): Promise<boolean> {
 		if (playerChirho) return true;
+		loadingChirho = true;
 		try {
 			const pChirho = new CastPlayerChirho(termElChirho, {
 				onEndChirho: () => {
@@ -36,6 +38,8 @@
 		} catch {
 			loadFailedChirho = true;
 			return false;
+		} finally {
+			loadingChirho = false;
 		}
 	}
 
@@ -123,10 +127,14 @@
 					Recorded terminal demo: haskelujah init creates a project, check type-checks it,
 					test runs the suite, fmt formats it, and mcp lists AI tools.
 				</p>
-				{#if !startedChirho}
-					<button class="term-poster-chirho" onclick={togglePlayChirho}>
-						<span class="term-poster-ring-chirho" aria-hidden="true">▶</span>
-						<span class="caps-label-chirho">begin the session</span>
+				{#if !startedChirho && !loadFailedChirho}
+					<button class="term-poster-chirho" onclick={togglePlayChirho} disabled={loadingChirho}>
+						<span class="term-poster-ring-chirho" aria-hidden="true">
+							{loadingChirho ? '···' : '▶'}
+						</span>
+						<span class="caps-label-chirho">
+							{loadingChirho ? 'fetching the recording' : 'begin the session'}
+						</span>
 					</button>
 				{/if}
 				{#if endedChirho}

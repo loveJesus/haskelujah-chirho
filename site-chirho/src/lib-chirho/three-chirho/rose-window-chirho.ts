@@ -120,6 +120,7 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 	varying vec2 vPosChirho;
 	uniform float uTimeChirho;
 	uniform float uGlowChirho;
+	uniform float uProgressChirho;
 	uniform float uRChirho;
 	${NOISE_GLSL_CHIRHO}
 	float capsuleChirho(vec2 p, vec2 a, vec2 b, float rad) {
@@ -128,18 +129,42 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 		float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
 		return length(pa - ba * h) - rad;
 	}
-	// one twinkling star per sparse hash cell; gaussian falloff, no branching cost to speak of
-	float starLayerChirho(vec2 uv, float sparsity, float t, float seed) {
+	// one twinkling star per sparse hash cell — with colour variety, and diffraction
+	// spikes on the bright ones so the sky reads as objects, not gaussian dots
+	vec3 starLayerChirho(vec2 uv, float sparsity, float t, float seed) {
 		vec2 cell = floor(uv);
 		vec2 f = fract(uv);
 		float h = hashChirho(cell + seed);
-		if (h < sparsity) return 0.0;
+		if (h < sparsity) return vec3(0.0);
 		vec2 pos = 0.2 + 0.6 * vec2(hashChirho(cell + seed + 7.3), hashChirho(cell + seed + 17.1));
-		float d = length(f - pos);
+		vec2 off = f - pos;
 		float tw = 0.55 + 0.45 * sin(t * (0.6 + h) + h * 40.0);
-		// mostly small crisp points; the occasional cell gets a soft bokeh accent
-		float size = mix(240.0, 70.0, step(0.93, hashChirho(cell + seed + 29.0)));
-		return tw * exp(-d * d * size);
+		float bigh = hashChirho(cell + seed + 29.0);
+		float size = mix(240.0, 70.0, step(0.93, bigh));
+		float i = exp(-dot(off, off) * size);
+		if (bigh > 0.93) {
+			i += (exp(-abs(off.x) * 26.0) * exp(-off.y * off.y * 500.0)
+				+ exp(-abs(off.y) * 26.0) * exp(-off.x * off.x * 500.0)) * 0.6;
+		}
+		float hue = hashChirho(cell + seed + 41.0);
+		vec3 tint = mix(vec3(0.82, 0.86, 1.0), vec3(1.0, 0.84, 0.6), step(0.7, hue));
+		tint = mix(tint, vec3(1.0, 0.65, 0.55), step(0.92, hue));
+		return tint * i * tw;
+	}
+	// one inclined two-armed spiral galaxy, dusty arms and a warm core
+	vec3 galaxyChirho(vec2 p, float t, float recede) {
+		vec2 g = (p - vec2(0.52, 0.4)) * recede;
+		float cs = cos(0.6);
+		float sn = sin(0.6);
+		g = mat2(cs, -sn, sn, cs) * g;
+		g.y *= 2.3;
+		float r = length(g) + 1e-4;
+		float th = atan(g.y, g.x);
+		float arms = 0.5 + 0.5 * sin(2.0 * th - log(r) * 4.5 + t * 0.03);
+		float dust = 0.65 + 0.35 * noiseChirho(g * 6.0 + 3.0);
+		float disk = exp(-r * 3.2) * (0.35 + 0.65 * arms) * dust;
+		float core = exp(-r * 11.0);
+		return vec3(0.55, 0.62, 0.85) * disk * 0.85 + vec3(1.0, 0.85, 0.6) * core * 0.95;
 	}
 	void main() {
 		vec2 p = vPosChirho / uRChirho; // normalized to oculus radius
@@ -154,13 +179,21 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 		col = mix(col, vec3(0.045, 0.13, 0.17), smoothstep(0.62, 0.95, noiseChirho(q * 1.3 + 9.0)) * 0.5);
 		col *= 0.62 + glowCapChirho * 0.75;
 
-		// three parallax star layers; drift quickens gently as the visitor passes through
+		// three parallax star layers — the contra-zoom: as the camera dollies IN, each
+		// layer's scale grows so the sky recedes AWAY, deeper layers faster, like flying
+		// backwards through space while zooming in
 		float drift = t * 0.01 + glowCapChirho * 0.22;
-		float stars = 0.0;
-		stars += starLayerChirho(p * 6.0 + vec2(0.0, drift * 1.2), 0.72, t, 1.0) * 0.55;
-		stars += starLayerChirho(p * 11.0 + vec2(drift * 0.7, drift * 2.1), 0.78, t, 2.0) * 0.8;
-		stars += starLayerChirho(p * 21.0 + vec2(-drift * 1.4, drift * 3.4), 0.84, t, 3.0);
-		col += vec3(0.85, 0.86, 0.95) * stars * (0.5 + glowCapChirho * 0.8);
+		float eased = uProgressChirho * uProgressChirho * (3.0 - 2.0 * uProgressChirho);
+		float r1 = 1.0 + eased * 1.1;
+		float r2 = 1.0 + eased * 2.0;
+		float r3 = 1.0 + eased * 3.4;
+		vec3 stars = vec3(0.0);
+		stars += starLayerChirho(p * 6.0 * r1 + vec2(0.0, drift * 1.2), 0.72, t, 1.0) * 0.55 / sqrt(r1);
+		stars += starLayerChirho(p * 11.0 * r2 + vec2(drift * 0.7, drift * 2.1), 0.78, t, 2.0) * 0.8 / sqrt(r2);
+		stars += starLayerChirho(p * 21.0 * r3 + vec2(-drift * 1.4, drift * 3.4), 0.84, t, 3.0) / sqrt(r3);
+		col += stars * (0.5 + glowCapChirho * 0.8);
+		// the galaxy rides the middle depth layer, receding with everything else
+		col += galaxyChirho(p, t, r2) * (0.4 + glowCapChirho * 0.5);
 
 		// λ — vector-crisp at any zoom: screen-space AA via fwidth, not a fixed edge width
 		float dMain = capsuleChirho(p, vec2(-0.3, 0.56), vec2(0.34, -0.58), 0.058);
@@ -318,6 +351,7 @@ export function createRoseWindowChirho(
 		uniforms: {
 			uTimeChirho: { value: 0 },
 			uGlowChirho: { value: 0 },
+			uProgressChirho: { value: 0 },
 			uRChirho: { value: oculusRChirho }
 		}
 	});
@@ -554,6 +588,7 @@ export function createRoseWindowChirho(
 		}
 		oculusMatChirho.uniforms.uTimeChirho.value = tChirho;
 		oculusMatChirho.uniforms.uGlowChirho.value = glowChirho;
+		oculusMatChirho.uniforms.uProgressChirho.value = scrollProgressChirho;
 		stoneMatChirho.uniforms.uGlowChirho.value = glowChirho;
 		for (const matChirho of shaftMatsChirho) {
 			matChirho.uniforms.uTimeChirho.value = tChirho;
