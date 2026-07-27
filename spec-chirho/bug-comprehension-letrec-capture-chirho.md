@@ -81,6 +81,39 @@ re-derives them:
 3. ~~"user-defined functions break, Prelude functions are fine"~~ — falsified by FA
    (`gcd x p == 1`, Prelude, **broken**) and FB (`odd (x + p)`, Prelude, **broken**).
 
+### NARROWED FURTHER 2026-07-27 — the guard VALUE is correct; the DISPATCH is wrong
+
+Decisive new evidence. The guard expression computes the right `Bool` in every form —
+including inside a comprehension, and inside a recursive function:
+
+```haskell
+s (p:xs) = (head xs `mod` p /= 0) : s xs   -- take 5 -> [True,True,True,True,True]   correct
+s (p:xs) = (p `mod` 2 /= 0)       : s xs   -- take 6 -> [T,F,T,F,T,F]                correct
+print (take 5 [x `mod` 2 /= 0 | x <- [1..]])       -- [T,F,T,F,T]                    correct
+```
+
+So the `Bool` is computed correctly and then **dispatched on incorrectly** inside the
+capturing comprehension letrec worker. This eliminates the entire "the guard is
+mis-evaluated / the wrong instance is selected / `p` is misbound" family of hypotheses at
+once — the value arriving at the `case` is right.
+
+Also checked and NOT the fault: the evaluator's `CodeChirho::CaseChirho` arm does force a
+heap-pointer scrutinee (`emit_enter_chirho`) and saves/restores arg registers around the
+case frame (`eval_chirho.rs:628`). And the two fixes landed on 2026-07-27 — the
+determinism quantification-order fix (47723b8c) and the `TyApp` annotation fix (2a1a95f7) —
+do **not** repair it: `take 8 (sieve [2..])` still yields `[2,3,4,5,6,7,8,9]`.
+
+A live hypothesis was also **weakened**: the catch-all for an unresolved class method in
+`instance_chirho.rs` is `"+#"` (addition), which would make a mis-resolved `/=` return a
+number that a `case`-on-`Bool` could misread as `True`. But annotating the guard operand
+(`((x \`mod\` p) :: Int) /= 0`) does **not** fix the sieve, so that path is not confirmed.
+Recorded as weakened rather than quietly dropped.
+
+**Where a fresh investigator should start:** the value is right and the `case` is wrong, so
+compare the *runtime* dispatch of the working `filter` form against the broken comprehension
+form — instrument the tag actually read at the `case` in each. Do not re-derive the value
+path; it is proven correct above.
+
 ### CHARACTERIZED — the minimal pair (supersedes the guesswork below)
 
 The trigger is **`not` / `/=`**, i.e. a guard whose scrutinee is a call returning a
