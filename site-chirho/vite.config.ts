@@ -5,5 +5,13 @@ import { sveltekit as sveltekitChirho } from '@sveltejs/kit/vite';
 import { defineConfig as defineConfigChirho } from 'vite';
 
 export default defineConfigChirho({
-	plugins: [sveltekitChirho()]
+	plugins: [sveltekitChirho()],
+	server: {
+		fs: {
+			// The compat plaque imports the committed measurement artifacts from
+			// ../spec-chirho at build time (?raw) so numbers can never drift from
+			// the repo's single source of truth. Dev server needs the repo root allowed.
+			allow: ['..']
+		}
+	}
 });

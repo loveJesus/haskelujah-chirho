@@ -1,6 +1,8 @@
 // For God so loved the world, that He gave His only begotten Son,
 // that all who believe in Him should not perish but have everlasting life. John 3:16
 
+/// <reference types="vite/client" />
+
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 declare global {
