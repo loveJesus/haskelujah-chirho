@@ -93,7 +93,10 @@ fn main_chirho() -> ExitCode {
 
     // Handle --version and --help as commands
     if command_chirho == "--version" || command_chirho == "-V" {
-        eprintln!("haskelujah-chirho 0.1.0 (GHC compat: 861/938, 91.8%)");
+        // No compatibility number here on purpose: a hardcoded one drifts out
+        // of date on every commit and cannot state both directions honestly.
+        // The measured figures live in spec-chirho/ghc-should-*-measurement-chirho.txt.
+        eprintln!("haskelujah-chirho 0.1.0");
         return ExitCode::SUCCESS;
     }
     if command_chirho == "--help" || command_chirho == "-h" || command_chirho == "help" {
@@ -1110,7 +1113,7 @@ fn install_command_chirho(program_name_chirho: &str, positional_chirho: &[&str])
 
 fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("Haskelujah Chirho — A Haskell compiler in Rust");
-    eprintln!("GHC compatibility: 861/938 (91.8%)");
+    eprintln!("GHC compatibility: see README (measured in both directions)");
     eprintln!();
     eprintln!("usage: {program_name_chirho} <command> [args] [options]");
     eprintln!();

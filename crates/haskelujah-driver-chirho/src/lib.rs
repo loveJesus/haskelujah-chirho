@@ -2091,6 +2091,15 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         return Err(infer_result_chirho.diagnostics_chirho);
     }
 
+    // Phase 4.4: Source-type validity — reject type forms whose licensing
+    // extension is not enabled (GHC's GHC-91510: illegal polymorphic /
+    // qualified type).
+    let validity_result_chirho =
+        haskelujah_typing_chirho::check_module_type_validity_diagnostics_chirho(&module_chirho);
+    if !defer_errors_chirho && validity_result_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(validity_result_chirho.diagnostics_chirho);
+    }
+
     // Phase 4.5: Pattern match exhaustiveness and redundancy checking
     let exhaust_result_chirho =
         haskelujah_typing_chirho::check_module_exhaustiveness_chirho(&module_chirho);

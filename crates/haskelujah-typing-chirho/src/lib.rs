@@ -17,6 +17,7 @@ pub mod linearity_chirho;
 pub mod subst_chirho;
 pub mod ty_chirho;
 pub mod unify_chirho;
+pub mod validity_chirho;
 
 pub use class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho, QualTyChirho};
 pub use deriving_chirho::{DerivingResultChirho, apply_deriving_chirho, derive_instances_chirho};
@@ -27,3 +28,7 @@ pub use infer_chirho::infer_module_chirho;
 pub use infer_chirho::infer_module_with_imports_chirho;
 pub use kind_chirho::{KindChirho, KindEnvChirho, KindResultChirho, infer_module_kinds_chirho};
 pub use ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
+pub use validity_chirho::{
+    ValidityErrorChirho, ValidityResultChirho, check_module_type_validity_chirho,
+    check_module_type_validity_diagnostics_chirho,
+};

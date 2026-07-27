@@ -171,8 +171,16 @@ impl LowerCtxChirho {
                         .and_then(|s_chirho| s_chirho.strip_suffix("#-}"))
                         .unwrap_or("")
                         .trim();
-                    // Check for LANGUAGE pragma
-                    if let Some(rest_chirho) = inner_chirho.strip_prefix("LANGUAGE") {
+                    // Check for LANGUAGE pragma. GHC matches the pragma name
+                    // case-insensitively, so `{-# Language ... #-}` is just as
+                    // valid as `{-# LANGUAGE ... #-}`; matching only the upper
+                    // case spelling silently dropped EVERY extension in such a
+                    // module.
+                    let language_rest_chirho = inner_chirho
+                        .split_once(char::is_whitespace)
+                        .filter(|(keyword_chirho, _)| keyword_chirho.eq_ignore_ascii_case("LANGUAGE"))
+                        .map(|(_, rest_chirho)| rest_chirho);
+                    if let Some(rest_chirho) = language_rest_chirho {
                         let rest_chirho = rest_chirho.trim();
                         for ext_chirho in rest_chirho.split(',') {
                             let ext_chirho = ext_chirho.trim();
