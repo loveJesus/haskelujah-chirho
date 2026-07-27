@@ -117,6 +117,68 @@ Caveats to respect before attempting it:
   `show` on a list is independently broken (`putStrLn (show (id [1,2,3]))` → pointer), so
   `Show [a]` from `Show a` remains a separate, larger job.
 
+### FIX PLAN — reuse the evidence mechanism that already exists (read-only prep, 2026-07-27)
+
+Tracing the dictionary path gives a concrete plan that adds no new machinery.
+
+**How `show` actually resolves.** There is no `Show [a]` from `Show a`. Dispatch is a
+hardcoded enumeration of *concrete* triples in
+`crates/haskelujah-core-chirho/src/dict_chirho/instance_chirho.rs`:
+
+```
+("Show", "show", "Int",  2), ("Show", "show", "Bool", 0), ("Show", "show", "Double", 2),
+("Show", "show", "[Char]", 2), ("Show", "show", "[Int]", 2),
+("Show", "show", "Maybe Int", 2), ("Show", "show", "Maybe String", 2), …
+```
+
+Each generates a binding named `$prim_Show_show_<TypeKey>`. So `show` is correct exactly
+when the resolved type is *in that table*, and `print` is wrong because **it never consults
+the table at all** — it is an IO primop (`is_io_primop_chirho`) and no `Show` evidence is
+ever attached to its argument. Confirmed in Core: `main = (v1 (v2 True))`, no dictionary.
+
+**Why the dict pass cannot fix this alone.** `rewrite_chirho.rs` reasons *structurally*, not
+from a type environment — e.g. `print_arg_needs_int_default_chirho` inspects the expression
+shape for numeric markers. It has no expression→type map, so it cannot name the argument's
+type key by itself.
+
+**But the type checker already records exactly that.** `MethodOccurrenceRecordChirho`
+(`infer_chirho.rs:114`) carries:
+
+```rust
+pub struct MethodOccurrenceRecordChirho {
+    pub name_chirho: String,        // e.g. "show"
+    pub ordinal_chirho: u32,
+    pub class_name_chirho: String,  // e.g. "Show"
+    pub ty_key_chirho: String,      // e.g. "Bool" — THE RESOLVED CONCRETE TYPE
+}
+```
+
+and the driver already consumes these to build the evidence map
+(`driver lib.rs:3160-3200`, which sorts its id vectors and is deterministic).
+
+**Therefore the fix, in three bricks:**
+
+1. **Typing** — when inferring `print e`, record a method occurrence for the *implicit*
+   `show`: `{ name: "show", class_name: "Show", ty_key: <resolved type key of e> }`. This is
+   the same call the checker already makes for an explicit `show`; `print` is simply not
+   currently treated as a method use.
+2. **Dict pass** — at a `print` application, look up that occurrence and rewrite to the
+   concrete instance, i.e. `print e` → `putStrLn ($prim_Show_show_<TyKey> e)`. The existing
+   `print_arg_needs_int_default_chirho` special case stays: numeric defaulting to `Int` is
+   correct Haskell and must not be disturbed.
+3. **Backend** — no change needed. Once a concrete `show` is applied, `print`'s
+   Int-rendering fallback is never reached for these programs.
+
+**Scope honesty.** This fixes every type *present in the enumeration* — `Bool`, `Double`,
+`Char`, `[Int]`, `[Char]`, the `Maybe` entries, and derived-`Show` constructors once their
+key resolves. It does **not** give us `Show [a]` from `Show a` in general; a list of a type
+absent from the table stays broken. Real polymorphic dictionary construction is a separate,
+larger job and should not be smuggled into this fix.
+
+**Gates this needs:** `eval_` suite (1002 tests, 199s) is the right fast gate — it is where a
+changed `print` would show as altered program output — plus a native round-trip check that
+`print (id True)` emits `True`, and a regression test that `print 5` still defaults to `Int`.
+
 ### Backend-only tag dispatch is RULED OUT — do not attempt it
 
 An earlier suggestion in this file was to dispatch in the backend fallback on the forced
