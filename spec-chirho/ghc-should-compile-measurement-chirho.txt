@@ -1,32 +1,26 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, AFTER the determinism fix (47723b8c)
-# code measured: 47723b8c (binary target/release/haskelujah built from that commit)
+# measured: 2026-07-27, AFTER RecursiveDo landed (9456c120)
+# code measured: 9456c120 (binary target/release/haskelujah built from that commit by the
+#   landing gates, mtime 12:37:27 EDT, verified fresh against HEAD before sweeping)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
 #   subdirectory T16234/ and all eight PASS. `find` and `git ls-files` agree on 938.
 #   Any measurement reporting TOTAL=930 has silently dropped them.
 #
-# RESULT: PASS=849 FAIL=89 TOTAL=938 (90.5%)
-# STABILITY: DETERMINISTIC — no unstable files
-# QUOTE-AS: ~90% (849 of 938)
+# RESULT: PASS=850 FAIL=88 TOTAL=938 (90.6%)
+# STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
+# QUOTE-AS: ~90% (850 of 938) — do not quote a third significant figure
 #
-# THE TYPE CHECKER IS NOW DETERMINISTIC. This supersedes the previous artifact, which
-# reported a RANGE (849-850) because T25266.hs flipped between accept and reject run to
-# run. Root cause: signature schemes quantified in HashMap::values() order, so which fresh
-# metavariable stood for which quantified variable swapped per process. Fixed in 47723b8c
-# by sorting quantified vars by id (= first-appearance order, which is also the
-# TypeApplications-correct order for implicit quantification).
-#   acceptance: T25266.hs 100 runs -> 0 pass / 100 fail, i.e. STABLE
-#               T2688 12/12, T3155 0/12, tcfail088 0/12 — all stable
-# So the number is now a POINT, not a range, and a third significant figure is still
-# unjustified for a different reason: the corpus measures acceptance, not correctness.
+# CHANGE SINCE LAST MEASUREMENT: 849 -> 850 (+1). Exactly one file left the failing set —
+# T4404.hs — and NOTHING entered it. Cause: RecursiveDo landed end-to-end in 9456c120
+# (extension-gated rec/mdo, mfix tuple-knot desugaring, MonadFix class with IO/Maybe/list
+# instances, non-strict ReturnIO payloads). Zero regressions from the slice on this corpus
+# — measured across two full passes, not assumed.
 #
-# WHAT CHANGED vs the previous artifact: nothing but stability. The failing set is
-# BYTE-IDENTICAL to the previously committed 89 files. T25266.hs, formerly a coin flip,
-# now fails deterministically — it was always in the committed failing set, so the count
-# is unchanged. We did not lose a passing file; we stopped pretending a coin flip was a
-# result.
+# TWO-PASS PROTOCOL: the type checker's determinism was fixed in 47723b8c and is
+# RE-VERIFIED here rather than trusted — both passes of this measurement produced
+# byte-identical failing sets.
 #
 # ACCEPTANCE IS NOT CORRECTNESS. This corpus measures only whether we accept what GHC
 # accepts. See spec-chirho/bug-comprehension-letrec-capture-chirho.md — the canonical lazy
@@ -34,7 +28,7 @@
 #
 # Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #
-# ---- the 89 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 88 files we FAIL to accept (GHC accepts these); all deterministic ----
 ghc-tests-chirho/typecheck-chirho/should_compile/FloatFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/HardRecordUpdate.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Improvement.hs
@@ -102,7 +96,6 @@ ghc-tests-chirho/typecheck-chirho/should_compile/T26346.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T26451.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T3632.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T4355.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T4404.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T4444.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T4524.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T5032.hs

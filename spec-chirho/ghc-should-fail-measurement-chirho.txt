@@ -1,7 +1,7 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, re-measured AFTER the determinism fix (47723b8c)
-# code measured: 47723b8c (binary target/release/haskelujah built from that commit;
-#   verified live — rank-N rejected under Haskell2010, accepted under default GHC2021)
+# measured: 2026-07-27, re-measured AFTER RecursiveDo landed (9456c120)
+# code measured: 9456c120 (binary target/release/haskelujah built from that commit by the
+#   landing gates, mtime 12:37:27 EDT, verified fresh against HEAD before sweeping)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   CORPUS COMPLETENESS: `find -name '*.hs'` at any depth == 767 == shell glob, i.e. this
@@ -10,24 +10,16 @@
 #   spec-chirho/ghc-should-compile-measurement-chirho.txt.)
 #
 # RESULT: CORRECTLY-REJECTED=149 WRONGLY-ACCEPTED=618 TOTAL=767 (19.4% reject rate)
-# STABILITY: DETERMINISTIC — the type checker is now deterministic (47723b8c)
+# STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets (the
+#   historical nondeterminism root cause was fixed in 47723b8c; re-verified here, not trusted)
 # QUOTE-AS: ~19% (149 of 767) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 141 -> 149 (+8), wrongly-accepted 626 -> 618.
-# Cause: the GHC-91510 source-type validity check landed in 6ad1d7a7. Re-derived here from
-# clean runs rather than carried over from the session that wrote the check.
-#
-# STABILITY IS NOW EARNED, NOT ASSUMED.
-# The previous artifact said "no variance observed in 2 passes", and warned that two
-# agreeing samples prove nothing — the proof case being T25266.hs, a genuine coin flip that
-# nonetheless failed in BOTH should_compile passes. That warning is now discharged: the
-# non-determinism ROOT CAUSE is fixed (47723b8c, signature quantification order), verified
-# by a 100-run acceptance loop landing 100/100 one way.
-#
-# This corpus was re-measured against the deterministic binary and is UNCHANGED: 149/618/767
-# with a BYTE-IDENTICAL wrongly-accepted set. Re-measured rather than carried forward,
-# because a determinism fix touching type-variable ordering could in principle have moved
-# the reject axis, and assuming otherwise is exactly the habit this file exists to prevent.
+# CHANGE SINCE LAST MEASUREMENT: NONE. 149/618/767 with a BYTE-IDENTICAL wrongly-accepted
+# set, re-measured against the RecursiveDo binary rather than carried forward — a language
+# slice touching desugar, typing, and runtime could in principle move the reject axis, and
+# assuming it cannot is exactly the habit this file exists to prevent. It did not move;
+# now that is measured rather than assumed. (Previous change: 141 -> 149 at 6ad1d7a7, the
+# GHC-91510 source-type validity check.)
 #
 # HISTORICAL NOTE — the reasoning the old warning preserved, still worth keeping:
 # Two full passes produced byte-identical wrongly-accepted sets (618 files, zero diff).
@@ -37,6 +29,8 @@
 # full should_compile passes. Two agreeing passes would have declared it stable. So this
 # line means "no variance seen in 2 samples", not "deterministic". Establishing stability
 # honestly needs per-file repetition, which has not been run on this corpus.
+# (That warning was discharged when the root cause was fixed and verified in 47723b8c;
+# it is preserved because the next reader deserves to see why the caution existed.)
 #
 # Rounding rule: round DOWN. 19.4% -> ~19%, never 20%. A compatibility claim must not sit
 # above its own measured value.
@@ -57,14 +51,6 @@
 #  - sampled 4 wrongly-accepted files by hand (T2688 fundep violation, T8450 rigid skolem
 #    vs Bool, SCLoop superclass loop, T15796 newtype with class context): all 4 are genuine
 #    GHC type errors that we accept silently. The gap is real, not a harness artifact.
-#
-# ACCEPTANCE IS NOT CORRECTNESS. Neither corpus measures whether a compiled program computes
-# the right answer. See spec-chirho/bug-comprehension-letrec-capture-chirho.md — the
-# canonical lazy primes sieve COMPILES and silently returns the wrong list.
-#
-# IMPLICATION FOR THE BURN-DOWN: fixes that make the checker MORE permissive (e.g. deferring
-# stuck type-family equalities) move should_compile up and this number down. Both corpora
-# must be re-measured on every typechecker change.
 #
 # ---- the 618 files we WRONGLY ACCEPT (GHC rejects these) ----
 ghc-tests-chirho/typecheck-chirho/should_fail/AmbigFDs.hs
