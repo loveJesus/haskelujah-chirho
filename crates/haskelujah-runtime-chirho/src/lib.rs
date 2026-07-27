@@ -9,7 +9,9 @@ pub mod prim_chirho;
 pub mod stack_chirho;
 pub mod value_chirho;
 
-pub use eval_chirho::{ArgSourceChirho, CodeChirho, EvalErrorChirho, MachineChirho};
+pub use eval_chirho::{
+    ArgSourceChirho, CodeChirho, EvalErrorChirho, MachineChirho, RecBindingSpecChirho,
+};
 pub use ffi_chirho::{
     FfiCallConvChirho, FfiErrorChirho, FfiSafetyChirho, FfiTypeChirho, FfiValueChirho,
     ForeignImportChirho, ForeignTableChirho,

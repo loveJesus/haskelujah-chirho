@@ -3,7 +3,7 @@
   "meta_chirho": {
     "title_chirho": "Haskelujah Execution PRD — GHC drop-in compatibility burn-down",
     "purpose_chirho": "Execution companion to spec-chirho/prd-chirho.json (architecture PRD v1.1.0). This file is the shared work queue: every blocker between today's compiler and 'drop-in GHC replacement' as a concrete, owned, gated work item. Current active agents are gpt_chirho and claude_chirho; any future fleet agents pick items from here only after L.J. re-adds them, following the gates and updating status_chirho when landing.",
-    "prd_version_chirho": "2.2.127",
+    "prd_version_chirho": "2.2.128",
     "date_chirho": "2026-07-27",
     "baseline_commit_chirho": "626ab0a4 baseline; b5203335 monadic dispatch; 29d9f262 strict-key hardening; e4d636ce resource guard; v2.2.0 audit merge by gpt_chirho",
     "authors_chirho": [
@@ -107,7 +107,8 @@
       "claude_chirho (Fable) — evidence-threading P2a typing side: occurrence captures at both Var-instantiation paths (per-name source-order ordinals, per-pred class vars), finalized through the composed unification+Report-defaulting substitution into InferResultChirho.method_occurrences_chirho (concrete head keys only); pin + full typing/core/probe gates green v2.2.93",
       "claude_chirho (Fable) — evidence-threading P2b: driver joins typing records to desugar occ ids (zsh-split lesson; Integer->Int key normalization at the boundary; occ-skip in dict resolve_or_fresh; final canonicalization sweep enforcing elimination) + standard-method set enabled; 68-bucket measured 68 -> 60 (8 flipped: mutual-recursion/where/nubby/case-alt-where/partial-sig); probe 70/70 v2.2.94",
       "gpt_chirho (Codex) — evidence-threading constrained local-call key inference now scans arguments in order and defaults numeric key arguments before later container arguments; origin-68 acceptance surface is 68/68 and probe remains 70/70 v2.2.108",
-      "gpt_chirho (Codex) — PRD top-level measurement truth cleanup: current driver/probe/GHC suite summaries now quote the 2026-07-27 artifacts and their precision rules instead of stale audit totals v2.2.127"
+      "gpt_chirho (Codex) — PRD top-level measurement truth cleanup: current driver/probe/GHC suite summaries now quote the 2026-07-27 artifacts and their precision rules instead of stale audit totals v2.2.127",
+      "gpt_chirho (Codex) — WI-007 captured recursive groups allocate atomically per invocation instead of repatching shared static placeholders v2.2.128"
     ],
     "scaffold_map_chirho": "gpt scaffold -> this file: WI-001->WI-001+WI-002; WI-002->WI-003; WI-003->WI-004; WI-004->WI-005; WI-005->WI-006; WI-006->WI-007; WI-007->WI-009; WI-008->WI-010 parser bucket; WI-009->WI-013. gpt technical notes folded into the mapped items.",
     "update_protocol_chirho": "Claim the file write token in broker room haskelujah-chirho before editing (write-collision hit 2026-07-01); edit only items you own or land; commit the file with your change (it is force-added; spec-chirho/ is otherwise gitignored).",
@@ -857,7 +858,7 @@
       "title_chirho": "Universal forcing — complete lazy evaluation semantics",
       "pillar_chirho": "PILLAR-3",
       "priority_chirho": "P1",
-      "status_chirho": "partially landed v2.2.47 and v2.2.77 — STG primitive operands recursively force one-field wrapper payload thunks before strict primop dispatch, and PAP entry preserves target closure payloads for recursive `fix`/factorial; larger GC-root/update-frame/native forcing work remains.",
+      "status_chirho": "partially landed through v2.2.128 — STG primitive operands recursively force one-field wrapper payload thunks; PAP entry preserves target payloads; and captured recursive closure groups are allocated atomically per invocation, fixing the ordinary `where go` sieve and cross-invocation letrec aliasing. Larger GC-root/update-frame/native forcing work remains.",
       "owner_chirho": "gpt_chirho/claude_chirho; risky machine-semantics item, not solo fleet work",
       "problem_chirho": "Audit found the STG interpreter already creates/forces thunks at many strict sites; its major red is GC roots at allocation scale. Native LLVM laziness remains incomplete: primop operands, seq#/deepseq lowering, thunk indirection encoding, RTS list printers, and blackhole behavior diverge from GHC.",
       "fix_design_chirho": [
@@ -867,7 +868,8 @@
         "RTS printers/string shims: force thunked list heads/tails and computed string arguments before C-string dereference.",
         "Interpreter: fix GC root extraction for code-table/static closures before using large lazy programs as acceptance gates.",
         "LANDED v2.2.47: STG `force_to_prim_chirho` now forces a resolved one-field wrapper payload if unboxing a WHNF wrapper exposes a distinct heap thunk. This fixes strict primops receiving erased-wrapper payloads such as Min/Max list elements without eagerly forcing arbitrary constructor fields.",
-        "LANDED v2.2.77: STG PAP values return through heap-pointer handling, and `enter_pap_chirho` prepends the original target function payload before PAP pre-applied args and fresh args. This preserves captured dictionaries/register layout for `fix`-generated PAPs and fixes eval_fix_factorial_chirho without broad forcing surgery."
+        "LANDED v2.2.77: STG PAP values return through heap-pointer handling, and `enter_pap_chirho` prepends the original target function payload before PAP pre-applied args and fresh args. This preserves captured dictionaries/register layout for `fix`-generated PAPs and fixes eval_fix_factorial_chirho without broad forcing surgery.",
+        "LANDED v2.2.128: captured recursive lets no longer repatch one compile-time placeholder on every invocation. `StoreAllocRecGroupChirho` resolves outer captures, allocates and installs the complete fresh recursive group, roots every member, then admits GC. Self-recursive and mutually recursive capture-isolation tests plus the hand-written sieve are green."
       ],
       "acceptance_tests_chirho": [
         {
@@ -890,7 +892,7 @@
           "primop arguments",
           "one-field wrapper payload thunks exposed while preparing primop arguments",
           "thunk blackhole/update frames",
-          "letrec indirections"
+          "per-invocation captured recursive closure groups"
         ],
         "stg_interpreter_gaps_chirho": [
           "GC roots omit heap pointers embedded in code table/static closures at >~1024 allocations",

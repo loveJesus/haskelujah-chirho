@@ -21,7 +21,7 @@ use haskelujah_runtime_chirho::stack_chirho::PrimOpKindChirho;
 use haskelujah_runtime_chirho::value_chirho::CodePtrChirho;
 use haskelujah_runtime_chirho::{
     ArgSourceChirho, ClosureChirho, CodeChirho, DataConTagChirho, HeapAddrChirho, HeapChirho,
-    MachineChirho, ValueChirho,
+    MachineChirho, RecBindingSpecChirho, ValueChirho,
 };
 
 /// Result of lowering a Core module to STG.
@@ -462,138 +462,143 @@ impl LowerCtxChirho {
             } => {
                 // Deferred allocations: either Fun (has arity) or Thunk (arity=0)
                 let mut deferred_store_allocs_chirho: Vec<(
-                    usize,                  // dest arg reg slot
-                    Option<u16>,            // arity: Some = fun, None = thunk
-                    u32,                    // code ptr for body
-                    String,                 // name
-                    Vec<ArgSourceChirho>,   // captures
-                    Option<HeapAddrChirho>, // patch addr for recursive bindings
+                    usize,                // dest arg reg slot
+                    Option<u16>,          // arity: Some = fun, None = thunk
+                    u32,                  // code ptr for body
+                    String,               // name
+                    Vec<ArgSourceChirho>, // captures
                 )> = Vec::new();
+                let mut deferred_rec_group_chirho: Option<Vec<RecBindingSpecChirho>> = None;
 
                 if *rec_chirho {
-                    // Recursive let: two-phase approach (pre-allocate
-                    // placeholders so bindings can reference each other).
-                    //
-                    // Check if any binding's RHS references arg-register
-                    // parameters. If so, the closure payloads must include
-                    // captured arg-register values (not just the code ptr).
                     let binder_ids_chirho: HashSet<CoreIdChirho> = binds_chirho
                         .iter()
                         .map(|(b_chirho, _)| b_chirho.id_chirho)
                         .collect();
+                    let captures_by_binding_chirho: Vec<Vec<(CoreIdChirho, usize)>> = binds_chirho
+                        .iter()
+                        .map(|(_binder_chirho, rhs_chirho)| {
+                            let (lambda_binders_chirho, _) = collect_lam_chirho(rhs_chirho);
+                            let mut excluded_chirho = binder_ids_chirho.clone();
+                            excluded_chirho.extend(
+                                lambda_binders_chirho
+                                    .iter()
+                                    .map(|binder_chirho| binder_chirho.id_chirho),
+                            );
+                            let mut captures_chirho: Vec<(CoreIdChirho, usize)> =
+                                free_vars_chirho(rhs_chirho, &excluded_chirho)
+                                    .into_iter()
+                                    .filter_map(|id_chirho| {
+                                        self.arg_param_indices_chirho
+                                            .get(&id_chirho)
+                                            .copied()
+                                            .map(|index_chirho| (id_chirho, index_chirho))
+                                    })
+                                    .collect();
+                            captures_chirho.sort_by_key(|(id_chirho, _)| *id_chirho);
+                            captures_chirho
+                        })
+                        .collect();
 
-                    let mut binding_addrs_chirho: Vec<HeapAddrChirho> = Vec::new();
-
-                    // Phase 1: Allocate placeholder thunks and add to env.
-                    for (binder_chirho, _) in binds_chirho {
-                        let placeholder_chirho = ClosureChirho::thunk_chirho(
-                            CodePtrChirho(0), // will be patched
-                            &binder_chirho.name_chirho,
-                            vec![],
-                        );
-                        let addr_chirho = self.heap_chirho.alloc_chirho(placeholder_chirho);
-                        self.env_chirho.insert(
-                            binder_chirho.id_chirho,
-                            ValueChirho::HeapPtrChirho(addr_chirho),
-                        );
-                        binding_addrs_chirho.push(addr_chirho);
-                    }
-
-                    // Phase 2: Lower each RHS and patch the closures.
-                    // For lambda RHSes that capture arg-register values,
-                    // we need to emit runtime allocation instructions
-                    // (StoreAllocFunChirho) that capture the current
-                    // arg-register values AND patch the pre-allocated
-                    // heap cell to point to the new closure.
-                    //
-                    // IMPORTANT: We defer inserting letrec binders into
-                    // arg_param_indices until after ALL RHS bodies are
-                    // lowered. Otherwise, a subsequent binding's RHS code
-                    // would emit ArgReg references for earlier bindings,
-                    // but those wouldn't be in the thunk's capture list
-                    // (since free_vars excludes letrec binder IDs).
-                    let mut deferred_binder_regs_chirho: Vec<(CoreIdChirho, usize)> = Vec::new();
-                    // Track next available register separately from
-                    // arg_param_indices to avoid polluting the index map.
-                    let mut next_reg_chirho = self
-                        .arg_param_indices_chirho
-                        .values()
-                        .max()
-                        .copied()
-                        .map(|m_chirho| m_chirho + 1)
-                        .unwrap_or(0);
-                    for (i_chirho, (binder_chirho, rhs_chirho)) in binds_chirho.iter().enumerate() {
-                        let addr_chirho = binding_addrs_chirho[i_chirho];
-                        let (lam_binders_chirho, _) = collect_lam_chirho(rhs_chirho);
-
-                        // Compute free vars that need arg-register captures
-                        let mut exclude_chirho = binder_ids_chirho.clone();
-                        for lb_chirho in &lam_binders_chirho {
-                            exclude_chirho.insert(lb_chirho.id_chirho);
-                        }
-                        let fvs_chirho = free_vars_chirho(rhs_chirho, &exclude_chirho);
-                        let mut captures_chirho: Vec<(CoreIdChirho, usize)> = fvs_chirho
+                    if captures_by_binding_chirho
+                        .iter()
+                        .any(|captures_chirho| !captures_chirho.is_empty())
+                    {
+                        // See spec-chirho/workflows-chirho/runtime-letrec-chirho.md.
+                        // A captured recursive group must be rebuilt atomically
+                        // for each invocation. Static placeholders would let a
+                        // later call retarget an earlier call's recursive edge.
+                        let first_dest_reg_chirho = self
+                            .arg_param_indices_chirho
+                            .values()
+                            .max()
+                            .copied()
+                            .map(|index_chirho| index_chirho + 1)
+                            .unwrap_or(0);
+                        let binder_regs_chirho: Vec<(CoreIdChirho, usize)> = binds_chirho
                             .iter()
-                            .filter_map(|id_chirho| {
-                                self.arg_param_indices_chirho
-                                    .get(id_chirho)
-                                    .map(|&idx_chirho| (*id_chirho, idx_chirho))
+                            .enumerate()
+                            .map(|(index_chirho, (binder_chirho, _))| {
+                                (
+                                    binder_chirho.id_chirho,
+                                    first_dest_reg_chirho + index_chirho,
+                                )
                             })
                             .collect();
-                        captures_chirho.sort_by_key(|&(id_chirho, _)| id_chirho);
+                        let group_size_chirho = binds_chirho.len();
+                        let mut binding_specs_chirho = Vec::with_capacity(group_size_chirho);
 
-                        if !captures_chirho.is_empty() {
-                            // RHS with arg-register captures (lambda or thunk):
-                            // must use runtime allocation to capture current
-                            // arg-register values.
-                            let n_captures_chirho = captures_chirho.len();
-                            let arity_chirho = if lam_binders_chirho.is_empty() {
-                                None // thunk
-                            } else {
-                                Some(lam_binders_chirho.len() as u16) // function
-                            };
-                            let (_, inner_body_chirho) = if !lam_binders_chirho.is_empty() {
-                                collect_lam_chirho(rhs_chirho)
-                            } else {
-                                (vec![], rhs_chirho)
-                            };
+                        for (
+                            ((binder_chirho, rhs_chirho), captures_chirho),
+                            (_binder_id_chirho, dest_reg_chirho),
+                        ) in binds_chirho
+                            .iter()
+                            .zip(captures_by_binding_chirho.iter())
+                            .zip(binder_regs_chirho.iter())
+                        {
+                            let (lambda_binders_chirho, inner_body_chirho) =
+                                collect_lam_chirho(rhs_chirho);
+                            let capture_count_chirho = captures_chirho.len();
+                            let arity_chirho = (!lambda_binders_chirho.is_empty())
+                                .then_some(lambda_binders_chirho.len() as u16);
 
-                            // Save current state
-                            let saved_env_chirho: Vec<(CoreIdChirho, Option<ValueChirho>)> =
-                                lam_binders_chirho
+                            let mut remapped_ids_chirho: Vec<CoreIdChirho> = captures_chirho
+                                .iter()
+                                .map(|(id_chirho, _)| *id_chirho)
+                                .collect();
+                            remapped_ids_chirho.extend(
+                                binds_chirho
                                     .iter()
-                                    .map(|b_chirho| {
+                                    .map(|(group_binder_chirho, _)| group_binder_chirho.id_chirho),
+                            );
+                            remapped_ids_chirho.extend(
+                                lambda_binders_chirho
+                                    .iter()
+                                    .map(|lambda_binder_chirho| lambda_binder_chirho.id_chirho),
+                            );
+                            let saved_arg_indices_chirho: Vec<(CoreIdChirho, Option<usize>)> =
+                                remapped_ids_chirho
+                                    .iter()
+                                    .map(|id_chirho| {
                                         (
-                                            b_chirho.id_chirho,
-                                            self.env_chirho.get(&b_chirho.id_chirho).cloned(),
+                                            *id_chirho,
+                                            self.arg_param_indices_chirho.get(id_chirho).copied(),
                                         )
                                     })
                                     .collect();
-                            let saved_captures_chirho: Vec<(CoreIdChirho, Option<usize>)> =
-                                captures_chirho
+                            let saved_values_chirho: Vec<(CoreIdChirho, Option<ValueChirho>)> =
+                                remapped_ids_chirho
                                     .iter()
-                                    .map(|&(id_chirho, _)| {
-                                        (
-                                            id_chirho,
-                                            self.arg_param_indices_chirho.get(&id_chirho).copied(),
-                                        )
+                                    .map(|id_chirho| {
+                                        (*id_chirho, self.env_chirho.get(id_chirho).cloned())
                                     })
                                     .collect();
 
-                            // Set up arg-param mapping: captures at 0..n_captures,
-                            // lambda params at n_captures..n_captures+arity
-                            for (slot_chirho, &(id_chirho, _)) in captures_chirho.iter().enumerate()
+                            for (slot_chirho, (id_chirho, _)) in captures_chirho.iter().enumerate()
                             {
-                                self.arg_param_indices_chirho.insert(id_chirho, slot_chirho);
-                                self.env_chirho.remove(&id_chirho);
-                            }
-                            for (j_chirho, b_chirho) in lam_binders_chirho.iter().enumerate() {
                                 self.arg_param_indices_chirho
-                                    .insert(b_chirho.id_chirho, n_captures_chirho + j_chirho);
-                                self.env_chirho.remove(&b_chirho.id_chirho);
+                                    .insert(*id_chirho, slot_chirho);
+                                self.env_chirho.remove(id_chirho);
+                            }
+                            for (group_index_chirho, (group_binder_chirho, _)) in
+                                binds_chirho.iter().enumerate()
+                            {
+                                self.arg_param_indices_chirho.insert(
+                                    group_binder_chirho.id_chirho,
+                                    capture_count_chirho + group_index_chirho,
+                                );
+                                self.env_chirho.remove(&group_binder_chirho.id_chirho);
+                            }
+                            for (param_index_chirho, lambda_binder_chirho) in
+                                lambda_binders_chirho.iter().enumerate()
+                            {
+                                self.arg_param_indices_chirho.insert(
+                                    lambda_binder_chirho.id_chirho,
+                                    capture_count_chirho + group_size_chirho + param_index_chirho,
+                                );
+                                self.env_chirho.remove(&lambda_binder_chirho.id_chirho);
                             }
 
-                            // Lower the body
                             let body_slot_chirho = self.reserve_chirho();
                             let body_entry_chirho = self.lower_expr_chirho(inner_body_chirho);
                             self.patch_chirho(
@@ -601,69 +606,76 @@ impl LowerCtxChirho {
                                 self.code_chirho[body_entry_chirho as usize].clone(),
                             );
 
-                            // Restore state
-                            for (id_chirho, prev_chirho) in saved_env_chirho {
-                                self.arg_param_indices_chirho.remove(&id_chirho);
-                                match prev_chirho {
-                                    Some(v_chirho) => {
-                                        self.env_chirho.insert(id_chirho, v_chirho);
-                                    }
-                                    None => {
-                                        self.env_chirho.remove(&id_chirho);
-                                    }
-                                }
-                            }
-                            for (id_chirho, prev_chirho) in saved_captures_chirho {
-                                match prev_chirho {
-                                    Some(idx_chirho) => {
-                                        self.arg_param_indices_chirho.insert(id_chirho, idx_chirho);
+                            for (id_chirho, previous_index_chirho) in saved_arg_indices_chirho {
+                                match previous_index_chirho {
+                                    Some(index_chirho) => {
+                                        self.arg_param_indices_chirho
+                                            .insert(id_chirho, index_chirho);
                                     }
                                     None => {
                                         self.arg_param_indices_chirho.remove(&id_chirho);
                                     }
                                 }
                             }
+                            for (id_chirho, previous_value_chirho) in saved_values_chirho {
+                                match previous_value_chirho {
+                                    Some(value_chirho) => {
+                                        self.env_chirho.insert(id_chirho, value_chirho);
+                                    }
+                                    None => {
+                                        self.env_chirho.remove(&id_chirho);
+                                    }
+                                }
+                            }
 
-                            // Assign a dest arg-register for the binding.
-                            // We do NOT insert into arg_param_indices yet —
-                            // that happens after all RHS bodies are lowered.
-                            let dest_reg_chirho = next_reg_chirho;
-                            next_reg_chirho += 1;
-                            deferred_binder_regs_chirho
-                                .push((binder_chirho.id_chirho, dest_reg_chirho));
-
-                            let capture_sources_chirho: Vec<ArgSourceChirho> = captures_chirho
-                                .iter()
-                                .map(|&(_, outer_idx_chirho)| {
-                                    ArgSourceChirho::ArgRegChirho(outer_idx_chirho)
-                                })
-                                .collect();
-
-                            deferred_store_allocs_chirho.push((
-                                dest_reg_chirho,
+                            binding_specs_chirho.push(RecBindingSpecChirho {
                                 arity_chirho,
-                                body_slot_chirho,
-                                binder_chirho.name_chirho.clone(),
-                                capture_sources_chirho,
-                                Some(addr_chirho), // patch placeholder → indirection
-                            ));
-                        } else {
-                            // No arg-register captures: standard static allocation
-                            let rhs_entry_chirho = self.lower_expr_chirho(rhs_chirho);
-                            let patched_chirho = ClosureChirho::thunk_chirho(
-                                CodePtrChirho(rhs_entry_chirho),
+                                code_ptr_chirho: body_slot_chirho,
+                                name_chirho: binder_chirho.name_chirho.clone(),
+                                captures_chirho: captures_chirho
+                                    .iter()
+                                    .map(|(_id_chirho, outer_index_chirho)| {
+                                        ArgSourceChirho::ArgRegChirho(*outer_index_chirho)
+                                    })
+                                    .collect(),
+                                dest_reg_chirho: *dest_reg_chirho,
+                            });
+                        }
+
+                        for (id_chirho, reg_chirho) in &binder_regs_chirho {
+                            self.arg_param_indices_chirho
+                                .insert(*id_chirho, *reg_chirho);
+                            self.env_chirho.remove(id_chirho);
+                        }
+                        deferred_rec_group_chirho = Some(binding_specs_chirho);
+                    } else {
+                        // A closed recursive group can be safely shared as
+                        // static heap closures.
+                        let mut binding_addrs_chirho = Vec::with_capacity(binds_chirho.len());
+                        for (binder_chirho, _) in binds_chirho {
+                            let placeholder_chirho = ClosureChirho::thunk_chirho(
+                                CodePtrChirho(0),
                                 &binder_chirho.name_chirho,
                                 vec![],
                             );
-                            *self.heap_chirho.read_mut_chirho(addr_chirho) = patched_chirho;
+                            let addr_chirho = self.heap_chirho.alloc_chirho(placeholder_chirho);
+                            self.env_chirho.insert(
+                                binder_chirho.id_chirho,
+                                ValueChirho::HeapPtrChirho(addr_chirho),
+                            );
+                            binding_addrs_chirho.push(addr_chirho);
                         }
-                    }
-                    // Now that all RHS bodies are lowered, insert the
-                    // letrec binder → dest-register mappings so the
-                    // continuation body can reference them.
-                    for (id_chirho, reg_chirho) in &deferred_binder_regs_chirho {
-                        self.arg_param_indices_chirho
-                            .insert(*id_chirho, *reg_chirho);
+                        for ((binder_chirho, rhs_chirho), addr_chirho) in
+                            binds_chirho.iter().zip(binding_addrs_chirho.into_iter())
+                        {
+                            let rhs_entry_chirho = self.lower_expr_chirho(rhs_chirho);
+                            *self.heap_chirho.read_mut_chirho(addr_chirho) =
+                                ClosureChirho::thunk_chirho(
+                                    CodePtrChirho(rhs_entry_chirho),
+                                    &binder_chirho.name_chirho,
+                                    vec![],
+                                );
+                        }
                     }
                 } else {
                     // Non-recursive let: sequential lowering.
@@ -792,7 +804,6 @@ impl LowerCtxChirho {
                                     body_slot_chirho,
                                     binder_chirho.name_chirho.clone(),
                                     capture_sources_chirho,
-                                    None, // non-recursive: no placeholder to patch
                                 ));
                                 continue;
                             }
@@ -882,7 +893,6 @@ impl LowerCtxChirho {
                                 body_slot_chirho,
                                 binder_chirho.name_chirho.clone(),
                                 capture_sources_chirho,
-                                None, // non-recursive: no placeholder to patch
                             ));
                             continue;
                         }
@@ -905,12 +915,15 @@ impl LowerCtxChirho {
                 // Lower the body
                 let body_entry_chirho = self.lower_expr_chirho(body_chirho);
 
-                // If there are deferred StoreAllocFun instructions, chain them
-                // before the body. Last StoreAllocFun's body_chirho points to
-                // the actual body; each earlier one points to the next.
-                if deferred_store_allocs_chirho.is_empty() {
+                if let Some(bindings_chirho) = deferred_rec_group_chirho {
+                    self.emit_chirho(CodeChirho::StoreAllocRecGroupChirho {
+                        bindings_chirho,
+                        body_chirho: body_entry_chirho,
+                    })
+                } else if deferred_store_allocs_chirho.is_empty() {
                     body_entry_chirho
                 } else {
+                    // Chain non-recursive captured allocations before the body.
                     let mut current_body_chirho = body_entry_chirho;
                     for (
                         dest_reg_chirho,
@@ -918,7 +931,6 @@ impl LowerCtxChirho {
                         code_ptr_chirho,
                         name_chirho,
                         captures_chirho,
-                        patch_addr_chirho,
                     ) in deferred_store_allocs_chirho.into_iter().rev()
                     {
                         current_body_chirho = match maybe_arity_chirho {
@@ -930,7 +942,6 @@ impl LowerCtxChirho {
                                     captures_chirho,
                                     dest_reg_chirho,
                                     body_chirho: current_body_chirho,
-                                    patch_addr_chirho,
                                 })
                             }
                             None => self.emit_chirho(CodeChirho::StoreAllocThunkChirho {
@@ -939,7 +950,6 @@ impl LowerCtxChirho {
                                 captures_chirho,
                                 dest_reg_chirho,
                                 body_chirho: current_body_chirho,
-                                patch_addr_chirho,
                             }),
                         };
                     }

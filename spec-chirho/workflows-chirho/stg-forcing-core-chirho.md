@@ -2,12 +2,15 @@
 
 # STG Forcing Core Chirho
 
-The remaining WI-007 failures are no longer missing type evidence. They are strict-site forcing gaps where runtime values reach `show`, primitive comparison/arithmetic, or case dispatch as unresolved thunks/PAPs. The rule for this phase is deliberately narrow: force only at strict demand sites, never when storing constructor fields.
+WI-007 strict-site forcing remains deliberately narrow: force only where a consumer demands
+WHNF or a primitive-compatible value, never while storing lazy constructor fields.
 
 ## Current Failure Shape
 
 - `twice (twice inc) 0` and Church numerals looked like `$PAP ...` runtime residues, but annotations proved they were missing evidence specialization. The dict pass now rewrites nested higher-order arguments and `showInt#`/`$prim_Show_show_Int` operands under proven `Int` keys before runtime forcing is considered.
-- Sieve still returns `IntChirho(0)`, likely from a strict predicate/comparison path failing to force or resolve a delayed computation.
+- The sieve failure was not a forcing gap. A captured recursive group reused one static
+  placeholder across invocations; it is fixed by the per-invocation allocation workflow in
+  `runtime-letrec-chirho.md`.
 - User BST/map tests store lazy recursive constructor fields correctly, but later strict lookup/size traversal reaches unresolved heap values or tag `0`.
 
 ## Strict-Site Workflow

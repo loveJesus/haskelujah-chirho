@@ -86,6 +86,22 @@ impl std::fmt::Display for EvalErrorChirho {
 
 // ── Code table ──────────────────────────────────────────────────────────
 
+/// One closure in a recursive group that must be allocated for each
+/// invocation because it captures values from the current argument registers.
+#[derive(Debug, Clone)]
+pub struct RecBindingSpecChirho {
+    /// Function arity, or `None` when this binding is a thunk.
+    pub arity_chirho: Option<u16>,
+    /// Code entry point for this binding.
+    pub code_ptr_chirho: u32,
+    /// Name for diagnostics and heap inspection.
+    pub name_chirho: String,
+    /// Outer values captured before the recursive group changes arg registers.
+    pub captures_chirho: Vec<ArgSourceChirho>,
+    /// Arg register slot that receives this invocation's fresh closure address.
+    pub dest_reg_chirho: usize,
+}
+
 /// An instruction in the code table — what the evaluator should do next.
 ///
 /// In a full compiler these would be bytecodes or IR; for now we use a
@@ -200,11 +216,6 @@ pub enum CodeChirho {
         dest_reg_chirho: usize,
         /// Code entry for the body to continue to.
         body_chirho: u32,
-        /// If set, write an indirection from this heap address to the
-        /// newly allocated closure. Used for recursive let bindings so
-        /// that self-references through the pre-allocated placeholder
-        /// are redirected to the real closure (which has captures).
-        patch_addr_chirho: Option<HeapAddrChirho>,
     },
 
     /// Allocate a thunk at runtime with captures, store the resulting
@@ -223,9 +234,14 @@ pub enum CodeChirho {
         dest_reg_chirho: usize,
         /// Code entry for the continuation body.
         body_chirho: u32,
-        /// If set, write an indirection from this heap address to the
-        /// newly allocated thunk. Used for letrec thunk bindings.
-        patch_addr_chirho: Option<HeapAddrChirho>,
+    },
+
+    /// Allocate a recursive closure group atomically for the current
+    /// invocation. Each closure payload contains its outer captures followed
+    /// by fresh pointers to every member of this group in binding order.
+    StoreAllocRecGroupChirho {
+        bindings_chirho: Vec<RecBindingSpecChirho>,
+        body_chirho: u32,
     },
 }
 
@@ -879,7 +895,6 @@ impl MachineChirho {
                     captures_chirho,
                     dest_reg_chirho,
                     body_chirho,
-                    patch_addr_chirho,
                 } => {
                     let payload_chirho = self.resolve_args_chirho(&captures_chirho);
                     let closure_chirho = ClosureChirho::fun_chirho(
@@ -889,13 +904,6 @@ impl MachineChirho {
                         payload_chirho,
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
-                    // Patch the pre-allocated placeholder (if any) with an
-                    // indirection to the real closure so self-references
-                    // through the placeholder are correctly redirected.
-                    if let Some(placeholder_chirho) = patch_addr_chirho {
-                        self.heap_chirho
-                            .update_to_ind_chirho(placeholder_chirho, addr_chirho);
-                    }
                     self.maybe_gc_chirho();
                     // Store in dest arg register and continue to body
                     if self.arg_regs_chirho.len() <= dest_reg_chirho {
@@ -913,7 +921,6 @@ impl MachineChirho {
                     captures_chirho,
                     dest_reg_chirho,
                     body_chirho,
-                    patch_addr_chirho,
                 } => {
                     let payload_chirho = self.resolve_args_chirho(&captures_chirho);
                     let closure_chirho = ClosureChirho::thunk_chirho(
@@ -922,11 +929,6 @@ impl MachineChirho {
                         payload_chirho,
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
-                    // Patch letrec placeholder if needed
-                    if let Some(placeholder_chirho) = patch_addr_chirho {
-                        self.heap_chirho
-                            .update_to_ind_chirho(placeholder_chirho, addr_chirho);
-                    }
                     self.maybe_gc_chirho();
                     // Store in dest arg register and continue to body
                     if self.arg_regs_chirho.len() <= dest_reg_chirho {
@@ -934,6 +936,78 @@ impl MachineChirho {
                             .resize(dest_reg_chirho + 1, ValueChirho::IntChirho(0));
                     }
                     self.arg_regs_chirho[dest_reg_chirho] = ValueChirho::HeapPtrChirho(addr_chirho);
+                    pc_chirho = body_chirho;
+                }
+
+                // ── Allocate one fresh recursive group per invocation ──
+                CodeChirho::StoreAllocRecGroupChirho {
+                    bindings_chirho,
+                    body_chirho,
+                } => {
+                    // Resolve every outer capture before destination registers
+                    // are overwritten by this invocation's fresh group.
+                    let captured_values_chirho: Vec<Vec<ValueChirho>> = bindings_chirho
+                        .iter()
+                        .map(|binding_chirho| {
+                            self.resolve_args_chirho(&binding_chirho.captures_chirho)
+                        })
+                        .collect();
+
+                    let group_addrs_chirho: Vec<HeapAddrChirho> = bindings_chirho
+                        .iter()
+                        .map(|_| {
+                            self.heap_chirho
+                                .alloc_chirho(ClosureChirho::blackhole_chirho())
+                        })
+                        .collect();
+
+                    for ((binding_chirho, mut payload_chirho), addr_chirho) in bindings_chirho
+                        .iter()
+                        .zip(captured_values_chirho)
+                        .zip(group_addrs_chirho.iter().copied())
+                    {
+                        payload_chirho.extend(
+                            group_addrs_chirho
+                                .iter()
+                                .copied()
+                                .map(ValueChirho::HeapPtrChirho),
+                        );
+                        let closure_chirho = match binding_chirho.arity_chirho {
+                            Some(arity_chirho) => ClosureChirho::fun_chirho(
+                                arity_chirho,
+                                CodePtrChirho(binding_chirho.code_ptr_chirho),
+                                &binding_chirho.name_chirho,
+                                payload_chirho,
+                            ),
+                            None => ClosureChirho::thunk_chirho(
+                                CodePtrChirho(binding_chirho.code_ptr_chirho),
+                                &binding_chirho.name_chirho,
+                                payload_chirho,
+                            ),
+                        };
+                        *self.heap_chirho.read_mut_chirho(addr_chirho) = closure_chirho;
+                    }
+
+                    for (binding_chirho, addr_chirho) in bindings_chirho
+                        .iter()
+                        .zip(group_addrs_chirho.iter().copied())
+                    {
+                        if self.arg_regs_chirho.len() <= binding_chirho.dest_reg_chirho {
+                            self.arg_regs_chirho.resize(
+                                binding_chirho.dest_reg_chirho + 1,
+                                ValueChirho::IntChirho(0),
+                            );
+                        }
+                        self.arg_regs_chirho[binding_chirho.dest_reg_chirho] =
+                            ValueChirho::HeapPtrChirho(addr_chirho);
+                    }
+
+                    // The complete group is rooted before any allocation can
+                    // trigger collection; one notification is retained per
+                    // heap allocation.
+                    for _binding_chirho in &bindings_chirho {
+                        self.maybe_gc_chirho();
+                    }
                     pc_chirho = body_chirho;
                 }
 
@@ -5349,6 +5423,67 @@ mod tests_chirho {
 
         let dead_closure_chirho = machine_chirho.heap_chirho.read_chirho(dead_addr_chirho);
         assert_eq!(dead_closure_chirho.info_chirho.name_chirho, "$DEAD");
+    }
+
+    #[test]
+    fn recursive_group_is_rooted_before_gc_chirho() {
+        let bindings_chirho = vec![
+            RecBindingSpecChirho {
+                arity_chirho: None,
+                code_ptr_chirho: 1,
+                name_chirho: "leftChirho".to_string(),
+                captures_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(7))],
+                dest_reg_chirho: 0,
+            },
+            RecBindingSpecChirho {
+                arity_chirho: None,
+                code_ptr_chirho: 1,
+                name_chirho: "rightChirho".to_string(),
+                captures_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::IntChirho(11))],
+                dest_reg_chirho: 1,
+            },
+        ];
+        let mut machine_chirho = MachineChirho::new_chirho(vec![
+            CodeChirho::StoreAllocRecGroupChirho {
+                bindings_chirho,
+                body_chirho: 1,
+            },
+            CodeChirho::LitChirho(ValueChirho::IntChirho(42)),
+        ])
+        .with_gc_config_chirho(GcConfigChirho {
+            alloc_threshold_chirho: 1,
+            min_heap_size_chirho: 0,
+        });
+
+        assert_eq!(
+            machine_chirho.run_chirho(0).unwrap(),
+            ValueChirho::IntChirho(42)
+        );
+
+        let left_addr_chirho = HeapAddrChirho(0);
+        let right_addr_chirho = HeapAddrChirho(1);
+        assert_eq!(
+            machine_chirho
+                .heap_chirho
+                .read_chirho(left_addr_chirho)
+                .payload_chirho,
+            vec![
+                ValueChirho::IntChirho(7),
+                ValueChirho::HeapPtrChirho(left_addr_chirho),
+                ValueChirho::HeapPtrChirho(right_addr_chirho),
+            ]
+        );
+        assert_eq!(
+            machine_chirho
+                .heap_chirho
+                .read_chirho(right_addr_chirho)
+                .payload_chirho,
+            vec![
+                ValueChirho::IntChirho(11),
+                ValueChirho::HeapPtrChirho(left_addr_chirho),
+                ValueChirho::HeapPtrChirho(right_addr_chirho),
+            ]
+        );
     }
 
     #[test]

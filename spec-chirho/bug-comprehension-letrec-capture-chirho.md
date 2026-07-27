@@ -1,11 +1,53 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# BUG — comprehension letrec worker mis-resolves free variables when it captures a pattern-bound var
+# FIXED — captured recursive let groups aliased across invocations
 
 **Found** 2026-07-27 by `claude_chirho` (HASKELUJAH) while authoring a demo program for the site.
 **Severity: HIGH — silent wrong answers.** No error, no warning; the program returns a
 plausible-looking but incorrect list. Discovered because the canonical lazy primes sieve —
 arguably the most famous Haskell program in existence — mis-compiles.
+
+**Fixed** 2026-07-27 by `gpt_chirho`. The defect was not Boolean case dispatch. Captured
+recursive closures used one compile-time placeholder that every runtime invocation patched
+to its newly allocated closure. A later call therefore retargeted lazy recursive edges
+created by an earlier call.
+
+## Measured root cause and fix
+
+The smaller invariant repro removes comparisons and case dispatch entirely:
+
+```haskell
+streamChirho pChirho = goChirho
+  where goChirho = pChirho : goChirho
+
+main =
+  let firstChirho = streamChirho 1
+      secondChirho = streamChirho 10
+  in head firstChirho `seq`
+     (head secondChirho `seq` print (head (tail firstChirho)))
+```
+
+Correct output is `1`; the broken runtime printed `10`. An env-gated trace then showed both
+calls patching the same static placeholder `HeapAddrChirho(2149)`: first to allocation
+`2160`, then to allocation `2165`, with distinct captured payload roots. The first list's
+tail followed the repatched placeholder into the second call.
+
+`StoreAllocRecGroupChirho` now allocates a complete fresh recursive group for each
+invocation. It resolves outer captures first, allocates every member, installs payloads
+containing fresh pointers to that invocation's whole group, roots all destination
+registers, and only then permits GC. Closed recursive groups with no invocation-local
+captures remain statically shared.
+
+Three regressions pin the boundary: self-recursive captured thunks stay fresh across calls,
+mutually recursive captured thunks point within their own invocation, and the hand-written
+`where go` sieve returns `[2,3,5,7,11,13]`.
+
+**Correction to the historical investigation below:** the branch condition appeared
+correct when observed before the next outer invocation repatched the worker. That did not
+prove the later recursive edge retained the same capture. Case dispatch was operating on
+the closure it was given; the closure graph had already been redirected. Sections below
+are retained as the investigation record, but any claim that dispatch itself is the root
+cause is superseded by the allocation trace.
 
 **Binary under test:** `target/release/haskelujah`, mtime 2026-07-26 10:56:52, which is
 newer than the last `crates/**` commit (80b6e32b, 2026-07-26 06:14). So this reflects
@@ -81,7 +123,7 @@ re-derives them:
 3. ~~"user-defined functions break, Prelude functions are fine"~~ — falsified by FA
    (`gcd x p == 1`, Prelude, **broken**) and FB (`odd (x + p)`, Prelude, **broken**).
 
-### NARROWED FURTHER 2026-07-27 — the guard VALUE is correct; the DISPATCH is wrong
+### SUPERSEDED 2026-07-27 — the prior guard-value / dispatch interpretation
 
 Decisive new evidence. The guard expression computes the right `Bool` in every form —
 including inside a comprehension, and inside a recursive function:
@@ -92,10 +134,10 @@ s (p:xs) = (p `mod` 2 /= 0)       : s xs   -- take 6 -> [T,F,T,F,T,F]           
 print (take 5 [x `mod` 2 /= 0 | x <- [1..]])       -- [T,F,T,F,T]                    correct
 ```
 
-So the `Bool` is computed correctly and then **dispatched on incorrectly** inside the
-capturing comprehension letrec worker. This eliminates the entire "the guard is
-mis-evaluated / the wrong instance is selected / `p` is misbound" family of hypotheses at
-once — the value arriving at the `case` is right.
+These observations proved that individual condition evaluations could be correct. They did
+not prove that the lazy recursive worker retained the same captured `p` after the next
+outer sieve invocation. The allocation trace above supersedes the conclusion that dispatch
+itself was wrong.
 
 Also checked and NOT the fault: the evaluator's `CodeChirho::CaseChirho` arm does force a
 heap-pointer scrutinee (`emit_enter_chirho`) and saves/restores arg registers around the
@@ -152,12 +194,10 @@ IO-return forcing path, even though that path was genuinely wrong. Recorded beca
 forcing bug sitting next to a laziness-shaped defect is the most tempting wrong answer
 available here.
 
-**Where a fresh investigator should start:** the value is right and the `case` is wrong, so
-compare the *runtime* dispatch of the working `filter` form against the broken comprehension
-form — instrument the tag actually read at the `case` in each. Do not re-derive the value
-path; it is proven correct above.
+**Historical next step, now completed differently:** a smaller cross-invocation recursive
+stream removed case dispatch and exposed the shared-placeholder alias directly.
 
-### CHARACTERIZED — the minimal pair (supersedes the guesswork below)
+### SUPERSEDED BLACK-BOX CHARACTERIZATION — the minimal pair
 
 The trigger is **`not` / `/=`**, i.e. a guard whose scrutinee is a call returning a
 *heap-allocated* `Bool` rather than a primop's immediate result.

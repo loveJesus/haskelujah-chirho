@@ -12,6 +12,7 @@ pub mod eval_advanced_chirho;
 pub mod eval_basic_chirho;
 pub mod eval_data_chirho;
 pub mod eval_io_chirho;
+pub mod eval_letrec_chirho;
 pub mod eval_list_chirho;
 pub mod eval_pattern_chirho;
 pub mod eval_prelude_chirho;
