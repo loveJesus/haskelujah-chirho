@@ -124,11 +124,12 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 	uniform float uVelocityChirho;
 	uniform float uRChirho;
 	${NOISE_GLSL_CHIRHO}
-	float capsuleChirho(vec2 p, vec2 a, vec2 b, float rad) {
+	// returns (signed distance, normalized position along the stroke)
+	vec2 capsuleChirho(vec2 p, vec2 a, vec2 b, float rad) {
 		vec2 pa = p - a;
 		vec2 ba = b - a;
 		float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-		return length(pa - ba * h) - rad;
+		return vec2(length(pa - ba * h) - rad, h);
 	}
 	// a true 3D warp starfield: eight depth shells under perspective divide. As travel
 	// grows, every shell's scale grows, so each star's screen position (cell/scale)
@@ -192,26 +193,54 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 		col = mix(col, vec3(0.045, 0.13, 0.17), smoothstep(0.62, 0.95, noiseChirho(q * 1.3 + 9.0)) * 0.5);
 		col *= 0.62 + glowCapChirho * 0.75;
 
-		// the warp field: scroll drives travel hard, idle time drifts it gently
+		// the warp field: always travelling backwards — a steady inward stream at rest,
+		// the scroll gesture surging it. A faint baseline stretch keeps the motion legible.
 		float eased = uProgressChirho * uProgressChirho * (3.0 - 2.0 * uProgressChirho);
-		float travel = eased * 0.55 + t * 0.0045;
-		col += warpStarsChirho(p, t, travel, uVelocityChirho) * (0.55 + glowCapChirho * 0.7);
+		float travel = eased * 0.55 + t * 0.045;
+		col += warpStarsChirho(p, t, travel, uVelocityChirho + 0.035) * (0.55 + glowCapChirho * 0.7);
 		// the galaxy rides the middle depth, receding with everything else
 		col += galaxyChirho(p, t, 1.0 + eased * 2.0) * (0.4 + glowCapChirho * 0.5);
 
-		// λ — vector-crisp at any zoom: screen-space AA via fwidth, not a fixed edge width
-		float dMain = capsuleChirho(p, vec2(-0.3, 0.56), vec2(0.34, -0.58), 0.058);
-		float dLeg = capsuleChirho(p, vec2(-0.01, 0.03), vec2(-0.34, -0.58), 0.058);
-		float d = min(dMain, dLeg);
+		// λ — vector-crisp at any zoom (fwidth AA), and molten inside: energy flowing
+		// along each stroke, a white-hot centerline, slow swirl, gold dust twinkling
+		float wStroke = 0.058;
+		vec2 cMain = capsuleChirho(p, vec2(-0.3, 0.56), vec2(0.34, -0.58), wStroke);
+		vec2 cLeg = capsuleChirho(p, vec2(-0.01, 0.03), vec2(-0.34, -0.58), wStroke);
+		float d;
+		float along;
+		float lenScale;
+		if (cMain.x < cLeg.x) {
+			d = cMain.x;
+			along = cMain.y;
+			lenScale = 1.6;
+		} else {
+			d = cLeg.x;
+			along = cLeg.y;
+			lenScale = 0.95;
+		}
 		float aa = fwidth(d) * 1.4 + 1e-4;
 		float body = 1.0 - smoothstep(0.0, aa, d);
 		float halo = exp(-max(d, 0.0) * 9.0);
 		float pulse = 0.93 + 0.07 * sin(t * 0.7);
-		// living gold: slow plasma veins WITHIN the stroke
-		float veins = noiseChirho(p * 3.2 + vec2(t * 0.05, -t * 0.04));
-		vec3 gold = vec3(0.89, 0.72, 0.33) * pulse * (0.82 + 0.36 * veins);
-		col = mix(col, gold, body);
-		col += gold * halo * (0.2 + 0.45 * glowCapChirho);
+		float depth = clamp(-d / wStroke, 0.0, 1.0);
+		float flow = 0.5 + 0.32 * sin(along * lenScale * 9.0 - t * 1.7)
+			+ 0.18 * sin(along * lenScale * 23.0 - t * 3.1);
+		float swirl = noiseChirho(p * 7.0 + vec2(t * 0.12, -t * 0.09));
+		// dark burnished rims -> white-hot centerline; flow travels as brightness waves
+		float coreGlow = smoothstep(0.2, 0.92, depth);
+		vec3 lam = mix(vec3(0.58, 0.38, 0.1), vec3(1.0, 0.93, 0.6), coreGlow);
+		lam *= (0.68 + 0.34 * flow) * (0.9 + 0.2 * swirl) * pulse;
+		// gold dust inside the glyph
+		vec2 sc = floor(p * 46.0);
+		float sh = hashChirho(sc + 5.0);
+		if (sh > 0.86) {
+			vec2 sp = 0.25 + 0.5 * vec2(hashChirho(sc + 1.3), hashChirho(sc + 8.7));
+			float sd = length(fract(p * 46.0) - sp);
+			float stw = 0.5 + 0.5 * sin(t * (2.0 + sh * 4.0) + sh * 50.0);
+			lam += vec3(1.0, 0.95, 0.7) * exp(-sd * sd * 180.0) * stw * 0.8;
+		}
+		col = mix(col, lam, body);
+		col += vec3(1.0, 0.9, 0.55) * halo * pulse * (0.14 + 0.4 * glowCapChirho);
 
 		// rim + screen-space dither (kills banding in the nebula gradients)
 		float r = length(vPosChirho);
