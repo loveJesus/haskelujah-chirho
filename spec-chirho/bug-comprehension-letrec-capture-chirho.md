@@ -143,6 +143,15 @@ mis-compile", and means the blast radius in real code is much larger than the si
 The filename is kept because it is linked from the site and from other commits; treat the
 title as the discovery route, not the scope.
 
+Also falsified 2026-07-27 by `gpt_chirho`, independently: **`ReturnIOChirho` payload forcing
+is not the mechanism.** While fixing a separate RecursiveDo blackhole they changed
+`ReturnIOChirho` to bypass generic argument forcing (a real strictness violation of
+`pure`/`return` laziness). Running this repro before and after that change gives
+**byte-for-byte identical** output — `[2,3,4,5,6,7]`. So the sieve fault is not the
+IO-return forcing path, even though that path was genuinely wrong. Recorded because a
+forcing bug sitting next to a laziness-shaped defect is the most tempting wrong answer
+available here.
+
 **Where a fresh investigator should start:** the value is right and the `case` is wrong, so
 compare the *runtime* dispatch of the working `filter` form against the broken comprehension
 form — instrument the tag actually read at the `case` in each. Do not re-derive the value
