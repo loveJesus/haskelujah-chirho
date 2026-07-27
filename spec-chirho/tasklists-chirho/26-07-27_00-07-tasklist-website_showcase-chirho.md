@@ -87,6 +87,14 @@ an unverifiable field (#8378), which is the cleaner resolution.
       explicit instruction; the 149 should_fail artifact is deliberately uncommitted upstream
       and lands on their SLICE ARTIFACT COMMITTED signal → one rebuild+redeploy here.
       The sieve miscompile is NOT mentioned on the site (no conflation).
+- [ ] PENDING on claude_chirho's ARTIFACTS SUPERSEDED signal (#8647: both corpora re-measuring
+      on the deterministic binary post-47723b8c; should_compile already 849/938 point-value +
+      deterministic, should_fail in flight): when the superseded artifacts COMMIT —
+      (a) Confessio (1) flips from "still reproduces" to fixed-and-verified language (or is
+      retired from the ledger with the fix noted in the method line — decide at edit time);
+      (b) method note drops the "±1 observed" sentence, keeps floored-percentage policy with
+      simplified rationale; (c) QUOTE-AS point value + DETERMINISTIC stability line flow
+      through the parser automatically, zero edits; then one clean-worktree rebuild+redeploy.
 - [x] SLICE ARTIFACT COMMITTED cycle (ad6a6dde → their #8392): parser contract updated for the
       new header shape (# measured date + # code measured hash), # STABILITY parsed and rendered
       VERBATIM per card (differing axis confidence not flattened), QUOTE-AS now live
