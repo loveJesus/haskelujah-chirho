@@ -35,6 +35,7 @@ use haskelujah_syntax_chirho::green_chirho::{
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use crate::pragma_chirho::pragma_extensions_from_text_chirho;
+use crate::rec_stmt_chirho::{DoSegmentChirho, transform_recursive_do_chirho};
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -1906,6 +1907,64 @@ impl LowerCtxChirho {
         }
 
         merge_local_fun_binds_chirho(binds_chirho)
+    }
+
+    /// Lower a do-like CST block while preserving explicit RecursiveDo segments.
+    ///
+    /// The pure transformation in `rec_stmt_chirho` removes the segment marker before the
+    /// typed AST leaves the parser crate.
+    /// workflow: recursive-do-chirho
+    fn lower_do_segments_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> Vec<DoSegmentChirho> {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut segments_chirho = Vec::new();
+
+        for child_chirho in &children_chirho {
+            let GreenElementChirho::NodeChirho(node_chirho) = child_chirho.element_chirho else {
+                continue;
+            };
+            let child_span_chirho =
+                self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+            let stmt_chirho = match node_chirho.kind_chirho() {
+                SyntaxKindChirho::DoStmtChirho => {
+                    StmtChirho::ExprChirho(self.lower_first_expr_in_node_chirho(
+                        node_chirho,
+                        child_chirho.start_chirho,
+                    ))
+                }
+                SyntaxKindChirho::BindStmtChirho => {
+                    self.lower_bind_stmt_chirho(node_chirho, child_chirho.start_chirho)
+                }
+                SyntaxKindChirho::LetStmtChirho => StmtChirho::LetChirho {
+                    binds_chirho: self
+                        .lower_let_stmt_binds_chirho(node_chirho, child_chirho.start_chirho),
+                    span_chirho: child_span_chirho,
+                },
+                SyntaxKindChirho::RecStmtChirho => {
+                    let nested_segments_chirho =
+                        self.lower_do_segments_chirho(node_chirho, child_chirho.start_chirho);
+                    let nested_stmts_chirho = transform_recursive_do_chirho(
+                        nested_segments_chirho,
+                        false,
+                        child_span_chirho,
+                    );
+                    segments_chirho.push(DoSegmentChirho::RecursiveChirho {
+                        stmts_chirho: nested_stmts_chirho,
+                        span_chirho: child_span_chirho,
+                    });
+                    continue;
+                }
+                _ => StmtChirho::ExprChirho(
+                    self.lower_expr_chirho(node_chirho, child_chirho.start_chirho),
+                ),
+            };
+            segments_chirho.push(DoSegmentChirho::StatementChirho(stmt_chirho));
+        }
+
+        segments_chirho
     }
 
     fn lower_data_decl_chirho(
@@ -6148,48 +6207,17 @@ impl LowerCtxChirho {
             }
             SyntaxKindChirho::DoExprChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let mut stmts_chirho = Vec::new();
-
-                for child_chirho in &children_chirho {
-                    if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
-                        match n_chirho.kind_chirho() {
-                            SyntaxKindChirho::DoStmtChirho => {
-                                let expr_chirho = self.lower_first_expr_in_node_chirho(
-                                    n_chirho,
-                                    child_chirho.start_chirho,
-                                );
-                                stmts_chirho.push(StmtChirho::ExprChirho(expr_chirho));
-                            }
-                            SyntaxKindChirho::BindStmtChirho => {
-                                stmts_chirho.push(
-                                    self.lower_bind_stmt_chirho(
-                                        n_chirho,
-                                        child_chirho.start_chirho,
-                                    ),
-                                );
-                            }
-                            SyntaxKindChirho::LetStmtChirho => {
-                                let let_binds_chirho = self.lower_let_stmt_binds_chirho(
-                                    n_chirho,
-                                    child_chirho.start_chirho,
-                                );
-                                stmts_chirho.push(StmtChirho::LetChirho {
-                                    binds_chirho: let_binds_chirho,
-                                    span_chirho: self.span_chirho(
-                                        child_chirho.start_chirho,
-                                        child_chirho.end_chirho,
-                                    ),
-                                });
-                            }
-                            _ => {
-                                // Bare expression node
-                                let expr_chirho =
-                                    self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
-                                stmts_chirho.push(StmtChirho::ExprChirho(expr_chirho));
-                            }
-                        }
-                    }
-                }
+                let is_mdo_chirho = children_chirho.iter().any(|child_chirho| {
+                    matches!(
+                        child_chirho.element_chirho,
+                        GreenElementChirho::TokenChirho(token_chirho)
+                            if token_chirho.kind_chirho() == TokenKindChirho::DoKeywordChirho
+                                && token_chirho.text_chirho() == "mdo"
+                    )
+                });
+                let segments_chirho = self.lower_do_segments_chirho(node_chirho, base_chirho);
+                let stmts_chirho =
+                    transform_recursive_do_chirho(segments_chirho, is_mdo_chirho, span_chirho);
 
                 ExprChirho::DoChirho {
                     stmts_chirho,
@@ -17209,4 +17237,138 @@ fn lower_nonempty_cons_groups_like_ghc_chirho() {
         }
         other_chirho => panic!("expected infix expression tree, got {:?}", other_chirho),
     }
+}
+
+#[cfg(test)]
+#[test]
+fn lower_recursive_do_group_to_mfix_knot_chirho() {
+    let source_chirho = concat!(
+        "{-# LANGUAGE RecursiveDo #-}\n",
+        "module M where\n",
+        "main = do\n",
+        "  rec\n",
+        "    xsChirho <- pure (1 : ysChirho)\n",
+        "    ysChirho <- pure (2 : xsChirho)\n",
+        "  print (take 4 xsChirho)\n",
+    );
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let green_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho)
+            .parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let main_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "main"
+            )
+        })
+        .expect("expected main binding");
+    let DeclChirho::FunBindChirho { matches_chirho, .. } = main_chirho else {
+        panic!("expected main function binding");
+    };
+    let RhsChirho::UnguardedChirho(ExprChirho::DoChirho { stmts_chirho, .. }) =
+        &matches_chirho[0].rhs_chirho
+    else {
+        panic!("expected a lowered do expression");
+    };
+
+    assert_eq!(stmts_chirho.len(), 2);
+    assert!(matches!(
+        &stmts_chirho[0],
+        StmtChirho::BindChirho {
+            pat_chirho: PatChirho::TupleChirho { elements_chirho, .. },
+            expr_chirho: ExprChirho::AppChirho { fun_chirho, arg_chirho, .. },
+            ..
+        } if elements_chirho.len() == 2
+            && matches!(
+                fun_chirho.as_ref(),
+                ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mfix"
+            )
+            && matches!(
+                arg_chirho.as_ref(),
+                ExprChirho::LamChirho { pats_chirho, .. }
+                    if matches!(
+                        pats_chirho.as_slice(),
+                        [PatChirho::LazyChirho { .. }]
+                    )
+            )
+    ));
+}
+
+#[cfg(test)]
+#[test]
+fn lower_mdo_wraps_statements_before_final_expression_chirho() {
+    let source_chirho = concat!(
+        "{-# LANGUAGE RecursiveDo #-}\n",
+        "module M where\n",
+        "main = mdo\n",
+        "  xChirho <- pure yChirho\n",
+        "  yChirho <- pure 1\n",
+        "  pure xChirho\n",
+    );
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let green_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho)
+            .parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let main_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "main"
+            )
+        })
+        .expect("expected main binding");
+    let DeclChirho::FunBindChirho { matches_chirho, .. } = main_chirho else {
+        panic!("expected main function binding");
+    };
+    let RhsChirho::UnguardedChirho(ExprChirho::DoChirho { stmts_chirho, .. }) =
+        &matches_chirho[0].rhs_chirho
+    else {
+        panic!("expected a lowered mdo expression");
+    };
+
+    assert_eq!(stmts_chirho.len(), 2);
+    assert!(matches!(
+        &stmts_chirho[0],
+        StmtChirho::BindChirho {
+            pat_chirho: PatChirho::TupleChirho { elements_chirho, .. },
+            expr_chirho: ExprChirho::AppChirho { fun_chirho, .. },
+            ..
+        } if elements_chirho.len() == 2
+            && matches!(
+                fun_chirho.as_ref(),
+                ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mfix"
+            )
+    ));
+    assert!(matches!(stmts_chirho[1], StmtChirho::ExprChirho(_)));
+}
+
+#[cfg(test)]
+#[test]
+fn lower_mdo_and_rec_as_plain_bindings_without_recursive_do_chirho() {
+    let source_chirho = "module M where\nmdo = 7\nrec = 8\n";
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let green_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho)
+            .parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let names_chirho: Vec<&str> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. } => Some(name_chirho.text_chirho()),
+            _ => None,
+        })
+        .collect();
+
+    assert!(names_chirho.contains(&"mdo"));
+    assert!(names_chirho.contains(&"rec"));
 }

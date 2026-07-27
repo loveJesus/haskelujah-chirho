@@ -48,7 +48,8 @@ Mechanism, pinned in current source:
 - [x] CST: RecStmt node carrying the inner statement group; AST transformation remains next
 - [ ] Desugar: rec group → lazy-tuple mfix knot
       (`(xs, ys) <- mfix (\ ~(xs, ys) -> do { ...; return (xs, ys) })`);
-      whole-group knot first, GHC-style minimal segmentation later if corpus needs it
+      whole-group AST knot landed; genuinely lazy Core tuple projections remain before this
+      item is complete; GHC-style minimal segmentation comes later only if corpus needs it
 - [ ] Typing: MonadFix class (`mfix :: (a -> m a) -> m a`) in class env; instances IO,
       Maybe, [] minimum; superclass Monad
 - [ ] STG eval: `mfix`/`fixIO` knot-tying via result thunk (runtime laziness + refs exist)
