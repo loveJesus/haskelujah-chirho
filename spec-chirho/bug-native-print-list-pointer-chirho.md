@@ -83,13 +83,43 @@ The resolution: explicit `show` and `print`'s fallback are *different paths*, an
 latter goes through the Int-rendering generic. Testing the prediction is what separated
 them; asserting it would have shipped a third wrong mechanism.
 
-### Fix direction
+### Fix direction — evidence says the fix is upstream of codegen
 
-Make the fallback dispatch on the forced value's runtime tag rather than calling
-`show_int`. The per-type renderers already exist in the emitted module
-(`$prim_Show_show_Int`, `_Char`, `_Bool`, `_Double`) along with the class selector
-`$sel_Show_show` — so the machinery is present and simply not consulted. List rendering
-needs `Show [a]` from `Show a` and is the larger part of the job.
+Core for the failing program carries **no `Show` dictionary at all**:
+
+```
+main = (v1 (v2 True))          -- print (id True); v1 = print, v2 = id
+main = (v1 (v2 (1.5 @Double))) -- print (id 1.5)
+```
+
+So the dictionary pass never resolves `Show` for `print`'s argument — `print` is treated as
+an IO primop (it is listed in `is_io_primop_chirho`) rather than as a function that needs
+class evidence. The backend then has no type information left to dispatch on, which is why
+its fallback falls back to Int.
+
+Explicit `show` **does** get resolved. Same value, two spellings, two outcomes:
+
+```
+print (id True)              -> 1        WRONG
+putStrLn (show (id True))    -> True     correct
+```
+
+That makes the minimal fix the Haskell definition itself — rewrite `print x` as
+`putStrLn (show x)` before dictionary resolution, so `print` inherits the `show` machinery
+that already works, instead of the backend guessing a type it was never given.
+
+Caveats to respect before attempting it:
+
+- `print` is a builtin on the interpreter path too, where it is currently **correct**. Any
+  rewrite changes both paths, so the full driver suite (1,735 tests) is the gate, not a
+  spot check.
+- This fixes scalars and derived-`Show` constructors. It does **not** fix lists: explicit
+  `show` on a list is independently broken (`putStrLn (show (id [1,2,3]))` → pointer), so
+  `Show [a]` from `Show a` remains a separate, larger job.
+
+Tag-dispatch in the backend fallback (an earlier suggestion in this file) would also work,
+but it is the worse fix: it reconstructs at runtime the type information the compiler
+already had and threw away.
 
 ## Earlier framing — kept for the record, superseded above
 
