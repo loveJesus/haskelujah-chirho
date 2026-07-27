@@ -140,9 +140,9 @@
                 The pipeline is end-to-end and the current push is closing the
                 gap to being a drop-in GHC replacement. Being a drop-in means
                 two things, so we measure both:
-                <strong>850 / 938 (90.6%)</strong> of GHC's
+                <strong>849&ndash;850 / 938 (~90%)</strong> of GHC's
                 <code>should_compile</code> corpus type-checks today, and
-                <strong>141 / 767 (18.4%)</strong> of GHC's
+                <strong>149 / 767 (~19%)</strong> of GHC's
                 <code>should_fail</code> corpus is correctly rejected. Every fix
                 is gated so it never regresses working programs.
               </p>
@@ -171,7 +171,7 @@
               <p class="status-card__label-chirho">Honest Edges</p>
               <h3>Where It Is Still Growing</h3>
               <p>
-                The biggest gap is soundness, not features: we accept 626
+                The biggest gap is soundness, not features: we accept 618
                 programs GHC correctly rejects. Ordinary errors are caught, but
                 many validity and constraint checks are simply not written yet —
                 so build code you believe is correct, and do not yet rely on us
@@ -337,7 +337,7 @@
             <article class="highlight-card-chirho" data-reveal-chirho>
               <h3>What Still Bites</h3>
               <p>
-                Rejection is far behind acceptance — only 18.4% of GHC's
+                Rejection is far behind acceptance — only ~19% of GHC's
                 <code>should_fail</code> corpus is caught, so unsound programs
                 can slip through. Native (Cranelift/LLVM) class-method dispatch
                 is still catching up to the STG interpreter, some higher-kinded

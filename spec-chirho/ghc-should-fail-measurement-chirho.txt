@@ -1,34 +1,60 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-07-26 @ b58000c9 via: haskelujah check <file>, timeout 15s/file
-# binary: target/release/haskelujah REBUILT this session (the on-disk one was 4 months stale)
-# corpus: ghc-tests-chirho/typecheck-chirho/should_fail/*.hs
+# measured: 2026-07-27, TWO independent full passes
+# code measured: 6ad1d7a7 (binary target/release/haskelujah built from that commit;
+#   verified live — rank-N rejected under Haskell2010, accepted under default GHC2021)
+# method: haskelujah check <file>, timeout 15s/file
+# corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
+#   CORPUS COMPLETENESS: `find -name '*.hs'` at any depth == 767 == shell glob, i.e. this
+#   directory has NO subdirectories and a non-recursive glob misses nothing. (The sibling
+#   should_compile corpus DOES have a subdirectory and this check matters there — see
+#   spec-chirho/ghc-should-compile-measurement-chirho.txt.)
 #
-# RESULT: CORRECTLY-REJECTED=141 WRONGLY-ACCEPTED=626 TOTAL=767 (18.4% reject rate)
+# RESULT: CORRECTLY-REJECTED=149 WRONGLY-ACCEPTED=618 TOTAL=767 (19.4% reject rate)
+# STABILITY: NO-VARIANCE-OBSERVED-IN-2-PASSES UNSTABLE=unknown
+# QUOTE-AS: ~19% (149 of 767) — do not quote a third significant figure
+#
+# CHANGE SINCE LAST MEASUREMENT: 141 -> 149 (+8), wrongly-accepted 626 -> 618.
+# Cause: the GHC-91510 source-type validity check landed in 6ad1d7a7. Re-derived here from
+# clean runs rather than carried over from the session that wrote the check.
+#
+# HOW MUCH THE STABILITY LINE IS WORTH — DO NOT OVERREAD IT.
+# Two full passes produced byte-identical wrongly-accepted sets (618 files, zero diff).
+# That is NOT proof of determinism. The type checker is known non-deterministic
+# (spec-chirho/bug-nondeterministic-typecheck-chirho.md), and the proof case is instructive:
+# T25266.hs is a genuine coin flip (9 pass / 11 fail over 20 runs) yet it failed in BOTH
+# full should_compile passes. Two agreeing passes would have declared it stable. So this
+# line means "no variance seen in 2 samples", not "deterministic". Establishing stability
+# honestly needs per-file repetition, which has not been run on this corpus.
+#
+# Rounding rule: round DOWN. 19.4% -> ~19%, never 20%. A compatibility claim must not sit
+# above its own measured value.
 #
 # READ THIS BEFORE QUOTING THE COMPATIBILITY NUMBER.
-# should_compile measures whether we ACCEPT what GHC accepts (850/938 = 90.6%).
-# This measures whether we REJECT what GHC rejects. A drop-in GHC replacement
-# must do BOTH. Quoting only should_compile overstates compatibility, because a
-# checker that accepted everything would score 100% on that axis alone.
+# should_compile measures whether we ACCEPT what GHC accepts.
+# This measures whether we REJECT what GHC rejects. A drop-in GHC replacement must do BOTH.
+# Quoting only should_compile overstates compatibility, because a checker that accepted
+# everything would score 100% on that axis alone.
 #
-# Counting rule: a file counts as REJECTED if any error[EXXXX] or panic was
-# emitted. That is generous — it does not verify we rejected for the RIGHT
-# reason, so 141 is an UPPER bound on true correct rejections.
+# Counting rule: a file counts as REJECTED if any error[EXXXX] or panic was emitted. That
+# is generous — it does not verify we rejected for the RIGHT reason, so 149 is an UPPER
+# bound on true correct rejections.
 #
-# Sanity checks run against this measurement:
+# Sanity checks previously run and still applicable:
 #  - deliberately malformed source  -> error emitted (parse failures are not silently accepted)
 #  - f :: Int -> Bool ; f x = x     -> correctly rejected
-#  - sampled 4 wrongly-accepted files by hand (T2688 fundep violation, T8450 rigid
-#    skolem vs Bool, SCLoop superclass loop, T15796 newtype with class context):
-#    all 4 are genuine GHC type errors that we accept silently.
-# So the gap is real; it is not an artifact of the harness.
+#  - sampled 4 wrongly-accepted files by hand (T2688 fundep violation, T8450 rigid skolem
+#    vs Bool, SCLoop superclass loop, T15796 newtype with class context): all 4 are genuine
+#    GHC type errors that we accept silently. The gap is real, not a harness artifact.
 #
-# IMPLICATION FOR THE BURN-DOWN: fixes that make the checker MORE permissive
-# (e.g. deferring stuck type-family equalities) move should_compile up and this
-# number down. Both corpora must be re-measured on every typechecker change.
+# ACCEPTANCE IS NOT CORRECTNESS. Neither corpus measures whether a compiled program computes
+# the right answer. See spec-chirho/bug-comprehension-letrec-capture-chirho.md — the
+# canonical lazy primes sieve COMPILES and silently returns the wrong list.
 #
-# The 626 wrongly-accepted files below are the soundness surface:
+# IMPLICATION FOR THE BURN-DOWN: fixes that make the checker MORE permissive (e.g. deferring
+# stuck type-family equalities) move should_compile up and this number down. Both corpora
+# must be re-measured on every typechecker change.
 #
+# ---- the 618 files we WRONGLY ACCEPT (GHC rejects these) ----
 ghc-tests-chirho/typecheck-chirho/should_fail/AmbigFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/AssocTyDef01.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/AssocTyDef02.hs
@@ -58,12 +84,13 @@ ghc-tests-chirho/typecheck-chirho/should_fail/ExplicitSpecificity5.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/ExplicitSpecificity6.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/ExplicitSpecificity7.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/ExplicitSpecificity9.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/FailDueToGivenOverlapping.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/fd-loop.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FD1.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FD2.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FD3.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FDsFromGivens.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FDsFromGivens2.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/FailDueToGivenOverlapping.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FrozenErrorTests.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FunDepOrigin1b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/GivenForallLoop.hs
@@ -71,6 +98,12 @@ ghc-tests-chirho/typecheck-chirho/should_fail/IPFail.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/LazyFieldsDisabled.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/LevPolyBounded.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/LongWayOverlapping.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/mc19.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/mc20.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/mc22.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/mc23.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/mc24.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/mc25.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/MissingDefaultMethodBinding.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/MissingExportList03.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/MultiAssocDefaults.hs
@@ -121,7 +154,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T12045b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T12045c.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T12063.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T12063a.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T12083a.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T12083b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T12102.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T12151.hs
@@ -189,8 +221,8 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T15799.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T15801.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T15807.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T15816.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T15850.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T15850_Lib.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/T15850.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T15862.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T15883.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T15883b.hs
@@ -286,13 +318,13 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T20122.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20189.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20241b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20260.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T20289.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20289_A.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/T20289.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20542.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T20588.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20588_aux.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T20588c.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/T20588.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20588c_aux.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/T20588c.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20666.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20666a.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T20666b.hs
@@ -311,8 +343,8 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T22141a.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T22141b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T22141c.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T22141d.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T22141e.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T22141e_Aux.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/T22141e.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2247.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T22478c.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T22560_fail_a.hs
@@ -335,8 +367,8 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T23427.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T23514a.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2354.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T23731.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T23731b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T23731b_aux.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/T23731b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T23734.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T23739c.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T23776.hs
@@ -351,9 +383,8 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T24868.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25004.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25004k.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25325.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T2538.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T25949.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25949_aux.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/T25949.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25950.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T26004.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T26137.hs
@@ -366,7 +397,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T2806.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2846b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2994.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T3102.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T3155.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T3176.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T3323.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T3468.hs
@@ -394,7 +424,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T5684f.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T5689.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T5691.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T5858.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T5957.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T5978.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T6001.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T6018Afail.hs
@@ -450,51 +479,11 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T9634.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T9739.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T9858a.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T9858b.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/tc168.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/tc168b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/TcCoercibleFail.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/TcCoercibleFail2.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/TcCoercibleFail3.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TcNoNullaryTC.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TcNullaryTCFail.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TcStaticPointersFail02.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TcStaticPointersFail03.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/Tcfail186_Help.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_ExistentialEscape.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_MisplacedApplication.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_NonlinearMultiAppPat.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_NonlinearMultiPat.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_NonlinearSinglePat.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_Nonmatching.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_PatternBinding.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_PatternBindingExistential.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_ScopedTyVarConflict.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_TooMany.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/TyfamsDisabled.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesConstraintFamily.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesFail.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesFamilyKindFail1.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesFamilyKindFail2.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesInfinite.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesInstanceFail.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesMismatchedKind.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesMismatchedKindRecord.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesMultiFieldGadt.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesNotEnabled.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesOverlap.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag1.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag1_ql.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag2.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag3.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag4.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag5.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/fd-loop.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/mc19.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/mc20.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/mc22.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/mc23.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/mc24.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/mc25.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tc168.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tc168b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail002.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail003.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail004.hs
@@ -553,7 +542,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/tcfail080.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail084.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail085.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail086.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail088.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail089.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail090.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail092.hs
@@ -584,7 +572,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/tcfail123.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail124.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail125.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail126.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail127.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail128.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail129.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail130.hs
@@ -609,7 +596,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/tcfail158.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail159.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail162.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail165.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail166.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail167.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail168.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail169.hs
@@ -625,6 +611,7 @@ ghc-tests-chirho/typecheck-chirho/should_fail/tcfail181.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail182.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail183.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail184.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/Tcfail186_Help.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail186.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail187.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail188.hs
@@ -634,7 +621,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/tcfail191.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail193.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail195.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail196.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail197.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail198.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail199.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail200.hs
@@ -655,3 +641,35 @@ ghc-tests-chirho/typecheck-chirho/should_fail/tcfail217.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail218.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail223.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail224.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TcNoNullaryTC.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TcNullaryTCFail.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TcStaticPointersFail02.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TcStaticPointersFail03.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_ExistentialEscape.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_MisplacedApplication.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_NonlinearMultiAppPat.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_NonlinearMultiPat.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_NonlinearSinglePat.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_Nonmatching.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_PatternBinding.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_PatternBindingExistential.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_ScopedTyVarConflict.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyAppPat_TooMany.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/TyfamsDisabled.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesConstraintFamily.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesFail.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesFamilyKindFail1.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesFamilyKindFail2.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesInfinite.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesInstanceFail.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesMismatchedKind.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesMismatchedKindRecord.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesMultiFieldGadt.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesNotEnabled.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesOverlap.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag1_ql.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag1.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag2.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag3.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag4.hs
+ghc-tests-chirho/typecheck-chirho/should_fail/VisFlag5.hs

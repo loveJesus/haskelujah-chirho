@@ -231,6 +231,41 @@ behind a long-running gate suite when this was written. Whoever picks it up shou
 write a failing test from the matrix above, then try making the restore symmetric
 (save `env_chirho` alongside, restore both), and re-run — not assume.
 
+## Mechanism — where the boxed-Bool scrutinee goes wrong
+
+`stg_lower_chirho.rs:1110` lowers a `case` scrutinee via `lower_arg_source_chirho`. For a
+complex (non-var, non-literal) scrutinee inside a function body, `:1212-1239` builds a
+runtime thunk:
+
+```rust
+let max_idx_chirho = self.arg_param_indices_chirho.values().copied().max().unwrap_or(0);
+let captures_chirho: Vec<ArgSourceChirho> =
+    (0..=max_idx_chirho).map(ArgSourceChirho::ArgRegChirho).collect();
+ArgSourceChirho::ThunkCodeChirho { code_ptr_chirho: entry_chirho, captures_chirho }
+```
+
+The thunk's code refers to captured values **by arg-register index**, and the capture list
+is `0..=max` over `arg_param_indices_chirho` — the same **global, flat, unscoped** map that
+`VarChirho` consults first at `:227`. Two consequences:
+
+1. The bound is taken over *every* entry in the map, including ones belonging to enclosing
+   scopes, so the captured window need not match the frame the thunk's code actually
+   expects.
+2. `x \`rem\` 2 == 0` bottoms out in a comparison, but `not (…)` adds **one more level of
+   application**, so the inner comparison itself becomes a *nested* runtime thunk that
+   captures arg registers relative to a frame that is no longer current when it is finally
+   entered.
+
+That is exactly the observed split: guards that bottom out in primops are fine; guards with
+one extra call layer (`not`, `/=`, `odd`, and any user helper defined with `/=`) are not.
+
+Related but distinct defect, still worth fixing: the save/restore around closure bodies is
+asymmetric — `env_chirho.remove()` at `:391` and `:588` is never undone, because the
+matching restores at `:419` and `:616` only carry `Option<usize>` arg-register indices.
+
+**Do not "fix" this by forcing harder at the use site.** The capture window is the problem;
+the thunk must capture the frame it was built in, not a range guessed from a global map.
+
 ## Repro files
 
 `Refraction.hs`, `F/G/W/AC/BA/BB/BC.hs` were written to the session scratchpad. Anyone

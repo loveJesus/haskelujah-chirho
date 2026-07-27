@@ -1,9 +1,46 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-07 @ dbf261e2 via: haskelujah check <file>, timeout 15s/file
-# corpus: ghc-tests-chirho/typecheck-chirho/should_compile/*.hs
-# RESULT: PASS=850 FAIL=88 TOTAL=938 (90.6%) — prior baseline 833/938 (88.8%)
-# The 88 failing files below are the next should_compile burn-down surface:
+# measured: 2026-07-27, TWO independent full passes
+# code measured: 6ad1d7a7 (binary target/release/haskelujah built from that commit)
+# method: haskelujah check <file>, timeout 15s/file
+# corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #
+# CORPUS COMPLETENESS — READ THIS BEFORE RE-MEASURING.
+# The shell glob `should_compile/*.hs` finds only 930 files. Eight more live in the
+# subdirectory T16234/ and a non-recursive glob silently drops them. `find -name '*.hs'`
+# returns 938, matching `git ls-files`. All 8 subdirectory files PASS. Any measurement
+# reporting TOTAL=930 has lost 8 passing files and understates the denominator.
+#
+# RESULT: PASS=849 FAIL=89 TOTAL=938 (90.5%)
+# STABILITY: DETERMINISTIC-FAIL=88 UNSTABLE=1
+# UNSTABLE-FILES: T25266.hs
+# QUOTE-AS: ~90% (849-850 of 938) — do not quote a third significant figure
+#
+# WHY THE NUMBER IS A RANGE AND NOT A FIGURE.
+# The type checker is NON-DETERMINISTIC — see spec-chirho/bug-nondeterministic-typecheck-chirho.md
+# T25266.hs passes 9 times and fails 11 times out of 20 with the same binary and no flags,
+# producing exactly two byte-distinct outputs chosen per process. So the true count is 849
+# or 850 depending on a coin flip, and 90.5% / 90.6% differ only by that flip. Publishing a
+# third significant figure asserts precision this method does not have.
+# Rounding rule: round DOWN to ~90%. 90.5-90.6 rounds arithmetically to 91, but 91% sits
+# above the entire measured range, and a compatibility claim must not be rounded past its
+# own upper bound.
+#
+# EVIDENCE FOR THE STABILITY LINE (measured, not assumed):
+#  - two independent full corpus passes: PASS=841 FAIL=89 of the 930 glob-visible files,
+#    with BYTE-IDENTICAL failing sets. No flaky passers observed across both passes.
+#  - all 89 failing files re-run individually: 88 stayed failing, exactly 1 (T25266.hs)
+#    flipped to passing.
+#  - T25266.hs specifically, 20 runs: 9 pass / 11 fail.
+#
+# ACCEPTANCE IS NOT CORRECTNESS. This corpus measures only whether we accept what GHC
+# accepts. It says nothing about whether the compiled program computes the right answer.
+# See spec-chirho/bug-comprehension-letrec-capture-chirho.md — the canonical lazy primes
+# sieve is ACCEPTED here and silently returns the wrong list.
+#
+# Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt (do we REJECT what
+# GHC rejects?). Both must be read together; either alone overstates compatibility.
+#
+# ---- the 89 files we FAIL to accept (GHC accepts these); 88 deterministic + T25266 unstable ----
 ghc-tests-chirho/typecheck-chirho/should_compile/FloatFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/HardRecordUpdate.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Improvement.hs
@@ -61,6 +98,7 @@ ghc-tests-chirho/typecheck-chirho/should_compile/T23739a.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T23764.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T24810.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T25180.hs
+ghc-tests-chirho/typecheck-chirho/should_compile/T25266.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T25266b.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T25597.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T26030.hs
