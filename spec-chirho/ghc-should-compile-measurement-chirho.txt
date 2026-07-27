@@ -1,26 +1,25 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, AFTER RecursiveDo landed (9456c120)
-# code measured: 9456c120 (binary target/release/haskelujah built from that commit by the
-#   landing gates, mtime 12:37:27 EDT, verified fresh against HEAD before sweeping)
+# measured: 2026-07-27, AFTER ParallelListComp landed (c2763e56)
+# code measured: d82001e1 (HEAD; the ParallelListComp landing is c2763e56; binary
+#   target/release/haskelujah rebuilt at this commit by the measuring agent, mtime ~16:33)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
 #   subdirectory T16234/ and all eight PASS. `find` and `git ls-files` agree on 938.
 #   Any measurement reporting TOTAL=930 has silently dropped them.
 #
-# RESULT: PASS=850 FAIL=88 TOTAL=938 (90.6%)
+# RESULT: PASS=852 FAIL=86 TOTAL=938 (90.8%)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
-# QUOTE-AS: ~90% (850 of 938) — do not quote a third significant figure
+# QUOTE-AS: ~90% (852 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 849 -> 850 (+1). Exactly one file left the failing set —
-# T4404.hs — and NOTHING entered it. Cause: RecursiveDo landed end-to-end in 9456c120
-# (extension-gated rec/mdo, mfix tuple-knot desugaring, MonadFix class with IO/Maybe/list
-# instances, non-strict ReturnIO payloads). Zero regressions from the slice on this corpus
-# — measured across two full passes, not assumed.
+# CHANGE SINCE LAST MEASUREMENT: 850 -> 852 (+2), NOTHING entered the failing set.
+# T11982a.hs was the landing's named target (parallel list comprehensions) and left as
+# predicted. TyAppPat_UniversalMulti1.hs ALSO left, which the landing announcement did not
+# predict — recorded as measured, cause unattributed; no mechanism claim without a trace.
+# The companion should_fail axis moved in the same landing window (+2 correct rejections,
+# also unpredicted) — see that artifact.
 #
-# TWO-PASS PROTOCOL: the type checker's determinism was fixed in 47723b8c and is
-# RE-VERIFIED here rather than trusted — both passes of this measurement produced
-# byte-identical failing sets.
+# TWO-PASS PROTOCOL: determinism (fixed 47723b8c) re-verified — both passes byte-identical.
 #
 # ACCEPTANCE IS NOT CORRECTNESS. This corpus measures only whether we accept what GHC
 # accepts. Proof case: the canonical lazy primes sieve was ACCEPTED here the whole time it
@@ -30,7 +29,7 @@
 #
 # Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #
-# ---- the 88 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 86 files we FAIL to accept (GHC accepts these); all deterministic ----
 ghc-tests-chirho/typecheck-chirho/should_compile/FloatFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/HardRecordUpdate.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Improvement.hs
@@ -42,7 +41,6 @@ ghc-tests-chirho/typecheck-chirho/should_compile/T10348.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T10808.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T11056.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T11811.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T11982a.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T12104.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T12427a.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T12923_2.hs
@@ -116,6 +114,5 @@ ghc-tests-chirho/typecheck-chirho/should_compile/tc239.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/tc251.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/tc252.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/TcSpecPragmas.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/TyAppPat_UniversalMulti1.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/UnliftedNewtypesGnd.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Vta2.hs
