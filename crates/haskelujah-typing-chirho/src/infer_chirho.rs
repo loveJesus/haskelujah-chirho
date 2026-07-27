@@ -1184,7 +1184,12 @@ impl InferCtxChirho {
                     .push(&pred_chirho.class_name_chirho);
             }
         }
-        for (var_chirho, classes_chirho) in &var_pred_classes_chirho {
+        // DETERMINISM: builds the IO-defaulting substitution — same hazard as the
+        // defaulting loop in check_deferred_preds_chirho. Sort so the substitution is a
+        // function of the program, not of the hasher.
+        let mut sorted_var_pred_classes_chirho: Vec<_> = var_pred_classes_chirho.iter().collect();
+        sorted_var_pred_classes_chirho.sort_by_key(|(var_chirho, _)| **var_chirho);
+        for (var_chirho, classes_chirho) in sorted_var_pred_classes_chirho {
             let all_io_chirho = classes_chirho
                 .iter()
                 .all(|c_chirho| io_defaultable_chirho.contains(c_chirho));
@@ -1257,7 +1262,16 @@ impl InferCtxChirho {
         }
         if !self.occurrence_default_hints_chirho.is_empty() {
             let mut updated_hints_chirho = HashMap::new();
-            for (var_chirho, key_chirho) in self.occurrence_default_hints_chirho.drain() {
+            // DETERMINISM: substitution can map two distinct vars onto the SAME
+            // updated var, and the later insert then wins. Draining a HashMap
+            // makes "later" depend on a per-process hash seed, so the surviving
+            // defaulting hint — and with it the inferred type — could differ
+            // between runs of the same binary on the same source.
+            // See spec-chirho/bug-nondeterministic-typecheck-chirho.md
+            let mut drained_hints_chirho: Vec<_> =
+                self.occurrence_default_hints_chirho.drain().collect();
+            drained_hints_chirho.sort_by_key(|(var_chirho, _)| *var_chirho);
+            for (var_chirho, key_chirho) in drained_hints_chirho {
                 match subst_chirho.apply_ty_chirho(&TyChirho::VarChirho(var_chirho)) {
                     TyChirho::VarChirho(updated_var_chirho) => {
                         updated_hints_chirho.insert(updated_var_chirho, key_chirho);
@@ -5798,7 +5812,13 @@ impl InferCtxChirho {
         let mut default_subst_chirho = SubstChirho::empty_chirho();
         let io_defaultable_classes_chirho: &[&str] =
             &["Monad", "Applicative", "Functor", "MonadIO", "MonadFail"];
-        for (var_chirho, classes_chirho) in &var_classes_chirho {
+        // DETERMINISM: this loop BUILDS a defaulting substitution, so the order in
+        // which ambiguous variables are defaulted decides the inferred types. Iterating
+        // a HashMap made that order depend on a per-process hash seed.
+        // See spec-chirho/bug-nondeterministic-typecheck-chirho.md
+        let mut sorted_var_classes_chirho: Vec<_> = var_classes_chirho.iter().collect();
+        sorted_var_classes_chirho.sort_by_key(|(var_chirho, _)| **var_chirho);
+        for (var_chirho, classes_chirho) in sorted_var_classes_chirho {
             // Check if all constraints are IO-defaultable (Monad/Applicative/Functor)
             let all_io_defaultable_chirho = classes_chirho
                 .iter()
@@ -19961,7 +19981,15 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
         .extensions_chirho
         .iter()
         .any(|extension_chirho| extension_chirho == "OverloadedStrings");
-    for (name_chirho, (params_chirho, rhs_ast_chirho)) in imported_type_synonyms_chirho {
+    // DETERMINISM: these seeding loops iterate `HashMap`s and MUTATE inference
+    // state, so a per-process hash seed would otherwise make the resulting
+    // environment — and therefore the accept/reject decision — differ between
+    // runs of the same binary on the same source. Sort by key so the order is a
+    // function of the program, not of the hasher.
+    // See spec-chirho/bug-nondeterministic-typecheck-chirho.md
+    let mut sorted_type_synonyms_chirho: Vec<_> = imported_type_synonyms_chirho.iter().collect();
+    sorted_type_synonyms_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
+    for (name_chirho, (params_chirho, rhs_ast_chirho)) in sorted_type_synonyms_chirho {
         let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_ast_chirho, params_chirho);
         ctx_chirho.register_type_synonym_chirho(
             name_chirho.clone(),
@@ -19969,7 +19997,9 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
             rhs_ty_chirho,
         );
     }
-    for (family_name_chirho, equations_chirho) in imported_type_families_chirho {
+    let mut sorted_type_families_chirho: Vec<_> = imported_type_families_chirho.iter().collect();
+    sorted_type_families_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
+    for (family_name_chirho, equations_chirho) in sorted_type_families_chirho {
         ctx_chirho
             .register_type_family_chirho(family_name_chirho.clone(), equations_chirho.clone());
     }
@@ -19978,7 +20008,13 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     // imported schemes from previously checked modules do override built-ins.
     // This lets modules like Text.Parsec.Combinator see Text.Parsec.Prim.try
     // instead of the unrelated builtin Control.Exception.try.
-    for (name_chirho, scheme_chirho) in imported_types_chirho {
+    // DETERMINISM: order matters here more than anywhere else in this function —
+    // whether a scheme is bound depends on `lookup_chirho(..).is_none()`, i.e. on
+    // what was already bound. Iterating a hash map meant the winner between a
+    // placeholder and a real import could change from run to run.
+    let mut sorted_imported_types_chirho: Vec<_> = imported_types_chirho.iter().collect();
+    sorted_imported_types_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
+    for (name_chirho, scheme_chirho) in sorted_imported_types_chirho {
         let should_override_chirho = !is_placeholder_import_scheme_chirho(scheme_chirho);
         if should_override_chirho || ctx_chirho.env_chirho.lookup_chirho(name_chirho).is_none() {
             ctx_chirho
@@ -19986,7 +20022,10 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
                 .bind_chirho(name_chirho.clone(), scheme_chirho.clone());
         }
     }
-    for (constructor_name_chirho, field_names_chirho) in imported_record_field_names_chirho {
+    let mut sorted_record_fields_chirho: Vec<_> =
+        imported_record_field_names_chirho.iter().collect();
+    sorted_record_fields_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
+    for (constructor_name_chirho, field_names_chirho) in sorted_record_fields_chirho {
         ctx_chirho
             .con_field_names_chirho
             .insert(constructor_name_chirho.clone(), field_names_chirho.clone());

@@ -67,6 +67,66 @@ Note this is not the same defect as
 runtime; this one is an unstable accept/reject decision at compile time. They should not be
 conflated.
 
+## PARTIALLY TRACED — 2026-07-27. Real order-dependent sites found and fixed; bug NOT closed.
+
+The earlier claim in this file that the mechanism was "likely" hash-iteration order is now
+**confirmed in part**: concrete sites were found where the type checker iterates a hash
+collection *while mutating inference state*, and sorting them measurably changed the flip
+rate. It did not eliminate it.
+
+### Sites found and sorted
+
+All in `crates/haskelujah-typing-chirho/src/infer_chirho.rs`:
+
+| site | what it does | why order matters |
+|---|---|---|
+| imported type synonyms | registers synonyms into the context | registration order |
+| imported type families | registers families | registration order |
+| **imported value schemes** | binds schemes into the env | guarded by `lookup(..).is_none()`, so **which of a placeholder and a real import survives depends on what was bound first** |
+| imported record fields | inserts field names | insert order |
+| **defaulting hints re-key** | drains a `HashMap` and re-inserts keyed by the *substituted* var | two vars can substitute to the **same** var — last write wins, and "last" was a hash seed |
+| **defaulting loop** (`check_deferred_preds_chirho`) | builds the defaulting substitution | the order ambiguous vars are defaulted decides the inferred types |
+| **IO-defaulting loop** | builds the IO-defaulting substitution | same hazard |
+
+The three bolded ones are genuine last-write-wins races, not merely cosmetic ordering.
+
+### Measured effect
+
+| build | `T25266.hs` pass rate |
+|---|---|
+| before any fix | 9 / 20 (~45%) |
+| after the first five sorts | **72 / 100** — 4.4σ from a coin flip |
+
+So the flip rate moved substantially and in the right direction. **The file is still
+non-deterministic** — 28 runs in 100 still fail. At least one more order-dependent site
+exists that these seven do not cover.
+
+The last two fixes (the two defaulting loops) are **not yet measured** — they were written
+after the 100-run measurement and the release binary had not been rebuilt at the time of
+writing. Do not assume they helped.
+
+### Ruled out by inspection (do not re-search these)
+
+- `free_vars_chirho` already returns a **sorted** `Vec`.
+- `ClassEnvChirho::instances_chirho` stores a `Vec` per class — deterministic within a class.
+- The driver's `exporters_by_type_name_chirho` accumulates into a **set** and keeps only
+  single-exporter entries, so `.next()` on a 1-element set is deterministic.
+- The driver's method-occurrence map already sorts each id vector (`lib.rs:3172`).
+- `iface_chirho.rs` has no hash iteration at all.
+- Remaining loops in `kind/class/deriving/exhaust` iterate `Vec`s.
+
+### Operational note for whoever runs the gate
+
+The driver suite's `proptest_chirho` eval tests each take **over 60 seconds** — the runner
+prints "has been running for over 60 seconds" for ~19 of them and they *do* eventually pass.
+A full `-p haskelujah-driver --lib` run therefore takes hours and can look hung when it is
+merely slow. Do not kill it on that basis (I did, and lost a nearly-complete run). Use
+`-- --skip proptest_chirho` for iteration and run the proptests separately.
+
+Also: **never pipe a background `cargo test` through `tail`** — nothing is written until the
+process exits, so a live run is indistinguishable from a dead one. Two "silent deaths" in
+this session were this, not OOM.
+
 ## ATTEMPTED FIX — 2026-07-27, reverted. Read this before trying again.
 
 I implemented the deterministic-collections fix and **backed it out**. The tree is green;
