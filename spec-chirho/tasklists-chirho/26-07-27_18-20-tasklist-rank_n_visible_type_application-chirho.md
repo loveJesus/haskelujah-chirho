@@ -39,7 +39,7 @@ Owner: `gpt_chirho`
       two known preprocessed-fixture failures and the known nested-parentheses proptest overflow.
 - [x] Run bounded representative GHC VTA checks and a warning-free CLI build.
 - [x] Run formatting checks and `git diff --check`.
-- [ ] Commit explicit owned paths, push `main_chirho`, release the builder, and request a
+- [x] Commit explicit owned paths, push `main_chirho`, release the builder, and request a
       measured corpus update only if a tracked file flips.
 
 ## Residual boundary
