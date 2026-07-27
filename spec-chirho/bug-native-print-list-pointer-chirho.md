@@ -213,9 +213,38 @@ hidden from the syntactic fast path, native binary vs interpreter:
 `Char` printing as `120` is the clearest single illustration of the mechanism: `show_int`
 applied to a character.
 
-This doubles as the **test matrix**. A landed fix should turn every row above green, and the
-`Int` row must stay green — it is the one case the current fallback gets right, so it is
-also the one a careless fix could break.
+### CORRECTION — the fix repairs THREE of those seven, not all seven
+
+I wrote above that "all seven are repaired by threading `print`'s evidence". **That was
+wrong, and testing the explicit `show` path is what caught it.** Running
+`putStrLn (show (id …))` — which *does* get its dictionary resolved — natively:
+
+| type | explicit `show`, native | so the print fix… |
+|---|---|---|
+| `Int` | correct | (already worked) |
+| `Bool` | `True` — correct | **repairs it** |
+| `Char` | correct | **repairs it** |
+| `Double` | `1.5` — correct | **repairs it** |
+| `String` / `[Char]` | **`4369413296`** — broken | does **NOT** repair it |
+| `[Int]` | **`4350468337`** — broken | does **NOT** repair it |
+| `Maybe Int` | **`4314011601`** — broken | does **NOT** repair it |
+
+**There are two independent faults, not one:**
+
+1. **`print` threads no `Show` evidence** → every non-`Int` value falls through to
+   `show_int`. This is what the three-brick plan fixes.
+2. **The structured-type `show` instances are themselves broken natively** — `[Char]`,
+   `[Int]`, `Maybe Int` all render as pointers *even when their dictionary is correctly
+   resolved*, despite having entries in the enumeration and a dedicated generator
+   (`generate_show_list_int_binding_chirho`).
+
+Fault 2 is a separate, larger defect and the three-brick plan does nothing for it. Anyone
+implementing the print fix should expect scalars to go green and structured types to stay
+broken, and should **not** report the lists as fixed.
+
+This is also the honest test matrix: `Bool`/`Char`/`Double` must go green, `Int` must stay
+green, and `String`/`[Int]`/`Maybe Int` are **expected to remain red** until fault 2 is
+addressed separately.
 
 **Scope honesty.** This fixes every type *present in the enumeration* — `Bool`, `Double`,
 `Char`, `[Int]`, `[Char]`, the `Maybe` entries, and derived-`Show` constructors once their
