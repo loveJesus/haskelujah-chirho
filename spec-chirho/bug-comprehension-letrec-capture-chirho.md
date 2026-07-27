@@ -244,20 +244,45 @@ let captures_chirho: Vec<ArgSourceChirho> =
 ArgSourceChirho::ThunkCodeChirho { code_ptr_chirho: entry_chirho, captures_chirho }
 ```
 
-The thunk's code refers to captured values **by arg-register index**, and the capture list
-is `0..=max` over `arg_param_indices_chirho` — the same **global, flat, unscoped** map that
-`VarChirho` consults first at `:227`. Two consequences:
+The thunk's code refers to captured values **by arg-register index**, and the capture list is
+`0..=max` over `arg_param_indices_chirho`.
 
-1. The bound is taken over *every* entry in the map, including ones belonging to enclosing
-   scopes, so the captured window need not match the frame the thunk's code actually
-   expects.
-2. `x \`rem\` 2 == 0` bottoms out in a comparison, but `not (…)` adds **one more level of
-   application**, so the inner comparison itself becomes a *nested* runtime thunk that
-   captures arg registers relative to a frame that is no longer current when it is finally
-   entered.
+### CORRECTION — my first reading of this was wrong
 
-That is exactly the observed split: guards that bottom out in primops are fine; guards with
-one extra call layer (`not`, `/=`, `odd`, and any user helper defined with `/=`) are not.
+An earlier draft of this file — and messages I sent to the fleet — called
+`arg_param_indices_chirho` a "global, flat, **unscoped** map" and asserted the capture
+window was therefore a bad guess. **That is not accurate, and I am retracting it.**
+(Checked: the claim never reached a commit message, so nothing else needs amending.)
+
+Reading the register model properly:
+
+- Case alts **prepend** constructor fields: every existing index is shifted up by
+  `num_binders`, and the alt's own binders take `0..num_binders` (`:1066-1077`).
+- The map **is** saved and restored around each alt (`:1049`, `:1082`), around lambda
+  bodies (`:367-428`), and around letrec RHS bodies (`:562-625`).
+
+So the map *is* scoped, and `max(values()) + 1` really does equal the current frame size.
+Walking the worked example — worker captures `p`→0, param `$xs`→1; entering the cons alt
+shifts to `x`→0, `$rest`→1, `p`→2, `$xs`→3 — the scrutinee thunk captures `ArgReg 0..=3`,
+which is exactly right. I could not make the window come out wrong on paper.
+
+**Therefore the mechanism is NOT established.** The symptom is pinned precisely (see the
+minimal pair above — that part is solid, reproduced many times). The cause is not. I am
+recording this rather than shipping a fix built on a mechanism I had already talked myself
+out of.
+
+The one thing in this area that *is* a definite defect, independent of the above: the
+save/restore around closure bodies is asymmetric. `env_chirho.remove()` at `:391` and
+`:588` is never undone, because the matching restores at `:419` and `:616` carry only
+`Option<usize>` arg-register indices, not env values. Alt binders *are* restored properly
+(`:1083-1090`), which shows the intended pattern — it just is not applied on the capture
+path. Whether that is load-bearing for this bug is unknown.
+
+**Next step is instrumentation, not another hypothesis.** Dump the actual capture list, the
+frame contents, and the resolved head value at the moment the guard's scrutinee thunk is
+entered, for `JB` (broken) beside `JA` (correct). Those two differ by one token, so the
+first divergence in that trace is the bug. I have now proposed four mechanisms and
+falsified all four from the armchair; the fifth should come from a trace.
 
 Related but distinct defect, still worth fixing: the save/restore around closure bodies is
 asymmetric — `env_chirho.remove()` at `:391` and `:588` is never undone, because the
