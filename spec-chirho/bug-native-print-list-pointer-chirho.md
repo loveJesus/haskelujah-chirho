@@ -262,8 +262,42 @@ from are fine.
 rather than by the type checker's solved types. `print` never resolving (fault 1) and
 structured types resolving only when syntactically obvious (fault 2) are two faces of that.
 
-**Stated as inference, not measurement** — I have not proven it, and I have already
-overstated one value case in this file. What it predicts: threading the checker's solved
+### MECHANISM FOUND — the dict pass can only read types off BINDERS
+
+`dict_chirho/rewrite_chirho.rs:46` resolves an instance's type key like this:
+
+```rust
+fn binder_type_key_chirho(&self, binder_chirho: &BinderChirho) -> Option<String> {
+    match &binder_chirho.ty_chirho { … }        // reads the type off a BINDER
+}
+fn concrete_local_type_key_chirho(type_key_chirho: String) -> Option<String> {
+    if key.is_empty() || Self::type_key_has_type_var_chirho(&key) { None } else { Some(key) }
+}
+```
+
+It reads `binder_chirho.ty_chirho` — the type attached to a **Core binder** — and rejects any
+key still containing a type variable. **There is no expression→type map at all.** That is
+the whole fault, and it predicts every measured row exactly:
+
+| form | is there a binder to read? | result |
+|---|---|---|
+| `let xs = [1,2,3] :: [Int] in show xs` | yes — `xs` is a binder with a concrete type | resolves |
+| `show ([1,2,3] :: [Int])` literal | the literal's own shape suffices | resolves |
+| top-level `xs :: [Int]`, `show xs` | no local binder at the use site | falls back |
+| `show (id [1,2,3] :: [Int])` | an application is not a binder; the annotation never becomes one | falls back |
+| `print e` (any `e`) | `print` is an IO primop — no method binder at all | falls back |
+
+And the fallback is not benign: `instance_chirho.rs:154` makes the catch-all for `Show`
+**`showInt#`**. So an unresolved `Show` does not error — it renders the value as an integer.
+That single default is why `Bool` prints `1`, `Char` prints `120`, and a list prints its
+heap address.
+
+This confirms the shared root as a *mechanism*, not just a correlation: `print` and
+structured types fail for the same reason — neither presents a binder with a concrete type
+at the point resolution happens.
+
+**The earlier prediction still needs its experiment** — I have already overstated one value
+case in this file. What it predicts: threading the checker's solved
 evidence (`ty_key_chirho`) should repair the structured types too, because their bindings
 demonstrably work when reached. What would confirm it: implement brick 1, then re-run the
 top-level-bound and annotated rows above. If they go green, the roots were one; if only
