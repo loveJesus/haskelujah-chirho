@@ -503,10 +503,11 @@
 			height: 200vh;
 		}
 		.nave-content-chirho {
-			margin-top: 52vh;
+			margin-top: 56vh;
 		}
 		.nave-scripture-chirho {
-			margin-bottom: 1.4rem;
+			font-size: 0.84rem;
+			margin-bottom: 1.2rem;
 		}
 	}
 </style>

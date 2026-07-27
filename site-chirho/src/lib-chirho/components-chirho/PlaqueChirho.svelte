@@ -46,6 +46,7 @@
 
 		<div class="axes-chirho">
 			<article class="axis-chirho axis-accept-chirho">
+				<span class="axis-seal-chirho" aria-hidden="true">✓</span>
 				<p class="axis-kicker-chirho caps-label-chirho">should_compile · accepts</p>
 				<p class="axis-value-chirho">
 					{shouldCompileChirho.passChirho}<span class="axis-of-chirho"
@@ -67,6 +68,7 @@
 			</article>
 
 			<article class="axis-chirho axis-reject-chirho">
+				<span class="axis-seal-chirho" aria-hidden="true">✗</span>
 				<p class="axis-kicker-chirho caps-label-chirho">should_fail · rejects</p>
 				<p class="axis-value-chirho">
 					{shouldFailChirho.passChirho}<span class="axis-of-chirho"
@@ -166,6 +168,30 @@
 
 	.axis-reject-chirho {
 		--axis-accent-chirho: var(--vermilion-chirho);
+	}
+
+	.axis-seal-chirho {
+		position: absolute;
+		top: -1.05rem;
+		left: 50%;
+		transform: translateX(-50%) rotate(-4deg);
+		width: 2.1rem;
+		height: 2.1rem;
+		display: grid;
+		place-items: center;
+		border-radius: 50%;
+		background: radial-gradient(
+			circle at 34% 30%,
+			color-mix(in srgb, var(--axis-accent-chirho) 78%, #fff),
+			var(--axis-accent-chirho) 58%,
+			color-mix(in srgb, var(--axis-accent-chirho) 68%, #000)
+		);
+		color: var(--parchment-bright-chirho);
+		font-size: 0.95rem;
+		font-weight: 700;
+		box-shadow:
+			0 3px 8px rgba(36, 27, 16, 0.3),
+			inset 0 1px 2px rgba(255, 255, 255, 0.35);
 	}
 
 	.axis-kicker-chirho {

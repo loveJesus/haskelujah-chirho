@@ -299,7 +299,7 @@
 
 	@media (max-width: 880px) {
 		.craft-grid-chirho {
-			grid-template-columns: 1fr;
+			grid-template-columns: minmax(0, 1fr);
 		}
 		.craft-rail-chirho {
 			position: static;

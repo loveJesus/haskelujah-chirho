@@ -78,6 +78,7 @@ const PANE_FRAG_CHIRHO = /* glsl */ `
 	uniform float uHoverChirho;
 	uniform float uGlowChirho;
 	uniform float uSeedChirho;
+	uniform float uKindleChirho;
 	uniform float uR0Chirho;
 	uniform float uR1Chirho;
 	${NOISE_GLSL_CHIRHO}
@@ -100,6 +101,9 @@ const PANE_FRAG_CHIRHO = /* glsl */ `
 		vec3 glass = uColorChirho * mottle * shimmer * (0.52 + 0.95 * sun);
 		glass += uColorChirho * uHoverChirho * 0.85;
 		glass *= 1.0 + uGlowChirho * 2.2;
+		// the kindling: each pane wakes in pipeline order, with a brief bloom as it lights
+		float kindleBloom = exp(-pow(uKindleChirho - 0.55, 2.0) * 14.0) * 0.55;
+		glass *= 0.18 + 0.82 * uKindleChirho + kindleBloom;
 		vec3 col = mix(glass, vec3(0.055, 0.045, 0.035), lead * 0.88);
 		// gilded rims at the stone edges
 		float rim = smoothstep(uR1Chirho - 0.018, uR1Chirho - 0.004, r)
@@ -124,9 +128,10 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 	}
 	void main() {
 		vec2 p = vPosChirho / uRChirho; // normalized to oculus radius
+		float glowCapChirho = min(uGlowChirho, 0.85);
 		// deep lapis glass ground
 		float mottle = 0.7 + 0.3 * noiseChirho(p * 9.0);
-		vec3 col = vec3(0.075, 0.13, 0.34) * mottle * (0.75 + uGlowChirho);
+		vec3 col = vec3(0.075, 0.13, 0.34) * mottle * (0.75 + glowCapChirho);
 		// λ — the heart of the window
 		float dMain = capsuleChirho(p, vec2(-0.3, 0.56), vec2(0.34, -0.58), 0.058);
 		float dLeg = capsuleChirho(p, vec2(-0.01, 0.03), vec2(-0.34, -0.58), 0.058);
@@ -136,7 +141,7 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 		float pulse = 0.93 + 0.07 * sin(uTimeChirho * 0.7);
 		vec3 gold = vec3(0.89, 0.72, 0.33) * pulse;
 		col = mix(col, gold, body);
-		col += gold * halo * (0.2 + 0.6 * uGlowChirho);
+		col += gold * halo * (0.2 + 0.45 * glowCapChirho);
 		// rim
 		float r = length(vPosChirho);
 		float rim = smoothstep(uRChirho - 0.02, uRChirho - 0.006, r);
@@ -243,8 +248,9 @@ export function createRoseWindowChirho(
 	const paneMaterialsChirho: ShaderMaterial[] = [];
 	const paneHoverTargetsChirho: number[] = new Array(12).fill(0);
 	for (let iChirho = 0; iChirho < 12; iChirho++) {
-		const a0Chirho = (iChirho / 12) * Math.PI * 2 + GAP_RAD_CHIRHO + Math.PI / 2;
-		const a1Chirho = ((iChirho + 1) / 12) * Math.PI * 2 - GAP_RAD_CHIRHO + Math.PI / 2;
+		// clockwise from twelve o'clock, matching the craft section's miniature
+		const a0Chirho = Math.PI / 2 - ((iChirho + 1) / 12) * Math.PI * 2 + GAP_RAD_CHIRHO;
+		const a1Chirho = Math.PI / 2 - (iChirho / 12) * Math.PI * 2 - GAP_RAD_CHIRHO;
 		const geoChirho = new ShapeGeometry(buildPaneShapeChirho(a0Chirho, a1Chirho), 28);
 		const matChirho = new ShaderMaterial({
 			vertexShader: PANE_VERT_CHIRHO,
@@ -255,6 +261,7 @@ export function createRoseWindowChirho(
 				uTimeChirho: { value: 0 },
 				uHoverChirho: { value: 0 },
 				uGlowChirho: { value: 0 },
+				uKindleChirho: { value: 1 },
 				uSeedChirho: { value: iChirho * 0.618 },
 				uR0Chirho: { value: R_INNER_CHIRHO + 0.03 },
 				uR1Chirho: { value: R_OUTER_CHIRHO - 0.03 }
@@ -486,7 +493,7 @@ export function createRoseWindowChirho(
 			optsChirho.onPaneHoverChirho(null, 0, 0);
 			return;
 		}
-		const angChirho = ((hoveredChirho + 0.5) / 12) * Math.PI * 2 + Math.PI / 2;
+		const angChirho = Math.PI / 2 - ((hoveredChirho + 0.5) / 12) * Math.PI * 2;
 		const midRChirho = (R_INNER_CHIRHO + R_OUTER_CHIRHO) / 2;
 		const worldChirho = new Vector3(Math.cos(angChirho) * midRChirho, Math.sin(angChirho) * midRChirho, 0);
 		worldChirho.applyMatrix4(windowGroupChirho.matrixWorld);
@@ -500,10 +507,15 @@ export function createRoseWindowChirho(
 		const sunAngChirho = Math.PI * 0.5 + Math.sin(tChirho * 0.05) * 0.75;
 		const sunChirho = new Vector2(Math.cos(sunAngChirho), Math.sin(sunAngChirho));
 		const glowChirho = Math.min(scrollProgressChirho * 1.9, 1.25);
-		for (const matChirho of paneMaterialsChirho) {
+		for (let iChirho = 0; iChirho < paneMaterialsChirho.length; iChirho++) {
+			const matChirho = paneMaterialsChirho[iChirho];
 			matChirho.uniforms.uTimeChirho.value = tChirho;
 			matChirho.uniforms.uSunDirChirho.value.copy(sunChirho);
 			matChirho.uniforms.uGlowChirho.value = glowChirho;
+			// kindle in pipeline order over the first moments
+			matChirho.uniforms.uKindleChirho.value = optsChirho.staticChirho
+				? 1
+				: Math.min(Math.max((tChirho - 0.35 - iChirho * 0.16) / 1.1, 0), 1);
 		}
 		oculusMatChirho.uniforms.uTimeChirho.value = tChirho;
 		oculusMatChirho.uniforms.uGlowChirho.value = glowChirho;
