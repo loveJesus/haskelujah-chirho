@@ -1749,6 +1749,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> PrimOpKindChirho {
         "appendFile" => PrimOpKindChirho::AppendFileChirho,
         "showInt#" => PrimOpKindChirho::ShowIntChirho,
         "showBool#" => PrimOpKindChirho::ShowBoolChirho,
+        "showChar#" => PrimOpKindChirho::ShowCharChirho,
         "not#" => PrimOpKindChirho::NotBoolChirho,
         "++#" => PrimOpKindChirho::AppendStrChirho,
         "eqStr#" => PrimOpKindChirho::EqStrChirho,

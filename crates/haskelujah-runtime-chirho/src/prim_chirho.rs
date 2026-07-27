@@ -285,6 +285,18 @@ pub fn apply_prim_binop_chirho(
             }),
         },
 
+        // Unary show: convert Char to a quoted String
+        PrimOpKindChirho::ShowCharChirho => match left_chirho {
+            ValueChirho::CharChirho(v_chirho) => {
+                Ok(ValueChirho::StringChirho(format!("'{v_chirho}'")))
+            }
+            _ => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Char",
+                got_chirho: format!("{left_chirho}"),
+            }),
+        },
+
         // Float equality
         PrimOpKindChirho::EqFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::BoolChirho(a_chirho == b_chirho))
@@ -945,6 +957,19 @@ mod tests_chirho {
             &ValueChirho::CharChirho('a'),
         );
         assert_eq!(r_chirho.unwrap(), ValueChirho::BoolChirho(true));
+    }
+
+    #[test]
+    fn show_char_chirho() {
+        let result_chirho = apply_prim_binop_chirho(
+            PrimOpKindChirho::ShowCharChirho,
+            &ValueChirho::CharChirho('x'),
+            &ValueChirho::IntChirho(0),
+        );
+        assert_eq!(
+            result_chirho.unwrap(),
+            ValueChirho::StringChirho("'x'".to_string())
+        );
     }
 
     #[test]

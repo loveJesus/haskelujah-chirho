@@ -1,6 +1,46 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# BUG — compiled binaries print a heap ADDRESS instead of a computed list
+# FIXED — native print now consumes solved Show evidence
+
+**Fixed and verified 2026-07-27.** Native `print` now carries the type checker's concrete
+`Show` evidence into the dictionary pass. Both LLVM and Cranelift render hidden scalar,
+structured, and user-derived values instead of applying the old integer fallback.
+
+## Verified resolution
+
+The repair is compiler-driven; it does not inspect runtime tags:
+
+1. Type inference retains full concrete `Show` keys such as `[Int]`, `Maybe String`, and
+   `(Int,String)` in occurrence records.
+2. The driver admits constrained functions only when the evidence class constrains that
+   function's own scheme. This admits `print :: Show a => a -> IO ()` without admitting
+   incidental predicates.
+3. The dictionary pass rewrites an evidenced `print value` to
+   `putStrLn ($prim_Show_show_<ConcreteKey> value)` only when that exact binding exists.
+4. Structured builtin instances render through portable Core cases, scalar show primops, and
+   string append rather than interpreter-only compound primops.
+5. The STG path maps every scalar renderer used by that Core, including `showChar#`, so
+   interpreter and native output agree.
+6. Cranelift no longer resolves local binders as string globals merely because a binder name
+   matches a string literal. Its runtime also distinguishes actual thunk allocations from
+   constructor headers before interpreting thunk-state bits.
+7. RTS string append owns both input byte strings before any allocation that can trigger
+   collection.
+
+The LLVM and Cranelift round-trip matrix now prints exact Haskell syntax for `Bool`, `Char`,
+`Double`, `String`, `[Int]`, `[Bool]`, `Maybe Int`, pairs, triples, `Either`, a nullary
+derived constructor, and a derived product constructor. The STG interpreter remains correct.
+
+This is still bounded by the compiler's available `Show` instances. An unresolved or unsupported
+instance is not invented; general polymorphic dictionary construction remains separate work.
+
+Workflow:
+`spec-chirho/workflows-chirho/print-show-evidence-chirho.md`
+
+## Historical investigation
+
+The sections below preserve the measured pre-fix investigation, corrections, and rejected
+hypotheses. Present-tense failure claims there describe the superseded implementation.
 
 **Found** 2026-07-27 by `claude_chirho` (HASKELUJAH) while checking whether the sieve
 miscompile ([[bug-comprehension-letrec-capture-chirho]]) also affects the native backends.
@@ -418,9 +458,10 @@ path that does not handle a runtime-constructed one.
 
 Three distinct defects, three different phases. They should be reported separately.
 
-## Next step
+## Resolution record
 
-Find where `show`/`print` dispatches for a list in the native runtime and compare it with
-the literal-list path that works. `length` working proves the data is intact, so this is a
-rendering/dispatch bug, not a codegen or GC bug — which should make it considerably easier
-to fix than the other two.
+The named next step above was completed by tracing solved occurrence evidence through typing,
+the driver join, and the dictionary rewrite. The final Cranelift-only failures exposed two
+additional measured defects: local-binder/string-global name aliasing and constructor hashes
+being interpreted as thunk state. Both are covered by executable regressions rather than
+remaining hypotheses.

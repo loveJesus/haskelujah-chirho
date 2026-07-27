@@ -5997,6 +5997,43 @@ impl InferCtxChirho {
         &self,
         final_subst_chirho: &SubstChirho,
     ) -> Vec<MethodOccurrenceRecordChirho> {
+        fn concrete_show_key_chirho(ty_chirho: &TyChirho, nested_chirho: bool) -> Option<String> {
+            match ty_chirho {
+                TyChirho::VarChirho(_)
+                | TyChirho::ForallVarChirho(_)
+                | TyChirho::FunChirho(_, _, _)
+                | TyChirho::ForallChirho { .. } => None,
+                TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {
+                    Some(if nested_chirho { "String" } else { "[Char]" }.to_string())
+                }
+                TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
+                TyChirho::ListChirho(inner_chirho) => {
+                    if matches!(
+                        inner_chirho.as_ref(),
+                        TyChirho::ConChirho(name_chirho) if name_chirho == "Char"
+                    ) {
+                        return Some(if nested_chirho { "String" } else { "[Char]" }.to_string());
+                    }
+                    Some(format!(
+                        "[{}]",
+                        concrete_show_key_chirho(inner_chirho, true)?
+                    ))
+                }
+                TyChirho::TupleChirho(items_chirho) => {
+                    let item_keys_chirho = items_chirho
+                        .iter()
+                        .map(|item_chirho| concrete_show_key_chirho(item_chirho, true))
+                        .collect::<Option<Vec<_>>>()?;
+                    Some(format!("({})", item_keys_chirho.join(",")))
+                }
+                TyChirho::AppChirho(fun_chirho, arg_chirho) => Some(format!(
+                    "{} {}",
+                    concrete_show_key_chirho(fun_chirho, false)?,
+                    concrete_show_key_chirho(arg_chirho, true)?
+                )),
+            }
+        }
+
         fn head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
             match ty_chirho {
                 TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
@@ -6037,7 +6074,12 @@ impl InferCtxChirho {
                 {
                     return None;
                 }
-                let key_chirho = head_key_chirho(&resolved_chirho)
+                let resolved_show_key_chirho = (class_chirho == "Show"
+                    && !resolved_chirho.contains_var_chirho())
+                .then(|| concrete_show_key_chirho(&resolved_chirho, false))
+                .flatten();
+                let key_chirho = resolved_show_key_chirho
+                    .or_else(|| head_key_chirho(&resolved_chirho))
                     .or(hinted_key_chirho)
                     .or_else(|| default_occurrence_key_chirho(class_chirho))?;
                 Some(MethodOccurrenceRecordChirho {
@@ -20586,6 +20628,43 @@ mod tests_chirho {
             }),
             "expected Num/Double evidence for `negate 5.5`, got: {records_chirho:?}"
         );
+    }
+
+    #[test]
+    fn occurrence_record_retains_concrete_structured_show_keys_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.occurrence_captures_chirho.extend([
+            (
+                "print".to_string(),
+                0,
+                "Show".to_string(),
+                TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+            ),
+            (
+                "print".to_string(),
+                1,
+                "Show".to_string(),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(TyChirho::string_chirho()),
+                ),
+            ),
+            (
+                "print".to_string(),
+                2,
+                "Show".to_string(),
+                TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::string_chirho()]),
+            ),
+        ]);
+
+        let records_chirho =
+            ctx_chirho.finalize_occurrence_records_chirho(&SubstChirho::empty_chirho());
+        let keys_chirho = records_chirho
+            .iter()
+            .map(|record_chirho| record_chirho.ty_key_chirho.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(keys_chirho, vec!["[Int]", "Maybe String", "(Int,String)"]);
     }
 
     #[test]

@@ -7157,6 +7157,36 @@ fn llvm_round_trip_print_true_output_chirho() {
 }
 
 #[test]
+fn llvm_round_trip_print_uses_solved_show_evidence_chirho() {
+    let src_chirho = r#"module Main where
+data PaintChirho = RedChirho | MixChirho Int Bool deriving Show
+main = do
+  print (id True)
+  print (id 'x')
+  print (id (1.5 :: Double))
+  print (id ("hi" :: String))
+  print (id ([1,2,3] :: [Int]))
+  print (id (Just 3 :: Maybe Int))
+  print (id ([True,False] :: [Bool]))
+  print (id ((1,"x") :: (Int,String)))
+  print (id ((1,2,3) :: (Int,Int,Int)))
+  print (id (Right "ok" :: Either Int String))
+  print (id RedChirho)
+  print (id (MixChirho 2 True))
+"#;
+    let (exit_code_chirho, stdout_chirho) =
+        llvm_round_trip_output_chirho(src_chirho).expect("evidenced print LLVM round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "evidenced print executable should exit successfully"
+    );
+    assert_eq!(
+        stdout_chirho,
+        "True\n'x'\n1.5\n\"hi\"\n[1,2,3]\nJust 3\n[True,False]\n(1,\"x\")\n(1,2,3)\nRight \"ok\"\nRedChirho\nMixChirho 2 True\n"
+    );
+}
+
+#[test]
 fn llvm_round_trip_print_false_output_chirho() {
     let src_chirho = "module Main where\nmain = print False";
     if let Some((exit_code_chirho, stdout_chirho)) = llvm_round_trip_output_chirho(src_chirho) {
@@ -8120,6 +8150,36 @@ main = do
             "Cranelift should preserve source IO sequencing",
         );
     }
+}
+
+#[test]
+fn cranelift_round_trip_print_uses_solved_show_evidence_chirho() {
+    let src_chirho = r#"module Main where
+data PaintChirho = RedChirho | MixChirho Int Bool deriving Show
+main = do
+  print (id True)
+  print (id 'x')
+  print (id (1.5 :: Double))
+  print (id ("hi" :: String))
+  print (id ([1,2,3] :: [Int]))
+  print (id (Just 3 :: Maybe Int))
+  print (id ([True,False] :: [Bool]))
+  print (id ((1,"x") :: (Int,String)))
+  print (id ((1,2,3) :: (Int,Int,Int)))
+  print (id (Right "ok" :: Either Int String))
+  print (id RedChirho)
+  print (id (MixChirho 2 True))
+"#;
+    let (exit_code_chirho, stdout_chirho) = cranelift_round_trip_output_chirho(src_chirho)
+        .expect("evidenced print Cranelift round-trip");
+    assert_eq!(
+        exit_code_chirho, 0,
+        "evidenced print executable should exit successfully"
+    );
+    assert_eq!(
+        stdout_chirho,
+        "True\n'x'\n1.5\n\"hi\"\n[1,2,3]\nJust 3\n[True,False]\n(1,\"x\")\n(1,2,3)\nRight \"ok\"\nRedChirho\nMixChirho 2 True\n"
+    );
 }
 
 #[test]

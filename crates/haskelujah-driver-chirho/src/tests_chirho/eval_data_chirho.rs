@@ -2380,7 +2380,8 @@ main = print (MkAge 42)
             .unwrap_or_else(|e_chirho| {
                 panic!("DerivingStrategies stock newtype failed: {}", e_chirho)
             });
-    assert_eq!(m_chirho.io_output_chirho, "42\n");
+    // Stock-derived Show preserves the constructor; newtype-derived Show erases it.
+    assert_eq!(m_chirho.io_output_chirho, "MkAge 42\n");
 }
 
 // ── PackageImports test ─────────────────────────────────────────────

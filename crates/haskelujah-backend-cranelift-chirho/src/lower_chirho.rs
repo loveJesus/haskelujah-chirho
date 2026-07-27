@@ -3260,16 +3260,6 @@ fn lower_show_expr_ptr_chirho(
             let rhs_opt_chirho = lookup_nonrec_toplevel_rhs_cloned_chirho(ctx_chirho, *id_chirho);
             if let Some(rhs_chirho) = rhs_opt_chirho {
                 lower_show_expr_ptr_chirho(builder_chirho, ctx_chirho, &rhs_chirho)
-            } else if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(id_chirho) {
-                let global_chirho = ctx_chirho
-                    .string_globals_chirho
-                    .get(name_chirho.as_str())
-                    .copied()?;
-                Some(
-                    builder_chirho
-                        .ins()
-                        .global_value(cl_types_chirho::I64, global_chirho),
-                )
             } else {
                 None
             }

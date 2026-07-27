@@ -34,6 +34,7 @@ struct NativeAllocRecordChirho {
     size_chirho: usize,
     layout_chirho: Layout,
     marked_chirho: bool,
+    is_native_thunk_chirho: bool,
 }
 
 #[derive(Debug, Default)]
@@ -96,6 +97,7 @@ impl NativeGcRuntimeChirho {
                 size_chirho: actual_size_chirho,
                 layout_chirho,
                 marked_chirho: false,
+                is_native_thunk_chirho: false,
             },
         );
         self.alloc_total_chirho += actual_size_chirho as u64;
@@ -353,6 +355,12 @@ pub extern "C" fn haskelujah_alloc_thunk_chirho(
     if ptr_chirho.is_null() {
         return 0;
     }
+    if let Some(record_chirho) = native_gc_runtime_lock_chirho()
+        .allocations_by_ptr_chirho
+        .get_mut(&(ptr_chirho as usize))
+    {
+        record_chirho.is_native_thunk_chirho = true;
+    }
     unsafe {
         let header_chirho = ptr_chirho as *mut u64;
         // Header: code_ptr in high bits, state=unevaluated, kind=thunk
@@ -391,10 +399,13 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
 
     {
         let runtime_chirho = native_gc_runtime_lock_chirho();
-        if !runtime_chirho
+        let Some(record_chirho) = runtime_chirho
             .allocations_by_ptr_chirho
-            .contains_key(&(raw_ptr_chirho as usize))
-        {
+            .get(&(raw_ptr_chirho as usize))
+        else {
+            return thunk_ptr_chirho;
+        };
+        if !record_chirho.is_native_thunk_chirho {
             return thunk_ptr_chirho;
         }
     }
@@ -633,17 +644,23 @@ pub extern "C" fn haskelujah_put_str_ln_chirho(ptr_bits_chirho: u64) -> i64 {
 /// NUL-terminated buffer owned by the native RTS allocator.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_append_str_chirho(lhs_bits_chirho: u64, rhs_bits_chirho: u64) -> u64 {
-    let lhs_bytes_chirho: &[u8] = if lhs_bits_chirho == 0 {
-        &[]
+    // The output allocation can trigger collection, so do not retain borrowed
+    // slices into unrooted RTS allocations across that call.
+    let lhs_bytes_chirho: Vec<u8> = if lhs_bits_chirho == 0 {
+        Vec::new()
     } else {
         let lhs_ptr_chirho = lhs_bits_chirho as usize as *const std::ffi::c_char;
-        unsafe { CStr::from_ptr(lhs_ptr_chirho) }.to_bytes()
+        unsafe { CStr::from_ptr(lhs_ptr_chirho) }
+            .to_bytes()
+            .to_vec()
     };
-    let rhs_bytes_chirho: &[u8] = if rhs_bits_chirho == 0 {
-        &[]
+    let rhs_bytes_chirho: Vec<u8> = if rhs_bits_chirho == 0 {
+        Vec::new()
     } else {
         let rhs_ptr_chirho = rhs_bits_chirho as usize as *const std::ffi::c_char;
-        unsafe { CStr::from_ptr(rhs_ptr_chirho) }.to_bytes()
+        unsafe { CStr::from_ptr(rhs_ptr_chirho) }
+            .to_bytes()
+            .to_vec()
     };
 
     let total_len_chirho = lhs_bytes_chirho
@@ -915,6 +932,32 @@ mod tests_chirho {
     }
 
     #[test]
+    fn enter_thunk_uses_allocation_kind_not_constructor_header_bits_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let constructor_ptr_chirho = haskelujah_alloc_chirho(24);
+        assert!(!constructor_ptr_chirho.is_null());
+        unsafe {
+            constructor_ptr_chirho
+                .cast::<u64>()
+                .write_unaligned(0x3d0c_211c);
+        }
+        let constructor_bits_chirho = (constructor_ptr_chirho as u64) | 1;
+        assert_eq!(
+            haskelujah_enter_thunk_chirho(constructor_bits_chirho),
+            constructor_bits_chirho
+        );
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
     fn rooted_block_survives_collection_chirho() {
         let _guard_chirho = ffi_test_lock_chirho()
             .lock()
@@ -1104,6 +1147,35 @@ mod tests_chirho {
         assert_eq!(text_chirho.to_bytes(), b"'A'");
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn append_str_owns_inputs_across_threshold_collection_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        let lhs_bits_chirho = alloc_c_string_chirho(b"left");
+        let rhs_bits_chirho = alloc_c_string_chirho(b"-right");
+        for _allocation_idx_chirho in 2..GC_THRESHOLD_CHIRHO {
+            let filler_ptr_chirho = haskelujah_alloc_chirho(8);
+            assert!(!filler_ptr_chirho.is_null());
+        }
+
+        let result_bits_chirho = haskelujah_append_str_chirho(lhs_bits_chirho, rhs_bits_chirho);
+        assert_ne!(result_bits_chirho, 0);
+        let result_text_chirho =
+            unsafe { CStr::from_ptr(result_bits_chirho as usize as *const std::ffi::c_char) };
+        assert_eq!(result_text_chirho.to_bytes(), b"left-right");
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        assert!(!runtime_chirho.contains_alloc_chirho(lhs_bits_chirho as usize as *mut u8));
+        assert!(!runtime_chirho.contains_alloc_chirho(rhs_bits_chirho as usize as *mut u8));
+        assert!(runtime_chirho.contains_alloc_chirho(result_bits_chirho as usize as *mut u8));
         runtime_chirho.reset_chirho();
     }
 

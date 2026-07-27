@@ -143,6 +143,8 @@ pub enum PrimOpKindChirho {
     ShowIntChirho,
     /// Convert a Bool to its String representation: showBool# :: Bool -> String
     ShowBoolChirho,
+    /// Convert a Char to its quoted String representation: showChar# :: Char -> String
+    ShowCharChirho,
     /// Boolean negation: not# :: Bool -> Bool
     NotBoolChirho,
     /// String concatenation: ++# :: String -> String -> String

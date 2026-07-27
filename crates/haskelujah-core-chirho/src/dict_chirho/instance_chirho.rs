@@ -34,7 +34,7 @@ impl DictPassCtxChirho {
             ("Ord", "compare", "[Char]", 1),
             // Show
             ("Show", "show", "Int", 2),
-            ("Show", "show", "Char", 0),
+            ("Show", "show", "Char", 2),
             // Show Bool is handled specially below (case True/False -> string)
             ("Show", "show", "Bool", 0),
             // Num
@@ -125,6 +125,7 @@ impl DictPassCtxChirho {
                     ("Fractional", "recip", _) => "recip#",
                     ("Show", "show", "[Char]") => "showStr#",
                     ("Show", "show", "[Int]") => "showList#",
+                    ("Show", "show", "Char") => "showChar#",
                     ("Show", "show", "Double") => "showFloat#",
                     ("Show", "show", "Maybe Int") => "showMaybe#",
                     ("Show", "show", "Maybe String") => "showMaybe#",
@@ -191,19 +192,37 @@ impl DictPassCtxChirho {
                 continue;
             }
 
+            if class_chirho == "Show" && method_chirho == "show" && type_key_chirho == "[Char]" {
+                self.generate_show_string_binding_chirho(&prim_name_chirho);
+                continue;
+            }
+
+            if class_chirho == "Show"
+                && method_chirho == "show"
+                && type_key_chirho.starts_with("Maybe ")
+            {
+                self.generate_show_maybe_binding_chirho(&prim_name_chirho, type_key_chirho);
+                continue;
+            }
+
+            if class_chirho == "Show" && method_chirho == "show" && type_key_chirho.starts_with('(')
+            {
+                self.generate_show_tuple_binding_chirho(&prim_name_chirho, type_key_chirho);
+                continue;
+            }
+
+            if class_chirho == "Show"
+                && method_chirho == "show"
+                && type_key_chirho.starts_with("Either ")
+            {
+                self.generate_show_either_binding_chirho(&prim_name_chirho, type_key_chirho);
+                continue;
+            }
+
             // Special case: Show Ordering → case on LT/EQ/GT returning string
             if class_chirho == "Show" && method_chirho == "show" && type_key_chirho == "Ordering" {
                 self.generate_show_ordering_binding_chirho(&prim_name_chirho);
                 continue;
-            }
-
-            // Special case: Show Either → use showEither# primop
-            if class_chirho == "Show"
-                && method_chirho == "show"
-                && type_key_chirho.starts_with("Either")
-            {
-                // For now all Either variants use the generic showEither# primop
-                // which delegates to show_value_as_string_chirho in the runtime.
             }
 
             // Special case: Eq Ordering → case dispatch comparing constructor tags
@@ -1608,7 +1627,7 @@ impl DictPassCtxChirho {
         // Determine the element show primop
         let elem_show_primop_chirho = match elem_type_chirho {
             "Double" => "showFloat#",
-            "Bool" => "showInt#", // Bool uses Int tag representation
+            "Bool" => "showBool#",
             _ => "showInt#",
         };
 

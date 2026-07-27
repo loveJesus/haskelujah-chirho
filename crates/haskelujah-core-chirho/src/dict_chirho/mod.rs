@@ -31,7 +31,10 @@ pub mod instance_chirho;
 pub mod layout_chirho;
 mod monad_fix_chirho;
 pub mod prelude_chirho;
+#[cfg(test)]
+mod print_evidence_tests_chirho;
 pub mod rewrite_chirho;
+mod show_chirho;
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};

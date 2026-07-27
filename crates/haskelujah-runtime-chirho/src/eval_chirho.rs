@@ -3951,6 +3951,7 @@ impl MachineChirho {
                 | PrimOpKindChirho::ShowFloatChirho
                 | PrimOpKindChirho::ShowStrChirho
                 | PrimOpKindChirho::ShowBoolChirho
+                | PrimOpKindChirho::ShowCharChirho
         );
         if is_show_primop_chirho {
             if let Some(val_chirho) = args_chirho.first() {
@@ -3966,6 +3967,9 @@ impl MachineChirho {
                         (PrimOpKindChirho::ShowBoolChirho, ValueChirho::BoolChirho(_)) => false,
                         (PrimOpKindChirho::ShowBoolChirho, ValueChirho::IntChirho(_)) => false,
                         (PrimOpKindChirho::ShowBoolChirho, _) => true,
+                        // ShowCharChirho applied to non-Char: use universal show
+                        (PrimOpKindChirho::ShowCharChirho, ValueChirho::CharChirho(_)) => false,
+                        (PrimOpKindChirho::ShowCharChirho, _) => true,
                         // ShowFloatChirho: only the prim handles decimal formatting correctly
                         _ => false,
                     };

@@ -3120,8 +3120,10 @@ fn extract_module_name_from_source_chirho(source_chirho: &str) -> Option<String>
     None
 }
 
-/// Evidence-threading P2b: standard single-param class methods whose free
-/// references get per-occurrence ids so typing evidence can drive dispatch.
+/// Evidence-threading P2b: standard single-param class methods and constrained
+/// Prelude functions whose free references get per-occurrence ids so typing
+/// evidence can drive dispatch.
+/// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
 /// Monad-chain operators (>>=, >>, return, pure, fail) are deliberately
 /// EXCLUDED — they have dedicated dispatch machinery and INV-001 protection.
 const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
@@ -3146,6 +3148,7 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     "quot",
     "rem",
     "show",
+    "print",
     "mfix",
 ];
 
@@ -3191,14 +3194,24 @@ fn join_occurrence_evidence_chirho(
             .iter()
             .filter(|record_chirho| &record_chirho.name_chirho == name_chirho)
         {
-            // Only the pred belonging to the class that DECLARES this method
-            // drives dispatch (e.g. `==` -> Eq, not an incidental Num pred).
-            let owns_chirho = infer_result_chirho
+            // A record is authoritative only when its class either declares
+            // this method (`==` -> Eq) or constrains this function's own
+            // scheme (`print :: Show a => ...`). Incidental predicates never
+            // drive occurrence dispatch.
+            let class_declares_reference_chirho = infer_result_chirho
                 .class_env_chirho
                 .classes_chirho
                 .get(&record_chirho.class_name_chirho)
                 .is_some_and(|class_chirho| class_chirho.methods_chirho.contains_key(name_chirho));
-            if !owns_chirho {
+            let function_requires_class_chirho = infer_result_chirho
+                .env_chirho
+                .lookup_chirho(name_chirho)
+                .is_some_and(|scheme_chirho| {
+                    scheme_chirho.preds_chirho.iter().any(|pred_chirho| {
+                        pred_chirho.class_name_chirho == record_chirho.class_name_chirho
+                    })
+                });
+            if !class_declares_reference_chirho && !function_requires_class_chirho {
                 continue;
             }
             if let Some(occ_id_chirho) = ids_chirho.get(record_chirho.ordinal_chirho as usize) {

@@ -4014,6 +4014,20 @@ fn eval_print_bool_chirho() {
 }
 
 #[test]
+fn eval_print_char_chirho() {
+    use crate::eval_source_with_machine_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let (_value_chirho, machine_chirho) = eval_source_with_machine_chirho(
+        "module Test where\nmain = print 'x'\n",
+        &mut sm_chirho,
+        "TestChirho.hs",
+        None,
+    )
+    .expect("print Char should evaluate");
+    assert_eq!(machine_chirho.io_output_chirho, "'x'\n");
+}
+
+#[test]
 fn eval_do_multi_print_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();

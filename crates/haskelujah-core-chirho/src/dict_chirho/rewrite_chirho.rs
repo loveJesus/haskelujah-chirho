@@ -2988,6 +2988,55 @@ impl DictPassCtxChirho {
         Some(CoreExprChirho::VarChirho(*canonical_id_chirho))
     }
 
+    /// Evidence-threading extension for constrained Prelude functions:
+    /// `print x` carries a solved `Show` predicate even though `print` is not
+    /// itself a class method. Consume that proof before generic occurrence
+    /// replacement so native code never has to guess a runtime value's type.
+    /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
+    fn try_rewrite_evidenced_print_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        arg_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let (reference_name_chirho, _canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
+        if reference_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(reference_name_chirho)
+            != "print"
+        {
+            return None;
+        }
+        let (class_name_chirho, ty_key_chirho) =
+            self.occurrence_evidence_chirho.get(&head_id_chirho)?;
+        if class_name_chirho != "Show" {
+            return None;
+        }
+        let show_prim_name_chirho = format!("$prim_Show_show_{ty_key_chirho}");
+        let show_prim_id_chirho = self.find_global_id_by_name_chirho(&show_prim_name_chirho)?;
+        let put_str_ln_id_chirho = self.find_global_id_by_name_chirho("putStrLn")?;
+        let rewritten_arg_chirho = self.rewrite_method_refs_with_locals_chirho(
+            arg_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+        );
+        let shown_arg_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(show_prim_id_chirho)),
+            arg_chirho: Box::new(rewritten_arg_chirho),
+        };
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(put_str_ln_id_chirho)),
+            arg_chirho: Box::new(shown_arg_chirho),
+        })
+    }
+
     pub(super) fn rewrite_method_refs_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -3086,6 +3135,20 @@ impl DictPassCtxChirho {
                         spine_head_chirho = spine_fun_chirho.as_ref();
                     }
                     if let CoreExprChirho::VarChirho(head_id_chirho) = spine_head_chirho {
+                        if spine_args_chirho.len() == 1 {
+                            if let Some(rewritten_print_chirho) = self
+                                .try_rewrite_evidenced_print_chirho(
+                                    *head_id_chirho,
+                                    spine_args_chirho[0],
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                )
+                            {
+                                return rewritten_print_chirho;
+                            }
+                        }
                         if let Some(new_head_chirho) = self.occurrence_head_replacement_chirho(
                             *head_id_chirho,
                             dict_vars_chirho,
