@@ -70,6 +70,8 @@ pub struct DesugarCtxChirho {
     free_var_cache_chirho: HashMap<String, CoreIdChirho>,
     /// Active LANGUAGE extensions (e.g. "OverloadedStrings").
     extensions_chirho: Vec<String>,
+    /// Name of the module currently being desugared.
+    current_module_name_chirho: Option<String>,
     /// Constructor strictness: maps constructor name → list of field strictness annotations.
     /// Used to enforce strict fields by wrapping them in `case arg of { _ -> arg }`.
     con_strictness_chirho: HashMap<String, Vec<StrictnessChirho>>,
@@ -94,6 +96,7 @@ impl DesugarCtxChirho {
             scope_chirho: vec![HashMap::new()],
             free_var_cache_chirho: HashMap::new(),
             extensions_chirho: Vec::new(),
+            current_module_name_chirho: None,
             con_strictness_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
             pat_syns_chirho: HashMap::new(),
@@ -188,6 +191,36 @@ impl DesugarCtxChirho {
                 let source_id_chirho = self.resolve_var_chirho(source_name_chirho);
                 self.bind_in_scope_chirho(
                     &format!("{}.{}", qualifier_chirho, export_name_chirho),
+                    source_id_chirho,
+                );
+            }
+        }
+    }
+
+    fn seed_prelude_qualified_do_aliases_chirho(&mut self, module_chirho: &ModuleChirho) {
+        if !module_chirho
+            .extensions_chirho
+            .iter()
+            .any(|extension_chirho| extension_chirho.eq_ignore_ascii_case("QualifiedDo"))
+        {
+            return;
+        }
+
+        for import_chirho in &module_chirho.imports_chirho {
+            let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+            if module_name_chirho != "Prelude" {
+                continue;
+            }
+            let qualifier_chirho = import_chirho
+                .alias_chirho
+                .as_ref()
+                .map(|alias_chirho| alias_chirho.text_chirho().to_string())
+                .unwrap_or(module_name_chirho);
+
+            for method_chirho in [">>=", ">>", "fail"] {
+                let source_id_chirho = self.resolve_var_chirho(method_chirho);
+                self.bind_in_scope_chirho(
+                    &format!("{qualifier_chirho}.{method_chirho}"),
                     source_id_chirho,
                 );
             }
@@ -708,6 +741,30 @@ impl DesugarCtxChirho {
         }
     }
 
+    /// Resolve one of QualifiedDo's sequencing methods.
+    ///
+    /// Self-qualification names the current module's ordinary top-level
+    /// binding. Other qualifiers remain in the Core name so imported-module
+    /// linking can resolve them, and a missing qualified method stays loud.
+    /// workflow: language-features-chirho/qualified-do-chirho
+    fn resolve_do_method_chirho(
+        &mut self,
+        qualifier_chirho: Option<&str>,
+        method_chirho: &str,
+    ) -> CoreIdChirho {
+        match qualifier_chirho {
+            Some(qualifier_chirho)
+                if self.current_module_name_chirho.as_deref() == Some(qualifier_chirho) =>
+            {
+                self.resolve_var_chirho(method_chirho)
+            }
+            Some(qualifier_chirho) => {
+                self.resolve_var_chirho(&format!("{qualifier_chirho}.{method_chirho}"))
+            }
+            None => self.resolve_var_chirho(method_chirho),
+        }
+    }
+
     /// Build the body of an operator section, emitting PrimOp for
     /// known built-in operators so they work without dict-pass
     /// bindings. `left_chirho` is the first arg, `right_chirho` is
@@ -851,6 +908,8 @@ impl DesugarCtxChirho {
 
     /// Desugar an entire AST module into a Core module with name map.
     pub fn desugar_module_chirho(&mut self, module_chirho: &ModuleChirho) -> DesugarOutputChirho {
+        self.current_module_name_chirho = Some(module_chirho.name_chirho.text_chirho().to_string());
+
         // Pass -1: Collect constructor strictness annotations for strict field enforcement
         self.collect_con_strictness_chirho(module_chirho);
 
@@ -860,6 +919,13 @@ impl DesugarCtxChirho {
         // Pass -0.25: Seed aliases for built-in qualified imports whose Core
         // bodies use internal Prelude wrapper names.
         self.seed_builtin_import_aliases_chirho(module_chirho);
+        // QualifiedDo methods are selected through the source module qualifier,
+        // while today's Core linker addresses imported values by bare export
+        // name. Snapshot Prelude's methods before local bindings shadow them.
+        // Other modules stay qualified and fail loudly until the linker can
+        // distinguish same-named exports by defining module.
+        // workflow: language-features-chirho/qualified-do-chirho
+        self.seed_prelude_qualified_do_aliases_chirho(module_chirho);
 
         // Pass 0: Build map of class → (method_name → default MatchArms) from class declarations
         let mut class_defaults_chirho: HashMap<String, HashMap<String, Vec<MatchArmChirho>>> =
@@ -4235,13 +4301,17 @@ impl DesugarCtxChirho {
                 }
             }
 
-            ExprChirho::DoChirho { stmts_chirho, .. } => {
+            ExprChirho::DoChirho {
+                qualifier_chirho,
+                stmts_chirho,
+                ..
+            } => {
                 // Desugar do notation:
                 //   do { e }              → e
                 //   do { e; stmts }       → e >> do { stmts }
                 //   do { p <- e; stmts }  → e >>= \p -> do { stmts }
                 //   do { let binds; stmts } → let binds in do { stmts }
-                self.desugar_do_chirho(stmts_chirho)
+                self.desugar_do_chirho(stmts_chirho, qualifier_chirho.as_deref())
             }
 
             ExprChirho::ArithSeqChirho {
@@ -5249,6 +5319,7 @@ impl DesugarCtxChirho {
     fn desugar_do_chirho(
         &mut self,
         stmts_chirho: &[haskelujah_ast_chirho::expr_chirho::StmtChirho],
+        qualifier_chirho: Option<&str>,
     ) -> CoreExprChirho {
         use haskelujah_ast_chirho::expr_chirho::StmtChirho;
 
@@ -5272,8 +5343,8 @@ impl DesugarCtxChirho {
                 // IO falls back to ThenIOChirho by name at STG (INV-001).
                 // workflow: monadic-dispatch-chirho
                 let e_chirho = self.desugar_expr_chirho(expr_chirho);
-                let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
-                let then_id_chirho = self.resolve_var_chirho(">>");
+                let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
+                let then_id_chirho = self.resolve_do_method_chirho(qualifier_chirho, ">>");
                 CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(then_id_chirho)),
@@ -5293,7 +5364,7 @@ impl DesugarCtxChirho {
                 // BindIOChirho via the STG name fallback (INV-001).
                 // workflow: monadic-dispatch-chirho
                 let e_chirho = self.desugar_expr_chirho(expr_chirho);
-                let bind_id_chirho = self.resolve_var_chirho(">>=");
+                let bind_id_chirho = self.resolve_do_method_chirho(qualifier_chirho, ">>=");
                 let lam_chirho = match pat_chirho {
                     PatChirho::VarChirho(n_chirho) => {
                         let var_name_chirho = n_chirho.text_chirho().to_string();
@@ -5307,7 +5378,8 @@ impl DesugarCtxChirho {
                         self.bind_in_scope_chirho(&var_name_chirho, binder_chirho.id_chirho);
                         // Compute rest AFTER binding is in scope so subsequent
                         // statements can reference the bound variable.
-                        let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
+                        let rest_chirho =
+                            self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
                         CoreExprChirho::LamChirho {
                             binder_chirho,
                             body_chirho: Box::new(rest_chirho),
@@ -5321,7 +5393,8 @@ impl DesugarCtxChirho {
                             )),
                             SpanChirho::DUMMY_CHIRHO,
                         );
-                        let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
+                        let rest_chirho =
+                            self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
                         CoreExprChirho::LamChirho {
                             binder_chirho,
                             body_chirho: Box::new(rest_chirho),
@@ -5335,7 +5408,8 @@ impl DesugarCtxChirho {
                         for b_chirho in &top_binders_chirho {
                             self.bind_in_scope_chirho(&b_chirho.name_chirho, b_chirho.id_chirho);
                         }
-                        let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
+                        let rest_chirho =
+                            self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
                         let scrut_binder_chirho = self.fresh_binder_chirho(
                             "$bindpat",
                             TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
@@ -5358,7 +5432,8 @@ impl DesugarCtxChirho {
                             )),
                             SpanChirho::DUMMY_CHIRHO,
                         );
-                        let fail_id_chirho = self.resolve_var_chirho("fail");
+                        let fail_id_chirho =
+                            self.resolve_do_method_chirho(qualifier_chirho, "fail");
                         let fail_chirho = CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(fail_id_chirho)),
                             arg_chirho: Box::new(CoreExprChirho::LitChirho(
@@ -5501,7 +5576,7 @@ impl DesugarCtxChirho {
                 }
 
                 // Compute rest AFTER bindings are in scope
-                let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..]);
+                let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
 
                 // Wrap rest in case expressions for complex pattern bindings
                 let mut result_body_chirho = rest_chirho;
@@ -6002,6 +6077,7 @@ mod tests_chirho {
         let mut ctx_chirho = DesugarCtxChirho::new_chirho();
         // do { x <- getLine; putStrLn x }
         let expr_chirho = ExprChirho::DoChirho {
+            qualifier_chirho: None,
             stmts_chirho: vec![
                 StmtChirho::BindChirho {
                     pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
@@ -6069,6 +6145,47 @@ mod tests_chirho {
             }
             other_chirho => panic!("expected do-bind application, got {other_chirho:?}"),
         }
+    }
+
+    #[test]
+    fn desugar_qualified_do_uses_qualified_bind_chirho() {
+        use haskelujah_ast_chirho::expr_chirho::StmtChirho;
+
+        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+        let expr_chirho = ExprChirho::DoChirho {
+            qualifier_chirho: Some("FlowChirho".to_string()),
+            stmts_chirho: vec![
+                StmtChirho::BindChirho {
+                    pat_chirho: PatChirho::VarChirho(dummy_name_chirho("valueChirho")),
+                    expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("actionChirho")),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                StmtChirho::ExprChirho(ExprChirho::VarChirho(dummy_name_chirho("finishChirho"))),
+            ],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
+        let CoreExprChirho::AppChirho { fun_chirho, .. } = core_chirho else {
+            panic!("expected qualified bind application");
+        };
+        let CoreExprChirho::AppChirho {
+            fun_chirho: bind_fun_chirho,
+            ..
+        } = fun_chirho.as_ref()
+        else {
+            panic!("expected qualified bind function application");
+        };
+        let CoreExprChirho::VarChirho(bind_id_chirho) = bind_fun_chirho.as_ref() else {
+            panic!("expected qualified bind variable");
+        };
+
+        assert_eq!(
+            ctx_chirho
+                .names_chirho
+                .get(bind_id_chirho)
+                .map(String::as_str),
+            Some("FlowChirho.>>=")
+        );
     }
 
     #[test]

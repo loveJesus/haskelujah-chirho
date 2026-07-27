@@ -506,7 +506,10 @@ impl<'src> LayoutRuleChirho<'src> {
                 paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
             }
 
-            // Check for layout keyword → next non-trivia token starts layout
+            // Check for layout keyword → next non-trivia token starts layout.
+            // QualifiedDo's pragma-aware contextual classifier has already
+            // converted `Module.do` into `DoChirho` at this point.
+            // workflow: language-features-chirho/qualified-do-chirho
             // Also handle \case (LambdaCase): `case` acts as a layout keyword
             // when the previous non-trivia token was `\` (backslash).
             let is_lambda_case_chirho = token_chirho.kind_chirho == RawTokenKindChirho::CaseChirho
@@ -864,6 +867,66 @@ updateMiniChirho stateMiniChirho =
         assert_eq!(
             semicolons_after_do_chirho, 1,
             "expected 1 semicolon in do block"
+        );
+    }
+
+    #[test]
+    fn qualified_do_block_opens_layout_chirho() {
+        let source_chirho = concat!(
+            "{-# LANGUAGE QualifiedDo #-}\n",
+            "module M where\n",
+            "main = FlowChirho.do\n",
+            "  actionOneChirho\n",
+            "  actionTwoChirho\n",
+        );
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let do_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(kind_chirho, text_chirho)| {
+                *kind_chirho == RawTokenKindChirho::DoChirho && text_chirho == "FlowChirho.do"
+            })
+            .expect("should find qualified do token");
+
+        assert_eq!(
+            tokens_chirho[do_idx_chirho + 1].0,
+            RawTokenKindChirho::VirtualLeftBraceChirho
+        );
+        assert_eq!(
+            tokens_chirho[do_idx_chirho + 3].0,
+            RawTokenKindChirho::VirtualSemicolonChirho
+        );
+    }
+
+    #[test]
+    fn qualified_identifier_ending_like_do_stays_outside_layout_chirho() {
+        let source_chirho = "module M where\nmain = FlowChirho.done\nnextChirho = 1\n";
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let done_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(_, text_chirho)| text_chirho == "FlowChirho.done")
+            .expect("should find ordinary qualified identifier");
+
+        assert_ne!(
+            tokens_chirho[done_idx_chirho + 1].0,
+            RawTokenKindChirho::VirtualLeftBraceChirho
+        );
+    }
+
+    #[test]
+    fn qualified_do_without_extension_stays_outside_layout_chirho() {
+        let source_chirho = "module M where\nmain = FlowChirho.do\nnextChirho = 1\n";
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let do_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(kind_chirho, text_chirho)| {
+                *kind_chirho == RawTokenKindChirho::QualifiedIdChirho
+                    && text_chirho == "FlowChirho.do"
+            })
+            .expect("should find ordinary qualified identifier without QualifiedDo");
+
+        assert_ne!(
+            tokens_chirho[do_idx_chirho + 1].0,
+            RawTokenKindChirho::VirtualLeftBraceChirho
         );
     }
 

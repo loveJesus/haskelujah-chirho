@@ -93,8 +93,10 @@ pub enum ExprChirho {
         /// Span covering the whole case expression.
         span_chirho: SpanChirho,
     },
-    /// Do expression (`do { stmts }`).
+    /// Do expression (`do { stmts }` or `Module.do { stmts }`).
     DoChirho {
+        /// QualifiedDo module qualifier selecting the sequencing methods.
+        qualifier_chirho: Option<String>,
         /// Statements executed in sequence.
         stmts_chirho: Vec<StmtChirho>,
         /// Span covering the whole do block.

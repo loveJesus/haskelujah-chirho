@@ -303,6 +303,7 @@ pub fn th_exp_to_ast_chirho(exp_chirho: &ThExpChirho) -> ExprChirho {
             }
         }
         ThExpChirho::DoEChirho(_, stmts_chirho) => ExprChirho::DoChirho {
+            qualifier_chirho: None,
             stmts_chirho: stmts_chirho
                 .iter()
                 .map(|s_chirho| th_stmt_to_ast_chirho(s_chirho))

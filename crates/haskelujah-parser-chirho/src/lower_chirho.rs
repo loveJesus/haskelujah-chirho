@@ -6206,13 +6206,34 @@ impl LowerCtxChirho {
                 }
             }
             SyntaxKindChirho::DoExprChirho => {
+                // QualifiedDo's module prefix is semantic input to Core method
+                // selection, so preserve it instead of reconstructing source.
+                // workflow: language-features-chirho/qualified-do-chirho
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
                 let is_mdo_chirho = children_chirho.iter().any(|child_chirho| {
                     matches!(
-                        child_chirho.element_chirho,
-                        GreenElementChirho::TokenChirho(token_chirho)
-                            if token_chirho.kind_chirho() == TokenKindChirho::DoKeywordChirho
-                                && token_chirho.text_chirho() == "mdo"
+                    child_chirho.element_chirho,
+                    GreenElementChirho::TokenChirho(token_chirho)
+                        if token_chirho.kind_chirho() == TokenKindChirho::DoKeywordChirho
+                            && token_chirho.text_chirho() == "mdo"
+                    )
+                });
+                let qualifier_chirho = children_chirho.iter().find_map(|child_chirho| {
+                    let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho
+                    else {
+                        return None;
+                    };
+                    if !matches!(
+                        token_chirho.kind_chirho(),
+                        TokenKindChirho::DoKeywordChirho | TokenKindChirho::QualifiedVarIdChirho
+                    ) {
+                        return None;
+                    }
+                    token_chirho.text_chirho().rsplit_once('.').and_then(
+                        |(qualifier_chirho, local_chirho)| {
+                            (local_chirho == "do" && !qualifier_chirho.is_empty())
+                                .then(|| qualifier_chirho.to_string())
+                        },
                     )
                 });
                 let segments_chirho = self.lower_do_segments_chirho(node_chirho, base_chirho);
@@ -6220,6 +6241,7 @@ impl LowerCtxChirho {
                     transform_recursive_do_chirho(segments_chirho, is_mdo_chirho, span_chirho);
 
                 ExprChirho::DoChirho {
+                    qualifier_chirho,
                     stmts_chirho,
                     span_chirho,
                 }
@@ -17421,6 +17443,49 @@ fn lower_recursive_do_group_to_mfix_knot_chirho() {
                     )
             )
     ));
+}
+
+#[cfg(test)]
+#[test]
+fn lower_qualified_do_preserves_module_qualifier_chirho() {
+    let source_chirho = concat!(
+        "{-# LANGUAGE QualifiedDo #-}\n",
+        "module M where\n",
+        "main = FlowChirho.do\n",
+        "  valueChirho <- actionChirho\n",
+        "  finishChirho valueChirho\n",
+    );
+    let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let green_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_id_chirho)
+            .parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let main_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find(|decl_chirho| {
+            matches!(
+                decl_chirho,
+                DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "main"
+            )
+        })
+        .expect("expected main binding");
+    let DeclChirho::FunBindChirho { matches_chirho, .. } = main_chirho else {
+        panic!("expected main function binding");
+    };
+    let RhsChirho::UnguardedChirho(ExprChirho::DoChirho {
+        qualifier_chirho,
+        stmts_chirho,
+        ..
+    }) = &matches_chirho[0].rhs_chirho
+    else {
+        panic!("expected a lowered qualified do expression");
+    };
+
+    assert_eq!(qualifier_chirho.as_deref(), Some("FlowChirho"));
+    assert_eq!(stmts_chirho.len(), 2);
+    assert!(matches!(stmts_chirho[0], StmtChirho::BindChirho { .. }));
 }
 
 #[cfg(test)]

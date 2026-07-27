@@ -3356,7 +3356,9 @@ impl<'src> ParserChirho<'src> {
         false
     }
 
-    /// Parse a do expression: do { stmts }
+    /// Parse a do expression: `do { stmts }` or `Module.do { stmts }`.
+    ///
+    /// workflow: language-features-chirho/qualified-do-chirho
     fn parse_do_expr_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::DoExprChirho);
@@ -5839,6 +5841,28 @@ mod tests_chirho {
             "should have DoExpr: {:?}",
             kinds_chirho
         );
+    }
+
+    #[test]
+    fn parse_qualified_do_expression_chirho() {
+        let source_chirho = concat!(
+            "{-# LANGUAGE QualifiedDo #-}\n",
+            "module M where\n",
+            "main = FlowChirho.do\n",
+            "  valueChirho <- actionChirho\n",
+            "  finishChirho valueChirho\n",
+        );
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert_eq!(
+            kinds_chirho
+                .iter()
+                .filter(|kind_chirho| **kind_chirho == SyntaxKindChirho::DoExprChirho)
+                .count(),
+            1
+        );
+        assert!(kinds_chirho.contains(&SyntaxKindChirho::BindStmtChirho));
     }
 
     #[test]

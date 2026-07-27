@@ -103,6 +103,7 @@ fn transform_recursive_group_chirho(
         }
     };
     let knot_body_chirho = ExprChirho::DoChirho {
+        qualifier_chirho: None,
         stmts_chirho,
         span_chirho,
     };

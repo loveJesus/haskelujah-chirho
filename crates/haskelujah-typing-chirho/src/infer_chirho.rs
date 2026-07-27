@@ -3168,6 +3168,7 @@ impl InferCtxChirho {
             ExprChirho::DoChirho {
                 stmts_chirho,
                 span_chirho,
+                ..
             } => {
                 // Monadic do-notation:
                 //   do { expr }       ≡ expr                             (last stmt)
@@ -24081,6 +24082,7 @@ mod tests_chirho {
                 matches_chirho: vec![MatchArmChirho {
                     pats_chirho: vec![],
                     rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::DoChirho {
+                        qualifier_chirho: None,
                         stmts_chirho: vec![
                             // x <- Just 42  (simulated: x <- app(Just, 42))
                             StmtChirho::BindChirho {
@@ -24143,6 +24145,7 @@ mod tests_chirho {
                 matches_chirho: vec![MatchArmChirho {
                     pats_chirho: vec![],
                     rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::DoChirho {
+                        qualifier_chirho: None,
                         stmts_chirho: vec![
                             // let y = 10
                             StmtChirho::LetChirho {

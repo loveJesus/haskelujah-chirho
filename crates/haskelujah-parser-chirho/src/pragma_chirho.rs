@@ -145,29 +145,46 @@ pub fn extension_enabled_chirho(extensions_chirho: &[String], extension_name_chi
         })
 }
 
-/// Reclassify RecursiveDo's contextual words after raw lexing and before layout.
+/// Reclassify extension-controlled contextual words after raw lexing and before layout.
 ///
-/// The raw lexer intentionally leaves `mdo` and `rec` as `VarIdChirho`. This pass is the only
-/// place that turns them into layout-sensitive keywords.
+/// The raw lexer intentionally leaves `mdo`/`rec` as identifiers and `Module.do` as a qualified
+/// identifier. This pass is the only place that turns them into layout-sensitive keywords.
+/// workflow: recursive-do-chirho, language-features-chirho/qualified-do-chirho
 pub fn classify_contextual_keywords_chirho(
     source_chirho: &str,
     tokens_chirho: &mut [RawTokenChirho],
 ) -> Vec<String> {
     let extensions_chirho = collect_raw_pragma_extensions_chirho(source_chirho, tokens_chirho);
-    if !extension_enabled_chirho(&extensions_chirho, "RecursiveDo") {
+    let recursive_do_enabled_chirho = extension_enabled_chirho(&extensions_chirho, "RecursiveDo");
+    let qualified_do_enabled_chirho = extension_enabled_chirho(&extensions_chirho, "QualifiedDo");
+    if !recursive_do_enabled_chirho && !qualified_do_enabled_chirho {
         return extensions_chirho;
     }
 
     for token_chirho in tokens_chirho {
-        if token_chirho.kind_chirho != RawTokenKindChirho::VarIdChirho {
-            continue;
-        }
         let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
         let end_chirho = token_chirho.span_chirho.end_chirho().as_usize_chirho();
-        match source_chirho.get(start_chirho..end_chirho) {
-            Some("mdo") => token_chirho.kind_chirho = RawTokenKindChirho::DoChirho,
-            Some("rec") => token_chirho.kind_chirho = RawTokenKindChirho::RecChirho,
-            _ => {}
+        let Some(text_chirho) = source_chirho.get(start_chirho..end_chirho) else {
+            continue;
+        };
+
+        if recursive_do_enabled_chirho
+            && token_chirho.kind_chirho == RawTokenKindChirho::VarIdChirho
+        {
+            match text_chirho {
+                "mdo" => token_chirho.kind_chirho = RawTokenKindChirho::DoChirho,
+                "rec" => token_chirho.kind_chirho = RawTokenKindChirho::RecChirho,
+                _ => {}
+            }
+        } else if qualified_do_enabled_chirho
+            && token_chirho.kind_chirho == RawTokenKindChirho::QualifiedIdChirho
+            && text_chirho
+                .rsplit_once('.')
+                .is_some_and(|(qualifier_chirho, local_chirho)| {
+                    !qualifier_chirho.is_empty() && local_chirho == "do"
+                })
+        {
+            token_chirho.kind_chirho = RawTokenKindChirho::DoChirho;
         }
     }
 
@@ -236,6 +253,18 @@ mod tests_chirho {
                 .count(),
             2
         );
+    }
+
+    #[test]
+    fn qualified_do_word_is_contextual_chirho() {
+        let plain_chirho = classified_kinds_chirho("module M where\nmain = FlowChirho.do\n");
+        assert!(plain_chirho.contains(&RawTokenKindChirho::QualifiedIdChirho));
+        assert!(!plain_chirho.contains(&RawTokenKindChirho::DoChirho));
+
+        let enabled_chirho = classified_kinds_chirho(
+            "{-# LANGUAGE QualifiedDo #-}\nmodule M where\nmain = FlowChirho.do\n  actionChirho\n",
+        );
+        assert!(enabled_chirho.contains(&RawTokenKindChirho::DoChirho));
     }
 
     #[test]
