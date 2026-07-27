@@ -65,6 +65,11 @@
 				>
 					measured {shouldCompileChirho.measuredDateChirho} @ {shouldCompileChirho.measuredCommitChirho}
 				</a>
+				{#if shouldCompileChirho.stabilityChirho}
+					<p class="axis-stability-chirho">
+						stability · {shouldCompileChirho.stabilityChirho}
+					</p>
+				{/if}
 			</article>
 
 			<article class="axis-chirho axis-reject-chirho">
@@ -88,6 +93,11 @@
 				>
 					measured {shouldFailChirho.measuredDateChirho} @ {shouldFailChirho.measuredCommitChirho}
 				</a>
+				{#if shouldFailChirho.stabilityChirho}
+					<p class="axis-stability-chirho">
+						stability · {shouldFailChirho.stabilityChirho}
+					</p>
+				{/if}
 			</article>
 		</div>
 
@@ -101,7 +111,9 @@
 				target="_blank"
 				rel="noopener noreferrer">known nondeterminism under investigation</a
 			> — so percentages are floored to the whole, deliberately, never above their own range.
-			When a sweep is re-run and its artifact updated, this page updates with it.
+			The two axes carry different stability confidence, so each card quotes its artifact's
+			stability line verbatim rather than flattening them into one claim. When a sweep is
+			re-run and its artifact updated, this page updates with it.
 		</p>
 
 		<div class="stats-strip-chirho">
@@ -256,6 +268,16 @@
 	.axis-meta-chirho:hover {
 		color: var(--lapis-chirho);
 		border-color: var(--lapis-chirho);
+	}
+
+	.axis-stability-chirho {
+		margin-top: 0.7rem;
+		font-family: var(--font-mono-chirho);
+		font-variation-settings: 'MONO' 1;
+		font-size: 0.66rem;
+		letter-spacing: 0.02em;
+		color: var(--ink-faint-chirho);
+		overflow-wrap: anywhere;
 	}
 
 	.method-note-chirho {

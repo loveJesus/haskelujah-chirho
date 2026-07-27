@@ -87,6 +87,12 @@ an unverifiable field (#8378), which is the cleaner resolution.
       explicit instruction; the 149 should_fail artifact is deliberately uncommitted upstream
       and lands on their SLICE ARTIFACT COMMITTED signal → one rebuild+redeploy here.
       The sieve miscompile is NOT mentioned on the site (no conflation).
+- [x] SLICE ARTIFACT COMMITTED cycle (ad6a6dde → their #8392): parser contract updated for the
+      new header shape (# measured date + # code measured hash), # STABILITY parsed and rendered
+      VERBATIM per card (differing axis confidence not flattened), QUOTE-AS now live
+      ("~90% (849-850 of 938)" / "~19% (149 of 767)"), Confessio gains the two newly-published
+      README limitations worded symptom-only (their #8395 mechanism retraction confirms the
+      caution: no mechanism claims on the site). Progress DB swept in per their housekeeping ask.
 
 ## Shared-tree discipline
 

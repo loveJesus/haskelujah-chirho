@@ -26,6 +26,13 @@ export interface CompatAxisChirho {
 	displayPercentChirho: string;
 	measuredDateChirho: string;
 	measuredCommitChirho: string;
+	/**
+	 * The artifact's `# STABILITY:` line VERBATIM, when present. The two axes carry
+	 * different stability confidence (e.g. "DETERMINISTIC-FAIL=88 UNSTABLE=1" vs
+	 * "NO-VARIANCE-OBSERVED-IN-2-PASSES UNSTABLE=unknown") and rendering the raw line
+	 * is the only presentation that cannot flatten one into the other (#8392).
+	 */
+	stabilityChirho: string | null;
 }
 
 function approxPercentChirho(passChirho: number, totalChirho: number): string {
@@ -43,11 +50,23 @@ function parseMeasuredLineChirho(rawChirho: string, artifactChirho: string): {
 	dateChirho: string;
 	commitChirho: string;
 } {
-	const measuredChirho = rawChirho.match(/# measured: (\d{4}-\d{2}-\d{2}) @ ([0-9a-f]{6,40})/);
-	if (!measuredChirho) {
-		throw new Error(`compat-chirho: no "# measured:" line in ${artifactChirho}`);
+	const dateChirho = rawChirho.match(/^# measured: (\d{4}-\d{2}-\d{2})/m);
+	if (!dateChirho) {
+		throw new Error(`compat-chirho: no "# measured:" date in ${artifactChirho}`);
 	}
-	return { dateChirho: measuredChirho[1], commitChirho: measuredChirho[2] };
+	// current artifacts carry "# code measured: <hash>"; older ones inlined "@ <hash>"
+	const commitChirho =
+		rawChirho.match(/^# code measured: ([0-9a-f]{6,40})/m) ??
+		rawChirho.match(/^# measured: \d{4}-\d{2}-\d{2} @ ([0-9a-f]{6,40})/m);
+	if (!commitChirho) {
+		throw new Error(`compat-chirho: no measured-commit line in ${artifactChirho}`);
+	}
+	return { dateChirho: dateChirho[1], commitChirho: commitChirho[1] };
+}
+
+function parseStabilityChirho(rawChirho: string): string | null {
+	const stabilityChirho = rawChirho.match(/^# STABILITY: (.+)$/m);
+	return stabilityChirho ? stabilityChirho[1].trim() : null;
 }
 
 function parseShouldCompileChirho(rawChirho: string): CompatAxisChirho {
@@ -65,7 +84,8 @@ function parseShouldCompileChirho(rawChirho: string): CompatAxisChirho {
 		displayPercentChirho:
 			parseQuoteAsChirho(rawChirho) ?? approxPercentChirho(passChirho, totalChirho),
 		measuredDateChirho: metaChirho.dateChirho,
-		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8)
+		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8),
+		stabilityChirho: parseStabilityChirho(rawChirho)
 	};
 }
 
@@ -86,7 +106,8 @@ function parseShouldFailChirho(rawChirho: string): CompatAxisChirho {
 		displayPercentChirho:
 			parseQuoteAsChirho(rawChirho) ?? approxPercentChirho(passChirho, totalChirho),
 		measuredDateChirho: metaChirho.dateChirho,
-		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8)
+		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8),
+		stabilityChirho: parseStabilityChirho(rawChirho)
 	};
 }
 
