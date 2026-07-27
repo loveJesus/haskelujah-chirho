@@ -31,7 +31,40 @@ $ haskelujah compile ND.hs --cranelift --output nd2 && ./nd2
                                  =>  4308279329       same fault, other backend
 ```
 
-## Scope — narrowed by experiment
+## SCOPE IS BROADER THAN THIS FILENAME — read this section
+
+The filename says "list pointer" because that is how I first hit it. Further probing shows
+lists are only the most obvious instance. The real fault is:
+
+> Native `show`/`print` is **syntax-directed at the call site**. `classify_expr_show_kind_chirho`
+> (`crates/haskelujah-backend-llvm-chirho/src/codegen_chirho.rs:1071`) pattern-matches the
+> Core *expression* — literals, comparison primops, a hardcoded list of names like
+> `not`/`==`/`compare`. Anything it cannot classify syntactically falls off that fast path,
+> and the generic path emits an internal representation instead of a rendered value.
+
+Hiding a value behind *any* function call is enough to fall off the path:
+
+| program | native | interpreter | verdict |
+|---|---|---|---|
+| `print (Just 3)` | `Just 3` | `Just 3` | ok — syntactic constructor |
+| `print (id R)`, `data C = R \| G deriving Show` | **`82`** | `R` | **WRONG** — raw tag/number |
+| `print ((1,2) :: (Int,Int))` | **`$tuple2 1 2`** | `(1,2)` | **WRONG** — internal name leaks |
+| `putStrLn (show [1,2,3])` | `[1,2,3]` | `[1,2,3]` | ok — literal |
+| `putStrLn (show (filter odd [1,2,3,4,5]))` | **`4301791409`** | `[1,3,5]` | **WRONG** |
+| `print (id [1,2,3])` | **`52932119073`** | `[1,2,3]` | **WRONG** — even `id` defeats it |
+| `show (1 + 1)` | `2` | `2` | ok — computed Int is fine |
+
+Three distinct wrong renderings — a heap pointer, a raw constructor tag, and the internal
+name `$tuple2` — all from the same cause: no working generic `show` on the native path.
+`print (id R)` is the cleanest proof, since `id` changes nothing about the value and only
+hides it from a syntactic matcher.
+
+This is very likely the same root as the known, already-documented gap that "native
+class-method dispatch is still catching up to the STG interpreter" — `show` is a class
+method, and rendering a list needs `Show [a]` from `Show a`. What is newly documented here
+is not that the gap exists but that **it fails silently and plausibly** rather than erroring.
+
+## Scope — first narrowing (lists), kept for the record
 
 | program | native | interpreter |
 |---|---|---|
