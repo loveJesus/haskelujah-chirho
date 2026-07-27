@@ -180,7 +180,7 @@ export const limitationsChirho: LimitationChirho[] = [
 	{
 		titleChirho: 'Running is not yet computing',
 		bodyChirho:
-			'A known miscompile exists: a boolean test inside a list comprehension’s recursive worker can take the wrong branch and return a silently wrong answer. The canonical lazy primes sieve hits it. This is on the interpreter path used by haskelujah run. The symptom is reproduced and isolated; the mechanism is still being traced, and no fix ships on a hypothesis.',
+			'A local recursive helper that closes over one of its enclosing function’s pattern-bound arguments can take the wrong branch and return a silently wrong answer. The canonical lazy primes sieve hits it — and so does an ordinary where-bound go helper written by hand; this is normal Haskell, not an exotic idiom. It is on the interpreter path used by haskelujah run. The branch condition’s value is proven correct in every tested form — the fault is dispatch, not evaluation — and the mechanism is still being traced; no fix ships on a hypothesis.',
 		writeupPathChirho: 'spec-chirho/bug-comprehension-letrec-capture-chirho.md'
 	},
 	{
