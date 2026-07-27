@@ -238,9 +238,40 @@ wrong, and testing the explicit `show` path is what caught it.** Running
    resolved*, despite having entries in the enumeration and a dedicated generator
    (`generate_show_list_int_binding_chirho`).
 
-Fault 2 is a separate, larger defect and the three-brick plan does nothing for it. Anyone
-implementing the print fix should expect scalars to go green and structured types to stay
-broken, and should **not** report the lists as fixed.
+### FURTHER — faults 1 and 2 probably share ONE root: resolution is syntactic, not type-driven
+
+Probing *how* list `show` resolves changes the picture again. The `[Int]` instance is **not**
+broken — it works whenever it is actually reached:
+
+| form | native | |
+|---|---|---|
+| `show ([1,2,3] :: [Int])` — literal | `[1,2,3]` | reached |
+| `let xs = [1,2,3] :: [Int] in show xs` | `[1,2,3]` | reached |
+| top-level `xs :: [Int]`, then `show xs` | **`41687189825`** | NOT reached |
+| `show (id [1,2,3] :: [Int])` — **annotated** | **`4333166801`** | NOT reached |
+
+The last row is conclusive. An **explicit type annotation is ignored**. A type-driven
+resolver would use it; a syntactic one cannot. Resolution sees through a `let` in the same
+expression but not through a top-level binding or a function application.
+
+Supporting evidence that the machinery itself is sound: `++`, `showInt`, `putStrLn` and
+`id`-hiding all behave correctly natively, so the primops the `[Int]` generator is built
+from are fine.
+
+**So the likely single root is:** instance resolution is driven by *expression shape*
+rather than by the type checker's solved types. `print` never resolving (fault 1) and
+structured types resolving only when syntactically obvious (fault 2) are two faces of that.
+
+**Stated as inference, not measurement** — I have not proven it, and I have already
+overstated one value case in this file. What it predicts: threading the checker's solved
+evidence (`ty_key_chirho`) should repair the structured types too, because their bindings
+demonstrably work when reached. What would confirm it: implement brick 1, then re-run the
+top-level-bound and annotated rows above. If they go green, the roots were one; if only
+scalars go green, they were genuinely two.
+
+Until that experiment runs, plan for the pessimistic case: scalars green, structured types
+possibly still red, and **do not report the lists as fixed on the strength of this
+inference**.
 
 This is also the honest test matrix: `Bool`/`Char`/`Double` must go green, `Int` must stay
 green, and `String`/`[Int]`/`Maybe Int` are **expected to remain red** until fault 2 is
