@@ -9,7 +9,9 @@
 //!
 //! workflow: recursive-do-chirho
 
-use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, StmtChirho};
+use std::collections::HashMap;
+
+use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, RhsChirho, StmtChirho};
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -36,6 +38,10 @@ pub(crate) fn transform_recursive_do_chirho(
             return stmts_chirho;
         }
         let final_stmt_chirho = stmts_chirho.pop().expect("mdo statement count was checked");
+        if !statements_need_recursive_knot_chirho(&stmts_chirho) {
+            stmts_chirho.push(final_stmt_chirho);
+            return stmts_chirho;
+        }
         let mut transformed_chirho = transform_recursive_group_chirho(stmts_chirho, span_chirho);
         transformed_chirho.push(final_stmt_chirho);
         return transformed_chirho;
@@ -121,27 +127,261 @@ fn transform_recursive_group_chirho(
 fn collect_stmt_bound_names_chirho(stmts_chirho: &[StmtChirho]) -> Vec<NameChirho> {
     let mut names_chirho = Vec::new();
     for stmt_chirho in stmts_chirho {
-        match stmt_chirho {
-            StmtChirho::BindChirho { pat_chirho, .. } => {
-                collect_pat_bound_names_chirho(pat_chirho, &mut names_chirho);
-            }
-            StmtChirho::LetChirho { binds_chirho, .. } => {
-                for bind_chirho in binds_chirho {
-                    match bind_chirho {
-                        LocalBindChirho::FunBindChirho { name_chirho, .. } => {
-                            push_unique_name_chirho(&mut names_chirho, name_chirho);
-                        }
-                        LocalBindChirho::PatBindChirho { pat_chirho, .. } => {
-                            collect_pat_bound_names_chirho(pat_chirho, &mut names_chirho);
-                        }
-                        LocalBindChirho::TypeSigChirho { .. } => {}
-                    }
-                }
-            }
-            StmtChirho::ExprChirho(_) => {}
-        }
+        collect_one_stmt_bound_names_chirho(stmt_chirho, &mut names_chirho);
     }
     names_chirho
+}
+
+fn collect_one_stmt_bound_names_chirho(
+    stmt_chirho: &StmtChirho,
+    names_chirho: &mut Vec<NameChirho>,
+) {
+    match stmt_chirho {
+        StmtChirho::BindChirho { pat_chirho, .. } => {
+            collect_pat_bound_names_chirho(pat_chirho, names_chirho);
+        }
+        StmtChirho::LetChirho { binds_chirho, .. } => {
+            for bind_chirho in binds_chirho {
+                match bind_chirho {
+                    LocalBindChirho::FunBindChirho { name_chirho, .. } => {
+                        push_unique_name_chirho(names_chirho, name_chirho);
+                    }
+                    LocalBindChirho::PatBindChirho { pat_chirho, .. } => {
+                        collect_pat_bound_names_chirho(pat_chirho, names_chirho);
+                    }
+                    LocalBindChirho::TypeSigChirho { .. } => {}
+                }
+            }
+        }
+        StmtChirho::ExprChirho(_) => {}
+    }
+}
+
+/// GHC segments `mdo` blocks so statements with only backward dependencies stay sequential.
+///
+/// This first segmentation boundary is deliberately conservative: any reference to a name
+/// bound by a later statement requires the knot, as does a monadic bind that references its
+/// own binder. Ordinary `let` groups already provide their own recursive scope.
+fn statements_need_recursive_knot_chirho(stmts_chirho: &[StmtChirho]) -> bool {
+    let mut binding_positions_chirho = HashMap::new();
+    for (stmt_index_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
+        let mut names_chirho = Vec::new();
+        collect_one_stmt_bound_names_chirho(stmt_chirho, &mut names_chirho);
+        for name_chirho in names_chirho {
+            binding_positions_chirho
+                .entry(name_chirho.text_chirho().to_string())
+                .or_insert(stmt_index_chirho);
+        }
+    }
+
+    for (stmt_index_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
+        let mut references_chirho = Vec::new();
+        collect_stmt_references_chirho(stmt_chirho, &mut references_chirho);
+        for reference_chirho in references_chirho {
+            let Some(bound_index_chirho) = binding_positions_chirho.get(&reference_chirho) else {
+                continue;
+            };
+            if *bound_index_chirho > stmt_index_chirho
+                || (*bound_index_chirho == stmt_index_chirho
+                    && matches!(stmt_chirho, StmtChirho::BindChirho { .. }))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn collect_stmt_references_chirho(stmt_chirho: &StmtChirho, names_chirho: &mut Vec<String>) {
+    match stmt_chirho {
+        StmtChirho::ExprChirho(expr_chirho) | StmtChirho::BindChirho { expr_chirho, .. } => {
+            collect_expr_references_chirho(expr_chirho, names_chirho);
+        }
+        StmtChirho::LetChirho { binds_chirho, .. } => {
+            for bind_chirho in binds_chirho {
+                collect_local_bind_references_chirho(bind_chirho, names_chirho);
+            }
+        }
+    }
+}
+
+fn collect_local_bind_references_chirho(
+    bind_chirho: &LocalBindChirho,
+    names_chirho: &mut Vec<String>,
+) {
+    match bind_chirho {
+        LocalBindChirho::FunBindChirho { matches_chirho, .. } => {
+            for match_chirho in matches_chirho {
+                collect_rhs_references_chirho(&match_chirho.rhs_chirho, names_chirho);
+                for where_bind_chirho in &match_chirho.where_binds_chirho {
+                    collect_local_bind_references_chirho(where_bind_chirho, names_chirho);
+                }
+            }
+        }
+        LocalBindChirho::PatBindChirho { rhs_chirho, .. } => {
+            collect_rhs_references_chirho(rhs_chirho, names_chirho);
+        }
+        LocalBindChirho::TypeSigChirho { .. } => {}
+    }
+}
+
+fn collect_rhs_references_chirho(rhs_chirho: &RhsChirho, names_chirho: &mut Vec<String>) {
+    match rhs_chirho {
+        RhsChirho::UnguardedChirho(expr_chirho) => {
+            collect_expr_references_chirho(expr_chirho, names_chirho);
+        }
+        RhsChirho::GuardedChirho(guards_chirho) => {
+            for guard_chirho in guards_chirho {
+                collect_expr_references_chirho(&guard_chirho.guard_chirho, names_chirho);
+                collect_expr_references_chirho(&guard_chirho.body_chirho, names_chirho);
+            }
+        }
+    }
+}
+
+fn collect_expr_references_chirho(expr_chirho: &ExprChirho, names_chirho: &mut Vec<String>) {
+    match expr_chirho {
+        ExprChirho::VarChirho(name_chirho) => {
+            names_chirho.push(name_chirho.text_chirho().to_string());
+        }
+        ExprChirho::ConChirho(_) | ExprChirho::LitChirho(_) => {}
+        ExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(fun_chirho, names_chirho);
+            collect_expr_references_chirho(arg_chirho, names_chirho);
+        }
+        ExprChirho::TypeAppChirho { expr_chirho, .. }
+        | ExprChirho::NegChirho { expr_chirho, .. }
+        | ExprChirho::AnnChirho { expr_chirho, .. }
+        | ExprChirho::SpliceChirho { expr_chirho, .. }
+        | ExprChirho::TypedSpliceChirho { expr_chirho, .. } => {
+            collect_expr_references_chirho(expr_chirho, names_chirho);
+        }
+        ExprChirho::InfixChirho {
+            left_chirho,
+            op_chirho,
+            right_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(left_chirho, names_chirho);
+            names_chirho.push(op_chirho.text_chirho().to_string());
+            collect_expr_references_chirho(right_chirho, names_chirho);
+        }
+        ExprChirho::LamChirho { body_chirho, .. }
+        | ExprChirho::ParenChirho {
+            inner_chirho: body_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(body_chirho, names_chirho);
+        }
+        ExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            ..
+        } => {
+            for bind_chirho in binds_chirho {
+                collect_local_bind_references_chirho(bind_chirho, names_chirho);
+            }
+            collect_expr_references_chirho(body_chirho, names_chirho);
+        }
+        ExprChirho::IfChirho {
+            cond_chirho,
+            then_chirho,
+            else_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(cond_chirho, names_chirho);
+            collect_expr_references_chirho(then_chirho, names_chirho);
+            collect_expr_references_chirho(else_chirho, names_chirho);
+        }
+        ExprChirho::CaseChirho {
+            scrutinee_chirho,
+            alts_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(scrutinee_chirho, names_chirho);
+            for alt_chirho in alts_chirho {
+                collect_rhs_references_chirho(&alt_chirho.rhs_chirho, names_chirho);
+                for bind_chirho in &alt_chirho.where_binds_chirho {
+                    collect_local_bind_references_chirho(bind_chirho, names_chirho);
+                }
+            }
+        }
+        ExprChirho::DoChirho { stmts_chirho, .. } => {
+            for stmt_chirho in stmts_chirho {
+                collect_stmt_references_chirho(stmt_chirho, names_chirho);
+            }
+        }
+        ExprChirho::TupleChirho {
+            elements_chirho, ..
+        }
+        | ExprChirho::ListChirho {
+            elements_chirho, ..
+        } => {
+            for element_chirho in elements_chirho {
+                collect_expr_references_chirho(element_chirho, names_chirho);
+            }
+        }
+        ExprChirho::ArithSeqChirho {
+            from_chirho,
+            then_chirho,
+            to_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(from_chirho, names_chirho);
+            if let Some(then_chirho) = then_chirho {
+                collect_expr_references_chirho(then_chirho, names_chirho);
+            }
+            if let Some(to_chirho) = to_chirho {
+                collect_expr_references_chirho(to_chirho, names_chirho);
+            }
+        }
+        ExprChirho::ListCompChirho {
+            body_chirho,
+            quals_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(body_chirho, names_chirho);
+            for qual_chirho in quals_chirho {
+                collect_stmt_references_chirho(qual_chirho, names_chirho);
+            }
+        }
+        ExprChirho::LeftSectionChirho {
+            op_chirho,
+            arg_chirho,
+            ..
+        }
+        | ExprChirho::RightSectionChirho {
+            op_chirho,
+            arg_chirho,
+            ..
+        } => {
+            names_chirho.push(op_chirho.text_chirho().to_string());
+            collect_expr_references_chirho(arg_chirho, names_chirho);
+        }
+        ExprChirho::RecordConChirho { fields_chirho, .. } => {
+            for field_chirho in fields_chirho {
+                collect_expr_references_chirho(&field_chirho.value_chirho, names_chirho);
+            }
+        }
+        ExprChirho::RecordUpdateChirho {
+            expr_chirho,
+            fields_chirho,
+            ..
+        } => {
+            collect_expr_references_chirho(expr_chirho, names_chirho);
+            for field_chirho in fields_chirho {
+                collect_expr_references_chirho(&field_chirho.value_chirho, names_chirho);
+            }
+        }
+        ExprChirho::QuoteExprChirho { .. }
+        | ExprChirho::QuoteDeclChirho { .. }
+        | ExprChirho::QuoteTypeChirho { .. }
+        | ExprChirho::QuotePatChirho { .. } => {}
+    }
 }
 
 fn collect_pat_bound_names_chirho(pat_chirho: &PatChirho, names_chirho: &mut Vec<NameChirho>) {
@@ -283,16 +523,18 @@ mod tests_chirho {
             SpanChirho::DUMMY_CHIRHO,
         );
 
-        let [StmtChirho::BindChirho {
-            pat_chirho,
-            expr_chirho:
-                ExprChirho::AppChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    ..
-                },
-            ..
-        }] = transformed_chirho.as_slice()
+        let [
+            StmtChirho::BindChirho {
+                pat_chirho,
+                expr_chirho:
+                    ExprChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    },
+                ..
+            },
+        ] = transformed_chirho.as_slice()
         else {
             panic!("expected one generated mfix bind: {transformed_chirho:?}");
         };
@@ -320,12 +562,17 @@ mod tests_chirho {
     }
 
     #[test]
-    fn mdo_wraps_every_statement_before_the_final_expression_chirho() {
+    fn mdo_wraps_forward_dependent_statements_before_the_final_expression_chirho() {
         let final_stmt_chirho =
             StmtChirho::ExprChirho(raw_var_chirho("finishChirho", SpanChirho::DUMMY_CHIRHO));
+        let forward_bind_chirho = StmtChirho::BindChirho {
+            pat_chirho: PatChirho::VarChirho(name_chirho("xChirho")),
+            expr_chirho: raw_var_chirho("yChirho", SpanChirho::DUMMY_CHIRHO),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
         let transformed_chirho = transform_recursive_do_chirho(
             vec![
-                DoSegmentChirho::StatementChirho(bind_stmt_chirho("xChirho")),
+                DoSegmentChirho::StatementChirho(forward_bind_chirho),
                 DoSegmentChirho::StatementChirho(bind_stmt_chirho("yChirho")),
                 DoSegmentChirho::StatementChirho(final_stmt_chirho.clone()),
             ],
@@ -342,6 +589,30 @@ mod tests_chirho {
             }) if elements_chirho.len() == 2
         ));
         assert_eq!(transformed_chirho.last(), Some(&final_stmt_chirho));
+    }
+
+    #[test]
+    fn mdo_without_forward_dependency_stays_sequential_chirho() {
+        let first_bind_chirho = bind_stmt_chirho("xChirho");
+        let second_bind_chirho = StmtChirho::BindChirho {
+            pat_chirho: PatChirho::VarChirho(name_chirho("yChirho")),
+            expr_chirho: raw_var_chirho("xChirho", SpanChirho::DUMMY_CHIRHO),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let final_stmt_chirho =
+            StmtChirho::ExprChirho(raw_var_chirho("finishChirho", SpanChirho::DUMMY_CHIRHO));
+        let source_stmts_chirho = vec![first_bind_chirho, second_bind_chirho, final_stmt_chirho];
+        let transformed_chirho = transform_recursive_do_chirho(
+            source_stmts_chirho
+                .iter()
+                .cloned()
+                .map(DoSegmentChirho::StatementChirho)
+                .collect(),
+            true,
+            SpanChirho::DUMMY_CHIRHO,
+        );
+
+        assert_eq!(transformed_chirho, source_stmts_chirho);
     }
 
     #[test]

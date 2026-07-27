@@ -761,8 +761,13 @@ impl MachineChirho {
                         }
                     }
 
-                    // InteractChirho needs HeapPtr function arg without forcing
-                    if matches!(op_chirho, PrimOpKindChirho::InteractChirho) {
+                    // These primops consume lazy values. `return`/`pure` must preserve
+                    // its payload thunk; forcing happens only at an actual strict use or
+                    // at the interpreter's observable-result boundary.
+                    if matches!(
+                        op_chirho,
+                        PrimOpKindChirho::InteractChirho | PrimOpKindChirho::ReturnIOChirho
+                    ) {
                         let result_chirho = self.eval_prim_chirho(op_chirho, &resolved_chirho);
                         match result_chirho {
                             Ok(val_chirho) => {
@@ -4655,7 +4660,7 @@ impl MachineChirho {
     /// Force a `ValueChirho` to a primitive (unboxed) value.
     /// Heap pointers are fully evaluated via `force_addr_to_whnf_chirho`, then
     /// the result is unboxed through indirections and wrapper constructors.
-    fn force_to_prim_chirho(&mut self, val_chirho: ValueChirho) -> ValueChirho {
+    pub fn force_to_prim_chirho(&mut self, val_chirho: ValueChirho) -> ValueChirho {
         match val_chirho {
             ValueChirho::HeapPtrChirho(addr_chirho) => {
                 // Force the thunk to WHNF first (evaluates pending computations)
@@ -5096,6 +5101,41 @@ mod tests_chirho {
             result_chirho,
             Err(EvalErrorChirho::BlackholeChirho { .. })
         ));
+    }
+
+    #[test]
+    fn return_io_preserves_lazy_payload_chirho() {
+        let mut machine_chirho = MachineChirho::new_chirho(vec![
+            CodeChirho::LitChirho(ValueChirho::IntChirho(0)),
+            CodeChirho::LitChirho(ValueChirho::IntChirho(0)),
+        ]);
+        let thunk_addr_chirho =
+            machine_chirho
+                .heap_chirho
+                .alloc_chirho(ClosureChirho::thunk_chirho(
+                    CodePtrChirho(1),
+                    "return_payload_chirho",
+                    vec![],
+                ));
+        machine_chirho.code_table_chirho[0] = CodeChirho::PrimChirho {
+            op_chirho: PrimOpKindChirho::ReturnIOChirho,
+            args_chirho: vec![ArgSourceChirho::StaticChirho(ValueChirho::HeapPtrChirho(
+                thunk_addr_chirho,
+            ))],
+        };
+        machine_chirho.code_table_chirho[1] = CodeChirho::EnterChirho(thunk_addr_chirho);
+        assert_eq!(
+            machine_chirho.run_chirho(0),
+            Ok(ValueChirho::HeapPtrChirho(thunk_addr_chirho))
+        );
+        assert_eq!(
+            machine_chirho
+                .heap_chirho
+                .read_chirho(thunk_addr_chirho)
+                .info_chirho
+                .tag_chirho,
+            InfoTagChirho::ThunkChirho
+        );
     }
 
     #[test]

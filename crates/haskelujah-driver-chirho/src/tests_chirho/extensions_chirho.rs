@@ -20,6 +20,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 #[allow(unused_imports)]
 use haskelujah_syntax_chirho::SourceFileChirho;
 
+mod recursive_do_chirho;
+
 // ── TypeOperators ─────────────────────────────────────────────────────────
 
 #[test]

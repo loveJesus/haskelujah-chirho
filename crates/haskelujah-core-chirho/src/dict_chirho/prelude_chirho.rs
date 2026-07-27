@@ -18,6 +18,7 @@ use crate::expr_chirho::{
 
 impl DictPassCtxChirho {
     pub fn generate_prelude_bindings_chirho(&mut self) {
+        self.generate_monad_fix_bindings_chirho();
         let bool_ty_chirho = TyChirho::bool_chirho();
 
         // Helper to generate a Prelude binding with ID matching.

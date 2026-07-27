@@ -1581,27 +1581,9 @@ pub fn lower_and_run_chirho(
         .run_chirho(entry_code_chirho)
         .map_err(|e_chirho| format!("runtime error: {}", e_chirho))?;
 
-    // If the result is a HeapPtr, try to unbox it. This handles the case
-    // where a function returns a boxed literal (e.g. I# 4) — we extract
-    // the unboxed value so callers get IntChirho(4) instead of HeapPtrChirho.
-    let unboxed_chirho = match &result_chirho {
-        ValueChirho::HeapPtrChirho(addr_chirho) => {
-            let final_addr_chirho = machine_chirho.heap_chirho.follow_ind_chirho(*addr_chirho);
-            let closure_chirho = machine_chirho.heap_chirho.read_chirho(final_addr_chirho);
-            if closure_chirho.payload_chirho.len() == 1 {
-                match &closure_chirho.payload_chirho[0] {
-                    ValueChirho::IntChirho(n_chirho) => ValueChirho::IntChirho(*n_chirho),
-                    ValueChirho::FloatChirho(n_chirho) => ValueChirho::FloatChirho(*n_chirho),
-                    ValueChirho::CharChirho(c_chirho) => ValueChirho::CharChirho(*c_chirho),
-                    ValueChirho::BoolChirho(b_chirho) => ValueChirho::BoolChirho(*b_chirho),
-                    _ => result_chirho,
-                }
-            } else {
-                result_chirho
-            }
-        }
-        _ => result_chirho,
-    };
+    // The STG machine preserves lazy IO payloads. Force only the final observable
+    // interpreter result to WHNF and unbox primitive wrappers for the driver API.
+    let unboxed_chirho = machine_chirho.force_to_prim_chirho(result_chirho);
 
     Ok((unboxed_chirho, machine_chirho))
 }
@@ -1658,24 +1640,7 @@ pub fn lower_and_run_with_input_chirho(
         .run_chirho(entry_code_chirho)
         .map_err(|e_chirho| format!("runtime error: {}", e_chirho))?;
 
-    let unboxed_chirho = match &result_chirho {
-        ValueChirho::HeapPtrChirho(addr_chirho) => {
-            let final_addr_chirho = machine_chirho.heap_chirho.follow_ind_chirho(*addr_chirho);
-            let closure_chirho = machine_chirho.heap_chirho.read_chirho(final_addr_chirho);
-            if closure_chirho.payload_chirho.len() == 1 {
-                match &closure_chirho.payload_chirho[0] {
-                    ValueChirho::IntChirho(n_chirho) => ValueChirho::IntChirho(*n_chirho),
-                    ValueChirho::FloatChirho(n_chirho) => ValueChirho::FloatChirho(*n_chirho),
-                    ValueChirho::CharChirho(c_chirho) => ValueChirho::CharChirho(*c_chirho),
-                    ValueChirho::BoolChirho(b_chirho) => ValueChirho::BoolChirho(*b_chirho),
-                    _ => result_chirho,
-                }
-            } else {
-                result_chirho
-            }
-        }
-        _ => result_chirho,
-    };
+    let unboxed_chirho = machine_chirho.force_to_prim_chirho(result_chirho);
 
     Ok((unboxed_chirho, machine_chirho))
 }
@@ -1726,24 +1691,7 @@ pub fn lower_and_run_with_step_limit_chirho(
         .run_chirho(entry_code_chirho)
         .map_err(|e_chirho| format!("runtime error: {}", e_chirho))?;
 
-    let unboxed_chirho = match &result_chirho {
-        ValueChirho::HeapPtrChirho(addr_chirho) => {
-            let final_addr_chirho = machine_chirho.heap_chirho.follow_ind_chirho(*addr_chirho);
-            let closure_chirho = machine_chirho.heap_chirho.read_chirho(final_addr_chirho);
-            if closure_chirho.payload_chirho.len() == 1 {
-                match &closure_chirho.payload_chirho[0] {
-                    ValueChirho::IntChirho(n_chirho) => ValueChirho::IntChirho(*n_chirho),
-                    ValueChirho::FloatChirho(n_chirho) => ValueChirho::FloatChirho(*n_chirho),
-                    ValueChirho::CharChirho(c_chirho) => ValueChirho::CharChirho(*c_chirho),
-                    ValueChirho::BoolChirho(b_chirho) => ValueChirho::BoolChirho(*b_chirho),
-                    _ => result_chirho,
-                }
-            } else {
-                result_chirho
-            }
-        }
-        _ => result_chirho,
-    };
+    let unboxed_chirho = machine_chirho.force_to_prim_chirho(result_chirho);
 
     Ok((unboxed_chirho, machine_chirho))
 }

@@ -9,6 +9,8 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+mod rec_desugar_chirho;
+
 use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::{
@@ -3483,6 +3485,12 @@ impl DesugarCtxChirho {
                 body_chirho,
                 ..
             } => {
+                if let Some(lazy_tuple_chirho) =
+                    self.try_desugar_lazy_tuple_lambda_chirho(pats_chirho, body_chirho)
+                {
+                    return lazy_tuple_chirho;
+                }
+
                 // Create binders and bind them in scope before desugaring body.
                 // For non-variable patterns (tuples, constructors, etc.), we
                 // bind a fresh name and wrap the body in a case expression to

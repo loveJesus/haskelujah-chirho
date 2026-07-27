@@ -29,6 +29,7 @@
 
 pub mod instance_chirho;
 pub mod layout_chirho;
+mod monad_fix_chirho;
 pub mod prelude_chirho;
 pub mod rewrite_chirho;
 

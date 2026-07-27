@@ -1170,8 +1170,14 @@ impl InferCtxChirho {
         // default the variable to IO (like GHC's ExtendedDefaultRules).
         // This ensures `f = return 42` gets type `IO Int` rather than
         // `forall m. Monad m => m Int`, avoiding dictionary abstraction.
-        let io_defaultable_chirho: &[&str] =
-            &["Monad", "Applicative", "Functor", "MonadIO", "MonadFail"];
+        let io_defaultable_chirho: &[&str] = &[
+            "Monad",
+            "Applicative",
+            "Functor",
+            "MonadIO",
+            "MonadFail",
+            "MonadFix",
+        ];
         let mut io_default_subst_chirho = SubstChirho::empty_chirho();
         // Group predicates by type variable
         let mut var_pred_classes_chirho: std::collections::HashMap<TyVarChirho, Vec<&str>> =
@@ -5830,8 +5836,14 @@ impl InferCtxChirho {
 
         // Phase 2: compute defaults for ambiguous type variables
         let mut default_subst_chirho = SubstChirho::empty_chirho();
-        let io_defaultable_classes_chirho: &[&str] =
-            &["Monad", "Applicative", "Functor", "MonadIO", "MonadFail"];
+        let io_defaultable_classes_chirho: &[&str] = &[
+            "Monad",
+            "Applicative",
+            "Functor",
+            "MonadIO",
+            "MonadFail",
+            "MonadFix",
+        ];
         // DETERMINISM: this loop BUILDS a defaulting substitution, so the order in
         // which ambiguous variables are defaulted decides the inferred types. Iterating
         // a HashMap made that order depend on a per-process hash seed.
@@ -10898,6 +10910,31 @@ fn seed_builtins_chirho(env_chirho: &mut TyEnvChirho) {
     };
     env_chirho.bind_chirho("fail".to_string(), fail_scheme_chirho.clone());
     env_chirho.bind_chirho("Control.Monad.Fail.fail".to_string(), fail_scheme_chirho);
+
+    // mfix :: forall m a. MonadFix m => (a -> m a) -> m a
+    let mfix_m_chirho = TyVarChirho(1720);
+    let mfix_a_chirho = TyVarChirho(1721);
+    let mfix_result_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::VarChirho(mfix_m_chirho)),
+        Box::new(TyChirho::VarChirho(mfix_a_chirho)),
+    );
+    let mfix_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![mfix_m_chirho, mfix_a_chirho],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "MonadFix".to_string(),
+            ty_chirho: TyChirho::VarChirho(mfix_m_chirho),
+            extra_tys_chirho: vec![],
+        }],
+        ty_chirho: TyChirho::fun_chirho(
+            TyChirho::fun_chirho(
+                TyChirho::VarChirho(mfix_a_chirho),
+                mfix_result_chirho.clone(),
+            ),
+            mfix_result_chirho,
+        ),
+    };
+    env_chirho.bind_chirho("mfix".to_string(), mfix_scheme_chirho.clone());
+    env_chirho.bind_chirho("Control.Monad.Fix.mfix".to_string(), mfix_scheme_chirho);
 
     // (>>=) :: forall m a b. Monad m => m a -> (a -> m b) -> m b
     let bind_m_chirho = TyVarChirho(1800);
@@ -24206,6 +24243,40 @@ mod tests_chirho {
                 "seeded environment should include {name_chirho}"
             );
         }
+    }
+
+    #[test]
+    fn seed_builtins_include_polymorphic_monadfix_method_chirho() {
+        let schemes_chirho = builtin_value_schemes_chirho();
+        let mfix_scheme_chirho = schemes_chirho
+            .get("Control.Monad.Fix.mfix")
+            .expect("qualified mfix builtin should exist");
+        let mfix_m_chirho = TyVarChirho(1720);
+        let mfix_a_chirho = TyVarChirho(1721);
+        let mfix_result_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(mfix_m_chirho)),
+            Box::new(TyChirho::VarChirho(mfix_a_chirho)),
+        );
+
+        assert_eq!(
+            mfix_scheme_chirho,
+            &SchemeChirho {
+                vars_chirho: vec![mfix_m_chirho, mfix_a_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "MonadFix".to_string(),
+                    ty_chirho: TyChirho::VarChirho(mfix_m_chirho),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::fun_chirho(
+                        TyChirho::VarChirho(mfix_a_chirho),
+                        mfix_result_chirho.clone(),
+                    ),
+                    mfix_result_chirho,
+                ),
+            },
+            "mfix should preserve both the MonadFix constructor and result element variables"
+        );
     }
 
     #[test]

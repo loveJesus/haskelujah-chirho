@@ -1555,6 +1555,43 @@ impl ClassEnvChirho {
             });
         }
 
+        // MonadFix class
+        let monad_fix_m_chirho = TyVarChirho(9092);
+        let monad_fix_a_chirho = TyVarChirho(9093);
+        let monad_fix_result_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::VarChirho(monad_fix_m_chirho)),
+            Box::new(TyChirho::VarChirho(monad_fix_a_chirho)),
+        );
+        self.add_class_chirho(ClassDeclChirho {
+            name_chirho: "MonadFix".to_string(),
+            supers_chirho: vec!["Monad".to_string()],
+            var_chirho: monad_fix_m_chirho,
+            methods_chirho: HashMap::from([(
+                "mfix".to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![monad_fix_m_chirho, monad_fix_a_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_chirho(
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(monad_fix_a_chirho),
+                            monad_fix_result_chirho.clone(),
+                        ),
+                        monad_fix_result_chirho,
+                    ),
+                },
+            )]),
+            extra_vars_chirho: vec![],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        });
+        for ty_chirho in ["IO", "Maybe", "[]"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: "MonadFix".to_string(),
+                head_ty_chirho: TyChirho::ConChirho(ty_chirho.to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
         let format_time_var_chirho = TyVarChirho(9065);
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "FormatTime".to_string(),
@@ -3386,6 +3423,7 @@ mod tests_chirho {
         assert!(env_chirho.has_class_chirho("Applicative"));
         assert!(env_chirho.has_class_chirho("Monad"));
         assert!(env_chirho.has_class_chirho("MonadFail"));
+        assert!(env_chirho.has_class_chirho("MonadFix"));
         assert!(env_chirho.has_class_chirho("Semigroup"));
         assert!(env_chirho.has_class_chirho("Monoid"));
 
@@ -3405,6 +3443,10 @@ mod tests_chirho {
             env_chirho.superclasses_chirho("MonadFail"),
             vec!["Monad".to_string()]
         );
+        assert_eq!(
+            env_chirho.superclasses_chirho("MonadFix"),
+            vec!["Monad".to_string()]
+        );
     }
 
     #[test]
@@ -3417,6 +3459,25 @@ mod tests_chirho {
         let result_chirho = env_chirho.resolve_chirho(&pred_chirho);
         assert!(result_chirho.is_some());
         assert!(result_chirho.unwrap().is_empty());
+    }
+
+    #[test]
+    fn resolve_monadfix_standard_instances_chirho() {
+        let mut env_chirho = ClassEnvChirho::new_chirho();
+        env_chirho.seed_standard_chirho();
+
+        for type_name_chirho in ["IO", "Maybe", "[]"] {
+            let pred_chirho = PredChirho::new_chirho(
+                "MonadFix",
+                TyChirho::ConChirho(type_name_chirho.to_string()),
+            );
+            assert!(
+                env_chirho
+                    .resolve_chirho(&pred_chirho)
+                    .is_some_and(|subgoals_chirho| subgoals_chirho.is_empty()),
+                "expected a ground MonadFix instance for {type_name_chirho}"
+            );
+        }
     }
 
     #[test]

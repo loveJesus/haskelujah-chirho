@@ -46,19 +46,28 @@ Mechanism, pinned in current source:
       (fixes the mdo-as-varid latent bug as a regression test)
 - [x] Layout: `rec` opens a layout context (statement group like `do`/`of`/`let`)
 - [x] CST: RecStmt node carrying the inner statement group; AST transformation remains next
-- [ ] Desugar: rec group → lazy-tuple mfix knot
+- [x] Desugar: rec group → lazy-tuple mfix knot
       (`(xs, ys) <- mfix (\ ~(xs, ys) -> do { ...; return (xs, ys) })`);
-      whole-group AST knot landed; genuinely lazy Core tuple projections remain before this
-      item is complete; GHC-style minimal segmentation comes later only if corpus needs it
-- [ ] Typing: MonadFix class (`mfix :: (a -> m a) -> m a`) in class env; instances IO,
+      Core lowering represents every tuple field as a delayed selector thunk. `mdo` blocks
+      with no forward/self dependency remain sequential; dependency-bearing prefixes use
+      the knot.
+- [x] Typing: MonadFix class (`mfix :: (a -> m a) -> m a`) in class env; instances IO,
       Maybe, [] minimum; superclass Monad
-- [ ] STG eval: `mfix`/`fixIO` knot-tying via result thunk (runtime laziness + refs exist)
-- [ ] Tests: driver eval test (repro yields `[1,2,1,2]`-shaped knot output), mdo forward-ref
+- [x] STG eval: generated IO/Maybe/list `mfix` bodies tie Core letrec knots; ReturnIO preserves
+      payload thunks, and the driver forces only the final observable result
+- [x] Tests: driver eval test (repro yields `[1,2,1,2]`-shaped knot output), mdo forward-ref
       eval test, mdo-as-varid-without-ext regression, ghc-tests T4404 recheck
-- [ ] Gates before final semantic claim: fresh debug build (mtime vs git log), focused suites
-      during iteration, eval suite and probe at the landing boundary, cargo fmt --check clean,
-      zero warnings; full driver run only under the shared-machine resource guard
-- [ ] Land per-cluster with room announcement; log step in progress DB (single-writer window)
+- [x] Gates before final semantic claim: fresh debug build (mtime vs git log), focused suites
+      during iteration, bounded eval suite and direct CLI checks at the landing boundary,
+      owned new/modified modules rustfmt-check clean, zero new warnings; full driver run only
+      under the shared-machine resource guard.
+      Verified: RecursiveDo driver 4/4, runtime 52/52, typing 257/257 (+1 ignored), Core
+      125/125, bounded driver eval 990/990, T4404 accepts, and fresh CLI mdo prints `42`.
+      The historical 70-case scratch probe was no longer present, so no probe result is
+      claimed. Full parser remains 279 pass / 2 unrelated fixture failures / 3 ignored:
+      Primitive.ByteArray token-position drift and external containers CPP input.
+- [x] Land the completed semantic slice in one explicit-path commit and announce it in the room
+- [ ] Log the step in progress DB after the existing shared dirty writer releases it
 
 ## Insertion points (mapped read-only, 2026-07-26 ~10:40)
 

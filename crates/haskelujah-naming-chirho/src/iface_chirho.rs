@@ -113,6 +113,7 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
         "Monad" => Some(&["return", ">>=", ">>"]),
         "MonadPlus" => Some(&["mzero", "mplus"]),
         "MonadFail" => Some(&["fail"]),
+        "MonadFix" => Some(&["mfix"]),
         "MonadIO" => Some(&["liftIO"]),
         "MonadTrans" => Some(&["lift"]),
         "MonadZip" => Some(&["mzipWith"]),
