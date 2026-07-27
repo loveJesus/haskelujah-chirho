@@ -171,7 +171,7 @@ export const limitationsChirho: LimitationChirho[] = [
 	{
 		titleChirho: 'The type checker is not deterministic',
 		bodyChirho:
-			'At least one corpus file has been observed to flip between accepted and rejected across runs of the same binary on the same source — and the rest of the corpus has not been tested per-file for stability. Until this is fixed, builds are not reproducible; the percentages above are floored, and the accept figure is a range. The cause is under investigation.',
+			'At least one corpus file has been observed to flip between accepted and rejected across runs of the same binary on the same source — and the rest of the corpus has not been tested per-file for stability. The cause is partially identified: hash-iteration order reaching inference state. Seven order-dependent sites are fixed, and the defect still reproduces. Until it is gone, builds are not reproducible; the percentages above are floored, and the accept figure is a range.',
 		writeupPathChirho: 'spec-chirho/bug-nondeterministic-typecheck-chirho.md'
 	},
 	{
