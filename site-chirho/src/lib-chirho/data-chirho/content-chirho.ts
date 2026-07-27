@@ -185,10 +185,11 @@ export const limitationsChirho: LimitationChirho[] = [
 		fixedChirho: true
 	},
 	{
-		titleChirho: 'Compiled output is not yet trustworthy for every structured value',
+		titleChirho: 'Compiled output prints true values — fixed 2026-07-27, verified three ways',
 		bodyChirho:
-			'Native print now consumes the Show evidence the type checker solved, and independent cross-checks verify booleans, characters, doubles, strings, lists, and tuples printing identically across the interpreter and both native backends — the heap-address era is over for those. But independent verification then caught Maybe and Either still rendering as heap pointers natively, and the fixed claim was suspended within the hour. The discrepancy is under active trace. Until every constructor prints true, use haskelujah run for anything whose output you depend on.',
-		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md'
+			'This ledger confessed that native code printing a structured value could emit a heap address, a raw constructor tag, or an internal name. The fix threads the Show evidence the type checker already solved into native print — a general mechanism, not per-type patches — with evidence-driven renderers for constructor types. This record closed once, wrongly: an independent check caught Maybe and Either still broken, the entry reopened within minutes, and the completed fix then passed the exact failing forms on three independently built binaries, interpreter, LLVM, and Cranelift agreeing on every case. The six-minute overclaim and its reversal are part of this page’s history on purpose.',
+		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md',
+		fixedChirho: true
 	},
 	{
 		titleChirho: 'Rank-N inference gaps',

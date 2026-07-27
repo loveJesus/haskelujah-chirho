@@ -84,8 +84,8 @@ main = putStrLn "Hallelujah."`;
 				</div>
 				<p class="begin-note-chirho">
 					The same file also builds to a native binary with <code>haskelujah build</code>,
-					or to WebAssembly — one open native-printing defect (Maybe/Either) remains;
-					the honest ledger below keeps the receipts.
+					or to WebAssembly — and the execution paths agree on what they print
+					(receipts in the honest ledger below).
 				</p>
 			</div>
 		</div>
