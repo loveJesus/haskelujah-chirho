@@ -185,11 +185,10 @@ export const limitationsChirho: LimitationChirho[] = [
 		fixedChirho: true
 	},
 	{
-		titleChirho: 'Compiled output prints true values — fixed 2026-07-27',
+		titleChirho: 'Compiled output is not yet trustworthy for every structured value',
 		bodyChirho:
-			'This ledger previously confessed that native code printing a value not syntactically obvious at the call site could emit an internal representation — a heap address, a raw constructor tag, an internal name. Root: native print guessed runtime tags instead of consuming the Show evidence the type checker had already solved. It now threads that evidence, and the interpreter, LLVM, and Cranelift agree on booleans, characters, doubles, strings, lists, Maybe, tuples, Either, and derived constructors — with the landing gate itself catching a missing STG showChar# mapping before it shipped.',
-		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md',
-		fixedChirho: true
+			'Native print now consumes the Show evidence the type checker solved, and independent cross-checks verify booleans, characters, doubles, strings, lists, and tuples printing identically across the interpreter and both native backends — the heap-address era is over for those. But independent verification then caught Maybe and Either still rendering as heap pointers natively, and the fixed claim was suspended within the hour. The discrepancy is under active trace. Until every constructor prints true, use haskelujah run for anything whose output you depend on.',
+		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md'
 	},
 	{
 		titleChirho: 'Rank-N inference gaps',
