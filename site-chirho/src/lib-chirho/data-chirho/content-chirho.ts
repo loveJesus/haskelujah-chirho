@@ -115,7 +115,7 @@ main   = print @Int $fShowInt (I# 42#)`,
 (func $main                 ;; or wasm
   (call $print_i64 (i64.const 42)))`,
 		captionChirho:
-			'Three backends share one Core: LLVM for production, WebAssembly for the browser, Cranelift for fast debug builds.'
+			'Three backends share one Core — LLVM, WebAssembly, Cranelift. Their maturity is tracked honestly in the ledger below.'
 	}
 ];
 
@@ -169,12 +169,17 @@ export const limitationsChirho: LimitationChirho[] = [
 	{
 		titleChirho: 'The type checker is not deterministic',
 		bodyChirho:
-			'One corpus file has been observed to flip between accepted and rejected across runs of the same binary on the same source. Until this is fixed, builds are not reproducible, and the percentages above are floored ranges, never points. The cause is under investigation.'
+			'At least one corpus file has been observed to flip between accepted and rejected across runs of the same binary on the same source — and the rest of the corpus has not been tested per-file for stability. Until this is fixed, builds are not reproducible; the percentages above are floored, and the accept figure is a range. The cause is under investigation.'
 	},
 	{
-		titleChirho: 'Compiling is not yet computing',
+		titleChirho: 'Running is not yet computing',
 		bodyChirho:
-			'A known miscompile exists: in one specific shape — a boolean test inside a list comprehension’s recursive worker — compiled code can take the wrong branch and return a silently wrong answer. The symptom is reproduced and isolated; the mechanism is still being traced, and no fix ships on a hypothesis.'
+			'A known miscompile exists: a boolean test inside a list comprehension’s recursive worker can take the wrong branch and return a silently wrong answer. The canonical lazy primes sieve hits it. This is on the interpreter path used by haskelujah run. The symptom is reproduced and isolated; the mechanism is still being traced, and no fix ships on a hypothesis.'
+	},
+	{
+		titleChirho: 'Compiled output is not yet trustworthy for lists',
+		bodyChirho:
+			'A program that prints a computed list produces a memory address instead of the list when compiled to native code, on both backends. The value is computed correctly — only printing it is broken. The interpreter is unaffected. Use haskelujah run for anything whose output you depend on.'
 	},
 	{
 		titleChirho: 'Rank-N inference gaps',
