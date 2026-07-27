@@ -129,8 +129,11 @@ pub enum ExprChirho {
     ListCompChirho {
         /// Result expression produced for each successful qualifier path.
         body_chirho: Box<ExprChirho>,
-        /// Qualifiers driving generator, guard, and let semantics.
+        /// Sequential qualifiers driving generator, guard, and let semantics.
         quals_chirho: Vec<StmtChirho>,
+        /// Parallel qualifier branches evaluated independently and zipped
+        /// together before the result expression is evaluated.
+        parallel_quals_chirho: Vec<Vec<StmtChirho>>,
         /// Span covering the whole list comprehension.
         span_chirho: SpanChirho,
     },

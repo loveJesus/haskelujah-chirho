@@ -468,11 +468,17 @@ impl<'a> ExhaustCheckerChirho<'a> {
             ExprChirho::ListCompChirho {
                 body_chirho,
                 quals_chirho,
+                parallel_quals_chirho,
                 ..
             } => {
                 self.check_expr_chirho(body_chirho);
                 for q_chirho in quals_chirho {
                     self.check_stmt_chirho(q_chirho);
+                }
+                for group_chirho in parallel_quals_chirho {
+                    for q_chirho in group_chirho {
+                        self.check_stmt_chirho(q_chirho);
+                    }
                 }
             }
             ExprChirho::LeftSectionChirho { arg_chirho, .. }

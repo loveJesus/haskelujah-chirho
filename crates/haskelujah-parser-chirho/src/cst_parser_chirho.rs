@@ -2095,7 +2095,9 @@ impl<'src> ParserChirho<'src> {
                 {
                     return true;
                 }
-                RawTokenKindChirho::CommaChirho | RawTokenKindChirho::RightBracketChirho
+                RawTokenKindChirho::CommaChirho
+                | RawTokenKindChirho::PipeChirho
+                | RawTokenKindChirho::RightBracketChirho
                     if paren_depth_chirho == 0
                         && bracket_depth_chirho == 0
                         && brace_depth_chirho == 0 =>
@@ -3922,11 +3924,20 @@ impl<'src> ParserChirho<'src> {
             // Separated by commas.
             while !self.at_chirho(RawTokenKindChirho::RightBracketChirho)
                 && !self.at_eof_chirho()
-                && !self.at_decl_boundary_chirho()
+                && (!self.at_decl_boundary_chirho() || self.at_list_comp_let_layout_close_chirho())
             {
                 let before_chirho = self.pos_chirho;
+                if self.at_list_comp_let_layout_close_chirho() {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    continue;
+                }
                 self.eat_trivia_chirho();
                 if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                if self.at_chirho(RawTokenKindChirho::PipeChirho) {
                     self.bump_chirho();
                     self.eat_trivia_chirho();
                 }
@@ -3939,7 +3950,7 @@ impl<'src> ParserChirho<'src> {
                             .start_node_chirho(SyntaxKindChirho::LetStmtChirho);
                         self.bump_chirho(); // let
                         self.eat_trivia_chirho();
-                        self.parse_layout_block_chirho();
+                        self.parse_list_comp_let_binds_chirho();
                         self.builder_chirho.finish_node_chirho();
                         self.eat_trivia_chirho();
                     } else if self.scan_for_list_comp_bind_arrow_chirho() {
@@ -4004,6 +4015,71 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    /// workflow: parallel-list-comprehensions-chirho
+    fn at_list_comp_let_layout_close_chirho(&self) -> bool {
+        if !self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho) {
+            return false;
+        }
+        let next_idx_chirho = self.skip_trivia_idx_chirho(self.pos_chirho + 1);
+        self.tokens_chirho
+            .get(next_idx_chirho)
+            .is_some_and(|token_chirho| {
+                matches!(
+                    token_chirho.kind_chirho,
+                    RawTokenKindChirho::CommaChirho
+                        | RawTokenKindChirho::PipeChirho
+                        | RawTokenKindChirho::RightBracketChirho
+                )
+            })
+    }
+
+    /// Parse declarations in a list-comprehension `let` qualifier without
+    /// allowing the layout block to consume the following qualifier comma.
+    ///
+    /// workflow: parallel-list-comprehensions-chirho
+    fn parse_list_comp_let_binds_chirho(&mut self) {
+        let has_brace_chirho = self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
+            || self.at_chirho(RawTokenKindChirho::LeftBraceChirho);
+        if has_brace_chirho {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
+
+        loop {
+            if self.at_eof_chirho()
+                || self.at_chirho(RawTokenKindChirho::CommaChirho)
+                || self.at_chirho(RawTokenKindChirho::PipeChirho)
+                || self.at_chirho(RawTokenKindChirho::RightBracketChirho)
+                || self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+            {
+                break;
+            }
+
+            let before_chirho = self.pos_chirho;
+            self.parse_decl_chirho();
+            self.eat_trivia_chirho();
+            if self.pos_chirho == before_chirho {
+                break;
+            }
+            if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
+            {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                continue;
+            }
+            break;
+        }
+
+        if has_brace_chirho
+            && (self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                || self.at_chirho(RawTokenKindChirho::RightBraceChirho))
+        {
+            self.bump_chirho();
+        }
     }
 
     /// Parse record expression fields: { field = expr, ... }

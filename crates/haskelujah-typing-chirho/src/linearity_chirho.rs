@@ -156,8 +156,29 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
                 walk_expr_chirho(t_chirho, counts_chirho);
             }
         }
-        ExprChirho::ListCompChirho { body_chirho, .. } => {
+        ExprChirho::ListCompChirho {
+            body_chirho,
+            quals_chirho,
+            parallel_quals_chirho,
+            ..
+        } => {
             walk_expr_chirho(body_chirho, counts_chirho);
+            for stmt_chirho in quals_chirho
+                .iter()
+                .chain(parallel_quals_chirho.iter().flatten())
+            {
+                match stmt_chirho {
+                    StmtChirho::ExprChirho(expr_chirho)
+                    | StmtChirho::BindChirho { expr_chirho, .. } => {
+                        walk_expr_chirho(expr_chirho, counts_chirho);
+                    }
+                    StmtChirho::LetChirho { binds_chirho, .. } => {
+                        for bind_chirho in binds_chirho {
+                            walk_local_bind_chirho(bind_chirho, counts_chirho);
+                        }
+                    }
+                }
+            }
         }
         // Literals, constructors, wildcards — no variable usage
         _ => {}

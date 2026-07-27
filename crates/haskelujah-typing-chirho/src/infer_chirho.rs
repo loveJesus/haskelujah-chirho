@@ -3282,61 +3282,32 @@ impl InferCtxChirho {
             ExprChirho::ListCompChirho {
                 body_chirho,
                 quals_chirho,
+                parallel_quals_chirho,
                 span_chirho,
             } => {
                 let mut subst_chirho = SubstChirho::empty_chirho();
-                self.env_chirho.push_scope_chirho();
-
-                for qual_chirho in quals_chirho {
-                    match qual_chirho {
-                        StmtChirho::ExprChirho(expr_chirho) => {
-                            let (s_chirho, guard_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                            subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&s_chirho);
-                            let guard_ty_sub_chirho =
-                                subst_chirho.apply_ty_chirho(&guard_ty_chirho);
-                            if let Ok(su_chirho) = self.unify_normalized_chirho(
-                                &guard_ty_sub_chirho,
-                                &TyChirho::bool_chirho(),
-                                *span_chirho,
-                            ) {
-                                subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                                self.apply_subst_all_chirho(&su_chirho);
-                            }
-                        }
-                        StmtChirho::BindChirho {
-                            pat_chirho,
-                            expr_chirho,
-                            ..
-                        } => {
-                            let (s_chirho, src_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                            subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&s_chirho);
-
-                            let elem_ty_chirho = self.fresh_var_chirho();
-                            let list_ty_chirho =
-                                TyChirho::ListChirho(Box::new(elem_ty_chirho.clone()));
-                            let src_ty_sub_chirho = subst_chirho.apply_ty_chirho(&src_ty_chirho);
-                            if let Ok(su_chirho) = self.unify_normalized_chirho(
-                                &src_ty_sub_chirho,
-                                &list_ty_chirho,
-                                *span_chirho,
-                            ) {
-                                subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                                self.apply_subst_all_chirho(&su_chirho);
-                            }
-
-                            let bound_ty_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
-                            let sp_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
-                            subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&sp_chirho);
-                        }
-                        StmtChirho::LetChirho { binds_chirho, .. } => {
-                            self.infer_local_binds_chirho(binds_chirho, &mut subst_chirho);
-                        }
+                let mut body_bindings_chirho = Vec::new();
+                if parallel_quals_chirho.is_empty() {
+                    let (group_subst_chirho, group_bindings_chirho) =
+                        self.infer_list_comp_qual_group_chirho(quals_chirho, *span_chirho);
+                    subst_chirho = group_subst_chirho.compose_chirho(&subst_chirho);
+                    body_bindings_chirho.extend(group_bindings_chirho);
+                } else {
+                    for group_chirho in parallel_quals_chirho {
+                        let (group_subst_chirho, group_bindings_chirho) =
+                            self.infer_list_comp_qual_group_chirho(group_chirho, *span_chirho);
+                        subst_chirho = group_subst_chirho.compose_chirho(&subst_chirho);
+                        body_bindings_chirho.extend(group_bindings_chirho);
                     }
                 }
 
+                self.env_chirho.push_scope_chirho();
+                for (name_chirho, scheme_chirho) in body_bindings_chirho {
+                    self.env_chirho.bind_chirho(
+                        name_chirho,
+                        subst_chirho.apply_scheme_chirho(&scheme_chirho),
+                    );
+                }
                 let (body_subst_chirho, body_ty_chirho) = self.infer_expr_chirho(body_chirho);
                 subst_chirho = body_subst_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&body_subst_chirho);
@@ -3682,6 +3653,125 @@ impl InferCtxChirho {
             // For remaining expression forms, return a fresh variable
             _ => (SubstChirho::empty_chirho(), self.fresh_var_chirho()),
         }
+    }
+
+    /// Infer one sequential branch of a list comprehension in isolation.
+    ///
+    /// ParallelListComp branches share their outer environment, but a branch
+    /// cannot see names introduced by a sibling. The returned bindings are
+    /// reintroduced together only while inferring the result expression.
+    ///
+    /// workflow: parallel-list-comprehensions-chirho
+    fn infer_list_comp_qual_group_chirho(
+        &mut self,
+        quals_chirho: &[StmtChirho],
+        span_chirho: SpanChirho,
+    ) -> (SubstChirho, Vec<(String, SchemeChirho)>) {
+        let mut subst_chirho = SubstChirho::empty_chirho();
+        let mut bound_names_chirho = Vec::new();
+        let mut seen_names_chirho = HashSet::new();
+        self.env_chirho.push_scope_chirho();
+
+        for qual_chirho in quals_chirho {
+            match qual_chirho {
+                StmtChirho::ExprChirho(expr_chirho) => {
+                    let (guard_subst_chirho, guard_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    subst_chirho = guard_subst_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&guard_subst_chirho);
+                    let guard_ty_sub_chirho = subst_chirho.apply_ty_chirho(&guard_ty_chirho);
+                    if let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                        &guard_ty_sub_chirho,
+                        &TyChirho::bool_chirho(),
+                        span_chirho,
+                    ) {
+                        subst_chirho = unify_subst_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&unify_subst_chirho);
+                    }
+                }
+                StmtChirho::BindChirho {
+                    pat_chirho,
+                    expr_chirho,
+                    ..
+                } => {
+                    let (source_subst_chirho, source_ty_chirho) =
+                        self.infer_expr_chirho(expr_chirho);
+                    subst_chirho = source_subst_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&source_subst_chirho);
+
+                    let elem_ty_chirho = self.fresh_var_chirho();
+                    let list_ty_chirho = TyChirho::ListChirho(Box::new(elem_ty_chirho.clone()));
+                    let source_ty_sub_chirho = subst_chirho.apply_ty_chirho(&source_ty_chirho);
+                    if let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                        &source_ty_sub_chirho,
+                        &list_ty_chirho,
+                        span_chirho,
+                    ) {
+                        subst_chirho = unify_subst_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&unify_subst_chirho);
+                    }
+
+                    let bound_ty_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
+                    let pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
+                    subst_chirho = pat_subst_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&pat_subst_chirho);
+                    for name_chirho in crate::linearity_chirho::pat_bound_names_chirho(pat_chirho) {
+                        if seen_names_chirho.insert(name_chirho.clone()) {
+                            bound_names_chirho.push(name_chirho);
+                        }
+                    }
+                }
+                StmtChirho::LetChirho { binds_chirho, .. } => {
+                    self.infer_local_binds_chirho(binds_chirho, &mut subst_chirho);
+                    for bind_chirho in binds_chirho {
+                        match bind_chirho {
+                            haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                                name_chirho,
+                                ..
+                            } => {
+                                let name_chirho = canonical_value_name_text_chirho(
+                                    name_chirho.text_chirho(),
+                                );
+                                if seen_names_chirho.insert(name_chirho.clone()) {
+                                    bound_names_chirho.push(name_chirho);
+                                }
+                            }
+                            haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                                pat_chirho,
+                                ..
+                            } => {
+                                for name_chirho in
+                                    crate::linearity_chirho::pat_bound_names_chirho(pat_chirho)
+                                {
+                                    if seen_names_chirho.insert(name_chirho.clone()) {
+                                        bound_names_chirho.push(name_chirho);
+                                    }
+                                }
+                            }
+                            haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                                ..
+                            } => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        let bindings_chirho = bound_names_chirho
+            .into_iter()
+            .filter_map(|name_chirho| {
+                self.env_chirho
+                    .lookup_chirho(&name_chirho)
+                    .cloned()
+                    .map(|scheme_chirho| {
+                        (
+                            name_chirho,
+                            subst_chirho.apply_scheme_chirho(&scheme_chirho),
+                        )
+                    })
+            })
+            .collect();
+        self.env_chirho.pop_scope_chirho();
+        (subst_chirho, bindings_chirho)
     }
 
     // -----------------------------------------------------------------------
@@ -6388,10 +6478,14 @@ fn collect_expr_refs_chirho(
         ExprChirho::ListCompChirho {
             body_chirho,
             quals_chirho,
+            parallel_quals_chirho,
             ..
         } => {
             collect_expr_refs_chirho(body_chirho, refs_chirho);
-            for q_chirho in quals_chirho {
+            for q_chirho in quals_chirho
+                .iter()
+                .chain(parallel_quals_chirho.iter().flatten())
+            {
                 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
                 match q_chirho {
                     StmtChirho::ExprChirho(e_chirho) => {

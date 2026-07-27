@@ -19,6 +19,7 @@ use haskelujah_ast_chirho::decl_chirho::{
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -4327,8 +4328,19 @@ impl DesugarCtxChirho {
             ExprChirho::ListCompChirho {
                 body_chirho,
                 quals_chirho,
-                ..
-            } => self.desugar_list_comp_chirho(body_chirho, quals_chirho),
+                parallel_quals_chirho,
+                span_chirho,
+            } => {
+                if parallel_quals_chirho.is_empty() {
+                    self.desugar_list_comp_chirho(body_chirho, quals_chirho)
+                } else {
+                    self.desugar_parallel_list_comp_chirho(
+                        body_chirho,
+                        parallel_quals_chirho,
+                        *span_chirho,
+                    )
+                }
+            }
 
             ExprChirho::RecordConChirho {
                 con_chirho,
@@ -4409,6 +4421,8 @@ impl DesugarCtxChirho {
     /// - Guard: `if guard then [e | rest] else []`
     /// - Let: `let binds in [e | rest]`
     /// - Empty quals: `[e]` (singleton list)
+    ///
+    /// workflow: parallel-list-comprehensions-chirho
     fn desugar_list_comp_chirho(
         &mut self,
         body_chirho: &ExprChirho,
@@ -4663,6 +4677,163 @@ impl DesugarCtxChirho {
                     body_chirho: Box::new(inner_chirho),
                 }
             }
+        }
+    }
+
+    /// Desugar ParallelListComp branches through lockstep `zip` plus `map`.
+    ///
+    /// Each branch first produces the tuple of names it exports. The branch
+    /// streams are zipped to the shortest stream, then a pattern lambda
+    /// restores all branch bindings while evaluating the result expression.
+    /// This reuses ordinary list-comprehension and lambda-pattern lowering.
+    ///
+    /// workflow: parallel-list-comprehensions-chirho
+    fn desugar_parallel_list_comp_chirho(
+        &mut self,
+        body_chirho: &ExprChirho,
+        parallel_quals_chirho: &[Vec<haskelujah_ast_chirho::expr_chirho::StmtChirho>],
+        span_chirho: SpanChirho,
+    ) -> CoreExprChirho {
+        let mut branch_streams_chirho = parallel_quals_chirho.iter().map(|group_chirho| {
+            let bound_names_chirho = Self::list_comp_bound_names_chirho(group_chirho);
+            let (packed_expr_chirho, packed_pat_chirho) =
+                Self::pack_list_comp_names_chirho(&bound_names_chirho, span_chirho);
+            (
+                ExprChirho::ListCompChirho {
+                    body_chirho: Box::new(packed_expr_chirho),
+                    quals_chirho: group_chirho.clone(),
+                    parallel_quals_chirho: vec![],
+                    span_chirho,
+                },
+                packed_pat_chirho,
+            )
+        });
+
+        let Some((mut zipped_expr_chirho, mut zipped_pat_chirho)) = branch_streams_chirho.next()
+        else {
+            return self.desugar_list_comp_chirho(body_chirho, &[]);
+        };
+
+        for (branch_expr_chirho, branch_pat_chirho) in branch_streams_chirho {
+            let zip_name_chirho =
+                NameChirho::RawChirho(RawNameChirho::unqualified_chirho("zip", span_chirho));
+            zipped_expr_chirho = ExprChirho::AppChirho {
+                fun_chirho: Box::new(ExprChirho::AppChirho {
+                    fun_chirho: Box::new(ExprChirho::VarChirho(zip_name_chirho)),
+                    arg_chirho: Box::new(zipped_expr_chirho),
+                    span_chirho,
+                }),
+                arg_chirho: Box::new(branch_expr_chirho),
+                span_chirho,
+            };
+            zipped_pat_chirho = PatChirho::TupleChirho {
+                elements_chirho: vec![zipped_pat_chirho, branch_pat_chirho],
+                span_chirho,
+            };
+        }
+
+        let mapper_chirho = ExprChirho::LamChirho {
+            pats_chirho: vec![zipped_pat_chirho],
+            body_chirho: Box::new(body_chirho.clone()),
+            span_chirho,
+        };
+        let map_name_chirho =
+            NameChirho::RawChirho(RawNameChirho::unqualified_chirho("map", span_chirho));
+        let mapped_chirho = ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::AppChirho {
+                fun_chirho: Box::new(ExprChirho::VarChirho(map_name_chirho)),
+                arg_chirho: Box::new(mapper_chirho),
+                span_chirho,
+            }),
+            arg_chirho: Box::new(zipped_expr_chirho),
+            span_chirho,
+        };
+        self.desugar_expr_chirho(&mapped_chirho)
+    }
+
+    fn list_comp_bound_names_chirho(
+        quals_chirho: &[haskelujah_ast_chirho::expr_chirho::StmtChirho],
+    ) -> Vec<String> {
+        use haskelujah_ast_chirho::expr_chirho::StmtChirho;
+
+        let mut names_chirho = Vec::new();
+        let mut seen_chirho = HashSet::new();
+        for qual_chirho in quals_chirho {
+            match qual_chirho {
+                StmtChirho::BindChirho { pat_chirho, .. } => {
+                    for name_chirho in
+                        haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(
+                            pat_chirho,
+                        )
+                    {
+                        if seen_chirho.insert(name_chirho.clone()) {
+                            names_chirho.push(name_chirho);
+                        }
+                    }
+                }
+                StmtChirho::LetChirho { binds_chirho, .. } => {
+                    for bind_chirho in binds_chirho {
+                        match bind_chirho {
+                            LocalBindChirho::FunBindChirho { name_chirho, .. } => {
+                                let name_chirho = name_chirho.text_chirho().to_string();
+                                if seen_chirho.insert(name_chirho.clone()) {
+                                    names_chirho.push(name_chirho);
+                                }
+                            }
+                            LocalBindChirho::PatBindChirho { pat_chirho, .. } => {
+                                for name_chirho in haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(
+                                    pat_chirho,
+                                ) {
+                                    if seen_chirho.insert(name_chirho.clone()) {
+                                        names_chirho.push(name_chirho);
+                                    }
+                                }
+                            }
+                            LocalBindChirho::TypeSigChirho { .. } => {}
+                        }
+                    }
+                }
+                StmtChirho::ExprChirho(_) => {}
+            }
+        }
+        names_chirho
+    }
+
+    fn pack_list_comp_names_chirho(
+        names_chirho: &[String],
+        span_chirho: SpanChirho,
+    ) -> (ExprChirho, PatChirho) {
+        let exprs_chirho: Vec<_> = names_chirho
+            .iter()
+            .map(|name_chirho| {
+                ExprChirho::VarChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                    name_chirho,
+                    span_chirho,
+                )))
+            })
+            .collect();
+        let pats_chirho: Vec<_> = names_chirho
+            .iter()
+            .map(|name_chirho| {
+                PatChirho::VarChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                    name_chirho,
+                    span_chirho,
+                )))
+            })
+            .collect();
+
+        match (exprs_chirho.as_slice(), pats_chirho.as_slice()) {
+            ([expr_chirho], [pat_chirho]) => (expr_chirho.clone(), pat_chirho.clone()),
+            _ => (
+                ExprChirho::TupleChirho {
+                    elements_chirho: exprs_chirho,
+                    span_chirho,
+                },
+                PatChirho::TupleChirho {
+                    elements_chirho: pats_chirho,
+                    span_chirho,
+                },
+            ),
         }
     }
 
@@ -6058,6 +6229,7 @@ mod tests_chirho {
                 expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("xs")),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
+            parallel_quals_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
@@ -6091,6 +6263,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }),
             ],
+            parallel_quals_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);

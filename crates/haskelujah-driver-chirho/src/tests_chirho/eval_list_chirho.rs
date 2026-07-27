@@ -634,6 +634,49 @@ fn eval_list_comp_cartesian_chirho() {
     }
 }
 
+#[test]
+fn eval_parallel_list_comp_zips_to_shortest_branch_chirho() {
+    use crate::eval_source_chirho;
+
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "{-# LANGUAGE ParallelListComp #-}\n\
+module TestChirho where\n\
+main = sum [xChirho + yChirho | xChirho <- [1,2] | yChirho <- [10,20,30]]\n";
+    let result_chirho =
+        eval_source_chirho(source_chirho, &mut source_map_chirho, "TestChirho.hs", None)
+            .expect("parallel list comprehension should evaluate");
+
+    assert_eq!(
+        result_chirho,
+        haskelujah_runtime_chirho::ValueChirho::IntChirho(33),
+        "parallel branches must zip lockstep and stop at the shortest input"
+    );
+}
+
+#[test]
+fn frontend_parallel_list_comp_exports_branch_local_bindings_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let source_chirho = "{-# LANGUAGE MonadComprehensions, ParallelListComp #-}\n\
+module TestChirho where\n\
+fooChirho xsChirho ysChirho =\n\
+  [ (fChirho yChirho True, fChirho xChirho 'c')\n\
+  | let fChirho _ zChirho = zChirho, xChirho <- xsChirho\n\
+  | yChirho <- ysChirho ]\n";
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        &mut source_map_chirho,
+        "TestChirho.hs",
+        source_chirho,
+    );
+    let result_chirho =
+        check_source_file_chirho(source_file_chirho, ExecutionModeChirho::BatchChirho);
+
+    assert!(
+        result_chirho.is_ok(),
+        "the result body must typecheck with bindings from every isolated branch: {:?}",
+        result_chirho.err()
+    );
+}
+
 // ── Higher-order function composition ─────────────────────────
 
 // ── Complex list processing ─────────────────────────────────────

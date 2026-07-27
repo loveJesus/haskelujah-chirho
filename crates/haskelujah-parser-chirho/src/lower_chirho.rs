@@ -6723,7 +6723,8 @@ impl LowerCtxChirho {
                         // Collect qualifier parts: each group separated by commas
                         // is either a generator (contains LeftArrowChirho) or a guard.
                         let mut current_qual_parts_chirho: Vec<QualPartChirho> = Vec::new();
-                        let mut quals_chirho: Vec<StmtChirho> = Vec::new();
+                        let mut current_qual_group_chirho: Vec<StmtChirho> = Vec::new();
+                        let mut qual_groups_chirho: Vec<Vec<StmtChirho>> = Vec::new();
 
                         for child_chirho in &children_chirho {
                             match child_chirho.element_chirho {
@@ -6734,6 +6735,22 @@ impl LowerCtxChirho {
                                     past_pipe_chirho = true;
                                 }
                                 GreenElementChirho::TokenChirho(tok_chirho)
+                                    if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho
+                                        && past_pipe_chirho =>
+                                {
+                                    if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                        &current_qual_parts_chirho,
+                                        span_chirho,
+                                    ) {
+                                        current_qual_group_chirho.push(qual_chirho);
+                                    }
+                                    current_qual_parts_chirho.clear();
+                                    if !current_qual_group_chirho.is_empty() {
+                                        qual_groups_chirho
+                                            .push(std::mem::take(&mut current_qual_group_chirho));
+                                    }
+                                }
+                                GreenElementChirho::TokenChirho(tok_chirho)
                                     if tok_chirho.kind_chirho() == TokenKindChirho::CommaChirho
                                         && past_pipe_chirho =>
                                 {
@@ -6742,7 +6759,7 @@ impl LowerCtxChirho {
                                         &current_qual_parts_chirho,
                                         span_chirho,
                                     ) {
-                                        quals_chirho.push(qual_chirho);
+                                        current_qual_group_chirho.push(qual_chirho);
                                     }
                                     current_qual_parts_chirho.clear();
                                 }
@@ -6783,10 +6800,10 @@ impl LowerCtxChirho {
                                             &current_qual_parts_chirho,
                                             span_chirho,
                                         ) {
-                                            quals_chirho.push(qual_chirho);
+                                            current_qual_group_chirho.push(qual_chirho);
                                         }
                                         current_qual_parts_chirho.clear();
-                                        quals_chirho.push(StmtChirho::LetChirho {
+                                        current_qual_group_chirho.push(StmtChirho::LetChirho {
                                             binds_chirho: self.lower_let_stmt_binds_chirho(
                                                 n_chirho,
                                                 child_chirho.start_chirho,
@@ -6819,16 +6836,26 @@ impl LowerCtxChirho {
                             if let Some(qual_chirho) = self
                                 .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
                             {
-                                quals_chirho.push(qual_chirho);
+                                current_qual_group_chirho.push(qual_chirho);
                             }
+                        }
+                        if !current_qual_group_chirho.is_empty() {
+                            qual_groups_chirho.push(current_qual_group_chirho);
                         }
 
                         let body_chirho =
                             body_expr_chirho.unwrap_or_else(|| self.placeholder_expr_chirho());
+                        let (quals_chirho, parallel_quals_chirho) = if qual_groups_chirho.len() > 1
+                        {
+                            (Vec::new(), qual_groups_chirho)
+                        } else {
+                            (qual_groups_chirho.pop().unwrap_or_default(), Vec::new())
+                        };
 
                         ExprChirho::ListCompChirho {
                             body_chirho: Box::new(body_chirho),
                             quals_chirho,
+                            parallel_quals_chirho,
                             span_chirho,
                         }
                     } else {
@@ -10552,6 +10579,7 @@ mod tests_chirho {
             ExprChirho::ListCompChirho {
                 body_chirho,
                 quals_chirho,
+                parallel_quals_chirho,
                 ..
             } => {
                 collect_placeholder_expr_paths_in_expr_chirho(
@@ -10584,6 +10612,43 @@ mod tests_chirho {
                                     ),
                                     paths_chirho,
                                 );
+                            }
+                        }
+                    }
+                }
+                for (group_idx_chirho, group_chirho) in parallel_quals_chirho.iter().enumerate() {
+                    for (qual_idx_chirho, qual_chirho) in group_chirho.iter().enumerate() {
+                        match qual_chirho {
+                            StmtChirho::ExprChirho(qual_expr_chirho) => {
+                                collect_placeholder_expr_paths_in_expr_chirho(
+                                    qual_expr_chirho,
+                                    &format!(
+                                        "{path_prefix_chirho}.parallel[{group_idx_chirho}][{qual_idx_chirho}].expr"
+                                    ),
+                                    paths_chirho,
+                                );
+                            }
+                            StmtChirho::BindChirho { expr_chirho, .. } => {
+                                collect_placeholder_expr_paths_in_expr_chirho(
+                                    expr_chirho,
+                                    &format!(
+                                        "{path_prefix_chirho}.parallel[{group_idx_chirho}][{qual_idx_chirho}].bind"
+                                    ),
+                                    paths_chirho,
+                                );
+                            }
+                            StmtChirho::LetChirho { binds_chirho, .. } => {
+                                for (bind_idx_chirho, bind_chirho) in
+                                    binds_chirho.iter().enumerate()
+                                {
+                                    collect_placeholder_expr_paths_in_local_bind_chirho(
+                                        bind_chirho,
+                                        &format!(
+                                            "{path_prefix_chirho}.parallel[{group_idx_chirho}][{qual_idx_chirho}].let[{bind_idx_chirho}]"
+                                        ),
+                                        paths_chirho,
+                                    );
+                                }
                             }
                         }
                     }
@@ -11852,6 +11917,65 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
             ),
             "expected aliased constructor pattern, got {:?}",
             pattern_chirho
+        );
+    }
+
+    #[test]
+    fn lower_parallel_list_comp_preserves_qualifier_groups_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE MonadComprehensions, ParallelListComp #-}\n\
+             module M where\n\
+             fooChirho xsChirho ysChirho =\n\
+               [ (fChirho yChirho True, fChirho xChirho 'c')\n\
+               | let fChirho _ zChirho = zChirho, xChirho <- xsChirho\n\
+               | yChirho <- ysChirho ]\n",
+        );
+        let fun_decl_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find(|decl_chirho| {
+                matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { name_chirho, .. }
+                        if name_chirho.text_chirho() == "fooChirho"
+                )
+            })
+            .expect("expected fooChirho fun bind");
+        let DeclChirho::FunBindChirho { matches_chirho, .. } = fun_decl_chirho else {
+            panic!("expected function binding");
+        };
+        let RhsChirho::UnguardedChirho(rhs_expr_chirho) = &matches_chirho[0].rhs_chirho else {
+            panic!("expected unguarded rhs");
+        };
+        let ExprChirho::ListCompChirho {
+            quals_chirho,
+            parallel_quals_chirho,
+            ..
+        } = rhs_expr_chirho
+        else {
+            panic!("expected parallel list comprehension");
+        };
+
+        assert!(
+            quals_chirho.is_empty(),
+            "expected parallel groups, got sequential={quals_chirho:?}, parallel={parallel_quals_chirho:?}"
+        );
+        assert_eq!(parallel_quals_chirho.len(), 2);
+        assert!(
+            matches!(
+                parallel_quals_chirho[0].as_slice(),
+                [StmtChirho::LetChirho { .. }, StmtChirho::BindChirho { .. }]
+            ),
+            "unexpected first qualifier group: {:?}",
+            parallel_quals_chirho[0]
+        );
+        assert!(
+            matches!(
+                parallel_quals_chirho[1].as_slice(),
+                [StmtChirho::BindChirho { .. }]
+            ),
+            "unexpected second qualifier group: {:?}",
+            parallel_quals_chirho[1]
         );
     }
 

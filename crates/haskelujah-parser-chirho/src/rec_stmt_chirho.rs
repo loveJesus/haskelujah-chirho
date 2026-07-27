@@ -342,11 +342,17 @@ fn collect_expr_references_chirho(expr_chirho: &ExprChirho, names_chirho: &mut V
         ExprChirho::ListCompChirho {
             body_chirho,
             quals_chirho,
+            parallel_quals_chirho,
             ..
         } => {
             collect_expr_references_chirho(body_chirho, names_chirho);
             for qual_chirho in quals_chirho {
                 collect_stmt_references_chirho(qual_chirho, names_chirho);
+            }
+            for group_chirho in parallel_quals_chirho {
+                for qual_chirho in group_chirho {
+                    collect_stmt_references_chirho(qual_chirho, names_chirho);
+                }
             }
         }
         ExprChirho::LeftSectionChirho {
