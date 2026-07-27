@@ -148,6 +148,26 @@ Suggested next probe: dump the predicate list at the *end of constraint generati
 any resolution, and diff a passing run against a failing one. The first differing predicate
 is the bug.
 
+### Gate status for the eight sorts (completed after db4239e8 was committed)
+
+`db4239e8` was committed while the broad driver run was still going, and that run was later
+killed by the harness before reporting. The gate was therefore completed with targeted
+suites instead, all green:
+
+| gate | result |
+|---|---|
+| `haskelujah-typing --lib` | **255 passed / 0 failed / 0 warnings** |
+| driver `eval_` (evaluation semantics) | **1002 passed / 0 failed** (199s) |
+| driver `extensions_chirho` | **207 passed / 0 failed** (12s) |
+| `should_compile` corpus, 938 files | **850 / 88**, failing set byte-identical to the committed artifact |
+
+The `eval_` suite is the one that matters most for these changes: sorting alters the order
+declarations are inferred and variables are defaulted, so if it changed program *meaning*
+that is where it would show. It did not.
+
+The broad `--skip proptest_chirho --skip project_chirho` run reached 1651 passed / 0 failed
+before being killed; it was never observed failing.
+
 ### Ruled out by inspection (do not re-search these)
 
 - `free_vars_chirho` already returns a **sorted** `Vec`.
