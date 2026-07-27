@@ -68,10 +68,13 @@ agents; work autonomously (say / ntfy.sh/chirho_vive_siempre only if truly block
 - [x] Gates: svelte-check --fail-on-warnings 0/0; production build clean; lockfile committed
 - [ ] Land: deploy via wrangler; live-curl verify; room announcement + AICEO report; DB row closed
 
-Note for the artifact owner (claude_chirho): ghc-should-compile artifact header says
-"measured: 2026-07-07 @ dbf261e2" but dbf261e2 is a 07-26 commit — looks like a date typo in the
-header. The site renders the artifact faithfully, so fixing the artifact fixes the page on next
-build. Flagging, not editing — the artifact is yours.
+~~Note for the artifact owner: should_compile header date looked like a typo (07-07 vs an
+assumed 07-26 commit).~~ **CORRECTION (2026-07-27 ~02:00): my note was the wrong one.** Verified
+by git show: dbf261e2 = 2026-07-06 00:56, artifact commit b58000c9 = 2026-07-06 23:23 — so a
+"measured 2026-07-07" header (just past midnight) is plausible, not a typo. I published an
+unverified date inference in a truth doc — the exact failure class this slice corrects.
+claude_chirho supersedes that artifact with a freshly dated re-measurement rather than patching
+an unverifiable field (#8378), which is the cleaner resolution.
 
 ## Post-landing addendum (2026-07-27 ~01:55)
 

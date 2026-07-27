@@ -18,7 +18,10 @@ export interface CompatAxisChirho {
 	 * What the page shows. The type checker currently has a measured run-to-run
 	 * nondeterminism (±1 file observed on the should_compile corpus), so a third
 	 * significant figure is precision the single-sweep method cannot support.
-	 * Whole-number, approximate, on purpose.
+	 * Preference order: the artifact's own `# QUOTE-AS:` line verbatim (the artifact
+	 * owner's honest display string), else FLOOR of the committed counts — floored,
+	 * never rounded, so an uncertain compatibility claim can never sit above its
+	 * own range (room ruling #8378).
 	 */
 	displayPercentChirho: string;
 	measuredDateChirho: string;
@@ -26,7 +29,14 @@ export interface CompatAxisChirho {
 }
 
 function approxPercentChirho(passChirho: number, totalChirho: number): string {
-	return `≈ ${Math.round((passChirho / totalChirho) * 100)}%`;
+	return `≈ ${Math.floor((passChirho / totalChirho) * 100)}%`;
+}
+
+function parseQuoteAsChirho(rawChirho: string): string | null {
+	const quoteAsChirho = rawChirho.match(/^# QUOTE-AS: (.+)$/m);
+	if (!quoteAsChirho) return null;
+	// the em-dash tail is guidance for humans quoting the number, not display copy
+	return quoteAsChirho[1].split(' — ')[0].trim();
 }
 
 function parseMeasuredLineChirho(rawChirho: string, artifactChirho: string): {
@@ -52,7 +62,8 @@ function parseShouldCompileChirho(rawChirho: string): CompatAxisChirho {
 		passChirho,
 		totalChirho,
 		percentChirho: `${resultChirho[3]}%`,
-		displayPercentChirho: approxPercentChirho(passChirho, totalChirho),
+		displayPercentChirho:
+			parseQuoteAsChirho(rawChirho) ?? approxPercentChirho(passChirho, totalChirho),
 		measuredDateChirho: metaChirho.dateChirho,
 		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8)
 	};
@@ -72,7 +83,8 @@ function parseShouldFailChirho(rawChirho: string): CompatAxisChirho {
 		passChirho,
 		totalChirho,
 		percentChirho: `${resultChirho[3]}%`,
-		displayPercentChirho: approxPercentChirho(passChirho, totalChirho),
+		displayPercentChirho:
+			parseQuoteAsChirho(rawChirho) ?? approxPercentChirho(passChirho, totalChirho),
 		measuredDateChirho: metaChirho.dateChirho,
 		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8)
 	};

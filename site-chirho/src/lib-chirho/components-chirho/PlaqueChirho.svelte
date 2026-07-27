@@ -94,9 +94,14 @@
 		<p class="method-note-chirho">
 			Method: each axis is a single timed sweep of the corpus, 15-second per-file timeout,
 			counts as committed in the artifacts above. A run-to-run variance of ±1 file has been
-			observed — the type checker has a known nondeterminism under investigation — so
-			percentages are rounded to the whole, deliberately. When a sweep is re-run and its
-			artifact updated, this page updates with it.
+			observed — the type checker has a
+			<a
+				class="method-link-chirho"
+				href={artifactUrlChirho('spec-chirho/bug-nondeterministic-typecheck-chirho.md')}
+				target="_blank"
+				rel="noopener noreferrer">known nondeterminism under investigation</a
+			> — so percentages are floored to the whole, deliberately, never above their own range.
+			When a sweep is re-run and its artifact updated, this page updates with it.
 		</p>
 
 		<div class="stats-strip-chirho">
@@ -261,6 +266,17 @@
 		font-style: italic;
 		line-height: 1.65;
 		color: var(--ink-faint-chirho);
+	}
+
+	.method-link-chirho {
+		color: var(--ink-soft-chirho);
+		border-bottom: 1px dotted var(--ink-faint-chirho);
+		transition: color 0.2s ease, border-color 0.2s ease;
+	}
+
+	.method-link-chirho:hover {
+		color: var(--lapis-chirho);
+		border-color: var(--lapis-chirho);
 	}
 
 	.stats-strip-chirho {
