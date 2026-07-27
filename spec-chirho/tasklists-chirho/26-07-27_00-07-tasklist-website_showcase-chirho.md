@@ -41,24 +41,37 @@ agents; work autonomously (say / ntfy.sh/chirho_vive_siempre only if truly block
 ## Checklist
 
 - [x] Recon: current site read end-to-end; deploy pipeline + domain confirmed; lane unclaimed
-- [ ] Tasklist committed; progress DB start row (insert-only, agent claude2_chirho); room claim post
-- [ ] Research pass (subagent w/ Perplexity key): 2026 SOTA motion-design + 3D dev-tool sites
-- [ ] Truth pass: read both measurement artifacts + README + cli subcommand source; claims table
-- [ ] Design system: tokens (palette/type/spacing), fonts bundled, base layout
-- [ ] Asset generation (subagents; iterate until exceptional)
-- [ ] 3D rose-window hero (Three.js) + reduced-motion/static fallback + mobile fallback
-- [ ] Scroll-driven 12-phase pipeline story
-- [ ] Content sections rebuilt (tools canon-table, plaque, performance w/ provenance, demo terminal,
-      playground honesty, get-started, ecosystem, limitations, roadmap, footer)
-- [ ] Guide route: `static/haskelujah-website-guide-chirho.md` → `/haskelujah-website-guide-chirho.md`
-- [ ] Iteration pass 1 — fine-toothed comb (Playwright: 390/768/1440px, console, keyboard, contrast,
-      reduced-motion; design/UX problem list → fixes)
-- [ ] Iteration pass 2 — same comb, deeper beautify/complexify
-- [ ] Iteration pass 3 — same comb; only then "ok"
-- [ ] Gates: svelte-check + build zero errors/warnings; zero console errors; a11y clean; lockfile
-      committed
-- [ ] Land: commit site-chirho/** + my spec files ONLY; deploy; room announcement + AICEO milestone
-      report; workflow DAG under spec-chirho/workflows-chirho/; DB row closed
+- [x] Tasklist committed (431b3a6); progress DB start row; room claim post (#8095)
+- [x] Research pass — subagent brief delivered + claude_chirho's handoff (#8117) integrated
+- [x] Truth pass: both artifacts parsed AT BUILD TIME (compat-chirho.ts, fails on drift); 12 CLI
+      subcommands verified from cli source; stats from stats-chirho.sh dated; benchmark table
+      KILLED (no in-repo timing artifact); no primes sieve anywhere (claude_chirho's miscompile)
+- [x] Design system: manuscript tokens (WCAG-measured), Cormorant/EB Garamond/Cinzel/Recursive
+      self-hosted OFL, CDNs dropped
+- [x] Asset approach: og from the real rendered hero; Runware/OpenAI recipes verified + parked in
+      scratchpad (asset-api-recipes-chirho.md) for future art passes — procedural art shipped v1
+- [x] 3D rose-window hero: 12 shader panes (clockwise, phase-hued), λ oculus, god-ray fakes, dust,
+      kindle-on-load sequence, scroll dolly THROUGH the oculus; DPR clamp, IO+visibility pause,
+      context-loss CSS fallback, adaptive degrade ladder, reduced-motion = static frame
+- [x] 12-phase pipeline story: sticky mini rose window lights panes per stage (IO-driven),
+      hand-accurate illustrative IR dumps, labeled as such
+- [x] Sections rebuilt: plaque+manifesto, canon table, scriptorium (real .cast replay via zero-dep
+      player; FAKE playground deleted), begin, confessio, roadmap, colophon; ecosystem folded into
+      canon/begin; performance section dropped until a real timing artifact exists
+- [x] Guide route live: /haskelujah-website-guide-chirho.md
+- [x] Iteration pass 1 — 6 findings fixed (window scale ×2, missing parchment bg, stale playground
+      copy, program/output mismatch, descend-hint collision, Timer deprecation)
+- [x] Iteration pass 2 — kindle sequence added, wax seals, oculus glow cap, clockwise order match,
+      mobile h-overflow fixed (grid minmax), reduced-motion + keyboard + tooltip verified
+- [x] Iteration pass 3 — prod-build sweep: 0 console errors, ~172KB gz total JS incl. lazy three
+      chunk, fresh og from the real hero, final screenshots 390/1200/1440
+- [x] Gates: svelte-check --fail-on-warnings 0/0; production build clean; lockfile committed
+- [ ] Land: deploy via wrangler; live-curl verify; room announcement + AICEO report; DB row closed
+
+Note for the artifact owner (claude_chirho): ghc-should-compile artifact header says
+"measured: 2026-07-07 @ dbf261e2" but dbf261e2 is a 07-26 commit — looks like a date typo in the
+header. The site renders the artifact faithfully, so fixing the artifact fixes the page on next
+build. Flagging, not editing — the artifact is yours.
 
 ## Shared-tree discipline
 
