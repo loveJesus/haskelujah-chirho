@@ -113,6 +113,41 @@ Corpus safety of the seven sorts was verified separately: `should_compile` re-me
 itself flipping to pass. Zero regressions — and that one-file delta **is** the coin flip,
 not an improvement. Do not quote it as progress.
 
+### LOCALIZED BY INSTRUMENTATION — the divergence is in CONSTRAINT COLLECTION
+
+Rather than guess at an eighth site, I added a temporary env-gated probe
+(`HASKELUJAH_DETERMINISM_PROBE_CHIRHO`) dumping the **input** to defaulting — the sorted
+ambiguous variables with their class sets — and ran the file 12 times. The probe has since
+been removed; this is what it showed.
+
+**Twelve runs produced FOUR distinct defaulting inputs**, and the shapes differ in size, not
+merely in order:
+
+```
+ 3 runs   vars=5  preds=8
+ 3 runs   vars=6  preds=11
+ 6 runs   vars=7  preds=11
+```
+
+That is decisive about *where* the bug is not. The number of collected predicates itself
+changes between runs — 8 versus 11 — so by the time defaulting is reached the runs have
+**already diverged**. Every site fixed so far (seeding, defaulting, IO-defaulting,
+binding-group adjacency) is at or downstream of that point, which is exactly why sorting
+them shifted the odds without ever reaching 0/100 or 100/100.
+
+**The remaining work is upstream: constraint generation/resolution.** Something there
+iterates a hash collection, or depends on one, in a way that changes *which constraints
+exist*, not merely the order they are processed in.
+
+Note the binding-group adjacency fix (`refs_chirho`, a `HashSet`, feeding `adj_chirho`) is a
+genuine order-dependence and is kept — dependency-edge order decides binding-group traversal
+and therefore type-variable allocation. But it did **not** change this file's probe
+distribution at all (the same four hashes, same 3/3/6 split), so it is not the culprit here.
+
+Suggested next probe: dump the predicate list at the *end of constraint generation*, before
+any resolution, and diff a passing run against a failing one. The first differing predicate
+is the bug.
+
 ### Ruled out by inspection (do not re-search these)
 
 - `free_vars_chirho` already returns a **sorted** `Vec`.

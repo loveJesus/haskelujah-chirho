@@ -6524,7 +6524,16 @@ fn binding_groups_chirho(
                 collect_local_bind_refs_chirho(wb_chirho, &mut refs_chirho);
             }
         }
-        for ref_name_chirho in &refs_chirho {
+        // DETERMINISM: `refs_chirho` is a HashSet, so iterating it put the dependency
+        // edges into `adj_chirho` in per-process hash order. That order decides the
+        // binding-group traversal, which decides the order declarations are inferred,
+        // which decides type-variable ALLOCATION — so a hash seed reached the inferred
+        // types themselves. This is upstream of the defaulting loops and is why sorting
+        // those alone did not make compilation reproducible.
+        // See spec-chirho/bug-nondeterministic-typecheck-chirho.md
+        let mut sorted_refs_chirho: Vec<_> = refs_chirho.iter().collect();
+        sorted_refs_chirho.sort_unstable();
+        for ref_name_chirho in sorted_refs_chirho {
             if name_set_chirho.contains(ref_name_chirho.as_str())
                 && ref_name_chirho != &fun_names_chirho[i_chirho]
             {
