@@ -193,6 +193,30 @@ proves awkward.
 3. **Backend** — no change needed. Once a concrete `show` is applied, `print`'s
    Int-rendering fallback is never reached for these programs.
 
+### VALUE CASE, MEASURED — 7 of 8 enumerated Show types are broken through `print`
+
+Every type below already has an entry in the instance enumeration, so all of them are
+repaired by threading `print`'s evidence. Measured with `print (id (…))` so the value is
+hidden from the syntactic fast path, native binary vs interpreter:
+
+| type | native | interpreter | |
+|---|---|---|---|
+| `Int` | `42` | `42` | ok — the coincidence |
+| `Bool` | **`1`** | `True` | BROKEN |
+| `Char` | **`120`** | `'x'` | BROKEN — that is the ASCII code |
+| `Double` | **`460943421861370265`** | `1.5` | BROKEN — raw bits |
+| `String` / `[Char]` | **`4299977852`** | `"hi"` | BROKEN — pointer |
+| `[Int]` | **`4347617521`** | `[1,2,3]` | BROKEN — pointer |
+| `Maybe Int` | **`4337604625`** | `Just 3` | BROKEN — pointer |
+| `Maybe String` | **`4312209457`** | `Just "hi"` | BROKEN — pointer |
+
+`Char` printing as `120` is the clearest single illustration of the mechanism: `show_int`
+applied to a character.
+
+This doubles as the **test matrix**. A landed fix should turn every row above green, and the
+`Int` row must stay green — it is the one case the current fallback gets right, so it is
+also the one a careless fix could break.
+
 **Scope honesty.** This fixes every type *present in the enumeration* — `Bool`, `Double`,
 `Char`, `[Int]`, `[Char]`, the `Maybe` entries, and derived-`Show` constructors once their
 key resolves. It does **not** give us `Show [a]` from `Show a` in general; a list of a type
