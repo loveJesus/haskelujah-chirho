@@ -185,10 +185,11 @@ export const limitationsChirho: LimitationChirho[] = [
 		fixedChirho: true
 	},
 	{
-		titleChirho: 'Compiled output is not yet trustworthy for structured values',
+		titleChirho: 'Compiled output prints true values — fixed 2026-07-27',
 		bodyChirho:
-			'When compiled to native code, printing a value that is not syntactically obvious at the call site can emit an internal representation instead of the value: a heap address, a raw constructor tag, or an internal name such as $tuple2. Partially fixed: type-annotated expressions now resolve their Show instance correctly. But print itself still threads no Show evidence and top-level bindings still fall back, so compiled output remains untrustworthy for structured values. The interpreter is unaffected — use haskelujah run for anything whose output you depend on.',
-		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md'
+			'This ledger previously confessed that native code printing a value not syntactically obvious at the call site could emit an internal representation — a heap address, a raw constructor tag, an internal name. Root: native print guessed runtime tags instead of consuming the Show evidence the type checker had already solved. It now threads that evidence, and the interpreter, LLVM, and Cranelift agree on booleans, characters, doubles, strings, lists, Maybe, tuples, Either, and derived constructors — with the landing gate itself catching a missing STG showChar# mapping before it shipped.',
+		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md',
+		fixedChirho: true
 	},
 	{
 		titleChirho: 'Rank-N inference gaps',
