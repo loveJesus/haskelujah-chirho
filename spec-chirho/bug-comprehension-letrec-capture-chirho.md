@@ -109,6 +109,11 @@ number that a `case`-on-`Bool` could misread as `True`. But annotating the guard
 (`((x \`mod\` p) :: Int) /= 0`) does **not** fix the sieve, so that path is not confirmed.
 Recorded as weakened rather than quietly dropped.
 
+Also falsified 2026-07-27: the comprehension's *position* is irrelevant. Hoisting it out of
+the recursive call changes nothing — inline, `let`-bound, and `where`-bound all yield the
+same wrong `[2,3,4,5,6,7]`. So it is not about the comprehension being an argument to the
+recursive call.
+
 **Where a fresh investigator should start:** the value is right and the `case` is wrong, so
 compare the *runtime* dispatch of the working `filter` form against the broken comprehension
 form — instrument the tag actually read at the `case` in each. Do not re-derive the value
