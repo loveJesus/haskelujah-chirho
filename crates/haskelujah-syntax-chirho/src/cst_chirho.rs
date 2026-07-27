@@ -116,6 +116,8 @@ pub enum SyntaxKindChirho {
     DoExprChirho,
     /// A single statement in a do block.
     DoStmtChirho,
+    /// A recursive statement group (`rec { stmts }`) enabled by RecursiveDo.
+    RecStmtChirho,
     /// Bind statement in do (`pat <- expr`).
     BindStmtChirho,
     /// Let statement in do (`let binds`).

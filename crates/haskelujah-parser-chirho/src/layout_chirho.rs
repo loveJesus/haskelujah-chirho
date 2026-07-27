@@ -659,12 +659,14 @@ pub fn apply_layout_chirho(
 mod tests_chirho {
     use super::*;
     use crate::lexer_chirho::LexerChirho;
+    use crate::pragma_chirho::classify_contextual_keywords_chirho;
 
     /// Helper: lex + apply layout, return non-trivia token kinds.
     fn layout_kinds_chirho(source_chirho: &str) -> Vec<RawTokenKindChirho> {
         let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
         let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
-        let raw_chirho = lexer_chirho.lex_all_chirho();
+        let mut raw_chirho = lexer_chirho.lex_all_chirho();
+        classify_contextual_keywords_chirho(source_chirho, &mut raw_chirho);
         let laid_out_chirho = apply_layout_chirho(source_chirho, raw_chirho, file_id_chirho);
         laid_out_chirho
             .iter()
@@ -676,7 +678,8 @@ mod tests_chirho {
     fn layout_tokens_chirho(source_chirho: &str) -> Vec<(RawTokenKindChirho, String)> {
         let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
         let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
-        let raw_chirho = lexer_chirho.lex_all_chirho();
+        let mut raw_chirho = lexer_chirho.lex_all_chirho();
+        classify_contextual_keywords_chirho(source_chirho, &mut raw_chirho);
         let laid_out_chirho = apply_layout_chirho(source_chirho, raw_chirho, file_id_chirho);
         laid_out_chirho
             .iter()
@@ -861,6 +864,33 @@ updateMiniChirho stateMiniChirho =
         assert_eq!(
             semicolons_after_do_chirho, 1,
             "expected 1 semicolon in do block"
+        );
+    }
+
+    #[test]
+    fn recursive_do_group_opens_layout_chirho() {
+        let source_chirho = concat!(
+            "{-# LANGUAGE RecursiveDo #-}\n",
+            "module M where\n",
+            "main = do\n",
+            "  rec\n",
+            "    x <- pure y\n",
+            "    y <- pure 1\n",
+            "  print x\n",
+        );
+        let kinds_chirho = layout_kinds_chirho(source_chirho);
+        let rec_idx_chirho = kinds_chirho
+            .iter()
+            .position(|kind_chirho| *kind_chirho == RawTokenKindChirho::RecChirho)
+            .expect("RecursiveDo should classify rec as a layout keyword");
+        assert_eq!(
+            kinds_chirho[rec_idx_chirho + 1],
+            RawTokenKindChirho::VirtualLeftBraceChirho
+        );
+        assert!(
+            kinds_chirho[rec_idx_chirho + 1..]
+                .contains(&RawTokenKindChirho::VirtualSemicolonChirho),
+            "the rec group should separate its statements"
         );
     }
 

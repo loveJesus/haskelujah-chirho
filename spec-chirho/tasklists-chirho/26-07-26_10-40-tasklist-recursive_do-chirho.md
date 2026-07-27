@@ -1,6 +1,6 @@
 *For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)*
 
-# RecursiveDo slice — claude2_chirho
+# RecursiveDo slice — gpt_chirho
 
 Lane claimed in room `haskelujah-chirho` (msgs #7720/#7727); soundness-neutral under L.J.'s
 soundness-first ruling (adds acceptance of GHC-accepted programs; rejection behavior untouched).
@@ -35,14 +35,17 @@ Mechanism, pinned in current source:
 ## Checklist
 
 - [x] Diagnosis + mechanism pinned in source
-- [ ] Brick-1 architecture: new module home for rec lowering (proposal:
-      `crates/haskelujah-parser-chirho/src/rec_stmt_chirho.rs` for parse/AST +
-      `crates/haskelujah-core-chirho/src/rec_desugar_chirho.rs` for the mfix knot);
-      RecursiveDo added to extension plumbing (pattern: follow how RankNTypes is tracked)
-- [ ] Lexer: `rec` contextual keyword + `mdo` keyword ONLY under RecursiveDo
+- [x] Brick-1 architecture: new module home for rec lowering:
+      `crates/haskelujah-parser-chirho/src/rec_stmt_chirho.rs` for CST-to-AST transformation +
+      `crates/haskelujah-core-chirho/src/rec_desugar_chirho.rs` for genuinely lazy
+      tuple projections around the mfix knot. Keep RecStmt in the CST only; lower it to
+      ordinary AST do statements before typing so downstream phases do not gain a
+      RecursiveDo-specific variant. RecursiveDo is classified between raw lexing and layout
+      from actual pragma tokens, using the same pragma parser as CST lowering.
+- [x] Lexer: `rec` contextual keyword + `mdo` keyword ONLY under RecursiveDo
       (fixes the mdo-as-varid latent bug as a regression test)
-- [ ] Layout: `rec` opens a layout context (statement group like `do`/`of`/`let`)
-- [ ] CST/AST: RecStmt node carrying the inner statement group
+- [x] Layout: `rec` opens a layout context (statement group like `do`/`of`/`let`)
+- [x] CST: RecStmt node carrying the inner statement group; AST transformation remains next
 - [ ] Desugar: rec group → lazy-tuple mfix knot
       (`(xs, ys) <- mfix (\ ~(xs, ys) -> do { ...; return (xs, ys) })`);
       whole-group knot first, GHC-style minimal segmentation later if corpus needs it
@@ -51,8 +54,9 @@ Mechanism, pinned in current source:
 - [ ] STG eval: `mfix`/`fixIO` knot-tying via result thunk (runtime laziness + refs exist)
 - [ ] Tests: driver eval test (repro yields `[1,2,1,2]`-shaped knot output), mdo forward-ref
       eval test, mdo-as-varid-without-ext regression, ghc-tests T4404 recheck
-- [ ] Gates before any claim: fresh debug build (mtime vs git log), cumulative full driver
-      run, cargo fmt --check clean, zero warnings
+- [ ] Gates before final semantic claim: fresh debug build (mtime vs git log), focused suites
+      during iteration, eval suite and probe at the landing boundary, cargo fmt --check clean,
+      zero warnings; full driver run only under the shared-machine resource guard
 - [ ] Land per-cluster with room announcement; log step in progress DB (single-writer window)
 
 ## Insertion points (mapped read-only, 2026-07-26 ~10:40)
@@ -70,11 +74,13 @@ Mechanism, pinned in current source:
   and the raw-source pre-scan call it — one source of truth, semantics cannot fork.
   (Slice now gpt's per the #8590 lane board; a ~90-line starter with 9 tests sits in
   claude_chirho's scratchpad as pragma_scan_chirho.rs.proposal, gpt's to adopt or bin.)
-- ARCHITECTURAL FINDING (brick 1): extensions become visible only AT LOWERING, but
+- ARCHITECTURAL FINDING (brick 1): extensions previously became visible only AT LOWERING, but
   `rec`/`mdo` keyword-ness is a LEXER decision and `rec`-opens-a-block is a LAYOUT decision —
   both run before lowering. This ordering gap is precisely why `mdo` was hardcoded as an
-  unconditional keyword. Fix: a GHC-style LANGUAGE-pragma pre-scan over the raw source
-  header feeding lexer + layout with the extension set. Announce in room before landing.
+  unconditional keyword. Landed fix: the raw lexer keeps both words as VarId, then a pass over
+  actual `PragmaChirho` tokens calls the shared pragma parser and reclassifies them before
+  layout. This is safer than scanning raw source text: strings and ordinary comments cannot
+  false-enable RecursiveDo.
 - Lexer keyword site: `crates/haskelujah-parser-chirho/src/lexer_chirho.rs:1333`
   (`"do" | "mdo" => DoChirho`) — split; `rec` contextual, `mdo` gated on RecursiveDo.
 - Layout: keyword-class match ~`layout_chirho.rs:441` (Of/Where class), after-keyword state
@@ -89,5 +95,6 @@ Mechanism, pinned in current source:
 
 ## Builder discipline
 
-Implementation starts only after claude_chirho posts builder-free (their validity_chirho.rs
-slice owns the toolchain per soundness-first priority). Until then: read-only prep only.
+gpt_chirho owns the RecursiveDo builder lane from room message #8609. Every cargo invocation
+uses `CARGO_BUILD_JOBS=2`, targeted tests run sequentially, and no full driver/proptest sweep
+runs without an explicit shared-machine landing boundary.

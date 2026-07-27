@@ -24,6 +24,7 @@ use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use crate::layout_chirho::apply_layout_chirho;
 use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
+use crate::pragma_chirho::classify_contextual_keywords_chirho;
 use haskelujah_span_chirho::FileIdChirho;
 
 // ---------------------------------------------------------------------------
@@ -79,6 +80,7 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> T
         RawTokenKindChirho::DefaultChirho => TokenKindChirho::DefaultKeywordChirho,
         RawTokenKindChirho::DerivingChirho => TokenKindChirho::DerivingKeywordChirho,
         RawTokenKindChirho::DoChirho => TokenKindChirho::DoKeywordChirho,
+        RawTokenKindChirho::RecChirho => TokenKindChirho::RecKeywordChirho,
         RawTokenKindChirho::ElseChirho => TokenKindChirho::ElseKeywordChirho,
         RawTokenKindChirho::ForeignChirho => TokenKindChirho::ForeignKeywordChirho,
         RawTokenKindChirho::IfChirho => TokenKindChirho::IfKeywordChirho,
@@ -204,7 +206,8 @@ impl<'src> ParserChirho<'src> {
     /// Create a parser from source text. Lexes and applies layout rule internally.
     pub fn new_chirho(source_chirho: &'src str, file_id_chirho: FileIdChirho) -> Self {
         let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
-        let raw_chirho = lexer_chirho.lex_all_chirho();
+        let mut raw_chirho = lexer_chirho.lex_all_chirho();
+        classify_contextual_keywords_chirho(source_chirho, &mut raw_chirho);
         let tokens_chirho = apply_layout_chirho(source_chirho, raw_chirho, file_id_chirho);
 
         Self {
@@ -2813,7 +2816,7 @@ impl<'src> ParserChirho<'src> {
     /// Returns false for complex kinds like `Either x y` or `forall k. k -> Type`.
     fn is_simple_kind_annotated_binder_chirho(&self) -> bool {
         let mut i_chirho = self.pos_chirho + 1; // skip `(`
-        // Skip trivia after `(`
+                                                // Skip trivia after `(`
         while i_chirho < self.tokens_chirho.len()
             && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
         {
@@ -3358,8 +3361,15 @@ impl<'src> ParserChirho<'src> {
 
         self.bump_chirho(); // do
         self.eat_trivia_chirho();
+        self.parse_do_stmt_block_chirho();
+        self.builder_chirho.finish_node_chirho();
+    }
 
-        // Parse do stmts layout block
+    /// Parse a braced or layout-delimited sequence of do statements.
+    ///
+    /// Shared by `do`/`mdo` expressions and RecursiveDo's nested `rec` groups.
+    /// workflow: recursive-do-chirho
+    fn parse_do_stmt_block_chirho(&mut self) {
         if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
             || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
         {
@@ -3396,12 +3406,20 @@ impl<'src> ParserChirho<'src> {
                 }
             }
         }
-
-        self.builder_chirho.finish_node_chirho();
     }
 
     /// Parse a single do statement.
     fn parse_do_stmt_chirho(&mut self) {
+        if self.at_chirho(RawTokenKindChirho::RecChirho) {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::RecStmtChirho);
+            self.bump_chirho(); // rec
+            self.eat_trivia_chirho();
+            self.parse_do_stmt_block_chirho();
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
         // Check for let statement
         if self.at_chirho(RawTokenKindChirho::LetChirho) {
             self.builder_chirho
@@ -5744,6 +5762,35 @@ mod tests_chirho {
             kinds_chirho.contains(&SyntaxKindChirho::DoExprChirho),
             "should have DoExpr: {:?}",
             kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_recursive_do_statement_group_chirho() {
+        let source_chirho = concat!(
+            "{-# LANGUAGE RecursiveDo #-}\n",
+            "module M where\n",
+            "main = do\n",
+            "  rec\n",
+            "    xs <- pure (1 : ys)\n",
+            "    ys <- pure (2 : xs)\n",
+            "  print (take 4 xs)\n",
+        );
+        let root_chirho = parse_chirho(source_chirho);
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+
+        assert!(kinds_chirho.contains(&SyntaxKindChirho::DoExprChirho));
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::RecStmtChirho),
+            "RecursiveDo should preserve an explicit rec statement group: {:?}",
+            kinds_chirho
+        );
+        assert_eq!(
+            kinds_chirho
+                .iter()
+                .filter(|kind_chirho| **kind_chirho == SyntaxKindChirho::BindStmtChirho)
+                .count(),
+            2
         );
     }
 

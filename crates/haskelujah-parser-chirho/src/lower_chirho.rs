@@ -34,6 +34,8 @@ use haskelujah_syntax_chirho::green_chirho::{
 };
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
+use crate::pragma_chirho::pragma_extensions_from_text_chirho;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -164,53 +166,8 @@ impl LowerCtxChirho {
         for child_chirho in node_chirho.children_chirho() {
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho {
                 if tok_chirho.kind_chirho() == TokenKindChirho::PragmaChirho {
-                    let text_chirho = tok_chirho.text_chirho();
-                    // Strip {-# and #-}
-                    let inner_chirho = text_chirho
-                        .strip_prefix("{-#")
-                        .and_then(|s_chirho| s_chirho.strip_suffix("#-}"))
-                        .unwrap_or("")
-                        .trim();
-                    // Check for LANGUAGE pragma. GHC matches the pragma name
-                    // case-insensitively, so `{-# Language ... #-}` is just as
-                    // valid as `{-# LANGUAGE ... #-}`; matching only the upper
-                    // case spelling silently dropped EVERY extension in such a
-                    // module.
-                    let language_rest_chirho = inner_chirho
-                        .split_once(char::is_whitespace)
-                        .filter(|(keyword_chirho, _)| keyword_chirho.eq_ignore_ascii_case("LANGUAGE"))
-                        .map(|(_, rest_chirho)| rest_chirho);
-                    if let Some(rest_chirho) = language_rest_chirho {
-                        let rest_chirho = rest_chirho.trim();
-                        for ext_chirho in rest_chirho.split(',') {
-                            let ext_chirho = ext_chirho.trim();
-                            if !ext_chirho.is_empty() {
-                                // GHC2021 / GHC2024 meta-extensions expand to their constituent set
-                                if ext_chirho == "GHC2021" || ext_chirho == "GHC2024" {
-                                    for sub_chirho in ghc2021_extensions_chirho() {
-                                        extensions_chirho.push(sub_chirho.to_string());
-                                    }
-                                } else {
-                                    extensions_chirho.push(ext_chirho.to_string());
-                                }
-                            }
-                        }
-                    }
-                    // {-# OPTIONS_GHC -XFoo -XBar #-} → extract extensions
-                    if let Some(rest_chirho) = inner_chirho
-                        .strip_prefix("OPTIONS_GHC")
-                        .or_else(|| inner_chirho.strip_prefix("OPTIONS"))
-                    {
-                        for word_chirho in rest_chirho.split_whitespace() {
-                            if let Some(ext_chirho) = word_chirho.strip_prefix("-X") {
-                                if !ext_chirho.is_empty() {
-                                    extensions_chirho.push(ext_chirho.to_string());
-                                }
-                            }
-                        }
-                    }
-                    // Other OPTIONS, etc. — silently ignore for now
-                    // INLINE/NOINLINE/INLINABLE pragmas are extracted separately
+                    extensions_chirho
+                        .extend(pragma_extensions_from_text_chirho(tok_chirho.text_chirho()));
                 }
             }
         }
@@ -13293,26 +13250,25 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
             })
             .expect("expected fooChirho type signature");
         match sig_chirho {
-            TypeChirho::FunChirho { arg_chirho, .. } => {
-                match arg_chirho.as_ref() {
-                    TypeChirho::AppChirho {
-                        fun_chirho,
-                        arg_chirho,
-                        ..
-                    } => {
-                        match fun_chirho.as_ref() {
-                            TypeChirho::AppChirho {
-                                fun_chirho,
-                                arg_chirho,
-                                ..
-                            } => {
-                                match fun_chirho.as_ref() {
-                                    TypeChirho::AppChirho {
-                                        fun_chirho,
-                                        arg_chirho,
-                                        ..
-                                    } => {
-                                        match fun_chirho.as_ref() {
+            TypeChirho::FunChirho { arg_chirho, .. } => match arg_chirho.as_ref() {
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    match fun_chirho.as_ref() {
+                        TypeChirho::AppChirho {
+                            fun_chirho,
+                            arg_chirho,
+                            ..
+                        } => {
+                            match fun_chirho.as_ref() {
+                                TypeChirho::AppChirho {
+                                    fun_chirho,
+                                    arg_chirho,
+                                    ..
+                                } => {
+                                    match fun_chirho.as_ref() {
                                             TypeChirho::AppChirho {
                                                 fun_chirho,
                                                 arg_chirho,
@@ -13394,30 +13350,27 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                                 "expected OverChirho application spine, got {other_chirho:?}"
                                             ),
                                         }
-                                        assert!(matches!(
-                                            arg_chirho.as_ref(),
-                                            TypeChirho::VarChirho(_)
-                                        ));
-                                    }
-                                    other_chirho => panic!(
-                                        "expected OverChirho application spine, got {other_chirho:?}"
-                                    ),
+                                    assert!(matches!(
+                                        arg_chirho.as_ref(),
+                                        TypeChirho::VarChirho(_)
+                                    ));
                                 }
-                                assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
-                            }
-                            other_chirho => {
-                                panic!(
+                                other_chirho => panic!(
                                     "expected OverChirho application spine, got {other_chirho:?}"
-                                )
+                                ),
                             }
+                            assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                         }
-                        assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
+                        other_chirho => {
+                            panic!("expected OverChirho application spine, got {other_chirho:?}")
+                        }
                     }
-                    other_chirho => {
-                        panic!("expected OverChirho application argument, got {other_chirho:?}")
-                    }
+                    assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                 }
-            }
+                other_chirho => {
+                    panic!("expected OverChirho application argument, got {other_chirho:?}")
+                }
+            },
             other_chirho => panic!("expected function type signature, got {other_chirho:?}"),
         }
     }
@@ -17256,50 +17209,4 @@ fn lower_nonempty_cons_groups_like_ghc_chirho() {
         }
         other_chirho => panic!("expected infix expression tree, got {:?}", other_chirho),
     }
-}
-
-/// Extensions enabled by GHC2021 (and GHC2024 which is a superset).
-/// Reference: https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/control.html#extension-GHC2021
-fn ghc2021_extensions_chirho() -> &'static [&'static str] {
-    &[
-        "BangPatterns",
-        "BinaryLiterals",
-        "ConstrainedClassMethods",
-        "ConstraintKinds",
-        "DeriveDataTypeable",
-        "DeriveFoldable",
-        "DeriveFunctor",
-        "DeriveGeneric",
-        "DeriveLift",
-        "DeriveTraversable",
-        "DoAndIfThenElse",
-        "EmptyCase",
-        "EmptyDataDecls",
-        "EmptyDataDeriving",
-        "ExistentialQuantification",
-        "ExplicitForAll",
-        "FlexibleContexts",
-        "FlexibleInstances",
-        "ForeignFunctionInterface",
-        "GADTSyntax",
-        "GeneralizedNewtypeDeriving",
-        "HexFloatLiterals",
-        "ImportQualifiedPost",
-        "InstanceSigs",
-        "KindSignatures",
-        "MultiParamTypeClasses",
-        "NamedFieldPuns",
-        "NamedWildCards",
-        "NumericUnderscores",
-        "PolyKinds",
-        "PostfixOperators",
-        "RankNTypes",
-        "ScopedTypeVariables",
-        "StandaloneDeriving",
-        "StandaloneKindSignatures",
-        "TupleSections",
-        "TypeApplications",
-        "TypeOperators",
-        "TypeSynonymInstances",
-    ]
 }

@@ -34,6 +34,7 @@ pub enum RawTokenKindChirho {
     DefaultChirho,
     DerivingChirho,
     DoChirho,
+    RecChirho,
     ElseChirho,
     ForeignChirho,
     IfChirho,
@@ -143,7 +144,7 @@ impl RawTokenKindChirho {
     pub fn is_layout_keyword_chirho(self) -> bool {
         matches!(
             self,
-            Self::WhereChirho | Self::LetChirho | Self::DoChirho | Self::OfChirho
+            Self::WhereChirho | Self::LetChirho | Self::DoChirho | Self::RecChirho | Self::OfChirho
         )
     }
 
@@ -169,6 +170,7 @@ impl RawTokenKindChirho {
                 | Self::DefaultChirho
                 | Self::DerivingChirho
                 | Self::DoChirho
+                | Self::RecChirho
                 | Self::ElseChirho
                 | Self::ForeignChirho
                 | Self::IfChirho
@@ -1330,7 +1332,7 @@ fn keyword_kind_chirho(text_chirho: &str) -> Option<RawTokenKindChirho> {
         "data" => Some(RawTokenKindChirho::DataChirho),
         "default" => Some(RawTokenKindChirho::DefaultChirho),
         "deriving" => Some(RawTokenKindChirho::DerivingChirho),
-        "do" | "mdo" => Some(RawTokenKindChirho::DoChirho),
+        "do" => Some(RawTokenKindChirho::DoChirho),
         "else" => Some(RawTokenKindChirho::ElseChirho),
         "foreign" => Some(RawTokenKindChirho::ForeignChirho),
         "if" => Some(RawTokenKindChirho::IfChirho),
@@ -1559,6 +1561,18 @@ mod tests_chirho {
                 RawTokenKindChirho::InChirho,
                 RawTokenKindChirho::DoChirho,
                 RawTokenKindChirho::WhereChirho,
+                RawTokenKindChirho::EofChirho,
+            ]
+        );
+    }
+
+    #[test]
+    fn lex_recursive_do_words_as_plain_identifiers_chirho() {
+        assert_eq!(
+            non_trivia_kinds_chirho("mdo rec"),
+            vec![
+                RawTokenKindChirho::VarIdChirho,
+                RawTokenKindChirho::VarIdChirho,
                 RawTokenKindChirho::EofChirho,
             ]
         );

@@ -50,6 +50,8 @@ pub enum TokenKindChirho {
     InKeywordChirho,
     /// The `do` reserved identifier.
     DoKeywordChirho,
+    /// The `rec` contextual keyword enabled by RecursiveDo.
+    RecKeywordChirho,
     /// The `case` reserved identifier.
     CaseKeywordChirho,
     /// The `of` reserved identifier.
