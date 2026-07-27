@@ -155,6 +155,11 @@ fn walk_type_chirho(
             body_chirho,
             span_chirho,
             ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            body_chirho,
+            span_chirho,
+            ..
         } => {
             report_if_unlicensed_chirho(
                 "polymorphic",
@@ -351,8 +356,10 @@ fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
             body_chirho,
             ..
         } => {
-            let rendered_chirho: Vec<String> =
-                context_chirho.iter().map(render_constraint_chirho).collect();
+            let rendered_chirho: Vec<String> = context_chirho
+                .iter()
+                .map(render_constraint_chirho)
+                .collect();
             let context_text_chirho = match rendered_chirho.len() {
                 1 => rendered_chirho[0].clone(),
                 _ => format!("({})", rendered_chirho.join(", ")),
@@ -373,6 +380,21 @@ fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
                 .collect();
             format!(
                 "forall {}. {}",
+                names_chirho.join(" "),
+                render_type_chirho(body_chirho)
+            )
+        }
+        TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            let names_chirho: Vec<String> = vars_chirho
+                .iter()
+                .map(|var_chirho| var_chirho.name_chirho.text_chirho().to_string())
+                .collect();
+            format!(
+                "forall {} -> {}",
                 names_chirho.join(" "),
                 render_type_chirho(body_chirho)
             )
@@ -564,10 +586,8 @@ mod tests_chirho {
             rhs_chirho,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
-        let module_chirho = mk_module_chirho(
-            vec![decl_chirho.clone()],
-            vec!["Haskell2010".to_string()],
-        );
+        let module_chirho =
+            mk_module_chirho(vec![decl_chirho.clone()], vec!["Haskell2010".to_string()]);
         let errors_chirho = check_module_type_validity_chirho(&module_chirho);
         assert_eq!(errors_chirho.len(), 1);
         assert!(
@@ -576,8 +596,7 @@ mod tests_chirho {
             errors_chirho[0].message_chirho
         );
 
-        let with_chirho =
-            mk_module_chirho(vec![decl_chirho], vec!["RankNTypes".to_string()]);
+        let with_chirho = mk_module_chirho(vec![decl_chirho], vec!["RankNTypes".to_string()]);
         assert!(check_module_type_validity_chirho(&with_chirho).is_empty());
     }
 

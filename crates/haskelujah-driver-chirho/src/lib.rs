@@ -326,7 +326,8 @@ fn collect_type_constructor_names_chirho(
             }
             collect_type_constructor_names_chirho(body_chirho, names_chirho);
         }
-        TypeChirho::ForallChirho { body_chirho, .. } => {
+        TypeChirho::ForallChirho { body_chirho, .. }
+        | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
             collect_type_constructor_names_chirho(body_chirho, names_chirho);
         }
         TypeChirho::PromotedListChirho {
@@ -2096,7 +2097,11 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     // qualified type).
     let validity_result_chirho =
         haskelujah_typing_chirho::check_module_type_validity_diagnostics_chirho(&module_chirho);
-    if !defer_errors_chirho && validity_result_chirho.diagnostics_chirho.has_errors_chirho() {
+    if !defer_errors_chirho
+        && validity_result_chirho
+            .diagnostics_chirho
+            .has_errors_chirho()
+    {
         return Err(validity_result_chirho.diagnostics_chirho);
     }
 

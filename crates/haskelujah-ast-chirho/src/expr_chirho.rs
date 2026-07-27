@@ -64,6 +64,15 @@ pub enum ExprChirho {
         /// Span covering the whole lambda.
         span_chirho: SpanChirho,
     },
+    /// Visible type abstraction (`\ @a -> body`).
+    TypeLamChirho {
+        /// Type variable introduced by this abstraction.
+        binder_chirho: NameChirho,
+        /// Expression checked under the scoped type variable.
+        body_chirho: Box<ExprChirho>,
+        /// Span covering the whole type abstraction.
+        span_chirho: SpanChirho,
+    },
     /// Let expression (`let binds in body`).
     LetChirho {
         /// Local bindings visible in the body.
@@ -359,6 +368,7 @@ impl ExprChirho {
             | Self::InfixChirho { span_chirho, .. }
             | Self::NegChirho { span_chirho, .. }
             | Self::LamChirho { span_chirho, .. }
+            | Self::TypeLamChirho { span_chirho, .. }
             | Self::LetChirho { span_chirho, .. }
             | Self::IfChirho { span_chirho, .. }
             | Self::CaseChirho { span_chirho, .. }

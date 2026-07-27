@@ -14,9 +14,9 @@ pub mod layout_chirho;
 pub mod lexer_chirho;
 pub mod lower_chirho;
 pub mod pragma_chirho;
-mod rec_stmt_chirho;
 #[cfg(test)]
 mod proptest_chirho;
+mod rec_stmt_chirho;
 
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::{ByteOffsetChirho, SpanChirho};

@@ -231,6 +231,26 @@ pub fn unify_chirho(
             unify_chirho(b1_chirho, &b2_renamed_chirho, span_chirho)
         }
 
+        // Required foralls unify only with required foralls. A regular term
+        // application must consume this wrapper before its body is available.
+        (
+            TyChirho::RequiredForallChirho {
+                vars_chirho: v1_chirho,
+                body_chirho: b1_chirho,
+            },
+            TyChirho::RequiredForallChirho {
+                vars_chirho: v2_chirho,
+                body_chirho: b2_chirho,
+            },
+        ) if v1_chirho.len() == v2_chirho.len() => {
+            let mut rename_chirho = SubstChirho::empty_chirho();
+            for (v1_item_chirho, v2_item_chirho) in v1_chirho.iter().zip(v2_chirho.iter()) {
+                rename_chirho.insert_chirho(*v2_item_chirho, TyChirho::VarChirho(*v1_item_chirho));
+            }
+            let b2_renamed_chirho = rename_chirho.apply_ty_chirho(b2_chirho);
+            unify_chirho(b1_chirho, &b2_renamed_chirho, span_chirho)
+        }
+
         // ForallChirho vs concrete type: strip the forall wrapper and unify the body.
         // The bound vars become free TyVarChirho and participate in unification normally.
         // This is consistent with GHC 9.0+ SimpleSubsumption.
@@ -357,6 +377,24 @@ pub fn subsume_chirho(
                 body_chirho: ba_chirho,
             },
             TyChirho::ForallChirho {
+                vars_chirho: ve_chirho,
+                body_chirho: be_chirho,
+            },
+        ) if va_chirho.len() == ve_chirho.len() => {
+            let mut rename_chirho = SubstChirho::empty_chirho();
+            for (va_item_chirho, ve_item_chirho) in va_chirho.iter().zip(ve_chirho.iter()) {
+                rename_chirho.insert_chirho(*ve_item_chirho, TyChirho::VarChirho(*va_item_chirho));
+            }
+            let be_renamed_chirho = rename_chirho.apply_ty_chirho(be_chirho);
+            unify_chirho(ba_chirho, &be_renamed_chirho, span_chirho)
+        }
+
+        (
+            TyChirho::RequiredForallChirho {
+                vars_chirho: va_chirho,
+                body_chirho: ba_chirho,
+            },
+            TyChirho::RequiredForallChirho {
                 vars_chirho: ve_chirho,
                 body_chirho: be_chirho,
             },

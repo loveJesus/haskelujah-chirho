@@ -272,6 +272,7 @@ fn collect_expr_references_chirho(expr_chirho: &ExprChirho, names_chirho: &mut V
             collect_expr_references_chirho(right_chirho, names_chirho);
         }
         ExprChirho::LamChirho { body_chirho, .. }
+        | ExprChirho::TypeLamChirho { body_chirho, .. }
         | ExprChirho::ParenChirho {
             inner_chirho: body_chirho,
             ..

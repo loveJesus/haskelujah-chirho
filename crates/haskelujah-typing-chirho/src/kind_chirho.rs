@@ -1028,6 +1028,28 @@ impl KindInferCtxChirho {
                     }
                 }
             }
+            TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho,
+            } => {
+                if vars_chirho
+                    .iter()
+                    .any(|var_chirho| var_chirho.text_chirho() == param_chirho)
+                {
+                    ty_chirho.clone()
+                } else {
+                    TypeChirho::RequiredForallChirho {
+                        vars_chirho: vars_chirho.clone(),
+                        body_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                            body_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )),
+                        span_chirho: *span_chirho,
+                    }
+                }
+            }
             TypeChirho::PromotedConChirho { .. } => ty_chirho.clone(),
             TypeChirho::PromotedListChirho {
                 elements_chirho,
@@ -1282,6 +1304,11 @@ impl KindInferCtxChirho {
                 self.infer_type_kind_chirho(inner_chirho)
             }
             TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho: _,
+            }
+            | TypeChirho::RequiredForallChirho {
                 vars_chirho,
                 body_chirho,
                 span_chirho: _,

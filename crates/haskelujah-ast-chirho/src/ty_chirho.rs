@@ -85,6 +85,15 @@ pub enum TypeChirho {
         /// Span covering the whole forall type.
         span_chirho: SpanChirho,
     },
+    /// Required forall quantifier (`forall a -> Type`).
+    RequiredForallChirho {
+        /// Type variables supplied without `@` at call sites.
+        vars_chirho: Vec<TyVarChirho>,
+        /// Body type made available after the required arguments.
+        body_chirho: Box<TypeChirho>,
+        /// Span covering the whole required forall type.
+        span_chirho: SpanChirho,
+    },
     /// DataKinds promoted constructor (`'True`, `'Just`, `'Nothing`).
     PromotedConChirho {
         /// Promoted data constructor name.
@@ -166,6 +175,7 @@ impl TypeChirho {
             | Self::ParenChirho { span_chirho, .. }
             | Self::QualChirho { span_chirho, .. }
             | Self::ForallChirho { span_chirho, .. }
+            | Self::RequiredForallChirho { span_chirho, .. }
             | Self::PromotedConChirho { span_chirho, .. }
             | Self::PromotedListChirho { span_chirho, .. }
             | Self::WildcardChirho { span_chirho }

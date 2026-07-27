@@ -100,6 +100,8 @@ pub enum SyntaxKindChirho {
     InfixExprChirho,
     /// Lambda expression (`\x -> expr`).
     LambdaExprChirho,
+    /// A visible type-abstraction binder inside a lambda (`@a`, `@(a :: Type)`).
+    TypeLambdaBinderChirho,
     /// Lambda-case expression (`\case { alts }`) — LambdaCase extension.
     LambdaCaseExprChirho,
     /// Let expression (`let binds in expr`).

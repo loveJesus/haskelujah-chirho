@@ -2275,10 +2275,14 @@ impl<'src> ParserChirho<'src> {
                 .start_node_chirho(SyntaxKindChirho::ForallTypeChirho);
             self.bump_chirho(); // forall
             self.eat_trivia_chirho();
-            // Collect type variables until '.'
+            // Collect type variables until `.` (invisible forall) or `->`
+            // (RequiredTypeArguments).
             // Accepts bare VarId and kind-annotated (VarId :: Kind) binders
             // where the kind is a simple kind (*, k, * -> *, etc.)
-            while !self.at_dot_chirho() && !self.at_eof_chirho() && !self.at_decl_boundary_chirho()
+            while !self.at_dot_chirho()
+                && !self.at_chirho(RawTokenKindChirho::RightArrowChirho)
+                && !self.at_eof_chirho()
+                && !self.at_decl_boundary_chirho()
             {
                 if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
                     self.bump_chirho();
@@ -2299,6 +2303,9 @@ impl<'src> ParserChirho<'src> {
             }
             if self.at_dot_chirho() {
                 self.bump_chirho(); // .
+                self.eat_trivia_chirho();
+            } else if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+                self.bump_chirho(); // required-forall ->
                 self.eat_trivia_chirho();
             }
             self.parse_type_chirho(); // body type
@@ -2818,7 +2825,7 @@ impl<'src> ParserChirho<'src> {
     /// Returns false for complex kinds like `Either x y` or `forall k. k -> Type`.
     fn is_simple_kind_annotated_binder_chirho(&self) -> bool {
         let mut i_chirho = self.pos_chirho + 1; // skip `(`
-                                                // Skip trivia after `(`
+        // Skip trivia after `(`
         while i_chirho < self.tokens_chirho.len()
             && self.tokens_chirho[i_chirho].kind_chirho.is_trivia_chirho()
         {
@@ -3018,11 +3025,30 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho(); // backslash
             self.eat_trivia_chirho();
 
-            // Lambda parameters admit the same function-argument patterns as
-            // equation binders, including bang patterns like `\x !y -> ...`.
-            while self.can_start_fun_arg_pat_chirho() {
+            // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+            // Lambda parameters admit ordinary patterns and visible type
+            // abstractions. Keep the type binder in its own CST node so
+            // lowering can preserve binder order (`\ @a x -> ...`).
+            while self.at_chirho(RawTokenKindChirho::AtChirho)
+                || self.can_start_fun_arg_pat_chirho()
+            {
                 let before_chirho = self.pos_chirho;
-                self.parse_fun_arg_pat_chirho();
+                if self.at_chirho(RawTokenKindChirho::AtChirho) {
+                    self.builder_chirho
+                        .start_node_chirho(SyntaxKindChirho::TypeLambdaBinderChirho);
+                    self.bump_chirho(); // @
+                    self.eat_trivia_chirho();
+                    if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
+                        self.bump_chirho();
+                    } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho)
+                        && self.is_simple_kind_annotated_binder_chirho()
+                    {
+                        self.parse_paren_type_chirho();
+                    }
+                    self.builder_chirho.finish_node_chirho();
+                } else {
+                    self.parse_fun_arg_pat_chirho();
+                }
                 self.eat_trivia_chirho();
                 if self.pos_chirho == before_chirho {
                     break;
@@ -3537,13 +3563,17 @@ impl<'src> ParserChirho<'src> {
         loop {
             // TypeApplications: @Type after an expression
             if self.at_chirho(RawTokenKindChirho::AtChirho) {
-                self.builder_chirho
-                    .start_node_at_chirho(cp_chirho, SyntaxKindChirho::TypeAppExprChirho);
                 // Close any open AppExpr node first
                 if count_chirho > 1 {
                     self.builder_chirho.finish_node_chirho(); // AppExpr
                     count_chirho = 1; // reset
                 }
+                // Wrap the completed term-application spine, not the still-open
+                // AppExpr builder. Reversing this order leaks later declarations
+                // into a malformed TypeAppExpr (`f x @T`).
+                // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+                self.builder_chirho
+                    .start_node_at_chirho(cp_chirho, SyntaxKindChirho::TypeAppExprChirho);
                 self.bump_chirho(); // consume @
                 self.eat_trivia_chirho();
                 self.parse_atype_chirho();

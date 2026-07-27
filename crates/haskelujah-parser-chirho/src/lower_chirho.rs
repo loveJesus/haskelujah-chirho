@@ -1929,12 +1929,9 @@ impl LowerCtxChirho {
             let child_span_chirho =
                 self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
             let stmt_chirho = match node_chirho.kind_chirho() {
-                SyntaxKindChirho::DoStmtChirho => {
-                    StmtChirho::ExprChirho(self.lower_first_expr_in_node_chirho(
-                        node_chirho,
-                        child_chirho.start_chirho,
-                    ))
-                }
+                SyntaxKindChirho::DoStmtChirho => StmtChirho::ExprChirho(
+                    self.lower_first_expr_in_node_chirho(node_chirho, child_chirho.start_chirho),
+                ),
                 SyntaxKindChirho::BindStmtChirho => {
                     self.lower_bind_stmt_chirho(node_chirho, child_chirho.start_chirho)
                 }
@@ -3495,6 +3492,11 @@ impl LowerCtxChirho {
                                 vars_chirho,
                                 body_chirho,
                                 ..
+                            }
+                            | TypeChirho::RequiredForallChirho {
+                                vars_chirho,
+                                body_chirho,
+                                ..
                             } => {
                                 let mut free_vars_chirho =
                                     collect_free_type_var_names_from_ast_type_chirho(body_chirho);
@@ -3774,7 +3776,8 @@ impl LowerCtxChirho {
                                     out_chirho,
                                 );
                             }
-                            TypeChirho::ForallChirho { body_chirho, .. } => {
+                            TypeChirho::ForallChirho { body_chirho, .. }
+                            | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
                                 collect_type_var_names_from_ast_type_chirho(
                                     body_chirho,
                                     out_chirho,
@@ -5477,18 +5480,20 @@ impl LowerCtxChirho {
                 }
             }
             SyntaxKindChirho::ForallTypeChirho => {
-                // forall a b (c :: k) . Type
-                // Children: ForallKeyword, VarId*, ParenType*, VarSym("."), type nodes
+                // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+                // `forall a. Type` and required `forall a -> Type`.
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
                 let mut vars_chirho = Vec::new();
-                let mut saw_dot_chirho = false;
+                let mut saw_delimiter_chirho = false;
+                let mut required_chirho = false;
                 let mut body_chirho = None;
 
                 for child_chirho in &children_chirho {
                     match child_chirho.element_chirho {
                         GreenElementChirho::TokenChirho(tok_chirho) => {
                             let kind_chirho = tok_chirho.kind_chirho();
-                            if kind_chirho == TokenKindChirho::VarIdChirho && !saw_dot_chirho {
+                            if kind_chirho == TokenKindChirho::VarIdChirho && !saw_delimiter_chirho
+                            {
                                 let s_chirho = self.span_chirho(
                                     child_chirho.start_chirho,
                                     child_chirho.end_chirho,
@@ -5498,11 +5503,14 @@ impl LowerCtxChirho {
                             } else if kind_chirho == TokenKindChirho::VarSymChirho
                                 && tok_chirho.text_chirho() == "."
                             {
-                                saw_dot_chirho = true;
+                                saw_delimiter_chirho = true;
+                            } else if kind_chirho == TokenKindChirho::RightArrowChirho {
+                                saw_delimiter_chirho = true;
+                                required_chirho = true;
                             }
                         }
-                        GreenElementChirho::NodeChirho(n_chirho) if !saw_dot_chirho => {
-                            // Before the dot: handle kind-annotated binders (a :: k)
+                        GreenElementChirho::NodeChirho(n_chirho) if !saw_delimiter_chirho => {
+                            // Before the delimiter: handle kind-annotated binders.
                             if n_chirho.kind_chirho() == SyntaxKindChirho::ParenTypeChirho {
                                 if let Some(tv_chirho) = self
                                     .try_lower_kind_annotated_forall_binder_chirho(
@@ -5517,7 +5525,7 @@ impl LowerCtxChirho {
                         GreenElementChirho::NodeChirho(n_chirho)
                             if is_type_kind_chirho(n_chirho.kind_chirho()) =>
                         {
-                            if body_chirho.is_none() && saw_dot_chirho {
+                            if body_chirho.is_none() && saw_delimiter_chirho {
                                 body_chirho = Some(
                                     self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
                                 );
@@ -5527,12 +5535,20 @@ impl LowerCtxChirho {
                     }
                 }
 
-                TypeChirho::ForallChirho {
-                    vars_chirho,
-                    body_chirho: Box::new(
-                        body_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
-                    ),
-                    span_chirho,
+                let body_chirho =
+                    Box::new(body_chirho.unwrap_or_else(|| self.placeholder_type_chirho()));
+                if required_chirho {
+                    TypeChirho::RequiredForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                        span_chirho,
+                    }
+                } else {
+                    TypeChirho::ForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                        span_chirho,
+                    }
                 }
             }
             SyntaxKindChirho::PromotedConTypeChirho => {
@@ -5932,10 +5948,17 @@ impl LowerCtxChirho {
                 self.resolve_infix_precedence_chirho(exprs_chirho, ops_chirho, span_chirho)
             }
             SyntaxKindChirho::LambdaExprChirho => {
+                // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+                enum LambdaBinderChirho {
+                    TermChirho(PatChirho),
+                    TypeChirho(NameChirho),
+                }
+
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let mut pats_chirho = Vec::new();
+                let mut binders_chirho = Vec::new();
                 let mut body_chirho = None;
                 let mut saw_arrow_chirho = false;
+                let mut has_type_binder_chirho = false;
 
                 for child_chirho in &children_chirho {
                     match child_chirho.element_chirho {
@@ -5945,16 +5968,31 @@ impl LowerCtxChirho {
                             }
                         }
                         GreenElementChirho::NodeChirho(n_chirho) => {
-                            if !saw_arrow_chirho && is_pat_kind_chirho(n_chirho.kind_chirho()) {
-                                pats_chirho.push(
+                            if !saw_arrow_chirho
+                                && n_chirho.kind_chirho()
+                                    == SyntaxKindChirho::TypeLambdaBinderChirho
+                            {
+                                has_type_binder_chirho = true;
+                                binders_chirho.push(LambdaBinderChirho::TypeChirho(
+                                    self.extract_type_lambda_binder_name_chirho(
+                                        n_chirho,
+                                        child_chirho.start_chirho,
+                                    ),
+                                ));
+                            } else if !saw_arrow_chirho
+                                && is_pat_kind_chirho(n_chirho.kind_chirho())
+                            {
+                                binders_chirho.push(LambdaBinderChirho::TermChirho(
                                     self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
-                                );
+                                ));
                             } else if !saw_arrow_chirho
                                 && is_expr_kind_chirho(n_chirho.kind_chirho())
                             {
                                 let pat_expr_chirho =
                                     self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
-                                pats_chirho.push(Self::expr_to_pat_chirho(&pat_expr_chirho));
+                                binders_chirho.push(LambdaBinderChirho::TermChirho(
+                                    Self::expr_to_pat_chirho(&pat_expr_chirho),
+                                ));
                             } else if saw_arrow_chirho && body_chirho.is_none() {
                                 body_chirho = Some(
                                     self.lower_expr_chirho(n_chirho, child_chirho.start_chirho),
@@ -5964,12 +6002,38 @@ impl LowerCtxChirho {
                     }
                 }
 
-                ExprChirho::LamChirho {
-                    pats_chirho,
-                    body_chirho: Box::new(
-                        body_chirho.unwrap_or_else(|| self.placeholder_expr_chirho()),
-                    ),
-                    span_chirho,
+                let body_chirho = body_chirho.unwrap_or_else(|| self.placeholder_expr_chirho());
+                if !has_type_binder_chirho {
+                    let pats_chirho = binders_chirho
+                        .into_iter()
+                        .filter_map(|binder_chirho| match binder_chirho {
+                            LambdaBinderChirho::TermChirho(pat_chirho) => Some(pat_chirho),
+                            LambdaBinderChirho::TypeChirho(_) => None,
+                        })
+                        .collect();
+                    ExprChirho::LamChirho {
+                        pats_chirho,
+                        body_chirho: Box::new(body_chirho),
+                        span_chirho,
+                    }
+                } else {
+                    binders_chirho.into_iter().rev().fold(
+                        body_chirho,
+                        |body_chirho, binder_chirho| match binder_chirho {
+                            LambdaBinderChirho::TermChirho(pat_chirho) => ExprChirho::LamChirho {
+                                pats_chirho: vec![pat_chirho],
+                                body_chirho: Box::new(body_chirho),
+                                span_chirho,
+                            },
+                            LambdaBinderChirho::TypeChirho(binder_chirho) => {
+                                ExprChirho::TypeLamChirho {
+                                    binder_chirho,
+                                    body_chirho: Box::new(body_chirho),
+                                    span_chirho,
+                                }
+                            }
+                        },
+                    )
                 }
             }
             SyntaxKindChirho::LambdaCaseExprChirho => {
@@ -7312,6 +7376,7 @@ impl LowerCtxChirho {
     ///   - `a -> b` → function
     ///   - `f a b` → application chain
     ///   - `forall a. type` → forall
+    ///   - `forall a -> type` → required forall
     fn type_from_flat_children_chirho(
         &self,
         children_chirho: &[&ChildChirho],
@@ -7319,6 +7384,57 @@ impl LowerCtxChirho {
     ) -> TypeChirho {
         if children_chirho.is_empty() {
             return self.placeholder_type_chirho();
+        }
+
+        // A required-forall arrow is a quantifier delimiter, not the function
+        // arrow handled below. This flat reconstruction path is used for
+        // record fields whose CST does not retain a nested ForallType node.
+        // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+        if matches!(
+            children_chirho.first().map(|child_chirho| child_chirho.element_chirho),
+            Some(GreenElementChirho::TokenChirho(token_chirho))
+                if token_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho
+        ) {
+            let dot_idx_chirho = children_chirho.iter().position(|child_chirho| {
+                matches!(
+                    child_chirho.element_chirho,
+                    GreenElementChirho::TokenChirho(token_chirho)
+                        if token_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
+                            && token_chirho.text_chirho() == "."
+                )
+            });
+            let arrow_idx_chirho = self.find_top_level_arrow_chirho(children_chirho);
+            if dot_idx_chirho.is_none() {
+                if let Some(arrow_idx_chirho) = arrow_idx_chirho {
+                    let vars_chirho = children_chirho[1..arrow_idx_chirho]
+                        .iter()
+                        .filter_map(|child_chirho| {
+                            let GreenElementChirho::TokenChirho(token_chirho) =
+                                child_chirho.element_chirho
+                            else {
+                                return None;
+                            };
+                            if token_chirho.kind_chirho() != TokenKindChirho::VarIdChirho {
+                                return None;
+                            }
+                            let span_chirho = self
+                                .span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                            Some(TyVarChirho::plain_chirho(
+                                self.name_from_token_chirho(token_chirho, span_chirho),
+                            ))
+                        })
+                        .collect();
+                    let body_chirho = self.type_from_flat_children_chirho(
+                        &children_chirho[arrow_idx_chirho + 1..],
+                        fallback_span_chirho,
+                    );
+                    return TypeChirho::RequiredForallChirho {
+                        vars_chirho,
+                        body_chirho: Box::new(body_chirho),
+                        span_chirho: fallback_span_chirho,
+                    };
+                }
+            }
         }
 
         // Split on top-level `=>` (qualified type with context).
@@ -8888,6 +9004,39 @@ impl LowerCtxChirho {
         self.dummy_name_chirho()
     }
 
+    // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+    fn extract_type_lambda_binder_name_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> NameChirho {
+        for child_chirho in self.semantic_children_chirho(node_chirho, base_chirho) {
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(token_chirho)
+                    if token_chirho.kind_chirho() == TokenKindChirho::VarIdChirho =>
+                {
+                    let span_chirho =
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                    return self.name_from_token_chirho(token_chirho, span_chirho);
+                }
+                GreenElementChirho::NodeChirho(child_node_chirho)
+                    if child_node_chirho.kind_chirho() == SyntaxKindChirho::ParenTypeChirho =>
+                {
+                    if let Some(type_var_chirho) = self
+                        .try_lower_kind_annotated_forall_binder_chirho(
+                            child_node_chirho,
+                            child_chirho.start_chirho,
+                        )
+                    {
+                        return type_var_chirho.name_chirho;
+                    }
+                }
+                _ => {}
+            }
+        }
+        self.dummy_name_chirho()
+    }
+
     /// Try to parse a kind-annotated type variable from a parenthesized group:
     /// `( VarId :: Kind )` where Kind is `*`, `* -> *`, `(* -> *) -> *`, etc.
     ///
@@ -10143,6 +10292,19 @@ mod tests_chirho {
                     .join(", "),
                 type_shape_chirho(body_chirho)
             ),
+            TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => format!(
+                "forall {} -> {}",
+                vars_chirho
+                    .iter()
+                    .map(|var_chirho| var_chirho.name_chirho.text_chirho().to_string())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                type_shape_chirho(body_chirho)
+            ),
             TypeChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
@@ -10436,6 +10598,7 @@ mod tests_chirho {
                 );
             }
             ExprChirho::LamChirho { body_chirho, .. }
+            | ExprChirho::TypeLamChirho { body_chirho, .. }
             | ExprChirho::ParenChirho {
                 inner_chirho: body_chirho,
                 ..
@@ -12782,7 +12945,8 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                         constraint_contains_name_chirho(constraint_chirho, wanted_chirho)
                     }) || type_contains_name_chirho(body_chirho, wanted_chirho)
                 }
-                TypeChirho::ForallChirho { body_chirho, .. } => {
+                TypeChirho::ForallChirho { body_chirho, .. }
+                | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
                     type_contains_name_chirho(body_chirho, wanted_chirho)
                 }
                 TypeChirho::WildcardChirho { .. } | TypeChirho::LitChirho { .. } => false,
@@ -13424,25 +13588,26 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
             })
             .expect("expected fooChirho type signature");
         match sig_chirho {
-            TypeChirho::FunChirho { arg_chirho, .. } => match arg_chirho.as_ref() {
-                TypeChirho::AppChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    ..
-                } => {
-                    match fun_chirho.as_ref() {
-                        TypeChirho::AppChirho {
-                            fun_chirho,
-                            arg_chirho,
-                            ..
-                        } => {
-                            match fun_chirho.as_ref() {
-                                TypeChirho::AppChirho {
-                                    fun_chirho,
-                                    arg_chirho,
-                                    ..
-                                } => {
-                                    match fun_chirho.as_ref() {
+            TypeChirho::FunChirho { arg_chirho, .. } => {
+                match arg_chirho.as_ref() {
+                    TypeChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        match fun_chirho.as_ref() {
+                            TypeChirho::AppChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
+                            } => {
+                                match fun_chirho.as_ref() {
+                                    TypeChirho::AppChirho {
+                                        fun_chirho,
+                                        arg_chirho,
+                                        ..
+                                    } => {
+                                        match fun_chirho.as_ref() {
                                             TypeChirho::AppChirho {
                                                 fun_chirho,
                                                 arg_chirho,
@@ -13524,27 +13689,30 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                                 "expected OverChirho application spine, got {other_chirho:?}"
                                             ),
                                         }
-                                    assert!(matches!(
-                                        arg_chirho.as_ref(),
-                                        TypeChirho::VarChirho(_)
-                                    ));
+                                        assert!(matches!(
+                                            arg_chirho.as_ref(),
+                                            TypeChirho::VarChirho(_)
+                                        ));
+                                    }
+                                    other_chirho => panic!(
+                                        "expected OverChirho application spine, got {other_chirho:?}"
+                                    ),
                                 }
-                                other_chirho => panic!(
-                                    "expected OverChirho application spine, got {other_chirho:?}"
-                                ),
+                                assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                             }
-                            assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
+                            other_chirho => {
+                                panic!(
+                                    "expected OverChirho application spine, got {other_chirho:?}"
+                                )
+                            }
                         }
-                        other_chirho => {
-                            panic!("expected OverChirho application spine, got {other_chirho:?}")
-                        }
+                        assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                     }
-                    assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
+                    other_chirho => {
+                        panic!("expected OverChirho application argument, got {other_chirho:?}")
+                    }
                 }
-                other_chirho => {
-                    panic!("expected OverChirho application argument, got {other_chirho:?}")
-                }
-            },
+            }
             other_chirho => panic!("expected function type signature, got {other_chirho:?}"),
         }
     }
@@ -14813,6 +14981,213 @@ type VisibleChirho fChirho aChirho = AppChirho @fChirho aChirho\n",
     }
 
     #[test]
+    fn lower_t17594f_preserves_rank_n_function_signature_chirho() {
+        let source_chirho = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../ghc-tests-chirho/typecheck-chirho/should_compile/T17594f.hs"
+        ));
+        let module_chirho = parse_and_lower_chirho(source_chirho);
+        let signature_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find_map(|decl_chirho| match decl_chirho {
+                DeclChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
+                } if name_chirho.text_chirho() == "doubleOrInt" => Some(ty_chirho),
+                _ => None,
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "expected doubleOrInt type signature, got {:?}",
+                    module_chirho.decls_chirho
+                )
+            });
+
+        assert!(
+            matches!(
+                signature_chirho,
+                TypeChirho::FunChirho { result_chirho, .. }
+                    if matches!(result_chirho.as_ref(), TypeChirho::ForallChirho { .. })
+            ),
+            "expected Bool -> forall r. ... signature, got {signature_chirho:?}"
+        );
+
+        let wrap_signature_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find_map(|decl_chirho| match decl_chirho {
+                DeclChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
+                } if name_chirho.text_chirho() == "wrap" => Some(ty_chirho),
+                _ => None,
+            })
+            .expect("expected wrap type signature");
+        assert!(
+            matches!(
+                wrap_signature_chirho,
+                TypeChirho::RequiredForallChirho { vars_chirho, .. }
+                    if vars_chirho.len() == 1
+                        && vars_chirho[0].name_chirho.text_chirho() == "c"
+            ),
+            "expected required `forall c ->`, got {wrap_signature_chirho:?}"
+        );
+
+        fn contains_type_lambda_chirho(expr_chirho: &ExprChirho) -> bool {
+            match expr_chirho {
+                ExprChirho::TypeLamChirho { .. } => true,
+                ExprChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    contains_type_lambda_chirho(fun_chirho)
+                        || contains_type_lambda_chirho(arg_chirho)
+                }
+                ExprChirho::TypeAppChirho { expr_chirho, .. }
+                | ExprChirho::ParenChirho {
+                    inner_chirho: expr_chirho,
+                    ..
+                } => contains_type_lambda_chirho(expr_chirho),
+                _ => false,
+            }
+        }
+
+        let preserves_type_lambda_chirho =
+            module_chirho
+                .decls_chirho
+                .iter()
+                .any(|decl_chirho| match decl_chirho {
+                    DeclChirho::FunBindChirho {
+                        name_chirho,
+                        matches_chirho,
+                        ..
+                    } if name_chirho.text_chirho() == "doubleOrInt" => {
+                        matches_chirho.iter().any(|match_chirho| {
+                            matches!(
+                                &match_chirho.rhs_chirho,
+                                RhsChirho::UnguardedChirho(expr_chirho)
+                                    if contains_type_lambda_chirho(expr_chirho)
+                            )
+                        })
+                    }
+                    _ => false,
+                });
+        assert!(
+            preserves_type_lambda_chirho,
+            "expected `\\ @a -> f` to lower as a type lambda"
+        );
+    }
+
+    #[test]
+    fn lower_type_abstraction_application_stays_inside_equation_chirho() {
+        for (case_name_chirho, rhs_chirho) in [
+            ("name_chirho", "wrapChirho"),
+            ("required_arg_chirho", "wrapChirho [Num, Show]"),
+            ("visible_arg_chirho", "wrapChirho [Num, Show] @Double"),
+            ("term_arg_chirho", "wrapChirho [Num, Show] @Double 4.15"),
+            (
+                "type_lambda_chirho",
+                "wrapChirho [Num, Show] @Double 4.15 \\ @valueChirho -> functionChirho",
+            ),
+        ] {
+            let source_chirho = format!(
+                "{{-# LANGUAGE TypeAbstractions #-}}\n\
+module M where\n\
+chooseChirho :: Bool -> forall resultChirho. (forall valueChirho. valueChirho -> resultChirho) -> resultChirho\n\
+chooseChirho True functionChirho = {rhs_chirho}\n\
+chooseChirho False functionChirho = functionChirho @Int 14\n"
+            );
+            let module_chirho = parse_and_lower_chirho(&source_chirho);
+
+            assert!(
+                module_chirho.decls_chirho.iter().any(|decl_chirho| {
+                    matches!(
+                        decl_chirho,
+                        DeclChirho::TypeSigChirho { name_chirho, .. }
+                            if name_chirho.text_chirho() == "chooseChirho"
+                    )
+                }),
+                "{case_name_chirho} crossed the declaration boundary: {:?}",
+                module_chirho.decls_chirho
+            );
+        }
+    }
+
+    #[test]
+    fn lower_kind_annotated_type_lambda_preserves_binder_name_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE KindSignatures #-}\n\
+{-# LANGUAGE TypeAbstractions #-}\n\
+module M where\n\
+valueChirho = \\ @(typeChirho :: Type) -> undefined\n",
+        );
+        let binder_name_chirho =
+            module_chirho
+                .decls_chirho
+                .iter()
+                .find_map(|decl_chirho| match decl_chirho {
+                    DeclChirho::FunBindChirho {
+                        name_chirho,
+                        matches_chirho,
+                        ..
+                    } if name_chirho.text_chirho() == "valueChirho" => matches_chirho
+                        .first()
+                        .and_then(|match_chirho| match &match_chirho.rhs_chirho {
+                            RhsChirho::UnguardedChirho(ExprChirho::TypeLamChirho {
+                                binder_chirho,
+                                ..
+                            }) => Some(binder_chirho.text_chirho().to_string()),
+                            _ => None,
+                        }),
+                    _ => None,
+                });
+
+        assert_eq!(binder_name_chirho.as_deref(), Some("typeChirho"));
+    }
+
+    #[test]
+    fn lower_required_forall_record_field_preserves_quantifier_chirho() {
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE RequiredTypeArguments #-}\n\
+module M where\n\
+data HolderChirho = HolderChirho { fieldChirho :: forall typeChirho -> Proxy typeChirho }\n",
+        );
+        let field_type_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find_map(|decl_chirho| match decl_chirho {
+                DeclChirho::DataDeclChirho {
+                    constructors_chirho,
+                    ..
+                } => constructors_chirho.iter().find_map(|constructor_chirho| {
+                    let ConDeclChirho::RecordChirho { fields_chirho, .. } = constructor_chirho
+                    else {
+                        return None;
+                    };
+                    fields_chirho
+                        .first()
+                        .map(|field_chirho| &field_chirho.ty_chirho)
+                }),
+                _ => None,
+            })
+            .expect("expected HolderChirho record field");
+
+        assert!(
+            matches!(
+                field_type_chirho,
+                TypeChirho::RequiredForallChirho { vars_chirho, .. }
+                    if vars_chirho.len() == 1
+                        && vars_chirho[0].name_chirho.text_chirho() == "typeChirho"
+            ),
+            "expected record field required forall, got {field_type_chirho:?}"
+        );
+    }
+
+    #[test]
     fn lower_type_alias_rhs_kind_annotation_keeps_full_function_rhs_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "{-# LANGUAGE TypeAbstractions #-}\n\
@@ -14953,7 +15328,8 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
                     ..
                 } => contains_l_star_head_chirho(element_chirho),
                 TypeChirho::QualChirho { body_chirho, .. }
-                | TypeChirho::ForallChirho { body_chirho, .. } => {
+                | TypeChirho::ForallChirho { body_chirho, .. }
+                | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
                     contains_l_star_head_chirho(body_chirho)
                 }
                 TypeChirho::PromotedListChirho {
@@ -17454,6 +17830,8 @@ fn lower_qualified_do_preserves_module_qualifier_chirho() {
         "main = FlowChirho.do\n",
         "  valueChirho <- actionChirho\n",
         "  finishChirho valueChirho\n",
+        "nextChirho :: Int\n",
+        "nextChirho = 1\n",
     );
     let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
     let green_chirho =
@@ -17486,6 +17864,20 @@ fn lower_qualified_do_preserves_module_qualifier_chirho() {
     assert_eq!(qualifier_chirho.as_deref(), Some("FlowChirho"));
     assert_eq!(stmts_chirho.len(), 2);
     assert!(matches!(stmts_chirho[0], StmtChirho::BindChirho { .. }));
+    assert!(module_chirho.decls_chirho.iter().any(|decl_chirho| {
+        matches!(
+            decl_chirho,
+            DeclChirho::TypeSigChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "nextChirho"
+        )
+    }));
+    assert!(module_chirho.decls_chirho.iter().any(|decl_chirho| {
+        matches!(
+            decl_chirho,
+            DeclChirho::FunBindChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "nextChirho"
+        )
+    }));
 }
 
 #[cfg(test)]

@@ -3666,6 +3666,16 @@ impl DesugarCtxChirho {
                 result_chirho
             }
 
+            // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+            ExprChirho::TypeLamChirho {
+                binder_chirho,
+                body_chirho,
+                ..
+            } => CoreExprChirho::TyLamChirho {
+                ty_var_chirho: binder_chirho.text_chirho().to_string(),
+                body_chirho: Box::new(self.desugar_expr_chirho(body_chirho)),
+            },
+
             ExprChirho::IfChirho {
                 cond_chirho,
                 then_chirho,

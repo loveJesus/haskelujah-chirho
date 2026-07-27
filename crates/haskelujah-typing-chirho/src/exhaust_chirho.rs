@@ -415,7 +415,8 @@ impl<'a> ExhaustCheckerChirho<'a> {
             ExprChirho::NegChirho { expr_chirho, .. } => {
                 self.check_expr_chirho(expr_chirho);
             }
-            ExprChirho::LamChirho { body_chirho, .. } => {
+            ExprChirho::LamChirho { body_chirho, .. }
+            | ExprChirho::TypeLamChirho { body_chirho, .. } => {
                 self.check_expr_chirho(body_chirho);
             }
             ExprChirho::LetChirho {

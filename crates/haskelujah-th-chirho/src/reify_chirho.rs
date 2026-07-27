@@ -99,6 +99,11 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
             vars_chirho,
             body_chirho,
             ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
         } => {
             let bndrs_chirho: Vec<ThTyVarBndrChirho> = vars_chirho
                 .iter()

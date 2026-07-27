@@ -79,6 +79,14 @@ pub enum TyChirho {
         vars_chirho: Vec<TyVarChirho>,
         body_chirho: Box<TyChirho>,
     },
+
+    /// A required forall whose type arguments are written without `@`.
+    /// `forall a -> body` remains visible in the inferred type until an
+    /// expression application supplies `a`.
+    RequiredForallChirho {
+        vars_chirho: Vec<TyVarChirho>,
+        body_chirho: Box<TyChirho>,
+    },
 }
 
 impl TyChirho {
@@ -187,6 +195,10 @@ impl TyChirho {
             TyChirho::ForallChirho {
                 body_chirho: t_chirho,
                 ..
+            }
+            | TyChirho::RequiredForallChirho {
+                body_chirho: t_chirho,
+                ..
             } => t_chirho.contains_var_chirho(),
         }
     }
@@ -212,6 +224,10 @@ impl TyChirho {
                 inner_chirho.collect_free_vars_chirho(out_chirho);
             }
             TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
                 vars_chirho,
                 body_chirho,
             } => {
@@ -261,6 +277,16 @@ impl fmt::Display for TyChirho {
                     write!(f_chirho, " {v_chirho}")?;
                 }
                 write!(f_chirho, ". {body_chirho})")
+            }
+            TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                write!(f_chirho, "(forall")?;
+                for v_chirho in vars_chirho {
+                    write!(f_chirho, " {v_chirho}")?;
+                }
+                write!(f_chirho, " -> {body_chirho})")
             }
         }
     }

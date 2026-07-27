@@ -135,6 +135,19 @@ impl SubstChirho {
                     body_chirho: Box::new(restricted_chirho.apply_ty_chirho(body_chirho)),
                 }
             }
+            TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                let mut restricted_chirho = self.clone();
+                for var_chirho in vars_chirho {
+                    restricted_chirho.map_chirho.remove(var_chirho);
+                }
+                TyChirho::RequiredForallChirho {
+                    vars_chirho: vars_chirho.clone(),
+                    body_chirho: Box::new(restricted_chirho.apply_ty_chirho(body_chirho)),
+                }
+            }
         }
     }
 

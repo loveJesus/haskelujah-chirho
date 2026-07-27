@@ -647,7 +647,8 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
         TypeChirho::ParenChirho { inner_chirho, .. } => {
             result_chirho.extend(type_con_names_chirho(inner_chirho));
         }
-        TypeChirho::ForallChirho { body_chirho, .. } => {
+        TypeChirho::ForallChirho { body_chirho, .. }
+        | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
             result_chirho.extend(type_con_names_chirho(body_chirho));
         }
         TypeChirho::QualChirho { body_chirho, .. } => {
