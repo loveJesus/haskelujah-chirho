@@ -156,6 +156,30 @@ pub struct MethodOccurrenceRecordChirho {
 and the driver already consumes these to build the evidence map
 (`driver lib.rs:3160-3200`, which sorts its id vectors and is deterministic).
 
+**Refinement — `print` ALREADY carries the constraint.** `infer_chirho.rs:9494` binds
+
+```haskell
+print :: forall a. Show a => a -> IO ()
+```
+
+with a real `SchemePredChirho { class_name: "Show", ty: a }`. So the checker *does* generate
+and solve a `Show` constraint at every `print` site — the type is known. The gap is
+narrower than "print isn't typed as a method use":
+
+> Occurrence records are threaded for class **methods** (`show`, `==`, `compare`). `print`
+> is a **constrained function**, not a method, so its solved evidence is simply never
+> recorded and never reaches the dict pass.
+
+That is a meaningfully smaller fix than adding type information — the information already
+exists and is already correct. It only has to be *written down* at the call site in the form
+the dict pass already consumes.
+
+It also suggests the general shape of the real repair: evidence threading currently covers
+class methods but not constrained functions. `print` is the most visible casualty, not a
+special case. Fixing the general case would repair every user-written
+`f :: Show a => a -> …` too, and is probably the better investment if the narrow version
+proves awkward.
+
 **Therefore the fix, in three bricks:**
 
 1. **Typing** — when inferring `print e`, record a method occurrence for the *implicit*
