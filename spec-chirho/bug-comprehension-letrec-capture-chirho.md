@@ -114,6 +114,35 @@ the recursive call changes nothing — inline, `let`-bound, and `where`-bound al
 same wrong `[2,3,4,5,6,7]`. So it is not about the comprehension being an argument to the
 recursive call.
 
+### SCOPE IS FAR WIDER THAN THIS FILENAME — it is NOT a comprehension bug
+
+Decisive, 2026-07-27. A hand-written recursive worker with an `if` — **no comprehension
+anywhere** — is broken in exactly the same way:
+
+```haskell
+-- BROKEN: take 6 -> [2,3,4,5,6,7]
+s (p:xs) = p : s (go xs)
+  where go []     = []
+        go (y:ys) = if y `mod` p /= 0 then y : go ys else go ys
+
+-- CORRECT: take 6 -> [2,3,5,7,11,13]
+s (p:xs) = p : s (concatMap (\x -> if x `mod` p /= 0 then [x] else []) xs)
+```
+
+The `concatMap` form uses a *non-recursive lambda* and is fine. The `where`-bound form uses a
+**locally-defined recursive worker that captures the enclosing pattern-bound `p`** and is
+broken. List comprehensions were only how this was first hit — they desugar to exactly that
+shape.
+
+**So the real defect is: a local recursive worker closing over a variable bound by the
+enclosing function's constructor pattern, branching on a condition involving it.** That is
+an extremely common Haskell idiom — `where go` helpers over a captured parameter are
+everywhere — which makes this considerably more severe than "list comprehensions
+mis-compile", and means the blast radius in real code is much larger than the sieve suggests.
+
+The filename is kept because it is linked from the site and from other commits; treat the
+title as the discovery route, not the scope.
+
 **Where a fresh investigator should start:** the value is right and the `case` is wrong, so
 compare the *runtime* dispatch of the working `filter` form against the broken comprehension
 form — instrument the tag actually read at the `case` in each. Do not re-derive the value
