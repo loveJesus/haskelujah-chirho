@@ -296,10 +296,22 @@ impl DictPassCtxChirho {
                 .get(id_chirho)
                 .cloned()
                 .or_else(|| self.infer_type_key_chirho(expr_chirho)),
+            // A type application carries the type we are trying to recover, so USE it when
+            // it is concrete. Previously this arm discarded `ty_chirho` and recursed into
+            // the inner expression — which meant an explicit annotation was ignored:
+            //   show (id [1,2,3] :: [Int])   rendered as a heap address
+            // because the inner expression is an application, has no binder to read a type
+            // off, and the `Show` fallback is `showInt#`. The sibling resolver
+            // `infer_strict_dispatch_key_for_rewrite_chirho` already reads `ty_chirho`;
+            // these two had simply diverged.
+            // See spec-chirho/bug-native-print-list-pointer-chirho.md
             CoreExprChirho::TyAppChirho {
                 expr_chirho: inner_chirho,
+                ty_chirho,
                 ..
-            } => self.infer_type_key_for_rewrite_chirho(inner_chirho, local_type_keys_chirho),
+            } => Self::concrete_local_type_key_chirho(format!("{ty_chirho}")).or_else(|| {
+                self.infer_type_key_for_rewrite_chirho(inner_chirho, local_type_keys_chirho)
+            }),
             _ => self.infer_type_key_chirho(expr_chirho),
         }
     }
@@ -1958,6 +1970,7 @@ impl DictPassCtxChirho {
                 | "Traversable"
                 | "Alternative"
                 | "MonadPlus"
+                | "MonadFix"
         )
     }
 
