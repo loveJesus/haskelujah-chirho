@@ -52,7 +52,8 @@ const NOISE_GLSL_CHIRHO = /* glsl */ `
 	float noiseChirho(vec2 p) {
 		vec2 i = floor(p);
 		vec2 f = fract(p);
-		vec2 u = f * f * (3.0 - 2.0 * f);
+		// quintic interpolation — the cubic version shows its bilinear grid under magnification
+		vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
 		return mix(
 			mix(hashChirho(i), hashChirho(i + vec2(1.0, 0.0)), u.x),
 			mix(hashChirho(i + vec2(0.0, 1.0)), hashChirho(i + vec2(1.0, 1.0)), u.x),
@@ -93,14 +94,15 @@ const PANE_FRAG_CHIRHO = /* glsl */ `
 		);
 		vec2 g = fract(cell) - 0.5;
 		float lead = smoothstep(0.38, 0.5, max(abs(g.x), abs(g.y)));
-		// glass mottle + slow internal shimmer
-		float mottle = 0.72 + 0.28 * noiseChirho(vPosChirho * 13.0 + uSeedChirho * 7.0);
+		// glass mottle + slow internal shimmer; second octave keeps texture alive under zoom
+		float mottle = 0.66 + 0.24 * noiseChirho(vPosChirho * 13.0 + uSeedChirho * 7.0)
+			+ 0.10 * noiseChirho(vPosChirho * 34.0 + uSeedChirho * 3.0);
 		float shimmer = 0.94 + 0.06 * noiseChirho(vPosChirho * 3.0 + uTimeChirho * 0.05);
 		// transmission: panes facing the moving sun glow brighter
 		float sun = 0.5 + 0.5 * clamp(dot(normalize(vPosChirho), uSunDirChirho), -1.0, 1.0);
 		vec3 glass = uColorChirho * mottle * shimmer * (0.52 + 0.95 * sun);
 		glass += uColorChirho * uHoverChirho * 0.85;
-		glass *= 1.0 + uGlowChirho * 2.2;
+		glass *= 1.0 + min(uGlowChirho, 1.0) * 1.8;
 		// the kindling: each pane wakes in pipeline order, with a brief bloom as it lights
 		float kindleBloom = exp(-pow(uKindleChirho - 0.55, 2.0) * 14.0) * 0.55;
 		glass *= 0.18 + 0.82 * uKindleChirho + kindleBloom;
@@ -126,26 +128,59 @@ const OCULUS_FRAG_CHIRHO = /* glsl */ `
 		float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
 		return length(pa - ba * h) - rad;
 	}
+	// one twinkling star per sparse hash cell; gaussian falloff, no branching cost to speak of
+	float starLayerChirho(vec2 uv, float sparsity, float t, float seed) {
+		vec2 cell = floor(uv);
+		vec2 f = fract(uv);
+		float h = hashChirho(cell + seed);
+		if (h < sparsity) return 0.0;
+		vec2 pos = 0.2 + 0.6 * vec2(hashChirho(cell + seed + 7.3), hashChirho(cell + seed + 17.1));
+		float d = length(f - pos);
+		float tw = 0.55 + 0.45 * sin(t * (0.6 + h) + h * 40.0);
+		// mostly small crisp points; the occasional cell gets a soft bokeh accent
+		float size = mix(240.0, 70.0, step(0.93, hashChirho(cell + seed + 29.0)));
+		return tw * exp(-d * d * size);
+	}
 	void main() {
 		vec2 p = vPosChirho / uRChirho; // normalized to oculus radius
 		float glowCapChirho = min(uGlowChirho, 0.85);
-		// deep lapis glass ground
-		float mottle = 0.7 + 0.3 * noiseChirho(p * 9.0);
-		vec3 col = vec3(0.075, 0.13, 0.34) * mottle * (0.75 + glowCapChirho);
-		// λ — the heart of the window
+		float t = uTimeChirho;
+
+		// nebula ground: domain-warped noise through a lapis -> violet -> teal palette
+		vec2 q = p * 2.3 + vec2(t * 0.016, -t * 0.011);
+		float warp = noiseChirho(q * 1.6 + 3.7);
+		float n = noiseChirho(q + warp * 1.15);
+		vec3 col = mix(vec3(0.028, 0.05, 0.16), vec3(0.07, 0.06, 0.21), smoothstep(0.3, 0.75, n));
+		col = mix(col, vec3(0.045, 0.13, 0.17), smoothstep(0.62, 0.95, noiseChirho(q * 1.3 + 9.0)) * 0.5);
+		col *= 0.62 + glowCapChirho * 0.75;
+
+		// three parallax star layers; drift quickens gently as the visitor passes through
+		float drift = t * 0.01 + glowCapChirho * 0.22;
+		float stars = 0.0;
+		stars += starLayerChirho(p * 6.0 + vec2(0.0, drift * 1.2), 0.72, t, 1.0) * 0.55;
+		stars += starLayerChirho(p * 11.0 + vec2(drift * 0.7, drift * 2.1), 0.78, t, 2.0) * 0.8;
+		stars += starLayerChirho(p * 21.0 + vec2(-drift * 1.4, drift * 3.4), 0.84, t, 3.0);
+		col += vec3(0.85, 0.86, 0.95) * stars * (0.5 + glowCapChirho * 0.8);
+
+		// λ — vector-crisp at any zoom: screen-space AA via fwidth, not a fixed edge width
 		float dMain = capsuleChirho(p, vec2(-0.3, 0.56), vec2(0.34, -0.58), 0.058);
 		float dLeg = capsuleChirho(p, vec2(-0.01, 0.03), vec2(-0.34, -0.58), 0.058);
 		float d = min(dMain, dLeg);
-		float body = 1.0 - smoothstep(0.0, 0.018, d);
+		float aa = fwidth(d) * 1.4 + 1e-4;
+		float body = 1.0 - smoothstep(0.0, aa, d);
 		float halo = exp(-max(d, 0.0) * 9.0);
-		float pulse = 0.93 + 0.07 * sin(uTimeChirho * 0.7);
-		vec3 gold = vec3(0.89, 0.72, 0.33) * pulse;
+		float pulse = 0.93 + 0.07 * sin(t * 0.7);
+		// living gold: slow plasma veins WITHIN the stroke
+		float veins = noiseChirho(p * 3.2 + vec2(t * 0.05, -t * 0.04));
+		vec3 gold = vec3(0.89, 0.72, 0.33) * pulse * (0.82 + 0.36 * veins);
 		col = mix(col, gold, body);
 		col += gold * halo * (0.2 + 0.45 * glowCapChirho);
-		// rim
+
+		// rim + screen-space dither (kills banding in the nebula gradients)
 		float r = length(vPosChirho);
 		float rim = smoothstep(uRChirho - 0.02, uRChirho - 0.006, r);
 		col += vec3(0.82, 0.66, 0.28) * rim * 0.5;
+		col += (hashChirho(gl_FragCoord.xy * 0.7 + fract(t)) - 0.5) * 0.012;
 		gl_FragColor = vec4(col, 1.0);
 	}
 `;
