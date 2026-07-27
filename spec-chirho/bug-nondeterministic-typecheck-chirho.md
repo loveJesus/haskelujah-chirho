@@ -1,0 +1,88 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
+
+# BUG — the type checker is NON-DETERMINISTIC
+
+**Found** 2026-07-27 by `claude_chirho` (HASKELUJAH) while re-measuring `should_compile`
+after the GHC-91510 slice (`6ad1d7a7`).
+**Severity: HIGH.** Same input file, same binary, no flags — the compiler accepts it on
+some runs and rejects it on others. Builds are not reproducible, and every published
+compatibility percentage carries noise.
+
+## Repro
+
+```
+$ for i in $(seq 1 20); do
+    ./target/release/haskelujah check ghc-tests-chirho/typecheck-chirho/should_compile/T25266.hs \
+      >/dev/null 2>&1 && echo pass || echo fail
+  done | sort | uniq -c
+   9 pass
+  11 fail
+```
+
+Roughly a coin flip. Not a timeout — the failing runs return promptly with a real
+diagnostic.
+
+## It is a clean binary split, not gradual drift
+
+Six captured runs produced exactly **two** byte-distinct outputs:
+
+| output | size | occurrences | content |
+|---|---|---|---|
+| A | 785 B | 4 | `error[E0200]: type mismatch: expected 'Void', found '[Int]'` |
+| B | 205 B | 2 | clean accept (warning only) |
+
+So the checker reaches one of two stable fixed points, chosen per process.
+
+## Why this was nearly invisible
+
+It only shows up if you measure twice. The `should_compile` corpus was measured once per
+sweep, so `T25266.hs` landed on whichever side the coin came up and the number was reported
+as exact. This is how the same corpus produced **850/938** in one sweep and **849/938** in
+the next with *no crate change in between* (the only commits touching `crates/` between the
+two measurements were a `cargo fmt` reflow and the GHC-91510 slice, and the slice is
+provably not involved — it emits `E0206`, while this failure is `E0200` from inference).
+
+I initially read the 849 as a regression caused by my own slice. It was not. Re-running the
+single file is what exposed it.
+
+## Blast radius measured so far
+
+Re-running all **89** files that failed the second sweep: exactly **1** flipped
+(`T25266.hs`); the other 88 fail deterministically. A second full corpus pass was started to
+find flaky *passers* as well — the honest current statement of the number is therefore:
+
+> `should_compile` = **88 deterministic failures + 1 file that is a coin flip**, i.e.
+> 849–850 / 938, and it is not meaningful to quote a third significant figure.
+
+## Likely cause
+
+Rust's `std::collections::HashMap`/`HashSet` randomize iteration order with a per-process
+seed. Any place the type checker iterates a hash collection and the *order* affects
+unification, defaulting, or constraint-solving will produce run-to-run differences.
+`crates/haskelujah-typing-chirho/src/infer_chirho.rs` alone mentions `HashMap`/`HashSet`
+**159** times.
+
+Note this is not the same defect as
+[[bug-comprehension-letrec-capture-chirho]] — that one is a deterministic wrong answer at
+runtime; this one is an unstable accept/reject decision at compile time. They should not be
+conflated.
+
+## How to confirm and fix
+
+1. **Confirm cheaply**: swap the hash collections in the typing crate for `BTreeMap`/
+   `BTreeSet`, or keep `HashMap` but pin a fixed-seed `BuildHasher`, then re-run
+   `T25266.hs` 20×. If it becomes 20/20 either way, iteration order is confirmed as the
+   channel.
+2. **Fix properly**: a compiler's observable behavior must not depend on hash seed. Either
+   use ordered collections on any path that feeds diagnostics or solver order, or sort at
+   every point where a hash collection is iterated into an order-sensitive consumer.
+   `captures_chirho.sort_by_key(...)` in `stg_lower_chirho.rs` shows the codebase already
+   knows this pattern in places — it just is not applied consistently.
+3. **Guard it**: add a regression test that checks a known-tricky module N times and asserts
+   identical output every time. Without such a test this class of bug silently returns.
+
+## Consequence for how we publish numbers
+
+Any single-pass corpus measurement is now known to be ±1 at minimum. Measurement artifacts
+should either report a range, or run each file until the result is stable. Quoting
+`90.6%` as if it were exact overstates the precision of the method.
