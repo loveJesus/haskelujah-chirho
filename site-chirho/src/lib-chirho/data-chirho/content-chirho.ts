@@ -158,6 +158,8 @@ export const statsProvenanceChirho =
 export interface LimitationChirho {
 	titleChirho: string;
 	bodyChirho: string;
+	/** repo-relative path of the committed bug writeup, when one exists */
+	writeupPathChirho?: string;
 }
 
 export const limitationsChirho: LimitationChirho[] = [
@@ -169,17 +171,20 @@ export const limitationsChirho: LimitationChirho[] = [
 	{
 		titleChirho: 'The type checker is not deterministic',
 		bodyChirho:
-			'At least one corpus file has been observed to flip between accepted and rejected across runs of the same binary on the same source — and the rest of the corpus has not been tested per-file for stability. Until this is fixed, builds are not reproducible; the percentages above are floored, and the accept figure is a range. The cause is under investigation.'
+			'At least one corpus file has been observed to flip between accepted and rejected across runs of the same binary on the same source — and the rest of the corpus has not been tested per-file for stability. Until this is fixed, builds are not reproducible; the percentages above are floored, and the accept figure is a range. The cause is under investigation.',
+		writeupPathChirho: 'spec-chirho/bug-nondeterministic-typecheck-chirho.md'
 	},
 	{
 		titleChirho: 'Running is not yet computing',
 		bodyChirho:
-			'A known miscompile exists: a boolean test inside a list comprehension’s recursive worker can take the wrong branch and return a silently wrong answer. The canonical lazy primes sieve hits it. This is on the interpreter path used by haskelujah run. The symptom is reproduced and isolated; the mechanism is still being traced, and no fix ships on a hypothesis.'
+			'A known miscompile exists: a boolean test inside a list comprehension’s recursive worker can take the wrong branch and return a silently wrong answer. The canonical lazy primes sieve hits it. This is on the interpreter path used by haskelujah run. The symptom is reproduced and isolated; the mechanism is still being traced, and no fix ships on a hypothesis.',
+		writeupPathChirho: 'spec-chirho/bug-comprehension-letrec-capture-chirho.md'
 	},
 	{
-		titleChirho: 'Compiled output is not yet trustworthy for lists',
+		titleChirho: 'Compiled output is not yet trustworthy for structured values',
 		bodyChirho:
-			'A program that prints a computed list produces a memory address instead of the list when compiled to native code, on both backends. The value is computed correctly — only printing it is broken. The interpreter is unaffected. Use haskelujah run for anything whose output you depend on.'
+			'When compiled to native code, printing a value that is not syntactically obvious at the call site can emit an internal representation instead of the value: a heap address, a raw constructor tag, or an internal name such as $tuple2. Lists, tuples, and derived Show instances are all affected once the value passes through any function; simple cases (integers, a literal list, a directly-applied constructor) are correct. The interpreter is unaffected — use haskelujah run for anything whose output you depend on.',
+		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md'
 	},
 	{
 		titleChirho: 'Rank-N inference gaps',

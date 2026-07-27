@@ -4,7 +4,7 @@
 	// For God so loved the world that he gave his only begotten Son, that whoever believes in him should not perish but have eternal life. John 3:16
 
 	import SectionHeadChirho from '$lib-chirho/components-chirho/SectionHeadChirho.svelte';
-	import { limitationsChirho } from '$lib-chirho/data-chirho/content-chirho';
+	import { limitationsChirho, linksChirho } from '$lib-chirho/data-chirho/content-chirho';
 </script>
 
 <section id="confessio-chirho" class="confessio-chirho">
@@ -23,6 +23,16 @@
 					<div>
 						<h3 class="confessio-title-chirho">{limitationChirho.titleChirho}</h3>
 						<p class="confessio-body-chirho">{limitationChirho.bodyChirho}</p>
+						{#if limitationChirho.writeupPathChirho}
+							<a
+								class="confessio-writeup-chirho"
+								href="{linksChirho.githubChirho}/blob/main_chirho/{limitationChirho.writeupPathChirho}"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								full writeup ↗
+							</a>
+						{/if}
 					</div>
 				</li>
 			{/each}
@@ -78,5 +88,21 @@
 		font-size: 1rem;
 		color: var(--ink-soft-chirho);
 		line-height: 1.65;
+	}
+
+	.confessio-writeup-chirho {
+		display: inline-block;
+		margin-top: 0.45rem;
+		font-family: var(--font-mono-chirho);
+		font-variation-settings: 'MONO' 1;
+		font-size: 0.72rem;
+		color: var(--ink-faint-chirho);
+		border-bottom: 1px dotted var(--ink-faint-chirho);
+		transition: color 0.2s ease, border-color 0.2s ease;
+	}
+
+	.confessio-writeup-chirho:hover {
+		color: var(--lapis-chirho);
+		border-color: var(--lapis-chirho);
 	}
 </style>
