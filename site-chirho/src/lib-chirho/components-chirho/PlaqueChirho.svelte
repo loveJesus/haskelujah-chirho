@@ -103,17 +103,10 @@
 
 		<p class="method-note-chirho">
 			Method: each axis is a single timed sweep of the corpus, 15-second per-file timeout,
-			counts as committed in the artifacts above. A run-to-run variance of ±1 file has been
-			observed — the type checker has a
-			<a
-				class="method-link-chirho"
-				href={artifactUrlChirho('spec-chirho/bug-nondeterministic-typecheck-chirho.md')}
-				target="_blank"
-				rel="noopener noreferrer">known nondeterminism under investigation</a
-			> — so percentages are floored to the whole, deliberately, never above their own range.
-			The two axes carry different stability confidence, so each card quotes its artifact's
-			stability line verbatim rather than flattening them into one claim. When a sweep is
-			re-run and its artifact updated, this page updates with it.
+			counts as committed in the artifacts above. Percentages are floored to the whole,
+			deliberately — a single sweep earns no third significant figure. Each card quotes its
+			artifact's stability line verbatim rather than translating it. When a sweep is re-run
+			and its artifact updated, this page updates with it.
 		</p>
 
 		<div class="stats-strip-chirho">

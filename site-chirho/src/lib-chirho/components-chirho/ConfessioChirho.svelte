@@ -19,7 +19,11 @@
 		<ul class="confessio-list-chirho">
 			{#each limitationsChirho as limitationChirho (limitationChirho.titleChirho)}
 				<li class="confessio-item-chirho">
-					<span class="confessio-mark-chirho" aria-hidden="true">✗</span>
+					<span
+						class="confessio-mark-chirho"
+						class:confessio-mark-fixed-chirho={limitationChirho.fixedChirho}
+						aria-hidden="true">{limitationChirho.fixedChirho ? '✓' : '✗'}</span
+					>
 					<div>
 						<h3 class="confessio-title-chirho">{limitationChirho.titleChirho}</h3>
 						<p class="confessio-body-chirho">{limitationChirho.bodyChirho}</p>
@@ -74,6 +78,11 @@
 		border-radius: 50%;
 		color: var(--vermilion-rubric-chirho);
 		font-size: 0.8rem;
+	}
+
+	.confessio-mark-fixed-chirho {
+		border-color: color-mix(in srgb, var(--verdigris-chirho) 55%, transparent);
+		color: var(--verdigris-chirho);
 	}
 
 	.confessio-title-chirho {

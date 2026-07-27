@@ -160,6 +160,8 @@ export interface LimitationChirho {
 	bodyChirho: string;
 	/** repo-relative path of the committed bug writeup, when one exists */
 	writeupPathChirho?: string;
+	/** true when the confessed defect is fixed and verified — kept as an honest record */
+	fixedChirho?: boolean;
 }
 
 export const limitationsChirho: LimitationChirho[] = [
@@ -169,10 +171,11 @@ export const limitationsChirho: LimitationChirho[] = [
 			'GHC rejects 767 programs in the should_fail corpus; today we correctly reject only a fraction of them (the second number above). A soundness-first effort is underway to close this honestly rather than quietly.'
 	},
 	{
-		titleChirho: 'The type checker is not deterministic',
+		titleChirho: 'The type checker is deterministic — fixed 2026-07-27',
 		bodyChirho:
-			'At least one corpus file has been observed to flip between accepted and rejected across runs of the same binary on the same source — and the rest of the corpus has not been tested per-file for stability. The cause is partially identified: hash-iteration order reaching inference state. Seven order-dependent sites are fixed, and the defect still reproduces. Until it is gone, builds are not reproducible; the percentages above are floored, and the accept figure is a range.',
-		writeupPathChirho: 'spec-chirho/bug-nondeterministic-typecheck-chirho.md'
+			'This ledger previously confessed that a corpus file flipped between accepted and rejected across runs of the same binary on the same source. Root cause: signature schemes quantified their type variables in hash-map iteration order. Schemes now quantify in first-appearance order, verified by 100-run determinism loops and a re-measure of both corpora on the fixed binary — failing sets byte-identical, stability lines now read deterministic. Said plainly: no number improved. The coin-flip file now fails every time instead of sometimes; we did not gain a passing file, we stopped pretending a coin flip was a result.',
+		writeupPathChirho: 'spec-chirho/bug-nondeterministic-typecheck-chirho.md',
+		fixedChirho: true
 	},
 	{
 		titleChirho: 'Running is not yet computing',
@@ -183,7 +186,7 @@ export const limitationsChirho: LimitationChirho[] = [
 	{
 		titleChirho: 'Compiled output is not yet trustworthy for structured values',
 		bodyChirho:
-			'When compiled to native code, printing a value that is not syntactically obvious at the call site can emit an internal representation instead of the value: a heap address, a raw constructor tag, or an internal name such as $tuple2. Lists, tuples, and derived Show instances are all affected once the value passes through any function; simple cases (integers, a literal list, a directly-applied constructor) are correct. The interpreter is unaffected — use haskelujah run for anything whose output you depend on.',
+			'When compiled to native code, printing a value that is not syntactically obvious at the call site can emit an internal representation instead of the value: a heap address, a raw constructor tag, or an internal name such as $tuple2. Partially fixed: type-annotated expressions now resolve their Show instance correctly. But print itself still threads no Show evidence and top-level bindings still fall back, so compiled output remains untrustworthy for structured values. The interpreter is unaffected — use haskelujah run for anything whose output you depend on.',
 		writeupPathChirho: 'spec-chirho/bug-native-print-list-pointer-chirho.md'
 	},
 	{
