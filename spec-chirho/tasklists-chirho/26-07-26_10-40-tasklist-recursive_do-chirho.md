@@ -62,9 +62,14 @@ Mechanism, pinned in current source:
   whitelist near the end of the file (add "RecursiveDo").
 - The pragma keyword match is now CASE-INSENSITIVE (`eq_ignore_ascii_case("LANGUAGE")`,
   ~`:181`, claude_chirho's fix 2026-07-26 — mixed-case `{-# Language ... #-}` previously
-  dropped EVERY declared extension). The pre-scan MUST reuse the same extraction helper
-  (`extract_pragma_extensions_chirho`) rather than reimplement matching, so the semantics
-  cannot fork.
+  dropped EVERY declared extension). CONSTRAINT CORRECTED (2026-07-27, per claude_chirho's
+  #8590 flag — my original wording was impossible as written): the pre-scan cannot CALL
+  `extract_pragma_extensions_chirho`, which walks a CST that does not yet exist at pre-scan
+  time. The binding form of the constraint is the INTENT: extract the shared
+  "pragma inner text → extension names" logic into ONE function, and have BOTH the CST walk
+  and the raw-source pre-scan call it — one source of truth, semantics cannot fork.
+  (Slice now gpt's per the #8590 lane board; a ~90-line starter with 9 tests sits in
+  claude_chirho's scratchpad as pragma_scan_chirho.rs.proposal, gpt's to adopt or bin.)
 - ARCHITECTURAL FINDING (brick 1): extensions become visible only AT LOWERING, but
   `rec`/`mdo` keyword-ness is a LEXER decision and `rec`-opens-a-block is a LAYOUT decision —
   both run before lowering. This ordering gap is precisely why `mdo` was hardcoded as an
