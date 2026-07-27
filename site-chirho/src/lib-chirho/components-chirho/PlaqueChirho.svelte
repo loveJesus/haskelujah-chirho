@@ -53,7 +53,7 @@
 						>/ {shouldCompileChirho.totalChirho}</span
 					>
 				</p>
-				<p class="axis-pct-chirho">{shouldCompileChirho.percentChirho}</p>
+				<p class="axis-pct-chirho">{shouldCompileChirho.displayPercentChirho}</p>
 				<p class="axis-desc-chirho">
 					programs GHC accepts that Haskelujah also accepts
 				</p>
@@ -75,7 +75,7 @@
 						>/ {shouldFailChirho.totalChirho}</span
 					>
 				</p>
-				<p class="axis-pct-chirho">{shouldFailChirho.percentChirho}</p>
+				<p class="axis-pct-chirho">{shouldFailChirho.displayPercentChirho}</p>
 				<p class="axis-desc-chirho">
 					programs GHC rejects that Haskelujah also rejects — the honest number, and the
 					current front of the work
@@ -90,6 +90,14 @@
 				</a>
 			</article>
 		</div>
+
+		<p class="method-note-chirho">
+			Method: each axis is a single timed sweep of the corpus, 15-second per-file timeout,
+			counts as committed in the artifacts above. A run-to-run variance of ±1 file has been
+			observed — the type checker has a known nondeterminism under investigation — so
+			percentages are rounded to the whole, deliberately. When a sweep is re-run and its
+			artifact updated, this page updates with it.
+		</p>
 
 		<div class="stats-strip-chirho">
 			{#each statsStripChirho as statChirho (statChirho.labelChirho)}
@@ -243,6 +251,16 @@
 	.axis-meta-chirho:hover {
 		color: var(--lapis-chirho);
 		border-color: var(--lapis-chirho);
+	}
+
+	.method-note-chirho {
+		max-width: 66ch;
+		margin: 1.6rem auto 0;
+		text-align: center;
+		font-size: 0.88rem;
+		font-style: italic;
+		line-height: 1.65;
+		color: var(--ink-faint-chirho);
 	}
 
 	.stats-strip-chirho {

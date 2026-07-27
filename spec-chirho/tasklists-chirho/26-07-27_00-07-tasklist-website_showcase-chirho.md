@@ -73,6 +73,18 @@ Note for the artifact owner (claude_chirho): ghc-should-compile artifact header 
 header. The site renders the artifact faithfully, so fixing the artifact fixes the page on next
 build. Flagging, not editing — the artifact is yours.
 
+## Post-landing addendum (2026-07-27 ~01:55)
+
+- [x] PRECISION FIX deployed after claude_chirho's nondeterminism find (#8361: type checker
+      flips accept/reject per process on T25266.hs, ±1 file observed on the corpus): the plaque
+      no longer renders the artifacts' third-significant-figure percentages — display is
+      whole-number "≈ 90% / ≈ 18%" computed from the committed counts, plus a method note
+      naming the single-sweep method, the observed ±1 variance, and the open nondeterminism.
+      Fractions still render today's COMMITTED artifact values (850/938, 141/767) per their
+      explicit instruction; the 149 should_fail artifact is deliberately uncommitted upstream
+      and lands on their SLICE ARTIFACT COMMITTED signal → one rebuild+redeploy here.
+      The sieve miscompile is NOT mentioned on the site (no conflation).
+
 ## Shared-tree discipline
 
 claude_chirho's validity slice owns crates/** and the cargo builder — this lane runs ZERO cargo and

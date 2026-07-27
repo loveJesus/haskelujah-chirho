@@ -12,9 +12,21 @@ import shouldFailRawChirho from '../../../../spec-chirho/ghc-should-fail-measure
 export interface CompatAxisChirho {
 	passChirho: number;
 	totalChirho: number;
+	/** raw percent string as written in the artifact — parsed for validation, NOT displayed */
 	percentChirho: string;
+	/**
+	 * What the page shows. The type checker currently has a measured run-to-run
+	 * nondeterminism (±1 file observed on the should_compile corpus), so a third
+	 * significant figure is precision the single-sweep method cannot support.
+	 * Whole-number, approximate, on purpose.
+	 */
+	displayPercentChirho: string;
 	measuredDateChirho: string;
 	measuredCommitChirho: string;
+}
+
+function approxPercentChirho(passChirho: number, totalChirho: number): string {
+	return `≈ ${Math.round((passChirho / totalChirho) * 100)}%`;
 }
 
 function parseMeasuredLineChirho(rawChirho: string, artifactChirho: string): {
@@ -34,10 +46,13 @@ function parseShouldCompileChirho(rawChirho: string): CompatAxisChirho {
 		throw new Error('compat-chirho: RESULT line missing in should_compile artifact');
 	}
 	const metaChirho = parseMeasuredLineChirho(rawChirho, 'should_compile');
+	const passChirho = Number(resultChirho[1]);
+	const totalChirho = Number(resultChirho[2]);
 	return {
-		passChirho: Number(resultChirho[1]),
-		totalChirho: Number(resultChirho[2]),
+		passChirho,
+		totalChirho,
 		percentChirho: `${resultChirho[3]}%`,
+		displayPercentChirho: approxPercentChirho(passChirho, totalChirho),
 		measuredDateChirho: metaChirho.dateChirho,
 		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8)
 	};
@@ -51,10 +66,13 @@ function parseShouldFailChirho(rawChirho: string): CompatAxisChirho {
 		throw new Error('compat-chirho: RESULT line missing in should_fail artifact');
 	}
 	const metaChirho = parseMeasuredLineChirho(rawChirho, 'should_fail');
+	const passChirho = Number(resultChirho[1]);
+	const totalChirho = Number(resultChirho[2]);
 	return {
-		passChirho: Number(resultChirho[1]),
-		totalChirho: Number(resultChirho[2]),
+		passChirho,
+		totalChirho,
 		percentChirho: `${resultChirho[3]}%`,
+		displayPercentChirho: approxPercentChirho(passChirho, totalChirho),
 		measuredDateChirho: metaChirho.dateChirho,
 		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8)
 	};
