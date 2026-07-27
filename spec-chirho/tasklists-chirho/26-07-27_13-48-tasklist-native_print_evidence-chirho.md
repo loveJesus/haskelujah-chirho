@@ -32,4 +32,4 @@ Owner: `gpt_chirho`
       The broader `eval_` attempt hit its ten-minute cap and is not claimed as a full-suite pass.
 - [x] Fresh interpreter/LLVM/Cranelift CLI matrix, owned-file Rust formatting, and
       `git diff --check` pass.
-- [ ] Commit explicit owned paths, push `main_chirho`, and announce builder release.
+- [x] Commit explicit owned paths, push `main_chirho`, and announce builder release.
