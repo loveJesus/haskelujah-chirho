@@ -117,9 +117,30 @@ Caveats to respect before attempting it:
   `show` on a list is independently broken (`putStrLn (show (id [1,2,3]))` → pointer), so
   `Show [a]` from `Show a` remains a separate, larger job.
 
-Tag-dispatch in the backend fallback (an earlier suggestion in this file) would also work,
-but it is the worse fix: it reconstructs at runtime the type information the compiler
-already had and threw away.
+### Backend-only tag dispatch is RULED OUT — do not attempt it
+
+An earlier suggestion in this file was to dispatch in the backend fallback on the forced
+value's runtime tag. **That cannot work, and the evidence is in the bug itself.**
+
+`crates/haskelujah-rts-chirho/src/native_layout_chirho.rs` does define an object kind tag
+(`ThunkChirho`/`FunChirho`/`ConChirho`/`PapChirho`, 2 bits) and a constructor tag
+(`CON_TAG_SHIFT_CHIRHO`). But those only describe **heap objects**. The failing case proves
+scalars are not heap objects:
+
+> `print (id True)` prints `1`. If `True` were a heap `Con`, rendering it as an integer
+> would print a *pointer* — a large number, as the list case does. It printed `1`, so
+> `True` is an unboxed `1`.
+
+And the integer `1` is also an unboxed `1`. **At runtime, `True` and `1` are the same
+bits.** No amount of tag inspection can separate them, because there is no tag to inspect.
+The same argument applies to `Double`, whose raw bits printed as `460943421861`.
+
+So the type information genuinely must come from the compiler; it cannot be recovered in the
+runtime. The fix belongs at dictionary resolution, and the tag-dispatch route is a dead end
+rather than merely an inferior one.
+
+This also explains why `Int` is the one type that works: the fallback assumes Int, and for
+Int that assumption happens to be right.
 
 ## Earlier framing — kept for the record, superseded above
 
