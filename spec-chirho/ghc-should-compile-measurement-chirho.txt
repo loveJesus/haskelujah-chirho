@@ -1,46 +1,40 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, TWO independent full passes
-# code measured: 6ad1d7a7 (binary target/release/haskelujah built from that commit)
+# measured: 2026-07-27, AFTER the determinism fix (47723b8c)
+# code measured: 47723b8c (binary target/release/haskelujah built from that commit)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
-#
-# CORPUS COMPLETENESS — READ THIS BEFORE RE-MEASURING.
-# The shell glob `should_compile/*.hs` finds only 930 files. Eight more live in the
-# subdirectory T16234/ and a non-recursive glob silently drops them. `find -name '*.hs'`
-# returns 938, matching `git ls-files`. All 8 subdirectory files PASS. Any measurement
-# reporting TOTAL=930 has lost 8 passing files and understates the denominator.
+#   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
+#   subdirectory T16234/ and all eight PASS. `find` and `git ls-files` agree on 938.
+#   Any measurement reporting TOTAL=930 has silently dropped them.
 #
 # RESULT: PASS=849 FAIL=89 TOTAL=938 (90.5%)
-# STABILITY: DETERMINISTIC-FAIL=88 UNSTABLE=1
-# UNSTABLE-FILES: T25266.hs
-# QUOTE-AS: ~90% (849-850 of 938) — do not quote a third significant figure
+# STABILITY: DETERMINISTIC — no unstable files
+# QUOTE-AS: ~90% (849 of 938)
 #
-# WHY THE NUMBER IS A RANGE AND NOT A FIGURE.
-# The type checker is NON-DETERMINISTIC — see spec-chirho/bug-nondeterministic-typecheck-chirho.md
-# T25266.hs passes 9 times and fails 11 times out of 20 with the same binary and no flags,
-# producing exactly two byte-distinct outputs chosen per process. So the true count is 849
-# or 850 depending on a coin flip, and 90.5% / 90.6% differ only by that flip. Publishing a
-# third significant figure asserts precision this method does not have.
-# Rounding rule: round DOWN to ~90%. 90.5-90.6 rounds arithmetically to 91, but 91% sits
-# above the entire measured range, and a compatibility claim must not be rounded past its
-# own upper bound.
+# THE TYPE CHECKER IS NOW DETERMINISTIC. This supersedes the previous artifact, which
+# reported a RANGE (849-850) because T25266.hs flipped between accept and reject run to
+# run. Root cause: signature schemes quantified in HashMap::values() order, so which fresh
+# metavariable stood for which quantified variable swapped per process. Fixed in 47723b8c
+# by sorting quantified vars by id (= first-appearance order, which is also the
+# TypeApplications-correct order for implicit quantification).
+#   acceptance: T25266.hs 100 runs -> 0 pass / 100 fail, i.e. STABLE
+#               T2688 12/12, T3155 0/12, tcfail088 0/12 — all stable
+# So the number is now a POINT, not a range, and a third significant figure is still
+# unjustified for a different reason: the corpus measures acceptance, not correctness.
 #
-# EVIDENCE FOR THE STABILITY LINE (measured, not assumed):
-#  - two independent full corpus passes: PASS=841 FAIL=89 of the 930 glob-visible files,
-#    with BYTE-IDENTICAL failing sets. No flaky passers observed across both passes.
-#  - all 89 failing files re-run individually: 88 stayed failing, exactly 1 (T25266.hs)
-#    flipped to passing.
-#  - T25266.hs specifically, 20 runs: 9 pass / 11 fail.
+# WHAT CHANGED vs the previous artifact: nothing but stability. The failing set is
+# BYTE-IDENTICAL to the previously committed 89 files. T25266.hs, formerly a coin flip,
+# now fails deterministically — it was always in the committed failing set, so the count
+# is unchanged. We did not lose a passing file; we stopped pretending a coin flip was a
+# result.
 #
 # ACCEPTANCE IS NOT CORRECTNESS. This corpus measures only whether we accept what GHC
-# accepts. It says nothing about whether the compiled program computes the right answer.
-# See spec-chirho/bug-comprehension-letrec-capture-chirho.md — the canonical lazy primes
-# sieve is ACCEPTED here and silently returns the wrong list.
+# accepts. See spec-chirho/bug-comprehension-letrec-capture-chirho.md — the canonical lazy
+# primes sieve is ACCEPTED here and still silently returns the wrong list.
 #
-# Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt (do we REJECT what
-# GHC rejects?). Both must be read together; either alone overstates compatibility.
+# Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #
-# ---- the 89 files we FAIL to accept (GHC accepts these); 88 deterministic + T25266 unstable ----
+# ---- the 89 files we FAIL to accept (GHC accepts these); all deterministic ----
 ghc-tests-chirho/typecheck-chirho/should_compile/FloatFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/HardRecordUpdate.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Improvement.hs

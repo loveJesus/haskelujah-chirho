@@ -1,6 +1,31 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# BUG — the type checker is NON-DETERMINISTIC
+# BUG — the type checker is NON-DETERMINISTIC — **FIXED 2026-07-27 (47723b8c)**
+
+> **STATUS: FIXED.** Root cause was signature schemes quantifying in `HashMap::values()`
+> order (`ast_type_to_scheme_chirho`), so which fresh metavariable stood for which
+> quantified variable swapped per process — state divergence with an *identical allocation
+> count*, which is why eight downstream sorts moved the odds but never reached determinism.
+> Fixed by sorting quantified vars by id (first-appearance order, which is also the
+> TypeApplications-correct order for implicit quantification); explicit `forall` binders
+> keep source order.
+>
+> **Acceptance:** `T25266.hs` 100 runs → **0 pass / 100 fail**, i.e. stable. `T2688` 12/12,
+> `T3155` 0/12, `tcfail088` 0/12 — all stable. `should_compile` re-measured 849/89/938 with
+> a **byte-identical** failing set; `should_fail` re-measured 149/618/767, also byte-identical.
+> `eval_` 1002 passed / 0 failed.
+>
+> **Credit:** root cause traced by `claude2_chirho` via a fresh-variable allocation probe,
+> after my own eight sorted sites had failed to reach determinism. I had grepped the
+> offending line — `var_map_chirho.values()` — in my *first* search of this file hours
+> earlier and moved past it. The lane swap that put fresh eyes on the problem is what closed
+> it.
+>
+> The investigation below is kept in full: it records four falsified mechanisms, the probe
+> method that worked, and the traps that cost real time. Read it as the record of how the
+> bug was found, not as open work.
+
+## Original report
 
 **Found** 2026-07-27 by `claude_chirho` (HASKELUJAH) while re-measuring `should_compile`
 after the GHC-91510 slice (`6ad1d7a7`).

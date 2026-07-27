@@ -1,6 +1,6 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, TWO independent full passes
-# code measured: 6ad1d7a7 (binary target/release/haskelujah built from that commit;
+# measured: 2026-07-27, re-measured AFTER the determinism fix (47723b8c)
+# code measured: 47723b8c (binary target/release/haskelujah built from that commit;
 #   verified live — rank-N rejected under Haskell2010, accepted under default GHC2021)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
@@ -10,14 +10,26 @@
 #   spec-chirho/ghc-should-compile-measurement-chirho.txt.)
 #
 # RESULT: CORRECTLY-REJECTED=149 WRONGLY-ACCEPTED=618 TOTAL=767 (19.4% reject rate)
-# STABILITY: NO-VARIANCE-OBSERVED-IN-2-PASSES UNSTABLE=unknown
+# STABILITY: DETERMINISTIC — the type checker is now deterministic (47723b8c)
 # QUOTE-AS: ~19% (149 of 767) — do not quote a third significant figure
 #
 # CHANGE SINCE LAST MEASUREMENT: 141 -> 149 (+8), wrongly-accepted 626 -> 618.
 # Cause: the GHC-91510 source-type validity check landed in 6ad1d7a7. Re-derived here from
 # clean runs rather than carried over from the session that wrote the check.
 #
-# HOW MUCH THE STABILITY LINE IS WORTH — DO NOT OVERREAD IT.
+# STABILITY IS NOW EARNED, NOT ASSUMED.
+# The previous artifact said "no variance observed in 2 passes", and warned that two
+# agreeing samples prove nothing — the proof case being T25266.hs, a genuine coin flip that
+# nonetheless failed in BOTH should_compile passes. That warning is now discharged: the
+# non-determinism ROOT CAUSE is fixed (47723b8c, signature quantification order), verified
+# by a 100-run acceptance loop landing 100/100 one way.
+#
+# This corpus was re-measured against the deterministic binary and is UNCHANGED: 149/618/767
+# with a BYTE-IDENTICAL wrongly-accepted set. Re-measured rather than carried forward,
+# because a determinism fix touching type-variable ordering could in principle have moved
+# the reject axis, and assuming otherwise is exactly the habit this file exists to prevent.
+#
+# HISTORICAL NOTE — the reasoning the old warning preserved, still worth keeping:
 # Two full passes produced byte-identical wrongly-accepted sets (618 files, zero diff).
 # That is NOT proof of determinism. The type checker is known non-deterministic
 # (spec-chirho/bug-nondeterministic-typecheck-chirho.md), and the proof case is instructive:
