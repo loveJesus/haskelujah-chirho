@@ -144,9 +144,43 @@ genuine order-dependence and is kept — dependency-edge order decides binding-g
 and therefore type-variable allocation. But it did **not** change this file's probe
 distribution at all (the same four hashes, same 3/3/6 split), so it is not the culprit here.
 
-Suggested next probe: dump the predicate list at the *end of constraint generation*, before
-any resolution, and diff a passing run against a failing one. The first differing predicate
-is the bug.
+### SECOND PROBE — run, and it names the actual fault: METAVARIABLES SOMETIMES UNIFY
+
+I then probed the constraint set **as generated**, before any resolution
+(`HASKELUJAH_PREDPROBE_CHIRHO`, since removed), and ran the file 14 times.
+
+**Fourteen runs produced ELEVEN distinct constraint sets**, in two sizes — `n=11` (11 runs)
+and `n=8` (3 runs). Diffing an `n=8` run against an `n=11` run shows exactly what differs:
+
+```
+n=8   CanRunDB::v374      Monad::v374      MonadUnliftIO::v374     <- ONE variable
+n=11  CanRunDB::v366      Monad::v364      MonadUnliftIO::v366
+      CanRunDB::v375      Monad::v375      MonadUnliftIO::v375     <- THREE variables
+```
+
+On some runs three metavariables **collapse into one**; on others they stay distinct. That
+is not renumbering — it is a different *number of type variables*, and therefore a different
+constraint set handed to solving. `n=8` and `n=11` are genuinely different inference states.
+
+So the fault is: **whether certain metavariables get unified depends on the order inference
+visits things**, and that order varies per process. Everything downstream — defaulting,
+resolution, the final accept/reject — is inheriting an already-divergent state.
+
+### Also ruled out by this probe
+
+The obvious candidates for "what sets visit order" are all deterministic:
+
+- `fun_names_chirho` / `fun_matches_refs_chirho` are `Vec`s built by iterating
+  `module_chirho.decls_chirho` (a `Vec`) — deterministic input order.
+- `binding_groups_chirho` is Tarjan SCC over `Vec`s and `vec![bool]`, and its adjacency
+  edges are now sorted — deterministic.
+- Class method and default iteration walks AST `Vec`s, not the `HashMap`s it builds.
+
+So the varying allocation order is being introduced somewhere else again. The next probe
+should not be another dump — it should **trace fresh type-variable allocation itself**
+(log every `fresh_var` with a short backtrace or a phase tag) and diff an `n=8` run against
+an `n=11` run. The first allocation that differs is where the order diverges, and that is
+the last hop to the root cause.
 
 ### Gate status for the eight sorts (completed after db4239e8 was committed)
 
