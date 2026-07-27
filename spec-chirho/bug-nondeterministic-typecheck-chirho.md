@@ -90,20 +90,28 @@ All in `crates/haskelujah-typing-chirho/src/infer_chirho.rs`:
 
 The three bolded ones are genuine last-write-wins races, not merely cosmetic ordering.
 
-### Measured effect
+### Measured effect — all three builds measured
 
-| build | `T25266.hs` pass rate |
-|---|---|
-| before any fix | 9 / 20 (~45%) |
-| after the first five sorts | **72 / 100** — 4.4σ from a coin flip |
+| build | `T25266.hs` pass rate | deterministic? |
+|---|---|---|
+| before any fix | 9 / 20 (~45%) | **no** |
+| after the first five sorts | 72 / 100 | **no** |
+| after all seven sorts | 58 / 100 | **no** |
 
-So the flip rate moved substantially and in the right direction. **The file is still
-non-deterministic** — 28 runs in 100 still fail. At least one more order-dependent site
-exists that these seven do not cover.
+**Read this table for the right thing.** The pass *rate* is not the metric — determinism is.
+A fixed compiler scores 0/100 or 100/100. All three builds are non-deterministic, so **none
+of the seven sorts fixed the defect.**
 
-The last two fixes (the two defaulting loops) are **not yet measured** — they were written
-after the 100-run measurement and the release binary had not been rebuilt at the time of
-writing. Do not assume they helped.
+The final two sorts (the defaulting loops) moved the rate 72 → 58, i.e. *toward* a coin
+flip. That is not a regression in correctness — sorting strictly removes an order-dependence
+— but it does show those two changed which outcome is more likely **without removing the
+randomness**. So the dominant order-dependent site is still unfound and is **not** among
+these seven.
+
+Corpus safety of the seven sorts was verified separately: `should_compile` re-measured at
+842/930 against 841/930 before, with a **byte-identical failing set** apart from `T25266`
+itself flipping to pass. Zero regressions — and that one-file delta **is** the coin flip,
+not an improvement. Do not quote it as progress.
 
 ### Ruled out by inspection (do not re-search these)
 
