@@ -178,10 +178,11 @@ export const limitationsChirho: LimitationChirho[] = [
 		fixedChirho: true
 	},
 	{
-		titleChirho: 'Running is not yet computing',
+		titleChirho: 'The interpreter takes the right branch — fixed 2026-07-27',
 		bodyChirho:
-			'A local recursive helper that closes over one of its enclosing function’s pattern-bound arguments can take the wrong branch and return a silently wrong answer. The canonical lazy primes sieve hits it — and so does an ordinary where-bound go helper written by hand; this is normal Haskell, not an exotic idiom. It is on the interpreter path used by haskelujah run. The branch condition’s value is proven correct in every tested form — the fault is dispatch, not evaluation — and the mechanism is still being traced; no fix ships on a hypothesis.',
-		writeupPathChirho: 'spec-chirho/bug-comprehension-letrec-capture-chirho.md'
+			'This ledger previously confessed that a local recursive helper closing over an enclosing pattern-bound argument could take the wrong branch — the canonical primes sieve returned a silently wrong list on the interpreter path, and so did ordinary where-bound helpers. Measured root: captured recursive let groups repatched one shared static placeholder, so later calls redirected earlier calls’ lazy edges. The fix allocates each captured recursive group per invocation (closed groups remain static), verified by focused letrec, STG-lowering, runtime and GC-integrity gates — and the canonical sieve now prints [2,3,5,7,11,13]. Six falsified hypotheses preceded the measured root; the writeup keeps them all.',
+		writeupPathChirho: 'spec-chirho/bug-comprehension-letrec-capture-chirho.md',
+		fixedChirho: true
 	},
 	{
 		titleChirho: 'Compiled output is not yet trustworthy for structured values',

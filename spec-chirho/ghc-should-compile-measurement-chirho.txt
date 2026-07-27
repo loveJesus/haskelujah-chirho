@@ -23,8 +23,10 @@
 # byte-identical failing sets.
 #
 # ACCEPTANCE IS NOT CORRECTNESS. This corpus measures only whether we accept what GHC
-# accepts. See spec-chirho/bug-comprehension-letrec-capture-chirho.md — the canonical lazy
-# primes sieve is ACCEPTED here and still silently returns the wrong list.
+# accepts. Proof case: the canonical lazy primes sieve was ACCEPTED here the whole time it
+# silently returned the wrong list (captured-letrec defect, measured root fixed in c7b06d2b
+# — see spec-chirho/bug-comprehension-letrec-capture-chirho.md). Acceptance would never
+# have caught it.
 #
 # Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #
