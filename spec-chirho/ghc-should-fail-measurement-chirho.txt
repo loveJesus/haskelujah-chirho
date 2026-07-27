@@ -1,7 +1,7 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, re-measured AFTER ParallelListComp landed (c2763e56)
-# code measured: d82001e1 (HEAD; the ParallelListComp landing is c2763e56; binary
-#   target/release/haskelujah rebuilt at this commit by the measuring agent, mtime ~16:33)
+# measured: 2026-07-27, re-measured AFTER QualifiedDo landed (04ede3d0)
+# code measured: 04ede3d0 (HEAD; binary target/release/haskelujah rebuilt at this commit
+#   by the measuring agent, mtime ~17:48)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   CORPUS COMPLETENESS: `find -name '*.hs'` at any depth == 767 == shell glob, i.e. this
@@ -14,11 +14,10 @@
 #   historical nondeterminism root cause was fixed in 47723b8c; re-verified here, not trusted)
 # QUOTE-AS: ~19% (151 of 767) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 149 -> 151 (+2 correct rejections), wrongly-accepted
-# 618 -> 616, NOTHING moved the wrong way. T2414.hs and T3950.hs left the wrongly-accepted
-# set in the ParallelListComp landing window. The landing announcement did not predict any
-# movement on this axis — recorded as measured, causes unattributed; no mechanism claim
-# without a trace. This is why this axis is re-measured every landing rather than carried.
+# CHANGE SINCE LAST MEASUREMENT: NONE. 151/616/767 with a BYTE-IDENTICAL wrongly-accepted
+# set, re-measured against the QualifiedDo binary rather than carried forward, per the
+# standing rule. (Previous change: 149 -> 151 in the ParallelListComp landing window,
+# T2414.hs and T3950.hs, causes unattributed.)
 #
 # HISTORICAL NOTE — the reasoning the old warning preserved, still worth keeping:
 # Two full passes produced byte-identical wrongly-accepted sets (618 files, zero diff).

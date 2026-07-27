@@ -1,23 +1,20 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, AFTER ParallelListComp landed (c2763e56)
-# code measured: d82001e1 (HEAD; the ParallelListComp landing is c2763e56; binary
-#   target/release/haskelujah rebuilt at this commit by the measuring agent, mtime ~16:33)
+# measured: 2026-07-27, AFTER QualifiedDo landed (04ede3d0)
+# code measured: 04ede3d0 (HEAD; binary target/release/haskelujah rebuilt at this commit
+#   by the measuring agent, mtime ~17:48)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
 #   subdirectory T16234/ and all eight PASS. `find` and `git ls-files` agree on 938.
 #   Any measurement reporting TOTAL=930 has silently dropped them.
 #
-# RESULT: PASS=852 FAIL=86 TOTAL=938 (90.8%)
+# RESULT: PASS=853 FAIL=85 TOTAL=938 (90.9%)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
-# QUOTE-AS: ~90% (852 of 938) — do not quote a third significant figure
+# QUOTE-AS: ~90% (853 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 850 -> 852 (+2), NOTHING entered the failing set.
-# T11982a.hs was the landing's named target (parallel list comprehensions) and left as
-# predicted. TyAppPat_UniversalMulti1.hs ALSO left, which the landing announcement did not
-# predict — recorded as measured, cause unattributed; no mechanism claim without a trace.
-# The companion should_fail axis moved in the same landing window (+2 correct rejections,
-# also unpredicted) — see that artifact.
+# CHANGE SINCE LAST MEASUREMENT: 852 -> 853 (+1). Exactly T21206.hs left the failing
+# set — the QualifiedDo landing's named target — and NOTHING entered. The should_fail
+# axis was re-measured in the same window and is unchanged, byte-identical.
 #
 # TWO-PASS PROTOCOL: determinism (fixed 47723b8c) re-verified — both passes byte-identical.
 #
@@ -29,7 +26,7 @@
 #
 # Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #
-# ---- the 86 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 85 files we FAIL to accept (GHC accepts these); all deterministic ----
 ghc-tests-chirho/typecheck-chirho/should_compile/FloatFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/HardRecordUpdate.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Improvement.hs
@@ -74,7 +71,6 @@ ghc-tests-chirho/typecheck-chirho/should_compile/T20873.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T20922.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T21010.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T21205.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21206.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T21289.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T21328.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T21515.hs
