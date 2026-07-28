@@ -1,7 +1,8 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, re-measured AFTER the Vta1 repair + rank-N propagation (67ceecff)
-# code measured: 4200477c (HEAD; the landing is 67ceecff; binary rebuilt at this commit
-#   by the measuring agent, mtime ~20:27)
+# measured: 2026-07-27, re-measured AFTER type-level character families landed (bd4c288d)
+# code measured: bd4c288d (HEAD; binary rebuilt at this commit by the measuring agent,
+#   mtime ~21:20; landing agent and measuring agent are the same session — see the
+#   companion artifact note)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   CORPUS COMPLETENESS: `find -name '*.hs'` at any depth == 767 == shell glob, i.e. this
@@ -14,9 +15,9 @@
 #   historical nondeterminism root cause was fixed in 47723b8c; re-verified here, not trusted)
 # QUOTE-AS: ~20% (157 of 767) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 156 -> 157 (+1 correct rejection), wrongly-accepted
-# 611 -> 610, NOTHING moved the wrong way. Newly rejected: T22707.hs, unpredicted by the
-# landing announcement — recorded as measured, cause unattributed.
+# CHANGE SINCE LAST MEASUREMENT: NONE. 157/610/767 with a BYTE-IDENTICAL wrongly-accepted
+# set, re-measured against the character-families binary rather than carried forward, per
+# the standing rule. (Previous change: 156 -> 157 at 67ceecff, T22707, unattributed.)
 #
 # HISTORICAL NOTE — the reasoning the old warning preserved, still worth keeping:
 # Two full passes produced byte-identical wrongly-accepted sets (618 files, zero diff).
