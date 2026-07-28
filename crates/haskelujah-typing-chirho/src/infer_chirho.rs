@@ -3194,33 +3194,7 @@ impl InferCtxChirho {
                         // any deferred numeric predicate now targets Bool (e.g.
                         // `if 42 then ...` → Num Bool). Generalization would
                         // absorb this ground predicate silently; catch it here.
-                        for (pred_chirho, pred_span_chirho) in &self.deferred_preds_chirho {
-                            if pred_chirho.ty_chirho == TyChirho::bool_chirho()
-                                && matches!(
-                                    pred_chirho.class_name_chirho.as_str(),
-                                    "Num"
-                                        | "Integral"
-                                        | "Fractional"
-                                        | "Floating"
-                                        | "Real"
-                                        | "RealFrac"
-                                        | "RealFloat"
-                                )
-                            {
-                                self.diagnostics_chirho.push_chirho(
-                                    DiagnosticChirho::error_with_code_chirho(
-                                        ErrorCodeChirho::error_chirho(
-                                            UNSATISFIED_CONSTRAINT_CODE_CHIRHO,
-                                        ),
-                                        format!(
-                                            "no instance for `{} Bool`",
-                                            pred_chirho.class_name_chirho
-                                        ),
-                                        *pred_span_chirho,
-                                    ),
-                                );
-                            }
-                        }
+                        self.report_deferred_numeric_bool_predicates_chirho();
                     }
                     Err(err_chirho) => {
                         self.report_unify_error_chirho(&err_chirho);
@@ -5144,7 +5118,10 @@ impl InferCtxChirho {
                 true,
             );
         }
-        if self.fun_arity_chirho(expected_ty_chirho) != arity_chirho {
+        // A function equation may bind fewer arguments than its signature and
+        // return the remaining function (for example `f x = \y -> ...`).
+        // Preserve that residual function as the RHS expected type.
+        if self.fun_arity_chirho(expected_ty_chirho) < arity_chirho {
             return self.infer_matches_chirho(matches_chirho, span_chirho);
         }
         if let Some((param_tys_chirho, result_ty_chirho)) =
@@ -5234,6 +5211,48 @@ impl InferCtxChirho {
         ))
     }
 
+    fn contains_polymorphic_component_chirho(ty_chirho: &TyChirho) -> bool {
+        match ty_chirho {
+            TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => true,
+            TyChirho::AppChirho(fun_chirho, arg_chirho)
+            | TyChirho::FunChirho(fun_chirho, arg_chirho, _) => {
+                Self::contains_polymorphic_component_chirho(fun_chirho)
+                    || Self::contains_polymorphic_component_chirho(arg_chirho)
+            }
+            TyChirho::TupleChirho(elements_chirho) => elements_chirho
+                .iter()
+                .any(Self::contains_polymorphic_component_chirho),
+            TyChirho::ListChirho(element_chirho) => {
+                Self::contains_polymorphic_component_chirho(element_chirho)
+            }
+            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
+        }
+    }
+
+    fn report_deferred_numeric_bool_predicates_chirho(&mut self) {
+        for (pred_chirho, pred_span_chirho) in &self.deferred_preds_chirho {
+            if pred_chirho.ty_chirho == TyChirho::bool_chirho()
+                && matches!(
+                    pred_chirho.class_name_chirho.as_str(),
+                    "Num"
+                        | "Integral"
+                        | "Fractional"
+                        | "Floating"
+                        | "Real"
+                        | "RealFrac"
+                        | "RealFloat"
+                )
+            {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+                        format!("no instance for `{} Bool`", pred_chirho.class_name_chirho),
+                        *pred_span_chirho,
+                    ));
+            }
+        }
+    }
+
     fn infer_expr_against_expected_chirho(
         &mut self,
         expr_chirho: &ExprChirho,
@@ -5285,6 +5304,121 @@ impl InferCtxChirho {
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(&normalized_expected_chirho);
                 (subst_chirho, final_ty_chirho)
             }
+            ExprChirho::IfChirho {
+                cond_chirho,
+                then_chirho,
+                else_chirho,
+                span_chirho: if_span_chirho,
+            } if Self::contains_polymorphic_component_chirho(expected_ty_chirho) => {
+                // Polymorphic branch results require bidirectional checking:
+                // ordinary inference would bind each branch lambda parameter
+                // monomorphically before the signature can reach it.
+                // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+                let bool_ty_chirho = TyChirho::bool_chirho();
+                let (cond_subst_chirho, _) = self.infer_expr_against_expected_chirho(
+                    cond_chirho,
+                    &bool_ty_chirho,
+                    *if_span_chirho,
+                );
+                let mut subst_chirho = cond_subst_chirho;
+                self.apply_subst_all_chirho(&subst_chirho);
+                self.report_deferred_numeric_bool_predicates_chirho();
+
+                let then_expected_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                let (then_subst_chirho, _) = self.infer_expr_against_expected_chirho(
+                    then_chirho,
+                    &then_expected_chirho,
+                    *if_span_chirho,
+                );
+                subst_chirho = then_subst_chirho.compose_chirho(&subst_chirho);
+                self.apply_subst_all_chirho(&then_subst_chirho);
+
+                let else_expected_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                let (else_subst_chirho, _) = self.infer_expr_against_expected_chirho(
+                    else_chirho,
+                    &else_expected_chirho,
+                    *if_span_chirho,
+                );
+                subst_chirho = else_subst_chirho.compose_chirho(&subst_chirho);
+                self.apply_subst_all_chirho(&else_subst_chirho);
+
+                let final_ty_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                (subst_chirho, final_ty_chirho)
+            }
+            ExprChirho::CaseChirho {
+                scrutinee_chirho,
+                alts_chirho,
+                span_chirho: case_span_chirho,
+            } if Self::contains_polymorphic_component_chirho(expected_ty_chirho) => {
+                // Preserve ordinary/GADT case leniency by entering this path
+                // only when a nested polymorphic type actually needs to reach
+                // alternative lambdas.
+                // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+                let (scrut_subst_chirho, scrut_ty_chirho) =
+                    self.infer_expr_chirho(scrutinee_chirho);
+                self.apply_subst_all_chirho(&scrut_subst_chirho);
+                let mut subst_chirho = scrut_subst_chirho;
+
+                for alt_chirho in alts_chirho {
+                    self.env_chirho.push_scope_chirho();
+
+                    let pat_ty_chirho = self.fresh_var_chirho();
+                    let pat_subst_chirho =
+                        self.bind_pat_chirho(&alt_chirho.pat_chirho, &pat_ty_chirho);
+                    subst_chirho = pat_subst_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&pat_subst_chirho);
+
+                    let pat_ty_sub_chirho = subst_chirho.apply_ty_chirho(&pat_ty_chirho);
+                    let scrut_ty_sub_chirho = subst_chirho.apply_ty_chirho(&scrut_ty_chirho);
+                    match self.unify_normalized_chirho(
+                        &pat_ty_sub_chirho,
+                        &scrut_ty_sub_chirho,
+                        *case_span_chirho,
+                    ) {
+                        Ok(unify_subst_chirho) => {
+                            subst_chirho = unify_subst_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&unify_subst_chirho);
+                        }
+                        Err(err_chirho) => {
+                            self.report_unify_error_chirho(&err_chirho);
+                        }
+                    }
+
+                    self.infer_local_binds_chirho(
+                        &alt_chirho.where_binds_chirho,
+                        &mut subst_chirho,
+                    );
+
+                    let alt_expected_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                    let (alt_subst_chirho, alt_ty_chirho) = self.infer_rhs_against_expected_chirho(
+                        &alt_chirho.rhs_chirho,
+                        &alt_expected_chirho,
+                        alt_chirho.span_chirho,
+                    );
+                    subst_chirho = alt_subst_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&alt_subst_chirho);
+
+                    // Guarded alternatives currently use ordinary RHS
+                    // inference. Retain the existing lenient result merge so
+                    // GADT-refined alternatives do not gain false diagnostics.
+                    let alt_ty_sub_chirho = subst_chirho.apply_ty_chirho(&alt_ty_chirho);
+                    let expected_alt_final_chirho =
+                        subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                    if let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                        &alt_ty_sub_chirho,
+                        &expected_alt_final_chirho,
+                        alt_chirho.span_chirho,
+                    ) {
+                        subst_chirho = unify_subst_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&unify_subst_chirho);
+                    }
+
+                    self.env_chirho.pop_scope_chirho();
+                }
+
+                let final_ty_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                (subst_chirho, final_ty_chirho)
+            }
             ExprChirho::LamChirho {
                 pats_chirho,
                 body_chirho,
@@ -5298,27 +5432,159 @@ impl InferCtxChirho {
                 )
                 .unwrap_or_else(|| self.infer_expr_chirho(expr_chirho)),
             ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
                 span_chirho: app_span_chirho,
-                ..
             } => {
-                let (subst_chirho, inferred_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
+                // Bidirectional application checking lets a known result type
+                // specialize variables that also occur in the parameter. This
+                // is required for `g True :: Char` when `g :: F a -> a` and
+                // `F Char ~ Bool`.
+                // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+                let (fun_subst_chirho, inferred_fun_ty_chirho) = self.infer_expr_chirho(fun_chirho);
+                self.apply_subst_all_chirho(&fun_subst_chirho);
+                let inferred_fun_sub_chirho =
+                    fun_subst_chirho.apply_ty_chirho(&inferred_fun_ty_chirho);
+
+                if let Some(required_arg_ty_chirho) =
+                    self.expr_to_required_type_arg_chirho(arg_chirho)
+                {
+                    if let Some(required_result_ty_chirho) = self.apply_required_type_arg_chirho(
+                        &inferred_fun_sub_chirho,
+                        required_arg_ty_chirho,
+                    ) {
+                        return match self.unify_normalized_chirho(
+                            &required_result_ty_chirho,
+                            expected_ty_chirho,
+                            *app_span_chirho,
+                        ) {
+                            Ok(result_subst_chirho) => {
+                                let combined_chirho =
+                                    result_subst_chirho.compose_chirho(&fun_subst_chirho);
+                                self.apply_subst_all_chirho(&result_subst_chirho);
+                                let final_ty_chirho =
+                                    combined_chirho.apply_ty_chirho(expected_ty_chirho);
+                                (combined_chirho, final_ty_chirho)
+                            }
+                            Err(err_chirho) => {
+                                self.report_unify_error_chirho(&err_chirho);
+                                (fun_subst_chirho, required_result_ty_chirho)
+                            }
+                        };
+                    }
+                }
+
+                let normalized_fun_ty_chirho = self.normalize_ty_chirho(&inferred_fun_sub_chirho);
+                if let TyChirho::FunChirho(expected_arg_ty_chirho, inferred_result_ty_chirho, _) =
+                    normalized_fun_ty_chirho
+                {
+                    let mut subst_chirho = fun_subst_chirho;
+
+                    // Seed from the result when possible. If a family result
+                    // cannot reduce until the argument is known, defer this
+                    // diagnostic and retry after checking the argument.
+                    if let Ok(result_subst_chirho) = self.unify_normalized_chirho(
+                        &inferred_result_ty_chirho,
+                        expected_ty_chirho,
+                        *app_span_chirho,
+                    ) {
+                        subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&result_subst_chirho);
+                    }
+
+                    let expected_arg_sub_chirho =
+                        subst_chirho.apply_ty_chirho(&expected_arg_ty_chirho);
+                    let (arg_subst_chirho, inferred_arg_ty_chirho) = self
+                        .infer_expr_against_expected_chirho(
+                            arg_chirho,
+                            &expected_arg_sub_chirho,
+                            *app_span_chirho,
+                        );
+                    subst_chirho = arg_subst_chirho.compose_chirho(&subst_chirho);
+                    self.apply_subst_all_chirho(&arg_subst_chirho);
+
+                    let inferred_arg_sub_chirho =
+                        subst_chirho.apply_ty_chirho(&inferred_arg_ty_chirho);
+                    let expected_arg_final_chirho =
+                        subst_chirho.apply_ty_chirho(&expected_arg_ty_chirho);
+                    match self.unify_normalized_chirho(
+                        &inferred_arg_sub_chirho,
+                        &expected_arg_final_chirho,
+                        *app_span_chirho,
+                    ) {
+                        Ok(arg_unify_subst_chirho) => {
+                            subst_chirho = arg_unify_subst_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&arg_unify_subst_chirho);
+                        }
+                        Err(err_chirho) => {
+                            self.report_unify_error_chirho(&err_chirho);
+                        }
+                    }
+
+                    let inferred_result_final_chirho =
+                        subst_chirho.apply_ty_chirho(&inferred_result_ty_chirho);
+                    let expected_result_final_chirho =
+                        subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                    match self.unify_normalized_chirho(
+                        &inferred_result_final_chirho,
+                        &expected_result_final_chirho,
+                        *app_span_chirho,
+                    ) {
+                        Ok(result_subst_chirho) => {
+                            subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&result_subst_chirho);
+                        }
+                        Err(err_chirho) => {
+                            self.report_unify_error_chirho(&err_chirho);
+                        }
+                    }
+
+                    let final_ty_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                    return (subst_chirho, final_ty_chirho);
+                }
+
+                let (arg_subst_chirho, inferred_arg_ty_chirho) = self.infer_expr_chirho(arg_chirho);
+                let mut subst_chirho = arg_subst_chirho.compose_chirho(&fun_subst_chirho);
+                self.apply_subst_all_chirho(&arg_subst_chirho);
+                let inferred_fun_final_chirho =
+                    subst_chirho.apply_ty_chirho(&inferred_fun_sub_chirho);
+                let inferred_arg_final_chirho =
+                    subst_chirho.apply_ty_chirho(&inferred_arg_ty_chirho);
+                let result_ty_chirho = self.fresh_var_chirho();
+                let expected_fun_ty_chirho =
+                    TyChirho::fun_chirho(inferred_arg_final_chirho, result_ty_chirho.clone());
                 match self.unify_normalized_chirho(
-                    &inferred_sub_chirho,
-                    expected_ty_chirho,
+                    &inferred_fun_final_chirho,
+                    &expected_fun_ty_chirho,
                     *app_span_chirho,
                 ) {
-                    Ok(unify_subst_chirho) => {
-                        let combined_chirho = unify_subst_chirho.compose_chirho(&subst_chirho);
-                        let final_ty_chirho = combined_chirho.apply_ty_chirho(expected_ty_chirho);
-                        self.apply_subst_all_chirho(&unify_subst_chirho);
-                        (combined_chirho, final_ty_chirho)
+                    Ok(app_subst_chirho) => {
+                        subst_chirho = app_subst_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&app_subst_chirho);
                     }
                     Err(err_chirho) => {
                         self.report_unify_error_chirho(&err_chirho);
-                        (subst_chirho, inferred_ty_chirho)
+                        return (subst_chirho, result_ty_chirho);
                     }
                 }
+
+                let result_ty_final_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
+                let expected_result_final_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                match self.unify_normalized_chirho(
+                    &result_ty_final_chirho,
+                    &expected_result_final_chirho,
+                    *app_span_chirho,
+                ) {
+                    Ok(result_subst_chirho) => {
+                        subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
+                        self.apply_subst_all_chirho(&result_subst_chirho);
+                    }
+                    Err(err_chirho) => {
+                        self.report_unify_error_chirho(&err_chirho);
+                    }
+                }
+                let final_ty_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
+                (subst_chirho, final_ty_chirho)
             }
             ExprChirho::InfixChirho {
                 left_chirho,
@@ -21577,6 +21843,100 @@ mod tests_chirho {
             SpanChirho::DUMMY_CHIRHO,
         );
         assert_eq!(inferred_ty_chirho, expected_ty_chirho);
+        assert!(ctx_chirho.diagnostics_chirho.is_empty_chirho());
+    }
+
+    fn rank_n_identity_consumer_ty_chirho() -> TyChirho {
+        let identity_var_chirho = TyVarChirho(9006);
+        TyChirho::fun_chirho(
+            TyChirho::ForallChirho {
+                vars_chirho: vec![identity_var_chirho],
+                body_chirho: Box::new(TyChirho::fun_chirho(
+                    TyChirho::VarChirho(identity_var_chirho),
+                    TyChirho::VarChirho(identity_var_chirho),
+                )),
+            },
+            TyChirho::TupleChirho(vec![TyChirho::bool_chirho(), TyChirho::int_chirho()]),
+        )
+    }
+
+    fn rank_n_identity_consumer_lambda_chirho() -> ExprChirho {
+        let function_name_chirho = dummy_name_chirho("functionChirho");
+        let apply_function_chirho = |arg_chirho: ExprChirho| ExprChirho::AppChirho {
+            fun_chirho: Box::new(ExprChirho::VarChirho(function_name_chirho.clone())),
+            arg_chirho: Box::new(arg_chirho),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        ExprChirho::LamChirho {
+            pats_chirho: vec![PatChirho::VarChirho(function_name_chirho.clone())],
+            body_chirho: Box::new(ExprChirho::TupleChirho {
+                elements_chirho: vec![
+                    apply_function_chirho(ExprChirho::ConChirho(dummy_name_chirho("True"))),
+                    apply_function_chirho(ExprChirho::LitChirho(LitChirho::IntChirho(
+                        5,
+                        SpanChirho::DUMMY_CHIRHO,
+                    ))),
+                ],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    }
+
+    #[test]
+    fn infer_rank_n_expected_type_through_if_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let expected_ty_chirho = rank_n_identity_consumer_ty_chirho();
+        let expr_chirho = ExprChirho::IfChirho {
+            cond_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho("True"))),
+            then_chirho: Box::new(rank_n_identity_consumer_lambda_chirho()),
+            else_chirho: Box::new(rank_n_identity_consumer_lambda_chirho()),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let (subst_chirho, inferred_ty_chirho) = ctx_chirho.infer_expr_against_expected_chirho(
+            &expr_chirho,
+            &expected_ty_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        );
+
+        assert_eq!(
+            subst_chirho.apply_ty_chirho(&inferred_ty_chirho),
+            expected_ty_chirho
+        );
+        assert!(ctx_chirho.diagnostics_chirho.is_empty_chirho());
+    }
+
+    #[test]
+    fn infer_rank_n_expected_type_through_case_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let expected_ty_chirho = rank_n_identity_consumer_ty_chirho();
+        let bool_alt_chirho = |constructor_chirho: &str| AltChirho {
+            pat_chirho: PatChirho::ConChirho {
+                con_chirho: dummy_name_chirho(constructor_chirho),
+                args_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: RhsChirho::UnguardedChirho(rank_n_identity_consumer_lambda_chirho()),
+            where_binds_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let expr_chirho = ExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho("True"))),
+            alts_chirho: vec![bool_alt_chirho("True"), bool_alt_chirho("False")],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        let (subst_chirho, inferred_ty_chirho) = ctx_chirho.infer_expr_against_expected_chirho(
+            &expr_chirho,
+            &expected_ty_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        );
+
+        assert_eq!(
+            subst_chirho.apply_ty_chirho(&inferred_ty_chirho),
+            expected_ty_chirho
+        );
         assert!(ctx_chirho.diagnostics_chirho.is_empty_chirho());
     }
 
