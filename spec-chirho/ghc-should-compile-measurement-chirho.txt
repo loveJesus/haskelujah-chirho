@@ -1,24 +1,22 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, AFTER RequiredTypeArguments landed (81599158)
-# code measured: 09616bb9 (HEAD; the RTA landing is 81599158; binary rebuilt at this
-#   commit by the measuring agent, mtime ~19:27)
+# measured: 2026-07-27, AFTER the Vta1 repair + rank-N propagation landed (67ceecff)
+# code measured: 4200477c (HEAD; the landing is 67ceecff; binary rebuilt at this commit
+#   by the measuring agent, mtime ~20:27)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
 #   subdirectory T16234/ and all eight PASS. `find` and `git ls-files` agree on 938.
 #   Any measurement reporting TOTAL=930 has silently dropped them.
 #
-# RESULT: PASS=853 FAIL=85 TOTAL=938 (90.9%)
+# RESULT: PASS=856 FAIL=82 TOTAL=938 (91.3%)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
-# QUOTE-AS: ~90% (853 of 938) — do not quote a third significant figure
+# QUOTE-AS: ~91% (856 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: count UNCHANGED at 853, composition CHANGED — read this.
-# T17594f.hs left the failing set (the RTA landing's named target). Vta1.hs ENTERED the
-# failing set: A REGRESSION. It fails fast and deterministically with a real inference
-# error ("expected type: (F t175), found type: Bool" — a type-family/VTA interaction),
-# in both passes; it is NOT the known rank-N/VTA stack-overflow residual. Reported to the
-# lane owner in-room at measurement time; cause unattributed pending their trace. A
-# count that stands still can still be hiding an exchange — this one was.
+# CHANGE SINCE LAST MEASUREMENT: 853 -> 856 (+3), NOTHING entered the failing set.
+# Vta1.hs left — the regression recorded in the previous artifact is REPAIRED, without
+# losing T17594f (still passing). Vta2.hs left — the landing's named target. T16225.hs
+# also left, unpredicted by the landing announcement — recorded as measured, cause
+# unattributed. The previous artifact's exchange is fully resolved in the good direction.
 #
 # TWO-PASS PROTOCOL: determinism (fixed 47723b8c) re-verified — both passes byte-identical.
 #
@@ -30,7 +28,7 @@
 #
 # Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #
-# ---- the 85 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 82 files we FAIL to accept (GHC accepts these); all deterministic ----
 ghc-tests-chirho/typecheck-chirho/should_compile/FloatFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/HardRecordUpdate.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Improvement.hs
@@ -59,7 +57,6 @@ ghc-tests-chirho/typecheck-chirho/should_compile/T15079.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T15772.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T16204a.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T16204b.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T16225.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T16411.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T17594a.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T17772.hs
@@ -114,5 +111,3 @@ ghc-tests-chirho/typecheck-chirho/should_compile/tc251.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/tc252.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/TcSpecPragmas.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/UnliftedNewtypesGnd.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/Vta1.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/Vta2.hs
