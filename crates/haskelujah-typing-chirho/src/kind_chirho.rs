@@ -115,7 +115,19 @@ impl fmt::Display for KindChirho {
 fn is_builtin_typelit_or_typenat_kind_name_chirho(name_chirho: &str) -> bool {
     matches!(
         name_chirho,
-        "Nat" | "Symbol" | "+" | "*" | "^" | "-" | "Div" | "Mod" | "<=?" | "AppendSymbol" | "Log2"
+        "Nat"
+            | "Symbol"
+            | "+"
+            | "*"
+            | "^"
+            | "-"
+            | "Div"
+            | "Mod"
+            | "<=?"
+            | "AppendSymbol"
+            | "Log2"
+            | "CharToNat"
+            | "NatToChar"
     )
 }
 
@@ -372,7 +384,10 @@ impl KindEnvChirho {
         for name_chirho in &["+", "*", "^", "-", "Div", "Mod", "<=?", "AppendSymbol"] {
             env_chirho.bind_chirho(name_chirho.to_string(), star2_chirho.clone());
         }
-        env_chirho.bind_chirho("Log2".to_string(), star_to_star_chirho.clone());
+        // workflow: language-features-chirho/type-level-character-families-chirho
+        for name_chirho in &["Log2", "CharToNat", "NatToChar"] {
+            env_chirho.bind_chirho(name_chirho.to_string(), star_to_star_chirho.clone());
+        }
 
         // Poly-kinded builtins that appear in imported package signatures.
         // We model them with free kind variables so each use site can
@@ -2187,6 +2202,16 @@ mod tests_chirho {
                 KindChirho::StarChirho
             ))
         );
+        for family_chirho in ["CharToNat", "GHC.TypeLits.NatToChar"] {
+            assert_eq!(
+                env_chirho.lookup_chirho(family_chirho),
+                Some(&KindChirho::arrow_chirho(
+                    KindChirho::StarChirho,
+                    KindChirho::StarChirho
+                )),
+                "{family_chirho} should have a unary TypeLits family kind"
+            );
+        }
         assert!(
             matches!(
                 env_chirho.lookup_chirho(":"),

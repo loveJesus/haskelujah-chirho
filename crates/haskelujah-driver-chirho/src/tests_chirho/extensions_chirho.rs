@@ -23,6 +23,7 @@ use haskelujah_syntax_chirho::SourceFileChirho;
 mod qualified_do_chirho;
 mod recursive_do_chirho;
 mod required_type_arguments_chirho;
+mod type_level_character_families_chirho;
 
 // ── TypeOperators ─────────────────────────────────────────────────────────
 

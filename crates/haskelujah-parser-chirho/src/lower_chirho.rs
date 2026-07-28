@@ -18,7 +18,7 @@ use haskelujah_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, FieldAssignChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho,
     RhsChirho, StmtChirho,
 };
-use haskelujah_ast_chirho::lit_chirho::LitChirho;
+use haskelujah_ast_chirho::lit_chirho::{LitChirho, parse_haskell_char_body_chirho};
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
     InlinePragmaChirho, ModuleChirho,
@@ -8219,7 +8219,8 @@ impl LowerCtxChirho {
                     TokenKindChirho::CharLiteralChirho => {
                         let text_chirho = tok_chirho.text_chirho().trim_end_matches('#');
                         let inner_chirho = text_chirho.trim_matches('\'');
-                        let ch_chirho = unescape_char_chirho(inner_chirho);
+                        let ch_chirho =
+                            parse_haskell_char_body_chirho(inner_chirho).unwrap_or('\u{FFFD}');
                         return LitChirho::CharChirho(ch_chirho, span_chirho);
                     }
                     TokenKindChirho::StringLiteralChirho => {
@@ -10168,53 +10169,6 @@ fn unescape_string_chirho(s_chirho: &str) -> String {
         }
     }
     result_chirho
-}
-
-/// Process Haskell escape sequences in a character literal.
-/// Handles \n, \t, \r, \\, \', \", \0, \a, \b, \f, \v,
-/// decimal (\65), octal (\o101), hex (\x41).
-fn unescape_char_chirho(s_chirho: &str) -> char {
-    if s_chirho.starts_with('\\') {
-        let rest_chirho = &s_chirho[1..];
-        match rest_chirho.chars().next() {
-            Some('n') => '\n',
-            Some('t') => '\t',
-            Some('r') => '\r',
-            Some('\\') => '\\',
-            Some('\'') => '\'',
-            Some('"') => '"',
-            Some('0') => '\0',
-            Some('a') => '\x07',
-            Some('b') => '\x08',
-            Some('f') => '\x0C',
-            Some('v') => '\x0B',
-            Some('o') => {
-                let digits_chirho = &rest_chirho[1..];
-                u32::from_str_radix(digits_chirho, 8)
-                    .ok()
-                    .and_then(char::from_u32)
-                    .unwrap_or('\u{FFFD}')
-            }
-            Some('x') => {
-                let digits_chirho = &rest_chirho[1..];
-                u32::from_str_radix(digits_chirho, 16)
-                    .ok()
-                    .and_then(char::from_u32)
-                    .unwrap_or('\u{FFFD}')
-            }
-            Some(d_chirho) if d_chirho.is_ascii_digit() && d_chirho != '0' => rest_chirho
-                .parse::<u32>()
-                .ok()
-                .and_then(char::from_u32)
-                .unwrap_or('\u{FFFD}'),
-            Some(c_chirho) if c_chirho.is_ascii_uppercase() => {
-                named_ascii_escape_chirho(rest_chirho).unwrap_or('\u{FFFD}')
-            }
-            _ => s_chirho.chars().nth(1).unwrap_or('\0'),
-        }
-    } else {
-        s_chirho.chars().next().unwrap_or('\0')
-    }
 }
 
 // ---------------------------------------------------------------------------

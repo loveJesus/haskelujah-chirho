@@ -10,7 +10,9 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho, RhsChirho, StmtChirho};
-use haskelujah_ast_chirho::lit_chirho::LitChirho;
+use haskelujah_ast_chirho::lit_chirho::{
+    LitChirho, parse_haskell_char_body_chirho, render_haskell_char_body_chirho,
+};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
@@ -21010,6 +21012,21 @@ fn symbol_type_con_chirho(value_chirho: &str) -> TyChirho {
     TyChirho::ConChirho(format!("\"{escaped_chirho}\""))
 }
 
+fn char_type_literal_chirho(ty_chirho: &TyChirho) -> Option<char> {
+    let TyChirho::ConChirho(name_chirho) = ty_chirho else {
+        return None;
+    };
+    let body_chirho = name_chirho.strip_prefix('\'')?.strip_suffix('\'')?;
+    parse_haskell_char_body_chirho(body_chirho)
+}
+
+fn char_type_con_chirho(value_chirho: char) -> TyChirho {
+    TyChirho::ConChirho(format!(
+        "'{}'",
+        render_haskell_char_body_chirho(value_chirho)
+    ))
+}
+
 fn apply_extra_type_family_args_chirho(
     mut reduced_chirho: TyChirho,
     args_chirho: &[TyChirho],
@@ -21028,6 +21045,15 @@ fn reduce_builtin_type_family_application_chirho(
 ) -> Option<TyChirho> {
     let family_chirho = canonical_type_family_name_chirho(family_name_chirho);
     let reduced_chirho = match (family_chirho.as_str(), args_chirho) {
+        // workflow: language-features-chirho/type-level-character-families-chirho
+        ("CharToNat", [value_chirho, ..]) => char_type_literal_chirho(value_chirho)
+            .map(|value_chirho| nat_type_con_chirho(u128::from(value_chirho as u32)))
+            .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1)),
+        ("NatToChar", [value_chirho, ..]) => nat_type_literal_chirho(value_chirho)
+            .and_then(|value_chirho| u32::try_from(value_chirho).ok())
+            .and_then(char::from_u32)
+            .map(char_type_con_chirho)
+            .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1)),
         ("AppendSymbol", [left_chirho, right_chirho, ..]) => {
             let left_symbol_chirho = symbol_type_literal_chirho(left_chirho);
             let right_symbol_chirho = symbol_type_literal_chirho(right_chirho);
@@ -25989,6 +26015,50 @@ mod tests_chirho {
             )),
             type_lit_chirho("3"),
             "Log2 10 should reduce to 3"
+        );
+    }
+
+    #[test]
+    fn typelits_character_conversion_families_reduce_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+
+        for (character_chirho, codepoint_chirho, canonical_character_chirho) in [
+            ("'a'", "97", "'a'"),
+            ("'\\1'", "1", "'\\x1'"),
+            ("'λ'", "955", "'λ'"),
+            ("'\\NUL'", "0", "'\\0'"),
+        ] {
+            assert_eq!(
+                ctx_chirho.reduce_type_families_in_ty_chirho(&type_family_app1_chirho(
+                    "GHC.TypeLits.CharToNat",
+                    type_lit_chirho(character_chirho),
+                )),
+                type_lit_chirho(codepoint_chirho),
+                "CharToNat should reduce concrete character literals"
+            );
+            assert_eq!(
+                ctx_chirho.reduce_type_families_in_ty_chirho(&type_family_app1_chirho(
+                    "NatToChar",
+                    type_lit_chirho(codepoint_chirho),
+                )),
+                type_lit_chirho(canonical_character_chirho),
+                "NatToChar should reduce valid Unicode scalar values"
+            );
+        }
+
+        let variable_chirho = TyChirho::VarChirho(TyVarChirho(7003));
+        let stuck_variable_chirho = type_family_app1_chirho("CharToNat", variable_chirho.clone());
+        assert_eq!(
+            ctx_chirho.reduce_type_families_in_ty_chirho(&stuck_variable_chirho),
+            stuck_variable_chirho,
+            "variable character applications should stay stuck"
+        );
+
+        let surrogate_chirho = type_family_app1_chirho("NatToChar", type_lit_chirho("55296"));
+        assert_eq!(
+            ctx_chirho.reduce_type_families_in_ty_chirho(&surrogate_chirho),
+            surrogate_chirho,
+            "surrogate codepoints should stay stuck"
         );
     }
 

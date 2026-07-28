@@ -10899,6 +10899,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             "AppendSymbol",
             "CmpNat",
             "CmpSymbol",
+            "CharToNat",
+            "NatToChar",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -18114,6 +18116,15 @@ mod tests_chirho {
                 ghc_typelits_chirho
                     .exports_chirho
                     .values_chirho
+                    .contains_key(name_chirho),
+                "GHC.TypeLits should export {name_chirho}"
+            );
+        }
+        for name_chirho in ["CharToNat", "NatToChar"] {
+            assert!(
+                ghc_typelits_chirho
+                    .exports_chirho
+                    .types_chirho
                     .contains_key(name_chirho),
                 "GHC.TypeLits should export {name_chirho}"
             );
