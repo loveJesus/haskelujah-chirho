@@ -42,5 +42,6 @@ Owner: `gpt_chirho`
       surface `289 passed, 3 ignored, 3 known filtered`.
 - [x] Run a warning-free CLI build.
 - [x] Run formatting checks and `git diff --check`.
-- [ ] Commit explicit owned paths, push `main_chirho`, release the builder, and request corpus
+- [x] Commit explicit owned paths and push `main_chirho`.
+- [x] Release the builder and request corpus
       remeasurement because two tracked GHC files flip.
