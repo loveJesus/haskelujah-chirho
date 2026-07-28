@@ -1,7 +1,7 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, AFTER QualifiedDo landed (04ede3d0)
-# code measured: 04ede3d0 (HEAD; binary target/release/haskelujah rebuilt at this commit
-#   by the measuring agent, mtime ~17:48)
+# measured: 2026-07-27, AFTER RequiredTypeArguments landed (81599158)
+# code measured: 09616bb9 (HEAD; the RTA landing is 81599158; binary rebuilt at this
+#   commit by the measuring agent, mtime ~19:27)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
@@ -12,9 +12,13 @@
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
 # QUOTE-AS: ~90% (853 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 852 -> 853 (+1). Exactly T21206.hs left the failing
-# set — the QualifiedDo landing's named target — and NOTHING entered. The should_fail
-# axis was re-measured in the same window and is unchanged, byte-identical.
+# CHANGE SINCE LAST MEASUREMENT: count UNCHANGED at 853, composition CHANGED — read this.
+# T17594f.hs left the failing set (the RTA landing's named target). Vta1.hs ENTERED the
+# failing set: A REGRESSION. It fails fast and deterministically with a real inference
+# error ("expected type: (F t175), found type: Bool" — a type-family/VTA interaction),
+# in both passes; it is NOT the known rank-N/VTA stack-overflow residual. Reported to the
+# lane owner in-room at measurement time; cause unattributed pending their trace. A
+# count that stands still can still be hiding an exchange — this one was.
 #
 # TWO-PASS PROTOCOL: determinism (fixed 47723b8c) re-verified — both passes byte-identical.
 #
@@ -58,7 +62,6 @@ ghc-tests-chirho/typecheck-chirho/should_compile/T16204b.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T16225.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T16411.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T17594a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T17594f.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T17772.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T18036b.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/T18252.hs
@@ -111,4 +114,5 @@ ghc-tests-chirho/typecheck-chirho/should_compile/tc251.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/tc252.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/TcSpecPragmas.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/UnliftedNewtypesGnd.hs
+ghc-tests-chirho/typecheck-chirho/should_compile/Vta1.hs
 ghc-tests-chirho/typecheck-chirho/should_compile/Vta2.hs

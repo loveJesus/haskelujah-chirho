@@ -1,7 +1,7 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, re-measured AFTER QualifiedDo landed (04ede3d0)
-# code measured: 04ede3d0 (HEAD; binary target/release/haskelujah rebuilt at this commit
-#   by the measuring agent, mtime ~17:48)
+# measured: 2026-07-27, re-measured AFTER RequiredTypeArguments landed (81599158)
+# code measured: 09616bb9 (HEAD; the RTA landing is 81599158; binary rebuilt at this
+#   commit by the measuring agent, mtime ~19:27)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   CORPUS COMPLETENESS: `find -name '*.hs'` at any depth == 767 == shell glob, i.e. this
@@ -9,15 +9,16 @@
 #   should_compile corpus DOES have a subdirectory and this check matters there — see
 #   spec-chirho/ghc-should-compile-measurement-chirho.txt.)
 #
-# RESULT: CORRECTLY-REJECTED=151 WRONGLY-ACCEPTED=616 TOTAL=767 (19.7% reject rate)
+# RESULT: CORRECTLY-REJECTED=156 WRONGLY-ACCEPTED=611 TOTAL=767 (20.3% reject rate)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets (the
 #   historical nondeterminism root cause was fixed in 47723b8c; re-verified here, not trusted)
-# QUOTE-AS: ~19% (151 of 767) — do not quote a third significant figure
+# QUOTE-AS: ~20% (156 of 767) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: NONE. 151/616/767 with a BYTE-IDENTICAL wrongly-accepted
-# set, re-measured against the QualifiedDo binary rather than carried forward, per the
-# standing rule. (Previous change: 149 -> 151 in the ParallelListComp landing window,
-# T2414.hs and T3950.hs, causes unattributed.)
+# CHANGE SINCE LAST MEASUREMENT: 151 -> 156 (+5 correct rejections), wrongly-accepted
+# 616 -> 611, NOTHING moved the wrong way on this axis. Newly rejected: T21338, T24318,
+# T25004, T25004k, T26861. T25004/T25004k carry the RequiredTypeArguments ticket number —
+# consistent with the landing adding rejection power for misuse of its own feature —
+# but the five are recorded as measured, not individually traced.
 #
 # HISTORICAL NOTE — the reasoning the old warning preserved, still worth keeping:
 # Two full passes produced byte-identical wrongly-accepted sets (618 files, zero diff).
@@ -30,7 +31,7 @@
 # (That warning was discharged when the root cause was fixed and verified in 47723b8c;
 # it is preserved because the next reader deserves to see why the caution existed.)
 #
-# Rounding rule: round DOWN. 19.7% -> ~19%, never 20%. A compatibility claim must not sit
+# Rounding rule: round DOWN. 20.3% -> ~20%, never 21%. A compatibility claim must not sit
 # above its own measured value.
 #
 # READ THIS BEFORE QUOTING THE COMPATIBILITY NUMBER.
@@ -40,7 +41,7 @@
 # everything would score 100% on that axis alone.
 #
 # Counting rule: a file counts as REJECTED if any error[EXXXX] or panic was emitted. That
-# is generous — it does not verify we rejected for the RIGHT reason, so 151 is an UPPER
+# is generous — it does not verify we rejected for the RIGHT reason, so 156 is an UPPER
 # bound on true correct rejections.
 #
 # Sanity checks previously run and still applicable:
@@ -50,7 +51,7 @@
 #    vs Bool, SCLoop superclass loop, T15796 newtype with class context): all 4 are genuine
 #    GHC type errors that we accept silently. The gap is real, not a harness artifact.
 #
-# ---- the 616 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 611 files we WRONGLY ACCEPT (GHC rejects these) ----
 ghc-tests-chirho/typecheck-chirho/should_fail/AmbigFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/AssocTyDef01.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/AssocTyDef02.hs
@@ -330,7 +331,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T21130.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T21158.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2126.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T21327.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T21338.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T21444.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T21447.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T21530a.hs
@@ -371,12 +371,9 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T23776.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T23778.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T24064.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T24298.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T24318.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T24470a.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T24553.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T24868.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T25004.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T25004k.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25325.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25949_aux.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T25949.hs
@@ -385,7 +382,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T26004.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T26137.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T26255c.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T26318.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T26861.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2688.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2714.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T2806.hs
