@@ -1,0 +1,154 @@
+{
+  "clusters_chirho": [
+    {
+      "name_chirho": "instance_head_kind_arity_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 7,
+      "sample_tests_chirho": [
+        "T2994.hs",
+        "T1633.hs",
+        "T11464.hs",
+        "T11563.hs",
+        "T14607.hs",
+        "T15797.hs",
+        "tcfail036.hs"
+      ],
+      "ghc_reason_chirho": "GHC-83865 'Expecting one more argument to C T' / 'Expected a constraint': instance head applies a class to the wrong number of arguments (e.g. class MonadReader a b; instance MonadReader Int) or uses a non-class in class position (instance Eq Num).",
+      "our_gap_chirho": "infer_module_kinds_chirho in crates/haskelujah-typing-chirho/src/kind_chirho.rs (phase-1 decl match, lines ~1652-1930) has NO arm for InstanceDeclChirho — instance heads are never kind-checked at all. Probe: 'class MonadReader a b; instance MonadReader Int' compiles silently.",
+      "fix_sketch_chirho": "Add an InstanceDeclChirho arm in infer_module_kinds_chirho phase 1: look up the class kind (established when its ClassDeclChirho was processed), count its parameters, count the instance head arguments, and unify each argument kind with the corresponding class-parameter kind; if the head name resolves to a data/type constructor instead of a class, error. Emit via the existing ctx.diagnostics push used by unify_chirho (kind_chirho.rs:1191-1197) with error code E0300 (KIND_MISMATCH_CODE_CHIRHO, kind_chirho.rs:616).",
+      "conservative_guard_chirho": "Only fire when the class is declared in the current module (name in local_kind_decl_names_chirho) or has a fully known kind with zero free kind variables, and the argument count differs from the declared class parameter count. Skip anything imported via placeholder interfaces or with kind variables (poly-kinded).",
+      "expected_unlock_chirho": 6,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "constraint_used_as_type_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 7,
+      "sample_tests_chirho": [
+        "T3540.hs",
+        "T13677.hs",
+        "tcfail058.hs",
+        "tcfail063.hs",
+        "tcfail146.hs",
+        "tcfail151.hs",
+        "UnliftedNewtypesFail.hs"
+      ],
+      "ghc_reason_chirho": "GHC-83865 'Expected a type, but X is a constraint': a constraint ((a ~ Int), (Eq a), Show Int) appears in a *-required position — function argument/result, data/newtype field.",
+      "our_gap_chirho": "The kind checker never demands Star (vs Constraint) in these positions. infer_type_kind_chirho FunChirho arm (kind_chirho.rs:~1257-1278) unifies arg/result with StarChirho, but a saturated class application like 'Eq a' gets its kind from infer_constraint kinds or an unknown-tycon fresh kind variable (ConChirho fallback kind_chirho.rs:~1230-1236), which happily unifies with Star. Probe: 'thing :: (Eq a) -> Int' compiles silently.",
+      "fix_sketch_chirho": "When infer_type_kind_chirho evaluates a type whose application head is a name registered as a class (class kinds end in ConstraintChirho) or is the builtin (~), return ConstraintChirho as the saturated kind; unify_kind_chirho already rejects Constraint~Star (kind_chirho.rs:253, MismatchChirho), so the existing FunChirho/field Star-unification then produces the E0300 diagnostic through the established unify_chirho path.",
+      "conservative_guard_chirho": "Only when the head name is definitively a class: locally declared class or a class whose kind in the env structurally ends in Constraint with no free kind vars, applied to exactly its declared arity. Never fire on unknown/imported-placeholder heads, and skip modules where the position could legitimately hold a Constraint (contexts before =>, quantified-constraint bodies — those go through QualChirho/infer_constraint_kind_chirho, untouched).",
+      "expected_unlock_chirho": 6,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "unsaturated_tycon_in_star_position_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 12,
+      "sample_tests_chirho": [
+        "T8514.hs",
+        "tcfail162.hs",
+        "AssocTyDef04.hs",
+        "tcfail158.hs",
+        "T12966.hs",
+        "tcfail078.hs"
+      ],
+      "ghc_reason_chirho": "GHC-83865 'Expecting one more argument to Maybe/ForeignPtr/...' — an under-applied type constructor in a position requiring kind *: tuple element (type T a = (a, Maybe)), data field (!(ForeignPtr)), associated type default RHS (type Typ a = Maybe), local where-clause signatures, or a *-kinded tycon used as a class (Integer i =>).",
+      "our_gap_chirho": "Three concrete holes in kind_chirho.rs: (1) TupleChirho arm (~1295-1315) unifies elements against a SHARED FRESH kind variable instead of Star/Constraint, so (a, Maybe) resolves elem kind to *->* and silently defaults; (2) associated type default RHS is never kind-checked — probe 'type Typ a = Maybe' inside a class compiles silently, while the identical standalone case errors; (3) only top-level DeclChirho::TypeSigChirho is checked (kind_chirho.rs:1906-1918) — signatures inside where/let are never kind-checked (tcfail158 additionally slips because its one-space layout + where block causes later decls to be mis-nested).",
+      "fix_sketch_chirho": "(1) In TupleChirho, after resolving the shared element kind, error via unify_chirho if it resolves to an ArrowChirho kind (only Star or Constraint are legal). (2) In the class-decl arm (~1880-1895) also walk assoc-type defaults: infer the RHS kind and unify with the family's declared result kind. (3) Extend kind checking to local where/let signatures by walking bind bodies, reusing the existing 'type signature' Star unification (kind_chirho.rs:1911-1918). All reuse E0300 diagnostics.",
+      "conservative_guard_chirho": "Trigger only when the offending kind is a fully-resolved ArrowChirho with zero free kind variables after substitution (unsaturation is then provable); any kind containing a variable is skipped, so poly-kinded and inference-pending programs are untouched.",
+      "expected_unlock_chirho": 6,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "pattern_unify_swallowed_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 14,
+      "sample_tests_chirho": [
+        "tcfail004.hs",
+        "tcfail005.hs",
+        "tcfail012.hs",
+        "tcfail013.hs",
+        "T9318.hs",
+        "tcfail182.hs"
+      ],
+      "ghc_reason_chirho": "GHC-83865 pattern/scrutinee mismatch: pattern binding (f,g)=(1,2,3), (h:i)=(1,'a'), True=[], or equations with incompatible patterns f [] = 1; f True = 2, or constructor pattern against a signature type from another type.",
+      "our_gap_chirho": "bind_pat_chirho in crates/haskelujah-typing-chirho/src/infer_chirho.rs silently swallows unification failures: tuple pattern at 4037-4047 ('Err(_) => SubstChirho::empty_chirho()') and constructor-pattern result at 4100-4107 ('if let Ok(su_chirho)' with no else). The leniency was deliberate for GADT refinement (comment at 3347-3349 'silently skip — the signature check catches real errors') but it also drops plain rigid mismatches. Confirmed: tcfail004/005/012/013 all compile silently.",
+      "fix_sketch_chirho": "In both swallow sites, on Err, re-check under a guard and push DiagnosticChirho::error_with_code_chirho(ErrorCodeChirho::error_chirho(TYPE_MISMATCH_CODE_CHIRHO /*E0200, infer_chirho.rs:30*/)) with the pattern span instead of SpanChirho::DUMMY_CHIRHO (thread the real span in).",
+      "conservative_guard_chirho": "Raise only when BOTH sides are family-free and rigid-concrete: no TyChirho::VarChirho anywhere would need to unify against a mismatched head — i.e. the failure is a head-constructor clash between two fully known constructors (TupleChirho arity clash, ConChirho name clash, list vs tuple), the constructor's parent data decl is non-GADT with no existentials and no equality context, and no type-family application appears in either type. Anything involving metavars, families, GADT constructors, or placeholder import schemes keeps today's lenient path.",
+      "expected_unlock_chirho": 8,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "monad_comprehension_transform_stmt_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 3,
+      "sample_tests_chirho": [
+        "mc23.hs",
+        "mc24.hs",
+        "mc25.hs"
+      ],
+      "ghc_reason_chirho": "GHC-83865: TransformListComp/MonadComprehensions 'then f by e' / 'then group by e using f' requires f at a specific type ((a->b) -> [a] -> m a, resp. forall-polymorphic grouping type); the supplied function has the wrong shape (e.g. 'then take 5 by x' — take 5 :: [a]->[a] lacks the 'by' function parameter).",
+      "our_gap_chirho": "The comprehension transform/group qualifiers are not type-checked against their required shapes — the whole file compiles silently (confirmed for mc23). Inference for comprehension qualifiers in infer_chirho.rs handles generators/guards but assigns no constraint to the 'then/by/using' function expression.",
+      "fix_sketch_chirho": "Where comprehension statements are inferred, add the GHC typing rule: for 'then f' unify typeof(f) ~ [elem] -> [elem]; for 'then f by e' unify typeof(f) ~ (elem -> keyTy) -> [elem] -> [elem]; for group forms use the m (grouping) shape. Failures flow through the existing unify error path emitting E0200.",
+      "conservative_guard_chirho": "Only applies inside then/group comprehension qualifiers (an already-parsed distinct AST node), and only when typeof(f) resolves without placeholder import schemes; a fresh-var function type unifies successfully and stays accepted.",
+      "expected_unlock_chirho": 3,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "levity_mismatch_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 9,
+      "sample_tests_chirho": [
+        "tcfail090.hs",
+        "tcfail123.hs",
+        "tcfail159.hs",
+        "tcfail200.hs",
+        "T12373.hs",
+        "T21327.hs"
+      ],
+      "ghc_reason_chirho": "GHC-18872 'Couldn't match a lifted type with an unlifted type': a kind-* type/tyvar is unified with an unlifted primitive (ByteArray#, Int#, unboxed tuples/sums).",
+      "our_gap_chirho": "Our TyChirho carries no kind/levity information, so unify in crates/haskelujah-typing-chirho/src/unify_chirho.rs happily binds a lifted metavar (e.g. from a user signature 'my_undefined :: a') to ByteArray#. Confirmed tcfail090 compiles silently.",
+      "fix_sketch_chirho": "Add a levity classifier: a fixed table of primitive unlifted tycons (names ending in '#': Int#, Char#, Addr#, ByteArray#, Array#, MutableByteArray#, State#, ...) plus unboxed-tuple/sum types. During unification, when binding a metavar that originated from a USER-WRITTEN kind-* signature variable (instantiated skolem of an explicit forall/signature without RuntimeRep polymorphism) to such an unlifted type, emit E0200/E0204-style diagnostic through the existing unify error emission; also reject unboxed-tuple vs boxed-tuple head clashes (already distinct constructors — T502 class).",
+      "conservative_guard_chirho": "Fire only when the unlifted side is on the fixed primitive-name whitelist AND the lifted side is provably lifted: a concrete boxed constructor, or a skolem from an explicit user type signature. Metavars from builtin levity-polymorphic schemes (undefined, error, primops) are tagged and exempt, so no valid levity-polymorphic program is rejected.",
+      "expected_unlock_chirho": 5,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "coercible_ground_unsolved_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 4,
+      "sample_tests_chirho": [
+        "TcCoercibleFail.hs",
+        "TcCoercibleFail3.hs",
+        "T14605.hs",
+        "T25949.hs"
+      ],
+      "ghc_reason_chirho": "GHC-18872 'Couldn't match representation of type X with that of Y': coerce between representationally unrelated ground types (Int vs (), nominal roles, abstract newtypes).",
+      "our_gap_chirho": "Coercible predicates fall into the deliberate UserDefinedClassConstraintSkip escape hatch: infer_chirho.rs:6661-6671 — any deferred predicate whose class has no instances in class_env is skipped ('if !has_instances_chirho { continue; }'). Coercible never has instances, so every coerce type-checks.",
+      "fix_sketch_chirho": "Before the has_instances skip at infer_chirho.rs:6664, special-case class_name == \"Coercible\": if both argument types are fully ground (no vars, no family apps), solve representationally — syntactic equality succeeds; otherwise unwrap known in-scope newtypes (env already stores newtype constructor schemes) on both sides to fixpoint and compare; on failure push E0204 (UNSATISFIED_CONSTRAINT_CODE_CHIRHO, infer_chirho.rs:34) via the existing diagnostics push at 6673-6678.",
+      "conservative_guard_chirho": "Only when both Coercible arguments are 100% ground, every head tycon is known to the env (not a placeholder import), and no type-family application or role annotation is involved (any role-annotated tycon in the spine → skip, keep accepting). Unsolvable-but-guarded cases remain accepted as today.",
+      "expected_unlock_chirho": 3,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "kindless_type_unification_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 12,
+      "sample_tests_chirho": [
+        "T7368.hs",
+        "T7368a.hs",
+        "tcfail122.hs",
+        "T11672.hs",
+        "VisFlag1.hs",
+        "T11313.hs"
+      ],
+      "ghc_reason_chirho": "GHC-18872/83865 kind mismatch discovered DURING type unification ('Couldn't match kind * with * -> *' when matching b0::* against Maybe::*->*), plus the VisFlag family (visible forall flag mismatches) and type-application kind errors (fmap @(*)).",
+      "our_gap_chirho": "Architectural: TyChirho metavars are unkinded, so unify_chirho.rs cannot see that binding b0 (needed at kind *) to a partially-applied Maybe is ill-kinded; kind checking (kind_chirho.rs) runs only over declarations, never over inference-produced solutions. VisFlag additionally needs forall-visibility tracking absent from KindChirho.",
+      "fix_sketch_chirho": "Conservative first slice, no metavar kinds needed: after the final substitution is composed (end of module inference, where finalize runs), walk every solved binding's type and flag any KNOWN tycon applied to fewer arguments than its declared kind arity occurring in a Star-required structural position (function arg/result, list element, boxed-tuple element, field). Emit E0300 at the binding's span. This is a post-solve validity pass fitting naturally in validity_chirho.rs. VisFlag (6 files) is intentionally NOT covered — needs visibility-annotated kinds; treat as follow-up, not conservative.",
+      "conservative_guard_chirho": "Only fire when the tycon's declared kind is closed (no kind variables) and monomorphic, its full arity is statically known, and the under-application sits in a syntactic position whose kind is forced to * by construction. Poly-kinded, family, and imported-placeholder heads are skipped, so no valid program (levity/kind polymorphism) can trip it.",
+      "expected_unlock_chirho": 4,
+      "regression_risk_chirho": "medium"
+    }
+  ],
+  "notes_chirho": "Cluster lists were not provided (paths were 'undefined'); reconstructed from .stderr GHC-83865/GHC-18872 markers: 188 candidate files, of which exactly 108 are wrongly accepted by ./target/debug/haskelujah check (26 from GHC-18872, 83 from GHC-83865, 1 overlap VisFlag1). Reconstructed lists at /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/all_accepted.txt and buckets.txt (kindarity 40 / kindmatch 19 / typematch 49). Key confirmed escape hatches with file:line: (1) UserDefinedClassConstraintSkip = crates/haskelujah-typing-chirho/src/infer_chirho.rs:6661-6671 (classes with zero instances silently skipped — swallows Coercible and same-module class constraints); (2) bind_pat_chirho swallows unify failures at infer_chirho.rs:4046 (tuple, Err => empty subst) and 4100-4107 (constructor result, if-let-Ok only), with intentional-leniency comment at 3347-3349; (3) kind_chirho.rs infer_module_kinds_chirho has no InstanceDeclChirho arm, does not kind-check assoc-type defaults or local where/let signatures, and its TupleChirho arm (~1295) unifies elements against a shared fresh kind var instead of Star. The driver DOES honor kind errors (crates/haskelujah-driver-chirho/src/lib.rs:1896-1898), so kind-checker fixes surface immediately. Error-emission convention: DiagnosticChirho::error_with_code_chirho(ErrorCodeChirho::error_chirho(CODE)) with E0200 TYPE_MISMATCH (infer_chirho.rs:30), E0204 UNSATISFIED_CONSTRAINT (infer_chirho.rs:34), E0300 KIND_MISMATCH (kind_chirho.rs:616). Not covered conservatively: VisFlag1-5/VisFlag1_ql (forall visibility flags, needs kind-visibility tracking), InstanceSigs more-general check (T6001), main-not-IO (tcfail199), rank-n impredicativity (tcfail104/tcfail174), deferred-type-errors multi-module (T13292). Sum of conservative expected unlocks ~41 of 108. Unrelated bug found while probing: the compiler stack-overflows (infinite recursion) when the source file path is long/outside the repo tree — e.g. any file under the scratchpad path crashes 'haskelujah check' with 'stack overflow' even for trivially valid or invalid modules; probes had to be run from inside ghc-tests-chirho/typecheck-chirho/should_fail/ (temp zz_tmp_* files, all removed). tcfail158 acceptance is additionally a layout bug: one-space-indented decls after a where-block get mis-nested so later top-level signatures vanish from kind checking (reproduced: identical module without the where block or without the leading spaces is correctly rejected)."
+}

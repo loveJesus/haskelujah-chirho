@@ -1,0 +1,147 @@
+{
+  "clusters_chirho": [
+    {
+      "name_chirho": "typed_holes_warning_only_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 9,
+      "sample_tests_chirho": [
+        "T12177.hs",
+        "T14884.hs",
+        "T16456.hs",
+        "T17940.hs",
+        "T20189.hs",
+        "T22684.hs",
+        "T21130.hs",
+        "T9497d.hs",
+        "T17773.hs"
+      ],
+      "ghc_reason_chirho": "GHC-88464 'Found hole: _ :: T' — typed holes (`_` or `_name` in expression position) are ERRORS by default in GHC; only -fdefer-typed-holes demotes them to warnings. None of these 9 files enables that flag (verified by grep).",
+      "our_gap_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho.rs:2925-2933 — when value lookup fails and the identifier starts with '_', we emit warning W4200 ('found hole') and assign a fresh type var, so the module is accepted. Verified: ./target/debug/haskelujah check on T12177/T14884/T16456/T9497d all accept silently; a minimal probe Hole.hs (f x = _) also accepts.",
+      "fix_sketch_chirho": "In the same match arm, emit DiagnosticChirho::error_with_code_chirho(ErrorCodeChirho::error_chirho(207), format!(\"found hole: `{text}` :: _\"), span) instead of the warning, keeping the fresh type var so inference continues and can report the hole's inferred type. Gate on module pragmas: keep warning behavior when OPTIONS_GHC contains -fdefer-typed-holes or -fdefer-type-errors (module_chirho.extensions/pragma machinery in crates/haskelujah-parser-chirho/src/pragma_chirho.rs already parses OPTIONS_GHC; the existing DeferTypeErrors feature shows the plumbing).",
+      "conservative_guard_chirho": "Identifier in EXPRESSION position, starts with '_', value-env lookup returned None (so a bound `_x` still resolves), AND module does not enable -fdefer-typed-holes/-fdefer-type-errors. Pattern `_` wildcards are a different AST node and untouched. GHC rejects every such program, so no valid program can trip it.",
+      "expected_unlock_chirho": 9,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "unbound_constructor_fresh_var_fallback_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 2,
+      "sample_tests_chirho": [
+        "tcfail050.hs",
+        "tcfail054.hs"
+      ],
+      "ghc_reason_chirho": "GHC-88464 'Data constructor not in scope: B' (expression, tcfail050) and GHC-76037 'Not in scope: data constructor B' (pattern, tcfail054). Both modules have zero imports, so the constructor genuinely does not exist.",
+      "our_gap_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho.rs:3016 (ExprChirho::ConChirho arm: `None => (SubstChirho::empty_chirho(), self.fresh_var_chirho())`) and infer_chirho.rs:3799 (same silent fresh-var fallback for unknown constructors in patterns). Unlike VarChirho (which errors E0202 at infer_chirho.rs:2935+, verified with a probe), unknown constructors never error. Verified: probe `f x = B x` accepts silently.",
+      "fix_sketch_chirho": "At both None arms, if the guard fires, push error_with_code_chirho(ErrorCodeChirho::error_chirho(202), format!(\"unbound data constructor: `{text}`\"), span) (reuse UNBOUND_VAR_CODE_CHIRHO=202, infer_chirho.rs:32, matching the existing E0202 shape and did-you-mean machinery), then still return the fresh var so inference proceeds.",
+      "conservative_guard_chirho": "Constructor lookup returned None AND the enclosing module has ZERO import declarations AND the name is not in the seeded builtin/Prelude constructor env (that env is exactly what lookup consulted, so the second condition is implied). With no imports there is no unmodeled module that could have provided the constructor, so a valid program cannot be rejected — the only residual risk is a gap in our own Prelude constructor seeding, which is why the guard excludes any module with imports.",
+      "expected_unlock_chirho": 2,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "type_level_not_in_scope_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 8,
+      "sample_tests_chirho": [
+        "tcfail048.hs",
+        "tcfail051.hs",
+        "tcfail052.hs",
+        "tcfail053.hs",
+        "tcfail061.hs",
+        "tcfail062.hs",
+        "T1595.hs",
+        "T13983.hs"
+      ],
+      "ghc_reason_chirho": "GHC-76037 'Not in scope: type constructor or class / type variable' — unknown class in a superclass context or instance head (tcfail048/051), unknown type constructor in a data decl (tcfail053), and unbound lowercase type VARIABLES on type-synonym/data RHS (tcfail052 `c`, tcfail061 `type Flarp a = (b,b)`, tcfail062).",
+      "our_gap_chirho": "No 'unbound type' error exists anywhere in crates/haskelujah-typing-chirho/src/ or crates/haskelujah-naming-chirho/src/ (grep for unknown/unbound type finds nothing); type lowering treats any Con name as an opaque TyChirho::ConChirho and any lowercase name as a var. Verified: probe `type Flarp a = (b, b)` accepts silently; tcfail050-family all accept.",
+      "fix_sketch_chirho": "Two-part, both in crates/haskelujah-typing-chirho/src/validity_chirho.rs (the existing syntactic, extension-aware pass, E0206 conventions at validity_chirho.rs:26-66): (1) for each TypeAliasDeclChirho and data-decl constructor field, collect free lowercase type variables and error when one is not bound by the decl's LHS parameters (skip kind-annotation positions when PolyKinds is enabled, so T13983-style implicit kind vars are excluded from the guard); (2) for modules with zero imports, error on any uppercase type/class name that is neither locally declared nor in the builtin type env.",
+      "conservative_guard_chirho": "(1) Lowercase type variable free on a synonym/data RHS and not among the LHS binders — type variables are lexically scoped and can never be provided by an import, so this cannot fire on a valid program (kind positions excluded under PolyKinds to be safe). (2) Uppercase type/class name unresolved AND module has zero imports.",
+      "expected_unlock_chirho": 6,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "missing_import_builtins_always_seeded_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 10,
+      "sample_tests_chirho": [
+        "T12406.hs",
+        "T12589.hs",
+        "T12947.hs",
+        "T15850.hs",
+        "T20289.hs",
+        "T23731b.hs",
+        "T25949.hs",
+        "T26137.hs",
+        "TcCoercibleFail.hs",
+        "T13983.hs"
+      ],
+      "ghc_reason_chirho": "GHC-88464 'Variable not in scope: join / (&) / ContT' — the name exists in base but the module did not import the providing module (T12406 deliberately comments out `import Control.Monad`).",
+      "our_gap_chirho": "The typechecker seeds a large builtin value env unconditionally, ignoring the module's import list: `join` bound at crates/haskelujah-typing-chirho/src/infer_chirho.rs:18649, `&` at infer_chirho.rs:18874 (inside seed_builtins_chirho, infer_chirho.rs:7532). Verified: T12406 and T12589 accept silently. This is a deliberate compat tradeoff (PreludeExpansion/ImportedValuePlaceholderTypes features), plus placeholder import schemes at infer_chirho.rs:20770 that make any import-shaped name typecheck.",
+      "fix_sketch_chirho": "No conservative fix now. The real fix is modeling per-module export surfaces for base (which builtins are visible given the actual import list) — a large feature. Any heuristic (e.g. 'only seed Prelude names when no import mentions the module') would reject thousands of valid programs that rely on our currently-generous builtin env. Recommend deferring behind the base-module-interface work.",
+      "conservative_guard_chirho": "None exists that cannot mis-fire: the seeded-builtin env is load-bearing for the 858 should_compile passes, and distinguishing 'seeded but not imported' from 'seeded and legitimately Prelude-visible' requires a faithful base export map. Do not attempt a heuristic.",
+      "expected_unlock_chirho": 0,
+      "regression_risk_chirho": "high"
+    },
+    {
+      "name_chirho": "unlifted_newtype_without_extension_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 6,
+      "sample_tests_chirho": [
+        "T12729.hs",
+        "UnliftedNewtypesNotEnabled.hs",
+        "tcfail079.hs",
+        "T15883.hs",
+        "T16829a.hs",
+        "T16829b.hs"
+      ],
+      "ghc_reason_chirho": "GHC-55233 'Newtype has non-* return kind TYPE IntRep' with suggested fix 'Perhaps you intended to use the UnliftedNewtypes extension' — a newtype wrapping an unboxed field (Int#, Word8#) or declared with return kind `TYPE rep` is illegal without UnliftedNewtypes.",
+      "our_gap_chirho": "No kind check on newtype field representations or declared return kinds exists; grep for UnliftedNewtypes in non-test crate code hits only the AST extensions doc comment (crates/haskelujah-ast-chirho/src/module_chirho.rs:34). Verified: T12729, tcfail079, T16829a all accept silently.",
+      "fix_sketch_chirho": "Add a check in crates/haskelujah-typing-chirho/src/validity_chirho.rs (it already reads module_chirho.extensions_chirho via extension_enabled_chirho at validity_chirho.rs:139 and emits E0206 diagnostics with a suggested-extension note, validity_chirho.rs:48-66): for each newtype decl, when UnliftedNewtypes is absent, error if (a) the single field's type is a syntactic reference to a fixed set of unboxed primitive tycons {Int#, Word#, Char#, Float#, Double#, Addr#, Word8#, Word16#, Word32#, Word64#, Int8#..Int64#}, or (b) the declared (GADT-style) return kind is syntactically `TYPE <anything other than LiftedRep>`. Message mirrors GHC: 'newtype has non-* return kind' + note suggesting UnliftedNewtypes.",
+      "conservative_guard_chirho": "Newtype declaration AND UnliftedNewtypes not in extensions_chirho AND (field type is one of the fixed hash-suffixed primitive tycon names, or explicit return kind is `TYPE r` with r not literally LiftedRep). GHC rejects every such program unconditionally; the fixed name set cannot collide with user types because `#`-suffixed names require MagicHash and refer to the GHC.Exts primitives.",
+      "expected_unlock_chirho": 6,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "data_decl_constraint_return_kind_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 6,
+      "sample_tests_chirho": [
+        "T14048a.hs",
+        "T14048b.hs",
+        "T14048c.hs",
+        "T17021b.hs",
+        "UnliftedNewtypesConstraintFamily.hs",
+        "T16821.hs"
+      ],
+      "ghc_reason_chirho": "GHC-55233 'Data type / Data family / Data instance has non-* return kind Constraint' — a data/newtype/data-family/data-instance whose declared return kind is Constraint (or a type-family application like `Id Type` / `F Int`, T16821/T17021b) is unconditionally illegal; no extension licenses it.",
+      "our_gap_chirho": "Same absence as the unlifted-newtype gap: no return-kind validation on data-ish declarations anywhere in crates/haskelujah-typing-chirho/src/ (kind_chirho.rs has no such check). Verified: T14048a accepts silently.",
+      "fix_sketch_chirho": "Same home, crates/haskelujah-typing-chirho/src/validity_chirho.rs: for data, newtype, data family, and data instance declarations carrying an explicit kind signature, error (E0206-family code, message 'data type has non-* return kind `Constraint`') when the signature's RETURN position is syntactically the tycon `Constraint`. Cover the tail-return of arrow kinds (`:: Type -> Constraint` also rejected by GHC for data families with non-TYPE return).",
+      "conservative_guard_chirho": "Explicit kind annotation on a data/newtype/data-family/data-instance whose return kind is the literal identifier `Constraint`, AND the module does not locally declare a type named Constraint (so the name can only mean Data.Kind.Constraint). GHC rejects this in every configuration, so no valid program trips it. Type-family-application return kinds (T16821, T17021b) are excluded from the guard — they need kind-level normalization and are not conservative.",
+      "expected_unlock_chirho": 4,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "no_stderr_corpus_noise_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 60,
+      "sample_tests_chirho": [
+        "AmbigFDs.hs",
+        "tcfail071.hs",
+        "tcfail124.hs",
+        "T7545.hs",
+        "FDsFromGivens.hs",
+        "T12063.hs",
+        "T6018Afail.hs",
+        "T15850_Lib.hs",
+        "T20289_A.hs",
+        "tcfail165.hs"
+      ],
+      "ghc_reason_chirho": "These 60 wrongly-accepted files have NO .stderr because most are not independently failing tests: (a) ~31 are auxiliary modules of multi-module tests (T15850_Lib, T20289_A, *_aux, T13981B/C, T6018Afail/Bfail/Cfail/Dfail imported by T6018fail, T12063 half of an hs-boot pair) whose error is attributed to the main file's stderr; (b) at least 8 carry explicit in-file comments that modern GHC now ACCEPTS them (AmbigFDs 'now succeeds', tcfail071 'always succeeds', tcfail124 'now all pass', T7545 'now accepted', FDsFromGivens 'no longer reject', tcfail165, tcfail105 'now fine', T15438), and several more of the remaining 21 have the same comments.",
+      "our_gap_chirho": "Not a typechecker gap: the per-file measurement in spec-chirho/ghc-should-fail-measurement-chirho.txt counts aux modules and GHC-now-accepts tests as wrongly-accepted. Sampled 8+ and confirmed the pattern; e.g. AmbigFDs.hs line 6 comment 'Sept 25: used to fail but now succeeds'.",
+      "fix_sketch_chirho": "Measurement-harness change, not a checker change: (1) exclude from the reject denominator any should_fail .hs that lacks a sibling .stderr AND is imported by another corpus file (aux modules); (2) flag the now-accepts historical tests for manual reclassification (GHC's all.T marks them compile-pass today). Optionally, implement multi-module checking of the main test file so its stderr-bearing error surfaces. Document the exclusion in the measurement artifact per its own conventions.",
+      "conservative_guard_chirho": "No compiler trigger — the conservative action is measurement reclassification only; rejecting aux modules or now-passing programs in the checker would be flatly wrong (GHC accepts them standalone).",
+      "expected_unlock_chirho": 0,
+      "regression_risk_chirho": "low"
+    }
+  ],
+  "notes_chirho": "Cluster lists were not on disk (task paths said 'undefined'); I derived them from spec-chirho/ghc-should-fail-measurement-chirho.txt (610 wrongly-accepted) crossed with .stderr grep: GHC-88464 wrongly-accepted = 13 files, GHC-55233 = 12 files, broader 'not in scope' (incl. GHC-76037/22385) = 22, typed holes = 9, no-stderr = 60. Lists saved under the session scratchpad (wa_88464.txt, wa_55233.txt, wa_notinscope.txt, wa_hole.txt, wa_nostderr.txt) in /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/. Key escape hatches with evidence: (1) typed-hole warning-not-error at crates/haskelujah-typing-chirho/src/infer_chirho.rs:2925-2933; (2) unknown-constructor silent fresh var at infer_chirho.rs:3016 (expr) and :3799 (pattern); (3) unconditional builtin seeding regardless of imports (join at :18649, & at :18874) plus placeholder import schemes (is_placeholder_import_scheme_chirho at :20770); (4) UserDefinedClassConstraintSkip at infer_chirho.rs:6660-6671 — constraints on classes with zero instances in env are silently dropped (`continue`), the main swallow for no-instance should_fail tests outside this cluster; (5) no kind/validity check on data/newtype return kinds anywhere (55233 family). Best implementation home for the 55233 checks is crates/haskelujah-typing-chirho/src/validity_chirho.rs (extension-aware syntactic pass, E0206 conventions, suggested-fix notes already supported). Error-code conventions: E0200-E0206 constants at infer_chirho.rs:30-35 and validity_chirho.rs:27. Total realistic conservative unlock: ~27 files (9 holes + 6 unlifted newtypes + 4 Constraint-kind + 6 type-level scope + 2 constructors), plus up to ~39 no-stderr files removable from the denominator by measurement reclassification. One operational caveat: running the binary on files in a directory whose PATH-like name contains many dashes/underscores at scratchpad ROOT crashed with stack overflow (sibling-module search suspect); moving probes into a subdirectory fixed it — possibly worth a separate bug note."
+}

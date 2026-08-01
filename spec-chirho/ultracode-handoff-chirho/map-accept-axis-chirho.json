@@ -1,0 +1,195 @@
+{
+  "clusters_chirho": [
+    {
+      "name_chirho": "promoted_poly_kinds_collapsed_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 27,
+      "sample_tests_chirho": [
+        "T12923_2.hs",
+        "T11056.hs",
+        "T4355.hs",
+        "T6018.hs",
+        "T14451.hs",
+        "UnliftedNewtypesGnd.hs",
+        "T3632.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts because DataKinds/PolyKinds give these types promoted or polymorphic kinds ([Symbol], Nat, k -> *, forall k. k -> *); e.g. T12923_2 has `data A (b :: [Symbol])` and T11056 uses partially-applied promoted constructors under Typeable.",
+      "our_gap_chirho": "KindChirho enum (crates/haskelujah-typing-chirho/src/kind_chirho.rs:44-56) can only represent */Constraint/arrow/var — no named, promoted, or list kinds. Kind-position types like `[Symbol]` hit the `_ => StarChirho` fallback in type_to_kind_chirho (kind_chirho.rs:836-840), and finalize defaults ALL unsolved kind vars to * even under PolyKinds (kind_chirho.rs:1596-1605, 1945). Higher-kinded arguments then collide with the forced *: 'kind mismatch in type/kind application: expected `*`, found `k -> k`' (26 E0300 files + 1 E0301 infinite-kind, T14451). All 27 error with E0300/E0301.",
+      "fix_sketch_chirho": "Add a KindChirho::NamedChirho(String, Vec<KindChirho>) constructor covering builtin kinds (Nat, Symbol, list-of-k as Named(\"[]\", [k])) and user data-kinds; make type_to_kind_chirho translate ListChirho/promoted heads into it instead of falling back to Star; unify Named kinds nominally with componentwise recursion; and only default kind vars to * per-declaration after generalizing the declaration's own kind (not globally at finalize when PolyKinds is on).",
+      "conservative_guard_chirho": "Construct NamedChirho only when DataKinds/PolyKinds is enabled in the module's pragmas AND the head name resolves to a known data type or builtin kind; Haskell2010 modules keep the existing Star fallback and eager * defaulting unchanged, so no valid program's kind checking path changes.",
+      "expected_unlock_chirho": 14,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "stuck_family_equality_not_deferred_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 22,
+      "sample_tests_chirho": [
+        "Improvement.hs",
+        "T10808.hs",
+        "tc251.hs",
+        "tc252.hs",
+        "T26030.hs",
+        "T20668.hs",
+        "SplitWD.hs",
+        "T23413.hs",
+        "T5490.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts because it treats an unreduced type-family application as a stuck equality: it defers `F a0 ~ Bool` until a0 is solved, rewrites wanteds using given equalities from signature contexts (e.g. `Fam a ~ Bool =>` in tc252, `Int ~ Bool =>` in T23413), and uses GADT-refinement to unlock closed-family reduction (T26030).",
+      "our_gap_chirho": "unify_normalized_chirho (crates/haskelujah-typing-chirho/src/infer_chirho.rs:1392) normalizes via reduce_families_chirho (infer_chirho.rs:879-905), and when a family application cannot reduce (metavar args) it falls through to structural unification and reports E0200 'expected `(F t12)`, found `Bool`'. Given equalities are never used as rewrite rules: pred_entailed_by_givens_chirho (infer_chirho.rs:1360-1375) only does exact whole-predicate matching, so `Fam a ~ Bool` givens never rewrite `Fam a` occurrences.",
+      "fix_sketch_chirho": "(1) In unify_normalized_chirho, before structural mismatch, if either side's head is a REGISTERED type family (register_type_family_chirho table, infer_chirho.rs:589) that failed to reduce and its args contain unsolved metavars, push the equality onto the existing deferred mechanism (deferred_preds_chirho / discharge_deferred_with_current_givens_chirho, infer_chirho.rs:1376) and succeed provisionally; retry reduction at discharge and error there if still irreducible. (2) During with_given_preds_chirho scope (infer_chirho.rs:1091), collect `~` givens into a rewrite map applied inside normalize_ty_chirho.",
+      "conservative_guard_chirho": "Defer only when the application head is in the registered type-family table AND at least one argument contains an unsolved metavar; concrete-argument stuck families and non-family constructors still error exactly as today, and the deferred equality re-errors at final discharge if never solved — so nothing GHC rejects becomes accepted silently.",
+      "expected_unlock_chirho": 12,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "pattern_binding_generalization_ordering_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 8,
+      "sample_tests_chirho": [
+        "T5032.hs",
+        "tc124.hs",
+        "tc194.hs",
+        "tc196.hs",
+        "T12427a.hs",
+        "T25266.hs",
+        "T25266b.hs",
+        "RebindHR.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts: pattern bindings like `[id3] = [id]` and `(g,h) = (...)` are generalized (MR permitting) before their use sites; polymorphic record fields survive pattern binds/updates (tc124); higher-rank lambda binder sigs work (tc194); local lets get call-site-driven monomorphic inference (T25266b).",
+      "our_gap_chirho": "Top-level pattern bindings are pre-bound to MONOMORPHIC fresh vars (infer_chirho.rs:6160-6180) and only inferred+generalized in Phase 3d (infer_chirho.rs:6311-6386) AFTER every function SCC was already checked in Phase 3b — so `noo = (id3 True, id3 'x')` sees the mono pre-bind and errors E0200 Bool vs Char. binding_groups_chirho (infer_chirho.rs:6340) includes only fun bindings, never PatBinds. Higher-rank subcases (tc124 poly fields, tc194 forall binder sig, T12427a E0205) additionally instantiate the field's forall too early.",
+      "fix_sketch_chirho": "Include PatBindChirho decls as nodes in binding_groups_chirho's SCC graph (their bound names as definitions, RHS free vars as edges) so each pattern binding is inferred and generalized in dependency order before its users; for the higher-rank subcases, when a pattern-matched record field or binder annotation is a ForallChirho, bind the variable with the field's scheme directly instead of instantiating.",
+      "conservative_guard_chirho": "Only reorders inference — typing rules unchanged; pattern bindings in a genuinely recursive SCC with functions keep today's monomorphic pre-bind, and signature-carrying bindings already take the signature path (infer_chirho.rs:6169), so existing green tests are unaffected.",
+      "expected_unlock_chirho": 4,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "missing_wired_in_names_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 4,
+      "sample_tests_chirho": [
+        "T21010.hs",
+        "T24810.hs",
+        "TcSpecPragmas.hs",
+        "T25180.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts because its base library exports these names: heqT (Data.Typeable), withMonoCoercible/mono-coercion helpers (GHC.Exts), charSing (GHC.TypeLits CharSing machinery), and Prelude.Experimental (Unit/Solo/Tuple2). We raise E0202 unbound variable for each.",
+      "our_gap_chirho": "Wired-in module export tables live in crates/haskelujah-naming-chirho/src/iface_chirho.rs — e.g. the Data.Typeable list around iface_chirho.rs:2146 has typeOf/typeRep but no heqT/decT; no Prelude.Experimental module exists at all (T25180 then cascades to unbound `b`).",
+      "fix_sketch_chirho": "Add the missing identifiers with correct schemes to the corresponding wired-in interfaces in iface_chirho.rs (heqT :: forall a b. (Typeable a, Typeable b) => Maybe (a :~~: b); charSing; withMonoCoercible) and add a Prelude.Experimental interface re-exporting Unit/Solo/Tuple2 from GHC.Tuple. T25180 also needs typed-hole `_` acceptance in check mode to fully pass.",
+      "conservative_guard_chirho": "Purely additive export-table entries — cannot change behavior of any program that did not previously fail name resolution on exactly these names.",
+      "expected_unlock_chirho": 3,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "type_abstractions_pattern_binders_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 2,
+      "sample_tests_chirho": [
+        "T17594a.hs",
+        "T20443a.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts TypeAbstractions: `id1 @t x = x` binds t to the signature's forall variable, and `b (Proxy @Int) = ()` matches an invisible type argument in a constructor pattern.",
+      "our_gap_chirho": "Lowering drops @-binders in function equations and constructor patterns, producing E0202 'unbound variable: x1' (T17594a) and even an empty-name unbound variable (T20443a) — a lowering artifact in crates/haskelujah-parser-chirho/src/lower_chirho.rs pattern handling.",
+      "fix_sketch_chirho": "Lower `@tyvar` equation/pattern binders into a scoped-type-variable binding tied to the enclosing signature's corresponding forall binder (reuse the existing ScopedTypeVariables plumbing), and skip invisible constructor-pattern type args after recording the refinement.",
+      "conservative_guard_chirho": "Gate on the TypeAbstractions pragma; without it the parser keeps its current behavior, and the lowering only consumes syntax that today produces guaranteed-wrong empty/ghost names.",
+      "expected_unlock_chirho": 2,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "lhs_result_type_signatures_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 2,
+      "sample_tests_chirho": [
+        "tc134.hs",
+        "tc135.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts old-style result signatures on a binding LHS: `f x :: Int = x` and `g x :: a = x :: a` (pattern/result signature scoping the variable a).",
+      "our_gap_chirho": "The CST parser/lowering mis-parses `f x :: Int = x`, emitting E0202 'unbound variable: ``' (empty name) twice plus unbound `x` — the `::` on the LHS derails equation lowering (crates/haskelujah-parser-chirho/src/lower_chirho.rs / cst_parser_chirho.rs function-equation LHS path).",
+      "fix_sketch_chirho": "In equation-LHS parsing, when `::` follows the argument patterns before `=`, parse the type as a result signature: attach it as an annotation on the RHS expression and bring its type variables into scope like an expression signature.",
+      "conservative_guard_chirho": "Trigger only in the decl-LHS position where today's output is an empty-name unbound-variable diagnostic (a state no valid program reaches), so no currently-accepted syntax changes meaning.",
+      "expected_unlock_chirho": 2,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "impredicative_poly_equality_decomposition_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 2,
+      "sample_tests_chirho": [
+        "PolytypeDecomp.hs",
+        "RuleEqs.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts: with ImpredicativeTypes, wanted equalities between lists of polytypes ([forall a. Maybe a] ~ Id alpha) are decomposed in the constraint solver into implication constraints that are soluble.",
+      "our_gap_chirho": "We report E0201 'infinite type: t occurs in [t]' — unify_normalized_chirho's forall-instantiation cases (infer_chirho.rs:1392-1458) instantiate the forall side eagerly with fresh metavars, then the occurs check fires when the same metavar appears inside the list structure.",
+      "fix_sketch_chirho": "When a wanted equality relates a structure containing ForallChirho to a metavar-headed type, defer the equality (same deferral machinery as the stuck-family cluster) instead of instantiating immediately; solve after the metavar is filled by other constraints, then compare polytypes by alpha-equivalence.",
+      "conservative_guard_chirho": "Only defer when one side is a bare metavar (or family app) and the other contains a ForallChirho under a type constructor; direct forall-vs-forall and monotype unification keep the current path.",
+      "expected_unlock_chirho": 1,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "unboxed_literal_typing_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 1,
+      "sample_tests_chirho": [
+        "T21519a.hs"
+      ],
+      "ghc_reason_chirho": "GHC types `10#` directly as Int# (MagicHash); no Num constraint is involved for unboxed literals.",
+      "our_gap_chirho": "We type the `10#` literal through the overloaded Num path and report E0204 'no instance for `Num Int#`' — literal inference in infer_chirho.rs treats all integer literals as Num-constrained metavars.",
+      "fix_sketch_chirho": "In the lexer/lowering, tag `#`-suffixed integer literals; in infer, give them the concrete unlifted type (Int#/Word#) with no Num predicate.",
+      "conservative_guard_chirho": "Only literals lexed with a trailing `#` under MagicHash take the new path; ordinary literals keep Num overloading.",
+      "expected_unlock_chirho": 1,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "arrows_proc_notation_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 1,
+      "sample_tests_chirho": [
+        "tc192.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts Arrows proc notation (`proc x -> do { b <- f -< x; g -< b }`), desugaring it to arr/(>>>)/first combinators.",
+      "our_gap_chirho": "`proc` is not recognized; it resolves as an ordinary variable and we emit E0202 'unbound variable: proc' — no Arrows support anywhere in the parser (crates/haskelujah-parser-chirho/src/cst_parser_chirho.rs).",
+      "fix_sketch_chirho": "Parse proc/-< under the Arrows pragma and desugar per the standard translation into Control.Arrow combinators during lowering; sizeable feature, low priority for one test.",
+      "conservative_guard_chirho": "Only active when the Arrows pragma is present; `proc` remains an ordinary identifier otherwise.",
+      "expected_unlock_chirho": 1,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "typed_holes_in_operator_position_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 1,
+      "sample_tests_chirho": [
+        "T14590.hs"
+      ],
+      "ghc_reason_chirho": "GHC accepts (with deferred typed holes / warnings) `(x `_`) y` — named and unnamed holes usable in infix/backtick operator position, reporting hole fits but compiling.",
+      "our_gap_chirho": "We hard-error E0200 'type mismatch: expected Int, found Int -> t0' — the hole in operator position is typed as a plain unknown that then fails against the section shape, instead of being an always-succeeding hole with its own fresh type.",
+      "fix_sketch_chirho": "Treat `_`/`_name` in operator position as a hole expression given a fresh fully-flexible type and record a hole diagnostic as a warning in check mode (matching GHC -fdefer-typed-holes acceptance for this corpus).",
+      "conservative_guard_chirho": "Applies only to lexemes that are holes (leading underscore identifiers in expression positions); normal operators unaffected.",
+      "expected_unlock_chirho": 1,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "misc_singleton_defects_chirho",
+      "axis_chirho": "accept",
+      "test_count_chirho": 10,
+      "sample_tests_chirho": [
+        "FloatFDs.hs",
+        "HardRecordUpdate.hs",
+        "T14158.hs",
+        "T15079.hs",
+        "T21328.hs",
+        "T23764.hs",
+        "T26256a.hs",
+        "tc213.hs",
+        "tc218.hs",
+        "tc239.hs"
+      ],
+      "ghc_reason_chirho": "Heterogeneous singles GHC accepts via distinct advanced features: fundep constraint floating out of implications (FloatFDs, tc213), type-changing record update on a GADT data-family instance (HardRecordUpdate), TypeApplications on class methods in sections (T14158), higher-rank coercion (T15079), implicit-parameter non-ambiguity (tc218), cross-module newtype/synonym interfaces (tc239), operator-headed types (T23764, T26256a), quantified-constraint dispatch (T21328).",
+      "our_gap_chirho": "All E0200 type mismatches from different corners of infer_chirho.rs; no shared root cause — each needs individual diagnosis. tc239's 'expected (WrapIO t25), found WrapIO2' points at sibling-module interface synonym expansion (crates/haskelujah-naming-chirho/src/iface_chirho.rs) rather than inference proper.",
+      "fix_sketch_chirho": "Triage individually after the big clusters land; several (tc213, tc218, tc239) may fall out of the stuck-family-deferral and interface-synonym work for free — re-measure before investing.",
+      "conservative_guard_chirho": "No single fix; each file gets its own targeted change with the corresponding feature-pragma gate.",
+      "expected_unlock_chirho": 2,
+      "regression_risk_chirho": "low"
+    }
+  ],
+  "notes_chirho": "All 80 should_compile failures re-run against ./target/debug/haskelujah check at HEAD (8e9030b5); zero timeouts, zero panics, every failure exits rc=1 with a diagnostic. Raw first-error capture: /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/accept_errs.txt. Error-code distribution: E0300/E0301 kind errors 27, E0200 type mismatch 40, E0202 unbound variable 9, E0201 infinite type 2, E0204 no-instance 1, E0205 signature mismatch 1. Cluster counts sum to exactly 80. The two highest-leverage fixes are (1) representing promoted/named kinds instead of collapsing to * (kind_chirho.rs:44/836/1596) and (2) deferring stuck type-family equalities plus rewriting with given equalities (infer_chirho.rs:1392/879/1360); together they plausibly cover ~26 of the 80. The pattern-binding SCC ordering fix (infer_chirho.rs:6160/6311/6340) is the lowest-risk quick win. Expected-unlock figures are conservative because several files stack multiple gaps (e.g. T25180 needs both wired-in names and typed holes)."
+}

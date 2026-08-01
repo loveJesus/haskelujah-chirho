@@ -1,0 +1,131 @@
+{
+  "clusters_chirho": [
+    {
+      "name_chirho": "sig_skolem_concretization_25897_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 28,
+      "sample_tests_chirho": [
+        "FD1",
+        "FD2",
+        "T1899",
+        "T7453",
+        "T8450",
+        "tcfail065",
+        "tcfail103",
+        "tcfail153",
+        "tcfail175",
+        "tcfail201",
+        "TyAppPat_Nonmatching",
+        "T16074"
+      ],
+      "ghc_reason_chirho": "GHC-25897: the type signature's forall-bound variables are skolemized (rigid) while checking the body; the body forces skolem ~ concrete type (FD1: sig `Int -> a` but two equation args force a := Int->Int; T1899: a := Proposition a0). FD1/FD2 are fundep-induced variants of the same rigid mismatch. GHC rejects; we accept silently (exit 0 confirmed on all 28).",
+      "our_gap_chirho": "No skolem/rigid tyvar representation exists anywhere in crates/haskelujah-typing-chirho (grep for rigid|skolem: zero hits). (1) unify_chirho.rs:91-96 binds ANY VarChirho to any type. (2) Signature seeding freshens sig vars into ordinary metavariables per equation (infer_chirho.rs:4714-4749, freshen_match_seed_and_givens_chirho), so the body silently solves a := Int->Int. (3) The final Phase-3c signature check calls subsume_normalized_chirho (infer_chirho.rs:6280), whose expected-side Forall case instantiates sig vars with FRESH METAVARIABLES (infer_chirho.rs:1637-1658), so `Int -> Int -> Int` subsumes `forall a. Int -> a` by a := Int->Int and the SIGNATURE_MISMATCH error path at infer_chirho.rs:6291-6304 is unreachable for these programs.",
+      "fix_sketch_chirho": "In subsume_normalized_chirho's expected-Forall arm (infer_chirho.rs:1637-1658), when invoked from the Phase-3c signature check, instantiate the signature's bound vars as TyChirho::ForallVarChirho skolems instead of fresh VarChirho metavars. Existing unify machinery already gives skolem semantics for free: ForallVarChirho unifies only with the identical ForallVarChirho (unify_chirho.rs:208-212) while inferred metavars may still bind TO a skolem via the VarChirho arm (unify_chirho.rs:91-96). On failure, report through the existing SIGNATURE_MISMATCH_CODE_CHIRHO diagnostic already emitted at infer_chirho.rs:6293 (error[E-code] machinery: DiagnosticChirho::error_with_code_chirho).",
+      "conservative_guard_chirho": "Raise only when ALL hold: (a) the binding has an explicit user signature (Phase-3c path only, not inferred types); (b) subsume with skolemized sig fails with UnifyErrorChirho::MismatchChirho or OccursCheckChirho where one side is a signature skolem and the other is a concrete Con/Fun/List/Tuple/App type (never metavar-vs-skolem, never skolem-vs-skolem); (c) the fully-substituted inferred type contains zero residual metavariables and no imported-placeholder types, so any imprecision from defaulting, Int/Double widening, or ImportedValuePlaceholderTypes keeps us silent. A valid program can never have its signature variable forced to a concrete constructor type by its own body, so this cannot misfire.",
+      "expected_unlock_chirho": 16,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "unsigned_binding_rigid_25897_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 11,
+      "sample_tests_chirho": [
+        "tcfail002",
+        "tcfail032",
+        "tcfail099",
+        "tcfail198",
+        "T9109",
+        "FrozenErrorTests",
+        "T7869"
+      ],
+      "ghc_reason_chirho": "GHC-25897 on the INFERRED type: without a signature, all equations of a binding must share one HM type; tcfail002 (`c (x:y) = x; c z = z`) needs a ~ [a] (occurs failure); T9109 is a GADT match whose refinement cannot escape into an inferred (untouchable) result variable.",
+      "our_gap_chirho": "Each equation gets fresh param/result metavars (infer_chirho.rs:4720-4749) and cross-equation/alt result agreement is enforced LENIENTLY: unify results are swallowed with `if let Ok(...)` at 19 sites (e.g. case-alt result merge infer_chirho.rs:3346-3360, comment: 'silently skip — the signature check catches real mismatches later'), but for unsigned bindings there is no signature check to catch anything, so tcfail002's occurs-check error vanishes.",
+      "fix_sketch_chirho": "For a multi-equation function binding WITHOUT a type signature (authoritative_seed_chirho == false), unify each equation's final type against the group type and REPORT the UnifyErrorChirho instead of discarding it, using the existing report_unify_error_chirho (infer_chirho.rs:1663) with TYPE_MISMATCH/OCCURS_CHECK codes. Keep the lenient path only for signed bindings where per-equation GADT refinement is legitimate.",
+      "conservative_guard_chirho": "Trigger only when the binding has no signature, no equation contains a GADT/existential constructor pattern, and the cross-equation unify fails with OccursCheckChirho or a concrete-vs-concrete MismatchChirho (metavar-involving failures stay silent). Valid Haskell unsigned bindings always possess a single principal HM type, so equation types that provably cannot unify are never valid.",
+      "expected_unlock_chirho": 4,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "existential_pattern_escape_25897_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 8,
+      "sample_tests_chirho": [
+        "TyAppPat_ExistentialEscape",
+        "TyAppPat_PatternBindingExistential",
+        "tcfail179",
+        "T10285",
+        "T15361",
+        "T26004"
+      ],
+      "ghc_reason_chirho": "GHC-25897 with 'bound by a pattern with constructor': existential variables introduced by pattern matching are skolems; letting them leak into the result type or unify with outer variables is rejected (Some @a x used at result type; tcfail179's x forced ~ s).",
+      "our_gap_chirho": "Existential constructor pattern variables are instantiated as ordinary fresh metavariables when the constructor scheme is instantiated during pattern inference (same instantiate_scheme_parts_chirho machinery, and bind_pat paths in infer_chirho.rs); nothing marks them un-unifiable or checks escape, and unify_chirho.rs:91-96 lets any outer var absorb them.",
+      "fix_sketch_chirho": "When instantiating a constructor whose scheme quantifies variables NOT appearing in the constructor's result type (the existential set), substitute those with ForallVarChirho skolems. Unification then fails naturally at unify_chirho.rs's mismatch fallthrough when an existential is forced against a concrete type, and an escape check after the match compares the alt/binding result type for surviving skolems, reporting via TYPE_MISMATCH_CODE_CHIRHO.",
+      "conservative_guard_chirho": "Skolemize only variables provably absent from the data constructor's declared result type (true existentials); report only skolem-vs-concrete mismatches or a skolem occurring in the binding's generalized result type. Rank-1 non-existential constructors are untouched, so ordinary programs cannot be affected.",
+      "expected_unlock_chirho": 4,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "class_decl_method_sig_25897_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 3,
+      "sample_tests_chirho": [
+        "T2688",
+        "T9201",
+        "LevPolyBounded"
+      ],
+      "ghc_reason_chirho": "GHC-25897 with skolems 'bound by the class declaration': a default method body (T2688: v ^/ s = v *^ (1/s) forces v ~ s) or class-level kind usage conflicts with the method's declared type, whose class variables are rigid.",
+      "our_gap_chirho": "Default-method bodies are checked with class-variable types instantiated as plain metavariables (class handling in class_chirho.rs plus the same subsume path at infer_chirho.rs:1581-1660); check_instance_methods_against_class_chirho (infer_chirho.rs:2502) covers instance methods, but class DEFAULT methods never get a skolemized check, so v := s unifies silently.",
+      "fix_sketch_chirho": "When inferring a class default method, bind the class type variables and the method signature's own quantified variables as ForallVarChirho skolems in the seeded expected type, and report failures with the existing SIGNATURE_MISMATCH_CODE_CHIRHO diagnostic.",
+      "conservative_guard_chirho": "Applies only inside class declarations with default method bodies; report only skolem-vs-skolem (two distinct class vars forced equal) or skolem-vs-concrete failures with a metavar-free inferred type. Distinct class variables may never be forced equal in a valid default method, so no valid program trips it.",
+      "expected_unlock_chirho": 2,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "validity_walker_coverage_91510_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 14,
+      "sample_tests_chirho": [
+        "T9196",
+        "tcfail196",
+        "T12083b",
+        "tcfail184",
+        "tcfail195",
+        "T17355",
+        "T18939_Fail",
+        "T7019",
+        "T11355",
+        "T16059e"
+      ],
+      "ghc_reason_chirho": "GHC-91510 'Illegal polymorphic/qualified type': forall or context in a position not licensed by the enabled extensions — constraint positions ('A constraint must be a monotype': T9196, tcfail196, T7019), data/newtype constructor fields and GADT results under Haskell2010 or without ImpredicativeTypes (tcfail184, tcfail195), instance heads (T17355), visible-forall kinds in data decls (T18939_Fail), expression-level type applications (T11355), and type-synonym-expanded polytypes (T16059e, T7809, T17213, T9858a).",
+      "our_gap_chirho": "The syntactic validity pass exists and is wired into the driver (crates/haskelujah-driver-chirho/src/lib.rs:2099 -> validity_chirho.rs:48), but check_module_type_validity_chirho walks ONLY DeclChirho::TypeSigChirho and TypeAliasDeclChirho (validity_chirho.rs:106-129); class method signatures, data/newtype/GADT constructor types, instance heads, constraint positions, and expression type annotations/applications are never walked (data fields deliberately skipped per the comment at validity_chirho.rs:85-88), and synonyms are not expanded.",
+      "fix_sketch_chirho": "Extend the existing walker: add walk sites for class method signatures, data/newtype/GADT constructor argument and result types, and instance head types; add a ConstraintChirho position to TyPositionChirho where a ForallChirho/QualChirho requires QuantifiedConstraints and a polytype argument of a class requires ImpredicativeTypes; walk types appearing in expression annotations and visible type applications. Reuse ILLEGAL_TYPE_FORM_CODE_CHIRHO (E0206, validity_chirho.rs:27) and the existing diagnostic emission at validity_chirho.rs:53-62 with the same 'perhaps you intended to use the X extension' note.",
+      "conservative_guard_chirho": "Purely syntactic and extension-gated exactly like the existing walker: report only when the licensing extension for that position is absent (RankNTypes / ImpredicativeTypes / QuantifiedConstraints), keeping the existing default-edition rule (validity_chirho.rs:96-103) that treats no-edition modules as GHC2021. This mirrors GHC's own static rule, so a program GHC accepts is never rejected. Skip the synonym-expansion cases (T16059e, T7809, T17213, T9858a) in the conservative form.",
+      "expected_unlock_chirho": 8,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "impredicative_instantiation_91028_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 15,
+      "sample_tests_chirho": [
+        "T10194",
+        "T2846b",
+        "T3592",
+        "T7264",
+        "T10619",
+        "T11514",
+        "T14904a",
+        "VisFlag1",
+        "VisFlag1_ql",
+        "T17077"
+      ],
+      "ghc_reason_chirho": "GHC-91028 'Cannot instantiate unification variable with a type involving polytypes': inference must fill a metavariable with a forall- or context-carrying type (T10194: (.) at b0 := X = forall a. a; T2846b: element type := Num a => a; T14904a/VisFlag1: kind-level polytypes). GHC refuses even with ImpredicativeTypes when QuickLook cannot justify it.",
+      "our_gap_chirho": "unify_chirho.rs deliberately erases higher-rank structure: the VarChirho arms (unify_chirho.rs:91-96) bind a metavar to any polytype, and the Forall-vs-concrete arms (unify_chirho.rs:256-267) strip the forall wrapper entirely ('bound vars become free and participate in unification normally'), so a polytype instantiation is indistinguishable from a monotype one and no error can arise. There is no kind-level polytype check in kind_chirho.rs either.",
+      "fix_sketch_chirho": "Full fix is QuickLook-shaped and out of scope. Conservative slice: (1) in bind_var_chirho, refuse binding a metavar to TyChirho::RequiredForallChirho (visible forall is never implicitly instantiable in any GHC mode) with a new IMPREDICATIVE_INSTANTIATION code via the existing DiagnosticChirho::error_with_code_chirho machinery; (2) extend the validity walker to reject polytype KIND annotations on type variables in Proxy-style signatures and family-instance patterns without matching licensing (catches T17077, T14904a/b pattern kinds syntactically).",
+      "conservative_guard_chirho": "Only trigger on var := RequiredForallChirho (GHC has no extension that permits implicit instantiation at a visible forall, so zero valid-program risk) and on syntactic polytype kinds in signature positions gated on absent extensions. Do NOT restrict var := ForallChirho generally — that path is load-bearing for our currently-passing rank-n should_compile tests and would regress them.",
+      "expected_unlock_chirho": 3,
+      "regression_risk_chirho": "low"
+    }
+  ],
+  "notes_chirho": "Cluster lists at the paths given in the task do not exist; the cluster was rebuilt from the corpus: grep of GHC-25897/91510/91028 over ghc-tests-chirho/typecheck-chirho/should_fail/*.stderr yields 103 unique tests, of which exactly 79 are wrongly accepted by ./target/debug/haskelujah check (all exit 0, silent) — matching the task's count. Breakdown: 50 x 25897 (28 signature-skolem, 11 inferred-type, 8 context/other, 3 class-decl; existential-pattern files overlap the sig/inferred groups), 14 x 91510, 15 x 91028. Rebuilt lists and per-file accept/reject results live in /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/ (all.txt, accepts.txt, results.txt). Root architectural finding: the typing crate has NO rigid/skolem variable concept at all; TyChirho::ForallVarChirho already has exact skolem unification semantics (unify_chirho.rs:208-212) and is the natural zero-new-machinery vehicle for clusters 1-4. The UserDefinedClassConstraintSkip escape hatch (infer_chirho.rs:6661-6672: constraints on classes with no instances are silently dropped) is why fundep improvement errors can never surface, but FD1/FD2 are still primarily lost to missing skolemization, so fixing cluster 1 catches them without touching the constraint skip. Combined conservative expected unlock: ~37 of 79. Ordering by value/risk: cluster 5 first (syntactic, low risk, +8), then cluster 1 (+16, the big one), then 4, 6, 2, 3."
+}

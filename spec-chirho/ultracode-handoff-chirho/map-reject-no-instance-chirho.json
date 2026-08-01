@@ -1,0 +1,102 @@
+{
+  "clusters_chirho": [
+    {
+      "name_chirho": "ground_no_instance_swallowed_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 50,
+      "sample_tests_chirho": [
+        "tcfail010.hs (Num [a0])",
+        "tcfail008.hs (Num [a0], ambiguous-variable flavor)",
+        "tcfail006.hs (Num Bool)",
+        "tcfail137.hs (Floating Bool)",
+        "T11274.hs (Eq Asd)",
+        "T5684.hs (A Bool, local class)",
+        "tcfail190.hs (Ord Unorderable)",
+        "T5978.hs (C Double Char, MPTC)",
+        "IPFail.hs (Num Bool via implicit-param let)",
+        "tcfail003.hs (Num Char)"
+      ],
+      "ghc_reason_chirho": "GHC raises [GHC-39999] 'No instance for C T' (or 'Ambiguous type variable ... prevents Num a0 from being solved'): the wanted constraint has a concrete head type (Bool, Char, [a], a local datatype) for which no instance exists and none could ever match. 37 files carry a literal 'No instance for' message and 13 more carry 'Ambiguous type variable' where the constraint head is nonetheless concrete (e.g. Num [a0]); verified we accept tcfail008/010/020/034, T5300, mc20, IPFail, FD3, T1897a, tcfail072, T7279, T5236 silently (exit 0, no error line).",
+      "our_gap_chirho": "Three stacked escape hatches. (1) crates/haskelujah-typing-chirho/src/infer_chirho.rs:1144-1159 (generalize_with_io_defaulting_chirho): a deferred pred with NO free type vars vacuously passes the 'all pred vars are generalized' iterator (all() over an empty set), so ground preds like `Eq U`/`Num Bool` are folded into the scheme and never checked — reproduced with a 4-line probe (`g :: Bool; g = MkU == MkU`) which we accept. (2) crates/haskelujah-typing-chirho/src/class_chirho.rs:365-380 (entails_depth_chirho): returns true whenever the pred type contains any variable, so `Num [a0]` is assumed satisfiable; also returns true unconditionally at depth>64. (3) infer_chirho.rs:6664-6672 (check_deferred_preds_chirho phase 3, the UserDefinedClassConstraintSkip feature): any class with zero registered instances is skipped entirely, so wanteds on instance-less local classes (T5684 `A Bool`) vanish.",
+      "fix_sketch_chirho": "Add fn is_certainly_unsolvable_chirho(pred) on ClassEnvChirho: class must be declared in classes_chirho; every arg of the pred must have a concrete head constructor (Con/List/Tuple/App-of-Con after subst+normalize; inner metavars allowed only in non-head positions); no instance for the class has a head whose outer constructor could match (and no instance has a bare-variable head, which matches anything); pred (and its transitive-superclass closure) not entailed by given_preds_chirho. Call it (a) in generalize_with_io_defaulting_chirho before absorbing a zero-free-var pred into the scheme, and (b) in check_deferred_preds_chirho phase 3 replacing the blanket has_instances/contains_var skips. Emit via the existing machinery at infer_chirho.rs:6673-6679: DiagnosticChirho::error_with_code_chirho(ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO /*204, infer_chirho.rs:34*/), format!(\"no instance for `{}`\", pred), span) — renders as error[E0204].",
+      "conservative_guard_chirho": "Fire only when ALL hold: (1) class name is present in class_env_chirho.classes_chirho (declared locally or seeded — never a class imported from an unparsed module); (2) the pred's primary type AND every extra_tys arg has a concrete outer head constructor after applying the final substitution and normalize_ty_chirho (type synonyms expanded, type families reduced — bail if any family application remains unreduced); (3) no registered instance of the class has a variable head or a head constructor equal to the pred's head constructor in every position (head-constructor comparison only, so a candidate instance with matching head but failing full match still suppresses the error); (4) not entailed by givens under pred_entailed_by_givens_chirho extended with transitive superclass closure; (5) the module has no imports that failed to resolve to a real interface (placeholder-typed imports mean unseen instances could exist). Condition 3 comparing only outer constructors makes a false rejection impossible: an instance that could ever match must share the head constructor.",
+      "expected_unlock_chirho": 20,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "skolem_could_not_deduce_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 17,
+      "sample_tests_chirho": [
+        "tcfail034.hs (Integral a from (Num a, Eq a))",
+        "tcfail072.hs (Ord p0)",
+        "tcfail152.hs",
+        "tcfail125.hs (Show a)",
+        "T5300.hs (C1 a b c0)",
+        "T12151.hs",
+        "tcfail171.hs (PrintfArg a)"
+      ],
+      "ghc_reason_chirho": "GHC raises 'Could not deduce C a from the context ...': the wanted constraint mentions a rigid signature-bound type variable and the declared context (plus superclasses) does not entail it; no instance can ever apply to a skolem. Verified tcfail034 and tcfail072 accepted silently.",
+      "our_gap_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho.rs:6656-6660: after defaulting, any pred whose type is still a bare TyChirho::VarChirho is skipped with the comment 'truly ambiguous but no concrete check is possible' — but signature-bound skolems land here too. Upstream, infer_chirho.rs:1360-1374 pred_entailed_by_givens_chirho is exact-match + transitive superclass in one direction only, and with_given_preds_chirho (infer_chirho.rs:1090-1105) discharges deferred preds against givens but silently leaves the un-discharged remainder deferred instead of erroring; the remainder then dies in the 6656 skip or is generalized into the scheme at 1144-1159.",
+      "fix_sketch_chirho": "Track which TyVarChirho values are rigid signature/instance binders (a HashSet populated when a user signature is skolemised in with_given_preds_chirho). At the end of with_given_preds_chirho (infer_chirho.rs:1101, after discharge_deferred_with_current_givens_chirho), for each still-deferred pred whose type is exactly one of THIS signature's rigid vars: if the class is declared, not entailed by the signature's givens under superclass closure, and the class has no variable-headed instance, emit error[E0204] 'could not deduce `C a` from the context ...' at the pred's span, reusing DiagnosticChirho::error_with_code_chirho with UNSATISFIED_CONSTRAINT_CODE_CHIRHO.",
+      "conservative_guard_chirho": "Fire only when the residual pred's type (and all extra args) are single rigid tyvars bound by the enclosing user-written signature currently in scope (never inference metavariables), the class is declared in class_env_chirho, no instance of the class has a bare-variable head (such an instance could solve a skolem), the pred is not entailed by the signature givens under full transitive superclass closure computed via superclasses_chirho, no fundep of the class could still improve the pred (class has no fundeps, or all pred args are the rigid vars), and the module has no unresolved/placeholder imports. A valid program's skolem constraint is always given-entailed or instance-var-headed-solvable, so this cannot mis-fire once superclass closure is complete.",
+      "expected_unlock_chirho": 8,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "instance_decl_obligations_unchecked_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 16,
+      "sample_tests_chirho": [
+        "tcfail020.hs (superclass A [a] of instance B [a] not deducible from A a)",
+        "T7279.hs (instance context var b0 unbound by head)",
+        "T14325.hs",
+        "T20666.hs",
+        "T23427.hs"
+      ],
+      "ghc_reason_chirho": "GHC raises 'Could not deduce ... arising from the superclasses of an instance declaration': every superclass S of C instantiated at the instance head must be entailed by the instance context; separately, context constraints whose vars do not appear in the head are unfulfillable (T7279 Show b0). Verified tcfail020 and T7279 accepted silently.",
+      "our_gap_chirho": "crates/haskelujah-typing-chirho/src/class_chirho.rs:200 add_instance_chirho registers the instance with zero obligation checking, and the lowering site crates/haskelujah-typing-chirho/src/infer_chirho.rs:2412 builds InstDeclChirho and calls it directly — no code anywhere checks superclass obligations of an instance (grep for 'superclasses of an instance' finds nothing) or that context vars occur in the head.",
+      "fix_sketch_chirho": "At the infer_chirho.rs:2412 lowering site, after building InstDeclChirho: (a) for each superclass S of class_name_chirho (via superclasses_chirho, class_chirho.rs:213), form S(head_ty) and require it be exactly entailed by inst_context_chirho (+ superclass closure) OR resolvable by resolve_chirho with every subgoal entailed by the context; else emit error[E0204] 'could not deduce `S T` arising from the superclasses of an instance declaration'. (b) collect free vars of each context pred; any var absent from the head types is an unfulfillable context — emit the same code. Deferred until the whole module's instances are registered (two-pass) so mutually-referencing instances resolve.",
+      "conservative_guard_chirho": "Fire only when: the instance's class AND the failing superclass are declared in class_env_chirho; the check runs after ALL module instances are registered (second pass); resolution treats the instance's own quantified vars as rigid (solvable only by the written context, superclass closure of it, or a variable-headed instance); any unreduced type-family application in the obligated pred suppresses the error; and the module has no placeholder imports. For check (b), a context var not occurring in any head type is unfulfillable by construction in standard Haskell — syntactic and safe.",
+      "expected_unlock_chirho": 9,
+      "regression_risk_chirho": "low"
+    },
+    {
+      "name_chirho": "signature_ambiguity_check_missing_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 15,
+      "sample_tests_chirho": [
+        "T1897a.hs (inferred Wob a0 b => b -> [b])",
+        "T5236.hs (Id A B insoluble, ambiguity check)",
+        "T10971b.hs",
+        "T8034-family in cluster",
+        "T11947a.hs"
+      ],
+      "ghc_reason_chirho": "GHC runs an ambiguity check on every signature: a constraint variable that does not occur in the signature body and is not determined by fundeps/type families can never be instantiated by any call site, so GHC rejects with 'Could not deduce ... in the ambiguity check for ...' unless AllowAmbiguousTypes is on.",
+      "our_gap_chirho": "No ambiguity check exists anywhere in crates/haskelujah-typing-chirho/ (grep for 'ambiguity'/'AllowAmbiguousTypes' over src finds only an unrelated defaulting test comment at infer_chirho.rs:22229). Signature contexts are stored as givens and never validated; ambiguous vars simply become metavars that the 6656-6660 bare-var skip later swallows.",
+      "fix_sketch_chirho": "Purely syntactic pass where user signatures are lowered: compute vars reachable from the signature's body type, close under fundep determination (for each context pred of a fundep class, if all determining-position vars are reachable, mark determined-position vars reachable; iterate to fixpoint) and under type-family-free equality supers. Any context pred containing a quantified var never reachable => emit error[E0204] 'ambiguous type variable `a` in the context `C a ...`: it cannot be determined from the signature'. Skip entirely when the file's pragma set includes AllowAmbiguousTypes (the lexer already surfaces LANGUAGE pragmas).",
+      "conservative_guard_chirho": "Fire only when: no AllowAmbiguousTypes/ImpredicativeTypes pragma in the file; every class named in the context is declared (unknown classes may have fundeps we cannot see); no constraint in the context is a type-equality or type-family application (those can determine vars in ways the closure does not model); and the offending var occurs in ZERO positions of the body type and in no determined-closure position. This is GHC's own decidable check restricted to the fundep-closed syntactic core, so it cannot reject a program GHC accepts.",
+      "expected_unlock_chirho": 7,
+      "regression_risk_chirho": "medium"
+    },
+    {
+      "name_chirho": "insoluble_fundeps_chirho",
+      "axis_chirho": "reject",
+      "test_count_chirho": 11,
+      "sample_tests_chirho": [
+        "FD3.hs (MkA (String,a) a vs instance MkA a a)",
+        "T5236.hs (Id A B vs Id A A / Id B B)",
+        "FDsFromGivens2.hs",
+        "FunDepOrigin1b.hs",
+        "T5684c.hs (B Char b0 fundep conflict)"
+      ],
+      "ghc_reason_chirho": "GHC raises 'No instance for ... Insoluble functional dependencies wrt top-level instances': the wanted/given pred agrees with an instance on the fundep's determining positions but conflicts on the determined positions, so no instance can ever exist without violating the fundep.",
+      "our_gap_chirho": "crates/haskelujah-typing-chirho/src/class_chirho.rs:283+ fundep_improve_chirho only produces an improving substitution when the determined side is a free variable; when the determined side is a conflicting concrete type it silently returns no improvement instead of flagging insolubility, and the pred then escapes through the entails var-leniency (class_chirho.rs:370-379) or the 6656 bare-var skip.",
+      "fix_sketch_chirho": "In fundep_improve_chirho (or a sibling fn fundep_insoluble_chirho called from check_deferred_preds_chirho phase 3 and from the givens-validation path), when an instance matches the wanted on all determining positions with a GROUND match, unify the instance's determined types against the wanted's determined types: if they are both ground and different constructors, return an insolubility flag; the caller emits error[E0204] 'no instance for `C ...`: insoluble functional dependencies wrt top-level instances' via DiagnosticChirho::error_with_code_chirho.",
+      "conservative_guard_chirho": "Fire only when: the class is declared with explicit fundeps; the determining-position args of the wanted are fully ground (no vars, no unreduced families) and match an instance's determining args exactly (syntactic equality after synonym expansion, not one-way matching); the determined-position args of both wanted and instance are fully ground; and they differ in outer constructor. Ground-vs-ground constructor clash under an exact determining-side match is insoluble by the fundep's definition, so no valid program can trigger it.",
+      "expected_unlock_chirho": 4,
+      "regression_risk_chirho": "low"
+    }
+  ],
+  "notes_chirho": "The task's cluster file path was 'undefined'; I reconstructed the cluster from spec-chirho/ghc-should-fail-measurement-chirho.txt (610 wrongly-accepted list) intersected with should_fail .stderr files containing GHC-39999 — exactly 109 files, matching the stated count; list saved at /private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/6c7b9854-6cbe-455d-ab88-61f15ffd8aaf/scratchpad/cluster39999_chirho.txt. Stderr taxonomy: 37 'No instance for', 13 'Ambiguous type variable' (merged into cluster 1: 50), 17 'Could not deduce from context', 16 instance-declaration obligations, 15 ambiguity-check, 11 insoluble fundeps. Confirmed silent acceptance (exit 0, zero error lines) for 12 spread samples: tcfail008/010/020/034/072, T5300, T5236, mc20, IPFail, FD3, T1897a, T7279. Smoking gun reproduced with a 4-line probe (g :: Bool; g = MkU == MkU accepted): infer_chirho.rs:1144-1159 folds zero-free-var predicates into the generalized scheme because all() over an empty var set is vacuously true — this generalization swallow, not only the phase-3 skips, is the dominant leak, so a fix must hook generalize_with_io_defaulting_chirho as well as check_deferred_preds_chirho. Note the compiler stack-overflows (fatal runtime error) when checking a file OUTSIDE the repo root (module search path recursion?) — separate latent bug worth its own ticket. Total conservative expected unlock ~48/109; discounts applied for constraints that never reach the solver (placeholder-typed imports per the ImportedValuePlaceholderTypes feature, monad-comprehension/qualified-do desugaring gaps, e.g. mc20's groupWith, TcStaticPointersFail*). Sum of per-cluster expected_unlock = 48. All error emission should reuse DiagnosticChirho::error_with_code_chirho with UNSATISFIED_CONSTRAINT_CODE_CHIRHO=204 (infer_chirho.rs:34, emission pattern at infer_chirho.rs:6673-6679, renders error[E0204]); new distinct codes for ambiguity/fundep/instance-superclass can follow the same const u16 pattern. Read-only rule honored: no source edits, no builds; the one probe directory created under spec-chirho/tmp-chirho was deleted."
+}
