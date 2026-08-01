@@ -164,6 +164,22 @@ pub struct InferCtxChirho {
     module_default_types_chirho: Vec<TyChirho>,
     /// Whether the current module enables OverloadedStrings.
     overloaded_strings_chirho: bool,
+    /// Classes whose full instance universe is visible: the standard-seeded
+    /// classes (captured before any imported class env replaces the seed) plus
+    /// classes declared in the module being inferred. An imported module can
+    /// never declare an instance of a class it cannot see, so for these — and
+    /// only these — "no potentially matching instance" is a sound rejection.
+    fully_known_class_names_chirho: HashSet<String>,
+    /// Whether the class constraints we generate for this module faithfully
+    /// reflect the source. Cleared by extensions whose constraints we are
+    /// known to mis-generate, so no unsolvable verdict is reached on a wanted
+    /// that our own inference invented. See `UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO`.
+    constraint_generation_faithful_chirho: bool,
+    /// (class, type-head) pairs mentioned by any deriving syntax in the module
+    /// (deriving clauses, standalone deriving = ("C", "*"), DerivingVia).
+    /// Deriving is not modeled as real class-env instances yet, so the
+    /// certainly-unsolvable check treats these as potential instances.
+    derived_instance_heads_chirho: HashSet<(String, String)>,
     /// Imported type constructors that can safely stay unqualified.
     safe_unqualified_imported_type_names_chirho: HashSet<String>,
     /// Canonical module qualifiers for imported type constructors.
@@ -175,6 +191,8 @@ impl InferCtxChirho {
         let mut env_chirho = TyEnvChirho::new_chirho();
         let mut class_env_chirho = ClassEnvChirho::new_chirho();
         class_env_chirho.seed_standard_chirho();
+        let fully_known_class_names_chirho: HashSet<String> =
+            class_env_chirho.classes_chirho.keys().cloned().collect();
         seed_builtins_chirho(&mut env_chirho);
         let mut type_synonyms_chirho = HashMap::new();
         // Built-in type synonym: type String = [Char]
@@ -502,6 +520,9 @@ impl InferCtxChirho {
             con_field_names_chirho: HashMap::new(),
             module_default_types_chirho: Vec::new(),
             overloaded_strings_chirho: false,
+            fully_known_class_names_chirho,
+            constraint_generation_faithful_chirho: true,
+            derived_instance_heads_chirho: HashSet::new(),
             safe_unqualified_imported_type_names_chirho: HashSet::new(),
             preferred_qualified_type_names_chirho: HashMap::new(),
         }
@@ -513,6 +534,11 @@ impl InferCtxChirho {
             || !imported_class_env_chirho.instances_chirho.is_empty()
         {
             ctx_chirho.class_env_chirho = imported_class_env_chirho.clone();
+            // The seeded env was replaced wholesale; the seeded classes'
+            // instance inventories are no longer trustworthy, and imported
+            // classes may have instances in modules we cannot see. Only
+            // classes declared in THIS module stay fully known.
+            ctx_chirho.fully_known_class_names_chirho.clear();
         }
         ctx_chirho
     }
@@ -1141,12 +1167,31 @@ impl InferCtxChirho {
         // generalized go into the scheme; the rest stay deferred.
         let mut scheme_preds_chirho = Vec::new();
         let mut remaining_chirho = Vec::new();
-        for (pred_chirho, span_chirho) in self.deferred_preds_chirho.drain(..) {
+        let drained_preds_chirho: Vec<(PredChirho, SpanChirho)> =
+            self.deferred_preds_chirho.drain(..).collect();
+        for (pred_chirho, span_chirho) in drained_preds_chirho {
             let pred_fvs_chirho = pred_chirho.ty_chirho.free_vars_chirho();
             if pred_fvs_chirho
                 .iter()
                 .all(|v_chirho| vars_chirho.contains(v_chirho))
             {
+                // A predicate with no free variables passes the check above
+                // vacuously and used to be absorbed into the scheme unchecked
+                // — silently accepting programs GHC rejects (`Eq U` with no
+                // instance anywhere in the defining module). Groundness makes
+                // the verdict final: no later substitution can change it.
+                if pred_fvs_chirho.is_empty()
+                    && Self::pred_fully_ground_chirho(&pred_chirho)
+                    && self.is_certainly_unsolvable_pred_chirho(&pred_chirho)
+                {
+                    self.diagnostics_chirho
+                        .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                            ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+                            format!("no instance for `{pred_chirho}`"),
+                            span_chirho,
+                        ));
+                    continue;
+                }
                 scheme_preds_chirho.push(SchemePredChirho {
                     class_name_chirho: pred_chirho.class_name_chirho,
                     ty_chirho: pred_chirho.ty_chirho,
@@ -1355,6 +1400,186 @@ impl InferCtxChirho {
                 .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
                 .collect();
         }
+    }
+
+    /// Extensions under which our wanted constraints do not faithfully mirror
+    /// the source, so an "unsolvable" wanted may be our artifact rather than
+    /// the program's error. RebindableSyntax rebinds `negate`/literals to
+    /// user functions while we still emit `Num` wanteds; the rank-n family
+    /// makes us instantiate a `forall`-typed field once and reuse it at two
+    /// types, inventing constraints the program never had.
+    const UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO: &'static [&'static str] = &[
+        "RebindableSyntax",
+        "RankNTypes",
+        "Rank2Types",
+        "ImpredicativeTypes",
+    ];
+
+    /// Classes the certainly-unsolvable check must never fire on: solved by
+    /// compiler magic (or a user class colliding with such a name), not by
+    /// declared instances.
+    const MAGIC_CLASSES_CHIRHO: &'static [&'static str] = &[
+        "Coercible",
+        "Typeable",
+        "KnownNat",
+        "KnownSymbol",
+        "KnownChar",
+        "HasField",
+        "HasCallStack",
+        "IP",
+        "Unsatisfiable",
+        "TypeError",
+        "DataToTag",
+        "WithDict",
+    ];
+
+    /// Outer head constructor name of a type: the base of the application
+    /// spine when that base is concrete. Lists, tuples, and functions use
+    /// canonical internal keys so both instance heads and predicates map to
+    /// the same name.
+    fn ty_outer_head_name_chirho(ty_chirho: &TyChirho) -> Option<String> {
+        match ty_chirho {
+            TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
+            TyChirho::AppChirho(fun_chirho, _) => Self::ty_outer_head_name_chirho(fun_chirho),
+            TyChirho::ListChirho(_) => Some("[]".to_string()),
+            TyChirho::TupleChirho(elems_chirho) => {
+                Some(format!("(tuple/{})", elems_chirho.len()))
+            }
+            TyChirho::FunChirho(..) => Some("->".to_string()),
+            _ => None,
+        }
+    }
+
+    /// Whether every argument of the predicate is free of unification
+    /// variables. A fully-ground predicate is invariant under all later
+    /// substitution, so its solvability verdict cannot change.
+    fn pred_fully_ground_chirho(pred_chirho: &PredChirho) -> bool {
+        pred_chirho.ty_chirho.free_vars_chirho().is_empty()
+            && pred_chirho
+                .extra_tys_chirho
+                .iter()
+                .all(|t_chirho| t_chirho.free_vars_chirho().is_empty())
+    }
+
+    /// Whether an instance could EVER match the predicate, comparing only
+    /// outer head constructors per position. A variable-headed instance side
+    /// matches anything; concrete heads must agree. Deliberately looser than
+    /// real matching so partial matches always suppress the unsolvable error.
+    fn instance_could_match_pred_chirho(
+        inst_chirho: &InstDeclChirho,
+        pred_chirho: &PredChirho,
+    ) -> bool {
+        if inst_chirho.extra_head_tys_chirho.len() != pred_chirho.extra_tys_chirho.len() {
+            return false;
+        }
+        let position_compatible_chirho =
+            |inst_ty_chirho: &TyChirho, pred_ty_chirho: &TyChirho| {
+                match Self::ty_outer_head_name_chirho(inst_ty_chirho) {
+                    None => true,
+                    Some(inst_head_chirho) => Self::ty_outer_head_name_chirho(pred_ty_chirho)
+                        .map_or(true, |pred_head_chirho| pred_head_chirho == inst_head_chirho),
+                }
+            };
+        if !position_compatible_chirho(&inst_chirho.head_ty_chirho, &pred_chirho.ty_chirho) {
+            return false;
+        }
+        inst_chirho
+            .extra_head_tys_chirho
+            .iter()
+            .zip(pred_chirho.extra_tys_chirho.iter())
+            .all(|(inst_extra_chirho, pred_extra_chirho)| {
+                position_compatible_chirho(inst_extra_chirho, pred_extra_chirho)
+            })
+    }
+
+    /// A predicate is *certainly unsolvable* when its class's full instance
+    /// universe is visible (standard-seeded or declared in this module —
+    /// see `fully_known_class_names_chirho`), every argument is ground with a
+    /// concrete outer head that is not an unexpanded synonym or stuck type
+    /// family, no known or derived instance could ever match those heads, and
+    /// the in-scope givens do not entail it. GHC reports exactly these as
+    /// "No instance for ..." — accepting them silently is unsound.
+    fn is_certainly_unsolvable_pred_chirho(&self, pred_chirho: &PredChirho) -> bool {
+        if !self.constraint_generation_faithful_chirho {
+            return false;
+        }
+        let class_name_chirho = pred_chirho.class_name_chirho.as_str();
+        if !self
+            .fully_known_class_names_chirho
+            .contains(class_name_chirho)
+            || Self::MAGIC_CLASSES_CHIRHO.contains(&class_name_chirho)
+            || class_name_chirho.starts_with('?')
+            || !Self::pred_fully_ground_chirho(pred_chirho)
+        {
+            return false;
+        }
+        let normalized_args_chirho: Vec<TyChirho> = std::iter::once(&pred_chirho.ty_chirho)
+            .chain(pred_chirho.extra_tys_chirho.iter())
+            .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
+            .collect();
+        let mut head_names_chirho = Vec::new();
+        for arg_chirho in &normalized_args_chirho {
+            match Self::ty_outer_head_name_chirho(arg_chirho) {
+                None => return false,
+                Some(head_chirho) => {
+                    // Unexpanded synonyms and stuck families could still
+                    // reduce to an instance-matching head; `#`-suffixed
+                    // primitive tycons (Int#, ByteArray#) go through solver
+                    // paths we deliberately mismodel (unboxed literals are
+                    // currently typed via Num), so no verdict on either.
+                    if self.type_families_chirho.contains_key(&head_chirho)
+                        || self.type_synonyms_chirho.contains_key(&head_chirho)
+                        || head_chirho.ends_with('#')
+                    {
+                        return false;
+                    }
+                    head_names_chirho.push(head_chirho);
+                }
+            }
+        }
+        if self
+            .derived_instance_heads_chirho
+            .contains(&(class_name_chirho.to_string(), head_names_chirho[0].clone()))
+            || self
+                .derived_instance_heads_chirho
+                .contains(&(class_name_chirho.to_string(), "*".to_string()))
+        {
+            return false;
+        }
+        let normalized_pred_chirho = PredChirho {
+            class_name_chirho: pred_chirho.class_name_chirho.clone(),
+            ty_chirho: normalized_args_chirho[0].clone(),
+            extra_tys_chirho: normalized_args_chirho[1..].to_vec(),
+        };
+        if let Some(instances_chirho) =
+            self.class_env_chirho.instances_chirho.get(class_name_chirho)
+        {
+            if instances_chirho.iter().any(|inst_chirho| {
+                Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
+            }) {
+                return false;
+            }
+        }
+        let normalized_givens_chirho: Vec<PredChirho> = self
+            .given_preds_chirho
+            .iter()
+            .map(|given_chirho| PredChirho {
+                class_name_chirho: given_chirho.class_name_chirho.clone(),
+                ty_chirho: self.normalize_ty_chirho(&given_chirho.ty_chirho),
+                extra_tys_chirho: given_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
+                    .collect(),
+            })
+            .collect();
+        if self.pred_entailed_by_givens_chirho(pred_chirho, &self.given_preds_chirho)
+            || self
+                .pred_entailed_by_givens_chirho(&normalized_pred_chirho, &normalized_givens_chirho)
+        {
+            return false;
+        }
+        true
     }
 
     fn pred_entailed_by_givens_chirho(
@@ -2313,6 +2538,8 @@ impl InferCtxChirho {
                 })
                 .collect();
 
+            self.fully_known_class_names_chirho
+                .insert(class_name_chirho.clone());
             self.class_env_chirho.add_class_chirho(ClassDeclChirho {
                 name_chirho: class_name_chirho.clone(),
                 supers_chirho,
@@ -5701,6 +5928,28 @@ impl InferCtxChirho {
     pub fn infer_module_chirho(&mut self, module_chirho: &ModuleChirho) -> SubstChirho {
         let mut subst_chirho = SubstChirho::empty_chirho();
 
+        // A non-Prelude import can bring instances of SEEDED classes into
+        // scope (e.g. a sibling module declaring `instance Show I`) that the
+        // class env does not model, so the seeded instance lists stop being
+        // the whole universe. Only classes declared in THIS module then keep a
+        // fully-known universe — an imported module can never instance a class
+        // it cannot see — and the decl walk below re-populates those.
+        // Prelude is exempt: it is the instance set `seed_standard_chirho`
+        // models, and the driver injects it implicitly into every module.
+        let has_non_prelude_import_chirho =
+            module_chirho.imports_chirho.iter().any(|import_chirho| {
+                import_chirho.module_chirho.text_chirho() != "Prelude"
+            });
+        if has_non_prelude_import_chirho {
+            self.fully_known_class_names_chirho.clear();
+        }
+
+        self.constraint_generation_faithful_chirho =
+            !module_chirho.extensions_chirho.iter().any(|extension_chirho| {
+                Self::UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO
+                    .contains(&extension_chirho.as_str())
+            });
+
         // Phase -1: Register type synonyms so they can be expanded during
         // type inference. Process in declaration order (handles chains
         // like type FilePath = String where String is already registered).
@@ -5720,6 +5969,49 @@ impl InferCtxChirho {
                 let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &params_chirho);
                 self.register_type_synonym_chirho(syn_name_chirho, params_chirho, rhs_ty_chirho);
             }
+        }
+
+        // Deriving mentions become potential-instance suppressions for the
+        // certainly-unsolvable check: `deriving Eq` on a local data decl is a
+        // real `instance Eq T` in GHC even though the class env does not model
+        // derived instances yet.
+        for decl_chirho in &module_chirho.decls_chirho {
+            match decl_chirho {
+                DeclChirho::DataDeclChirho {
+                    name_chirho,
+                    deriving_chirho,
+                    ..
+                }
+                | DeclChirho::NewtypeDeclChirho {
+                    name_chirho,
+                    deriving_chirho,
+                    ..
+                } => {
+                    for class_chirho in deriving_chirho {
+                        self.derived_instance_heads_chirho.insert((
+                            class_chirho.text_chirho().to_string(),
+                            name_chirho.text_chirho().to_string(),
+                        ));
+                    }
+                }
+                DeclChirho::StandaloneDerivingDeclChirho { class_chirho, .. } => {
+                    self.derived_instance_heads_chirho
+                        .insert((class_chirho.text_chirho().to_string(), "*".to_string()));
+                }
+                _ => {}
+            }
+        }
+        for (first_chirho, second_chirho, _via_chirho) in &module_chirho.deriving_via_chirho {
+            // Field order of the via tuple is not load-bearing here: insert
+            // both orientations so the suppression works either way.
+            self.derived_instance_heads_chirho.insert((
+                first_chirho.text_chirho().to_string(),
+                second_chirho.text_chirho().to_string(),
+            ));
+            self.derived_instance_heads_chirho.insert((
+                second_chirho.text_chirho().to_string(),
+                first_chirho.text_chirho().to_string(),
+            ));
         }
 
         self.module_default_types_chirho.clear();
@@ -6658,6 +6950,29 @@ impl InferCtxChirho {
                 continue;
             }
 
+            // Certainly-unsolvable predicates are errors even when the class
+            // has no registered instances: for a fully-known class the empty
+            // instance list IS the whole universe. Apply the final
+            // substitution to extras too (apply_subst_all_chirho maintains
+            // only the primary type during inference).
+            let fully_resolved_pred_chirho = PredChirho {
+                class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
+                ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
+                extra_tys_chirho: defaulted_pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|t_chirho| final_subst_chirho.apply_ty_chirho(t_chirho))
+                    .collect(),
+            };
+            if self.is_certainly_unsolvable_pred_chirho(&fully_resolved_pred_chirho) {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+                        format!("no instance for `{fully_resolved_pred_chirho}`"),
+                        span_chirho,
+                    ));
+                continue;
+            }
             // Skip constraints for classes with no instances in our env.
             // These are user-defined classes where instances are defined in
             // the same module, or given constraints from type signatures.
@@ -27110,6 +27425,121 @@ mod tests_chirho {
             !result_chirho.diagnostics_chirho.has_errors_chirho(),
             "module inference should accept the ShowS-returning composition signature: {:?}",
             result_chirho.diagnostics_chirho
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_seeded_class_ground_no_instance_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let pred_chirho =
+            PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
+        assert!(
+            ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "ground Eq on a type with no instance and no deriving must be certainly unsolvable"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_suppressed_by_matching_instance_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.class_env_chirho.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Eq".to_string(),
+            head_ty_chirho: TyChirho::ConChirho("ZzNoSuchType".to_string()),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+        let pred_chirho =
+            PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "a head-matching instance must suppress the unsolvable verdict"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_suppressed_by_var_headed_instance_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.class_env_chirho.add_instance_chirho(InstDeclChirho {
+            class_name_chirho: "Eq".to_string(),
+            head_ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
+            extra_head_tys_chirho: vec![],
+            context_chirho: vec![],
+        });
+        let pred_chirho =
+            PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "a variable-headed instance can match anything and must suppress the verdict"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_suppressed_by_deriving_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho
+            .derived_instance_heads_chirho
+            .insert(("Eq".to_string(), "ZzNoSuchType".to_string()));
+        let pred_chirho =
+            PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "a deriving mention is a potential instance and must suppress the verdict"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_suppressed_by_given_chirho() {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let pred_chirho =
+            PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
+        ctx_chirho.given_preds_chirho.push(pred_chirho.clone());
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "a signature given entailing the predicate must suppress the verdict"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_skips_undeclared_class_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let pred_chirho = PredChirho::new_chirho(
+            "ZzClassFromSomeImport",
+            TyChirho::ConChirho("Bool".to_string()),
+        );
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "a class that is neither seeded nor module-declared may have unseen instances"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_skips_unboxed_primitive_head_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let pred_chirho = PredChirho::new_chirho("Num", TyChirho::ConChirho("Int#".to_string()));
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "unboxed literals are still typed through the Num path, so `#` heads get no verdict"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_skips_magic_class_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let pred_chirho =
+            PredChirho::new_chirho("Coercible", TyChirho::ConChirho("Bool".to_string()));
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "compiler-solved classes have no declared instances by design"
+        );
+    }
+
+    #[test]
+    fn certainly_unsolvable_skips_nonground_pred_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let pred_chirho = PredChirho::new_chirho("Eq", TyChirho::VarChirho(TyVarChirho(7)));
+        assert!(
+            !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
+            "a predicate with unification variables has no final verdict"
         );
     }
 }

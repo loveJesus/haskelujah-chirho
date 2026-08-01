@@ -2372,6 +2372,27 @@ impl ClassEnvChirho {
             )],
         });
 
+        // instance (C a, C b) => C (Either a b) for the derived classes base
+        // gives Either. `Maybe` had these; `Either` did not, so `print (Right 1
+        // :: Either String Int)` looked like an unsolved constraint.
+        for class_chirho in ["Show", "Eq", "Ord", "Read"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::AppChirho(
+                    Box::new(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho("Either".to_string())),
+                        Box::new(TyChirho::VarChirho(a_var_chirho)),
+                    )),
+                    Box::new(TyChirho::VarChirho(b_var_chirho)),
+                ),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![
+                    PredChirho::new_chirho(class_chirho, TyChirho::VarChirho(a_var_chirho)),
+                    PredChirho::new_chirho(class_chirho, TyChirho::VarChirho(b_var_chirho)),
+                ],
+            });
+        }
+
         // instance (Show a, Show b) => Show (a, b)
         self.add_instance_chirho(InstDeclChirho {
             class_name_chirho: "Show".to_string(),
@@ -3015,6 +3036,18 @@ impl ClassEnvChirho {
             extra_head_tys_chirho: vec![],
             context_chirho: vec![],
         });
+
+        // Unit derives these in base (`deriving instance Show ()` and friends
+        // are wired in). They were missing here, so `print ()` looked like an
+        // unsolved constraint to any check that trusts this table.
+        for class_chirho in ["Show", "Read", "Eq", "Ord", "Bounded", "Enum"] {
+            self.add_instance_chirho(InstDeclChirho {
+                class_name_chirho: class_chirho.to_string(),
+                head_ty_chirho: TyChirho::TupleChirho(vec![]),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            });
+        }
 
         // Monoid ground instances for concrete list types
         for elem_chirho in &[
