@@ -1501,6 +1501,172 @@ impl KindInferCtxChirho {
             .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
+    /// Number of arguments a kind takes before reaching its result, and whether
+    /// that count is final. Only a variable in the RESULT position leaves the
+    /// arity open (it may still be instantiated to another arrow); a variable
+    /// in an argument position is just an un-annotated parameter — `class C a b`
+    /// has arity 2 no matter what kinds `a` and `b` turn out to have.
+    fn kind_arity_chirho(kind_chirho: &KindChirho) -> (usize, bool) {
+        let mut arity_chirho = 0;
+        let mut cursor_chirho = kind_chirho;
+        loop {
+            match cursor_chirho {
+                KindChirho::ArrowChirho(_, result_chirho) => {
+                    arity_chirho += 1;
+                    cursor_chirho = result_chirho;
+                }
+                KindChirho::VarChirho(_) => return (arity_chirho, false),
+                _ => return (arity_chirho, true),
+            }
+        }
+    }
+
+    /// Whether a kind mentions any unsolved kind variable.
+    fn kind_contains_var_chirho(kind_chirho: &KindChirho) -> bool {
+        match kind_chirho {
+            KindChirho::VarChirho(_) => true,
+            KindChirho::ArrowChirho(arg_chirho, result_chirho) => {
+                Self::kind_contains_var_chirho(arg_chirho)
+                    || Self::kind_contains_var_chirho(result_chirho)
+            }
+            _ => false,
+        }
+    }
+
+    /// Report an instance head that applies its class to the wrong number of
+    /// arguments (`class MonadReader a b` + `instance MonadReader Int`), which
+    /// GHC rejects with "Expecting one more argument to ...".
+    ///
+    /// Deliberately narrow: the class must be declared in THIS module (an
+    /// imported class may arrive through a placeholder interface whose kind we
+    /// do not really know) and its kind must be variable-free, so a poly-kinded
+    /// or still-inferring class is never judged.
+    fn check_instance_head_arity_chirho(
+        &mut self,
+        class_name_chirho: &str,
+        head_types_chirho: &[TypeChirho],
+        head_forms_representable_chirho: bool,
+        span_chirho: SpanChirho,
+    ) {
+        let head_arg_count_chirho = head_types_chirho.len();
+        // Only classes declared in THIS module: an imported class may arrive
+        // through a placeholder interface whose kind we do not really know.
+        // (Widening this to any env-known class was measured and gained
+        // nothing — builtin classes like Functor carry no usable kind here —
+        // so the narrow form is kept.)
+        if !self
+            .local_kind_decl_names_chirho
+            .contains(class_name_chirho)
+        {
+            return;
+        }
+        let Some(class_kind_chirho) = self.env_chirho.lookup_chirho(class_name_chirho).cloned()
+        else {
+            return;
+        };
+        let resolved_kind_chirho = self.subst_chirho.apply_chirho(&class_kind_chirho);
+        let (expected_chirho, spine_known_chirho) = Self::kind_arity_chirho(&resolved_kind_chirho);
+        if !spine_known_chirho {
+            return;
+        }
+        if expected_chirho == head_arg_count_chirho {
+            if head_forms_representable_chirho {
+                self.check_instance_head_arg_kinds_chirho(
+                    &resolved_kind_chirho,
+                    head_types_chirho,
+                    span_chirho,
+                );
+            }
+            return;
+        }
+        // A head form our lowering drops can only make the head look SHORTER
+        // than written, never longer — so over-application stays sound even
+        // when some head arguments may be unrepresented.
+        if !head_forms_representable_chirho && head_arg_count_chirho < expected_chirho {
+            return;
+        }
+        let message_chirho = if head_arg_count_chirho < expected_chirho {
+            format!(
+                "expecting {} more argument{} to `{class_name_chirho}` in the instance head",
+                expected_chirho - head_arg_count_chirho,
+                if expected_chirho - head_arg_count_chirho == 1 {
+                    ""
+                } else {
+                    "s"
+                },
+            )
+        } else {
+            format!(
+                "`{class_name_chirho}` is applied to {head_arg_count_chirho} arguments, but it takes {expected_chirho}",
+            )
+        };
+        self.diagnostics_chirho
+            .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
+                message_chirho,
+                span_chirho,
+            ));
+    }
+
+    /// With the head arity already correct, check each head argument's kind
+    /// against the class parameter it fills (`class C (f :: * -> *)` rejects
+    /// `instance C Bool`). Only compares pairs where BOTH kinds are fully
+    /// resolved and variable-free, so an un-annotated or poly-kinded parameter
+    /// is never judged.
+    fn check_instance_head_arg_kinds_chirho(
+        &mut self,
+        class_kind_chirho: &KindChirho,
+        head_types_chirho: &[TypeChirho],
+        span_chirho: SpanChirho,
+    ) {
+        let mut param_kinds_chirho = Vec::new();
+        let mut cursor_chirho = class_kind_chirho;
+        while let KindChirho::ArrowChirho(arg_chirho, result_chirho) = cursor_chirho {
+            param_kinds_chirho.push((**arg_chirho).clone());
+            cursor_chirho = result_chirho;
+        }
+        let env_keys_before_chirho: std::collections::HashSet<String> =
+            self.env_chirho.kinds_chirho.keys().cloned().collect();
+        for (param_kind_chirho, head_ty_chirho) in
+            param_kinds_chirho.iter().zip(head_types_chirho.iter())
+        {
+            if Self::kind_contains_var_chirho(param_kind_chirho) {
+                continue;
+            }
+            let head_kind_chirho = self.infer_type_kind_chirho(head_ty_chirho);
+            let head_kind_chirho = self.subst_chirho.apply_chirho(&head_kind_chirho);
+            if Self::kind_contains_var_chirho(&head_kind_chirho)
+                || &head_kind_chirho == param_kind_chirho
+            {
+                continue;
+            }
+            self.diagnostics_chirho
+                .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                    ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
+                    format!(
+                        "expected kind `{param_kind_chirho}` in the instance head, but the argument has kind `{head_kind_chirho}`",
+                    ),
+                    span_chirho,
+                ));
+        }
+        let keys_to_remove_chirho: Vec<String> = self
+            .env_chirho
+            .kinds_chirho
+            .keys()
+            .filter(|k_chirho| {
+                !env_keys_before_chirho.contains(*k_chirho)
+                    && k_chirho
+                        .chars()
+                        .next()
+                        .map_or(true, |c_chirho| c_chirho.is_lowercase())
+            })
+            .cloned()
+            .collect();
+        for key_chirho in keys_to_remove_chirho {
+            self.env_chirho.kinds_chirho.remove(&key_chirho);
+        }
+    }
+
     /// Process a type alias to determine its kind.
     fn infer_type_alias_kind_chirho(
         &mut self,
@@ -1940,6 +2106,46 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
         for key_chirho in keys_to_remove_chirho {
             ctx_chirho.env_chirho.kinds_chirho.remove(&key_chirho);
         }
+    }
+
+    // Phase 1.5: instance heads. Runs as its own pass so every class kind is
+    // established regardless of declaration order (an instance may precede its
+    // class in the source). Instance heads were never kind-checked at all, so
+    // `class MonadReader a b` + `instance MonadReader Int` was accepted.
+    //
+    // Under-application is only reported when every head form is one our
+    // lowering represents faithfully. It is NOT, under these extensions: a head
+    // argument may be a type-level literal (`instance A 0`), a promoted list
+    // (`instance All c '[]`), an operator type (`instance Category (->)`), or a
+    // variable-headed application (`instance MonadReader r (Reader r)`, which
+    // lowers to ONE argument instead of two). None of those reach
+    // `types_chirho`, so the head looks short and we would report OUR gap as
+    // the program's error. Over-application stays sound either way — a dropped
+    // argument can only shorten the head.
+    let instance_head_forms_representable_chirho =
+        !module_chirho.extensions_chirho.iter().any(|e_chirho| {
+            e_chirho == "DataKinds"
+                || e_chirho == "PolyKinds"
+                || e_chirho == "TypeInType"
+                || e_chirho == "TypeOperators"
+                || e_chirho == "FlexibleInstances"
+        });
+    for decl_chirho in &module_chirho.decls_chirho {
+        let DeclChirho::InstanceDeclChirho {
+            class_chirho,
+            types_chirho,
+            span_chirho,
+            ..
+        } = decl_chirho
+        else {
+            continue;
+        };
+        ctx_chirho.check_instance_head_arity_chirho(
+            class_chirho.text_chirho(),
+            types_chirho,
+            instance_head_forms_representable_chirho,
+            *span_chirho,
+        );
     }
 
     // Phase 2: Finalize — apply substitution and default unconstrained vars.
@@ -3262,6 +3468,123 @@ mod tests_chirho {
         // PolyKinds: standalone ast_kind_to_kind_chirho defaults kind vars to *
         let ast_chirho = AstKindChirho::VarChirho("k".to_string());
         assert_eq!(ast_kind_to_kind_chirho(&ast_chirho), KindChirho::StarChirho);
+    }
+
+    /// `class C a b` plus `instance C <n args>`.
+    fn mk_class_and_instance_module_chirho(
+        class_param_names_chirho: &[&str],
+        instance_head_types_chirho: Vec<TypeChirho>,
+    ) -> ModuleChirho {
+        mk_module_chirho(vec![
+            DeclChirho::ClassDeclChirho {
+                context_chirho: vec![],
+                name_chirho: mk_name_chirho("CChirho"),
+                type_vars_chirho: class_param_names_chirho
+                    .iter()
+                    .map(|p_chirho| mk_name_chirho(p_chirho).into())
+                    .collect(),
+                methods_chirho: vec![],
+                associated_tfs_chirho: vec![],
+                fundeps_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::InstanceDeclChirho {
+                context_chirho: vec![],
+                class_chirho: mk_name_chirho("CChirho"),
+                types_chirho: instance_head_types_chirho,
+                methods_chirho: vec![],
+                assoc_tf_instances_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ])
+    }
+
+    #[test]
+    fn instance_head_under_applied_class_is_rejected_chirho() {
+        let module_chirho = mk_class_and_instance_module_chirho(
+            &["a", "b"],
+            vec![TypeChirho::ConChirho(mk_name_chirho("Int"))],
+        );
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "a two-parameter class applied to one argument must be rejected"
+        );
+    }
+
+    #[test]
+    fn instance_head_over_applied_class_is_rejected_chirho() {
+        let module_chirho = mk_class_and_instance_module_chirho(
+            &["a"],
+            vec![
+                TypeChirho::ConChirho(mk_name_chirho("Int")),
+                TypeChirho::ConChirho(mk_name_chirho("Bool")),
+            ],
+        );
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "a one-parameter class applied to two arguments must be rejected"
+        );
+    }
+
+    #[test]
+    fn instance_head_matching_arity_is_accepted_chirho() {
+        let module_chirho = mk_class_and_instance_module_chirho(
+            &["a", "b"],
+            vec![
+                TypeChirho::ConChirho(mk_name_chirho("Int")),
+                TypeChirho::ConChirho(mk_name_chirho("Bool")),
+            ],
+        );
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "a correctly-saturated instance head must be accepted: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+    }
+
+    #[test]
+    fn instance_head_of_undeclared_class_is_not_judged_chirho() {
+        // The class is not declared here, so its arity is unknown to us and no
+        // verdict may be reached — an imported class could have any arity.
+        let module_chirho = mk_module_chirho(vec![DeclChirho::InstanceDeclChirho {
+            context_chirho: vec![],
+            class_chirho: mk_name_chirho("SomeImportedClassChirho"),
+            types_chirho: vec![TypeChirho::ConChirho(mk_name_chirho("Int"))],
+            methods_chirho: vec![],
+            assoc_tf_instances_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+        let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        assert!(
+            !result_chirho.diagnostics_chirho.has_errors_chirho(),
+            "an instance of an undeclared class must not be judged: {:?}",
+            result_chirho.diagnostics_chirho
+        );
+    }
+
+    #[test]
+    fn kind_arity_is_final_only_when_tail_is_not_a_variable_chirho() {
+        // `k -> *` has arity 1 even though the ARGUMENT kind is a variable —
+        // only a variable TAIL leaves the arity open.
+        let open_tail_chirho = KindChirho::arrow_chirho(
+            KindChirho::StarChirho,
+            KindChirho::VarChirho(KindVarChirho(0)),
+        );
+        assert_eq!(
+            KindInferCtxChirho::kind_arity_chirho(&open_tail_chirho),
+            (1, false)
+        );
+        let var_arg_chirho = KindChirho::arrow_chirho(
+            KindChirho::VarChirho(KindVarChirho(0)),
+            KindChirho::ConstraintChirho,
+        );
+        assert_eq!(
+            KindInferCtxChirho::kind_arity_chirho(&var_arg_chirho),
+            (1, true)
+        );
     }
 
     #[test]
