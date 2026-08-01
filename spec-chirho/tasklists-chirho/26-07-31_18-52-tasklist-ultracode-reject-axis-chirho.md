@@ -14,7 +14,8 @@ Bonus defect found during scouting: `haskelujah check` stack-overflows on any fi
 - [x] Cluster wrongly-accepted should_fail by GHC error code; extract per-cluster file lists + the 80 should_compile failures
 - [x] Workflow Map: 4 reject-cluster mappers + 1 accept-axis mapper (parallel, read-only + prebuilt binary) — all 5 completed (wf_db38b46e-604, ~473k tokens)
 - [x] Workflow Synthesize — subagent hit the weekly credit limit (resets 8pm ET); synthesis done INLINE by claude_chirho instead; full map + ranked lanes committed at spec-chirho/ultracode-handoff-chirho/
-- [ ] Fix lanes 1-6 per handoff README (sequential, one builder, subset regression gate) — NOT STARTED; L.J. moving to a cheaper model first
+- [x] **Lane 2 landed by claude_chirho** — certainly-unsolvable ground constraints now rejected (`is_certainly_unsolvable_pred_chirho`), hooked into both the generalization swallow and the phase-3 zero-instance skip. Also fixed a real seed hole (unit had no `Show`/`Eq`/`Ord`/`Read`/`Bounded`/`Enum` instance). 6 accept-axis regressions caught by the gate and each fixed at its root, not guarded around; 9 unit tests. Traps documented in the handoff README.
+- [ ] Fix lanes 1, 3, 4, 5, 6 per handoff README (sequential, one builder, subset regression gate)
 - [ ] Full workspace cargo test + warning scan after lanes
 - [ ] Two-pass re-measurement of BOTH axes, supersede both artifacts, commit (`git add -f`)
 - [ ] Adversarial review of full diff (hack/test-gaming scan) — findings addressed

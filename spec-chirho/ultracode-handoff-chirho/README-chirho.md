@@ -32,6 +32,42 @@ Unlock estimates are conservative and OVERLAP across lanes (same file can sit in
 
 **Bonus defect (file separately if not fixed):** layout bug — one-space-indented decls after a `where` block get mis-nested and later top-level signatures silently vanish from checking (reproduced via `tcfail158`, see mismatch-kind JSON notes).
 
+## Traps found while landing lane 2 (read before writing a reject-axis check)
+
+Each of these produced a real accept-axis regression or a wasted cycle. They are not
+hypothetical — every one was caught by the gates, not by review.
+
+1. **Every module has an implicit `import Prelude`.** The driver injects it
+   (`haskelujah-driver-chirho/src/lib.rs:2167`). A guard conditioned on "module has no
+   imports" is therefore *always false* and silently disables the whole check. Condition on
+   *non-Prelude* imports instead.
+2. **Any non-Prelude import invalidates a seeded class's instance inventory.** A sibling
+   module can declare `instance Show I` that our class env never sees, so "no instance
+   registered" stops meaning "no instance exists". Only classes declared in the module
+   under inference keep a complete universe (an imported module cannot instance a class it
+   cannot see — modulo hs-boot cycles, which is why `ClassDefaultInHsBootA3` is in the
+   corpus). Regressions caught: `InstanceWarnings`, `ClassDefaultInHsBootA3`.
+3. **Our own inference invents constraints under some extensions.** `RebindableSyntax`
+   rebinds `negate`/literals while we still emit `Num` wanteds (`RebindNegate`); the rank-n
+   family instantiates a `forall`-typed record field once and reuses it at two types,
+   inventing `Num Char` (`T18802`). Both were previously *accepted only because the bogus
+   wanted was swallowed*. Any check that stops swallowing must exempt these — see
+   `UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO`. Verify the exemption costs nothing: none of
+   lane 2's twelve wins enable those extensions.
+4. **The seeded instance table has real holes, and a strict check exposes them as false
+   positives.** `T17343` failed on `Show ()` — unit had *no* seeded `Show`/`Eq`/`Ord`
+   instance at all (only `Semigroup`/`Monoid`). Fix the seed; do not weaken the check.
+5. **Some tests pass GHC flags in `all.T`, not in the source.** `DoExpansion1` is run with
+   `-fdefer-type-errors` on the command line, so GHC emits a *warning* where we emit an
+   error — with byte-identical content and location (`Num String` at 7:19). Reading `all.T`
+   from compiler code would be test-gaming; the honest position is that our diagnosis is
+   correct given the source alone. Note it, do not chase it.
+6. **Confirm a "new" false positive is actually yours.** A probe that looks like your bug
+   may predate your change. Build a binary with your commit reverted and re-run the probe
+   before you weaken anything — that check saved a genuine win here, since the
+   `Num ()`-from-`() =>` pattern-synonym defect turned out to be pre-existing
+   (`spec-chirho/bug-patsyn-empty-context-num-chirho.md`).
+
 ## Hard gates for every lane (non-negotiable)
 
 1. Rebuild before any corpus run (stale-binary trap): `nice -n 5 cargo build -j2 --bin haskelujah` — zero warnings, fix never suppress.

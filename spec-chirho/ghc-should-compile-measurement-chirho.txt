@@ -1,9 +1,9 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, AFTER type-level character families landed (bd4c288d)
-# code measured: bd4c288d (HEAD; binary rebuilt at this commit by the measuring agent,
-#   mtime ~21:20; NOTE: the landing agent and the measuring agent are the same session —
-#   gpt stopped for credits, claude spent — measured sets stand, second-agent replication
-#   welcome when a peer returns)
+# measured: 2026-07-31, AFTER the certainly-unsolvable ground-constraint check (9fece4fa)
+# code measured: 9fece4fa (HEAD; binary rebuilt at this commit by the measuring agent,
+#   mtime ~01:37; NOTE: the landing agent and the measuring agent are the same
+#   session — claude_chirho, working alone; gpt idle since 07-27, claude2 parked.
+#   Second-agent replication welcome when a peer returns.)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
@@ -14,9 +14,13 @@
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
 # QUOTE-AS: ~91% (858 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 856 -> 858 (+2), NOTHING entered the failing set.
-# T14934a.hs and T19535.hs left — both were the landing's named targets (CharToNat /
-# NatToChar reduction). No unpredicted movement on this axis.
+# CHANGE SINCE LAST MEASUREMENT: NONE. 858/80/938 with a BYTE-IDENTICAL failing set,
+# re-measured against the new binary rather than carried forward, per the standing rule.
+# This axis was the zero-regression GATE for the landing: an earlier revision of the
+# constraint check scored +12 on the reject axis while breaking three files here
+# (RebindNegate, T17343, T18802). Each was fixed at its root before landing — see the
+# companion artifact's CHANGE note and spec-chirho/ultracode-handoff-chirho/README-chirho.md
+# ("Traps found while landing lane 2").
 #
 # TWO-PASS PROTOCOL: determinism (fixed 47723b8c) re-verified — both passes byte-identical.
 #
@@ -24,7 +28,9 @@
 # accepts. Proof case: the canonical lazy primes sieve was ACCEPTED here the whole time it
 # silently returned the wrong list (captured-letrec defect, measured root fixed in c7b06d2b
 # — see spec-chirho/bug-comprehension-letrec-capture-chirho.md). Acceptance would never
-# have caught it.
+# have caught it. A second proof case landed with this measurement: T17343 and T18802 were
+# ACCEPTED only because a bogus constraint our own inference invented was being silently
+# swallowed. Passing here can mean the checker is wrong twice and the errors cancelled.
 #
 # Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #

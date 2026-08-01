@@ -1,7 +1,7 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-07-27, re-measured AFTER type-level character families landed (bd4c288d)
-# code measured: bd4c288d (HEAD; binary rebuilt at this commit by the measuring agent,
-#   mtime ~21:20; landing agent and measuring agent are the same session — see the
+# measured: 2026-07-31, AFTER the certainly-unsolvable ground-constraint check (9fece4fa)
+# code measured: 9fece4fa (HEAD; binary rebuilt at this commit by the measuring agent,
+#   mtime ~01:37; landing agent and measuring agent are the same session — see the
 #   companion artifact note)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
@@ -10,27 +10,66 @@
 #   should_compile corpus DOES have a subdirectory and this check matters there — see
 #   spec-chirho/ghc-should-compile-measurement-chirho.txt.)
 #
-# RESULT: CORRECTLY-REJECTED=157 WRONGLY-ACCEPTED=610 TOTAL=767 (20.5% reject rate)
+# RESULT: CORRECTLY-REJECTED=169 WRONGLY-ACCEPTED=598 TOTAL=767 (22.0% reject rate)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets (the
 #   historical nondeterminism root cause was fixed in 47723b8c; re-verified here, not trusted)
-# QUOTE-AS: ~20% (157 of 767) — do not quote a third significant figure
+# QUOTE-AS: ~22% (169 of 767) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: NONE. 157/610/767 with a BYTE-IDENTICAL wrongly-accepted
-# set, re-measured against the character-families binary rather than carried forward, per
-# the standing rule. (Previous change: 156 -> 157 at 67ceecff, T22707, unattributed.)
+# CHANGE SINCE LAST MEASUREMENT: 157 -> 169 (+12). NOTHING left the rejected set.
+# Attribution: the certainly-unsolvable ground-constraint check. A predicate with no free
+# type variables used to pass generalization's "all pred vars are generalized" test
+# VACUOUSLY (all() over an empty set is true), so ground wanteds like `Eq U` were folded
+# into a binding's scheme and never checked again; a second hatch skipped any class with
+# zero registered instances. Both now consult is_certainly_unsolvable_pred_chirho, which
+# fires only when the class's whole instance universe is visible, every argument is ground
+# with a concrete head, no instance could match even on head constructors alone, no
+# deriving clause supplies one, and no given entails it.
+#
+# The same landing also fixed TWO real holes in our SEEDED instance table that the check
+# exposed — compatibility fixes, not check weakenings. Unit had no
+# Show/Eq/Ord/Read/Bounded/Enum instance at all, so `print ()` looked unsolvable
+# (should_compile T17343); Either had no Show/Eq/Ord/Read while Maybe did, so
+# `Show (Either String Int)` looked unsolvable (driver eval_io_do_effect_chains). Both
+# holes were INVISIBLE while unsolved constraints were being swallowed: a checker that
+# silently drops constraints also hides its own missing instances.
+#
+# THE 12 NEW REJECTIONS, VERIFIED BY REASON (this axis's counting rule does NOT do this —
+# see "Counting rule" below — so it was done by hand against each file's .stderr):
+#   8 match GHC's error exactly, same constraint and same source location:
+#     tcfail003 (Num Char), tcfail006/tcfail007/tcfail015 (Num Bool), IPFail (Num Bool),
+#     T11274 (Eq Asd), tcfail029 (Ord Foo), and DoExpansion1 — where GHC reports the
+#     identical "No instance for Num String" at 7:19 but DOWNGRADES it to a warning
+#     because all.T passes -fdefer-type-errors on the command line. Reading all.T from
+#     compiler code would be test-gaming; given the source alone our diagnosis is right.
+#   3 reject on a different but genuine GHC error (right verdict, different reason):
+#     ErrorIndexLinks, mc22, T11313.
+#   1 reaches the right verdict through a PRE-EXISTING defect, not through this check:
+#     PatSynExistential, via a bogus `Num ()` invented from an empty `() =>` context in a
+#     pattern-synonym signature. That defect predates this work — verified by rebuilding
+#     with the check reverted — and is filed at
+#     spec-chirho/bug-patsyn-empty-context-num-chirho.md. It wrongly rejects a VALID
+#     program of the same shape; fixing it may cost this file as a win.
+#
+# MEASUREMENT-NOISE FINDING (NOT applied — needs L.J.'s sign-off before the denominator
+# changes): of the wrongly-accepted files, ~60 have no .stderr, and sampling shows most are
+# not genuine misses — ~31 are AUXILIARY modules of multi-module tests whose error belongs
+# to the main file (T15850_Lib, T20289_A, T6018Afail...), and at least 8 carry in-file
+# comments saying modern GHC now ACCEPTS them (AmbigFDs "now succeeds", tcfail071,
+# tcfail124, T7545, FDsFromGivens, tcfail165, tcfail105, T15438). Reclassifying them is a
+# methodology change to be made here, documented, with sign-off — not silently.
 #
 # HISTORICAL NOTE — the reasoning the old warning preserved, still worth keeping:
-# Two full passes produced byte-identical wrongly-accepted sets (618 files, zero diff).
-# That is NOT proof of determinism. The type checker is known non-deterministic
+# Two full passes produced byte-identical wrongly-accepted sets. That is NOT by itself
+# proof of determinism. The type checker was known non-deterministic
 # (spec-chirho/bug-nondeterministic-typecheck-chirho.md), and the proof case is instructive:
-# T25266.hs is a genuine coin flip (9 pass / 11 fail over 20 runs) yet it failed in BOTH
-# full should_compile passes. Two agreeing passes would have declared it stable. So this
+# T25266.hs was a genuine coin flip (9 pass / 11 fail over 20 runs) yet it failed in BOTH
+# full should_compile passes. Two agreeing passes would have declared it stable. So that
 # line means "no variance seen in 2 samples", not "deterministic". Establishing stability
 # honestly needs per-file repetition, which has not been run on this corpus.
 # (That warning was discharged when the root cause was fixed and verified in 47723b8c;
 # it is preserved because the next reader deserves to see why the caution existed.)
 #
-# Rounding rule: round DOWN. 20.5% -> ~20%, never 21%. A compatibility claim must not sit
+# Rounding rule: round DOWN. 22.0% -> ~22%, never 23%. A compatibility claim must not sit
 # above its own measured value.
 #
 # READ THIS BEFORE QUOTING THE COMPATIBILITY NUMBER.
@@ -40,8 +79,9 @@
 # everything would score 100% on that axis alone.
 #
 # Counting rule: a file counts as REJECTED if any error[EXXXX] or panic was emitted. That
-# is generous — it does not verify we rejected for the RIGHT reason, so 157 is an UPPER
-# bound on true correct rejections.
+# is generous — it does not verify we rejected for the RIGHT reason, so 169 is an UPPER
+# bound on true correct rejections. (The 12 files added by this landing WERE checked by
+# reason; see above. The other 157 have not been.)
 #
 # Sanity checks previously run and still applicable:
 #  - deliberately malformed source  -> error emitted (parse failures are not silently accepted)
@@ -50,7 +90,7 @@
 #    vs Bool, SCLoop superclass loop, T15796 newtype with class context): all 4 are genuine
 #    GHC type errors that we accept silently. The gap is real, not a harness artifact.
 #
-# ---- the 610 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 598 files we WRONGLY ACCEPT (GHC rejects these) ----
 ghc-tests-chirho/typecheck-chirho/should_fail/AmbigFDs.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/AssocTyDef01.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/AssocTyDef02.hs
@@ -71,8 +111,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/CustomTypeErrors02.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/CustomTypeErrors03.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/CustomTypeErrors05.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/DataToTagFails.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/DoExpansion1.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/ErrorIndexLinks.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/ExplicitSpecificity1.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/ExplicitSpecificity10.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/ExplicitSpecificity2.hs
@@ -90,13 +128,11 @@ ghc-tests-chirho/typecheck-chirho/should_fail/FDsFromGivens2.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FrozenErrorTests.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/FunDepOrigin1b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/GivenForallLoop.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/IPFail.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/LazyFieldsDisabled.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/LevPolyBounded.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/LongWayOverlapping.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/mc19.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/mc20.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/mc22.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/mc23.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/mc24.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/mc25.hs
@@ -105,7 +141,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/MissingExportList03.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/MultiAssocDefaults.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/OrdErr.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/PatSynArity.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/PatSynExistential.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/PatSynUnboundVar.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/SCLoop.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/SilentParametersOverlapping.hs
@@ -126,8 +161,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/T10836.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T10971b.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T10971c.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T10971d.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T11274.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/T11313.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T11347.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T11355.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/T11356.hs
@@ -473,17 +506,13 @@ ghc-tests-chirho/typecheck-chirho/should_fail/TcCoercibleFail.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/TcCoercibleFail2.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/TcCoercibleFail3.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail002.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail003.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail004.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail005.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail006.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail007.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail008.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail009.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail010.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail012.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail013.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail015.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail017.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail018.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail019.hs
@@ -491,7 +520,6 @@ ghc-tests-chirho/typecheck-chirho/should_fail/tcfail020.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail021.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail023.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail027.hs
-ghc-tests-chirho/typecheck-chirho/should_fail/tcfail029.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail030.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail032.hs
 ghc-tests-chirho/typecheck-chirho/should_fail/tcfail034.hs
