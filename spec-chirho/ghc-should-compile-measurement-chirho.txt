@@ -1,7 +1,7 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-31, AFTER the certainly-unsolvable ground-constraint check (9fece4fa)
-# code measured: 9fece4fa (HEAD; binary rebuilt at this commit by the measuring agent,
-#   mtime ~01:37; NOTE: the landing agent and the measuring agent are the same
+# measured: 2026-07-31, AFTER the certainly-unsolvable ground-constraint check (f14f8d60)
+# code measured: f14f8d60 (HEAD; binary rebuilt at this commit by the measuring agent,
+#   mtime ~09:47; NOTE: the landing agent and the measuring agent are the same
 #   session — claude_chirho, working alone; gpt idle since 07-27, claude2 parked.
 #   Second-agent replication welcome when a peer returns.)
 # method: haskelujah check <file>, timeout 15s/file
