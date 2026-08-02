@@ -1,9 +1,9 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-07-31, AFTER the certainly-unsolvable ground-constraint check (f14f8d60)
-# code measured: f14f8d60 (HEAD; binary rebuilt at this commit by the measuring agent,
-#   mtime ~09:47; NOTE: the landing agent and the measuring agent are the same
-#   session — claude_chirho, working alone; gpt idle since 07-27, claude2 parked.
-#   Second-agent replication welcome when a peer returns.)
+# measured: 2026-08-02, AFTER the validity-walker extensions (8df50557)
+# code measured: 8df50557 (HEAD; binary rebuilt at this commit by the measuring agent,
+#   mtime ~01:43; NOTE: the landing agent and the measuring agent are the same
+#   session — claude_chirho, working alone; gpt idle since 07-27, claude2 parked on site
+#   deploys. Second-agent replication welcome when a peer returns.)
 # method: haskelujah check <file>, timeout 15s/file
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
@@ -14,13 +14,24 @@
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
 # QUOTE-AS: ~91% (858 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: NONE. 858/80/938 with a BYTE-IDENTICAL failing set,
-# re-measured against the new binary rather than carried forward, per the standing rule.
-# This axis was the zero-regression GATE for the landing: an earlier revision of the
-# constraint check scored +12 on the reject axis while breaking three files here
-# (RebindNegate, T17343, T18802). Each was fixed at its root before landing — see the
-# companion artifact's CHANGE note and spec-chirho/ultracode-handoff-chirho/README-chirho.md
-# ("Traps found while landing lane 2").
+# CHANGE SINCE LAST MEASUREMENT: NONE. 858/80/938 with a
+# BYTE-IDENTICAL failing set, re-measured against the new binary rather than carried forward,
+# per the standing rule. This axis was the zero-regression GATE for the landing.
+#
+# ---- MEASUREMENT-TOOLING CORRECTION (read before reproducing these numbers) ----
+# The pass/fail detector is now PURE SHELL pattern matching (`case $out in *"error[E"*|*panic*`),
+# run by spec-chirho-adjacent scratch script gate_run_chirho.sh. It is NOT `grep`, on purpose.
+# In this session's interactive shell `grep` is shadowed by a ugrep wrapper function whose
+# `-q` exit status is CONTENT-DEPENDENT: it reported "no match" on compiler output that
+# demonstrably contains `error[E0200]` (reproduced on should_compile/tc124.hs), while matching
+# correctly on other files. A gate run through that wrapper UNDER-REPORTS failures, which
+# inflates the accept axis. This was caught mid-lane and every number in both artifacts was
+# re-measured with the pure-shell detector before being written here.
+#   Cross-check performed: the previously committed baseline of 80 failing files
+#   reproduces EXACTLY under the pure-shell detector, so the previously published accept-axis
+#   figure was NOT affected. The correction is recorded because the hazard is invisible and any
+#   future agent re-running these gates with `grep -q` would silently publish a better number
+#   than the compiler earns.
 #
 # TWO-PASS PROTOCOL: determinism (fixed 47723b8c) re-verified — both passes byte-identical.
 #
@@ -28,90 +39,88 @@
 # accepts. Proof case: the canonical lazy primes sieve was ACCEPTED here the whole time it
 # silently returned the wrong list (captured-letrec defect, measured root fixed in c7b06d2b
 # — see spec-chirho/bug-comprehension-letrec-capture-chirho.md). Acceptance would never
-# have caught it. A second proof case landed with this measurement: T17343 and T18802 were
-# ACCEPTED only because a bogus constraint our own inference invented was being silently
-# swallowed. Passing here can mean the checker is wrong twice and the errors cancelled.
+# have caught it. Passing here can mean the checker is wrong twice and the errors cancelled.
 #
 # Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
 #
 # ---- the 80 files we FAIL to accept (GHC accepts these); all deterministic ----
-ghc-tests-chirho/typecheck-chirho/should_compile/FloatFDs.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/HardRecordUpdate.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/Improvement.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/PolytypeDecomp.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/RebindHR.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/RuleEqs.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/SplitWD.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T10348.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T10808.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T11056.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T11811.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T12104.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T12427a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T12923_2.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T12923_3.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T12928.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T13822.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T13848.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T14010.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T14158.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T14451.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T14590.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T14761c.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T15079.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T15772.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T16204a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T16204b.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T16411.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T17594a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T17772.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T18036b.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T18252.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T18311.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T18831.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T20443a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T20668.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T20873.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T20922.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21010.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21205.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21289.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21328.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21515.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21519a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T21558.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T23413.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T23501a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T23739a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T23764.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T24810.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T25180.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T25266.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T25266b.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T25597.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T26030.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T26256a.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T26345.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T26346.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T26451.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T3632.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T4355.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T4444.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T4524.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T5032.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T5490.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/T6018.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc124.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc134.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc135.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc156.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc192.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc194.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc196.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc213.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc218.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc239.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc251.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/tc252.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/TcSpecPragmas.hs
-ghc-tests-chirho/typecheck-chirho/should_compile/UnliftedNewtypesGnd.hs
+FloatFDs.hs
+HardRecordUpdate.hs
+Improvement.hs
+PolytypeDecomp.hs
+RebindHR.hs
+RuleEqs.hs
+SplitWD.hs
+T10348.hs
+T10808.hs
+T11056.hs
+T11811.hs
+T12104.hs
+T12427a.hs
+T12923_2.hs
+T12923_3.hs
+T12928.hs
+T13822.hs
+T13848.hs
+T14010.hs
+T14158.hs
+T14451.hs
+T14590.hs
+T14761c.hs
+T15079.hs
+T15772.hs
+T16204a.hs
+T16204b.hs
+T16411.hs
+T17594a.hs
+T17772.hs
+T18036b.hs
+T18252.hs
+T18311.hs
+T18831.hs
+T20443a.hs
+T20668.hs
+T20873.hs
+T20922.hs
+T21010.hs
+T21205.hs
+T21289.hs
+T21328.hs
+T21515.hs
+T21519a.hs
+T21558.hs
+T23413.hs
+T23501a.hs
+T23739a.hs
+T23764.hs
+T24810.hs
+T25180.hs
+T25266.hs
+T25266b.hs
+T25597.hs
+T26030.hs
+T26256a.hs
+T26345.hs
+T26346.hs
+T26451.hs
+T3632.hs
+T4355.hs
+T4444.hs
+T4524.hs
+T5032.hs
+T5490.hs
+T6018.hs
+tc124.hs
+tc134.hs
+tc135.hs
+tc156.hs
+tc192.hs
+tc194.hs
+tc196.hs
+tc213.hs
+tc218.hs
+tc239.hs
+tc251.hs
+tc252.hs
+TcSpecPragmas.hs
+UnliftedNewtypesGnd.hs
