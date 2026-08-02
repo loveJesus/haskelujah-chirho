@@ -2934,6 +2934,94 @@ pub fn compile_source_with_search_path_chirho(
 /// Recursively scan subdirectories for `.hs` files and build module interfaces.
 /// This handles hierarchical imports like `import Data.List.Split.Internals`
 /// by finding `Data/List/Split/Internals.hs` relative to the root search dir.
+/// How deep the hierarchical module search descends below its root.
+///
+/// A hierarchical module name contributes one directory per dotted component,
+/// so this bounds a module at 64 components — unreachable for real code, while
+/// still terminating a pathological tree. The deepest real tree below this
+/// repo's root is 9.
+const MAX_MODULE_SEARCH_DEPTH_CHIRHO: usize = 64;
+
+/// How many directories the hierarchical module search will enter.
+///
+/// This is the bound that actually matters. Measured 2026-08-02: `/private/tmp`
+/// holds 80418 directories but only 4274 `.hs` files, so a file-only budget
+/// never fires and the walk is dominated by `read_dir`. The largest legitimate
+/// search root observed is three orders of magnitude smaller than that tree.
+const MAX_MODULE_SEARCH_DIRS_CHIRHO: usize = 2048;
+
+/// How many `.hs` files the hierarchical module search will parse.
+///
+/// Well above the largest legitimate search root in this repo (the 938-file GHC
+/// corpus directory), so it never fires on real work; it exists so a tree that
+/// is shallow-but-file-dense stays bounded too.
+const MAX_MODULE_SEARCH_FILES_CHIRHO: usize = 16384;
+
+/// Bounds carried through one hierarchical module search.
+///
+/// `haskelujah check <file>` searches the checked file's PARENT directory,
+/// which for a file outside a project is an arbitrary directory such as `/tmp`
+/// or `$HOME`. Without these bounds the walk is unbounded in depth, breadth and
+/// file count: measured 2026-08-02, a file placed directly in `/private/tmp`
+/// did not finish within 60 seconds. That is disqualifying for drop-in use,
+/// since a real user's file is never inside our repo.
+struct ModuleSearchBoundsChirho {
+    /// How many directories have been entered so far.
+    dirs_entered_chirho: usize,
+    /// How many `.hs` files have been parsed so far.
+    files_read_chirho: usize,
+    /// Whether the truncation notice has already been emitted.
+    warned_chirho: bool,
+}
+
+impl ModuleSearchBoundsChirho {
+    fn new_chirho() -> Self {
+        Self {
+            dirs_entered_chirho: 0,
+            files_read_chirho: 0,
+            warned_chirho: false,
+        }
+    }
+
+    /// True while the directory budget remains.
+    fn may_enter_dir_chirho(&mut self) -> bool {
+        if self.dirs_entered_chirho >= MAX_MODULE_SEARCH_DIRS_CHIRHO {
+            self.report_truncation_chirho("directories");
+            return false;
+        }
+        self.dirs_entered_chirho += 1;
+        true
+    }
+
+    /// True while the parse budget remains.
+    fn may_read_file_chirho(&mut self) -> bool {
+        if self.files_read_chirho >= MAX_MODULE_SEARCH_FILES_CHIRHO {
+            self.report_truncation_chirho("source files");
+            return false;
+        }
+        self.files_read_chirho += 1;
+        true
+    }
+
+    /// Report exhaustion once. Never silent: a truncated search can leave
+    /// imports unresolvable, and a silent cap reads as "searched everything".
+    fn report_truncation_chirho(&mut self, what_chirho: &str) {
+        if self.warned_chirho {
+            return;
+        }
+        self.warned_chirho = true;
+        eprintln!(
+            "warning: module search stopped after scanning {} {what_chirho}; some imports \
+             may be unresolvable — check the file from inside its own project directory",
+            if what_chirho == "directories" {
+                MAX_MODULE_SEARCH_DIRS_CHIRHO
+            } else {
+                MAX_MODULE_SEARCH_FILES_CHIRHO
+            }
+        );
+    }
+}
+
 fn scan_hierarchical_modules_chirho(
     dir_chirho: &Path,
     root_dir_chirho: &Path,
@@ -2941,19 +3029,61 @@ fn scan_hierarchical_modules_chirho(
     ifaces_chirho: &mut Vec<haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho>,
     skip_file_chirho: &str,
 ) {
+    let mut bounds_chirho = ModuleSearchBoundsChirho::new_chirho();
+    scan_hierarchical_modules_bounded_chirho(
+        dir_chirho,
+        root_dir_chirho,
+        source_map_chirho,
+        ifaces_chirho,
+        skip_file_chirho,
+        0,
+        &mut bounds_chirho,
+    );
+}
+
+fn scan_hierarchical_modules_bounded_chirho(
+    dir_chirho: &Path,
+    root_dir_chirho: &Path,
+    source_map_chirho: &mut SourceMapChirho,
+    ifaces_chirho: &mut Vec<haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho>,
+    skip_file_chirho: &str,
+    depth_chirho: usize,
+    bounds_chirho: &mut ModuleSearchBoundsChirho,
+) {
     let entries_chirho = match std::fs::read_dir(dir_chirho) {
         Ok(e_chirho) => e_chirho,
         Err(_) => return,
     };
     for entry_chirho in entries_chirho.flatten() {
         let p_chirho = entry_chirho.path();
+        // Never follow a symlink. This is what makes a cycle impossible —
+        // `sub/up -> ..` is simply not descended into — and it costs nothing,
+        // because `read_dir` already knows the entry type. Verified 2026-08-02:
+        // there is not one symlinked DIRECTORY in this repo, in either GHC
+        // corpus, or under the vendored Hackage packages, so nothing legitimate
+        // is lost. (Before this, `is_dir()` followed symlinks and termination
+        // depended on the OS `ELOOP` limit.)
+        let is_symlink_chirho = entry_chirho
+            .file_type()
+            .map(|t_chirho| t_chirho.is_symlink())
+            .unwrap_or(true);
+        if is_symlink_chirho {
+            continue;
+        }
         if p_chirho.is_dir() {
-            scan_hierarchical_modules_chirho(
+            if depth_chirho >= MAX_MODULE_SEARCH_DEPTH_CHIRHO
+                || !bounds_chirho.may_enter_dir_chirho()
+            {
+                continue;
+            }
+            scan_hierarchical_modules_bounded_chirho(
                 &p_chirho,
                 root_dir_chirho,
                 source_map_chirho,
                 ifaces_chirho,
                 skip_file_chirho,
+                depth_chirho + 1,
+                bounds_chirho,
             );
         } else if p_chirho
             .extension()
@@ -2982,6 +3112,11 @@ fn scan_hierarchical_modules_chirho(
                 .iter()
                 .any(|i_chirho| i_chirho.name_chirho == module_name_chirho)
             {
+                continue;
+            }
+            // Parsing is the real cost of this search, so the budget is spent
+            // here rather than per directory entry.
+            if !bounds_chirho.may_read_file_chirho() {
                 continue;
             }
             if let Ok(source_chirho) = read_haskell_source_file_chirho(&p_chirho) {
