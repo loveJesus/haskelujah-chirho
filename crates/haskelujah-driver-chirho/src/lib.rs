@@ -2938,23 +2938,29 @@ pub fn compile_source_with_search_path_chirho(
 ///
 /// A hierarchical module name contributes one directory per dotted component,
 /// so this bounds a module at 64 components — unreachable for real code, while
-/// still terminating a pathological tree. The deepest real tree below this
-/// repo's root is 9.
+/// still terminating a pathological tree. Measured 2026-08-02: the deepest
+/// directory nesting anywhere in this repo is 10 — a 6.4x margin.
 const MAX_MODULE_SEARCH_DEPTH_CHIRHO: usize = 64;
 
 /// How many directories the hierarchical module search will enter.
 ///
 /// This is the bound that actually matters. Measured 2026-08-02: `/private/tmp`
 /// holds 80418 directories but only 4274 `.hs` files, so a file-only budget
-/// never fires and the walk is dominated by `read_dir`. The largest legitimate
-/// search root observed is three orders of magnitude smaller than that tree.
+/// never fires there and the walk is dominated by `read_dir`.
+///
+/// Margin, measured the same day (a search root is the checked file's PARENT,
+/// so for a package build it is one package directory, never the vendor root):
+/// the largest in-repo search root is `ghc-lib-parser-9.14.1.20251220` at 170
+/// directories — a 12x margin. The 4287 directories under
+/// `.haskelujah-packages-chirho` are the SUM across 410 packages and are never
+/// walked from a single root.
 const MAX_MODULE_SEARCH_DIRS_CHIRHO: usize = 2048;
 
 /// How many `.hs` files the hierarchical module search will parse.
 ///
-/// Well above the largest legitimate search root in this repo (the 938-file GHC
-/// corpus directory), so it never fires on real work; it exists so a tree that
-/// is shallow-but-file-dense stays bounded too.
+/// Exists so a shallow-but-file-dense tree stays bounded too. Margin: the
+/// largest in-repo search root by file count is the 938-file GHC corpus
+/// directory — a 17x margin.
 const MAX_MODULE_SEARCH_FILES_CHIRHO: usize = 16384;
 
 /// Bounds carried through one hierarchical module search.
