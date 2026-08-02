@@ -22,7 +22,7 @@ Unlock estimates are conservative and OVERLAP across lanes (same file can sit in
 | ~~1~~ | **BLOCKED — do not attempt as briefed.** Typed-holes-as-errors would be MORE GHC-faithful (holes are errors by default in GHC) but is unlandable under the zero-regression rule, and the blocker is the harness, not the compiler. `should_compile/all.T` runs at least 22 tests with `-fdefer-type-errors` **on the command line, absent from the source** — verified 2026-08-01: `holes`, `holes2`, `holes3`, `hole_constraints`, `abstract_refinement_hole_fits`, `free_monad_hole_fits`, `constraint_hole_fits`, `valid_hole_fits` all PASS today and would all break; zero of the 22 carry the flag in-source. The mapper's proposed guard ("keep the warning when OPTIONS_GHC contains the flag") therefore never fires. Reading `all.T` from compiler code would be test-gaming. Revisit only if the harness is taught to pass per-test flags. | `map-reject-scope-holes-kinds-chirho.json` / `typed_holes_warning_only_chirho` | +9 reject, **−8 to −22 accept** | blocked |
 | 2 | **Ground no-instance constraints** — the core solver leak, three stacked hatches: vacuous `all()` in `generalize_with_io_defaulting_chirho` (`infer_chirho.rs:1144-1159`), var-leniency in `entails_depth_chirho` (`class_chirho.rs:365-380`), zero-instance skip (`infer_chirho.rs:6664-6672`). Add `is_certainly_unsolvable_chirho` with the 5-condition guard; hook BOTH generalization and phase-3. Include the Coercible-ground special case (same skip site). | `map-reject-no-instance-chirho.json` / `ground_no_instance_swallowed_chirho` + `map-reject-mismatch-kind-chirho.json` / `coercible_ground_unsolved_chirho` | +20-23 reject | low |
 | 3 | **Kind-position checks** in `kind_chirho.rs`: instance-head arity (no `InstanceDeclChirho` arm exists), constraint-used-as-type (class app returns `ConstraintChirho`), unsaturated tycon in `*` position (tuple-element shared-fresh-kind bug ~1295, assoc-type default RHS never checked, local where/let sigs never walked) | `map-reject-mismatch-kind-chirho.json` / `instance_head_kind_arity_chirho`, `constraint_used_as_type_chirho`, `unsaturated_tycon_in_star_position_chirho` | +18 reject | low |
-| 4 | **Validity-walker extensions** in `validity_chirho.rs`: illegal-polytype positions (class method sigs, data/GADT ctor fields, instance heads — walker currently only does TypeSig+TypeAlias, `validity_chirho.rs:106-129`); unlifted newtype without `UnliftedNewtypes`; data/newtype return kind `Constraint` | `map-reject-skolem-ambiguity-chirho.json` / `validity_walker_coverage_91510_chirho` + `map-reject-scope-holes-kinds-chirho.json` / `unlifted_newtype_without_extension_chirho`, `data_decl_constraint_return_kind_chirho` | +18 reject | low |
+| ~~4~~ | **LANDED 2026-08-02 — `8df50557` + artifacts `ef9d8d8d`. Actual: +8 reject (172→180), not the estimated +18.** Walker now covers class method sigs, positional+GADT ctor types, and the constraints inside any `ctx =>`; plus an unlifted-newtype guard. **Why the estimate ran high — reachability, not effort:** instance heads (`lower_instance_head_types_chirho` drops the `forall` token), class/instance contexts (`parse_simple_constraint_segment_chirho` returns `None` for any segment with `forall`/`=>`), and data families (dropped wholesale at `lower_chirho.rs:862`) are all UNREACHABLE through our own lowering. Record ctor fields were excluded and `T7019` dropped on purpose — see the two filed bug docs. Sub-item "return kind `Constraint`" DEFERRED, refuted, filed. | as before | ~~+18~~ **+8 actual** | landed |
 | 5 | **Signature skolemization** — the typing crate has NO rigid/skolem concept (`grep rigid\|skolem` = zero hits). `TyChirho::ForallVarChirho` already has exact skolem unify semantics (`unify_chirho.rs:208-212`); use it to instantiate signature foralls in the Phase-3c subsume check (`infer_chirho.rs:1637-1658`, `:6280`) instead of fresh metavars. Biggest single lane; run gates religiously. | `map-reject-skolem-ambiguity-chirho.json` / `sig_skolem_concretization_25897_chirho` | +16 reject | medium |
 | 6 | **Bounded module search (robustness)** — `haskelujah check` on any file outside the repo stack-overflows (symlink cycle `/tmp`→`/private/tmp`) or hangs minutes (`$HOME` scan). Triple-confirmed independently by three mappers. Depth limit + visited-inode cycle guard in the sibling-module search. No axis movement; drop-in credibility. | first-hand evidence, this doc | crash fix | low |
 | 7+ | Later lanes: instance-decl obligations (+9), pattern-unify swallow sites (+8), signature ambiguity check (+7), skolem could-not-deduce (+8), insoluble fundeps (+4), existential escape (+4), levity whitelist (+5), type-level not-in-scope (+6), unbound constructors (+2), monad-comprehension `then/by` shapes (+3) | respective JSONs | ~+56 reject | low-med |
@@ -67,6 +67,27 @@ hypothetical — every one was caught by the gates, not by review.
    before you weaken anything — that check saved a genuine win here, since the
    `Num ()`-from-`() =>` pattern-synonym defect turned out to be pre-existing
    (`spec-chirho/bug-patsyn-empty-context-num-chirho.md`).
+
+## Traps found while landing lane 4 (read before writing ANY corpus gate)
+
+7. **`grep` is not `grep` here — and it silently inflates the accept axis.** In these sessions
+   the interactive `grep` is shadowed by a ugrep wrapper function whose `-q` exit status is
+   **content-dependent**: it returns "no match" on compiler output that demonstrably contains
+   `error[E0200]`. Reproduce: run the binary on `should_compile/tc124.hs`, pipe to
+   `grep -q "error\[E"` (says no match) versus `command grep -q` (matches). A gate run through
+   the wrapper UNDER-REPORTS failures, i.e. reports a *better* compatibility number than the
+   compiler earns. **Use pure-shell matching** — `case "$out" in *"error[E"*|*panic*)` — as in
+   the scratch runner `gate_run_chirho.sh`. This was caught mid-lane; committed baselines
+   reproduce exactly under the correct detector, so nothing published was wrong.
+8. **Estimates in the lane table assume reachability. Check it first.** Lane 4 was estimated
+   +18 and delivered +8, entirely because three of its named sites cannot be reached through
+   our own lowering. Before costing a lane, dump the AST our parser actually produces for one
+   target file; do not assume the source shape survives to the checker.
+9. **A designer agent's "zero accept-axis risk" is not evidence.** In lane 4 the designer
+   scanned all 938 files and reported zero risk; the skeptic then found six currently-passing
+   files the guard would reject, because the trigger was manufactured by our lowering *after*
+   the scan looked at the source. Always pair a design pass with an adversarial pass that
+   re-derives the trigger from the CODE, and probe with the binary.
 
 ## Hard gates for every lane (non-negotiable)
 
