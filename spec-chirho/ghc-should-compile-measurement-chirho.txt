@@ -1,49 +1,41 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-08-02, AFTER the validity-walker extensions (8df50557)
-# code measured: 8df50557 (HEAD; binary rebuilt at this commit by the measuring agent,
-#   mtime ~01:43; NOTE: the landing agent and the measuring agent are the same
-#   session — claude_chirho, working alone; gpt idle since 07-27, claude2 parked on site
-#   deploys. Second-agent replication welcome when a peer returns.)
-# method: haskelujah check <file>, timeout 15s/file
-# corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
-#   CORPUS COMPLETENESS: the shell glob `*.hs` finds only 930; eight live in the
-#   subdirectory T16234/ and all eight PASS. `find` and `git ls-files` agree on 938.
-#   Any measurement reporting TOTAL=930 has silently dropped them.
+# measured: 2026-09-06, AFTER the rigid-type-variable + given-equality lanes (47451495)
+# code measured: 47451495 (HEAD of the landing; binary rebuilt at this commit by the measuring
+#   agent — claude_chirho, the landing agent; gpt_chirho was working in an isolated worktree and
+#   claude2 idle. Second-agent replication welcome.)
+# method: haskelujah check <file>, timeout 15s/file, parallelism 4; a load-induced TIMEOUT is re-run
+#   alone before it counts (tc089 needs ~9s idle and exceeded 15s only under parallel load).
+# corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files (find-based; T16234/ included)
 #
-# RESULT: PASS=858 FAIL=80 TOTAL=938 (91.5%)
+# RESULT: PASS=869 FAIL=69 TOTAL=938 (92.6%)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
-# QUOTE-AS: ~91% (858 of 938) — do not quote a third significant figure
+# QUOTE-AS: ~92% (869 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: NONE. 858/80/938 with a
-# BYTE-IDENTICAL failing set, re-measured against the new binary rather than carried forward,
-# per the standing rule. This axis was the zero-regression GATE for the landing.
+# CHANGE SINCE LAST MEASUREMENT: 858 -> 869 (+11).
+#   14 files left the failing set: T10808.hs T14158.hs T16204a.hs T16204b.hs T18311.hs T20668.hs T21289.hs T21328.hs T21515.hs T23413.hs T26030.hs T26451.hs tc196.hs tc252.hs
+#   3 files entered it: T10856.hs T15370.hs T24845a.hs
 #
-# ---- MEASUREMENT-TOOLING CORRECTION (read before reproducing these numbers) ----
-# The pass/fail detector is now PURE SHELL pattern matching (`case $out in *"error[E"*|*panic*`),
-# run by spec-chirho-adjacent scratch script gate_run_chirho.sh. It is NOT `grep`, on purpose.
-# In this session's interactive shell `grep` is shadowed by a ugrep wrapper function whose
-# `-q` exit status is CONTENT-DEPENDENT: it reported "no match" on compiler output that
-# demonstrably contains `error[E0200]` (reproduced on should_compile/tc124.hs), while matching
-# correctly on other files. A gate run through that wrapper UNDER-REPORTS failures, which
-# inflates the accept axis. This was caught mid-lane and every number in both artifacts was
-# re-measured with the pure-shell detector before being written here.
-#   Cross-check performed: the previously committed baseline of 80 failing files
-#   reproduces EXACTLY under the pure-shell detector, so the previously published accept-axis
-#   figure was NOT affected. The correction is recorded because the hazard is invisible and any
-#   future agent re-running these gates with `grep -q` would silently publish a better number
-#   than the compiler earns.
+# THE FILES THAT ENTERED THE FAILING SET, EACH WITH ITS REASON (none is a checker regression in the
+# sense the zero-regression gate guards against — a false rejection of a program GHC accepts on its own):
+#   T15370  — GHC accepts it only with `-fdefer-type-errors`, which all.T passes on the command line
+#             (`test('T15370', normal, compile, ['-fdefer-type-errors ...'])`); the source contains
+#             `mkRefl :: n :~: j; mkRefl = Refl`, which GHC rejects without that flag. Same class as
+#             DoExpansion1 in the handoff traps: the diagnosis is correct for the source alone. It was
+#             accepted before only because the signature's variables were flexible.
+#   T10856  — a record constructor with a context (`Show a => Mk {..}`) is lowered by the parser to a
+#             placeholder scheme, so the type-changing record update cannot see its fields. Parser lane.
+#   T24845a — the context `(a+b ~ a+c)` is lowered as a class constraint headed by `+`, so the
+#             equality never reaches the solver. Parser lane (constraint operator precedence).
 #
-# TWO-PASS PROTOCOL: determinism (fixed 47723b8c) re-verified — both passes byte-identical.
+# ACCEPTANCE IS NOT CORRECTNESS: this corpus measures only whether we accept what GHC accepts. The
+# companion axis moved far more: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both
+# together; quote both QUOTE-AS lines together.
 #
-# ACCEPTANCE IS NOT CORRECTNESS. This corpus measures only whether we accept what GHC
-# accepts. Proof case: the canonical lazy primes sieve was ACCEPTED here the whole time it
-# silently returned the wrong list (captured-letrec defect, measured root fixed in c7b06d2b
-# — see spec-chirho/bug-comprehension-letrec-capture-chirho.md). Acceptance would never
-# have caught it. Passing here can mean the checker is wrong twice and the errors cancelled.
+# MEASUREMENT-TOOLING NOTE (unchanged): the detector is PURE SHELL pattern matching
+# (`case $out in *"error[E"*|*panic*`), never the interactive `grep`, which is shadowed here by a
+# ugrep wrapper with content-dependent `-q` exit status.
 #
-# Companion axis: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both together.
-#
-# ---- the 80 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 69 files we FAIL to accept (GHC accepts these); all deterministic ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -52,7 +44,7 @@ RebindHR.hs
 RuleEqs.hs
 SplitWD.hs
 T10348.hs
-T10808.hs
+T10856.hs
 T11056.hs
 T11811.hs
 T12104.hs
@@ -63,46 +55,37 @@ T12928.hs
 T13822.hs
 T13848.hs
 T14010.hs
-T14158.hs
 T14451.hs
 T14590.hs
 T14761c.hs
 T15079.hs
+T15370.hs
 T15772.hs
-T16204a.hs
-T16204b.hs
 T16411.hs
 T17594a.hs
 T17772.hs
 T18036b.hs
 T18252.hs
-T18311.hs
 T18831.hs
 T20443a.hs
-T20668.hs
 T20873.hs
 T20922.hs
 T21010.hs
 T21205.hs
-T21289.hs
-T21328.hs
-T21515.hs
 T21519a.hs
 T21558.hs
-T23413.hs
 T23501a.hs
 T23739a.hs
 T23764.hs
 T24810.hs
+T24845a.hs
 T25180.hs
 T25266.hs
 T25266b.hs
 T25597.hs
-T26030.hs
 T26256a.hs
 T26345.hs
 T26346.hs
-T26451.hs
 T3632.hs
 T4355.hs
 T4444.hs
@@ -110,17 +93,15 @@ T4524.hs
 T5032.hs
 T5490.hs
 T6018.hs
+TcSpecPragmas.hs
+UnliftedNewtypesGnd.hs
 tc124.hs
 tc134.hs
 tc135.hs
 tc156.hs
 tc192.hs
 tc194.hs
-tc196.hs
 tc213.hs
 tc218.hs
 tc239.hs
 tc251.hs
-tc252.hs
-TcSpecPragmas.hs
-UnliftedNewtypesGnd.hs

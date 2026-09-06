@@ -1,108 +1,56 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-08-02, AFTER the validity-walker extensions (8df50557)
-# code measured: 8df50557 (HEAD; binary rebuilt at this commit by the measuring agent,
-#   mtime ~01:43; landing agent and measuring agent are the same session — see the
-#   companion artifact note)
-# method: haskelujah check <file>, timeout 15s/file
-# corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
-#   CORPUS COMPLETENESS: `find -name '*.hs'` at any depth == 767 == shell glob, i.e. this
-#   directory has NO subdirectories and a non-recursive glob misses nothing.
+# measured: 2026-09-06, AFTER the rigid-type-variable + given-equality lanes (47451495)
+# code measured: 47451495 (HEAD of the landing; binary rebuilt at this commit by the measuring
+#   agent, who is also the landing agent — see the companion artifact note)
+# method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run alone
+# corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=180 WRONGLY-ACCEPTED=587 TOTAL=767 (23.4% reject rate)
-# STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets (the
-#   historical nondeterminism root cause was fixed in 47723b8c; re-verified here, not trusted)
-# QUOTE-AS: ~23% (180 of 767) — do not quote a third significant figure
+# RESULT: CORRECTLY-REJECTED=206 WRONGLY-ACCEPTED=561 TOTAL=767 (26.9% reject rate)
+# STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets
+# QUOTE-AS: ~26% (206 of 767) — do not quote a third significant figure
 #
-# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis crosses a rounding boundary with this
-# landing. The previous QUOTE-AS was ~22% (172 of 767); it is now ~23% (180 of 767).
+# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis crosses rounding boundaries with this landing.
+# The previous QUOTE-AS was ~23% (180 of 767); it is now ~26% (206 of 767).
 # Both axes must be re-quoted together, verbatim, from these two files.
 #
-# CHANGE SINCE LAST MEASUREMENT: 172 -> 180 (+8). NOTHING left the rejected set.
-# Same-day preceding steps on this axis: 157 -> 169 (+12, ground no-instance constraints,
-# 9fece4fa) and 169 -> 172 (+3, instance-head kind checking, f14f8d60).
+# CHANGE SINCE LAST MEASUREMENT: 180 -> 206 (+26).
+#   28 files newly rejected: FD1.hs FrozenErrorTests.hs T11347.hs T12694.hs T14325.hs T15361.hs T16074.hs T17563.hs T18398.hs T1899.hs T23162a.hs T23162d.hs T24064.hs T24868.hs T25950.hs T2714.hs T7453.hs T7748a.hs T8450.hs T9612.hs TyAppPat_Nonmatching.hs tcfail034.hs tcfail058.hs tcfail063.hs tcfail078.hs tcfail153.hs tcfail175.hs tcfail201.hs
+#   2 files no longer rejected: T16646Fail2.hs T25679.hs
 #
-# The +8 is the VALIDITY-WALKER EXTENSIONS (8df50557). The syntactic validity pass
-# (validity_chirho.rs) previously walked only top-level type signatures and type-synonym
-# right-hand sides. It now also walks class method signatures, positional and GADT constructor
-# types, and the CONSTRAINTS inside any `ctx =>` it passes through — the last of which is where
-# quantified constraints and impredicative class arguments become visible. A separate check
-# rejects a `newtype` over an unlifted primitive when UnliftedNewtypes is off.
+# WHAT LANDED (one mechanism, both axes): the checker now has RIGID TYPE VARIABLES. A signature's
+# variables are skolemized while the binding's body is checked (`f :: Int -> a; f x y = x + y` is
+# an error, not `a := Int -> Int`), GADT refinement is done as local given equalities scoped to the
+# pattern instead of per-equation freshening, wanteds over a rigid variable that no instance and no
+# given can ever satisfy are "could not deduce" errors, and given equalities are rewrite rules
+# (`F a ~ Bool =>`) while stuck family equalities are deferred until their variable is known.
+# Design and invariants: spec-chirho/workflows-chirho/language-features-chirho/
+# rigid-type-variables-chirho.md and stuck-family-equalities-chirho.md.
 #
-# THE 8 NEW REJECTIONS, VERIFIED BY REASON (this axis's counting rule does NOT do this —
-# see "Counting rule" below — so it was done by hand against each file's .stderr):
-#   7 match GHC's error essentially exactly, same construct and same reason:
-#     T9196 ("Illegal polymorphic type: forall a. Eq a", GHC-91510 — byte-identical text),
-#     tcfail196 and tcfail195 ("Illegal polymorphic type: forall a. a", GHC-91510),
-#     T12083b ("Illegal qualified type: Eq a => r", GHC-91510),
-#     tcfail184 ("Illegal polymorphic type: forall a. Ord a => [a] -> [a]", GHC-91510),
-#     UnliftedNewtypesNotEnabled and tcfail079 ("Newtype has non-* return kind", GHC-55233).
-#   1 reaches the right verdict at a DIFFERENT PHASE than GHC, same root cause:
-#     tcfail183 — GHC rejects it in the PARSER (GHC-25955 "Illegal symbol 'forall' in type")
-#     because the module enables neither ExplicitForAll nor RankNTypes; we accept the token and
-#     reject in the validity pass instead ("Illegal polymorphic type"). Same defect in the
-#     program, same licensing extension missing, different phase. Recorded as a genuine but
-#     not-exact match rather than counted as an exact one.
+# THE REJECTIONS LOST, VERIFIED BY REASON: T16646Fail2.hs T25679.hs. Both were rejected
+# before for a reason unrelated to GHC's (an accidental mismatch between a visible type argument and a
+# placeholder-typed imported name — `getField @"bar"`, `reflect @s` — rather than GHC's missing
+# instance). A placeholder-typed name now ignores its type arguments, as an unknown type should, so
+# the accidental rejection is gone. The counting rule never verified reasons; these two were never
+# correct rejections. They are recorded here so the number is understood, not hidden.
 #
-# WHAT THE GATE COST, AND WHY THE UNLOCK IS SMALLER THAN THE MAP PREDICTED (this is the
-# honest accounting; the ranked handoff estimated +18 for this lane):
-#   * RECORD constructor fields are NOT walked, though GHC checks them. Our parser lowers a
-#     record field through a flat token path that splits on the top-level `=>` BEFORE lifting a
-#     leading `forall`, so `fld :: forall a. C a => t` reaches the checker as a QUANTIFIED
-#     CONSTRAINT THE SOURCE NEVER WROTE. Judging that shape rejects six should_compile files
-#     GHC accepts (Vta1, LocalGivenEqs, T3018, T11339, T11339b, T11339c). The site is skipped
-#     until the parser is fixed; the root cause is filed at
-#     spec-chirho/bug-record-field-forall-lowering-chirho.md.
-#   * INSTANCE HEADS are not walked: lower_instance_head_types_chirho drops the `forall` token
-#     entirely, so `instance Generic (forall a. a)` never contains a forall to find. T17355 is
-#     therefore unreachable, not missed.
-#   * CLASS/INSTANCE CONTEXTS are not walked: parse_simple_constraint_segment_chirho returns
-#     None for any segment holding a `forall` or `=>`. T7019a unreachable for the same reason.
-#   * T7019 was DROPPED as an unlock on purpose. It would have been rejected through the same
-#     record-field lowering artifact, and for the WRONG diagnostic: GHC's actual error is on a
-#     Constraint-kinded type synonym, which a purely syntactic pass cannot see. One reject-axis
-#     point bought with six accept-axis regressions and a wrong reason is not a win.
-#   * The DATA/NEWTYPE RETURN-KIND `Constraint` check (GHC-55233, est. +4) was designed, refuted
-#     and DEFERRED rather than landed: `data Foo (_ :: Constraint)`, which GHC ACCEPTS, lowers
-#     to a DataDeclChirho identical in every field the guard can read to T14048a, which GHC
-#     rejects — they differ only in span. No guard-side narrowing exists; the binder's kind
-#     annotation is being mis-assigned to the declaration by the parser. Filed at
-#     spec-chirho/bug-data-binder-kind-misassigned-chirho.md. +1 file was not worth landing a
-#     guard on a foundation known to be wrong.
+# Counting rule (unchanged): a file counts as REJECTED if any error[EXXXX] or panic was emitted.
+# That is generous — it does not verify we rejected for the RIGHT reason — so 206 is an
+# UPPER bound on true correct rejections. The 20-program probe set the lanes were built against
+# (rigid mismatches, could-not-deduce, GADT evaluators by equations and by case, scoped type
+# variables, givens, existentials, rank-N, polymorphic recursion, family givens) was checked by
+# reason; the corpus wins were not individually.
 #
-# METHOD NOTE — the detector was corrected mid-lane; see the companion artifact's
-# "MEASUREMENT-TOOLING CORRECTION" block. Both axes here were measured with the pure-shell
-# detector, twice, and the previously committed baselines reproduce exactly under it.
+# MEASUREMENT-NOISE FINDING (still NOT applied — needs L.J.'s sign-off before the denominator
+# changes): ~60 wrongly-accepted files have no .stderr; ~31 are auxiliary modules of multi-module
+# tests and at least 8 carry in-file comments that modern GHC now ACCEPTS them. Reclassifying is a
+# methodology change to be made here, documented, with sign-off.
 #
-# MEASUREMENT-NOISE FINDING (NOT applied — still needs L.J.'s sign-off before the denominator
-# changes): of the wrongly-accepted files, ~60 have no .stderr, and sampling shows most are
-# not genuine misses — ~31 are AUXILIARY modules of multi-module tests whose error belongs
-# to the main file (T15850_Lib, T20289_A, T6018Afail...), and at least 8 carry in-file
-# comments saying modern GHC now ACCEPTS them (AmbigFDs "now succeeds", tcfail071,
-# tcfail124, T7545, FDsFromGivens, tcfail165, tcfail105, T15438). Reclassifying them is a
-# methodology change to be made here, documented, with sign-off — not silently.
+# Rounding rule: round DOWN. A compatibility claim must not sit above its own measured value.
 #
-# Rounding rule: round DOWN. 23.4% -> ~23%, never 24%. A compatibility claim must not sit
-# above its own measured value.
+# READ THIS BEFORE QUOTING THE COMPATIBILITY NUMBER: should_compile measures whether we ACCEPT what
+# GHC accepts; this measures whether we REJECT what GHC rejects. A drop-in replacement must do BOTH.
 #
-# READ THIS BEFORE QUOTING THE COMPATIBILITY NUMBER.
-# should_compile measures whether we ACCEPT what GHC accepts.
-# This measures whether we REJECT what GHC rejects. A drop-in GHC replacement must do BOTH.
-# Quoting only should_compile overstates compatibility, because a checker that accepted
-# everything would score 100% on that axis alone.
-#
-# Counting rule: a file counts as REJECTED if any error[EXXXX] or panic was emitted. That
-# is generous — it does not verify we rejected for the RIGHT reason, so 180 is an UPPER
-# bound on true correct rejections. (The 8 files added by this landing WERE checked by reason;
-# so were the 12 added by 9fece4fa. The rest have not been.)
-#
-# Sanity checks previously run and still applicable:
-#  - deliberately malformed source  -> error emitted (parse failures are not silently accepted)
-#  - f :: Int -> Bool ; f x = x     -> correctly rejected
-#  - sampled 4 wrongly-accepted files by hand (T2688 fundep violation, T8450 rigid skolem
-#    vs Bool, SCLoop superclass loop, T15796 newtype with class context): all 4 are genuine
-#    GHC type errors that we accept silently. The gap is real, not a harness artifact.
-#
-# ---- the 587 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 561 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -130,24 +78,16 @@ ExplicitSpecificity5.hs
 ExplicitSpecificity6.hs
 ExplicitSpecificity7.hs
 ExplicitSpecificity9.hs
-FailDueToGivenOverlapping.hs
-fd-loop.hs
-FD1.hs
 FD2.hs
 FD3.hs
 FDsFromGivens.hs
 FDsFromGivens2.hs
-FrozenErrorTests.hs
+FailDueToGivenOverlapping.hs
 FunDepOrigin1b.hs
 GivenForallLoop.hs
 LazyFieldsDisabled.hs
 LevPolyBounded.hs
 LongWayOverlapping.hs
-mc19.hs
-mc20.hs
-mc23.hs
-mc24.hs
-mc25.hs
 MissingDefaultMethodBinding.hs
 MissingExportList03.hs
 MultiAssocDefaults.hs
@@ -173,7 +113,6 @@ T10836.hs
 T10971b.hs
 T10971c.hs
 T10971d.hs
-T11347.hs
 T11355.hs
 T11356.hs
 T11464.hs
@@ -205,7 +144,6 @@ T12406.hs
 T12430.hs
 T12563.hs
 T12589.hs
-T12694.hs
 T12729.hs
 T12837.hs
 T12918a.hs
@@ -234,7 +172,6 @@ T14048a.hs
 T14048b.hs
 T14048c.hs
 T14055.hs
-T14325.hs
 T14350.hs
 T14390.hs
 T14605.hs
@@ -244,7 +181,6 @@ T14884.hs
 T14904a.hs
 T14904b.hs
 T15067.hs
-T15361.hs
 T15438.hs
 T15474.hs
 T15515.hs
@@ -260,8 +196,8 @@ T15799.hs
 T15801.hs
 T15807.hs
 T15816.hs
-T15850_Lib.hs
 T15850.hs
+T15850_Lib.hs
 T15862.hs
 T15883.hs
 T15883b.hs
@@ -274,7 +210,6 @@ T16059a.hs
 T16059b.hs
 T16059d.hs
 T16059e.hs
-T16074.hs
 T16204c.hs
 T16255.hs
 T16275A.hs
@@ -291,6 +226,7 @@ T16512b.hs
 T16517.hs
 T16627.hs
 T16646Fail.hs
+T16646Fail2.hs
 T16821.hs
 T16829a.hs
 T16829b.hs
@@ -305,7 +241,6 @@ T17284.hs
 T17301.hs
 T17355.hs
 T17562.hs
-T17563.hs
 T17566b.hs
 T17566c.hs
 T17567.hs
@@ -320,7 +255,6 @@ T18127a.hs
 T18357.hs
 T18357a.hs
 T18357b.hs
-T18398.hs
 T18406.hs
 T18455.hs
 T18640a.hs
@@ -336,7 +270,6 @@ T18869.hs
 T18891a.hs
 T18939_Fail.hs
 T1897a.hs
-T1899.hs
 T19109.hs
 T19142.hs
 T19187.hs
@@ -356,13 +289,13 @@ T20122.hs
 T20189.hs
 T20241b.hs
 T20260.hs
-T20289_A.hs
 T20289.hs
+T20289_A.hs
 T20542.hs
-T20588_aux.hs
 T20588.hs
-T20588c_aux.hs
+T20588_aux.hs
 T20588c.hs
+T20588c_aux.hs
 T20666.hs
 T20666a.hs
 T20666b.hs
@@ -380,8 +313,8 @@ T22141a.hs
 T22141b.hs
 T22141c.hs
 T22141d.hs
-T22141e_Aux.hs
 T22141e.hs
+T22141e_Aux.hs
 T2247.hs
 T22478c.hs
 T22560_fail_a.hs
@@ -397,33 +330,28 @@ T22912.hs
 T22924a.hs
 T22924b.hs
 T2307.hs
-T23162a.hs
-T23162d.hs
 T23427.hs
 T23514a.hs
 T2354.hs
 T23731.hs
-T23731b_aux.hs
 T23731b.hs
+T23731b_aux.hs
 T23734.hs
 T23739c.hs
 T23776.hs
 T23778.hs
-T24064.hs
 T24298.hs
 T24470a.hs
 T24553.hs
-T24868.hs
 T25325.hs
-T25949_aux.hs
+T25679.hs
 T25949.hs
-T25950.hs
+T25949_aux.hs
 T26004.hs
 T26137.hs
 T26255c.hs
 T26318.hs
 T2688.hs
-T2714.hs
 T2806.hs
 T2846b.hs
 T3102.hs
@@ -474,10 +402,8 @@ T7279.hs
 T7368.hs
 T7368a.hs
 T7437.hs
-T7453.hs
 T7525.hs
 T7545.hs
-T7748a.hs
 T7778.hs
 T7809.hs
 T7851.hs
@@ -491,7 +417,6 @@ T8262.hs
 T8306.hs
 T8392a.hs
 T8428.hs
-T8450.hs
 T8514.hs
 T8570.hs
 T8570a.hs
@@ -502,16 +427,52 @@ T9201.hs
 T9318.hs
 T9415.hs
 T9497d.hs
-T9612.hs
 T9634.hs
 T9739.hs
 T9858a.hs
 T9858b.hs
-tc168.hs
-tc168b.hs
 TcCoercibleFail.hs
 TcCoercibleFail2.hs
 TcCoercibleFail3.hs
+TcNoNullaryTC.hs
+TcNullaryTCFail.hs
+TcStaticPointersFail02.hs
+TcStaticPointersFail03.hs
+Tcfail186_Help.hs
+TyAppPat_ExistentialEscape.hs
+TyAppPat_MisplacedApplication.hs
+TyAppPat_NonlinearMultiAppPat.hs
+TyAppPat_NonlinearMultiPat.hs
+TyAppPat_NonlinearSinglePat.hs
+TyAppPat_PatternBinding.hs
+TyAppPat_PatternBindingExistential.hs
+TyAppPat_ScopedTyVarConflict.hs
+TyAppPat_TooMany.hs
+TyfamsDisabled.hs
+UnliftedNewtypesConstraintFamily.hs
+UnliftedNewtypesFail.hs
+UnliftedNewtypesFamilyKindFail1.hs
+UnliftedNewtypesFamilyKindFail2.hs
+UnliftedNewtypesInfinite.hs
+UnliftedNewtypesInstanceFail.hs
+UnliftedNewtypesMismatchedKind.hs
+UnliftedNewtypesMismatchedKindRecord.hs
+UnliftedNewtypesMultiFieldGadt.hs
+UnliftedNewtypesOverlap.hs
+VisFlag1.hs
+VisFlag1_ql.hs
+VisFlag2.hs
+VisFlag3.hs
+VisFlag4.hs
+VisFlag5.hs
+fd-loop.hs
+mc19.hs
+mc20.hs
+mc23.hs
+mc24.hs
+mc25.hs
+tc168.hs
+tc168b.hs
 tcfail002.hs
 tcfail004.hs
 tcfail005.hs
@@ -529,7 +490,6 @@ tcfail023.hs
 tcfail027.hs
 tcfail030.hs
 tcfail032.hs
-tcfail034.hs
 tcfail035.hs
 tcfail036.hs
 tcfail037.hs
@@ -548,10 +508,8 @@ tcfail052.hs
 tcfail053.hs
 tcfail054.hs
 tcfail056.hs
-tcfail058.hs
 tcfail061.hs
 tcfail062.hs
-tcfail063.hs
 tcfail065.hs
 tcfail071.hs
 tcfail072.hs
@@ -559,7 +517,6 @@ tcfail073.hs
 tcfail075.hs
 tcfail076.hs
 tcfail077.hs
-tcfail078.hs
 tcfail080.hs
 tcfail084.hs
 tcfail085.hs
@@ -609,7 +566,6 @@ tcfail149.hs
 tcfail150.hs
 tcfail151.hs
 tcfail152.hs
-tcfail153.hs
 tcfail154.hs
 tcfail155.hs
 tcfail156.hs
@@ -626,12 +582,10 @@ tcfail171.hs
 tcfail172.hs
 tcfail173.hs
 tcfail174.hs
-tcfail175.hs
 tcfail176.hs
 tcfail179.hs
 tcfail181.hs
 tcfail182.hs
-Tcfail186_Help.hs
 tcfail186.hs
 tcfail187.hs
 tcfail188.hs
@@ -642,7 +596,6 @@ tcfail193.hs
 tcfail198.hs
 tcfail199.hs
 tcfail200.hs
-tcfail201.hs
 tcfail202.hs
 tcfail203.hs
 tcfail203a.hs
@@ -659,34 +612,3 @@ tcfail217.hs
 tcfail218.hs
 tcfail223.hs
 tcfail224.hs
-TcNoNullaryTC.hs
-TcNullaryTCFail.hs
-TcStaticPointersFail02.hs
-TcStaticPointersFail03.hs
-TyAppPat_ExistentialEscape.hs
-TyAppPat_MisplacedApplication.hs
-TyAppPat_NonlinearMultiAppPat.hs
-TyAppPat_NonlinearMultiPat.hs
-TyAppPat_NonlinearSinglePat.hs
-TyAppPat_Nonmatching.hs
-TyAppPat_PatternBinding.hs
-TyAppPat_PatternBindingExistential.hs
-TyAppPat_ScopedTyVarConflict.hs
-TyAppPat_TooMany.hs
-TyfamsDisabled.hs
-UnliftedNewtypesConstraintFamily.hs
-UnliftedNewtypesFail.hs
-UnliftedNewtypesFamilyKindFail1.hs
-UnliftedNewtypesFamilyKindFail2.hs
-UnliftedNewtypesInfinite.hs
-UnliftedNewtypesInstanceFail.hs
-UnliftedNewtypesMismatchedKind.hs
-UnliftedNewtypesMismatchedKindRecord.hs
-UnliftedNewtypesMultiFieldGadt.hs
-UnliftedNewtypesOverlap.hs
-VisFlag1_ql.hs
-VisFlag1.hs
-VisFlag2.hs
-VisFlag3.hs
-VisFlag4.hs
-VisFlag5.hs
