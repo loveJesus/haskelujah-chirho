@@ -23,7 +23,7 @@ Unlock estimates are conservative and OVERLAP across lanes (same file can sit in
 | 2 | **Ground no-instance constraints** — the core solver leak, three stacked hatches: vacuous `all()` in `generalize_with_io_defaulting_chirho` (`infer_chirho.rs:1144-1159`), var-leniency in `entails_depth_chirho` (`class_chirho.rs:365-380`), zero-instance skip (`infer_chirho.rs:6664-6672`). Add `is_certainly_unsolvable_chirho` with the 5-condition guard; hook BOTH generalization and phase-3. Include the Coercible-ground special case (same skip site). | `map-reject-no-instance-chirho.json` / `ground_no_instance_swallowed_chirho` + `map-reject-mismatch-kind-chirho.json` / `coercible_ground_unsolved_chirho` | +20-23 reject | low |
 | 3 | **Kind-position checks** in `kind_chirho.rs`: instance-head arity (no `InstanceDeclChirho` arm exists), constraint-used-as-type (class app returns `ConstraintChirho`), unsaturated tycon in `*` position (tuple-element shared-fresh-kind bug ~1295, assoc-type default RHS never checked, local where/let sigs never walked) | `map-reject-mismatch-kind-chirho.json` / `instance_head_kind_arity_chirho`, `constraint_used_as_type_chirho`, `unsaturated_tycon_in_star_position_chirho` | +18 reject | low |
 | ~~4~~ | **LANDED 2026-08-02 — `8df50557` + artifacts `ef9d8d8d`. Actual: +8 reject (172→180), not the estimated +18.** Walker now covers class method sigs, positional+GADT ctor types, and the constraints inside any `ctx =>`; plus an unlifted-newtype guard. **Why the estimate ran high — reachability, not effort:** instance heads (`lower_instance_head_types_chirho` drops the `forall` token), class/instance contexts (`parse_simple_constraint_segment_chirho` returns `None` for any segment with `forall`/`=>`), and data families (dropped wholesale at `lower_chirho.rs:862`) are all UNREACHABLE through our own lowering. Record ctor fields were excluded and `T7019` dropped on purpose — see the two filed bug docs. Sub-item "return kind `Constraint`" DEFERRED, refuted, filed. | as before | ~~+18~~ **+8 actual** | landed |
-| 5 | **Signature skolemization** — the typing crate has NO rigid/skolem concept (`grep rigid\|skolem` = zero hits). `TyChirho::ForallVarChirho` already has exact skolem unify semantics (`unify_chirho.rs:208-212`); use it to instantiate signature foralls in the Phase-3c subsume check (`infer_chirho.rs:1637-1658`, `:6280`) instead of fresh metavars. Biggest single lane; run gates religiously. | `map-reject-skolem-ambiguity-chirho.json` / `sig_skolem_concretization_25897_chirho` | +16 reject | medium |
+| ~~5~~ | **LANDED 2026-09-03 (claude_chirho) — rigid type variables, together with the given-equality half of lane A. Actual: +26 reject (180→206; 28 new rejections, 2 accidental ones lost and documented) and +10 accept (858→868; 14 fixed, 4 entered — 2 parser, 1 harness flag, see the artifact).** Not a Phase-3c-only guard as briefed: the signature is skolemized ONCE per binding (`skolemize_scheme_parts_chirho`) and GADT refinement is re-done as env-scoped given equalities applied in normalization, so the same mechanism serves both axes. Design: `spec-chirho/workflows-chirho/language-features-chirho/rigid-type-variables-chirho.md` and `stuck-family-equalities-chirho.md`; code in `crates/haskelujah-typing-chirho/src/skolem_chirho.rs` and `src/infer_chirho/{rigid,equalities,records}_chirho.rs`. Six gate iterations; every regression fixed at its root (list in the tasklist `26-09-03_18-00-…`). | as before + `map-accept-axis-chirho.json` / `stuck_family_equality_not_deferred_chirho` | ~~+16~~ **+26 reject, +10 accept actual** | landed |
 | ~~6~~ | **LANDED 2026-08-02 — `b6ae5a89`.** Bounded the walk: symlinks never followed (free cycle guard — `read_dir` already knows the entry type), directory budget 2048, depth 64, file budget 16384, one-shot stderr warning on truncation. `>60s` (unbounded, timed out) → **1.13s**. Both axes byte-identical afterwards; all 8 `T16234/` tests pass. **The brief's premise was partly wrong and is corrected here: the STACK OVERFLOW DOES NOT REPRODUCE** — a symlink cycle self-limits via the kernel's `ELOOP` at ~32 levels. The real defect is unbounded **scope**, and it only reproduces when the checked file's *parent* has a large subtree; a file in a leaf directory is fine, which is why casual spot-probes look clean. Reproduce with a file placed directly in `/private/tmp` (80418 dirs, 4274 `.hs`). | first-hand evidence, this doc | crash fix | landed |
 | 7+ | Later lanes: instance-decl obligations (+9), pattern-unify swallow sites (+8), signature ambiguity check (+7), skolem could-not-deduce (+8), insoluble fundeps (+4), existential escape (+4), levity whitelist (+5), type-level not-in-scope (+6), unbound constructors (+2), monad-comprehension `then/by` shapes (+3) | respective JSONs | ~+56 reject | low-med |
 | A | Accept axis (80 fails, full bucket map in `map-accept-axis-chirho.json`): promoted/named kinds instead of `* `collapse (+14, medium), stuck-family equality deferral + given-equality rewriting (+12, medium), pattern-binding SCC ordering (+4, low), wired-in names heqT/charSing/Prelude.Experimental (+3, low), small parser items (LHS result sigs, TypeAbstractions binders) | `map-accept-axis-chirho.json` | +20-30 accept | varies |
@@ -88,6 +88,51 @@ hypothetical — every one was caught by the gates, not by review.
    files the guard would reject, because the trigger was manufactured by our lowering *after*
    the scan looked at the source. Always pair a design pass with an adversarial pass that
    re-derives the trigger from the CODE, and probe with the binary.
+
+## Traps found while landing lane 5 (read before touching the solver)
+
+10. **Making variables rigid exposes every place the checker leaned on flexibility.** The first
+    rigid build lost 32 accept-axis files. None was a false verdict of the rigid rule itself; all
+    were latent defects the metavars had been absorbing: scoped type variables were never linked to
+    the enclosing signature (annotations, `@a`, inner signatures each got a fresh variable), class
+    method schemes quantified the class variables only by accident of hashing, a signed binding was
+    inferred in the same dependency group as its unsigned callers (no RelaxedPolyRec), pattern
+    bindings were checked against their signatures before generalizing, `apply_subst_all_chirho`
+    never touched the extra arguments of a multi-parameter predicate, a constructor's result type was
+    unified with the scrutinee BEFORE its argument patterns' substitution (so `Just Refl` never
+    refined), and IO-defaulting fired on function bindings. Budget for this: the rigid change is
+    small, the fallout is the lane.
+11. **Deferring an equality inside a speculative unification branch is a side effect that survives
+    the branch's failure**, and decomposing `F t Bool ~ Maybe Int` into `F t ~ Maybe` is unsound
+    (families are not injective). Defer BEFORE structural decomposition, on the whole spine.
+12. **A given `b ~ Maybe (Foo b)` is a consistent given but a divergent rewrite rule.** Skip any
+    rule whose right side contains its left; the first build with rewrite rules took >60s on
+    `T20231` (1.5s before).
+13. **The occurs check must not see through a type family.** `x ~ (Arg x -> Res x)` is not an
+    infinite type (`T19682b`).
+14. **An associated family's default is per instance, not a general equation.** Registering
+    `type Fam a = Maybe a` as an equation reduced `Fam a` for an abstract `a` and broke every
+    `Fam a ~ Bool =>` given.
+15. **Two reject-axis rejections were accidents**: `T16646Fail2`/`T25679` were rejected for a
+    mismatch between a visible type argument and a placeholder-typed import. Counting by
+    error-present cannot tell; verify reasons on the files you touch.
+16. **Corpus timeouts under load are not compiler regressions.** `tc089` needs ~9s idle; with the
+    gate at parallelism 6 plus a concurrent `cargo test` it exceeded 15s. Measure at parallelism 4
+    and re-run any TIMEOUT alone before counting it.
+17. **A `check`-only gate cannot see the dictionary pass.** Both corpus axes and the 20-probe set
+    were green while `main = putStrLn (take 5 "hello")` died at run time with a bare
+    `fromInteger`: the solver had started discharging every ground wanted at a given scope's end,
+    so `Num Int` never reached `main`'s scheme, and the dictionary pass reads a binding's ground
+    scheme predicates as its evidence (`evidence_classes_chirho` in `rewrite_chirho.rs`). Any
+    solver change must also run the driver's `eval_*` unit tests (`cargo test -p haskelujah-driver
+    --lib`) and `haskelujah run` on a literal-bearing program before it is measured.
+18. **Rust string continuations strip the next line's indentation.** Six driver tests wrote
+    `class ... where\n\` followed by an indented method line; the indentation vanished, the
+    "method" became a top-level binding under a top-level signature with a free type variable,
+    and the tests passed only because signature variables were flexible (GHC rejects those
+    programs). Put the indentation before the backslash (`where\n  \`) or use a verbatim
+    multi-line literal; when a test fails after a solver change, reconstruct the program the
+    literal actually encodes before blaming the solver.
 
 ## Hard gates for every lane (non-negotiable)
 

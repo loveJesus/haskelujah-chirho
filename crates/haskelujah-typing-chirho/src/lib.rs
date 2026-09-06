@@ -14,6 +14,7 @@ pub mod exhaust_chirho;
 pub mod infer_chirho;
 pub mod kind_chirho;
 pub mod linearity_chirho;
+pub mod skolem_chirho;
 pub mod subst_chirho;
 pub mod ty_chirho;
 pub mod unify_chirho;

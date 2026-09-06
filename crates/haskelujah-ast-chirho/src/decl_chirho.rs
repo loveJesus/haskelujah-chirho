@@ -379,6 +379,10 @@ pub struct AssocTypeFamilyChirho {
     pub type_vars_chirho: Vec<NameChirho>,
     /// Optional default: `type FamilyName a = DefaultType`.
     pub default_rhs_chirho: Option<TypeChirho>,
+    /// The binders the default equation was written with (`type F a x = …`
+    /// may name them differently from the family declaration); empty when
+    /// they coincide with `type_vars_chirho`.
+    pub default_params_chirho: Vec<NameChirho>,
     /// Span covering the whole associated type declaration.
     pub span_chirho: SpanChirho,
 }

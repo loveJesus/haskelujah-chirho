@@ -3363,6 +3363,21 @@ impl LowerCtxChirho {
                     } else {
                         None
                     };
+                    // The default equation's own binders (`type Fam a x = …`),
+                    // when every left-hand argument is a plain variable.
+                    let default_params_chirho: Vec<NameChirho> = if equations_chirho.len() == 1 {
+                        equations_chirho[0]
+                            .lhs_types_chirho
+                            .iter()
+                            .map(|lhs_ty_chirho| match lhs_ty_chirho {
+                                TypeChirho::VarChirho(name_chirho) => Some(name_chirho.clone()),
+                                _ => None,
+                            })
+                            .collect::<Option<Vec<NameChirho>>>()
+                            .unwrap_or_default()
+                    } else {
+                        Vec::new()
+                    };
                     let tv_names_chirho: Vec<NameChirho> = tf_tvs_chirho
                         .iter()
                         .map(|tv_chirho| tv_chirho.name_chirho.clone())
@@ -3372,6 +3387,7 @@ impl LowerCtxChirho {
                             name_chirho: tf_name_chirho,
                             type_vars_chirho: tv_names_chirho,
                             default_rhs_chirho,
+                            default_params_chirho,
                             span_chirho: tf_span_chirho,
                         },
                     );
@@ -3528,6 +3544,7 @@ impl LowerCtxChirho {
                             name_chirho: ta_name_chirho,
                             type_vars_chirho: tv_names_chirho,
                             default_rhs_chirho,
+                            default_params_chirho: Vec::new(),
                             span_chirho: ta_span_chirho,
                         },
                     );

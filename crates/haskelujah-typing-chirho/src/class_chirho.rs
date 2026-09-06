@@ -16,8 +16,11 @@ use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
 use std::collections::HashMap;
 use std::fmt;
 
+use haskelujah_span_chirho::SpanChirho;
+
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho, TyVarChirho};
+use crate::unify_chirho::unify_chirho;
 
 /// A class predicate: `ClassName Type`, e.g. `Eq Int`, `Show a`.
 /// For multi-parameter type classes: `Convert Int String`.
@@ -345,9 +348,35 @@ impl ClassEnvChirho {
                         from_subst_chirho.apply_ty_chirho(&inst_tys_chirho[idx_chirho]);
                     let pred_ty_chirho = &pred_tys_chirho[idx_chirho];
 
-                    // If the pred position is a type variable, we can improve it
-                    if let TyChirho::VarChirho(v_chirho) = pred_ty_chirho {
-                        improvement_chirho.insert_chirho(*v_chirho, determined_ty_chirho);
+                    match pred_ty_chirho {
+                        // A bare variable in the determined position is improved
+                        // to what the instance determines.
+                        TyChirho::VarChirho(v_chirho) => {
+                            improvement_chirho.insert_chirho(*v_chirho, determined_ty_chirho);
+                        }
+                        // Otherwise the instance still determines it: unify, which
+                        // binds the unification variables the matched "from"
+                        // positions carried into the determined type (`Y [[t]] a`
+                        // against `instance Y [[b]] b` yields `t := a`). Only the
+                        // predicate's own variables may be bound.
+                        _ => {
+                            if let Ok(unifier_chirho) = unify_chirho(
+                                &determined_ty_chirho,
+                                pred_ty_chirho,
+                                SpanChirho::DUMMY_CHIRHO,
+                            ) {
+                                let pred_vars_chirho: Vec<TyVarChirho> = pred_tys_chirho
+                                    .iter()
+                                    .flat_map(|t_chirho| t_chirho.free_vars_chirho())
+                                    .collect();
+                                for (var_chirho, ty_chirho) in unifier_chirho.iter_chirho() {
+                                    if pred_vars_chirho.contains(var_chirho) {
+                                        improvement_chirho
+                                            .insert_chirho(*var_chirho, ty_chirho.clone());
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

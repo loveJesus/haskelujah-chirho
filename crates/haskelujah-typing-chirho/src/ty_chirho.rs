@@ -249,7 +249,11 @@ impl fmt::Display for TyChirho {
         match self {
             TyChirho::VarChirho(v_chirho) => write!(f_chirho, "{v_chirho}"),
             TyChirho::ConChirho(name_chirho) => write!(f_chirho, "{name_chirho}"),
-            TyChirho::ForallVarChirho(name_chirho) => write!(f_chirho, "{name_chirho}"),
+            TyChirho::ForallVarChirho(name_chirho) => write!(
+                f_chirho,
+                "{}",
+                crate::skolem_chirho::skolem_display_name_chirho(name_chirho)
+            ),
             TyChirho::AppChirho(fun_chirho, arg_chirho) => {
                 write!(f_chirho, "({fun_chirho} {arg_chirho})")
             }

@@ -2859,6 +2859,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("Rep"),
                 type_vars_chirho: vec![mk_name_chirho("f")],
                 default_rhs_chirho: None,
+                default_params_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             fundeps_chirho: vec![],

@@ -51,6 +51,11 @@ impl SubstChirho {
         self.map_chirho.is_empty()
     }
 
+    /// Iterate over the bindings `var ↦ ty` (unordered).
+    pub fn iter_chirho(&self) -> impl Iterator<Item = (&TyVarChirho, &TyChirho)> {
+        self.map_chirho.iter()
+    }
+
     /// Compose two substitutions: `self ∘ other`.
     ///
     /// `(s1 ∘ s2)(t) = s1(s2(t))`

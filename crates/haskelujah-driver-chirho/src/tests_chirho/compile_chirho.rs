@@ -299,10 +299,10 @@ fn frontend_instance_method_can_call_later_top_level_helper_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
         "module InstanceHelperScopeMiniChirho where\n\
-class Read1MiniChirho fChirho where\n\
+class Read1MiniChirho fChirho where\n  \
   liftReadsPrecMiniChirho :: Int\n\
 \n\
-instance Read1MiniChirho Maybe where\n\
+instance Read1MiniChirho Maybe where\n  \
   liftReadsPrecMiniChirho = readsDataMiniChirho\n\
 \n\
 readsDataMiniChirho :: Int\n\
@@ -2282,16 +2282,16 @@ fn frontend_proxy_hash_preserves_higher_kinded_class_param_chirho() {
     let result_chirho = compile_source_chirho(
         "{-# LANGUAGE DefaultSignatures #-}\n{-# LANGUAGE MagicHash #-}\nmodule ProxyHashKindMiniChirho where\nimport GHC.Exts (Proxy#)\nimport GHC.Generics\n\
 data CardinalityMiniChirho = ShiftMiniChirho Int | CardMiniChirho Integer\n\
-class FiniteMiniChirho a where\n\
-  cardinalityMiniChirho :: Proxy# a -> CardinalityMiniChirho\n\
-  toFiniteMiniChirho :: Integer -> a\n\
-  fromFiniteMiniChirho :: a -> Integer\n\
-  default cardinalityMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => Proxy# a -> CardinalityMiniChirho\n\
-  default toFiniteMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => Integer -> a\n\
+class FiniteMiniChirho a where\n  \
+  cardinalityMiniChirho :: Proxy# a -> CardinalityMiniChirho\n  \
+  toFiniteMiniChirho :: Integer -> a\n  \
+  fromFiniteMiniChirho :: a -> Integer\n  \
+  default cardinalityMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => Proxy# a -> CardinalityMiniChirho\n  \
+  default toFiniteMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => Integer -> a\n  \
   default fromFiniteMiniChirho :: (Generic a, GFiniteMiniChirho (Rep a)) => a -> Integer\n\
-class GFiniteMiniChirho f where\n\
-  gcardinalityMiniChirho :: Proxy# f -> CardinalityMiniChirho\n\
-  toGFiniteMiniChirho :: Integer -> f a\n\
+class GFiniteMiniChirho f where\n  \
+  gcardinalityMiniChirho :: Proxy# f -> CardinalityMiniChirho\n  \
+  toGFiniteMiniChirho :: Integer -> f a\n  \
   fromGFiniteMiniChirho :: f a -> Integer\n",
         &mut source_map_chirho,
         "ProxyHashKindMiniChirho.hs",
@@ -2416,11 +2416,11 @@ fn frontend_list_literals_push_expected_type_into_overloaded_elements_chirho() {
         "module ExpectedListElementTypeChirho where\n\
          data AltFChirho fChirho aChirho = PureAltFChirho aChirho\n\
          newtype AltChirho fChirho aChirho = AltChirho [AltFChirho fChirho aChirho]\n\
-         class ApplicativeLikeChirho tChirho where\n\
+         class ApplicativeLikeChirho tChirho where\n  \
            pureLikeChirho :: aChirho -> tChirho aChirho\n\
-         instance ApplicativeLikeChirho (AltFChirho fChirho) where\n\
+         instance ApplicativeLikeChirho (AltFChirho fChirho) where\n  \
            pureLikeChirho = PureAltFChirho\n\
-         instance ApplicativeLikeChirho (AltChirho fChirho) where\n\
+         instance ApplicativeLikeChirho (AltChirho fChirho) where\n  \
            pureLikeChirho aChirho = AltChirho [pureLikeChirho aChirho]\n",
         &mut source_map_chirho,
         "ExpectedListElementTypeChirho.hs",
@@ -2455,21 +2455,21 @@ fn frontend_instance_method_expected_result_guides_free_alt_body_chirho() {
     let result_chirho = compile_source_chirho(
         "module FreeAltExpectedBodyChirho where\n\
 {-# LANGUAGE GADTs #-}\n\
-data AltFChirho fChirho aChirho where\n\
+data AltFChirho fChirho aChirho where\n  \
   PureChirho :: aChirho -> AltFChirho fChirho aChirho\n\
 newtype AltChirho fChirho aChirho = AltChirho { alternativesChirho :: [AltFChirho fChirho aChirho] }\n\
-instance Functor (AltFChirho fChirho) where\n\
+instance Functor (AltFChirho fChirho) where\n  \
   fmap fChirho (PureChirho aChirho) = PureChirho (fChirho aChirho)\n\
-instance Functor (AltChirho fChirho) where\n\
+instance Functor (AltChirho fChirho) where\n  \
   fmap fChirho (AltChirho xsChirho) = AltChirho (map (fmap fChirho) xsChirho)\n\
-instance Applicative (AltFChirho fChirho) where\n\
-  pure = PureChirho\n\
+instance Applicative (AltFChirho fChirho) where\n  \
+  pure = PureChirho\n  \
   (PureChirho fChirho) <*> yChirho = fmap fChirho yChirho\n\
-instance Applicative (AltChirho fChirho) where\n\
-  pure aChirho = AltChirho [pure aChirho]\n\
-  (AltChirho xsChirho) <*> ysChirho = keepChirho xsChirho ysChirho\n\
-    where\n\
-      keepChirho :: [AltFChirho fChirho (aChirho -> bChirho)] -> AltChirho fChirho aChirho -> AltChirho fChirho bChirho\n\
+instance Applicative (AltChirho fChirho) where\n  \
+  pure aChirho = AltChirho [pure aChirho]\n  \
+  (AltChirho xsChirho) <*> ysChirho = keepChirho xsChirho ysChirho\n    \
+    where\n      \
+      keepChirho :: [AltFChirho fChirho (aChirho -> bChirho)] -> AltChirho fChirho aChirho -> AltChirho fChirho bChirho\n      \
       keepChirho _ _ = AltChirho []\n",
         &mut source_map_chirho,
         "FreeAltExpectedBodyChirho.hs",
@@ -2488,26 +2488,26 @@ fn frontend_free_alt_bind_and_composition_precedence_typechecks_chirho() {
     let result_chirho = compile_source_chirho(
         "module FreeAltBindPrecedenceChirho where\n\
 {-# LANGUAGE GADTs #-}\n\
-data AltFChirho fChirho aChirho where\n\
-  ApChirho :: fChirho aChirho -> AltChirho fChirho (aChirho -> bChirho) -> AltFChirho fChirho bChirho\n\
+data AltFChirho fChirho aChirho where\n  \
+  ApChirho :: fChirho aChirho -> AltChirho fChirho (aChirho -> bChirho) -> AltFChirho fChirho bChirho\n  \
   PureChirho :: aChirho -> AltFChirho fChirho aChirho\n\
 newtype AltChirho fChirho aChirho = AltChirho { alternativesChirho :: [AltFChirho fChirho aChirho] }\n\
-instance Functor (AltFChirho fChirho) where\n\
-  fmap fChirho (PureChirho aChirho) = PureChirho (fChirho aChirho)\n\
+instance Functor (AltFChirho fChirho) where\n  \
+  fmap fChirho (PureChirho aChirho) = PureChirho (fChirho aChirho)\n  \
   fmap fChirho (ApChirho xChirho gChirho) = ApChirho xChirho (fmap (fChirho .) gChirho)\n\
-instance Functor (AltChirho fChirho) where\n\
+instance Functor (AltChirho fChirho) where\n  \
   fmap fChirho (AltChirho xsChirho) = AltChirho (map (fmap fChirho) xsChirho)\n\
-instance Applicative (AltFChirho fChirho) where\n\
-  pure = PureChirho\n\
-  (PureChirho fChirho) <*> yChirho = fmap fChirho yChirho\n\
-  yChirho <*> (PureChirho aChirho) = fmap ($ aChirho) yChirho\n\
+instance Applicative (AltFChirho fChirho) where\n  \
+  pure = PureChirho\n  \
+  (PureChirho fChirho) <*> yChirho = fmap fChirho yChirho\n  \
+  yChirho <*> (PureChirho aChirho) = fmap ($ aChirho) yChirho\n  \
   (ApChirho aChirho fChirho) <*> bChirho = ApChirho aChirho (flip <$> fChirho <*> (AltChirho [bChirho]))\n\
-instance Applicative (AltChirho fChirho) where\n\
-  pure aChirho = AltChirho [pure aChirho]\n\
-  (AltChirho xsChirho) <*> ysChirho = AltChirho (xsChirho >>= alternativesChirho . (`apPrimeChirho` ysChirho))\n\
-    where\n\
-      apPrimeChirho :: AltFChirho fChirho (aChirho -> bChirho) -> AltChirho fChirho aChirho -> AltChirho fChirho bChirho\n\
-      PureChirho fChirho `apPrimeChirho` uChirho = fmap fChirho uChirho\n\
+instance Applicative (AltChirho fChirho) where\n  \
+  pure aChirho = AltChirho [pure aChirho]\n  \
+  (AltChirho xsChirho) <*> ysChirho = AltChirho (xsChirho >>= alternativesChirho . (`apPrimeChirho` ysChirho))\n    \
+    where\n      \
+      apPrimeChirho :: AltFChirho fChirho (aChirho -> bChirho) -> AltChirho fChirho aChirho -> AltChirho fChirho bChirho\n      \
+      PureChirho fChirho `apPrimeChirho` uChirho = fmap fChirho uChirho\n      \
       (ApChirho uChirho fChirho) `apPrimeChirho` vChirho = AltChirho [ApChirho uChirho (flip <$> fChirho <*> vChirho)]\n",
         &mut source_map_chirho,
         "FreeAltBindPrecedenceChirho.hs",
@@ -2727,9 +2727,9 @@ fn frontend_instance_head_qualified_bytestring_alias_matches_imported_scheme_chi
             "module ByteStringInstanceUseMiniChirho where\n\
              import ByteStringInstanceDepMiniChirho (byteLengthChirho)\n\
              import qualified Data.ByteString as B\n\
-             class HashMiniChirho aChirho where\n\
+             class HashMiniChirho aChirho where\n  \
                hashMiniChirho :: aChirho -> Int\n\
-             instance HashMiniChirho B.ByteString where\n\
+             instance HashMiniChirho B.ByteString where\n  \
                hashMiniChirho bsChirho = byteLengthChirho bsChirho\n",
         ),
     ];
@@ -4020,21 +4020,25 @@ instance Contravariant m => Contravariant (ExceptTChirho e m) where
 fn frontend_exceptt_top_level_same_method_names_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
+        // The wrappers reach the imported methods through a qualified name:
+        // an unqualified `mzipWith` inside a module that defines its own is
+        // an ambiguous occurrence in GHC, and under rigid signatures it would
+        // be the wrapper's own type (`ExceptTChirho e m a` against `m`).
         "module ExceptImportSameNamesChirho where\n\
 import Control.Applicative\n\
-import Control.Monad.Zip (MonadZip(mzipWith))\n\
-import Data.Functor.Contravariant\n\
+import qualified Control.Monad.Zip as Z\n\
+import qualified Data.Functor.Contravariant as C\n\
 newtype ExceptTChirho e m a = ExceptTChirho { runExceptTChirho :: m (Either e a) }\n\
-mzipWith :: MonadZip m => (a -> b -> c) -> ExceptTChirho e m a -> ExceptTChirho e m b -> ExceptTChirho e m c\n\
-mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ mzipWith (liftA2 fChirho) aChirho bChirho\n\
-contramap :: Contravariant m => (a -> b) -> ExceptTChirho e m b -> ExceptTChirho e m a\n\
-contramap fChirho = ExceptTChirho . contramap (fmap fChirho) . runExceptTChirho\n",
+mzipWith :: Z.MonadZip m => (a -> b -> c) -> ExceptTChirho e m a -> ExceptTChirho e m b -> ExceptTChirho e m c\n\
+mzipWith fChirho (ExceptTChirho aChirho) (ExceptTChirho bChirho) = ExceptTChirho $ Z.mzipWith (liftA2 fChirho) aChirho bChirho\n\
+contramap :: C.Contravariant m => (a -> b) -> ExceptTChirho e m b -> ExceptTChirho e m a\n\
+contramap fChirho = ExceptTChirho . C.contramap (fmap fChirho) . runExceptTChirho\n",
         &mut source_map_chirho,
         "ExceptImportSameNamesChirho.hs",
     );
     assert!(
         result_chirho.is_ok(),
-        "top-level wrappers using the imported method names themselves should still type-check: {:?}",
+        "top-level wrappers named like the imported methods should still type-check when they call the imports qualified: {:?}",
         result_chirho.err()
     );
 }
