@@ -18,7 +18,7 @@ use haskelujah_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, FieldAssignChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho,
     RhsChirho, StmtChirho,
 };
-use haskelujah_ast_chirho::lit_chirho::{LitChirho, parse_haskell_char_body_chirho};
+use haskelujah_ast_chirho::lit_chirho::{parse_haskell_char_body_chirho, LitChirho};
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
     InlinePragmaChirho, ModuleChirho,
@@ -35,7 +35,7 @@ use haskelujah_syntax_chirho::green_chirho::{
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use crate::pragma_chirho::pragma_extensions_from_text_chirho;
-use crate::rec_stmt_chirho::{DoSegmentChirho, transform_recursive_do_chirho};
+use crate::rec_stmt_chirho::{transform_recursive_do_chirho, DoSegmentChirho};
 use crate::type_member_lowering_chirho::partition_class_members_chirho;
 
 // ---------------------------------------------------------------------------
@@ -13558,8 +13558,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
             })
             .expect("expected fooChirho type signature");
         match sig_chirho {
-            TypeChirho::FunChirho { arg_chirho, .. } => {
-                match arg_chirho.as_ref() {
+            TypeChirho::FunChirho { arg_chirho, .. } => match arg_chirho.as_ref() {
                     TypeChirho::AppChirho {
                         fun_chirho,
                         arg_chirho,
@@ -13671,9 +13670,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                                 assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
                             }
                             other_chirho => {
-                                panic!(
-                                    "expected OverChirho application spine, got {other_chirho:?}"
-                                )
+                            panic!("expected OverChirho application spine, got {other_chirho:?}")
                             }
                         }
                         assert!(matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(_)));
@@ -13681,8 +13678,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                     other_chirho => {
                         panic!("expected OverChirho application argument, got {other_chirho:?}")
                     }
-                }
-            }
+            },
             other_chirho => panic!("expected function type signature, got {other_chirho:?}"),
         }
     }
