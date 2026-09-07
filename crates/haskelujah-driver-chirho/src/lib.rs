@@ -3296,6 +3296,7 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     "show",
     "print",
     "mfix",
+    "read",
 ];
 
 /// Evidence-threading P2b: join typing occurrence records to desugar occurrence

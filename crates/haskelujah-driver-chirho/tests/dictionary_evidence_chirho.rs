@@ -116,6 +116,41 @@ main = do
 }
 
 #[test]
+fn local_bindings_are_served_by_the_type_they_are_instantiated_at_chirho() {
+    // A `where` binding generalized over `Num` gets neither a dictionary
+    // parameter nor a specialization from the pass; the checker's evidence
+    // says every instantiation is at Int, transitively through a local
+    // binding instantiated only by another local binding (`isPrime` →
+    // `checkDiv`). The shape of 14 curated programs at dd6d694a.
+    let source_chirho = r#"module Main where
+fibChirho :: Int -> Int
+fibChirho n = go n 0 1
+  where go 0 a _ = a
+        go k a b = go (k - 1) b (a + b)
+countPrimesChirho :: Int -> Int
+countPrimesChirho limit = sieve 2 0
+  where
+    sieve n count
+      | n >= limit = count
+      | isPrime n = sieve (n + 1) (count + 1)
+      | otherwise = sieve (n + 1) count
+    isPrime n = checkDiv n 2
+    checkDiv n d
+      | d * d > n = True
+      | n `mod` d == 0 = False
+      | otherwise = checkDiv n (d + 1)
+main :: IO ()
+main = do
+  print (fibChirho 30)
+  print (countPrimesChirho 100)
+"#;
+    assert_eq!(
+        run_chirho("LocalBindingsChirho.hs", source_chirho),
+        "832040\n25\n"
+    );
+}
+
+#[test]
 fn integer_literal_at_double_is_dispatched_at_double_chirho() {
     assert_eq!(
         run_chirho(

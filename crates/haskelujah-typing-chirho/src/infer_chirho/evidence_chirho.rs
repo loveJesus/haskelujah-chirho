@@ -125,6 +125,55 @@ impl InferCtxChirho {
         )
     }
 
+    /// The key a local binding's quantified variable is specialized at: the
+    /// dictionary pass gives a `let`/`where` binding no dictionary parameter,
+    /// so an occurrence at that variable is served by the one concrete type
+    /// every instantiation of the binding resolved to. Two different
+    /// instantiations, or an open one, prove nothing.
+    pub(super) fn local_specialization_key_chirho(
+        &self,
+        var_chirho: TyVarChirho,
+        final_subst_chirho: &SubstChirho,
+    ) -> Option<String> {
+        self.local_specialization_key_at_depth_chirho(var_chirho, final_subst_chirho, 0)
+    }
+
+    /// A local binding instantiated only by another local binding (`isPrime n =
+    /// checkDiv n 2` inside a `where`) resolves to that binding's own quantified
+    /// variable; the key is then that variable's, transitively, with a depth
+    /// guard against a cycle of mutually recursive locals.
+    fn local_specialization_key_at_depth_chirho(
+        &self,
+        var_chirho: TyVarChirho,
+        final_subst_chirho: &SubstChirho,
+        depth_chirho: usize,
+    ) -> Option<String> {
+        if depth_chirho > 8 || !self.local_generalized_vars_chirho.contains(&var_chirho) {
+            return None;
+        }
+        let instantiations_chirho = self.local_instantiations_chirho.get(&var_chirho)?;
+        let mut key_chirho: Option<String> = None;
+        for fresh_chirho in instantiations_chirho {
+            let resolved_chirho =
+                final_subst_chirho.apply_ty_chirho(&TyChirho::VarChirho(*fresh_chirho));
+            let this_key_chirho = match &resolved_chirho {
+                TyChirho::VarChirho(other_chirho) if *other_chirho != var_chirho => self
+                    .local_specialization_key_at_depth_chirho(
+                        *other_chirho,
+                        final_subst_chirho,
+                        depth_chirho + 1,
+                    )?,
+                _ => literal_head_key_chirho(&resolved_chirho)?,
+            };
+            match &key_chirho {
+                None => key_chirho = Some(this_key_chirho),
+                Some(seen_chirho) if *seen_chirho == this_key_chirho => {}
+                Some(_) => return None,
+            }
+        }
+        key_chirho
+    }
+
     /// The evidence key of one predicate's resolved type: a concrete head, the
     /// enclosing binding's own parameter for a rigid or generalized variable
     /// (or a variable with a numeric default hint, which the pass keys by), and
@@ -133,6 +182,7 @@ impl InferCtxChirho {
         &self,
         class_name_chirho: &str,
         ty_chirho: &TyChirho,
+        final_subst_chirho: &SubstChirho,
     ) -> Option<String> {
         match ty_chirho {
             TyChirho::ForallVarChirho(skolem_chirho) => {
@@ -141,6 +191,8 @@ impl InferCtxChirho {
             TyChirho::VarChirho(var_chirho) => {
                 if let Some(hint_chirho) = self.occurrence_default_hints_chirho.get(var_chirho) {
                     Some(hint_chirho.clone())
+                } else if self.local_generalized_vars_chirho.contains(var_chirho) {
+                    self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
                 } else if self.occurrence_generalized_vars_chirho.contains(var_chirho) {
                     Some(OWN_DICTIONARY_KEY_CHIRHO.to_string())
                 } else {
@@ -168,6 +220,7 @@ impl InferCtxChirho {
                     ty_key_chirho: self.reference_key_chirho(
                         class_name_chirho,
                         &final_subst_chirho.apply_ty_chirho(ty_chirho),
+                        final_subst_chirho,
                     ),
                 })
                 .collect();
@@ -202,7 +255,13 @@ impl InferCtxChirho {
             HashMap::new();
         for (span_chirho, class_name_chirho, ty_chirho) in &self.literal_captures_chirho {
             let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
-            let Some(key_chirho) = literal_head_key_chirho(&resolved_chirho) else {
+            let key_chirho = match &resolved_chirho {
+                TyChirho::VarChirho(var_chirho) => {
+                    self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
+                }
+                _ => literal_head_key_chirho(&resolved_chirho),
+            };
+            let Some(key_chirho) = key_chirho else {
                 continue;
             };
             keys_by_span_chirho
@@ -368,6 +427,56 @@ mod tests_chirho {
         assert!(is_own_dictionary_key_chirho("$own:7"));
         assert!(!is_own_dictionary_key_chirho("$owner"));
         assert!(!is_own_dictionary_key_chirho("Int"));
+    }
+
+    #[test]
+    fn local_specialization_follows_instantiations_transitively_chirho() {
+        // `checkDiv`'s variable is instantiated only by `isPrime`, whose own
+        // variable is instantiated at Int: the key is Int, transitively. Two
+        // disagreeing instantiations prove nothing.
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let fresh_chirho = |ctx_chirho: &mut InferCtxChirho| match ctx_chirho.fresh_var_chirho() {
+            TyChirho::VarChirho(var_chirho) => var_chirho,
+            _ => unreachable!(),
+        };
+        let check_div_chirho = fresh_chirho(&mut ctx_chirho);
+        let is_prime_chirho = fresh_chirho(&mut ctx_chirho);
+        let inst_a_chirho = fresh_chirho(&mut ctx_chirho);
+        let inst_b_chirho = fresh_chirho(&mut ctx_chirho);
+        let split_chirho = fresh_chirho(&mut ctx_chirho);
+        let inst_c_chirho = fresh_chirho(&mut ctx_chirho);
+        let inst_d_chirho = fresh_chirho(&mut ctx_chirho);
+        ctx_chirho.local_generalized_vars_chirho.extend([
+            check_div_chirho,
+            is_prime_chirho,
+            split_chirho,
+        ]);
+        ctx_chirho
+            .local_instantiations_chirho
+            .insert(check_div_chirho, vec![inst_a_chirho]);
+        ctx_chirho
+            .local_instantiations_chirho
+            .insert(is_prime_chirho, vec![inst_b_chirho]);
+        ctx_chirho
+            .local_instantiations_chirho
+            .insert(split_chirho, vec![inst_c_chirho, inst_d_chirho]);
+        let mut subst_chirho = SubstChirho::empty_chirho();
+        subst_chirho.insert_chirho(inst_a_chirho, TyChirho::VarChirho(is_prime_chirho));
+        subst_chirho.insert_chirho(inst_b_chirho, TyChirho::int_chirho());
+        subst_chirho.insert_chirho(inst_c_chirho, TyChirho::int_chirho());
+        subst_chirho.insert_chirho(inst_d_chirho, TyChirho::ConChirho("Double".to_string()));
+        assert_eq!(
+            ctx_chirho.local_specialization_key_chirho(check_div_chirho, &subst_chirho),
+            Some("Int".to_string())
+        );
+        assert_eq!(
+            ctx_chirho.local_specialization_key_chirho(split_chirho, &subst_chirho),
+            None
+        );
+        assert_eq!(
+            ctx_chirho.local_specialization_key_chirho(inst_a_chirho, &subst_chirho),
+            None
+        );
     }
 
     #[test]

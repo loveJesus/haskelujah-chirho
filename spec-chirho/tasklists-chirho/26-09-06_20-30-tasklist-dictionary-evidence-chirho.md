@@ -34,7 +34,7 @@ Placement (the decision to surface at brick 1): three crates, one seam each.
 ## Found on the way (not fixed by this lane unless a brick says so)
 - Own-parameter evidence reaches only the methods in the pass's standard occurrence list; a user class method at a rigid variable (`describe x` inside `both :: (Describe a, Describe b) => ...`) is dispatched by the call-site parameter keys the pass infers, which is right here but is still a guess. Giving every class method a span-keyed occurrence needs the method paths that key on canonical ids to see through occurrence ids first (minting them as references broke `desc`/`mempty`/`mconcat`).
 - A probe that "runs" is not a probe that is right: `both True 3` ran and printed `True/3`, which is the Int instance applied to a Bool. Every interpreter-level test in this lane asserts the exact output GHC produces.
-- `T039_fib_acc`: a local `where go` binding generalized over `Num t` gets neither a dictionary parameter nor a specialization; its `-` has no evidence (the reference `go n 0 1` is a local name, not in the module environment). Local constrained bindings are the next brick after the five driver reds.
+- (done in brick 8) `T039_fib_acc`: local `where` bindings generalized over a class.
 - `is_defaultable_pred_chirho` (dict pass) does not look inside tuple or list argument types, so `addPair (x, y) = x + y` is monomorphised to `Int` instead of taking a `Num` dictionary (`T229_curry_uncurry`); a call at Double would be wrong silently.
 
 ## Boundaries

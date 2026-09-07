@@ -184,6 +184,14 @@ pub struct InferCtxChirho {
     /// (class, skolem name) → index of that predicate in the signature the
     /// skolem was made for; see `record_own_dictionary_indices_chirho`.
     skolem_pred_index_chirho: HashMap<(String, String), usize>,
+    /// Variables quantified by a local (`let`/`where`) binding's generalization.
+    /// The dictionary pass gives such a binding no dictionary parameter, so an
+    /// occurrence at one of these is served by the type the enclosing code
+    /// instantiates the binding at; see `local_specialization_key_chirho`.
+    local_generalized_vars_chirho: HashSet<TyVarChirho>,
+    /// A local binding's quantified variable → the fresh variable of each
+    /// instantiation of that binding.
+    local_instantiations_chirho: HashMap<TyVarChirho, Vec<TyVarChirho>>,
     /// Given predicates currently in scope from explicit type signatures.
     given_preds_chirho: Vec<PredChirho>,
     /// Accumulated diagnostics.
@@ -588,6 +596,8 @@ impl InferCtxChirho {
             literal_captures_chirho: Vec::new(),
             reference_captures_chirho: Vec::new(),
             skolem_pred_index_chirho: HashMap::new(),
+            local_generalized_vars_chirho: HashSet::new(),
+            local_instantiations_chirho: HashMap::new(),
             given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
@@ -1095,7 +1105,16 @@ impl InferCtxChirho {
 
         let mut subst_chirho = SubstChirho::empty_chirho();
         for v_chirho in &scheme_chirho.vars_chirho {
-            subst_chirho.insert_chirho(*v_chirho, self.fresh_var_chirho());
+            let fresh_chirho = self.fresh_var_chirho();
+            if self.local_generalized_vars_chirho.contains(v_chirho) {
+                if let TyChirho::VarChirho(fresh_var_chirho) = fresh_chirho {
+                    self.local_instantiations_chirho
+                        .entry(*v_chirho)
+                        .or_default()
+                        .push(fresh_var_chirho);
+                }
+            }
+            subst_chirho.insert_chirho(*v_chirho, fresh_chirho);
         }
 
         let instantiated_preds_chirho: Vec<PredChirho> = scheme_chirho
@@ -5329,6 +5348,8 @@ impl InferCtxChirho {
                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
                 let generalized_chirho = binding_scheme_chirho
                     .unwrap_or_else(|| self.generalize_local_chirho(&inferred_sub_chirho));
+                self.local_generalized_vars_chirho
+                    .extend(generalized_chirho.vars_chirho.iter().copied());
                 self.env_chirho
                     .bind_chirho(name_str_chirho, generalized_chirho);
             }
@@ -7680,6 +7701,21 @@ impl InferCtxChirho {
                             if self.occurrence_generalized_vars_chirho.contains(var_chirho)
                     )
                 {
+                    // A local binding's variable: the enclosing code's single
+                    // instantiation is the proof (workflow:
+                    // language-features-chirho/dictionary-evidence-chirho).
+                    if let TyChirho::VarChirho(var_chirho) = &resolved_chirho {
+                        if let Some(key_chirho) =
+                            self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
+                        {
+                            return Some(MethodOccurrenceRecordChirho {
+                                name_chirho: name_chirho.clone(),
+                                ordinal_chirho: *ordinal_chirho,
+                                class_name_chirho: class_chirho.clone(),
+                                ty_key_chirho: key_chirho,
+                            });
+                        }
+                    }
                     return None;
                 }
                 // A method used at a rigid variable of the enclosing signature

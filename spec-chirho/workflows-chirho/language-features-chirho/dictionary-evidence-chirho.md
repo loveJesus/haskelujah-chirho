@@ -67,11 +67,19 @@ flowchart TD
 - The higher-order-argument rewriter hands an evidenced reference to the variable arm; a key
   guessed from sibling arguments never dispatches a reference the checker proved.
 
+## Local bindings (brick 8)
+
+A `let`/`where` binding generalized over a class is not in the module environment and gets no
+dictionary parameter from the pass. Its evidence is the type the enclosing code instantiates it
+at: `generalize_local_chirho`'s quantified variables are marked local, every instantiation of
+the binding records its fresh variables (`instantiate_scheme_parts_chirho`), and
+`local_specialization_key_chirho` yields a key when all of them resolve to one concrete head,
+transitively when an instantiation resolves to another local binding's variable (`isPrime n =
+checkDiv n 2`). Methods, literals and constrained references at that variable carry the key;
+two disagreeing instantiations prove nothing and keep today's path.
+
 ## Current boundary
 
-- Reference evidence covers names in the module environment (top-level and imported).
-  A local `let`/`where` binding generalized over a class is not in that environment, gets no
-  dictionary parameter from the pass, and its methods carry no evidence (`T039_fib_acc`).
 - Infix references (`x \`f\` y`) and operator sections still resolve through the shared
   canonical id; only prefix references mint occurrence ids.
 - Class methods never mint reference occurrences (the method paths key on canonical ids);
