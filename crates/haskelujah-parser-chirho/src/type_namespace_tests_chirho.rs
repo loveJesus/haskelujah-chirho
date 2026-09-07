@@ -52,6 +52,246 @@ fn data_family_header_survives_ast_lowering_chirho() {
 }
 
 #[test]
+fn skipped_data_instance_preserves_following_declaration_chirho() {
+    let module_chirho = lower_source_chirho(concat!(
+        "{-# LANGUAGE GADTs #-}\n",
+        "{-# LANGUAGE TypeFamilies #-}\n",
+        "module DataInstanceBoundaryChirho where\n",
+        "data family FamilyChirho typeChirho\n",
+        "data instance FamilyChirho Int where\n",
+        "  FamilyConstructorChirho :: FamilyChirho Int\n",
+        "followingChirho :: Int\n",
+        "followingChirho = 1\n",
+    ));
+
+    assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| {
+        matches!(
+            declaration_chirho,
+            DeclChirho::TypeSigChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "followingChirho"
+        )
+    }));
+}
+
+#[test]
+fn skipped_newtype_instance_preserves_following_declaration_chirho() {
+    let module_chirho = lower_source_chirho(concat!(
+        "{-# LANGUAGE TypeFamilies #-}\n",
+        "module NewtypeInstanceBoundaryChirho where\n",
+        "data family FamilyChirho\n",
+        "newtype instance FamilyChirho = FamilyConstructorChirho Int\n",
+        "  deriving Eq\n",
+        "data FollowingChirho = FollowingChirho\n",
+    ));
+
+    assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| {
+        matches!(
+            declaration_chirho,
+            DeclChirho::DataDeclChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "FollowingChirho"
+        )
+    }));
+}
+
+#[test]
+fn gadt_record_constructor_preserves_following_type_signature_chirho() {
+    let module_chirho = lower_source_chirho(concat!(
+        "{-# LANGUAGE GADTs #-}\n",
+        "module GadtRecordBoundaryChirho where\n",
+        "data RecordChirho where\n",
+        "  RecordConstructorChirho :: { fieldChirho :: Int } -> RecordChirho\n",
+        "followingChirho :: Int\n",
+        "followingChirho = 1\n",
+    ));
+
+    assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| {
+        matches!(
+            declaration_chirho,
+            DeclChirho::TypeSigChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "followingChirho"
+        )
+    }));
+}
+
+#[test]
+fn type_family_instance_preserves_following_fundep_class_chirho() {
+    let module_chirho = lower_source_chirho(concat!(
+        "{-# LANGUAGE FunctionalDependencies #-}\n",
+        "{-# LANGUAGE PolyKinds #-}\n",
+        "{-# LANGUAGE TypeFamilies #-}\n",
+        "{-# LANGUAGE TypeOperators #-}\n",
+        "module TypeInstanceClassBoundaryChirho where\n",
+        "layoutProbeChirho =\n",
+        "  case True of { True ->\n",
+        "  case True of\n",
+        "    False -> True }\n",
+        "type family ForallV :: k -> Constraint\n",
+        "type instance ForallV = ForallV_\n",
+        "class ForallV' p => ForallV_ (p :: k)\n",
+        "instance ForallV' p => ForallV_ p\n",
+        "\n",
+        "-- | Compatibility reduction for the constraints package.\n",
+        "class InstV (p :: k) c | k c -> p where\n",
+        "  type ForallV' (p :: k) :: Constraint\n",
+        "  instV :: ForallV p :- c\n",
+    ));
+
+    assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| {
+        matches!(
+            declaration_chirho,
+            DeclChirho::ClassDeclChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "InstV"
+        )
+    }));
+}
+
+#[test]
+fn gadt_newtype_constructor_and_deriving_survive_lowering_chirho() {
+    let module_chirho = lower_source_chirho(concat!(
+        "{-# LANGUAGE GADTs #-}\n",
+        "module GadtNewtypeChirho where\n",
+        "newtype WrapperChirho valueChirho where\n",
+        "  WrapChirho :: forall valueChirho. Int -> WrapperChirho valueChirho\n",
+        "  deriving Eq\n",
+    ));
+
+    let (constructor_chirho, deriving_chirho) = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|declaration_chirho| match declaration_chirho {
+            DeclChirho::NewtypeDeclChirho {
+                name_chirho,
+                constructor_chirho,
+                deriving_chirho,
+                ..
+            } if name_chirho.text_chirho() == "WrapperChirho" => {
+                Some((constructor_chirho, deriving_chirho))
+            }
+            _ => None,
+        })
+        .expect("GADT newtype should survive lowering");
+
+    assert!(
+        matches!(
+            constructor_chirho,
+            ConDeclChirho::GadtChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == "WrapChirho"
+        ),
+        "expected preserved GADT constructor, got {constructor_chirho:?}"
+    );
+    assert_eq!(deriving_chirho.len(), 1);
+    assert_eq!(deriving_chirho[0].text_chirho(), "Eq");
+}
+
+#[test]
+fn inline_gadt_newtype_kind_signature_does_not_inflate_head_arity_chirho() {
+    let module_chirho = lower_source_chirho(concat!(
+        "{-# LANGUAGE GADTs #-}\n",
+        "{-# LANGUAGE PolyKinds #-}\n",
+        "{-# LANGUAGE UnliftedNewtypes #-}\n",
+        "module GadtNewtypeKindChirho where\n",
+        "import GHC.Exts (TYPE)\n",
+        "newtype RuntimeBoxChirho :: forall representationChirho -> TYPE representationChirho where\n",
+        "  RuntimeBoxChirho :: RuntimeBoxChirho representationChirho -> RuntimeBoxChirho representationChirho\n",
+    ));
+
+    let (type_vars_chirho, kind_sig_chirho, constructor_chirho) = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|declaration_chirho| match declaration_chirho {
+            DeclChirho::NewtypeDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                kind_sig_chirho,
+                constructor_chirho,
+                ..
+            } if name_chirho.text_chirho() == "RuntimeBoxChirho" => {
+                Some((type_vars_chirho, kind_sig_chirho, constructor_chirho))
+            }
+            _ => None,
+        })
+        .expect("kind-indexed GADT newtype should survive lowering");
+
+    assert!(type_vars_chirho.is_empty());
+    assert!(matches!(
+        kind_sig_chirho,
+        Some(TypeChirho::RequiredForallChirho { .. })
+    ));
+    assert!(matches!(
+        constructor_chirho,
+        ConDeclChirho::GadtChirho { .. }
+    ));
+}
+
+#[test]
+fn operator_kind_signature_keeps_application_order_chirho() {
+    let module_chirho = lower_source_chirho(concat!(
+        "{-# LANGUAGE DataKinds #-}\n",
+        "{-# LANGUAGE PolyKinds #-}\n",
+        "{-# LANGUAGE TypeOperators #-}\n",
+        "module OperatorKindChirho where\n",
+        "data TyFunChirho :: Type -> Type -> Type\n",
+        "type leftChirho ~> rightChirho = TyFunChirho leftChirho rightChirho -> Type\n",
+        "data SymbolChirho :: forall indexChirho. Maybe indexChirho ~> Bool\n",
+    ));
+
+    let kind_sig_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|declaration_chirho| match declaration_chirho {
+            DeclChirho::DataDeclChirho {
+                name_chirho,
+                kind_sig_chirho,
+                ..
+            } if name_chirho.text_chirho() == "SymbolChirho" => kind_sig_chirho.as_ref(),
+            _ => None,
+        })
+        .expect("operator kind signature should survive lowering");
+
+    let TypeChirho::ForallChirho {
+        vars_chirho,
+        body_chirho,
+        ..
+    } = kind_sig_chirho
+    else {
+        panic!("expected explicit forall kind signature, got {kind_sig_chirho:?}");
+    };
+    assert_eq!(vars_chirho.len(), 1);
+    assert_eq!(vars_chirho[0].name_chirho.text_chirho(), "indexChirho");
+
+    let TypeChirho::AppChirho {
+        fun_chirho: operator_and_left_chirho,
+        arg_chirho: right_chirho,
+        ..
+    } = body_chirho.as_ref()
+    else {
+        panic!("expected binary operator application, got {body_chirho:?}");
+    };
+    let TypeChirho::AppChirho {
+        fun_chirho: operator_chirho,
+        arg_chirho: left_chirho,
+        ..
+    } = operator_and_left_chirho.as_ref()
+    else {
+        panic!("expected operator applied to its left operand");
+    };
+    assert!(matches!(
+        operator_chirho.as_ref(),
+        TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "~>"
+    ));
+    assert!(matches!(
+        left_chirho.as_ref(),
+        TypeChirho::AppChirho { fun_chirho, .. }
+            if matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+                if name_chirho.text_chirho() == "Maybe")
+    ));
+    assert!(matches!(
+        right_chirho.as_ref(),
+        TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Bool"
+    ));
+}
+
+#[test]
 fn associated_kind_signature_is_a_type_member_chirho() {
     let module_chirho = lower_source_chirho(concat!(
         "{-# LANGUAGE TypeFamilies #-}\n",

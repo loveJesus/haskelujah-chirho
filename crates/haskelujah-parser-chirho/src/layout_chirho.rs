@@ -271,6 +271,30 @@ impl<'src> LayoutRuleChirho<'src> {
                 continue;
             }
 
+            // An explicit `}` also terminates any still-open implicit layout
+            // contexts nested inside its matching `{`. Without this unwind,
+            // the explicit context stays buried on the stack, disabling the
+            // enclosing module's declaration separators after constructs such
+            // as `case x of { A -> case y of B -> z }`.
+            if token_chirho.kind_chirho == RawTokenKindChirho::RightBraceChirho
+                && context_stack_chirho
+                    .iter()
+                    .any(|context_chirho| *context_chirho == LayoutContextChirho::ExplicitChirho)
+            {
+                while matches!(
+                    context_stack_chirho.last(),
+                    Some(LayoutContextChirho::ImplicitChirho(..))
+                ) {
+                    let vspan_chirho =
+                        self.zero_span_at_chirho(token_chirho.span_chirho.start_chirho());
+                    output_chirho.push(RawTokenChirho {
+                        kind_chirho: RawTokenKindChirho::VirtualRightBraceChirho,
+                        span_chirho: vspan_chirho,
+                    });
+                    context_stack_chirho.pop();
+                }
+            }
+
             if token_chirho.kind_chirho == RawTokenKindChirho::RightParenChirho
                 && paren_depth_chirho > 0
             {
@@ -713,6 +737,32 @@ mod tests_chirho {
         assert!(kinds_chirho.contains(&RawTokenKindChirho::WhereChirho));
         assert!(kinds_chirho.contains(&RawTokenKindChirho::VirtualLeftBraceChirho));
         assert!(kinds_chirho.contains(&RawTokenKindChirho::VirtualRightBraceChirho));
+    }
+
+    #[test]
+    fn explicit_brace_closes_nested_implicit_layout_before_module_sibling_chirho() {
+        let source_chirho = concat!(
+            "module ExplicitImplicitBoundaryChirho where\n",
+            "layoutProbeChirho =\n",
+            "  case True of { True ->\n",
+            "  case True of\n",
+            "    False -> True }\n",
+            "type FollowingChirho = Int\n",
+        );
+        let tokens_chirho = layout_tokens_chirho(source_chirho);
+        let following_type_idx_chirho = tokens_chirho
+            .iter()
+            .position(|(kind_chirho, text_chirho)| {
+                *kind_chirho == RawTokenKindChirho::TypeChirho && text_chirho == "type"
+            })
+            .expect("expected following type declaration");
+
+        assert_eq!(
+            tokens_chirho[following_type_idx_chirho.saturating_sub(1)].0,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            "closing an explicit brace must restore the module layout context before the next declaration: {:?}",
+            tokens_chirho
+        );
     }
 
     #[test]
