@@ -1,50 +1,37 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-06 (night), AFTER the dictionary-evidence follow-up (c6bc7db1: local bindings, corpus repair) — the reject axis did NOT move:
-# code measured: c6bc7db1 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
-#   to each other AND to the list below, which is therefore unchanged). The follow-up changes what the
-#   dictionary pass emits for local bindings, not what the checker accepts.
-#   Previous header, kept for the record:
-#   measured: 2026-09-06 (late), AFTER the dictionary-evidence lane (948395b0) — the reject axis did NOT move:
-#   code measured: 948395b0 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
-#   to each other AND to the list below, which is therefore unchanged). That lane changes what the
-#   dictionary pass emits (programs that ran wrong now run right), not what the checker accepts.
-#   Previous header, kept for the record:
-#   measured: 2026-09-06, AFTER the `_` head binder + GHC-55233 return-kind check (3bf553dc)
-#   code measured: 3bf553dc (measuring agent claude2_chirho — see the companion artifact note)
+# measured: 2026-09-07, AFTER the GADT-record parser half (b2027c35)
+# code measured: b2027c35 (measuring agent claude2_chirho — see the companion artifact note)
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run alone
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=205 WRONGLY-ACCEPTED=562 TOTAL=767 (26.7% reject rate)
+# RESULT: CORRECTLY-REJECTED=206 WRONGLY-ACCEPTED=561 TOTAL=767 (26.9% reject rate)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets
-# QUOTE-AS: ~26% (205 of 767) — do not quote a third significant figure
+# QUOTE-AS: ~26% (206 of 767) — do not quote a third significant figure
 #
-# RE-VERIFIED UNCHANGED at 31c4ef8e (GADT-constructor `::` guard): 205 of 767, two passes,
-# wrongly-accepted set byte-identical to this list. That commit moves only the accept axis
-# (874 -> 876).
+# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: no rounding boundary moves here (205 and 206
+# both quote as ~26%). The accept axis is unchanged at ~93% (876 of 938). The redeploy
+# still owed is the one from 1271f0e8 (~92% -> ~93%). Re-quote BOTH verbatim, together.
 #
-# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis does NOT cross a rounding boundary
-# here (204/767 and 205/767 both quote as ~26%). The ACCEPT axis crossed one at 1271f0e8
-# (~92% -> ~93%) and is unchanged by this commit. Re-quote BOTH verbatim, together.
+# CHANGE SINCE LAST MEASUREMENT: 205 -> 206 (+1). Nothing lost.
 #
-# CHANGE SINCE LAST MEASUREMENT: 204 -> 205 (+1). Nothing lost.
-#   T14048a — `data Foo :: Constraint`. GHC-55233, "Data type has non-* return kind":
-#     unconditional in GHC, no extension licenses it. We now emit
-#     `error[E0300]: data type `Foo` has non-`*` return kind `Constraint``.
+# THE +1 IS ACCIDENTAL AND IS NOT A WIN. Verified by reason (trap 15), not error-present:
+#   T18869 — GHC rejects it under GHC-95909, "Constructor `MkFoo' does not have the
+#     required strict field(s)": the empty record construction omits a field declared
+#     strict. WE reject it for ARITY — b2027c35 gave the GADT record constructor its
+#     fields, so the empty construction is now an under-applied constructor. Right
+#     verdict, wrong reason; the same class as T16646Fail2/T25679 in an earlier
+#     measurement.
+#   Worse, the mechanism is a PRE-EXISTING FALSE REJECTION whose reach this commit
+#     widened. An empty record construction on a LAZY field is legal Haskell (GHC warns,
+#     -Wmissing-fields) and we reject it. The ordinary-record form is already rejected at
+#     c9e7c484, before this commit; the GADT form was accepted there only because the
+#     constructor had no fields at all. Filed:
+#     spec-chirho/bug-empty-record-construction-rejected-chirho.md.
+#     FIXING THAT DEFECT WILL COST THIS FILE unless GHC-95909 lands with it.
+#   No corpus file exercises the false-rejection direction, which is why the accept axis
+#   shows zero movement. Absence of a failing file is not absence of the defect.
 #
-# WHY THIS TOOK THREE LANES TO REACH. The check was mapped in lane 4 and REFUSED, because
-# the ACCEPTED `data Foo (_ :: Constraint)` lowered identically in every field a guard can
-# read to this REJECTED file — same empty `type_vars_chirho`, same
-# `kind_sig_chirho: Some(Constraint)`, differing only in span. Four narrowings were tried
-# and each was refuted (see spec-chirho/bug-data-binder-kind-misassigned-chirho.md). The
-# blocker was never the check; it was the parser recording a BINDER's kind as the
-# DECLARATION's. d697851e fixed that for bracketed and complex kinds, 3bf553dc for the `_`
-# binder, and the guard then took nine lines. Root cause first, check second.
-#
-# The two losses recorded in the previous measurement (T13871, T15552) stand. Both were
-# rejected only by the arity-inflation artifact d697851e removed, neither for GHC's stated
-# reason. Recovering T13871 honestly needs GHC-28374 (unpromotable context), unimplemented.
-#
-# ---- the 562 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 561 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -261,7 +248,6 @@ T18723c.hs
 T18851.hs
 T18851b.hs
 T18851c.hs
-T18869.hs
 T18891a.hs
 T18939_Fail.hs
 T1897a.hs

@@ -16,6 +16,15 @@
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
 # QUOTE-AS: ~93% (876 of 938) — do not quote a third significant figure
 #
+# RE-VERIFIED UNCHANGED at b2027c35 (GADT-record parser half): 876 of 938, two passes,
+# failing set byte-identical to this list. That commit moves only the reject axis
+# (205 -> 206, accidentally — read the companion artifact before quoting it). It also
+# changes what EIGHT files in the PASSING set MEAN: they carry GADT record constructors
+# whose fields did not exist until b2027c35, so they were green with the construct
+# unrepresented and `main` not surviving to STG. A check-only gate could not see that
+# then and cannot see it now; the evidence is the driver eval test
+# eval_gadt_record_fields_are_readable_chirho (exact output).
+#
 # NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: no rounding boundary moves here (874 and 876
 # both quote as ~93%). The boundary was crossed at 1271f0e8 (~92% -> ~93%) and the site
 # redeploy for it is still pending. The companion axis is unchanged at ~26% (205 of 767).
