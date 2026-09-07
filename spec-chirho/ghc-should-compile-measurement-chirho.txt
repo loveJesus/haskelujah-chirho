@@ -1,51 +1,52 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-06 (late), AFTER the dictionary-evidence lane (948395b0) — the accept axis did NOT move:
-# code measured: 948395b0 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
-#   to each other AND to the list below, which is therefore unchanged). That lane changes what the
-#   dictionary pass emits (programs that ran wrong now run right), not what the checker accepts.
-#   Previous header, kept for the record:
-#   measured: 2026-09-06, AFTER the data-head binder kind fix (d697851e)
-#   code measured: d697851e. Measuring agent: claude2_chirho, who also independently
-#   replicated the PREVIOUS artifact (869 of 938, byte-identical failing set) on a binary
-#   built from 4f866dc3 before touching anything — so both agents' numbers now agree on
-#   the same corpus and detector.
+# measured: 2026-09-06, AFTER the GADT-constructor `::` guard (31c4ef8e)
+# code measured: 31c4ef8e. Measuring agent: claude2_chirho, who also independently
+#   replicated the 4f866dc3 artifact (869 of 938, byte-identical failing set) before
+#   starting this lane, so the record carries both agents.
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4; a load-induced TIMEOUT is re-run
 #   alone before it counts (tc089 needs ~9s idle and exceeded 15s only under parallel load).
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files (find-based; T16234/ included)
 #
-# RESULT: PASS=874 FAIL=64 TOTAL=938 (93.2%)
+# RESULT: PASS=876 FAIL=62 TOTAL=938 (93.4%)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
-# QUOTE-AS: ~93% (874 of 938) — do not quote a third significant figure
+# QUOTE-AS: ~93% (876 of 938) — do not quote a third significant figure
 #
-# RE-VERIFIED UNCHANGED at 3bf553dc (`_` head binder + GHC-55233): 874 of 938, two passes,
-# failing set byte-identical to this list. That commit moves only the reject axis (204 -> 205).
+# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: no rounding boundary moves here (874 and 876
+# both quote as ~93%). The boundary was crossed at 1271f0e8 (~92% -> ~93%) and the site
+# redeploy for it is still pending. The companion axis is unchanged at ~26% (205 of 767).
+# Re-quote BOTH verbatim, together.
 #
-# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis crosses a rounding boundary with this
-# landing. The previous QUOTE-AS was ~92% (869 of 938); it is now ~93% (874 of 938). The
-# companion axis did NOT cross one (~26% both before and after). Re-quote BOTH verbatim, together.
-#
-# CHANGE SINCE LAST MEASUREMENT: 869 -> 874 (+5).
-#   5 files left the failing set: T12923_2.hs T12923_3.hs T12928.hs T15772.hs T25597.hs
+# CHANGE SINCE LAST MEASUREMENT: 874 -> 876 (+2).
+#   2 files left the failing set: T16411.hs T3632.hs
 #   0 files entered it.
 #
-# WHAT CHANGED: a data head binder whose kind annotation our kind grammar cannot read
-# (`[Symbol]`, `[[a]]`, `i ~> j`, `forall k. k -> Type`) no longer leaks into the
-# declaration. Previously the head scanner walked INTO the parenthesised group, so the
-# binder's `::` fired the arm meant for `data T :: K where` — recording a fabricated
-# return kind with the brackets dropped — and the kind's own type variables were bound as
-# extra head binders, inflating the declaration's arity. See
-# spec-chirho/bug-data-binder-kind-misassigned-chirho.md, which predicted this fix.
+# WHAT CHANGED — and the through-line, because this is the THIRD landing against ONE defect.
+# The data-head scanner could not tell whose `::` it was reading. Three disguises:
+#   d697851e  a parenthesised binder whose kind our grammar cannot read (`[Symbol]`, `[[a]]`)
+#   3bf553dc  the `_` binder, which was not recognised as a binder at all
+#   31c4ef8e  a GADT constructor line: `data T where / MkT :: { f :: Int, x :: Char } -> T`
+# Each misread produced BOTH a fabricated declaration kind AND arity inflation from things
+# that were never binders (here the record FIELD NAMES, which are VarIds). Each time,
+# fixing only the `::` half left the arity half and cost currently-passing files. Total
+# across the three: +7 accept, +1 reject, from roughly forty lines of scanner guards.
 #
-# COST ON THE OTHER AXIS, stated plainly: this landing LOSES 2 reject-axis files
-# (T13871, T15552). Both were rejected only by the arity-inflation artifact this fix
-# removes — neither for GHC's stated reason — and both are documented in the companion
-# artifact. Read the two together.
+# WHAT WAS DELIBERATELY NOT BUILT: the `KindChirho::NamedChirho` representation the
+# handoff map estimated at +14. Probing first (README trap 8) showed five of its six
+# target shapes ALREADY PASS — `[Symbol]`, `[[Type]]`, `i ~> j`, `Sig2 k`, `[Type]` in a
+# GADT head — because d697851e made an unreadable binder kind skipped rather than
+# misattributed, and a flexible binder suffices. Only promoted tuples `'(Int, Bool)`
+# genuinely fail, in 2 of 938 files (T14010, T18831). The map read the symptom as a
+# missing kind representation; it was a parser scanner.
+#
+# STILL OPEN AND KNOWN: GADT record constructor FIELDS are dropped entirely by the
+# lowering (`fields_chirho: []`). That is why HardRecordUpdate and T14761c only moved to
+# later errors instead of passing. It is a real lowering gap, not a kind-checker one.
 #
 # MEASUREMENT-TOOLING NOTE (unchanged): the detector is PURE SHELL pattern matching
 # (`case $out in *"error[E"*|*panic*`), never the interactive `grep`, which is shadowed here by a
 # ugrep wrapper with content-dependent `-q` exit status.
 #
-# ---- the 64 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 62 files we FAIL to accept (GHC accepts these); all deterministic ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -67,7 +68,6 @@ T14590.hs
 T14761c.hs
 T15079.hs
 T15370.hs
-T16411.hs
 T17594a.hs
 T17772.hs
 T18036b.hs
@@ -91,7 +91,6 @@ T25266b.hs
 T26256a.hs
 T26345.hs
 T26346.hs
-T3632.hs
 T4355.hs
 T4444.hs
 T4524.hs

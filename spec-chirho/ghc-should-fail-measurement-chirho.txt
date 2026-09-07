@@ -13,6 +13,10 @@
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets
 # QUOTE-AS: ~26% (205 of 767) — do not quote a third significant figure
 #
+# RE-VERIFIED UNCHANGED at 31c4ef8e (GADT-constructor `::` guard): 205 of 767, two passes,
+# wrongly-accepted set byte-identical to this list. That commit moves only the accept axis
+# (874 -> 876).
+#
 # NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis does NOT cross a rounding boundary
 # here (204/767 and 205/767 both quote as ~26%). The ACCEPT axis crossed one at 1271f0e8
 # (~92% -> ~93%) and is unchanged by this commit. Re-quote BOTH verbatim, together.
