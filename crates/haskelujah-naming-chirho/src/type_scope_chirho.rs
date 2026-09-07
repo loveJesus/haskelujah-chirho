@@ -213,9 +213,15 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.walk_signature_type_chirho(&method_chirho.ty_chirho);
                 }
                 for associated_tf_chirho in associated_tfs_chirho {
+                    let default_binders_chirho = if associated_tf_chirho.default_params_chirho.len()
+                        == associated_tf_chirho.type_vars_chirho.len()
+                    {
+                        &associated_tf_chirho.default_params_chirho
+                    } else {
+                        &associated_tf_chirho.type_vars_chirho
+                    };
                     let associated_pushed_chirho = self.push_name_binders_chirho(
-                        associated_tf_chirho
-                            .type_vars_chirho
+                        default_binders_chirho
                             .iter()
                             .map(|name_chirho| name_chirho.text_chirho().to_string()),
                     );

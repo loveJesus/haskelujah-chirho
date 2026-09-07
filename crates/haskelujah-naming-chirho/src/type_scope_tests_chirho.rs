@@ -128,6 +128,7 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
                 name_chirho: name_chirho("FamilyChirho"),
                 type_vars_chirho: vec![name_chirho("aChirho")],
                 default_rhs_chirho: None,
+                default_params_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             fundeps_chirho: vec![],
@@ -156,6 +157,7 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
             name_chirho: name_chirho("FamilyChirho"),
             type_vars_chirho: vec![name_chirho("aChirho")],
             default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("bChirho"))),
+            default_params_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -164,6 +166,26 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
     let diagnostics_chirho = check_chirho(&module_chirho, &NameEnvChirho::new_chirho());
     assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
     assert!(format!("{diagnostics_chirho}").contains("type variable not in scope: `bChirho`"));
+}
+
+#[test]
+fn associated_family_default_uses_its_equation_binders_chirho() {
+    let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        context_chirho: vec![],
+        name_chirho: name_chirho("ClassChirho"),
+        type_vars_chirho: vec![tyvar_chirho("aChirho")],
+        methods_chirho: vec![],
+        associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+            name_chirho: name_chirho("FamilyChirho"),
+            type_vars_chirho: vec![name_chirho("aChirho"), name_chirho("bChirho")],
+            default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("xChirho"))),
+            default_params_chirho: vec![name_chirho("aChirho"), name_chirho("xChirho")],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        fundeps_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }]);
+    assert!(check_chirho(&module_chirho, &NameEnvChirho::new_chirho()).is_empty_chirho());
 }
 
 #[test]
