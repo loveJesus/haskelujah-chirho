@@ -3,12 +3,16 @@
 
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{
-    AssocTypeFamilyChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
+    AssocTfInstanceChirho, AssocTypeFamilyChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
+};
+use haskelujah_ast_chirho::module_chirho::{
+    ExportMembersChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
 };
 use haskelujah_ast_chirho::name_chirho::RawNameChirho;
 use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho};
 
-use crate::resolve_chirho::resolve_module_chirho;
+use crate::iface_chirho::builtin_module_ifaces_chirho;
+use crate::resolve_chirho::{resolve_module_chirho, resolve_module_with_imports_chirho};
 
 fn name_chirho(text_chirho: &str) -> NameChirho {
     NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -57,7 +61,7 @@ fn check_chirho(
     env_chirho: &NameEnvChirho,
 ) -> DiagnosticBundleChirho {
     let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
-    check_module_type_scope_chirho(module_chirho, env_chirho, &mut diagnostics_chirho);
+    check_module_type_scope_chirho(module_chirho, env_chirho, &[], &mut diagnostics_chirho);
     diagnostics_chirho
 }
 
@@ -139,10 +143,81 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
     ]);
     let result_chirho = resolve_module_chirho(&module_chirho);
     assert!(result_chirho.diagnostics_chirho.is_empty_chirho());
-    assert!(result_chirho
-        .env_chirho
-        .lookup_type_chirho("FamilyChirho")
-        .is_some());
+    assert!(
+        result_chirho
+            .env_chirho
+            .lookup_type_chirho("FamilyChirho")
+            .is_some()
+    );
+}
+
+fn qualified_is_list_instance_chirho(import_spec_chirho: Option<ImportSpecChirho>) -> ModuleChirho {
+    let mut module_chirho = module_chirho(vec![
+        DeclChirho::DataDeclChirho {
+            name_chirho: name_chirho("LocalListChirho"),
+            type_vars_chirho: vec![],
+            constructors_chirho: vec![],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        },
+        DeclChirho::InstanceDeclChirho {
+            context_chirho: vec![],
+            class_chirho: qualified_name_chirho("GHC.Exts", "IsList"),
+            types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
+            methods_chirho: vec![],
+            assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                family_name_chirho: name_chirho("Item"),
+                lhs_types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
+                rhs_chirho: TypeChirho::ConChirho(name_chirho("LocalListChirho")),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        },
+    ]);
+    module_chirho.imports_chirho = vec![ImportDeclChirho {
+        module_chirho: name_chirho("GHC.Exts"),
+        qualified_chirho: true,
+        alias_chirho: None,
+        spec_chirho: import_spec_chirho,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }];
+    module_chirho
+}
+
+#[test]
+fn qualified_class_import_scopes_visible_associated_type_inside_instance_chirho() {
+    let module_chirho = qualified_is_list_instance_chirho(None);
+    let result_chirho =
+        resolve_module_with_imports_chirho(&module_chirho, &builtin_module_ifaces_chirho());
+    assert!(result_chirho.diagnostics_chirho.is_empty_chirho());
+    assert!(
+        result_chirho
+            .env_chirho
+            .lookup_type_chirho("Item")
+            .is_none()
+    );
+    assert!(
+        result_chirho
+            .env_chirho
+            .lookup_qualified_chirho("GHC.Exts", "Item", NamespaceChirho::TypeChirho,)
+            .is_some()
+    );
+}
+
+#[test]
+fn qualified_class_import_without_members_does_not_scope_associated_type_chirho() {
+    let module_chirho = qualified_is_list_instance_chirho(Some(ImportSpecChirho {
+        hiding_chirho: false,
+        items_chirho: vec![ImportItemChirho::TyConChirho {
+            name_chirho: name_chirho("IsList"),
+            members_chirho: ExportMembersChirho::NoneChirho,
+        }],
+    }));
+    let result_chirho =
+        resolve_module_with_imports_chirho(&module_chirho, &builtin_module_ifaces_chirho());
+    assert_eq!(result_chirho.diagnostics_chirho.error_count_chirho(), 1);
+    assert!(format!("{}", result_chirho.diagnostics_chirho).contains("Item"));
 }
 
 #[test]
@@ -416,11 +491,13 @@ fn explicit_forall_binds_its_body_variable_chirho() {
         },
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -479,11 +556,13 @@ fn signature_without_outermost_forall_implicitly_quantifies_chirho() {
         result_chirho: Box::new(TypeChirho::VarChirho(name_chirho("bChirho"))),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![signature_chirho(ty_chirho)]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![signature_chirho(ty_chirho)]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -502,11 +581,13 @@ fn parenthesized_forall_keeps_outer_free_variables_implicit_chirho() {
         }),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![signature_chirho(ty_chirho)]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![signature_chirho(ty_chirho)]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -522,11 +603,13 @@ fn required_forall_keeps_outer_free_variables_implicit_chirho() {
         }),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![signature_chirho(ty_chirho)]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![signature_chirho(ty_chirho)]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -552,11 +635,13 @@ fn nested_forall_shadowing_restores_the_outer_binder_chirho() {
         },
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -580,6 +665,36 @@ fn promoted_constructor_uses_the_value_namespace_chirho() {
     let diagnostics_chirho = check_chirho(&module_chirho, &env_chirho);
     assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
     assert!(format!("{diagnostics_chirho}").contains("AbsentChirho"));
+}
+
+#[test]
+fn missing_promoted_constructor_defers_when_import_inventory_is_incomplete_chirho() {
+    let mut module_chirho = module_chirho(vec![signature_chirho(TypeChirho::PromotedConChirho {
+        name_chirho: name_chirho("ImportedFamilyConstructorChirho"),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    })]);
+    module_chirho.imports_chirho.push(ImportDeclChirho {
+        module_chirho: name_chirho("SourceModuleChirho"),
+        qualified_chirho: false,
+        alias_chirho: None,
+        spec_chirho: None,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    });
+
+    assert!(check_chirho(&module_chirho, &NameEnvChirho::new_chirho()).is_empty_chirho());
+}
+
+#[test]
+fn type_data_alias_recovery_does_not_invent_a_type_use_chirho() {
+    let mut module_chirho = module_chirho(vec![DeclChirho::TypeAliasDeclChirho {
+        name_chirho: name_chirho("LetterChirho"),
+        type_vars_chirho: vec![],
+        rhs_chirho: TypeChirho::ConChirho(name_chirho("AChirho")),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }]);
+    module_chirho.extensions_chirho.push("TypeData".to_string());
+
+    assert!(check_chirho(&module_chirho, &NameEnvChirho::new_chirho()).is_empty_chirho());
 }
 
 #[test]
@@ -640,11 +755,13 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
         kind_sig_chirho: None,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -718,11 +835,13 @@ fn explicit_forall_kind_annotation_sees_previous_binders_chirho() {
         },
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -737,11 +856,13 @@ fn declaration_head_kind_variables_are_implicitly_bound_chirho() {
         rhs_chirho: TypeChirho::VarChirho(name_chirho("kChirho")),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -756,11 +877,13 @@ fn declaration_head_underscore_kind_variable_is_implicitly_bound_chirho() {
         rhs_chirho: TypeChirho::VarChirho(name_chirho("_kindChirho")),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -825,11 +948,13 @@ fn dropped_existential_prefix_defers_only_its_constructor_fields_chirho() {
         span_chirho: declaration_span_chirho,
     };
 
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]
@@ -878,11 +1003,13 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
         kind_sig_chirho: None,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    assert!(check_chirho(
-        &module_chirho(vec![decl_chirho]),
-        &NameEnvChirho::new_chirho(),
-    )
-    .is_empty_chirho());
+    assert!(
+        check_chirho(
+            &module_chirho(vec![decl_chirho]),
+            &NameEnvChirho::new_chirho(),
+        )
+        .is_empty_chirho()
+    );
 }
 
 #[test]

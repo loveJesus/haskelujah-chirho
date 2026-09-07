@@ -87,12 +87,18 @@ fn builtin_interfaces_export_source_visible_type_names_chirho() {
         ("GHC.Exts", "ByteArray#"),
         ("GHC.Exts", "Word8#"),
         ("GHC.Exts", "WithDict"),
+        ("GHC.Prim", "ThreadId#"),
         ("GHC.Base", "ByteArray#"),
         ("Control.Monad.Trans.Reader", "Reader"),
         ("GHC.Generics", "Generically"),
+        ("GHC.Generics", "NoSelector"),
         ("GHC.IO.Handle.Types", "Handle__"),
         ("GHC.IO.Handle.Internals", "Handle__"),
         ("Data.Typeable", ":~:"),
+        ("Data.Data", ":~:"),
+        ("Language.Haskell.TH.Syntax", "Lift"),
+        ("System.Posix.Types", "CClockId"),
+        ("Text.ParserCombinators.Parsec", "GenParser"),
     ];
 
     for (module_name_chirho, type_name_chirho) in expected_types_chirho {
@@ -109,9 +115,11 @@ fn builtin_interfaces_export_source_visible_type_names_chirho() {
         );
     }
 
-    for (module_name_chirho, constructor_name_chirho) in
-        [("GHC.Generics", "Generically"), ("Data.Typeable", "Refl")]
-    {
+    for (module_name_chirho, constructor_name_chirho) in [
+        ("GHC.Generics", "Generically"),
+        ("Data.Typeable", "Refl"),
+        ("Data.Data", "Refl"),
+    ] {
         let module_chirho = modules_chirho
             .iter()
             .find(|module_chirho| module_chirho.name_chirho == module_name_chirho)
@@ -124,6 +132,15 @@ fn builtin_interfaces_export_source_visible_type_names_chirho() {
             "{module_name_chirho} does not export constructor {constructor_name_chirho}"
         );
     }
+
+    let ghc_exts_chirho = modules_chirho
+        .iter()
+        .find(|module_chirho| module_chirho.name_chirho == "GHC.Exts")
+        .expect("GHC.Exts built-in interface should exist");
+    assert_eq!(
+        ghc_exts_chirho.exports_chirho.associated_types_chirho["IsList"],
+        ["Item"]
+    );
 }
 
 #[test]
@@ -289,14 +306,18 @@ fn selected_associated_import_reaches_unqualified_type_scope_chirho() {
     let result_chirho =
         resolve_module_with_imports_chirho(&consumer_module_chirho, &[source_iface_chirho]);
     assert!(result_chirho.diagnostics_chirho.is_empty_chirho());
-    assert!(result_chirho
-        .env_chirho
-        .lookup_type_chirho("ElementChirho")
-        .is_some());
-    assert!(result_chirho
-        .env_chirho
-        .lookup_type_chirho("IndexChirho")
-        .is_none());
+    assert!(
+        result_chirho
+            .env_chirho
+            .lookup_type_chirho("ElementChirho")
+            .is_some()
+    );
+    assert!(
+        result_chirho
+            .env_chirho
+            .lookup_type_chirho("IndexChirho")
+            .is_none()
+    );
 }
 
 #[test]
@@ -342,12 +363,14 @@ fn selected_associated_import_reaches_qualified_alias_scope_chirho() {
     let result_chirho =
         resolve_module_with_imports_chirho(&consumer_module_chirho, &[source_iface_chirho]);
     assert!(result_chirho.diagnostics_chirho.is_empty_chirho());
-    assert!(result_chirho
-        .env_chirho
-        .lookup_qualified_chirho(
-            "AliasChirho",
-            "ElementChirho",
-            crate::env_chirho::NamespaceChirho::TypeChirho,
-        )
-        .is_some());
+    assert!(
+        result_chirho
+            .env_chirho
+            .lookup_qualified_chirho(
+                "AliasChirho",
+                "ElementChirho",
+                crate::env_chirho::NamespaceChirho::TypeChirho,
+            )
+            .is_some()
+    );
 }

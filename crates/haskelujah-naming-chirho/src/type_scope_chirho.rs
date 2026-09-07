@@ -20,7 +20,11 @@ use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, Er
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::env_chirho::{NameEnvChirho, NamespaceChirho};
-use crate::resolve_chirho::{report_undefined_with_suggestions_chirho, UNDEFINED_TYPE_CODE_CHIRHO};
+use crate::iface_chirho::ModuleIfaceChirho;
+use crate::resolve_chirho::{
+    UNDEFINED_TYPE_CODE_CHIRHO, compute_imported_names_chirho,
+    report_undefined_with_suggestions_chirho,
+};
 use crate::type_exports_chirho::{canonical_type_name_chirho, canonical_value_name_chirho};
 
 /// Parser marker for a constraint shape that was not structurally lowered.
@@ -52,15 +56,19 @@ struct TypeScopeWalkerChirho<'scope_chirho> {
     module_name_chirho: String,
     bound_tyvars_chirho: HashMap<String, usize>,
     reported_chirho: HashSet<(TypeScopeIssueChirho, String, SpanChirho)>,
+    instance_associated_type_scope_chirho: HashMap<String, HashSet<String>>,
     existential_quantification_chirho: bool,
     data_kinds_chirho: bool,
     star_is_type_chirho: bool,
+    imported_constructor_inventory_may_be_incomplete_chirho: bool,
+    type_data_lowering_may_be_incomplete_chirho: bool,
 }
 
 impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     fn new_chirho(
         module_chirho: &ModuleChirho,
         env_chirho: &'scope_chirho NameEnvChirho,
+        available_modules_chirho: &[ModuleIfaceChirho],
         diagnostics_chirho: &'scope_chirho mut DiagnosticBundleChirho,
     ) -> Self {
         Self {
@@ -69,6 +77,10 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             module_name_chirho: module_chirho.name_chirho.full_name_chirho(),
             bound_tyvars_chirho: HashMap::new(),
             reported_chirho: HashSet::new(),
+            instance_associated_type_scope_chirho: collect_instance_associated_type_scope_chirho(
+                module_chirho,
+                available_modules_chirho,
+            ),
             existential_quantification_chirho: extension_enabled_chirho(
                 module_chirho,
                 "ExistentialQuantification",
@@ -82,6 +94,20 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 module_chirho,
                 "StarIsType",
                 true,
+            ),
+            // Source interfaces cannot yet represent constructors introduced
+            // by data-family instances. Until they carry an explicit
+            // completeness bit, absence from an imported constructor
+            // inventory is not proof that a promoted constructor is missing.
+            imported_constructor_inventory_may_be_incomplete_chirho: !module_chirho
+                .imports_chirho
+                .is_empty(),
+            // `type data` is currently lowered through the type-alias recovery
+            // path. Keep that lossy shape from turning its first constructor
+            // into an invented out-of-scope type use.
+            type_data_lowering_may_be_incomplete_chirho: extension_enabled_chirho(
+                module_chirho,
+                "TypeData",
             ),
         }
     }
@@ -159,7 +185,11 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 ..
             } => {
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
-                self.walk_type_chirho(rhs_chirho, FreeTyVarPolicyChirho::RequireBoundChirho);
+                if !(self.type_data_lowering_may_be_incomplete_chirho
+                    && type_alias_may_be_type_data_recovery_chirho(type_vars_chirho, rhs_chirho))
+                {
+                    self.walk_type_chirho(rhs_chirho, FreeTyVarPolicyChirho::RequireBoundChirho);
+                }
                 self.pop_binders_chirho(&pushed_chirho);
             }
             DeclChirho::TypeFamilyDeclChirho {
@@ -256,7 +286,10 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.walk_type_chirho(ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                 }
                 for assoc_tf_chirho in assoc_tf_instances_chirho {
-                    self.check_type_name_chirho(&assoc_tf_chirho.family_name_chirho, false);
+                    self.check_instance_associated_type_name_chirho(
+                        class_chirho,
+                        &assoc_tf_chirho.family_name_chirho,
+                    );
                     for lhs_ty_chirho in &assoc_tf_chirho.lhs_types_chirho {
                         self.walk_type_chirho(lhs_ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                     }
@@ -618,6 +651,9 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         if found_chirho {
             return;
         }
+        if self.imported_constructor_inventory_may_be_incomplete_chirho {
+            return;
+        }
 
         let full_name_chirho = name_chirho.full_name_chirho();
         let key_chirho = (
@@ -648,6 +684,29 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         if self.type_name_in_scope_chirho(name_chirho, allow_promotion_chirho) {
             return;
         }
+        self.report_unknown_type_name_chirho(name_chirho);
+    }
+
+    fn check_instance_associated_type_name_chirho(
+        &mut self,
+        class_chirho: &NameChirho,
+        associated_type_chirho: &NameChirho,
+    ) {
+        let class_name_chirho = canonical_type_name_chirho(&class_chirho.full_name_chirho());
+        let associated_name_chirho =
+            canonical_type_name_chirho(associated_type_chirho.text_chirho());
+        let known_parent_chirho = self
+            .instance_associated_type_scope_chirho
+            .get(&class_name_chirho);
+        match known_parent_chirho {
+            Some(visible_members_chirho)
+                if visible_members_chirho.contains(&associated_name_chirho) => {}
+            Some(_) => self.report_unknown_type_name_chirho(associated_type_chirho),
+            None => self.check_type_name_chirho(associated_type_chirho, false),
+        }
+    }
+
+    fn report_unknown_type_name_chirho(&mut self, name_chirho: &NameChirho) {
         let full_name_chirho = name_chirho.full_name_chirho();
         let key_chirho = (
             TypeScopeIssueChirho::UNKNOWN_TYPE_NAME_CHIRHO,
@@ -751,6 +810,92 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     }
 }
 
+fn type_alias_may_be_type_data_recovery_chirho(
+    type_vars_chirho: &[haskelujah_ast_chirho::decl_chirho::TyVarChirho],
+    rhs_chirho: &TypeChirho,
+) -> bool {
+    type_vars_chirho.is_empty()
+        && matches!(
+            rhs_chirho,
+            TypeChirho::ConChirho(name_chirho)
+                if is_promotable_constructor_spelling_chirho(name_chirho.text_chirho())
+        )
+}
+
+fn collect_instance_associated_type_scope_chirho(
+    module_chirho: &ModuleChirho,
+    available_modules_chirho: &[ModuleIfaceChirho],
+) -> HashMap<String, HashSet<String>> {
+    let mut scope_chirho = HashMap::new();
+
+    for decl_chirho in &module_chirho.decls_chirho {
+        let DeclChirho::ClassDeclChirho {
+            name_chirho,
+            associated_tfs_chirho,
+            ..
+        } = decl_chirho
+        else {
+            continue;
+        };
+        scope_chirho.insert(
+            canonical_type_name_chirho(name_chirho.text_chirho()),
+            associated_tfs_chirho
+                .iter()
+                .map(|family_chirho| {
+                    canonical_type_name_chirho(family_chirho.name_chirho.text_chirho())
+                })
+                .collect(),
+        );
+    }
+
+    for import_chirho in &module_chirho.imports_chirho {
+        let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+        let Some(iface_chirho) = available_modules_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
+        else {
+            continue;
+        };
+        let visible_types_chirho: HashSet<String> =
+            compute_imported_names_chirho(&iface_chirho.exports_chirho, &import_chirho.spec_chirho)
+                .into_iter()
+                .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    (namespace_chirho == NamespaceChirho::TypeChirho)
+                        .then(|| canonical_type_name_chirho(&name_chirho))
+                })
+                .collect();
+        let qualifier_chirho = import_chirho
+            .alias_chirho
+            .as_ref()
+            .map(|alias_chirho| alias_chirho.text_chirho().to_string())
+            .unwrap_or(module_name_chirho);
+
+        for (parent_name_chirho, associated_names_chirho) in
+            &iface_chirho.exports_chirho.associated_types_chirho
+        {
+            let parent_name_chirho = canonical_type_name_chirho(parent_name_chirho);
+            if !visible_types_chirho.contains(&parent_name_chirho) {
+                continue;
+            }
+            let visible_members_chirho: HashSet<String> = associated_names_chirho
+                .iter()
+                .map(|name_chirho| canonical_type_name_chirho(name_chirho))
+                .filter(|name_chirho| visible_types_chirho.contains(name_chirho))
+                .collect();
+            scope_chirho.insert(
+                format!("{qualifier_chirho}.{parent_name_chirho}"),
+                visible_members_chirho.clone(),
+            );
+            if !import_chirho.qualified_chirho {
+                scope_chirho.insert(parent_name_chirho, visible_members_chirho);
+            }
+        }
+    }
+
+    scope_chirho
+}
+
 fn record_field_type_scope_reliable_chirho(ty_chirho: &TypeChirho) -> bool {
     match ty_chirho {
         TypeChirho::ForallChirho { .. } => false,
@@ -850,10 +995,16 @@ fn record_field_constraint_scope_reliable_chirho(constraint_chirho: &ConstraintC
 pub(crate) fn check_module_type_scope_chirho(
     module_chirho: &ModuleChirho,
     env_chirho: &NameEnvChirho,
+    available_modules_chirho: &[ModuleIfaceChirho],
     diagnostics_chirho: &mut DiagnosticBundleChirho,
 ) {
-    TypeScopeWalkerChirho::new_chirho(module_chirho, env_chirho, diagnostics_chirho)
-        .walk_module_chirho(module_chirho);
+    TypeScopeWalkerChirho::new_chirho(
+        module_chirho,
+        env_chirho,
+        available_modules_chirho,
+        diagnostics_chirho,
+    )
+    .walk_module_chirho(module_chirho);
 }
 
 fn extension_enabled_chirho(module_chirho: &ModuleChirho, name_chirho: &str) -> bool {

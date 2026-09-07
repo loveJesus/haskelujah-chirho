@@ -219,6 +219,10 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
                 );
                 ensure_type_export_chirho(module_chirho, "VecCount", VEC_COUNT_CONSTRUCTORS_CHIRHO);
                 ensure_type_export_chirho(module_chirho, "VecElem", VEC_ELEM_CONSTRUCTORS_CHIRHO);
+                ensure_associated_type_export_chirho(module_chirho, "IsList", "Item");
+            }
+            "GHC.Prim" => {
+                ensure_type_export_chirho(module_chirho, "ThreadId#", &[]);
             }
             "GHC.TypeLits" | "GHC.TypeNats" => {
                 for type_name_chirho in &[
@@ -258,6 +262,7 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
             }
             "Data.Data" => {
                 ensure_type_export_chirho(module_chirho, "Proxy", &["Proxy"]);
+                ensure_type_export_chirho(module_chirho, ":~:", &["Refl"]);
             }
             "Language.Haskell.TH" => {
                 for type_name_chirho in &["Q", "Pat"] {
@@ -266,6 +271,7 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
             }
             "Language.Haskell.TH.Syntax" => {
                 ensure_type_export_chirho(module_chirho, "Q", &[]);
+                ensure_type_export_chirho(module_chirho, "Lift", &[]);
             }
             "GHC.Base" => {
                 for type_name_chirho in
@@ -276,12 +282,19 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
             }
             "GHC.Generics" => {
                 ensure_type_export_chirho(module_chirho, "Generically", &["Generically"]);
+                ensure_type_export_chirho(module_chirho, "NoSelector", &[]);
             }
             "Control.Monad.Trans.Reader" => {
                 ensure_type_export_chirho(module_chirho, "Reader", &[]);
             }
             "GHC.IO.Handle.Types" | "GHC.IO.Handle.Internals" => {
                 ensure_type_export_chirho(module_chirho, "Handle__", &[]);
+            }
+            "System.Posix.Types" => {
+                ensure_type_export_chirho(module_chirho, "CClockId", &[]);
+            }
+            "Text.ParserCombinators.Parsec" => {
+                ensure_type_export_chirho(module_chirho, "GenParser", &[]);
             }
             _ => {}
         }
@@ -358,6 +371,26 @@ fn ensure_type_export_chirho(
                 name_chirho: canonical_constructor_chirho,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             });
+    }
+}
+
+fn ensure_associated_type_export_chirho(
+    module_chirho: &mut ModuleIfaceChirho,
+    parent_name_chirho: &str,
+    associated_name_chirho: &str,
+) {
+    ensure_type_export_chirho(module_chirho, parent_name_chirho, &[]);
+    ensure_type_export_chirho(module_chirho, associated_name_chirho, &[]);
+
+    let canonical_parent_chirho = canonical_type_name_chirho(parent_name_chirho);
+    let canonical_associated_chirho = canonical_type_name_chirho(associated_name_chirho);
+    let associated_names_chirho = module_chirho
+        .exports_chirho
+        .associated_types_chirho
+        .entry(canonical_parent_chirho)
+        .or_default();
+    if !associated_names_chirho.contains(&canonical_associated_chirho) {
+        associated_names_chirho.push(canonical_associated_chirho);
     }
 }
 

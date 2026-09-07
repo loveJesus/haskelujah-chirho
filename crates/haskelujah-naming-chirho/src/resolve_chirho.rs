@@ -239,7 +239,12 @@ pub fn resolve_module_with_imports_chirho(
     // A missing interface makes every dependent lookup unknowable, so retain
     // the causal import diagnostic instead of cascading guessed scope errors.
     if !diagnostics_chirho.has_errors_chirho() {
-        check_module_type_scope_chirho(module_chirho, &env_chirho, &mut diagnostics_chirho);
+        check_module_type_scope_chirho(
+            module_chirho,
+            &env_chirho,
+            available_modules_chirho,
+            &mut diagnostics_chirho,
+        );
     }
 
     ResolveResultChirho {
