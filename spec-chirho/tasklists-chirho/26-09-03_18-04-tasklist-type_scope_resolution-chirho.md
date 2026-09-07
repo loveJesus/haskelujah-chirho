@@ -7,7 +7,7 @@ Directive: advance the GHC typecheck corpus through reusable root-cause mechanis
 
 - [x] Keep this lane in `haskelujah-naming-chirho`: the pass already owns `NameEnvChirho`, imported interfaces, namespaces, and undefined-name diagnostics.
 - [x] Add a focused `type_scope_chirho.rs` module because `resolve_chirho.rs` already exceeds the project file-size limit.
-- [x] Keep its unit tests in `type_scope_tests_chirho.rs` so the implementation stays below 1,000 lines and the naming directory remains within its entry budget.
+- [x] Keep its unit tests in `type_scope_tests_chirho.rs` so both files remain below the 1,500-line cap and the naming directory remains within its entry budget. They finish at 1,144 and 1,036 lines respectively—slightly above the 1,000-line aim, so the next semantic expansion must extract a focused submodule rather than grow either file.
 - [x] Begin with the naming module and its narrow resolver/lib hooks; expand only at a measured trust-boundary failure after the other agents' typing/kind lanes land.
 - [x] Isolate this lane on branch `gpt-type-scope-chirho` in a sibling worktree so Claude's corpus binaries contain only his typing lane.
 - [x] Respect Claude's builder and progress-DB locks: no Cargo build/test/corpus gate and no SQLite write until `SLOT-FREE` / `DB-FREE`.
