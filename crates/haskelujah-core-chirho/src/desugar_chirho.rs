@@ -86,6 +86,10 @@ pub struct DesugarCtxChirho {
     /// Record constructor field names: maps constructor name → ordered list of field names.
     /// Used for RecordWildCards expansion (`Foo{..}` fills in missing fields).
     con_field_names_chirho: HashMap<String, Vec<String>>,
+    /// Constructor arities for the ordinary and record constructors declared
+    /// in this module: `C {}` on a positional constructor supplies no fields,
+    /// so every argument becomes a missing-field thunk.
+    con_arities_chirho: HashMap<String, usize>,
     /// Pattern synonym definitions: maps synonym name → definition.
     pat_syns_chirho: HashMap<String, PatSynDefChirho>,
     /// Evidence-threading P1: names (class methods) whose free references get a
@@ -114,6 +118,7 @@ impl DesugarCtxChirho {
             current_module_name_chirho: None,
             con_strictness_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
+            con_arities_chirho: HashMap::new(),
             pat_syns_chirho: HashMap::new(),
             method_occurrence_names_chirho: HashSet::new(),
             method_occurrences_chirho: HashMap::new(),
@@ -135,6 +140,13 @@ impl DesugarCtxChirho {
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub fn set_constrained_names_chirho(&mut self, names_chirho: HashSet<String>) {
         self.constrained_names_chirho = names_chirho;
+    }
+
+    /// Constructor arities the checker knows, imported constructors included;
+    /// this module's own declarations are registered on top of them.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    pub fn set_constructor_arities_chirho(&mut self, arities_chirho: HashMap<String, usize>) {
+        self.con_arities_chirho = arities_chirho;
     }
 
     /// Mint an occurrence id for a reference to a constrained bound name; any
@@ -317,6 +329,8 @@ impl DesugarCtxChirho {
                         fields_chirho,
                         ..
                     } => {
+                        self.con_arities_chirho
+                            .insert(name_chirho.text_chirho().to_string(), fields_chirho.len());
                         let strictness_chirho: Vec<StrictnessChirho> = fields_chirho
                             .iter()
                             .map(|(s_chirho, _)| *s_chirho)
@@ -361,6 +375,10 @@ impl DesugarCtxChirho {
                                     .map(|n_chirho| n_chirho.text_chirho().to_string())
                             })
                             .collect();
+                        self.con_arities_chirho.insert(
+                            name_chirho.text_chirho().to_string(),
+                            field_names_chirho.len(),
+                        );
                         self.con_field_names_chirho
                             .insert(name_chirho.text_chirho().to_string(), field_names_chirho);
                     }
@@ -706,6 +724,69 @@ impl DesugarCtxChirho {
                 .iter()
                 .map(|f_chirho| self.desugar_expr_chirho(&f_chirho.value_chirho))
                 .collect()
+        }
+    }
+
+    /// Record construction by field label: arguments in the constructor's
+    /// declared order, an omitted field becoming a thunk that names it when
+    /// forced (`Missing field in record construction f`) — laziness kept, the
+    /// error actionable. Without field information the explicit fields are
+    /// passed positionally as before.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    fn record_construction_args_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        explicit_fields_chirho: &[haskelujah_ast_chirho::expr_chirho::FieldAssignChirho],
+    ) -> Vec<CoreExprChirho> {
+        let Some(all_fields_chirho) = self.con_field_names_chirho.get(con_name_chirho).cloned()
+        else {
+            if explicit_fields_chirho.is_empty()
+                && let Some(arity_chirho) = self.con_arities_chirho.get(con_name_chirho).copied()
+            {
+                // `C {}` on a positional constructor: every argument is missing.
+                return (0..arity_chirho)
+                    .map(|_| self.missing_field_thunk_chirho(None))
+                    .collect();
+            }
+            return explicit_fields_chirho
+                .iter()
+                .map(|f_chirho| self.desugar_expr_chirho(&f_chirho.value_chirho))
+                .collect();
+        };
+        let explicit_map_chirho: HashMap<String, &ExprChirho> = explicit_fields_chirho
+            .iter()
+            .map(|f_chirho| {
+                (
+                    f_chirho.name_chirho.text_chirho().to_string(),
+                    &f_chirho.value_chirho,
+                )
+            })
+            .collect();
+        all_fields_chirho
+            .iter()
+            .map(|field_name_chirho| {
+                if let Some(expr_chirho) = explicit_map_chirho.get(field_name_chirho) {
+                    self.desugar_expr_chirho(expr_chirho)
+                } else {
+                    self.missing_field_thunk_chirho(Some(field_name_chirho))
+                }
+            })
+            .collect()
+    }
+
+    /// The thunk an omitted field becomes: GHC's runtime message, naming the
+    /// field when the constructor declares one.
+    fn missing_field_thunk_chirho(&mut self, field_name_chirho: Option<&str>) -> CoreExprChirho {
+        let error_id_chirho = self.fresh_id_chirho("error");
+        let message_chirho = match field_name_chirho {
+            Some(name_chirho) => format!("Missing field in record construction {name_chirho}"),
+            None => "Missing field in record construction".to_string(),
+        };
+        CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(error_id_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                message_chirho,
+            ))),
         }
     }
 
@@ -4506,10 +4587,7 @@ impl DesugarCtxChirho {
                 let con_args_chirho: Vec<CoreExprChirho> = if *has_wildcard_chirho {
                     self.expand_record_wildcard_expr_chirho(&con_name_chirho, fields_chirho)
                 } else {
-                    fields_chirho
-                        .iter()
-                        .map(|field_chirho| self.desugar_expr_chirho(&field_chirho.value_chirho))
-                        .collect()
+                    self.record_construction_args_chirho(&con_name_chirho, fields_chirho)
                 };
                 CoreExprChirho::ConAppChirho {
                     con_name_chirho,
@@ -5791,22 +5869,43 @@ pub fn desugar_module_with_method_occurrences_chirho(
     module_chirho: &ModuleChirho,
     method_names_chirho: HashSet<String>,
 ) -> DesugarOutputChirho {
-    desugar_module_with_evidence_names_chirho(module_chirho, method_names_chirho, HashSet::new())
+    desugar_module_with_inputs_chirho(
+        module_chirho,
+        DesugarInputsChirho {
+            method_names_chirho,
+            ..DesugarInputsChirho::default()
+        },
+    )
 }
 
-/// Like [`desugar_module_with_method_occurrences_chirho`], also minting an
-/// occurrence id per reference to a constrained name so the checker's
-/// per-reference evidence can be joined to it.
-/// workflow: language-features-chirho/dictionary-evidence-chirho
-pub fn desugar_module_with_evidence_names_chirho(
+/// What the driver hands the desugarer besides the AST: facts read off the
+/// checker's environment that the AST alone does not carry.
+#[derive(Debug, Default)]
+pub struct DesugarInputsChirho {
+    /// Class methods whose free references each get a fresh occurrence id
+    /// (evidence-threading P1).
+    pub method_names_chirho: HashSet<String>,
+    /// Names whose scheme carries class predicates: each reference gets an
+    /// occurrence id the checker's per-reference evidence joins to.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub constrained_names_chirho: HashSet<String>,
+    /// Constructor arities, imported constructors included, so `C {}` on a
+    /// positional constructor fills every argument with a missing-field thunk.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    pub constructor_arities_chirho: HashMap<String, usize>,
+}
+
+/// Like [`desugar_module_with_method_occurrences_chirho`] with the full set of
+/// checker-derived inputs.
+pub fn desugar_module_with_inputs_chirho(
     module_chirho: &ModuleChirho,
-    method_names_chirho: HashSet<String>,
-    constrained_names_chirho: HashSet<String>,
+    inputs_chirho: DesugarInputsChirho,
 ) -> DesugarOutputChirho {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
-    ctx_chirho.set_method_occurrence_names_chirho(method_names_chirho);
-    ctx_chirho.set_constrained_names_chirho(constrained_names_chirho);
+    ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);
+    ctx_chirho.set_constrained_names_chirho(inputs_chirho.constrained_names_chirho);
+    ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 

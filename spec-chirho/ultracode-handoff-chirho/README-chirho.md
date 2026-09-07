@@ -134,6 +134,19 @@ hypothetical — every one was caught by the gates, not by review.
     multi-line literal; when a test fails after a solver change, reconstruct the program the
     literal actually encodes before blaming the solver.
 
+## Traps found while landing the record-field brick (read before polling the room or lowering braces)
+
+- Trap 19 — a room poll that greps for `CORPUS-PASSES-DONE` anywhere in a body fires on the START
+  message ("please stay off ... until CORPUS-PASSES-DONE"). Match the SUBJECT (the first ~90
+  characters after `SENDS:`), never the word (2026-09-07: a false DONE would have put a driver
+  suite on the machine during gpt's timing-sensitive passes; caught before any load).
+- Trap 20 — braces after a constructor are ALWAYS a record construction, even empty: `MkT {}`
+  used to lower to a bare constructor reference and fail with an arity E0200, while GHC builds
+  it with every argument a missing-field thunk. Record construction and update go by the
+  constructor's FIELD SET (E0206 undeclared, E0207 omitted strict, lazy omitted allowed), never
+  by arity; the desugarer needs imported constructors' arities from the checker's environment
+  (`DesugarInputsChirho`) or `Just {}` forced reads a stray zero instead of raising.
+
 ## Hard gates for every lane (non-negotiable)
 
 1. Rebuild before any corpus run (stale-binary trap): `nice -n 5 cargo build -j2 --bin haskelujah` — zero warnings, fix never suppress.

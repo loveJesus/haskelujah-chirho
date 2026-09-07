@@ -25,8 +25,8 @@ mod proptest_chirho;
 pub mod simplify_chirho;
 
 pub use desugar_chirho::{
-    DesugarOutputChirho, desugar_module_chirho, desugar_module_with_evidence_names_chirho,
-    desugar_module_with_method_occurrences_chirho,
+    DesugarInputsChirho, DesugarOutputChirho, desugar_module_chirho,
+    desugar_module_with_inputs_chirho, desugar_module_with_method_occurrences_chirho,
 };
 pub use dict_chirho::{
     DictPassResultChirho, dict_pass_module_chirho, dict_pass_module_full_chirho,

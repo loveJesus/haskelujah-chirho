@@ -3435,13 +3435,33 @@ fn compile_backend_chirho(
         })
         .map(|(name_chirho, _scheme_chirho)| name_chirho.clone())
         .collect();
-    let desugar_output_chirho = haskelujah_core_chirho::desugar_module_with_evidence_names_chirho(
+    // Constructor arities, imported constructors included: `C {}` on a
+    // positional constructor fills every argument with a missing-field thunk.
+    // workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    let constructor_arities_chirho: std::collections::HashMap<String, usize> = infer_result_chirho
+        .env_chirho
+        .all_bindings_chirho()
+        .into_iter()
+        .filter(|(name_chirho, _scheme_chirho)| {
+            name_chirho
+                .chars()
+                .next()
+                .is_some_and(|first_chirho| first_chirho.is_uppercase())
+        })
+        .map(|(name_chirho, scheme_chirho)| {
+            (name_chirho.clone(), scheme_chirho.spine_arity_chirho())
+        })
+        .collect();
+    let desugar_output_chirho = haskelujah_core_chirho::desugar_module_with_inputs_chirho(
         &module_chirho,
-        EVIDENCE_METHOD_NAMES_CHIRHO
-            .iter()
-            .map(|name_chirho| name_chirho.to_string())
-            .collect(),
-        constrained_names_chirho,
+        haskelujah_core_chirho::DesugarInputsChirho {
+            method_names_chirho: EVIDENCE_METHOD_NAMES_CHIRHO
+                .iter()
+                .map(|name_chirho| name_chirho.to_string())
+                .collect(),
+            constrained_names_chirho,
+            constructor_arities_chirho,
+        },
     );
     let reference_evidence_chirho: std::collections::HashMap<
         haskelujah_core_chirho::CoreIdChirho,

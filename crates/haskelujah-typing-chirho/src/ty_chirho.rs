@@ -336,6 +336,25 @@ impl SchemeChirho {
             .filter(|v_chirho| !self.vars_chirho.contains(v_chirho))
             .collect()
     }
+
+    /// Number of argument arrows on the type's spine, looking through
+    /// `forall` binders: a data constructor's arity, since its result is
+    /// never a function type.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    pub fn spine_arity_chirho(&self) -> usize {
+        let mut arity_chirho = 0;
+        let mut current_chirho = &self.ty_chirho;
+        loop {
+            match current_chirho {
+                TyChirho::ForallChirho { body_chirho, .. } => current_chirho = body_chirho,
+                TyChirho::FunChirho(_arg_chirho, result_chirho, _mult_chirho) => {
+                    arity_chirho += 1;
+                    current_chirho = result_chirho;
+                }
+                _ => return arity_chirho,
+            }
+        }
+    }
 }
 
 impl fmt::Display for SchemePredChirho {
@@ -393,6 +412,21 @@ mod tests_chirho {
             TyChirho::fun_chirho(TyChirho::VarChirho(a_chirho), TyChirho::VarChirho(b_chirho));
         let fvs_chirho = ty_chirho.free_vars_chirho();
         assert_eq!(fvs_chirho, vec![a_chirho, b_chirho]);
+    }
+
+    #[test]
+    fn spine_arity_counts_arrows_through_foralls_chirho() {
+        let a_chirho = TyVarChirho(0);
+        let inner_chirho = TyChirho::fun_chirho(
+            TyChirho::VarChirho(a_chirho),
+            TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::ConChirho("T".to_string())),
+        );
+        let scheme_chirho = SchemeChirho::mono_chirho(TyChirho::ForallChirho {
+            vars_chirho: vec![a_chirho],
+            body_chirho: Box::new(inner_chirho),
+        });
+        assert_eq!(scheme_chirho.spine_arity_chirho(), 2);
+        assert_eq!(SchemeChirho::mono_chirho(TyChirho::int_chirho()).spine_arity_chirho(), 0);
     }
 
     #[test]

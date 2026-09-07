@@ -6,6 +6,35 @@
 
 use super::*;
 
+/// The names of a record constructor's strict fields (`f :: !T`, unpacked or not).
+pub(super) fn strict_field_names_chirho(
+    fields_chirho: &[haskelujah_ast_chirho::decl_chirho::FieldDeclChirho],
+) -> Vec<String> {
+    use haskelujah_ast_chirho::decl_chirho::StrictnessChirho;
+    fields_chirho
+        .iter()
+        .filter(|fd_chirho| fd_chirho.strictness_chirho != StrictnessChirho::LazyChirho)
+        .flat_map(|fd_chirho| {
+            fd_chirho
+                .names_chirho
+                .iter()
+                .map(|n_chirho| n_chirho.text_chirho().to_string())
+        })
+        .collect()
+}
+
+/// The constructor name of any constructor declaration shape.
+pub(super) fn con_decl_name_chirho(
+    con_chirho: &haskelujah_ast_chirho::decl_chirho::ConDeclChirho,
+) -> &NameChirho {
+    use haskelujah_ast_chirho::decl_chirho::ConDeclChirho;
+    match con_chirho {
+        ConDeclChirho::OrdinaryChirho { name_chirho, .. }
+        | ConDeclChirho::RecordChirho { name_chirho, .. }
+        | ConDeclChirho::GadtChirho { name_chirho, .. } => name_chirho,
+    }
+}
+
 impl InferCtxChirho {
     /// Type-changing record update, as in Haskell 2010 §3.15.3: the input
     /// record and the result are two instantiations of the constructor's
@@ -94,6 +123,102 @@ impl InferCtxChirho {
 
     /// Like `lookup_record_constructor_field_bundle_chirho`, for a constructor
     /// known only by name (from the field-owner table).
+    /// A record update names fields no constructor declares. When the record
+    /// type's head is one this module declares — so its constructor list is
+    /// complete — every such field is an error at its own span (GHC:
+    /// "Constructor `P' does not have field `pz'"); for an imported or unknown
+    /// head nothing is reported, because the list may be incomplete. Returns
+    /// whether anything was reported.
+    pub(super) fn report_undeclared_record_fields_chirho(
+        &mut self,
+        base_ty_chirho: &TyChirho,
+        fields_chirho: &[haskelujah_ast_chirho::expr_chirho::FieldAssignChirho],
+    ) -> bool {
+        let mut head_chirho = self.normalize_ty_chirho(base_ty_chirho);
+        while let TyChirho::AppChirho(fun_chirho, _arg_chirho) = head_chirho {
+            head_chirho = *fun_chirho;
+        }
+        let TyChirho::ConChirho(type_name_chirho) = head_chirho else {
+            return false;
+        };
+        let Some(constructors_chirho) = self.data_constructors_chirho.get(&type_name_chirho) else {
+            return false;
+        };
+        let declared_chirho: HashSet<&String> = constructors_chirho
+            .iter()
+            .filter_map(|con_chirho| self.con_field_names_chirho.get(con_chirho))
+            .flat_map(|names_chirho| names_chirho.iter())
+            .collect();
+        let mut reported_chirho = false;
+        for field_chirho in fields_chirho {
+            let field_name_chirho =
+                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho()).to_string();
+            if declared_chirho.contains(&field_name_chirho) {
+                continue;
+            }
+            self.diagnostics_chirho
+                .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                    ErrorCodeChirho::error_chirho(RECORD_FIELD_CODE_CHIRHO),
+                    format!(
+                        "no constructor of `{type_name_chirho}` has a field `{field_name_chirho}`"
+                    ),
+                    field_chirho.span_chirho,
+                ));
+            reported_chirho = true;
+        }
+        reported_chirho
+    }
+
+    /// Record construction rules that go by the constructor's FIELD SET, never
+    /// its argument arity: a given field the constructor does not declare is
+    /// an error (E0206); an omitted field the constructor declares strict is
+    /// an error (E0207, GHC-95909); an omitted lazy field is allowed and
+    /// becomes a named missing-field thunk in the desugarer.
+    pub(super) fn report_record_construction_fields_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        ordered_field_names_chirho: &[String],
+        fields_chirho: &[haskelujah_ast_chirho::expr_chirho::FieldAssignChirho],
+        has_wildcard_chirho: bool,
+        span_chirho: SpanChirho,
+    ) {
+        for field_chirho in fields_chirho {
+            let given_chirho =
+                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho()).to_string();
+            if !ordered_field_names_chirho.contains(&given_chirho) {
+                self.report_field_not_declared_by_constructor_chirho(
+                    con_name_chirho,
+                    &given_chirho,
+                    field_chirho.span_chirho,
+                );
+            }
+        }
+        if has_wildcard_chirho {
+            return;
+        }
+        let strict_chirho = self
+            .con_strict_fields_chirho
+            .get(con_name_chirho)
+            .cloned()
+            .unwrap_or_default();
+        for strict_field_chirho in strict_chirho {
+            let given_chirho = fields_chirho.iter().any(|field_chirho| {
+                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho())
+                    == strict_field_chirho
+            });
+            if !given_chirho {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(RECORD_STRICT_FIELD_CODE_CHIRHO),
+                        format!(
+                            "constructor `{con_name_chirho}` does not have the required strict field `{strict_field_chirho}`"
+                        ),
+                        span_chirho,
+                    ));
+            }
+        }
+    }
+
     pub(super) fn record_constructor_bundle_by_name_chirho(
         &mut self,
         con_name_chirho: &str,
@@ -121,6 +246,88 @@ impl InferCtxChirho {
         }
         field_names_chirho.truncate(field_tys_chirho.len());
         Some((field_names_chirho, field_tys_chirho, remaining_ty_chirho))
+    }
+
+    /// `C {}` on a constructor without a declared field set (a positional
+    /// constructor, or an imported one whose fields are unknown) supplies
+    /// nothing, so every argument is a missing field and the construction has
+    /// the constructor's result type: the instantiated type with its argument
+    /// arrows peeled off.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    pub(super) fn constructor_result_type_chirho(&mut self, con_ty_chirho: TyChirho) -> TyChirho {
+        let mut remaining_chirho = self.open_constructor_forall_chirho(con_ty_chirho);
+        while let TyChirho::FunChirho(_arg_chirho, result_chirho, _mult_chirho) = remaining_chirho {
+            remaining_chirho = *result_chirho;
+        }
+        remaining_chirho
+    }
+
+    /// True when the constructor belongs to a type declared in this module, so
+    /// its field set is fully known (a positional constructor has none).
+    pub(super) fn is_local_constructor_chirho(&self, con_name_chirho: &str) -> bool {
+        self.data_constructors_chirho.values().any(|cons_chirho| {
+            cons_chirho
+                .iter()
+                .any(|con_chirho| con_chirho == con_name_chirho)
+        })
+    }
+
+    /// Named fields given to a local constructor that declares none are all
+    /// undeclared (E0206). Returns true when anything was reported.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    pub(super) fn report_fields_on_positional_constructor_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        fields_chirho: &[haskelujah_ast_chirho::expr_chirho::FieldAssignChirho],
+    ) -> bool {
+        if fields_chirho.is_empty() || !self.is_local_constructor_chirho(con_name_chirho) {
+            return false;
+        }
+        for field_chirho in fields_chirho {
+            let field_name_chirho =
+                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho()).to_string();
+            self.report_field_not_declared_by_constructor_chirho(
+                con_name_chirho,
+                &field_name_chirho,
+                field_chirho.span_chirho,
+            );
+        }
+        true
+    }
+
+    /// `C {}` on a local positional constructor with a strict argument omits
+    /// that argument: E0207 (tcfail112; GHC: "does not have the required
+    /// strict field(s)"). A constructor from another module is not judged.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    pub(super) fn report_omitted_strict_positional_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        span_chirho: SpanChirho,
+    ) {
+        if !self.strict_positional_constructors_chirho.contains(con_name_chirho) {
+            return;
+        }
+        self.diagnostics_chirho
+            .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(RECORD_STRICT_FIELD_CODE_CHIRHO),
+                format!("constructor `{con_name_chirho}` does not have the required strict field(s)"),
+                span_chirho,
+            ));
+    }
+
+    /// E0206 at the field: GHC's "Constructor `C' does not have field `f'".
+    fn report_field_not_declared_by_constructor_chirho(
+        &mut self,
+        con_name_chirho: &str,
+        field_name_chirho: &str,
+        span_chirho: SpanChirho,
+    ) {
+        self.diagnostics_chirho
+            .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(RECORD_FIELD_CODE_CHIRHO),
+                format!("constructor `{con_name_chirho}` does not have a field `{field_name_chirho}`"),
+                span_chirho,
+            ));
     }
 
     /// A constructor declared with a context or existential binders keeps a

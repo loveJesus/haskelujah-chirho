@@ -77,6 +77,49 @@ flowchart TD
   (`rigid_pred_certainly_undeducible_chirho`): fully visible class, simple argument shapes, and
   a bare rigid argument matched only by a variable-headed instance.
 
+## Record construction and update by field set (2026-09-07)
+
+GHC checks a record construction or update against the constructor's FIELD SET, never its
+argument arity. Ours went by arity, which produced three wrong verdicts and one crash:
+`MkT {}` on a lazy field was rejected (the parser lowered empty braces to a bare constructor
+reference), `P { px = 1 }` silently built a one-argument constructor, `P { px = 1, pq = 2 }`
+ignored `pq`, and `r { pz = 9 }` was accepted and died at run time on a missing setter.
+
+```mermaid
+flowchart TD
+    braces_chirho[Lowering: braces after a constructor, even empty, are a record construction]
+    braces_chirho --> arm_chirho[Checker RecordConChirho arm: report_record_construction_fields_chirho]
+    arm_chirho --> undeclared_chirho[given field not declared → E0206 at the field]
+    arm_chirho --> strict_chirho[omitted field declared strict (con_strict_fields_chirho) → E0207, GHC-95909]
+    arm_chirho --> lazy_chirho[omitted lazy field → typed fresh, allowed]
+    lazy_chirho --> desugar_chirho[Desugar record_construction_args_chirho: constructor order; omitted field → error thunk naming the field, forced only on use]
+    braces_chirho --> positional_chirho[no declared field set: C {} has the constructor's result type (constructor_result_type_chirho peels the arrows); a named field on a local positional constructor → E0206]
+    positional_chirho --> arity_chirho[Desugar fills every argument with the thunk; arities come from the checker's environment through DesugarInputsChirho, imported constructors included]
+    update_chirho[Checker RecordUpdateChirho arm: no constructor of a LOCAL type declares the field → E0206] --> unknown_chirho[imported or unknown head: permissive path kept]
+```
+
+Invariants: a local type's constructor list is complete (`data_constructors_chirho`), so the
+undeclared-field verdict is exact there and silent elsewhere; a missing lazy field costs
+nothing until forced and then names itself; strictness comes from the declaration
+(`strict_field_names_chirho`), so an unpacked field counts as strict. `Just {}` forced
+raises GHC's "Missing field in record construction" rather than reading a stray zero: the
+desugarer never sees an imported declaration, so the driver hands it every constructor's
+arity (`SchemeChirho::spine_arity_chirho`, arrows on the spine through `forall` binders).
+
+## Record update on an undeclared field (2026-09-07)
+
+`g r = r { pz = 1 }` where no constructor of `r`'s type declares `pz` used to take the
+permissive fallback ("unknown constructor layout") and reach STG, where the missing setter
+crashed the program; GHC rejects it. `report_undeclared_record_fields_chirho` now reports
+E0206 at each such field when the record type's head is one the module declares
+(`data_constructors_chirho` lists every local constructor, so the field list is complete);
+an imported or unknown head keeps the permissive path, because its constructor list may be
+partial. A GADT record constructor's fields (`MkT :: { f :: Int } -> T`) are lowered since
+665ec6ef, so its field set is registered and an update on `f` is accepted and runs; the
+constructor's result type is still dropped, so a type-changing update through a refinement
+(`HardRecordUpdate`) fails honestly on the refinement rather than passing vacuously
+(spec-chirho/bug-gadt-record-fields-dropped-chirho.md).
+
 ## Current boundary
 
 - Existential constructor variables are still instantiated as unification variables, not

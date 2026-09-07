@@ -47,6 +47,12 @@ const UNBOUND_VAR_CODE_CHIRHO: u16 = 202;
 const TUPLE_ARITY_CODE_CHIRHO: u16 = 203;
 const UNSATISFIED_CONSTRAINT_CODE_CHIRHO: u16 = 204;
 const SIGNATURE_MISMATCH_CODE_CHIRHO: u16 = 205;
+/// A record construction or update names a field no constructor of the
+/// (fully known) record type declares.
+const RECORD_FIELD_CODE_CHIRHO: u16 = 206;
+/// A record construction omits a field the constructor declares strict
+/// (GHC-95909: "does not have the required strict field").
+const RECORD_STRICT_FIELD_CODE_CHIRHO: u16 = 207;
 
 pub type TypeFamilyEnvChirho = HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>;
 
@@ -238,6 +244,17 @@ pub struct InferCtxChirho {
     /// Source spelling of type variables introduced from signatures, so
     /// skolems and diagnostics carry the programmer's names.
     tyvar_source_names_chirho: HashMap<TyVarChirho, String>,
+    /// Data type name → every constructor this module declares for it (data and
+    /// newtype declarations). Complete for local types only; an imported type
+    /// is absent, and the record-update check stays silent for it.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    data_constructors_chirho: HashMap<String, Vec<String>>,
+    /// Positional constructors of this module with at least one strict
+    /// argument: `C {}` on one omits a strict field (E0207, tcfail112).
+    strict_positional_constructors_chirho: HashSet<String>,
+    /// Record constructor → its strict field names (`f :: !Int`). A construction
+    /// that omits one of these is an error, not a lazy thunk.
+    con_strict_fields_chirho: HashMap<String, Vec<String>>,
     /// Record constructor field names: maps constructor name → ordered list of field names.
     /// Used for RecordWildCards expansion (`Foo{..}` fills in missing fields).
     con_field_names_chirho: HashMap<String, Vec<String>>,
@@ -613,6 +630,9 @@ impl InferCtxChirho {
             assoc_type_defaults_chirho: HashMap::new(),
             assoc_type_declared_params_chirho: HashMap::new(),
             tyvar_source_names_chirho: HashMap::new(),
+            data_constructors_chirho: HashMap::new(),
+            strict_positional_constructors_chirho: HashSet::new(),
+            con_strict_fields_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
             module_default_types_chirho: Vec::new(),
             overloaded_strings_chirho: false,
@@ -4359,6 +4379,14 @@ impl InferCtxChirho {
                         if let Some((ordered_field_names_chirho, _, _)) =
                             self.lookup_record_constructor_field_bundle_chirho(con_chirho)
                         {
+                            // workflow: language-features-chirho/rigid-type-variables-chirho (records)
+                            self.report_record_construction_fields_chirho(
+                                con_text_chirho,
+                                &ordered_field_names_chirho,
+                                fields_chirho,
+                                *has_wildcard_chirho,
+                                *span_chirho,
+                            );
                             for field_name_chirho in &ordered_field_names_chirho {
                                 let matched_field_chirho =
                                     fields_chirho.iter().find(|field_chirho| {
@@ -4425,6 +4453,28 @@ impl InferCtxChirho {
                             }
                             (combined_chirho, con_ty_chirho)
                         } else {
+                            // workflow: language-features-chirho/rigid-type-variables-chirho (records)
+                            // No declared field set. `C {}` supplies nothing, so every
+                            // argument is a missing field and the construction has the
+                            // constructor's result type; named fields on a local
+                            // positional constructor are all undeclared (E0206).
+                            if fields_chirho.is_empty() && !*has_wildcard_chirho {
+                                self.report_omitted_strict_positional_chirho(
+                                    con_text_chirho,
+                                    *span_chirho,
+                                );
+                                let result_ty_chirho =
+                                    self.constructor_result_type_chirho(con_ty_chirho);
+                                return (combined_chirho, result_ty_chirho);
+                            }
+                            if self.report_fields_on_positional_constructor_chirho(
+                                con_text_chirho,
+                                fields_chirho,
+                            ) {
+                                let result_ty_chirho =
+                                    self.constructor_result_type_chirho(con_ty_chirho);
+                                return (combined_chirho, result_ty_chirho);
+                            }
                             for field_chirho in fields_chirho {
                                 let (s_chirho, field_ty_chirho) =
                                     self.infer_expr_chirho(&field_chirho.value_chirho);
@@ -4457,7 +4507,19 @@ impl InferCtxChirho {
                             (combined_chirho, con_ty_chirho)
                         }
                     }
-                    None => (SubstChirho::empty_chirho(), self.fresh_var_chirho()),
+                    None => {
+                        // A record construction needs a data constructor in scope;
+                        // `Int{}` names a type, not a constructor (T23739c). The
+                        // Var arm reports a scheme-less name the same way.
+                        // workflow: language-features-chirho/rigid-type-variables-chirho (records)
+                        self.diagnostics_chirho
+                            .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                                ErrorCodeChirho::error_chirho(UNBOUND_VAR_CODE_CHIRHO),
+                                format!("unbound constructor: `{con_text_chirho}`"),
+                                con_chirho.span_chirho(),
+                            ));
+                        (SubstChirho::empty_chirho(), self.fresh_var_chirho())
+                    }
                 }
             }
 
@@ -4478,6 +4540,12 @@ impl InferCtxChirho {
                     combined_chirho = s_chirho.compose_chirho(&combined_chirho);
                     return (combined_chirho, result_ty_chirho);
                 }
+                // No constructor declares all the updated fields. When the
+                // record type is one this module declares, that is GHC's
+                // "constructor does not have field" error; an imported or
+                // unknown type keeps the permissive path below.
+                // workflow: language-features-chirho/rigid-type-variables-chirho (records)
+                self.report_undeclared_record_fields_chirho(&base_ty_chirho, fields_chirho);
                 // Unknown constructor layout: type-check the values and keep the
                 // record's type.
                 for field_chirho in fields_chirho {
@@ -6693,6 +6761,13 @@ impl InferCtxChirho {
                                     Box::new(TyChirho::VarChirho(*tv_chirho)),
                                 )
                             });
+                    let data_type_name_chirho = name_chirho.text_chirho().to_string();
+                    for con_chirho in constructors_chirho {
+                        self.data_constructors_chirho
+                            .entry(data_type_name_chirho.clone())
+                            .or_default()
+                            .push(records_chirho::con_decl_name_chirho(con_chirho).text_chirho().to_string());
+                    }
                     for con_chirho in constructors_chirho {
                         match con_chirho {
                             haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
@@ -6700,6 +6775,13 @@ impl InferCtxChirho {
                                 fields_chirho,
                                 ..
                             } => {
+                                if fields_chirho.iter().any(|(strictness_chirho, _ty_chirho)| {
+                                    *strictness_chirho
+                                        != haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho
+                                }) {
+                                    self.strict_positional_constructors_chirho
+                                        .insert(name_chirho.text_chirho().to_string());
+                                }
                                 let field_tys_chirho: Vec<TyChirho> = fields_chirho
                                     .iter()
                                     .map(|(_s_chirho, ty_chirho)| {
@@ -6755,6 +6837,10 @@ impl InferCtxChirho {
                                     name_chirho.text_chirho().to_string(),
                                     field_names_chirho,
                                 );
+                                self.con_strict_fields_chirho.insert(
+                                    name_chirho.text_chirho().to_string(),
+                                    records_chirho::strict_field_names_chirho(fields_chirho),
+                                );
                                 // Bind field accessor functions: fieldName :: T -> FieldType
                                 // Use a running index into field_tys_chirho (which is
                                 // flattened by field names, not by field declarations).
@@ -6803,6 +6889,10 @@ impl InferCtxChirho {
                     constructor_chirho,
                     ..
                 } => {
+                    self.data_constructors_chirho
+                        .entry(name_chirho.text_chirho().to_string())
+                        .or_default()
+                        .push(records_chirho::con_decl_name_chirho(constructor_chirho).text_chirho().to_string());
                     // Build fully-applied result type: N a b ...
                     let base_ty_chirho = TyChirho::ConChirho(name_chirho.text_chirho().to_string());
                     let mut nt_tv_map_chirho: HashMap<String, TyVarChirho> = HashMap::new();
@@ -6863,6 +6953,10 @@ impl InferCtxChirho {
                             self.con_field_names_chirho.insert(
                                 con_name_chirho.text_chirho().to_string(),
                                 field_names_chirho,
+                            );
+                            self.con_strict_fields_chirho.insert(
+                                con_name_chirho.text_chirho().to_string(),
+                                records_chirho::strict_field_names_chirho(fields_chirho),
                             );
                             let field_tys_chirho: Vec<TyChirho> = fields_chirho
                                 .iter()

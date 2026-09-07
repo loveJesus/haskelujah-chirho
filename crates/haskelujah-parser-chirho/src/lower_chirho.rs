@@ -5660,8 +5660,17 @@ impl LowerCtxChirho {
             SyntaxKindChirho::NameExprChirho => {
                 let name_chirho = self.extract_name_from_node_chirho(node_chirho, base_chirho);
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                // Check for record construction: Con { f1 = e1, ... }
-                let has_fields_chirho = children_chirho.iter().any(|c_chirho| {
+                // Check for record construction: Con { f1 = e1, ... }. Empty
+                // braces (`MkT {}`) are a record construction with no fields —
+                // legal for lazy fields — not a bare constructor reference.
+                let has_braces_chirho = children_chirho.iter().any(|c_chirho| {
+                    matches!(
+                        c_chirho.element_chirho,
+                        GreenElementChirho::TokenChirho(tok_chirho)
+                            if tok_chirho.kind_chirho() == TokenKindChirho::LeftBraceChirho
+                    )
+                });
+                let has_fields_chirho = has_braces_chirho || children_chirho.iter().any(|c_chirho| {
                     matches!(
                         c_chirho.element_chirho,
                         GreenElementChirho::NodeChirho(n_chirho)
