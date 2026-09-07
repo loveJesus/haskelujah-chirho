@@ -18,10 +18,11 @@ use haskelujah_span_chirho::SpanChirho;
 
 use crate::env_chirho::{NameEnvChirho, NamespaceChirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use crate::type_scope_chirho::check_module_type_scope_chirho;
 
 /// Error codes for name resolution diagnostics.
 const UNDEFINED_VALUE_CODE_CHIRHO: u16 = 100;
-const UNDEFINED_TYPE_CODE_CHIRHO: u16 = 101;
+pub(crate) const UNDEFINED_TYPE_CODE_CHIRHO: u16 = 101;
 const UNKNOWN_MODULE_CODE_CHIRHO: u16 = 102;
 
 /// Result of name resolution.
@@ -174,9 +175,17 @@ pub fn resolve_module_with_imports_chirho(
             haskelujah_ast_chirho::decl_chirho::DeclChirho::ClassDeclChirho {
                 name_chirho,
                 methods_chirho,
+                associated_tfs_chirho,
                 ..
             } => {
                 bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
+                for associated_tf_chirho in associated_tfs_chirho {
+                    bind_name_chirho(
+                        &mut env_chirho,
+                        &associated_tf_chirho.name_chirho,
+                        NamespaceChirho::TypeChirho,
+                    );
+                }
                 for method_chirho in methods_chirho {
                     bind_name_chirho(
                         &mut env_chirho,
@@ -235,6 +244,15 @@ pub fn resolve_module_with_imports_chirho(
             }
             _ => {}
         }
+    }
+
+    // Workflow: spec-chirho/workflows-chirho/compiler-pipeline-chirho/
+    // type-scope-resolution-chirho.md. Type uses are checked only after imports
+    // and every top-level type definition have populated the namespace.
+    // A missing interface makes every dependent lookup unknowable, so retain
+    // the causal import diagnostic instead of cascading guessed scope errors.
+    if !diagnostics_chirho.has_errors_chirho() {
+        check_module_type_scope_chirho(module_chirho, &env_chirho, &mut diagnostics_chirho);
     }
 
     ResolveResultChirho {
@@ -832,6 +850,16 @@ mod tests_chirho {
         }
     }
 
+    fn prelude_import_chirho() -> ImportDeclChirho {
+        ImportDeclChirho {
+            module_chirho: dummy_name_chirho("Prelude"),
+            qualified_chirho: false,
+            alias_chirho: None,
+            spec_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    }
+
     // ---------------------------------------------------------------
     // Single-module tests (no imports)
     // ---------------------------------------------------------------
@@ -1413,10 +1441,13 @@ mod tests_chirho {
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
-            vec![],
+            vec![prelude_import_chirho()],
         );
 
-        let result_chirho = resolve_module_chirho(&module_chirho);
+        let result_chirho = resolve_module_with_imports_chirho(
+            &module_chirho,
+            &crate::iface_chirho::builtin_module_ifaces_chirho(),
+        );
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
 
         // Type should be registered
@@ -1558,10 +1589,13 @@ mod tests_chirho {
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
-            vec![],
+            vec![prelude_import_chirho()],
         );
 
-        let result_chirho = resolve_module_chirho(&module_chirho);
+        let result_chirho = resolve_module_with_imports_chirho(
+            &module_chirho,
+            &crate::iface_chirho::builtin_module_ifaces_chirho(),
+        );
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         assert!(result_chirho.env_chirho.lookup_type_chirho("Age").is_some());
         assert!(

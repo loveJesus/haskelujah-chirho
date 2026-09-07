@@ -18,6 +18,7 @@
 pub mod env_chirho;
 pub mod iface_chirho;
 pub mod resolve_chirho;
+mod type_scope_chirho;
 
 pub use env_chirho::NameEnvChirho;
 pub use iface_chirho::{
