@@ -2427,6 +2427,7 @@ fn derive_data_typeable_chirho() {
     let src_chirho = r#"
 {-# LANGUAGE DeriveDataTypeable #-}
 module Test where
+import Data.Typeable (Typeable)
 data Color = Red | Green | Blue deriving (Show, Eq, Typeable)
 main = print Green
 "#;

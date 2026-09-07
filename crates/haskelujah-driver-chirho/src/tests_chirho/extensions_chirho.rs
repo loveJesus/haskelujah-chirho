@@ -1393,6 +1393,7 @@ fn kind_forall_annotated_vars_chirho() {
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Test where
+import Prelude (Int, (+))
 data Box a = MkBox a
 apply :: (forall a. a -> a) -> Int -> Int
 apply f x = f x

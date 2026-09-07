@@ -72,6 +72,7 @@ fn frontend_type_operator_alias_does_not_shadow_value_operator_chirho() {
     compile_source_chirho(
         "{-# LANGUAGE TypeOperators #-}\n\
 module TypeOperatorAliasValueNamespaceChirho where\n\
+import GHC.TypeLits (AppendSymbol, Symbol)\n\
 type (mChirho :: Symbol) ++ (nChirho :: Symbol) = AppendSymbol mChirho nChirho\n\
 appendValueChirho = (++)\n",
         &mut source_map_chirho,
@@ -545,6 +546,7 @@ fn frontend_type_equality_prefix_partial_application_keeps_heterogeneous_kind_sh
 {-# LANGUAGE KindSignatures #-}\n\
 module TypeEqualityPrefixMiniChirho where\n\
 import Data.Kind (Type)\n\
+import Data.Type.Equality ((:~~:))\n\
 type HeteroEqPrefixChirho (a :: k1) = ((:~~:) (a :: k1) :: k2 -> Type)\n",
         &mut source_map_chirho,
         "TypeEqualityPrefixMiniChirho.hs",
@@ -2361,7 +2363,7 @@ fn frontend_floating_operator_exponent_typechecks_chirho() {
 fn frontend_stacked_context_type_signature_typechecks_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
-        "module StackedContextChirho where\nfooChirho :: HasCallStack => Show a => a -> String\nfooChirho xChirho = show xChirho\n",
+        "module StackedContextChirho where\nimport GHC.Stack (HasCallStack)\nfooChirho :: HasCallStack => Show a => a -> String\nfooChirho xChirho = show xChirho\n",
         &mut source_map_chirho,
         "StackedContextChirho.hs",
     );
@@ -2782,7 +2784,7 @@ fn frontend_qualified_lazy_bytestring_char8_read_file_uses_bytestring_scheme_chi
 fn frontend_qualified_prelude_char_signature_unifies_with_unqualified_char_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
-        "module PreludeCharBridgeMiniChirho where\nimport qualified Prelude as P\ncharIdChirho :: P.Char -> Char\ncharIdChirho xChirho = xChirho\n",
+        "module PreludeCharBridgeMiniChirho where\nimport qualified Prelude as P\nimport Prelude (Char)\ncharIdChirho :: P.Char -> Char\ncharIdChirho xChirho = xChirho\n",
         &mut source_map_chirho,
         "PreludeCharBridgeMiniChirho.hs",
     );
@@ -2838,7 +2840,7 @@ fn frontend_qualified_nonempty_reverse_uses_nonempty_scheme_chirho() {
 fn frontend_qualified_prelude_bool_signature_unifies_with_unqualified_bool_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
-        "module PreludeBoolBridgeMiniChirho where\nimport qualified Prelude as P\nboolIdChirho :: P.Bool -> Bool\nboolIdChirho xChirho = xChirho\n",
+        "module PreludeBoolBridgeMiniChirho where\nimport qualified Prelude as P\nimport Prelude (Bool)\nboolIdChirho :: P.Bool -> Bool\nboolIdChirho xChirho = xChirho\n",
         &mut source_map_chirho,
         "PreludeBoolBridgeMiniChirho.hs",
     );
