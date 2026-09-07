@@ -2223,7 +2223,7 @@ impl LowerCtxChirho {
         let name_idx_chirho = open_chirho + 1;
         let name_tok_chirho = match children_chirho.get(name_idx_chirho)?.element_chirho {
             GreenElementChirho::TokenChirho(t_chirho)
-                if t_chirho.kind_chirho() == TokenKindChirho::VarIdChirho =>
+                if Self::is_head_binder_name_chirho(t_chirho.kind_chirho()) =>
             {
                 t_chirho
             }
@@ -9123,6 +9123,17 @@ impl LowerCtxChirho {
         self.dummy_name_chirho()
     }
 
+    /// A data-head binder name: a type variable, or the wildcard `_`.
+    /// GHC binds `data Foo (_ :: Constraint)` as an anonymous argument, so `_` is a
+    /// binder like any other — treating it as "not a binder" is what let its kind
+    /// annotation be read as the declaration's own return kind.
+    fn is_head_binder_name_chirho(kind_chirho: TokenKindChirho) -> bool {
+        matches!(
+            kind_chirho,
+            TokenKindChirho::VarIdChirho | TokenKindChirho::UnderscoreReservedIdChirho
+        )
+    }
+
     /// Try to parse a kind-annotated type variable from a parenthesized group:
     /// `( VarId :: Kind )` where Kind is `*`, `* -> *`, `(* -> *) -> *`, etc.
     ///
@@ -9144,7 +9155,7 @@ impl LowerCtxChirho {
         let var_child_chirho = &children_chirho[idx_chirho + 1];
         let var_tok_chirho = match var_child_chirho.element_chirho {
             GreenElementChirho::TokenChirho(t_chirho)
-                if t_chirho.kind_chirho() == TokenKindChirho::VarIdChirho =>
+                if Self::is_head_binder_name_chirho(t_chirho.kind_chirho()) =>
             {
                 t_chirho
             }
@@ -14592,6 +14603,50 @@ foo = 1
                 }
                 other_chirho => panic!("expected DataDecl, got {other_chirho:?}"),
             }
+        }
+    }
+
+    #[test]
+    fn lower_wildcard_head_binder_is_bound_not_a_declaration_kind_chirho() {
+        // `data Foo (_ :: Constraint)` is ACCEPTED by GHC (the Constraint is the
+        // binder's kind); `data Foo :: Constraint` is REJECTED (GHC-55233). They must
+        // not lower to the same shape — that identity is what made the reject-axis
+        // check unwritable, see spec-chirho/bug-data-binder-kind-misassigned-chirho.md.
+        let binder_chirho = parse_and_lower_chirho(
+            "module M where\ndata Foo (_ :: Constraint)\n",
+        );
+        match &binder_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho,
+                kind_sig_chirho,
+                ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 1, "`_` is a binder like any other");
+                assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "_");
+                assert_eq!(
+                    type_vars_chirho[0].kind_annotation_chirho,
+                    Some(AstKindChirho::ConstraintChirho)
+                );
+                assert!(kind_sig_chirho.is_none());
+            }
+            other_chirho => panic!("expected DataDecl, got {other_chirho:?}"),
+        }
+
+        let decl_kind_chirho =
+            parse_and_lower_chirho("module M where\ndata Foo :: Constraint\n");
+        match &decl_kind_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho,
+                kind_sig_chirho,
+                ..
+            } => {
+                assert!(type_vars_chirho.is_empty());
+                assert!(
+                    kind_sig_chirho.is_some(),
+                    "a real standalone kind signature still lands in kind_sig_chirho"
+                );
+            }
+            other_chirho => panic!("expected DataDecl, got {other_chirho:?}"),
         }
     }
 

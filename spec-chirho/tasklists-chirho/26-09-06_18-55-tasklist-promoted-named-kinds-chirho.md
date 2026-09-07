@@ -68,7 +68,7 @@ what landed here.
       error-present — see below
 - [x] Two-pass measurement of BOTH axes on the final binary: accept 874 twice, reject 204
       twice, both byte-identical
-- [ ] Commit by named path; artifact supersede naming the code commit; DB row; SLOT-FREE
+- [x] Commit by named path (d697851e), artifact supersede (1271f0e8), DB row 468 (fe815aaf), pushed to gh_chirho, SLOT-FREE posted (#21333)
 
 ## The two reject-axis losses, by reason
 
@@ -88,7 +88,30 @@ Same class as `T16646Fail2`/`T25679` in the previous measurement. Recovering the
 right reason needs the GHC-28374 unpromotable-context check — reject-axis work, not
 attempted here.
 
-## Lane A2b — the kinds we still cannot represent (follow-on)
+## Lane A2b-1 — the `_` binder, and the check it unblocks  ✅
+
+`try_parse_kind_annotated_tyvar_chirho` bailed on any binder that was not a `VarId`, and
+`_` is not one, so `data Foo (_ :: Constraint)` still fell through to the declaration-kind
+arm even after A2a. Both binder sites now share `is_head_binder_name_chirho`.
+
+- [x] `_` accepted as a head binder name at both sites (readable and unreadable kinds)
+- [x] The two forms are now distinct — `data Foo :: Constraint` is `[]` + `Some(Constraint)`,
+      `data Foo (_ :: Constraint)` is `["_"]` + `None`
+- [x] `declared_return_kind_is_constraint_chirho` in `kind_chirho.rs`: GHC-55233, the check
+      lane 4 refuted four ways. Follows the arrow tail through `ParenChirho`/`ForallChirho`;
+      stands down when the module declares its own `Constraint` (`local_kind_decl_names_chirho`,
+      already present); reached only from the `data`/`newtype` arms, so `type family
+      F :: Constraint` — legal in GHC — is untouched
+- [x] Four new tests (1 parser, 3 typing) pinning both directions and the shadowing case
+- [x] Gates, two passes each, byte-identical: accept **874 held, zero new failures**;
+      reject **204 -> 205**, gained `T14048a`, lost nothing
+- [x] `cargo test -p haskelujah-parser` 293 passed / same 2 pre-existing;
+      `-p haskelujah-typing` 307 passed, 0 failed; zero warnings from either crate
+- [x] Bug doc closed out, including a correction: it recorded "no known wrong-answer
+      today", but the arity half was costing five accept-axis files and manufacturing two
+      reject-axis rejections
+
+## Lane A2b-2 — the kinds we still cannot represent (follow-on)
 
 Of the 28 kind-axis failures, 11 carry a head binder our kind grammar cannot read and
 5 clear with A2a alone. The rest need real representation, i.e. the map's original

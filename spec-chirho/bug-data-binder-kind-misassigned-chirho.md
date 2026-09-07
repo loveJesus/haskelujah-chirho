@@ -2,8 +2,13 @@
 # Bug: a data head binder's kind annotation is mis-assigned to the declaration
 
 **Found:** 2026-08-02, while designing the data/newtype return-kind `Constraint` check (lane 4c).
-**Status:** open. The check that would have exposed it was **deferred**, not landed.
-**Severity:** blocks a GHC-compatibility check (`GHC-55233`); no known wrong-answer today.
+**Status:** FIXED 2026-09-06 by `claude2_chirho`, in two commits — `d697851e` (the binder
+half, for bracketed/complex kinds) and lane A2b (the `_` half, plus the `GHC-55233` check
+this document said was blocked). Kept for the record because the reasoning below is the
+reason the check was refused four times, and because the "Scope note" on data families is
+still open.
+**Severity (when open):** blocked a GHC-compatibility check (`GHC-55233`); it also caused
+wrong answers on the accept axis, which this document did not anticipate — see below.
 
 ## What happens
 
@@ -54,15 +59,35 @@ refuted:
 | require a bare `ConChirho` with no arrow spine | both of the above |
 | gate on an extension | `T14048a` itself enables `ConstraintKinds` |
 
-## The fix
+## The fix — as landed
 
-Make the data-head parser bind `_` (and bracketed/complex kinds) as a genuine
-`TyVarChirho` with `kind_annotation_chirho`, so `kind_sig_chirho` only ever holds a kind the
-source actually wrote after the declaration's own `::`.
+Exactly as prescribed. `is_head_binder_name_chirho` now admits `_` alongside `VarId` at both
+binder sites, and `unreadable_kind_binder_chirho` binds the variable and skips the whole
+parenthesised group when the kind is one `parse_kind_atom_chirho` cannot read. The two forms
+are now distinct:
 
-Once `kind_sig_chirho` is trustworthy, the guard is small: follow the arrow spine's **tail**
-through `ParenChirho`/`ForallChirho`, and reject when it is the tycon `Constraint` and the
-module does not itself declare a type of that name.
+| source | `type_vars_chirho` | `kind_sig_chirho` |
+|---|---|---|
+| `data Foo :: Constraint` (GHC rejects) | `[]` | `Some(Constraint)` |
+| `data Foo (_ :: Constraint)` (GHC accepts) | `["_"]` | `None` |
+
+The guard is `declared_return_kind_is_constraint_chirho` in `kind_chirho.rs`: follow the
+arrow spine's tail through `ParenChirho`/`ForallChirho`, reject when it is the tycon
+`Constraint`, and stand down when the module declares its own type of that name
+(`local_kind_decl_names_chirho`, which already existed). It is reached only from the
+`data` and `newtype` arms, so a `type family F :: Constraint` — which GHC allows — is not
+touched.
+
+## What this document underestimated
+
+It recorded the defect as "no known wrong-answer today". That was wrong: the same
+fall-through also bound the annotation's **own type variables** as extra head binders, so
+`data SOP (xss :: [[a]])` silently gained an `a` argument. That arity inflation was costing
+five accept-axis files (`T12923_2`, `T12923_3`, `T12928`, `T15772`, `T25597`) and was
+manufacturing two accept-axis-shaped rejections on the reject axis (`T13871`, `T15552`,
+both documented in the should_fail artifact). Fixing only the `::` misattribution, without
+also skipping the group, reproduces the arity half and costs `T21515` and `tc269` — that
+was tried first and caught by the gate.
 
 ## Scope note
 

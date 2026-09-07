@@ -1408,6 +1408,38 @@ impl KindInferCtxChirho {
         }
     }
 
+    /// GHC-55233: a `data`/`newtype` declaration's **return kind** may not be
+    /// `Constraint`. GHC rejects `data Foo :: Constraint` unconditionally — no
+    /// extension licenses it — while it ACCEPTS `data Foo (_ :: Constraint)`,
+    /// whose `Constraint` is a binder's kind, not the declaration's.
+    ///
+    /// This check was unwritable until the data-head binder fix: the parser
+    /// recorded a binder's kind as the declaration's `kind_sig_chirho`, so the two
+    /// forms lowered identically in every field a guard can read
+    /// (spec-chirho/bug-data-binder-kind-misassigned-chirho.md, four refuted
+    /// narrowings). They are distinct now, so the guard is just the arrow tail.
+    ///
+    /// A module that declares its own type named `Constraint` shadows the wired-in
+    /// one, so the check stands down there.
+    fn declared_return_kind_is_constraint_chirho(&self, sig_chirho: &TypeChirho) -> bool {
+        if self.local_kind_decl_names_chirho.contains("Constraint") {
+            return false;
+        }
+        let mut tail_chirho = sig_chirho;
+        loop {
+            match tail_chirho {
+                TypeChirho::FunChirho { result_chirho, .. } => tail_chirho = result_chirho,
+                TypeChirho::ParenChirho { inner_chirho, .. } => tail_chirho = inner_chirho,
+                TypeChirho::ForallChirho { body_chirho, .. } => tail_chirho = body_chirho,
+                _ => break,
+            }
+        }
+        matches!(
+            tail_chirho,
+            TypeChirho::ConChirho(n_chirho) if n_chirho.text_chirho() == "Constraint"
+        )
+    }
+
     /// Process a data declaration to determine the kind of the type constructor.
     fn infer_data_decl_kind_chirho(
         &mut self,
@@ -1419,6 +1451,16 @@ impl KindInferCtxChirho {
         // If a standalone kind signature is given (e.g. `data V :: N -> Type where`),
         // interpret it directly as the type constructor's kind.
         let kind_chirho = if let Some(sig_chirho) = kind_sig_chirho {
+            if self.declared_return_kind_is_constraint_chirho(sig_chirho) {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
+                        format!(
+                            "data type `{name_chirho}` has non-`*` return kind `Constraint`"
+                        ),
+                        span_chirho,
+                    ));
+            }
             let k_chirho = self.type_to_kind_chirho(sig_chirho);
             // Still bind any explicit type variable names that appear.
             for tv_chirho in type_vars_chirho {
@@ -2434,6 +2476,78 @@ mod tests_chirho {
     }
 
     // -- Module-level kind inference tests --
+
+    #[test]
+    fn data_return_kind_constraint_is_rejected_chirho() {
+        // GHC-55233: `data Foo :: Constraint` — unconditionally rejected, no
+        // extension licenses it.
+        let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
+            name_chirho: mk_name_chirho("Foo"),
+            type_vars_chirho: vec![],
+            constructors_chirho: vec![],
+            deriving_chirho: vec![],
+            kind_sig_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Constraint"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+        assert!(
+            infer_module_kinds_chirho(&module_chirho)
+                .diagnostics_chirho
+                .has_errors_chirho(),
+            "a data declaration returning Constraint must be rejected"
+        );
+    }
+
+    #[test]
+    fn data_binder_kind_constraint_is_accepted_chirho() {
+        // `data Foo (_ :: Constraint)` — GHC ACCEPTS this: the Constraint is the
+        // BINDER's kind. Before the data-head binder fix this lowered identically to
+        // the case above, which is why the check could not be written.
+        let mut binder_chirho: TyVarChirho = mk_name_chirho("_").into();
+        binder_chirho.kind_annotation_chirho = Some(AstKindChirho::ConstraintChirho);
+        let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
+            name_chirho: mk_name_chirho("Foo"),
+            type_vars_chirho: vec![binder_chirho],
+            constructors_chirho: vec![],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+        assert!(
+            !infer_module_kinds_chirho(&module_chirho)
+                .diagnostics_chirho
+                .has_errors_chirho(),
+            "a BINDER of kind Constraint is legal and must stay accepted"
+        );
+    }
+
+    #[test]
+    fn data_return_kind_constraint_stands_down_when_shadowed_chirho() {
+        // A module declaring its own `Constraint` shadows the wired-in one.
+        let module_chirho = mk_module_chirho(vec![
+            DeclChirho::DataDeclChirho {
+                name_chirho: mk_name_chirho("Constraint"),
+                type_vars_chirho: vec![],
+                constructors_chirho: vec![],
+                deriving_chirho: vec![],
+                kind_sig_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::DataDeclChirho {
+                name_chirho: mk_name_chirho("Foo"),
+                type_vars_chirho: vec![],
+                constructors_chirho: vec![],
+                deriving_chirho: vec![],
+                kind_sig_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Constraint"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ]);
+        assert!(
+            !infer_module_kinds_chirho(&module_chirho)
+                .diagnostics_chirho
+                .has_errors_chirho(),
+            "a locally declared Constraint shadows the wired-in kind"
+        );
+    }
 
     #[test]
     fn data_no_params_has_kind_star_chirho() {
