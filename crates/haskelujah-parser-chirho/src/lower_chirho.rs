@@ -2160,6 +2160,26 @@ impl LowerCtxChirho {
                                 idx_chirho += skip_chirho;
                                 continue;
                             }
+                            // The binder's kind is one we cannot represent yet
+                            // (`[Symbol]`, `[[a]]`, `i ~> j`, `forall k. k -> Type`).
+                            // Bind the variable with no kind and skip the WHOLE
+                            // group: walking into it would misread the binder's
+                            // `::` as the declaration's own return kind and would
+                            // bind the kind's own type variables as extra binders,
+                            // inflating the declaration's arity.
+                            if let Some((name_tok_chirho, name_idx_chirho, close_chirho)) =
+                                Self::unreadable_kind_binder_chirho(&children_chirho, idx_chirho)
+                            {
+                                let ns_chirho = self.span_chirho(
+                                    children_chirho[name_idx_chirho].start_chirho,
+                                    children_chirho[name_idx_chirho].end_chirho,
+                                );
+                                type_vars_chirho.push(
+                                    self.name_from_token_chirho(name_tok_chirho, ns_chirho).into(),
+                                );
+                                idx_chirho = close_chirho + 1;
+                                continue;
+                            }
                         }
                     }
                 }
@@ -2188,6 +2208,54 @@ impl LowerCtxChirho {
             kind_sig_chirho,
             span_chirho,
         }
+    }
+
+    /// A parenthesised data-head binder whose kind annotation `parse_kind_atom_chirho`
+    /// cannot read, e.g. `(xss :: [[a]])` or `(p :: forall k. k -> Type)`.
+    ///
+    /// Returns the index of the binder's name token and the index of the group's
+    /// matching `)`, so the caller can bind the variable and skip the rest. Returns
+    /// `None` when the group is not of that shape (no leading name, or unbalanced).
+    fn unreadable_kind_binder_chirho<'a>(
+        children_chirho: &[ChildChirho<'a>],
+        open_chirho: usize,
+    ) -> Option<(&'a GreenTokenChirho, usize, usize)> {
+        let name_idx_chirho = open_chirho + 1;
+        let name_tok_chirho = match children_chirho.get(name_idx_chirho)?.element_chirho {
+            GreenElementChirho::TokenChirho(t_chirho)
+                if t_chirho.kind_chirho() == TokenKindChirho::VarIdChirho =>
+            {
+                t_chirho
+            }
+            _ => return None,
+        };
+        // The name must be followed by `::`, otherwise this is not a kind-annotated
+        // binder at all and the caller's existing handling should stand.
+        match children_chirho.get(name_idx_chirho + 1)?.element_chirho {
+            GreenElementChirho::TokenChirho(t_chirho)
+                if t_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho => {}
+            _ => return None,
+        }
+        let mut depth_chirho = 0usize;
+        let mut i_chirho = open_chirho;
+        while i_chirho < children_chirho.len() {
+            if let GreenElementChirho::TokenChirho(t_chirho) =
+                children_chirho[i_chirho].element_chirho
+            {
+                match t_chirho.kind_chirho() {
+                    TokenKindChirho::LeftParenChirho => depth_chirho += 1,
+                    TokenKindChirho::RightParenChirho => {
+                        depth_chirho = depth_chirho.saturating_sub(1);
+                        if depth_chirho == 0 {
+                            return Some((name_tok_chirho, name_idx_chirho, i_chirho));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            i_chirho += 1;
+        }
+        None
     }
 
     fn lower_con_decl_chirho(
@@ -14464,6 +14532,66 @@ foo = 1
                 assert!(type_vars_chirho[0].kind_annotation_chirho.is_some());
             }
             other_chirho => panic!("expected class declaration, got {:?}", other_chirho),
+        }
+    }
+
+    #[test]
+    fn lower_data_binder_kind_never_becomes_the_declaration_kind_chirho() {
+        // `[Symbol]` is a kind our kind grammar cannot read yet. It belongs to the
+        // BINDER; recording it as the declaration's own return kind gave `A` a
+        // fabricated kind (and dropped the brackets on the way).
+        let module_chirho = parse_and_lower_chirho(
+            "module M where\ndata A (b :: [Symbol]) = A\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho,
+                kind_sig_chirho,
+                ..
+            } => {
+                assert_eq!(type_vars_chirho.len(), 1);
+                assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "b");
+                assert_eq!(type_vars_chirho[0].kind_annotation_chirho, None);
+                assert!(
+                    kind_sig_chirho.is_none(),
+                    "a binder's kind must not become the declaration's kind: {kind_sig_chirho:?}"
+                );
+            }
+            other_chirho => panic!("expected DataDecl, got {other_chirho:?}"),
+        }
+    }
+
+    #[test]
+    fn lower_data_binder_unreadable_kind_does_not_inflate_arity_chirho() {
+        // Walking into the group bound the kind's OWN variables as head binders:
+        // `[[a]]` added `a`, and `forall k. k -> Type` added `k`, so the
+        // declaration silently gained an argument.
+        for (src_chirho, binder_chirho) in [
+            ("module M where\ndata SOP (xss :: [[a]])\n", "xss"),
+            (
+                "module M where\ndata S (p :: forall k. k -> Type) = S\n",
+                "p",
+            ),
+        ] {
+            let module_chirho = parse_and_lower_chirho(src_chirho);
+            match &module_chirho.decls_chirho[0] {
+                DeclChirho::DataDeclChirho {
+                    type_vars_chirho,
+                    kind_sig_chirho,
+                    ..
+                } => {
+                    assert_eq!(
+                        type_vars_chirho
+                            .iter()
+                            .map(|v_chirho| v_chirho.name_chirho.text_chirho().to_string())
+                            .collect::<Vec<_>>(),
+                        vec![binder_chirho.to_string()],
+                        "only the binder itself is a head variable: {src_chirho:?}"
+                    );
+                    assert!(kind_sig_chirho.is_none(), "src: {src_chirho:?}");
+                }
+                other_chirho => panic!("expected DataDecl, got {other_chirho:?}"),
+            }
         }
     }
 
