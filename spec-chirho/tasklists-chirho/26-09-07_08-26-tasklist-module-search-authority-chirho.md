@@ -22,7 +22,7 @@ Objective: restore the real CLI-in-place behavior broken by the type-namespace l
 - [x] Run focused module-search, interface, and naming tests, then a warning-free explicit CLI build.
 - [x] Run the real CLI-in-place T001 check, isolated-directory control, curated 537 harness, and relevant driver suites.
 - [x] Run both GHC corpus axes twice against the landed 877/222 baseline; explain every movement before touching artifacts.
-- [ ] Keep the canonical artifact lists untouched because neither exact set moved; write one progress row as the sole DB writer, commit named owned paths with machine-readable authority trailers, fast-forward `main_chirho`, push, and release SLOT/DB.
+- [x] Keep the canonical artifact lists untouched because neither exact set moved; write progress row 476 as the sole DB writer, commit only named owned paths with machine-readable authority trailers, fast-forward `main_chirho`, and push `a93a514e` plus `19be8269` to `gh_chirho`.
 
 ## Starting evidence
 
