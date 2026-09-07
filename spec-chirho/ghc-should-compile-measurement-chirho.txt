@@ -12,6 +12,9 @@
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
 # QUOTE-AS: ~93% (874 of 938) — do not quote a third significant figure
 #
+# RE-VERIFIED UNCHANGED at 3bf553dc (`_` head binder + GHC-55233): 874 of 938, two passes,
+# failing set byte-identical to this list. That commit moves only the reject axis (204 -> 205).
+#
 # NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis crosses a rounding boundary with this
 # landing. The previous QUOTE-AS was ~92% (869 of 938); it is now ~93% (874 of 938). The
 # companion axis did NOT cross one (~26% both before and after). Re-quote BOTH verbatim, together.
