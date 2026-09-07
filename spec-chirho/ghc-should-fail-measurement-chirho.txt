@@ -1,56 +1,49 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-06, AFTER the rigid-type-variable + given-equality lanes (47451495)
-# code measured: 47451495 (HEAD of the landing; binary rebuilt at this commit by the measuring
-#   agent, who is also the landing agent — see the companion artifact note)
+# measured: 2026-09-06, AFTER the data-head binder kind fix (d697851e)
+# code measured: d697851e (measuring agent claude2_chirho — see the companion artifact note)
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run alone
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=206 WRONGLY-ACCEPTED=561 TOTAL=767 (26.9% reject rate)
+# RESULT: CORRECTLY-REJECTED=204 WRONGLY-ACCEPTED=563 TOTAL=767 (26.6% reject rate)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets
-# QUOTE-AS: ~26% (206 of 767) — do not quote a third significant figure
+# QUOTE-AS: ~26% (204 of 767) — do not quote a third significant figure
 #
-# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis crosses rounding boundaries with this landing.
-# The previous QUOTE-AS was ~23% (180 of 767); it is now ~26% (206 of 767).
+# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis does NOT cross a rounding boundary
+# here (206/767 and 204/767 both quote as ~26%). The ACCEPT axis does (~92% -> ~93%).
 # Both axes must be re-quoted together, verbatim, from these two files.
 #
-# CHANGE SINCE LAST MEASUREMENT: 180 -> 206 (+26).
-#   28 files newly rejected: FD1.hs FrozenErrorTests.hs T11347.hs T12694.hs T14325.hs T15361.hs T16074.hs T17563.hs T18398.hs T1899.hs T23162a.hs T23162d.hs T24064.hs T24868.hs T25950.hs T2714.hs T7453.hs T7748a.hs T8450.hs T9612.hs TyAppPat_Nonmatching.hs tcfail034.hs tcfail058.hs tcfail063.hs tcfail078.hs tcfail153.hs tcfail175.hs tcfail201.hs
-#   2 files no longer rejected: T16646Fail2.hs T25679.hs
+# CHANGE SINCE LAST MEASUREMENT: 206 -> 204 (-2). Nothing newly rejected.
 #
-# WHAT LANDED (one mechanism, both axes): the checker now has RIGID TYPE VARIABLES. A signature's
-# variables are skolemized while the binding's body is checked (`f :: Int -> a; f x y = x + y` is
-# an error, not `a := Int -> Int`), GADT refinement is done as local given equalities scoped to the
-# pattern instead of per-equation freshening, wanteds over a rigid variable that no instance and no
-# given can ever satisfy are "could not deduce" errors, and given equalities are rewrite rules
-# (`F a ~ Bool =>`) while stuck family equalities are deferred until their variable is known.
-# Design and invariants: spec-chirho/workflows-chirho/language-features-chirho/
-# rigid-type-variables-chirho.md and stuck-family-equalities-chirho.md.
+# THE TWO LOSSES, EACH VERIFIED BY REASON RATHER THAN BY ERROR-PRESENT (trap 15):
+#   T13871  — we rejected it with `error[E0300]: kind mismatch in type application:
+#             expected `*`, found `k7 -> k8`` at the `data SFoo (z :: Foo a b) where` head.
+#             That error was produced BY the binder mis-assignment defect: `Foo a b` is a
+#             kind our grammar cannot read, so `a` and `b` were bound as extra head
+#             binders. GHC's actual objection is GHC-28374, "Data constructor `MkFoo`
+#             cannot be used here (it has an unpromotable context `(a ~ Int, b ~ Char)`)"
+#             — a promotion check we do not implement at all. The rejection was an
+#             accident of the bug, not analysis; fixing the bug removed it.
+#   T15552  — same mechanism, from `(kvs :: [Type])` / `(eov :: EntryOfVal v kvs)`:
+#             `error[E0300]: kind mismatch in kind application: expected `*`, found
+#             `k9 -> k10``. This file has NO .stderr in the corpus, so under this
+#             document's own measurement-truth finding it may not be a genuine reject
+#             target at all.
 #
-# THE REJECTIONS LOST, VERIFIED BY REASON: T16646Fail2.hs T25679.hs. Both were rejected
-# before for a reason unrelated to GHC's (an accidental mismatch between a visible type argument and a
-# placeholder-typed imported name — `getField @"bar"`, `reflect @s` — rather than GHC's missing
-# instance). A placeholder-typed name now ignores its type arguments, as an unknown type should, so
-# the accidental rejection is gone. The counting rule never verified reasons; these two were never
-# correct rejections. They are recorded here so the number is understood, not hidden.
+# This is the same class as T16646Fail2/T25679 in the previous measurement: a rejection
+# the counting rule credited without checking the reason. The honest reading is that the
+# reject rate was overstated by these two, not that the checker regressed. Recovering
+# them for the RIGHT reason needs the unpromotable-context check (GHC-28374), which is
+# reject-axis work and is not attempted here.
 #
-# Counting rule (unchanged): a file counts as REJECTED if any error[EXXXX] or panic was emitted.
-# That is generous — it does not verify we rejected for the RIGHT reason — so 206 is an
-# UPPER bound on true correct rejections. The 20-program probe set the lanes were built against
-# (rigid mismatches, could-not-deduce, GADT evaluators by equations and by case, scoped type
-# variables, givens, existentials, rank-N, polymorphic recursion, family givens) was checked by
-# reason; the corpus wins were not individually.
+# WHAT THIS LANDING UNBLOCKS ON THIS AXIS: spec-chirho/bug-data-binder-kind-misassigned-chirho.md
+# records that GHC-55233 ("data type has non-* return kind", target T14048a, still wrongly
+# accepted below) was UNIMPLEMENTABLE because the accepted `data Foo (_ :: Constraint)`
+# lowered identically in every readable field to the rejected T14048a. `kind_sig_chirho` no
+# longer holds a binder's kind, so that separation now exists — with one gap: the fix binds
+# only a VarId binder, so `_` is still not bound. Closing that is the next step before the
+# check is safe to write.
 #
-# MEASUREMENT-NOISE FINDING (still NOT applied — needs L.J.'s sign-off before the denominator
-# changes): ~60 wrongly-accepted files have no .stderr; ~31 are auxiliary modules of multi-module
-# tests and at least 8 carry in-file comments that modern GHC now ACCEPTS them. Reclassifying is a
-# methodology change to be made here, documented, with sign-off.
-#
-# Rounding rule: round DOWN. A compatibility claim must not sit above its own measured value.
-#
-# READ THIS BEFORE QUOTING THE COMPATIBILITY NUMBER: should_compile measures whether we ACCEPT what
-# GHC accepts; this measures whether we REJECT what GHC rejects. A drop-in replacement must do BOTH.
-#
-# ---- the 561 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 563 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -162,6 +155,7 @@ T13487.hs
 T13506.hs
 T13530.hs
 T13677.hs
+T13871.hs
 T13909.hs
 T13981A.hs
 T13981B.hs
@@ -186,6 +180,7 @@ T15474.hs
 T15515.hs
 T15523.hs
 T15527.hs
+T15552.hs
 T15552a.hs
 T15648a.hs
 T15712.hs

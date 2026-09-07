@@ -1,41 +1,43 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-06, AFTER the rigid-type-variable + given-equality lanes (47451495)
-# code measured: 47451495 (HEAD of the landing; binary rebuilt at this commit by the measuring
-#   agent — claude_chirho, the landing agent; gpt_chirho was working in an isolated worktree and
-#   claude2 idle. Second-agent replication welcome.)
+# measured: 2026-09-06, AFTER the data-head binder kind fix (d697851e)
+# code measured: d697851e. Measuring agent: claude2_chirho, who also independently
+#   replicated the PREVIOUS artifact (869 of 938, byte-identical failing set) on a binary
+#   built from 4f866dc3 before touching anything — so both agents' numbers now agree on
+#   the same corpus and detector.
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4; a load-induced TIMEOUT is re-run
 #   alone before it counts (tc089 needs ~9s idle and exceeded 15s only under parallel load).
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files (find-based; T16234/ included)
 #
-# RESULT: PASS=869 FAIL=69 TOTAL=938 (92.6%)
+# RESULT: PASS=874 FAIL=64 TOTAL=938 (93.2%)
 # STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
-# QUOTE-AS: ~92% (869 of 938) — do not quote a third significant figure
+# QUOTE-AS: ~93% (874 of 938) — do not quote a third significant figure
 #
-# CHANGE SINCE LAST MEASUREMENT: 858 -> 869 (+11).
-#   14 files left the failing set: T10808.hs T14158.hs T16204a.hs T16204b.hs T18311.hs T20668.hs T21289.hs T21328.hs T21515.hs T23413.hs T26030.hs T26451.hs tc196.hs tc252.hs
-#   3 files entered it: T10856.hs T15370.hs T24845a.hs
+# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: this axis crosses a rounding boundary with this
+# landing. The previous QUOTE-AS was ~92% (869 of 938); it is now ~93% (874 of 938). The
+# companion axis did NOT cross one (~26% both before and after). Re-quote BOTH verbatim, together.
 #
-# THE FILES THAT ENTERED THE FAILING SET, EACH WITH ITS REASON (none is a checker regression in the
-# sense the zero-regression gate guards against — a false rejection of a program GHC accepts on its own):
-#   T15370  — GHC accepts it only with `-fdefer-type-errors`, which all.T passes on the command line
-#             (`test('T15370', normal, compile, ['-fdefer-type-errors ...'])`); the source contains
-#             `mkRefl :: n :~: j; mkRefl = Refl`, which GHC rejects without that flag. Same class as
-#             DoExpansion1 in the handoff traps: the diagnosis is correct for the source alone. It was
-#             accepted before only because the signature's variables were flexible.
-#   T10856  — a record constructor with a context (`Show a => Mk {..}`) is lowered by the parser to a
-#             placeholder scheme, so the type-changing record update cannot see its fields. Parser lane.
-#   T24845a — the context `(a+b ~ a+c)` is lowered as a class constraint headed by `+`, so the
-#             equality never reaches the solver. Parser lane (constraint operator precedence).
+# CHANGE SINCE LAST MEASUREMENT: 869 -> 874 (+5).
+#   5 files left the failing set: T12923_2.hs T12923_3.hs T12928.hs T15772.hs T25597.hs
+#   0 files entered it.
 #
-# ACCEPTANCE IS NOT CORRECTNESS: this corpus measures only whether we accept what GHC accepts. The
-# companion axis moved far more: spec-chirho/ghc-should-fail-measurement-chirho.txt. Read both
-# together; quote both QUOTE-AS lines together.
+# WHAT CHANGED: a data head binder whose kind annotation our kind grammar cannot read
+# (`[Symbol]`, `[[a]]`, `i ~> j`, `forall k. k -> Type`) no longer leaks into the
+# declaration. Previously the head scanner walked INTO the parenthesised group, so the
+# binder's `::` fired the arm meant for `data T :: K where` — recording a fabricated
+# return kind with the brackets dropped — and the kind's own type variables were bound as
+# extra head binders, inflating the declaration's arity. See
+# spec-chirho/bug-data-binder-kind-misassigned-chirho.md, which predicted this fix.
+#
+# COST ON THE OTHER AXIS, stated plainly: this landing LOSES 2 reject-axis files
+# (T13871, T15552). Both were rejected only by the arity-inflation artifact this fix
+# removes — neither for GHC's stated reason — and both are documented in the companion
+# artifact. Read the two together.
 #
 # MEASUREMENT-TOOLING NOTE (unchanged): the detector is PURE SHELL pattern matching
 # (`case $out in *"error[E"*|*panic*`), never the interactive `grep`, which is shadowed here by a
 # ugrep wrapper with content-dependent `-q` exit status.
 #
-# ---- the 69 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 64 files we FAIL to accept (GHC accepts these); all deterministic ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -49,9 +51,6 @@ T11056.hs
 T11811.hs
 T12104.hs
 T12427a.hs
-T12923_2.hs
-T12923_3.hs
-T12928.hs
 T13822.hs
 T13848.hs
 T14010.hs
@@ -60,7 +59,6 @@ T14590.hs
 T14761c.hs
 T15079.hs
 T15370.hs
-T15772.hs
 T16411.hs
 T17594a.hs
 T17772.hs
@@ -82,7 +80,6 @@ T24845a.hs
 T25180.hs
 T25266.hs
 T25266b.hs
-T25597.hs
 T26256a.hs
 T26345.hs
 T26346.hs
