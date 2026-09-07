@@ -1,6 +1,6 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
 # measured: 2026-09-07, AFTER the type-namespace and lexical type-variable scope lane
-# code measured: f2fce40 (measuring agent gpt_chirho; final source-equivalent CLI rebuilt
+# code measured: 73b84f5 (measuring agent gpt_chirho; final source-equivalent CLI rebuilt
 #   after removal of formatter-only drift)
 # method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone; a rejection is output containing `error[E` or `panic`

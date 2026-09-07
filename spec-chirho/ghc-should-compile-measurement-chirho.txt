@@ -1,6 +1,6 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
 # measured: 2026-09-07, AFTER the type-namespace and lexical type-variable scope lane
-# code measured: f2fce40 (measuring agent gpt_chirho; the final post-measurement cleanup
+# code measured: 73b84f5 (measuring agent gpt_chirho; the final post-measurement cleanup
 #   removed formatter-only drift from infer_chirho.rs, reapplied the exact tested Boolean
 #   family reducer, and passed a fresh CLI build plus its focused test)
 # method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4; a
