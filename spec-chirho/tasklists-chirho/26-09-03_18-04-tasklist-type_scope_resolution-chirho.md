@@ -34,7 +34,7 @@ Directive: advance the GHC typecheck corpus through reusable root-cause mechanis
 - [x] After builder release, remove formatter-only drift, run the touched-crate tests, and rebuild the CLI without compiler warnings.
 - [x] Rebuild the compiler, run the complete 938-file accept subset gate and 767-file reject gate twice, and inspect every delta at source level.
 - [x] Update both committed measurement artifacts from the byte-identical two-pass sets, preserving their `# QUOTE-AS:` contract.
-- [ ] Log one progress row after the DB lock is released, commit only named owned paths, and report the landed result through Metropoliluya.
+- [x] Log progress row 474 after the DB lock is released and commit only named owned paths. The Metropoliluya landing report is the final post-push step.
 
 ## Final measured result
 
