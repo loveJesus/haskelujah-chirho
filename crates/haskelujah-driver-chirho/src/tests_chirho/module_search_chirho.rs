@@ -10,10 +10,12 @@
 //! `/private/tmp` (80418 directories, 4274 `.hs` files) did not finish within
 //! 60 seconds.
 
-use crate::{
-    scan_hierarchical_modules_chirho, ModuleSearchBoundsChirho, MAX_MODULE_SEARCH_DIRS_CHIRHO,
-    MAX_MODULE_SEARCH_FILES_CHIRHO,
+use crate::check_source_path_chirho;
+use crate::module_search_chirho::{
+    MAX_MODULE_SEARCH_DIRS_CHIRHO, MAX_MODULE_SEARCH_FILES_CHIRHO, ModuleSearchBoundsChirho,
+    scan_hierarchical_modules_chirho, scan_sibling_module_ifaces_chirho,
 };
+use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use std::path::{Path, PathBuf};
 
@@ -118,7 +120,9 @@ fn symlink_cycle_terminates_and_still_finds_siblings_chirho() {
 
     let names_chirho = scan_chirho(root_chirho);
     assert!(
-        names_chirho.iter().any(|n_chirho| n_chirho == "SiblingChirho"),
+        names_chirho
+            .iter()
+            .any(|n_chirho| n_chirho == "SiblingChirho"),
         "the cycle guard must not cost us a real sibling module; found {names_chirho:?}"
     );
 }
@@ -143,5 +147,104 @@ fn nested_hierarchical_module_is_still_found_chirho() {
             .iter()
             .any(|n_chirho| n_chirho == "Deep.NestedChirho"),
         "a nested hierarchical module must still be discovered; found {names_chirho:?}"
+    );
+}
+
+#[test]
+fn nested_module_name_must_match_its_source_root_path_chirho() {
+    let scratch_chirho = ScratchDirChirho::new_chirho("authority");
+    let root_chirho = scratch_chirho.path_chirho();
+    let nested_chirho = root_chirho.join("fixtures_chirho").join("Deep");
+    std::fs::create_dir_all(&nested_chirho).expect("create unrelated fixture path");
+    std::fs::write(
+        nested_chirho.join("NestedChirho.hs"),
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule Deep.NestedChirho where\ndeep_value_chirho :: Int\ndeep_value_chirho = 7\n",
+    )
+    .expect("write unrelated nested module");
+
+    let names_chirho = scan_chirho(root_chirho);
+    assert!(
+        !names_chirho
+            .iter()
+            .any(|name_chirho| name_chirho == "Deep.NestedChirho"),
+        "a file beneath fixtures_chirho is not authoritative for Deep.NestedChirho: {names_chirho:?}"
+    );
+}
+
+#[test]
+fn sibling_file_stem_must_match_declared_module_chirho() {
+    let scratch_chirho = ScratchDirChirho::new_chirho("sibling_authority");
+    let root_chirho = scratch_chirho.path_chirho();
+    std::fs::write(
+        root_chirho.join("UnrelatedChirho.hs"),
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule CanonicalChirho where\ncanonical_value_chirho :: Int\ncanonical_value_chirho = 1\n",
+    )
+    .expect("write mismatched sibling module");
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let mut ifaces_chirho = Vec::new();
+
+    scan_sibling_module_ifaces_chirho(
+        root_chirho,
+        &mut source_map_chirho,
+        &mut ifaces_chirho,
+        "MainChirho.hs",
+    );
+
+    assert!(
+        ifaces_chirho.is_empty(),
+        "a sibling filename that does not name the declared module is not authoritative"
+    );
+}
+
+#[test]
+fn nested_prelude_fixture_cannot_shadow_seeded_prelude_chirho() {
+    let scratch_chirho = ScratchDirChirho::new_chirho("prelude_shadow");
+    let root_chirho = scratch_chirho.path_chirho();
+    let main_path_chirho = root_chirho.join("AuthorityMainChirho.hs");
+    std::fs::write(
+        &main_path_chirho,
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule AuthorityMainChirho where\nauthority_value_chirho :: Int\nauthority_value_chirho = 1\n",
+    )
+    .expect("write authoritative module");
+    let fixture_dir_chirho = root_chirho
+        .join("parser-chirho")
+        .join("should_compile")
+        .join("T17045");
+    std::fs::create_dir_all(&fixture_dir_chirho).expect("create nested Prelude fixture path");
+    std::fs::write(
+        fixture_dir_chirho.join("Prelude.hs"),
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule Prelude where\nfixture_value_chirho = ()\n",
+    )
+    .expect("write nested Prelude fixture");
+
+    let result_chirho =
+        check_source_path_chirho(&main_path_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "an unrelated descendant fixture must not replace the seeded Prelude: {result_chirho:?}"
+    );
+}
+
+#[test]
+fn root_prelude_source_replaces_seeded_fallback_chirho() {
+    let scratch_chirho = ScratchDirChirho::new_chirho("root_prelude");
+    let root_chirho = scratch_chirho.path_chirho();
+    let main_path_chirho = root_chirho.join("RootPreludeMainChirho.hs");
+    std::fs::write(
+        &main_path_chirho,
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule RootPreludeMainChirho where\nimport Prelude (LocalTypeChirho(..))\nroot_value_chirho :: LocalTypeChirho\nroot_value_chirho = LocalConstructorChirho\n",
+    )
+    .expect("write module using the root Prelude");
+    std::fs::write(
+        root_chirho.join("Prelude.hs"),
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule Prelude (LocalTypeChirho(..)) where\ndata LocalTypeChirho = LocalConstructorChirho\n",
+    )
+    .expect("write authoritative root Prelude");
+
+    let result_chirho =
+        check_source_path_chirho(&main_path_chirho, ExecutionModeChirho::BatchChirho);
+    assert!(
+        result_chirho.is_ok(),
+        "a root-level Prelude source must replace the seeded fallback: {result_chirho:?}"
     );
 }
