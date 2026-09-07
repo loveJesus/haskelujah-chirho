@@ -31,8 +31,14 @@ use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyV
 use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 
 mod equalities_chirho;
+mod evidence_chirho;
 mod records_chirho;
 mod rigid_chirho;
+
+pub use evidence_chirho::{
+    LiteralEvidenceChirho, OWN_DICTIONARY_KEY_CHIRHO, ReferenceEvidenceChirho,
+    is_own_dictionary_key_chirho, own_dictionary_key_chirho,
+};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -127,6 +133,12 @@ pub struct InferResultChirho {
     /// (source order). Consumers must join records only for names whose total
     /// matches their own occurrence count (conservative alignment check).
     pub method_occurrence_totals_chirho: HashMap<String, u32>,
+    /// Literal evidence: per source literal (by span), the instance the
+    /// checker solved for its overloading class. See `evidence_chirho.rs`.
+    pub literal_evidence_chirho: HashMap<SpanChirho, LiteralEvidenceChirho>,
+    /// Reference evidence: per constrained reference (by span), one record per
+    /// predicate of the instantiated scheme, in scheme order.
+    pub reference_evidence_chirho: HashMap<SpanChirho, Vec<ReferenceEvidenceChirho>>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about the
@@ -163,6 +175,15 @@ pub struct InferCtxChirho {
     occurrence_generalized_vars_chirho: HashSet<TyVarChirho>,
     /// Evidence-threading P2: per-name reference counters (source order).
     occurrence_counters_chirho: HashMap<String, u32>,
+    /// Literal evidence captures: (span, overloading class, literal type),
+    /// finalized by `finalize_literal_evidence_chirho`.
+    literal_captures_chirho: Vec<(SpanChirho, String, TyChirho)>,
+    /// Reference evidence captures: (span, instantiated predicates in scheme
+    /// order), finalized by `finalize_reference_evidence_chirho`.
+    reference_captures_chirho: Vec<(SpanChirho, Vec<(String, TyChirho)>)>,
+    /// (class, skolem name) → index of that predicate in the signature the
+    /// skolem was made for; see `record_own_dictionary_indices_chirho`.
+    skolem_pred_index_chirho: HashMap<(String, String), usize>,
     /// Given predicates currently in scope from explicit type signatures.
     given_preds_chirho: Vec<PredChirho>,
     /// Accumulated diagnostics.
@@ -564,6 +585,9 @@ impl InferCtxChirho {
             occurrence_default_hints_chirho: HashMap::new(),
             occurrence_generalized_vars_chirho: HashSet::new(),
             occurrence_counters_chirho: HashMap::new(),
+            literal_captures_chirho: Vec::new(),
+            reference_captures_chirho: Vec::new(),
+            skolem_pred_index_chirho: HashMap::new(),
             given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
@@ -3437,6 +3461,7 @@ impl InferCtxChirho {
                         PredChirho::new_chirho("Num", lit_ty_chirho.clone()),
                         *span_chirho,
                     ));
+                    self.capture_literal_evidence_chirho(*span_chirho, "Num", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::FloatChirho(_, span_chirho) => {
@@ -3445,6 +3470,7 @@ impl InferCtxChirho {
                         PredChirho::new_chirho("Fractional", lit_ty_chirho.clone()),
                         *span_chirho,
                     ));
+                    self.capture_literal_evidence_chirho(*span_chirho, "Fractional", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::StringChirho(_, span_chirho) if self.overloaded_strings_chirho => {
@@ -3453,6 +3479,7 @@ impl InferCtxChirho {
                         PredChirho::new_chirho("IsString", lit_ty_chirho.clone()),
                         *span_chirho,
                     ));
+                    self.capture_literal_evidence_chirho(*span_chirho, "IsString", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 _ => {
@@ -3478,6 +3505,10 @@ impl InferCtxChirho {
                         let (ty_chirho, instantiated_preds_chirho) =
                             self.instantiate_scheme_parts_chirho(&scheme_chirho);
                         if !instantiated_preds_chirho.is_empty() {
+                            self.capture_reference_evidence_chirho(
+                                span_chirho,
+                                &instantiated_preds_chirho,
+                            );
                             let counter_chirho = self
                                 .occurrence_counters_chirho
                                 .entry(text_chirho.to_string())
@@ -3579,6 +3610,10 @@ impl InferCtxChirho {
                         let (ty_chirho, instantiated_preds_chirho) =
                             self.instantiate_scheme_parts_chirho(&scheme_chirho);
                         if !instantiated_preds_chirho.is_empty() {
+                            self.capture_reference_evidence_chirho(
+                                span_chirho,
+                                &instantiated_preds_chirho,
+                            );
                             let counter_chirho = self
                                 .occurrence_counters_chirho
                                 .entry(text_chirho.to_string())
@@ -5215,6 +5250,7 @@ impl InferCtxChirho {
                             self.ast_type_to_scheme_with_var_map_chirho(sig_ast_chirho);
                         let (sig_ty_raw_chirho, sig_preds_chirho) =
                             self.skolemize_scheme_parts_chirho(&sig_scheme_chirho);
+                        self.record_own_dictionary_indices_chirho(&sig_preds_chirho);
                         if self.scoped_type_variables_chirho
                             && Self::has_explicit_forall_chirho(sig_ast_chirho)
                         {
@@ -6982,6 +7018,7 @@ impl InferCtxChirho {
                             self.ast_type_to_scheme_with_var_map_chirho(sig_ast_chirho);
                         let (sig_ty_raw_chirho, sig_preds_chirho) =
                             self.skolemize_scheme_parts_chirho(&sig_scheme_chirho);
+                        self.record_own_dictionary_indices_chirho(&sig_preds_chirho);
                         if self.scoped_type_variables_chirho
                             && Self::has_explicit_forall_chirho(sig_ast_chirho)
                         {
@@ -7156,6 +7193,7 @@ impl InferCtxChirho {
                             let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
                             let (sig_ty_raw_chirho, sig_preds_chirho) =
                                 self.skolemize_scheme_parts_chirho(&sig_scheme_chirho);
+                            self.record_own_dictionary_indices_chirho(&sig_preds_chirho);
                             let sig_ty_chirho = self.normalize_ty_chirho(&sig_ty_raw_chirho);
                             // Generalize the monomorphic pattern type over the
                             // variables not free in the environment, instantiate
@@ -7644,6 +7682,19 @@ impl InferCtxChirho {
                 {
                     return None;
                 }
+                // A method used at a rigid variable of the enclosing signature
+                // (`x + 1` inside `f :: Num a => a -> a`) has no instance to
+                // name: its evidence is the binding's own dictionary parameter.
+                // Defaulting it to `Int` here dispatched `f 2.5` to the Int row.
+                // workflow: language-features-chirho/dictionary-evidence-chirho
+                if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho {
+                    return Some(MethodOccurrenceRecordChirho {
+                        name_chirho: name_chirho.clone(),
+                        ordinal_chirho: *ordinal_chirho,
+                        class_name_chirho: class_chirho.clone(),
+                        ty_key_chirho: self.own_key_for_skolem_chirho(class_chirho, skolem_chirho),
+                    });
+                }
                 let resolved_show_key_chirho = (class_chirho == "Show"
                     && !resolved_chirho.contains_var_chirho())
                 .then(|| concrete_show_key_chirho(&resolved_chirho, false))
@@ -7672,6 +7723,8 @@ impl InferCtxChirho {
             diagnostics_chirho: self.diagnostics_chirho,
             method_occurrences_chirho: Vec::new(),
             method_occurrence_totals_chirho: HashMap::new(),
+            literal_evidence_chirho: HashMap::new(),
+            reference_evidence_chirho: HashMap::new(),
         }
     }
 }
@@ -21789,10 +21842,16 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     let method_occurrences_chirho =
         ctx_chirho.finalize_occurrence_records_chirho(&composed_subst_chirho);
     let method_occurrence_totals_chirho = ctx_chirho.occurrence_counters_chirho.clone();
+    let literal_evidence_chirho =
+        ctx_chirho.finalize_literal_evidence_chirho(&composed_subst_chirho);
+    let reference_evidence_chirho =
+        ctx_chirho.finalize_reference_evidence_chirho(&composed_subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
     result_chirho.subst_chirho = composed_subst_chirho;
     result_chirho.method_occurrences_chirho = method_occurrences_chirho;
     result_chirho.method_occurrence_totals_chirho = method_occurrence_totals_chirho;
+    result_chirho.literal_evidence_chirho = literal_evidence_chirho;
+    result_chirho.reference_evidence_chirho = reference_evidence_chirho;
     result_chirho
 }
 

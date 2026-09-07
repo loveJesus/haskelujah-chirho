@@ -110,6 +110,10 @@ pub struct DictPassCtxChirho {
     /// Populated by later phases (typing bridge / defaulting); when present the
     /// occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    /// Reference evidence: occurrence id of a constrained reference → one
+    /// (class, key) per predicate in scheme order; a `None` key is "nothing
+    /// proved for this position". See `evidence_dict_for_class_chirho`.
+    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
@@ -159,6 +163,7 @@ impl DictPassCtxChirho {
             extra_dict_param_names_chirho: HashSet::new(),
             method_occurrence_canon_chirho: HashMap::new(),
             occurrence_evidence_chirho: HashMap::new(),
+            reference_evidence_chirho: HashMap::new(),
             super_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
@@ -798,6 +803,35 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
     ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
     ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
     ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
+    let transformed_chirho =
+        ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
+    ctx_chirho.finish_chirho(transformed_chirho)
+}
+
+/// Dictionary-evidence entry: like the method-occurrence entry, also threading
+/// the checker's per-reference evidence for constrained references.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[allow(clippy::too_many_arguments)]
+pub fn dict_pass_module_full_with_evidence_chirho(
+    module_chirho: &CoreModuleChirho,
+    names_chirho: HashMap<CoreIdChirho, String>,
+    type_env_chirho: &TyEnvChirho,
+    class_env_chirho: &ClassEnvChirho,
+    con_types_chirho: HashMap<String, String>,
+    newtype_info_chirho: HashMap<String, (String, String)>,
+    extra_dict_param_names_chirho: HashSet<String>,
+    method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+) -> DictPassResultChirho {
+    let max_id_chirho = find_max_id_chirho(module_chirho);
+    let mut ctx_chirho =
+        DictPassCtxChirho::new_chirho(max_id_chirho + 1, names_chirho, con_types_chirho);
+    ctx_chirho.newtype_info_chirho = newtype_info_chirho;
+    ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
+    ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
+    ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
+    ctx_chirho.reference_evidence_chirho = reference_evidence_chirho;
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)

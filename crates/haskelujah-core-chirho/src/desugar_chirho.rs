@@ -43,6 +43,14 @@ pub struct DesugarOutputChirho {
     /// `(method name, canonical shared CoreId)`. Empty unless the caller opted in
     /// via `set_method_occurrence_names_chirho` — behavior-neutral by default.
     pub method_occurrences_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    /// Literal evidence: the `fromInteger` / `fromString` occurrence id a source
+    /// literal was wrapped in → the literal's span, so the driver can join the
+    /// checker's per-literal instance to it.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub literal_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    /// Reference evidence: the occurrence id minted for a reference to a
+    /// constrained top-level name → the reference's source span.
+    pub reference_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
 }
 
 /// A registered pattern synonym definition used during desugaring.
@@ -86,6 +94,13 @@ pub struct DesugarCtxChirho {
     method_occurrence_names_chirho: HashSet<String>,
     /// Evidence-threading P1: occurrence id → (method name, canonical shared id).
     method_occurrences_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    /// Literal evidence: literal occurrence id → the literal's source span.
+    literal_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    /// Reference evidence: names whose scheme carries class predicates; a
+    /// reference to one gets its own occurrence id (canonical = the binding).
+    constrained_names_chirho: HashSet<String>,
+    /// Reference evidence: reference occurrence id → the reference's span.
+    reference_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
 }
 
 impl DesugarCtxChirho {
@@ -102,6 +117,9 @@ impl DesugarCtxChirho {
             pat_syns_chirho: HashMap::new(),
             method_occurrence_names_chirho: HashSet::new(),
             method_occurrences_chirho: HashMap::new(),
+            literal_occurrence_spans_chirho: HashMap::new(),
+            constrained_names_chirho: HashSet::new(),
+            reference_occurrence_spans_chirho: HashMap::new(),
         }
     }
 
@@ -109,6 +127,51 @@ impl DesugarCtxChirho {
     /// workflow: monadic-dispatch-chirho (evidence-threading P1)
     pub fn set_method_occurrence_names_chirho(&mut self, names_chirho: HashSet<String>) {
         self.method_occurrence_names_chirho = names_chirho;
+    }
+
+    /// Names whose scheme carries class predicates (the driver reads them off
+    /// the checker's environment): a reference to one gets its own occurrence
+    /// id so the checker's per-reference evidence can reach the dictionary pass.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub fn set_constrained_names_chirho(&mut self, names_chirho: HashSet<String>) {
+        self.constrained_names_chirho = names_chirho;
+    }
+
+    /// Mint an occurrence id for a reference to a constrained bound name; any
+    /// other reference keeps its id. An occurrence the pass finds no evidence
+    /// for is restored to its canonical id before STG.
+    fn reference_occurrence_chirho(
+        &mut self,
+        name_chirho: &str,
+        id_chirho: CoreIdChirho,
+        span_chirho: SpanChirho,
+    ) -> CoreIdChirho {
+        if !self.constrained_names_chirho.contains(name_chirho)
+            || self.method_occurrences_chirho.contains_key(&id_chirho)
+        {
+            return id_chirho;
+        }
+        let occurrence_id_chirho = self.fresh_id_chirho(name_chirho);
+        self.method_occurrences_chirho
+            .insert(occurrence_id_chirho, (name_chirho.to_string(), id_chirho));
+        self.reference_occurrence_spans_chirho
+            .insert(occurrence_id_chirho, span_chirho);
+        occurrence_id_chirho
+    }
+
+    /// Remember which source literal a `fromInteger` / `fromString` occurrence
+    /// id wraps, when the name is opted in (a shared canonical id is not one
+    /// literal and gets no span).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn record_literal_occurrence_chirho(
+        &mut self,
+        id_chirho: CoreIdChirho,
+        lit_chirho: &LitChirho,
+    ) {
+        if self.method_occurrences_chirho.contains_key(&id_chirho) {
+            self.literal_occurrence_spans_chirho
+                .insert(id_chirho, lit_chirho.span_chirho());
+        }
     }
 
     /// Generate a fresh Core ID and record its name.
@@ -1604,6 +1667,8 @@ impl DesugarCtxChirho {
             },
             names_chirho: self.names_chirho.clone(),
             method_occurrences_chirho: self.method_occurrences_chirho.clone(),
+            literal_occurrence_spans_chirho: self.literal_occurrence_spans_chirho.clone(),
+            reference_occurrence_spans_chirho: self.reference_occurrence_spans_chirho.clone(),
         }
     }
 
@@ -3429,6 +3494,11 @@ impl DesugarCtxChirho {
                     name_chirho.text_chirho()
                 };
                 let id_chirho = self.resolve_var_chirho(lookup_name_chirho);
+                let id_chirho = self.reference_occurrence_chirho(
+                    lookup_name_chirho,
+                    id_chirho,
+                    name_chirho.span_chirho(),
+                );
                 CoreExprChirho::VarChirho(id_chirho)
             }
             ExprChirho::ConChirho(name_chirho) => {
@@ -3478,6 +3548,7 @@ impl DesugarCtxChirho {
                 // the dict pass to select the correct Num instance.
                 if matches!(core_lit_chirho, CoreLitChirho::IntChirho(_)) {
                     let from_integer_id_chirho = self.resolve_var_chirho("fromInteger");
+                    self.record_literal_occurrence_chirho(from_integer_id_chirho, lit_chirho);
                     CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(from_integer_id_chirho)),
                         arg_chirho: Box::new(CoreExprChirho::LitChirho(core_lit_chirho)),
@@ -3489,6 +3560,7 @@ impl DesugarCtxChirho {
                 {
                     // OverloadedStrings: string literals become `fromString "lit"`
                     let from_string_id_chirho = self.resolve_var_chirho("fromString");
+                    self.record_literal_occurrence_chirho(from_string_id_chirho, lit_chirho);
                     CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(from_string_id_chirho)),
                         arg_chirho: Box::new(CoreExprChirho::LitChirho(core_lit_chirho)),
@@ -5719,9 +5791,22 @@ pub fn desugar_module_with_method_occurrences_chirho(
     module_chirho: &ModuleChirho,
     method_names_chirho: HashSet<String>,
 ) -> DesugarOutputChirho {
+    desugar_module_with_evidence_names_chirho(module_chirho, method_names_chirho, HashSet::new())
+}
+
+/// Like [`desugar_module_with_method_occurrences_chirho`], also minting an
+/// occurrence id per reference to a constrained name so the checker's
+/// per-reference evidence can be joined to it.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub fn desugar_module_with_evidence_names_chirho(
+    module_chirho: &ModuleChirho,
+    method_names_chirho: HashSet<String>,
+    constrained_names_chirho: HashSet<String>,
+) -> DesugarOutputChirho {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.set_method_occurrence_names_chirho(method_names_chirho);
+    ctx_chirho.set_constrained_names_chirho(constrained_names_chirho);
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 

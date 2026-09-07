@@ -3308,7 +3308,33 @@ fn join_occurrence_evidence_chirho(
         haskelujah_core_chirho::CoreIdChirho,
         (String, haskelujah_core_chirho::CoreIdChirho),
     >,
+    literal_occurrence_spans_chirho: &std::collections::HashMap<
+        haskelujah_core_chirho::CoreIdChirho,
+        haskelujah_span_chirho::SpanChirho,
+    >,
 ) -> std::collections::HashMap<haskelujah_core_chirho::CoreIdChirho, (String, String)> {
+    // Literal evidence joins by span, exactly: the checker solved this very
+    // literal. It is inserted first so the per-name ordinal join below never
+    // overrides it. The engine's body-backed rows are keyed "Int"; the checker
+    // defaults an unconstrained literal to "Integer" per the Report.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let mut evidence_chirho: std::collections::HashMap<
+        haskelujah_core_chirho::CoreIdChirho,
+        (String, String),
+    > = std::collections::HashMap::new();
+    for (occ_id_chirho, span_chirho) in literal_occurrence_spans_chirho {
+        if let Some(record_chirho) = infer_result_chirho.literal_evidence_chirho.get(span_chirho) {
+            let ty_key_chirho = if record_chirho.ty_key_chirho == "Integer" {
+                "Int".to_string()
+            } else {
+                record_chirho.ty_key_chirho.clone()
+            };
+            evidence_chirho.insert(
+                *occ_id_chirho,
+                (record_chirho.class_name_chirho.clone(), ty_key_chirho),
+            );
+        }
+    }
     let mut occ_ids_by_name_chirho: std::collections::HashMap<
         String,
         Vec<haskelujah_core_chirho::CoreIdChirho>,
@@ -3322,10 +3348,6 @@ fn join_occurrence_evidence_chirho(
     for ids_chirho in occ_ids_by_name_chirho.values_mut() {
         ids_chirho.sort_by_key(|id_chirho| id_chirho.0);
     }
-    let mut evidence_chirho: std::collections::HashMap<
-        haskelujah_core_chirho::CoreIdChirho,
-        (String, String),
-    > = std::collections::HashMap::new();
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
         if infer_result_chirho
             .method_occurrence_totals_chirho
@@ -3389,17 +3411,69 @@ fn compile_backend_chirho(
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
     // per-occurrence ids for the standard method-name set).
-    let desugar_output_chirho =
-        haskelujah_core_chirho::desugar_module_with_method_occurrences_chirho(
-            &module_chirho,
-            EVIDENCE_METHOD_NAMES_CHIRHO
-                .iter()
-                .map(|name_chirho| name_chirho.to_string())
-                .collect(),
-        );
+    // Dictionary evidence: every name whose scheme carries class predicates
+    // gets an occurrence id per reference, so the checker's per-reference
+    // evidence can reach the dictionary pass.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    // Class methods are not references to constrained functions: the pass
+    // dispatches them through selectors keyed on their canonical ids, so they
+    // keep the method-occurrence mechanism and are not minted here.
+    let class_method_names_chirho: std::collections::HashSet<&String> = infer_result_chirho
+        .class_env_chirho
+        .classes_chirho
+        .values()
+        .flat_map(|class_chirho| class_chirho.methods_chirho.keys())
+        .collect();
+    let constrained_names_chirho: std::collections::HashSet<String> = infer_result_chirho
+        .env_chirho
+        .all_bindings_chirho()
+        .into_iter()
+        .filter(|(name_chirho, scheme_chirho)| {
+            !scheme_chirho.preds_chirho.is_empty()
+                && !class_method_names_chirho.contains(name_chirho)
+        })
+        .map(|(name_chirho, _scheme_chirho)| name_chirho.clone())
+        .collect();
+    let desugar_output_chirho = haskelujah_core_chirho::desugar_module_with_evidence_names_chirho(
+        &module_chirho,
+        EVIDENCE_METHOD_NAMES_CHIRHO
+            .iter()
+            .map(|name_chirho| name_chirho.to_string())
+            .collect(),
+        constrained_names_chirho,
+    );
+    let reference_evidence_chirho: std::collections::HashMap<
+        haskelujah_core_chirho::CoreIdChirho,
+        Vec<(String, Option<String>)>,
+    > = desugar_output_chirho
+        .reference_occurrence_spans_chirho
+        .iter()
+        .filter_map(|(occ_id_chirho, span_chirho)| {
+            let records_chirho = infer_result_chirho
+                .reference_evidence_chirho
+                .get(span_chirho)?;
+            Some((
+                *occ_id_chirho,
+                records_chirho
+                    .iter()
+                    .map(|record_chirho| {
+                        let key_chirho = record_chirho.ty_key_chirho.as_deref().map(|key_chirho| {
+                            if key_chirho == "Integer" {
+                                "Int".to_string()
+                            } else {
+                                key_chirho.to_string()
+                            }
+                        });
+                        (record_chirho.class_name_chirho.clone(), key_chirho)
+                    })
+                    .collect(),
+            ))
+        })
+        .collect();
     let occurrence_evidence_chirho = join_occurrence_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
+        &desugar_output_chirho.literal_occurrence_spans_chirho,
     );
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
@@ -3456,18 +3530,18 @@ fn compile_backend_chirho(
             }
         }
     }
-    let dict_result_chirho =
-        haskelujah_core_chirho::dict_pass_module_full_with_method_occurrences_chirho(
-            &desugar_output_chirho.module_chirho,
-            desugar_output_chirho.names_chirho,
-            &infer_result_chirho.env_chirho,
-            &infer_result_chirho.class_env_chirho,
-            con_types_chirho,
-            newtype_info_chirho,
-            extra_dict_param_names_chirho,
-            desugar_output_chirho.method_occurrences_chirho,
-            occurrence_evidence_chirho,
-        );
+    let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_with_evidence_chirho(
+        &desugar_output_chirho.module_chirho,
+        desugar_output_chirho.names_chirho,
+        &infer_result_chirho.env_chirho,
+        &infer_result_chirho.class_env_chirho,
+        con_types_chirho,
+        newtype_info_chirho,
+        extra_dict_param_names_chirho,
+        desugar_output_chirho.method_occurrences_chirho,
+        occurrence_evidence_chirho,
+        reference_evidence_chirho,
+    );
     let core_chirho = dict_result_chirho.module_chirho;
 
     // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
