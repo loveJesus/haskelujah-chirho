@@ -1,8 +1,7 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-07, AFTER the type-namespace and lexical type-variable scope lane
-# code measured: 73b84f5 (measuring agent gpt_chirho; the final post-measurement cleanup
-#   removed formatter-only drift from infer_chirho.rs, reapplied the exact tested Boolean
-#   family reducer, and passed a fresh CLI build plus its focused test)
+# measured: 2026-09-07, AFTER the record-field brick (construction and update by field set)
+# code measured: ffa2561e (measuring agent claude_chirho; 55348594 + the brick; explicit
+#   `cargo build -p haskelujah` before the passes, so the CLI is the source measured)
 # method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4; a
 #   load-induced timeout is re-run alone before it counts
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
@@ -12,28 +11,17 @@
 # STABILITY: DETERMINISTIC — two complete passes, zero timeouts, byte-identical failing sets
 # QUOTE-AS: ~93% (877 of 938) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~28% (218 of 767).
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (222 of 767).
 # The accept-axis rounding label remains ~93%; the companion reject axis crosses from
-# ~26% to ~28%, so the pending public-site redeploy must consume both current artifacts.
+# ~28% to ~29%, so the pending public-site redeploy must consume both current artifacts.
 #
-# CHANGE SINCE LAST MEASUREMENT: 876 -> 877 (net +1).
-#   2 files left the failing set: T14010.hs T4355.hs
-#   1 file entered it: T16188.hs
-#
-# WHY THE TWO GAINS ARE REAL:
-#   T14010 — standalone symbolic kind signatures now retain the operator application
-#     (`i ~> j`) and imported closed Boolean families reduce only when their leading
-#     argument determines the equation.
-#   T4355 — GADT-style newtype constructors and their standalone kind signatures survive
-#     parsing/lowering instead of being mistaken for declaration-head variables.
-#
-# WHY T16188 ENTERED THE FAILING SET:
-#   Its data-family instance is still an unrepresented AST form. The old skip consumed
-#   declarations that followed the instance, so the file passed because its load-bearing
-#   `%&&` declaration was never checked. The boundary scanner now preserves that sibling
-#   declaration and reports the missing constructor/type information honestly. Do not
-#   fabricate a singleton constructor scheme to retain the old green result; this remains
-#   blocked on the data-family-instance declaration shape.
+# CHANGE SINCE LAST MEASUREMENT: 877 -> 877 (no movement). The failing set below is
+#   byte-identical to the previous artifact's. The brick changes record construction and
+#   update only: a given field the constructor does not declare (E0206), an omitted strict
+#   field (E0207, GHC-95909), an omitted lazy field allowed (missing-field thunk), `C {}`
+#   on any constructor. The only `C {}` in this corpus is a pattern (T26346, already
+#   failing on promoted kinds, unchanged); the only construction on a constructor its file
+#   does not declare (T7169, sibling module) still passes.
 #
 # REPRESENTATION LIMITS THAT REMAIN EXPLICIT:
 #   data/newtype instances and `type data` still need real declaration shapes; GADT record

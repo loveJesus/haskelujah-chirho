@@ -1,51 +1,47 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-07, AFTER the type-namespace and lexical type-variable scope lane
-# code measured: 73b84f5 (measuring agent gpt_chirho; final source-equivalent CLI rebuilt
-#   after removal of formatter-only drift)
+# measured: 2026-09-07, AFTER the record-field brick (construction and update by field set)
+# code measured: ffa2561e (measuring agent claude_chirho; 55348594 + the brick; explicit
+#   `cargo build -p haskelujah` before the passes)
 # method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone; a rejection is output containing `error[E` or `panic`
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=218 WRONGLY-ACCEPTED=549 TOTAL=767 (28.4% reject rate)
+# RESULT: CORRECTLY-REJECTED=222 WRONGLY-ACCEPTED=545 TOTAL=767 (28.9% reject rate)
 # STABILITY: DETERMINISTIC — two complete passes, zero timeouts, byte-identical sets
-# QUOTE-AS: ~28% (218 of 767) — do not quote a third significant figure
+# QUOTE-AS: ~29% (222 of 767) — do not quote a third significant figure
 #
 # QUOTE BOTH AXES TOGETHER. The companion artifact is ~93% (877 of 938).
-# This axis crosses a displayed rounding boundary (~26% -> ~28%); the pending public-site
+# This axis crosses a displayed rounding boundary (~28% -> ~29%); the pending public-site
 # redeploy must consume both current artifacts.
 #
-# CHANGE SINCE LAST MEASUREMENT: 206 -> 218 (net +12).
-#   18 files left the wrongly-accepted set:
-#     ExplicitSpecificity10 ExplicitSpecificity9 T12042 T12063a T12102 T13983 T14350
-#     T15862 T1595 T8306 UnliftedNewtypesMismatchedKindRecord tcfail048 tcfail051
-#     tcfail052 tcfail053 tcfail061 tcfail062 tcfail187
-#   6 files entered it:
-#     T15629 T23162c T23308 tcfail067 tcfail102 tcfail133
+# CHANGE SINCE LAST MEASUREMENT: 218 -> 222 (net +4).
+#   4 files left the wrongly-accepted set: T23739c tcfail084 tcfail085 tcfail112
+#   0 files entered it.
 #
-# EIGHT GAINS HAVE THE RIGHT NAMESPACE DIAGNOSTIC:
-#   T13983, T1595, and tcfail048/051/052/053/061/062 now reject the genuinely unbound,
-#   hidden, or wrongly-namespaced type/class use at its source span.
+# ALL FOUR GAINS ARE REJECTED FOR GHC'S OWN REASON (checked against each file's .stderr):
+#   tcfail084 — GHC-53822 "Constructor F does not have field y": E0206 at the field, a
+#     construction naming another constructor's label.
+#   tcfail085 — GHC-95909 "does not have the required strict field(s): y": E0207 naming
+#     the field.
+#   tcfail112 — GHC-95909 on `S {}` and `S { x=3 }`, and on the positional `T {}` whose
+#     argument is strict; exactly three errors, so `S { y=3 }` and `U {}` stay legal.
+#   T23739c — `Int{}` names a type, not a data constructor: E0202 "unbound constructor"
+#     (the record-construction arm used to invent a fresh type for a scheme-less name).
 #
-# TEN GAINS HAVE THE RIGHT VERDICT BUT DO NOT CLAIM THE GHC RULE YET:
-#   ExplicitSpecificity10/9, T12042, T12063a, T12102, T14350, T15862, T8306,
-#   UnliftedNewtypesMismatchedKindRecord, and tcfail187 reach an honest earlier unknown-name
-#   or kind/lowering boundary. GHC's reasons include inferred-binder visible application,
-#   boot/source import consistency, illegal constraint/kind forms, unrepresented newtype
-#   instances, representation-polymorphism, negative type literals, or constructor arity.
-#   They count under the corpus rule but are not banked as implementations of those rules.
+# T18869 is now rejected for GHC-95909 (E0207 on the omitted strict field), no longer for
+# arity; it stays in the correctly-rejected set. Record construction and update go by the
+# constructor's FIELD SET: an omitted lazy field is allowed (missing-field thunk, forced only
+# on use), an omitted strict field is E0207, an undeclared field is E0206; `C {}` on a
+# positional constructor fills every argument with the thunk (imported arities come from the
+# checker's environment). A record update on a bare type variable with an unknown field is
+# still accepted (unknown wildcard imports); that boundary is unchanged.
 #
-# THE SIX LOSSES REMOVE SPURIOUS NAME ERRORS AND EXPOSE REAL MISSING RULES:
-#   T15629 needs rigid kind mismatch checking; T23162c injective-family improvement;
-#   T23308 newtype validity; tcfail067 datatype-context obligations; tcfail102 the same
-#   obligation through record update; tcfail133 functional-dependency ambiguity/instance
-#   checking. They are now wrongly accepted rather than rejected for a fabricated reason.
+# MEASUREMENT TOOLING: the detector is pure-shell pattern matching
+# (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
+# this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# T18869 remains rejected for the pre-existing arity reason, not yet GHC-95909. The filed
-# empty-record-construction rule set must recover missing lazy fields while separately
-# rejecting omitted strict fields; do not quote T18869 as a completed strict-field rule.
-#
-# ---- the 549 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 545 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -326,7 +322,6 @@ T23731.hs
 T23731b.hs
 T23731b_aux.hs
 T23734.hs
-T23739c.hs
 T23776.hs
 T23778.hs
 T24298.hs
@@ -500,8 +495,6 @@ tcfail075.hs
 tcfail076.hs
 tcfail077.hs
 tcfail080.hs
-tcfail084.hs
-tcfail085.hs
 tcfail086.hs
 tcfail089.hs
 tcfail090.hs
@@ -522,7 +515,6 @@ tcfail106.hs
 tcfail107.hs
 tcfail108.hs
 tcfail109.hs
-tcfail112.hs
 tcfail114.hs
 tcfail116.hs
 tcfail117.hs
