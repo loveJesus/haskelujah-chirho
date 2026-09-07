@@ -31,20 +31,41 @@ Directive: advance the GHC typecheck corpus through reusable root-cause mechanis
 - [x] Add interface tests proving associated types survive all/selected exports, hiding, module re-exports, and both unqualified and qualified-alias resolution.
 - [x] Add focused parser tests whose assertions depend on each recovered AST shape surviving.
 - [x] Add/adjust the name-resolution workflow DAG and comment participating entry points in code.
-- [ ] After builder release, run formatting and the touched-crate tests with zero warnings.
-- [ ] Rebuild the compiler, run the complete 938-file accept subset gate and 767-file reject gate, and inspect every delta at source level.
-- [ ] Update both committed measurement artifacts only if the full two-pass measurements change, preserving their `# QUOTE-AS:` contract.
+- [x] After builder release, remove formatter-only drift, run the touched-crate tests, and rebuild the CLI without compiler warnings.
+- [x] Rebuild the compiler, run the complete 938-file accept subset gate and 767-file reject gate twice, and inspect every delta at source level.
+- [x] Update both committed measurement artifacts from the byte-identical two-pass sets, preserving their `# QUOTE-AS:` contract.
 - [ ] Log one progress row after the DB lock is released, commit only named owned paths, and report the landed result through Metropoliluya.
+
+## Final measured result
+
+- `should_compile`: 876 -> 877 of 938. `T14010` and `T4355` recover for the represented kind/newtype-GADT reasons; `T16188` now fails because the repaired data-instance boundary no longer swallows its following declaration. The old pass was not evidence.
+- `should_fail`: 206 -> 218 of 767. Eighteen files become rejections and six spurious name-error rejections become accepts, for net +12. The companion artifact classifies the eight exact namespace gains, ten right-verdict/incomplete-reason gains, and six exposed downstream rule gaps individually.
+- Both axes completed twice against the fresh debug CLI at parallelism four with zero timeouts; the two failing/accepted sets are byte-identical.
+- Naming: 132/132. Typing: 314 passed, one ignored. Parser: 314 passed, two known fixture/environment failures and three ignored; both failures reproduce at untouched `dd6d694a`.
+- Driver library: 1757 passed, exactly four recorded pre-existing checker/runtime failures, and the filed Cranelift custom-list runaway skipped. Dictionary-evidence 7/7, given-equality 10/10, rigid-variable 14/14, and typing integration 8/8 passed.
+- Curated executable corpus: 537/537. Cranelift integration: 42/42 after excluding its separately filed recursive-IO test.
+- The final CLI build completed without Rust compiler warnings. The Cranelift execution test still exposes the existing macOS linker warning about object-file platform load commands; this lane does not alter backend object emission.
 
 ## Measured AST blockers
 
-The fresh-binary regression probe now fixes 16 of the 19 originally new accept-axis failures. Three remain intentionally unguarded because lowering cannot represent what their source declares:
+The fresh-binary regression probe recovered 16 of the 19 initially exposed accept-axis files through faithful parser/interface fixes. Three keep their pre-lane accept verdict only because the scope pass deliberately stands down at an AST boundary it cannot represent:
 
 - `T13915a`: `data instance T Int = MkT` is dropped, so the imported constructor `MkT` cannot enter an interface.
 - `T16141`: `newtype instance` is dropped and its deriving clause is fabricated as class `Unknown`.
 - `T22141g`: `type data Letter = A | B | C` is fabricated as the alias `Letter = A`; `B` and `C` disappear.
 
-The room's compiler experiment established that a new `DeclChirho` sibling is caught by only one exhaustive match, while an added field is ignored by most `..` patterns. These forms therefore need a representation chosen on meaning plus an explicit consumer sweep—not namespace metadata, filename guards, or invented exports. This lane will not land a three-file regression or bless the fabricated AST; the representation decision remains with L.J.
+The room's compiler experiment established that a new `DeclChirho` sibling is caught by only one exhaustive match, while an added field is ignored by most `..` patterns. These forms therefore need a representation chosen on meaning plus an explicit consumer sweep—not namespace metadata, filename guards, or invented exports. Their current green `check` verdicts are compatibility holds, not claims that the constructs work; the representation decision remains with L.J.
+
+`T16188` proves why the boundary must preserve the rest of the module even while the construct itself is deferred: the old data-instance skip consumed a later `%&&` declaration and returned green without checking it. `eat_until_unrepresented_instance_end_chirho` now stops at the instance's own layout boundary, so the sibling is checked and the file fails honestly until the data-family-instance shape exists.
+
+## Root-cause additions discovered during the lane
+
+- Mixed explicit/implicit layout now unwinds nested implicit contexts before an explicit `}`, restoring the enclosing module's declaration separator. This repairs scope at token normalization rather than adding declaration-specific recovery.
+- Data/newtype GADT constructor blocks share one parser path, and newtype standalone kind signatures keep their full source type rather than fabricating head binders.
+- Flat standalone kind signatures use the shared type reconstruction path, including symbolic operators; required foralls contribute their body kind.
+- Imported closed Boolean families (`If`, `Not`, `&&`, `||`) are registered as families and reduce only when their leading argument selects an equation; otherwise they remain stuck.
+- Qualified class instances expose an associated-family member unqualified only when that member is genuinely visible through the parent class import. The `GHC.Exts.IsList` / `Item` project regression fixed the interface relation rather than globally leaking `Item`.
+- Driver fixtures that used explicit or qualified import lists now import every type they actually reference, so the tests remain valid Haskell under real namespace enforcement.
 
 ## Explored and reverted: inferred forall specificity
 

@@ -5,12 +5,18 @@ This workflow is owned by `resolve_module_with_imports_chirho` and `check_module
 
 ```mermaid
 flowchart TD
-    source_cst_chirho[Source CST] --> faithful_lowering_chirho[Lower namespace-bearing declaration shapes]
+    lexed_tokens_chirho[Lexed source tokens] --> layout_normalization_chirho[Normalize explicit and implicit layout contexts]
+    layout_normalization_chirho --> explicit_close_chirho{Explicit right brace closes nested implicit contexts?}
+    explicit_close_chirho -->|Yes| unwind_layout_chirho[Emit virtual closes before the explicit close]
+    explicit_close_chirho -->|No| source_cst_chirho[Source CST]
+    unwind_layout_chirho --> source_cst_chirho
+    source_cst_chirho --> faithful_lowering_chirho[Lower namespace-bearing declaration shapes]
     faithful_lowering_chirho --> lowered_shape_chirho{Shape represented faithfully?}
     lowered_shape_chirho -->|Yes| module_ast_chirho[Lowered module AST]
     lowered_shape_chirho -->|No, but retained AST proves the boundary| ast_boundary_chirho[Defer only the affected check at a documented trust boundary]
     ast_boundary_chirho --> module_ast_chirho
-    lowered_shape_chirho -->|No faithful carrier| representation_blocker_chirho[Keep the corpus failure explicit; require an AST representation instead of inventing names]
+    lowered_shape_chirho -->|No faithful carrier| preserve_sibling_chirho[Consume only the unsupported construct's own layout region]
+    preserve_sibling_chirho --> representation_blocker_chirho[Keep the construct gap explicit while preserving following declarations]
 
     module_ast_chirho --> local_iface_chirho[Collect canonical local type/value exports]
     local_iface_chirho --> associated_iface_chirho[Retain class-to-associated-family relationships]
@@ -40,6 +46,12 @@ flowchart TD
     all_associated_chirho --> import_filter_chirho
     selected_associated_chirho --> import_filter_chirho
     parent_only_chirho --> import_filter_chirho
+
+    walk_uses_chirho --> associated_instance_use_chirho{Bare associated family inside an instance?}
+    associated_instance_use_chirho --> parent_instance_chirho[Resolve the qualified or unqualified parent class]
+    parent_instance_chirho --> member_visible_chirho{Interface says member belongs to that visible parent?}
+    member_visible_chirho -->|Yes| continue_chirho
+    member_visible_chirho -->|No| undefined_type_chirho
 
     walk_uses_chirho --> promoted_use_chirho{Explicit promoted constructor?}
     promoted_use_chirho --> wired_promoted_chirho{Wired-in list, unit or tuple constructor?}
@@ -83,6 +95,10 @@ flowchart TD
 
 The walker performs no filesystem lookup or module scanning. Its successful-resolution path is linear in the lowered AST with hash-backed namespace lookups; the error-only suggestion path compares against the already-populated in-memory environment, and duplicate diagnostics are suppressed by issue/name/span.
 
-Canonical interface maps are the authority for imported names. Type and value operators are normalized once at that boundary, and associated families remain first-class type exports while carrying their parent-class relation through selected imports, hiding, explicit exports, and module re-exports.
+Canonical interface maps are the authority for imported names. Type and value operators are normalized once at that boundary, and associated families remain first-class type exports while carrying their parent-class relation through selected imports, hiding, explicit exports, and module re-exports. An associated member imported through a qualified class may be used bare only inside an instance of that same visible class; it is not inserted into the module's general unqualified type namespace. This is the `GHC.Exts.IsList` / `Item` boundary exercised by the real `containers` projects.
+
+Layout and lowering preserve scope before naming sees the AST. An explicit right brace first closes implicit contexts nested inside its matching explicit context, so the enclosing module regains its virtual declaration separator. Unsupported data/newtype-family instances are still representation blockers, but their scanner stops at their own layout boundary; it must never consume a following signature or declaration. Data and newtype GADT constructor blocks share one parser, while standalone kind signatures retain their complete flat child sequence for the common type reconstruction path.
+
+The kind/type layer uses the same faithful shape downstream: required foralls contribute the kind of their body; symbolic standalone kind operators preserve application order; imported closed Boolean families reduce only when their leading argument selects an equation and otherwise remain stuck.
 
 Two deliberately narrow AST trust boundaries remain. The record-field branch covers `bug-record-field-forall-lowering-chirho.md`; ordinary and required-forall fields remain checked. The constructor-prefix branch covers `bug-existential-constructor-scope-dropped-chirho.md`; it requires a prefix constructor name whose source span begins after its enclosing constructor span, excludes infix constructors, and defers only that constructor's field-variable scope. Both branches should disappear when the AST can carry the source binders and contexts directly.

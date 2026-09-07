@@ -1,66 +1,51 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-06 (night), AFTER the dictionary-evidence follow-up (c6bc7db1: local bindings, corpus repair) — the accept axis did NOT move:
-# code measured: c6bc7db1 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
-#   to each other AND to the list below, which is therefore unchanged). The follow-up changes what the
-#   dictionary pass emits for local bindings, not what the checker accepts.
-#   Previous header, kept for the record:
-#   measured: 2026-09-06, AFTER the GADT-constructor `::` guard (31c4ef8e)
-#   code measured: 31c4ef8e. Measuring agent: claude2_chirho, who also independently
-#   replicated the 4f866dc3 artifact (869 of 938, byte-identical failing set) before
-#   starting this lane, so the record carries both agents.
-# method: haskelujah check <file>, timeout 15s/file, parallelism 4; a load-induced TIMEOUT is re-run
-#   alone before it counts (tc089 needs ~9s idle and exceeded 15s only under parallel load).
-# corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files (find-based; T16234/ included)
+# measured: 2026-09-07, AFTER the type-namespace and lexical type-variable scope lane
+# code measured: f2fce40 (measuring agent gpt_chirho; the final post-measurement cleanup
+#   removed formatter-only drift from infer_chirho.rs, reapplied the exact tested Boolean
+#   family reducer, and passed a fresh CLI build plus its focused test)
+# method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4; a
+#   load-induced timeout is re-run alone before it counts
+# corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
+#   (find-based; T16234/ included)
 #
-# RESULT: PASS=876 FAIL=62 TOTAL=938 (93.4%)
-# STABILITY: DETERMINISTIC — two independent full passes, byte-identical failing sets
-# QUOTE-AS: ~93% (876 of 938) — do not quote a third significant figure
+# RESULT: PASS=877 FAIL=61 TOTAL=938 (93.5%)
+# STABILITY: DETERMINISTIC — two complete passes, zero timeouts, byte-identical failing sets
+# QUOTE-AS: ~93% (877 of 938) — do not quote a third significant figure
 #
-# RE-VERIFIED UNCHANGED at b2027c35 (GADT-record parser half): 876 of 938, two passes,
-# failing set byte-identical to this list. That commit moves only the reject axis
-# (205 -> 206, accidentally — read the companion artifact before quoting it). It also
-# changes what EIGHT files in the PASSING set MEAN: they carry GADT record constructors
-# whose fields did not exist until b2027c35, so they were green with the construct
-# unrepresented and `main` not surviving to STG. A check-only gate could not see that
-# then and cannot see it now; the evidence is the driver eval test
-# eval_gadt_record_fields_are_readable_chirho (exact output).
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~28% (218 of 767).
+# The accept-axis rounding label remains ~93%; the companion reject axis crosses from
+# ~26% to ~28%, so the pending public-site redeploy must consume both current artifacts.
 #
-# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: no rounding boundary moves here (874 and 876
-# both quote as ~93%). The boundary was crossed at 1271f0e8 (~92% -> ~93%) and the site
-# redeploy for it is still pending. The companion axis is unchanged at ~26% (205 of 767).
-# Re-quote BOTH verbatim, together.
+# CHANGE SINCE LAST MEASUREMENT: 876 -> 877 (net +1).
+#   2 files left the failing set: T14010.hs T4355.hs
+#   1 file entered it: T16188.hs
 #
-# CHANGE SINCE LAST MEASUREMENT: 874 -> 876 (+2).
-#   2 files left the failing set: T16411.hs T3632.hs
-#   0 files entered it.
+# WHY THE TWO GAINS ARE REAL:
+#   T14010 — standalone symbolic kind signatures now retain the operator application
+#     (`i ~> j`) and imported closed Boolean families reduce only when their leading
+#     argument determines the equation.
+#   T4355 — GADT-style newtype constructors and their standalone kind signatures survive
+#     parsing/lowering instead of being mistaken for declaration-head variables.
 #
-# WHAT CHANGED — and the through-line, because this is the THIRD landing against ONE defect.
-# The data-head scanner could not tell whose `::` it was reading. Three disguises:
-#   d697851e  a parenthesised binder whose kind our grammar cannot read (`[Symbol]`, `[[a]]`)
-#   3bf553dc  the `_` binder, which was not recognised as a binder at all
-#   31c4ef8e  a GADT constructor line: `data T where / MkT :: { f :: Int, x :: Char } -> T`
-# Each misread produced BOTH a fabricated declaration kind AND arity inflation from things
-# that were never binders (here the record FIELD NAMES, which are VarIds). Each time,
-# fixing only the `::` half left the arity half and cost currently-passing files. Total
-# across the three: +7 accept, +1 reject, from roughly forty lines of scanner guards.
+# WHY T16188 ENTERED THE FAILING SET:
+#   Its data-family instance is still an unrepresented AST form. The old skip consumed
+#   declarations that followed the instance, so the file passed because its load-bearing
+#   `%&&` declaration was never checked. The boundary scanner now preserves that sibling
+#   declaration and reports the missing constructor/type information honestly. Do not
+#   fabricate a singleton constructor scheme to retain the old green result; this remains
+#   blocked on the data-family-instance declaration shape.
 #
-# WHAT WAS DELIBERATELY NOT BUILT: the `KindChirho::NamedChirho` representation the
-# handoff map estimated at +14. Probing first (README trap 8) showed five of its six
-# target shapes ALREADY PASS — `[Symbol]`, `[[Type]]`, `i ~> j`, `Sig2 k`, `[Type]` in a
-# GADT head — because d697851e made an unreadable binder kind skipped rather than
-# misattributed, and a flexible binder suffices. Only promoted tuples `'(Int, Bool)`
-# genuinely fail, in 2 of 938 files (T14010, T18831). The map read the symptom as a
-# missing kind representation; it was a parser scanner.
+# REPRESENTATION LIMITS THAT REMAIN EXPLICIT:
+#   data/newtype instances and `type data` still need real declaration shapes; GADT record
+#   fields have survived since b2027c35, but refined GADT result types still need the agreed
+#   constructor-argument/result AST redesign. A green `check` result around an unrepresented
+#   form is not behavioral evidence; exact-output driver gates remain required.
 #
-# STILL OPEN AND KNOWN: GADT record constructor FIELDS are dropped entirely by the
-# lowering (`fields_chirho: []`). That is why HardRecordUpdate and T14761c only moved to
-# later errors instead of passing. It is a real lowering gap, not a kind-checker one.
+# MEASUREMENT TOOLING: the detector is pure-shell pattern matching
+# (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
+# this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# MEASUREMENT-TOOLING NOTE (unchanged): the detector is PURE SHELL pattern matching
-# (`case $out in *"error[E"*|*panic*`), never the interactive `grep`, which is shadowed here by a
-# ugrep wrapper with content-dependent `-q` exit status.
-#
-# ---- the 62 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 61 files we FAIL to accept (GHC accepts these); all deterministic ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -76,12 +61,12 @@ T12104.hs
 T12427a.hs
 T13822.hs
 T13848.hs
-T14010.hs
 T14451.hs
 T14590.hs
 T14761c.hs
 T15079.hs
 T15370.hs
+T16188.hs
 T17594a.hs
 T17772.hs
 T18036b.hs
@@ -105,7 +90,6 @@ T25266b.hs
 T26256a.hs
 T26345.hs
 T26346.hs
-T4355.hs
 T4444.hs
 T4524.hs
 T5032.hs

@@ -1,37 +1,51 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-07, AFTER the GADT-record parser half (b2027c35)
-# code measured: b2027c35 (measuring agent claude2_chirho — see the companion artifact note)
-# method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run alone
-# corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files (no subdirectories)
+# measured: 2026-09-07, AFTER the type-namespace and lexical type-variable scope lane
+# code measured: f2fce40 (measuring agent gpt_chirho; final source-equivalent CLI rebuilt
+#   after removal of formatter-only drift)
+# method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4;
+#   timeouts re-run alone; a rejection is output containing `error[E` or `panic`
+# corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
+#   (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=206 WRONGLY-ACCEPTED=561 TOTAL=767 (26.9% reject rate)
-# STABILITY: DETERMINISTIC — two independent full passes, byte-identical sets
-# QUOTE-AS: ~26% (206 of 767) — do not quote a third significant figure
+# RESULT: CORRECTLY-REJECTED=218 WRONGLY-ACCEPTED=549 TOTAL=767 (28.4% reject rate)
+# STABILITY: DETERMINISTIC — two complete passes, zero timeouts, byte-identical sets
+# QUOTE-AS: ~28% (218 of 767) — do not quote a third significant figure
 #
-# NOTE FOR WHOEVER UPDATES THE PUBLIC SITE: no rounding boundary moves here (205 and 206
-# both quote as ~26%). The accept axis is unchanged at ~93% (876 of 938). The redeploy
-# still owed is the one from 1271f0e8 (~92% -> ~93%). Re-quote BOTH verbatim, together.
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~93% (877 of 938).
+# This axis crosses a displayed rounding boundary (~26% -> ~28%); the pending public-site
+# redeploy must consume both current artifacts.
 #
-# CHANGE SINCE LAST MEASUREMENT: 205 -> 206 (+1). Nothing lost.
+# CHANGE SINCE LAST MEASUREMENT: 206 -> 218 (net +12).
+#   18 files left the wrongly-accepted set:
+#     ExplicitSpecificity10 ExplicitSpecificity9 T12042 T12063a T12102 T13983 T14350
+#     T15862 T1595 T8306 UnliftedNewtypesMismatchedKindRecord tcfail048 tcfail051
+#     tcfail052 tcfail053 tcfail061 tcfail062 tcfail187
+#   6 files entered it:
+#     T15629 T23162c T23308 tcfail067 tcfail102 tcfail133
 #
-# THE +1 IS ACCIDENTAL AND IS NOT A WIN. Verified by reason (trap 15), not error-present:
-#   T18869 — GHC rejects it under GHC-95909, "Constructor `MkFoo' does not have the
-#     required strict field(s)": the empty record construction omits a field declared
-#     strict. WE reject it for ARITY — b2027c35 gave the GADT record constructor its
-#     fields, so the empty construction is now an under-applied constructor. Right
-#     verdict, wrong reason; the same class as T16646Fail2/T25679 in an earlier
-#     measurement.
-#   Worse, the mechanism is a PRE-EXISTING FALSE REJECTION whose reach this commit
-#     widened. An empty record construction on a LAZY field is legal Haskell (GHC warns,
-#     -Wmissing-fields) and we reject it. The ordinary-record form is already rejected at
-#     c9e7c484, before this commit; the GADT form was accepted there only because the
-#     constructor had no fields at all. Filed:
-#     spec-chirho/bug-empty-record-construction-rejected-chirho.md.
-#     FIXING THAT DEFECT WILL COST THIS FILE unless GHC-95909 lands with it.
-#   No corpus file exercises the false-rejection direction, which is why the accept axis
-#   shows zero movement. Absence of a failing file is not absence of the defect.
+# EIGHT GAINS HAVE THE RIGHT NAMESPACE DIAGNOSTIC:
+#   T13983, T1595, and tcfail048/051/052/053/061/062 now reject the genuinely unbound,
+#   hidden, or wrongly-namespaced type/class use at its source span.
 #
-# ---- the 561 files we WRONGLY ACCEPT (GHC rejects these) ----
+# TEN GAINS HAVE THE RIGHT VERDICT BUT DO NOT CLAIM THE GHC RULE YET:
+#   ExplicitSpecificity10/9, T12042, T12063a, T12102, T14350, T15862, T8306,
+#   UnliftedNewtypesMismatchedKindRecord, and tcfail187 reach an honest earlier unknown-name
+#   or kind/lowering boundary. GHC's reasons include inferred-binder visible application,
+#   boot/source import consistency, illegal constraint/kind forms, unrepresented newtype
+#   instances, representation-polymorphism, negative type literals, or constructor arity.
+#   They count under the corpus rule but are not banked as implementations of those rules.
+#
+# THE SIX LOSSES REMOVE SPURIOUS NAME ERRORS AND EXPOSE REAL MISSING RULES:
+#   T15629 needs rigid kind mismatch checking; T23162c injective-family improvement;
+#   T23308 newtype validity; tcfail067 datatype-context obligations; tcfail102 the same
+#   obligation through record update; tcfail133 functional-dependency ambiguity/instance
+#   checking. They are now wrongly accepted rather than rejected for a fabricated reason.
+#
+# T18869 remains rejected for the pre-existing arity reason, not yet GHC-95909. The filed
+# empty-record-construction rule set must recover missing lazy fields while separately
+# rejecting omitted strict fields; do not quote T18869 as a completed strict-field rule.
+#
+# ---- the 549 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -53,12 +67,10 @@ CustomTypeErrors03.hs
 CustomTypeErrors05.hs
 DataToTagFails.hs
 ExplicitSpecificity1.hs
-ExplicitSpecificity10.hs
 ExplicitSpecificity2.hs
 ExplicitSpecificity5.hs
 ExplicitSpecificity6.hs
 ExplicitSpecificity7.hs
-ExplicitSpecificity9.hs
 FD2.hs
 FD3.hs
 FDsFromGivens.hs
@@ -109,13 +121,10 @@ T11990a.hs
 T11990b.hs
 T12035.hs
 T12035a.hs
-T12042.hs
 T12042a.hs
 T12045b.hs
 T12045c.hs
 T12063.hs
-T12063a.hs
-T12102.hs
 T12151.hs
 T12170a.hs
 T12177.hs
@@ -149,11 +158,9 @@ T13981A.hs
 T13981B.hs
 T13981C.hs
 T13981F.hs
-T13983.hs
 T14048b.hs
 T14048c.hs
 T14055.hs
-T14350.hs
 T14390.hs
 T14605.hs
 T14607.hs
@@ -169,6 +176,7 @@ T15523.hs
 T15527.hs
 T15552.hs
 T15552a.hs
+T15629.hs
 T15648a.hs
 T15712.hs
 T15767.hs
@@ -180,13 +188,11 @@ T15807.hs
 T15816.hs
 T15850.hs
 T15850_Lib.hs
-T15862.hs
 T15883.hs
 T15883b.hs
 T15883c.hs
 T15883d.hs
 T15883e.hs
-T1595.hs
 T15954.hs
 T16059a.hs
 T16059b.hs
@@ -311,6 +317,8 @@ T22912.hs
 T22924a.hs
 T22924b.hs
 T2307.hs
+T23162c.hs
+T23308.hs
 T23427.hs
 T23514a.hs
 T2354.hs
@@ -395,7 +403,6 @@ T7989.hs
 T8030.hs
 T8034.hs
 T8262.hs
-T8306.hs
 T8392a.hs
 T8428.hs
 T8514.hs
@@ -437,7 +444,6 @@ UnliftedNewtypesFamilyKindFail2.hs
 UnliftedNewtypesInfinite.hs
 UnliftedNewtypesInstanceFail.hs
 UnliftedNewtypesMismatchedKind.hs
-UnliftedNewtypesMismatchedKindRecord.hs
 UnliftedNewtypesMultiFieldGadt.hs
 UnliftedNewtypesOverlap.hs
 VisFlag1.hs
@@ -482,16 +488,11 @@ tcfail043.hs
 tcfail044.hs
 tcfail046.hs
 tcfail047.hs
-tcfail048.hs
 tcfail050.hs
-tcfail051.hs
-tcfail052.hs
-tcfail053.hs
 tcfail054.hs
 tcfail056.hs
-tcfail061.hs
-tcfail062.hs
 tcfail065.hs
+tcfail067.hs
 tcfail071.hs
 tcfail072.hs
 tcfail073.hs
@@ -513,6 +514,7 @@ tcfail098.hs
 tcfail099.hs
 tcfail100.hs
 tcfail101.hs
+tcfail102.hs
 tcfail103.hs
 tcfail104.hs
 tcfail105.hs
@@ -536,6 +538,7 @@ tcfail128.hs
 tcfail129.hs
 tcfail130.hs
 tcfail131.hs
+tcfail133.hs
 tcfail137.hs
 tcfail138.hs
 tcfail139.hs
@@ -568,7 +571,6 @@ tcfail179.hs
 tcfail181.hs
 tcfail182.hs
 tcfail186.hs
-tcfail187.hs
 tcfail188.hs
 tcfail189.hs
 tcfail190.hs
