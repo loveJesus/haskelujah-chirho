@@ -1979,6 +1979,10 @@ impl LowerCtxChirho {
         let mut saw_equals_chirho = false;
         let mut saw_data_chirho = false;
         let mut saw_double_colon_chirho = false;
+        // A declaration's own kind signature can only appear BEFORE `where`
+        // (`data T :: K where`). After it, every `::` belongs to a GADT
+        // constructor.
+        let mut saw_where_chirho = false;
 
         let mut idx_chirho = 0;
         while idx_chirho < children_chirho.len() {
@@ -1989,10 +1993,13 @@ impl LowerCtxChirho {
                         saw_data_chirho = true;
                     } else if tok_chirho.kind_chirho() == TokenKindChirho::EqualsChirho {
                         saw_equals_chirho = true;
+                    } else if tok_chirho.kind_chirho() == TokenKindChirho::WhereKeywordChirho {
+                        saw_where_chirho = true;
                     } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
                         && saw_data_chirho
                         && name_chirho.is_some()
                         && !saw_equals_chirho
+                        && !saw_where_chirho
                     {
                         // Standalone kind signature: `data T :: K where`
                         // Collect kind segments between top-level arrows and
@@ -2139,7 +2146,11 @@ impl LowerCtxChirho {
                         }
                         idx_chirho = j_chirho;
                         continue;
-                    } else if saw_data_chirho && !saw_equals_chirho && !saw_double_colon_chirho {
+                    } else if saw_data_chirho
+                        && !saw_equals_chirho
+                        && !saw_double_colon_chirho
+                        && !saw_where_chirho
+                    {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         if (tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
@@ -14644,6 +14655,37 @@ foo = 1
                 assert!(
                     kind_sig_chirho.is_some(),
                     "a real standalone kind signature still lands in kind_sig_chirho"
+                );
+            }
+            other_chirho => panic!("expected DataDecl, got {other_chirho:?}"),
+        }
+    }
+
+    #[test]
+    fn gadt_constructor_double_colon_is_not_the_declaration_kind_chirho() {
+        // `data T where` followed by `MkT :: { f :: Int, x :: Char } -> T`: the
+        // constructor's `::` belongs to the constructor. Reading it as the
+        // declaration's kind signature folded the brace fields into an application
+        // (`Int Char`, hence a bogus E0300), and the field NAMES — `f` and `x` are
+        // VarIds — were collected as head type parameters, giving `T` arity 2.
+        // One field, or fields whose types are variables, hid it: the fold stayed
+        // well-kinded and only the arity was silently wrong.
+        let module_chirho = parse_and_lower_chirho(
+            "{-# LANGUAGE GADTs #-}\nmodule M where\ndata T where\n  MkT :: { f :: Int, x :: Char } -> T\n",
+        );
+        match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho,
+                kind_sig_chirho,
+                ..
+            } => {
+                assert!(
+                    type_vars_chirho.is_empty(),
+                    "record field names are not head binders: {type_vars_chirho:?}"
+                );
+                assert!(
+                    kind_sig_chirho.is_none(),
+                    "a constructor's `::` is not the declaration's kind: {kind_sig_chirho:?}"
                 );
             }
             other_chirho => panic!("expected DataDecl, got {other_chirho:?}"),

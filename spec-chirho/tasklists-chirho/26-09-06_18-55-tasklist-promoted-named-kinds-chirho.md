@@ -111,7 +111,68 @@ arm even after A2a. Both binder sites now share `is_head_binder_name_chirho`.
       today", but the arity half was costing five accept-axis files and manufacturing two
       reject-axis rejections
 
-## Lane A2b-2 — the kinds we still cannot represent (follow-on)
+## Lane A2b-2 — REFUTED as briefed, and what was actually wrong  ✅
+
+Reachability check first (trap 8), against the 64 failures remaining at `c9e7c484`.
+**Five of the six shapes the map said needed `KindChirho::NamedChirho` already pass**:
+
+| probe | verdict |
+|---|---|
+| `data A (b :: [Symbol])` + `A '["x"]` | ok |
+| `data A (b :: [[Type]])` | ok |
+| `class Varpi (f :: i ~> j)` | ok |
+| `data DimSimple (s :: Sig2 k)` | ok |
+| `data HList (as :: [Type]) where` | ok |
+| `A '(Int, Bool)` — promoted tuple | FAILS |
+
+They pass because A2a made an unreadable binder kind *skipped* rather than
+*misattributed*, and a flexible binder is sufficient for all of them. The promoted tuple
+is the only genuine gap and appears in 2 of 938 files. So the enum-constructor work
+across `decl_chirho.rs` + `kind_chirho.rs` was NOT built: it would have bought ~nothing.
+The map's estimate went +14 -> +5 delivered -> ~0 remaining by that route.
+
+**What was actually wrong was the same scanner, in a third disguise.** A GADT
+constructor's `::` was read as the *declaration's* kind signature:
+
+```haskell
+data T where
+  MkT :: { f :: Int, x :: Char } -> T   -- kind_sig became App(Int, Char); arity became 2
+```
+
+Both halves again — the brace fields folded into an application (the bogus E0300), and
+the field NAMES, being VarIds, were collected as head binders. One field hid it (nothing
+to fold); fields typed by variables hid it too (the fold stayed well-kinded and only the
+arity was silently wrong, which is worse). The fix is the symmetric pair A2a needed:
+`saw_where_chirho` stops both the kind-signature arm and the binder-collection arm.
+
+- [x] Probed first; refuted the briefed feature before building it
+- [x] `saw_where_chirho` guards both arms
+- [x] Gates, two passes each, byte-identical: accept **874 -> 876**, zero new failures
+      (`T3632`, `T16411`); reject **205 held**, nothing lost or gained
+- [x] `HardRecordUpdate` and `T14761c` moved to different, later errors — progress, not
+      passes; they stay in the failing list
+- [x] Test pins the invariant; parser 294 passed / same 2 pre-existing, typing 311 / 0
+      failed, zero warnings
+- [x] `T14048a` still rejected — the GHC-55233 check from A2b-1 is unaffected
+
+## The through-line of this whole lane
+
+Three landings, three disguises of ONE defect: a data-head scanner that could not tell
+whose `::` it was reading. Parenthesised binder groups (A2a), the `_` binder (A2b-1), and
+GADT constructor lines (A2b-2). Each time the misread produced BOTH a fabricated
+declaration kind AND arity inflation from binders that were never binders; each time
+fixing only the `::` half left the arity half and cost files. The handoff map read the
+symptom as a missing kind representation and estimated +14 for building one; the actual
+total was +7 accept and +1 reject from roughly forty lines of scanner guards, and the
+representation work turned out to be unnecessary.
+
+## Still open (NOT done here)
+
+- promoted tuples `'(Int, Bool)` — 2 files (`T14010`, `T18831`)
+- the remaining 62 accept failures are other roots: 29 E0200, 20 E0300, 9 E0202
+- GADT record constructor FIELDS are still dropped entirely by the lowering
+  (`fields_chirho: []`), which is why `HardRecordUpdate`/`T14761c` only moved. That is a
+  real lowering gap and the natural next lane here.
 
 Of the 28 kind-axis failures, 11 carry a head binder our kind grammar cannot read and
 5 clear with A2a alone. The rest need real representation, i.e. the map's original
