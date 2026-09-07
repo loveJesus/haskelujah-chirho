@@ -20,9 +20,9 @@ Objective: restore the real CLI-in-place behavior broken by the type-namespace l
 ## Brick 3 — proof and landing
 
 - [x] Run focused module-search, interface, and naming tests, then a warning-free explicit CLI build.
-- [ ] Run the real CLI-in-place T001 check, isolated-directory control, curated 537 harness, and relevant driver suites.
-- [ ] Run both GHC corpus axes twice against the landed 877/222 baseline; explain every movement before touching artifacts.
-- [ ] Update canonical artifacts only if their exact lists move, write one progress row as the sole DB writer, commit named owned paths with machine-readable authority trailers, fast-forward `main_chirho`, push, and release SLOT/DB.
+- [x] Run the real CLI-in-place T001 check, isolated-directory control, curated 537 harness, and relevant driver suites.
+- [x] Run both GHC corpus axes twice against the landed 877/222 baseline; explain every movement before touching artifacts.
+- [ ] Keep the canonical artifact lists untouched because neither exact set moved; write one progress row as the sole DB writer, commit named owned paths with machine-readable authority trailers, fast-forward `main_chirho`, push, and release SLOT/DB.
 
 ## Starting evidence
 
@@ -41,3 +41,5 @@ Objective: restore the real CLI-in-place behavior broken by the type-namespace l
 - Explicit `cargo build -p haskelujah` was warning-free; both in-place and isolated CLI checks accepted T001.
 - Driver `--lib` with the known Cranelift runaway skipped: 1760 passed; the four documented baseline reds remained. One unrelated CPP test collided with another test's shared scratch path under parallel execution and passed when rerun alone. A first worktree run also exposed the documented missing-package-cache trap; after linking the existing cache, all 19 package-backed tests passed.
 - Driver-only clippy still reports 35 pre-existing warnings in `splice_chirho.rs`, `stg_lower_chirho.rs`, and the remaining driver root; the new focused module reports none.
+- Curated behavioral harness: 537 of 537 passed. The driver integration suites for dictionary evidence, given equalities, record fields, rigid variables, and typing passed in full; the wildcard integration run retained the documented Cranelift recursive-IO failure, while the memory-heavy `ghc_bulk_chirho` process was killed by the existing watchdog condition after its parser/module/rename/reject partitions passed.
+- Corpus gates at `a93a514e`, fresh debug CLI, pure-shell detector, P4/15s with serial timeout reruns: should_compile passed 877 of 938 twice and should_fail correctly rejected 222 of 767 twice. Both pass pairs had zero timeouts and byte-identical sets; the accept-axis 61-file failure set and reject-axis 545-file wrongly-accepted set are byte-identical to their committed artifacts, so neither canonical list needs superseding.
