@@ -1,6 +1,11 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-06, AFTER the `_` head binder + GHC-55233 return-kind check (3bf553dc)
-# code measured: 3bf553dc (measuring agent claude2_chirho — see the companion artifact note)
+# measured: 2026-09-06 (late), AFTER the dictionary-evidence lane (948395b0) — the reject axis did NOT move:
+# code measured: 948395b0 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
+#   to each other AND to the list below, which is therefore unchanged). That lane changes what the
+#   dictionary pass emits (programs that ran wrong now run right), not what the checker accepts.
+#   Previous header, kept for the record:
+#   measured: 2026-09-06, AFTER the `_` head binder + GHC-55233 return-kind check (3bf553dc)
+#   code measured: 3bf553dc (measuring agent claude2_chirho — see the companion artifact note)
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run alone
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files (no subdirectories)
 #
