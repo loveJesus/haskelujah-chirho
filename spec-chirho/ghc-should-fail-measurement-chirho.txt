@@ -1,6 +1,11 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-06 (late), AFTER the dictionary-evidence lane (948395b0) — the reject axis did NOT move:
-# code measured: 948395b0 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
+# measured: 2026-09-06 (night), AFTER the dictionary-evidence follow-up (c6bc7db1: local bindings, corpus repair) — the reject axis did NOT move:
+# code measured: c6bc7db1 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
+#   to each other AND to the list below, which is therefore unchanged). The follow-up changes what the
+#   dictionary pass emits for local bindings, not what the checker accepts.
+#   Previous header, kept for the record:
+#   measured: 2026-09-06 (late), AFTER the dictionary-evidence lane (948395b0) — the reject axis did NOT move:
+#   code measured: 948395b0 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
 #   to each other AND to the list below, which is therefore unchanged). That lane changes what the
 #   dictionary pass emits (programs that ran wrong now run right), not what the checker accepts.
 #   Previous header, kept for the record:

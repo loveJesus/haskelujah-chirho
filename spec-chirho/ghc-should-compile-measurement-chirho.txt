@@ -1,6 +1,11 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-06, AFTER the GADT-constructor `::` guard (31c4ef8e)
-# code measured: 31c4ef8e. Measuring agent: claude2_chirho, who also independently
+# measured: 2026-09-06 (night), AFTER the dictionary-evidence follow-up (c6bc7db1: local bindings, corpus repair) — the accept axis did NOT move:
+# code measured: c6bc7db1 (measuring agent claude_chirho; two idle passes at -P 4, zero timeouts, byte-identical
+#   to each other AND to the list below, which is therefore unchanged). The follow-up changes what the
+#   dictionary pass emits for local bindings, not what the checker accepts.
+#   Previous header, kept for the record:
+#   measured: 2026-09-06, AFTER the GADT-constructor `::` guard (31c4ef8e)
+#   code measured: 31c4ef8e. Measuring agent: claude2_chirho, who also independently
 #   replicated the 4f866dc3 artifact (869 of 938, byte-identical failing set) before
 #   starting this lane, so the record carries both agents.
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4; a load-induced TIMEOUT is re-run
