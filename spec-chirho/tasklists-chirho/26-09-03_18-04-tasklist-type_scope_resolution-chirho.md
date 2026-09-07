@@ -45,3 +45,7 @@ The fresh-binary regression probe now fixes 16 of the 19 originally new accept-a
 - `T22141g`: `type data Letter = A | B | C` is fabricated as the alias `Letter = A`; `B` and `C` disappear.
 
 The room's compiler experiment established that a new `DeclChirho` sibling is caught by only one exhaustive match, while an added field is ignored by most `..` patterns. These forms therefore need a representation chosen on meaning plus an explicit consumer sweep—not namespace metadata, filename guards, or invented exports. This lane will not land a three-file regression or bless the fabricated AST; the representation decision remains with L.J.
+
+## Explored and reverted: inferred forall specificity
+
+An end-to-end probe represented `forall {a}` binders in the AST and carried their inferred specificity into scheme instantiation. It recovered `ExplicitSpecificityA1`, but making the parser honest also exposed separate family-solver gaps in `T15079` and `T19535`. The AST, parser, and inference experiment was fully reverted rather than landing a parser-only half-fix or widening this naming lane into family solving. The durable design note from the probe is that specificity belongs to each quantified scheme—not the globally reused numeric type-variable id—and visible type application must skip inferred scheme variables.

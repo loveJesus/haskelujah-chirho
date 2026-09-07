@@ -6,10 +6,11 @@ This workflow is owned by `resolve_module_with_imports_chirho` and `check_module
 ```mermaid
 flowchart TD
     source_cst_chirho[Source CST] --> faithful_lowering_chirho[Lower namespace-bearing declaration shapes]
-    faithful_lowering_chirho --> lowered_shape_chirho{Shape representable faithfully?}
+    faithful_lowering_chirho --> lowered_shape_chirho{Shape represented faithfully?}
     lowered_shape_chirho -->|Yes| module_ast_chirho[Lowered module AST]
-    lowered_shape_chirho -->|No| ast_boundary_chirho[Retain a narrow documented AST trust boundary; never fabricate a neighbouring declaration]
+    lowered_shape_chirho -->|No, but retained AST proves the boundary| ast_boundary_chirho[Defer only the affected check at a documented trust boundary]
     ast_boundary_chirho --> module_ast_chirho
+    lowered_shape_chirho -->|No faithful carrier| representation_blocker_chirho[Keep the corpus failure explicit; require an AST representation instead of inventing names]
 
     module_ast_chirho --> local_iface_chirho[Collect canonical local type/value exports]
     local_iface_chirho --> associated_iface_chirho[Retain class-to-associated-family relationships]
