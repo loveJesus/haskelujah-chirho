@@ -9,12 +9,18 @@
 
 use std::collections::HashMap;
 
-use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
     ModuleChirho,
 };
 use haskelujah_span_chirho::SpanChirho;
+
+use crate::type_exports_chirho::{
+    canonical_type_name_chirho, canonical_value_name_chirho, collect_all_definitions_chirho,
+    merge_all_associated_type_exports_chirho, merge_associated_type_exports_chirho,
+    normalize_builtin_type_exports_chirho, remove_associated_type_exports_chirho,
+    selected_associated_type_names_chirho,
+};
 
 // ---------------------------------------------------------------------------
 // Interface types
@@ -47,6 +53,9 @@ pub struct IfaceExportsChirho {
     pub values_chirho: HashMap<String, IfaceValueChirho>,
     /// Type-level exports: type constructors, type classes.
     pub types_chirho: HashMap<String, IfaceTypeChirho>,
+    /// Associated type/data-family names grouped under their parent class.
+    /// Each member also has its own entry in `types_chirho`.
+    pub associated_types_chirho: HashMap<String, Vec<String>>,
 }
 
 /// A compiled module's public interface.
@@ -56,24 +65,6 @@ pub struct ModuleIfaceChirho {
     pub name_chirho: String,
     /// The exported names.
     pub exports_chirho: IfaceExportsChirho,
-}
-
-fn canonical_value_name_chirho(name_chirho: &str) -> String {
-    if name_chirho.starts_with('(') && name_chirho.ends_with(')') && name_chirho.len() > 2 {
-        let inner_chirho = &name_chirho[1..name_chirho.len() - 1];
-        if !inner_chirho.is_empty()
-            && inner_chirho
-                .chars()
-                .all(|char_chirho| !char_chirho.is_alphanumeric() && char_chirho != '_')
-        {
-            return inner_chirho.to_string();
-        }
-    }
-    name_chirho.to_string()
-}
-
-fn canonical_type_name_chirho(name_chirho: &str) -> String {
-    canonical_value_name_chirho(name_chirho)
 }
 
 fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'static str]> {
@@ -195,6 +186,7 @@ fn merge_imported_exports_chirho(
                     .types_chirho
                     .insert(name_chirho.clone(), ty_chirho.clone());
             }
+            merge_all_associated_type_exports_chirho(result_chirho, iface_exports_chirho);
         }
         Some(spec_chirho) if spec_chirho.hiding_chirho => {
             merge_imported_exports_chirho(result_chirho, iface_exports_chirho, &None);
@@ -238,6 +230,11 @@ fn merge_import_item_into_exports_chirho(
         } => {
             let ty_name_chirho = canonical_type_name_chirho(name_chirho.text_chirho());
             if let Some(ty_chirho) = iface_exports_chirho.types_chirho.get(&ty_name_chirho) {
+                let associated_names_chirho = selected_associated_type_names_chirho(
+                    iface_exports_chirho,
+                    &ty_name_chirho,
+                    members_chirho,
+                );
                 let (constructors_chirho, methods_chirho) = match members_chirho {
                     ExportMembersChirho::AllChirho => (
                         ty_chirho.constructors_chirho.clone(),
@@ -285,13 +282,19 @@ fn merge_import_item_into_exports_chirho(
                     }
                 }
                 result_chirho.types_chirho.insert(
-                    ty_name_chirho,
+                    ty_name_chirho.clone(),
                     IfaceTypeChirho {
                         name_chirho: ty_chirho.name_chirho.clone(),
                         constructors_chirho,
                         methods_chirho,
                         span_chirho: ty_chirho.span_chirho,
                     },
+                );
+                merge_associated_type_exports_chirho(
+                    result_chirho,
+                    iface_exports_chirho,
+                    &ty_name_chirho,
+                    &associated_names_chirho,
                 );
             }
         }
@@ -316,6 +319,9 @@ fn remove_import_item_from_exports_chirho(
             match members_chirho {
                 ExportMembersChirho::NoneChirho => {
                     result_chirho.types_chirho.remove(&ty_name_chirho);
+                    result_chirho
+                        .associated_types_chirho
+                        .remove(&ty_name_chirho);
                 }
                 ExportMembersChirho::AllChirho => {
                     result_chirho.types_chirho.remove(&ty_name_chirho);
@@ -328,6 +334,16 @@ fn remove_import_item_from_exports_chirho(
                             result_chirho.values_chirho.remove(method_chirho);
                         }
                     }
+                    let associated_names_chirho = selected_associated_type_names_chirho(
+                        iface_exports_chirho,
+                        &ty_name_chirho,
+                        members_chirho,
+                    );
+                    remove_associated_type_exports_chirho(
+                        result_chirho,
+                        &ty_name_chirho,
+                        &associated_names_chirho,
+                    );
                 }
                 ExportMembersChirho::SomeChirho(names_chirho) => {
                     let selected_names_chirho: Vec<String> = names_chirho
@@ -345,6 +361,16 @@ fn remove_import_item_from_exports_chirho(
                     for selected_name_chirho in selected_names_chirho {
                         result_chirho.values_chirho.remove(&selected_name_chirho);
                     }
+                    let associated_names_chirho = selected_associated_type_names_chirho(
+                        iface_exports_chirho,
+                        &ty_name_chirho,
+                        members_chirho,
+                    );
+                    remove_associated_type_exports_chirho(
+                        result_chirho,
+                        &ty_name_chirho,
+                        &associated_names_chirho,
+                    );
                 }
             }
         }
@@ -393,7 +419,7 @@ fn imported_type_in_scope_chirho(
     imported_ifaces_chirho: &[ModuleIfaceChirho],
     type_name_chirho: &str,
     members_chirho: &ExportMembersChirho,
-) -> Option<(IfaceTypeChirho, Vec<IfaceValueChirho>)> {
+) -> Option<(IfaceTypeChirho, Vec<IfaceValueChirho>, IfaceExportsChirho)> {
     for import_chirho in &module_chirho.imports_chirho {
         if import_chirho.qualified_chirho {
             continue;
@@ -469,6 +495,28 @@ fn imported_type_in_scope_chirho(
                 accompanying_values_chirho.push(value_chirho.clone());
             }
         }
+        let associated_names_chirho = selected_associated_type_names_chirho(
+            &iface_chirho.exports_chirho,
+            type_name_chirho,
+            members_chirho,
+        )
+        .into_iter()
+        .filter(|associated_name_chirho| {
+            imported_names_chirho
+                .iter()
+                .any(|(name_chirho, namespace_chirho, _span_chirho)| {
+                    name_chirho == associated_name_chirho
+                        && *namespace_chirho == crate::env_chirho::NamespaceChirho::TypeChirho
+                })
+        })
+        .collect::<Vec<_>>();
+        let mut accompanying_associated_chirho = IfaceExportsChirho::default();
+        merge_associated_type_exports_chirho(
+            &mut accompanying_associated_chirho,
+            &iface_chirho.exports_chirho,
+            type_name_chirho,
+            &associated_names_chirho,
+        );
         return Some((
             IfaceTypeChirho {
                 name_chirho: ty_chirho.name_chirho.clone(),
@@ -477,25 +525,10 @@ fn imported_type_in_scope_chirho(
                 span_chirho: ty_chirho.span_chirho,
             },
             accompanying_values_chirho,
+            accompanying_associated_chirho,
         ));
     }
     None
-}
-
-fn con_decl_field_names_chirho(decl_chirho: &ConDeclChirho) -> Vec<String> {
-    match decl_chirho {
-        ConDeclChirho::RecordChirho { fields_chirho, .. } => fields_chirho
-            .iter()
-            .flat_map(|field_chirho| {
-                field_chirho
-                    .names_chirho
-                    .iter()
-                    .map(|name_chirho| name_chirho.text_chirho().to_string())
-                    .collect::<Vec<_>>()
-            })
-            .collect(),
-        _ => vec![],
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -16249,7 +16282,9 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     }
 
     normalize_builtin_class_exports_chirho(&mut modules_chirho);
-    merge_module_ifaces_chirho(modules_chirho)
+    let mut merged_modules_chirho = merge_module_ifaces_chirho(modules_chirho);
+    normalize_builtin_type_exports_chirho(&mut merged_modules_chirho);
+    merged_modules_chirho
 }
 
 /// Merge module interfaces that share the same module name, preserving the
@@ -16302,6 +16337,20 @@ pub fn merge_module_ifaces_chirho(
                     }
                 }
             }
+            for (parent_chirho, members_chirho) in
+                module_chirho.exports_chirho.associated_types_chirho
+            {
+                let existing_members_chirho = existing_chirho
+                    .exports_chirho
+                    .associated_types_chirho
+                    .entry(parent_chirho)
+                    .or_default();
+                for member_chirho in members_chirho {
+                    if !existing_members_chirho.contains(&member_chirho) {
+                        existing_members_chirho.push(member_chirho);
+                    }
+                }
+            }
         } else {
             index_chirho.insert(module_chirho.name_chirho.clone(), deduped_chirho.len());
             deduped_chirho.push(module_chirho);
@@ -16309,307 +16358,6 @@ pub fn merge_module_ifaces_chirho(
     }
 
     deduped_chirho
-}
-
-/// Collect all definitions (types + values) from a module's declarations.
-fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsChirho {
-    let mut exports_chirho = IfaceExportsChirho::default();
-
-    for decl_chirho in &module_chirho.decls_chirho {
-        match decl_chirho {
-            DeclChirho::DataDeclChirho {
-                name_chirho,
-                constructors_chirho,
-                span_chirho,
-                ..
-            } => {
-                let type_name_chirho = name_chirho.text_chirho().to_string();
-                let con_names_chirho: Vec<String> = constructors_chirho
-                    .iter()
-                    .map(|c_chirho| con_decl_name_chirho(c_chirho).to_string())
-                    .collect();
-                let field_names_chirho: Vec<String> = constructors_chirho
-                    .iter()
-                    .flat_map(con_decl_field_names_chirho)
-                    .collect();
-
-                // Export each constructor as a value
-                for cn_chirho in &con_names_chirho {
-                    exports_chirho.values_chirho.insert(
-                        cn_chirho.clone(),
-                        IfaceValueChirho {
-                            name_chirho: cn_chirho.clone(),
-                            span_chirho: *span_chirho,
-                        },
-                    );
-                }
-                for field_name_chirho in &field_names_chirho {
-                    exports_chirho.values_chirho.insert(
-                        field_name_chirho.clone(),
-                        IfaceValueChirho {
-                            name_chirho: field_name_chirho.clone(),
-                            span_chirho: *span_chirho,
-                        },
-                    );
-                }
-
-                exports_chirho.types_chirho.insert(
-                    type_name_chirho.clone(),
-                    IfaceTypeChirho {
-                        name_chirho: type_name_chirho,
-                        constructors_chirho: con_names_chirho,
-                        methods_chirho: field_names_chirho,
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-            DeclChirho::NewtypeDeclChirho {
-                name_chirho,
-                constructor_chirho,
-                span_chirho,
-                ..
-            } => {
-                let type_name_chirho = name_chirho.text_chirho().to_string();
-                let con_name_chirho = con_decl_name_chirho(constructor_chirho).to_string();
-                let field_names_chirho = con_decl_field_names_chirho(constructor_chirho);
-
-                exports_chirho.values_chirho.insert(
-                    con_name_chirho.clone(),
-                    IfaceValueChirho {
-                        name_chirho: con_name_chirho.clone(),
-                        span_chirho: *span_chirho,
-                    },
-                );
-                for field_name_chirho in &field_names_chirho {
-                    exports_chirho.values_chirho.insert(
-                        field_name_chirho.clone(),
-                        IfaceValueChirho {
-                            name_chirho: field_name_chirho.clone(),
-                            span_chirho: *span_chirho,
-                        },
-                    );
-                }
-
-                exports_chirho.types_chirho.insert(
-                    type_name_chirho.clone(),
-                    IfaceTypeChirho {
-                        name_chirho: type_name_chirho,
-                        constructors_chirho: vec![con_name_chirho],
-                        methods_chirho: field_names_chirho,
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-            DeclChirho::TypeAliasDeclChirho {
-                name_chirho,
-                span_chirho,
-                ..
-            } => {
-                let type_name_chirho = name_chirho.text_chirho().to_string();
-                exports_chirho.types_chirho.insert(
-                    type_name_chirho.clone(),
-                    IfaceTypeChirho {
-                        name_chirho: type_name_chirho,
-                        constructors_chirho: vec![],
-                        methods_chirho: vec![],
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-            DeclChirho::ClassDeclChirho {
-                name_chirho,
-                methods_chirho,
-                span_chirho,
-                ..
-            } => {
-                let class_name_chirho = name_chirho.text_chirho().to_string();
-                let method_names_chirho: Vec<String> = methods_chirho
-                    .iter()
-                    .map(|m_chirho| canonical_value_name_chirho(m_chirho.name_chirho.text_chirho()))
-                    .collect();
-
-                // Export each method as a value
-                for mn_chirho in &method_names_chirho {
-                    exports_chirho.values_chirho.insert(
-                        mn_chirho.clone(),
-                        IfaceValueChirho {
-                            name_chirho: mn_chirho.clone(),
-                            span_chirho: *span_chirho,
-                        },
-                    );
-                }
-
-                exports_chirho.types_chirho.insert(
-                    class_name_chirho.clone(),
-                    IfaceTypeChirho {
-                        name_chirho: class_name_chirho,
-                        constructors_chirho: vec![],
-                        methods_chirho: method_names_chirho,
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-            DeclChirho::FunBindChirho {
-                name_chirho,
-                span_chirho,
-                ..
-            } => {
-                let fn_name_chirho = canonical_value_name_chirho(name_chirho.text_chirho());
-                exports_chirho.values_chirho.insert(
-                    fn_name_chirho.clone(),
-                    IfaceValueChirho {
-                        name_chirho: fn_name_chirho,
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-            DeclChirho::PatBindChirho {
-                pat_chirho,
-                span_chirho,
-                ..
-            } => {
-                for bound_name_chirho in pat_bound_names_for_iface_chirho(pat_chirho) {
-                    let canonical_name_chirho = canonical_value_name_chirho(&bound_name_chirho);
-                    exports_chirho.values_chirho.insert(
-                        canonical_name_chirho.clone(),
-                        IfaceValueChirho {
-                            name_chirho: canonical_name_chirho,
-                            span_chirho: *span_chirho,
-                        },
-                    );
-                }
-            }
-            DeclChirho::ForeignDeclChirho {
-                name_chirho,
-                span_chirho,
-                ..
-            } => {
-                let foreign_value_name_chirho =
-                    canonical_value_name_chirho(name_chirho.text_chirho());
-                exports_chirho.values_chirho.insert(
-                    foreign_value_name_chirho.clone(),
-                    IfaceValueChirho {
-                        name_chirho: foreign_value_name_chirho,
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-            DeclChirho::TypeSigChirho { .. }
-            | DeclChirho::InstanceDeclChirho { .. }
-            | DeclChirho::FixityDeclChirho { .. }
-            | DeclChirho::DefaultDeclChirho { .. } => {}
-            DeclChirho::TypeFamilyDeclChirho {
-                name_chirho,
-                span_chirho,
-                ..
-            } => {
-                let family_name_chirho = name_chirho.text_chirho().to_string();
-                exports_chirho.types_chirho.insert(
-                    family_name_chirho.clone(),
-                    IfaceTypeChirho {
-                        name_chirho: family_name_chirho,
-                        constructors_chirho: vec![],
-                        methods_chirho: vec![],
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-            DeclChirho::TypeFamilyInstanceDeclChirho { .. } => {
-                // Type family instances don't introduce new names
-            }
-            DeclChirho::SpliceDeclChirho { .. } => {
-                // TH splice declarations don't directly export names;
-                // they must be evaluated to generate concrete declarations first.
-            }
-            DeclChirho::StandaloneDerivingDeclChirho { .. } => {
-                // Standalone deriving is handled by the deriving pass, not exports.
-            }
-            DeclChirho::PatSynDeclChirho {
-                name_chirho,
-                span_chirho,
-                ..
-            } => {
-                let syn_name_chirho = name_chirho.text_chirho().to_string();
-                exports_chirho.values_chirho.insert(
-                    syn_name_chirho.clone(),
-                    IfaceValueChirho {
-                        name_chirho: syn_name_chirho,
-                        span_chirho: *span_chirho,
-                    },
-                );
-            }
-        }
-    }
-
-    exports_chirho
-}
-
-fn pat_bound_names_for_iface_chirho(
-    pat_chirho: &haskelujah_ast_chirho::pat_chirho::PatChirho,
-) -> Vec<String> {
-    use haskelujah_ast_chirho::pat_chirho::PatChirho;
-
-    let mut names_chirho = Vec::new();
-    match pat_chirho {
-        PatChirho::VarChirho(name_chirho) => {
-            names_chirho.push(name_chirho.text_chirho().to_string());
-        }
-        PatChirho::LitChirho(_) | PatChirho::WildcardChirho(_) | PatChirho::NegChirho { .. } => {}
-        PatChirho::TupleChirho {
-            elements_chirho, ..
-        }
-        | PatChirho::ListChirho {
-            elements_chirho, ..
-        } => {
-            for inner_pat_chirho in elements_chirho {
-                names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
-            }
-        }
-        PatChirho::ConChirho { args_chirho, .. } => {
-            for inner_pat_chirho in args_chirho {
-                names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
-            }
-        }
-        PatChirho::RecordChirho { fields_chirho, .. } => {
-            for field_chirho in fields_chirho {
-                names_chirho.extend(pat_bound_names_for_iface_chirho(
-                    &field_chirho.pattern_chirho,
-                ));
-            }
-        }
-        PatChirho::InfixConChirho {
-            left_chirho,
-            right_chirho,
-            ..
-        } => {
-            names_chirho.extend(pat_bound_names_for_iface_chirho(left_chirho));
-            names_chirho.extend(pat_bound_names_for_iface_chirho(right_chirho));
-        }
-        PatChirho::AsChirho {
-            name_chirho,
-            pattern_chirho,
-            ..
-        } => {
-            names_chirho.push(name_chirho.text_chirho().to_string());
-            names_chirho.extend(pat_bound_names_for_iface_chirho(pattern_chirho));
-        }
-        PatChirho::BangChirho { inner_chirho, .. }
-        | PatChirho::LazyChirho { inner_chirho, .. }
-        | PatChirho::ParenChirho { inner_chirho, .. } => {
-            names_chirho.extend(pat_bound_names_for_iface_chirho(inner_chirho));
-        }
-        PatChirho::ViewChirho {
-            pat_chirho: inner_pat_chirho,
-            ..
-        }
-        | PatChirho::TypeAnnotChirho {
-            pat_chirho: inner_pat_chirho,
-            ..
-        } => {
-            names_chirho.extend(pat_bound_names_for_iface_chirho(inner_pat_chirho));
-        }
-    }
-    names_chirho
 }
 
 /// Apply an explicit export list to filter the module's definitions.
@@ -16652,14 +16400,16 @@ fn filter_exports_chirho(
                             span_chirho: ty_chirho.span_chirho,
                         },
                     );
-                } else if let Some((imported_type_chirho, _accompanying_values_chirho)) =
-                    imported_type_in_scope_chirho(
-                        module_chirho,
-                        imported_ifaces_chirho,
-                        &text_chirho,
-                        &ExportMembersChirho::NoneChirho,
-                    )
-                {
+                } else if let Some((
+                    imported_type_chirho,
+                    _accompanying_values_chirho,
+                    _accompanying_associated_chirho,
+                )) = imported_type_in_scope_chirho(
+                    module_chirho,
+                    imported_ifaces_chirho,
+                    &text_chirho,
+                    &ExportMembersChirho::NoneChirho,
+                ) {
                     result_chirho
                         .types_chirho
                         .insert(text_chirho, imported_type_chirho);
@@ -16723,14 +16473,27 @@ fn filter_exports_chirho(
                             span_chirho: ty_chirho.span_chirho,
                         },
                     );
-                } else if let Some((imported_type_chirho, accompanying_values_chirho)) =
-                    imported_type_in_scope_chirho(
-                        module_chirho,
-                        imported_ifaces_chirho,
+                    let associated_names_chirho = selected_associated_type_names_chirho(
+                        all_chirho,
                         &text_chirho,
                         members_chirho,
-                    )
-                {
+                    );
+                    merge_associated_type_exports_chirho(
+                        &mut result_chirho,
+                        all_chirho,
+                        &text_chirho,
+                        &associated_names_chirho,
+                    );
+                } else if let Some((
+                    imported_type_chirho,
+                    accompanying_values_chirho,
+                    accompanying_associated_chirho,
+                )) = imported_type_in_scope_chirho(
+                    module_chirho,
+                    imported_ifaces_chirho,
+                    &text_chirho,
+                    members_chirho,
+                ) {
                     for value_chirho in accompanying_values_chirho {
                         result_chirho
                             .values_chirho
@@ -16739,6 +16502,10 @@ fn filter_exports_chirho(
                     result_chirho
                         .types_chirho
                         .insert(text_chirho, imported_type_chirho);
+                    merge_all_associated_type_exports_chirho(
+                        &mut result_chirho,
+                        &accompanying_associated_chirho,
+                    );
                 }
             }
             ExportSpecChirho::ModuleChirho(re_export_name_chirho) => {
@@ -16773,6 +16540,7 @@ fn filter_exports_chirho(
                             .types_chirho
                             .insert(k_chirho.clone(), v_chirho.clone());
                     }
+                    merge_all_associated_type_exports_chirho(&mut result_chirho, all_chirho);
                 } else if !matching_imports_chirho.is_empty() {
                     for import_chirho in matching_imports_chirho {
                         if let Some(iface_chirho) =
@@ -16797,14 +16565,6 @@ fn filter_exports_chirho(
     result_chirho
 }
 
-fn con_decl_name_chirho(decl_chirho: &ConDeclChirho) -> &str {
-    match decl_chirho {
-        ConDeclChirho::OrdinaryChirho { name_chirho, .. }
-        | ConDeclChirho::RecordChirho { name_chirho, .. }
-        | ConDeclChirho::GadtChirho { name_chirho, .. } => name_chirho.text_chirho(),
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -16814,7 +16574,7 @@ mod tests_chirho {
     use super::*;
     use crate::env_chirho::NamespaceChirho;
     use crate::resolve_chirho::compute_imported_names_chirho;
-    use haskelujah_ast_chirho::decl_chirho::ForeignDirectionChirho;
+    use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, ForeignDirectionChirho};
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
@@ -16879,30 +16639,22 @@ mod tests_chirho {
 
         let iface_chirho = build_iface_chirho(&module_chirho);
         assert_eq!(iface_chirho.name_chirho, "Lib");
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Blue")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("paint")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Blue"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("paint"));
     }
 
     #[test]
@@ -16946,31 +16698,23 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("paint")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("paint"));
         // helper is NOT exported
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("helper")
-        );
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("helper"));
     }
 
     #[test]
@@ -16996,19 +16740,15 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Color")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Color"));
         // Red is NOT exported — only the type name
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
         let color_ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert!(color_ty_chirho.constructors_chirho.is_empty());
     }
@@ -17043,18 +16783,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Red")
-        );
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Blue")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Red"));
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Blue"));
         let ty_chirho = &iface_chirho.exports_chirho.types_chirho["Color"];
         assert_eq!(ty_chirho.constructors_chirho, vec!["Red"]);
     }
@@ -17124,18 +16860,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Show")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("show")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Show"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("show"));
         assert_eq!(
             iface_chirho.exports_chirho.types_chirho["Show"].methods_chirho,
             vec!["show"]
@@ -17186,18 +16918,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("opLetterChirho")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("reservedNamesChirho")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("opLetterChirho"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("reservedNamesChirho"));
         assert_eq!(
             iface_chirho.exports_chirho.types_chirho["LanguageDefChirho"].methods_chirho,
             vec!["opLetterChirho", "reservedNamesChirho"]
@@ -17224,18 +16952,14 @@ mod tests_chirho {
         );
 
         let iface_chirho = build_iface_chirho(&module_chirho);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Wrapper")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("Wrap")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Wrapper"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("Wrap"));
     }
 
     #[test]
@@ -17378,12 +17102,10 @@ mod tests_chirho {
         };
 
         let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("innerFn")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("innerFn"));
     }
 
     #[test]
@@ -17465,24 +17187,18 @@ mod tests_chirho {
             &module_chirho,
             &[left_iface_chirho, right_iface_chirho],
         );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("leftFn")
-        );
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("rightFn")
-        );
-        assert!(
-            !iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("hiddenLeft")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("leftFn"));
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("rightFn"));
+        assert!(!iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("hiddenLeft"));
     }
 
     #[test]
@@ -17525,12 +17241,10 @@ mod tests_chirho {
 
         let iface_chirho =
             build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("choice")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("choice"));
     }
 
     #[test]
@@ -17575,12 +17289,10 @@ mod tests_chirho {
 
         let iface_chirho =
             build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
-        assert!(
-            iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key("Parsec")
-        );
+        assert!(iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("Parsec"));
     }
 
     #[test]
@@ -17712,18 +17424,14 @@ mod tests_chirho {
         assert!(monad_chirho.methods_chirho.contains(&"return".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>=".to_string()));
         assert!(monad_chirho.methods_chirho.contains(&">>".to_string()));
-        assert!(
-            control_monad_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key("return")
-        );
-        assert!(
-            control_monad_chirho
-                .exports_chirho
-                .values_chirho
-                .contains_key(">>=")
-        );
+        assert!(control_monad_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("return"));
+        assert!(control_monad_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key(">>="));
     }
 
     #[test]
@@ -18120,7 +17828,7 @@ mod tests_chirho {
                 "GHC.TypeLits should export {name_chirho}"
             );
         }
-        for name_chirho in ["CharToNat", "NatToChar"] {
+        for name_chirho in ["CharToNat", "NatToChar", "<=?", "Div", "Mod", "Log2"] {
             assert!(
                 ghc_typelits_chirho
                     .exports_chirho
@@ -18129,6 +17837,18 @@ mod tests_chirho {
                 "GHC.TypeLits should export {name_chirho}"
             );
         }
+
+        let data_type_equality_chirho = ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Data.Type.Equality")
+            .expect("Data.Type.Equality builtin iface should exist");
+        assert!(
+            data_type_equality_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("=="),
+            "Data.Type.Equality should export the == type family"
+        );
     }
 
     #[test]

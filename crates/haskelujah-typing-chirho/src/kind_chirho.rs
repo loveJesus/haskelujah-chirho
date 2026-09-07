@@ -683,6 +683,7 @@ impl KindInferCtxChirho {
                 self.ast_kind_to_kind_ctx_chirho(b_chirho),
             ),
             AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
+            AstKindChirho::AppChirho(_, _) => KindChirho::StarChirho,
             AstKindChirho::VarChirho(name_chirho) => {
                 if let Some(&var_chirho) = self.kind_var_cache_chirho.get(name_chirho) {
                     KindChirho::VarChirho(var_chirho)
@@ -1455,9 +1456,7 @@ impl KindInferCtxChirho {
                 self.diagnostics_chirho
                     .push_chirho(DiagnosticChirho::error_with_code_chirho(
                         ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
-                        format!(
-                            "data type `{name_chirho}` has non-`*` return kind `Constraint`"
-                        ),
+                        format!("data type `{name_chirho}` has non-`*` return kind `Constraint`"),
                         span_chirho,
                     ));
             }
@@ -1827,6 +1826,7 @@ fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
             ast_kind_to_kind_chirho(b_chirho),
         ),
         AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
+        AstKindChirho::AppChirho(_, _) => KindChirho::StarChirho,
         // PolyKinds: kind variables default to * when used outside a context
         AstKindChirho::VarChirho(_) => KindChirho::StarChirho,
     }

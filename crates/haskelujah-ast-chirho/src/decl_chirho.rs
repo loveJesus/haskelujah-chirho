@@ -25,6 +25,8 @@ pub enum AstKindChirho {
     ConstraintChirho,
     /// Kind variable (PolyKinds): `k` in `(a :: k)`.
     VarChirho(String),
+    /// Kind application: `TYPE representation` in `(a :: TYPE representation)`.
+    AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
 }
 
 /// One equation in a closed type family:

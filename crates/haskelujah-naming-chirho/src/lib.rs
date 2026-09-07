@@ -18,12 +18,13 @@
 pub mod env_chirho;
 pub mod iface_chirho;
 pub mod resolve_chirho;
+mod type_exports_chirho;
 mod type_scope_chirho;
 
 pub use env_chirho::NameEnvChirho;
 pub use iface_chirho::{
-    ModuleIfaceChirho, build_iface_chirho, build_iface_with_imports_chirho,
-    builtin_module_ifaces_chirho,
+    build_iface_chirho, build_iface_with_imports_chirho, builtin_module_ifaces_chirho,
+    ModuleIfaceChirho,
 };
 pub use resolve_chirho::{
     check_orphan_instances_chirho, resolve_module_chirho, resolve_module_with_imports_chirho,

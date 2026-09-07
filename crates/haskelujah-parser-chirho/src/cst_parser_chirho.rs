@@ -566,8 +566,16 @@ impl<'src> ParserChirho<'src> {
         } else {
             ""
         };
-        if next_text_chirho == "family" || next_text_chirho == "instance" {
-            // data family / data instance — parse as a type-sig-like skipped decl
+        if next_text_chirho == "family" {
+            // The AST currently represents open type and data-family headers
+            // with the same family declaration shape. Preserve this header so
+            // later namespace and kind passes can bind the family tycon.
+            self.parse_type_family_decl_chirho();
+            return;
+        }
+        if next_text_chirho == "instance" {
+            // Data-family instances need their own constructor-bearing AST
+            // shape; keep skipping them rather than fabricating a data type.
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::DataDeclChirho);
             self.eat_until_decl_end_chirho();
@@ -692,21 +700,30 @@ impl<'src> ParserChirho<'src> {
             let _save_pos_chirho = self.pos_chirho;
             let mut found_arrow_chirho = false;
             let mut lookahead_chirho = self.pos_chirho;
+            let mut delimiter_depth_chirho = 0usize;
             while lookahead_chirho < self.tokens_chirho.len() {
                 let tk_chirho = self.tokens_chirho[lookahead_chirho].kind_chirho;
-                if tk_chirho == RawTokenKindChirho::RightArrowChirho {
-                    // Check if it's => (FatArrow) — but our lexer may produce RightArrow for =>
-                    // Actually let's check for FatArrow
-                    break;
-                }
-                if tk_chirho == RawTokenKindChirho::FatArrowChirho {
-                    found_arrow_chirho = true;
-                    break;
-                }
-                if tk_chirho == RawTokenKindChirho::VirtualSemicolonChirho
-                    || tk_chirho == RawTokenKindChirho::PipeChirho
-                {
-                    break;
+                match tk_chirho {
+                    RawTokenKindChirho::LeftParenChirho
+                    | RawTokenKindChirho::LeftBracketChirho
+                    | RawTokenKindChirho::LeftBraceChirho => delimiter_depth_chirho += 1,
+                    RawTokenKindChirho::RightParenChirho
+                    | RawTokenKindChirho::RightBracketChirho
+                    | RawTokenKindChirho::RightBraceChirho => {
+                        delimiter_depth_chirho = delimiter_depth_chirho.saturating_sub(1);
+                    }
+                    RawTokenKindChirho::FatArrowChirho if delimiter_depth_chirho == 0 => {
+                        found_arrow_chirho = true;
+                        break;
+                    }
+                    RawTokenKindChirho::RightArrowChirho
+                    | RawTokenKindChirho::VirtualSemicolonChirho
+                    | RawTokenKindChirho::PipeChirho
+                        if delimiter_depth_chirho == 0 =>
+                    {
+                        break;
+                    }
+                    _ => {}
                 }
                 lookahead_chirho += 1;
             }
@@ -1147,7 +1164,11 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::TypeFamilyDeclChirho);
 
-        self.expect_chirho(RawTokenKindChirho::TypeChirho); // type
+        if self.at_chirho(RawTokenKindChirho::TypeChirho) {
+            self.bump_chirho(); // type
+        } else {
+            self.expect_chirho(RawTokenKindChirho::DataChirho); // data
+        }
         self.eat_trivia_chirho();
         self.bump_chirho(); // family
         self.eat_trivia_chirho();
@@ -1172,25 +1193,34 @@ impl<'src> ParserChirho<'src> {
             self.bump_chirho(); // where
             self.eat_trivia_chirho();
             // Parse equations: each is `F lhs_types = rhs_type`
-            if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho) {
+            if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
+                || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
+            {
                 self.bump_chirho();
             }
             while !self.at_eof_chirho()
                 && !self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
             {
                 self.eat_trivia_chirho();
-                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho) {
+                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                    || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
+                {
                     self.bump_chirho();
                     continue;
                 }
-                if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho) {
+                if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                    || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                {
                     break;
                 }
                 // Each equation: lhs = rhs
                 self.eat_until_any_chirho(&[
                     RawTokenKindChirho::EqualsChirho,
                     RawTokenKindChirho::VirtualSemicolonChirho,
+                    RawTokenKindChirho::SemicolonChirho,
                     RawTokenKindChirho::VirtualRightBraceChirho,
+                    RawTokenKindChirho::RightBraceChirho,
                 ]);
                 if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
                     self.bump_chirho(); // =
@@ -1198,7 +1228,9 @@ impl<'src> ParserChirho<'src> {
                     self.parse_type_chirho(); // rhs
                 }
             }
-            if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho) {
+            if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+            {
                 self.bump_chirho();
             }
         }

@@ -17,6 +17,9 @@ pub mod pragma_chirho;
 #[cfg(test)]
 mod proptest_chirho;
 mod rec_stmt_chirho;
+mod type_member_lowering_chirho;
+#[cfg(test)]
+mod type_namespace_tests_chirho;
 
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::{ByteOffsetChirho, SpanChirho};
@@ -143,7 +146,7 @@ fn parse_module_header_line_chirho(
 
 #[cfg(test)]
 mod tests_chirho {
-    use super::{DEFAULT_MODULE_NAME_CHIRHO, scan_module_header_chirho};
+    use super::{scan_module_header_chirho, DEFAULT_MODULE_NAME_CHIRHO};
     use haskelujah_span_chirho::SourceMapChirho;
     use haskelujah_syntax_chirho::SourceFileChirho;
 

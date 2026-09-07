@@ -20,7 +20,8 @@ use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, Er
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::env_chirho::{NameEnvChirho, NamespaceChirho};
-use crate::resolve_chirho::{UNDEFINED_TYPE_CODE_CHIRHO, report_undefined_with_suggestions_chirho};
+use crate::resolve_chirho::{report_undefined_with_suggestions_chirho, UNDEFINED_TYPE_CODE_CHIRHO};
+use crate::type_exports_chirho::{canonical_type_name_chirho, canonical_value_name_chirho};
 
 /// Parser marker for a constraint shape that was not structurally lowered.
 const UNRESOLVED_CONSTRAINT_MARKER_CHIRHO: &str = "?";
@@ -37,10 +38,12 @@ enum FreeTyVarPolicyChirho {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum TypeScopeIssueChirho {
-    UnknownTypeNameChirho,
-    UnknownPromotedConstructorChirho,
-    FreeTypeVariableChirho,
+struct TypeScopeIssueChirho(u8);
+
+impl TypeScopeIssueChirho {
+    const UNKNOWN_TYPE_NAME_CHIRHO: Self = Self(0);
+    const UNKNOWN_PROMOTED_CONSTRUCTOR_CHIRHO: Self = Self(1);
+    const FREE_TYPE_VARIABLE_CHIRHO: Self = Self(2);
 }
 
 struct TypeScopeWalkerChirho<'scope_chirho> {
@@ -307,7 +310,9 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     }
 
     fn walk_constructor_chirho(&mut self, constructor_chirho: &ConDeclChirho) {
-        let field_policy_chirho = if self.existential_quantification_chirho {
+        let field_policy_chirho = if self.existential_quantification_chirho
+            || constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho)
+        {
             FreeTyVarPolicyChirho::ImplicitChirho
         } else {
             FreeTyVarPolicyChirho::RequireBoundChirho
@@ -525,6 +530,10 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 self.walk_binder_kind_chirho(arg_chirho, span_chirho, free_var_policy_chirho);
                 self.walk_binder_kind_chirho(result_chirho, span_chirho, free_var_policy_chirho);
             }
+            AstKindChirho::AppChirho(fun_chirho, arg_chirho) => {
+                self.walk_binder_kind_chirho(fun_chirho, span_chirho, free_var_policy_chirho);
+                self.walk_binder_kind_chirho(arg_chirho, span_chirho, free_var_policy_chirho);
+            }
             AstKindChirho::StarChirho
             | AstKindChirho::ConstraintChirho
             | AstKindChirho::VarChirho(_) => {}
@@ -567,36 +576,44 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         name_chirho: &NameChirho,
         free_var_policy_chirho: FreeTyVarPolicyChirho,
     ) {
+        let text_chirho = name_chirho.text_chirho();
+        // Empty names are parser recovery sentinels, not source identifiers.
+        // Implicit-parameter names bind evidence, not lexical type variables.
+        if text_chirho.is_empty() || text_chirho.starts_with('?') {
+            return;
+        }
         if free_var_policy_chirho == FreeTyVarPolicyChirho::RequireBoundChirho
-            && name_chirho.text_chirho() != "_"
-            && !self
-                .bound_tyvars_chirho
-                .contains_key(name_chirho.text_chirho())
+            && text_chirho != "_"
+            && !self.bound_tyvars_chirho.contains_key(text_chirho)
         {
             self.report_free_type_variable_chirho(name_chirho);
         }
     }
 
     fn check_promoted_constructor_chirho(&mut self, name_chirho: &NameChirho) {
+        if name_chirho.text_chirho().is_empty() {
+            return;
+        }
         if is_builtin_promoted_constructor_name_chirho(name_chirho) {
             return;
         }
-        let (qualifier_chirho, text_chirho) = name_parts_chirho(name_chirho);
+        let (qualifier_chirho, raw_text_chirho) = name_parts_chirho(name_chirho);
+        let text_chirho = canonical_value_name_chirho(raw_text_chirho);
         let found_chirho = if let Some(qualifier_chirho) = qualifier_chirho {
             self.current_module_local_name_in_scope_chirho(
                 qualifier_chirho,
-                text_chirho,
+                &text_chirho,
                 NamespaceChirho::ValueChirho,
             ) || self
                 .env_chirho
                 .lookup_qualified_chirho(
                     qualifier_chirho,
-                    text_chirho,
+                    &text_chirho,
                     NamespaceChirho::ValueChirho,
                 )
                 .is_some()
         } else {
-            self.env_chirho.lookup_value_chirho(text_chirho).is_some()
+            self.env_chirho.lookup_value_chirho(&text_chirho).is_some()
         };
         if found_chirho {
             return;
@@ -604,7 +621,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
 
         let full_name_chirho = name_chirho.full_name_chirho();
         let key_chirho = (
-            TypeScopeIssueChirho::UnknownPromotedConstructorChirho,
+            TypeScopeIssueChirho::UNKNOWN_PROMOTED_CONSTRUCTOR_CHIRHO,
             full_name_chirho.clone(),
             name_chirho.span_chirho(),
         );
@@ -620,6 +637,9 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     }
 
     fn check_type_name_chirho(&mut self, name_chirho: &NameChirho, allow_promotion_chirho: bool) {
+        if name_chirho.text_chirho().is_empty() {
+            return;
+        }
         if is_builtin_type_name_chirho(name_chirho)
             || (self.star_is_type_chirho && is_unqualified_star_chirho(name_chirho))
         {
@@ -630,7 +650,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         }
         let full_name_chirho = name_chirho.full_name_chirho();
         let key_chirho = (
-            TypeScopeIssueChirho::UnknownTypeNameChirho,
+            TypeScopeIssueChirho::UNKNOWN_TYPE_NAME_CHIRHO,
             full_name_chirho.clone(),
             name_chirho.span_chirho(),
         );
@@ -650,38 +670,43 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         name_chirho: &NameChirho,
         allow_promotion_chirho: bool,
     ) -> bool {
-        let (qualifier_chirho, text_chirho) = name_parts_chirho(name_chirho);
+        let (qualifier_chirho, raw_text_chirho) = name_parts_chirho(name_chirho);
+        let text_chirho = canonical_type_name_chirho(raw_text_chirho);
         if let Some(qualifier_chirho) = qualifier_chirho {
             let type_found_chirho = self.current_module_local_name_in_scope_chirho(
                 qualifier_chirho,
-                text_chirho,
+                &text_chirho,
                 NamespaceChirho::TypeChirho,
             ) || self
                 .env_chirho
-                .lookup_qualified_chirho(qualifier_chirho, text_chirho, NamespaceChirho::TypeChirho)
+                .lookup_qualified_chirho(
+                    qualifier_chirho,
+                    &text_chirho,
+                    NamespaceChirho::TypeChirho,
+                )
                 .is_some();
             type_found_chirho
                 || (allow_promotion_chirho
                     && self.data_kinds_chirho
-                    && is_promotable_constructor_spelling_chirho(text_chirho)
+                    && is_promotable_constructor_spelling_chirho(&text_chirho)
                     && (self.current_module_local_name_in_scope_chirho(
                         qualifier_chirho,
-                        text_chirho,
+                        &text_chirho,
                         NamespaceChirho::ValueChirho,
                     ) || self
                         .env_chirho
                         .lookup_qualified_chirho(
                             qualifier_chirho,
-                            text_chirho,
+                            &text_chirho,
                             NamespaceChirho::ValueChirho,
                         )
                         .is_some()))
         } else {
-            self.env_chirho.lookup_type_chirho(text_chirho).is_some()
+            self.env_chirho.lookup_type_chirho(&text_chirho).is_some()
                 || (allow_promotion_chirho
                     && self.data_kinds_chirho
-                    && is_promotable_constructor_spelling_chirho(text_chirho)
-                    && self.env_chirho.lookup_value_chirho(text_chirho).is_some())
+                    && is_promotable_constructor_spelling_chirho(&text_chirho)
+                    && self.env_chirho.lookup_value_chirho(&text_chirho).is_some())
         }
     }
 
@@ -711,7 +736,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         span_chirho: SpanChirho,
     ) {
         let key_chirho = (
-            TypeScopeIssueChirho::FreeTypeVariableChirho,
+            TypeScopeIssueChirho::FREE_TYPE_VARIABLE_CHIRHO,
             name_chirho.to_string(),
             span_chirho,
         );
@@ -777,6 +802,36 @@ fn record_field_type_scope_reliable_chirho(ty_chirho: &TypeChirho) -> bool {
         | TypeChirho::WildcardChirho { .. }
         | TypeChirho::LitChirho { .. } => true,
     }
+}
+
+/// Whether lowering discarded an existential constructor prefix.
+///
+/// For prefix constructors the CST node starts at `forall` or its context,
+/// while the retained constructor name starts later. Infix constructors also
+/// have an earlier node start (their left operand), so they are deliberately
+/// excluded. Until `ConDeclChirho` can carry existential binders and context,
+/// fields behind this exact AST trust boundary must retain implicit scope.
+fn constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho: &ConDeclChirho) -> bool {
+    let (name_chirho, span_chirho) = match constructor_chirho {
+        ConDeclChirho::OrdinaryChirho {
+            name_chirho,
+            span_chirho,
+            ..
+        }
+        | ConDeclChirho::RecordChirho {
+            name_chirho,
+            span_chirho,
+            ..
+        } => (name_chirho, *span_chirho),
+        ConDeclChirho::GadtChirho { .. } => return false,
+    };
+    let name_text_chirho = name_chirho.text_chirho();
+    name_text_chirho
+        .chars()
+        .next()
+        .is_some_and(char::is_uppercase)
+        && name_chirho.span_chirho().file_id_chirho() == span_chirho.file_id_chirho()
+        && name_chirho.span_chirho().start_chirho() > span_chirho.start_chirho()
 }
 
 fn record_field_constraint_scope_reliable_chirho(constraint_chirho: &ConstraintChirho) -> bool {
@@ -851,20 +906,26 @@ fn is_builtin_constraint_name_chirho(name_chirho: &NameChirho) -> bool {
 }
 
 fn is_builtin_type_name_chirho(name_chirho: &NameChirho) -> bool {
-    let (qualifier_chirho, text_chirho) = name_parts_chirho(name_chirho);
+    let (qualifier_chirho, raw_text_chirho) = name_parts_chirho(name_chirho);
     if qualifier_chirho.is_some() {
         return false;
     }
-    if BUILTIN_CONSTRAINT_NAMES_CHIRHO.contains(&text_chirho)
+    if matches!(raw_text_chirho, "(##)" | "(# #)")
+        || is_boxed_tuple_constructor_text_chirho(raw_text_chirho)
+        || is_unboxed_tuple_or_sum_constructor_text_chirho(raw_text_chirho)
+    {
+        return true;
+    }
+    let text_chirho = canonical_type_name_chirho(raw_text_chirho);
+    if BUILTIN_CONSTRAINT_NAMES_CHIRHO.contains(&text_chirho.as_str())
         || matches!(
-            text_chirho,
+            text_chirho.as_str(),
             ":" | "':" | "[]" | "()" | "->" | "(->)" | "(##)" | "(# #)"
         )
     {
         return true;
     }
-    is_boxed_tuple_constructor_text_chirho(text_chirho)
-        || is_unboxed_tuple_or_sum_constructor_text_chirho(text_chirho)
+    false
 }
 
 fn is_builtin_promoted_constructor_name_chirho(name_chirho: &NameChirho) -> bool {
@@ -903,6 +964,10 @@ fn collect_kind_variable_names_chirho(kind_chirho: &AstKindChirho, names_chirho:
         AstKindChirho::ArrowChirho(arg_chirho, result_chirho) => {
             collect_kind_variable_names_chirho(arg_chirho, names_chirho);
             collect_kind_variable_names_chirho(result_chirho, names_chirho);
+        }
+        AstKindChirho::AppChirho(fun_chirho, arg_chirho) => {
+            collect_kind_variable_names_chirho(fun_chirho, names_chirho);
+            collect_kind_variable_names_chirho(arg_chirho, names_chirho);
         }
         AstKindChirho::StarChirho
         | AstKindChirho::ConstraintChirho

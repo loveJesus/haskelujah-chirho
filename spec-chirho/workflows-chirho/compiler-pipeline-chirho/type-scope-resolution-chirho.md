@@ -5,7 +5,16 @@ This workflow is owned by `resolve_module_with_imports_chirho` and `check_module
 
 ```mermaid
 flowchart TD
-    module_ast_chirho[Lowered module AST] --> imports_chirho[Resolve imported interfaces]
+    source_cst_chirho[Source CST] --> faithful_lowering_chirho[Lower namespace-bearing declaration shapes]
+    faithful_lowering_chirho --> lowered_shape_chirho{Shape representable faithfully?}
+    lowered_shape_chirho -->|Yes| module_ast_chirho[Lowered module AST]
+    lowered_shape_chirho -->|No| ast_boundary_chirho[Retain a narrow documented AST trust boundary; never fabricate a neighbouring declaration]
+    ast_boundary_chirho --> module_ast_chirho
+
+    module_ast_chirho --> local_iface_chirho[Collect canonical local type/value exports]
+    local_iface_chirho --> associated_iface_chirho[Retain class-to-associated-family relationships]
+    associated_iface_chirho --> import_filter_chirho[Apply all/selected/hiding import and export rules]
+    import_filter_chirho --> imports_chirho[Resolve imported interfaces]
     imports_chirho --> import_result_chirho{Every interface available?}
     import_result_chirho -->|No| import_error_chirho[Retain causal import diagnostic and skip dependent lookups]
     import_result_chirho -->|Yes| local_defs_chirho[Bind all local type constructors and classes]
@@ -22,6 +31,14 @@ flowchart TD
     qualified_lookup_chirho --> lookup_result_chirho
     lookup_result_chirho -->|No| undefined_type_chirho[Emit E0101 once per source use]
     lookup_result_chirho -->|Yes| continue_chirho[Continue bounded AST walk]
+
+    associated_iface_chirho --> selected_parent_chirho{Class member selection}
+    selected_parent_chirho -->|Class(..)| all_associated_chirho[Expose every associated type plus the parent relation]
+    selected_parent_chirho -->|Class(F)| selected_associated_chirho[Expose only selected associated types plus the parent relation]
+    selected_parent_chirho -->|Class| parent_only_chirho[Expose only the class]
+    all_associated_chirho --> import_filter_chirho
+    selected_associated_chirho --> import_filter_chirho
+    parent_only_chirho --> import_filter_chirho
 
     walk_uses_chirho --> promoted_use_chirho{Explicit promoted constructor?}
     promoted_use_chirho --> wired_promoted_chirho{Wired-in list, unit or tuple constructor?}
@@ -55,8 +72,16 @@ flowchart TD
     record_field_chirho -->|Yes| defer_record_chirho[Defer until flat record-field lowering preserves source scope]
     record_field_chirho -->|No| continue_chirho
 
+    walk_uses_chirho --> constructor_prefix_chirho{Constructor span proves lowering dropped an existential prefix?}
+    constructor_prefix_chirho -->|Yes| defer_existential_chirho[Defer only that constructor's field-variable scope]
+    constructor_prefix_chirho -->|No| continue_chirho
+
     undefined_type_chirho --> driver_gate_chirho[Driver stops before kind inference unless errors are deferred]
     undefined_tyvar_chirho --> driver_gate_chirho
 ```
 
-The walker performs no filesystem lookup or module scanning. Its successful-resolution path is linear in the lowered AST with hash-backed namespace lookups; the error-only suggestion path compares against the already-populated in-memory environment, and duplicate diagnostics are suppressed by issue/name/span. The record-field deferral is an AST trust boundary for the open `bug-record-field-forall-lowering-chirho.md`; ordinary and required-forall record fields remain covered, and the branch can disappear when that parser fix lands.
+The walker performs no filesystem lookup or module scanning. Its successful-resolution path is linear in the lowered AST with hash-backed namespace lookups; the error-only suggestion path compares against the already-populated in-memory environment, and duplicate diagnostics are suppressed by issue/name/span.
+
+Canonical interface maps are the authority for imported names. Type and value operators are normalized once at that boundary, and associated families remain first-class type exports while carrying their parent-class relation through selected imports, hiding, explicit exports, and module re-exports.
+
+Two deliberately narrow AST trust boundaries remain. The record-field branch covers `bug-record-field-forall-lowering-chirho.md`; ordinary and required-forall fields remain checked. The constructor-prefix branch covers `bug-existential-constructor-scope-dropped-chirho.md`; it requires a prefix constructor name whose source span begins after its enclosing constructor span, excludes infix constructors, and defers only that constructor's field-variable scope. Both branches should disappear when the AST can carry the source binders and contexts directly.
