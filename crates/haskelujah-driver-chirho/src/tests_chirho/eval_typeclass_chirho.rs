@@ -1464,6 +1464,32 @@ main = putStrLn (show (Just (Just 42)))
     assert_eq!(machine_chirho.io_output_chirho, "Just (Just 42)\n");
 }
 
+#[test]
+fn eval_gadt_record_fields_are_readable_chirho() {
+    // A GADT record constructor's fields must exist and be readable. A check-only
+    // gate CANNOT see this: before the parser recognised the braces, the whole
+    // declaration was lowered to a nullary constructor with no fields, `main` did
+    // not survive to STG, and all eight corpus files carrying this construct were
+    // still green. Exact output, so the field values have to actually arrive.
+    use crate::eval_source_with_machine_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let src_chirho = "\
+{-# LANGUAGE GADTs #-}
+module Test where
+data T where
+  MkT :: { f :: Int, g :: String } -> T
+main = do
+  let t = MkT { f = 42, g = \"hi\" }
+  let u = t { f = 7 }
+  print (f t)
+  putStrLn (g t)
+  print (f u)
+";
+    let (_, machine_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
+    assert_eq!(machine_chirho.io_output_chirho, "42\nhi\n7\n");
+}
+
 // ── ST monad ──────────────────────────────────────────────────────────
 
 // ── Deriving Ord end-to-end ─────────────────────────────────────────

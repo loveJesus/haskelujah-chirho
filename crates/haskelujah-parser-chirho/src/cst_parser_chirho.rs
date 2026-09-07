@@ -916,8 +916,23 @@ impl<'src> ParserChirho<'src> {
             self.eat_trivia_chirho();
         }
 
-        // Parse the type signature
-        self.parse_type_chirho();
+        // GADT record syntax: `MkT :: { f :: Int, x :: Char } -> T`. The braces are
+        // NOT a type, so `parse_type_chirho` cannot read them — it meets `{` in type
+        // position and the damage cascades past the declaration, taking the rest of
+        // the module's bindings with it. Parse the fields with the same routine the
+        // ordinary record path uses, then the `->` and the result type.
+        if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+            self.parse_record_fields_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+                self.bump_chirho(); // ->
+                self.eat_trivia_chirho();
+                self.parse_type_chirho();
+            }
+        } else {
+            // Parse the type signature
+            self.parse_type_chirho();
+        }
 
         self.builder_chirho.finish_node_chirho();
     }

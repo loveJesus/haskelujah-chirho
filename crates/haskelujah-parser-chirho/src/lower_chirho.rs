@@ -2542,9 +2542,17 @@ impl LowerCtxChirho {
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         let mut name_chirho = None;
         let mut sig_type_chirho = None;
+        let mut record_fields_chirho: Option<Vec<FieldDeclChirho>> = None;
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
+                GreenElementChirho::NodeChirho(n_chirho)
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::RecordFieldsChirho =>
+                {
+                    record_fields_chirho = Some(
+                        self.lower_record_fields_chirho(n_chirho, child_chirho.start_chirho),
+                    );
+                }
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     if matches!(
                         tok_chirho.kind_chirho(),
@@ -2571,6 +2579,19 @@ impl LowerCtxChirho {
         }
 
         let con_name_chirho = name_chirho.unwrap_or_else(|| self.dummy_name_chirho());
+        // A GADT constructor written with record syntax. Its fields are real and are
+        // recovered here; its RESULT type is still dropped, because no ConDeclChirho
+        // shape can hold named fields AND a refined result at once — that half waits
+        // on the AST decision (spec-chirho/bug-gadt-record-fields-dropped-chirho.md).
+        // For `data T where MkT :: { .. } -> T` the result is the declaration head, so
+        // nothing is lost; for a refined result it is, exactly as before this change.
+        if let Some(fields_chirho) = record_fields_chirho {
+            return ConDeclChirho::RecordChirho {
+                name_chirho: con_name_chirho,
+                fields_chirho,
+                span_chirho,
+            };
+        }
         match sig_type_chirho {
             Some(ty_chirho) => ConDeclChirho::GadtChirho {
                 name_chirho: con_name_chirho,
