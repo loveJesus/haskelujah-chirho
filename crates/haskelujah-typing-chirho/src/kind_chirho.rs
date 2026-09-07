@@ -822,6 +822,11 @@ impl KindInferCtxChirho {
                 vars_chirho,
                 body_chirho,
                 ..
+            }
+            | TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
             } => {
                 for v_chirho in vars_chirho {
                     let k_chirho = if let Some(ann_chirho) = &v_chirho.kind_annotation_chirho {
@@ -2263,6 +2268,22 @@ mod tests_chirho {
     fn arrow_display_chirho() {
         let k_chirho = KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho);
         assert_eq!(k_chirho.to_string(), "* -> *");
+    }
+
+    #[test]
+    fn required_forall_kind_uses_its_body_chirho() {
+        let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
+        let type_kind_chirho = TypeChirho::ConChirho(mk_name_chirho("Type"));
+        let required_forall_chirho = TypeChirho::RequiredForallChirho {
+            vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("kindChirho"))],
+            body_chirho: Box::new(mk_fun_chirho(type_kind_chirho.clone(), type_kind_chirho)),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+
+        assert_eq!(
+            ctx_chirho.type_to_kind_chirho(&required_forall_chirho),
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+        );
     }
 
     #[test]

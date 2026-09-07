@@ -24,6 +24,10 @@ impl InferCtxChirho {
         "NatToChar",
         "CmpNat",
         "CmpSymbol",
+        "If",
+        "Not",
+        "&&",
+        "||",
     ];
 
     /// Whether `name_chirho` names a type family known here (declared,
@@ -598,6 +602,47 @@ mod tests_chirho {
             )),
             Box::new(right_chirho),
         )
+    }
+
+    #[test]
+    fn imported_boolean_families_reduce_by_their_leading_argument_chirho() {
+        let ctx_chirho = InferCtxChirho::new_chirho();
+        let true_chirho = TyChirho::ConChirho("True".to_string());
+        let false_chirho = TyChirho::ConChirho("False".to_string());
+        let value_chirho = TyChirho::ForallVarChirho("value%1".to_string());
+
+        assert_eq!(
+            ctx_chirho.reduce_type_family_chirho(
+                "Data.Type.Bool.&&",
+                &[true_chirho.clone(), value_chirho.clone()],
+            ),
+            Some(value_chirho.clone())
+        );
+        assert_eq!(
+            ctx_chirho
+                .reduce_type_family_chirho("(&&)", &[false_chirho.clone(), value_chirho.clone()],),
+            Some(false_chirho.clone())
+        );
+        assert_eq!(
+            ctx_chirho.reduce_type_family_chirho(
+                "If",
+                &[
+                    true_chirho.clone(),
+                    value_chirho.clone(),
+                    false_chirho.clone()
+                ],
+            ),
+            Some(value_chirho.clone())
+        );
+        assert_eq!(
+            ctx_chirho.reduce_type_family_chirho("Not", &[false_chirho.clone()]),
+            Some(true_chirho)
+        );
+        assert_eq!(
+            ctx_chirho.reduce_type_family_chirho("&&", &[value_chirho, false_chirho]),
+            None,
+            "a closed family stays stuck until its leading argument is known"
+        );
     }
 
     #[test]

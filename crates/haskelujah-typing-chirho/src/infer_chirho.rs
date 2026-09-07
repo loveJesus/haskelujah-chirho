@@ -21974,6 +21974,17 @@ fn bool_type_con_chirho(value_chirho: bool) -> TyChirho {
     TyChirho::ConChirho(if value_chirho { "True" } else { "False" }.to_string())
 }
 
+fn bool_type_literal_chirho(ty_chirho: &TyChirho) -> Option<bool> {
+    let TyChirho::ConChirho(name_chirho) = ty_chirho else {
+        return None;
+    };
+    match strip_name_qualifier_chirho(name_chirho).trim_start_matches('\'') {
+        "True" => Some(true),
+        "False" => Some(false),
+        _ => None,
+    }
+}
+
 fn symbol_type_literal_chirho(ty_chirho: &TyChirho) -> Option<&str> {
     match ty_chirho {
         TyChirho::ConChirho(name_chirho)
@@ -22148,6 +22159,37 @@ fn reduce_builtin_type_family_application_chirho(
             }
         }
         .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
+        ("If", [condition_chirho, true_chirho, false_chirho, ..]) => {
+            bool_type_literal_chirho(condition_chirho).map(|condition_chirho| {
+                if condition_chirho {
+                    true_chirho.clone()
+                } else {
+                    false_chirho.clone()
+                }
+            })
+        }
+        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 3)),
+        ("Not", [value_chirho, ..]) => bool_type_literal_chirho(value_chirho)
+            .map(|value_chirho| bool_type_con_chirho(!value_chirho))
+            .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1)),
+        ("&&", [left_chirho, right_chirho, ..]) => bool_type_literal_chirho(left_chirho)
+            .map(|left_chirho| {
+                if left_chirho {
+                    right_chirho.clone()
+                } else {
+                    bool_type_con_chirho(false)
+                }
+            })
+            .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
+        ("||", [left_chirho, right_chirho, ..]) => bool_type_literal_chirho(left_chirho)
+            .map(|left_chirho| {
+                if left_chirho {
+                    bool_type_con_chirho(true)
+                } else {
+                    right_chirho.clone()
+                }
+            })
+            .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
         _ => None,
     };
     reduced_chirho
