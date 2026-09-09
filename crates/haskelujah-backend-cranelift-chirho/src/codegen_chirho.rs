@@ -3687,8 +3687,13 @@ mod tests_chirho {
         let put_str_ln_binding_chirho = CoreBindingChirho {
             binder_chirho: int_binder_chirho("putStrLn", 0),
             rhs_chirho: CoreExprChirho::LamChirho {
-                binder_chirho: put_str_ln_arg_binder_chirho,
-                body_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))),
+                binder_chirho: put_str_ln_arg_binder_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "putStrLn#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(
+                        put_str_ln_arg_binder_chirho.id_chirho,
+                    )],
+                }),
             },
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,

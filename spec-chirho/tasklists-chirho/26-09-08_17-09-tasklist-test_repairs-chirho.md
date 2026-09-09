@@ -314,3 +314,38 @@ and harness repairs support that objective; workspace greens are not corpus gain
 - Follow-up checkpoint is ready for remote backup after focused controls. The
   complete workspace run, all native round trips and final two-pass-per-axis CLI
   measurements remain owed before main can receive a verified landing.
+- Remote backup verified: ef11029e and 12cfd92c are pushed on the repair branch;
+  main remains 033fc4df. The unfiltered 12cfd92c workspace attempt found one
+  Cranelift unit, sixteen LLVM unit and three benchmark failures before it was
+  deliberately stopped for repairs (owned cargo/test PIDs only, exit 143). This
+  is a failed, incomplete diagnostic run, not a completed landing gate. The
+  benchmark harness also discarded its error details and tolerated one arbitrary
+  failing benchmark; both assertions are being made discriminating.
+- Benchmark tracing identified a GC tombstone after the first collection, not
+  a step-limit or true recursive blackhole. Instructions contained static heap
+  references that were absent from the root set. A focused code-root index now
+  includes those references, traverses each instruction once per outer run, and
+  permits constants to retire when their code is removed. Its forced-GC control
+  is demonstrated red before the fix and green after; runtime 54 + allocation
+  controls 4 + code-root control 1 are green. All ten benchmark answers now
+  pass, including the previously waived isPrime, under the unchanged 500K limit
+  (eleven tests including the suite-level all-ten assertion).
+- The seventeen backend-unit reds were classified from their actual inputs:
+  four LLVM closure tests pinned register/call spelling; five pinned old IO
+  adapter spelling or fake named-stub behavior and now live as independent
+  GHC-verified source executions on all three engines; the remaining eight
+  execution cases used zero-returning named IO stubs. Low-level fixtures now
+  contain actual effect primitives, and readFile is sequenced before putStr.
+  Cranelift units 41/41, LLVM units 37/37 (five contracts moved, not waived),
+  and IO execution contracts 8/8 pass. Four closure tests moved to a focused
+  module and assert their actual pure-Core output and return value.
+- Workspace formatting passes. All-target clippy reached three old approximate-PI
+  literals in one FFI round-trip test; it now uses the exact standard constant.
+  Hundreds of other existing lint warnings remain, so zero-warning quality is
+  not claimed. The next unfiltered workspace run and final CLI corpus gates
+  still determine the landing; focused green results do not substitute for them.
+- All-target clippy now completes after repairing two further arbitrary-float
+  test fixtures; its remaining warnings still fail the project's zero-warning
+  standard. Runtime and RTS library/integration targets pass again. This third
+  repair checkpoint is ready for branch backup; the next frozen workspace run
+  will use four test threads, with no test-name filters or exclusions.

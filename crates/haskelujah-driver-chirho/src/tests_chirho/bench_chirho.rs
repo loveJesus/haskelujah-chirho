@@ -72,8 +72,8 @@ fn bench_nfib_correct_chirho() {
     let result_chirho = run_benchmark_chirho(nfib_chirho, bench_compile_and_eval_chirho);
     assert!(
         result_chirho.correct_chirho,
-        "nfib 15 should be 1973, got {:?}",
-        result_chirho.result_chirho
+        "nfib 15 should be 1973: {:?}",
+        result_chirho
     );
 }
 
@@ -87,8 +87,8 @@ fn bench_tak_correct_chirho() {
     let result_chirho = run_benchmark_chirho(tak_chirho, bench_compile_and_eval_chirho);
     assert!(
         result_chirho.correct_chirho,
-        "tak 12 8 4 should be 5, got {:?}",
-        result_chirho.result_chirho
+        "tak 12 8 4 should be 5: {:?}",
+        result_chirho
     );
 }
 
@@ -199,22 +199,16 @@ fn bench_power_correct_chirho() {
 
 #[test]
 fn bench_is_prime_correct_chirho() {
-    // Known issue: multi-equation function args get bundled as tuples
-    // in the STG evaluator (primop ModIntChirho gets tuple instead of Int#).
-    // Skip until STG lowering for multi-equation functions is fixed.
     let benches_chirho = nofib_benchmarks_chirho();
     let b_chirho = benches_chirho
         .iter()
         .find(|b_chirho| b_chirho.name_chirho == "isPrime")
         .unwrap();
     let result_chirho = run_benchmark_chirho(b_chirho, bench_compile_and_eval_chirho);
-    if !result_chirho.correct_chirho {
-        eprintln!(
-            "isPrime known failure: multi-equation STG arg bundling, got {:?}",
-            result_chirho.result_chirho
-        );
-        return; // known issue — don't fail the suite
-    }
+    assert!(
+        result_chirho.correct_chirho,
+        "isPrime 104729 must return 1: {result_chirho:?}"
+    );
 }
 
 // ── Suite-level test ─────────────────────────────────────────────────────
@@ -224,11 +218,9 @@ fn bench_nofib_suite_all_correct_chirho() {
     let suite_chirho = run_nofib_suite_chirho(bench_compile_and_eval_chirho);
     let total_chirho = suite_chirho.results_chirho.len();
     let correct_chirho = suite_chirho.correct_count_chirho();
-    // isPrime is a known failure (multi-equation STG arg bundling), so 9/10
-    assert!(
-        correct_chirho >= total_chirho - 1,
-        "benchmarks should produce correct results: {}/{}",
-        correct_chirho,
-        total_chirho
+    assert_eq!(
+        correct_chirho, total_chirho,
+        "every benchmark must match its oracle: {:?}",
+        suite_chirho.results_chirho
     );
 }

@@ -518,13 +518,14 @@ mod tests_chirho {
 
     #[test]
     fn ffi_value_round_trip_double_chirho() {
-        let val_chirho = FfiValueChirho::DoubleChirho(3.14);
+        let expected_chirho = std::f64::consts::PI;
+        let val_chirho = FfiValueChirho::DoubleChirho(expected_chirho);
         let runtime_chirho = val_chirho.to_runtime_chirho();
-        assert_eq!(runtime_chirho, ValueChirho::FloatChirho(3.14));
+        assert_eq!(runtime_chirho, ValueChirho::FloatChirho(expected_chirho));
         let back_chirho =
             FfiValueChirho::from_runtime_chirho(&runtime_chirho, &FfiTypeChirho::DoubleChirho)
                 .unwrap();
-        assert_eq!(back_chirho, FfiValueChirho::DoubleChirho(3.14));
+        assert_eq!(back_chirho, FfiValueChirho::DoubleChirho(expected_chirho));
     }
 
     #[test]

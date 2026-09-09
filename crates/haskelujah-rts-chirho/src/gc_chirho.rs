@@ -344,7 +344,7 @@ mod tests_chirho {
         let values_chirho = vec![
             ValueChirho::IntChirho(1),
             ValueChirho::HeapPtrChirho(HeapAddrChirho(5)),
-            ValueChirho::FloatChirho(3.14),
+            ValueChirho::FloatChirho(42.5),
             ValueChirho::HeapPtrChirho(HeapAddrChirho(10)),
         ];
         let roots_chirho = super::extract_roots_from_values_chirho(&values_chirho);

@@ -18,6 +18,7 @@
 //! Transitions follow the STG operational semantics from SPJ's 1992 paper,
 //! extended with PAP handling and primitive operations.
 
+mod code_roots_chirho;
 mod returns_chirho;
 
 use std::collections::HashMap;
@@ -271,6 +272,7 @@ pub struct MachineChirho {
     pub heap_chirho: HeapChirho,
     pub stack_chirho: StackChirho,
     pub code_table_chirho: Vec<CodeChirho>,
+    code_roots_chirho: code_roots_chirho::CodeRootsChirho,
     /// Argument registers: populated when entering a function body.
     pub arg_regs_chirho: Vec<ValueChirho>,
     /// Number of reduction steps taken.
@@ -304,6 +306,7 @@ impl MachineChirho {
             heap_chirho: HeapChirho::with_capacity_chirho(1024),
             stack_chirho: StackChirho::new_chirho(),
             code_table_chirho,
+            code_roots_chirho: code_roots_chirho::CodeRootsChirho::default(),
             arg_regs_chirho: Vec::new(),
             steps_chirho: 0,
             step_limit_chirho: 0,
@@ -374,6 +377,7 @@ impl MachineChirho {
 
     fn collect_roots_chirho(&self) -> Vec<HeapAddrChirho> {
         let mut roots_chirho = extract_roots_from_stack_chirho(self.stack_chirho.frames_chirho());
+        roots_chirho.extend(self.code_roots_chirho.addresses_chirho.iter().copied());
         roots_chirho.extend(extract_roots_from_values_chirho(&self.arg_regs_chirho));
         roots_chirho.extend(extract_roots_from_values_chirho(
             &self.iorefs_chirho.values().cloned().collect::<Vec<_>>(),
@@ -391,6 +395,8 @@ impl MachineChirho {
         if !self.gc_state_chirho.notify_alloc_chirho() {
             return;
         }
+        self.code_roots_chirho
+            .refresh_chirho(&self.code_table_chirho);
         let mut roots_chirho = self.collect_roots_chirho();
         roots_chirho.extend_from_slice(pending_roots_chirho);
         let stats_chirho = self
@@ -495,7 +501,7 @@ impl MachineChirho {
     /// stack is searched for a `CatchChirho` frame.  If found, the
     /// handler is invoked with the error message string instead of
     /// propagating the error.
-    pub fn run_chirho(&mut self, entry_chirho: u32) -> Result<ValueChirho, EvalErrorChirho> {
+    fn run_loop_chirho(&mut self, entry_chirho: u32) -> Result<ValueChirho, EvalErrorChirho> {
         // Helper macro: dispatch on a Result<ReturnActionChirho, _>.
         // On success, either return Done or set pc to Continue.
         // On RuntimeErrorChirho, try to catch with a CatchChirho frame.

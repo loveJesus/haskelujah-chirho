@@ -45,6 +45,8 @@ pub struct BenchResultChirho {
     pub correct_chirho: bool,
     /// The actual Int result (if available).
     pub result_chirho: Option<i64>,
+    /// Evaluation failure, retained so a red benchmark reports its actual cause.
+    pub error_chirho: Option<String>,
 }
 
 /// Summary of a benchmark suite run.
@@ -276,9 +278,10 @@ where
                 eval_time_chirho: eval_chirho,
                 correct_chirho,
                 result_chirho: Some(result_chirho),
+                error_chirho: None,
             }
         }
-        Err(_err_chirho) => {
+        Err(error_chirho) => {
             let total_chirho = start_chirho.elapsed();
             BenchResultChirho {
                 name_chirho: bench_chirho.name_chirho.clone(),
@@ -289,6 +292,7 @@ where
                 eval_time_chirho: Duration::ZERO,
                 correct_chirho: false,
                 result_chirho: None,
+                error_chirho: Some(error_chirho),
             }
         }
     }
@@ -340,6 +344,7 @@ mod tests_chirho {
                 eval_time_chirho: Duration::from_millis(27),
                 correct_chirho: true,
                 result_chirho: Some(42),
+                error_chirho: None,
             }],
             total_time_chirho: Duration::from_millis(42),
         };
@@ -377,6 +382,10 @@ mod tests_chirho {
             run_benchmark_chirho(&bench_chirho, |_| Err("compilation failed".to_string()));
         assert!(!result_chirho.correct_chirho);
         assert!(result_chirho.result_chirho.is_none());
+        assert_eq!(
+            result_chirho.error_chirho.as_deref(),
+            Some("compilation failed")
+        );
     }
 
     #[test]
@@ -412,6 +421,7 @@ mod tests_chirho {
                     eval_time_chirho: Duration::ZERO,
                     correct_chirho: true,
                     result_chirho: Some(1),
+                    error_chirho: None,
                 },
                 BenchResultChirho {
                     name_chirho: "b".to_string(),
@@ -422,6 +432,7 @@ mod tests_chirho {
                     eval_time_chirho: Duration::ZERO,
                     correct_chirho: false,
                     result_chirho: None,
+                    error_chirho: Some("evaluation failed".to_string()),
                 },
             ],
             total_time_chirho: Duration::ZERO,

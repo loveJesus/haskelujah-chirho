@@ -67,6 +67,7 @@ primitive, recursive binding, or FFI adapter has been audited.
 | Native thunk entry/update | Follow indirections to WHNF, preserve all 64 result bits, and memoize without confusing state with payload. Root active evaluations across allocation. |
 | Native GC roots | Allocation-registry membership is required before dereference. Raw allocation addresses are legitimate roots during field initialization; the tagged-value policy must not be imposed on the root API. |
 | STG allocation safepoints | The heap-index interpreter must include the newly allocated object until it has been published into a register or return continuation. Its pending-root list is distinct from native pointer tagging. Forced-GC allocation controls must collect and still use the result. |
+| STG executable code | Static heap references in instructions and their capture sources are roots too. Index instructions once per outer execution, then only newly appended instructions at safepoints. Rebuild for a later outer run so removed code does not retain constants. This does not turn every allocated object into a permanent root. |
 
 `native_thunks_chirho` prepares both native backends from the same immutable Core
 input. Lifted computations receive one packed environment, including when there
@@ -81,12 +82,20 @@ execution controls against accidental eagerness, not IR-spelling assertions.
 The shared-source behavioral controls live in `codegen_scaling_chirho`
 (three pattern programs) and `native_laziness_chirho` (field demand and reusable
 IO actions), plus `io_actions_chirho` (action WHNF, repeated input and list-shared
-actions). Each requires STG, LLVM and Cranelift to match an independently
+actions, plus input/bind/numeric/list-print contracts moved from backend name
+stubs). Each requires STG, LLVM and Cranelift to match an independently
 specified output or stage-qualified runtime error. The other two scaling tests measure resource growth, not
 three-engine execution. `show_precedence_chirho` separately checks eight STG
 oracles and a nested-Just native oracle. The 126 native round trips are not
 126 three-engine comparisons. Agreement alone could hide a shared wrong answer;
 the independent oracle is the correctness criterion.
+
+Low-level Core IO fixtures contain real effect primitives rather than functions
+named `putStrLn` or `print` whose bodies return zero. Four LLVM closure cases now
+execute in a focused test module; they do not assert temporary registers. The
+benchmark harness retains evaluation errors and its ten-case correctness gate
+requires every answer, not an arbitrary nine of ten. A GC code-root control
+requires both retention of a code-only constant and collection after retirement.
 
 The IO-action execution lowering is shared by STG and the two native backends;
 the Wasm execution path has not been migrated to this representation. The tasklist

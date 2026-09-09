@@ -1062,11 +1062,11 @@ mod tests_chirho {
         runtime_chirho.reset_chirho();
         drop(runtime_chirho);
 
-        let ptr_bits_chirho = haskelujah_show_float_chirho(3.14f64.to_bits() as i64);
+        let ptr_bits_chirho = haskelujah_show_float_chirho(12.375f64.to_bits() as i64);
         assert_ne!(ptr_bits_chirho, 0);
         let text_chirho =
             unsafe { CStr::from_ptr(ptr_bits_chirho as usize as *const std::ffi::c_char) };
-        assert_eq!(text_chirho.to_bytes(), b"3.14");
+        assert_eq!(text_chirho.to_bytes(), b"12.375");
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();

@@ -59,3 +59,47 @@ fn a_shared_input_action_consumes_fresh_input_chirho() {
         "before-chirho\nfirst-chirho/second-chirho\n",
     );
 }
+
+// These execution contracts replace five backend-local tests built from
+// zero-returning name stubs or assertions about incidental LLVM IR spelling.
+
+#[test]
+fn get_line_reads_and_prints_input_chirho() {
+    assert_engines_chirho(
+        "module Main where\nmain = getLine >>= putStrLn\n",
+        "input-chirho\n",
+        "input-chirho\n",
+    );
+}
+
+#[test]
+fn numeric_print_uses_its_show_instance_chirho() {
+    assert_engines_chirho("module Main where\nmain = print (42 :: Int)\n", "", "42\n");
+}
+
+#[test]
+fn io_bind_executes_its_continuation_chirho() {
+    assert_engines_chirho(
+        "module Main where\nmain = return (41 :: Int) >>= \\valueChirho -> print (valueChirho + 1)\n",
+        "",
+        "42\n",
+    );
+}
+
+#[test]
+fn integer_list_print_contains_every_element_chirho() {
+    assert_engines_chirho(
+        "module Main where\nmain = print ([1,2,3] :: [Int])\n",
+        "",
+        "[1,2,3]\n",
+    );
+}
+
+#[test]
+fn integer_list_print_demands_computed_elements_chirho() {
+    assert_engines_chirho(
+        "module Main where\nmain = print ([1+0,4 `div` 2,6 `div` 2] :: [Int])\n",
+        "",
+        "[1,2,3]\n",
+    );
+}
