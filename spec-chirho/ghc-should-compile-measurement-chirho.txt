@@ -1,23 +1,33 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-07, AFTER the record-field brick (construction and update by field set)
-# code measured: ffa2561e (measuring agent claude_chirho; 55348594 + the brick; explicit
-#   `cargo build -p haskelujah` before the passes, so the CLI is the source measured)
-# method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4; a
-#   load-induced timeout is re-run alone before it counts
+# measured: 2026-09-09, AFTER the execution-correctness and test-instrument repairs
+# code measured: 2f74126d2417f493aa68efb1c71825074c6ad0a2 (HASKELUJAH/gpt_chirho)
+# build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
+#   measured binary: ../haskelujah-gpt-chirho/target/debug/haskelujah
+# CLI SHA256: 2466efcd6e27a7ba877a2f865ce5aa723129c70bae6aea99ce044751b89ca39f
+#   HEAD and binary digest asserted unchanged before and after all four corpus passes
+# method: haskelujah check <file>, timeout 15s/file, parallelism 4;
+#   timeouts re-run alone with a 60s cap; unexpected nonzero exits fail the runner
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   (find-based; T16234/ included)
 #
 # RESULT: PASS=877 FAIL=61 TOTAL=938 (93.5%)
-# STABILITY: DETERMINISTIC — two complete passes, zero timeouts, byte-identical failing sets
+# STABILITY: DETERMINISTIC — two complete passes, zero timeouts/unexpected exits;
+#   failing sets byte-identical to each other AND the previously committed list
 # QUOTE-AS: ~93% (877 of 938) — do not quote a third significant figure
 #
 # QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (222 of 767).
-# The accept-axis rounding label remains ~93%; the companion reject axis crosses from
-# ~28% to ~29%, so the pending public-site redeploy must consume both current artifacts.
+# Both rounding labels are unchanged. No public-site deployment is part of this lane.
 #
 # CHANGE SINCE LAST MEASUREMENT: 877 -> 877 (no movement). The failing set below is
-#   byte-identical to the previous artifact's. The brick changes record construction and
-#   update only: a given field the constructor does not declare (E0206), an omitted strict
+#   byte-identical to the previous artifact's. These are typecheck verdicts, not execution.
+# EXECUTION EVIDENCE: the same frozen source passes 3318 workspace tests with zero
+#   failed/ignored/filtered, including 126 native round trips and curated 537/537:
+#   514 execution oracles compared, independently checked under GHC 9.14.1 at recorded
+#   source hashes; 23 compile-only inputs. See workflows-chirho/testing-chirho/
+#   execution-measurement-chirho.md for provenance and explicit scope limits.
+#
+# PREVIOUS MEASUREMENT (ffa2561e, 2026-09-07): 877 -> 877. The record-field brick
+#   changed construction/update: a given undeclared field (E0206), an omitted strict
 #   field (E0207, GHC-95909), an omitted lazy field allowed (missing-field thunk), `C {}`
 #   on any constructor. The only `C {}` in this corpus is a pattern (T26346, already
 #   failing on promoted kinds, unchanged); the only construction on a constructor its file

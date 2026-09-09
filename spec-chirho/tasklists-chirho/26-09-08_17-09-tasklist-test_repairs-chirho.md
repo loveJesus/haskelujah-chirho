@@ -35,10 +35,12 @@ and harness repairs support that objective; workspace greens are not corpus gain
 - [x] Fix reproduced frontend/runtime failures at their root, with focused execution proofs.
 - [x] Fix reproduced generated-code failures and make runaway child execution fail with evidence.
 - [x] Fix reproduced parser/package/fixture failures, including worktree portability.
-- [ ] Run the complete workspace gate including previously failing/hanging tests;
+- [x] Run the complete workspace gate including previously failing/hanging tests;
       resolve new failures rather than counting skipped tests as passing.
-- [ ] Run lint/format checks, inspect structure and changed workflows, and validate the
+- [x] Run lint/format checks, inspect structure and changed workflows, and validate the
       two corpus axes when checker/parser changes reach the landing boundary.
+- [ ] Project-wide zero-warning and file/directory-size quality gate remains unmet;
+      535 clippy warning messages (not unique defects) and existing structural debt.
 - [ ] Commit owned paths, update the progress row with exact evidence, land the tested
       changes, and release the builder and DB lease.
 
@@ -459,3 +461,21 @@ and harness repairs support that objective; workspace greens are not corpus gain
   without errors and reports no diagnostics in the new ownership modules; existing
   workspace lint debt is still not a zero-warning result. This checkpoint is
   remote backup before the next complete unfiltered workspace run.
+- Final frozen source `2f74126d` was committed and pushed with exact remote-tip
+  equality. The complete workspace command
+  `RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4`
+  finished with **3318 passed, zero failed, zero ignored, zero filtered**, cargo
+  exit 0. Driver library 1773/1773 includes all 126 native round trips; curated
+  537/537 compares all 514 execution oracles. The independent GHC 9.14.1 manifest
+  covers those exact 514 source hashes. All 75 target result lines are retained in
+  workflows-chirho/testing-chirho/workspace-results-chirho.jsonl; the companion
+  execution measurement records scope and limits. No Rust compiler warning appeared
+  in this workspace log; the separate clippy quality failure remains explicit.
+- Fresh explicit CLI at the same source, SHA-256
+  `2466efcd6e27a7ba877a2f865ce5aa723129c70bae6aea99ce044751b89ca39f`, completed
+  two full passes per upstream axis: **877/938 accepted and 222/767 rejected**,
+  byte-identical to each other and the committed lists, zero timeouts/unexpected
+  exits. HEAD and CLI digest stayed fixed through all four passes. Neither upstream
+  corpus changed, and neither is fully passing. Measurement headers are superseded
+  with this provenance; exact lists are untouched. Main landing and progress-row
+  closeout follow these completed gates, not the earlier diagnostic attempts.

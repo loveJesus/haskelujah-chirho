@@ -1,25 +1,36 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-07, AFTER the record-field brick (construction and update by field set)
-# code measured: ffa2561e (measuring agent claude_chirho; 55348594 + the brick; explicit
-#   `cargo build -p haskelujah` before the passes)
-# method: haskelujah check <file>, debug profile, timeout 15s/file, parallelism 4;
-#   timeouts re-run alone; a rejection is output containing `error[E` or `panic`
+# measured: 2026-09-09, AFTER the execution-correctness and test-instrument repairs
+# code measured: 2f74126d2417f493aa68efb1c71825074c6ad0a2 (HASKELUJAH/gpt_chirho)
+# build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
+#   measured binary: ../haskelujah-gpt-chirho/target/debug/haskelujah
+# CLI SHA256: 2466efcd6e27a7ba877a2f865ce5aa723129c70bae6aea99ce044751b89ca39f
+#   HEAD and binary digest asserted unchanged before and after all four corpus passes
+# method: haskelujah check <file>, timeout 15s/file, parallelism 4;
+#   timeouts re-run alone with a 60s cap; a rejection contains `error[E` or `panic`;
+#   unexpected nonzero exits fail the runner instead of silently counting as accepts
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   (no subdirectories)
 #
 # RESULT: CORRECTLY-REJECTED=222 WRONGLY-ACCEPTED=545 TOTAL=767 (28.9% reject rate)
-# STABILITY: DETERMINISTIC — two complete passes, zero timeouts, byte-identical sets
+# STABILITY: DETERMINISTIC — two complete passes, zero timeouts/unexpected exits;
+#   sets byte-identical to each other AND the previously committed list
 # QUOTE-AS: ~29% (222 of 767) — do not quote a third significant figure
 #
 # QUOTE BOTH AXES TOGETHER. The companion artifact is ~93% (877 of 938).
-# This axis crosses a displayed rounding boundary (~28% -> ~29%); the pending public-site
-# redeploy must consume both current artifacts.
+# Both rounding labels are unchanged. No public-site deployment is part of this lane.
 #
-# CHANGE SINCE LAST MEASUREMENT: 218 -> 222 (net +4).
+# CHANGE SINCE LAST MEASUREMENT: 222 -> 222 (no movement in either direction).
+#   These are typecheck verdicts, not execution. Separate execution evidence at the
+#   same source commit: 3318 workspace passes, zero failed/ignored/filtered; 126 native
+#   round trips; curated 537/537, including 514 compared execution oracles independently
+#   checked under GHC 9.14.1 at recorded source hashes and 23 compile-only inputs.
+#   See workflows-chirho/testing-chirho/execution-measurement-chirho.md for scope.
+#
+# PREVIOUS MEASUREMENT (ffa2561e, 2026-09-07): 218 -> 222 (net +4).
 #   4 files left the wrongly-accepted set: T23739c tcfail084 tcfail085 tcfail112
 #   0 files entered it.
 #
-# ALL FOUR GAINS ARE REJECTED FOR GHC'S OWN REASON (checked against each file's .stderr):
+# THOSE FOUR GAINS MATCHED GHC'S OWN REASON (verified in that lane against .stderr):
 #   tcfail084 — GHC-53822 "Constructor F does not have field y": E0206 at the field, a
 #     construction naming another constructor's label.
 #   tcfail085 — GHC-95909 "does not have the required strict field(s): y": E0207 naming
@@ -29,7 +40,7 @@
 #   T23739c — `Int{}` names a type, not a data constructor: E0202 "unbound constructor"
 #     (the record-construction arm used to invent a fresh type for a scheme-less name).
 #
-# T18869 is now rejected for GHC-95909 (E0207 on the omitted strict field), no longer for
+# That lane also changed T18869 to GHC-95909 (E0207 on the omitted strict field), not
 # arity; it stays in the correctly-rejected set. Record construction and update go by the
 # constructor's FIELD SET: an omitted lazy field is allowed (missing-field thunk, forced only
 # on use), an omitted strict field is E0207, an undeclared field is E0206; `C {}` on a
