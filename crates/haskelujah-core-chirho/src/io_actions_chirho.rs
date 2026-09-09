@@ -17,6 +17,8 @@ use crate::expr_chirho::{
 };
 use crate::transform_chirho::{children_mut_chirho, max_expr_id_chirho};
 
+mod scopes_chirho;
+
 const ACTION_CON_CHIRHO: &str = "$IOActionChirho";
 const RESULT_CON_CHIRHO: &str = "$IOResultChirho";
 
@@ -28,6 +30,11 @@ pub fn prepare_io_actions_chirho(
     entry_name_chirho: &str,
 ) -> CoreModuleChirho {
     let mut prepared_chirho = module_chirho.clone();
+    let entry_id_chirho = module_chirho
+        .bindings_chirho
+        .iter()
+        .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == entry_name_chirho)
+        .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho);
     let mut maximum_chirho = module_chirho
         .names_chirho
         .keys()
@@ -92,10 +99,13 @@ pub fn prepare_io_actions_chirho(
         });
     }
     for binding_chirho in &mut prepared_chirho.bindings_chirho {
-        context_chirho.rewrite_chirho(&mut binding_chirho.rhs_chirho);
+        let constructs_actions_chirho =
+            context_chirho.rewrite_chirho(&mut binding_chirho.rhs_chirho);
         // Existing backend name adapters implement raw effects. The generated
         // functions now construct actions and must not enter those adapters.
-        if operation_chirho(&binding_chirho.binder_chirho.name_chirho).is_some() {
+        if constructs_actions_chirho
+            || operation_chirho(&binding_chirho.binder_chirho.name_chirho).is_some()
+        {
             binding_chirho.binder_chirho.name_chirho = format!(
                 "$io_binding_{}_chirho",
                 binding_chirho.binder_chirho.id_chirho.0
@@ -109,7 +119,7 @@ pub fn prepare_io_actions_chirho(
     if let Some(index_chirho) = prepared_chirho
         .bindings_chirho
         .iter()
-        .position(|binding_chirho| binding_chirho.binder_chirho.name_chirho == entry_name_chirho)
+        .position(|binding_chirho| Some(binding_chirho.binder_chirho.id_chirho) == entry_id_chirho)
     {
         let entry_chirho = &mut prepared_chirho.bindings_chirho[index_chirho];
         let value_chirho = var_chirho(&entry_chirho.binder_chirho);
@@ -151,6 +161,7 @@ enum OperationChirho {
     BindChirho,
     ThenChirho,
     EffectChirho(&'static str, usize),
+    ScopedChirho(&'static str, usize),
 }
 
 impl OperationChirho {
@@ -158,13 +169,15 @@ impl OperationChirho {
         match self {
             Self::ReturnChirho => 1,
             Self::BindChirho | Self::ThenChirho => 2,
-            Self::EffectChirho(_, arity_chirho) => arity_chirho,
+            Self::EffectChirho(_, arity_chirho) | Self::ScopedChirho(_, arity_chirho) => {
+                arity_chirho
+            }
         }
     }
 }
 
 fn operation_chirho(name_chirho: &str) -> Option<OperationChirho> {
-    use OperationChirho::{BindChirho, EffectChirho, ReturnChirho, ThenChirho};
+    use OperationChirho::{BindChirho, EffectChirho, ReturnChirho, ScopedChirho, ThenChirho};
     Some(match name_chirho {
         "return" | "pure" | "returnIO#" => ReturnChirho,
         ">>=" | "bindIO#" => BindChirho,
@@ -183,6 +196,15 @@ fn operation_chirho(name_chirho: &str) -> Option<OperationChirho> {
         "readIORef" | "readIORef#" => EffectChirho("readIORef#", 1),
         "writeIORef" | "writeIORef#" => EffectChirho("writeIORef#", 2),
         "modifyIORef" | "modifyIORef#" => EffectChirho("modifyIORef#", 2),
+        "newTVar" | "newTVar#" | "newTVarIO" | "newTVarIO#" => EffectChirho("newTVar#", 1),
+        "readTVar" | "readTVar#" | "readTVarIO" | "readTVarIO#" => EffectChirho("readTVar#", 1),
+        "writeTVar" | "writeTVar#" => EffectChirho("writeTVar#", 2),
+        "retry" | "retry#" => EffectChirho("retry#", 0),
+        "atomically" | "atomically#" => ScopedChirho("atomically#", 1),
+        "catch" | "catch#" => ScopedChirho("catch#", 2),
+        "try" | "try#" => ScopedChirho("try#", 1),
+        "finally" | "finally#" => ScopedChirho("finally#", 2),
+        "bracket" | "bracket#" => ScopedChirho("bracket#", 3),
         "evaluate" => EffectChirho("force#", 1),
         "throwIO" | "throwIO#" => EffectChirho("throw#", 1),
         _ => return None,
@@ -207,22 +229,23 @@ impl ActionsChirho {
         }
     }
 
-    fn rewrite_chirho(&mut self, expression_chirho: &mut CoreExprChirho) {
+    fn rewrite_chirho(&mut self, expression_chirho: &mut CoreExprChirho) -> bool {
+        let mut changed_chirho = false;
         children_mut_chirho(expression_chirho, &mut |child_chirho| {
-            self.rewrite_chirho(child_chirho)
+            changed_chirho |= self.rewrite_chirho(child_chirho);
         });
         let CoreExprChirho::PrimOpChirho {
             name_chirho,
             args_chirho,
         } = expression_chirho
         else {
-            return;
+            return changed_chirho;
         };
         let Some(operation_chirho) = operation_chirho(name_chirho) else {
-            return;
+            return changed_chirho;
         };
         if operation_chirho.arity_chirho() != args_chirho.len() {
-            return; // The backend's unsupported-primitive diagnostic retains the malformed call.
+            return changed_chirho; // Keep a malformed primitive for the backend's diagnostic.
         }
         let mut arguments_chirho = std::mem::take(args_chirho).into_iter();
         let execution_chirho = match operation_chirho {
@@ -255,12 +278,16 @@ impl ActionsChirho {
                     }],
                 )
             }
+            OperationChirho::ScopedChirho(name_chirho, _) => {
+                self.scoped_chirho(name_chirho, arguments_chirho.collect())
+            }
         };
         let token_chirho = self.binder_chirho("io_execution");
         *expression_chirho = CoreExprChirho::ConAppChirho {
             con_name_chirho: ACTION_CON_CHIRHO.to_string(),
             args_chirho: vec![lambda_chirho(token_chirho, execution_chirho)],
         };
+        true
     }
 
     fn raw_effect_chirho(

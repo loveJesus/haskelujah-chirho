@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Close lazy field and nonrecursive-let computations over an explicit environment
+//! Close lazy argument, field and nonrecursive-let computations over an explicit environment
 //! before native lowering. Both native backends can thunk a saturated known call,
 //! but neither may evaluate a lazy binding just because it is a primitive or case.
 //! Workflow: testing-chirho/execution-oracles-chirho.md.
@@ -16,6 +16,8 @@ use crate::expr_chirho::{
 };
 use crate::simplify_chirho::free_vars_chirho;
 use crate::transform_chirho::{children_mut_chirho, max_expr_id_chirho};
+
+mod demand_chirho;
 
 /// Keep the shared Core input unchanged. Added functions are closed and always
 /// have one argument, regardless of capture count, so no trampoline arity limit
@@ -36,6 +38,7 @@ pub fn prepare_native_thunks_chirho(module_chirho: &CoreModuleChirho) -> CoreMod
         next_id_chirho: highest_id_chirho.checked_add(1).expect("Core id space"),
         names_chirho: HashMap::new(),
         lifted_chirho: Vec::new(),
+        demands_chirho: demand_chirho::analyze_chirho(module_chirho),
     };
     for binding_chirho in &mut prepared_chirho.bindings_chirho {
         context_chirho.rewrite_chirho(&mut binding_chirho.rhs_chirho, &mut HashMap::new());
@@ -53,6 +56,7 @@ struct NativeThunksChirho {
     next_id_chirho: u32,
     names_chirho: HashMap<CoreIdChirho, String>,
     lifted_chirho: Vec<CoreBindingChirho>,
+    demands_chirho: demand_chirho::DemandsChirho,
 }
 
 impl NativeThunksChirho {
@@ -75,6 +79,54 @@ impl NativeThunksChirho {
         scope_chirho: &mut HashMap<CoreIdChirho, BinderChirho>,
     ) {
         match expression_chirho {
+            CoreExprChirho::AppChirho { .. } => {
+                let application_chirho = std::mem::replace(
+                    expression_chirho,
+                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                );
+                let (mut function_chirho, arguments_chirho) =
+                    demand_chirho::split_application_chirho(application_chirho);
+                let mut head_chirho = &function_chirho;
+                while let CoreExprChirho::TyAppChirho { expr_chirho, .. } = head_chirho {
+                    head_chirho = expr_chirho;
+                }
+                let mask_chirho = if let CoreExprChirho::VarChirho(id_chirho) = head_chirho {
+                    self.demands_chirho
+                        .get(id_chirho)
+                        .filter(|mask_chirho| arguments_chirho.len() >= mask_chirho.len())
+                        .cloned()
+                        .unwrap_or_default()
+                } else {
+                    Vec::new()
+                };
+                self.rewrite_chirho(&mut function_chirho, scope_chirho);
+                for (index_chirho, mut argument_chirho) in arguments_chirho.into_iter().enumerate()
+                {
+                    self.rewrite_chirho(&mut argument_chirho, scope_chirho);
+                    if mask_chirho.get(index_chirho).copied().unwrap_or(false) {
+                        let ty_chirho = TyChirho::VarChirho(TyVarChirho(self.next_id_chirho));
+                        let binder_chirho =
+                            self.binder_chirho("demanded_argument", ty_chirho.clone());
+                        argument_chirho = CoreExprChirho::CaseChirho {
+                            scrutinee_chirho: Box::new(argument_chirho),
+                            bind_chirho: binder_chirho.clone(),
+                            result_ty_chirho: ty_chirho,
+                            alts_chirho: vec![CoreAltChirho {
+                                con_chirho: AltConChirho::DefaultChirho,
+                                binders_chirho: vec![],
+                                rhs_chirho: CoreExprChirho::VarChirho(binder_chirho.id_chirho),
+                            }],
+                        };
+                    } else if needs_thunk_chirho(&argument_chirho) {
+                        argument_chirho = self.close_thunk_chirho(argument_chirho, scope_chirho);
+                    }
+                    function_chirho = CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(function_chirho),
+                        arg_chirho: Box::new(argument_chirho),
+                    };
+                }
+                *expression_chirho = function_chirho;
+            }
             CoreExprChirho::LamChirho {
                 binder_chirho,
                 body_chirho,

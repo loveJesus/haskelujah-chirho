@@ -23,6 +23,7 @@
 use std::collections::HashMap;
 
 mod conditionals_chirho;
+mod setup_chirho;
 use conditionals_chirho::preprocess_cabal_conditionals_chirho;
 
 use crate::version_chirho::{
@@ -272,7 +273,7 @@ pub fn parse_cabal_chirho(input_chirho: &str) -> PackageDescChirho {
             }
             StanzaChirho::CustomSetupChirho => {
                 pkg_chirho.custom_setup_chirho =
-                    Some(parse_build_info_chirho(stanza_fields_chirho));
+                    Some(setup_chirho::parse_setup_chirho(stanza_fields_chirho));
             }
         }
     }
@@ -2079,13 +2080,39 @@ build-type: Custom
 
 custom-setup
   setup-depends: base >=4.14, Cabal >=3.0
+
+library
+  build-depends: text
 "#;
         let pkg_chirho = parse_cabal_chirho(input_chirho);
         assert_eq!(pkg_chirho.build_type_chirho.as_deref(), Some("Custom"));
-        // custom-setup is not recognized as a stanza header in our parser
-        // because it uses a hyphenated name without a space; let's verify
-        // it at least parses without error
-        assert!(pkg_chirho.custom_setup_chirho.is_some() || true);
+        let setup_chirho = pkg_chirho
+            .custom_setup_chirho
+            .expect("custom-setup stanza survives");
+        assert_eq!(
+            setup_chirho.build_depends_chirho,
+            vec![
+                DependencyChirho {
+                    package_chirho: "base".to_string(),
+                    constraint_chirho: parse_version_constraint_chirho(">=4.14").unwrap()
+                },
+                DependencyChirho {
+                    package_chirho: "Cabal".to_string(),
+                    constraint_chirho: parse_version_constraint_chirho(">=3.0").unwrap()
+                },
+            ]
+        );
+        assert_eq!(
+            pkg_chirho
+                .library_chirho
+                .unwrap()
+                .build_info_chirho
+                .build_depends_chirho,
+            vec![DependencyChirho {
+                package_chirho: "text".to_string(),
+                constraint_chirho: VersionConstraintChirho::AnyChirho
+            }]
+        );
     }
 
     #[test]

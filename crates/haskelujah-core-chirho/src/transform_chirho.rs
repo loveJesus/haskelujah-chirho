@@ -4,6 +4,54 @@
 
 use crate::expr_chirho::CoreExprChirho;
 
+pub(crate) fn children_chirho<'a>(
+    expression_chirho: &'a CoreExprChirho,
+    visit_chirho: &mut impl FnMut(&'a CoreExprChirho),
+) {
+    match expression_chirho {
+        CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => {}
+        CoreExprChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+        } => {
+            visit_chirho(fun_chirho);
+            visit_chirho(arg_chirho);
+        }
+        CoreExprChirho::LamChirho { body_chirho, .. }
+        | CoreExprChirho::TyLamChirho { body_chirho, .. }
+        | CoreExprChirho::TyAppChirho {
+            expr_chirho: body_chirho,
+            ..
+        } => visit_chirho(body_chirho),
+        CoreExprChirho::LetChirho {
+            binds_chirho,
+            body_chirho,
+            ..
+        } => {
+            for (_, rhs_chirho) in binds_chirho {
+                visit_chirho(rhs_chirho);
+            }
+            visit_chirho(body_chirho);
+        }
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho,
+            alts_chirho,
+            ..
+        } => {
+            visit_chirho(scrutinee_chirho);
+            for alternative_chirho in alts_chirho {
+                visit_chirho(&alternative_chirho.rhs_chirho);
+            }
+        }
+        CoreExprChirho::PrimOpChirho { args_chirho, .. }
+        | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
+            for argument_chirho in args_chirho {
+                visit_chirho(argument_chirho);
+            }
+        }
+    }
+}
+
 pub(crate) fn children_mut_chirho(
     expression_chirho: &mut CoreExprChirho,
     visit_chirho: &mut impl FnMut(&mut CoreExprChirho),

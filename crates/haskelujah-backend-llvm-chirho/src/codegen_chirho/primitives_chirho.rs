@@ -12,6 +12,15 @@ impl LlvmCodegenChirho {
         name_chirho: &str,
         args_chirho: &[CoreExprChirho],
     ) -> String {
+        if name_chirho == "getLine#" && args_chirho.is_empty() {
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = call i64 @haskelujah_get_line_chirho()"
+            )
+            .unwrap();
+            return result_chirho;
+        }
         if name_chirho == "isHeapObjectChirho#" && args_chirho.len() == 1 {
             let value_chirho = self.compile_expr_chirho(&args_chirho[0]);
             let value_chirho = self.emit_force_thunk_chirho(&value_chirho);

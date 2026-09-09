@@ -67,3 +67,39 @@ fn io_payload_is_lazy_until_a_case_demands_it_chirho() {
         "alive\nouter\nliteral\n",
     );
 }
+
+#[test]
+fn maybe_transformer_uses_the_underlying_maybe_dictionary_chirho() {
+    assert_output_chirho(
+        r#"import Control.Monad.Trans.Maybe (MaybeT(..))
+compChirho :: MaybeT Maybe Int
+compChirho = bindMaybeT (MaybeT (Just (Just 10))) (\valueChirho -> returnMaybeT (valueChirho + 5))
+stoppedChirho :: MaybeT Maybe Int
+stoppedChirho = bindMaybeT (MaybeT Nothing) (\_ -> error "continuedChirho")
+main = do
+  case runMaybeT compChirho of
+    Just (Just valueChirho) -> print valueChirho
+    _ -> print 0
+  case runMaybeT stoppedChirho of
+    Nothing -> putStrLn "stopped"
+    _ -> putStrLn "wrong"
+"#,
+        "15\nstopped\n",
+    );
+}
+
+#[test]
+fn maybe_transformer_preserves_the_underlying_list_choices_chirho() {
+    assert_output_chirho(
+        r#"import Control.Monad.Trans.Maybe (MaybeT(..))
+compChirho :: MaybeT [] Int
+compChirho = bindMaybeT (MaybeT [Just 10, Nothing, Just 20]) (\valueChirho -> returnMaybeT (valueChirho + 5))
+main = case runMaybeT compChirho of
+  [Just firstChirho, Nothing, Just secondChirho] -> do
+    print firstChirho
+    print secondChirho
+  _ -> putStrLn "wrong"
+"#,
+        "15\n25\n",
+    );
+}

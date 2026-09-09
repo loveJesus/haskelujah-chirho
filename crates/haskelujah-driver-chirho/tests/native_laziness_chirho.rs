@@ -134,3 +134,44 @@ main = do
         "expected {expected_chirho:?} on every engine; measured {outputs_chirho:?}"
     );
 }
+
+#[test]
+fn call_demand_proofs_preserve_ignored_conditional_partial_and_recursive_arguments_chirho() {
+    let source_chirho = r#"module Main where
+{-# NOINLINE ignoreChirho #-}
+ignoreChirho :: Int -> Int
+ignoreChirho _ = 42
+{-# NOINLINE chooseChirho #-}
+chooseChirho :: Bool -> Int -> Int
+chooseChirho flagChirho valueChirho = if flagChirho then 0 else valueChirho
+{-# NOINLINE keepChirho #-}
+keepChirho :: Int -> Int -> Int
+keepChirho _ valueChirho = valueChirho
+loopChirho :: Int -> Int -> Int
+loopChirho countChirho unusedChirho = if countChirho == 0 then 0 else loopChirho (countChirho - 1) unusedChirho
+main = do
+  print (ignoreChirho (error "ignored-chirho"))
+  print (chooseChirho True (error "unchosen-chirho"))
+  let partialChirho = keepChirho (error "partial-chirho")
+  print (partialChirho 7)
+  print (loopChirho 100 (error "recursive-unused-chirho"))
+"#;
+    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "CallDemandChirho.hs",
+        None,
+    )
+    .unwrap_or_else(|error_chirho| panic!("STG: {error_chirho}"));
+    assert_eq!(machine_chirho.io_output_chirho, "42\n0\n7\n0\n");
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        assert_eq!(
+            native_round_trip_chirho(source_chirho, backend_chirho, "")
+                .unwrap_or_else(|error_chirho| panic!("{backend_chirho:?}: {error_chirho}")),
+            (0, "42\n0\n7\n0\n".to_string())
+        );
+    }
+}

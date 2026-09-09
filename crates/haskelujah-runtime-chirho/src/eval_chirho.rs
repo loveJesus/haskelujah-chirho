@@ -385,12 +385,14 @@ impl MachineChirho {
     }
 
     /// Run garbage collection if the allocation threshold has been reached.
-    /// Extracts roots from the stack and argument registers.
-    fn maybe_gc_chirho(&mut self) {
+    /// Extracts roots from the stack, argument registers and allocations not
+    /// yet published into either. Collection is a safepoint, not part of alloc.
+    fn maybe_gc_chirho(&mut self, pending_roots_chirho: &[HeapAddrChirho]) {
         if !self.gc_state_chirho.notify_alloc_chirho() {
             return;
         }
-        let roots_chirho = self.collect_roots_chirho();
+        let mut roots_chirho = self.collect_roots_chirho();
+        roots_chirho.extend_from_slice(pending_roots_chirho);
         let stats_chirho = self
             .gc_state_chirho
             .collect_chirho(&mut self.heap_chirho, &roots_chirho);
@@ -675,7 +677,7 @@ impl MachineChirho {
                     let closure_chirho =
                         ClosureChirho::con_chirho(tag_chirho, &name_chirho, fields_chirho);
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
-                    self.maybe_gc_chirho();
+                    self.maybe_gc_chirho(&[addr_chirho]);
                     let r_chirho = self.return_con_chirho(addr_chirho);
                     dispatch_action_chirho!(self, pc_chirho, r_chirho);
                 }
@@ -696,7 +698,7 @@ impl MachineChirho {
                         resolved_fields_chirho,
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
-                    self.maybe_gc_chirho();
+                    self.maybe_gc_chirho(&[addr_chirho]);
                     let r_chirho = self.return_con_chirho(addr_chirho);
                     dispatch_action_chirho!(self, pc_chirho, r_chirho);
                 }
@@ -859,9 +861,12 @@ impl MachineChirho {
                     body_chirho,
                 } => {
                     // Allocate all closures (addresses are sequential)
-                    for c_chirho in closures_chirho {
-                        self.heap_chirho.alloc_chirho(c_chirho);
-                        self.maybe_gc_chirho();
+                    let allocated_chirho: Vec<_> = closures_chirho
+                        .into_iter()
+                        .map(|closure_chirho| self.heap_chirho.alloc_chirho(closure_chirho))
+                        .collect();
+                    for _address_chirho in &allocated_chirho {
+                        self.maybe_gc_chirho(&allocated_chirho);
                     }
                     pc_chirho = body_chirho;
                 }
@@ -882,7 +887,7 @@ impl MachineChirho {
                         payload_chirho,
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
-                    self.maybe_gc_chirho();
+                    self.maybe_gc_chirho(&[addr_chirho]);
                     // Return the closure as a HeapPtr
                     let val_chirho = ValueChirho::HeapPtrChirho(addr_chirho);
                     let r_chirho = self.return_lit_chirho(val_chirho);
@@ -906,7 +911,7 @@ impl MachineChirho {
                         payload_chirho,
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
-                    self.maybe_gc_chirho();
+                    self.maybe_gc_chirho(&[addr_chirho]);
                     // Store in dest arg register and continue to body
                     if self.arg_regs_chirho.len() <= dest_reg_chirho {
                         self.arg_regs_chirho
@@ -931,7 +936,7 @@ impl MachineChirho {
                         payload_chirho,
                     );
                     let addr_chirho = self.heap_chirho.alloc_chirho(closure_chirho);
-                    self.maybe_gc_chirho();
+                    self.maybe_gc_chirho(&[addr_chirho]);
                     // Store in dest arg register and continue to body
                     if self.arg_regs_chirho.len() <= dest_reg_chirho {
                         self.arg_regs_chirho
@@ -1008,7 +1013,7 @@ impl MachineChirho {
                     // trigger collection; one notification is retained per
                     // heap allocation.
                     for _binding_chirho in &bindings_chirho {
-                        self.maybe_gc_chirho();
+                        self.maybe_gc_chirho(&[]);
                     }
                     pc_chirho = body_chirho;
                 }
@@ -1016,7 +1021,7 @@ impl MachineChirho {
                 // ── Force a thunk ───────────────────────────────────
                 CodeChirho::ForceChirho { thunk_chirho } => {
                     let addr_chirho = self.heap_chirho.alloc_chirho(thunk_chirho);
-                    self.maybe_gc_chirho();
+                    self.maybe_gc_chirho(&[addr_chirho]);
                     pc_chirho = self.emit_enter_chirho(addr_chirho);
                 }
 
@@ -1215,6 +1220,7 @@ impl MachineChirho {
                             | PrimOpKindChirho::ShowEitherChirho
                             | PrimOpKindChirho::ShowOrderingChirho
                             | PrimOpKindChirho::ShowListChirho
+                            | PrimOpKindChirho::IsHeapObjectChirho
                     );
                     let closure_chirho = self.heap_chirho.read_chirho(addr_chirho).clone();
                     let unboxed_chirho = if keep_heap_ptr_chirho {
@@ -1579,6 +1585,15 @@ impl MachineChirho {
     ) -> Result<ValueChirho, EvalErrorChirho> {
         // Handle I/O and special primops first
         match op_chirho {
+            PrimOpKindChirho::IsHeapObjectChirho => {
+                // The operand has reached WHNF through the primitive frame.
+                // Classification must preserve an object's identity, not pass
+                // its closure captures through scalar unboxing.
+                return Ok(ValueChirho::IntChirho(i64::from(matches!(
+                    args_chirho.first(),
+                    Some(ValueChirho::HeapPtrChirho(_))
+                ))));
+            }
             PrimOpKindChirho::ErrorChirho => {
                 let msg_chirho = match args_chirho.first() {
                     Some(ValueChirho::StringChirho(s_chirho)) => s_chirho.clone(),
@@ -5314,7 +5329,7 @@ mod tests_chirho {
             .tvars_chirho
             .insert(0, ValueChirho::HeapPtrChirho(tvar_payload_addr_chirho));
 
-        machine_chirho.maybe_gc_chirho();
+        machine_chirho.maybe_gc_chirho(&[]);
 
         let ioref_payload_chirho = machine_chirho
             .heap_chirho

@@ -39,6 +39,9 @@ use haskelujah_core_chirho::expr_chirho::{
 
 use std::collections::HashMap;
 
+mod lazy_chirho;
+use lazy_chirho::lower_lazy_value_chirho;
+
 pub type PapWrapperKeyChirho = (CoreIdChirho, usize);
 
 /// Variable environment mapping Core IDs to Cranelift SSA values.
@@ -476,11 +479,11 @@ fn try_create_thunk_for_app_chirho(
         .ins()
         .func_addr(cl_types_chirho::I64, func_ref_chirho);
 
-    // Evaluate all arguments eagerly (they go into the thunk's free vars).
+    // Capturing an argument does not demand it.
     let mut fv_vals_chirho: Vec<ClValueChirho> = Vec::with_capacity(args_chirho.len() + 1);
     fv_vals_chirho.push(func_addr_chirho);
     for arg_chirho in &args_chirho {
-        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+        let arg_val_chirho = lower_lazy_value_chirho(builder_chirho, ctx_chirho, arg_chirho);
         let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
         fv_vals_chirho.push(arg_i64_chirho);
     }
@@ -1815,7 +1818,8 @@ fn lower_app_chirho(
             if *_arity_chirho < all_args_chirho.len() {
                 let mut direct_arg_vals_chirho = Vec::with_capacity(*_arity_chirho);
                 for arg_chirho in all_args_chirho.iter().take(*_arity_chirho) {
-                    let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+                    let val_chirho =
+                        lower_lazy_value_chirho(builder_chirho, ctx_chirho, arg_chirho);
                     direct_arg_vals_chirho.push(ensure_i64_chirho(
                         builder_chirho,
                         val_chirho,
@@ -1847,7 +1851,7 @@ fn lower_app_chirho(
                     let mut stored_arg_vals_chirho = Vec::with_capacity(all_args_chirho.len());
                     for arg_chirho in &all_args_chirho {
                         let arg_val_chirho =
-                            lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+                            lower_lazy_value_chirho(builder_chirho, ctx_chirho, arg_chirho);
                         stored_arg_vals_chirho.push(ensure_i64_chirho(
                             builder_chirho,
                             arg_val_chirho,
@@ -1878,7 +1882,7 @@ fn lower_app_chirho(
             // Lower all arguments.
             let mut arg_vals_chirho = Vec::new();
             for a_chirho in &all_args_chirho {
-                let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, a_chirho);
+                let val_chirho = lower_lazy_value_chirho(builder_chirho, ctx_chirho, a_chirho);
                 arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, val_chirho, false));
             }
             append_lifted_capture_arg_vals_chirho(
@@ -1934,7 +1938,7 @@ fn lower_self_tail_call_chirho(
 
     let mut jump_arg_vals_chirho = Vec::with_capacity(*arity_chirho);
     for arg_expr_chirho in &all_args_chirho {
-        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+        let arg_val_chirho = lower_lazy_value_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
         jump_arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, arg_val_chirho, false));
     }
     append_lifted_capture_arg_vals_chirho(
@@ -2210,7 +2214,7 @@ fn lower_indirect_app_chirho(
     let fun_ptr_i64_chirho = ensure_i64_chirho(builder_chirho, fun_ptr_chirho, false);
     let mut arg_vals_chirho = Vec::with_capacity(args_chirho.len());
     for arg_chirho in args_chirho {
-        let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
+        let arg_val_chirho = lower_lazy_value_chirho(builder_chirho, ctx_chirho, arg_chirho);
         arg_vals_chirho.push(ensure_i64_chirho(builder_chirho, arg_val_chirho, false));
     }
     lower_indirect_app_values_chirho(

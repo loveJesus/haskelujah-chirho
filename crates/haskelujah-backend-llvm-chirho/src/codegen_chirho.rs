@@ -16,6 +16,7 @@
 //! The full STG machine with lazy evaluation, thunks, closures, and
 //! info tables will be added incrementally.
 
+mod lazy_chirho;
 mod primitives_chirho;
 
 use std::collections::{HashMap, HashSet};
@@ -270,11 +271,11 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
 
-        // Evaluate all arguments eagerly
+        // Capturing an argument does not demand it.
         let mut fv_vals_chirho = Vec::with_capacity(args_chirho.len() + 1);
         fv_vals_chirho.push(fn_addr_tmp_chirho.clone());
         for arg_chirho in &args_chirho {
-            let arg_val_chirho = self.compile_expr_chirho(arg_chirho);
+            let arg_val_chirho = self.compile_lazy_value_chirho(arg_chirho);
             fv_vals_chirho.push(arg_val_chirho);
         }
 
@@ -2325,7 +2326,7 @@ impl LlvmCodegenChirho {
                 let callee_chirho = strip_runtime_tyapps_chirho(callee_chirho);
                 let arg_vals_chirho: Vec<String> = args_chirho
                     .iter()
-                    .map(|a_chirho| self.compile_expr_chirho(a_chirho))
+                    .map(|a_chirho| self.compile_lazy_value_chirho(a_chirho))
                     .collect();
 
                 if let CoreExprChirho::VarChirho(id_chirho) = callee_chirho {
@@ -2750,7 +2751,7 @@ impl LlvmCodegenChirho {
 
         let arg_vals_chirho: Vec<String> = args_chirho
             .iter()
-            .map(|arg_chirho| self.compile_expr_chirho(arg_chirho))
+            .map(|arg_chirho| self.compile_lazy_value_chirho(arg_chirho))
             .collect();
         for (param_id_chirho, arg_val_chirho) in param_ids_chirho.iter().zip(arg_vals_chirho.iter())
         {
@@ -3292,15 +3293,7 @@ impl LlvmCodegenChirho {
 
         let field_vals_chirho: Vec<String> = args_chirho
             .iter()
-            .map(|arg_chirho| {
-                // Try lazy thunk for function application args (enables
-                // infinite data structures like repeat x = x : repeat x).
-                if let Some(thunk_val_chirho) = self.try_create_thunk_for_app_chirho(arg_chirho) {
-                    thunk_val_chirho
-                } else {
-                    self.compile_expr_chirho(arg_chirho)
-                }
-            })
+            .map(|arg_chirho| self.compile_lazy_value_chirho(arg_chirho))
             .collect();
         for field_val_chirho in &field_vals_chirho {
             self.emit_gc_root_push_i64_chirho(field_val_chirho);

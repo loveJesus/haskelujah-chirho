@@ -276,3 +276,41 @@ and harness repairs support that objective; workspace greens are not corpus gain
 - Checkpoint only: the branch preserves the accumulated repairs and provisional
   IO lowering. This is not a tested main-branch landing. Neither measurement
   artifact nor the canonical progress row has been marked complete.
+- Recovery checkpoint `ef11029e` preserves that state on `gpt-test-repairs-chirho`.
+  The follow-up action controls now distinguish action WHNF, repeated execution,
+  unforced return/bind payloads and fresh input. All three sources pass STG, LLVM
+  and Cranelift against independently checked GHC 9.14.1 outputs. The existing
+  IO group is 38/38; scoped catch/try/finally/bracket/atomically operations execute
+  the inner action rather than treating an action value as its result.
+- IORef helper generation had two copies and treated readIORef as a pure result.
+  One focused generator now sequences read then write. MaybeT helper generation
+  retains `m (Maybe a)` and consumes the checker-proved Monad dictionary, including
+  its Applicative superclass for pure. Five interpreter controls pass with IO,
+  Maybe and list instances; general transformer inference remains out of scope.
+- Lazy function arguments now use the same thunk-producing boundary as fields.
+  The first broader native run was 124/126: Cranelift's numeric loop aborted with
+  a thunk blackhole and LLVM's 100-million-step loop exceeded 2 GiB. A finite
+  descending demand analysis proves parameters demanded by every terminating
+  branch of a saturated call, preserving laziness elsewhere. Both unchanged
+  loop oracles pass focused (Cranelift 1.64 seconds, LLVM 29.28 seconds). The new
+  ignored/conditional/partial/recursive-argument control passes on all three
+  engines against GHC's 42/0/7/0. The full native rerun remains final-gate work;
+  this does not establish the cause of every possible
+  native blackhole or solve the general runtime representation problem.
+- The sieve regression was traced to a GC tombstone, not a constructor mismatch:
+  allocation paths collected before publishing the fresh return/register value.
+  Safepoints now explicitly include pending allocations. Four forced-collection
+  controls went red before the fix and pass after it; the unchanged sieve prints
+  25 again. The separate native GC contract has not been conflated with this STG
+  heap-index representation.
+- The strengthened step-limit property passes all 100 randomized cases, requiring
+  the exact Fibonacci value or the requested step-limit diagnostic (91.98 seconds).
+- All-target clippy exposed a pre-existing Cabal test tautology (`condition || true`).
+  The real assertion then failed: custom-setup existed but its setup-depends list
+  was dropped. A focused setup parser now retains names and version constraints,
+  scoped separately from library dependencies; package library tests are 92/92.
+  Workspace lint warnings, including Chirho enum-name style warnings and large-file
+  structural debt, remain reported failures rather than a zero-warning claim.
+- Follow-up checkpoint is ready for remote backup after focused controls. The
+  complete workspace run, all native round trips and final two-pass-per-axis CLI
+  measurements remain owed before main can receive a verified landing.

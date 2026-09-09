@@ -27,7 +27,8 @@ GHC version before choosing a compiler repair or an input/oracle correction.
 flowchart TD
     program_chirho[Native behavioral source] --> frontend_chirho[Compiler produces Core; frontend errors fail]
     frontend_chirho --> actions_chirho[prepare_io_actions_chirho separates reusable actions from lazy results]
-    actions_chirho --> thunks_chirho[prepare_native_thunks_chirho closes lazy fields and nonrecursive lets over one environment]
+    actions_chirho --> demands_chirho[Analyze saturated-call demand; every terminating branch must require a strict argument]
+    demands_chirho --> thunks_chirho[prepare_native_thunks_chirho closes remaining lazy arguments, fields and nonrecursive lets over one environment]
     thunks_chirho --> backend_chirho[Selected backend emits checked executable IR or object]
     backend_chirho --> link_chirho[Bounded RTS build and native link; nonzero status or stderr fails]
     link_chirho --> run_chirho[run_bounded_with_memory_chirho: process group, closed stdin, deadline, bounded pipes and memory]
@@ -64,16 +65,23 @@ primitive, recursive binding, or FFI adapter has been audited.
 | Native numeric primitive or C string operation | The adapter forces precisely the operands the strict operation consumes before interpreting their bits or passing a raw pointer to C. putStr/putStrLn and file-path/content boundaries must not pass a thunk address to libc. |
 | List-to-C-string packing | Demand each spine cell and character head as consumed; preserve a GC root for the remaining list while demanding an allocating character computation. Do not interpret a thunk pointer as a character code. |
 | Native thunk entry/update | Follow indirections to WHNF, preserve all 64 result bits, and memoize without confusing state with payload. Root active evaluations across allocation. |
-| GC roots | Allocation-registry membership is required before dereference. Raw allocation addresses are legitimate roots during field initialization; the tagged-value policy must not be imposed on the root API. |
+| Native GC roots | Allocation-registry membership is required before dereference. Raw allocation addresses are legitimate roots during field initialization; the tagged-value policy must not be imposed on the root API. |
+| STG allocation safepoints | The heap-index interpreter must include the newly allocated object until it has been published into a register or return continuation. Its pending-root list is distinct from native pointer tagging. Forced-GC allocation controls must collect and still use the result. |
 
 `native_thunks_chirho` prepares both native backends from the same immutable Core
 input. Lifted computations receive one packed environment, including when there
 are more captures than a direct call trampoline accepts. This does not claim
-general recursive non-function lets or knot tying are solved.
+general recursive non-function lets or knot tying are solved. Saturated-call
+demand proofs become explicit Core cases; partial calls and unproved arguments
+stay lazy. The analysis descends a finite function-parameter lattice. Unknown
+primitives/callees supply no argument proof, and constructors demand no fields.
+Ignored, conditional, partially applied and recursively unused arguments are
+execution controls against accidental eagerness, not IR-spelling assertions.
 
 The shared-source behavioral controls live in `codegen_scaling_chirho`
 (three pattern programs) and `native_laziness_chirho` (field demand and reusable
-IO actions). Each requires STG, LLVM and Cranelift to match an independently
+IO actions), plus `io_actions_chirho` (action WHNF, repeated input and list-shared
+actions). Each requires STG, LLVM and Cranelift to match an independently
 specified output or stage-qualified runtime error. The other two scaling tests measure resource growth, not
 three-engine execution. `show_precedence_chirho` separately checks eight STG
 oracles and a nested-Just native oracle. The 126 native round trips are not
@@ -84,6 +92,12 @@ The IO-action execution lowering is shared by STG and the two native backends;
 the Wasm execution path has not been migrated to this representation. The tasklist
 records its provisional gate status. The Unix address-space-limit test is compiled
 conditionally; macOS execution does not establish a Linux runtime result.
+
+Generated MaybeT helpers preserve the underlying monadic action. They accept the
+call-site Monad dictionary; pure is selected from its Applicative superclass,
+and bind from Monad itself. The same helper body is tested with IO, Maybe and
+list dictionaries. IORef modification similarly sequences readIORef before
+writeIORef; an action is never substituted for the value it will produce.
 
 ## Fixture and discovery boundaries
 
