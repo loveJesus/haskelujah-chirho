@@ -152,7 +152,8 @@ impl InferCtxChirho {
         let mut reported_chirho = false;
         for field_chirho in fields_chirho {
             let field_name_chirho =
-                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho()).to_string();
+                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho())
+                    .to_string();
             if declared_chirho.contains(&field_name_chirho) {
                 continue;
             }
@@ -184,7 +185,8 @@ impl InferCtxChirho {
     ) {
         for field_chirho in fields_chirho {
             let given_chirho =
-                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho()).to_string();
+                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho())
+                    .to_string();
             if !ordered_field_names_chirho.contains(&given_chirho) {
                 self.report_field_not_declared_by_constructor_chirho(
                     con_name_chirho,
@@ -285,7 +287,8 @@ impl InferCtxChirho {
         }
         for field_chirho in fields_chirho {
             let field_name_chirho =
-                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho()).to_string();
+                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho())
+                    .to_string();
             self.report_field_not_declared_by_constructor_chirho(
                 con_name_chirho,
                 &field_name_chirho,
@@ -304,13 +307,18 @@ impl InferCtxChirho {
         con_name_chirho: &str,
         span_chirho: SpanChirho,
     ) {
-        if !self.strict_positional_constructors_chirho.contains(con_name_chirho) {
+        if !self
+            .strict_positional_constructors_chirho
+            .contains(con_name_chirho)
+        {
             return;
         }
         self.diagnostics_chirho
             .push_chirho(DiagnosticChirho::error_with_code_chirho(
                 ErrorCodeChirho::error_chirho(RECORD_STRICT_FIELD_CODE_CHIRHO),
-                format!("constructor `{con_name_chirho}` does not have the required strict field(s)"),
+                format!(
+                    "constructor `{con_name_chirho}` does not have the required strict field(s)"
+                ),
                 span_chirho,
             ));
     }
@@ -325,7 +333,9 @@ impl InferCtxChirho {
         self.diagnostics_chirho
             .push_chirho(DiagnosticChirho::error_with_code_chirho(
                 ErrorCodeChirho::error_chirho(RECORD_FIELD_CODE_CHIRHO),
-                format!("constructor `{con_name_chirho}` does not have a field `{field_name_chirho}`"),
+                format!(
+                    "constructor `{con_name_chirho}` does not have a field `{field_name_chirho}`"
+                ),
                 span_chirho,
             ));
     }

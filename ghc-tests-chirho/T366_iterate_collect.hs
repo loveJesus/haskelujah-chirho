@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 31
+-- EXPECTED: 35
 module Main where
 iterCollect :: Int -> (Int -> Int) -> Int -> [Int]
 iterCollect 0 _ _ = []

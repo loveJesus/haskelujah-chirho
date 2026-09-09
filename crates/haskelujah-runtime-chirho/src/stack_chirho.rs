@@ -87,6 +87,8 @@ pub enum FrameChirho {
 /// Kinds of primitive operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PrimOpKindChirho {
+    /// Classify a demanded runtime value without treating immediate bits as addresses.
+    IsHeapObjectChirho,
     AddIntChirho,
     SubIntChirho,
     MulIntChirho,

@@ -29,8 +29,8 @@ struct BulkResultChirho {
     error_chirho: Option<String>,
 }
 
-/// Try to parse a .hs file through the Haskelujah frontend.
-/// Uses sibling file search to resolve companion test modules.
+/// Typecheck a .hs file through the source-text frontend. This tracking suite
+/// does not search sibling modules; the published CLI gates cover that seam.
 fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
     let source_chirho =
         fs::read_to_string(path_chirho).map_err(|e_chirho| format!("read error: {}", e_chirho))?;
@@ -42,9 +42,10 @@ fn try_parse_chirho(path_chirho: &Path) -> Result<(), String> {
         .to_string_lossy()
         .to_string();
 
-    // Use compile_source (no sibling scan) to avoid O(n²) file reads
-    // that cause 12GB+ memory usage across 938 files.
-    haskelujah_driver::compile_source_chirho(&source_chirho, &mut sm_chirho, &file_name_chirho)
+    // Full compilation also generates LLVM and Wasm, neither of which belongs
+    // to this check-only measurement. Share the exact frontend initialization
+    // with compilation, including imported builtin/stdlib family definitions.
+    haskelujah_driver::typecheck_source_chirho(&source_chirho, &mut sm_chirho, &file_name_chirho)
         .map(|_| ())
         .map_err(|e_chirho| format!("{}", e_chirho))
 }

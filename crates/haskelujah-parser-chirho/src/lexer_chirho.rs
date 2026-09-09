@@ -1985,47 +1985,15 @@ mod tests_chirho {
 
     #[test]
     fn lex_preprocessed_primitive_bytearray_unsafe_thaw_arr_hash_stays_single_token_chirho() {
-        let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-            "../../.haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs",
-        );
-        let source_path_chirho = std::fs::canonicalize(source_path_chirho)
-            .expect("expected canonical primitive ByteArray path");
-        let output_chirho = std::process::Command::new("cpp")
-            .arg("-traditional")
-            .arg("-P")
-            .arg("-D__GLASGOW_HASKELL__=810")
-            .arg("-DWORD_SIZE_IN_BITS=64")
-            .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
-            .arg("-DMIN_VERSION_template_haskell(x,y,z)=((x)<2||((x)==2&&((y)<16||((y)==16&&(z)<=0))))")
-            .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
-            .arg("-DMIN_VERSION_array(x,y,z)=1")
-            .arg("-DMIN_VERSION_random(x,y,z)=1")
-            .arg("-DMIN_VERSION_transformers(x,y,z)=1")
-            .arg("-DMIN_VERSION_deepseq(x,y,z)=1")
-            .arg("-DMIN_VERSION_hashable(x,y,z)=1")
-            .arg("-DMIN_VERSION_text(x,y,z)=1")
-            .arg("-DMIN_VERSION_bytestring(x,y,z)=1")
-            .arg("-DMIN_VERSION_containers(x,y,z)=1")
-            .arg("-DMIN_VERSION_primitive(x,y,z)=1")
-            .arg("-DMIN_VERSION_integer_gmp(x,y,z)=1")
-            .current_dir(
-                source_path_chirho
-                    .parent()
-                    .expect("expected primitive ByteArray parent dir"),
-            )
-            .arg(
-                source_path_chirho
-                    .file_name()
-                    .expect("expected primitive ByteArray file name"),
-            )
-            .output()
-            .expect("expected cpp to run");
-        assert!(
-            output_chirho.status.success(),
-            "expected cpp to succeed: {}",
-            String::from_utf8_lossy(&output_chirho.stderr)
-        );
-        let source_chirho = String::from_utf8(output_chirho.stdout).expect("expected utf-8 cpp");
+        let source_chirho = crate::test_fixtures_chirho::BYTEARRAY_PREPROCESSED_SOURCE_CHIRHO;
+        let declaration_offset_chirho = source_chirho
+            .find("unsafeThawByteArray (ByteArray arr#)")
+            .expect("expected unsafeThawByteArray declaration");
+        let argument_offset_chirho = declaration_offset_chirho
+            + source_chirho[declaration_offset_chirho..]
+                .find("unsafeCoerce# arr#")
+                .expect("expected unsafeCoerce# argument in unsafeThawByteArray")
+            + "unsafeCoerce# ".len();
         let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
         let mut lexer_chirho = LexerChirho::new_chirho(&source_chirho, file_id_chirho);
         let tokens_chirho = lexer_chirho.lex_all_chirho();
@@ -2034,7 +2002,7 @@ mod tests_chirho {
             .find(|token_chirho| {
                 let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
                 let end_chirho = token_chirho.span_chirho.end_chirho().as_usize_chirho();
-                start_chirho <= 11306 && 11306 < end_chirho
+                start_chirho <= argument_offset_chirho && argument_offset_chirho < end_chirho
             })
             .expect("expected token covering primitive arr# offset");
         let text_chirho = &source_chirho[token_chirho.span_chirho.start_chirho().as_usize_chirho()

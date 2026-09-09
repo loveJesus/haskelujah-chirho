@@ -7,6 +7,8 @@
 //! and backend lowering across execution modes.
 
 mod module_search_chirho;
+mod source_chirho;
+pub use source_chirho::typecheck_source_chirho;
 pub mod splice_chirho;
 pub mod stg_lower_chirho;
 
@@ -20,8 +22,8 @@ use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
-use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
+use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_chirho;
 use haskelujah_backend_wasm_chirho::compile_to_wasm_stub_chirho;
 use haskelujah_core_chirho::{CoreModuleChirho, SimplifyConfigChirho, simplify_module_chirho};
@@ -2745,50 +2747,8 @@ pub fn compile_source_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
-    // Run CPP preprocessing if {-# LANGUAGE CPP #-} is present
-    let preprocessed_chirho = preprocess_cpp_chirho(source_chirho);
-    let effective_source_chirho = &preprocessed_chirho;
-
-    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
-        source_map_chirho,
-        file_name_chirho,
-        effective_source_chirho,
-    );
-    let file_id_chirho = source_file_chirho.file_id_chirho();
-
-    let mut builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
-    let mut imported_types_chirho = std::collections::HashMap::new();
-    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
-    if source_imports_stdlib_chirho(effective_source_chirho) {
-        merge_stdlib_frontend_artifacts_chirho(
-            &mut builtin_ifaces_chirho,
-            &mut imported_types_chirho,
-            &mut imported_type_synonyms_chirho,
-            &mut imported_type_families_chirho,
-        );
-    }
-
-    let frontend_result_chirho = if imported_types_chirho.is_empty()
-        && imported_type_synonyms_chirho.is_empty()
-        && imported_type_families_chirho.is_empty()
-    {
-        run_frontend_chirho(
-            effective_source_chirho,
-            file_id_chirho,
-            &builtin_ifaces_chirho,
-            &imported_types_chirho,
-        )?
-    } else {
-        run_frontend_with_type_synonyms_and_type_families_chirho(
-            effective_source_chirho,
-            file_id_chirho,
-            &builtin_ifaces_chirho,
-            &imported_types_chirho,
-            &imported_type_synonyms_chirho,
-            &imported_type_families_chirho,
-        )?
-    };
+    let frontend_result_chirho =
+        typecheck_source_chirho(source_chirho, source_map_chirho, file_name_chirho)?;
 
     let FrontendResultChirho {
         module_chirho,
@@ -4635,7 +4595,7 @@ pub fn build_cabal_project_chirho(
         let merged_core_chirho = merge_compile_results_core_chirho(
             &project_compile_result_chirho.module_results_chirho,
         )?;
-        let llvm_ir_chirho = compile_core_to_llvm_executable_chirho(&merged_core_chirho);
+        let llvm_ir_chirho = try_compile_core_to_llvm_executable_chirho(&merged_core_chirho)?;
         executables_chirho.push(CabalExecutableBuildResultChirho {
             name_chirho: executable_chirho.name_chirho.clone(),
             core_chirho: merged_core_chirho,

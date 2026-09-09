@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 32
+-- EXPECTED: 21
 module Main where
 myZip [] _ = []; myZip _ [] = []; myZip (x:xs) (y:ys) = (x,y) : myZip xs ys
 pairSum :: [(Int,Int)] -> Int

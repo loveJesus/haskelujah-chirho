@@ -28,7 +28,7 @@ SourceFileChirho
           WhitespaceTriviaChirho " "
         PipeChirho "|"
         WhitespaceTriviaChirho " "
-        NameExprChirho
+        VarPatChirho
           VarIdChirho "xChirho"
         WhitespaceTriviaChirho " "
         LeftArrowChirho "<-"

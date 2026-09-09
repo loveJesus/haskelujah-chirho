@@ -1444,6 +1444,21 @@ impl DictPassCtxChirho {
     ) -> Option<CoreExprChirho> {
         let (written_id_chirho, classes_chirho, args_chirho) =
             self.collect_dict_param_app_chirho(expr_chirho)?;
+        // The surrounding expression's result type is not the type of this
+        // callee's predicate (e.g. Eq a for dedup :: [a] -> [a]). A captured
+        // reference must take the same evidence-first path in every context.
+        if self
+            .reference_evidence_chirho
+            .contains_key(&written_id_chirho)
+        {
+            return Some(self.rewrite_method_refs_with_locals_chirho(
+                expr_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+            ));
+        }
         let fn_id_chirho = self.canonical_id_chirho(written_id_chirho);
 
         let mut result_chirho = CoreExprChirho::VarChirho(fn_id_chirho);

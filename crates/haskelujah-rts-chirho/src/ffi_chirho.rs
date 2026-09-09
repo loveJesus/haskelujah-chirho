@@ -13,16 +13,16 @@
 //! are linked with `clang -lhaskelujah_rts_chirho` to resolve these symbols.
 
 use std::alloc::{Layout, alloc_zeroed, dealloc};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::ffi::CStr;
 use std::io::Write;
 use std::mem::{align_of, size_of};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::thread;
 
-/// GC threshold: disabled until proper root tracking is implemented.
-/// Without GC roots, the collector frees live cons cells and corrupts data.
-/// Programs will leak memory but produce correct results.
+/// Minimum allocation interval. After collection the interval also accounts
+/// for the retained heap, so a growing live graph is not rescanned every 1000
+/// allocations (quadratic work in native list/range programs).
 const GC_THRESHOLD_CHIRHO: u64 = 1000;
 const NATIVE_MAIN_STACK_SIZE_CHIRHO: usize = 1024 * 1024 * 1024; // 1GB
 const BOXED_PTR_MASK_CHIRHO: usize = 1;
@@ -41,8 +41,12 @@ struct NativeAllocRecordChirho {
 struct NativeGcRuntimeChirho {
     allocations_by_ptr_chirho: HashMap<usize, NativeAllocRecordChirho>,
     gc_roots_chirho: Vec<usize>,
+    active_thunks_chirho: HashSet<usize>,
     alloc_total_chirho: u64,
     alloc_count_since_gc_chirho: u64,
+    allocation_interval_chirho: u64,
+    #[cfg(test)]
+    mark_visits_chirho: usize,
 }
 
 impl NativeGcRuntimeChirho {
@@ -50,28 +54,24 @@ impl NativeGcRuntimeChirho {
         ptr_addr_chirho & !BOXED_PTR_MASK_CHIRHO
     }
 
-    fn canonical_root_ptr_addr_chirho(&self, root_ptr_addr_chirho: usize) -> Option<usize> {
+    fn registered_heap_address_chirho(&self, root_ptr_addr_chirho: usize) -> Option<usize> {
+        // Roots may be raw allocation addresses: backends root a fresh object
+        // before populating/tagging it. Value classification requires the low
+        // tag, but this shared, lock-free lookup enforces registry membership
+        // for either representation without guessing or dereferencing a slot.
+        if self.allocations_by_ptr_chirho.is_empty() {
+            return None;
+        }
         let direct_ptr_addr_chirho = Self::normalize_heap_ptr_addr_chirho(root_ptr_addr_chirho);
         self.allocations_by_ptr_chirho
             .contains_key(&direct_ptr_addr_chirho)
             .then_some(direct_ptr_addr_chirho)
-            .or_else(|| {
-                if root_ptr_addr_chirho & BOXED_PTR_MASK_CHIRHO != 0 || root_ptr_addr_chirho == 0 {
-                    return None;
-                }
-
-                let indirect_bits_chirho =
-                    unsafe { (root_ptr_addr_chirho as *const usize).read_unaligned() };
-                let indirect_ptr_addr_chirho =
-                    Self::normalize_heap_ptr_addr_chirho(indirect_bits_chirho);
-                self.allocations_by_ptr_chirho
-                    .contains_key(&indirect_ptr_addr_chirho)
-                    .then_some(indirect_ptr_addr_chirho)
-            })
     }
 
     fn alloc_chirho(&mut self, requested_size_chirho: u64) -> *mut u8 {
-        if self.alloc_count_since_gc_chirho >= GC_THRESHOLD_CHIRHO {
+        if self.alloc_count_since_gc_chirho
+            >= self.allocation_interval_chirho.max(GC_THRESHOLD_CHIRHO)
+        {
             self.collect_chirho();
         }
 
@@ -106,9 +106,10 @@ impl NativeGcRuntimeChirho {
     }
 
     fn gc_root_push_chirho(&mut self, ptr_chirho: *mut u8) {
-        if !ptr_chirho.is_null() {
-            self.gc_roots_chirho.push(ptr_chirho as usize);
-        }
+        // Both code generators pass value bits, not addresses of root slots.
+        // Every push must balance its pop, including zero/immediate values.
+        // Only membership in the allocation registry authorizes dereferencing.
+        self.gc_roots_chirho.push(ptr_chirho as usize);
     }
 
     fn gc_root_pop_chirho(&mut self) {
@@ -120,14 +121,17 @@ impl NativeGcRuntimeChirho {
         self.sweep_unreachable_chirho();
         self.clear_marks_chirho();
         self.alloc_count_since_gc_chirho = 0;
+        self.allocation_interval_chirho =
+            (self.allocations_by_ptr_chirho.len() as u64).max(GC_THRESHOLD_CHIRHO);
     }
 
     fn mark_all_reachable_chirho(&mut self) {
         let mut worklist_chirho = VecDeque::new();
-        let roots_snapshot_chirho = self.gc_roots_chirho.clone();
+        let mut roots_snapshot_chirho = self.gc_roots_chirho.clone();
+        roots_snapshot_chirho.extend(self.active_thunks_chirho.iter().copied());
         for root_ptr_addr_chirho in roots_snapshot_chirho {
             let Some(canonical_root_addr_chirho) =
-                self.canonical_root_ptr_addr_chirho(root_ptr_addr_chirho)
+                self.registered_heap_address_chirho(root_ptr_addr_chirho)
             else {
                 continue;
             };
@@ -137,6 +141,10 @@ impl NativeGcRuntimeChirho {
         }
 
         while let Some(ptr_addr_chirho) = worklist_chirho.pop_front() {
+            #[cfg(test)]
+            {
+                self.mark_visits_chirho += 1;
+            }
             let Some(record_chirho) = self.allocations_by_ptr_chirho.get(&ptr_addr_chirho) else {
                 continue;
             };
@@ -221,9 +229,12 @@ impl NativeGcRuntimeChirho {
     #[cfg(test)]
     fn reset_chirho(&mut self) {
         self.gc_roots_chirho.clear();
+        self.active_thunks_chirho.clear();
         self.clear_all_allocs_chirho();
         self.alloc_total_chirho = 0;
         self.alloc_count_since_gc_chirho = 0;
+        self.allocation_interval_chirho = 0;
+        self.mark_visits_chirho = 0;
     }
 
     #[cfg(test)]
@@ -263,7 +274,9 @@ pub extern "C" fn haskelujah_alloc_chirho(size_chirho: u64) -> *mut u8 {
     native_gc_runtime_lock_chirho().alloc_chirho(size_chirho)
 }
 
-/// Push a GC root onto the shadow stack.
+/// Push native value bits onto the shadow stack, including zero/immediates.
+/// This does not accept an address of a stack slot; only registered heap
+/// addresses (optionally low-bit tagged) are followed during collection.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_gc_root_push_chirho(ptr_chirho: *mut u8) {
     native_gc_runtime_lock_chirho().gc_root_push_chirho(ptr_chirho);
@@ -293,11 +306,10 @@ pub extern "C" fn haskelujah_is_heap_ptr_chirho(value_bits_chirho: u64) -> i64 {
     if value_bits_chirho & 1 == 0 {
         return 0;
     }
-    let raw_ptr_addr_chirho = (value_bits_chirho & !1u64) as usize;
     let runtime_chirho = native_gc_runtime_lock_chirho();
     if runtime_chirho
-        .allocations_by_ptr_chirho
-        .contains_key(&raw_ptr_addr_chirho)
+        .registered_heap_address_chirho(value_bits_chirho as usize)
+        .is_some()
     {
         1
     } else {
@@ -305,160 +317,12 @@ pub extern "C" fn haskelujah_is_heap_ptr_chirho(value_bits_chirho: u64) -> i64 {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Thunk operations for lazy evaluation
-// ---------------------------------------------------------------------------
-//
-// Header layout (matches runtime_layout_chirho.rs):
-//   [63..8]  info-table pointer / entry code address
-//   [7..4]   thunk state: 0=unevaluated, 1=blackhole, 2=evaluated(ind)
-//   [3..2]   GC mark bits
-//   [1..0]   object kind: 00=thunk, 01=fun, 10=con, 11=pap
-//
-// Thunk-specific header:
-//   [63..8]  code_ptr (unevaluated) or result_ptr (evaluated)
-//   [7..4]   state: 0=thunk, 1=blackhole, 2=indirection
-//   [1..0]   0b00 (ThunkChirho kind)
-
-const THUNK_STATE_UNEVALUATED_CHIRHO: u64 = 0 << 4;
-const THUNK_STATE_BLACKHOLE_CHIRHO: u64 = 1 << 4;
-const THUNK_STATE_INDIRECTION_CHIRHO: u64 = 2 << 4;
-const THUNK_STATE_MASK_CHIRHO: u64 = 0xF0;
-const KIND_THUNK_CHIRHO: u64 = 0b00;
-
-const fn is_native_thunk_state_chirho(state_chirho: u64) -> bool {
-    matches!(
-        state_chirho,
-        THUNK_STATE_UNEVALUATED_CHIRHO
-            | THUNK_STATE_BLACKHOLE_CHIRHO
-            | THUNK_STATE_INDIRECTION_CHIRHO
-    )
-}
-
-const fn header_looks_like_native_thunk_chirho(header_chirho: u64) -> bool {
-    (header_chirho & 0b11) == KIND_THUNK_CHIRHO
-        && is_native_thunk_state_chirho(header_chirho & THUNK_STATE_MASK_CHIRHO)
-}
-
-/// Allocate a thunk on the heap.
-///
-/// Layout: [header (8 bytes)] [fv_0] [fv_1] ... [fv_n]
-/// Header: (code_ptr << 8) | state | kind
-#[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_alloc_thunk_chirho(
-    code_ptr_chirho: u64,
-    num_fvs_chirho: u64,
-    fvs_chirho: *const u64,
-) -> u64 {
-    let total_size_chirho = 8 + num_fvs_chirho * 8;
-    let ptr_chirho = haskelujah_alloc_chirho(total_size_chirho);
-    if ptr_chirho.is_null() {
-        return 0;
-    }
-    if let Some(record_chirho) = native_gc_runtime_lock_chirho()
-        .allocations_by_ptr_chirho
-        .get_mut(&(ptr_chirho as usize))
-    {
-        record_chirho.is_native_thunk_chirho = true;
-    }
-    unsafe {
-        let header_chirho = ptr_chirho as *mut u64;
-        // Header: code_ptr in high bits, state=unevaluated, kind=thunk
-        *header_chirho =
-            (code_ptr_chirho << 8) | THUNK_STATE_UNEVALUATED_CHIRHO | KIND_THUNK_CHIRHO;
-
-        if num_fvs_chirho > 0 && !fvs_chirho.is_null() {
-            let fvs_dest_chirho = header_chirho.add(1);
-            std::ptr::copy_nonoverlapping(fvs_chirho, fvs_dest_chirho, num_fvs_chirho as usize);
-        }
-    }
-    // Set low bit to mark as heap pointer.
-    (ptr_chirho as u64) | 1
-}
-
-/// Enter (force) a thunk.
-///
-/// Checks the thunk state in the header:
-/// - Unevaluated: blackhole it, call code, update to indirection
-/// - Indirection: return the stored result
-/// - Blackhole: abort (infinite loop)
-/// - Not a thunk: return as-is
-#[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_enter_thunk_chirho(thunk_ptr_chirho: u64) -> u64 {
-    // Only boxed heap pointers set low bit 0 -> 1. Plain integers can also be
-    // odd, so after clearing the tag we must verify the address is a live heap
-    // allocation before dereferencing it as a thunk object.
-    if thunk_ptr_chirho & 1 == 0 {
-        return thunk_ptr_chirho;
-    }
-
-    let raw_ptr_chirho = (thunk_ptr_chirho & !1u64) as *mut u64;
-    if raw_ptr_chirho.is_null() {
-        return thunk_ptr_chirho;
-    }
-
-    {
-        let runtime_chirho = native_gc_runtime_lock_chirho();
-        let Some(record_chirho) = runtime_chirho
-            .allocations_by_ptr_chirho
-            .get(&(raw_ptr_chirho as usize))
-        else {
-            return thunk_ptr_chirho;
-        };
-        if !record_chirho.is_native_thunk_chirho {
-            return thunk_ptr_chirho;
-        }
-    }
-
-    unsafe {
-        let header_chirho = *raw_ptr_chirho;
-        if !header_looks_like_native_thunk_chirho(header_chirho) {
-            // Legacy boxed constructors/dictionaries and non-thunk closures can
-            // also set the low boxed-pointer tag, but they do not use the
-            // native thunk state encoding in bits 7..4. Leave them untouched.
-            return thunk_ptr_chirho;
-        }
-
-        let state_chirho = header_chirho & THUNK_STATE_MASK_CHIRHO;
-
-        if state_chirho == THUNK_STATE_INDIRECTION_CHIRHO {
-            // Already evaluated — return result
-            return header_chirho >> 8;
-        }
-
-        if state_chirho == THUNK_STATE_BLACKHOLE_CHIRHO {
-            eprintln!("runtime error: thunk blackhole (infinite loop)");
-            std::process::abort();
-        }
-
-        // Unevaluated thunk: blackhole, call code, update
-        let code_addr_chirho = header_chirho >> 8;
-        *raw_ptr_chirho =
-            (code_addr_chirho << 8) | THUNK_STATE_BLACKHOLE_CHIRHO | KIND_THUNK_CHIRHO;
-
-        let fvs_ptr_chirho = raw_ptr_chirho.add(1);
-        let code_fn_chirho: unsafe extern "C" fn(*const u64) -> u64 =
-            std::mem::transmute(code_addr_chirho as usize);
-        let result_chirho = code_fn_chirho(fvs_ptr_chirho);
-
-        // Update to indirection
-        *raw_ptr_chirho = (result_chirho << 8) | THUNK_STATE_INDIRECTION_CHIRHO | KIND_THUNK_CHIRHO;
-
-        result_chirho
-    }
-}
-
-/// Update a thunk in place with the computed result.
-#[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_update_thunk_chirho(thunk_ptr_chirho: u64, result_chirho: u64) {
-    let raw_ptr_chirho = (thunk_ptr_chirho & !1u64) as *mut u64;
-    if !raw_ptr_chirho.is_null() {
-        unsafe {
-            *raw_ptr_chirho =
-                (result_chirho << 8) | THUNK_STATE_INDIRECTION_CHIRHO | KIND_THUNK_CHIRHO;
-        }
-    }
-}
+#[cfg(test)]
+mod gc_tests_chirho;
+mod native_thunks_chirho;
+pub use native_thunks_chirho::{
+    haskelujah_alloc_thunk_chirho, haskelujah_enter_thunk_chirho, haskelujah_update_thunk_chirho,
+};
 
 /// Run a native backend entry function on a worker thread with an explicitly
 /// large stack so non-tail-recursive list code does not immediately exhaust the
@@ -696,8 +560,12 @@ pub extern "C" fn haskelujah_append_str_chirho(lhs_bits_chirho: u64, rhs_bits_ch
 // ---------------------------------------------------------------------------
 
 /// Runtime error: print message and abort.
+///
+/// # Safety
+/// `msg_chirho` must be nonnull and point to `len_chirho` initialized, readable
+/// bytes in one allocation. The message need not be NUL-terminated or UTF-8.
 #[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_error_chirho(msg_chirho: *const u8, len_chirho: u64) {
+pub unsafe extern "C" fn haskelujah_error_chirho(msg_chirho: *const u8, len_chirho: u64) {
     let slice_chirho = unsafe { std::slice::from_raw_parts(msg_chirho, len_chirho as usize) };
     if let Ok(message_chirho) = std::str::from_utf8(slice_chirho) {
         eprintln!("haskelujah: error: {}", message_chirho);
@@ -831,7 +699,13 @@ pub extern "C" fn haskelujah_pack_string_chirho(list_bits_chirho: u64) -> u64 {
         let head_chirho = unsafe { *ptr_chirho.add(1) };
         let tail_chirho = unsafe { *ptr_chirho.add(2) };
 
-        // Head is a character codepoint
+        // Packing demands every character, not just the list spine. Preserve
+        // the remaining list if evaluating this character allocates/collects.
+        haskelujah_gc_root_push_chirho(current_chirho as usize as *mut u8);
+        let head_chirho = haskelujah_enter_thunk_chirho(head_chirho);
+        haskelujah_gc_root_pop_chirho();
+
+        // Head is now a character codepoint.
         if head_chirho < 128 {
             chars_chirho.push(head_chirho as u8);
         } else {
@@ -1380,11 +1254,14 @@ mod tests_chirho {
         runtime_chirho.reset_chirho();
         drop(runtime_chirho);
 
-        let tail_thunk_chirho = haskelujah_alloc_thunk_chirho(
-            ffi_test_tail_string_thunk_chirho as *const () as usize as u64,
-            0,
-            std::ptr::null(),
-        );
+        // SAFETY: the static callback has the required ABI and reads no environment.
+        let tail_thunk_chirho = unsafe {
+            haskelujah_alloc_thunk_chirho(
+                ffi_test_tail_string_thunk_chirho as *const () as usize as u64,
+                0,
+                std::ptr::null(),
+            )
+        };
         let head_cell_chirho = haskelujah_alloc_chirho(24);
         unsafe {
             *(head_cell_chirho as *mut u64) = 1;

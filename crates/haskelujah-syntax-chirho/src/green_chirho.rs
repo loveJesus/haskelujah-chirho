@@ -151,14 +151,18 @@ pub struct CheckpointChirho {
 /// Builds a green tree bottom-up using a stack of in-progress nodes.
 ///
 /// Usage:
-/// ```ignore
-/// let mut b = GreenBuilderChirho::new_chirho();
-/// b.start_node_chirho(SyntaxKindChirho::SourceFileChirho);
-///   b.token_chirho(TokenKindChirho::ModuleKeywordChirho, "module");
-///   b.token_chirho(TokenKindChirho::WhitespaceTriviaChirho, " ");
-///   // ...
-/// b.finish_node_chirho();
-/// let root = b.finish_chirho();
+/// ```
+/// use haskelujah_syntax::cst_chirho::SyntaxKindChirho;
+/// use haskelujah_syntax::green_chirho::GreenBuilderChirho;
+/// use haskelujah_syntax::token_chirho::TokenKindChirho;
+///
+/// let mut builder_chirho = GreenBuilderChirho::new_chirho();
+/// builder_chirho.start_node_chirho(SyntaxKindChirho::SourceFileChirho);
+/// builder_chirho.token_chirho(TokenKindChirho::ModuleKeywordChirho, "module");
+/// builder_chirho.token_chirho(TokenKindChirho::WhitespaceTriviaChirho, " ");
+/// builder_chirho.finish_node_chirho();
+/// let root_chirho = builder_chirho.finish_chirho();
+/// assert_eq!(root_chirho.text_len_chirho(), 7);
 /// ```
 pub struct GreenBuilderChirho {
     /// Stack of (kind, children) for nodes being built.

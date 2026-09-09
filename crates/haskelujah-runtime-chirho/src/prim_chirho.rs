@@ -47,6 +47,9 @@ pub fn apply_prim_binop_chirho(
     right_chirho: &ValueChirho,
 ) -> Result<ValueChirho, PrimErrorChirho> {
     match op_chirho {
+        PrimOpKindChirho::IsHeapObjectChirho => Ok(ValueChirho::IntChirho(i64::from(matches!(
+            left_chirho, ValueChirho::HeapPtrChirho(_)
+        )))),
         // Integer arithmetic
         PrimOpKindChirho::AddIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::IntChirho(a_chirho.wrapping_add(b_chirho)))

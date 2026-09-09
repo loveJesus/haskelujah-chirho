@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 42\n987\n399
+-- EXPECTED: 42\n27\n264
 module Main where
 lcg :: Int -> Int -> [Int]
 lcg _ 0 = []

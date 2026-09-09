@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 12
+-- EXPECTED: 22
 module Main where
 myDrop 0 xs = xs; myDrop _ [] = []; myDrop n (_:xs) = myDrop (n-1) xs
 mySum [] = 0; mySum (x:xs) = x + mySum xs

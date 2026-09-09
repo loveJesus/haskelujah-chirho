@@ -16,6 +16,8 @@
 //! The full STG machine with lazy evaluation, thunks, closures, and
 //! info tables will be added incrementally.
 
+mod primitives_chirho;
+
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
@@ -37,6 +39,7 @@ const NATIVE_FUNCTION_HEADER_KIND_CHIRHO: i64 = 0b01;
 pub struct LlvmCodegenChirho {
     /// The LLVM IR output buffer.
     output_chirho: String,
+    unsupported_primitives_chirho: HashSet<String>,
     /// Module-level globals emitted ahead of function bodies.
     global_defs_chirho: String,
     /// Counter for generating unique LLVM temporaries (%t0, %t1, ...).
@@ -102,6 +105,7 @@ impl LlvmCodegenChirho {
     pub fn new_chirho() -> Self {
         Self {
             output_chirho: String::new(),
+            unsupported_primitives_chirho: HashSet::new(),
             global_defs_chirho: String::new(),
             next_tmp_chirho: 0,
             next_label_chirho: 0,
@@ -253,7 +257,7 @@ impl LlvmCodegenChirho {
             .get(&func_id_chirho)
             .copied()
             .unwrap_or(0);
-        if func_arity_chirho > 0 && args_chirho.len() < func_arity_chirho {
+        if args_chirho.len() != func_arity_chirho {
             return None;
         }
         let mangled_chirho = mangle_name_chirho(func_name_chirho);
@@ -609,6 +613,7 @@ impl LlvmCodegenChirho {
         &mut self,
         param_binders_chirho: &[&BinderChirho],
         body_chirho: &CoreExprChirho,
+        capture_ids_chirho: &[CoreIdChirho],
     ) {
         let free_ids_chirho = self.collect_free_runtime_var_ids_chirho(body_chirho);
         let free_id_set_chirho: HashSet<CoreIdChirho> = free_ids_chirho.iter().copied().collect();
@@ -620,7 +625,9 @@ impl LlvmCodegenChirho {
         let unresolved_ids_chirho: Vec<CoreIdChirho> = free_ids_chirho
             .iter()
             .copied()
-            .filter(|id_chirho| !param_ids_chirho.contains(id_chirho))
+            .filter(|id_chirho| {
+                !param_ids_chirho.contains(id_chirho) && !capture_ids_chirho.contains(id_chirho)
+            })
             .collect();
         if unresolved_ids_chirho.is_empty() {
             return;
@@ -1023,7 +1030,11 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
         }
-        inner_codegen_chirho.emit_missing_param_aliases_chirho(&param_binders_chirho, body_chirho);
+        inner_codegen_chirho.emit_missing_param_aliases_chirho(
+            &param_binders_chirho,
+            body_chirho,
+            &captured_ids_chirho,
+        );
 
         inner_codegen_chirho.current_tco_self_id_chirho = self_binder_id_chirho;
         inner_codegen_chirho.current_tco_loop_label_chirho = Some(loop_label_chirho);
@@ -1046,6 +1057,8 @@ impl LlvmCodegenChirho {
         writeln!(inner_codegen_chirho.output_chirho, "}}").unwrap();
 
         self.next_string_chirho = inner_codegen_chirho.next_string_chirho;
+        self.unsupported_primitives_chirho
+            .extend(inner_codegen_chirho.unsupported_primitives_chirho);
         self.next_lifted_function_chirho = inner_codegen_chirho.next_lifted_function_chirho;
         self.string_globals_chirho = inner_codegen_chirho.string_globals_chirho.clone();
         self.global_defs_chirho
@@ -1476,6 +1489,15 @@ impl LlvmCodegenChirho {
 
     /// Compile a Core module to LLVM IR text.
     pub fn compile_module_chirho(&mut self, module_chirho: &CoreModuleChirho) -> String {
+        let actions_chirho = haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(
+            module_chirho,
+            "main",
+        );
+        let prepared_chirho =
+            haskelujah_core_chirho::native_thunks_chirho::prepare_native_thunks_chirho(
+                &actions_chirho,
+            );
+        let module_chirho = &prepared_chirho;
         self.output_chirho.clear();
         self.global_defs_chirho.clear();
         self.lifted_functions_chirho.clear();
@@ -1496,8 +1518,12 @@ impl LlvmCodegenChirho {
             module_chirho.name_chirho
         )
         .unwrap();
-        // Omit target datalayout/triple to let clang select the native target
-        writeln!(self.output_chirho, "; target: native").unwrap();
+        writeln!(
+            self.output_chirho,
+            "target triple = \"{}\"",
+            haskelujah_rts_chirho::target_chirho::native_target_chirho()
+        )
+        .unwrap();
         writeln!(self.output_chirho).unwrap();
 
         let has_toplevel_show_chirho = module_chirho.bindings_chirho.iter().any(|binding_chirho| {
@@ -1554,6 +1580,29 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         writeln!(self.output_chirho, "declare void @abort() noreturn").unwrap();
+        writeln!(self.output_chirho, "declare i32 @strcmp(ptr, ptr)").unwrap();
+        writeln!(self.output_chirho, "declare i64 @strlen(ptr)").unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare void @haskelujah_error_chirho(ptr, i64) noreturn"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "define internal i64 @raise_error_chirho(ptr %message_chirho) {{"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  %length_chirho = call i64 @strlen(ptr %message_chirho)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  call void @haskelujah_error_chirho(ptr %message_chirho, i64 %length_chirho)"
+        )
+        .unwrap();
+        writeln!(self.output_chirho, "  unreachable\n}}").unwrap();
         writeln!(
             self.output_chirho,
             "declare i64 @haskelujah_show_int_chirho(i64)"
@@ -1851,7 +1900,7 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
         }
-        self.emit_missing_param_aliases_chirho(&param_binders_chirho, body_chirho);
+        self.emit_missing_param_aliases_chirho(&param_binders_chirho, body_chirho, &[]);
         self.current_tco_self_id_chirho = Some(binding_chirho.binder_chirho.id_chirho);
         self.current_tco_loop_label_chirho = Some(loop_label_chirho);
         self.current_tco_param_slots_chirho = param_slots_chirho;
@@ -1894,10 +1943,11 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
                 self.next_tmp_chirho = 0;
+                let argument_chirho =
+                    self.emit_force_thunk_chirho(&format!("%v{}", arg_id_chirho.0));
                 writeln!(
                     self.output_chirho,
-                    "  call i64 @haskelujah_put_str_chirho(i64 %v{})",
-                    arg_id_chirho.0
+                    "  call i64 @haskelujah_put_str_chirho(i64 {argument_chirho})"
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "  ret i64 0").unwrap();
@@ -1915,11 +1965,12 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
                 self.next_tmp_chirho = 0;
+                let argument_chirho =
+                    self.emit_force_thunk_chirho(&format!("%v{}", arg_id_chirho.0));
                 let arg_ptr_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {arg_ptr_tmp_chirho} = inttoptr i64 %v{} to ptr",
-                    arg_id_chirho.0
+                    "  {arg_ptr_tmp_chirho} = inttoptr i64 {argument_chirho} to ptr"
                 )
                 .unwrap();
                 writeln!(
@@ -1963,11 +2014,11 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
                 self.next_tmp_chirho = 0;
+                let path_chirho = self.emit_force_thunk_chirho(&format!("%v{}", path_id_chirho.0));
                 let contents_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {contents_tmp_chirho} = call i64 @haskelujah_read_file_chirho(i64 %v{})",
-                    path_id_chirho.0
+                    "  {contents_tmp_chirho} = call i64 @haskelujah_read_file_chirho(i64 {path_chirho})"
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "  ret i64 {contents_tmp_chirho}").unwrap();
@@ -1985,12 +2036,13 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
                 self.next_tmp_chirho = 0;
+                let path_chirho = self.emit_force_thunk_chirho(&format!("%v{}", path_id_chirho.0));
+                let content_chirho =
+                    self.emit_force_thunk_chirho(&format!("%v{}", content_id_chirho.0));
                 let status_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {status_tmp_chirho} = call i64 @haskelujah_write_file_chirho(i64 %v{}, i64 %v{})",
-                    path_id_chirho.0,
-                    content_id_chirho.0
+                    "  {status_tmp_chirho} = call i64 @haskelujah_write_file_chirho(i64 {path_chirho}, i64 {content_chirho})"
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "  ret i64 {status_tmp_chirho}").unwrap();
@@ -2532,124 +2584,7 @@ impl LlvmCodegenChirho {
             CoreExprChirho::PrimOpChirho {
                 name_chirho,
                 args_chirho,
-            } => {
-                if args_chirho.len() == 2 {
-                    let lhs_chirho = self.compile_expr_chirho(&args_chirho[0]);
-                    let lhs_chirho = self.emit_force_thunk_chirho(&lhs_chirho);
-                    let rhs_chirho = self.compile_expr_chirho(&args_chirho[1]);
-                    let rhs_chirho = self.emit_force_thunk_chirho(&rhs_chirho);
-                    if name_chirho == "++#" {
-                        let tmp_chirho = self.fresh_tmp_chirho();
-                        writeln!(
-                            self.output_chirho,
-                            "  {tmp_chirho} = call i64 @haskelujah_append_str_chirho(i64 {lhs_chirho}, i64 {rhs_chirho})"
-                        )
-                        .unwrap();
-                        return tmp_chirho;
-                    }
-                    let tmp_chirho = self.fresh_tmp_chirho();
-                    let op_chirho = match name_chirho.as_str() {
-                        "+#" => "add",
-                        "-#" => "sub",
-                        "*#" => "mul",
-                        "div#" | "divInt#" => {
-                            return self.emit_floor_div_mod_chirho(&lhs_chirho, &rhs_chirho, false);
-                        }
-                        "mod#" | "modInt#" => {
-                            return self.emit_floor_div_mod_chirho(&lhs_chirho, &rhs_chirho, true);
-                        }
-                        "quot#" | "quotInt#" => "sdiv",
-                        "rem#" | "remInt#" => "srem",
-                        "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" => {
-                            let cmp_pred_chirho = match name_chirho.as_str() {
-                                "==#" => "eq",
-                                "/=#" => "ne",
-                                "<#" => "slt",
-                                "<=#" => "sle",
-                                ">#" => "sgt",
-                                ">=#" => "sge",
-                                _ => "eq",
-                            };
-                            let cmp_tmp_chirho = self.fresh_tmp_chirho();
-                            writeln!(
-                                self.output_chirho,
-                                "  {cmp_tmp_chirho} = icmp {cmp_pred_chirho} i64 {lhs_chirho}, {rhs_chirho}"
-                            )
-                            .unwrap();
-                            writeln!(
-                                self.output_chirho,
-                                "  {tmp_chirho} = zext i1 {cmp_tmp_chirho} to i64"
-                            )
-                            .unwrap();
-                            return tmp_chirho;
-                        }
-                        _ => "add",
-                    };
-                    writeln!(
-                        self.output_chirho,
-                        "  {tmp_chirho} = {op_chirho} i64 {lhs_chirho}, {rhs_chirho}"
-                    )
-                    .unwrap();
-                    tmp_chirho
-                } else if args_chirho.len() == 1 && name_chirho == "negate#" {
-                    let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
-                    let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
-                    let tmp_chirho = self.fresh_tmp_chirho();
-                    writeln!(
-                        self.output_chirho,
-                        "  {tmp_chirho} = sub i64 0, {operand_chirho}"
-                    )
-                    .unwrap();
-                    tmp_chirho
-                } else if args_chirho.len() == 1
-                    && matches!(
-                        name_chirho.as_str(),
-                        "showInt#" | "showBool#" | "showChar#" | "showFloat#" | "readInt#"
-                    )
-                {
-                    let rts_fn_chirho = match name_chirho.as_str() {
-                        "showBool#" => "haskelujah_show_bool_chirho",
-                        "showChar#" => "haskelujah_show_char_chirho",
-                        "showFloat#" => "haskelujah_show_float_chirho",
-                        "readInt#" => "haskelujah_read_int_chirho",
-                        _ => "haskelujah_show_int_chirho",
-                    };
-                    let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
-                    let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
-                    let tmp_chirho = self.fresh_tmp_chirho();
-                    writeln!(
-                        self.output_chirho,
-                        "  {tmp_chirho} = call i64 @{rts_fn_chirho}(i64 {operand_chirho})"
-                    )
-                    .unwrap();
-                    tmp_chirho
-                } else if args_chirho.len() == 1 && name_chirho == "not#" {
-                    let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
-                    let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
-                    let cmp_tmp_chirho = self.fresh_tmp_chirho();
-                    writeln!(
-                        self.output_chirho,
-                        "  {cmp_tmp_chirho} = icmp eq i64 {operand_chirho}, 0"
-                    )
-                    .unwrap();
-                    let tmp_chirho = self.fresh_tmp_chirho();
-                    writeln!(
-                        self.output_chirho,
-                        "  {tmp_chirho} = zext i1 {cmp_tmp_chirho} to i64"
-                    )
-                    .unwrap();
-                    tmp_chirho
-                } else if args_chirho.len() == 2 && name_chirho == "seq#" {
-                    // seq# a b: force a, return b
-                    let a_chirho = self.compile_expr_chirho(&args_chirho[0]);
-                    let b_chirho = self.compile_expr_chirho(&args_chirho[1]);
-                    let _forced_chirho = self.emit_force_thunk_chirho(&a_chirho);
-                    b_chirho
-                } else {
-                    // Fallback: return 0
-                    "0".to_string()
-                }
-            }
+            } => self.compile_primop_chirho(name_chirho, args_chirho),
 
             CoreExprChirho::ConAppChirho {
                 con_name_chirho,
@@ -2876,6 +2811,8 @@ impl LlvmCodegenChirho {
         fun_val_chirho: &str,
         args_str_chirho: &str,
     ) -> String {
+        let forced_fun_chirho = self.emit_force_thunk_chirho(fun_val_chirho);
+        let fun_val_chirho = forced_fun_chirho.as_str();
         let boxed_label_chirho = self.fresh_label_chirho("call.boxed");
         let direct_label_chirho = self.fresh_label_chirho("call.direct");
         let join_label_chirho = self.fresh_label_chirho("call.join");
@@ -3236,6 +3173,9 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         self.emit_gc_root_pop_count_chirho(captured_vals_chirho.len());
+        // Like constructor/PAP results, a freshly allocated closure must stay
+        // reachable while its caller evaluates later, allocating arguments.
+        self.emit_gc_root_push_i64_chirho(&tagged_closure_tmp_chirho);
         tagged_closure_tmp_chirho
     }
 
@@ -4571,7 +4511,7 @@ fn constructor_tag_chirho(name_chirho: &str) -> i64 {
         "GT" => 2,
         "[]" => 0,
         ":" => 1,
-        "()" => 0,
+        "()" | "$tuple0" => 0,
         "(,)" => 0,
         "(,,)" => 0,
         _ => {
@@ -4647,6 +4587,16 @@ pub fn compile_core_to_llvm_chirho(module_chirho: &CoreModuleChirho) -> String {
 /// Currently emits only bindings transitively reachable from `main` since the
 /// LLVM backend doesn't yet support closures/heap needed by the full Prelude.
 pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) -> String {
+    try_compile_core_to_llvm_executable_chirho(module_chirho)
+        .expect("LLVM executable contains an unsupported primitive")
+}
+
+/// Produce executable IR only if every emitted reachable primitive is implemented.
+/// The non-executable IR preview may include unused Prelude definitions; those
+/// cannot turn an unsupported operation in an actual executable into a false result.
+pub fn try_compile_core_to_llvm_executable_chirho(
+    module_chirho: &CoreModuleChirho,
+) -> Result<String, String> {
     // Dictionary elision + reachability filtering via shared Core utility
     let mut filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
@@ -4735,7 +4685,19 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
         writeln!(ir_chirho, "}}").unwrap();
     }
 
-    ir_chirho
+    if codegen_chirho.unsupported_primitives_chirho.is_empty() {
+        Ok(ir_chirho)
+    } else {
+        let mut unsupported_chirho = codegen_chirho
+            .unsupported_primitives_chirho
+            .into_iter()
+            .collect::<Vec<_>>();
+        unsupported_chirho.sort();
+        Err(format!(
+            "LLVM does not support primitive(s): {}",
+            unsupported_chirho.join(", ")
+        ))
+    }
 }
 
 fn restore_selector_bindings_chirho(
@@ -4767,6 +4729,8 @@ fn restore_selector_bindings_chirho(
 
 #[cfg(test)]
 mod tests_chirho {
+    mod io_chirho;
+
     use super::*;
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -4907,6 +4871,10 @@ mod tests_chirho {
 
         let rts_lib_dir_chirho = ensure_rts_staticlib_chirho();
         let clang_output_chirho = Command::new("clang")
+            .args([
+                "-target",
+                &haskelujah_rts_chirho::target_chirho::native_target_chirho(),
+            ])
             .arg("-O0")
             .arg(&ll_path_chirho)
             .arg("-o")
@@ -4920,6 +4888,11 @@ mod tests_chirho {
             clang_output_chirho.status.success(),
             "clang failed:\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&clang_output_chirho.stdout),
+            String::from_utf8_lossy(&clang_output_chirho.stderr)
+        );
+        assert!(
+            clang_output_chirho.stderr.is_empty(),
+            "native link diagnostics: {}",
             String::from_utf8_lossy(&clang_output_chirho.stderr)
         );
 
@@ -5737,25 +5710,22 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
         };
 
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("add i64 2, 3"));
-        assert!(ir_chirho.contains("define i32 @main()"));
-        assert!(
-            ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
-        );
+        let (status_chirho, _stdout_chirho, stderr_chirho) =
+            run_executable_module_result_chirho(&module_chirho);
+        assert_eq!(status_chirho, 5, "{stderr_chirho}");
     }
 
     #[test]
     fn compile_executable_with_all_basic_arithmetic_primops_chirho() {
         let cases_chirho = [
-            ("+#", "add", 2, 3),
-            ("-#", "sub", 50, 8),
-            ("*#", "mul", 6, 7),
-            ("div#", "sdiv", 84, 2),
-            ("mod#", "srem", 127, 85),
+            ("+#", 5, 2, 3),
+            ("-#", 42, 50, 8),
+            ("*#", 42, 6, 7),
+            ("div#", 42, 84, 2),
+            ("mod#", 42, 127, 85),
         ];
 
-        for (prim_name_chirho, llvm_op_chirho, lhs_chirho, rhs_chirho) in cases_chirho {
+        for (prim_name_chirho, expected_chirho, lhs_chirho, rhs_chirho) in cases_chirho {
             let module_chirho = CoreModuleChirho {
                 name_chirho: format!("PrimOp{}", prim_name_chirho),
                 bindings_chirho: vec![CoreBindingChirho {
@@ -5772,17 +5742,18 @@ mod tests_chirho {
                 foreign_exports_chirho: vec![],
             };
 
-            let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-            assert!(
-                ir_chirho.contains(&format!("{llvm_op_chirho} i64 {lhs_chirho}, {rhs_chirho}")),
-                "expected {prim_name_chirho} to lower to {llvm_op_chirho}, got:\n{ir_chirho}"
+            let (status_chirho, _stdout_chirho, stderr_chirho) =
+                run_executable_module_result_chirho(&module_chirho);
+            assert_eq!(
+                status_chirho, expected_chirho,
+                "{prim_name_chirho}: {stderr_chirho}"
             );
         }
     }
 
     #[test]
     fn compile_executable_int_div_mod_aliases_use_floor_helper_chirho() {
-        for prim_name_chirho in ["divInt#", "modInt#"] {
+        for (prim_name_chirho, expected_chirho) in [("divInt#", 252), ("modInt#", 1)] {
             let module_chirho = CoreModuleChirho {
                 name_chirho: format!("PrimOp{}", prim_name_chirho),
                 bindings_chirho: vec![CoreBindingChirho {
@@ -5799,12 +5770,14 @@ mod tests_chirho {
                 foreign_exports_chirho: vec![],
             };
 
-            let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-            assert!(
-                ir_chirho.contains("sdiv i64 -7, 2")
-                    && ir_chirho.contains("srem i64 -7, 2")
-                    && ir_chirho.contains("select i1"),
-                "expected {prim_name_chirho} to use floor div/mod helper, got:\n{ir_chirho}"
+            // -7 `div` 2 is -4 (exit status 252); `mod` is 1. Truncating
+            // division would produce -3 and -1, so this checks floor semantics
+            // even when operands reach the instruction through forced thunks.
+            let (status_chirho, _stdout_chirho, stderr_chirho) =
+                run_executable_module_result_chirho(&module_chirho);
+            assert_eq!(
+                status_chirho, expected_chirho,
+                "{prim_name_chirho}: {stderr_chirho}"
             );
         }
     }
@@ -5812,15 +5785,21 @@ mod tests_chirho {
     #[test]
     fn compile_executable_with_all_basic_comparison_primops_chirho() {
         let cases_chirho = [
-            ("==#", "eq", 5, 5),
-            ("/=#", "ne", 5, 4),
-            ("<#", "slt", 2, 3),
-            ("<=#", "sle", 2, 2),
-            (">#", "sgt", 3, 2),
-            (">=#", "sge", 3, 3),
+            ("==#", 1, 5, 5),
+            ("==#", 0, 5, 4),
+            ("/=#", 1, 5, 4),
+            ("/=#", 0, 5, 5),
+            ("<#", 1, 2, 3),
+            ("<#", 0, 3, 2),
+            ("<=#", 1, 2, 2),
+            ("<=#", 0, 3, 2),
+            (">#", 1, 3, 2),
+            (">#", 0, 2, 3),
+            (">=#", 1, 3, 3),
+            (">=#", 0, 2, 3),
         ];
 
-        for (prim_name_chirho, llvm_pred_chirho, lhs_chirho, rhs_chirho) in cases_chirho {
+        for (prim_name_chirho, expected_chirho, lhs_chirho, rhs_chirho) in cases_chirho {
             let module_chirho = CoreModuleChirho {
                 name_chirho: format!("Cmp{}", prim_name_chirho),
                 bindings_chirho: vec![CoreBindingChirho {
@@ -5837,16 +5816,11 @@ mod tests_chirho {
                 foreign_exports_chirho: vec![],
             };
 
-            let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-            assert!(
-                ir_chirho.contains(&format!(
-                    "icmp {llvm_pred_chirho} i64 {lhs_chirho}, {rhs_chirho}"
-                )),
-                "expected {prim_name_chirho} to lower to icmp {llvm_pred_chirho}, got:\n{ir_chirho}"
-            );
-            assert!(
-                ir_chirho.contains("zext i1"),
-                "expected {prim_name_chirho} to extend the Bool tag to i64, got:\n{ir_chirho}"
+            let (status_chirho, _stdout_chirho, stderr_chirho) =
+                run_executable_module_result_chirho(&module_chirho);
+            assert_eq!(
+                status_chirho, expected_chirho,
+                "{prim_name_chirho}: {stderr_chirho}"
             );
         }
     }
@@ -5869,96 +5843,9 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
         };
 
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("icmp eq i64 1, 0"));
-        assert!(ir_chirho.contains("zext i1"));
-    }
-
-    #[test]
-    fn compile_executable_put_str_ln_uses_libc_io_chirho() {
-        let put_str_ln_binder_chirho = dummy_binder_chirho("putStrLn", 1);
-        let arg_binder_chirho = dummy_binder_chirho("arg", 2);
-        let module_chirho = CoreModuleChirho {
-            name_chirho: "Main".to_string(),
-            bindings_chirho: vec![
-                CoreBindingChirho {
-                    binder_chirho: dummy_binder_chirho("main", 0),
-                    rhs_chirho: CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
-                            put_str_ln_binder_chirho.id_chirho,
-                        )),
-                        arg_chirho: Box::new(CoreExprChirho::LitChirho(
-                            CoreLitChirho::StringChirho("Hello from Haskelujah!".to_string()),
-                        )),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-                CoreBindingChirho {
-                    binder_chirho: put_str_ln_binder_chirho.clone(),
-                    rhs_chirho: CoreExprChirho::LamChirho {
-                        binder_chirho: arg_binder_chirho,
-                        body_chirho: Box::new(int_lit_chirho(0)),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-            ],
-            names_chirho: std::collections::HashMap::new(),
-            specialize_pragmas_chirho: std::collections::HashMap::new(),
-            foreign_exports_chirho: vec![],
-        };
-
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("define i64 @haskelujah_putStrLn(i64 %v2)"));
-        assert!(ir_chirho.contains("call i32 @puts(ptr %t0)"));
-        assert!(
-            ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
-        );
-        assert!(ir_chirho.contains("ret i32 0"));
-        assert!(!ir_chirho.contains("@.fmt_int"));
-        assert!(!ir_chirho.contains("call i32 (ptr, ...) @printf(ptr @.fmt_int"));
-    }
-
-    #[test]
-    fn compile_executable_put_str_uses_rts_io_chirho() {
-        let put_str_binder_chirho = dummy_binder_chirho("putStr", 1);
-        let arg_binder_chirho = dummy_binder_chirho("arg", 2);
-        let module_chirho = CoreModuleChirho {
-            name_chirho: "Main".to_string(),
-            bindings_chirho: vec![
-                CoreBindingChirho {
-                    binder_chirho: dummy_binder_chirho("main", 0),
-                    rhs_chirho: CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
-                            put_str_binder_chirho.id_chirho,
-                        )),
-                        arg_chirho: Box::new(CoreExprChirho::LitChirho(
-                            CoreLitChirho::StringChirho("Hello".to_string()),
-                        )),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-                CoreBindingChirho {
-                    binder_chirho: put_str_binder_chirho.clone(),
-                    rhs_chirho: CoreExprChirho::LamChirho {
-                        binder_chirho: arg_binder_chirho,
-                        body_chirho: Box::new(int_lit_chirho(0)),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-            ],
-            names_chirho: std::collections::HashMap::new(),
-            specialize_pragmas_chirho: std::collections::HashMap::new(),
-            foreign_exports_chirho: vec![],
-        };
-
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("declare i64 @haskelujah_put_str_chirho(i64)"));
-        assert!(ir_chirho.contains("define i64 @haskelujah_putStr(i64 %v2)"));
-        assert!(ir_chirho.contains("call i64 @haskelujah_put_str_chirho(i64 %v2)"));
+        let (status_chirho, _stdout_chirho, stderr_chirho) =
+            run_executable_module_result_chirho(&module_chirho);
+        assert_eq!(status_chirho, 0, "{stderr_chirho}");
     }
 
     #[test]
@@ -5989,97 +5876,6 @@ mod tests_chirho {
         assert!(ir_chirho.contains("declare i64 @haskelujah_get_line_chirho()"));
         assert!(ir_chirho.contains("define i64 @haskelujah_getLine()"));
         assert!(ir_chirho.contains("call i64 @haskelujah_get_line_chirho()"));
-    }
-
-    #[test]
-    fn compile_executable_read_file_uses_rts_io_chirho() {
-        let read_file_binder_chirho = dummy_binder_chirho("readFile", 1);
-        let path_binder_chirho = dummy_binder_chirho("path", 2);
-        let module_chirho = CoreModuleChirho {
-            name_chirho: "Main".to_string(),
-            bindings_chirho: vec![
-                CoreBindingChirho {
-                    binder_chirho: dummy_binder_chirho("main", 0),
-                    rhs_chirho: CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(
-                            read_file_binder_chirho.id_chirho,
-                        )),
-                        arg_chirho: Box::new(CoreExprChirho::LitChirho(
-                            CoreLitChirho::StringChirho("input.txt".to_string()),
-                        )),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-                CoreBindingChirho {
-                    binder_chirho: read_file_binder_chirho.clone(),
-                    rhs_chirho: CoreExprChirho::LamChirho {
-                        binder_chirho: path_binder_chirho,
-                        body_chirho: Box::new(int_lit_chirho(0)),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-            ],
-            names_chirho: std::collections::HashMap::new(),
-            specialize_pragmas_chirho: std::collections::HashMap::new(),
-            foreign_exports_chirho: vec![],
-        };
-
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("declare i64 @haskelujah_read_file_chirho(i64)"));
-        assert!(ir_chirho.contains("define i64 @haskelujah_readFile(i64 %v2)"));
-        assert!(ir_chirho.contains("call i64 @haskelujah_read_file_chirho(i64 %v2)"));
-    }
-
-    #[test]
-    fn compile_executable_write_file_uses_rts_io_chirho() {
-        let write_file_binder_chirho = dummy_binder_chirho("writeFile", 1);
-        let path_binder_chirho = dummy_binder_chirho("path", 2);
-        let content_binder_chirho = dummy_binder_chirho("content", 3);
-        let module_chirho = CoreModuleChirho {
-            name_chirho: "Main".to_string(),
-            bindings_chirho: vec![
-                CoreBindingChirho {
-                    binder_chirho: dummy_binder_chirho("main", 0),
-                    rhs_chirho: CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(
-                                write_file_binder_chirho.id_chirho,
-                            )),
-                            arg_chirho: Box::new(CoreExprChirho::LitChirho(
-                                CoreLitChirho::StringChirho("out.txt".to_string()),
-                            )),
-                        }),
-                        arg_chirho: Box::new(CoreExprChirho::LitChirho(
-                            CoreLitChirho::StringChirho("hello".to_string()),
-                        )),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-                CoreBindingChirho {
-                    binder_chirho: write_file_binder_chirho.clone(),
-                    rhs_chirho: CoreExprChirho::LamChirho {
-                        binder_chirho: path_binder_chirho,
-                        body_chirho: Box::new(CoreExprChirho::LamChirho {
-                            binder_chirho: content_binder_chirho,
-                            body_chirho: Box::new(int_lit_chirho(0)),
-                        }),
-                    },
-                    is_rec_chirho: false,
-                    inline_chirho: InlineAnnotationChirho::NoneChirho,
-                },
-            ],
-            names_chirho: std::collections::HashMap::new(),
-            specialize_pragmas_chirho: std::collections::HashMap::new(),
-            foreign_exports_chirho: vec![],
-        };
-
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("declare i64 @haskelujah_write_file_chirho(i64, i64)"));
-        assert!(ir_chirho.contains("define i64 @haskelujah_writeFile(i64 %v2, i64 %v3)"));
-        assert!(ir_chirho.contains("call i64 @haskelujah_write_file_chirho(i64 %v2, i64 %v3)"));
     }
 
     #[test]
@@ -6128,12 +5924,7 @@ mod tests_chirho {
     fn compile_wildcard_first_column_function_aliases_unbound_rhs_var_chirho() {
         let module_chirho = wildcard_first_column_safe_divide_module_chirho();
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(ir_chirho.contains(
-            "define i64 @haskelujah_safeDivideChirho(i64 %v2.entry_chirho, i64 %v3.entry_chirho)"
-        ));
-        assert!(ir_chirho.contains("%v8 = add i64 0, %v2"));
-        assert!(ir_chirho.contains("sdiv i64 %v8, %v3"));
+        assert_eq!(run_executable_module_chirho(&module_chirho).trim(), "5");
     }
 
     #[test]

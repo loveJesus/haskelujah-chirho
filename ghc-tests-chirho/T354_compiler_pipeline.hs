@@ -8,10 +8,10 @@ lex_ :: [Int] -> [Token]
 lex_ [] = [TEnd]
 lex_ (c:rest) | c == 43 = TPlus : lex_ rest | c >= 48 = TNum (c - 48) : lex_ rest | otherwise = lex_ rest
 myLen :: [Token] -> Int
-myLen [] = 0; myLen (_:xs) = 1 + myLen xs
+myLen [] = 0; myLen [TEnd] = 0; myLen (_:xs) = 1 + myLen xs
 parseSimple :: [Token] -> Expr
-parseSimple [TNum a, TPlus, TNum b] = Add (Num a) (Num b)
-parseSimple [TNum a] = Num a
+parseSimple [TNum a, TPlus, TNum b, TEnd] = Add (Num a) (Num b)
+parseSimple [TNum a, TEnd] = Num a
 parseSimple _ = Num 0
 eval_ :: Expr -> Int
 eval_ (Num n) = n; eval_ (Add a b) = eval_ a + eval_ b

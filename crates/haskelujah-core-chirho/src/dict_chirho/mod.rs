@@ -42,7 +42,7 @@ use std::collections::{HashMap, HashSet};
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
-use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho};
 
 use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreModuleChirho,
@@ -262,54 +262,26 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// Check whether a predicate's type variable is "defaultable" in the
-    /// context of a scheme.  A type variable is defaultable when it does
-    /// NOT appear in any function-argument position of the scheme's type,
-    /// meaning no call site can determine it — it is effectively ambiguous.
-    /// This implements a simplified version of Haskell 2010 §4.3.4.
+    /// Preserve the pass's result-only defaulting policy, but inspect complete
+    /// argument types. A variable inside a tuple, list or higher-order argument
+    /// is still determined by its caller and must retain its dictionary.
+    /// Result-only polymorphism needs checker-directed defaulting; changing it
+    /// here alone leaves evaluated bindings with unsupplied dictionary arguments.
     fn is_defaultable_pred_chirho(
         pred_chirho: &haskelujah_typing_chirho::ty_chirho::SchemePredChirho,
         scheme_chirho: &SchemeChirho,
     ) -> bool {
-        let tv_chirho = match &pred_chirho.ty_chirho {
-            TyChirho::VarChirho(v_chirho) => *v_chirho,
-            _ => return false, // ground type, not defaultable
+        let TyChirho::VarChirho(var_chirho) = &pred_chirho.ty_chirho else {
+            return false;
         };
-
-        // Collect argument types from the function chain a -> b -> c -> r
-        fn collect_arg_tys_chirho(ty_chirho: &TyChirho) -> Vec<&TyChirho> {
-            match ty_chirho {
-                TyChirho::FunChirho(arg_chirho, res_chirho, _) => {
-                    let mut args_chirho = vec![arg_chirho.as_ref()];
-                    args_chirho.extend(collect_arg_tys_chirho(res_chirho));
-                    args_chirho
-                }
-                _ => vec![],
+        let mut ty_chirho = &scheme_chirho.ty_chirho;
+        while let TyChirho::FunChirho(argument_chirho, result_chirho, _) = ty_chirho {
+            if argument_chirho.free_vars_chirho().contains(var_chirho) {
+                return false;
             }
+            ty_chirho = result_chirho;
         }
-
-        fn ty_contains_var_chirho(ty_chirho: &TyChirho, tv_chirho: TyVarChirho) -> bool {
-            match ty_chirho {
-                TyChirho::VarChirho(v_chirho) => *v_chirho == tv_chirho,
-                TyChirho::FunChirho(a_chirho, b_chirho, _) => {
-                    ty_contains_var_chirho(a_chirho, tv_chirho)
-                        || ty_contains_var_chirho(b_chirho, tv_chirho)
-                }
-                TyChirho::AppChirho(a_chirho, b_chirho) => {
-                    ty_contains_var_chirho(a_chirho, tv_chirho)
-                        || ty_contains_var_chirho(b_chirho, tv_chirho)
-                }
-                TyChirho::ConChirho(_) => false,
-                _ => false,
-            }
-        }
-
-        let arg_tys_chirho = collect_arg_tys_chirho(&scheme_chirho.ty_chirho);
-        // If the type variable appears in ANY argument type, a call site
-        // can determine it — so it is NOT defaultable.
-        !arg_tys_chirho
-            .iter()
-            .any(|arg_chirho| ty_contains_var_chirho(arg_chirho, tv_chirho))
+        true
     }
 
     /// Attempt to infer the type key (e.g. "Int", "Color") from a Core

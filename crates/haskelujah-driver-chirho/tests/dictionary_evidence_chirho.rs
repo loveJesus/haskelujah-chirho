@@ -160,3 +160,41 @@ fn integer_literal_at_double_is_dispatched_at_double_chirho() {
         "2.5\n"
     );
 }
+
+#[test]
+fn recursive_calls_preserve_the_predicates_element_type_chirho() {
+    let source_chirho = r#"module Main where
+renderChirho _ [] = ""
+renderChirho _ [x] = show x
+renderChirho sep (x:xs) = show x ++ sep ++ renderChirho sep xs
+memberChirho _ [] = False
+memberChirho x (y:ys) = x == y || memberChirho x ys
+dedupChirho [] = []
+dedupChirho (x:xs) = if memberChirho x xs then dedupChirho xs else x : dedupChirho xs
+main = do
+  putStrLn (renderChirho "-" [1,2,3])
+  putStrLn (renderChirho "/" [True,False,True])
+  putStrLn (renderChirho "/" [1.5,2.5,3.5])
+  print (dedupChirho [1,2,3,2,1,4,3,5,1])
+"#;
+    assert_eq!(
+        run_chirho("RecursiveEvidenceChirho.hs", source_chirho),
+        "1-2-3\nTrue/False/True\n1.5/2.5/3.5\n[2,4,3,5,1]\n"
+    );
+}
+
+#[test]
+fn tuple_and_result_variables_keep_their_numeric_dictionary_chirho() {
+    assert_eq!(
+        run_chirho(
+            "TupleEvidenceChirho.hs",
+            r#"module Main where
+addPairChirho (x,y) = x + y
+main = do
+  print (addPairChirho (1.25, 2.5))
+  print (addPairChirho (1 :: Int, 2))
+"#
+        ),
+        "3.75\n3\n"
+    );
+}

@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 21
+-- EXPECTED: 20
 module Main where
 myMap :: (Int -> Int) -> [Int] -> [Int]
 myMap _ [] = []

@@ -28,7 +28,6 @@ struct HaskelujahAppChirho {
     file_path_chirho: Option<String>,
     diagnostics_chirho: Vec<String>,
     status_chirho: String,
-    show_file_browser_chirho: bool,
     font_size_chirho: f32,
     line_numbers_chirho: bool,
 }
@@ -50,7 +49,6 @@ impl HaskelujahAppChirho {
             file_path_chirho: None,
             diagnostics_chirho: Vec::new(),
             status_chirho: "Ready — Ctrl+Enter to typecheck".to_string(),
-            show_file_browser_chirho: false,
             font_size_chirho: 16.0,
             line_numbers_chirho: true,
         }
@@ -111,23 +109,23 @@ impl eframe::App for HaskelujahAppChirho {
     fn update(&mut self, ctx_chirho: &egui::Context, _frame_chirho: &mut eframe::Frame) {
         // Menu bar
         egui::TopBottomPanel::top("menu_chirho").show(ctx_chirho, |ui_chirho| {
-            egui::menu::bar(ui_chirho, |ui_chirho| {
+            egui::MenuBar::new().ui(ui_chirho, |ui_chirho| {
                 ui_chirho.menu_button("File", |ui_chirho| {
                     if ui_chirho.button("Open...").clicked() {
                         if let Some(path_chirho) = rfd_open_chirho() {
                             self.open_file_chirho(&path_chirho);
                         }
-                        ui_chirho.close_menu();
+                        ui_chirho.close_kind(egui::UiKind::Menu);
                     }
                     if ui_chirho.button("Save").clicked() {
                         self.save_file_chirho();
-                        ui_chirho.close_menu();
+                        ui_chirho.close_kind(egui::UiKind::Menu);
                     }
                 });
                 ui_chirho.menu_button("Build", |ui_chirho| {
                     if ui_chirho.button("Typecheck (Ctrl+Enter)").clicked() {
                         self.typecheck_chirho();
-                        ui_chirho.close_menu();
+                        ui_chirho.close_kind(egui::UiKind::Menu);
                     }
                 });
                 ui_chirho.menu_button("View", |ui_chirho| {

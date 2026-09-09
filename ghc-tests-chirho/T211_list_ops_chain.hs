@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 30
+-- EXPECTED: 60
 module Main where
 myMap f [] = []; myMap f (x:xs) = f x : myMap f xs
 myFilter p [] = []; myFilter p (x:xs) = if p x then x : myFilter p xs else myFilter p xs

@@ -19,10 +19,13 @@
 pub mod desugar_chirho;
 pub mod dict_chirho;
 pub mod expr_chirho;
+pub mod io_actions_chirho;
+pub mod native_thunks_chirho;
 pub mod pretty_chirho;
 #[cfg(test)]
 mod proptest_chirho;
 pub mod simplify_chirho;
+mod transform_chirho;
 
 pub use desugar_chirho::{
     DesugarInputsChirho, DesugarOutputChirho, desugar_module_chirho,

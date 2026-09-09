@@ -46,6 +46,9 @@ flowchart TD
 flowchart TD
     ref_chirho[Constrained reference inferred: scheme instantiated, one wanted per predicate]
     ref_chirho --> capture_ref_chirho[capture_reference_evidence_chirho: span, predicates in scheme order]
+    recursive_ref_chirho[Unsigned recursive reference: span and matching monomorphic assumption] --> pending_ref_chirho[RecursiveReferencesChirho retains source identity through substitutions]
+    pending_ref_chirho --> finish_ref_chirho[finish_recursive_references_chirho: SCC generalization supplies predicates for those same type variables]
+    finish_ref_chirho --> finalize_ref_chirho
     capture_ref_chirho --> finalize_ref_chirho[finalize_reference_evidence_chirho: concrete head → key; rigid or generalized variable → OWN_DICTIONARY_KEY_CHIRHO; open → nothing]
     method_chirho[Method occurrence at a rigid variable] --> own_chirho[finalize_occurrence_records_chirho: OWN_DICTIONARY_KEY_CHIRHO instead of the Int default]
     desugar_ref_chirho[Desugar: reference to a name whose scheme carries predicates → reference_occurrence_chirho mints an occurrence id, canonical = the binding]
@@ -66,6 +69,17 @@ flowchart TD
   canonical id before STG, exactly as method occurrences are.
 - The higher-order-argument rewriter hands an evidenced reference to the variable arm; a key
   guessed from sibling arguments never dispatches a reference the checker proved.
+- An unsigned recursive call initially has no scheme predicates to capture. Its name,
+  source span and matching monomorphic assumption are retained until the existing SCC
+  generalization supplies the predicates. This delays evidence capture, not inference or
+  generalization. The every-capture-at-one-span agreement rule is unchanged; a shadowed
+  name with a different type assumption is not treated as that recursive binding.
+- Nested calls with reference evidence take the normal evidence-first rewrite path. The
+  surrounding result type is not substituted for the callee's predicate type (`Eq a`
+  must not become `Eq [a]` merely because a recursive deduplicator returns a list).
+- Execution tests call the same unsigned recursive renderer at Int, Bool and Double,
+  with a String separator, and check recursive equality on list elements. These read
+  the evidence back through behavior, rather than asserting a particular internal key.
 
 ## Local bindings (brick 8)
 

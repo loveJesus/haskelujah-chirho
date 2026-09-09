@@ -1,0 +1,69 @@
+// For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+
+//! Transformer payloads remain lazy until their result is inspected.
+//! Expected IO results independently checked with GHC 9.14.1.
+
+use haskelujah_driver::eval_source_with_machine_chirho;
+use haskelujah_span_chirho::SourceMapChirho;
+
+fn assert_output_chirho(source_chirho: &str, expected_chirho: &str) {
+    let (_, machine_chirho) = eval_source_with_machine_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "TransformerChirho.hs",
+        None,
+    )
+    .unwrap();
+    assert_eq!(machine_chirho.io_output_chirho, expected_chirho);
+}
+
+#[test]
+fn maybe_transformer_short_circuits_io_chirho() {
+    assert_output_chirho(
+        r#"import Control.Monad.Trans.Maybe (MaybeT(..))
+comp :: MaybeT IO Int
+comp = bindMaybeT (MaybeT (return Nothing)) (\_ -> error "continuedChirho")
+main = do
+  resultChirho <- runMaybeT comp
+  case resultChirho of
+    Just _ -> print 1
+    Nothing -> print 0
+"#,
+        "0\n",
+    );
+}
+
+#[test]
+fn maybe_transformer_binds_an_explicit_io_payload_chirho() {
+    assert_output_chirho(
+        r#"import Control.Monad.Trans.Maybe (MaybeT(..))
+comp :: MaybeT IO Int
+comp = bindMaybeT (MaybeT (return (Just 10))) (\x -> returnMaybeT (x + 5))
+main = do
+  resultChirho <- runMaybeT comp
+  case resultChirho of
+    Just valueChirho -> print valueChirho
+    Nothing -> print 0
+"#,
+        "15\n",
+    );
+}
+
+#[test]
+fn io_payload_is_lazy_until_a_case_demands_it_chirho() {
+    assert_output_chirho(
+        r#"main = do
+  unusedChirho <- return (error "forcedChirho" :: Int)
+  putStrLn "alive"
+  valueChirho <- return (Just (error "fieldForcedChirho" :: Int))
+  case valueChirho of
+    Just _ -> putStrLn "outer"
+    Nothing -> putStrLn "wrong"
+  numberChirho <- return (20 + 22 :: Int)
+  case numberChirho of
+    42 -> putStrLn "literal"
+    _ -> putStrLn "wrong"
+"#,
+        "alive\nouter\nliteral\n",
+    );
+}

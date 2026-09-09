@@ -250,18 +250,21 @@ proptest! {
             None,
             limit_chirho,
         );
-        // Either succeeds or fails with step limit — never panics.
+        // A nonempty compiler/runtime error is not evidence of a step limit.
         match result_chirho {
             Ok((val_chirho, _machine_chirho)) => {
-                if let ValueChirho::IntChirho(fib_val_chirho) = val_chirho {
-                    prop_assert!(fib_val_chirho >= 0, "fib should be non-negative");
+                let mut current_chirho = 0_i64;
+                let mut next_chirho = 1_i64;
+                for _index_chirho in 0..n_chirho {
+                    (current_chirho, next_chirho) =
+                        (next_chirho, current_chirho + next_chirho);
                 }
+                prop_assert_eq!(val_chirho, ValueChirho::IntChirho(current_chirho));
             }
             Err(msg_chirho) => {
-                // Step limit exceeded is an expected failure mode.
-                prop_assert!(
-                    msg_chirho.contains("step") || msg_chirho.contains("limit") || msg_chirho.contains("exceeded") || !msg_chirho.is_empty(),
-                    "error should be meaningful: {}", msg_chirho
+                prop_assert_eq!(
+                    msg_chirho,
+                    format!("runtime error: step limit ({limit_chirho}) exceeded")
                 );
             }
         }

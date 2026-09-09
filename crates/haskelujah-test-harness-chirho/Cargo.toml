@@ -13,6 +13,7 @@ haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-sp
 haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.2" }
 haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.2" }
 haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.2" }
-
-[dev-dependencies]
+haskelujah-backend-cranelift-chirho = { package = "haskelujah-backend-cranelift", path = "../haskelujah-backend-cranelift-chirho", version = "0.1.2" }
+haskelujah-backend-llvm-chirho = { package = "haskelujah-backend-llvm", path = "../haskelujah-backend-llvm-chirho", version = "0.1.2" }
+libc = "0.2"
 tempfile = "3"

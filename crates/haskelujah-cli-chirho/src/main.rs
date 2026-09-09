@@ -11,7 +11,7 @@ use std::process::{Command, ExitCode, Stdio};
 use haskelujah_backend_cranelift_chirho::{
     TargetConfigChirho, compile_core_to_object_executable_chirho,
 };
-use haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho;
+use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use haskelujah_driver_chirho::{
     check_source_path_with_source_map_chirho, compile_source_chirho,
@@ -449,8 +449,15 @@ fn compile_command_chirho(
                     );
                 } else {
                     // Generate executable LLVM IR with C main() entry point
-                    let exec_ir_chirho =
-                        compile_core_to_llvm_executable_chirho(&result_chirho.core_chirho);
+                    let exec_ir_chirho = match try_compile_core_to_llvm_executable_chirho(
+                        &result_chirho.core_chirho,
+                    ) {
+                        Ok(ir_chirho) => ir_chirho,
+                        Err(error_chirho) => {
+                            eprintln!("{error_chirho}");
+                            return ExitCode::from(1);
+                        }
+                    };
 
                     let ll_path_chirho = format!("{output_path_chirho}.ll");
                     if let Err(e_chirho) = fs::write(&ll_path_chirho, &exec_ir_chirho) {
@@ -754,6 +761,10 @@ fn link_llvm_file_chirho(
         .ok_or_else(|| format!("non-utf8 llvm path: {}", llvm_path_chirho.display()))?;
 
     let mut clang_command_chirho = Command::new("clang");
+    clang_command_chirho.args([
+        "-target",
+        &haskelujah_backend_llvm_chirho::native_target_chirho(),
+    ]);
     clang_command_chirho.args([
         opt_level_chirho,
         "-o",

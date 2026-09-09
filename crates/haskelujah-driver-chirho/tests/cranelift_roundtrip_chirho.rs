@@ -1,182 +1,29 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::OnceLock;
-
-/// 2 GB memory limit for compiled executables (prevents OOM on the host).
-const MAX_RSS_BYTES_CHIRHO: u64 = 2 * 1024 * 1024 * 1024;
-
-/// Apply memory limit to a Command before spawning (Unix only).
-#[cfg(unix)]
-fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
-    use std::os::unix::process::CommandExt;
-    unsafe {
-        cmd_chirho.pre_exec(|| {
-            let limit_chirho = libc::rlimit {
-                rlim_cur: MAX_RSS_BYTES_CHIRHO,
-                rlim_max: MAX_RSS_BYTES_CHIRHO,
-            };
-            libc::setrlimit(libc::RLIMIT_AS, &limit_chirho);
-            Ok(())
-        })
-    }
-}
-
-#[cfg(not(unix))]
-fn apply_mem_limit_chirho(cmd_chirho: &mut Command) -> &mut Command {
-    cmd_chirho // no-op on non-Unix
-}
-
-use haskelujah_backend_cranelift_chirho::{
-    TargetConfigChirho, compile_core_to_object_executable_chirho,
-};
 use haskelujah_core_chirho::{elide_dicts_and_filter_chirho, pretty_module_chirho};
 use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
-
-fn workspace_root_chirho() -> PathBuf {
-    let crate_dir_chirho = Path::new(env!("CARGO_MANIFEST_DIR"));
-    crate_dir_chirho
-        .parent()
-        .and_then(Path::parent)
-        .expect("driver crate should live under workspace/crates")
-        .to_path_buf()
-}
-
-fn ensure_rts_staticlib_for_cranelift_tests_chirho() -> PathBuf {
-    static RTS_LIB_DIR_CHIRHO: OnceLock<PathBuf> = OnceLock::new();
-    RTS_LIB_DIR_CHIRHO
-        .get_or_init(|| {
-            let workspace_root_chirho = workspace_root_chirho();
-            let cargo_status_chirho = Command::new("cargo")
-                .current_dir(&workspace_root_chirho)
-                .args(["build", "-p", "haskelujah-rts", "--quiet"])
-                .status()
-                .expect("should invoke cargo to build RTS");
-            assert!(
-                cargo_status_chirho.success(),
-                "cargo build -p haskelujah-rts failed with exit code {:?}",
-                cargo_status_chirho.code()
-            );
-            workspace_root_chirho.join("target").join("debug")
-        })
-        .clone()
-}
+use haskelujah_test_harness_chirho::native_chirho::{
+    NativeBackendChirho, native_round_trip_chirho,
+};
 
 fn cranelift_round_trip_stdout_chirho(src_chirho: &str) -> String {
-    let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let compile_result_chirho =
-        compile_source_chirho(src_chirho, &mut source_map_chirho, "Main.hs")
-            .expect("source should compile");
-    let config_chirho = TargetConfigChirho::default();
-    let obj_chirho = compile_core_to_object_executable_chirho(
-        &compile_result_chirho.core_chirho,
-        &config_chirho,
-    )
-    .expect("Cranelift object generation should succeed");
-
-    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should be created");
-    let object_path_chirho = temp_dir_chirho.path().join("main.o");
-    let exe_path_chirho = temp_dir_chirho.path().join("main");
-    std::fs::write(&object_path_chirho, &obj_chirho.object_bytes_chirho)
-        .expect("object file should be written");
-
-    let rts_lib_dir_chirho = ensure_rts_staticlib_for_cranelift_tests_chirho();
-    let mut link_cmd_chirho = Command::new("cc");
-    link_cmd_chirho
-        .arg("-o")
-        .arg(&exe_path_chirho)
-        .arg(&object_path_chirho);
-    #[cfg(target_os = "macos")]
-    link_cmd_chirho.arg("-Wl,-no_fixup_chains");
-    link_cmd_chirho
-        .arg("-L")
-        .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts");
-    let link_status_chirho = link_cmd_chirho.status().expect("linker should run");
-    assert!(
-        link_status_chirho.success(),
-        "linker failed with exit code {:?}",
-        link_status_chirho.code()
-    );
-
-    let output_chirho = apply_mem_limit_chirho(
-        Command::new(&exe_path_chirho)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped()),
-    )
-    .output()
-    .expect("compiled executable should run");
-    assert!(
-        output_chirho.status.success(),
-        "compiled executable failed with exit code {:?}",
-        output_chirho.status.code()
-    );
-    String::from_utf8(output_chirho.stdout).expect("stdout should be UTF-8")
+    cranelift_round_trip_stdout_with_input_chirho(src_chirho, "")
 }
 
 fn cranelift_round_trip_stdout_with_input_chirho(src_chirho: &str, stdin_chirho: &str) -> String {
-    let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let compile_result_chirho =
-        compile_source_chirho(src_chirho, &mut source_map_chirho, "Main.hs")
-            .expect("source should compile");
-    let config_chirho = TargetConfigChirho::default();
-    let obj_chirho = compile_core_to_object_executable_chirho(
-        &compile_result_chirho.core_chirho,
-        &config_chirho,
+    let (code_chirho, stdout_chirho) = native_round_trip_chirho(
+        src_chirho,
+        NativeBackendChirho::CraneliftChirho,
+        stdin_chirho,
     )
-    .expect("Cranelift object generation should succeed");
-
-    let temp_dir_chirho = tempfile::tempdir().expect("temp dir should be created");
-    let object_path_chirho = temp_dir_chirho.path().join("main.o");
-    let exe_path_chirho = temp_dir_chirho.path().join("main");
-    std::fs::write(&object_path_chirho, &obj_chirho.object_bytes_chirho)
-        .expect("object file should be written");
-
-    let rts_lib_dir_chirho = ensure_rts_staticlib_for_cranelift_tests_chirho();
-    let mut link_cmd2_chirho = Command::new("cc");
-    link_cmd2_chirho
-        .arg("-o")
-        .arg(&exe_path_chirho)
-        .arg(&object_path_chirho);
-    #[cfg(target_os = "macos")]
-    link_cmd2_chirho.arg("-Wl,-no_fixup_chains");
-    link_cmd2_chirho
-        .arg("-L")
-        .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts");
-    let link_status_chirho = link_cmd2_chirho.status().expect("linker should run");
-    assert!(
-        link_status_chirho.success(),
-        "linker failed with exit code {:?}",
-        link_status_chirho.code()
+    .expect("native round trip must compile, link, and finish");
+    assert_eq!(
+        code_chirho, 0,
+        "native program failed; stdout:\n{stdout_chirho}"
     );
-
-    let mut child_chirho = apply_mem_limit_chirho(
-        Command::new(&exe_path_chirho)
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped()),
-    )
-    .spawn()
-    .expect("compiled executable should run");
-    use std::io::Write;
-    child_chirho
-        .stdin
-        .as_mut()
-        .expect("stdin pipe should exist")
-        .write_all(stdin_chirho.as_bytes())
-        .expect("stdin should be writable");
-    let output_chirho = child_chirho
-        .wait_with_output()
-        .expect("compiled executable should finish");
-    assert!(
-        output_chirho.status.success(),
-        "compiled executable failed with exit code {:?}",
-        output_chirho.status.code()
-    );
-    String::from_utf8(output_chirho.stdout).expect("stdout should be UTF-8")
+    stdout_chirho
 }
 
 fn haskell_string_literal_chirho(text_chirho: &str) -> String {
@@ -233,27 +80,26 @@ fn cranelift_user_range_filtered_core_has_no_num_selectors_chirho() {
 }
 
 #[test]
-fn cranelift_applyop_divide_filtered_core_has_no_integral_selectors_chirho() {
-    let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let compile_result_chirho = compile_source_chirho(
-        "module Main where\ndata Op = Plus | Minus | Times | Divide deriving (Eq, Show)\napplyOp Plus x y = x + y\napplyOp Minus x y = x - y\napplyOp Times x y = x * y\napplyOp Divide x y = div x y\nmain = print (applyOp Plus 3 4)\n",
-        &mut source_map_chirho,
-        "Main.hs",
-    )
-    .expect("source should compile");
-    let filtered_core_chirho = elide_dicts_and_filter_chirho(&compile_result_chirho.core_chirho);
-    let pretty_core_chirho = pretty_module_chirho(&filtered_core_chirho);
-    assert!(
-        !pretty_core_chirho.contains("$sel_Integral_super_Num"),
-        "filtered core should not retain $sel_Integral_super_Num:\\n{pretty_core_chirho}"
-    );
-    assert!(
-        !pretty_core_chirho.contains("$sel_Integral_div"),
-        "filtered core should not retain $sel_Integral_div:\\n{pretty_core_chirho}"
-    );
-    assert!(
-        pretty_core_chirho.contains("div#"),
-        "filtered core should lower div to div#:\\n{pretty_core_chirho}"
+fn cranelift_integral_operations_use_their_runtime_evidence_chirho() {
+    // GHC 9.14.1 independently produces these five results. Keeping a runtime
+    // dictionary is valid; unconditional name-based erasure is not required.
+    let source_chirho = r#"module Main where
+data OpChirho = PlusChirho | MinusChirho | TimesChirho | DivideChirho deriving (Eq, Show)
+applyOpChirho :: Integral aChirho => OpChirho -> aChirho -> aChirho -> aChirho
+applyOpChirho PlusChirho xChirho yChirho = xChirho + yChirho
+applyOpChirho MinusChirho xChirho yChirho = xChirho - yChirho
+applyOpChirho TimesChirho xChirho yChirho = xChirho * yChirho
+applyOpChirho DivideChirho xChirho yChirho = div xChirho yChirho
+main = do
+  print (applyOpChirho PlusChirho 3 (4 :: Int))
+  print (applyOpChirho MinusChirho 3 (4 :: Int))
+  print (applyOpChirho TimesChirho (-3) (4 :: Int))
+  print (applyOpChirho DivideChirho (-7) (3 :: Int))
+  print (applyOpChirho DivideChirho 7 ((-3) :: Int))
+"#;
+    assert_eq!(
+        cranelift_round_trip_stdout_chirho(source_chirho),
+        "7\n-1\n-12\n-3\n-3\n"
     );
 }
 

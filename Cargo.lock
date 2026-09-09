@@ -1761,6 +1761,7 @@ dependencies = [
  "haskelujah-rts",
  "haskelujah-span",
  "haskelujah-typing",
+ "tempfile",
 ]
 
 [[package]]
@@ -1897,6 +1898,9 @@ dependencies = [
 [[package]]
 name = "haskelujah-rts"
 version = "0.1.35"
+dependencies = [
+ "target-lexicon",
+]
 
 [[package]]
 name = "haskelujah-runtime"
@@ -1920,10 +1924,13 @@ dependencies = [
 name = "haskelujah-test-harness"
 version = "0.1.35"
 dependencies = [
+ "haskelujah-backend-cranelift",
+ "haskelujah-backend-llvm",
  "haskelujah-diagnostics",
  "haskelujah-driver",
  "haskelujah-runtime",
  "haskelujah-span",
+ "libc",
  "tempfile",
 ]
 

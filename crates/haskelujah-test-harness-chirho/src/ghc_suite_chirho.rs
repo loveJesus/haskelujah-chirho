@@ -28,6 +28,10 @@
 //! main = putStrLn "Hello"
 //! ```
 //!
+//! `EXPECTED` is an equivalent header spelling. Output headers decode `\\n`,
+//! `\\r`, `\\t` and `\\\\`; an explicitly empty oracle is different from a missing
+//! oracle. Compile-and-run cases without an oracle fail instead of passing on exit.
+//!
 //! Or for expected-failure tests:
 //! ```haskell
 //! -- TEST: compile_fail
@@ -67,7 +71,7 @@ pub struct GhcTestCaseChirho {
     pub name_chirho: String,
     /// What kind of test this is.
     pub kind_chirho: GhcTestKindChirho,
-    /// Expected output for compile_and_run tests (from `-- EXPECT_OUTPUT:` comment).
+    /// Expected output from `EXPECT_OUTPUT` / `EXPECTED` or a full-suite `.stdout` file.
     pub expected_output_chirho: Option<String>,
     /// The Haskell source code.
     pub source_chirho: String,
@@ -166,8 +170,11 @@ fn parse_test_metadata_chirho(source_chirho: &str) -> (GhcTestKindChirho, Option
                 "compile_fail" => GhcTestKindChirho::CompileFailChirho,
                 _ => GhcTestKindChirho::CompileChirho,
             };
-        } else if let Some(rest_chirho) = trimmed_chirho.strip_prefix("-- EXPECT_OUTPUT:") {
-            expected_output_chirho = Some(rest_chirho.trim().to_string());
+        } else if let Some(rest_chirho) = trimmed_chirho
+            .strip_prefix("-- EXPECT_OUTPUT:")
+            .or_else(|| trimmed_chirho.strip_prefix("-- EXPECTED:"))
+        {
+            expected_output_chirho = Some(decode_output_header_chirho(rest_chirho.trim()));
         } else if !trimmed_chirho.starts_with("--") {
             // Stop parsing at first non-comment line.
             break;
@@ -175,6 +182,31 @@ fn parse_test_metadata_chirho(source_chirho: &str) -> (GhcTestKindChirho, Option
     }
 
     (kind_chirho, expected_output_chirho)
+}
+
+/// Both curated header spellings use escaped line breaks to fit one comment.
+fn decode_output_header_chirho(encoded_chirho: &str) -> String {
+    let mut decoded_chirho = String::new();
+    let mut chars_chirho = encoded_chirho.chars();
+    while let Some(character_chirho) = chars_chirho.next() {
+        if character_chirho != '\\' {
+            decoded_chirho.push(character_chirho);
+            continue;
+        }
+        match chars_chirho.next() {
+            Some('n') => decoded_chirho.push('\n'),
+            Some('r') => decoded_chirho.push('\r'),
+            Some('t') => decoded_chirho.push('\t'),
+            Some('\\') => decoded_chirho.push('\\'),
+            escaped_chirho => {
+                decoded_chirho.push('\\');
+                if let Some(character_chirho) = escaped_chirho {
+                    decoded_chirho.push(character_chirho);
+                }
+            }
+        }
+    }
+    decoded_chirho
 }
 
 /// Run a single GHC test case through the Haskelujah pipeline.
@@ -205,7 +237,14 @@ pub fn run_ghc_test_chirho(test_chirho: &GhcTestCaseChirho) -> GhcTestResultChir
             }
         }
         GhcTestKindChirho::CompileAndRunChirho => {
-            // Should compile and produce expected output.
+            let Some(expected_chirho) = &test_chirho.expected_output_chirho else {
+                return GhcTestResultChirho {
+                    name_chirho: test_chirho.name_chirho.clone(),
+                    passed_chirho: false,
+                    message_chirho: "compile_and_run requires an expected-output oracle"
+                        .to_string(),
+                };
+            };
             match haskelujah_driver_chirho::eval_source_with_machine_chirho(
                 &test_chirho.source_chirho,
                 &mut source_map_chirho,
@@ -213,44 +252,27 @@ pub fn run_ghc_test_chirho(test_chirho: &GhcTestCaseChirho) -> GhcTestResultChir
                 None,
             ) {
                 Ok((_value_chirho, machine_chirho)) => {
-                    let output_chirho = machine_chirho.io_output_chirho.trim().to_string();
-                    if let Some(expected_chirho) = &test_chirho.expected_output_chirho {
-                        if output_chirho == expected_chirho.trim() {
-                            GhcTestResultChirho {
-                                name_chirho: test_chirho.name_chirho.clone(),
-                                passed_chirho: true,
-                                message_chirho: format!("output matched: {}", output_chirho),
-                            }
+                    // Header oracles omit the final line terminator. Preserve
+                    // other whitespace: a wrong answer is not repaired by trim().
+                    let output_chirho = machine_chirho.io_output_chirho.trim_end_matches('\n');
+                    let expected_chirho = expected_chirho.trim_end_matches('\n');
+                    let passed_chirho = output_chirho == expected_chirho;
+                    GhcTestResultChirho {
+                        name_chirho: test_chirho.name_chirho.clone(),
+                        passed_chirho,
+                        message_chirho: if passed_chirho {
+                            format!("output matched: {output_chirho}")
                         } else {
-                            GhcTestResultChirho {
-                                name_chirho: test_chirho.name_chirho.clone(),
-                                passed_chirho: false,
-                                message_chirho: format!(
-                                    "output mismatch: expected '{}', got '{}'",
-                                    expected_chirho, output_chirho
-                                ),
-                            }
-                        }
-                    } else {
-                        // No expected output specified — just check it runs.
-                        GhcTestResultChirho {
-                            name_chirho: test_chirho.name_chirho.clone(),
-                            passed_chirho: true,
-                            message_chirho: format!(
-                                "ran successfully, output: {}",
-                                if output_chirho.is_empty() {
-                                    "(none)"
-                                } else {
-                                    &output_chirho
-                                }
-                            ),
-                        }
+                            format!(
+                                "output mismatch: expected {expected_chirho:?}, got {output_chirho:?}"
+                            )
+                        },
                     }
                 }
                 Err(error_chirho) => GhcTestResultChirho {
                     name_chirho: test_chirho.name_chirho.clone(),
                     passed_chirho: false,
-                    message_chirho: format!("runtime error: {}", error_chirho),
+                    message_chirho: format!("runtime error: {error_chirho}"),
                 },
             }
         }
@@ -322,7 +344,12 @@ pub fn write_ghc_test_chirho(
         }
     }
     if let Some(output_chirho) = expected_output_chirho {
-        content_chirho.push_str(&format!("-- EXPECT_OUTPUT: {}\n", output_chirho));
+        let encoded_chirho = output_chirho
+            .replace('\\', "\\\\")
+            .replace('\n', "\\n")
+            .replace('\r', "\\r")
+            .replace('\t', "\\t");
+        content_chirho.push_str(&format!("-- EXPECT_OUTPUT: {encoded_chirho}\n"));
     }
     content_chirho.push_str(source_body_chirho);
 
@@ -456,10 +483,10 @@ fn discover_t_files_recursive_chirho(
         if hs_path_chirho.exists() {
             if let Ok(source_chirho) = fs::read_to_string(&hs_path_chirho) {
                 tests_chirho.push(GhcTestCaseChirho {
+                    expected_output_chirho: load_expected_stdout_chirho(&hs_path_chirho),
                     path_chirho: hs_path_chirho,
                     name_chirho: entry_chirho.name_chirho.clone(),
                     kind_chirho: entry_chirho.kind_chirho.clone(),
-                    expected_output_chirho: None, // GHC uses .stdout files
                     source_chirho,
                 });
             }
@@ -560,10 +587,6 @@ mod tests_chirho {
 
     #[test]
     fn run_compile_fail_test_pass_chirho() {
-        // Known issue: constructor `True` gets a fresh type variable instead of
-        // being resolved to `Bool`, so `x :: Int; x = True` doesn't produce a
-        // type error. This is a correctness bug in constructor type resolution
-        // that needs fixing. For now, skip if the compiler accepts this program.
         let test_chirho = GhcTestCaseChirho {
             path_chirho: PathBuf::from("typeerror.hs"),
             name_chirho: "typeerror".to_string(),
@@ -573,10 +596,11 @@ mod tests_chirho {
         };
 
         let result_chirho = run_ghc_test_chirho(&test_chirho);
-        if !result_chirho.passed_chirho {
-            eprintln!("known issue: constructor type resolution — x :: Int; x = True not caught");
-            return;
-        }
+        assert!(
+            result_chirho.passed_chirho,
+            "{}",
+            result_chirho.message_chirho
+        );
     }
 
     #[test]
@@ -625,15 +649,7 @@ mod tests_chirho {
 
         let suite_chirho = run_ghc_suite_chirho(&tests_chirho);
         assert_eq!(suite_chirho.total_chirho, 3);
-        // Known issue: t3 (x :: Int; x = True) not caught as type error.
-        // Constructor type resolution doesn't resolve True → Bool.
-        // Expect 2/3 until this is fixed.
-        assert!(
-            suite_chirho.passed_chirho >= 2,
-            "expected at least 2/3 passed, got {}/{}",
-            suite_chirho.passed_chirho,
-            suite_chirho.total_chirho
-        );
+        assert_eq!(suite_chirho.passed_chirho, 3, "{suite_chirho:?}");
     }
 
     #[test]
@@ -766,6 +782,7 @@ test('T004', normal, compile, ['-O'])
         )
         .unwrap();
         fs::write(tmp_chirho.path().join("Run.hs"), "main = putStrLn \"ok\"\n").unwrap();
+        fs::write(tmp_chirho.path().join("Run.stdout"), "ok\n").unwrap();
 
         let tests_chirho = discover_ghc_full_suite_chirho(tmp_chirho.path()).unwrap();
         assert_eq!(tests_chirho.len(), 2);

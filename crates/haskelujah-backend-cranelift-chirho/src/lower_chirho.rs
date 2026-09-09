@@ -64,6 +64,8 @@ impl VarEnvChirho {
 
 /// Lowering context threading mutable state through a single function body.
 pub struct LowerCtxChirho<'a> {
+    pub(crate) runtime_calls_chirho:
+        crate::codegen_chirho::runtime_calls_chirho::RuntimeCallsChirho,
     /// SSA value environment for variables.
     pub env_chirho: &'a mut VarEnvChirho,
     /// Counter for allocating fresh `cranelift_frontend::Variable` indices.
@@ -454,12 +456,25 @@ fn try_create_thunk_for_app_chirho(
         CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
         _ => return None,
     };
-    let (func_ref_chirho, _arity_chirho) = ctx_chirho.func_ref_map_chirho.get(&func_id_chirho)?;
+    let (func_ref_chirho, arity_chirho) = *ctx_chirho.func_ref_map_chirho.get(&func_id_chirho)?;
+    // A direct-call trampoline is valid only for a saturated call. Partial
+    // applications need a PAP, and overapplications must call the result.
+    if args_chirho.len() != arity_chirho {
+        return None;
+    }
+    let capture_count_chirho = ctx_chirho
+        .lifted_capture_ids_chirho
+        .get(&func_id_chirho)
+        .map_or(0, Vec::len);
+    let call_arity_chirho = args_chirho.len() + capture_count_chirho;
+    if call_arity_chirho >= ctx_chirho.thunk_trampoline_refs_chirho.len() {
+        return None;
+    }
 
     // Get the address of the target function.
     let func_addr_chirho = builder_chirho
         .ins()
-        .func_addr(cl_types_chirho::I64, *func_ref_chirho);
+        .func_addr(cl_types_chirho::I64, func_ref_chirho);
 
     // Evaluate all arguments eagerly (they go into the thunk's free vars).
     let mut fv_vals_chirho: Vec<ClValueChirho> = Vec::with_capacity(args_chirho.len() + 1);
@@ -469,9 +484,15 @@ fn try_create_thunk_for_app_chirho(
         let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
         fv_vals_chirho.push(arg_i64_chirho);
     }
+    append_lifted_capture_arg_vals_chirho(
+        builder_chirho,
+        ctx_chirho,
+        func_id_chirho,
+        &mut fv_vals_chirho,
+    );
 
     // Get the trampoline address for this arity.
-    let trampoline_ref_chirho = ctx_chirho.thunk_trampoline_refs_chirho[args_chirho.len()];
+    let trampoline_ref_chirho = ctx_chirho.thunk_trampoline_refs_chirho[call_arity_chirho];
     let trampoline_addr_chirho = builder_chirho
         .ins()
         .func_addr(cl_types_chirho::I64, trampoline_ref_chirho);
@@ -523,7 +544,7 @@ fn try_create_thunk_for_app_chirho(
 
 // ─── Let lowering ─────────────────────────────────────────────────────────────
 
-fn lower_let_chirho(
+fn lower_let_bindings_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
     rec_chirho: bool,
@@ -531,8 +552,7 @@ fn lower_let_chirho(
         haskelujah_core_chirho::expr_chirho::BinderChirho,
         CoreExprChirho,
     )],
-    body_chirho: &CoreExprChirho,
-) -> ClValueChirho {
+) {
     if rec_chirho {
         // For recursive lets: allocate all variables first with a temporary 0
         // value, so that references between bindings can be resolved. This
@@ -577,7 +597,19 @@ fn lower_let_chirho(
             builder_chirho.def_var(var_chirho, val_i64_chirho);
         }
     }
+}
 
+fn lower_let_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    rec_chirho: bool,
+    binds_chirho: &[(
+        haskelujah_core_chirho::expr_chirho::BinderChirho,
+        CoreExprChirho,
+    )],
+    body_chirho: &CoreExprChirho,
+) -> ClValueChirho {
+    lower_let_bindings_chirho(builder_chirho, ctx_chirho, rec_chirho, binds_chirho);
     lower_expr_chirho(builder_chirho, ctx_chirho, body_chirho)
 }
 
@@ -591,38 +623,8 @@ fn lower_tail_let_chirho(
     )],
     body_chirho: &CoreExprChirho,
 ) -> TailLowerOutcomeChirho {
-    if rec_chirho {
-        let mut cl_vars_chirho: Vec<ClVariableChirho> = Vec::with_capacity(binds_chirho.len());
-        for (binder_chirho, _) in binds_chirho {
-            let var_chirho = ctx_chirho.fresh_var_chirho(binder_chirho.id_chirho, builder_chirho);
-            let zero_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
-            builder_chirho.def_var(var_chirho, zero_chirho);
-            cl_vars_chirho.push(var_chirho);
-        }
-        for (idx_chirho, (binder_chirho, rhs_chirho)) in binds_chirho.iter().enumerate() {
-            let val_chirho = lower_let_rhs_value_chirho(
-                builder_chirho,
-                ctx_chirho,
-                binder_chirho.id_chirho,
-                rhs_chirho,
-            );
-            let val_i64_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
-            builder_chirho.def_var(cl_vars_chirho[idx_chirho], val_i64_chirho);
-        }
-    } else {
-        for (binder_chirho, rhs_chirho) in binds_chirho {
-            let val_chirho = lower_let_rhs_value_chirho(
-                builder_chirho,
-                ctx_chirho,
-                binder_chirho.id_chirho,
-                rhs_chirho,
-            );
-            let val_i64_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
-            let var_chirho = ctx_chirho.fresh_var_chirho(binder_chirho.id_chirho, builder_chirho);
-            builder_chirho.def_var(var_chirho, val_i64_chirho);
-        }
-    }
-
+    // Tail position changes continuation emission, never binding strictness.
+    lower_let_bindings_chirho(builder_chirho, ctx_chirho, rec_chirho, binds_chirho);
     lower_tail_expr_chirho(builder_chirho, ctx_chirho, body_chirho)
 }
 
@@ -1394,6 +1396,20 @@ fn lower_app_chirho(
     if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
         // Check for Prelude IO functions (putStrLn, print, return)
         if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(func_id_chirho) {
+            if matches!(name_chirho.as_str(), "error" | "error#")
+                && !ctx_chirho.func_ref_map_chirho.contains_key(func_id_chirho)
+            {
+                if let Some(message_chirho) = all_args_chirho.last() {
+                    let message_chirho =
+                        lower_expr_chirho(builder_chirho, ctx_chirho, message_chirho);
+                    let message_chirho = ensure_i64_chirho(builder_chirho, message_chirho, false);
+                    let message_chirho =
+                        force_if_thunk_chirho(builder_chirho, ctx_chirho, message_chirho);
+                    return ctx_chirho
+                        .runtime_calls_chirho
+                        .error_chirho(builder_chirho, message_chirho);
+                }
+            }
             // return/pure: identity for IO — just return the argument
             if matches!(name_chirho.as_str(), "return" | "pure") {
                 if let Some(arg_chirho) = all_args_chirho.last() {
@@ -1460,6 +1476,8 @@ fn lower_app_chirho(
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
                         let arg_i64_chirho =
                             ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        let arg_i64_chirho =
+                            force_if_thunk_chirho(builder_chirho, ctx_chirho, arg_i64_chirho);
                         builder_chirho
                             .ins()
                             .call(put_str_ref_chirho, &[arg_i64_chirho]);
@@ -1486,6 +1504,10 @@ fn lower_app_chirho(
                             ensure_i64_chirho(builder_chirho, path_val_chirho, false);
                         let content_i64_chirho =
                             ensure_i64_chirho(builder_chirho, content_val_chirho, false);
+                        let path_i64_chirho =
+                            force_if_thunk_chirho(builder_chirho, ctx_chirho, path_i64_chirho);
+                        let content_i64_chirho =
+                            force_if_thunk_chirho(builder_chirho, ctx_chirho, content_i64_chirho);
                         builder_chirho.ins().call(
                             write_file_ref_chirho,
                             &[path_i64_chirho, content_i64_chirho],
@@ -1616,6 +1638,8 @@ fn lower_app_chirho(
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
                         let arg_i64_chirho =
                             ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        let arg_i64_chirho =
+                            force_if_thunk_chirho(builder_chirho, ctx_chirho, arg_i64_chirho);
                         let call_chirho = builder_chirho
                             .ins()
                             .call(unpack_ref_chirho, &[arg_i64_chirho]);
@@ -1637,6 +1661,8 @@ fn lower_app_chirho(
                             lower_expr_chirho(builder_chirho, ctx_chirho, path_expr_chirho);
                         let path_i64_chirho =
                             ensure_i64_chirho(builder_chirho, path_val_chirho, false);
+                        let path_i64_chirho =
+                            force_if_thunk_chirho(builder_chirho, ctx_chirho, path_i64_chirho);
                         let call_chirho = builder_chirho
                             .ins()
                             .call(read_file_ref_chirho, &[path_i64_chirho]);
@@ -1651,6 +1677,8 @@ fn lower_app_chirho(
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
                         let arg_i64_chirho =
                             ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        let arg_i64_chirho =
+                            force_if_thunk_chirho(builder_chirho, ctx_chirho, arg_i64_chirho);
                         builder_chirho
                             .ins()
                             .call(put_str_ln_ref_chirho, &[arg_i64_chirho]);
@@ -1746,6 +1774,10 @@ fn lower_app_chirho(
                             lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
                         let arg_i64_chirho =
                             ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                        // The numeric C adapter consumes a value, never a thunk address.
+                        // Workflow: testing-chirho/execution-oracles-chirho.md.
+                        let arg_i64_chirho =
+                            force_if_thunk_chirho(builder_chirho, ctx_chirho, arg_i64_chirho);
                         builder_chirho
                             .ins()
                             .call(print_int_ref_chirho, &[arg_i64_chirho]);
@@ -2094,6 +2126,10 @@ fn lower_indirect_app_values_chirho(
         return fun_ptr_i64_chirho;
     }
 
+    // A selector or lazy binding may return a thunk containing the function.
+    // Enter it before interpreting a heap object's first word as closure code.
+    let fun_ptr_i64_chirho = force_if_thunk_chirho(builder_chirho, ctx_chirho, fun_ptr_i64_chirho);
+
     let boxed_block_chirho = builder_chirho.create_block();
     let direct_block_chirho = builder_chirho.create_block();
     let join_block_chirho = builder_chirho.create_block();
@@ -2257,6 +2293,22 @@ pub fn lower_primop_chirho(
 
     match name_chirho {
         // ── Integer arithmetic ─────────────────────────────────────────────
+        "isHeapObjectChirho#" => {
+            let value_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let classifier_chirho = ctx_chirho
+                .is_heap_ptr_ref_chirho
+                .expect("runtime value classification is registered");
+            let call_chirho = builder_chirho
+                .ins()
+                .call(classifier_chirho, &[value_chirho]);
+            builder_chirho.inst_results(call_chirho)[0]
+        }
+        "error#" => {
+            let message_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            ctx_chirho
+                .runtime_calls_chirho
+                .error_chirho(builder_chirho, message_chirho)
+        }
         "+#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
@@ -3577,7 +3629,7 @@ pub fn con_tag_for_chirho(name_chirho: &str) -> u32 {
         "[]" => 0,
         ":" => 1,
         // Unit
-        "()" => 0,
+        "()" | "$tuple0" => 0,
         // Tuples
         "(,)" => 0,
         "(,,)" => 0,

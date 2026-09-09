@@ -20,6 +20,7 @@ pub mod ffi_chirho;
 pub mod gc_chirho;
 pub mod heap_chirho;
 pub mod native_layout_chirho;
+pub mod target_chirho;
 pub mod value_chirho;
 
 pub use gc_chirho::{

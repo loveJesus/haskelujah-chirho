@@ -8,14 +8,13 @@
 //! Cranelift) and validates that the emitted artifact is structurally
 //! correct and encodes the same computation.
 //!
-//! Since we cannot yet *execute* the emitted artifacts in CI without
-//! native toolchains, we verify:
-//! - LLVM IR is well-formed (contains the expected function, literal, or call)
+//! Native toolchains are required for the LLVM execution gate:
+//! - LLVM binaries produce the expected exit result, with bounded execution
 //! - Wasm binary has the correct magic number and version
 //! - Cranelift object has an ELF/Mach-O header signature
 //!
-//! When the backends gain full runtime support, these tests will be
-//! upgraded to actually run the artifacts and compare exit codes.
+//! Wasm/Cranelift checks below remain artifact smoke tests, not execution proofs.
+//! Dedicated native round-trip suites execute both native backends.
 
 use haskelujah_span_chirho::SourceMapChirho;
 
@@ -133,42 +132,22 @@ fn roundtrip_stg_baseline_all_chirho() {
 #[test]
 fn roundtrip_llvm_all_chirho() {
     for case_chirho in ROUNDTRIP_CASES_CHIRHO {
-        let mut sm_chirho = SourceMapChirho::new_chirho();
-        let result_chirho = compile_source_chirho(
-            case_chirho.source_chirho,
-            &mut sm_chirho,
-            &format!("{}.hs", case_chirho.name_chirho),
-        )
-        .unwrap_or_else(|e_chirho| {
-            panic!(
-                "compile failed for '{}': {}",
-                case_chirho.name_chirho, e_chirho
+        let result_chirho =
+            haskelujah_test_harness_chirho::native_chirho::native_round_trip_chirho(
+                case_chirho.source_chirho,
+                haskelujah_test_harness_chirho::native_chirho::NativeBackendChirho::LlvmChirho,
+                "",
             )
-        });
-
-        let llvm_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-            &result_chirho.core_chirho,
-        );
-
-        // Structural checks
-        assert!(
-            llvm_ir_chirho.contains("define i64 @haskelujah_main()"),
-            "LLVM IR for '{}' missing haskelujah_main",
+            .unwrap_or_else(|error_chirho| panic!("{}: {error_chirho}", case_chirho.name_chirho));
+        assert_eq!(
+            result_chirho,
+            (
+                case_chirho.expected_int_chirho as i32,
+                format!("{}\n", case_chirho.expected_int_chirho)
+            ),
+            "{}",
             case_chirho.name_chirho
         );
-        assert!(
-            llvm_ir_chirho.contains("define i32 @main()"),
-            "LLVM IR for '{}' missing C main",
-            case_chirho.name_chirho
-        );
-
-        // For the constant case, verify the literal is embedded
-        if case_chirho.name_chirho == "constant" {
-            assert!(
-                llvm_ir_chirho.contains("ret i64 42"),
-                "LLVM IR for 'constant' should contain ret i64 42"
-            );
-        }
     }
 }
 

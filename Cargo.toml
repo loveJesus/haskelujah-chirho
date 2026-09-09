@@ -35,3 +35,10 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.93.0"
 version = "0.1.35"
+
+# Generated executables call this runtime in their hot loops, even when the
+# compiler itself is a debug build. Keep debug information and assertions, but
+# optimize the native RTS so end-to-end scale tests exercise generated code
+# rather than an unoptimized Rust hash table on every thunk-entry check.
+[profile.dev.package.haskelujah-rts]
+opt-level = 2

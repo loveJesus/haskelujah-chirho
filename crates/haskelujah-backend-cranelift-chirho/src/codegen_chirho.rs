@@ -20,6 +20,9 @@
 
 use std::collections::{HashMap, HashSet};
 
+mod platform_chirho;
+pub(crate) mod runtime_calls_chirho;
+
 use cranelift_codegen::ir::types as cl_types_chirho;
 use cranelift_codegen::ir::{
     AbiParam as AbiParamChirho, Function as ClFunctionChirho, InstBuilder as _,
@@ -70,6 +73,11 @@ fn compile_core_to_object_inner_chirho(
     config_chirho: &TargetConfigChirho,
     executable_mode_chirho: bool,
 ) -> Result<NativeObjectChirho, String> {
+    let actions_chirho =
+        haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(module_chirho, "main");
+    let prepared_chirho =
+        haskelujah_core_chirho::native_thunks_chirho::prepare_native_thunks_chirho(&actions_chirho);
+    let module_chirho = &prepared_chirho;
     // ── Build Cranelift ISA from target triple ─────────────────────────────
     let mut flag_builder_chirho = cl_settings_chirho::builder();
     // Enable PIC for macOS ARM64 (required for linking with libc)
@@ -692,7 +700,11 @@ fn compile_core_to_object_inner_chirho(
     }
 
     // ── Finalize and emit object bytes ─────────────────────────────────────
-    let product_chirho = obj_module_chirho.finish();
+    let mut product_chirho = obj_module_chirho.finish();
+    platform_chirho::annotate_platform_chirho(
+        &mut product_chirho.object,
+        &config_chirho.triple_chirho,
+    )?;
     let object_bytes_chirho = product_chirho
         .emit()
         .map_err(|e_chirho| format!("failed to emit object: {e_chirho}"))?;
@@ -1792,7 +1804,12 @@ fn define_function_body_chirho(
             string_globals_chirho.insert(s_chirho.clone(), gv_chirho);
         }
 
+        let runtime_calls_chirho = runtime_calls_chirho::RuntimeCallsChirho::declare_chirho(
+            module_chirho,
+            builder_chirho.func,
+        )?;
         let mut ctx_chirho = LowerCtxChirho {
+            runtime_calls_chirho,
             env_chirho: &mut env_chirho,
             next_var_idx_chirho: &mut next_var_idx_chirho,
             cl_vars_chirho: &mut cl_vars_chirho,

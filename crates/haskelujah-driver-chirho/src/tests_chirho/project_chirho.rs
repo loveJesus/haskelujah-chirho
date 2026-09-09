@@ -264,8 +264,8 @@ mod tests_chirho {
 
     #[test]
     fn real_parsec_reexport_module_seeds_choice_scheme_chirho() {
-        let package_root_chirho =
-            workspace_root_chirho().join(".haskelujah-packages-chirho/parsec-3.1.18.0/src");
+        let package_root_chirho = workspace_root_chirho()
+            .join("test-data-chirho/package-fixtures-chirho/parsec-3.1.18.0/src");
         let module_names_chirho = [
             "Text.Parsec.Pos",
             "Text.Parsec.Error",
@@ -315,8 +315,8 @@ mod tests_chirho {
 
     #[test]
     fn real_parsec_core_slice_orders_text_parsec_before_perm_chirho() {
-        let package_root_chirho =
-            workspace_root_chirho().join(".haskelujah-packages-chirho/parsec-3.1.18.0/src");
+        let package_root_chirho = workspace_root_chirho()
+            .join("test-data-chirho/package-fixtures-chirho/parsec-3.1.18.0/src");
         let module_names_chirho = [
             "Text.Parsec.Pos",
             "Text.Parsec.Error",

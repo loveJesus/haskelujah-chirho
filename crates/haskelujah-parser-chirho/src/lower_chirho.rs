@@ -5670,14 +5670,15 @@ impl LowerCtxChirho {
                             if tok_chirho.kind_chirho() == TokenKindChirho::LeftBraceChirho
                     )
                 });
-                let has_fields_chirho = has_braces_chirho || children_chirho.iter().any(|c_chirho| {
-                    matches!(
-                        c_chirho.element_chirho,
-                        GreenElementChirho::NodeChirho(n_chirho)
-                            if n_chirho.kind_chirho()
-                                == SyntaxKindChirho::FieldAssignChirho
-                    )
-                });
+                let has_fields_chirho = has_braces_chirho
+                    || children_chirho.iter().any(|c_chirho| {
+                        matches!(
+                            c_chirho.element_chirho,
+                            GreenElementChirho::NodeChirho(n_chirho)
+                                if n_chirho.kind_chirho()
+                                    == SyntaxKindChirho::FieldAssignChirho
+                        )
+                    });
                 if has_fields_chirho {
                     let fields_chirho = children_chirho
                         .iter()
@@ -9881,7 +9882,8 @@ fn builtin_operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
         | "<.*>" | "<*.>" | "<<.>>" | "<<." | ".>>" => (4, AssocChirho::LeftChirho),
         ":" | ":|" | "++" | ".|." => (5, AssocChirho::RightChirho),
         "+" | "-" | "xor" => (6, AssocChirho::LeftChirho),
-        "*" | "/" | "`div`" | "`mod`" | ".&." => (7, AssocChirho::LeftChirho),
+        // Lowered backtick names no longer include their delimiters.
+        "*" | "/" | "div" | "mod" | "quot" | "rem" | ".&." => (7, AssocChirho::LeftChirho),
         "^" | "**" => (8, AssocChirho::RightChirho),
         "." => (9, AssocChirho::RightChirho),
         _ => (9, AssocChirho::LeftChirho), // default: infixl 9
@@ -10190,14 +10192,7 @@ mod tests_chirho {
     use crate::cst_parser_chirho::ParserChirho;
     use haskelujah_ast_chirho::decl_chirho::ClassMethodChirho;
 
-    const CONTRAVARIANT_REP_SOURCE_CHIRHO: &str = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../.haskelujah-packages-chirho/adjunctions-4.4.4/src/Data/Functor/Contravariant/Rep.hs"
-    ));
-    const TH_DATATYPE_SOURCE_CHIRHO: &str = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../.haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs"
-    ));
+    use crate::test_fixtures_chirho::CONTRAVARIANT_REP_SOURCE_CHIRHO;
 
     fn parse_and_lower_chirho(source_chirho: &str) -> ModuleChirho {
         let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
@@ -12406,10 +12401,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
 
     #[test]
     fn lower_containers_intset_retains_helper_funbinds_chirho() {
-        let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
-        let source_chirho = std::fs::read_to_string(&source_path_chirho)
-            .expect("expected containers IntSet source");
+        let source_chirho = crate::test_fixtures_chirho::INTSET_RAW_SOURCE_CHIRHO;
         let module_chirho = parse_and_lower_chirho(&source_chirho);
         let funbind_names_chirho: Vec<String> = module_chirho
             .decls_chirho
@@ -12448,62 +12440,7 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
 
     #[test]
     fn lower_containers_intset_preprocessed_retains_helper_funbinds_chirho() {
-        let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
-        let source_path_chirho = std::fs::canonicalize(source_path_chirho)
-            .expect("expected canonical containers IntSet path");
-        let containers_root_chirho = source_path_chirho
-            .ancestors()
-            .nth(4)
-            .expect("expected containers root")
-            .to_path_buf();
-        let cpp_support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
-        std::fs::create_dir_all(&cpp_support_dir_chirho).expect("expected cpp support dir");
-        std::fs::write(
-            cpp_support_dir_chirho.join("MachDeps.h"),
-            "#define WORD_SIZE_IN_BITS 64\n",
-        )
-        .expect("expected synthetic MachDeps.h");
-        let output_chirho = std::process::Command::new("cpp")
-            .arg("-traditional")
-            .arg("-P")
-            .arg("-D__GLASGOW_HASKELL__=810")
-            .arg("-DWORD_SIZE_IN_BITS=64")
-            .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
-            .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
-            .arg("-DMIN_VERSION_array(x,y,z)=1")
-            .arg("-DMIN_VERSION_transformers(x,y,z)=1")
-            .arg(format!(
-                "-I{}",
-                source_path_chirho
-                    .parent()
-                    .expect("expected IntSet parent dir")
-                    .display()
-            ))
-            .arg(format!("-I{}", cpp_support_dir_chirho.display()))
-            .arg(format!(
-                "-I{}",
-                containers_root_chirho.join("include").display()
-            ))
-            .arg(format!("-I{}", containers_root_chirho.display()))
-            .current_dir(
-                source_path_chirho
-                    .parent()
-                    .expect("expected IntSet parent dir"),
-            )
-            .arg(
-                source_path_chirho
-                    .file_name()
-                    .expect("expected IntSet file name"),
-            )
-            .output()
-            .expect("expected cpp to run");
-        assert!(
-            output_chirho.status.success(),
-            "expected cpp to succeed: {}",
-            String::from_utf8_lossy(&output_chirho.stderr)
-        );
-        let source_chirho = String::from_utf8(output_chirho.stdout).expect("expected utf-8 cpp");
+        let source_chirho = crate::test_fixtures_chirho::INTSET_PREPROCESSED_SOURCE_CHIRHO;
         let module_chirho = parse_and_lower_chirho(&source_chirho);
         let funbind_names_chirho: Vec<String> = module_chirho
             .decls_chirho
@@ -14723,7 +14660,6 @@ data BoxChirho fChirho aChirho = BoxChirho { unBoxChirho :: AppChirho @fChirho a
     }
 
     #[test]
-    #[ignore = "parse_and_lower_chirho does not mirror the full driver preprocessing/layout path yet"]
     fn lower_gadt_infix_type_operator_signature_keeps_operator_apps_chirho() {
         fn count_named_type_apps_chirho(ty_chirho: &TypeChirho, needle_chirho: &str) -> usize {
             let current_count_chirho = match ty_chirho {
@@ -14792,11 +14728,12 @@ data BoxChirho fChirho aChirho = BoxChirho { unBoxChirho :: AppChirho @fChirho a
         }
 
         let module_chirho = parse_and_lower_chirho(
-            "{-# LANGUAGE GADTs, TypeOperators #-}\n\
-module M where\n\
-data aChirho :-> cChirho where\n\
-  PairChirho :: (aChirho :-> (bChirho :-> cChirho)) -> ((aChirho, bChirho) :-> cChirho)\n\
-  UnitChirho :: cChirho -> (() :-> cChirho)\n",
+            r#"{-# LANGUAGE GADTs, TypeOperators #-}
+module M where
+data aChirho :-> cChirho where
+  PairChirho :: (aChirho :-> (bChirho :-> cChirho)) -> ((aChirho, bChirho) :-> cChirho)
+  UnitChirho :: cChirho -> (() :-> cChirho)
+"#,
         );
 
         match &module_chirho.decls_chirho[0] {
@@ -15892,9 +15829,10 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
     }
 
     #[test]
-    #[ignore] // Known issue: CPP residue produces empty function names in preprocessed source
     fn lower_real_th_datatype_remaining_sites_have_no_placeholder_exprs_chirho() {
-        let module_chirho = parse_and_lower_chirho(TH_DATATYPE_SOURCE_CHIRHO);
+        let module_chirho = parse_and_lower_chirho(
+            crate::test_fixtures_chirho::TH_DATATYPE_PREPROCESSED_SOURCE_CHIRHO,
+        );
         let mut placeholder_paths_chirho = Vec::new();
         for fun_name_chirho in ["mkExtraFunArgForalls", "freeVariablesWellScoped", "unify'"] {
             let decl_chirho = find_fun_decl_chirho(&module_chirho, fun_name_chirho);
@@ -16863,7 +16801,6 @@ fn lower_unboxed_tuple_case_hash_primed_binders_survive_in_pattern_and_expr_chir
 }
 
 #[test]
-#[ignore] // Known: MagicHash constructor patterns in unboxed tuple case need fix
 fn lower_magic_hash_constructor_pattern_and_nested_unboxed_tuple_case_chirho() {
     let source_chirho = "module M where\nfChirho (MutableByteArray arr#) = primitive (\\s# -> case unsafeFreezeByteArray# arr# s# of\n  (# s'#, arr'# #) -> (# s'#, ByteArray arr'# #))\n";
     let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
@@ -16915,7 +16852,10 @@ fn lower_magic_hash_constructor_pattern_and_nested_unboxed_tuple_case_chirho() {
             arg_chirho,
             ..
         } if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "primitive")
-            && matches!(arg_chirho.as_ref(), ExprChirho::LamChirho { pats_chirho, body_chirho, .. }
+            && matches!(match arg_chirho.as_ref() {
+                ExprChirho::ParenChirho { inner_chirho, .. } => inner_chirho.as_ref(),
+                other_chirho => other_chirho,
+            }, ExprChirho::LamChirho { pats_chirho, body_chirho, .. }
                 if pats_chirho.len() == 1
                     && matches!(&pats_chirho[0], PatChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "s#")
                     && matches!(body_chirho.as_ref(), ExprChirho::CaseChirho { alts_chirho, .. }
@@ -17030,46 +16970,7 @@ fn lower_magic_hash_constructor_pattern_and_unsafe_coerce_rhs_keeps_hash_var_chi
 
 #[test]
 fn lower_preprocessed_primitive_bytearray_unsafe_thaw_keeps_hash_var_chirho() {
-    let source_path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../.haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs");
-    let source_path_chirho = std::fs::canonicalize(source_path_chirho)
-        .expect("expected canonical primitive ByteArray path");
-    let output_chirho = std::process::Command::new("cpp")
-        .arg("-traditional")
-        .arg("-P")
-        .arg("-D__GLASGOW_HASKELL__=810")
-        .arg("-DWORD_SIZE_IN_BITS=64")
-        .arg("-DMIN_VERSION_base(x,y,z)=((x)<4||((x)==4&&((y)<14||((y)==14&&(z)<=0))))")
-        .arg("-DMIN_VERSION_template_haskell(x,y,z)=((x)<2||((x)==2&&((y)<16||((y)==16&&(z)<=0))))")
-        .arg("-DMIN_VERSION_ghc_prim(x,y,z)=1")
-        .arg("-DMIN_VERSION_array(x,y,z)=1")
-        .arg("-DMIN_VERSION_random(x,y,z)=1")
-        .arg("-DMIN_VERSION_transformers(x,y,z)=1")
-        .arg("-DMIN_VERSION_deepseq(x,y,z)=1")
-        .arg("-DMIN_VERSION_hashable(x,y,z)=1")
-        .arg("-DMIN_VERSION_text(x,y,z)=1")
-        .arg("-DMIN_VERSION_bytestring(x,y,z)=1")
-        .arg("-DMIN_VERSION_containers(x,y,z)=1")
-        .arg("-DMIN_VERSION_primitive(x,y,z)=1")
-        .arg("-DMIN_VERSION_integer_gmp(x,y,z)=1")
-        .current_dir(
-            source_path_chirho
-                .parent()
-                .expect("expected primitive ByteArray parent dir"),
-        )
-        .arg(
-            source_path_chirho
-                .file_name()
-                .expect("expected primitive ByteArray file name"),
-        )
-        .output()
-        .expect("expected cpp to run");
-    assert!(
-        output_chirho.status.success(),
-        "expected cpp to succeed: {}",
-        String::from_utf8_lossy(&output_chirho.stderr)
-    );
-    let source_chirho = String::from_utf8(output_chirho.stdout).expect("expected utf-8 cpp");
+    let source_chirho = crate::test_fixtures_chirho::BYTEARRAY_PREPROCESSED_SOURCE_CHIRHO;
     let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
     let parser_chirho =
         crate::cst_parser_chirho::ParserChirho::new_chirho(&source_chirho, file_id_chirho);

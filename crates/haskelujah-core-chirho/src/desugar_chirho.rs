@@ -9,6 +9,7 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+mod matches_chirho;
 mod rec_desugar_chirho;
 
 use std::collections::{HashMap, HashSet};
@@ -3047,91 +3048,6 @@ impl DesugarCtxChirho {
         Self::outer_sub_pats_chirho(pat_chirho)
             .iter()
             .any(Self::is_nested_con_pat_chirho)
-    }
-
-    fn desugar_case_expr_with_scrutinee_chirho(
-        &mut self,
-        scrut_chirho: CoreExprChirho,
-        alts_chirho: &[haskelujah_ast_chirho::expr_chirho::AltChirho],
-    ) -> CoreExprChirho {
-        if alts_chirho.is_empty() {
-            let error_id_chirho = self.fresh_id_chirho("error");
-            let msg_chirho = CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                "Non-exhaustive case alternatives".to_string(),
-            ));
-            return CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(error_id_chirho)),
-                arg_chirho: Box::new(msg_chirho),
-            };
-        }
-
-        let wild_chirho = self.fresh_binder_chirho(
-            "wild",
-            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                self.next_id_chirho,
-            )),
-            SpanChirho::DUMMY_CHIRHO,
-        );
-
-        if self.should_desugar_string_case_as_eq_chain_chirho(alts_chirho) {
-            let scrut_binder_chirho = self.fresh_binder_chirho(
-                "str_case_scrut",
-                TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                    self.next_id_chirho,
-                )),
-                SpanChirho::DUMMY_CHIRHO,
-            );
-            let body_chirho = self
-                .desugar_string_case_eq_chain_chirho(scrut_binder_chirho.id_chirho, alts_chirho);
-            return CoreExprChirho::LetChirho {
-                rec_chirho: false,
-                binds_chirho: vec![(scrut_binder_chirho, scrut_chirho)],
-                body_chirho: Box::new(body_chirho),
-            };
-        }
-
-        let mut core_alts_chirho = Vec::with_capacity(alts_chirho.len());
-        for (idx_chirho, alt_chirho) in alts_chirho.iter().enumerate() {
-            let expanded_pat_chirho =
-                self.expand_record_wildcard_pat_chirho(&alt_chirho.pat_chirho);
-            let pat_ref_chirho = expanded_pat_chirho
-                .as_ref()
-                .unwrap_or(&alt_chirho.pat_chirho);
-            let con_chirho = self.pat_to_alt_con_chirho(pat_ref_chirho);
-            let fallback_rhs_chirho = if con_chirho != AltConChirho::DefaultChirho
-                && idx_chirho + 1 < alts_chirho.len()
-                && Self::pat_nested_cases_can_use_fallback_chirho(pat_ref_chirho)
-            {
-                Some(self.desugar_case_expr_with_scrutinee_chirho(
-                    CoreExprChirho::VarChirho(wild_chirho.id_chirho),
-                    &alts_chirho[idx_chirho + 1..],
-                ))
-            } else {
-                None
-            };
-            let binders_chirho = self.pat_to_binders_chirho(pat_ref_chirho);
-            let rhs_final_chirho = self.desugar_case_alt_rhs_with_scrutinee_chirho(
-                alt_chirho,
-                pat_ref_chirho,
-                &binders_chirho,
-                wild_chirho.id_chirho,
-                fallback_rhs_chirho.as_ref(),
-            );
-            core_alts_chirho.push(CoreAltChirho {
-                con_chirho,
-                binders_chirho,
-                rhs_chirho: rhs_final_chirho,
-            });
-        }
-
-        CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(scrut_chirho),
-            bind_chirho: wild_chirho,
-            result_ty_chirho: TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
-            ),
-            alts_chirho: core_alts_chirho,
-        }
     }
 
     fn desugar_case_alt_rhs_with_scrutinee_chirho(
@@ -6883,62 +6799,6 @@ mod tests_chirho {
     }
 
     #[test]
-    fn desugar_case_nested_singleton_falls_through_chirho() {
-        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
-        let expr_chirho = ExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("xs"))),
-            alts_chirho: vec![
-                haskelujah_ast_chirho::expr_chirho::AltChirho {
-                    pat_chirho: PatChirho::InfixConChirho {
-                        left_chirho: Box::new(PatChirho::VarChirho(dummy_name_chirho("x"))),
-                        op_chirho: dummy_name_chirho(":"),
-                        right_chirho: Box::new(PatChirho::ListChirho {
-                            elements_chirho: vec![],
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
-                        }),
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    },
-                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
-                        LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO),
-                    )),
-                    where_binds_chirho: vec![],
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                haskelujah_ast_chirho::expr_chirho::AltChirho {
-                    pat_chirho: PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO),
-                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
-                        LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO),
-                    )),
-                    where_binds_chirho: vec![],
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-            ],
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        };
-        let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
-
-        let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho else {
-            panic!("expected CaseChirho");
-        };
-        let CoreExprChirho::CaseChirho {
-            alts_chirho: nested_alts_chirho,
-            ..
-        } = &alts_chirho[0].rhs_chirho
-        else {
-            panic!("expected nested case in first alternative");
-        };
-        assert_eq!(nested_alts_chirho.len(), 2);
-        assert!(matches!(
-            nested_alts_chirho[1].con_chirho,
-            AltConChirho::DefaultChirho
-        ));
-        assert!(matches!(
-            nested_alts_chirho[1].rhs_chirho,
-            CoreExprChirho::CaseChirho { .. }
-        ));
-    }
-
-    #[test]
     fn desugar_view_pattern_exact_binder_rhs_uses_view_app_chirho() {
         let mut ctx_chirho = DesugarCtxChirho::new_chirho();
         let n_id_chirho = ctx_chirho.fresh_id_chirho("n");
@@ -6963,71 +6823,6 @@ mod tests_chirho {
         assert!(matches!(
             arg_chirho.as_ref(),
             CoreExprChirho::VarChirho(id_chirho) if *id_chirho == scrut_id_chirho
-        ));
-    }
-
-    #[test]
-    fn desugar_case_nil_then_nested_tuple_cons_uses_head_binder_chirho() {
-        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
-        let tuple_pat_chirho = PatChirho::TupleChirho {
-            elements_chirho: vec![
-                PatChirho::VarChirho(dummy_name_chirho("k")),
-                PatChirho::VarChirho(dummy_name_chirho("v")),
-            ],
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        };
-        let expr_chirho = ExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("xs"))),
-            alts_chirho: vec![
-                haskelujah_ast_chirho::expr_chirho::AltChirho {
-                    pat_chirho: PatChirho::ListChirho {
-                        elements_chirho: vec![],
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    },
-                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
-                        LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
-                    )),
-                    where_binds_chirho: vec![],
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                haskelujah_ast_chirho::expr_chirho::AltChirho {
-                    pat_chirho: PatChirho::InfixConChirho {
-                        left_chirho: Box::new(tuple_pat_chirho),
-                        op_chirho: dummy_name_chirho(":"),
-                        right_chirho: Box::new(PatChirho::VarChirho(dummy_name_chirho("rest"))),
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    },
-                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::VarChirho(
-                        dummy_name_chirho("v"),
-                    )),
-                    where_binds_chirho: vec![],
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-            ],
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        };
-        let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
-
-        let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho else {
-            panic!("expected outer CaseChirho");
-        };
-        assert_eq!(alts_chirho.len(), 2);
-        let cons_alt_chirho = &alts_chirho[1];
-        assert!(matches!(
-            cons_alt_chirho.con_chirho,
-            AltConChirho::DataConChirho(ref s_chirho) if s_chirho == ":"
-        ));
-        assert_eq!(cons_alt_chirho.binders_chirho.len(), 2);
-        let head_id_chirho = cons_alt_chirho.binders_chirho[0].id_chirho;
-        let CoreExprChirho::CaseChirho {
-            scrutinee_chirho, ..
-        } = &cons_alt_chirho.rhs_chirho
-        else {
-            panic!("expected nested tuple CaseChirho in cons alternative");
-        };
-        assert!(matches!(
-            scrutinee_chirho.as_ref(),
-            CoreExprChirho::VarChirho(id_chirho) if *id_chirho == head_id_chirho
         ));
     }
 

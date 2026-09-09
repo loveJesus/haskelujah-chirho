@@ -220,24 +220,25 @@ recheckMiniChirho _ = 0\n",
 fn frontend_record_pattern_field_types_follow_constructor_layout_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = compile_source_chirho(
-        "{-# LANGUAGE NamedFieldPuns #-}\n\
-module QuickCheckRecordPatternMiniChirho where\n\
-data CoverageMiniChirho\n\
-  = CoverageMiniChirho\n\
-    { valueMiniChirho :: Int\n\
-    , flagMiniChirho :: Maybe Bool\n\
-    }\n\
-  | OtherMiniChirho\n\
-    { valueMiniChirho :: Int\n\
-    }\n\
-\n\
-useCoverageMiniChirho :: CoverageMiniChirho -> Int\n\
-useCoverageMiniChirho CoverageMiniChirho{valueMiniChirho, flagMiniChirho} =\n\
-  case flagMiniChirho of\n\
-    Just True -> valueMiniChirho\n\
-    Just False -> 0\n\
-    Nothing -> 0\n\
-useCoverageMiniChirho OtherMiniChirho{valueMiniChirho} = valueMiniChirho\n",
+        r#"{-# LANGUAGE NamedFieldPuns #-}
+module QuickCheckRecordPatternMiniChirho where
+data CoverageMiniChirho
+  = CoverageMiniChirho
+    { valueMiniChirho :: Int
+    , flagMiniChirho :: Maybe Bool
+    }
+  | OtherMiniChirho
+    { valueMiniChirho :: Int
+    }
+
+useCoverageMiniChirho :: CoverageMiniChirho -> Int
+useCoverageMiniChirho CoverageMiniChirho{valueMiniChirho, flagMiniChirho} =
+  case flagMiniChirho of
+    Just True -> valueMiniChirho
+    Just False -> 0
+    Nothing -> 0
+useCoverageMiniChirho OtherMiniChirho{valueMiniChirho} = valueMiniChirho
+"#,
         &mut source_map_chirho,
         "QuickCheckRecordPatternMiniChirho.hs",
     );
@@ -564,7 +565,7 @@ fn frontend_preprocessed_transformers_functor_classes_keeps_building_block_helpe
  {
     let path_chirho = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/transformers-0.6.3.0/legacy/pre711/Data/Functor/Classes.hs");
+        .join("test-data-chirho/package-fixtures-chirho/transformers-0.6.3.0/legacy/pre711/Data/Functor/Classes.hs");
     let source_chirho =
         crate::read_haskell_source_file_chirho(&path_chirho).expect("read transformers source");
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -3019,7 +3020,7 @@ fn read_haskell_source_file_expands_primitive_deriveprim_cpp_macros_chirho() {
         .expect("repo root should exist")
         .to_path_buf();
     let path_chirho = repo_root_chirho
-        .join(".haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/Types.hs");
+        .join("test-data-chirho/package-fixtures-chirho/primitive-0.9.1.0/Data/Primitive/Types.hs");
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("primitive types source should preprocess");
 
@@ -3048,8 +3049,9 @@ fn read_haskell_source_file_keeps_primitive_bytearray_unsafe_thaw_arr_hash_chirh
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho = repo_root_chirho
-        .join(".haskelujah-packages-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs");
+    let path_chirho = repo_root_chirho.join(
+        "test-data-chirho/package-fixtures-chirho/primitive-0.9.1.0/Data/Primitive/ByteArray.hs",
+    );
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("primitive ByteArray source should preprocess");
 
@@ -3150,8 +3152,8 @@ fn read_hsc_source_sanitizes_clock_hsc2hs_directives_chirho() {
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho =
-        repo_root_chirho.join(".haskelujah-packages-chirho/clock-0.8.4/System/Clock.hsc");
+    let path_chirho = repo_root_chirho
+        .join("test-data-chirho/package-fixtures-chirho/clock-0.8.4/System/Clock.hsc");
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("clock hsc source should preprocess");
 
@@ -3188,8 +3190,8 @@ fn clock_iface_exports_normalize_and_s2ns_chirho() {
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho =
-        repo_root_chirho.join(".haskelujah-packages-chirho/clock-0.8.4/System/Clock.hsc");
+    let path_chirho = repo_root_chirho
+        .join("test-data-chirho/package-fixtures-chirho/clock-0.8.4/System/Clock.hsc");
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("clock hsc source should preprocess");
 
@@ -3313,8 +3315,9 @@ fn frontend_preprocessed_containers_intset_retains_helper_funbinds_chirho() {
         .nth(2)
         .expect("repo root should exist")
         .to_path_buf();
-    let path_chirho = repo_root_chirho
-        .join(".haskelujah-packages-chirho/containers-0.8/src/Data/IntSet/Internal.hs");
+    let path_chirho = repo_root_chirho.join(
+        "test-data-chirho/package-fixtures-chirho/containers-0.8/src/Data/IntSet/Internal.hs",
+    );
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("containers source should preprocess");
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -3394,7 +3397,7 @@ fn frontend_preprocessed_th_abstraction_datatype_retains_remaining_funbinds_chir
         .expect("repo root should exist")
         .to_path_buf();
     let path_chirho = repo_root_chirho.join(
-        ".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs",
+        "test-data-chirho/package-fixtures-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs",
     );
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("Datatype.hs should preprocess");
@@ -3482,7 +3485,7 @@ fn frontend_preprocessed_th_abstraction_datatype_remaining_sites_have_no_placeho
         .expect("repo root should exist")
         .to_path_buf();
     let path_chirho = repo_root_chirho.join(
-        ".haskelujah-packages-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs",
+        "test-data-chirho/package-fixtures-chirho/th-abstraction-0.7.2.0/src/Language/Haskell/TH/Datatype.hs",
     );
     let source_chirho = crate::read_haskell_source_file_chirho(&path_chirho)
         .expect("Datatype.hs should preprocess");
@@ -5473,7 +5476,7 @@ fn frontend_text_case_mapping_parse_and_lower_survives_generated_module_size_chi
     let case_mapping_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(
-            ".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs",
+            "test-data-chirho/package-fixtures-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs",
         );
     let source_chirho = read_haskell_source_file_chirho(&case_mapping_path_chirho)
         .expect("text CaseMapping source should exist");
@@ -5513,7 +5516,7 @@ fn frontend_text_case_mapping_frontend_survives_generated_module_size_chirho() {
     let case_mapping_path_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .join(
-            ".haskelujah-packages-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs",
+            "test-data-chirho/package-fixtures-chirho/text-2.1.4/src/Data/Text/Internal/Fusion/CaseMapping.hs",
         );
     let source_chirho = read_haskell_source_file_chirho(&case_mapping_path_chirho)
         .expect("text CaseMapping source should exist");
@@ -6605,39 +6608,25 @@ valueMiniChirho = s2nsMiniChirho\n",
 
 #[test]
 fn llvm_executable_constant_chirho() {
-    // main = 42 should produce LLVM IR with ret i64 42
-    let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho =
-        compile_source_chirho("module Main where\nmain = 42", &mut sm_chirho, "Main.hs")
-            .expect("should compile");
-
-    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-        &result_chirho.core_chirho,
-    );
-    assert!(exec_ir_chirho.contains("define i64 @haskelujah_main()"));
-    assert!(exec_ir_chirho.contains("ret i64 42"));
-    assert!(exec_ir_chirho.contains("define i32 @main()"));
-    assert!(exec_ir_chirho.contains("ptrtoint ptr @haskelujah_main to i64"));
-    assert!(
-        exec_ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
-    );
+    let result_chirho = haskelujah_test_harness_chirho::native_chirho::native_round_trip_chirho(
+        "module Main where\nmain = 42\n",
+        haskelujah_test_harness_chirho::native_chirho::NativeBackendChirho::LlvmChirho,
+        "",
+    )
+    .expect("constant compiles, links and terminates");
+    assert_eq!(result_chirho, (42, "42\n".to_string()));
 }
 
 #[test]
 fn llvm_executable_arithmetic_chirho() {
-    // f x y = x + y; main = f 10 32 should produce correct LLVM IR
     let src_chirho = "module Main where\nf x y = x + y\nmain = f 10 32";
-    let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho =
-        compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").expect("should compile");
-
-    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-        &result_chirho.core_chirho,
-    );
-    // f should compile to an add instruction
-    assert!(exec_ir_chirho.contains("add i64"));
-    // main should call f with arguments
-    assert!(exec_ir_chirho.contains("call i64 @haskelujah_f(i64 10, i64 32)"));
+    let result_chirho = haskelujah_test_harness_chirho::native_chirho::native_round_trip_chirho(
+        src_chirho,
+        haskelujah_test_harness_chirho::native_chirho::NativeBackendChirho::LlvmChirho,
+        "",
+    )
+    .expect("arithmetic compiles, links and terminates");
+    assert_eq!(result_chirho, (42, "42\n".to_string()));
 }
 
 #[test]
@@ -6730,39 +6719,14 @@ main = fib 10"#;
 /// Helper: compile source to LLVM IR executable, link with clang, run,
 /// and capture the exit code plus stdout.
 fn llvm_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
-    let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
-
-    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-        &result_chirho.core_chirho,
-    );
-
-    let tmp_dir_chirho = tempfile::tempdir().ok()?;
-    let ll_path_chirho = tmp_dir_chirho.path().join("main.ll");
-    let bin_path_chirho = tmp_dir_chirho.path().join("main");
-    std::fs::write(&ll_path_chirho, &exec_ir_chirho).ok()?;
-    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
-
-    let compile_output_chirho = std::process::Command::new("clang")
-        .arg("-O0")
-        .arg("-o")
-        .arg(&bin_path_chirho)
-        .arg(&ll_path_chirho)
-        .arg("-L")
-        .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts")
-        .output()
-        .ok()?;
-
-    if !compile_output_chirho.status.success() {
-        return None;
-    }
-
-    let run_output_chirho = std::process::Command::new(&bin_path_chirho).output().ok()?;
-
-    let exit_code_chirho = run_output_chirho.status.code()?;
-    let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
-    Some((exit_code_chirho, stdout_chirho))
+    Some(
+        haskelujah_test_harness_chirho::native_chirho::native_round_trip_chirho(
+            src_chirho,
+            haskelujah_test_harness_chirho::native_chirho::NativeBackendChirho::LlvmChirho,
+            "",
+        )
+        .expect("native round trip must compile, link, and finish"),
+    )
 }
 
 fn haskell_string_literal_chirho(text_chirho: &str) -> String {
@@ -6786,52 +6750,14 @@ fn llvm_round_trip_output_with_input_chirho(
     src_chirho: &str,
     input_chirho: &str,
 ) -> Option<(i32, String)> {
-    use std::io::Write as _;
-    use std::process::Stdio;
-
-    let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
-
-    let exec_ir_chirho = haskelujah_backend_llvm_chirho::compile_core_to_llvm_executable_chirho(
-        &result_chirho.core_chirho,
-    );
-
-    let tmp_dir_chirho = tempfile::tempdir().ok()?;
-    let ll_path_chirho = tmp_dir_chirho.path().join("main.ll");
-    let bin_path_chirho = tmp_dir_chirho.path().join("main");
-    std::fs::write(&ll_path_chirho, &exec_ir_chirho).ok()?;
-    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
-
-    let compile_output_chirho = std::process::Command::new("clang")
-        .arg("-O0")
-        .arg("-o")
-        .arg(&bin_path_chirho)
-        .arg(&ll_path_chirho)
-        .arg("-L")
-        .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts")
-        .output()
-        .ok()?;
-
-    if !compile_output_chirho.status.success() {
-        return None;
-    }
-
-    let mut child_chirho = std::process::Command::new(&bin_path_chirho)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .ok()?;
-    child_chirho
-        .stdin
-        .as_mut()?
-        .write_all(input_chirho.as_bytes())
-        .ok()?;
-    let run_output_chirho = child_chirho.wait_with_output().ok()?;
-
-    let exit_code_chirho = run_output_chirho.status.code()?;
-    let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
-    Some((exit_code_chirho, stdout_chirho))
+    Some(
+        haskelujah_test_harness_chirho::native_chirho::native_round_trip_chirho(
+            src_chirho,
+            haskelujah_test_harness_chirho::native_chirho::NativeBackendChirho::LlvmChirho,
+            input_chirho,
+        )
+        .expect("native round trip must compile, link, and finish"),
+    )
 }
 
 /// Helper: compile source to LLVM IR executable, link with clang, run, return exit code.
@@ -6841,42 +6767,14 @@ fn llvm_round_trip_chirho(src_chirho: &str) -> Option<i32> {
 }
 
 fn cranelift_round_trip_output_chirho(src_chirho: &str) -> Option<(i32, String)> {
-    let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = compile_source_chirho(src_chirho, &mut sm_chirho, "Main.hs").ok()?;
-    let config_chirho = haskelujah_backend_cranelift_chirho::TargetConfigChirho::default();
-    let obj_chirho = haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
-        &result_chirho.core_chirho,
-        &config_chirho,
+    Some(
+        haskelujah_test_harness_chirho::native_chirho::native_round_trip_chirho(
+            src_chirho,
+            haskelujah_test_harness_chirho::native_chirho::NativeBackendChirho::CraneliftChirho,
+            "",
+        )
+        .expect("native round trip must compile, link, and finish"),
     )
-    .ok()?;
-
-    let tmp_dir_chirho = tempfile::tempdir().ok()?;
-    let obj_path_chirho = tmp_dir_chirho.path().join("main.o");
-    let bin_path_chirho = tmp_dir_chirho.path().join("main");
-    std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok()?;
-    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho()?;
-
-    let mut link_cmd_chirho = std::process::Command::new("cc");
-    link_cmd_chirho
-        .arg("-o")
-        .arg(&bin_path_chirho)
-        .arg(&obj_path_chirho);
-    if cfg!(target_os = "macos") {
-        link_cmd_chirho.arg("-Wl,-no_fixup_chains");
-    }
-    link_cmd_chirho
-        .arg("-L")
-        .arg(&rts_lib_dir_chirho)
-        .arg("-lhaskelujah_rts");
-    let compile_status_chirho = link_cmd_chirho.status().ok()?;
-    if !compile_status_chirho.success() {
-        return None;
-    }
-
-    let run_output_chirho = std::process::Command::new(&bin_path_chirho).output().ok()?;
-    let exit_code_chirho = run_output_chirho.status.code()?;
-    let stdout_chirho = String::from_utf8(run_output_chirho.stdout).ok()?;
-    Some((exit_code_chirho, stdout_chirho))
 }
 
 fn cranelift_round_trip_chirho(src_chirho: &str) -> Option<i32> {
@@ -7422,8 +7320,16 @@ euler1 limit = go 0 0 where
           else go acc (n + 1)
 main = print (euler1 100000000)
 "#;
+    // This is a 100-million-step scale test (measured ~18s with the native RTS),
+    // not a small example. Keep its workload and exact result, with a named bound.
     let (exit_code_chirho, stdout_chirho) =
-        llvm_round_trip_output_chirho(src_chirho).expect("tail-recursive LLVM round-trip");
+        haskelujah_test_harness_chirho::native_chirho::native_round_trip_with_deadline_chirho(
+            src_chirho,
+            haskelujah_test_harness_chirho::native_chirho::NativeBackendChirho::LlvmChirho,
+            "",
+            std::time::Duration::from_secs(60),
+        )
+        .expect("tail-recursive LLVM round-trip");
     assert_eq!(
         exit_code_chirho, 0,
         "tail-recursive LLVM executable should exit successfully"
@@ -9733,7 +9639,7 @@ fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
 
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/hashable-1.5.1.0");
+        .join("test-data-chirho/package-fixtures-chirho/hashable-1.5.1.0");
     let ffi_path_chirho = package_dir_chirho.join("src/Data/Hashable/FFI.hs");
     let ffi_source_chirho =
         std::fs::read_to_string(&ffi_path_chirho).expect("hashable FFI source should exist");
@@ -9836,7 +9742,7 @@ fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
 
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/hashable-1.5.1.0");
+        .join("test-data-chirho/package-fixtures-chirho/hashable-1.5.1.0");
     let ffi_path_chirho = package_dir_chirho.join("src/Data/Hashable/FFI.hs");
     let xxh3_path_chirho = package_dir_chirho.join("src/Data/Hashable/XXH3.hs");
     let ffi_source_chirho =
@@ -9891,7 +9797,7 @@ fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
 
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/hashable-1.5.1.0");
+        .join("test-data-chirho/package-fixtures-chirho/hashable-1.5.1.0");
     let mix_path_chirho = package_dir_chirho.join("src/Data/Hashable/Mix.hs");
     let mix_source_chirho = read_haskell_source_file_chirho(&mix_path_chirho)
         .expect("hashable Mix source should exist");
@@ -9971,7 +9877,7 @@ fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
 
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/warp-3.4.12");
+        .join("test-data-chirho/package-fixtures-chirho/warp-3.4.12");
     let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
         .expect("warp MultiMap source should exist");
@@ -10047,7 +9953,7 @@ fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
 
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/warp-3.4.12");
+        .join("test-data-chirho/package-fixtures-chirho/warp-3.4.12");
     let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
     let fdcache_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
@@ -10098,7 +10004,7 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
 
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/warp-3.4.12");
+        .join("test-data-chirho/package-fixtures-chirho/warp-3.4.12");
     let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
     let fdcache_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)
@@ -10163,7 +10069,7 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
 
     let package_dir_chirho = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join(".haskelujah-packages-chirho/warp-3.4.12");
+        .join("test-data-chirho/package-fixtures-chirho/warp-3.4.12");
     let multimap_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/MultiMap.hs");
     let fdcache_path_chirho = package_dir_chirho.join("Network/Wai/Handler/Warp/FdCache.hs");
     let multimap_source_chirho = read_haskell_source_file_chirho(&multimap_path_chirho)

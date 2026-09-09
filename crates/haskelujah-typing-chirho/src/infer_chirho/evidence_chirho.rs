@@ -8,6 +8,41 @@
 
 use super::*;
 
+/// A recursive reference sees the group's monomorphic assumption before its
+/// predicates exist. Keep its source identity until generalization supplies
+/// those predicates; never infer its evidence from a sibling argument.
+#[derive(Default)]
+pub(super) struct RecursiveReferencesChirho {
+    pub(super) assumptions_chirho: HashMap<String, TyChirho>,
+    spans_chirho: HashMap<String, Vec<SpanChirho>>,
+}
+
+impl RecursiveReferencesChirho {
+    pub(super) fn apply_subst_chirho(&mut self, subst_chirho: &SubstChirho) {
+        for ty_chirho in self.assumptions_chirho.values_mut() {
+            *ty_chirho = subst_chirho.apply_ty_chirho(ty_chirho);
+        }
+    }
+
+    pub(super) fn capture_chirho(
+        &mut self,
+        name_chirho: &str,
+        span_chirho: SpanChirho,
+        scheme_chirho: &SchemeChirho,
+    ) {
+        if span_chirho != SpanChirho::DUMMY_CHIRHO
+            && scheme_chirho.vars_chirho.is_empty()
+            && scheme_chirho.preds_chirho.is_empty()
+            && self.assumptions_chirho.get(name_chirho) == Some(&scheme_chirho.ty_chirho)
+        {
+            self.spans_chirho
+                .entry(name_chirho.to_string())
+                .or_default()
+                .push(span_chirho);
+        }
+    }
+}
+
 /// The evidence key of an occurrence whose type is a rigid variable of the
 /// enclosing signature: no instance is the proof, the binding's own dictionary
 /// parameter for the class is. The dictionary pass dispatches such an
@@ -54,6 +89,39 @@ pub struct LiteralEvidenceChirho {
 }
 
 impl InferCtxChirho {
+    /// Close the recursive group's deferred evidence after its type is known.
+    /// The monomorphic recursive references share these very type variables;
+    /// ordinary polymorphic calls still capture their freshly instantiated ones.
+    pub(super) fn finish_recursive_references_chirho(
+        &mut self,
+        name_chirho: &str,
+        scheme_chirho: &SchemeChirho,
+    ) {
+        self.recursive_references_chirho
+            .assumptions_chirho
+            .remove(name_chirho);
+        for span_chirho in self
+            .recursive_references_chirho
+            .spans_chirho
+            .remove(name_chirho)
+            .unwrap_or_default()
+        {
+            self.reference_captures_chirho.push((
+                span_chirho,
+                scheme_chirho
+                    .preds_chirho
+                    .iter()
+                    .map(|pred_chirho| {
+                        (
+                            pred_chirho.class_name_chirho.clone(),
+                            pred_chirho.ty_chirho.clone(),
+                        )
+                    })
+                    .collect(),
+            ));
+        }
+    }
+
     /// Record a literal's overloading predicate for evidence. Generated code
     /// carries the dummy span and is skipped: a key must name one source token.
     pub(super) fn capture_literal_evidence_chirho(

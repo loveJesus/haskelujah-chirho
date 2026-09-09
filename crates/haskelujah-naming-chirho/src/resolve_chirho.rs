@@ -907,22 +907,30 @@ mod tests_chirho {
 
         let result_chirho = resolve_module_chirho(&module_chirho);
 
-        assert!(result_chirho
-            .env_chirho
-            .lookup_type_chirho("Color")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("Red")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("Green")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("main")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Color")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("Red")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("Green")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("main")
+                .is_some()
+        );
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
     }
 
@@ -951,14 +959,18 @@ mod tests_chirho {
 
         let result_chirho = resolve_module_chirho(&module_chirho);
 
-        assert!(result_chirho
-            .env_chirho
-            .lookup_type_chirho("Describable")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("describe")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Describable")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("describe")
+                .is_some()
+        );
     }
 
     // ---------------------------------------------------------------
@@ -983,23 +995,31 @@ mod tests_chirho {
 
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         // Unqualified lookup
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("sort")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("map")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_type_chirho("Color")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("map")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Color")
+                .is_some()
+        );
         // Qualified lookup
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
     }
 
     #[test]
@@ -1019,15 +1039,19 @@ mod tests_chirho {
         let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         // Unqualified lookup should NOT find imported names
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("sort")
-            .is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_none()
+        );
         // Qualified lookup should work
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
     }
 
     #[test]
@@ -1047,15 +1071,19 @@ mod tests_chirho {
         let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         // Should be accessible via alias
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("L", "sort", NamespaceChirho::ValueChirho)
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("L", "sort", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
         // Original module name should NOT work with alias
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
-            .is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("Lib", "sort", NamespaceChirho::ValueChirho)
+                .is_none()
+        );
     }
 
     #[test]
@@ -1077,15 +1105,19 @@ mod tests_chirho {
 
         let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("sort")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_some()
+        );
         // map is NOT imported
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("map")
-            .is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("map")
+                .is_none()
+        );
     }
 
     #[test]
@@ -1134,18 +1166,24 @@ mod tests_chirho {
 
         let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
-        assert!(result_chirho
-            .env_chirho
-            .lookup_type_chirho("Wrap")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("Wrap")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("unwrap")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Wrap")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("Wrap")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("unwrap")
+                .is_some()
+        );
     }
 
     #[test]
@@ -1205,18 +1243,24 @@ mod tests_chirho {
 
         let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &builtins_chirho);
 
-        assert!(result_chirho
-            .env_chirho
-            .lookup_type_chirho("MonadPlus")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("mplus")
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("mzero")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("MonadPlus")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("mplus")
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("mzero")
+                .is_some()
+        );
     }
 
     #[test]
@@ -1269,14 +1313,18 @@ mod tests_chirho {
             &[older_iface_chirho, newer_iface_chirho],
         );
 
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("L", "newOnly", NamespaceChirho::ValueChirho)
-            .is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_qualified_chirho("L", "oldOnly", NamespaceChirho::ValueChirho)
-            .is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("L", "newOnly", NamespaceChirho::ValueChirho)
+                .is_some()
+        );
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_qualified_chirho("L", "oldOnly", NamespaceChirho::ValueChirho)
+                .is_none()
+        );
     }
 
     #[test]
@@ -1299,15 +1347,19 @@ mod tests_chirho {
         let result_chirho = resolve_module_with_imports_chirho(&module_chirho, &[lib_chirho]);
 
         // sort is hidden
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("sort")
-            .is_none());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("sort")
+                .is_none()
+        );
         // map is still imported
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("map")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("map")
+                .is_some()
+        );
     }
 
     #[test]
@@ -1410,15 +1462,19 @@ mod tests_chirho {
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
 
         // Type should be registered
-        assert!(result_chirho
-            .env_chirho
-            .lookup_type_chirho("Person")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_type_chirho("Person")
+                .is_some()
+        );
         // Constructor should be registered
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("MkPerson")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("MkPerson")
+                .is_some()
+        );
         // Field accessors should be registered as values
         assert!(
             result_chirho
@@ -1553,10 +1609,12 @@ mod tests_chirho {
         );
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         assert!(result_chirho.env_chirho.lookup_type_chirho("Age").is_some());
-        assert!(result_chirho
-            .env_chirho
-            .lookup_value_chirho("MkAge")
-            .is_some());
+        assert!(
+            result_chirho
+                .env_chirho
+                .lookup_value_chirho("MkAge")
+                .is_some()
+        );
         assert!(
             result_chirho
                 .env_chirho

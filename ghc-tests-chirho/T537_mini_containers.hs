@@ -1,7 +1,7 @@
 -- For God so loved the world that he gave his only begotten Son, that whoever
 -- believes in him should not perish but have eternal life. — John 3:16
 -- TEST: compile_and_run
--- EXPECTED: fromList [(1,hello),(2,world),(3,!)]\nJust world\nNothing\n3\n[1,2,3]\n[hello,world,!]
+-- EXPECTED: fromList [(1,"hello"),(2,"world"),(3,"!")]\nJust world\nNothing\n3\n[1,2,3]\n["hello","world","!"]
 module Main where
 -- Mini BST-based Map (like Data.Map from containers)
 data Map k v = Tip | Bin Int k v (Map k v) (Map k v)

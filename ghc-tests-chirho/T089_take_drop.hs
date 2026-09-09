@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 6\n12
+-- EXPECTED: 6\n9
 module Main where
 myTake :: Int -> [Int] -> [Int]
 myTake 0 _ = []

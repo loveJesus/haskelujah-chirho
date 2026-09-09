@@ -7,7 +7,7 @@
 use haskelujah_test_harness::ghc_suite_chirho::{discover_ghc_tests_chirho, run_ghc_suite_chirho};
 use std::path::Path;
 
-/// Run all curated GHC tests and assert a minimum pass rate.
+/// Run all curated GHC tests and require every declared behavior.
 #[test]
 fn ghc_curated_suite_chirho() {
     // Find the ghc-tests-chirho directory relative to the workspace root.
@@ -18,13 +18,11 @@ fn ghc_curated_suite_chirho() {
         .unwrap()
         .join("ghc-tests-chirho");
 
-    if !suite_dir_chirho.is_dir() {
-        eprintln!(
-            "Skipping GHC curated suite: {} not found",
-            suite_dir_chirho.display()
-        );
-        return;
-    }
+    assert!(
+        suite_dir_chirho.is_dir(),
+        "GHC curated fixtures missing: {}",
+        suite_dir_chirho.display()
+    );
 
     let tests_chirho =
         discover_ghc_tests_chirho(&suite_dir_chirho).expect("should discover test files");

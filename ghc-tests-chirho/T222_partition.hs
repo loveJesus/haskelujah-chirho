@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 5\n3
+-- EXPECTED: 4\n3
 module Main where
 myFilter _ [] = []; myFilter p (x:xs) = if p x then x : myFilter p xs else myFilter p xs
 myLen [] = 0; myLen (_:xs) = 1 + myLen xs

@@ -1930,13 +1930,16 @@ main = case runExceptT comp of
 
 #[test]
 fn maybe_t_return_just_chirho() {
-    // returnMaybeT 42 → MaybeT (Just 42) → Just 42
+    // Run the IO action inside MaybeT before inspecting its Maybe result.
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
-main = case runMaybeT (returnMaybeT 42) of
-  Just v  -> print v
-  Nothing -> print 0
+import Control.Monad.Trans.Maybe (MaybeT(..))
+main = do
+  resultChirho <- runMaybeT (returnMaybeT 42 :: MaybeT IO Int)
+  case resultChirho of
+    Just v  -> print v
+    Nothing -> print 0
 "#;
     let (_val_chirho, m_chirho) =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1946,14 +1949,20 @@ main = case runMaybeT (returnMaybeT 42) of
 
 #[test]
 fn maybe_t_bind_success_chirho() {
-    // bindMaybeT (returnMaybeT 10) (\x -> returnMaybeT (x + 5)) → Just 15
+    // GHC's MaybeT m a contains m (Maybe a), not just Maybe a. Pin the
+    // intended IO layer; matching runMaybeT directly selects m = Maybe
+    // and the reference program prints Just 15, not this test's intended 15.
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad.Trans.Maybe (MaybeT(..))
+comp :: MaybeT IO Int
 comp = bindMaybeT (returnMaybeT 10) (\x -> returnMaybeT (x + 5))
-main = case runMaybeT comp of
-  Just v  -> print v
-  Nothing -> print 0
+main = do
+  resultChirho <- runMaybeT comp
+  case resultChirho of
+    Just v  -> print v
+    Nothing -> print 0
 "#;
     let (_val_chirho, m_chirho) =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1963,14 +1972,18 @@ main = case runMaybeT comp of
 
 #[test]
 fn maybe_t_bind_short_circuit_chirho() {
-    // bindMaybeT (MaybeT Nothing) (\x -> returnMaybeT (x + 5)) → Nothing
+    // A Nothing result inside IO must not run the continuation.
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
-comp = bindMaybeT (MaybeT Nothing) (\x -> returnMaybeT (x + 5))
-main = case runMaybeT comp of
-  Just _  -> print 1
-  Nothing -> print 0
+import Control.Monad.Trans.Maybe (MaybeT(..))
+comp :: MaybeT IO Int
+comp = bindMaybeT (MaybeT (return Nothing)) (\_ -> error "continuedChirho")
+main = do
+  resultChirho <- runMaybeT comp
+  case resultChirho of
+    Just _  -> print 1
+    Nothing -> print 0
 "#;
     let (_val_chirho, m_chirho) =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -2104,14 +2117,18 @@ main = print (myId @Int 42 + myId @Int 8)
 
 #[test]
 fn type_app_nested_type_chirho() {
-    // TypeApplication with a compound type: @[Int]
+    // The specified element binder is instantiated with a compound type.
+    // An inferred scheme has no specified binders in GHC; @[Int] also requires
+    // a list of lists, since myLength consumes [a], not a.
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = r#"module Test where
+    let src_chirho = r#"{-# LANGUAGE TypeApplications #-}
+module Test where
+myLength :: forall a. [a] -> Int
 myLength xs = case xs of
   [] -> 0
   (_:rest) -> 1 + myLength rest
-main = print (myLength @[Int] [1,2,3])
+main = print (myLength @[Int] [[1],[2],[3]])
 "#;
     let (_val_chirho, m_chirho) =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)

@@ -374,16 +374,19 @@ const PRIM_EXPORTING_MODULES_CHIRHO: &[&str] = &["GHC.Exts", "GHC.Prim"];
 fn imports_prim_tycon_chirho(module_chirho: &ModuleChirho, wanted_chirho: &str) -> bool {
     module_chirho.imports_chirho.iter().any(|import_chirho| {
         PRIM_EXPORTING_MODULES_CHIRHO.contains(&import_chirho.module_chirho.text_chirho())
-            && import_chirho.spec_chirho.as_ref().is_some_and(|spec_chirho| {
-                !spec_chirho.hiding_chirho
-                    && spec_chirho.items_chirho.iter().any(|item_chirho| {
-                        matches!(
-                            item_chirho,
-                            ImportItemChirho::TyConChirho { name_chirho, .. }
-                                if name_chirho.text_chirho() == wanted_chirho
-                        )
-                    })
-            })
+            && import_chirho
+                .spec_chirho
+                .as_ref()
+                .is_some_and(|spec_chirho| {
+                    !spec_chirho.hiding_chirho
+                        && spec_chirho.items_chirho.iter().any(|item_chirho| {
+                            matches!(
+                                item_chirho,
+                                ImportItemChirho::TyConChirho { name_chirho, .. }
+                                    if name_chirho.text_chirho() == wanted_chirho
+                            )
+                        })
+                })
     })
 }
 
@@ -427,9 +430,10 @@ fn check_unlifted_newtype_fields_chirho(module_chirho: &ModuleChirho) -> Vec<Val
             continue;
         };
         let field_tys_chirho: Vec<&TypeChirho> = match constructor_chirho {
-            ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
-                fields_chirho.iter().map(|(_, ty_chirho)| ty_chirho).collect()
-            }
+            ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => fields_chirho
+                .iter()
+                .map(|(_, ty_chirho)| ty_chirho)
+                .collect(),
             ConDeclChirho::RecordChirho { fields_chirho, .. } => fields_chirho
                 .iter()
                 .map(|field_chirho| &field_chirho.ty_chirho)
@@ -758,8 +762,10 @@ fn render_constraint_chirho(constraint_chirho: &ConstraintChirho) -> String {
             }
             text_chirho.push_str(". ");
             if !context_chirho.is_empty() {
-                let rendered_chirho: Vec<String> =
-                    context_chirho.iter().map(render_constraint_chirho).collect();
+                let rendered_chirho: Vec<String> = context_chirho
+                    .iter()
+                    .map(render_constraint_chirho)
+                    .collect();
                 if rendered_chirho.len() == 1 {
                     text_chirho.push_str(&rendered_chirho[0]);
                 } else {
@@ -996,8 +1002,7 @@ mod tests_chirho {
             fundeps_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
-        let module_chirho =
-            mk_module_chirho(vec![decl_chirho], vec!["Haskell2010".to_string()]);
+        let module_chirho = mk_module_chirho(vec![decl_chirho], vec!["Haskell2010".to_string()]);
         let errors_chirho = check_module_type_validity_chirho(&module_chirho);
         assert_eq!(errors_chirho.len(), 1);
         assert_eq!(
@@ -1017,8 +1022,7 @@ mod tests_chirho {
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
-        let module_chirho =
-            mk_module_chirho(vec![decl_chirho], vec!["Haskell2010".to_string()]);
+        let module_chirho = mk_module_chirho(vec![decl_chirho], vec!["Haskell2010".to_string()]);
         assert_eq!(check_module_type_validity_chirho(&module_chirho).len(), 1);
     }
 
@@ -1045,8 +1049,7 @@ mod tests_chirho {
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
-        let module_chirho =
-            mk_module_chirho(vec![decl_chirho], vec!["Haskell2010".to_string()]);
+        let module_chirho = mk_module_chirho(vec![decl_chirho], vec!["Haskell2010".to_string()]);
         assert!(check_module_type_validity_chirho(&module_chirho).is_empty());
     }
 
@@ -1315,5 +1318,4 @@ mod tests_edition_chirho {
             "Haskell2010".to_string()
         ]));
     }
-
 }

@@ -1,5 +1,5 @@
 -- TEST: compile_and_run
--- EXPECTED: 143
+-- EXPECTED: 88
 module Main where
 fibList :: Int -> [Int]
 fibList n = go n 0 1

@@ -426,7 +426,10 @@ mod tests_chirho {
             body_chirho: Box::new(inner_chirho),
         });
         assert_eq!(scheme_chirho.spine_arity_chirho(), 2);
-        assert_eq!(SchemeChirho::mono_chirho(TyChirho::int_chirho()).spine_arity_chirho(), 0);
+        assert_eq!(
+            SchemeChirho::mono_chirho(TyChirho::int_chirho()).spine_arity_chirho(),
+            0
+        );
     }
 
     #[test]
