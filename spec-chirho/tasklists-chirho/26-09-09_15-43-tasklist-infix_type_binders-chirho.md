@@ -35,7 +35,7 @@ remains explicit and must not be represented as a zero-warning gate.
 - [x] Run focused positive/negative and execution controls; update the workflow.
 - [x] Commit/push source checkpoint 18b7d1c3 by explicit owned paths; verify remote tip.
 - [x] Run full workspace and both corpus axes twice; retain exact sets and provenance.
-- [ ] Land tested source/evidence, close canonical progress row,
+- [x] Land tested source/evidence, close canonical progress row,
       and release builder/DB ownership.
 
 ## Evidence
@@ -117,3 +117,17 @@ remains explicit and must not be represented as a zero-warning gate.
   grouping. Imported fixity metadata, invalid mixed-fixity diagnostics and general
   traversal stack safety are not claimed. New child modules are 145–242 lines;
   their directories have 2 and 6 entries, and the oversized roots both shrink.
+
+## Landing
+
+- Source checkpoint `18b7d1c3` and evidence `76a7e99b` were pushed on the isolated
+  branch, with `ls-remote` verifying the exact tip. Main fast-forwarded without
+  overwriting its sole uncommitted path, the canonical progress DB's open row 479.
+- Main CLI rebuilt explicitly without warnings; SHA-256
+  `1e90caa64bbca7d4c77accd10b7ed91fdf3cb3510965e8c9d20bb8ec2cb4913c`.
+  Six bounded smoke checks pass: in-place T001/T23764/tc156 typechecks; the two
+  ordering/fixity exact-output controls; in-place T002 matching its GHC oracle.
+- The closing commit records canonical row 479 and this post-landing evidence;
+  the handoff verifies the final remote main tip before releasing SLOT/DB.
+  No site deployment. Next confirmed compiler reduction: nested-forall name-map
+  restoration without losing legitimate free-variable discoveries.

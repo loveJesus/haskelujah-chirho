@@ -45,9 +45,15 @@ reruns; all four passes had zero unresolved timeouts and zero unexpected exits. 
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-Main-checkout rebuild and in-place smoke verification follow the fast-forward;
-their separate digest/results will be recorded at landing. The complete gates
-above were measured in the isolated worktree, not on a substituted main binary.
+After the fast-forward to evidence commit `76a7e99b`, an explicit CLI rebuild in
+the main checkout completed without warnings. Its separate SHA-256 is
+`1e90caa64bbca7d4c77accd10b7ed91fdf3cb3510965e8c9d20bb8ec2cb4913c`.
+Repository-root `check ./ghc-tests-chirho/T001_basic_types.hs`, T23764 and tc156
+all succeed. The ordering and fixity execution controls print their exact GHC
+oracles, and in-place `run ./ghc-tests-chirho/T002_pattern_match.hs` prints `120`.
+All six checks have normal exit status under a 30-second child bound. These are
+post-landing path/execution smoke tests, not another full corpus gate; the complete
+gates above retain the worktree binary's separate provenance.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were
