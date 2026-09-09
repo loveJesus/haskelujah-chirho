@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: Red\n75\nmed\nprimes: 10\nfib30: 832040\nALL OK
 module Main where
+import Prelude hiding (enumFromTo)
 data Color = Red | Green | Blue deriving (Show, Eq)
 data Shape = Circle Int | Rect Int Int
 area (Circle r) = r * r * 3; area (Rect w h) = w * h

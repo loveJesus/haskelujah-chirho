@@ -10,7 +10,9 @@ flowchart TD
     SRC["Haskell source\ndo-block / operator use"] --> DESUGAR["desugar_chirho.rs\ndesugar_expr_chirho (ops ~3886-3900)\ndesugar_do_chirho (~4913)"]
     DESUGAR -->|"do stmts → >>= / >> chains (WI-002)\noperators → Var apps (WI-001)"| CORE["Core IR"]
     CORE --> DICTPASS["dict_chirho/rewrite_chirho.rs\nrewrite_method_refs_with_locals_chirho"]
-    DICTPASS --> OWN["Own dictionary evidence before monad-context guesses"]
+    DICTPASS --> ANNOTATED["Explicit result annotation selects only its own return/pure head"]
+    ANNOTATED -->|"resolved key and body"| PRIM
+    ANNOTATED -->|"no explicit head selection"| OWN["Own dictionary evidence before monad-context guesses"]
     OWN -->|"scheme supplies the dictionary"| SEL
     OWN -->|"no own dictionary"| HK["try_dispatch_hk_method_chirho\ninfer arg type key →\nnormalize_instance_head_key_chirho"]
     HK -->|"typed method argument\n(e.g. empty :: [Int])"| TYPEDARG["try_rewrite_typed_method_arg_chirho\nreuse selected instance key"]
@@ -25,6 +27,11 @@ flowchart TD
 ```
 
 Key invariant: concrete dispatch requires a resolved type key and an actual body.
+An explicit result annotation selects its own `pure`/`return` application head
+before an enclosing dictionary is considered. The focused
+`rewrite_chirho/return_chirho.rs` walk does not apply that result's type to argument
+subexpressions: `Either String [Int]` outside a list-valued helper cannot change
+the helper's dictionary. Mixed Maybe/Either expressions are execution controls.
 An enclosing binding's own dictionary is also real evidence and takes precedence
 over a syntactic monad-context guess. Both `pure` and `return` use the Applicative
 pure selector there; Monad supplies its Applicative superclass. Unknown instances

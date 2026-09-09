@@ -23,6 +23,8 @@ use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, SchemePredChirho};
 use std::cell::RefCell;
 use std::collections::HashSet;
 
+mod return_chirho;
+
 impl DictPassCtxChirho {
     fn parse_prim_binding_info_chirho(
         &self,
@@ -4095,21 +4097,19 @@ impl DictPassCtxChirho {
                 let annotated_monad_key_chirho = self
                     .annotated_monad_head_key_chirho(ty_chirho)
                     .filter(|_| self.has_direct_return_or_pure_head_chirho(inner_chirho));
-                if let Some(monad_key_chirho) = annotated_monad_key_chirho.clone() {
-                    self.monad_context_stack_chirho
-                        .borrow_mut()
-                        .push(monad_key_chirho);
-                }
+                let annotated_inner_chirho =
+                    annotated_monad_key_chirho
+                        .as_deref()
+                        .and_then(|key_chirho| {
+                            self.rewrite_proven_return_pure_head_chirho(inner_chirho, key_chirho)
+                        });
                 let rewritten_inner_chirho = self.rewrite_method_refs_with_locals_chirho(
-                    inner_chirho,
+                    annotated_inner_chirho.as_ref().unwrap_or(inner_chirho),
                     dict_vars_chirho,
                     evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
                 );
-                if annotated_monad_key_chirho.is_some() {
-                    self.monad_context_stack_chirho.borrow_mut().pop();
-                }
                 CoreExprChirho::TyAppChirho {
                     expr_chirho: Box::new(rewritten_inner_chirho),
                     ty_chirho: ty_chirho.clone(),
@@ -4452,21 +4452,20 @@ impl DictPassCtxChirho {
                     &binding_chirho.rhs_chirho,
                 ))
             });
-        if let Some(monad_key_chirho) = signature_monad_key_chirho.clone() {
-            self.monad_context_stack_chirho
-                .borrow_mut()
-                .push(monad_key_chirho);
-        }
+        let signature_rhs_chirho = signature_monad_key_chirho
+            .as_deref()
+            .and_then(|key_chirho| {
+                self.rewrite_proven_return_pure_head_chirho(&binding_chirho.rhs_chirho, key_chirho)
+            });
         let mut rhs_chirho = self.rewrite_method_refs_with_locals_chirho(
-            &binding_chirho.rhs_chirho,
+            signature_rhs_chirho
+                .as_ref()
+                .unwrap_or(&binding_chirho.rhs_chirho),
             &dict_vars_chirho,
             &evidence_classes_chirho,
             &local_type_keys_chirho,
             &local_instance_dicts_chirho,
         );
-        if signature_monad_key_chirho.is_some() {
-            self.monad_context_stack_chirho.borrow_mut().pop();
-        }
 
         // Wrap in only the superclass extraction let-bindings that the
         // rewritten body actually references. Unused extraction lets can keep

@@ -2,6 +2,7 @@
 -- EXPECTED: 12586269025\n111\n21\n25
 -- Comprehensive test: fibonacci, collatz, GCD, primes
 module Main where
+import Prelude hiding (enumFromTo)
 fib :: Int -> Int
 fib n = go n 0 1
   where go 0 a _ = a

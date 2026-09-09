@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 25
 module Main where
+import Prelude hiding (enumFromTo)
 isPrime :: Int -> Bool
 isPrime n
   | n < 2 = False

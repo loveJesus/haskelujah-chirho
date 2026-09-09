@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 65
 module Main where
+import Prelude hiding (enumFromTo)
 myMap :: (Int -> Int) -> [Int] -> [Int]
 myMap _ [] = []
 myMap f (x:xs) = f x : myMap f xs

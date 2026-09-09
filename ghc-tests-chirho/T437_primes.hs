@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 25
 module Main where
+import Prelude hiding (enumFromTo)
 isPrime n | n < 2 = False | otherwise = go 2 where go d | d*d > n = True | n `mod` d == 0 = False | otherwise = go (d+1)
 myFilter _ [] = []; myFilter p (x:xs) = if p x then x : myFilter p xs else myFilter p xs
 myLen [] = 0; myLen (_:xs) = 1 + myLen xs

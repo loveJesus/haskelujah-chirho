@@ -148,8 +148,9 @@ and harness repairs support that objective; workspace greens are not corpus gain
   numeric evidence; curated-root tests are 3/3. Core 130, typing 315 (one existing
   ignored test), RTS 46 plus the native-thunk integration test passed on the
   then-current code. The complete curated rerun passed **537/537** in 558 seconds:
-  all 514 compile-and-run oracles were actually compared. The old 537/537 compared
-  only 14, so the identical headline describes materially different evidence.
+  initially reported as all 514 compile-and-run oracles compared. The subsequent
+  prologue audit below corrects that to 512 at this checkpoint: two LANGUAGE-first
+  inputs were still compile-only. The old 537/537 compared only 14.
 - Native performance is distinct from correctness. Profiling the Euler test
   shows unoptimized Rust dictionary hashing/locking on immediate values, not
   stack growth (roughly 1 MiB RSS). Thunk entry now avoids an update lock when
@@ -390,3 +391,34 @@ and harness repairs support that objective; workspace greens are not corpus gain
   diagnostics and crate summaries); that is not a zero-warning gate or a count
   of unique defects. The next checkpoint is branch backup for another full
   unfiltered workspace run; main and the corpus artifacts remain unchanged.
+- Checkpoint 367e8da7 was committed and pushed with remote-tip equality verified.
+  Its unfiltered workspace attempt exposed one driver regression before completion:
+  annotated `pure`/`return` selected an enclosing Applicative dictionary rather than
+  the expression's explicit Either result. The frozen Core left main awaiting a
+  dictionary; this was not merely a packed-value assertion. Only the verified owned
+  cargo/driver PIDs were terminated (exit 143); the attempt is failed and incomplete.
+  Explicit result annotations now rewrite their own application head without
+  propagating that type into argument subexpressions. The original eleven-case
+  control and expanded mixed Maybe/Either/list evidence controls pass; dictionary
+  evidence 10 and value/Read controls 3 are green again.
+- Measurement correction: T527_cpp_conditional and T536_safe_package place LANGUAGE
+  before TEST/EXPECTED. The reader stopped at the pragma, and the actual old logs
+  say "compiled successfully", not output matched. Thus the post-header-repair
+  checkpoint had 512 compared executions and 25 compile-only tests, not 514/23.
+  The generic prologue control was demonstrated red before repair and green after;
+  both actual fixtures now execute their oracles successfully. The curated gate
+  separately asserts that discovery retained every declared execution directive.
+- Complete independent GHC 9.14.1 audit, 514 declared run inputs: the first pass
+  produced 490 matching outputs and 24 source rejections, no valid wrong outputs.
+  T006 needed `(3 :: Int)` for its custom Doubler class; three local Either inputs,
+  one local Ordering input and nineteen local enumFromTo inputs needed explicit
+  Prelude hiding. No oracle was edited. After these input repairs a second complete
+  GHC pass produced 514 matching outputs, zero errors/timeouts, on recorded source
+  hashes. Durable evidence lives under test-data-chirho/curated-oracles-chirho.
+  This establishes the reference answers, not the pending Haskelujah workspace gate.
+- Follow-up focused results: all 24 repaired curated inputs compare successfully
+  in Haskelujah, all seven oracle-discrimination tests pass, and formatting passes.
+  All-target clippy again completes with zero errors and 535 warning messages
+  (not unique defects); the zero-warning project gate remains unmet. This next
+  branch checkpoint precedes another full unfiltered workspace run, not a main
+  landing. Main stays unchanged apart from the owned open progress row.

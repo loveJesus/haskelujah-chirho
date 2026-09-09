@@ -8,7 +8,8 @@ or a crashed child is a failed test, never an absent optional result that passes
 
 ```mermaid
 flowchart TD
-    source_chirho[Curated Haskell source plus TEST header] --> metadata_chirho[parse_test_metadata_chirho reads EXPECTED or EXPECT_OUTPUT and decodes escapes]
+    source_chirho[Curated Haskell source plus TEST header] --> prologue_chirho[Skip whitespace and nested block comments or pragmas until actual code]
+    prologue_chirho --> metadata_chirho[parse_test_metadata_chirho reads EXPECTED or EXPECT_OUTPUT and decodes escapes]
     metadata_chirho --> oracle_chirho{Run test has an oracle?}
     oracle_chirho -->|no| missing_chirho[Fail with missing-oracle diagnostic]
     oracle_chirho -->|yes, including intentionally empty| evaluate_chirho[run_ghc_test_chirho compiles and evaluates]
@@ -22,6 +23,21 @@ five hundred used EXPECTED and their answers were not compared. Both spellings
 are supported, and no expected output is inferred from the implementation under
 test. When an oracle disagrees, unchanged source is run with the named reference
 GHC version before choosing a compiler repair or an input/oracle correction.
+
+The first header repair still compared only 512 of the intended 514 execution
+oracles: T527 and T536 begin with a LANGUAGE pragma and were misclassified as
+compile-only. Metadata now spans the complete comment/pragma prologue. A wrong
+oracle behind a blank line, pragma or nested comment must fail; an oracle after
+actual code cannot supply missing metadata. The curated gate independently checks
+that every declared execution directive survives discovery.
+
+The complete 2026-09-09 GHC 9.14.1 reference run is recorded, with per-source hashes
+and observed output, in `test-data-chirho/curated-oracles-chirho`. It is independent
+of Haskelujah's execution gate and does not certify later edits to those sources.
+All 514 declared execution programs matched after 24 previously invalid inputs
+received explicit Prelude hiding or a required Int annotation; no output oracle
+changed in that second reference pass. These are our curated inputs, not the
+938/767 upstream typecheck corpora.
 
 ```mermaid
 flowchart TD

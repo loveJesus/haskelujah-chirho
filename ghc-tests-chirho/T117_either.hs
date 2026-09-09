@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 42\n-1
 module Main where
+import Prelude hiding (Either(..))
 data Either a b = Left a | Right b
 fromRight :: Int -> Either Int Int -> Int
 fromRight def (Left _) = def

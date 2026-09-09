@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: -1\n0\n1
 module Main where
+import Prelude hiding (Ordering(..))
 data Ordering = LT | EQ | GT
 myCompare :: Int -> Int -> Ordering
 myCompare a b

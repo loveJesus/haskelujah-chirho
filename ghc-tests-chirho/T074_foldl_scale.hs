@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 5050
 module Main where
+import Prelude hiding (enumFromTo)
 myFoldl :: (Int -> Int -> Int) -> Int -> [Int] -> Int
 myFoldl _ acc [] = acc
 myFoldl f acc (x:xs) = myFoldl f (f acc x) xs

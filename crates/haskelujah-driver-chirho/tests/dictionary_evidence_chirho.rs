@@ -168,7 +168,7 @@ fn result_only_applicative_and_monad_parameters_are_passed_and_used_chirho() {
             "ApplicativeEvidenceChirho.hs",
             include_str!("dictionary_evidence_chirho/applicative_chirho.hs"),
         ),
-        "Just 4\n[5]\n6\nJust 7\n[8]\n",
+        "Just 4\n[5]\n6\nJust 7\n[8]\n(Just 1,Right 2)\nRight [10]\n",
     );
 }
 

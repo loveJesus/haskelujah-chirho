@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 75
 module Main where
+import Prelude hiding (enumFromTo)
 myZipWith :: (Int -> Int -> Int) -> [Int] -> [Int] -> [Int]
 myZipWith _ [] _ = []
 myZipWith _ _ [] = []

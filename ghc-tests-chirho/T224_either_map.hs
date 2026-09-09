@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 43\n-1
 module Main where
+import Prelude hiding (Either(..))
 data Either a b = Left a | Right b
 mapRight :: (Int -> Int) -> Either Int Int -> Either Int Int
 mapRight _ (Left x) = Left x

@@ -9,3 +9,5 @@ main = do
   print valueChirho
   print (liftMonadChirho 5 :: Maybe Int)
   print (liftMonadChirho 6 :: [Int])
+  print ((pure 1 :: Maybe Int), (pure 2 :: Either String Int))
+  print (pure (liftChirho 9 :: [Int]) :: Either String [Int])

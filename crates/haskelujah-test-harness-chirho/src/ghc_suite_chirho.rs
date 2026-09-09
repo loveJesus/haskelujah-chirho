@@ -160,9 +160,43 @@ pub fn discover_ghc_tests_chirho(
 fn parse_test_metadata_chirho(source_chirho: &str) -> (GhcTestKindChirho, Option<String>) {
     let mut kind_chirho = GhcTestKindChirho::CompileChirho;
     let mut expected_output_chirho = None;
+    let mut block_depth_chirho = 0usize;
 
     for line_chirho in source_chirho.lines() {
-        let trimmed_chirho = line_chirho.trim();
+        let mut trimmed_chirho = line_chirho.trim();
+        // A Haskell prologue may interleave whitespace, line comments and
+        // nested block comments (LANGUAGE pragmas included). Only real code
+        // ends metadata; a leading pragma must not downgrade a run to compile.
+        loop {
+            if block_depth_chirho > 0 {
+                let open_chirho = trimmed_chirho.find("{-");
+                let close_chirho = trimmed_chirho.find("-}");
+                match (open_chirho, close_chirho) {
+                    (Some(open_chirho), close_chirho)
+                        if close_chirho.is_none_or(|close_chirho| open_chirho < close_chirho) =>
+                    {
+                        block_depth_chirho += 1;
+                        trimmed_chirho = &trimmed_chirho[open_chirho + 2..];
+                    }
+                    (_, Some(close_chirho)) => {
+                        block_depth_chirho -= 1;
+                        trimmed_chirho = trimmed_chirho[close_chirho + 2..].trim_start();
+                    }
+                    _ => {
+                        trimmed_chirho = "";
+                        break;
+                    }
+                }
+            } else if let Some(rest_chirho) = trimmed_chirho.strip_prefix("{-") {
+                block_depth_chirho = 1;
+                trimmed_chirho = rest_chirho;
+            } else {
+                break;
+            }
+        }
+        if trimmed_chirho.is_empty() {
+            continue;
+        }
         if let Some(rest_chirho) = trimmed_chirho.strip_prefix("-- TEST:") {
             let test_type_chirho = rest_chirho.trim();
             kind_chirho = match test_type_chirho {

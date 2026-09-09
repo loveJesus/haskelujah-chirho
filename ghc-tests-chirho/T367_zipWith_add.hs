@@ -1,6 +1,7 @@
 -- TEST: compile_and_run
 -- EXPECTED: 75
 module Main where
+import Prelude hiding (enumFromTo)
 myZipWith _ [] _ = []; myZipWith _ _ [] = []; myZipWith f (x:xs) (y:ys) = f x y : myZipWith f xs ys
 mySum [] = 0; mySum (x:xs) = x + mySum xs
 add a b = a + b
