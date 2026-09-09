@@ -1,9 +1,9 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-09, AFTER the execution-correctness and test-instrument repairs
-# code measured: 2f74126d2417f493aa68efb1c71825074c6ad0a2 (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-09, AFTER infix type namespace/fixity and signature-order repairs
+# code measured: 18b7d1c309a6297c04170658cc1a1f1a59aa3d4a (HASKELUJAH/gpt_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
 #   measured binary: ../haskelujah-gpt-chirho/target/debug/haskelujah
-# CLI SHA256: 2466efcd6e27a7ba877a2f865ce5aa723129c70bae6aea99ce044751b89ca39f
+# CLI SHA256: bcb77a970d37d1d34894162925ad2b7951ace8930d190878af50e31141bb2baa
 #   HEAD and binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone with a 60s cap; a rejection contains `error[E` or `panic`;
@@ -12,18 +12,20 @@
 #   (no subdirectories)
 #
 # RESULT: CORRECTLY-REJECTED=222 WRONGLY-ACCEPTED=545 TOTAL=767 (28.9% reject rate)
-# STABILITY: DETERMINISTIC — two complete passes, zero timeouts/unexpected exits;
+# STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
 #   sets byte-identical to each other AND the previously committed list
 # QUOTE-AS: ~29% (222 of 767) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~93% (877 of 938).
-# Both rounding labels are unchanged. No public-site deployment is part of this lane.
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~94% (879 of 938).
+# Accept rounding changes ~93% -> ~94%; reject holds ~29%. No public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT: 222 -> 222 (no movement in either direction).
+# CHANGE SINCE LAST MEASUREMENT (2f74126d): 222 -> 222 (no movement in either direction).
+# WRONG-ACCEPT-LIST SHA256: fb5d3bf3b4b8d476764bff979eb92638b08cc6389e222f5463b59612cc9ddb32
 #   These are typecheck verdicts, not execution. Separate execution evidence at the
-#   same source commit: 3318 workspace passes, zero failed/ignored/filtered; 126 native
-#   round trips; curated 537/537, including 514 compared execution oracles independently
-#   checked under GHC 9.14.1 at recorded source hashes and 23 compile-only inputs.
+#   same source commit: 3331 workspace passes, zero failed/ignored/filtered; 126 native
+#   round trips; curated 537/537, including 514 compared execution oracles whose source
+#   hashes still match the earlier complete GHC 9.14.1 reference (not rerun in full here),
+#   and 23 compile-only inputs. Neither upstream corpus is fully passing.
 #   See workflows-chirho/testing-chirho/execution-measurement-chirho.md for scope.
 #
 # PREVIOUS MEASUREMENT (ffa2561e, 2026-09-07): 218 -> 222 (net +4).

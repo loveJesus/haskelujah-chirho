@@ -71,6 +71,12 @@ flowchart TD
 
 ## Current boundary
 
+- Type fixities come from current-module top-level declarations and the existing
+  built-in/default table, not imported custom fixity metadata. Diagnostics for
+  invalid mixed/non-associative chains are separate existing work.
+- Type-chain collection/reduction performs linear aggregate work and heap storage,
+  but CST/AST traversal still uses a depth-proportional call stack. This is not an
+  adversarial-depth stack-safety guarantee.
 - General implicit kind-dependency ordering (GHC's stable topological sort) is not claimed:
   ordinary kind annotations are not retained as a general `TypeChirho` node. Existing
   explicitly written forall order is preserved, not a substitute for the missing information.

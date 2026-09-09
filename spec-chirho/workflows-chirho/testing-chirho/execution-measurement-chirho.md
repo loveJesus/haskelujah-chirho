@@ -2,7 +2,7 @@
 
 # Execution measurement — 2026-09-09
 
-Frozen compiler/test source: `2f74126d2417f493aa68efb1c71825074c6ad0a2`.
+Frozen compiler/test source: `18b7d1c309a6297c04170658cc1a1f1a59aa3d4a`.
 Measured by HASKELUJAH/gpt_chirho on macOS arm64 in the isolated repair worktree.
 Subsequent evidence-only commits do not change the measured compiler or tests.
 
@@ -10,14 +10,15 @@ Subsequent evidence-only commits do not change the measured compiler or tests.
 
 | Measurement | Result | What it establishes |
 | --- | --- | --- |
-| Complete Rust workspace | 3318 passed; zero failed, ignored or filtered; cargo exit 0 | Unit, integration and doctest outcomes under the command below |
+| Complete Rust workspace | 3331 passed; zero failed, ignored or filtered; cargo exit 0 | Unit, integration and doctest outcomes under the command below |
 | Driver library, included above | 1773/1773 | Includes all 126 native round trips, with exact outputs and bounded children |
 | Curated suite, included above | 537/537 | 514 execution oracles actually compared; 23 compile-only inputs |
-| Independent GHC 9.14.1 reference | 514/514 output matches | The same 514 curated execution sources, bound by SHA-256; zero reference errors, warnings or timeouts |
-| Upstream should_compile | 877 of 938 | Typecheck acceptance only; two identical complete passes |
+| Independent GHC 9.14.1 reference | Prior complete 514/514 reference; all source hashes still match | Reference retained from the preceding lane, not 514 fresh GHC executions in this lane |
+| Upstream should_compile | 879 of 938 | Typecheck acceptance only; two identical complete passes |
 | Upstream should_fail | 222 of 767 | Typecheck rejection only; two identical complete passes |
 
-Both upstream verdict sets are byte-identical to the previously committed lists.
+The accept set gains T23764 and tc156 with zero losses. The reject set is
+byte-identical to its previously committed list. Each axis's two passes agree exactly.
 Neither percentage measures execution correctness; neither corpus is fully passing.
 The workspace's eight bulk tracking tests being green is not a claim that all
 individual upstream inputs pass.
@@ -32,25 +33,21 @@ No test-name skip/filter was supplied. `workspace-results-chirho.jsonl` retains
 all 75 target result lines, including zero-test targets, and their aggregate.
 Raw completed workspace log SHA-256:
 
-`fcf0fc65ec805012a33084d49b877aa475df5b488913783983e64119f45106ba`
+`70f21001d171804bd72a2a1b6a72a7037b5498baf9905638e323ff580fac4fc9`
 
 The explicitly rebuilt debug CLI used for all four upstream passes has SHA-256:
 
-`2466efcd6e27a7ba877a2f865ce5aa723129c70bae6aea99ce044751b89ca39f`
+`bcb77a970d37d1d34894162925ad2b7951ace8930d190878af50e31141bb2baa`
 
 Its HEAD and digest were asserted before and after every pass. The pure-shell
 runner used four workers and 15 seconds per input, with serial 60-second timeout
-reruns; all four passes had zero timeouts and zero unexpected exits. Unexpected
+reruns; all four passes had zero unresolved timeouts and zero unexpected exits. Unexpected
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-After the fast-forward to evidence commit `77b55f5f`, an explicit CLI rebuild in
-the main checkout completed with no warnings. Its digest is separately recorded
-as `aa5f8bd8a89719c7c0d485b6b9c90848cf670f36d5cbc45c1bffc5c8139c9c65`;
-the main-checkout binary is not substituted for the worktree binary above.
-Repository-root `check ./ghc-tests-chirho/T001_basic_types.hs` succeeds, and
-`run` on T002, T527 and T536 matches each independently recorded GHC oracle.
-These are post-landing path/prologue smoke tests, not another full corpus gate.
+Main-checkout rebuild and in-place smoke verification follow the fast-forward;
+their separate digest/results will be recorded at landing. The complete gates
+above were measured in the isolated worktree, not on a substituted main binary.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were
@@ -58,7 +55,30 @@ rechecked against the frozen tree. Its sibling read-only verifier reruns GHC;
 it never invents answers from Haskelujah output. The reference manifest excludes
 the 23 compile-only inputs and both upstream typecheck corpora.
 
-## What changed behind an unchanged percentage
+## Infix type and binder repairs (18b7d1c3)
+
+Lowercase backticked type variables now retain their namespace and lexical token
+spans when normalized to prefix application. Scheme quantification orders its
+existing variables by first source occurrence, including context occurrences before
+the body; explicit forall order and class/scoped-variable handling are preserved.
+Type-chain reduction uses the existing fixity table with linear push/reduce work.
+Parenthesizing tc156's signature independently isolated the precedence defect.
+
+Four parser and five typing controls were added. Driver typing integration is
+12/12, including two identical-source executions on STG, LLVM and Cranelift:
+signature ordering prints `42/7/11/True`; type fixity prints `3/True/'c'`.
+Both sources were freshly executed under GHC 9.14.1. A reversed Int/Bool operand
+control rejects for the expected type mismatch, also independently confirmed.
+The class/scoped/rank-N control establishes typechecking only; the separate
+custom-method runtime dispatch limitation is not hidden by an execution claim.
+
+The 13 additional Rust tests explain 3318 -> 3331. The published accept rounding
+changes ~93% -> ~94%; the reject rounding remains ~29%. No corpus source or oracle
+was edited. tc192 now gets past infix naming but remains blocked on Arrows proc
+notation. Full kind-dependency ordering and same-name nested-forall conversion
+remain open; the signature inventory does not claim to repair those mechanisms.
+
+## Earlier execution-correctness repairs (2f74126d)
 
 The old curated reader compared 14 oracles and ignored 500 declared EXPECTED
 headers. The first repair still missed two LANGUAGE-first inputs; the complete

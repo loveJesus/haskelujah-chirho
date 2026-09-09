@@ -1,29 +1,39 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-09, AFTER the execution-correctness and test-instrument repairs
-# code measured: 2f74126d2417f493aa68efb1c71825074c6ad0a2 (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-09, AFTER infix type namespace/fixity and signature-order repairs
+# code measured: 18b7d1c309a6297c04170658cc1a1f1a59aa3d4a (HASKELUJAH/gpt_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
 #   measured binary: ../haskelujah-gpt-chirho/target/debug/haskelujah
-# CLI SHA256: 2466efcd6e27a7ba877a2f865ce5aa723129c70bae6aea99ce044751b89ca39f
+# CLI SHA256: bcb77a970d37d1d34894162925ad2b7951ace8930d190878af50e31141bb2baa
 #   HEAD and binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone with a 60s cap; unexpected nonzero exits fail the runner
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   (find-based; T16234/ included)
 #
-# RESULT: PASS=877 FAIL=61 TOTAL=938 (93.5%)
-# STABILITY: DETERMINISTIC — two complete passes, zero timeouts/unexpected exits;
-#   failing sets byte-identical to each other AND the previously committed list
-# QUOTE-AS: ~93% (877 of 938) — do not quote a third significant figure
+# RESULT: PASS=879 FAIL=59 TOTAL=938 (93.7%)
+# STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
+#   failing sets byte-identical to each other; exact delta from the previous list below
+# QUOTE-AS: ~94% (879 of 938) — do not quote a third significant figure
 #
 # QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (222 of 767).
-# Both rounding labels are unchanged. No public-site deployment is part of this lane.
+# Accept rounding changes ~93% -> ~94%; reject holds ~29%. No public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT: 877 -> 877 (no movement). The failing set below is
-#   byte-identical to the previous artifact's. These are typecheck verdicts, not execution.
-# EXECUTION EVIDENCE: the same frozen source passes 3318 workspace tests with zero
+# CHANGE SINCE LAST MEASUREMENT (2f74126d): 877 -> 879, +2 gained, zero lost.
+#   T23764: lowercase infix type variable retained, and visible type arguments consume
+#     signature binders in lexical first-occurrence order rather than allocator-ID order.
+#   tc156: lowercase infix parameter retained; type-chain grouping uses the existing
+#     fixity table. Parenthesizing the signature independently isolated that second defect.
+#   No corpus input changed. tc192 shares the infix shape but still reaches unsupported
+#     proc/x: the already-mapped arrows_proc_notation_chirho feature, not an infix gain.
+#   Full kind-dependency ordering and same-name forall converter shadowing are not claimed.
+#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
+# FAILURE-LIST SHA256: f203c5ec56c44daac4ea2ed7279532c59e0a2d9e9e70e93b40d9e75247da96a7
+# EXECUTION EVIDENCE: the same frozen source passes 3331 workspace tests with zero
 #   failed/ignored/filtered, including 126 native round trips and curated 537/537:
-#   514 execution oracles compared, independently checked under GHC 9.14.1 at recorded
-#   source hashes; 23 compile-only inputs. See workflows-chirho/testing-chirho/
+#   514 execution oracles compared; all source hashes still match the earlier complete
+#   GHC 9.14.1 reference manifest (not rerun in full in this lane); 23 compile-only inputs.
+#   Two new shared-source controls also match fresh GHC oracles on STG/LLVM/Cranelift.
+#   See workflows-chirho/testing-chirho/
 #   execution-measurement-chirho.md for provenance and explicit scope limits.
 #
 # PREVIOUS MEASUREMENT (ffa2561e, 2026-09-07): 877 -> 877. The record-field brick
@@ -43,7 +53,7 @@
 # (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
 # this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# ---- the 61 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 59 files we FAIL to accept (GHC accepts these); all deterministic ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -79,7 +89,6 @@ T21519a.hs
 T21558.hs
 T23501a.hs
 T23739a.hs
-T23764.hs
 T24810.hs
 T24845a.hs
 T25180.hs
@@ -98,7 +107,6 @@ UnliftedNewtypesGnd.hs
 tc124.hs
 tc134.hs
 tc135.hs
-tc156.hs
 tc192.hs
 tc194.hs
 tc213.hs
