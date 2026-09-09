@@ -18,6 +18,13 @@ pub enum NativeBackendChirho {
     CraneliftChirho,
 }
 
+/// Generated input for the same reserved-workspace and bounded-child boundary
+/// used by source round trips. Backend unit tests must not invent their own paths.
+pub enum NativeArtifactChirho {
+    LlvmIrChirho(String),
+    CraneliftObjectChirho(Vec<u8>),
+}
+
 fn runtime_library_chirho() -> Result<PathBuf, String> {
     static LIBRARY_CHIRHO: OnceLock<Result<PathBuf, String>> = OnceLock::new();
     LIBRARY_CHIRHO
@@ -86,36 +93,51 @@ pub fn native_round_trip_with_deadline_chirho(
     let compiled_chirho =
         compile_source_chirho(source_chirho, &mut source_map_chirho, "Main.hs")
             .map_err(|diagnostics_chirho| format!("frontend failed: {diagnostics_chirho:?}"))?;
+    let artifact_chirho = match backend_chirho {
+        NativeBackendChirho::LlvmChirho => NativeArtifactChirho::LlvmIrChirho(
+            haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho(
+                &compiled_chirho.core_chirho,
+            )?,
+        ),
+        NativeBackendChirho::CraneliftChirho => NativeArtifactChirho::CraneliftObjectChirho(
+            haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+                &compiled_chirho.core_chirho,
+                &Default::default(),
+            )?
+            .object_bytes_chirho,
+        ),
+    };
+    native_artifact_round_trip_chirho(artifact_chirho, input_chirho, deadline_chirho)
+}
+
+/// Link and run an already-generated module with private, atomically reserved
+/// storage. See testing-chirho/execution-oracles-chirho.md for the stage contract.
+pub fn native_artifact_round_trip_chirho(
+    artifact_chirho: NativeArtifactChirho,
+    input_chirho: &str,
+    deadline_chirho: Duration,
+) -> Result<(i32, String), String> {
     let directory_chirho = tempfile::tempdir().map_err(|error_chirho| error_chirho.to_string())?;
     let executable_chirho = directory_chirho.path().join("main-chirho");
-    let mut linker_chirho = Command::new(match backend_chirho {
-        NativeBackendChirho::LlvmChirho => "clang",
-        NativeBackendChirho::CraneliftChirho => "cc",
+    let mut linker_chirho = Command::new(match &artifact_chirho {
+        NativeArtifactChirho::LlvmIrChirho(_) => "clang",
+        NativeArtifactChirho::CraneliftObjectChirho(_) => "cc",
     });
     linker_chirho.arg("-o").arg(&executable_chirho);
-    match backend_chirho {
-        NativeBackendChirho::LlvmChirho => {
+    match artifact_chirho {
+        NativeArtifactChirho::LlvmIrChirho(ir_chirho) => {
             linker_chirho.args([
                 "-target",
                 &haskelujah_backend_llvm_chirho::native_target_chirho(),
             ]);
-            let ir_chirho =
-                haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho(
-                    &compiled_chirho.core_chirho,
-                )?;
             let source_path_chirho = directory_chirho.path().join("main-chirho.ll");
             std::fs::write(&source_path_chirho, ir_chirho)
                 .map_err(|error_chirho| error_chirho.to_string())?;
             linker_chirho.arg("-O0").arg(source_path_chirho);
         }
-        NativeBackendChirho::CraneliftChirho => {
-            let object_chirho =
-                haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
-                    &compiled_chirho.core_chirho,
-                    &Default::default(),
-                )?;
+        NativeArtifactChirho::CraneliftObjectChirho(object_bytes_chirho) => {
             let object_path_chirho = directory_chirho.path().join("main-chirho.o");
-            std::fs::write(&object_path_chirho, object_chirho.object_bytes_chirho)
+            std::fs::write(&object_path_chirho, object_bytes_chirho)
                 .map_err(|error_chirho| error_chirho.to_string())?;
             linker_chirho.arg(object_path_chirho);
             if cfg!(target_os = "macos") {

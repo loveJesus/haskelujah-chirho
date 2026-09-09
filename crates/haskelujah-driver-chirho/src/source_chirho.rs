@@ -3,6 +3,10 @@
 //! Source-text frontend entry shared by typecheck measurements and full compilation.
 //! This path deliberately has no filesystem search and no backend generation.
 
+pub(crate) mod cpp_chirho;
+#[cfg(test)]
+mod tests_chirho;
+
 use super::{
     DiagnosticBundleChirho, FrontendResultChirho, ImportedTypeSynonymsChirho, SourceFileChirho,
     SourceMapChirho, merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_chirho,

@@ -422,3 +422,40 @@ and harness repairs support that objective; workspace greens are not corpus gain
   (not unique defects); the zero-warning project gate remains unmet. This next
   branch checkpoint precedes another full unfiltered workspace run, not a main
   landing. Main stays unchanged apart from the owned open progress row.
+- Checkpoint ea682242 was pushed with exact remote-tip verification. Its complete
+  unfiltered workspace run finished with **3311 passed, one failed, zero ignored,
+  zero filtered** across unit/integration/doctest results. Driver library was
+  1769/1769, including all 126 native round trips; curated was 537/537 with all
+  514 execution oracles actually compared. The sole red was LLVM's basic
+  comparison unit: expected exit 0, observed 42. Three isolated repetitions of
+  the entire LLVM target passed, so those repeats were not substituted for the red.
+- Native reduction established a temporary-path collision, not a comparison
+  code-generation defect: four concurrent workers used PID plus wall-clock
+  timestamps and create_dir_all, and two of 32 executions ran another worker's
+  42-valued program. The same reduction with atomically reserved directories
+  produced 32/32 correct results. Both backend unit helpers now use the existing
+  strict bounded native artifact runner instead of separate timestamp/link/run
+  implementations. LLVM units 38/38 and Cranelift units 42/42 pass, including
+  concurrent controls. The initial new LLVM control incorrectly expected empty
+  stdout from the documented pure-main wrapper; it now asserts the exact printed
+  value as well as its exit code.
+- The same input-ownership flaw was independently reproduced through the public
+  production CPP API: 25 of 128 concurrent calls read another worker's macro or
+  fell back after its file disappeared. The identical probe against the repaired
+  library is 128/128 correct. A focused source-processing child module now owns
+  atomic temporary inputs and private support headers through CPP exit. File-based
+  inputs retain their sibling include root. Four new tests cover concurrent
+  in-memory CPP, sanitized CPP with real local/support includes, HSC and failure
+  cleanup. The shared support-header race was source-inspected, not separately
+  reproduced; the existing string-API error fallback policy is not changed.
+- Four orphaned generated Haskelujah executables from Sep 6/7 were verified by
+  exact PID, start time, PPID 1, executable path and project cwd before termination
+  (17035, 29898, 53228, 77055). None belonged to the current gate. All four exited;
+  no files were deleted. This removes measured old load without reclassifying any
+  test result or reviving the refuted external-watchdog explanation.
+- Follow-up ownership gate: shared scaling/pattern controls 5, IO-action controls
+  9, native laziness controls 5, oracle controls 7 and bounded-process controls 6
+  all pass. Formatting and diff whitespace checks pass. All-target clippy completes
+  without errors and reports no diagnostics in the new ownership modules; existing
+  workspace lint debt is still not a zero-warning result. This checkpoint is
+  remote backup before the next complete unfiltered workspace run.

@@ -1739,6 +1739,7 @@ dependencies = [
  "haskelujah-core",
  "haskelujah-rts",
  "haskelujah-span",
+ "haskelujah-test-harness",
  "haskelujah-typing",
  "libc",
  "target-lexicon",
@@ -1760,6 +1761,7 @@ dependencies = [
  "haskelujah-core",
  "haskelujah-rts",
  "haskelujah-span",
+ "haskelujah-test-harness",
  "haskelujah-typing",
  "tempfile",
 ]

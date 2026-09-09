@@ -46,13 +46,20 @@ flowchart TD
     actions_chirho --> demands_chirho[Analyze saturated-call demand; every terminating branch must require a strict argument]
     demands_chirho --> thunks_chirho[prepare_native_thunks_chirho closes remaining lazy arguments, fields and nonrecursive lets over one environment]
     thunks_chirho --> backend_chirho[Selected backend emits checked executable IR or object]
-    backend_chirho --> link_chirho[Bounded RTS build and native link; nonzero status or stderr fails]
+    backend_chirho --> artifact_chirho[native_artifact_round_trip_chirho owns an atomically reserved temporary directory]
+    unit_chirho[Backend unit-generated IR or object] --> artifact_chirho
+    artifact_chirho --> link_chirho[Bounded RTS build and native link; nonzero status or stderr fails]
     link_chirho --> run_chirho[run_bounded_with_memory_chirho: process group, closed stdin, deadline, bounded pipes and memory]
     run_chirho --> cleanup_chirho[Reap child and terminate surviving descendants]
     cleanup_chirho --> result_chirho{Normal exit and no runtime stderr?}
     result_chirho -->|no| fail_chirho[Fail with signal, timeout or stage diagnostics]
     result_chirho -->|yes| exact_chirho[Caller asserts exit code and exact output]
 ```
+
+Backend unit tests use this same artifact runner, not a second linker/child helper.
+A PID plus wall-clock timestamp is not an exclusive reservation: simultaneous
+workers can write and execute the same path. The owner remains alive through
+linking, execution and child cleanup; failure unwinds through the same cleanup.
 
 Ordinary generated executions have a 15-second budget. The unchanged
 100-million-step scale test names its separate 60-second budget. The native RTS
@@ -139,3 +146,22 @@ tests consume raw upstream sources. These slices are not complete packages, and
 an optional whole-package test that returns early without its cache is not proof
 of package compilation. In-process source canaries remain filesystem-blind;
 repository-root CLI tests separately exercise module discovery and precedence.
+
+## Preprocessor resource ownership
+
+```mermaid
+flowchart TD
+    input_chirho[CPP source or sanitized HSC input] --> reserve_chirho[temporary_source_file_chirho reserves a private file atomically]
+    reserve_chirho --> headers_chirho[configure_cpp_command_chirho owns a private support-header directory]
+    headers_chirho --> child_chirho[CppInvocationChirho retains headers through child exit]
+    child_chirho --> result_chirho[Decode output or report the existing preprocessing error]
+    result_chirho --> retire_chirho[Drop private inputs and headers; retain original source and local includes]
+```
+
+File-based sanitized inputs stay beside the source, preserving local include and
+package-discovery roots. In-memory inputs use system temporary storage. Each
+invocation owns its MachDeps/HsBaseConfig headers; package-version flags remain
+per-command. The unused globally rewritten MIN_VERSION header is gone. Concurrent
+tests require each worker's distinct macro result, real local/support includes,
+and cleanup on a named CPP error. The legacy in-memory preprocessing fallback
+policy is unchanged; this ownership repair does not claim to redesign it.

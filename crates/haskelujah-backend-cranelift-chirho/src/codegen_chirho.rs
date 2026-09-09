@@ -2387,16 +2387,20 @@ fn count_params_chirho(expr_chirho: &CoreExprChirho) -> (usize, &CoreExprChirho)
 
 #[cfg(test)]
 mod tests_chirho {
+    mod execution_chirho;
+
     use super::*;
     use crate::TargetConfigChirho;
+    use execution_chirho::{
+        compile_and_run_exit_code_chirho, compile_and_run_stdout_chirho,
+        compile_executable_and_run_exit_code_chirho,
+    };
     use haskelujah_core_chirho::expr_chirho::{
         AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
         CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
     };
     use haskelujah_span_chirho::SpanChirho;
     use haskelujah_typing_chirho::ty_chirho::TyChirho;
-    use std::fs;
-    use std::process::Command;
 
     // ── Shared helpers ────────────────────────────────────────────────────
 
@@ -2438,165 +2442,6 @@ mod tests_chirho {
         let obj_chirho = result_chirho.unwrap();
         assert!(!obj_chirho.object_bytes_chirho.is_empty());
         obj_chirho.object_bytes_chirho
-    }
-
-    fn compile_and_run_exit_code_chirho(module_chirho: &CoreModuleChirho) -> i32 {
-        let object_bytes_chirho = compile_ok_chirho(module_chirho);
-        let unique_suffix_chirho = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time should be after unix epoch")
-            .as_nanos();
-        let temp_dir_chirho = std::env::temp_dir().join(format!(
-            "haskelujah-cranelift-runtime-test-{}-{unique_suffix_chirho}",
-            std::process::id()
-        ));
-        fs::create_dir_all(&temp_dir_chirho).expect("create temp runtime dir");
-        let obj_path_chirho = temp_dir_chirho.join("test.o");
-        let exe_path_chirho = temp_dir_chirho.join("test-exe");
-        fs::write(&obj_path_chirho, object_bytes_chirho).expect("write object file");
-
-        let workspace_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(std::path::Path::parent)
-            .expect("backend crate should live under workspace/crates");
-        let cargo_status_chirho = Command::new("cargo")
-            .current_dir(workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts", "--quiet"])
-            .status()
-            .expect("build RTS");
-        assert!(cargo_status_chirho.success(), "RTS build should succeed");
-
-        let link_status_chirho = Command::new("cc")
-            .args([
-                "-o",
-                exe_path_chirho.to_str().expect("utf8 exe path"),
-                obj_path_chirho.to_str().expect("utf8 obj path"),
-                "-L",
-                workspace_root_chirho
-                    .join("target")
-                    .join("debug")
-                    .to_str()
-                    .expect("utf8 rts lib dir"),
-                "-lhaskelujah_rts",
-            ])
-            .status()
-            .expect("link executable");
-        assert!(link_status_chirho.success(), "link should succeed");
-
-        let run_status_chirho = Command::new(&exe_path_chirho)
-            .status()
-            .expect("run executable");
-        run_status_chirho.code().unwrap_or(-1)
-    }
-
-    fn compile_executable_and_run_exit_code_chirho(module_chirho: &CoreModuleChirho) -> i32 {
-        let config_chirho = TargetConfigChirho::default();
-        let result_chirho = compile_core_to_object_executable_chirho(module_chirho, &config_chirho);
-        assert!(
-            result_chirho.is_ok(),
-            "Executable compilation failed: {:?}",
-            result_chirho.err()
-        );
-        let object_bytes_chirho = result_chirho.unwrap().object_bytes_chirho;
-        let unique_suffix_chirho = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time should be after unix epoch")
-            .as_nanos();
-        let temp_dir_chirho = std::env::temp_dir().join(format!(
-            "haskelujah-cranelift-executable-test-{}-{unique_suffix_chirho}",
-            std::process::id()
-        ));
-        fs::create_dir_all(&temp_dir_chirho).expect("create temp executable dir");
-        let obj_path_chirho = temp_dir_chirho.join("test.o");
-        let exe_path_chirho = temp_dir_chirho.join("test-exe");
-        fs::write(&obj_path_chirho, object_bytes_chirho).expect("write executable object file");
-
-        let workspace_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(std::path::Path::parent)
-            .expect("backend crate should live under workspace/crates");
-        let cargo_status_chirho = Command::new("cargo")
-            .current_dir(workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts", "--quiet"])
-            .status()
-            .expect("build RTS");
-        assert!(cargo_status_chirho.success(), "RTS build should succeed");
-
-        let link_status_chirho = Command::new("cc")
-            .args([
-                "-o",
-                exe_path_chirho.to_str().expect("utf8 exe path"),
-                obj_path_chirho.to_str().expect("utf8 obj path"),
-                "-L",
-                workspace_root_chirho
-                    .join("target")
-                    .join("debug")
-                    .to_str()
-                    .expect("utf8 rts lib dir"),
-                "-lhaskelujah_rts",
-            ])
-            .status()
-            .expect("link executable");
-        assert!(link_status_chirho.success(), "link should succeed");
-
-        let run_status_chirho = Command::new(&exe_path_chirho)
-            .status()
-            .expect("run executable");
-        run_status_chirho.code().unwrap_or(-1)
-    }
-
-    fn compile_and_run_stdout_chirho(module_chirho: &CoreModuleChirho) -> String {
-        let object_bytes_chirho = compile_ok_chirho(module_chirho);
-        let unique_suffix_chirho = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time should be after unix epoch")
-            .as_nanos();
-        let temp_dir_chirho = std::env::temp_dir().join(format!(
-            "haskelujah-cranelift-stdout-test-{}-{unique_suffix_chirho}",
-            std::process::id()
-        ));
-        fs::create_dir_all(&temp_dir_chirho).expect("create temp stdout dir");
-        let obj_path_chirho = temp_dir_chirho.join("test.o");
-        let exe_path_chirho = temp_dir_chirho.join("test-exe");
-        fs::write(&obj_path_chirho, object_bytes_chirho).expect("write object file");
-
-        let workspace_root_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .and_then(std::path::Path::parent)
-            .expect("backend crate should live under workspace/crates");
-        let cargo_status_chirho = Command::new("cargo")
-            .current_dir(workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts", "--quiet"])
-            .status()
-            .expect("build RTS");
-        assert!(cargo_status_chirho.success(), "RTS build should succeed");
-
-        let link_status_chirho = Command::new("cc")
-            .args([
-                "-o",
-                exe_path_chirho.to_str().expect("utf8 exe path"),
-                obj_path_chirho.to_str().expect("utf8 obj path"),
-                "-L",
-                workspace_root_chirho
-                    .join("target")
-                    .join("debug")
-                    .to_str()
-                    .expect("utf8 rts lib dir"),
-                "-lhaskelujah_rts",
-            ])
-            .status()
-            .expect("link executable");
-        assert!(link_status_chirho.success(), "link should succeed");
-
-        let run_output_chirho = Command::new(&exe_path_chirho)
-            .output()
-            .expect("run executable");
-        assert!(
-            run_output_chirho.status.success(),
-            "executable should succeed: {:?}",
-            run_output_chirho.status
-        );
-        String::from_utf8(run_output_chirho.stdout).expect("stdout should be utf8")
     }
 
     // ── Previously existing tests (kept passing) ──────────────────────────

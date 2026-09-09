@@ -12,11 +12,10 @@ pub use source_chirho::typecheck_source_chirho;
 pub mod splice_chirho;
 pub mod stg_lower_chirho;
 
+use source_chirho::cpp_chirho::{configure_cpp_command_chirho, temporary_source_file_chirho};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::OnceLock;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
@@ -686,35 +685,9 @@ fn discover_cpp_package_versions_chirho(
 }
 
 fn discover_cpp_min_version_macro_options_chirho(path_chirho: &Path) -> Vec<String> {
-    // Write MIN_VERSION macros to a temp header file instead of passing
-    // as individual -D flags, to avoid "too many input files" from cpp
-    // when there are 100+ packages.
+    // Keep the existing bounded set of per-command flags. There is no shared
+    // header: the command never read that file, and concurrent calls rewrote it.
     let versions_chirho = discover_cpp_package_versions_chirho(path_chirho);
-    if versions_chirho.is_empty() {
-        return Vec::new();
-    }
-    let mut header_content_chirho = String::from(
-        "#ifndef HASKELUJAH_MIN_VERSION_MACROS_CHIRHO\n\
-         #define HASKELUJAH_MIN_VERSION_MACROS_CHIRHO\n",
-    );
-    for (package_name_chirho, version_chirho) in &versions_chirho {
-        let macro_name_chirho = cpp_macro_package_name_chirho(package_name_chirho);
-        let (major_chirho, minor_chirho, patch_chirho) = cpp_version_triplet_chirho(version_chirho);
-        header_content_chirho.push_str(&format!(
-            "#define MIN_VERSION_{macro_name_chirho}(x,y,z) \
-             ((x)<{major_chirho}||((x)=={major_chirho}&&((y)<{minor_chirho}||((y)=={minor_chirho}&&(z)<={patch_chirho}))))\n"
-        ));
-    }
-    header_content_chirho.push_str("#endif\n");
-
-    let support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
-    let _ = std::fs::create_dir_all(&support_dir_chirho);
-    let header_path_chirho = support_dir_chirho.join("min_version_macros_chirho.h");
-    let _ = std::fs::write(&header_path_chirho, &header_content_chirho);
-
-    // Return as individual -D flags — the header file approach causes
-    // "too many input files" with some cpp implementations.
-    // Limit to the most commonly needed packages to keep arg count reasonable.
     let important_packages_chirho: std::collections::HashSet<&str> = [
         "base",
         "ghc-prim",
@@ -752,33 +725,6 @@ fn discover_cpp_min_version_macro_options_chirho(path_chirho: &Path) -> Vec<Stri
             cpp_min_version_macro_option_chirho(&name_chirho, &ver_chirho)
         })
         .collect()
-}
-
-fn ensure_cpp_support_dir_chirho() -> io::Result<PathBuf> {
-    let support_dir_chirho = std::env::temp_dir().join("haskelujah-cpp-support-chirho");
-    std::fs::create_dir_all(&support_dir_chirho)?;
-    let machdeps_path_chirho = support_dir_chirho.join("MachDeps.h");
-    let hsbaseconfig_path_chirho = support_dir_chirho.join("HsBaseConfig.h");
-    // Keep this header directive-only so cpp -traditional -P does not leak C
-    // comments into the Haskell token stream before the module header.
-    std::fs::write(
-        &machdeps_path_chirho,
-        concat!(
-            "#ifndef HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
-            "#define HASKELUJAH_SYNTHETIC_MACHDEPS_H_CHIRHO\n",
-            "#define WORD_SIZE_IN_BITS 64\n",
-            "#endif\n",
-        ),
-    )?;
-    std::fs::write(
-        &hsbaseconfig_path_chirho,
-        concat!(
-            "#ifndef HASKELUJAH_SYNTHETIC_HSBASECONFIG_H_CHIRHO\n",
-            "#define HASKELUJAH_SYNTHETIC_HSBASECONFIG_H_CHIRHO\n",
-            "#endif\n",
-        ),
-    )?;
-    Ok(support_dir_chirho)
 }
 
 fn cpp_include_dirs_chirho(path_chirho: &Path) -> Vec<PathBuf> {
@@ -830,66 +776,6 @@ fn path_is_hsc_chirho(path_chirho: &Path) -> bool {
         .extension()
         .and_then(|ext_chirho| ext_chirho.to_str())
         .is_some_and(|ext_chirho| ext_chirho.eq_ignore_ascii_case("hsc"))
-}
-
-fn configure_cpp_command_chirho(
-    path_chirho: &Path,
-    traditional_chirho: bool,
-    extra_cpp_options_chirho: &[String],
-) -> Command {
-    let mut cpp_cmd_chirho = Command::new("cpp");
-    if traditional_chirho {
-        cpp_cmd_chirho.arg("-traditional");
-    }
-    let discovered_min_version_options_chirho =
-        discover_cpp_min_version_macro_options_chirho(path_chirho);
-    cpp_cmd_chirho
-        .arg("-P")
-        .arg(format!(
-            "-D__GLASGOW_HASKELL__={CPP_GLASGOW_HASKELL_VERSION_CHIRHO}"
-        ))
-        .arg("-DWORD_SIZE_IN_BITS=64")
-        .arg(format!(
-            "-DMIN_VERSION_ghc(x,y,z)=((x)<{CPP_GHC_VERSION_MAJOR_CHIRHO}||((x)=={CPP_GHC_VERSION_MAJOR_CHIRHO}&&((y)<{CPP_GHC_VERSION_MINOR_CHIRHO}||((y)=={CPP_GHC_VERSION_MINOR_CHIRHO}&&(z)<={CPP_GHC_VERSION_PATCH_CHIRHO}))))"
-        ))
-        .arg(format!(
-            "-DMIN_VERSION_GLASGOW_HASKELL(x,y,z,w)=((x)<{CPP_GHC_VERSION_MAJOR_CHIRHO}||((x)=={CPP_GHC_VERSION_MAJOR_CHIRHO}&&((y)<{CPP_GHC_VERSION_MINOR_CHIRHO}||((y)=={CPP_GHC_VERSION_MINOR_CHIRHO}&&((z)<{CPP_GHC_VERSION_PATCH_CHIRHO}||((z)=={CPP_GHC_VERSION_PATCH_CHIRHO}&&(w)<=0))))))"
-        ));
-    for min_version_option_chirho in discovered_min_version_options_chirho {
-        cpp_cmd_chirho.arg(min_version_option_chirho);
-    }
-    for cpp_option_chirho in extra_cpp_options_chirho {
-        cpp_cmd_chirho.arg(cpp_option_chirho);
-    }
-
-    if let Ok(support_dir_chirho) = ensure_cpp_support_dir_chirho() {
-        cpp_cmd_chirho.arg(format!("-I{}", support_dir_chirho.display()));
-    }
-    for include_dir_chirho in cpp_include_dirs_chirho(path_chirho) {
-        // Use absolute path so it survives current_dir change
-        let abs_chirho = if include_dir_chirho.is_absolute() {
-            include_dir_chirho
-        } else {
-            std::env::current_dir()
-                .unwrap_or_default()
-                .join(&include_dir_chirho)
-        };
-        cpp_cmd_chirho.arg(format!("-I{}", abs_chirho.display()));
-    }
-
-    if let Some(parent_chirho) = path_chirho.parent() {
-        cpp_cmd_chirho.current_dir(parent_chirho);
-        // Pass only the filename since we changed the working directory
-        if let Some(file_name_chirho) = path_chirho.file_name() {
-            cpp_cmd_chirho.arg(file_name_chirho);
-        } else {
-            cpp_cmd_chirho.arg(path_chirho);
-        }
-    } else {
-        cpp_cmd_chirho.arg(path_chirho);
-    }
-
-    cpp_cmd_chirho
 }
 
 fn decode_cpp_stdout_chirho(path_chirho: &Path, stdout_chirho: Vec<u8>) -> io::Result<String> {
@@ -965,22 +851,11 @@ fn preprocess_hsc_source_with_options_chirho(
 ) -> io::Result<String> {
     let stripped_source_chirho = strip_hsc_include_directives_chirho(source_chirho);
     let sanitized_source_chirho = sanitize_hsc_source_chirho(&stripped_source_chirho);
-    let temp_stamp_chirho = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration_chirho| duration_chirho.as_nanos())
-        .unwrap_or(0);
-    let temp_path_chirho = path_chirho
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .join(format!(
-            ".haskelujah-hsc-preprocess-{}-{temp_stamp_chirho}.hsc",
-            std::process::id()
-        ));
-    std::fs::write(&temp_path_chirho, sanitized_source_chirho)?;
+    let temporary_chirho =
+        temporary_source_file_chirho(&sanitized_source_chirho, path_chirho.parent(), ".hsc")?;
     let output_chirho =
-        configure_cpp_command_chirho(&temp_path_chirho, true, extra_cpp_options_chirho).output();
-    let _ = std::fs::remove_file(&temp_path_chirho);
-    let output_chirho = output_chirho?;
+        configure_cpp_command_chirho(temporary_chirho.path(), true, extra_cpp_options_chirho)?
+            .output_chirho()?;
     if !output_chirho.status.success() {
         let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr)
             .trim()
@@ -1048,34 +923,22 @@ fn preprocess_cpp_source_with_options_chirho(
     // If the file contains #-} (Haskell pragma close), we must write a
     // sanitised temp file so the C preprocessor does not choke on it.
     let needs_pragma_close_fix_chirho = source_has_pragma_close_chirho(source_chirho);
-    let (cpp_path_chirho, temp_file_chirho) = if needs_pragma_close_fix_chirho {
-        let sanitized_chirho = protect_pragma_close_chirho(source_chirho);
-        let stamp_chirho = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d_chirho| d_chirho.as_nanos())
-            .unwrap_or(0);
-        let temp_chirho = path_chirho
-            .parent()
-            .unwrap_or_else(|| Path::new("."))
-            .join(format!(
-                ".haskelujah-cpp-sanitize-{}-{stamp_chirho}.hs",
-                std::process::id()
-            ));
-        std::fs::write(&temp_chirho, sanitized_chirho)?;
-        (temp_chirho, true)
+    let temporary_chirho = if needs_pragma_close_fix_chirho {
+        Some(temporary_source_file_chirho(
+            &protect_pragma_close_chirho(source_chirho),
+            path_chirho.parent(),
+            ".hs",
+        )?)
     } else {
-        (path_chirho.to_path_buf(), false)
+        None
     };
-
+    let cpp_path_chirho = temporary_chirho
+        .as_ref()
+        .map(|file_chirho| file_chirho.path())
+        .unwrap_or(path_chirho);
     let output_chirho =
-        configure_cpp_command_chirho(&cpp_path_chirho, true, extra_cpp_options_chirho).output();
-
-    // Clean up temp file before checking result
-    if temp_file_chirho {
-        let _ = std::fs::remove_file(&cpp_path_chirho);
-    }
-
-    let output_chirho = output_chirho?;
+        configure_cpp_command_chirho(cpp_path_chirho, true, extra_cpp_options_chirho)?
+            .output_chirho()?;
     if !output_chirho.status.success() {
         let stderr_chirho = String::from_utf8_lossy(&output_chirho.stderr)
             .trim()
@@ -2711,20 +2574,10 @@ pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
         return lower_maybe_like_unboxed_sums_chirho(source_chirho);
     }
 
-    let temp_stamp_chirho = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration_chirho| duration_chirho.as_nanos())
-        .unwrap_or(0);
-    let temp_path_chirho = std::env::temp_dir().join(format!(
-        "haskelujah-cpp-{}-{temp_stamp_chirho}.hs",
-        std::process::id()
-    ));
-
-    match std::fs::write(&temp_path_chirho, source_chirho)
-        .and_then(|_| preprocess_cpp_source_chirho(&temp_path_chirho, source_chirho))
+    match temporary_source_file_chirho(source_chirho, None, ".hs")
+        .and_then(|file_chirho| preprocess_cpp_source_chirho(file_chirho.path(), source_chirho))
     {
         Ok(processed_chirho) => {
-            let _ = std::fs::remove_file(&temp_path_chirho);
             let cleaned_chirho = if has_cpp_directive_residue_chirho(&processed_chirho) {
                 strip_cpp_directives_chirho(&processed_chirho)
             } else {
@@ -2732,10 +2585,7 @@ pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
             };
             lower_maybe_like_unboxed_sums_chirho(&cleaned_chirho)
         }
-        _ => {
-            let _ = std::fs::remove_file(&temp_path_chirho);
-            lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(source_chirho))
-        }
+        _ => lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(source_chirho)),
     }
 }
 

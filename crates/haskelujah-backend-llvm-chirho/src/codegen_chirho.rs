@@ -4723,13 +4723,11 @@ fn restore_selector_bindings_chirho(
 #[cfg(test)]
 mod tests_chirho {
     mod closures_chirho;
+    mod execution_chirho;
     mod io_chirho;
 
     use super::*;
-    use std::fs;
-    use std::path::{Path, PathBuf};
-    use std::process::Command;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use execution_chirho::{run_executable_module_chirho, run_executable_module_result_chirho};
 
     use haskelujah_core_chirho::CoreBindingChirho;
     use haskelujah_core_chirho::{BinderChirho, CoreIdChirho, InlineAnnotationChirho};
@@ -4847,98 +4845,6 @@ mod tests_chirho {
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
         }
-    }
-
-    fn run_executable_module_result_chirho(
-        module_chirho: &CoreModuleChirho,
-    ) -> (i32, String, String) {
-        let ir_chirho = compile_core_to_llvm_executable_chirho(module_chirho);
-        let unique_suffix_chirho = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system time should be after unix epoch")
-            .as_nanos();
-        let temp_dir_chirho = std::env::temp_dir().join(format!(
-            "haskelujah-backend-llvm-test-{}-{}",
-            std::process::id(),
-            unique_suffix_chirho
-        ));
-        fs::create_dir_all(&temp_dir_chirho).expect("should create temp dir for llvm test");
-
-        let ll_path_chirho = temp_dir_chirho.join("main.ll");
-        let exe_path_chirho = temp_dir_chirho.join("main.out");
-        fs::write(&ll_path_chirho, ir_chirho).expect("should write llvm ir");
-
-        let rts_lib_dir_chirho = ensure_rts_staticlib_chirho();
-        let clang_output_chirho = Command::new("clang")
-            .args([
-                "-target",
-                &haskelujah_rts_chirho::target_chirho::native_target_chirho(),
-            ])
-            .arg("-O0")
-            .arg(&ll_path_chirho)
-            .arg("-o")
-            .arg(&exe_path_chirho)
-            .arg("-L")
-            .arg(&rts_lib_dir_chirho)
-            .arg("-lhaskelujah_rts")
-            .output()
-            .expect("clang should be available for llvm backend tests");
-        assert!(
-            clang_output_chirho.status.success(),
-            "clang failed:\nstdout:\n{}\nstderr:\n{}",
-            String::from_utf8_lossy(&clang_output_chirho.stdout),
-            String::from_utf8_lossy(&clang_output_chirho.stderr)
-        );
-        assert!(
-            clang_output_chirho.stderr.is_empty(),
-            "native link diagnostics: {}",
-            String::from_utf8_lossy(&clang_output_chirho.stderr)
-        );
-
-        let run_output_chirho = Command::new(&exe_path_chirho)
-            .output()
-            .expect("linked executable should run");
-        let _ = fs::remove_dir_all(&temp_dir_chirho);
-
-        (
-            run_output_chirho.status.code().unwrap_or(-1),
-            String::from_utf8(run_output_chirho.stdout).expect("program stdout should be utf-8"),
-            String::from_utf8(run_output_chirho.stderr).expect("program stderr should be utf-8"),
-        )
-    }
-
-    fn run_executable_module_chirho(module_chirho: &CoreModuleChirho) -> String {
-        let (exit_code_chirho, stdout_chirho, stderr_chirho) =
-            run_executable_module_result_chirho(module_chirho);
-        assert!(
-            exit_code_chirho == 0,
-            "executable failed with exit code {exit_code_chirho}:\nstdout:\n{stdout_chirho}\nstderr:\n{stderr_chirho}"
-        );
-        stdout_chirho
-    }
-
-    fn ensure_rts_staticlib_chirho() -> PathBuf {
-        let workspace_root_chirho = workspace_root_chirho();
-        let cargo_status_chirho = Command::new("cargo")
-            .current_dir(&workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts", "--quiet"])
-            .status()
-            .expect("cargo should be available to build the RTS staticlib");
-        assert!(
-            cargo_status_chirho.success(),
-            "cargo build -p haskelujah-rts failed with exit code {}",
-            cargo_status_chirho.code().unwrap_or(-1)
-        );
-        workspace_root_chirho.join("target").join("debug")
-    }
-
-    fn workspace_root_chirho() -> PathBuf {
-        let crate_dir_chirho = Path::new(env!("CARGO_MANIFEST_DIR"));
-        crate_dir_chirho
-            .parent()
-            .and_then(Path::parent)
-            .expect("backend llvm crate should live under workspace/crates")
-            .to_path_buf()
     }
 
     #[test]

@@ -3,6 +3,7 @@
 //! Execute actual IO primitives; a named zero-returning stub is not an effect.
 
 use super::*;
+use std::fs;
 
 fn string_chirho(value_chirho: &str) -> CoreExprChirho {
     CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(value_chirho.to_string()))

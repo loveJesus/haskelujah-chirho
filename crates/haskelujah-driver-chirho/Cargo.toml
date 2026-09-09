@@ -27,9 +27,9 @@ haskelujah-typing-chirho = { package = "haskelujah-typing", path = "../haskeluja
 haskelujah-th-chirho = { package = "haskelujah-th", path = "../haskelujah-th-chirho", version = "0.1.2" }
 haskelujah-incremental-chirho = { package = "haskelujah-incremental", path = "../haskelujah-incremental-chirho", version = "0.1.2" }
 haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.2" }
+tempfile = "=3.27.0"
 
 [dev-dependencies]
-tempfile = "3"
 proptest = "1"
 haskelujah-test-harness-chirho = { package = "haskelujah-test-harness", path = "../haskelujah-test-harness-chirho", version = "0.1.2" }
 
