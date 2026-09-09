@@ -7,6 +7,17 @@ Owner: HASKELUJAH/gpt_chirho. Starting commit: 033fc4df. Builder and progress DB
 claimed in room message 21542; implementation in the existing gpt worktree on
 gpt-test-repairs-chirho. This is reversible compiler/test repair, with no public deployment.
 
+## Current outcome
+
+The execution-repair lane has passed its complete workspace gate: frozen source
+`2f74126d`, **3318 passed / 0 failed / 0 ignored / 0 filtered**. Evidence commit
+`77b55f5f` was fast-forwarded to `main_chirho` and its remote tip verified. Canonical
+progress row 478 is closed; the final bookkeeping commit preserves this closeout.
+The builder/DB release is broadcast after that commit's verified push.
+The two upstream GHC corpora remain incomplete and unchanged at 877/938 and 222/767;
+the separate zero-warning/structural quality gate remains open. Details and exact
+provenance are in workflows-chirho/testing-chirho/execution-measurement-chirho.md.
+
 ## Acceptance and placement
 
 Repair the actual compiler/runtime behavior exercised by failing tests. Keep valid
@@ -41,8 +52,8 @@ and harness repairs support that objective; workspace greens are not corpus gain
       two corpus axes when checker/parser changes reach the landing boundary.
 - [ ] Project-wide zero-warning and file/directory-size quality gate remains unmet;
       535 clippy warning messages (not unique defects) and existing structural debt.
-- [ ] Commit owned paths, update the progress row with exact evidence, land the tested
-      changes, and release the builder and DB lease.
+- [x] Commit owned paths, update the progress row with exact evidence, and land the
+      tested changes. Release the builder/DB lease after the closeout push is verified.
 
 ## Evidence and decisions
 
@@ -479,3 +490,10 @@ and harness repairs support that objective; workspace greens are not corpus gain
   corpus changed, and neither is fully passing. Measurement headers are superseded
   with this provenance; exact lists are untouched. Main landing and progress-row
   closeout follow these completed gates, not the earlier diagnostic attempts.
+- Landing: evidence commit `77b55f5f` fast-forwarded main and was pushed with exact
+  remote-tip equality. An explicit main-checkout CLI rebuild passed without
+  warnings; its distinct digest is recorded in the execution measurement. The
+  in-place T001 check and T002/T527/T536 execution oracles pass from the repository
+  root. Only owned progress row 478 was completed, using a parameterized guarded
+  update in the canonical DB; no worktree DB was copied over it. The final
+  bookkeeping commit does not change measured compiler/test sources.
