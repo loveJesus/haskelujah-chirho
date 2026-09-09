@@ -9,8 +9,12 @@ flowchart TD
     source_chirho --> cst_chirho[CST separates required forall and type-lambda binders]
     cst_chirho --> spine_chirho[Close term AppExpr before wrapping TypeAppExpr]
     spine_chirho --> ast_chirho[AST preserves RequiredForall and TypeLam]
+    cst_chirho --> operators_chirho[Type operators keep token namespace and source spans]
+    operators_chirho --> fixity_chirho[Linear type-chain reduction uses the shared fixity table]
+    fixity_chirho --> ast_chirho
     ast_chirho --> kind_chirho[Kind inference scopes both forall visibilities]
-    kind_chirho --> scheme_chirho[Type inference instantiates ordinary scheme variables]
+    kind_chirho --> inventory_chirho[Scoped source occurrences order existing signature variables]
+    inventory_chirho --> scheme_chirho[Type inference instantiates ordinary scheme variables]
     scheme_chirho --> required_chirho{Outermost binder visibility}
     required_chirho -->|forall a ->| ordinary_arg_chirho[Convert next ordinary argument to a type]
     required_chirho -->|forall a.| visible_arg_chirho[Consume next at-type argument]
@@ -35,7 +39,18 @@ flowchart TD
 
 ## Invariants
 
-- Explicit type arguments consume quantified variables in source order.
+- Explicit `forall` binders retain their written order. Implicit signature binders follow
+  first source occurrence, including context occurrences before the body. Normalized infix
+  `op a b` traversal and fresh-variable allocation order are not source order.
+- The source inventory orders only variables already selected for quantification; it does
+  not allocate variables, change generalization, or change evidence capture. Class parameters
+  keep their existing leading order, and enclosing scoped/skolem variables stay excluded.
+- Nested invisible/required foralls and quantified constraints hide their own bound names
+  from the enclosing inventory. Source-less expansion variables retain the deterministic
+  numeric-ID fallback. Equal/synthetic spans use stable traversal order.
+- Backticked lowercase type operators remain variables; symbolic and qualified constructor
+  operators remain constructors. Parentheses delimit type chains; the shared fixity table
+  determines precedence/associativity. Chain reduction pushes/reduces each item once.
 - Required arguments consume only `forall a ->`; ordinary term applications cannot erase an
   invisible `forall a.` binder.
 - Quantifiers nested inside a rank-N parameter are instantiated only when they are outermost at
@@ -56,6 +71,12 @@ flowchart TD
 
 ## Current boundary
 
+- General implicit kind-dependency ordering (GHC's stable topological sort) is not claimed:
+  ordinary kind annotations are not retained as a general `TypeChirho` node. Existing
+  explicitly written forall order is preserved, not a substitute for the missing information.
+- The inventory respects nested scopes, but the separate AST-to-type conversion's shared
+  name map can still overwrite an outer binding at a same-spelling nested forall. This lane
+  does not claim that conversion/shadowing issue repaired.
 - Required declaration arguments are matched positionally; named required binders are not yet
   added to the scoped type-variable environment of the equation body.
 - Template Haskell reification currently maps required and invisible foralls to the existing

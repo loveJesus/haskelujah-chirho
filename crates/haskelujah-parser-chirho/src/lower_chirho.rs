@@ -7,6 +7,10 @@
 //! the typed AST (`ModuleChirho`). Trivia, virtual layout tokens, and
 //! punctuation are discarded; only semantic content survives.
 
+#[cfg(test)]
+mod type_operator_tests_chirho;
+mod type_operators_chirho;
+
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -5541,87 +5545,7 @@ impl LowerCtxChirho {
                 }
             }
             SyntaxKindChirho::InfixTypeChirho => {
-                // TypeOperators: `a :+: b` or `a `Either` b`
-                // Children: left-type, operator-token (or backtick-name-backtick), right-type
-                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let lower_type_app_segment_chirho =
-                    |segment_chirho: &[ChildChirho<'_>]| -> Option<TypeChirho> {
-                        let mut lowered_chirho = segment_chirho
-                            .iter()
-                            .filter(|c_chirho| {
-                                matches!(
-                                    c_chirho.element_chirho,
-                                    GreenElementChirho::NodeChirho(n_chirho)
-                                        if is_type_kind_chirho(n_chirho.kind_chirho())
-                                )
-                            })
-                            .map(|type_child_chirho| {
-                                self.lower_type_from_child_chirho(type_child_chirho)
-                            });
-                        let first_chirho = lowered_chirho.next()?;
-                        Some(lowered_chirho.fold(first_chirho, |fun_chirho, arg_chirho| {
-                            TypeChirho::AppChirho {
-                                fun_chirho: Box::new(fun_chirho),
-                                arg_chirho: Box::new(arg_chirho),
-                                span_chirho,
-                            }
-                        }))
-                    };
-
-                // Extract the operator name from tokens.
-                let op_index_and_name_chirho =
-                    children_chirho
-                        .iter()
-                        .enumerate()
-                        .find_map(|(idx_chirho, c_chirho)| {
-                            if let GreenElementChirho::TokenChirho(tok_chirho) =
-                                c_chirho.element_chirho
-                            {
-                                let k_chirho = tok_chirho.kind_chirho();
-                                if k_chirho == TokenKindChirho::VarSymChirho
-                                    || k_chirho == TokenKindChirho::ConSymChirho
-                                    || k_chirho == TokenKindChirho::QualifiedVarSymChirho
-                                    || k_chirho == TokenKindChirho::QualifiedConSymChirho
-                                    || k_chirho == TokenKindChirho::ConIdChirho
-                                    || k_chirho == TokenKindChirho::VarIdChirho
-                                    || k_chirho == TokenKindChirho::TildeChirho
-                                {
-                                    let txt_chirho = tok_chirho.text_chirho();
-                                    if txt_chirho != "`" {
-                                        let s_chirho = self.span_chirho(
-                                            c_chirho.start_chirho,
-                                            c_chirho.end_chirho,
-                                        );
-                                        return Some((
-                                            idx_chirho,
-                                            self.name_from_token_chirho(tok_chirho, s_chirho),
-                                        ));
-                                    }
-                                }
-                            }
-                            None
-                        });
-                if let Some((op_index_chirho, name_chirho)) = op_index_and_name_chirho {
-                    let left_chirho =
-                        lower_type_app_segment_chirho(&children_chirho[..op_index_chirho])
-                            .unwrap_or_else(|| self.placeholder_type_chirho());
-                    let right_chirho =
-                        lower_type_app_segment_chirho(&children_chirho[op_index_chirho + 1..])
-                            .unwrap_or_else(|| self.placeholder_type_chirho());
-                    let op_ty_chirho = TypeChirho::ConChirho(name_chirho);
-                    // Desugar: `a Op b` → `Op a b` = App(App(Op, a), b)
-                    TypeChirho::AppChirho {
-                        fun_chirho: Box::new(TypeChirho::AppChirho {
-                            fun_chirho: Box::new(op_ty_chirho),
-                            arg_chirho: Box::new(left_chirho),
-                            span_chirho,
-                        }),
-                        arg_chirho: Box::new(right_chirho),
-                        span_chirho,
-                    }
-                } else {
-                    self.placeholder_type_chirho()
-                }
+                self.lower_infix_type_chirho(node_chirho, base_chirho, span_chirho)
             }
             _ => {
                 // Fallback: try to extract a name
@@ -7470,15 +7394,12 @@ impl LowerCtxChirho {
                 &children_chirho[right_start_chirho..],
                 fallback_span_chirho,
             );
-            return TypeChirho::AppChirho {
-                fun_chirho: Box::new(TypeChirho::AppChirho {
-                    fun_chirho: Box::new(TypeChirho::ConChirho(operator_chirho)),
-                    arg_chirho: Box::new(left_chirho),
-                    span_chirho: fallback_span_chirho,
-                }),
-                arg_chirho: Box::new(right_chirho),
-                span_chirho: fallback_span_chirho,
-            };
+            return type_operators_chirho::binary_type_application_chirho(
+                TypeChirho::ConChirho(operator_chirho),
+                left_chirho,
+                right_chirho,
+                fallback_span_chirho,
+            );
         }
 
         // Build application chain from atom types

@@ -34,6 +34,9 @@ mod equalities_chirho;
 mod evidence_chirho;
 mod records_chirho;
 mod rigid_chirho;
+#[cfg(test)]
+mod signature_binder_tests_chirho;
+mod signature_binders_chirho;
 
 pub use evidence_chirho::{
     LiteralEvidenceChirho, OWN_DICTIONARY_KEY_CHIRHO, ReferenceEvidenceChirho,
@@ -2474,48 +2477,15 @@ impl InferCtxChirho {
         // Only quantify over vars that are free in the resulting type.
         // Vars bound by inner ForallChirho are NOT free and should not be in scheme vars.
         let free_in_ty_chirho = inner_ty_chirho.free_vars_chirho();
-        let vars_chirho: Vec<TyVarChirho> = if !outer_forall_vars_chirho.is_empty() {
-            // A top-level forall from source syntax or a type synonym expansion
-            // does not make other free variables monomorphic. Quantify the
-            // explicit forall binders first, then any remaining free variables
-            // from the surrounding signature scope.
-            let mut combined_vars_chirho = outer_forall_vars_chirho;
-            // DETERMINISM: `var_map_chirho` is a HashMap, so collecting the remainder in
-            // `values()` order made the QUANTIFICATION ORDER depend on a per-process hash
-            // seed. `instantiate_scheme_parts_chirho` then substitutes fresh vars per qvar
-            // IN LIST ORDER, so which fresh metavariable stands for which quantified var
-            // swapped between runs — with an identical allocation COUNT, i.e. state
-            // divergence carrying no allocation signature. Sorting by var id gives
-            // FIRST-APPEARANCE order, because ids are allocated in signature-traversal
-            // order; that is both deterministic and the TypeApplications-correct order for
-            // implicit quantification. Explicit `forall` binders keep SOURCE order above
-            // and are deliberately not sorted.
-            // Root candidate traced by claude2_chirho; see
-            // spec-chirho/bug-nondeterministic-typecheck-chirho.md
-            let mut remainder_vars_chirho: Vec<TyVarChirho> = var_map_chirho
-                .values()
-                .copied()
-                .filter(|var_chirho| {
-                    free_in_ty_chirho.contains(var_chirho)
-                        && !combined_vars_chirho.contains(var_chirho)
-                })
-                .collect();
-            remainder_vars_chirho.sort_unstable();
-            remainder_vars_chirho.dedup();
-            combined_vars_chirho.extend(remainder_vars_chirho);
-            combined_vars_chirho
-        } else {
-            // No explicit forall: quantify over all free vars from var_map.
-            // Sorted for the same reason as above — see the comment in the other branch.
-            let mut implicit_vars_chirho: Vec<TyVarChirho> = var_map_chirho
-                .values()
-                .copied()
-                .filter(|v_chirho| free_in_ty_chirho.contains(v_chirho))
-                .collect();
-            implicit_vars_chirho.sort_unstable();
-            implicit_vars_chirho.dedup();
-            implicit_vars_chirho
-        };
+        // Source order is not allocation order: infix lowering moves the
+        // operator before its left operand, and predicates convert after the body.
+        // Workflow: language-features-chirho/rank-n-visible-type-application-chirho
+        let vars_chirho = signature_binders_chirho::ordered_scheme_vars_chirho(
+            ast_ty_chirho,
+            &var_map_chirho,
+            outer_forall_vars_chirho,
+            &free_in_ty_chirho,
+        );
 
         // ScopedTypeVariables: a variable bound by an enclosing signature (or
         // instance head) is never re-quantified here, and one already made
