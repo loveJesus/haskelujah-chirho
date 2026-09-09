@@ -162,6 +162,17 @@ fn integer_literal_at_double_is_dispatched_at_double_chirho() {
 }
 
 #[test]
+fn result_only_applicative_and_monad_parameters_are_passed_and_used_chirho() {
+    assert_eq!(
+        run_chirho(
+            "ApplicativeEvidenceChirho.hs",
+            include_str!("dictionary_evidence_chirho/applicative_chirho.hs"),
+        ),
+        "Just 4\n[5]\n6\nJust 7\n[8]\n",
+    );
+}
+
+#[test]
 fn recursive_calls_preserve_the_predicates_element_type_chirho() {
     let source_chirho = r#"module Main where
 renderChirho _ [] = ""

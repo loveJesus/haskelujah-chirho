@@ -77,6 +77,13 @@ flowchart TD
 - Nested calls with reference evidence take the normal evidence-first rewrite path. The
   surrounding result type is not substituted for the callee's predicate type (`Eq a`
   must not become `Eq [a]` merely because a recursive deduplicator returns a list).
+- Definition-side and call-side dictionary parameters share
+  `resolved_pred_dictionary_chirho`: omit a parameter only if the same ground or
+  permitted-default dictionary actually exists. A result-only Applicative/Monad
+  variable is not a numeric default, and cannot vanish from the caller's argument list.
+- Polymorphic `pure`/`return` with a scheme's own dictionary must use its method selector
+  before any enclosing-monad heuristic. Their result type may be IO, Maybe or list;
+  retaining their bare names would incorrectly force every call onto IO.
 - Execution tests call the same unsigned recursive renderer at Int, Bool and Double,
   with a String separator, and check recursive equality on list elements. These read
   the evidence back through behavior, rather than asserting a particular internal key.

@@ -146,15 +146,18 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             tmp_chirho
-        } else if args_chirho.len() == 1 && name_chirho == "negate#" {
+        } else if args_chirho.len() == 1 && matches!(name_chirho, "negate#" | "negateFloat#") {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
             let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
             let tmp_chirho = self.fresh_tmp_chirho();
-            writeln!(
-                self.output_chirho,
-                "  {tmp_chirho} = sub i64 0, {operand_chirho}"
-            )
-            .unwrap();
+            // Native values carry the complete IEEE-754 bits. Negation flips
+            // only the sign, preserving zero and NaN payloads as well.
+            let operation_chirho = if name_chirho == "negateFloat#" {
+                format!("xor i64 {operand_chirho}, {}", i64::MIN)
+            } else {
+                format!("sub i64 0, {operand_chirho}")
+            };
+            writeln!(self.output_chirho, "  {tmp_chirho} = {operation_chirho}").unwrap();
             tmp_chirho
         } else if args_chirho.len() == 1
             && matches!(

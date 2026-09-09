@@ -203,16 +203,6 @@ impl DictPassCtxChirho {
         None
     }
 
-    fn dict_param_classes_for_scheme_chirho(scheme_chirho: &SchemeChirho) -> Vec<String> {
-        scheme_chirho
-            .preds_chirho
-            .iter()
-            .filter(|p_chirho| matches!(p_chirho.ty_chirho, TyChirho::VarChirho(_)))
-            .filter(|p_chirho| !Self::is_defaultable_pred_chirho(p_chirho, scheme_chirho))
-            .map(|p_chirho| p_chirho.class_name_chirho.clone())
-            .collect()
-    }
-
     fn extend_alt_type_keys_chirho(
         &self,
         scrutinee_type_key_chirho: Option<String>,
@@ -2734,6 +2724,36 @@ impl DictPassCtxChirho {
         // context; with no context they keep their name (ReturnIOChirho
         // fallback, INV-001). workflow: monadic-dispatch-chirho
         if head_name_chirho == "return" || head_name_chirho == "pure" {
+            // Both names are served by Applicative.pure; Monad supplies its
+            // Applicative superclass. An own dictionary is stronger evidence
+            // than an enclosing expression's monad guess, including for return,
+            // which need not itself be a class method.
+            if let Some((class_chirho, selector_chirho)) =
+                self.class_method_selector_for_name_chirho("pure")
+                && let Some(dictionary_chirho) = Self::fallback_dict_for_class_chirho(
+                    &class_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                )
+            {
+                let mut result_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(dictionary_chirho)),
+                };
+                for argument_chirho in &args_chirho {
+                    result_chirho = CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(result_chirho),
+                        arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                            argument_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                            local_type_keys_chirho,
+                            local_instance_dicts_chirho,
+                        )),
+                    };
+                }
+                return Some(result_chirho);
+            }
             let Some(context_key_chirho) = self.monad_context_stack_chirho.borrow().last().cloned()
             else {
                 return Some(self.rebuild_preserved_method_app_chirho(
@@ -4209,32 +4229,7 @@ impl DictPassCtxChirho {
 
         for (pred_index_chirho, pred_chirho) in scheme_chirho.preds_chirho.iter().enumerate() {
             evidence_classes_chirho.insert(pred_chirho.class_name_chirho.clone());
-            let is_ground_chirho = !matches!(pred_chirho.ty_chirho, TyChirho::VarChirho(_));
-            let resolved_chirho = if is_ground_chirho {
-                let type_key_chirho = format!("{}", pred_chirho.ty_chirho);
-                self.instance_dicts_chirho
-                    .get(&(pred_chirho.class_name_chirho.clone(), type_key_chirho))
-                    .copied()
-            } else if Self::is_defaultable_pred_chirho(pred_chirho, scheme_chirho) {
-                // Type defaulting (Haskell 2010 §4.3.4): when a predicate
-                // has an ambiguous type variable (does not appear in any
-                // function argument position) and the class is one of the
-                // standard numeric / Prelude classes, default to Int.
-                let default_type_chirho = match pred_chirho.class_name_chirho.as_str() {
-                    "Num" | "Eq" | "Ord" | "Show" | "Read" | "Enum" | "Bounded" | "Integral"
-                    | "Real" | "RealFrac" | "Floating" | "RealFloat" => Some("Int"),
-                    "IsString" => Some("[Char]"),
-                    "IsList" => Some("[t9037]"),
-                    _ => None,
-                };
-                default_type_chirho.and_then(|dt_chirho| {
-                    self.instance_dicts_chirho
-                        .get(&(pred_chirho.class_name_chirho.clone(), dt_chirho.to_string()))
-                        .copied()
-                })
-            } else {
-                None
-            };
+            let resolved_chirho = self.resolved_pred_dictionary_chirho(pred_chirho, scheme_chirho);
 
             if let Some(inst_id_chirho) = resolved_chirho {
                 // Ground predicate with known instance — use concrete dict
@@ -4267,7 +4262,7 @@ impl DictPassCtxChirho {
         // Record which classes this binding abstracts over so that call
         // sites can insert the corresponding dict arguments.
         if !dict_binders_chirho.is_empty() {
-            let classes_chirho = Self::dict_param_classes_for_scheme_chirho(scheme_chirho);
+            let classes_chirho = self.dict_param_classes_for_scheme_chirho(scheme_chirho);
             if !classes_chirho.is_empty() {
                 self.dict_param_bindings_chirho
                     .insert(binding_chirho.binder_chirho.id_chirho, classes_chirho);
@@ -4602,7 +4597,7 @@ impl DictPassCtxChirho {
                 }
             }
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(name_chirho) {
-                let classes_chirho = Self::dict_param_classes_for_scheme_chirho(scheme_chirho);
+                let classes_chirho = self.dict_param_classes_for_scheme_chirho(scheme_chirho);
                 if !classes_chirho.is_empty() {
                     self.dict_param_bindings_chirho
                         .insert(binding_chirho.binder_chirho.id_chirho, classes_chirho);
@@ -4633,7 +4628,7 @@ impl DictPassCtxChirho {
                 continue;
             }
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(&name_chirho) {
-                let classes_chirho = Self::dict_param_classes_for_scheme_chirho(scheme_chirho);
+                let classes_chirho = self.dict_param_classes_for_scheme_chirho(scheme_chirho);
                 if !classes_chirho.is_empty() {
                     self.dict_param_bindings_chirho
                         .entry(id_chirho)

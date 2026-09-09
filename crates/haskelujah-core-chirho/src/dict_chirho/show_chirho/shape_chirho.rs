@@ -3,41 +3,75 @@
 //! Decode the checker's concrete Show evidence, retaining applied argument boundaries.
 //! Unknown instances remain on the dictionary path; they are never guessed as Int.
 
+use crate::expr_chirho::CoreIdChirho;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ShowShapeChirho {
     ScalarChirho(String),
     MaybeChirho(Box<Self>),
     EitherChirho(Box<Self>, Box<Self>),
     TupleChirho(Vec<Self>),
+    ListChirho(Box<Self>),
+    /// An actual show implementation, admitted only at precedence zero.
+    BackedChirho(CoreIdChirho),
 }
 
 impl ShowShapeChirho {
-    pub(super) fn parse_chirho(key_chirho: &str) -> Option<Self> {
-        Self::parse_at_depth_chirho(key_chirho.trim(), 0)
+    pub(super) fn parse_chirho(
+        key_chirho: &str,
+        resolve_chirho: &impl Fn(&str) -> Option<CoreIdChirho>,
+    ) -> Option<Self> {
+        Self::parse_at_depth_chirho(key_chirho.trim(), 0, 0, resolve_chirho)
     }
 
-    fn parse_at_depth_chirho(key_chirho: &str, depth_chirho: usize) -> Option<Self> {
+    fn parse_at_depth_chirho(
+        key_chirho: &str,
+        depth_chirho: usize,
+        precedence_chirho: u8,
+        resolve_chirho: &impl Fn(&str) -> Option<CoreIdChirho>,
+    ) -> Option<Self> {
         if depth_chirho >= 64 {
             return None;
         }
-        let descend_chirho =
-            |part_chirho: &str| Self::parse_at_depth_chirho(part_chirho.trim(), depth_chirho + 1);
+        let descend_chirho = |part_chirho: &str, precedence_chirho| {
+            Self::parse_at_depth_chirho(
+                part_chirho.trim(),
+                depth_chirho + 1,
+                precedence_chirho,
+                resolve_chirho,
+            )
+        };
+        if matches!(
+            key_chirho,
+            "Int" | "Integer" | "Bool" | "Char" | "Double" | "String" | "[Char]"
+        ) {
+            return Some(Self::ScalarChirho(key_chirho.to_string()));
+        }
+        if key_chirho.starts_with('[') && key_chirho.ends_with(']') {
+            return Some(Self::ListChirho(Box::new(descend_chirho(
+                &key_chirho[1..key_chirho.len() - 1],
+                0,
+            )?)));
+        }
         if key_chirho.starts_with('(') && key_chirho.ends_with(')') {
             let inner_chirho = &key_chirho[1..key_chirho.len() - 1];
             let parts_chirho = split_outer_chirho(inner_chirho, ',')?;
             return if parts_chirho.len() == 1 {
-                descend_chirho(inner_chirho)
+                descend_chirho(inner_chirho, precedence_chirho)
             } else {
                 Some(Self::TupleChirho(
                     parts_chirho
                         .into_iter()
-                        .map(descend_chirho)
+                        .map(|part_chirho| descend_chirho(part_chirho, 0))
                         .collect::<Option<_>>()?,
                 ))
             };
         }
         if let Some(inner_chirho) = key_chirho.strip_prefix("Maybe ") {
-            return Some(Self::MaybeChirho(Box::new(descend_chirho(inner_chirho)?)));
+            return Some(Self::MaybeChirho(Box::new(descend_chirho(
+                inner_chirho,
+                11,
+            )?)));
         }
         if let Some(inner_chirho) = key_chirho.strip_prefix("Either ") {
             let parts_chirho = split_outer_chirho(inner_chirho, ' ')?;
@@ -45,15 +79,17 @@ impl ShowShapeChirho {
                 return None;
             };
             return Some(Self::EitherChirho(
-                Box::new(descend_chirho(left_chirho)?),
-                Box::new(descend_chirho(right_chirho)?),
+                Box::new(descend_chirho(left_chirho, 11)?),
+                Box::new(descend_chirho(right_chirho, 11)?),
             ));
         }
-        matches!(
-            key_chirho,
-            "Int" | "Integer" | "Bool" | "Char" | "Double" | "String" | "[Char]"
-        )
-        .then(|| Self::ScalarChirho(key_chirho.to_string()))
+        // A show-only row is not evidence for showsPrec 11. In particular,
+        // deriving currently supplies show, not the full precedence method.
+        // Leave those unsupported constructor arguments on the dictionary path.
+        (precedence_chirho == 0)
+            .then(|| resolve_chirho(key_chirho))
+            .flatten()
+            .map(Self::BackedChirho)
     }
 }
 

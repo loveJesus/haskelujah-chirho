@@ -19,6 +19,7 @@
 //! extended with PAP handling and primitive operations.
 
 mod code_roots_chirho;
+mod primitive_operands_chirho;
 mod returns_chirho;
 
 use std::collections::HashMap;
@@ -3910,37 +3911,8 @@ impl MachineChirho {
             }
         }
 
-        // Force primitive operands before dispatch so string/list thunks used by
-        // desugared string equality reach string-capable primops as StringChirho values.
-        let mut resolved_args_chirho: Vec<ValueChirho> = args_chirho
-            .iter()
-            .cloned()
-            .map(|v_chirho| self.force_to_prim_chirho(v_chirho))
-            .collect();
-
-        let is_string_compare_primop_chirho = matches!(
-            op_chirho,
-            PrimOpKindChirho::EqStrChirho
-                | PrimOpKindChirho::LtStrChirho
-                | PrimOpKindChirho::EqIntChirho
-                | PrimOpKindChirho::NeIntChirho
-                | PrimOpKindChirho::LtIntChirho
-                | PrimOpKindChirho::LeIntChirho
-                | PrimOpKindChirho::GtIntChirho
-                | PrimOpKindChirho::GeIntChirho
-        );
-        if is_string_compare_primop_chirho && resolved_args_chirho.len() == 2 {
-            let left_str_chirho =
-                self.try_resolve_value_to_string_chirho(&resolved_args_chirho[0])?;
-            let right_str_chirho =
-                self.try_resolve_value_to_string_chirho(&resolved_args_chirho[1])?;
-            if let (Some(left_str_chirho), Some(right_str_chirho)) =
-                (left_str_chirho, right_str_chirho)
-            {
-                resolved_args_chirho[0] = ValueChirho::StringChirho(left_str_chirho);
-                resolved_args_chirho[1] = ValueChirho::StringChirho(right_str_chirho);
-            }
-        }
+        let resolved_args_chirho =
+            self.resolve_primitive_operands_chirho(op_chirho, args_chirho)?;
 
         match resolved_args_chirho.len() {
             2 => apply_prim_binop_chirho(

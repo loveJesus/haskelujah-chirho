@@ -3,7 +3,7 @@
 
 //! Generated MonadFix instance bodies.
 //!
-//! IO uses Haskelujah's documented identity-style interpreter representation. Maybe follows
+//! IO delegates knot tying to the reusable-action execution lowering. Maybe follows
 //! `base`'s lazy `unJust` knot, and list follows the recursive `head`/`tail` construction from
 //! `Control.Monad.Fix`.
 //!
@@ -30,17 +30,11 @@ impl DictPassCtxChirho {
         let prim_name_chirho = "$prim_MonadFix_mfix_IO";
         let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
         let function_chirho = self.fresh_binder_chirho("function_chirho", any_ty_chirho.clone());
-        let result_chirho = self.fresh_binder_chirho("result_chirho", any_ty_chirho.clone());
-        let result_rhs_chirho = CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::VarChirho(function_chirho.id_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(result_chirho.id_chirho)),
-        };
         let rhs_chirho = CoreExprChirho::LamChirho {
-            binder_chirho: function_chirho,
-            body_chirho: Box::new(CoreExprChirho::LetChirho {
-                rec_chirho: true,
-                binds_chirho: vec![(result_chirho.clone(), result_rhs_chirho)],
-                body_chirho: Box::new(CoreExprChirho::VarChirho(result_chirho.id_chirho)),
+            binder_chirho: function_chirho.clone(),
+            body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                name_chirho: "mfixIO#".to_string(),
+                args_chirho: vec![CoreExprChirho::VarChirho(function_chirho.id_chirho)],
             }),
         };
         self.push_monad_fix_binding_chirho(

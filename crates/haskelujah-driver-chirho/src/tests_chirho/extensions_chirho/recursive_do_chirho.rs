@@ -50,6 +50,38 @@ fn eval_mdo_resolves_forward_reference_chirho() {
 }
 
 #[test]
+fn eval_shared_mdo_action_ties_a_fresh_lazy_result_on_each_execution_chirho() {
+    // GHC 9.14.1: WHNF consumes no input; two executions consume two lines
+    // and retain independent cyclic results after both have completed.
+    let source_chirho = r#"{-# LANGUAGE RecursiveDo #-}
+module Main where
+actionChirho :: IO [Int]
+actionChirho = mdo
+  xsChirho <- pure (read lineChirho : xsChirho)
+  lineChirho <- getLine
+  pure xsChirho
+main = do
+  actionChirho `seq` putStrLn "ready-chirho"
+  firstChirho <- actionChirho
+  secondChirho <- actionChirho
+  print (take 2 firstChirho)
+  print (take 2 secondChirho)
+"#;
+    let (_, machine_chirho) = crate::eval_source_with_input_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ReusableMfixChirho.hs",
+        None,
+        &["7", "8"],
+    )
+    .expect("each mfix execution must tie its own result knot");
+    assert_eq!(
+        machine_chirho.io_output_chirho,
+        "ready-chirho\n[7,7]\n[8,8]\n"
+    );
+}
+
+#[test]
 fn eval_maybe_and_list_mfix_use_backed_instance_bodies_chirho() {
     let source_chirho = concat!(
         "module Test where\n",

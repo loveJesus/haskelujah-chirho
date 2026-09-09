@@ -351,26 +351,17 @@ fn eval_nested_let_chirho() {
 
 #[test]
 fn eval_string_literal_chirho() {
-    // String literal evaluates to StringChirho value
-    use crate::eval_source_chirho;
+    // Observe the string, whether represented as a packed value or a lazy list.
+    use crate::eval_source_with_machine_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = eval_source_chirho(
-        "module Test where\n\
-             main = \"hello\"\n",
+    let (_, machine_chirho) = eval_source_with_machine_chirho(
+        "module Test where\nmain = putStrLn \"hello\"\n",
         &mut source_map_chirho,
         "TestChirho.hs",
         None,
-    );
-    match &result_chirho {
-        Ok(val_chirho) => assert_eq!(
-            *val_chirho,
-            haskelujah_runtime_chirho::ValueChirho::StringChirho("hello".to_string())
-        ),
-        Err(e_chirho) => {
-            eprintln!("eval_string_literal: {}", e_chirho);
-            assert!(result_chirho.is_ok(), "should evaluate: {}", e_chirho);
-        }
-    }
+    )
+    .expect("string literal should be observable");
+    assert_eq!(machine_chirho.io_output_chirho, "hello\n");
 }
 
 #[test]
@@ -1438,7 +1429,7 @@ main = showColor Red
 
 #[test]
 fn eval_user_instance_show_chirho() {
-    use crate::eval_source_chirho;
+    use crate::eval_source_with_machine_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     // Instance method with a single-equation case instead of multi-equation
     let src_chirho = "\
@@ -1449,19 +1440,12 @@ instance Show Color where
     Red -> \"Red\"
     Green -> \"Green\"
     Blue -> \"Blue\"
-main = show Red
+main = putStrLn (show Red)
 ";
-    let result_chirho =
-        eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
-    match &result_chirho {
-        Ok(val_chirho) => {
-            assert_eq!(
-                *val_chirho,
-                haskelujah_runtime_chirho::ValueChirho::StringChirho("Red".to_string())
-            );
-        }
-        Err(e_chirho) => panic!("user Show instance should evaluate: {}", e_chirho),
-    }
+    let (_, machine_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None)
+            .expect("user Show instance should evaluate");
+    assert_eq!(machine_chirho.io_output_chirho, "Red\n");
 }
 
 #[test]
@@ -1607,8 +1591,9 @@ fn eval_do_let_multi_chirho() {
 fn eval_do_bind_uses_bound_var_chirho() {
     use crate::eval_source_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    // bind (p <- e) followed by expression using bound var
-    let src_chirho = "module Test where\nf x = x + 1\nmain = do\n  y <- f 3\n  y * 2\n";
+    // GHC rejects binding a plain number as a monadic action. The intended
+    // program returns the computed number from IO; GHC's observable result is 8.
+    let src_chirho = "module Test where\nfChirho xChirho = pure (xChirho + 1)\nmain :: IO Int\nmain = do\n  yChirho <- fChirho 3\n  pure (yChirho * 2)\n";
     let result_chirho =
         eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
     match &result_chirho {

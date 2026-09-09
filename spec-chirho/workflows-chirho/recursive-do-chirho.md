@@ -21,9 +21,11 @@ flowchart TD
     sequential_do_chirho --> monadfix_dict_chirho
     mfix_knot_chirho --> lazy_projection_chirho[Core lazy tuple projections]
     lazy_projection_chirho --> monadfix_dict_chirho[MonadFix dictionary selection]
-    monadfix_dict_chirho --> stg_knot_chirho[STG letrec result thunk and update]
-    stg_knot_chirho --> lazy_return_chirho[ReturnIO preserves the result thunk]
-    lazy_return_chirho --> observable_result_chirho[Driver forces only the final observable result]
+    monadfix_dict_chirho --> action_chirho[IO method emits mfixIO semantic operation]
+    action_chirho --> execute_chirho[Reusable action function creates a fresh knot on execution]
+    execute_chirho --> stg_knot_chirho[Lazy letrec: result packet runs function applied to its payload]
+    stg_knot_chirho --> lazy_return_chirho[Payload projects from packet only when demanded]
+    lazy_return_chirho --> observable_result_chirho[Strict consumers force observable values]
 ```
 
 ## Invariants
@@ -33,14 +35,17 @@ flowchart TD
 - RecursiveDo syntax does not add a permanent AST variant after lowering.
 - `mdo` prefixes without a forward or bind-self dependency remain sequential.
 - The knot tuple is projected lazily; desugaring must not force it before `mfix` produces it.
-- ReturnIO preserves its payload thunk; forcing occurs at strict uses or the observable driver
-  boundary.
-- Existing IO `do` lowering remains on its proven primitive path.
+- An IO action is not its result: mfix's argument is the lazy payload, not the
+  dormant action or the result packet. Entering action WHNF does not execute it.
+- Every execution creates a new knot. Reusing the same action must consume fresh
+  input while preserving the previous execution's lazy result.
+- Maybe and list use their own MonadFix instance bodies; they do not pass through IO lowering.
 
 ## Landing state
 
 - Frontend contextual keyword, layout, and CST support: implemented.
 - CST-to-AST dependency segmentation and knot transform: implemented.
 - Lazy Core tuple projections and IO/Maybe/list MonadFix dictionaries: implemented.
-- STG letrec knot behavior, lazy ReturnIO payloads, and final-result forcing boundary:
-  implemented.
+- STG letrec knot behavior, reusable IO action/result separation, and lazy payload
+  projection: implemented. Recursive IO behavior on native backends is not established by
+  these interpreter-only RecursiveDo tests.

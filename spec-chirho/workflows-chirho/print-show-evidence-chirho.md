@@ -15,7 +15,7 @@ flowchart TD
     join_chirho --> validate_chirho{Show constrains print's own scheme?}
     validate_chirho -->|no| fallback_chirho[Preserve canonical print path]
     validate_chirho -->|yes| instance_chirho{Concrete Show binding exists?}
-    instance_chirho -->|no| materialize_chirho{Supported flat structured key?}
+    instance_chirho -->|no| materialize_chirho{Complete supported shape with backed leaves?}
     materialize_chirho -->|no| fallback_chirho
     materialize_chirho -->|yes| generate_chirho[Generate portable Show binding from proven key]
     generate_chirho --> rewrite_chirho
@@ -35,8 +35,15 @@ flowchart TD
   `Either`; unresolved type variables never become invented instance keys.
 - Prelude constructor schemes propagate payload annotations through `Just`/`Nothing` to the
   enclosing `Maybe` type before occurrence evidence is finalized.
-- Missing flat `Maybe`/`Either` renderers are generated deterministically only from proven
-  evidence and only when every field has a backend-neutral scalar renderer.
+- Missing `Maybe`/`Either`/tuple/list renderers are composed deterministically from
+  complete evidence. `Integer` remains an Integer key inside compound evidence and
+  uses the engine's integer renderer; no string replacement fabricates an instance.
+- Bootstrap lists and evidenced lists share one recursive worker generator. Each
+  shape's element renderer is emitted once, with an explicit separator parameter.
+- A user instance leaf needs an actual body, not just a name-table entry. Its show
+  method can serve list/tuple elements at precedence zero. A show-only implementation
+  is not assumed to implement showsPrec 11: that unsupported argument stays on the
+  dictionary path. General derived/user showsPrec behavior is not claimed complete.
 - The dictionary pass rewrites only when the exact generated `Show` binding exists.
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.

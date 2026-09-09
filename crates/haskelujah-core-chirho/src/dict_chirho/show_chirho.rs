@@ -6,12 +6,13 @@
 
 use super::DictPassCtxChirho;
 use crate::expr_chirho::{
-    AltConChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho,
+    AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho,
     InlineAnnotationChirho,
 };
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 use std::collections::BTreeSet;
 
+mod lists_chirho;
 mod shape_chirho;
 use shape_chirho::ShowShapeChirho;
 
@@ -60,7 +61,7 @@ impl DictPassCtxChirho {
                 .lookup_body_backed_name_id_chirho(&name_chirho)
                 .is_none()
             {
-                if let Some(shape_chirho) = ShowShapeChirho::parse_chirho(&key_chirho) {
+                if let Some(shape_chirho) = self.parse_show_shape_chirho(&key_chirho) {
                     self.generate_show_shape_binding_chirho(&name_chirho, &shape_chirho);
                 }
             }
@@ -78,10 +79,15 @@ impl DictPassCtxChirho {
             CoreExprChirho::VarChirho(arg_chirho.id_chirho),
             0,
         );
-        let binder_chirho = self.fresh_binder_chirho(
-            name_chirho,
-            TyChirho::fun_chirho(arg_chirho.ty_chirho.clone(), TyChirho::string_chirho()),
-        );
+        let binder_chirho = BinderChirho {
+            id_chirho: self.resolve_or_fresh_id_chirho(name_chirho),
+            name_chirho: name_chirho.to_string(),
+            ty_chirho: TyChirho::fun_chirho(
+                arg_chirho.ty_chirho.clone(),
+                TyChirho::string_chirho(),
+            ),
+            span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        };
         self.generated_bindings_chirho.push(CoreBindingChirho {
             binder_chirho,
             rhs_chirho: CoreExprChirho::LamChirho {
@@ -102,6 +108,13 @@ impl DictPassCtxChirho {
         match shape_chirho {
             ShowShapeChirho::ScalarChirho(key_chirho) => {
                 self.show_scalar_expr_chirho(key_chirho, value_chirho, precedence_chirho)
+            }
+            ShowShapeChirho::BackedChirho(function_chirho) => CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(*function_chirho)),
+                arg_chirho: Box::new(value_chirho),
+            },
+            ShowShapeChirho::ListChirho(element_chirho) => {
+                self.show_list_expr_chirho(element_chirho, value_chirho)
             }
             ShowShapeChirho::MaybeChirho(inner_chirho) => {
                 let field_chirho =
@@ -261,8 +274,21 @@ impl DictPassCtxChirho {
         );
     }
 
-    fn generate_show_key_binding_chirho(&mut self, name_chirho: &str, key_chirho: &str) {
-        let shape_chirho = ShowShapeChirho::parse_chirho(key_chirho)
+    fn parse_show_shape_chirho(&self, key_chirho: &str) -> Option<ShowShapeChirho> {
+        ShowShapeChirho::parse_chirho(key_chirho, &|key_chirho| {
+            self.lookup_dispatch_body_name_id_chirho(&format!("$prim_Show_show_{key_chirho}"))
+        })
+    }
+
+    pub(super) fn generate_show_key_binding_chirho(&mut self, name_chirho: &str, key_chirho: &str) {
+        if self
+            .lookup_body_backed_name_id_chirho(name_chirho)
+            .is_some()
+        {
+            return;
+        }
+        let shape_chirho = self
+            .parse_show_shape_chirho(key_chirho)
             .expect("bootstrap Show key must have a complete renderer");
         self.generate_show_shape_binding_chirho(name_chirho, &shape_chirho);
     }

@@ -17,7 +17,11 @@ impl ActionsChirho {
         arguments_chirho: Vec<CoreExprChirho>,
     ) -> CoreExprChirho {
         let mut arguments_chirho = arguments_chirho.into_iter();
-        let first_chirho = self.run_chirho(arguments_chirho.next().unwrap());
+        let first_chirho = arguments_chirho.next().unwrap();
+        if name_chirho == "mfixIO#" {
+            return self.fix_result_chirho(first_chirho);
+        }
+        let first_chirho = self.run_chirho(first_chirho);
         match name_chirho {
             "catch#" => {
                 let handler_chirho = arguments_chirho.next().unwrap();
@@ -92,6 +96,30 @@ impl ActionsChirho {
                 args_chirho: vec![first_chirho],
             },
             _ => unreachable!("operation table admits only supported scopes"),
+        }
+    }
+
+    /// Each execution creates its own knot. The function receives the lazy
+    /// result payload, not its dormant action or the result packet itself.
+    fn fix_result_chirho(&mut self, function_chirho: CoreExprChirho) -> CoreExprChirho {
+        let packet_chirho = self.binder_chirho("io_fixed_packet");
+        let value_chirho = self.binder_chirho("io_fixed_value");
+        let payload_chirho = self.binder_chirho("io_fixed_payload");
+        let packet_rhs_chirho =
+            self.run_chirho(app_chirho(function_chirho, var_chirho(&value_chirho)));
+        let value_rhs_chirho = self.unpack_chirho(
+            var_chirho(&packet_chirho),
+            RESULT_CON_CHIRHO,
+            payload_chirho.clone(),
+            var_chirho(&payload_chirho),
+        );
+        CoreExprChirho::LetChirho {
+            rec_chirho: true,
+            binds_chirho: vec![
+                (packet_chirho.clone(), packet_rhs_chirho),
+                (value_chirho, value_rhs_chirho),
+            ],
+            body_chirho: Box::new(var_chirho(&packet_chirho)),
         }
     }
 

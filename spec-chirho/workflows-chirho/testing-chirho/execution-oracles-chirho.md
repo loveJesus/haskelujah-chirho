@@ -63,6 +63,7 @@ primitive, recursive binding, or FFI adapter has been audited.
 | IO action value versus execution | An action contains a function. Sharing or demanding the action to WHNF does not execute that function. Sequencing executes it anew on each use, returning an IO-result packet without demanding the payload. STG case binders share the current invocation's scrutinee; they never recompute it with stale registers. |
 | Pattern fallthrough | Try alternatives in source order. An unselected suffix, including terminal failure, remains unevaluated. Tail-position let lowering has the same initialization contract as ordinary let lowering. |
 | Native numeric primitive or C string operation | The adapter forces precisely the operands the strict operation consumes before interpreting their bits or passing a raw pointer to C. putStr/putStrLn and file-path/content boundaries must not pass a thunk address to libc. |
+| STG Read primitives | `resolve_primitive_operands_chirho` materializes packed strings or lazy character lists at the strict Read consumer. Demanded character/tail errors propagate rather than producing a parsed truncated prefix. This does not make storing a string or returning it from IO strict. |
 | List-to-C-string packing | Demand each spine cell and character head as consumed; preserve a GC root for the remaining list while demanding an allocating character computation. Do not interpret a thunk pointer as a character code. |
 | Native thunk entry/update | Follow indirections to WHNF, preserve all 64 result bits, and memoize without confusing state with payload. Root active evaluations across allocation. |
 | Native GC roots | Allocation-registry membership is required before dereference. Raw allocation addresses are legitimate roots during field initialization; the tagged-value policy must not be imposed on the root API. |
@@ -101,6 +102,11 @@ The IO-action execution lowering is shared by STG and the two native backends;
 the Wasm execution path has not been migrated to this representation. The tasklist
 records its provisional gate status. The Unix address-space-limit test is compiled
 conditionally; macOS execution does not establish a Linux runtime result.
+
+STG primitive lowering has an explicit optional lookup rather than an unknown-name
+fallback to addition. The emitter preserves supported aliases and gives an unknown
+primitive a named demand-time error. Its control distinguishes unsupported arithmetic
+from a real addition result; an unexecuted branch remains lazy.
 
 Generated MaybeT helpers preserve the underlying monadic action. They accept the
 call-site Monad dictionary; pure is selected from its Applicative superclass,

@@ -103,3 +103,12 @@ fn integer_list_print_demands_computed_elements_chirho() {
         "[1,2,3]\n",
     );
 }
+
+#[test]
+fn list_print_composes_complete_element_evidence_chirho() {
+    assert_engines_chirho(
+        include_str!("io_actions_chirho/evidenced_lists_chirho.hs"),
+        "",
+        "[1,2,3]\n[(AddChirho,2),(MulChirho,3)]\n[]\n[True,False]\n[[1],[2,3]]\n[Just (-42),Nothing]\n[1.5,-2.25]\n[custom-chirho,custom-chirho]\n",
+    );
+}

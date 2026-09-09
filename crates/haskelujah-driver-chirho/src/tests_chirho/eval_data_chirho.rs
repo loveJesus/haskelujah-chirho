@@ -2658,27 +2658,20 @@ main = myEq 3 3
 #[test]
 fn eval_qualified_type_sig_multiple_constraints_chirho() {
     // Type signature with tuple constraint: (Eq a, Show a) => a -> String
-    use crate::eval_source_chirho;
+    use crate::eval_source_with_machine_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
 describeEq :: (Eq a, Show a) => a -> a -> String
 describeEq x y = if x == y then show x else \"not equal\"
-main = describeEq 42 42
+main = do
+  putStrLn (describeEq 42 42)
+  putStrLn (describeEq 42 43)
 ";
-    let result_chirho =
-        eval_source_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None);
-    match &result_chirho {
-        Ok(val_chirho) => {
-            let s_chirho = format!("{}", val_chirho);
-            assert!(
-                s_chirho.contains("42"),
-                "expected result containing 42, got: {}",
-                s_chirho
-            );
-        }
-        Err(e_chirho) => panic!("multiple constraint sig should evaluate: {}", e_chirho),
-    }
+    let (_, machine_chirho) =
+        eval_source_with_machine_chirho(src_chirho, &mut source_map_chirho, "TestChirho.hs", None)
+            .expect("multiple constraints should evaluate");
+    assert_eq!(machine_chirho.io_output_chirho, "42\nnot equal\n");
 }
 
 #[test]

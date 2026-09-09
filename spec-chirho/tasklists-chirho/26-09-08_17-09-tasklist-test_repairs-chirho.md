@@ -349,3 +349,44 @@ and harness repairs support that objective; workspace greens are not corpus gain
   standard. Runtime and RTS library/integration targets pass again. This third
   repair checkpoint is ready for branch backup; the next frozen workspace run
   will use four test threads, with no test-name filters or exclusions.
+- Frozen checkpoint 5f098de8 completed the unfiltered workspace gate. Ten tests
+  failed: eight driver-library cases (1758 green) and two Cranelift integration
+  cases (41 green). All other targets completed successfully, including curated
+  537/537, all 126 native round trips in the driver library, typing 316 and the
+  previously ignored parser cases. This is a failed full gate, not a landing.
+- The same frozen CLI passed four corpus measurements with sets byte-identical to
+  the committed 877/938 and 222/767 lists, zero timeouts/unexpected exits, and SHA-256
+  7ee321d0cede2d409a7e904697e9bc5a258455fa07100f492952d0285c8cd112 unchanged
+  throughout. Later repairs require a new measurement before final artifact headers.
+- The ten failures are not being classified from counts: two IO primitive aliases
+  fell through to invented addition; two RecursiveDo cases used identity-style
+  mfix after action values became distinct from results; two native list prints
+  had complete Show evidence but no constructed list renderer. Three string
+  assertions pinned packed-value representation despite correct lazy character
+  lists, and one do-bind input is rejected by GHC because it binds a plain number.
+  Repairs retain exact observable output, with GHC-verified replacements for the
+  invalid input and representation assertions. No new green gate is claimed yet.
+- Follow-up controls exposed two additional dictionary boundaries: definition and
+  call-site parameter inventories disagreed for result-only Applicative variables,
+  and `pure`/`return` bypassed their own dictionary for an IO-name fallback. One
+  shared parameter decision and Applicative.pure selection now serve the same
+  helpers at IO, Maybe and list types. Dictionary evidence is 10/10, including
+  the new independently GHC-checked outputs Just 4 / [5] / 6 / Just 7 / [8].
+- Complete Show evidence now composes one portable list worker with its element
+  renderer, including nested lists, tuples, Bool, Maybe, Double and a backed user
+  instance. Unknown leaves do not become Int; a show-only user row is not assumed
+  to implement showsPrec 11. The expanded three-engine oracle also exposed missing
+  native negateFloat# lowering; both backends now flip the floating sign bit.
+- IO mfix now ties a fresh result-payload knot inside each action execution.
+  Five RecursiveDo controls pass, including two uses consuming different input
+  and retaining independent cyclic results. That new control exposed an STG Read
+  adapter that accepted packed String values but not lazy character lists. Read
+  now consumes either representation; separate controls require the exact values
+  and the original error from a demanded character or tail. These interpreter
+  mfix controls are not native RecursiveDo coverage.
+- Follow-up gate: dictionary evidence 10, value/Read controls 3, shared IO-action
+  executions 9 and Show precedence 2 all pass. Formatting passes. All-target
+  clippy completes with 535 warning messages in this run (including repeated
+  diagnostics and crate summaries); that is not a zero-warning gate or a count
+  of unique defects. The next checkpoint is branch backup for another full
+  unfiltered workspace run; main and the corpus artifacts remain unchanged.

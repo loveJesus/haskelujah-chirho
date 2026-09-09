@@ -205,6 +205,7 @@ fn operation_chirho(name_chirho: &str) -> Option<OperationChirho> {
         "try" | "try#" => ScopedChirho("try#", 1),
         "finally" | "finally#" => ScopedChirho("finally#", 2),
         "bracket" | "bracket#" => ScopedChirho("bracket#", 3),
+        "mfixIO#" => ScopedChirho("mfixIO#", 1),
         "evaluate" => EffectChirho("force#", 1),
         "throwIO" | "throwIO#" => EffectChirho("throw#", 1),
         _ => return None,

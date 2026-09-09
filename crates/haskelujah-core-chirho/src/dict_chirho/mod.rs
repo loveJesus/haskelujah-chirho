@@ -30,6 +30,7 @@
 pub mod instance_chirho;
 pub mod layout_chirho;
 mod monad_fix_chirho;
+mod parameters_chirho;
 pub mod prelude_chirho;
 #[cfg(test)]
 mod print_evidence_tests_chirho;

@@ -118,11 +118,7 @@ impl DictPassCtxChirho {
                 list_type_key_chirho,
                 layout_chirho,
             ),
-            "Show" => self.generate_show_list_dict_chirho(
-                elem_type_chirho,
-                list_type_key_chirho,
-                layout_chirho,
-            ),
+            "Show" => self.generate_show_list_dict_chirho(list_type_key_chirho, layout_chirho),
             _ => {
                 // Generic handler for user-defined classes with conditional
                 // list instances.  Look up the user's $prim_ method bindings
@@ -474,154 +470,13 @@ impl DictPassCtxChirho {
     /// Generate `Show [T]` dict for element types other than [Int] and [Char].
     fn generate_show_list_dict_chirho(
         &mut self,
-        elem_type_chirho: &str,
         list_type_key_chirho: &str,
         layout_chirho: &DictLayoutChirho,
     ) {
-        let str_ty_chirho = TyChirho::string_chirho();
-
-        // Determine the element show primop
-        let elem_show_primop_chirho = match elem_type_chirho {
-            "Double" => "showFloat#",
-            "Bool" => "showBool#",
-            _ => "showInt#",
-        };
-
-        // Generate recursive show list function, similar to generate_show_list_int_binding_chirho
-        // $showListTail_T = \xs -> case xs of
-        //     [] -> "]"
-        //     (:) x rest -> ++# "," (++# (showElem# x) ($showListTail_T rest))
-        let tail_fn_name_chirho = format!("$showListTail_{}", elem_type_chirho);
-        let tail_fn_id_chirho = self.resolve_or_fresh_id_chirho(&tail_fn_name_chirho);
-
-        let tail_xs_chirho = self.fresh_binder_chirho("xs", str_ty_chirho.clone());
-        let tail_x_chirho = self.fresh_binder_chirho("x", str_ty_chirho.clone());
-        let tail_rest_chirho = self.fresh_binder_chirho("rest", str_ty_chirho.clone());
-
-        let tail_cons_rhs_chirho = CoreExprChirho::PrimOpChirho {
-            name_chirho: "++#".to_string(),
-            args_chirho: vec![
-                CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(",".to_string())),
-                CoreExprChirho::PrimOpChirho {
-                    name_chirho: "++#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::PrimOpChirho {
-                            name_chirho: elem_show_primop_chirho.to_string(),
-                            args_chirho: vec![CoreExprChirho::VarChirho(tail_x_chirho.id_chirho)],
-                        },
-                        CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(tail_fn_id_chirho)),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(
-                                tail_rest_chirho.id_chirho,
-                            )),
-                        },
-                    ],
-                },
-            ],
-        };
-
-        let tail_body_chirho = CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(tail_xs_chirho.id_chirho)),
-            bind_chirho: self.fresh_binder_chirho("_t", str_ty_chirho.clone()),
-            result_ty_chirho: TyChirho::string_chirho(),
-            alts_chirho: vec![
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("[]".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                        "]".to_string(),
-                    )),
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho(":".to_string()),
-                    binders_chirho: vec![tail_x_chirho.clone(), tail_rest_chirho.clone()],
-                    rhs_chirho: tail_cons_rhs_chirho,
-                },
-            ],
-        };
-
-        let tail_fn_rhs_chirho = CoreExprChirho::LamChirho {
-            binder_chirho: tail_xs_chirho,
-            body_chirho: Box::new(tail_body_chirho),
-        };
-
-        let tail_binder_chirho = BinderChirho {
-            id_chirho: tail_fn_id_chirho,
-            name_chirho: tail_fn_name_chirho,
-            ty_chirho: str_ty_chirho.clone(),
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        };
-
-        self.generated_bindings_chirho.push(CoreBindingChirho {
-            binder_chirho: tail_binder_chirho,
-            rhs_chirho: tail_fn_rhs_chirho,
-            is_rec_chirho: true,
-            inline_chirho: InlineAnnotationChirho::NoneChirho,
-        });
-
-        // Main show function:
-        // $prim_Show_show_[T] = \xs -> case xs of
-        //     [] -> "[]"
-        //     (:) x rest -> ++# "[" (++# (showElem# x) ($showListTail_T rest))
-        let main_xs_chirho = self.fresh_binder_chirho("xs", str_ty_chirho.clone());
-        let main_x_chirho = self.fresh_binder_chirho("x", str_ty_chirho.clone());
-        let main_rest_chirho = self.fresh_binder_chirho("rest", str_ty_chirho.clone());
-
-        let main_cons_rhs_chirho = CoreExprChirho::PrimOpChirho {
-            name_chirho: "++#".to_string(),
-            args_chirho: vec![
-                CoreExprChirho::LitChirho(CoreLitChirho::StringChirho("[".to_string())),
-                CoreExprChirho::PrimOpChirho {
-                    name_chirho: "++#".to_string(),
-                    args_chirho: vec![
-                        CoreExprChirho::PrimOpChirho {
-                            name_chirho: elem_show_primop_chirho.to_string(),
-                            args_chirho: vec![CoreExprChirho::VarChirho(main_x_chirho.id_chirho)],
-                        },
-                        CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(tail_fn_id_chirho)),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(
-                                main_rest_chirho.id_chirho,
-                            )),
-                        },
-                    ],
-                },
-            ],
-        };
-
-        let main_body_chirho = CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(main_xs_chirho.id_chirho)),
-            bind_chirho: self.fresh_binder_chirho("_m", str_ty_chirho.clone()),
-            result_ty_chirho: TyChirho::string_chirho(),
-            alts_chirho: vec![
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("[]".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                        "[]".to_string(),
-                    )),
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho(":".to_string()),
-                    binders_chirho: vec![main_x_chirho.clone(), main_rest_chirho.clone()],
-                    rhs_chirho: main_cons_rhs_chirho,
-                },
-            ],
-        };
-
-        let main_fn_rhs_chirho = CoreExprChirho::LamChirho {
-            binder_chirho: main_xs_chirho,
-            body_chirho: Box::new(main_body_chirho),
-        };
-
-        let prim_name_chirho = format!("$prim_Show_show_{}", list_type_key_chirho);
-        let prim_binder_chirho = self.fresh_binder_chirho(&prim_name_chirho, str_ty_chirho.clone());
-        self.generated_bindings_chirho.push(CoreBindingChirho {
-            binder_chirho: prim_binder_chirho,
-            rhs_chirho: main_fn_rhs_chirho,
-            is_rec_chirho: true,
-            inline_chirho: InlineAnnotationChirho::NoneChirho,
-        });
+        self.generate_show_key_binding_chirho(
+            &format!("$prim_Show_show_{list_type_key_chirho}"),
+            list_type_key_chirho,
+        );
 
         // Generate the Show dict for this list type
         let dict_name_chirho = format!("$fShow{}", list_type_key_chirho);
