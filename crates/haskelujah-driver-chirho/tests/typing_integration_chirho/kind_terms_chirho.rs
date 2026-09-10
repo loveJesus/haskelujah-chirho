@@ -143,6 +143,92 @@ fn missing_nominal_kinds_are_reported_in_declaration_and_forall_binders_chirho()
     }
 }
 
+#[test]
+fn qualified_builtin_kinds_follow_declared_import_aliases_chirho() {
+    let source_chirho = r#"{-# LANGUAGE KindSignatures #-}
+module AliasedTypeChirho where
+import qualified Data.Kind as KChirho
+data BoxChirho (fChirho :: KChirho.Type -> KChirho.Type) = BoxChirho (fChirho Int)
+useChirho :: BoxChirho Maybe -> Int
+useChirho _ = 42
+"#;
+    assert_compile_success_chirho("AliasedTypeChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace("BoxChirho Maybe ->", "BoxChirho Int ->"),
+        "type application",
+    );
+    assert_kind_error_chirho(
+        r#"{-# LANGUAGE StandaloneKindSignatures, UnliftedDatatypes #-}
+module WrongAliasedRuntimeChirho where
+import qualified GHC.Exts as RuntimeChirho
+type BadChirho :: RuntimeChirho.TYPE Bool
+data BadChirho = BadChirho
+"#,
+        "RuntimeRep",
+    );
+}
+
+#[test]
+fn prefix_function_kind_accepts_primitive_arguments_but_defaults_inferred_representations_chirho() {
+    let source_chirho = r#"{-# LANGUAGE MagicHash #-}
+module PrimitiveArrowChirho where
+import GHC.Exts (Int#)
+type ArrowChirho = (->) Int#
+constantChirho :: ArrowChirho Int
+constantChirho _ = 42
+"#;
+    assert_compile_success_chirho("PrimitiveArrowChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace(
+            "constantChirho :: ArrowChirho Int\nconstantChirho _ = 42",
+            "identityChirho :: ArrowChirho Int#\nidentityChirho xChirho = xChirho",
+        ),
+        "type application",
+    );
+    assert_compile_success_chirho(
+        "ExplicitPrimitiveArrowChirho.hs",
+        r#"{-# LANGUAGE MagicHash #-}
+module ExplicitPrimitiveArrowChirho where
+import GHC.Exts (Int#)
+type ArrowChirho = (->) Int# Int#
+identityChirho :: ArrowChirho
+identityChirho xChirho = xChirho
+"#,
+    );
+    assert_compile_success_chirho(
+        "WrittenRuntimeParameterChirho.hs",
+        r#"{-# LANGUAGE MagicHash, PolyKinds, DataKinds #-}
+module WrittenRuntimeParameterChirho where
+import GHC.Exts (TYPE, Int#)
+type ArrowChirho (aChirho :: TYPE rChirho) = aChirho -> Int
+constantChirho :: ArrowChirho Int#
+constantChirho _ = 42
+"#,
+    );
+    assert_kind_error_chirho(
+        r#"{-# LANGUAGE DataKinds #-}
+module WrongPrimitiveArrowChirho where
+type BadChirho = (->) 'True
+"#,
+        "Bool",
+    );
+}
+
+#[test]
+fn flexible_kind_application_can_be_an_arrow_but_a_nominal_head_cannot_chirho() {
+    let source_chirho = r#"{-# LANGUAGE PolyKinds, TypeFamilies, DataKinds, EmptyDataDecls #-}
+module FlexibleKindApplicationChirho where
+data FlurmpChirho
+type family PureChirho (xChirho :: aChirho) :: fChirho aChirho
+type ResultChirho = PureChirho FlurmpChirho FlurmpChirho
+"#;
+    assert_compile_success_chirho("FlexibleKindApplicationChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace(":: fChirho aChirho", ":: Maybe aChirho"),
+        "Maybe",
+    );
+}
+
 fn assert_kind_error_chirho(source_chirho: &str, subject_chirho: &str) {
     let errors_chirho = haskelujah_driver::typecheck_source_chirho(
         source_chirho,

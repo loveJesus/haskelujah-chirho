@@ -109,6 +109,7 @@ impl KindInferCtxChirho {
                 .collect();
             for inference_group_chirho in dependency_groups_chirho(&inference_edges_chirho) {
                 let mut written_chirho = Vec::new();
+                let mut named_variables_chirho = Vec::new();
                 for &local_chirho in &inference_group_chirho {
                     let scope_chirho = std::mem::take(&mut scopes_chirho[local_chirho]);
                     written_chirho.extend(scope_chirho.written_chirho);
@@ -121,14 +122,23 @@ impl KindInferCtxChirho {
                     self.check_kind_declaration_body_chirho(
                         graph_chirho.declarations_chirho[group_chirho[local_chirho]],
                     );
+                    named_variables_chirho.extend(self.kind_var_cache_chirho.values().copied());
                     self.kind_var_cache_chirho.clear();
                     self.env_chirho.end_scope_chirho();
                 }
                 self.check_written_kind_group_chirho(&written_chirho);
+                let named_variables_chirho = named_variables_chirho
+                    .into_iter()
+                    .flat_map(|variable_chirho| {
+                        self.subst_chirho
+                            .apply_chirho(&KindChirho::VarChirho(variable_chirho))
+                            .free_vars_chirho()
+                    })
+                    .collect();
                 // Resolve the entire recursive group before closing any variables.
                 for &local_chirho in &inference_group_chirho {
                     for &name_chirho in &graph_chirho.names_chirho[group_chirho[local_chirho]] {
-                        self.publish_kind_chirho(name_chirho);
+                        self.publish_kind_chirho(name_chirho, &named_variables_chirho);
                     }
                 }
             }

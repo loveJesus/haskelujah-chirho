@@ -165,10 +165,16 @@ impl KindInferCtxChirho {
         replacement_chirho.apply_chirho(&body_chirho)
     }
 
-    pub(super) fn publish_kind_chirho(&mut self, name_chirho: &str) {
+    pub(super) fn publish_kind_chirho(
+        &mut self,
+        name_chirho: &str,
+        named_variables_chirho: &HashSet<KindVarChirho>,
+    ) {
         if let Some(KindBindingChirho::MonoChirho(kind_chirho)) =
             self.env_chirho.lookup_binding_chirho(name_chirho).cloned()
         {
+            let kind_chirho = self.subst_chirho.apply_chirho(&kind_chirho);
+            self.default_inferred_runtime_variables_chirho(&kind_chirho, named_variables_chirho);
             let kind_chirho = self.subst_chirho.apply_chirho(&kind_chirho);
             let kind_chirho = if self.poly_kinds_enabled_chirho {
                 kind_chirho

@@ -247,7 +247,7 @@ impl KindInferCtxChirho {
                 }
             }
             TypeChirho::ConChirho(name_chirho) => {
-                let text_chirho = name_chirho.full_name_chirho();
+                let text_chirho = self.canonical_kind_name_chirho(name_chirho);
                 if let Some(binding_chirho) =
                     self.env_chirho.lookup_binding_chirho(&text_chirho).cloned()
                 {

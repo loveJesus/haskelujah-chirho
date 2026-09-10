@@ -464,7 +464,7 @@ bounds correction. Main, published axes and the label-policy choice stay held.
 - [x] Sixteen source-hashed candidate/GHC9.14.1 pairs agree in both directions;
   includes wrong TYPE argument, wrong nominal kind, missing named kinds in head
   and forall annotations, boxed Int# list, and a missing-head-argument control.
-- [ ] Full corpus diagnostic and per-file attribution; no new full count yet.
+- [x] Full corpus diagnostic completed below; per-file reject attribution remains owed.
 
 Frozen explicit CLI SHA256 is
 `b21a2a254304287ee033557628f80475734e8701cbc638773b42c9d79a312497`.
@@ -486,3 +486,62 @@ Incomplete grammar for list/promoted binder annotations, imported authoritative
 kind metadata, local Type/Constraint alias shadowing, kind-family equality,
 representation-polymorphic calling rules and native unlifted execution are not
 claimed. Existing oversized roots/directory and lint debt are not declared fixed.
+
+### Fifth full diagnostic — a615988f, still not landable
+
+The checkpoint is pushed and remote-exact. One full pass per axis completed
+with wrapper0, zero timeouts/unexpected exits, and unchanged clean HEAD/CLI hash:
+883/938 accept,232/767 reject. Relative to main882/221, accept gains remain
+PolytypeDecomp/RuleEqs/SplitWD/T14451/T15079/T20922/tc124; losses are now
+T12045a/T13142/T13643/T14010/T15428/tc167. Eight previous regressions recovered
+and five new ones appeared. A higher total does not satisfy the no-loss gate.
+
+Reject +17/-6 (reason attribution still owed, none banked): gained
+T11356/T11563/T15799/T15801/T16502/T16821/T22645/T23734/T24553/T4875/T7368a/
+T9634/UnliftedNewtypesInfinite/VisFlag1/VisFlag1_ql/tcfail209/tcfail225;
+lost ExplicitSpecificity3/T12803/T16512a/T23162b/T23162d/T5853.
+Evidence: `diagnostic-nominal-chirho.log` and the two diagnostic-nominal axis
+directories under the same scratch root. DONE posted after actual completion.
+
+Next small consumer unit: preserve qualified-import identity for K.Type,
+give prefix (->) its runtime-representation-polymorphic kind, and reconcile
+arrow-kind syntax with the same constructor-application term shape. Each needs
+an independently GHC-checked positive and negative; no weakening a rigid or
+nominal head. Remaining family cases require retained visible kind applications,
+kind-family normalization/injectivity and hidden family keys, not file guards.
+
+### Consumer-boundary correction — focused, not a new full measurement
+
+- [x] T13142, T15428 and tc167 recover on the explicitly rebuilt CLI. T12045a,
+  T13643 and T14010 remain failing on the family boundaries described above.
+- [x] Qualified builtin kinds resolve through declared aliases. Prefix (->)
+  accepts primitive domains; flexible application kinds can unify with arrows
+  without permitting a nominal Maybe head to become a function kind.
+- [x] A new GHC control exposed inferred RuntimeRep defaulting, not a valid
+  unboxed identity: `type A = (->) Int#; identity :: A Int#` is rejected by GHC.
+  Preserve that negative, default unnamed representation/levity holes at group
+  publication, and retain written TYPE r parameters. Explicit fully applied
+  `(->) Int# Int#` and the partial alias used with lifted Int both remain valid.
+- [x] Twenty-seven source-hashed GHC9.14.1/candidate pairs now agree; no child
+  timeout or unexplained exit. Typing356, driver integration55 and canaries7
+  pass with zero ignored/filtered. These are focused checks, not corpus gates.
+
+CLI SHA256 `a185d3a2a898daa3ed0a190e622f987a48b5c5eec7f45ea511241963ac6a51eb`;
+same scratch root, `consumer-defaulting-after-chirho.jsonl`,
+`consumer-boundaries-six-chirho.jsonl`, `consumer-boundaries-typing-chirho.log`,
+`consumer-boundaries-integration-chirho.log`. The earlier before/after records
+retain the initially invalid primitive-arrow probe and the defaulting mismatch;
+they were not overwritten. No revised full-axis number is claimed from six checks.
+
+Next representation vertical: kind-family applications must retain supplied
+kind arguments and support equality/reduction without treating family heads as
+injective constructors. T12045a needs explicit @ arguments and closed reduction;
+T13643 needs the declared injectivity contract retained, not assumed; T14010
+additionally needs hidden kind indices to survive into value-type reduction.
+These are compiler representations, not six filename-specific conditions.
+Main and its 882/221 artifacts remain untouched; row484 and the builder lease
+stay open. No site deployment or label-policy choice is inferred.
+
+Scoped clippy (`typing`, `driver`, lib targets) completed successfully, but
+existing warnings remain, including driver35. Its log reports none in the
+changed kind child modules; this does not claim a warning-free workspace.

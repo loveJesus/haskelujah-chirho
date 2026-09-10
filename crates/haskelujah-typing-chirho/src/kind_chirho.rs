@@ -89,6 +89,8 @@ struct KindInferCtxChirho {
     /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
     kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
     local_kind_decl_names_chirho: std::collections::HashSet<String>,
+    source_kind_qualifiers_chirho: HashMap<String, Option<String>>,
+    local_kind_module_chirho: Option<String>,
     type_kind_synonyms_chirho: HashMap<String, KindTypeSynonymChirho>,
     expanding_type_kind_synonyms_chirho: Vec<String>,
     cusks_enabled_chirho: bool,
@@ -118,6 +120,8 @@ impl KindInferCtxChirho {
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             kind_var_cache_chirho: std::collections::HashMap::new(),
             local_kind_decl_names_chirho: std::collections::HashSet::new(),
+            source_kind_qualifiers_chirho: HashMap::new(),
+            local_kind_module_chirho: None,
             type_kind_synonyms_chirho: HashMap::new(),
             expanding_type_kind_synonyms_chirho: Vec::new(),
             cusks_enabled_chirho: true,
@@ -840,6 +844,7 @@ pub struct KindResultChirho {
 /// Run kind inference on a module's type declarations and type signatures.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    ctx_chirho.record_source_kind_qualifiers_chirho(module_chirho);
     ctx_chirho.cusks_enabled_chirho =
         constructors_chirho::cusks_enabled_chirho(&module_chirho.extensions_chirho);
     let poly_kinds_enabled_chirho =

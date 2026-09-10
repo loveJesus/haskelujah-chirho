@@ -1,7 +1,9 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 //! Builtin kind terms and runtime-type consumers; workflow: declaration-kinds-chirho.
-use super::{KindChirho, KindEnvChirho, KindInferCtxChirho, SpanChirho};
+use super::{
+    KindChirho, KindEnvChirho, KindInferCtxChirho, KindVarChirho, ModuleChirho, SpanChirho,
+};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 
 pub(super) const TYPE_CHIRHO: &str = "GHC.Prim.TYPE";
@@ -41,8 +43,89 @@ pub(super) fn builtin_term_chirho(name_chirho: &str) -> Option<KindChirho> {
 }
 
 impl KindInferCtxChirho {
-    pub(super) fn named_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {
+    /// GHC does not infer representation polymorphism. Default only unsolved
+    /// representation/levity holes, not names retained from source annotations.
+    /// Visit this inference group's kind terms, not the module-wide environment.
+    pub(super) fn default_inferred_runtime_variables_chirho(
+        &mut self,
+        kind_chirho: &KindChirho,
+        named_variables_chirho: &std::collections::HashSet<KindVarChirho>,
+    ) {
+        let mut pending_chirho = vec![kind_chirho];
+        while let Some(term_chirho) = pending_chirho.pop() {
+            match term_chirho {
+                KindChirho::AppChirho(fun_chirho, argument_chirho) => {
+                    if let (
+                        KindChirho::ConChirho(name_chirho),
+                        KindChirho::VarChirho(variable_chirho),
+                    ) = (fun_chirho.as_ref(), argument_chirho.as_ref())
+                        && !named_variables_chirho.contains(variable_chirho)
+                    {
+                        let default_chirho = match name_chirho.as_str() {
+                            TYPE_CHIRHO => Some(boxed_rep_chirho("Lifted")),
+                            BOXED_REP_CHIRHO => builtin_term_chirho("Lifted"),
+                            _ => None,
+                        };
+                        if let Some(default_chirho) = default_chirho {
+                            self.subst_chirho
+                                .map_chirho
+                                .insert(*variable_chirho, default_chirho);
+                        }
+                    }
+                    pending_chirho.extend([fun_chirho.as_ref(), argument_chirho.as_ref()]);
+                }
+                KindChirho::ArrowChirho(argument_chirho, result_chirho)
+                | KindChirho::DependentChirho {
+                    argument_chirho,
+                    result_chirho,
+                } => {
+                    pending_chirho.extend([argument_chirho.as_ref(), result_chirho.as_ref()]);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Qualified spelling is interpreted through declared imports, never by
+    /// stripping an arbitrary prefix. Conflicting aliases remain unresolved.
+    pub(super) fn record_source_kind_qualifiers_chirho(&mut self, module_chirho: &ModuleChirho) {
+        self.local_kind_module_chirho = Some(module_chirho.name_chirho.full_name_chirho());
+        for import_chirho in &module_chirho.imports_chirho {
+            let target_chirho = import_chirho.module_chirho.full_name_chirho();
+            let alias_chirho = import_chirho
+                .alias_chirho
+                .as_ref()
+                .unwrap_or(&import_chirho.module_chirho)
+                .full_name_chirho();
+            self.source_kind_qualifiers_chirho
+                .entry(alias_chirho)
+                .and_modify(|prior_chirho| {
+                    if prior_chirho.as_ref() != Some(&target_chirho) {
+                        *prior_chirho = None;
+                    }
+                })
+                .or_insert(Some(target_chirho));
+        }
+    }
+
+    pub(super) fn canonical_kind_name_chirho(&self, name_chirho: &NameChirho) -> String {
         let full_chirho = name_chirho.full_name_chirho();
+        let Some((qualifier_chirho, bare_chirho)) = full_chirho.rsplit_once('.') else {
+            return full_chirho;
+        };
+        if self.local_kind_module_chirho.as_deref() == Some(qualifier_chirho)
+            && self.local_kind_decl_names_chirho.contains(bare_chirho)
+        {
+            return bare_chirho.to_owned();
+        }
+        match self.source_kind_qualifiers_chirho.get(qualifier_chirho) {
+            Some(Some(target_chirho)) => format!("{target_chirho}.{bare_chirho}"),
+            _ => full_chirho,
+        }
+    }
+
+    pub(super) fn named_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {
+        let full_chirho = self.canonical_kind_name_chirho(name_chirho);
         let text_chirho = name_chirho.text_chirho();
         let builtin_scope_chirho = if full_chirho == text_chirho {
             !self.local_kind_decl_names_chirho.contains(text_chirho)
@@ -133,6 +216,23 @@ impl KindEnvChirho {
     }
 
     pub(super) fn seed_runtime_kinds_chirho(&mut self) {
+        for name_chirho in ["Type", "Constraint"] {
+            self.bind_generalized_chirho(
+                format!("Data.Kind.{name_chirho}"),
+                KindChirho::StarChirho,
+            );
+        }
+        // A prefix function arrow has the same representation-polymorphic
+        // domains as a syntactic function type. Boxed [] remains Type -> Type.
+        self.bind_generalized_chirho(
+            "->".into(),
+            KindChirho::arrow_n_chirho(
+                [10_010, 10_011].map(|identity_chirho| {
+                    runtime_type_chirho(KindChirho::VarChirho(KindVarChirho(identity_chirho)))
+                }),
+                KindChirho::StarChirho,
+            ),
+        );
         for name_chirho in [
             "Type",
             "Constraint",

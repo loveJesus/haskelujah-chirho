@@ -329,6 +329,28 @@ pub(super) fn unify_kind_chirho(
     span_chirho: SpanChirho,
 ) -> Result<KindSubstChirho, KindErrorChirho> {
     match (k1_chirho, k2_chirho) {
+        (
+            KindChirho::ArrowChirho(argument_chirho, result_chirho),
+            application_chirho @ KindChirho::AppChirho(_, _),
+        )
+        | (
+            application_chirho @ KindChirho::AppChirho(_, _),
+            KindChirho::ArrowChirho(argument_chirho, result_chirho),
+        ) => {
+            let arrow_term_chirho = KindChirho::app_chirho(
+                KindChirho::app_chirho(
+                    KindChirho::ConChirho("->".into()),
+                    argument_chirho.as_ref().clone(),
+                ),
+                result_chirho.as_ref().clone(),
+            );
+            unify_kind_chirho(
+                &arrow_term_chirho,
+                application_chirho,
+                context_chirho,
+                span_chirho,
+            )
+        }
         (KindChirho::StarChirho, KindChirho::AppChirho(fun_chirho, representation_chirho))
         | (KindChirho::AppChirho(fun_chirho, representation_chirho), KindChirho::StarChirho)
             if matches!(fun_chirho.as_ref(), KindChirho::ConChirho(name_chirho) if name_chirho == super::runtime_chirho::TYPE_CHIRHO) =>

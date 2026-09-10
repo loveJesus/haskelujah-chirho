@@ -159,6 +159,18 @@ lists preserve the common element kind instead of flattening to Type.
 Validation scopes undo temporary bindings, and dependent applications interpret
 an already-checked argument without recursively validating it again.
 
+Qualified kinds use the module's declared import aliases before consulting
+builtin contracts; an arbitrary prefix is not stripped. The prefix function
+constructor and arrow syntax both accept appropriate TYPE representations.
+Arrow syntax and constructor-application kind terms unify structurally without
+equating distinct nominal heads. Before an inference group is published,
+unsolved representation and levity holes default to LiftedRep and Lifted;
+source-named kind variables and complete quantified contracts are retained.
+This follows [GHC's representation-defaulting rule](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/type_defaulting.html#kind-based-defaulting).
+The group supplies its named variables once, so this does not scan the growing
+environment on each declaration. This is not complete classifier metadata or
+standalone-kind attachment for type aliases.
+
 This is not complete kind-family or runtime-representation support. The
 type-family reducer still lacks implicit kind indices. An unresolved family application cannot be treated as an arbitrary
 fresh result, nor may hidden indices be replaced by newest-equation precedence.
