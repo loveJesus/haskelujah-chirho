@@ -104,8 +104,8 @@ impl<'a> SignatureOccurrencesChirho<'a> {
                 ..
             } => {
                 self.type_chirho(arg_chirho);
-                if let Some(MultiplicityChirho::MultVarChirho(name_chirho)) = mult_chirho {
-                    self.name_chirho(name_chirho);
+                if let Some(MultiplicityChirho::ExpressionChirho(expression_chirho)) = mult_chirho {
+                    self.type_chirho(expression_chirho);
                 }
                 self.type_chirho(result_chirho);
             }

@@ -21,6 +21,7 @@ struct PreparedKindScopeChirho {
 
 impl KindInferCtxChirho {
     pub(super) fn check_kind_declarations_chirho(&mut self, module_chirho: &ModuleChirho) {
+        self.register_local_promoted_constructor_heads_chirho(module_chirho);
         let graph_chirho = KindDependenciesChirho::new_chirho(module_chirho);
         for names_chirho in &graph_chirho.names_chirho {
             for &name_chirho in names_chirho {

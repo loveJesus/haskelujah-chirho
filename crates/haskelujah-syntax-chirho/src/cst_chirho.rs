@@ -192,6 +192,8 @@ pub enum SyntaxKindChirho {
     // -- Types --
     /// Function type (`a -> b`).
     FunTypeChirho,
+    /// The multiplicity atom after `%`, distinct from either value type.
+    ArrowMultiplicityChirho,
     /// Type application (`Maybe Int`).
     AppTypeChirho,
     /// Parenthesized type (`(Type)`).

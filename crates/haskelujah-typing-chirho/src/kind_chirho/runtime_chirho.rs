@@ -129,9 +129,49 @@ impl KindInferCtxChirho {
 
     pub(super) fn named_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {
         let full_chirho = self.canonical_kind_name_chirho(name_chirho);
+        if self
+            .env_chirho
+            .lookup_binding_chirho(&full_chirho)
+            .is_none()
+            && self
+                .env_chirho
+                .lookup_promoted_binding_chirho(&full_chirho)
+                .is_some()
+        {
+            return self.named_promoted_kind_term_chirho(name_chirho);
+        }
+        self.named_term_in_namespace_chirho(name_chirho, &self.local_kind_decl_names_chirho)
+    }
+
+    pub(super) fn named_promoted_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {
+        let full_chirho = self.canonical_kind_name_chirho(name_chirho);
+        if self
+            .local_promoted_constructor_names_chirho
+            .contains(&full_chirho)
+        {
+            return KindChirho::ConChirho(if full_chirho.contains('.') {
+                full_chirho
+            } else if let Some(module_chirho) = &self.local_kind_module_chirho {
+                format!("{module_chirho}.{full_chirho}")
+            } else {
+                full_chirho
+            });
+        }
+        self.named_term_in_namespace_chirho(
+            name_chirho,
+            &self.local_promoted_constructor_names_chirho,
+        )
+    }
+
+    fn named_term_in_namespace_chirho(
+        &self,
+        name_chirho: &NameChirho,
+        local_names_chirho: &std::collections::HashSet<String>,
+    ) -> KindChirho {
+        let full_chirho = self.canonical_kind_name_chirho(name_chirho);
         let text_chirho = name_chirho.text_chirho();
         let builtin_scope_chirho = if full_chirho == text_chirho {
-            !self.local_kind_decl_names_chirho.contains(text_chirho)
+            !local_names_chirho.contains(text_chirho)
         } else {
             full_chirho
                 .rsplit_once('.')
@@ -213,8 +253,7 @@ impl KindEnvChirho {
         }
         for name_chirho in ["True", "False"] {
             let kind_chirho = builtin_term_chirho("Bool").unwrap();
-            self.bind_runtime_aliases_chirho(name_chirho, kind_chirho.clone());
-            self.bind_promoted_generalized_chirho(name_chirho, kind_chirho);
+            self.bind_runtime_constructor_chirho(name_chirho, kind_chirho);
         }
     }
 
@@ -254,7 +293,7 @@ impl KindEnvChirho {
             "TYPE",
             KindChirho::arrow_chirho(representation_chirho.clone(), KindChirho::StarChirho),
         );
-        self.bind_runtime_aliases_chirho(
+        self.bind_runtime_constructor_chirho(
             "BoxedRep",
             KindChirho::arrow_chirho(levity_chirho.clone(), representation_chirho.clone()),
         );
@@ -310,9 +349,12 @@ impl KindEnvChirho {
         for name_chirho in ["Lifted", "Unlifted"] {
             self.bind_runtime_constructor_chirho(name_chirho, levity_chirho.clone());
         }
+        // These two names are type aliases, unlike the representation data
+        // constructors below, so a same-spelled value does not hide them.
+        for name_chirho in ["LiftedRep", "UnliftedRep"] {
+            self.bind_runtime_aliases_chirho(name_chirho, representation_chirho.clone());
+        }
         for name_chirho in [
-            "LiftedRep",
-            "UnliftedRep",
             "IntRep",
             "WordRep",
             "Int8Rep",
@@ -353,8 +395,13 @@ impl KindEnvChirho {
     }
 
     fn bind_runtime_constructor_chirho(&mut self, name_chirho: &str, kind_chirho: KindChirho) {
-        self.bind_runtime_aliases_chirho(name_chirho, kind_chirho.clone());
-        self.bind_promoted_generalized_chirho(name_chirho, kind_chirho);
+        self.bind_promoted_generalized_chirho(name_chirho, kind_chirho.clone());
+        for module_chirho in ["GHC.Types", "GHC.Prim", "GHC.Exts", "GHC.Internal.Types"] {
+            self.bind_promoted_generalized_chirho(
+                &format!("{module_chirho}.{name_chirho}"),
+                kind_chirho.clone(),
+            );
+        }
     }
 
     fn bind_runtime_aliases_chirho(&mut self, name_chirho: &str, kind_chirho: KindChirho) {

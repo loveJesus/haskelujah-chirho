@@ -328,6 +328,10 @@ impl KindEnvChirho {
         );
     }
 
+    pub(super) fn hide_promoted_chirho(&mut self, name_chirho: &str) {
+        self.promoted_bindings_chirho.remove(name_chirho);
+    }
+
     pub fn bind_chirho(&mut self, name_chirho: String, kind_chirho: KindChirho) {
         self.bind_entry_chirho(name_chirho, KindBindingChirho::MonoChirho(kind_chirho));
     }

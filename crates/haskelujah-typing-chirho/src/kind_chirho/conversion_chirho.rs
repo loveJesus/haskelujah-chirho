@@ -156,7 +156,7 @@ impl KindInferCtxChirho {
         match ty_chirho {
             TypeChirho::ConChirho(name_chirho) => self.named_kind_term_chirho(name_chirho),
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                self.named_kind_term_chirho(name_chirho)
+                self.named_promoted_kind_term_chirho(name_chirho)
             }
             TypeChirho::LitChirho { value_chirho, .. } => {
                 KindChirho::ConChirho(value_chirho.clone())
@@ -248,8 +248,11 @@ impl KindInferCtxChirho {
             }
             TypeChirho::ConChirho(name_chirho) => {
                 let text_chirho = self.canonical_kind_name_chirho(name_chirho);
-                if let Some(binding_chirho) =
-                    self.env_chirho.lookup_binding_chirho(&text_chirho).cloned()
+                if let Some(binding_chirho) = self
+                    .env_chirho
+                    .lookup_binding_chirho(&text_chirho)
+                    .or_else(|| self.env_chirho.lookup_promoted_binding_chirho(&text_chirho))
+                    .cloned()
                 {
                     self.instantiate_binding_chirho(&binding_chirho)
                 } else {
@@ -301,12 +304,21 @@ impl KindInferCtxChirho {
             }
             TypeChirho::FunChirho {
                 arg_chirho,
+                mult_chirho,
                 result_chirho,
                 span_chirho,
-                ..
             } => {
                 let k_a_chirho = self.infer_type_kind_chirho(arg_chirho);
                 let k_b_chirho = self.infer_type_kind_chirho(result_chirho);
+                if let Some(MultiplicityChirho::ExpressionChirho(expression_chirho)) = mult_chirho {
+                    let classifier_chirho = self.infer_type_kind_chirho(expression_chirho);
+                    self.unify_chirho(
+                        &classifier_chirho,
+                        &KindChirho::ConChirho("GHC.Types.Multiplicity".into()),
+                        "arrow multiplicity",
+                        expression_chirho.span_chirho(),
+                    );
+                }
                 self.check_runtime_kind_chirho(&k_a_chirho, "function type argument", *span_chirho);
                 self.check_runtime_kind_chirho(&k_b_chirho, "function type result", *span_chirho);
                 KindChirho::StarChirho
@@ -391,7 +403,7 @@ impl KindInferCtxChirho {
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
                 if let Some(binding_chirho) = self
                     .env_chirho
-                    .lookup_promoted_binding_chirho(&name_chirho.full_name_chirho())
+                    .lookup_promoted_binding_chirho(&self.canonical_kind_name_chirho(name_chirho))
                     .cloned()
                 {
                     self.instantiate_binding_chirho(&binding_chirho)

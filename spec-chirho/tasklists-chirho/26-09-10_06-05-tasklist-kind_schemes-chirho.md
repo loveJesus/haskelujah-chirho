@@ -67,6 +67,24 @@ named, never bypassed by a source-name or corpus-file condition.
 
 ## Resume state
 
+Main stays at121d4f2c,882/938 accept and221/767 reject. Row484 and the builder/
+canonical DB lease remain open. The isolated branch's latest pushed checkpoint
+before the current correction is5fcb76a4. Its sixth diagnostic was885/230 with
+accept+7/-4 versus main: T12045a/T13643/T14010/T22141f are the losses. See the
+tail for the current multiplicity correction and measured focused recovery of
+T22141f; do not reuse an earlier diagnostic as a current binary result.
+
+Multiplicity correction: parser346,typing356,naming136,integration67,canaries7
+green, zero ignored/filtered, actual cargo exits0. Twenty GHC9.14.1/candidate
+pairs have19 verdict agreements and the named existing warning-only linear-use
+mismatch. Fresh CLI SHA256
+`89805de43947c7b30c455eb131de4f4fab846a78cb4688ce9e85fb95fdbc7cc8`.
+The scoped clippy run exits0 with existing warnings (driver34), none in the new
+arrow module or changed kind child modules. An isolated checkpoint and fresh
+full diagnostic follow; full workspace/two-pass landing gates remain owed.
+
+### Historical prototype baseline
+
 Unlanded prototype: explicit Mono/Poly kind bindings, quantified substitution,
 rigid written-kind checking, journaled constructor scopes and shared data/newtype
 checking. The first explicit CLI build succeeded; fresh GHC 9.14.1/main/prototype
@@ -592,7 +610,7 @@ its existing child tests if needed to keep the directory bounded. No new depende
   accepted with explicit PolyKinds/FlexibleInstances because the old guard
   bypasses that head; removing those flags reaches the repaired check. This is
   not a 39/39 claim or complete instance-kind validation.
-- [ ] Freeze this checkpoint and run a fresh full diagnostic; main stays held.
+- [x] Freeze this checkpoint and run a fresh full diagnostic; main stays held.
 
 Evidence under the same scratch root: `standalone-binder-before-chirho.log`,
 `review-boundaries-crates-stack-chirho.log`,
@@ -603,3 +621,80 @@ changed kind child modules. No warning-free or file-size-compliant workspace
 claim: the existing large parser/kind roots remain debt. Dependent abstraction
 is scoped to the declaration, but repeated suffix traversal is not claimed
 linear for arbitrarily long telescopes. That growth boundary remains a follow-up.
+
+### Sixth full diagnostic — 5fcb76a4, still held
+
+Checkpoint pushed and remote-exact. One full pass per axis, wrapper0,
+zero timeouts/unexpected exits, clean HEAD and explicit CLI digest unchanged:
+885/938 accept,230/767 reject. CLI SHA256
+`fbb312dfcb5fccea40374e28f2773c660486f582f589aaf94923e2ac1f700861`.
+The 39 reference pairs were also rerun on this digest (same38 agreements and
+one known instance-guard mismatch). Evidence: `review-boundaries-frozen-pairs-chirho.jsonl`,
+`diagnostic-consumer-chirho.log` and the diagnostic-consumer axis directories.
+
+Against main882/221, accept+7/-4: the seven gains remain unchanged; T13142,
+T15428 and tc167 recover. Remaining losses T12045a/T13643/T14010 plus the new
+T22141f. Reject+15/-6: the fifth diagnostic's gained list loses VisFlag1 and
+VisFlag1_ql; all six lost rejections remain. These verdicts are diagnostic,
+not banked capabilities; per-file rejection-reason arbitration remains owed.
+
+T22141f reports Multiplicity as a function argument at `%'One`/`%'Many`.
+Source inspection finds the multiplicity scanner accepts one unquoted token
+but not a promotion tick, then recursively parses the remainder as a type.
+Next bounded repair: reduce both spellings against GHC, preserve the arrow
+annotation in its own slot, and prove the following declaration still survives.
+Do not remove the classifier contract that exposed the parser defect.
+
+The reduction confirms three valid spellings rejected (quoted, parenthesized,
+and family-applied multiplicity), plus two old wrong accepts (%2 and a Bool-kind
+multiplicity variable). Unquoted One/Many without DataKinds is a separate
+pre-existing wrong accept; the plain probe is retained as a negative, not
+relabeled from our output. The new parser boundary test is demonstrated red.
+
+Placement decision: wrap the multiplicity atom in its own CST child, reuse the
+normal atomic type grammar, and retain nontrivial annotations as an explicit
+AST type expression. Extract arrow lowering into a focused lower child; naming,
+dependency collection, lexical quantification and kind checking visit that
+expression. Keep fixed One/Many conversion in one helper used by both type
+converters. This is syntax/classifier fidelity, not complete linear-use checking,
+multiplicity-family reduction, or TH reification. Checkpoint tag
+`multiplicity-syntax-before-chirho` at5fcb76a4 bounds the reversible correction.
+
+### Multiplicity boundary correction — focused implementation
+
+- [x] Dedicated CST multiplicity child reuses the atomic type grammar. Arrow
+  lowering moved to `lower_chirho/type_arrows_chirho.rs`; argument, annotation
+  and result retain their separate roles. The previously red parser test now
+  retains the quoted/parenthesized annotation's exact source slice and the next
+  declaration. Only bare `%1` is numeric sugar; `%2`/`%(1)` require classification.
+- [x] Replace the unused name-only MultVar carrier with an explicit AST type
+  expression. Naming, signature-binder collection, dependency collection and
+  kind substitution visit it. Arrow classification requires Multiplicity.
+- [x] GHC controls exposed two adjacent authority boundaries before freezing:
+  GHC.Types' interface omitted One/Many members, while seeded builtin constructor
+  kinds could outrank local promoted constructors. Repair the member inventory
+  and preserve separate ordinary/promoted kind lookup. A type alias named One
+  may mean Many; never infer the fixed-linear bit from that alias's spelling.
+  A nullary local enum constructor has its owner's classifier; missing metadata
+  for other constructor shapes remains opaque, not a builtin inherited by name.
+- [x] T22141f checks successfully on the explicit candidate CLI. This is one
+  focused recovery, not yet a new corpus count.
+- [x] Final reference pairs and crate/integration gates:20 pairs,19 agreements,
+  parser346/typing356/naming136/integration67/canaries7, no exclusions and actual
+  exits0. The two new identity sources also produce GHC's independently measured
+  42 through STG,LLVM and Cranelift. Final CLI SHA256 is recorded above.
+- [x] Scoped clippy exits0 with existing warnings (driver34), none in the new
+  arrow module or changed kind child modules; not a warning-free workspace claim.
+- [ ] Commit/push only the isolated checkpoint, then compare a full diagnostic.
+
+The existing linear-use checker emits warnings, not rejecting diagnostics.
+The reference control that duplicates a quoted-One argument still disagrees
+with GHC. Full multiplicity variables/family reduction in internal types,
+unquoted-alias elaboration and TH reification remain outside this correction.
+The AST now retains those expressions for their actual kind/scope checks; this
+does not make the two-valued internal multiplicity model complete.
+
+Evidence is under `/private/tmp/haskelujah-multiplicity-chirho.vhiDs4`:
+`before-chirho.jsonl`, `parser-before-detailed-chirho.log`,
+`after-chirho.jsonl`, `namespace-after-chirho.jsonl`, final pair/gate logs.
+Earlier stages are retained as observations, not overwritten by the repair.

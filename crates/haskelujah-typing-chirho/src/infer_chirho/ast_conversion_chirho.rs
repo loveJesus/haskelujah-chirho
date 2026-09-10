@@ -89,11 +89,12 @@ impl InferCtxChirho {
             } => {
                 let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
                 let r_chirho = self.ast_type_to_ty_chirho(result_chirho, var_map_chirho);
-                let m_chirho = match mult_chirho {
-                    Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho) => {
-                        MultChirho::OneChirho
-                    }
-                    _ => MultChirho::ManyChirho,
+                let m_chirho = if mult_chirho.as_ref().is_some_and(
+                    haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::is_explicit_one_chirho,
+                ) {
+                    MultChirho::OneChirho
+                } else {
+                    MultChirho::ManyChirho
                 };
                 TyChirho::FunChirho(Box::new(a_chirho), Box::new(r_chirho), m_chirho)
             }

@@ -419,8 +419,8 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 ..
             } => {
                 self.walk_type_chirho(arg_chirho, free_var_policy_chirho);
-                if let Some(MultiplicityChirho::MultVarChirho(name_chirho)) = mult_chirho {
-                    self.check_type_variable_use_chirho(name_chirho, free_var_policy_chirho);
+                if let Some(MultiplicityChirho::ExpressionChirho(expression_chirho)) = mult_chirho {
+                    self.walk_type_chirho(expression_chirho, free_var_policy_chirho);
                 }
                 self.walk_type_chirho(result_chirho, free_var_policy_chirho);
             }

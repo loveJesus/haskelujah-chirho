@@ -173,6 +173,47 @@ the same contracts. TYPE Many and swapped vector arguments are errors, not
 unconstrained nominal applications. These checks do not establish native vector
 or unboxed-tuple execution support.
 
+### Arrow multiplicities
+
+The CST stores the atom after `%` inside `ArrowMultiplicityChirho`, not beside
+the arrow's argument and result as another value type. The shared atomic type
+grammar handles promotion ticks, parentheses, variables and parenthesized family
+applications. Lowering retains an `ExpressionChirho` with its source span; only
+bare `%1` and the Unicode linear arrow are fixed syntax sugar. Thus `%2` and
+`%(1)` remain types requiring classification rather than becoming linear sugar.
+
+```mermaid
+flowchart LR
+  MultiplicitySourceChirho[Percent plus multiplicity atom] --> MultiplicityNodeChirho[Dedicated CST child]
+  MultiplicityNodeChirho --> MultiplicityTypeChirho[Retain AST type expression and span]
+  MultiplicityTypeChirho --> MultiplicityScopeChirho[Resolve names and collect lexical binders]
+  MultiplicityTypeChirho --> MultiplicityDependenciesChirho[Visit declaration dependencies]
+  MultiplicityScopeChirho --> MultiplicityKindChirho[Require the Multiplicity classifier]
+  MultiplicityDependenciesChirho --> MultiplicityKindChirho
+  MultiplicityKindChirho --> MultiplicityConsumerChirho[Preserve fixed One syntax in existing consumers]
+```
+
+Ordinary spelling uses the type namespace first and only then the promoted
+constructor namespace; explicit promotion uses the latter directly. Builtin
+constructor classifier rows are not ordinary type bindings. A local constructor
+displaces its same-spelled builtin row in the promoted namespace, independently
+of a same-spelled type alias. Parameter-free nullary ordinary/record constructors
+have a complete result classifier directly from their owner; other local forms
+retain the explicit missing-metadata boundary rather than inheriting the builtin.
+Qualification follows source import aliases. GHC.Types' Multiplicity interface
+declares One/Many as members, so unquoted promotion still requires DataKinds.
+
+Both type converters and the existing linearity consumer share recognition of
+the fixed `%1`/quoted-One syntax (including parentheses). Unquoted aliases are
+not assigned One from their spelling. Kind substitution visits annotation
+expressions, but full multiplicity-term elaboration/reduction and TH reification
+are not implemented. The current internal type representation still has only
+One/Many; variable and family annotations are not retained there as symbolic
+multiplicities. The existing linearity pass reports violations as warnings, not
+GHC errors. A duplicated quoted-One parameter is therefore still a recorded
+wrong acceptance, not a passing linearity claim. See the
+[GHC 9.14.1 linear-type contract](https://downloads.haskell.org/ghc/9.14.1/docs/users_guide/exts/linear_types.html).
+
 Qualified kinds use the module's declared import aliases before consulting
 builtin contracts; an arbitrary prefix is not stripped. The prefix function
 constructor and arrow syntax both accept appropriate TYPE representations.

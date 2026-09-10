@@ -2403,20 +2403,19 @@ impl<'src> ParserChirho<'src> {
             return;
         }
 
-        // Check for %1 -> or %Many -> or %m -> (multiplicity annotation — LinearTypes)
+        // Keep the annotation separate from both value types, using the same
+        // atom grammar for variables, promotions and parenthesized applications.
+        // Workflow: language-features-chirho/declaration-kinds-chirho.
         if self.at_varsym_chirho("%") {
             self.builder_chirho
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
             self.bump_chirho(); // %
             self.eat_trivia_chirho();
-            // Consume multiplicity: integer 1, conid Many/One, or varid (poly)
-            if self.at_chirho(RawTokenKindChirho::IntLitChirho)
-                || self.at_chirho(RawTokenKindChirho::ConIdChirho)
-                || self.at_chirho(RawTokenKindChirho::VarIdChirho)
-            {
-                self.bump_chirho(); // multiplicity token
-                self.eat_trivia_chirho();
-            }
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ArrowMultiplicityChirho);
+            self.parse_atype_chirho();
+            self.builder_chirho.finish_node_chirho();
+            self.eat_trivia_chirho();
             // Expect ->
             if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
                 self.bump_chirho(); // ->

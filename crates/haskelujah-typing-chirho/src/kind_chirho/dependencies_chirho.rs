@@ -5,6 +5,7 @@
 
 use super::{AstKindChirho, ConstraintChirho, DeclChirho, ModuleChirho, TyVarChirho, TypeChirho};
 use haskelujah_ast_chirho::decl_chirho::ConDeclChirho;
+use haskelujah_ast_chirho::ty_chirho::MultiplicityChirho;
 use std::collections::{HashMap, HashSet};
 
 pub(super) struct KindDependenciesChirho<'source_chirho> {
@@ -216,10 +217,14 @@ fn type_refs_chirho(ty_chirho: &TypeChirho, refs_chirho: &mut HashSet<String>) {
         }
         TypeChirho::FunChirho {
             arg_chirho,
+            mult_chirho,
             result_chirho,
             ..
         } => {
             type_refs_chirho(arg_chirho, refs_chirho);
+            if let Some(MultiplicityChirho::ExpressionChirho(expression_chirho)) = mult_chirho {
+                type_refs_chirho(expression_chirho, refs_chirho);
+            }
             type_refs_chirho(result_chirho, refs_chirho);
         }
         TypeChirho::ForallChirho {

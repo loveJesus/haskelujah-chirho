@@ -22,7 +22,7 @@ use haskelujah_ast_chirho::decl_chirho::{
     AstKindChirho, DataKindSigChirho, DeclChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
+use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, MultiplicityChirho, TypeChirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -90,6 +90,7 @@ struct KindInferCtxChirho {
     /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
     kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
     local_kind_decl_names_chirho: std::collections::HashSet<String>,
+    local_promoted_constructor_names_chirho: std::collections::HashSet<String>,
     source_kind_qualifiers_chirho: HashMap<String, Option<String>>,
     local_kind_module_chirho: Option<String>,
     type_kind_synonyms_chirho: HashMap<String, KindTypeSynonymChirho>,
@@ -121,6 +122,7 @@ impl KindInferCtxChirho {
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             kind_var_cache_chirho: std::collections::HashMap::new(),
             local_kind_decl_names_chirho: std::collections::HashSet::new(),
+            local_promoted_constructor_names_chirho: std::collections::HashSet::new(),
             source_kind_qualifiers_chirho: HashMap::new(),
             local_kind_module_chirho: None,
             type_kind_synonyms_chirho: HashMap::new(),
@@ -255,7 +257,20 @@ impl KindInferCtxChirho {
                     param_chirho,
                     arg_chirho,
                 )),
-                mult_chirho: mult_chirho.clone(),
+                mult_chirho: mult_chirho.as_ref().map(|multiplicity_chirho| {
+                    match multiplicity_chirho {
+                        MultiplicityChirho::ExpressionChirho(expression_chirho) => {
+                            MultiplicityChirho::ExpressionChirho(Box::new(
+                                Self::substitute_type_kind_synonym_param_chirho(
+                                    expression_chirho,
+                                    param_chirho,
+                                    arg_chirho,
+                                ),
+                            ))
+                        }
+                        _ => multiplicity_chirho.clone(),
+                    }
+                }),
                 result_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
                     result_chirho,
                     param_chirho,

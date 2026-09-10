@@ -2,10 +2,78 @@
 
 //! One head/recursion/constructor/publication lifecycle for data and newtype.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
-use super::{KindInferCtxChirho, TyVarChirho};
+use super::{DeclChirho, KindChirho, KindInferCtxChirho, ModuleChirho, TyVarChirho};
 use haskelujah_ast_chirho::decl_chirho::ConDeclChirho;
 
 impl KindInferCtxChirho {
+    /// A local constructor owns its promoted name even when its full promoted
+    /// contract is not represented. Never inherit a same-spelled builtin row.
+    /// Nullary, parameter-free ordinary constructors have a complete classifier
+    /// available directly from their owner; other forms retain the opaque-use
+    /// boundary until their binder/field metadata can be elaborated faithfully.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn register_local_promoted_constructor_heads_chirho(
+        &mut self,
+        module_chirho: &ModuleChirho,
+    ) {
+        for declaration_chirho in &module_chirho.decls_chirho {
+            let (owner_chirho, parameters_chirho, constructors_chirho) = match declaration_chirho {
+                DeclChirho::DataDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    constructors_chirho,
+                    ..
+                } => (
+                    name_chirho,
+                    type_vars_chirho,
+                    constructors_chirho.as_slice(),
+                ),
+                DeclChirho::NewtypeDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    constructor_chirho,
+                    ..
+                } => (
+                    name_chirho,
+                    type_vars_chirho,
+                    std::slice::from_ref(constructor_chirho),
+                ),
+                _ => continue,
+            };
+            for constructor_chirho in constructors_chirho {
+                let (name_chirho, nullary_chirho) = match constructor_chirho {
+                    ConDeclChirho::OrdinaryChirho {
+                        name_chirho,
+                        fields_chirho,
+                        ..
+                    } => (name_chirho, fields_chirho.is_empty()),
+                    ConDeclChirho::RecordChirho {
+                        name_chirho,
+                        fields_chirho,
+                        ..
+                    } => (name_chirho, fields_chirho.is_empty()),
+                    ConDeclChirho::GadtChirho { name_chirho, .. } => (name_chirho, false),
+                };
+                let qualified_chirho = format!(
+                    "{}.{}",
+                    module_chirho.name_chirho.full_name_chirho(),
+                    name_chirho.text_chirho(),
+                );
+                for spelling_chirho in [name_chirho.text_chirho(), qualified_chirho.as_str()] {
+                    self.local_promoted_constructor_names_chirho
+                        .insert(spelling_chirho.to_owned());
+                    self.env_chirho.hide_promoted_chirho(spelling_chirho);
+                    if nullary_chirho && parameters_chirho.is_empty() {
+                        self.env_chirho.bind_promoted_generalized_chirho(
+                            spelling_chirho,
+                            KindChirho::ConChirho(owner_chirho.full_name_chirho()),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     pub(super) fn check_data_constructors_chirho(
         &mut self,
         type_vars_chirho: &[TyVarChirho],

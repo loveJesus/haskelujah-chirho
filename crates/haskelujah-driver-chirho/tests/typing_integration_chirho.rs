@@ -6,6 +6,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 #[path = "typing_integration_chirho/kind_terms_chirho.rs"]
 mod kind_terms_chirho;
+#[path = "typing_integration_chirho/multiplicities_chirho.rs"]
+mod multiplicities_chirho;
 
 #[test]
 fn promoted_opaque_occurrences_keep_independent_kinds_and_check_the_body_chirho() {

@@ -2131,10 +2131,9 @@ fn check_module_linearity_chirho(
                         result_chirho,
                         ..
                     } => {
-                        let is_linear_chirho = match mult_chirho {
-                            Some(MultiplicityChirho::OneChirho) => true,
-                            _ => false,
-                        };
+                        let is_linear_chirho = mult_chirho
+                            .as_ref()
+                            .is_some_and(MultiplicityChirho::is_explicit_one_chirho);
                         linear_positions_chirho.push(is_linear_chirho);
                         ty_cursor_chirho = result_chirho;
                     }

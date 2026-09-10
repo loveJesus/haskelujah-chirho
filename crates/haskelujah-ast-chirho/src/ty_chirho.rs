@@ -15,8 +15,33 @@ pub enum MultiplicityChirho {
     OneChirho,
     /// Unrestricted: any number of uses (`%Many` or plain `->` without annotation).
     ManyChirho,
-    /// Multiplicity variable (`%m`): polymorphic over linearity.
-    MultVarChirho(NameChirho),
+    /// Written multiplicity type, including variables and family applications.
+    /// Preserve its name and span for lexical scope and kind validation.
+    ExpressionChirho(Box<TypeChirho>),
+}
+
+impl MultiplicityChirho {
+    /// Recognize fixed linear syntax after name/kind validation. Unquoted
+    /// aliases and family applications require elaboration, not a spelling guess.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub fn is_explicit_one_chirho(&self) -> bool {
+        match self {
+            Self::OneChirho => true,
+            Self::ManyChirho => false,
+            Self::ExpressionChirho(expression_chirho) => {
+                let mut inner_chirho = expression_chirho.as_ref();
+                while let TypeChirho::ParenChirho {
+                    inner_chirho: next_chirho,
+                    ..
+                } = inner_chirho
+                {
+                    inner_chirho = next_chirho;
+                }
+                matches!(inner_chirho, TypeChirho::PromotedConChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "One")
+            }
+        }
+    }
 }
 
 /// A Haskell type expression.

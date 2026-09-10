@@ -7238,11 +7238,12 @@ fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) 
             result_chirho,
             ..
         } => {
-            let m_chirho = match mult_chirho {
-                Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho) => {
-                    MultChirho::OneChirho
-                }
-                _ => MultChirho::ManyChirho,
+            let m_chirho = if mult_chirho.as_ref().is_some_and(
+                haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::is_explicit_one_chirho,
+            ) {
+                MultChirho::OneChirho
+            } else {
+                MultChirho::ManyChirho
             };
             TyChirho::FunChirho(
                 Box::new(ast_type_to_syn_rhs_chirho(arg_chirho, params_chirho)),
