@@ -830,10 +830,7 @@ mod tests_chirho {
     /// `forall a. a -> a`
     fn mk_poly_id_chirho() -> TypeChirho {
         TypeChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho {
-                name_chirho: mk_name_chirho("a"),
-                kind_annotation_chirho: None,
-            }],
+            vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             body_chirho: Box::new(TypeChirho::FunChirho {
                 arg_chirho: Box::new(mk_var_chirho("a")),
                 mult_chirho: None,
@@ -926,10 +923,7 @@ mod tests_chirho {
         };
         let decl_chirho = DeclChirho::TypeAliasDeclChirho {
             name_chirho: mk_name_chirho("Constrd"),
-            type_vars_chirho: vec![TyVarChirho {
-                name_chirho: mk_name_chirho("a"),
-                kind_annotation_chirho: None,
-            }],
+            type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             rhs_chirho,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -987,10 +981,7 @@ mod tests_chirho {
         let decl_chirho = DeclChirho::ClassDeclChirho {
             context_chirho: vec![],
             name_chirho: mk_name_chirho("C"),
-            type_vars_chirho: vec![TyVarChirho {
-                name_chirho: mk_name_chirho("a"),
-                kind_annotation_chirho: None,
-            }],
+            type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             methods_chirho: vec![ClassMethodChirho {
                 name_chirho: mk_name_chirho("m"),
                 ty_chirho: method_ty_chirho,
@@ -1074,10 +1065,7 @@ mod tests_chirho {
     fn quantified_constraint_needs_its_extension_chirho() {
         // `f :: (forall a. Eq a) => Int` — GHC T9196.
         let quantified_chirho = ConstraintChirho::QuantifiedChirho {
-            vars_chirho: vec![TyVarChirho {
-                name_chirho: mk_name_chirho("a"),
-                kind_annotation_chirho: None,
-            }],
+            vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             context_chirho: vec![],
             body_chirho: Box::new(ConstraintChirho::ClassChirho {
                 class_chirho: mk_name_chirho("Eq"),
@@ -1258,10 +1246,7 @@ mod tests_edition_chirho {
     /// `f :: (forall a. a -> a) -> Int` under the given extensions.
     fn rank_two_is_accepted_with_chirho(extensions_chirho: Vec<String>) -> bool {
         let poly_chirho = TypeChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho {
-                name_chirho: mk_name_chirho("a"),
-                kind_annotation_chirho: None,
-            }],
+            vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             body_chirho: Box::new(TypeChirho::FunChirho {
                 arg_chirho: Box::new(TypeChirho::VarChirho(mk_name_chirho("a"))),
                 mult_chirho: None,

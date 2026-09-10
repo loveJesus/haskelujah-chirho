@@ -130,3 +130,87 @@ Pre-full-gate prediction: T11811 is one confirmed accept candidate; the reject
 controls are reduced examples, not a measured corpus gain estimate. Every full
 set delta will be named and checked against its source/GHC reason. Full workspace,
 four frozen corpus passes and main landing are still pending.
+
+## First frozen gate: not landable; binder representation extension
+
+Checkpoint 63caa4cf, pushed, CLI SHA256
+30b270b6773c8f191ce8781f7cff03d7f211bc3af429379d062036150f4dedb1:
+two identical accept passes give 879/938, gaining T11811/T20873 but losing
+T22560a/T22762/T23514c. Two identical reject passes give 225/767: gains
+T22560_fail_b/T22560_fail_c/VisFlag1/VisFlag1_ql, loss tcfail225. Zero
+timeouts/unexpected exits; per-file reasons remain under review. These are trial
+results, not superseding the main 880/222 artifacts. Full workspace is deferred
+until the three false accept-axis regressions are repaired.
+
+The regression reductions identify two erased distinctions: data/newtype `@`
+head binders are currently retained as ordinary positional binders, while the
+kind interpreter treats visible `forall a ->` as invisible `forall a.`. Correct
+reconciliation exposes that wrong arity. Weakening reconciliation would restore
+the old false acceptances in the five independently rejected controls.
+
+Brick-1 extension, local checkpoint declaration-binders-before-chirho at
+63caa4cf: retain head binder visibility in the AST and parser; keep all binders
+in lexical maps, but use only visible parameters in kind arrows, constructor
+result applications and derived instance heads. Interpret required-forall kinds
+with their visible argument arrows. Audit consumers before editing; visibility
+is not inferred/specified specificity. A shared binder API and small focused
+helpers avoid new long arms in the already oversized roots. No extra dependency,
+no change to deferred data-family/type-data/GADT shape decisions. Confidence is
+high in the reductions, medium in integration; correction cost remains the
+isolated owned branch and a finite consumer sweep. The five negatives, three
+upstream regressions, exact-output controls and full corpus gates must all hold
+before main is eligible to move.
+
+Binder extension focused evidence: fresh GHC 9.14.1 accepts all three regression
+files, both gains and T17705. Two same-source field/type controls execute under
+GHC; two exact Int-to-Bool field mutations reject GHC-83865. Fresh current CLI
+recovers all three regressions and keeps T14048a. The trial's extra VisFlag1,
+VisFlag1_ql and duplicate-binder rejections disappear again; none were banked.
+The older required-forall kind unit explicitly asserted erasure of a visible
+parameter; it is corrected to the visible-arity contract, supported by the GHC
+execution control. Term-type kind inference is deliberately unchanged.
+
+Found on the way, NOT FIXED/NOT IGNORED: the strengthened Eq/Show execution probe
+exposes an existing generic record deriving defect even after removing both
+`@jChirho` binders (OrdinaryDataBindersChirho.hs in scratch). Eq evaluation fails
+with missing STG binding `==` for CoreId 19. With equality calls removed, GHC prints
+`MkBoxChirho {boxValueChirho = 42}` and `MkWrapperChirho {wrapperValueChirho = 7}`;
+ours prints `MkBoxChirho 42` and `7`. The new binder control therefore separates
+actual field read-back on three engines (GHC oracle 42/7) from derived-instance
+typechecking; it does not substitute our formatting as an oracle or claim Eq/Show
+execution. The failing full probe is retained in scratch for a subsequent
+execution-correctness unit. No previously committed test is removed or waived.
+
+Read-only consumer audit: naming retains all lexical binders; local constructor
+and selector result applications share the visible-parameter helper; inline and
+standalone deriving filter once at four entry boundaries, including the last
+visible Functor parameter. Interfaces contain names/members only, and core uses
+term fields only. Remaining fidelity limits are explicit: TH binder reification
+has no visibility representation; HM schemes lack kind-dependent quantifier
+metadata, so exact constructor/selector visible-type-application ordering is not
+claimed; cross-module interfaces have no authoritative kind/visibility contract.
+Parser wildcard/unreadable-kind matrix cases are recovery/representation fixtures,
+not a claim that every such synthetic declaration is accepted by GHC.
+
+Further explicit boundary control: GHC accepts an implicit kind quantifier
+(`type Box :: k -> Type; data Box @j a`), and rejects
+`type Box :: forall k -> Type -> Type; data Box @j a b` with GHC-57916.
+The latter can have the same visible arrow count and is still wrongly accepted
+here: full matching of invisible binders to specified forall binders is not
+implemented by arrow reconciliation. Consequently T22560_fail_b's current
+rejection is a generic declaration-kind arity mismatch, not a claim of complete
+GHC-57916 support. tcfail225 needs rigid GHC-25897 kind checking; its previous
+rejection came from misattributing its inline tail as the complete kind.
+
+Binder-stage final focused gates: parser333, naming134, typing344, driver
+typing-integration33 and canaries7; all actual Cargo exit zero, no failed,
+ignored or filtered tests. The three-engine new controls execute field reads
+42/7 and the required-kind parameter case19; the prior combined contract case
+42/7/11/13 remains green. Fresh GHC reference records are in
+binder-references-chirho.jsonl, with the additional field-read reduction rerun
+under GHC separately. Main0093dd40 independently reproduces the ordinary Eq
+failure, confirming it is not caused by this branch. Five-crate all-target
+clippy exits zero with685 warning messages, no changed-primary-span warning;
+the wider repo is not zero-warning or size-compliant. Source and oracle
+checkpoint only: the new frozen full workspace and four corpus passes remain
+owed, and main remains0093dd40.

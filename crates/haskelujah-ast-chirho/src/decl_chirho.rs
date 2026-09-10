@@ -3,6 +3,7 @@
 
 //! # Top-level declarations
 
+use std::borrow::Cow;
 use std::ops::Deref;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -41,6 +42,16 @@ pub struct TypeFamilyEquationChirho {
     pub span_chirho: SpanChirho,
 }
 
+/// Whether a declaration-head binder consumes an ordinary type argument.
+/// This is not the specified/inferred distinction on invisible forall binders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TyVarVisibilityChirho {
+    /// An ordinary head parameter, written `a` or `(a :: k)`.
+    VisibleChirho,
+    /// A scoped invisible parameter, written `@a` or `@(a :: k)`.
+    InvisibleChirho,
+}
+
 /// A type variable, optionally annotated with a kind signature.
 ///
 /// Without KindSignatures: `data Foo a = ...` → `TyVarChirho { name: a, kind: None }`
@@ -51,6 +62,8 @@ pub struct TyVarChirho {
     pub name_chirho: NameChirho,
     /// Optional kind annotation supplied in source.
     pub kind_annotation_chirho: Option<AstKindChirho>,
+    /// Head binders remain in lexical scope even when they are invisible.
+    pub visibility_chirho: TyVarVisibilityChirho,
 }
 
 impl TyVarChirho {
@@ -59,6 +72,7 @@ impl TyVarChirho {
         Self {
             name_chirho,
             kind_annotation_chirho: None,
+            visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
         }
     }
 
@@ -67,6 +81,28 @@ impl TyVarChirho {
         Self {
             name_chirho,
             kind_annotation_chirho: Some(kind_chirho),
+            visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
+        }
+    }
+
+    /// Whether this binder belongs in an ordinary type-constructor application.
+    pub fn is_visible_chirho(&self) -> bool {
+        self.visibility_chirho == TyVarVisibilityChirho::VisibleChirho
+    }
+
+    /// Adapt parameter-only consumers without copying ordinary declarations.
+    /// Lexical consumers must retain the original complete binder sequence.
+    pub fn visible_binders_chirho(binders_chirho: &[Self]) -> Cow<'_, [Self]> {
+        if binders_chirho.iter().all(Self::is_visible_chirho) {
+            Cow::Borrowed(binders_chirho)
+        } else {
+            Cow::Owned(
+                binders_chirho
+                    .iter()
+                    .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                    .cloned()
+                    .collect(),
+            )
         }
     }
 }

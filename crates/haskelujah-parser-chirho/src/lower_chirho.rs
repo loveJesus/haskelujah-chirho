@@ -2010,39 +2010,12 @@ impl LowerCtxChirho {
                             && name_chirho.is_none()
                         {
                             name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
-                        } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
-                            type_vars_chirho
-                                .push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
-                        } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
-                            // KindSignatures: try to parse (varId :: kind)
-                            if let Some((tv_chirho, skip_chirho)) = self
-                                .try_parse_kind_annotated_tyvar_chirho(&children_chirho, idx_chirho)
-                            {
-                                type_vars_chirho.push(tv_chirho);
-                                idx_chirho += skip_chirho;
-                                continue;
-                            }
-                            // The binder's kind is one we cannot represent yet
-                            // (`[Symbol]`, `[[a]]`, `i ~> j`, `forall k. k -> Type`).
-                            // Bind the variable with no kind and skip the WHOLE
-                            // group: walking into it would misread the binder's
-                            // `::` as the declaration's own return kind and would
-                            // bind the kind's own type variables as extra binders,
-                            // inflating the declaration's arity.
-                            if let Some((name_tok_chirho, name_idx_chirho, close_chirho)) =
-                                Self::unreadable_kind_binder_chirho(&children_chirho, idx_chirho)
-                            {
-                                let ns_chirho = self.span_chirho(
-                                    children_chirho[name_idx_chirho].start_chirho,
-                                    children_chirho[name_idx_chirho].end_chirho,
-                                );
-                                type_vars_chirho.push(
-                                    self.name_from_token_chirho(name_tok_chirho, ns_chirho)
-                                        .into(),
-                                );
-                                idx_chirho = close_chirho + 1;
-                                continue;
-                            }
+                        } else if let Some((binder_chirho, consumed_chirho)) =
+                            self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
+                        {
+                            type_vars_chirho.push(binder_chirho);
+                            idx_chirho += consumed_chirho;
+                            continue;
                         }
                     }
                 }
@@ -2661,17 +2634,12 @@ impl LowerCtxChirho {
                             && name_chirho.is_none()
                         {
                             name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
-                        } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
-                            type_vars_chirho
-                                .push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
-                        } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
-                            if let Some((tv_chirho, skip_chirho)) = self
-                                .try_parse_kind_annotated_tyvar_chirho(&children_chirho, idx_chirho)
-                            {
-                                type_vars_chirho.push(tv_chirho);
-                                idx_chirho += skip_chirho;
-                                continue;
-                            }
+                        } else if let Some((binder_chirho, consumed_chirho)) =
+                            self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
+                        {
+                            type_vars_chirho.push(binder_chirho);
+                            idx_chirho += consumed_chirho;
+                            continue;
                         }
                     }
                 }

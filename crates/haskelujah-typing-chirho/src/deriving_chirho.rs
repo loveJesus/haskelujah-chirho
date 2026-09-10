@@ -79,6 +79,8 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                 span_chirho,
                 ..
             } => {
+                let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
+                let type_vars_chirho = visible_vars_chirho.as_ref();
                 for class_chirho in deriving_chirho {
                     match class_chirho.text_chirho() {
                         "Eq" => {
@@ -221,6 +223,8 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                 ..
             } => {
                 let cons_chirho = vec![constructor_chirho.clone()];
+                let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
+                let type_vars_chirho = visible_vars_chirho.as_ref();
                 for class_chirho in deriving_chirho {
                     match class_chirho.text_chirho() {
                         "Eq" => {
@@ -413,10 +417,11 @@ fn derive_standalone_for_type_chirho(
                 constructors_chirho,
                 ..
             } if name_chirho.text_chirho() == target_chirho => {
+                let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
                 derive_class_for_data_chirho(
                     &class_text_chirho,
                     name_chirho,
-                    type_vars_chirho,
+                    visible_vars_chirho.as_ref(),
                     constructors_chirho,
                     span_chirho,
                     instances_chirho,
@@ -431,10 +436,11 @@ fn derive_standalone_for_type_chirho(
                 ..
             } if name_chirho.text_chirho() == target_chirho => {
                 let cons_chirho = vec![constructor_chirho.clone()];
+                let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
                 derive_class_for_data_chirho(
                     &class_text_chirho,
                     name_chirho,
-                    type_vars_chirho,
+                    visible_vars_chirho.as_ref(),
                     &cons_chirho,
                     span_chirho,
                     instances_chirho,

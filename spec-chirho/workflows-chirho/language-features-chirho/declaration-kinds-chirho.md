@@ -14,13 +14,16 @@ flowchart TD
   LowerChirho --> HeadNamesChirho[Bind head variables then resolve inline result]
   CompleteNamesChirho --> CompleteKindChirho[Convert complete kind with independent kind-name cache]
   HeadNamesChirho --> HeadKindsChirho[Convert parameter kinds and inline result in one head scope]
-  HeadKindsChirho --> ComposeChirho[Prepend parameter kinds to written result or Type]
+  HeadKindsChirho --> ComposeChirho[Prepend visible parameter kinds to written result or Type]
   CompleteKindChirho --> ReconcileChirho[Unify complete and composed kinds when both apply]
   ComposeChirho --> ReconcileChirho
   ReconcileChirho --> FieldsChirho[Check constructor fields with head variables still in scope]
   LowerChirho --> ConstraintChirho[Reject written Constraint return kind on either contract]
   FieldsChirho --> ResultChirho[Kind environment and source diagnostics]
   ConstraintChirho --> ResultChirho
+  LowerChirho --> VisibilityChirho[Keep every head binder and its visibility]
+  VisibilityChirho --> SchemesChirho[Open all binders but apply visible parameters in constructor and selector types]
+  VisibilityChirho --> DerivingChirho[Visible parameters form derived instance heads]
 ```
 
 The standalone conversion swaps the kind-name cache instead of cloning the
@@ -35,6 +38,21 @@ rejects `type T :: Type -> Type; data T where MkT :: T Int`: a missing head
 argument is not supplied implicitly by that complete signature. Conversely,
 `data T :: Type -> Type where ...` has a written result arrow and zero head
 parameters, so its arrow is retained. Complete kinds are never prefixed twice.
+
+Declaration-head `@a` binds a lexical variable without consuming an ordinary
+type argument. `TyVarVisibilityChirho` preserves that distinction; shared parser
+group handling prevents annotation tokens from becoming extra parameters. Kind
+composition and constructor/selector result types apply only visible parameters,
+while naming and field conversion keep every binder in scope. Deriving filters
+at its entry boundaries, borrowing ordinary binder slices and copying only a
+slice that actually contains invisible binders. This is linear in the head, not
+in the growing module environment.
+
+When interpreting source as a kind, `forall a ->` retains a visible argument
+classified by the binder's kind; `forall a.` does not. This differs from inferring
+the kind of a quantified term type, where both forms have the body's kind.
+See GHC 9.14.1's [type-declaration binders](https://downloads.haskell.org/ghc/9.14.1/docs/users_guide/exts/type_abstractions.html#invisible-binders-in-type-declarations)
+and [required arguments](https://downloads.haskell.org/ghc/9.14.1/docs/users_guide/exts/required_type_arguments.html).
 
 GHC-55233 is checked on both written contracts with one diagnostic, independently
 of the existing Type/Constraint unification compatibility. Binder annotations
@@ -57,3 +75,7 @@ arbitrary promoted/named kinds, imported authoritative kind metadata, and the
 separate data-family/type-data/refined-GADT-result AST decisions.
 Symbolic standalone signatures, attachment to non-data/newtype declarations,
 and duplicate/orphan signature diagnostics remain separate parser limitations.
+The representation repair is not full TypeAbstractions checking: inferred versus
+specified binder matching, dependent constructor/selector quantifier metadata,
+TH reification visibility, and authoritative cross-module kind schemes remain
+unimplemented. The tasklist keeps independently reproduced counterexamples.

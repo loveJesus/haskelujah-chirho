@@ -20,6 +20,30 @@ fn var_chirho(text_chirho: &str) -> TypeChirho {
     TypeChirho::VarChirho(name_chirho(text_chirho))
 }
 
+#[test]
+fn data_head_keeps_invisible_binders_lexical_and_applies_visible_parameters_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho;
+    let mut invisible_chirho = AstTyVarChirho::plain_chirho(name_chirho("jChirho"));
+    invisible_chirho.visibility_chirho = TyVarVisibilityChirho::InvisibleChirho;
+    let visible_chirho = AstTyVarChirho::plain_chirho(name_chirho("aChirho"));
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let (result_chirho, mut map_chirho) =
+        context_chirho.data_head_type_chirho("BoxChirho", &[invisible_chirho, visible_chirho]);
+    assert_eq!(map_chirho.len(), 2);
+    assert_eq!(
+        result_chirho,
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("BoxChirho".into())),
+            Box::new(TyChirho::VarChirho(map_chirho["aChirho"]))
+        )
+    );
+    let invisible_id_chirho = map_chirho["jChirho"];
+    assert_eq!(
+        context_chirho.ast_type_to_ty_chirho(&var_chirho("jChirho"), &mut map_chirho),
+        TyChirho::VarChirho(invisible_id_chirho)
+    );
+}
+
 fn tuple_chirho(elements_chirho: Vec<TypeChirho>) -> TypeChirho {
     TypeChirho::TupleChirho {
         elements_chirho,

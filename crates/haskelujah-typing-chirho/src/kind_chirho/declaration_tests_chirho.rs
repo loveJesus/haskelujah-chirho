@@ -28,6 +28,76 @@ fn context_chirho() -> KindInferCtxChirho {
 }
 
 #[test]
+fn invisible_head_binder_is_lexical_but_not_a_visible_kind_arrow_chirho() {
+    let mut ctx_chirho = context_chirho();
+    let mut invisible_chirho =
+        TyVarChirho::annotated_chirho(name_chirho("kChirho"), AstKindChirho::StarChirho);
+    invisible_chirho.visibility_chirho =
+        haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::InvisibleChirho;
+    let visible_chirho =
+        TyVarChirho::annotated_chirho(name_chirho("aChirho"), AstKindChirho::StarChirho);
+    ctx_chirho.infer_data_decl_kind_chirho(
+        "BoxChirho",
+        &[invisible_chirho, visible_chirho],
+        None,
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(ctx_chirho.diagnostics_chirho.is_empty_chirho());
+    assert_eq!(
+        ctx_chirho.env_chirho.lookup_chirho("kChirho"),
+        Some(&KindChirho::StarChirho)
+    );
+    assert_eq!(
+        ctx_chirho.env_chirho.lookup_chirho("BoxChirho"),
+        Some(&KindChirho::arrow_chirho(
+            KindChirho::StarChirho,
+            KindChirho::StarChirho
+        ))
+    );
+}
+
+#[test]
+fn required_forall_kind_consumes_arguments_but_a_forall_type_does_not_chirho() {
+    let binder_chirho =
+        TyVarChirho::annotated_chirho(name_chirho("aChirho"), AstKindChirho::StarChirho);
+    let invisible_chirho = TypeChirho::ForallChirho {
+        vars_chirho: vec![binder_chirho.clone()],
+        body_chirho: Box::new(type_chirho()),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let visible_chirho = TypeChirho::RequiredForallChirho {
+        vars_chirho: vec![binder_chirho],
+        body_chirho: Box::new(type_chirho()),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let mut ctx_chirho = context_chirho();
+    assert_eq!(
+        ctx_chirho.type_to_kind_chirho(&invisible_chirho),
+        KindChirho::StarChirho
+    );
+    assert_eq!(
+        ctx_chirho.type_to_kind_chirho(&visible_chirho),
+        KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+    );
+    let term_type_chirho = TypeChirho::RequiredForallChirho {
+        vars_chirho: vec![TyVarChirho::annotated_chirho(
+            name_chirho("aChirho"),
+            AstKindChirho::StarChirho,
+        )],
+        body_chirho: Box::new(arrow_chirho(
+            TypeChirho::VarChirho(name_chirho("aChirho")),
+            TypeChirho::VarChirho(name_chirho("aChirho")),
+        )),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    assert_eq!(
+        ctx_chirho.infer_type_kind_chirho(&term_type_chirho),
+        KindChirho::StarChirho
+    );
+    assert!(ctx_chirho.env_chirho.lookup_chirho("aChirho").is_none());
+}
+
+#[test]
 fn result_kind_prefix_retains_shared_head_kind_identity_chirho() {
     let mut ctx_chirho = context_chirho();
     let params_chirho = ["aChirho", "bChirho"].map(|text_chirho| {

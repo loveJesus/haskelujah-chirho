@@ -491,6 +491,103 @@ fn standalone_kind_contracts_reject_mismatched_heads_and_tails_chirho() {
     }
 }
 
+const INVISIBLE_DATA_BINDERS_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE TypeAbstractions, StandaloneKindSignatures, PolyKinds #-}
+module Main where
+import Data.Kind (Type)
+type BoxChirho :: forall kChirho. Type -> Type
+data BoxChirho @jChirho aChirho = MkBoxChirho { boxValueChirho :: aChirho } deriving (Eq, Show)
+type WrapperChirho :: forall kChirho. Type -> Type
+newtype WrapperChirho @jChirho aChirho = MkWrapperChirho { wrapperValueChirho :: aChirho } deriving (Eq, Show)
+boxChirho :: BoxChirho Int
+boxChirho = MkBoxChirho 42
+wrapperChirho :: WrapperChirho Int
+wrapperChirho = MkWrapperChirho 7
+main :: IO ()
+main = do
+  print (boxValueChirho boxChirho)
+  print (wrapperValueChirho wrapperChirho)
+  print (boxChirho == MkBoxChirho 42)
+  print (wrapperChirho == MkWrapperChirho 7)
+  print boxChirho
+  print wrapperChirho
+"#;
+
+#[test]
+fn invisible_data_heads_and_record_fields_execute_on_every_engine_chirho() {
+    // The field-read source independently runs 42/7 under GHC 9.14.1.
+    // Ordinary polymorphic record Eq/Show execution has a separate existing
+    // failure; this test must not assert our wrong output as its oracle.
+    let source_chirho = INVISIBLE_DATA_BINDERS_CHIRHO
+        .lines()
+        .filter(|line_chirho| {
+            !line_chirho.contains(" == ")
+                && !matches!(*line_chirho, "  print boxChirho" | "  print wrapperChirho")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    assert_execution_chirho(&source_chirho, "42\n7\n");
+}
+
+#[test]
+fn invisible_data_heads_derived_instances_typecheck_chirho() {
+    // GHC accepts the identical source. This asserts instance-head typing,
+    // not runtime dispatch or formatting (separately recorded limitations).
+    haskelujah_driver::typecheck_source_chirho(
+        INVISIBLE_DATA_BINDERS_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "InvisibleDerivedInstancesChirho.hs",
+    )
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn invisible_data_head_fields_reject_the_wrong_value_type_chirho() {
+    for (old_chirho, new_chirho) in [
+        ("boxChirho = MkBoxChirho 42", "boxChirho = MkBoxChirho True"),
+        (
+            "wrapperChirho = MkWrapperChirho 7",
+            "wrapperChirho = MkWrapperChirho True",
+        ),
+    ] {
+        // Each exact source mutation is rejected independently by GHC 9.14.1.
+        let source_chirho = INVISIBLE_DATA_BINDERS_CHIRHO.replace(old_chirho, new_chirho);
+        let error_chirho = haskelujah_driver::typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "WrongHeadFieldChirho.hs",
+        )
+        .map(|_| ())
+        .expect_err("the visible Int argument must constrain the constructor field");
+        let message_chirho = error_chirho.to_string();
+        assert!(
+            message_chirho.contains("type mismatch")
+                && message_chirho.contains("Int")
+                && message_chirho.contains("Bool"),
+            "{message_chirho}"
+        );
+    }
+}
+
+#[test]
+fn required_kind_binders_execute_on_every_engine_chirho() {
+    // Identical source independently executed with GHC 9.14.1: 19.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE TypeAbstractions, StandaloneKindSignatures, PolyKinds, GADTs, DataKinds #-}
+module Main where
+import Data.Kind (Type)
+type VisibleChirho :: forall (flagChirho :: Bool) -> Type
+data VisibleChirho flagChirho = MkVisibleChirho Int
+valueChirho :: VisibleChirho 'True
+valueChirho = MkVisibleChirho 19
+main :: IO ()
+main = case valueChirho of
+  MkVisibleChirho numberChirho -> print numberChirho
+"#;
+    assert_execution_chirho(source_chirho, "19\n");
+}
+
 fn assert_execution_chirho(source_chirho: &str, expected_chirho: &str) {
     use haskelujah_test_harness_chirho::native_chirho::{
         NativeBackendChirho, native_round_trip_chirho,

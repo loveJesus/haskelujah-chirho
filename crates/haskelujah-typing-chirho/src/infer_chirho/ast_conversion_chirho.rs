@@ -12,6 +12,30 @@ use super::InferCtxChirho;
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
 
 impl InferCtxChirho {
+    /// Open every declaration-head binder lexically, but apply only visible
+    /// parameters to the constructor result. Used by data and newtype schemes
+    /// (and consequently their record selectors); see declaration-kinds-chirho.
+    pub(super) fn data_head_type_chirho(
+        &mut self,
+        name_chirho: &str,
+        binders_chirho: &[AstTyVarChirho],
+    ) -> (TyChirho, HashMap<String, TyVarChirho>) {
+        let mut variables_chirho = HashMap::with_capacity(binders_chirho.len());
+        let mut result_chirho = TyChirho::ConChirho(name_chirho.to_owned());
+        for binder_chirho in binders_chirho {
+            let variable_chirho = TyVarChirho(self.next_var_chirho);
+            self.next_var_chirho += 1;
+            variables_chirho.insert(binder_chirho.text_chirho().to_owned(), variable_chirho);
+            if binder_chirho.is_visible_chirho() {
+                result_chirho = TyChirho::AppChirho(
+                    Box::new(result_chirho),
+                    Box::new(TyChirho::VarChirho(variable_chirho)),
+                );
+            }
+        }
+        (result_chirho, variables_chirho)
+    }
+
     /// Convert an AST `TypeChirho` (surface syntax) to an internal `TyChirho`.
     ///
     /// Named type variables are mapped to fresh unification variables via

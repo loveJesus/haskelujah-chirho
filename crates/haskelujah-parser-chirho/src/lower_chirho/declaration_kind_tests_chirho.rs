@@ -3,6 +3,54 @@
 use super::{DataKindSigChirho, DeclChirho, FileIdChirho, TypeChirho, lower_module_chirho};
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
+#[test]
+fn invisible_head_binders_retain_visibility_scope_and_group_boundaries_chirho() {
+    for keyword_chirho in ["data", "newtype"] {
+        for binder_chirho in [
+            "@jChirho",
+            "@(jChirho :: Type)",
+            "@(jChirho :: [Type])",
+            "@_",
+            "@(_ :: Type)",
+        ] {
+            let source_chirho = format!(
+                "{{-# LANGUAGE TypeAbstractions, PolyKinds #-}}\nmodule BindersChirho where\n{keyword_chirho} BoxChirho {binder_chirho} aChirho = MkBoxChirho aChirho\nafterChirho :: MissingChirho\nafterChirho = ()\n"
+            );
+            let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+            let module_chirho = lower_module_chirho(
+                &parse_to_cst_chirho(&source_chirho, file_chirho),
+                file_chirho,
+            );
+            let (binders_chirho, kind_chirho) = module_chirho
+                .decls_chirho
+                .iter()
+                .find_map(|decl_chirho| match decl_chirho {
+                    DeclChirho::DataDeclChirho {
+                        type_vars_chirho,
+                        kind_sig_chirho,
+                        ..
+                    }
+                    | DeclChirho::NewtypeDeclChirho {
+                        type_vars_chirho,
+                        kind_sig_chirho,
+                        ..
+                    } => Some((type_vars_chirho, kind_sig_chirho)),
+                    _ => None,
+                })
+                .expect("data/newtype declaration");
+            assert_eq!(binders_chirho.len(), 2, "{source_chirho}");
+            assert!(!binders_chirho[0].is_visible_chirho(), "{source_chirho}");
+            assert!(binders_chirho[1].is_visible_chirho(), "{source_chirho}");
+            assert!(
+                kind_chirho.is_none(),
+                "binder kind cannot become a declaration kind"
+            );
+            assert!(module_chirho.decls_chirho.iter().any(|decl_chirho| matches!(decl_chirho,
+                DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "afterChirho")));
+        }
+    }
+}
+
 fn kind_signature_chirho(
     keyword_chirho: &str,
     complete_chirho: bool,

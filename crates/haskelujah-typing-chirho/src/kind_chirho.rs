@@ -1804,18 +1804,24 @@ mod tests_chirho {
     }
 
     #[test]
-    fn required_forall_kind_uses_its_body_chirho() {
+    fn required_forall_kind_keeps_its_visible_parameter_chirho() {
         let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
         let type_kind_chirho = TypeChirho::ConChirho(mk_name_chirho("Type"));
         let required_forall_chirho = TypeChirho::RequiredForallChirho {
-            vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("kindChirho"))],
+            vars_chirho: vec![TyVarChirho::annotated_chirho(
+                mk_name_chirho("kindChirho"),
+                AstKindChirho::StarChirho,
+            )],
             body_chirho: Box::new(mk_fun_chirho(type_kind_chirho.clone(), type_kind_chirho)),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
         assert_eq!(
             ctx_chirho.type_to_kind_chirho(&required_forall_chirho),
-            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+            KindChirho::arrow_n_chirho(
+                [KindChirho::StarChirho, KindChirho::StarChirho],
+                KindChirho::StarChirho,
+            )
         );
     }
 

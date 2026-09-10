@@ -6163,27 +6163,8 @@ impl InferCtxChirho {
                     constructors_chirho,
                     ..
                 } => {
-                    // Build the fully-applied result type: T a b c ...
-                    let base_ty_chirho = TyChirho::ConChirho(name_chirho.text_chirho().to_string());
-                    let mut tv_map_chirho: HashMap<String, TyVarChirho> = HashMap::new();
-                    let tv_vars_chirho: Vec<TyVarChirho> = type_vars_chirho
-                        .iter()
-                        .map(|tv_chirho| {
-                            let v_chirho = TyVarChirho(self.next_var_chirho);
-                            self.next_var_chirho += 1;
-                            tv_map_chirho.insert(tv_chirho.text_chirho().to_string(), v_chirho);
-                            v_chirho
-                        })
-                        .collect();
-                    let result_ty_chirho =
-                        tv_vars_chirho
-                            .iter()
-                            .fold(base_ty_chirho, |acc_chirho, tv_chirho| {
-                                TyChirho::AppChirho(
-                                    Box::new(acc_chirho),
-                                    Box::new(TyChirho::VarChirho(*tv_chirho)),
-                                )
-                            });
+                    let (result_ty_chirho, mut tv_map_chirho) =
+                        self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
                     let data_type_name_chirho = name_chirho.text_chirho().to_string();
                     for con_chirho in constructors_chirho {
                         self.data_constructors_chirho
@@ -6324,27 +6305,8 @@ impl InferCtxChirho {
                                 .text_chirho()
                                 .to_string(),
                         );
-                    // Build fully-applied result type: N a b ...
-                    let base_ty_chirho = TyChirho::ConChirho(name_chirho.text_chirho().to_string());
-                    let mut nt_tv_map_chirho: HashMap<String, TyVarChirho> = HashMap::new();
-                    let nt_tv_vars_chirho: Vec<TyVarChirho> = type_vars_chirho
-                        .iter()
-                        .map(|tv_chirho| {
-                            let v_chirho = TyVarChirho(self.next_var_chirho);
-                            self.next_var_chirho += 1;
-                            nt_tv_map_chirho.insert(tv_chirho.text_chirho().to_string(), v_chirho);
-                            v_chirho
-                        })
-                        .collect();
-                    let result_ty_chirho =
-                        nt_tv_vars_chirho
-                            .iter()
-                            .fold(base_ty_chirho, |acc_chirho, tv_chirho| {
-                                TyChirho::AppChirho(
-                                    Box::new(acc_chirho),
-                                    Box::new(TyChirho::VarChirho(*tv_chirho)),
-                                )
-                            });
+                    let (result_ty_chirho, mut nt_tv_map_chirho) =
+                        self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
                     match constructor_chirho {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho: con_name_chirho,
@@ -24620,18 +24582,15 @@ mod tests_chirho {
                 DeclChirho::NewtypeDeclChirho {
                     name_chirho: dummy_name_chirho("WrapChirho"),
                     type_vars_chirho: vec![
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho {
-                            name_chirho: dummy_name_chirho("rChirho"),
-                            kind_annotation_chirho: None,
-                        },
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho {
-                            name_chirho: dummy_name_chirho("sChirho"),
-                            kind_annotation_chirho: None,
-                        },
-                        haskelujah_ast_chirho::decl_chirho::TyVarChirho {
-                            name_chirho: dummy_name_chirho("aChirho"),
-                            kind_annotation_chirho: None,
-                        },
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::plain_chirho(
+                            dummy_name_chirho("rChirho"),
+                        ),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::plain_chirho(
+                            dummy_name_chirho("sChirho"),
+                        ),
+                        haskelujah_ast_chirho::decl_chirho::TyVarChirho::plain_chirho(
+                            dummy_name_chirho("aChirho"),
+                        ),
                     ],
                     constructor_chirho: ConDeclChirho::RecordChirho {
                         name_chirho: dummy_name_chirho("WrapChirho"),

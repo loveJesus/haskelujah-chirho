@@ -142,13 +142,29 @@ impl KindInferCtxChirho {
                 vars_chirho,
                 body_chirho,
                 ..
-            }
-            | TypeChirho::RequiredForallChirho {
+            } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
+                ctx_chirho.type_to_kind_chirho(body_chirho)
+            }),
+            TypeChirho::RequiredForallChirho {
                 vars_chirho,
                 body_chirho,
                 ..
             } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
-                ctx_chirho.type_to_kind_chirho(body_chirho)
+                // Interpreting a kind, not kind-checking a term type: these
+                // binders consume visible arguments. Their lexical identities
+                // still scope over the tail. This is not dependent-kind solving.
+                let argument_kinds_chirho: Vec<KindChirho> = vars_chirho
+                    .iter()
+                    .map(|binder_chirho| {
+                        ctx_chirho
+                            .env_chirho
+                            .lookup_chirho(binder_chirho.text_chirho())
+                            .expect("required kind binder was opened")
+                            .clone()
+                    })
+                    .collect();
+                let result_chirho = ctx_chirho.type_to_kind_chirho(body_chirho);
+                KindChirho::arrow_n_chirho(argument_kinds_chirho, result_chirho)
             }),
             _ => {
                 // Fallback: treat unknown shapes as *.

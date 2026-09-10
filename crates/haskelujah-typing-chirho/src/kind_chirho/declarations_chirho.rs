@@ -54,7 +54,9 @@ impl KindInferCtxChirho {
                 variable_chirho.text_chirho().to_owned(),
                 kind_chirho.clone(),
             );
-            parameter_kinds_chirho.push(kind_chirho);
+            if variable_chirho.is_visible_chirho() {
+                parameter_kinds_chirho.push(kind_chirho);
+            }
         }
         // Head annotations and the inline tail share identities and remain in
         // scope while the caller checks constructor fields, as ordinary heads do.
@@ -98,7 +100,8 @@ impl KindInferCtxChirho {
             match tail_chirho {
                 TypeChirho::FunChirho { result_chirho, .. } => tail_chirho = result_chirho,
                 TypeChirho::ParenChirho { inner_chirho, .. } => tail_chirho = inner_chirho,
-                TypeChirho::ForallChirho { body_chirho, .. } => tail_chirho = body_chirho,
+                TypeChirho::ForallChirho { body_chirho, .. }
+                | TypeChirho::RequiredForallChirho { body_chirho, .. } => tail_chirho = body_chirho,
                 _ => break,
             }
         }
