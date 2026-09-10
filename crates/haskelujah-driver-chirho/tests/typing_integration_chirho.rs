@@ -111,6 +111,167 @@ fn signature_type_arguments_follow_source_order_on_every_engine_chirho() {
     assert_execution_chirho(SOURCE_ORDER_CHIRHO, "42\n7\n11\nTrue\n");
 }
 
+#[test]
+fn nested_forall_shadowing_preserves_outer_polymorphism_on_every_engine_chirho() {
+    // Independently run, unchanged, under GHC 9.14.1. The outer variable is
+    // encountered before a shadow, after one, first inside another binder,
+    // and in the enclosing ScopedTypeVariables environment respectively.
+    let source_chirho = r#"{-# LANGUAGE RankNTypes, ScopedTypeVariables, TypeApplications #-}
+module Main where
+preserveChirho :: aChirho -> (forall aChirho. aChirho -> aChirho) -> aChirho
+preserveChirho valueChirho _ = valueChirho
+preserveLaterChirho :: (forall aChirho. aChirho -> aChirho) -> aChirho -> aChirho
+preserveLaterChirho _ valueChirho = valueChirho
+retainFreeChirho :: (forall boundChirho. freeChirho -> boundChirho -> freeChirho) -> freeChirho -> freeChirho
+retainFreeChirho functionChirho valueChirho = functionChirho valueChirho ()
+outerChirho :: forall aChirho. aChirho -> aChirho
+outerChirho valueChirho = innerChirho id valueChirho
+  where
+    innerChirho :: (forall aChirho. aChirho -> aChirho) -> aChirho -> aChirho
+    innerChirho _ resultChirho = resultChirho
+main :: IO ()
+main = do
+  print (preserveChirho (42 :: Int) id)
+  print (preserveChirho True id)
+  print (preserveLaterChirho id (7 :: Int))
+  print (preserveLaterChirho id False)
+  print (retainFreeChirho @Int const 11)
+  print (retainFreeChirho @Bool const True)
+  print (outerChirho @Int 13)
+  print (outerChirho @Bool False)
+"#;
+    assert_execution_chirho(source_chirho, "42\nTrue\n7\nFalse\n11\nTrue\n13\nFalse\n");
+}
+
+#[test]
+fn required_forall_shadowing_preserves_outer_polymorphism_on_every_engine_chirho() {
+    // The same source independently produced this output under GHC 9.14.1.
+    let source_chirho = r#"{-# LANGUAGE RankNTypes, RequiredTypeArguments #-}
+module Main where
+preserveChirho :: aChirho -> (forall aChirho -> aChirho -> aChirho) -> aChirho
+preserveChirho valueChirho _ = valueChirho
+preserveLaterChirho :: (forall aChirho -> aChirho -> aChirho) -> aChirho -> aChirho
+preserveLaterChirho _ valueChirho = valueChirho
+requiredIdChirho :: forall aChirho -> aChirho -> aChirho
+requiredIdChirho typeChirho valueChirho = valueChirho
+main :: IO ()
+main = do
+  print (preserveChirho (42 :: Int) requiredIdChirho)
+  print (preserveChirho True requiredIdChirho)
+  print (preserveLaterChirho requiredIdChirho (7 :: Int))
+  print (preserveLaterChirho requiredIdChirho False)
+"#;
+    assert_execution_chirho(source_chirho, "42\nTrue\n7\nFalse\n");
+}
+
+#[test]
+fn signature_scope_boundaries_preserve_type_application_on_every_engine_chirho() {
+    // GHC 9.14.1 oracle: parentheses quantify once, explicit local binders
+    // shadow enclosing ones, and consecutive groups retain distinct identities.
+    let source_chirho = r#"{-# LANGUAGE RankNTypes, ScopedTypeVariables, TypeApplications, AllowAmbiguousTypes #-}
+module Main where
+parenthesizedChirho :: (forall aChirho. aChirho -> aChirho)
+parenthesizedChirho valueChirho = valueChirho
+outerShadowChirho :: forall aChirho. aChirho -> (Bool, aChirho)
+outerShadowChirho valueChirho = (innerChirho True, valueChirho)
+  where
+    innerChirho :: forall aChirho. aChirho -> aChirho
+    innerChirho resultChirho = resultChirho
+chainChirho :: forall aChirho. forall aChirho. aChirho -> aChirho
+chainChirho valueChirho = valueChirho
+leadingChirho :: forall aChirho. Eq aChirho => forall aChirho. Eq aChirho => aChirho -> aChirho
+leadingChirho valueChirho = valueChirho
+main :: IO ()
+main = do
+  print (parenthesizedChirho @Int 42)
+  print (parenthesizedChirho @Bool True)
+  print (fst (outerShadowChirho @Int 7))
+  print (snd (outerShadowChirho @Int 7))
+  print (chainChirho @Int @Bool False)
+  print (leadingChirho @Int @Bool True)
+"#;
+    assert_execution_chirho(source_chirho, "42\nTrue\nTrue\n7\nFalse\nTrue\n");
+}
+
+#[test]
+fn result_forall_predicates_keep_their_shadowed_scope_chirho() {
+    let source_chirho = r#"{-# LANGUAGE RankNTypes, TypeApplications #-}
+module Main where
+equalLaterChirho :: Int -> forall aChirho. Eq aChirho => aChirho -> aChirho -> Bool
+equalLaterChirho _ leftChirho rightChirho = leftChirho == rightChirho
+shadowLaterChirho :: forall aChirho. aChirho -> forall aChirho. Eq aChirho => aChirho -> aChirho -> Bool
+shadowLaterChirho _ leftChirho rightChirho = leftChirho == rightChirho
+main :: IO ()
+main = do
+  print (equalLaterChirho 0 @Int 3 3)
+  print (equalLaterChirho 0 @Bool True False)
+  print (shadowLaterChirho @Int 0 @Bool True True)
+  print (shadowLaterChirho @Bool True @Int 3 7)
+"#;
+    assert_execution_chirho(source_chirho, "True\nFalse\nTrue\nFalse\n");
+}
+
+#[test]
+fn only_the_syntactically_outermost_forall_scopes_over_the_definition_chirho() {
+    // GHC 9.14.1 rejects each local signature below: parentheses and a second
+    // forall group do not bring those signature variables into the definition.
+    for source_chirho in [
+        r#"{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
+module ParenScopeChirho where
+parenthesizedChirho :: (forall aChirho. aChirho -> aChirho)
+parenthesizedChirho valueChirho = localChirho
+  where
+    localChirho :: aChirho
+    localChirho = valueChirho
+"#,
+        r#"{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
+module LaterScopeChirho where
+laterChirho :: forall aChirho. forall bChirho. aChirho -> bChirho -> bChirho
+laterChirho _ valueChirho = localChirho
+  where
+    localChirho :: bChirho
+    localChirho = valueChirho
+"#,
+    ] {
+        let errors_chirho = haskelujah_driver::typecheck_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "SignatureScopeChirho.hs",
+        )
+        .map(|_| ())
+        .expect_err("a non-scoping signature binder cannot capture the local type variable");
+        let text_chirho = errors_chirho.to_string();
+        assert!(
+            text_chirho.contains("type mismatch") && text_chirho.contains("rigid"),
+            "{text_chirho}"
+        );
+    }
+}
+
+#[test]
+fn nested_forall_result_cannot_escape_as_an_arbitrary_outer_type_chirho() {
+    // GHC 9.14.1 rejects this with GHC-25897: outer aChirho is rigid, not Bool.
+    let source_chirho = r#"{-# LANGUAGE RankNTypes #-}
+module ForallLeakChirho where
+leakChirho :: aChirho -> (forall aChirho. aChirho -> aChirho) -> aChirho
+leakChirho _ functionChirho = functionChirho True
+"#;
+    let errors_chirho = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ForallLeakChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("an arbitrary outer a cannot be implemented with Bool");
+    let text_chirho = errors_chirho.to_string();
+    assert!(
+        text_chirho.contains("type mismatch")
+            && text_chirho.contains("Bool")
+            && text_chirho.contains("rigid"),
+        "{text_chirho}"
+    );
+}
+
 fn assert_execution_chirho(source_chirho: &str, expected_chirho: &str) {
     use haskelujah_test_harness_chirho::native_chirho::{
         NativeBackendChirho, native_round_trip_chirho,

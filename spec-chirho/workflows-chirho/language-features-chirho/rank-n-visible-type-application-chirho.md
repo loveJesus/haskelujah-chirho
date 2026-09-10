@@ -13,8 +13,11 @@ flowchart TD
     operators_chirho --> fixity_chirho[Linear type-chain reduction uses the shared fixity table]
     fixity_chirho --> ast_chirho
     ast_chirho --> kind_chirho[Kind inference scopes both forall visibilities]
-    kind_chirho --> inventory_chirho[Scoped source occurrences order existing signature variables]
+    kind_chirho --> conversion_chirho[Convert types with fresh lexical forall identities]
+    conversion_chirho --> predicates_chirho[Attach result predicates under the converted binder identities]
+    predicates_chirho --> inventory_chirho[Scoped source occurrences order existing signature variables]
     inventory_chirho --> scheme_chirho[Type inference instantiates ordinary scheme variables]
+    scheme_chirho --> scope_chirho[Only the first syntactically outermost forall scopes the definition]
     scheme_chirho --> required_chirho{Outermost binder visibility}
     required_chirho -->|forall a ->| ordinary_arg_chirho[Convert next ordinary argument to a type]
     required_chirho -->|forall a.| visible_arg_chirho[Consume next at-type argument]
@@ -48,6 +51,16 @@ flowchart TD
 - Nested invisible/required foralls and quantified constraints hide their own bound names
   from the enclosing inventory. Source-less expansion variables retain the deterministic
   numeric-ID fallback. Equal/synthetic spans use stable traversal order.
+- Surface conversion gives both forall visibilities fresh local identities and restores
+  only their previous name bindings on exit, in reverse order. Free names discovered in
+  the body survive. Scope bookkeeping grows with binder count, not environment size.
+- Leading signature binders and contexts are processed in lexical order, including
+  parentheses: a later shadow cannot capture an earlier predicate. Result-spine predicates
+  are converted under the matching internal forall IDs, not against a leaked final map.
+- Signature quantification and definition scope are different contracts. Only the single
+  syntactically outermost invisible forall group scopes the definition; parentheses or
+  later forall groups do not. Existing enclosing scopes survive; explicit local binders
+  shadow rather than reuse an enclosing binder's identity.
 - Backticked lowercase type operators remain variables; symbolic and qualified constructor
   operators remain constructors. Parentheses delimit type chains; the shared fixity table
   determines precedence/associativity. Chain reduction pushes/reduces each item once.
@@ -80,9 +93,12 @@ flowchart TD
 - General implicit kind-dependency ordering (GHC's stable topological sort) is not claimed:
   ordinary kind annotations are not retained as a general `TypeChirho` node. Existing
   explicitly written forall order is preserved, not a substitute for the missing information.
-- The inventory respects nested scopes, but the separate AST-to-type conversion's shared
-  name map can still overwrite an outer binding at a same-spelling nested forall. This lane
-  does not claim that conversion/shadowing issue repaired.
+- The separate type-synonym RHS converter still uses its existing fixed-ID/name-substitution
+  representation. General synonym alpha-renaming/capture avoidance is not claimed by the
+  surface/signature scope repair.
+- The existing flat scheme-predicate representation still lifts result-spine contexts;
+  preserving their lexical IDs is not full support for contexts inside rank-N parameters
+  or a new representation of nested qualified types.
 - Required declaration arguments are matched positionally; named required binders are not yet
   added to the scoped type-variable environment of the equation body.
 - Template Haskell reification currently maps required and invisible foralls to the existing
