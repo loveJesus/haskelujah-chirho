@@ -38,7 +38,7 @@ Do not claim full flat forall/type-operator semantics from this list repair.
 - [x] Extract helpers and repair list constructor/application and bracket ownership.
 - [x] Focused parser, typing, driver, and canary gates; check T14761c for actual reachability.
 - [x] Rebase onto the preceding verified landing, freeze, and run both full upstream axes twice.
-- [ ] Complete meaningful workspace/execution gates, named-path commits, push/read-back,
+- [x] Complete meaningful workspace/execution gates, named-path commits, push/read-back,
       main-path smoke checks, and canonical DB closure.
 
 ## Prepared controls and audit
@@ -88,9 +88,18 @@ actual Cargo exit 0, with the documented 16 MiB test-thread stack. Raw log SHA25
 No compiler warnings. Separate parser/typing/driver all-target clippy exits zero
 with 650 warning messages (duplicates included), none at a primary span in the
 new child modules or edited integration file; pre-existing lint debt remains.
-Main fast-forward, explicit main build/smokes, remote readback and DB closure
-remain pending at this evidence checkpoint. Row483 source work is isolated in
-gpt-kind-signatures-chirho; its canonical DB row must survive this landing.
+Evidence checkpoint 6dcfe4a92a937900bbbbf6166d4b373743974f27 was pushed/read back
+exact, then main fast-forwarded with the canonical database hash unchanged.
+The explicit main CLI build exits zero without compiler warnings; its SHA256 is
+45cff7d41b92f29f77549961f21a2a21f10bada78864bdc15861e4c948b3a7f6.
+All 16 bounded main-path smoke predicates complete, including the three new
+execution readbacks, T14761c acceptance, bare-list rejection, and the explicitly
+labelled known-wrong acceptance of T14761a. These are path/behavior observations,
+not a second full corpus run or a claim that T14761a is correct. Main HEAD and
+CLI hash stayed fixed; smoke log SHA256 is
+460f61aef93a7a8e569933e294eecc611761cfb1109b06ea91995ba039acb342.
+Row482 closes in the following evidence-only commit. Row483 stays open and its
+source remains isolated in gpt-kind-signatures-chirho.
 
 ## Open rule: GHC-10107 (T14761a)
 

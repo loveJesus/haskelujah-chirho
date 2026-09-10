@@ -52,10 +52,16 @@ reruns; all four passes had zero unresolved timeouts and zero unexpected exits. 
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-Post-fast-forward main-path smokes for this source are pending at the evidence
-checkpoint. The full gates above are from the isolated worktree, not an unrun
-main measurement. The preceding kind-scope main-path evidence remains in its
-completed row-481 tasklist and 9d563c7b closure commit.
+After fast-forward to evidence checkpoint 6dcfe4a9, an explicit main CLI build
+completed without compiler warnings. Main CLI SHA256:
+`45cff7d41b92f29f77549961f21a2a21f10bada78864bdc15861e4c948b3a7f6`.
+All 16 bounded main-path smoke predicates completed with HEAD and CLI digest
+unchanged, including the three list execution readbacks, T14761c acceptance,
+bare-list rejection, and T14761a's explicitly known-wrong acceptance. They are
+path/behavior observations, not another full corpus measurement. Smoke log SHA256:
+`460f61aef93a7a8e569933e294eecc611761cfb1109b06ea91995ba039acb342`.
+The full gates above remain the isolated-worktree measurement. The preceding
+kind-scope main-path evidence remains in its completed row-481 tasklist.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were
