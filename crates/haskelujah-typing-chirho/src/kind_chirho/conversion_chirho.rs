@@ -393,24 +393,19 @@ impl KindInferCtxChirho {
                 // - NFData a => NFData (f a)  has kind Constraint (quantified constraint)
                 self.infer_type_kind_chirho(body_chirho)
             }
-            // DataKinds: promoted constructors ('True, 'Just, 'Proxy, etc.)
-            // have kinds determined by their data constructor types. Since we
-            // don't track constructor types in the kind env, assign a fresh
-            // kind variable so they can unify with whatever context expects.
+            // Known promoted-constructor contracts instantiate per occurrence.
+            // Missing constructor metadata remains an opaque-use boundary,
+            // not a monomorphic binding and not a same-spelled type constructor.
+            // This does not reconstruct existential annotations dropped by AST lowering.
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                let text_chirho = name_chirho.text_chirho();
-                if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
-                    let k_chirho = k_chirho.clone();
-                    if k_chirho == KindChirho::StarChirho {
-                        self.fresh_kind_chirho()
-                    } else {
-                        k_chirho
-                    }
+                if let Some(binding_chirho) = self
+                    .env_chirho
+                    .lookup_promoted_binding_chirho(&name_chirho.full_name_chirho())
+                    .cloned()
+                {
+                    self.instantiate_binding_chirho(&binding_chirho)
                 } else {
-                    let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho
-                        .bind_chirho(text_chirho.to_string(), k_chirho.clone());
-                    k_chirho
+                    self.fresh_kind_chirho()
                 }
             }
             // DataKinds: promoted list '[a, b] has kind [*] which we represent as *.

@@ -65,6 +65,14 @@ Each use instantiates a scheme; substitution cannot rewrite its bound variables.
 Written complete contracts are checked with rigid identities, not general
 metavariables that can silently specialize.
 
+Promoted data-constructor contracts use a separate kind namespace from
+same-spelled type constructors. Known schemes instantiate at each occurrence;
+an occurrence without constructor metadata gets an independent opaque kind,
+never a shared monomorphic entry in the type namespace. This fixes accidental
+cross-occurrence specialization, not full promotion checking: ordinary-constructor
+lowering still discards some existential binder/context information needed to
+produce complete promoted schemes.
+
 ```mermaid
 flowchart TD
   RegistryChirho[Prebind local declaration heads] --> GraphChirho[Collect scoped kind dependencies]

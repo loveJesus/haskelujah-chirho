@@ -3,6 +3,41 @@
 use super::*;
 
 #[test]
+fn opaque_promoted_occurrences_neither_capture_each_other_nor_type_names_chirho() {
+    let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
+    let name_chirho = haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+        "WrapChirho",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    let constructor_chirho = TypeChirho::PromotedConChirho {
+        name_chirho: haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(name_chirho),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let first_chirho = ctx_chirho.infer_type_kind_chirho(&constructor_chirho);
+    ctx_chirho.unify_chirho(
+        &first_chirho,
+        &KindChirho::StarChirho,
+        "first occurrence",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    let second_chirho = ctx_chirho.infer_type_kind_chirho(&constructor_chirho);
+    ctx_chirho.unify_chirho(
+        &second_chirho,
+        &KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
+        "second occurrence",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(
+        !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+        "opaque promoted occurrences must not share a monomorphic hole"
+    );
+    assert!(
+        ctx_chirho.env_chirho.lookup_chirho("WrapChirho").is_none(),
+        "a data-constructor occurrence must not create a type-namespace binding"
+    );
+}
+
+#[test]
 fn scheme_instances_share_within_but_not_between_uses_chirho() {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
     let variable_chirho = ctx_chirho.fresh_kind_chirho();

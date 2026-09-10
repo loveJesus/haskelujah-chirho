@@ -11,6 +11,10 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Default)]
 pub struct KindEnvChirho {
     pub(super) bindings_chirho: HashMap<String, KindBindingChirho>,
+    // Promoted data constructors are not type constructors of the same spelling.
+    // Only authoritative constructor schemes belong here; missing metadata is
+    // instantiated opaquely at a use, never stored as a monomorphic type name.
+    promoted_bindings_chirho: HashMap<String, KindBindingChirho>,
     changes_chirho: Vec<(String, Option<KindBindingChirho>)>,
     scopes_chirho: Vec<usize>,
 }
@@ -96,6 +100,12 @@ impl KindEnvChirho {
                 promoted_cons_kind_chirho.clone(),
             );
         }
+        env_chirho.promoted_bindings_chirho.insert(
+            ":".to_owned(),
+            KindBindingChirho::PolyChirho(KindSchemeChirho::generalize_chirho(
+                promoted_cons_kind_chirho,
+            )),
+        );
         env_chirho.bind_generalized_chirho("ST".to_string(), star2_chirho.clone());
         env_chirho.bind_generalized_chirho(
             "StateT".to_string(),
@@ -353,8 +363,19 @@ impl KindEnvChirho {
             .map(KindBindingChirho::body_chirho)
     }
 
+    pub(super) fn lookup_promoted_binding_chirho(
+        &self,
+        name_chirho: &str,
+    ) -> Option<&KindBindingChirho> {
+        self.promoted_bindings_chirho.get(name_chirho)
+    }
+
     pub fn apply_subst_chirho(&mut self, subst_chirho: &KindSubstChirho) {
-        for binding_chirho in self.bindings_chirho.values_mut() {
+        for binding_chirho in self
+            .bindings_chirho
+            .values_mut()
+            .chain(self.promoted_bindings_chirho.values_mut())
+        {
             binding_chirho.apply_subst_chirho(subst_chirho);
         }
     }

@@ -4,6 +4,38 @@
 use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[test]
+fn promoted_opaque_occurrences_keep_independent_kinds_and_check_the_body_chirho() {
+    // GHC 9.14.1 accepts the source and rejects the Int-result mutation (GHC-83865).
+    // This pins occurrence independence, not complete promoted existential metadata.
+    let source_chirho = r#"{-# LANGUAGE ExistentialQuantification, PolyKinds, DataKinds, RankNTypes, GADTs, TypeOperators #-}
+module PromotedChirho where
+import Data.Kind (Type)
+import Data.Type.Equality
+data WrappedChirho = forall aChirho. WrapChirho aChirho
+matchChirho :: forall kaChirho kbChirho (aChirho :: kaChirho) (bChirho :: kbChirho).
+  ('WrapChirho aChirho :~: 'WrapChirho bChirho) -> Bool
+matchChirho Refl = True
+"#;
+    assert_compile_success_chirho("PromotedChirho.hs", source_chirho);
+    let invalid_chirho = source_chirho.replace("-> Bool", "-> Int");
+    let error_chirho = haskelujah_driver::typecheck_source_chirho(
+        &invalid_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongPromotedChirho.hs",
+    )
+    .err()
+    .expect("the result still must match its signature");
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho.code_chirho
+                == Some(haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(200))),
+        "{error_chirho}"
+    );
+}
+
 const FAMILY_PATTERNS_SOURCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DataKinds, TypeFamilies, TypeOperators #-}
 module Main where

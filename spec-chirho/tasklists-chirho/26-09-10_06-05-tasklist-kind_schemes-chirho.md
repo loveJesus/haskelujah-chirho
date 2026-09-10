@@ -318,3 +318,66 @@ The extraction's six inherited clippy findings were repaired. The final scoped
 clippy invocation exits0 but still reports parser90, typing53 and four dependency
 warnings; none points into the two extracted modules or the changed operator
 module. This is not a zero-warning project claim.
+
+### Fourth diagnostic: recovery with one newly exposed family-pattern loss
+
+Checkpoint4391c43f, frozen CLI SHA-256
+`3fb5aa79864d676c5ee10df2d71f5fcce0373440919e00dd80c2cbca6f2c4a77`,
+completed one full diagnostic per axis with actual wrapper exit0, zero timeouts
+or unexpected exits, and unchanged SHA before/after: accept880/938, reject226/767.
+Against the third diagnostic: 22 accept recoveries and one new rejection,
+T14010. Against main: seven recoveries (PolytypeDecomp, RuleEqs, SplitWD, T14451,
+T15079, T20922, tc124), nine new failures (the previous eight kind-representation
+losses plus T14010). This is convergence in this pass, not a landable result.
+Focused greens had covered the eighteen regressions, not this additional surface.
+
+Reject movement against main is +8/-3, not eight proved capabilities: new
+rejections T11356, T11563, T15799, T16502, T23734, T4875, tcfail209, tcfail225;
+lost rejections T16512a, T23162b, T23162d. Reasons remain to be checked against
+each input's reference stderr; T23162b's old accidental rejection is already
+bracketed above. Compare the reject artifact's wrongly-accepted list with the
+current accepted list, not with the rejected list: the two artifact bodies have
+opposite polarity. Evidence and immutable per-file logs:
+`/private/tmp/haskelujah-family-patterns-chirho.4iuhJr/diagnostic-family-chirho.log`
+and its `diagnostic-family-accept-chirho` / `diagnostic-family-reject-chirho`
+directories. Main121d4f2c and its882/221 artifacts remain untouched; row484 open.
+
+### Promoted occurrence namespace and the next kind-term fork
+
+T10432's reduced source is accepted by GHC9.14.1 but fails on candidate4391c43f:
+two promoted Wrap occurrences share one monomorphic kind variable, accidentally
+equating independently rigid ka/kb. A focused kind test demonstrated that failure
+after repairing two test-construction compile errors. Promoted contracts now have
+a separate environment map; known schemes instantiate, absent metadata remains
+independent per occurrence. No same-spelled type constructor kind is reused.
+Typing353 passes with zero exclusions. Explicit CLI29fa4d1e accepts the unchanged
+T10432 and the GHC-confirmed reduction; changing its result to Int still rejects
+for GHC-83865/E0200. Full promotion remains unimplemented: the AST drops some
+existential constructor annotations, so this repair cannot claim to validate
+every promoted use. Evidence: `/private/tmp/haskelujah-kind-terms-chirho.oZJ9Ka/`.
+The focused driver regression also passes (one run, 45 filtered intentionally);
+its initial compilation required `.err().expect(...)` because the success
+bundle is not Debug. This is not a new complete integration/workspace gate.
+
+The T14010 diagnostic is not a tuple-parsing error: two kind-indexed instances
+of the same zero-visible-argument family now register correctly, but the reducer
+chooses the newest RHS without their erased kind distinction (ArrPair versus
+arrow). Do not restore dropped parsing or add an operator-name exception.
+
+Next reversible architecture choice: preserve a kind term separately from the
+kind that classifies it. Start with a scoped dependent-function binder, then
+nominal/applied/runtime-representation terms and their actual consumers. A
+required forall must substitute the supplied kind TERM into its result; an
+ordinary arrow cannot do that. GHC accepts the new Shape/Consumer reduction,
+while the current CLI rejects it for a rigid-variable/Type mismatch. A separate
+runtime-kind reduction is also GHC-valid and currently rejected. Alternatives
+(freshening complete contracts or equating all nominal kinds with Type) would
+hide invalid programs and are rejected. Confidence is high in the representation
+distinction, not in a predicted corpus gain. A checkpoint/tag bounds correction.
+
+Something is wrong with the oversized kind root: move its kind terms,
+substitution and unification into one focused child before extending them.
+Keep conversion, lexical scope, scheme publication and declaration lifecycle
+separate. No new dependency or public deployment; unknown-import metadata is
+still a boundary rather than an authoritative contract. Focused positive/negative
+GHC controls precede the next full diagnostic; main stays unchanged.
