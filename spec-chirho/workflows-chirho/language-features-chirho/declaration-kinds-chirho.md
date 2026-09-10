@@ -34,7 +34,9 @@ their local kind identities. A complete signature is related to the head by
 structural unification, not by matching variable spellings. The cache swap is
 O(1); this does not claim the whole module kind pass is linear.
 
-The no-inline default is Type even with a standalone signature. GHC 9.14.1
+Without a complete standalone contract the no-inline default is Type. The
+isolated runtime-kind continuation lets a complete contract determine the
+result's TYPE representation, but never invents another head argument. GHC 9.14.1
 rejects `type T :: Type -> Type; data T where MkT :: T Int`: a missing head
 argument is not supplied implicitly by that complete signature. Conversely,
 `data T :: Type -> Type where ...` has a written result arrow and zero head
@@ -130,9 +132,35 @@ flowchart LR
   SubstituteTermChirho --> ResultTermChirho[Check remaining application at dependent result]
 ```
 
-This is not complete kind-family or runtime-representation support. AstKind
-applications still collapse, and the type-family reducer still lacks implicit
-kind indices. An unresolved family application cannot be treated as an arbitrary
+AstKind now retains nominal names (including qualification and source spans)
+separately from variables, and retains applications through lowering, naming,
+dependency collection, kind conversion and TH reification. Nominal annotations
+must resolve; they are not implicitly quantified holes. Reification preserves
+these annotations, but the reverse TH conversion and binder visibility are
+separate unfinished contracts. List/promoted annotation parsing is not yet
+complete.
+
+```mermaid
+flowchart LR
+  KindNameChirho[Nominal source kind and span] --> ResolveKindChirho[Resolve in type namespace]
+  ResolveKindChirho --> ClassifyKindChirho[Validate applications in a temporary local scope]
+  ClassifyKindChirho --> KeepTermChirho[Keep the kind term not just its classifier]
+  KeepTermChirho --> RuntimeChirho[TYPE retains its RuntimeRep argument]
+  RuntimeChirho --> ValueConsumerChirho[Functions and fields accept runtime value kinds]
+  RuntimeChirho --> BoxedListChirho[Boxed lists still require lifted Type elements]
+```
+
+Runtime contracts and builtin literal kinds live in one focused child. TYPE
+accepts a RuntimeRep argument; `TYPE Bool` is diagnosed before any value
+consumer sees it. Type is the lifted boxed representation, while unlifted
+and primitive representations remain distinct. Nat/Symbol/Char literals and
+the supported literal-family contracts retain their respective kinds; promoted
+lists preserve the common element kind instead of flattening to Type.
+Validation scopes undo temporary bindings, and dependent applications interpret
+an already-checked argument without recursively validating it again.
+
+This is not complete kind-family or runtime-representation support. The
+type-family reducer still lacks implicit kind indices. An unresolved family application cannot be treated as an arbitrary
 fresh result, nor may hidden indices be replaced by newest-equation precedence.
 
 Superclass kinds participate before class publication. Constraint lowering

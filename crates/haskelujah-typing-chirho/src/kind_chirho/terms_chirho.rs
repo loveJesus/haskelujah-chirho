@@ -63,6 +63,11 @@ impl KindChirho {
     }
 
     pub(super) fn app_chirho(fun_chirho: KindChirho, arg_chirho: KindChirho) -> Self {
+        if matches!(&fun_chirho, Self::ConChirho(name_chirho) if name_chirho == super::runtime_chirho::TYPE_CHIRHO)
+            && arg_chirho == super::runtime_chirho::boxed_rep_chirho("Lifted")
+        {
+            return Self::StarChirho;
+        }
         Self::AppChirho(Box::new(fun_chirho), Box::new(arg_chirho))
     }
 
@@ -324,6 +329,17 @@ pub(super) fn unify_kind_chirho(
     span_chirho: SpanChirho,
 ) -> Result<KindSubstChirho, KindErrorChirho> {
     match (k1_chirho, k2_chirho) {
+        (KindChirho::StarChirho, KindChirho::AppChirho(fun_chirho, representation_chirho))
+        | (KindChirho::AppChirho(fun_chirho, representation_chirho), KindChirho::StarChirho)
+            if matches!(fun_chirho.as_ref(), KindChirho::ConChirho(name_chirho) if name_chirho == super::runtime_chirho::TYPE_CHIRHO) =>
+        {
+            unify_kind_chirho(
+                representation_chirho,
+                &super::runtime_chirho::boxed_rep_chirho("Lifted"),
+                context_chirho,
+                span_chirho,
+            )
+        }
         (KindChirho::ConChirho(left_chirho), KindChirho::ConChirho(right_chirho))
             if left_chirho == right_chirho =>
         {

@@ -4,6 +4,54 @@ use super::{DataKindSigChirho, DeclChirho, FileIdChirho, TypeChirho, lower_modul
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
 #[test]
+fn nominal_kind_heads_keep_their_qualification_and_source_span_chirho() {
+    use super::AstKindChirho;
+    for keyword_chirho in ["data", "newtype"] {
+        let source_chirho = format!(
+            "module MChirho where\n{keyword_chirho} BoxChirho (aChirho :: LibraryChirho.ApplyChirho kChirho) = BoxChirho Int\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let module_chirho = lower_module_chirho(
+            &parse_to_cst_chirho(&source_chirho, file_chirho),
+            file_chirho,
+        );
+        let binders_chirho = match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho, ..
+            }
+            | DeclChirho::NewtypeDeclChirho {
+                type_vars_chirho, ..
+            } => type_vars_chirho,
+            other_chirho => panic!("{other_chirho:?}"),
+        };
+        assert_eq!(
+            binders_chirho.len(),
+            1,
+            "kind identifiers are not head binders"
+        );
+        let Some(AstKindChirho::AppChirho(head_chirho, argument_chirho)) =
+            &binders_chirho[0].kind_annotation_chirho
+        else {
+            panic!("the complete application must survive")
+        };
+        let AstKindChirho::ConChirho(name_chirho) = head_chirho.as_ref() else {
+            panic!("a nominal kind is not an implicitly quantified variable")
+        };
+        assert_eq!(name_chirho.full_name_chirho(), "LibraryChirho.ApplyChirho");
+        let span_chirho = name_chirho.span_chirho();
+        assert_eq!(
+            &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+                ..span_chirho.end_chirho().as_usize_chirho()],
+            "LibraryChirho.ApplyChirho"
+        );
+        assert_eq!(
+            argument_chirho.as_ref(),
+            &AstKindChirho::VarChirho("kChirho".into())
+        );
+    }
+}
+
+#[test]
 fn invisible_head_binders_retain_visibility_scope_and_group_boundaries_chirho() {
     for keyword_chirho in ["data", "newtype"] {
         for binder_chirho in [

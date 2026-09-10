@@ -431,3 +431,58 @@ are not, and T16502 lacks a reference stderr. T16512a still needs a fresh-main
 bracket. T23162b's old wrong reason is measured above. T23162d has no stderr and
 its own `all.T` expects successful compilation: this directory-based reject
 loss is not lost semantic capability. The frozen denominator is unchanged.
+
+### Nominal/runtime continuation — brick 1
+
+699e6f4a is pushed and remote-exact. Next isolated fork distinguishes a source
+nominal kind from a lexical kind variable in AstKind, with naming/dependency/TH
+consumers updated together. A named constructor is not implicitly quantified.
+Extract the existing kind-annotation lowering into a focused child before
+changing it. Runtime kind contracts belong in one kind child, not in per-file
+guards: TYPE classifies a runtime representation, a function/field can consume
+an appropriate TYPE result, and a boxed-list element still requires Type.
+Complete data signatures may determine the runtime result representation but
+must not invent missing head arguments. Positive and deliberately wrong
+representation controls are required; no complete UnliftedDatatypes/native
+execution claim. Confidence is medium on propagation, high on the measured
+term/classifier distinction. Local tag `nominal-runtime-kinds-before-chirho`
+bounds correction. Main, published axes and the label-policy choice stay held.
+
+### Nominal/runtime checkpoint — focused results, full diagnostic next
+
+- [x] Extract kind-annotation lowering; retain nominal names, qualifiers, source
+  spans and applications through naming/dependencies/kind conversion/TH reification.
+- [x] Check TYPE representation arguments; admit unlifted runtime value kinds
+  without allowing primitive elements in boxed lists or inventing missing head arguments.
+- [x] Retain literal Nat/Symbol/Char kinds and promoted-list element kinds;
+  update corresponding builtin producer contracts rather than weaken consumers.
+- [x] Preserve kind-validation scope lifetime; the existing scope test found a
+  temporary classifier binding escaping, and is green after fixing that lifetime.
+- [x] Parser344, naming136, typing356, TH16: no failures/ignored/filtered, cargo0.
+  Driver typing integration52 and canaries7 likewise green. The prior TYPE-tail
+  failure and the two newly exposed Nat-literal failures are repaired, not waived.
+- [x] Sixteen source-hashed candidate/GHC9.14.1 pairs agree in both directions;
+  includes wrong TYPE argument, wrong nominal kind, missing named kinds in head
+  and forall annotations, boxed Int# list, and a missing-head-argument control.
+- [ ] Full corpus diagnostic and per-file attribution; no new full count yet.
+
+Frozen explicit CLI SHA256 is
+`b21a2a254304287ee033557628f80475734e8701cbc638773b42c9d79a312497`.
+Evidence under `/private/tmp/haskelujah-kind-terms-chirho.oZJ9Ka/`:
+`nominal-runtime-final-pairs-chirho.jsonl`, `nominal-runtime-crates-final-chirho.log`,
+`nominal-runtime-final-integration-chirho.log`, and the earlier nine-file focused
+surface `nominal-runtime-nine-surface-second-chirho.jsonl`. Eight of the prior
+nine losses now pass focused checks: CoerceToVDQ/T10432 and all six nominal/runtime
+cases. T17817b needed the genuine GHC.Types UnliftedType export; its final CLI
+check is in `t17817b-final-chirho.log`. T14010 remains the hidden kind-indexed
+family-reducer defect described above. These focused results do not establish
+the absence of new corpus regressions. Main remains121d4f2c (882/221), row484 open.
+
+Two old test contracts changed with the representation: a parser assertion
+requiring an applied kind to be discarded now requires the retained application;
+builtin literal-family expectations now state Nat/Symbol/Char rather than Type.
+New driver controls independently checked by GHC constrain the resulting behavior.
+Incomplete grammar for list/promoted binder annotations, imported authoritative
+kind metadata, local Type/Constraint alias shadowing, kind-family equality,
+representation-polymorphic calling rules and native unlifted execution are not
+claimed. Existing oversized roots/directory and lint debt are not declared fixed.

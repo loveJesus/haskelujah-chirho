@@ -542,6 +542,15 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
 
         let mut pushed_chirho = self.push_name_binders_chirho(implicit_kind_names_chirho);
         pushed_chirho.extend(self.push_name_binders_chirho(declared_names_chirho));
+        for variable_chirho in vars_chirho {
+            if let Some(kind_chirho) = &variable_chirho.kind_annotation_chirho {
+                self.walk_binder_kind_chirho(
+                    kind_chirho,
+                    variable_chirho.name_chirho.span_chirho(),
+                    FreeTyVarPolicyChirho::ImplicitChirho,
+                );
+            }
+        }
         pushed_chirho
     }
 
@@ -573,6 +582,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         free_var_policy_chirho: FreeTyVarPolicyChirho,
     ) {
         match kind_chirho {
+            AstKindChirho::ConChirho(name_chirho) => self.check_type_name_chirho(name_chirho, true),
             AstKindChirho::VarChirho(name_chirho)
                 if is_lexical_type_variable_chirho(name_chirho)
                     && free_var_policy_chirho == FreeTyVarPolicyChirho::RequireBoundChirho
@@ -1143,6 +1153,7 @@ fn collect_kind_variable_names_chirho(kind_chirho: &AstKindChirho, names_chirho:
         }
         AstKindChirho::StarChirho
         | AstKindChirho::ConstraintChirho
+        | AstKindChirho::ConChirho(_)
         | AstKindChirho::VarChirho(_) => {}
     }
 }

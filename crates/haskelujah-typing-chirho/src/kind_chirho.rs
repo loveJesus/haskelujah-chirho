@@ -34,6 +34,7 @@ mod declarations_chirho;
 mod dependencies_chirho;
 mod environment_chirho;
 mod groups_chirho;
+mod runtime_chirho;
 #[cfg(test)]
 mod scheme_tests_chirho;
 mod schemes_chirho;
@@ -803,7 +804,13 @@ fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
             ast_kind_to_kind_chirho(b_chirho),
         ),
         AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
-        AstKindChirho::AppChirho(_, _) => KindChirho::StarChirho,
+        AstKindChirho::ConChirho(name_chirho) => {
+            KindChirho::ConChirho(name_chirho.full_name_chirho())
+        }
+        AstKindChirho::AppChirho(fun_chirho, arg_chirho) => KindChirho::app_chirho(
+            ast_kind_to_kind_chirho(fun_chirho),
+            ast_kind_to_kind_chirho(arg_chirho),
+        ),
         // PolyKinds: kind variables default to * when used outside a context
         AstKindChirho::VarChirho(_) => KindChirho::StarChirho,
     }
@@ -1150,24 +1157,27 @@ mod tests_chirho {
         assert_eq!(
             env_chirho.lookup_chirho("GHC.TypeNats.*"),
             Some(&KindChirho::arrow_n_chirho(
-                vec![KindChirho::StarChirho, KindChirho::StarChirho],
-                KindChirho::StarChirho
+                vec![runtime_chirho::builtin_term_chirho("Nat").unwrap(); 2],
+                runtime_chirho::builtin_term_chirho("Nat").unwrap()
             )),
             "qualified TypeNats operator lookup should reuse the bare builtin family kind"
         );
         assert_eq!(
             env_chirho.lookup_chirho("AppendSymbol"),
             Some(&KindChirho::arrow_n_chirho(
-                vec![KindChirho::StarChirho, KindChirho::StarChirho],
-                KindChirho::StarChirho
+                vec![runtime_chirho::builtin_term_chirho("Symbol").unwrap(); 2],
+                runtime_chirho::builtin_term_chirho("Symbol").unwrap()
             ))
         );
-        for family_chirho in ["CharToNat", "GHC.TypeLits.NatToChar"] {
+        for (family_chirho, argument_chirho, result_chirho) in [
+            ("CharToNat", "Char", "Nat"),
+            ("GHC.TypeLits.NatToChar", "Nat", "Char"),
+        ] {
             assert_eq!(
                 env_chirho.lookup_chirho(family_chirho),
                 Some(&KindChirho::arrow_chirho(
-                    KindChirho::StarChirho,
-                    KindChirho::StarChirho
+                    runtime_chirho::builtin_term_chirho(argument_chirho).unwrap(),
+                    runtime_chirho::builtin_term_chirho(result_chirho).unwrap()
                 )),
                 "{family_chirho} should have a unary TypeLits family kind"
             );
@@ -1179,11 +1189,12 @@ mod tests_chirho {
                     if matches!(
                         tail_chirho.as_ref(),
                         KindChirho::ArrowChirho(tail_arg_chirho, result_chirho)
-                            if matches!(tail_arg_chirho.as_ref(), KindChirho::StarChirho)
-                                && matches!(result_chirho.as_ref(), KindChirho::StarChirho)
+                            if tail_arg_chirho == result_chirho
+                                && matches!(result_chirho.as_ref(), KindChirho::AppChirho(head_chirho, _)
+                                    if matches!(head_chirho.as_ref(), KindChirho::ConChirho(name_chirho) if name_chirho == "[]"))
                     )
             ),
-            "promoted list cons should accept an element and flattened tail"
+            "promoted list cons preserves the list kind in its tail and result"
         );
     }
 

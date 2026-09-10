@@ -2,7 +2,7 @@
 
 //! One head/recursion/constructor/publication lifecycle for data and newtype.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
-use super::{KindChirho, KindInferCtxChirho, TyVarChirho};
+use super::{KindInferCtxChirho, TyVarChirho};
 use haskelujah_ast_chirho::decl_chirho::ConDeclChirho;
 
 impl KindInferCtxChirho {
@@ -16,9 +16,8 @@ impl KindInferCtxChirho {
                 ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
                     for (_, field_chirho) in fields_chirho {
                         let kind_chirho = self.infer_type_kind_chirho(field_chirho);
-                        self.unify_chirho(
+                        self.check_runtime_kind_chirho(
                             &kind_chirho,
-                            &KindChirho::StarChirho,
                             "data constructor field",
                             field_chirho.span_chirho(),
                         );
@@ -27,9 +26,8 @@ impl KindInferCtxChirho {
                 ConDeclChirho::RecordChirho { fields_chirho, .. } => {
                     for field_chirho in fields_chirho {
                         let kind_chirho = self.infer_type_kind_chirho(&field_chirho.ty_chirho);
-                        self.unify_chirho(
+                        self.check_runtime_kind_chirho(
                             &kind_chirho,
-                            &KindChirho::StarChirho,
                             "data constructor field",
                             field_chirho.ty_chirho.span_chirho(),
                         );
@@ -44,9 +42,8 @@ impl KindInferCtxChirho {
                     }
                     let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
                     let kind_chirho = self.infer_type_kind_chirho(ty_chirho);
-                    self.unify_chirho(
+                    self.check_runtime_kind_chirho(
                         &kind_chirho,
-                        &KindChirho::StarChirho,
                         "GADT constructor type",
                         ty_chirho.span_chirho(),
                     );

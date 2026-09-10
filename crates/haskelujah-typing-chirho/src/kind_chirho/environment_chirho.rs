@@ -87,12 +87,16 @@ impl KindEnvChirho {
             env_chirho.bind_generalized_chirho(name_chirho.to_string(), star2_chirho.clone());
         }
         let promoted_cons_elem_kind_chirho = KindVarChirho(10_009);
+        let promoted_list_kind_chirho = KindChirho::app_chirho(
+            KindChirho::ConChirho("[]".into()),
+            KindChirho::VarChirho(promoted_cons_elem_kind_chirho),
+        );
         let promoted_cons_kind_chirho = KindChirho::arrow_n_chirho(
             vec![
                 KindChirho::VarChirho(promoted_cons_elem_kind_chirho),
-                KindChirho::StarChirho,
+                promoted_list_kind_chirho.clone(),
             ],
-            KindChirho::StarChirho,
+            promoted_list_kind_chirho,
         );
         for name_chirho in &[":", "':"] {
             env_chirho.bind_generalized_chirho(
@@ -132,19 +136,7 @@ impl KindEnvChirho {
         // (->) :: * -> * -> *
         env_chirho.bind_generalized_chirho("->".to_string(), star2_chirho.clone());
 
-        // Built-in type-level literal families. Nat/Symbol literals and their
-        // family results are represented as ordinary type-level constants here.
-        for name_chirho in &["Nat", "Symbol"] {
-            env_chirho.bind_generalized_chirho(name_chirho.to_string(), KindChirho::StarChirho);
-        }
-        for name_chirho in &["+", "*", "^", "-", "Div", "Mod", "<=?", "AppendSymbol"] {
-            env_chirho.bind_generalized_chirho(name_chirho.to_string(), star2_chirho.clone());
-        }
-        // workflow: language-features-chirho/type-level-character-families-chirho
-        for name_chirho in &["Log2", "CharToNat", "NatToChar"] {
-            env_chirho
-                .bind_generalized_chirho(name_chirho.to_string(), star_to_star_chirho.clone());
-        }
+        env_chirho.seed_type_literal_kinds_chirho();
 
         // Poly-kinded builtins that appear in imported package signatures.
         // We model them with explicitly quantified kind variables so each use site can
@@ -321,7 +313,19 @@ impl KindEnvChirho {
             KindChirho::arrow_chirho(rep_functor_kind_chirho, KindChirho::ConstraintChirho),
         );
 
+        env_chirho.seed_runtime_kinds_chirho();
         env_chirho
+    }
+
+    pub(super) fn bind_promoted_generalized_chirho(
+        &mut self,
+        name_chirho: &str,
+        kind_chirho: KindChirho,
+    ) {
+        self.promoted_bindings_chirho.insert(
+            name_chirho.to_owned(),
+            KindBindingChirho::PolyChirho(KindSchemeChirho::generalize_chirho(kind_chirho)),
+        );
     }
 
     pub fn bind_chirho(&mut self, name_chirho: String, kind_chirho: KindChirho) {

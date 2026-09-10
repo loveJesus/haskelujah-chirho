@@ -146,12 +146,7 @@ impl KindInferCtxChirho {
                 self.env_chirho.begin_scope_chirho();
                 self.kind_var_cache_chirho.clear();
                 let kind_chirho = self.infer_type_kind_chirho(ty_chirho);
-                self.unify_chirho(
-                    &kind_chirho,
-                    &KindChirho::StarChirho,
-                    "type signature",
-                    *span_chirho,
-                );
+                self.check_runtime_kind_chirho(&kind_chirho, "type signature", *span_chirho);
                 self.kind_var_cache_chirho.clear();
                 self.env_chirho.end_scope_chirho();
             }

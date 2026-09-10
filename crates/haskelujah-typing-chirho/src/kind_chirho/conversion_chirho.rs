@@ -9,16 +9,8 @@ impl KindInferCtxChirho {
     /// Convert AST kind to internal kind, allocating fresh kind vars for PolyKinds.
     /// Same kind variable name maps to the same KindVarChirho within a declaration.
     pub(super) fn ast_kind_to_kind_ctx_chirho(&mut self, ast_chirho: &AstKindChirho) -> KindChirho {
-        match ast_chirho {
-            AstKindChirho::StarChirho => KindChirho::StarChirho,
-            AstKindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
-                self.ast_kind_to_kind_ctx_chirho(a_chirho),
-                self.ast_kind_to_kind_ctx_chirho(b_chirho),
-            ),
-            AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
-            AstKindChirho::AppChirho(_, _) => KindChirho::StarChirho,
-            AstKindChirho::VarChirho(name_chirho) => self.named_kind_variable_chirho(name_chirho),
-        }
+        let ty_chirho = ast_kind_type_chirho(ast_chirho);
+        self.type_to_kind_chirho(&ty_chirho)
     }
 
     fn named_kind_variable_chirho(&mut self, name_chirho: &str) -> KindChirho {
@@ -138,6 +130,17 @@ impl KindInferCtxChirho {
     /// `data V :: N -> Type where`).  This converts the *type-level*
     /// representation of a kind back into a `KindChirho`.
     pub(super) fn type_to_kind_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
+        // Validate applications against constructor kinds, then interpret their
+        // TERMS. Keeping the two outputs separate avoids turning TYPE Bool into
+        // a plausible runtime kind simply because it has application syntax.
+        self.env_chirho.begin_scope_chirho();
+        let _classifier_chirho = self.infer_type_kind_chirho(ty_chirho);
+        let term_chirho = self.interpret_kind_term_chirho(ty_chirho);
+        self.env_chirho.end_scope_chirho();
+        term_chirho
+    }
+
+    fn interpret_kind_term_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
         if let Some((name_chirho, expanded_chirho)) =
             self.expand_type_kind_synonym_once_chirho(ty_chirho)
             && !self
@@ -145,30 +148,30 @@ impl KindInferCtxChirho {
                 .contains(&name_chirho)
         {
             self.expanding_type_kind_synonyms_chirho.push(name_chirho);
-            let kind_chirho = self.type_to_kind_chirho(&expanded_chirho);
+            let kind_chirho = self.interpret_kind_term_chirho(&expanded_chirho);
             self.expanding_type_kind_synonyms_chirho.pop();
             return kind_chirho;
         }
 
         match ty_chirho {
-            TypeChirho::ConChirho(name_chirho)
-                if name_chirho.text_chirho() == "Type" || name_chirho.text_chirho() == "*" =>
-            {
-                KindChirho::StarChirho
+            TypeChirho::ConChirho(name_chirho) => self.named_kind_term_chirho(name_chirho),
+            TypeChirho::PromotedConChirho { name_chirho, .. } => {
+                self.named_kind_term_chirho(name_chirho)
             }
-            TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Constraint" => {
-                KindChirho::ConstraintChirho
+            TypeChirho::LitChirho { value_chirho, .. } => {
+                KindChirho::ConChirho(value_chirho.clone())
             }
-            TypeChirho::ConChirho(name_chirho) => {
-                KindChirho::ConChirho(name_chirho.full_name_chirho())
-            }
+            TypeChirho::ListChirho { element_chirho, .. } => KindChirho::app_chirho(
+                KindChirho::ConChirho("[]".into()),
+                self.interpret_kind_term_chirho(element_chirho),
+            ),
             TypeChirho::FunChirho {
                 arg_chirho,
                 result_chirho,
                 ..
             } => KindChirho::arrow_chirho(
-                self.type_to_kind_chirho(arg_chirho),
-                self.type_to_kind_chirho(result_chirho),
+                self.interpret_kind_term_chirho(arg_chirho),
+                self.interpret_kind_term_chirho(result_chirho),
             ),
             TypeChirho::VarChirho(name_chirho) => {
                 self.named_kind_variable_chirho(name_chirho.text_chirho())
@@ -180,24 +183,26 @@ impl KindInferCtxChirho {
             } => {
                 // This is the term `f a`, not the result kind of applying f.
                 KindChirho::app_chirho(
-                    self.type_to_kind_chirho(fun_chirho),
-                    self.type_to_kind_chirho(arg_chirho),
+                    self.interpret_kind_term_chirho(fun_chirho),
+                    self.interpret_kind_term_chirho(arg_chirho),
                 )
             }
-            TypeChirho::ParenChirho { inner_chirho, .. } => self.type_to_kind_chirho(inner_chirho),
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                self.interpret_kind_term_chirho(inner_chirho)
+            }
             TypeChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
                 ..
             } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
-                ctx_chirho.type_to_kind_chirho(body_chirho)
+                ctx_chirho.interpret_kind_term_chirho(body_chirho)
             }),
             TypeChirho::RequiredForallChirho {
                 vars_chirho,
                 body_chirho,
                 ..
             } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
-                let mut result_chirho = ctx_chirho.type_to_kind_chirho(body_chirho);
+                let mut result_chirho = ctx_chirho.interpret_kind_term_chirho(body_chirho);
                 for binder_chirho in vars_chirho.iter().rev() {
                     let identity_chirho =
                         ctx_chirho.kind_var_cache_chirho[binder_chirho.text_chirho()];
@@ -275,7 +280,9 @@ impl KindInferCtxChirho {
                         "dependent type application",
                         *span_chirho,
                     );
-                    let argument_term_chirho = self.type_to_kind_chirho(arg_chirho);
+                    // Its classifier was checked above. Rechecking the whole
+                    // argument here duplicates work at every nested Pi call.
+                    let argument_term_chirho = self.interpret_kind_term_chirho(arg_chirho);
                     return self.subst_chirho.apply_chirho(
                         &result_chirho.substitute_bound_chirho(&argument_term_chirho),
                     );
@@ -300,19 +307,8 @@ impl KindInferCtxChirho {
             } => {
                 let k_a_chirho = self.infer_type_kind_chirho(arg_chirho);
                 let k_b_chirho = self.infer_type_kind_chirho(result_chirho);
-                // Both sides of -> must be *
-                self.unify_chirho(
-                    &k_a_chirho,
-                    &KindChirho::StarChirho,
-                    "function type argument",
-                    *span_chirho,
-                );
-                self.unify_chirho(
-                    &k_b_chirho,
-                    &KindChirho::StarChirho,
-                    "function type result",
-                    *span_chirho,
-                );
+                self.check_runtime_kind_chirho(&k_a_chirho, "function type argument", *span_chirho);
+                self.check_runtime_kind_chirho(&k_b_chirho, "function type result", *span_chirho);
                 KindChirho::StarChirho
             }
             TypeChirho::ListChirho {
@@ -403,28 +399,91 @@ impl KindInferCtxChirho {
                     self.fresh_kind_chirho()
                 }
             }
-            // DataKinds: promoted list '[a, b] has kind [*] which we represent as *.
+            // Promotion preserves the common element kind, including Nat and
+            // Symbol. A promoted list is not itself a lifted value type.
             TypeChirho::PromotedListChirho {
                 elements_chirho,
                 span_chirho,
             } => {
+                let element_kind_chirho = self.fresh_kind_chirho();
                 for elem_chirho in elements_chirho {
                     let k_chirho = self.infer_type_kind_chirho(elem_chirho);
                     self.unify_chirho(
                         &k_chirho,
-                        &KindChirho::StarChirho,
+                        &element_kind_chirho,
                         "promoted list element",
                         *span_chirho,
                     );
                 }
-                KindChirho::StarChirho
+                KindChirho::app_chirho(
+                    KindChirho::ConChirho("[]".into()),
+                    self.subst_chirho.apply_chirho(&element_kind_chirho),
+                )
             }
             // PartialTypeSignatures: `_` is a wildcard that will be filled in
             // during type inference. Kind-wise it is treated as * (a regular
             // monotype position).
             TypeChirho::WildcardChirho { .. } => KindChirho::StarChirho,
-            // Type-level literal (DataKinds): literals have kind *.
-            TypeChirho::LitChirho { .. } => KindChirho::StarChirho,
+            TypeChirho::LitChirho { value_chirho, .. } => {
+                let name_chirho = if value_chirho.starts_with('"') {
+                    "Symbol"
+                } else if value_chirho.starts_with('\'') {
+                    "Char"
+                } else {
+                    "Nat"
+                };
+                super::runtime_chirho::builtin_term_chirho(name_chirho)
+                    .expect("literal kinds are builtin nominal terms")
+            }
+        }
+    }
+}
+
+fn ast_kind_type_chirho(kind_chirho: &AstKindChirho) -> TypeChirho {
+    use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+    let name_chirho = |text_chirho: &str| {
+        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            text_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        ))
+    };
+    match kind_chirho {
+        AstKindChirho::ConChirho(constructor_chirho) => {
+            TypeChirho::ConChirho(constructor_chirho.clone())
+        }
+        AstKindChirho::StarChirho => TypeChirho::ConChirho(name_chirho("Type")),
+        AstKindChirho::ConstraintChirho => TypeChirho::ConChirho(name_chirho("Constraint")),
+        AstKindChirho::VarChirho(variable_chirho) => {
+            TypeChirho::VarChirho(name_chirho(variable_chirho))
+        }
+        AstKindChirho::ArrowChirho(left_chirho, right_chirho)
+        | AstKindChirho::AppChirho(left_chirho, right_chirho) => {
+            let left_chirho = ast_kind_type_chirho(left_chirho);
+            let right_chirho = ast_kind_type_chirho(right_chirho);
+            let span_chirho = left_chirho
+                .span_chirho()
+                .merge_chirho(right_chirho.span_chirho())
+                .unwrap_or_else(|| {
+                    if left_chirho.span_chirho() == SpanChirho::DUMMY_CHIRHO {
+                        right_chirho.span_chirho()
+                    } else {
+                        left_chirho.span_chirho()
+                    }
+                });
+            if matches!(kind_chirho, AstKindChirho::ArrowChirho(_, _)) {
+                TypeChirho::FunChirho {
+                    arg_chirho: Box::new(left_chirho),
+                    result_chirho: Box::new(right_chirho),
+                    mult_chirho: None,
+                    span_chirho,
+                }
+            } else {
+                TypeChirho::AppChirho {
+                    fun_chirho: Box::new(left_chirho),
+                    arg_chirho: Box::new(right_chirho),
+                    span_chirho,
+                }
+            }
         }
     }
 }

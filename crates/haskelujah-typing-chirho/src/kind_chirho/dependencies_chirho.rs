@@ -187,15 +187,17 @@ fn binder_refs_chirho(binders_chirho: &[TyVarChirho], refs_chirho: &mut HashSet<
 
 fn kind_refs_chirho(kind_chirho: &AstKindChirho, refs_chirho: &mut HashSet<String>) {
     match kind_chirho {
-        AstKindChirho::VarChirho(name_chirho) => {
-            refs_chirho.insert(name_chirho.clone());
+        AstKindChirho::ConChirho(name_chirho) => {
+            refs_chirho.insert(name_chirho.full_name_chirho());
         }
         AstKindChirho::ArrowChirho(argument_chirho, result_chirho)
         | AstKindChirho::AppChirho(argument_chirho, result_chirho) => {
             kind_refs_chirho(argument_chirho, refs_chirho);
             kind_refs_chirho(result_chirho, refs_chirho);
         }
-        AstKindChirho::StarChirho | AstKindChirho::ConstraintChirho => {}
+        AstKindChirho::StarChirho
+        | AstKindChirho::ConstraintChirho
+        | AstKindChirho::VarChirho(_) => {}
     }
 }
 

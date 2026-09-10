@@ -192,6 +192,9 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
         canonicalize_type_map_chirho(module_chirho);
 
         match module_chirho.name_chirho.as_str() {
+            "GHC.Types" => {
+                ensure_type_export_chirho(module_chirho, "UnliftedType", &[]);
+            }
             "GHC.Exts" => {
                 for type_name_chirho in &[
                     "Any",

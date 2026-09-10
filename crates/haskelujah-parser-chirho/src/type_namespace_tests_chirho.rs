@@ -540,7 +540,7 @@ fn injectivity_annotation_does_not_inflate_family_arity_chirho() {
 }
 
 #[test]
-fn unsupported_applied_binder_kind_remains_inferred_chirho() {
+fn applied_binder_kind_retains_its_declared_nominal_contract_chirho() {
     let module_chirho = lower_source_chirho(concat!(
         "{-# LANGUAGE KindSignatures #-}\n",
         "{-# LANGUAGE PolyKinds #-}\n",
@@ -565,9 +565,19 @@ fn unsupported_applied_binder_kind_remains_inferred_chirho() {
         })
         .expect("kind-annotated category binder should survive lowering");
 
+    use haskelujah_ast_chirho::decl_chirho::AstKindChirho;
+    let Some(AstKindChirho::AppChirho(head_chirho, argument_chirho)) =
+        &category_binder_chirho.kind_annotation_chirho
+    else {
+        panic!("the now-represented kind application must not be discarded")
+    };
     assert!(
-        category_binder_chirho.kind_annotation_chirho.is_none(),
-        "an unrepresented named kind application must defer to kind inference"
+        matches!(head_chirho.as_ref(), AstKindChirho::ConChirho(name_chirho)
+        if name_chirho.text_chirho() == "CatChirho")
+    );
+    assert_eq!(
+        argument_chirho.as_ref(),
+        &AstKindChirho::VarChirho("indexChirho".into())
     );
 }
 

@@ -26,6 +26,9 @@ pub enum AstKindChirho {
     ConstraintChirho,
     /// Kind variable (PolyKinds): `k` in `(a :: k)`.
     VarChirho(String),
+    /// A nominal kind constructor, retaining qualification and source span.
+    /// It is not a lexical variable and must never be implicitly quantified.
+    ConChirho(NameChirho),
     /// Kind application: `TYPE representation` in `(a :: TYPE representation)`.
     AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
 }

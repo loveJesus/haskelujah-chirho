@@ -11,11 +11,15 @@
 //! (`DeclChirho`, `TypeChirho`, etc.) to TH types (`ThDecChirho`, `ThTypeChirho`, etc.).
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, TyVarChirho,
+    AstKindChirho, ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
 use crate::th_ast_chirho::*;
+
+#[cfg(test)]
+#[path = "reify_chirho/kind_tests_chirho.rs"]
+mod kind_tests_chirho;
 
 fn ast_constraint_to_th_chirho(constraint_chirho: &ConstraintChirho) -> ThTypeChirho {
     match constraint_chirho {
@@ -157,13 +161,36 @@ pub fn ast_tyvar_to_th_chirho(tv_chirho: &TyVarChirho) -> ThTyVarBndrChirho {
         None => ThTyVarBndrChirho::PlainTVChirho(ThNameChirho::mk_name_chirho(
             tv_chirho.name_chirho.text_chirho(),
         )),
-        Some(_kind_chirho) => {
-            // Kind annotations require mapping AstKindChirho to ThTypeChirho
-            // For now, treat as plain since kind annotations are rare in user code
-            ThTyVarBndrChirho::PlainTVChirho(ThNameChirho::mk_name_chirho(
-                tv_chirho.name_chirho.text_chirho(),
-            ))
+        Some(kind_chirho) => ThTyVarBndrChirho::KindedTVChirho(
+            ThNameChirho::mk_name_chirho(tv_chirho.name_chirho.text_chirho()),
+            Box::new(ast_kind_to_th_chirho(kind_chirho)),
+        ),
+    }
+}
+
+/// Reification preserves the same nominal/variable distinction as kind naming.
+/// This does not imply that the separate TH-to-AST conversion retains kinds.
+fn ast_kind_to_th_chirho(kind_chirho: &AstKindChirho) -> ThTypeChirho {
+    match kind_chirho {
+        AstKindChirho::StarChirho => ThTypeChirho::StarTChirho,
+        AstKindChirho::ConstraintChirho => ThTypeChirho::ConstraintTChirho,
+        AstKindChirho::VarChirho(name_chirho) => {
+            ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho(name_chirho))
         }
+        AstKindChirho::ConChirho(name_chirho) => ThTypeChirho::ConTChirho(
+            ThNameChirho::mk_name_chirho(&name_chirho.full_name_chirho()),
+        ),
+        AstKindChirho::AppChirho(fun_chirho, arg_chirho) => ThTypeChirho::AppTChirho(
+            Box::new(ast_kind_to_th_chirho(fun_chirho)),
+            Box::new(ast_kind_to_th_chirho(arg_chirho)),
+        ),
+        AstKindChirho::ArrowChirho(arg_chirho, result_chirho) => ThTypeChirho::AppTChirho(
+            Box::new(ThTypeChirho::AppTChirho(
+                Box::new(ThTypeChirho::ArrowTChirho),
+                Box::new(ast_kind_to_th_chirho(arg_chirho)),
+            )),
+            Box::new(ast_kind_to_th_chirho(result_chirho)),
+        ),
     }
 }
 
