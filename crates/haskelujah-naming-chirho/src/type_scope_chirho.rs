@@ -27,9 +27,6 @@ use crate::resolve_chirho::{
 };
 use crate::type_exports_chirho::{canonical_type_name_chirho, canonical_value_name_chirho};
 
-/// Parser marker for a constraint shape that was not structurally lowered.
-const UNRESOLVED_CONSTRAINT_MARKER_CHIRHO: &str = "?";
-
 /// Equality is built-in syntax rather than a normal imported class binding.
 const BUILTIN_CONSTRAINT_NAMES_CHIRHO: &[&str] = &["~", "~~", "∼"];
 
@@ -487,13 +484,16 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 ..
             } => {
                 let class_text_chirho = class_chirho.text_chirho();
-                if class_text_chirho != UNRESOLVED_CONSTRAINT_MARKER_CHIRHO
+                // Implicit-parameter labels name evidence, not type constructors.
+                // The legacy `?` recovery marker is likewise not a source type;
+                // retained argument types are still walked below in either case.
+                if !class_text_chirho.starts_with('?')
                     && !is_builtin_constraint_name_chirho(class_chirho)
                     && name_parts_chirho(class_chirho).0.is_none()
                     && is_lexical_type_variable_chirho(class_text_chirho)
                 {
                     self.check_type_variable_use_chirho(class_chirho, free_var_policy_chirho);
-                } else if class_text_chirho != UNRESOLVED_CONSTRAINT_MARKER_CHIRHO
+                } else if !class_text_chirho.starts_with('?')
                     && !is_builtin_constraint_name_chirho(class_chirho)
                 {
                     self.check_type_name_chirho(class_chirho, false);

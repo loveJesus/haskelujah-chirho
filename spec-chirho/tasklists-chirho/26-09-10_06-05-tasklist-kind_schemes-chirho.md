@@ -213,3 +213,63 @@ documented RUST_MIN_STACK and aborted on nested parens; the complete rerun uses
 16777216 and is green. These focused gates do not cover the full regression
 surface: a third complete diagnostic and final workspace gates remain owed.
 Main, artifact lists and row484 closure are untouched.
+
+### Third diagnostic: regressions of existing paths, not convergence
+
+Checkpoint e028c1a3, CLI `387ee27500b4f0516db114467438fb93c7729824580c6710d8825a4f840822b8`,
+completed one diagnostic pass per axis: accept859/938, reject234/767, zero
+timeouts/unexpected exits and stable binary hash. Compared with the second
+diagnostic: fourteen accept recoveries, eighteen new failures. Compared with
+main: +T14451/T15079/tc124, -26. The lower total is not landable. Evidence:
+`/private/tmp/haskelujah-kind-groups-chirho.EaepkD/diagnostic-boundary-chirho.log`.
+
+Sixteen new failures are implicit-parameter labels reaching type-name lookup
+after the bare-predicate parser repair. The measured 26-file `?label` surface
+has sixteen new failures, nine still accepted and one already-failing file,
+tc218; it is not ten passing controls. Constraint labels now use the same
+evidence-versus-type namespace distinction as variable uses. Retained argument
+types are still visited. Two naming controls were demonstrated red first.
+The first draft also used an unseeded Int environment; the reduced rerun removed
+that unrelated error before validating the repair. This is not complete
+ImplicitParams support: lowering still drops the type in `?x :: Type`, and
+the existing value rule supplies fresh types rather than faithful evidence.
+A MissingPayloadChirho probe is wrongly accepted by freshly explicitly built
+main121d4f2c (CLI77cc6d4f...) and the repaired candidate, but GHC-76037 rejected.
+A following MissingResultChirho canary is independently diagnosed by both.
+
+T10808 exposed a different defect in the shared type unifier. Its deferral rule
+ran only when structural unification failed, so successful `G a ~ G b`
+decomposition incorrectly equated a and b even for a noninjective family.
+Deferral now precedes such decomposition; assigning the entire application to
+a metavariable remains allowed if its occurs check passes. No record-specific
+exception or rollback of rank-N expected checking. The new exact-output
+GHC9.14.1/STG control prints True/2; changing the updated Bool field to Char
+still rejects. The positive test was demonstrated red before repair.
+
+Candidate CLI `c984eeebd5d8558f2b02c52735b0a7ce7e10229f0965cf7a04e6bfff9b59873a`:
+naming136, typing352, record_fields16, typing_integration43, canaries7 all pass
+with zero exclusions and actual Cargo0. A fresh 29-file recheck recovers the
+sixteen implicit-parameter failures and T10808; tc218 and T25597 remain red.
+The prior 35-file recheck preserves the earlier recoveries and eight known
+kind-representation losses. This is not a fourth full-corpus measurement.
+Evidence: `/private/tmp/haskelujah-kind-third-reduction-chirho.7sP4Re/`.
+
+The second diagnostic's reject239 decomposes into +19/-1 against main. A
+read-only oracle review classified five close reason matches, thirteen wrong
+reasons and one missing .stderr; these are not nineteen banked capabilities.
+The lost T23162b was then bracketed with fresh main/candidate CLIs: main rejects
+the valid foo signature at line19 for E0300, not GHC's line27/31 conflicts.
+A declaration-plus-foo reduction is accepted by GHC and candidate, rejected by
+main. Thus the old rejection was accidental; user-family injectivity checking
+remains unimplemented and must not be simulated by restoring its kind error.
+
+Next bounded producer repair: T25597's closed-family equation `FuncU sem '[] r`
+loses the bracketed pattern in a separate manual LHS scanner. The repaired
+three-argument head exposes that pre-existing two-pattern equation. GHC9.14.1
+accepts the unchanged corpus input. Something is wrong with duplicated pattern
+scanners in the oversized lowerer: extract family lowering to a focused sibling
+and share atomic type parsing for equation/instance heads, preserving complete
+brackets, promoted forms and source spans. No new AST or dependency. Prove the
+producer shape and behavioral selection with positive/negative controls before
+another corpus pass. The current owned checkpoint bounds reversal; main stays
+unchanged, and the nominal/dependent-kind design remains separate.

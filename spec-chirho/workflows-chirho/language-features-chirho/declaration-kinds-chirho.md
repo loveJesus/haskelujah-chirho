@@ -117,6 +117,13 @@ with the same boundary helper as data/newtype. An unreadable annotation still
 does not become faithfully represented, but cannot change the head's arity or
 masquerade as the declaration's result annotation.
 
+Implicit-parameter labels belong to the evidence namespace, not type-constructor
+lookup. Retained constraint argument types are still visited. This does not
+repair the older loss of implicit-parameter type annotations or claim faithful
+dynamic evidence propagation; [GHC's implicit-parameter contract](https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/implicit_parameters.html)
+is stronger than the current fresh-variable fallback. The row484 tasklist
+records a GHC-rejected missing-payload-type control still accepted here.
+
 GHC-55233 is checked on both written contracts with one diagnostic, independently
 of the existing Type/Constraint unification compatibility. Binder annotations
 are not result annotations; local Constraint shadowing retains its previous

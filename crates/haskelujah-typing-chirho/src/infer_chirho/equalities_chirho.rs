@@ -107,6 +107,37 @@ impl InferCtxChirho {
         self.ty_is_family_app_chirho(ty_chirho) && ty_chirho.contains_var_chirho()
     }
 
+    /// A successful structural unifier is not evidence of family injectivity:
+    /// `G a ~ G b` must wait even when that unifier could equate `a` and `b`.
+    /// Assigning an entire family application to a metavariable is different:
+    /// it does not invert the family and is allowed when the occurs check passes.
+    /// Workflow: language-features-chirho/stuck-family-equalities-chirho.
+    pub(super) fn defer_stuck_family_equality_chirho(
+        &mut self,
+        left_chirho: &TyChirho,
+        right_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> bool {
+        if left_chirho == right_chirho
+            || !(self.ty_is_stuck_family_on_var_chirho(left_chirho)
+                || self.ty_is_stuck_family_on_var_chirho(right_chirho))
+        {
+            return false;
+        }
+        let assigns_whole_type_chirho = matches!(left_chirho, TyChirho::VarChirho(_))
+            || matches!(right_chirho, TyChirho::VarChirho(_));
+        if assigns_whole_type_chirho && unify_chirho(left_chirho, right_chirho, span_chirho).is_ok()
+        {
+            return false;
+        }
+        self.deferred_equalities_chirho.push((
+            left_chirho.clone(),
+            right_chirho.clone(),
+            span_chirho,
+        ));
+        true
+    }
+
     /// Rewrite every subterm equal to a given equality's left side to its
     /// right side (one pass; normalization iterates).
     pub(super) fn apply_given_rewrites_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {

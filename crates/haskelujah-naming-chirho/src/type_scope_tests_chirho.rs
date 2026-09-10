@@ -1125,3 +1125,38 @@ fn unknown_superclass_is_resolved_in_the_type_namespace_chirho() {
     assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
     assert!(format!("{diagnostics_chirho}").contains("MissingClassChirho"));
 }
+
+#[test]
+fn implicit_parameter_predicate_labels_are_not_type_names_chirho() {
+    let module_chirho = module_chirho(vec![signature_chirho(TypeChirho::QualChirho {
+        context_chirho: vec![ConstraintChirho::ClassChirho {
+            class_chirho: name_chirho("?inputChirho"),
+            args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        body_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    })]);
+    let diagnostics_chirho = check_chirho(&module_chirho, &NameEnvChirho::new_chirho());
+    assert!(diagnostics_chirho.is_empty_chirho(), "{diagnostics_chirho}");
+}
+
+#[test]
+fn implicit_parameter_predicates_still_check_retained_type_arguments_chirho() {
+    let module_chirho = module_chirho(vec![signature_chirho(TypeChirho::QualChirho {
+        context_chirho: vec![ConstraintChirho::ClassChirho {
+            class_chirho: name_chirho("?inputChirho"),
+            args_chirho: vec![TypeChirho::ConChirho(name_chirho("MissingPayloadChirho"))],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        body_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    })]);
+    let diagnostics_chirho = check_chirho(&module_chirho, &NameEnvChirho::new_chirho());
+    assert_eq!(
+        diagnostics_chirho.error_count_chirho(),
+        1,
+        "{diagnostics_chirho}"
+    );
+    assert!(format!("{diagnostics_chirho}").contains("MissingPayloadChirho"));
+}

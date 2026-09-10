@@ -1875,16 +1875,7 @@ impl InferCtxChirho {
         // when the variable is solved, when givens change, and at the end of
         // the module.
         // workflow: language-features-chirho/stuck-family-equalities-chirho
-        if (self.ty_is_stuck_family_on_var_chirho(&n1_chirho)
-            || self.ty_is_stuck_family_on_var_chirho(&n2_chirho))
-            && n1_chirho != n2_chirho
-            && unify_chirho(&n1_chirho, &n2_chirho, span_chirho).is_err()
-        {
-            self.deferred_equalities_chirho.push((
-                n1_chirho.clone(),
-                n2_chirho.clone(),
-                span_chirho,
-            ));
+        if self.defer_stuck_family_equality_chirho(&n1_chirho, &n2_chirho, span_chirho) {
             return Ok(SubstChirho::empty_chirho());
         }
         if let (
