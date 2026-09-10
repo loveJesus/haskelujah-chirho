@@ -5,8 +5,9 @@
 Continued overnight direction from L.J.; HASKELUJAH/gpt_chirho owns this
 isolated branch, gpt-flat-types-chirho, based on frozen kind-scope checkpoint
 3683dae8. Canonical progress row 482 started 2026-09-10T06:59:34.746Z.
-The preceding kind-scope workspace gate continues in its separate worktree;
-no source edits or extra heavy build load enter that gate.
+This branch was prepared while the preceding kind-scope gate ran in its separate
+worktree; no source edits or extra heavy build load entered that gate. The later
+rebase and this unit's completed frozen gates are recorded below.
 
 ## Brick 1: representation, placement, and proof
 
@@ -36,7 +37,7 @@ Do not claim full flat forall/type-operator semantics from this list repair.
 - [x] Capture parser AST controls and exact-output execution controls, including nesting.
 - [x] Extract helpers and repair list constructor/application and bracket ownership.
 - [x] Focused parser, typing, driver, and canary gates; check T14761c for actual reachability.
-- [ ] Rebase onto the preceding verified landing, freeze, and run both full upstream axes twice.
+- [x] Rebase onto the preceding verified landing, freeze, and run both full upstream axes twice.
 - [ ] Complete meaningful workspace/execution gates, named-path commits, push/read-back,
       main-path smoke checks, and canonical DB closure.
 
@@ -63,9 +64,51 @@ Full typing passes 335/335. T14761c now checks under the explicitly rebuilt CLI;
 the previous main CLI still reports E0300 at its `[] Char` field, and fresh GHC
 9.14.1 accepts the unchanged upstream file with its own -Werror option. This
 removes a spurious kind error, not a claim that every UNPACK/StrictData warning
-contract is implemented. Full-corpus movement remains unmeasured at this point.
+contract is implemented. Full-corpus movement was still unmeasured at that focused
+checkpoint; the completed result is recorded below.
 Three clippy findings in the extracted existing helper were corrected without
 changing its forall behavior; unrelated lint/size debt is not waived.
+
+## Frozen gate and landing
+
+Source cb939e35d0a998be9357881fb1a6e1078f0bbfb1, rebased onto the verified
+9d563c7b kind-scope landing and pushed/read back exact on gpt-flat-types-chirho.
+Explicit CLI build, warning-free; SHA256
+6cbbc8e5c37670a33ed85e151e8391ab77dff1d9540ce921ba3f8fb5688d0588,
+asserted unchanged around all four passes and again after the workspace gate.
+Accept 880/938 (+T14761c, no losses); reject 222/767 (-T14761a, no gains).
+Two complete passes per axis are byte-identical, with zero timeouts or unexpected
+exits. Raw list hashes are in the two superseding artifacts. All 514 curated
+source hashes still match the existing complete GHC 9.14.1 manifest; the full
+reference pass was not rerun here.
+
+Full frozen workspace: 3365 passed across 75 targets, zero failed/ignored/filtered,
+actual Cargo exit 0, with the documented 16 MiB test-thread stack. Raw log SHA256
+65a563c63fe698cf403ac50d90d964e867f3c91a2030021fadeefd22366ed1c7.
+No compiler warnings. Separate parser/typing/driver all-target clippy exits zero
+with 650 warning messages (duplicates included), none at a primary span in the
+new child modules or edited integration file; pre-existing lint debt remains.
+Main fast-forward, explicit main build/smokes, remote readback and DB closure
+remain pending at this evidence checkpoint. Row483 source work is isolated in
+gpt-kind-signatures-chirho; its canonical DB row must survive this landing.
+
+## Open rule: GHC-10107 (T14761a)
+
+T14761a's committed stderr and fresh GHC 9.14.1 reject three UNPACK annotations
+lacking `!` under the source's `OPTIONS -Werror`. The old CLI rejected only B's
+fabricated `[] Char` kind, so removing the list bug removes an accidental rejection.
+The file is now honestly listed among wrong accepts. The previous measured 223
+was an error-present count, not 223 matching-GHC-reason implementations.
+
+This is concrete follow-up work: retain UNPACK and strictness independently,
+respect effective strictness (including relevant extensions), retain warning
+options and apply the warning/-Werror policy. Current pragma lowering mainly
+retains LANGUAGE/-X options, and ordinary field lowering retains `!` while
+dropping UNPACK. A filename guard or source-text special case would recreate a
+wrong-reason rejection. Expected reach is at least this one identified reject
+file when the real rule lands; no broader estimate is claimed.
+L.J.'s public truncation-versus-nearest decision is still open on BOTH axes;
+existing approximate labels are merely carried forward and no site is deployed.
 
 ## Other measured candidate, not implemented
 

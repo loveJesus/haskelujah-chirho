@@ -1,9 +1,9 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-10 UTC, AFTER lexical kind-binder scope repair
-# code measured: 3683dae897963c4d61bc3737796a7f2969a76bc8 (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-10 UTC, AFTER flat list-type reconstruction repair
+# code measured: cb939e35d0a998be9357881fb1a6e1078f0bbfb1 (HASKELUJAH/gpt_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
-#   measured binary: ../haskelujah-gpt-chirho/target/debug/haskelujah
-# CLI SHA256: f83c9fc56f51eeaf6107032cfbb0b9aad8d60f2515864977edd47ce3bdb321ab
+#   measured binary: ../haskelujah-gpt-flat-types-chirho/target/debug/haskelujah
+# CLI SHA256: 6cbbc8e5c37670a33ed85e151e8391ab77dff1d9540ce921ba3f8fb5688d0588
 #   HEAD and binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone with a 60s cap; a rejection contains `error[E` or `panic`;
@@ -11,26 +11,39 @@
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=223 WRONGLY-ACCEPTED=544 TOTAL=767 (29.1% reject rate)
+# RESULT: CORRECTLY-REJECTED=222 WRONGLY-ACCEPTED=545 TOTAL=767
 # STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
-#   sets byte-identical to each other AND the previously committed list
-# QUOTE-AS: ~29% (223 of 767) — do not quote a third significant figure
+#   sets byte-identical to each other; exact delta from prior list below
+# QUOTE-AS: ~29% (222 of 767) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~94% (879 of 938).
-# Existing approximate labels are retained; truncation versus nearest remains a
-# pending L.J. reporting-policy decision. No policy change or public-site deployment.
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~94% (880 of 938).
+# Existing approximate labels are carried forward unchanged, with current counts.
+# Truncation versus nearest remains a pending L.J. reporting-policy decision on
+# BOTH axes (880/938 and 222/767). No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (dace042b): 223 -> 223, zero gained, zero lost.
-#   Kind-binder scopes restore both lexical maps without leaking inner shadows or
-#   discarding newly discovered free kind variables. The genuine bad-kind controls
-#   still reject; no permissive fallback was widened and no corpus input changed.
-# WRONG-ACCEPT-LIST SHA256: 01eb9ca0ff757ecd4deb9575e79e4920925f5e6b9ef001bf39a5fe3a28b32d87
-#   These are typecheck verdicts, not execution. Separate execution evidence at the
-#   same source commit: 3356 workspace passes, zero failed/ignored/filtered; 126 native
-#   round trips; curated 537/537, including 514 compared execution oracles whose source
-#   hashes still match the earlier complete GHC 9.14.1 reference (not rerun in full here),
-#   and 23 compile-only inputs. Neither upstream corpus is fully passing.
-#   See workflows-chirho/testing-chirho/execution-measurement-chirho.md for scope.
+# CHANGE SINCE LAST MEASUREMENT (3683dae8): 223 -> 222, zero gained, -1 lost.
+#   T14761a enters the wrongly-accepted list. Its own .stderr and fresh GHC 9.14.1
+#   reject GHC-10107: UNPACK lacks !, with the warning promoted by the file's -Werror.
+#   Our old rejection was ONLY the fabricated [] Char E0300, not that warning rule.
+#   Repairing list reconstruction removes this accidental rejection; the genuine
+#   warning-policy gap is now explicit, not hidden by a guard preserving a wrong reason.
+#   The previous 223 was a measured error-present count, not 223 matching GHC reasons.
+#   Open rule and required representation/option work:
+#   tasklists-chirho/26-09-10_02-59-tasklist-flat_types-chirho.md (GHC-10107).
+#   No corpus source or expected stderr changed.
+# WRONG-ACCEPT-LIST SHA256: aac9997bd19b1a34ab18e5461866c2e15a670a2e99ed4c8eeb4d61600fa5020d
+#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
+# EXECUTION EVIDENCE: the same frozen source passes 3365 workspace tests across
+#   75 targets, zero failed/ignored/filtered, Cargo exit 0, including 126 native round
+#   trips and curated 537/537: 514 execution oracles compared; all source hashes still
+#   match the earlier complete GHC 9.14.1 reference (not rerun in full in this lane);
+#   23 compile-only inputs. Three new shared-source controls match fresh GHC oracles
+#   on STG/LLVM/Cranelift. See workflows-chirho/testing-chirho/
+#   execution-measurement-chirho.md for provenance and explicit scope limits.
+#
+# PREVIOUS MEASUREMENT (3683dae8): 223 -> 223, zero gained, zero lost.
+#   Kind-binder scopes restore both lexical maps without leaking shadows or
+#   discarding newly discovered free kind variables; genuine bad-kind controls reject.
 #
 # PREVIOUS MEASUREMENT (dace042b): 222 -> 223, +1 gained, zero lost.
 #   GivenForallLoop.hs leaves the wrongly-accepted set. Its inner `forall b` no
@@ -67,7 +80,7 @@
 # (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
 # this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# ---- the 544 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 545 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -185,6 +198,7 @@ T14055.hs
 T14390.hs
 T14605.hs
 T14607.hs
+T14761a.hs
 T14761b.hs
 T14884.hs
 T14904a.hs
