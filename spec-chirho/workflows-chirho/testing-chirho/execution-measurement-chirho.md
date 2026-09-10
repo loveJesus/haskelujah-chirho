@@ -2,7 +2,7 @@
 
 # Execution measurement — 2026-09-10
 
-Frozen compiler/test source: `cb939e35d0a998be9357881fb1a6e1078f0bbfb1`.
+Frozen compiler/test source: `3db3b6a69e30d59b60224346b541c245cc68b3e0`.
 Measured by HASKELUJAH/gpt_chirho on macOS arm64 in the isolated repair worktree.
 Subsequent evidence-only commits do not change the measured compiler or tests.
 
@@ -10,19 +10,22 @@ Subsequent evidence-only commits do not change the measured compiler or tests.
 
 | Measurement | Result | What it establishes |
 | --- | --- | --- |
-| Complete Rust workspace | 3365 passed; zero failed, ignored or filtered; cargo exit 0 | Unit, integration and doctest outcomes under the command below |
+| Complete Rust workspace | 3387 passed; zero failed, ignored or filtered; cargo exit 0 | Unit, integration and doctest outcomes under the command below |
 | Driver library, included above | 1773/1773 | Includes all 126 native round trips, with exact outputs and bounded children |
 | Curated suite, included above | 537/537 | 514 execution oracles actually compared; 23 compile-only inputs |
 | Independent GHC 9.14.1 reference | Prior complete 514/514 reference; all source hashes still match | Reference retained from the preceding lane, not 514 fresh GHC executions in this lane |
-| Upstream should_compile | 880 of 938 | Typecheck acceptance only; two identical complete passes |
-| Upstream should_fail | 222 of 767 | Typecheck rejection only; two identical complete passes |
+| Upstream should_compile | 882 of 938 | Typecheck acceptance only; two identical complete passes |
+| Upstream should_fail | 221 of 767 | Typecheck rejection only; two identical complete passes |
 
 Each axis's two complete passes agrees exactly. Relative to the previous lists,
-accept rises 879 -> 880 (T14761c, no loss), while reject falls 223 -> 222
-(T14761a, no gain). Both had the same fabricated list-kind error. T14761c is
-GHC-valid; T14761a's real GHC-10107 UNPACK warning, promoted by -Werror, remains
-unimplemented. The latter is an accidental rejection removed, not newly lost
-implementation of that warning. No corpus input was edited.
+accept rises 880 -> 882 (T11811/T20873, no loss), while reject falls 222 -> 221:
+T22560_fail_b is newly rejected; tcfail225 and ExplicitSpecificity8 are no longer
+rejected. The new rejection is a generic declaration-kind arity mismatch, not
+complete GHC-57916 invisible-binder matching. The two losses remove accidental
+arity errors; genuine GHC-25897 under NoCUSKs and GHC-57342 for inferred binders
+with visible forall remain unimplemented. The reject artifact gives the exact
+reason for every movement, including a same-arity counterexample to full binder
+matching. No corpus input was edited.
 Neither percentage measures execution correctness; neither corpus is fully passing.
 The workspace's eight bulk tracking tests being green is not a claim that all
 individual upstream inputs pass.
@@ -40,11 +43,11 @@ The summary parser pairs targets/results in launch order and requires each
 libtest-announced count to agree; a deliberately mutated count is rejected.
 Raw completed workspace log SHA-256:
 
-`65a563c63fe698cf403ac50d90d964e867f3c91a2030021fadeefd22366ed1c7`
+`ce8c45abd24f2ffba344f0bd64f5e0b7aaafdaab6d62c3d5c3ed05947b244d12`
 
 The explicitly rebuilt debug CLI used for all four upstream passes has SHA-256:
 
-`6cbbc8e5c37670a33ed85e151e8391ab77dff1d9540ce921ba3f8fb5688d0588`
+`9168f50b07a67d23a8ff45f4bb8f2a8690355b44e71ed9bd44dbf3a64d5ec703`
 
 Its HEAD and digest were asserted before and after every pass. The pure-shell
 runner used four workers and 15 seconds per input, with serial 60-second timeout
@@ -52,22 +55,55 @@ reruns; all four passes had zero unresolved timeouts and zero unexpected exits. 
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-After fast-forward to evidence checkpoint 6dcfe4a9, an explicit main CLI build
-completed without compiler warnings. Main CLI SHA256:
-`45cff7d41b92f29f77549961f21a2a21f10bada78864bdc15861e4c948b3a7f6`.
-All 16 bounded main-path smoke predicates completed with HEAD and CLI digest
-unchanged, including the three list execution readbacks, T14761c acceptance,
-bare-list rejection, and T14761a's explicitly known-wrong acceptance. They are
-path/behavior observations, not another full corpus measurement. Smoke log SHA256:
-`460f61aef93a7a8e569933e294eecc611761cfb1109b06ea91995ba039acb342`.
-The full gates above remain the isolated-worktree measurement. The preceding
-kind-scope main-path evidence remains in its completed row-481 tasklist.
+Main-path landing and smokes are still pending at this evidence checkpoint.
+The full gates above are the isolated-worktree measurement, not an unrun main
+gate. The preceding main-path evidence remains in the completed row-482 tasklist.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were
 rechecked against the frozen tree. Its sibling read-only verifier reruns GHC;
 it never invents answers from Haskelujah output. The reference manifest excludes
 the 23 compile-only inputs and both upstream typecheck corpora.
+
+## Declaration-kind contracts and binder visibility (3db3b6a6)
+
+Inline result kinds and complete standalone signatures are retained separately,
+including when both are written. The former composes with the head; the latter
+constrains that complete shape under an independent lexical kind-name cache.
+Data/newtype head `@` binders remain lexical but consume no ordinary type
+argument. Required forall kinds retain visible argument arrows rather than
+erasing them as invisible foralls. Constructor/selector result applications and
+derived instance heads use the same visible-parameter distinction.
+
+Five parser, two naming, nine typing and six integration tests explain
+3365 -> 3387. Parser333, naming134, typing344, typing integration33 and canaries7
+all pass. Three identical-source programs match fresh GHC 9.14.1 output through
+STG, LLVM and Cranelift: combined kind contracts 42/7/11/13, invisible-head field
+reads 42/7, and a required-kind argument 19. Five GHC-invalid head/tail contracts
+reject at reconciliation; two field mutations reject Int/Bool mismatches.
+
+The first frozen trial lost T22560a/T22762/T23514c. Their reductions exposed
+erased binder distinctions; preserving those distinctions recovered all three
+without weakening the five negative contracts. Full final sets have no accept
+losses. ExplicitSpecificity8's invalid declaration alone was accepted by main
+before this lane; the old errors were only at its applications. A fresh GHC
+pair also distinguishes CUSKs from NoCUSKs on the recursive tcfail225 shape.
+That declaration-completeness/instantiation gap is not interchangeable with
+standalone-signature subsumption, even though both can report rigid-kind errors.
+
+The stronger generic record Eq/Show probe exposes a separate pre-existing
+execution defect, also reproduced on main after removing both invisible binders:
+Eq reaches an unresolved `==`, and Show loses record labels/newtype construction.
+The new field-read execution test does not claim those operations work; the
+full Eq/Show source is retained as an instance-head typechecking control, with
+the execution limitation and reductions recorded in the tasklist. No old test
+was removed or waived, and no wrong formatting was installed as an oracle.
+
+Focused parser helpers/tests are 125/190 lines; kind helpers/tests are 110/280.
+The parser root is still 17266 lines, kind root3284, infer root27788 and deriving
+root3669: this is not size-gate compliance. Complete kind schemes, rigid kind
+checking, full inferred/specified binder matching, constructor VTA metadata,
+TH visibility and cross-module kind authority remain explicit limits.
 
 ## Flat list-type reconstruction (cb939e35)
 
@@ -146,10 +182,11 @@ kind-map lifetime above. Synonym alpha-renaming, nested qualified-type represent
 and named required RHS binders remain separate limits.
 
 Both approximate public labels are carried forward unchanged, with current
-counts. L.J.'s decision on truncation versus nearest remains pending on both
-axes at 880/938 and 222/767; no policy choice or deployment is part of this
-measurement supersede. The earlier kind-scope checkpoint held 223 rejects;
-the flat-list repair removes T14761a's accidental rejection as described above.
+counts. L.J.'s uniform policy decision on truncation versus nearest remains
+pending. At 882/938 the accept label agrees under either policy; at 221/767 the
+reject label still differs. No policy choice or deployment is part of this
+measurement supersede. The earlier flat-list checkpoint held 880 accepts and
+222 rejects, after removing T14761a's accidental rejection.
 
 ## Earlier infix type and binder repairs (18b7d1c3)
 
@@ -196,9 +233,9 @@ The tasklist records the reductions, failed intermediate gates and repair detail
 ## Limits and remaining work
 
 - The full workspace command emitted no Rust compiler warnings. A separate
-  targeted all-target clippy run for parser, typing and driver exited zero but emitted
-  **650 warning messages**, including dependency/target duplicates. None has a
-  primary span in the new flat-type child modules or the edited integration file.
+  targeted all-target clippy run for AST, parser, naming, typing and driver exited
+  zero but emitted **685 warning messages**, including dependency/target duplicates.
+  None has a primary span on any owned source change relative to main0093dd40.
   This targeted JSON count is not directly comparable with the older workspace
   mixed-output line count. Existing lint debt remains: this is not the project's
   zero-warning quality gate. Oversized files/directories remain structural debt;

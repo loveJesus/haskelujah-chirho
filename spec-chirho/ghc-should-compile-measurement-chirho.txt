@@ -1,9 +1,9 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-10 UTC, AFTER flat list-type reconstruction repair
-# code measured: cb939e35d0a998be9357881fb1a6e1078f0bbfb1 (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-10 UTC, AFTER declaration-kind contracts and head-binder visibility
+# code measured: 3db3b6a69e30d59b60224346b541c245cc68b3e0 (HASKELUJAH/gpt_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
-#   measured binary: ../haskelujah-gpt-flat-types-chirho/target/debug/haskelujah
-# CLI SHA256: 6cbbc8e5c37670a33ed85e151e8391ab77dff1d9540ce921ba3f8fb5688d0588
+#   measured binary: ../haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah
+# CLI SHA256: 9168f50b07a67d23a8ff45f4bb8f2a8690355b44e71ed9bd44dbf3a64d5ec703
 #   HEAD and binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone with a 60s cap; a rejection contains `error[E` or `panic`;
@@ -11,33 +11,41 @@
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   (find-based; T16234/ included)
 #
-# RESULT: PASS=880 FAIL=58 TOTAL=938
+# RESULT: PASS=882 FAIL=56 TOTAL=938
 # STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
-#   failing sets byte-identical to each other; exact delta from prior list below
-# QUOTE-AS: ~94% (880 of 938) — do not quote a third significant figure
+#   sets byte-identical to each other; exact delta from prior list below
+# QUOTE-AS: ~94% (882 of 938) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (222 of 767).
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (221 of 767).
 # Existing approximate labels are carried forward unchanged, with current counts.
-# Truncation versus nearest remains a pending L.J. reporting-policy decision on
-# BOTH axes (880/938 and 222/767). No policy choice or public-site deployment.
+# L.J.'s uniform reporting-policy decision on truncation versus nearest remains
+# pending; the accept label now agrees under both, while the reject label differs.
+# No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (3683dae8): 879 -> 880, +1 gained, zero lost.
-#   T14761c: prefix [] Char retains the list constructor followed by its argument;
-#   the old flat parser fabricated an already-applied list with a placeholder element.
-#   Fresh GHC 9.14.1 accepts the unchanged file with its own -Werror option; the old
-#   CLI reports only the spurious E0300 at that field. Nested list delimiters also
-#   retain function types following an inner ], proven by parser and execution controls.
-#   The companion loses T14761a's accidental E0300; its real GHC-10107 warning error
-#   remains unimplemented. No corpus input changed and no guard preserves that false reason.
+# CHANGE SINCE LAST MEASUREMENT (cb939e35): 880 -> 882, +2 gained, zero lost.
+#   T11811 and T20873: written declaration result kinds retain their head binders;
+#   an inline result tail is no longer treated as the complete kind. Fresh GHC
+#   9.14.1 accepts both unchanged inputs. The first trial lost three valid files;
+#   preserving invisible head binders and visible forall-kind arguments recovered
+#   T22560a/T22762/T23514c without weakening declaration reconciliation.
+#   Five independent GHC-83865 controls now reject mismatched complete/head/tail
+#   contracts. These are behavioral controls, not five upstream corpus gains.
+#   Companion movement is +T22560_fail_b, -tcfail225/-ExplicitSpecificity8; its
+#   header distinguishes a generic-arity rejection from the missing GHC rules.
+# FAILURE-LIST SHA256: e56823120d250c62966e0befef42c336663a9d28ce0dd3f08d55f51a6094c078
 #   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# FAILURE-LIST SHA256: 91cf6d36124e12bece4d8f4b8f8536f2d341d71dac445b49b288b7fb9378125e
-# EXECUTION EVIDENCE: the same frozen source passes 3365 workspace tests across
+# EXECUTION EVIDENCE: the same frozen source passes 3387 workspace tests across
 #   75 targets, zero failed/ignored/filtered, Cargo exit 0, including 126 native round
 #   trips and curated 537/537: 514 execution oracles compared; all source hashes still
 #   match the earlier complete GHC 9.14.1 reference (not rerun in full in this lane);
-#   23 compile-only inputs. Three new shared-source controls match fresh GHC oracles
-#   on STG/LLVM/Cranelift. See workflows-chirho/testing-chirho/
-#   execution-measurement-chirho.md for provenance and explicit scope limits.
+#   23 compile-only inputs. Three new shared-source programs match fresh GHC oracles
+#   on STG/LLVM/Cranelift. This does not establish generic record Eq/Show dispatch,
+#   full polymorphic kind schemes or complete TypeAbstractions checking. See
+#   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
+#
+# PREVIOUS MEASUREMENT (cb939e35): accept 879 -> 880 (+T14761c, no loss),
+#   reject 223 -> 222 (-T14761a, no gain). Flat [] constructor application and nested
+#   list delimiters repaired; T14761a's genuine GHC-10107 UNPACK warning remains open.
 #
 # PREVIOUS MEASUREMENT (3683dae8): 879 -> 879, zero gained, zero lost.
 #   Kind inference scopes forall/quantified-constraint binders lexically and restores
@@ -70,7 +78,7 @@
 # (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
 # this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# ---- the 58 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 56 files we FAIL to accept (GHC accepts these); all deterministic ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -81,7 +89,6 @@ SplitWD.hs
 T10348.hs
 T10856.hs
 T11056.hs
-T11811.hs
 T12104.hs
 T12427a.hs
 T13822.hs
@@ -97,7 +104,6 @@ T18036b.hs
 T18252.hs
 T18831.hs
 T20443a.hs
-T20873.hs
 T20922.hs
 T21010.hs
 T21205.hs

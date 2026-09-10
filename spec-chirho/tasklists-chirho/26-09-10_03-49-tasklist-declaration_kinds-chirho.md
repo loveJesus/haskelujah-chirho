@@ -46,7 +46,7 @@ or broad warning/file-split sweep; existing size/lint debt remains open.
 - [x] Read-only consumer audit and explicit AST/parser/typing regression controls.
 - [x] Preserve both annotations, separate scopes, compose/reconcile declaration kinds.
 - [x] Focused parser/naming/typing and exact-output driver controls; genuine negatives.
-- [ ] Rebase onto verified flat-list landing, freeze, full workspace and two passes per axis.
+- [x] Rebase onto verified flat-list landing, freeze, full workspace and two passes per axis.
 - [ ] Named-path commits, branch/main pushes with readback, main CLI smokes, DB closure.
 
 ## Evidence and limits
@@ -214,3 +214,43 @@ clippy exits zero with685 warning messages, no changed-primary-span warning;
 the wider repo is not zero-warning or size-compliant. Source and oracle
 checkpoint only: the new frozen full workspace and four corpus passes remain
 owed, and main remains0093dd40.
+
+## Final frozen gate and landing evidence
+
+Source3db3b6a69e30d59b60224346b541c245cc68b3e0, pushed and remote-exact.
+CLI SHA2569168f50b07a67d23a8ff45f4bb8f2a8690355b44e71ed9bd44dbf3a64d5ec703
+stays unchanged through all four corpus passes and the full workspace gate.
+Actual corpus runner exit0: accept882/938 (+T11811/+T20873, zero losses);
+reject221/767 (+T22560_fail_b, -tcfail225/-ExplicitSpecificity8). Both repeats
+are byte-identical; zero timeouts/unexpected exits. Exact current list hashes:
+accept e56823120d250c62966e0befef42c336663a9d28ce0dd3f08d55f51a6094c078;
+reject 4063e8964e4ffc621a9df426227d2d56d01ff3cbdc943b042f962c707aae693c.
+
+The extra reject loss was investigated before landing. On main0093dd40,
+ExplicitSpecificity8 errors at the T1/T2 applications on lines11/14, not at either
+declaration. The valid T1-only reduction is rejected by main and accepted by GHC
+and current. The invalid `forall {k} -> k -> Type` declaration WITHOUT uses is
+already accepted by main/current; GHC9.14.1 rejects GHC-57342. Nine bounded,
+source/binary-hashed observations are in scratch/specificity-loss-chirho.jsonl.
+That rule is missing, not lost implementation; no guard preserves the false arity.
+
+Fresh GHC also confirms tcfail225's GHC-25897 and T22560_fail_b's GHC-57916.
+Six A/B/reference observations are in scratch/reject-delta-references-chirho.jsonl.
+The same recursive type body passes with CUSKs and rejects with NoCUSKs under
+GHC9.14.1 (CompleteKindRecursionChirho/IncompleteKindRecursionChirho in scratch).
+This is a declaration-completeness/recursive-instantiation distinction, not merely
+the standalone rigid-contract gap. Both need proper kind binding metadata; neither
+is repaired by the current arrow reconciliation. T22560_fail_b's generic arity
+rejection remains explicitly short of full invisible-binder matching support.
+
+Unfiltered workspace actual Cargo exit0:3387 passed across75 targets; zero
+failed/ignored/measured/filtered. Driver1773/1773 includes126 native round trips;
+curated537/537 includes514 compared oracles and23 compile-only inputs. All514
+source hashes match the prior complete GHC9.14.1 manifest, not514 new runs.
+Workspace raw log SHA256
+ce8c45abd24f2ffba344f0bd64f5e0b7aaafdaab6d62c3d5c3ed05947b244d12.
+Five-crate clippy remains685 messages, zero primary spans on any owned source
+change relative to0093dd40; no zero-warning/size-compliance claim.
+
+Evidence supersede prepared; canonical DB closure and main-path rebuild/smokes
+remain pending until their actual results. No percentage-policy choice or deploy.
