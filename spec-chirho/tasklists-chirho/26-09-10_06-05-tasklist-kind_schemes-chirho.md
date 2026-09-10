@@ -69,10 +69,11 @@ named, never bypassed by a source-name or corpus-file condition.
 
 Main stays at121d4f2c,882/938 accept and221/767 reject. Row484 and the builder/
 canonical DB lease remain open. The isolated branch's latest pushed checkpoint
-before the current correction is5fcb76a4. Its sixth diagnostic was885/230 with
-accept+7/-4 versus main: T12045a/T13643/T14010/T22141f are the losses. See the
-tail for the current multiplicity correction and measured focused recovery of
-T22141f; do not reuse an earlier diagnostic as a current binary result.
+is15104f0f. Its seventh diagnostic is886/230, one full pass per axis with no
+timeouts/unexpected exits, clean HEAD and unchanged CLI digest. Against main:
+accept+7/-3, reject+15/-6. T22141f alone recovers from the sixth diagnostic;
+T12045a/T13643/T14010 remain accept regressions, so main is held. Next: measured
+family-kind reductions before choosing the shared elaboration repair.
 
 Multiplicity correction: parser346,typing356,naming136,integration67,canaries7
 green, zero ignored/filtered, actual cargo exits0. Twenty GHC9.14.1/candidate
@@ -80,8 +81,8 @@ pairs have19 verdict agreements and the named existing warning-only linear-use
 mismatch. Fresh CLI SHA256
 `89805de43947c7b30c455eb131de4f4fab846a78cb4688ce9e85fb95fdbc7cc8`.
 The scoped clippy run exits0 with existing warnings (driver34), none in the new
-arrow module or changed kind child modules. An isolated checkpoint and fresh
-full diagnostic follow; full workspace/two-pass landing gates remain owed.
+arrow module or changed kind child modules. The checkpoint and full diagnostic
+are complete; full workspace/two-pass landing gates remain owed.
 
 ### Historical prototype baseline
 
@@ -685,7 +686,7 @@ multiplicity-family reduction, or TH reification. Checkpoint tag
   42 through STG,LLVM and Cranelift. Final CLI SHA256 is recorded above.
 - [x] Scoped clippy exits0 with existing warnings (driver34), none in the new
   arrow module or changed kind child modules; not a warning-free workspace claim.
-- [ ] Commit/push only the isolated checkpoint, then compare a full diagnostic.
+- [x] Commit/push only the isolated checkpoint, then compare a full diagnostic.
 
 The existing linear-use checker emits warnings, not rejecting diagnostics.
 The reference control that duplicates a quoted-One argument still disagrees
@@ -698,3 +699,20 @@ Evidence is under `/private/tmp/haskelujah-multiplicity-chirho.vhiDs4`:
 `before-chirho.jsonl`, `parser-before-detailed-chirho.log`,
 `after-chirho.jsonl`, `namespace-after-chirho.jsonl`, final pair/gate logs.
 Earlier stages are retained as observations, not overwritten by the repair.
+
+### Seventh full diagnostic — 15104f0f, still held
+
+Checkpoint15104f0f62977861e6fdf7b064587826ed712db7 is pushed and verified by
+`ls-remote`; main121d4f2c remains clean and remote-exact. The wrapper actually
+exited0. One full pass per axis gives886/938 accept and230/767 reject, with
+zero timeouts/unexpected exits, a clean frozen HEAD, and the recorded CLI digest
+unchanged before and after each axis. This is diagnostic, not the two-pass
+landing gate. Logs and complete sets are in the multiplicity scratch root's
+`diagnostic-chirho.log` and `diagnostic-{accept,reject}-chirho/` directories.
+
+Set comparison against the sixth diagnostic: T22141f is the sole recovered
+accept, no new accept failures, and the rejected set is byte-identical. Against
+main the seven accept gains remain PolytypeDecomp, RuleEqs, SplitWD, T14451,
+T15079, T20922 and tc124; the three losses are T12045a, T13643 and T14010.
+Reject movement remains+15/-6 as listed in the sixth diagnostic, with per-file
+reason arbitration owed before any capability is banked.
