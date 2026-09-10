@@ -67,18 +67,23 @@ named, never bypassed by a source-name or corpus-file condition.
 
 ## Resume state
 
-Main stays at121d4f2c,882/938 accept and221/767 reject. Row484 and the builder/
-canonical DB lease remain open. The isolated branch's latest pushed checkpoint
-is15104f0f. Its seventh diagnostic is886/230, one full pass per axis with no
-timeouts/unexpected exits, clean HEAD and unchanged CLI digest. Against main:
-accept+7/-3, reject+15/-6. T22141f alone recovers from the sixth diagnostic;
-T12045a/T13643/T14010 remain accept regressions, so main is held. Next: measured
-family-kind reductions before choosing the shared elaboration repair.
+Main stays at121d4f2c,882/938 accept and221/767 reject. Row484 is unfinished.
+The isolated branch's code checkpoint c838387e is pushed and remote-exact.
+Its eighth diagnostic is886/230, one full pass per axis with no timeouts or
+unexpected exits, clean HEAD and unchanged CLI digest. All four accepted/
+rejected set files are byte-identical to the seventh diagnostic. Against main:
+accept+7/-3, reject+15/-6. T12045a/T13643/T14010 remain accept regressions, so
+main is held. The class-method scope correction is included in this diagnostic;
+typing356, integration68 and canaries7 also passed on this code checkpoint.
+The family sources are not modified yet. Next is the measured family-kind
+representation/reduction repair, not weakening the declaration contracts.
 
-Post-diagnostic review reproduced a class-method implicit-kind name leak, absent
-from the corpus. The correction is focused-green (typing356, integration68,
-canaries7); its fresh CLI digest is recorded at the tail. Do not attribute the
-seventh diagnostic to this newer code. The family sources are not modified yet.
+The goal reports usageLimited and the independent rejection-reason reviewer
+returned a provider usage-limit error instead of a result. No retry is scheduled.
+After recording the eighth diagnostic, publish CORPUS-PASSES-DONE and release
+SLOT/DB; reacquire both from current room state before further builds or DB
+writes. The project is not complete, and no main landing is authorized by these
+diagnostic counts. Canonical DB row484 remains open; this checkpoint writes no DB.
 
 Multiplicity correction: parser346,typing356,naming136,integration67,canaries7
 green, zero ignored/filtered, actual cargo exits0. Twenty GHC9.14.1/candidate
@@ -750,7 +755,7 @@ shadow restoration remains owned by the existing binder helper.
 - [x] Explicit CLI build; typing356, integration68, canaries7 pass with actual
   cargo exits0 and no ignored/filtered tests. CLI SHA256:
   `8687e146d81b770d96049ee48427144916afda40771b26c0ca9977638d5b5ef9`.
-- [ ] Commit/push the correction and compare the next frozen full diagnostic.
+- [x] Commit/push the correction and compare the next frozen full diagnostic.
 
 Evidence: multiplicity scratch root's `audit-chirho/six-{before,after}-chirho.jsonl`
 and `method-{red,after,typing,integration,build}-chirho.log`.
@@ -766,3 +771,52 @@ equations, and explicit-uniform versus implicit-matchable result quantifiers.
 The negative controls demonstrate additional existing gaps; no family capability
 is claimed from the current table. Checkpoint tag`family-kinds-before-chirho`
 atdfff0b4d records the state before this preparation and subsequent scope review.
+
+### Eighth diagnostic and usage-limit handoff — c838387e
+
+The frozen wrapper actually exited0. Accept886/938 and reject230/767, with
+zero timeouts/unexpected exits and SHA256
+`8687e146d81b770d96049ee48427144916afda40771b26c0ca9977638d5b5ef9`
+unchanged before and after each axis. Four explicit `diff -q` comparisons
+(accepted and rejected lists on both axes) against the seventh diagnostic
+produce no differences. This is one full pass per axis on c838387e, not a
+two-pass landing gate on that commit. Git status is clean; `ls-remote` matches
+both the candidate c838387ef2b3ab1b70b15781320e10c15c2984ba and main
+121d4f2c33e28b629428bd7ac7da17a4462491cd before this docs-only handoff.
+
+Evidence: `/private/tmp/haskelujah-multiplicity-chirho.vhiDs4/diagnostic-method-chirho.log`
+and `diagnostic-method-{accept,reject}-chirho/` in the same root. The 15 gained
+rejects still require per-file reason arbitration; the delegated reader hit its
+usage limit and returned no usable review. Do not count that attempted review
+as completed evidence. The three accept regressions remain T12045a, T13643 and
+T14010; the seven gains are PolytypeDecomp, RuleEqs, SplitWD, T14451, T15079,
+T20922 and tc124. No published artifact, label policy, main source or DB changes.
+
+#### Durable continuation packet
+
+- project_identity_chirho: HASKELUJAH
+- work_item_id_chirho: progress-chirho/484
+- measured_state_chirho: c838387e pushed, eighth diagnostic886/230, three accept regressions.
+- blocker_chirho: autonomous goal usageLimited; review agent explicitly exhausted its provider allowance.
+- authority_class_chirho: delegated local/reversible compiler work; no deployment authority.
+- recommendation_chirho: preserve this checkpoint, release leases, resume the family vertical when execution allowance is available.
+- confidence_chirho: high in frozen counts and set equality; family design remains unimplemented.
+- alternatives_chirho: another authorized worker may take the documented isolated branch after reacquiring leases; main remains usable.
+- reversibility_chirho: main untouched; code checkpoint and family-kinds-before-chirho tag retained.
+- correction_cost_chirho: resume/reverify Git, broker ownership and fresh binary before further work; no rollback is needed.
+- evidence_references_chirho: diagnostic-method logs/sets and eleven family GHC9.14.1/candidate pairs named above.
+- checkpoint_ref_chirho: gh_chirho/gpt-kind-schemes-chirho at c838387e plus this docs-only handoff.
+- safe_work_while_waiting_chirho: read-only review of the 15 reject gains; no automatic builds, DB writes or provider retries.
+- human_action_if_required_chirho: restore execution allowance or explicitly route the continuation to an available authorized worker.
+- human_completion_evidence_chirho: successful authorized execution and freshly reacquired SLOT/DB, not a liveness ping.
+- completion_failure_input_chirho: any one of the three previously accepted files still rejected forbids landing; any timeout/unexpected exit invalidates a gate.
+
+Proposed next brick (not implemented): preserve closed-family result binder,
+optional result kind and injectivity annotation in the AST, validate equation
+contracts before trusting inverse improvement, and share ordered equation
+matching/reduction policy between kind and type consumers. Begin with the
+ForwardKindFamily/InjectiveKindFamily controls and non-injective/invalid-
+injectivity negatives. Hidden kind-pattern dispatch (T14010) and explicit kind
+application (T12045a) require retained semantic arguments, not per-file guards.
+Record that placement decision before editing; the prior read-only design review
+does not substitute for a compiling, behaviorally verified implementation.
