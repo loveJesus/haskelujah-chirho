@@ -50,8 +50,17 @@ reruns; all four passes had zero unresolved timeouts and zero unexpected exits. 
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-Post-landing main-path checks are recorded after the source/evidence fast-forward;
-the complete gates above retain the isolated worktree binary's provenance.
+After fast-forwarding main to evidence commit 1668907e4e368eaf4b7b481781f903af2c35d8b1,
+an explicit main-checkout CLI build completed warning-free. All ten bounded CLI
+smokes passed: T001 checked in place with the `./` path, T002 printed 120,
+T23764/tc156 retained acceptance, the four kind-scope execution programs matched
+their GHC oracles, and BadKindScope/GivenForallLoop produced their specific
+kind/rigid mismatch diagnostics. Main HEAD and CLI SHA-256 remained stable:
+`6d3943e04a0b6593cdcb297c20c7e2ac4f2710cb7df90e7c4828a084f908ef64`.
+The completed smoke record SHA-256 is
+`d9c8da827067ffe89429ec6d6f8f1e1d4d2acc113a7c0fbb9729677ea7626406`.
+These are post-landing path/execution checks; the full gates above retain the
+isolated worktree binary's provenance, not an unrun main corpus measurement.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were

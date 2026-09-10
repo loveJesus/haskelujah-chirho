@@ -44,7 +44,7 @@ No corpus gain predicted before reachability is measured.
 - [x] Focused tests, typing/driver integration, canaries and relevant execution gates.
 - [x] Freeze source, explicit fresh CLI, two full passes per upstream axis;
       byte-identical repeated sets, named deltas, stable binary provenance.
-- [ ] Meaningful landing gates, named-path commits, push/read-back verification,
+- [x] Meaningful landing gates, named-path commits, push/read-back verification,
       main-path smoke checks and canonical DB closure.
 
 ## Resume and evidence
@@ -100,3 +100,17 @@ none with a primary span in the new kind modules or edited integration file.
 Existing lint/size debt remains explicitly open. Independent source audit found
 no blocker; full class-kind validation, standalone-signature/head reconciliation,
 rigid kind schemes and synonym alpha-renaming are not claimed.
+
+## Landing and closure
+
+Evidence commit 1668907e4e368eaf4b7b481781f903af2c35d8b1 was pushed on the
+kind-scope branch, fast-forwarded to main, then pushed and verified against the
+exact remote main ref. Fresh main CLI SHA256
+6d3943e04a0b6593cdcb297c20c7e2ac4f2710cb7df90e7c4828a084f908ef64 passed
+all ten bounded main-path smokes with stable HEAD/digest. The in-place module
+discovery path and the four new kind execution programs were exercised; both
+negative controls required their actual kind/rigid diagnostics. Smoke record
+SHA256 d9c8da827067ffe89429ec6d6f8f1e1d4d2acc113a7c0fbb9729677ea7626406.
+Canonical row 481 closes with that evidence; the separate flat-type row 482
+remains open and retains the builder/DB lease. No public-label policy decision
+or deployment was made while L.J. sleeps.
