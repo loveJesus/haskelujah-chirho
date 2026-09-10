@@ -273,3 +273,48 @@ brackets, promoted forms and source spans. No new AST or dependency. Prove the
 producer shape and behavioral selection with positive/negative controls before
 another corpus pass. The current owned checkpoint bounds reversal; main stays
 unchanged, and the nominal/dependent-kind design remains separate.
+
+### Family producer repair, still an isolated checkpoint
+
+The two new parser controls were demonstrated red at the previous scanner:
+an empty promoted-list pattern vanished (one argument instead of two), and a
+nested-list pattern became three arguments instead of two. Reuse is at the
+CST grammar rather than another flat-token reconstruction: both open instances
+and closed equations call the normal type parser. The extracted family lowerer
+consumes the complete application, and the two manual scanners are removed.
+Malformed tokens cannot leave the equation parser looping without progress.
+
+Two adjacent representation losses were exposed by independent reductions:
+closed-family registration used declaration parameter names rather than the
+equation's local variables, and the existing open-instance collector skipped
+variables inside promoted lists. A shared focused registration module now owns
+both paths and their pattern-variable collection. Infix lowering also retains
+the promotion tick (the cons-pattern producer test was demonstrated red first).
+One older parser assertion explicitly allowed an ordinary colon constructor
+while calling it promoted; it now requires the promoted AST shape, retaining
+the checks on both arguments. No reducer arity guard or source-name exception.
+
+GHC9.14.1 and candidate agree on ten source-hashed reductions (seven positives,
+three negatives). The combined positive was independently executed by GHC and
+then by STG/LLVM/Cranelift: 7, True, 11, (13,True), Just 17, 19, True, 'c'.
+Bool/Char and Int/Bool mutations reject for GHC-83865/E0200. T25597 now checks;
+replacing only its f signature with Bool rejects in both GHC and candidate.
+The first nested-open control omitted its required [[Type]] annotation and was
+GHC-invalid; it was corrected before inclusion in the semantic test. A parser-
+only CLI attempt timed out on T25597; the final bounded check completed after
+the registration and parser-progress repairs. No timing result is banked as a
+verdict, and the initial prototype was not reported as fixed.
+
+CLI SHA-256 `7e8ef43fc7528d8d91b0b830c7351713ab807c0fee9e112ebe48ab1cc07e150c`:
+the 29-file recheck has only pre-existing tc218 red; all eighteen third-pass
+new failures recover. The prior 35-file recheck retains the same eight known
+kind-representation losses plus pre-existing HardRecordUpdate. Actual Cargo0:
+parser343, naming136, typing352, integration45, record_fields16, canaries7;
+zero failures/ignored/measured/filtered in those complete selected targets.
+Evidence: `/private/tmp/haskelujah-family-patterns-chirho.4iuhJr/` (reference
+pairs, source reductions, before/after logs and set rechecks). This is still
+not a fourth full-corpus result or a main landing. Row484 remains open.
+The extraction's six inherited clippy findings were repaired. The final scoped
+clippy invocation exits0 but still reports parser90, typing53 and four dependency
+warnings; none points into the two extracted modules or the changed operator
+module. This is not a zero-warning project claim.

@@ -4,6 +4,92 @@
 use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+const FAMILY_PATTERNS_SOURCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators #-}
+module Main where
+import Data.Kind (Type)
+import GHC.TypeLits (Nat, Symbol)
+type family SelectChirho (xsChirho :: [Type]) (rChirho :: Type) where
+  SelectChirho '[] rChirho = rChirho
+  SelectChirho (aChirho ': asChirho) rChirho = Bool
+emptyChirho :: SelectChirho '[] Int
+emptyChirho = 7
+nonemptyChirho :: SelectChirho '[Char] Int
+nonemptyChirho = True
+type family UnwrapChirho aChirho where
+  UnwrapChirho (Maybe elementChirho) = elementChirho
+unwrapChirho :: UnwrapChirho (Maybe Int) -> Int
+unwrapChirho valueChirho = valueChirho
+type family NestedChirho (xsChirho :: [[Type]]) rChirho
+type instance NestedChirho '[ '[firstChirho], '[secondChirho]] (Maybe rChirho) = (firstChirho, secondChirho)
+nestedChirho :: NestedChirho '[ '[Int], '[Bool]] (Maybe Char)
+nestedChirho = (13, True)
+type family HigherChirho (xsChirho :: [Type]) :: Type -> Type where
+  HigherChirho '[] = Maybe
+  HigherChirho (aChirho ': asChirho) = []
+higherChirho :: HigherChirho '[] Int
+higherChirho = Just 17
+type family LiteralChirho (nChirho :: Nat) (sChirho :: Symbol) where
+  LiteralChirho 0 "zero" = Int
+  LiteralChirho 1 "one" = Bool
+zeroChirho :: LiteralChirho 0 "zero"
+zeroChirho = 19
+oneChirho :: LiteralChirho 1 "one"
+oneChirho = True
+type family aChirho :*: bChirho where
+  Int :*: Bool = Char
+infixChirho :: Int :*: Bool
+infixChirho = 'c'
+main :: IO ()
+main = do
+  print emptyChirho
+  print nonemptyChirho
+  print (unwrapChirho 11)
+  print nestedChirho
+  print higherChirho
+  print zeroChirho
+  print oneChirho
+  print infixChirho
+"#;
+
+#[test]
+fn family_patterns_select_the_ghc_result_on_every_engine_chirho() {
+    // Unchanged source independently executed by GHC 9.14.1. Each result
+    // depends on a recovered pattern, equation-local variable or extra argument.
+    assert_execution_chirho(
+        FAMILY_PATTERNS_SOURCE_CHIRHO,
+        "7\nTrue\n11\n(13,True)\nJust 17\n19\nTrue\n'c'\n",
+    );
+}
+
+#[test]
+fn family_pattern_selection_rejects_wrong_result_types_chirho() {
+    // GHC-83865 for both single-expression mutations: Bool/Char and Int/Bool.
+    for (from_chirho, to_chirho) in [
+        ("nonemptyChirho = True", "nonemptyChirho = 'x'"),
+        ("zeroChirho = 19", "zeroChirho = True"),
+    ] {
+        let source_chirho = FAMILY_PATTERNS_SOURCE_CHIRHO.replace(from_chirho, to_chirho);
+        let error_chirho = haskelujah_driver::typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "WrongFamilyResultChirho.hs",
+        )
+        .map(|_| ())
+        .expect_err("the selected equation must constrain the result");
+        assert!(
+            error_chirho
+                .diagnostics_chirho()
+                .iter()
+                .any(|diagnostic_chirho| {
+                    diagnostic_chirho.code_chirho
+                        == Some(haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(200))
+                }),
+            "{error_chirho}"
+        );
+    }
+}
+
 // Independently executed under GHC 9.14.1: 42 / 7 / 11 / True.
 // The infix and context orders differ from normalized body traversal; the
 // explicit forall and prefix form are controls that must retain their order.

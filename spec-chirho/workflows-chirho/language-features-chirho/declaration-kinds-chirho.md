@@ -124,6 +124,31 @@ dynamic evidence propagation; [GHC's implicit-parameter contract](https://downlo
 is stronger than the current fresh-variable fallback. The row484 tasklist
 records a GHC-rejected missing-payload-type control still accepted here.
 
+Family equations and open instances now parse their complete left-hand side
+with the normal CST type grammar, then split that application into the family
+head and ordered patterns. Empty/nested promoted lists, literals, infix
+constructors and parenthesized arguments are not rebuilt by separate token
+scanners. The infix lowerer retains a written promotion tick in the AST;
+an ordinary type constructor is not a promoted data constructor.
+
+```mermaid
+flowchart LR
+  EquationSourceChirho[Closed equation or open instance] --> EquationCstChirho[Parse complete family application with shared type grammar]
+  EquationCstChirho --> PatternSpineChirho[Keep head and ordered pattern nodes with source spans]
+  PatternSpineChirho --> EquationVariablesChirho[Bind variables from this equation including nested promoted lists]
+  EquationVariablesChirho --> EquationTypesChirho[Convert patterns and RHS in the same local scope]
+  EquationTypesChirho --> FamilyRulesChirho[Register source-ordered equations]
+  FamilyRulesChirho --> FamilyReductionChirho[Match patterns then reapply any extra result arguments]
+```
+
+Equation variables do not come from the family declaration's parameter names.
+Open and closed registration share the same conversion; a local variable under
+`Maybe` or a nested promoted list must remain matchable. The variable collector
+visits each pattern node once with a set for deduplication. This does not claim
+global linear normalization, closed-family apartness, injectivity metadata or
+complete unresolved-wanted reporting. The existing reducer's support for extra
+arguments is preserved, not disabled to compensate for missing patterns.
+
 GHC-55233 is checked on both written contracts with one diagnostic, independently
 of the existing Type/Constraint unification compatibility. Binder annotations
 are not result annotations; local Constraint shadowing retains its previous

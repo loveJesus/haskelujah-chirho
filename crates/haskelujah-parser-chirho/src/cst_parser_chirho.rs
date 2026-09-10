@@ -1216,18 +1216,24 @@ impl<'src> ParserChirho<'src> {
                 {
                     break;
                 }
-                // Each equation: lhs = rhs
-                self.eat_until_any_chirho(&[
-                    RawTokenKindChirho::EqualsChirho,
-                    RawTokenKindChirho::VirtualSemicolonChirho,
-                    RawTokenKindChirho::SemicolonChirho,
-                    RawTokenKindChirho::VirtualRightBraceChirho,
-                    RawTokenKindChirho::RightBraceChirho,
-                ]);
+                // Patterns use the same type grammar as their RHS. Retain
+                // promoted lists, literals and grouped applications as nodes;
+                // lowering must not reconstruct a second grammar from tokens.
+                // Workflow: language-features-chirho/declaration-kinds-chirho.
+                let before_chirho = self.pos_chirho;
+                self.parse_type_chirho(); // complete family application
                 if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
                     self.bump_chirho(); // =
                     self.eat_trivia_chirho();
                     self.parse_type_chirho(); // rhs
+                }
+                if self.pos_chirho == before_chirho {
+                    // A malformed pattern may start with a token that cannot
+                    // begin a type. Keep recovery bounded and visible.
+                    self.builder_chirho
+                        .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                    self.bump_chirho();
+                    self.builder_chirho.finish_node_chirho();
                 }
             }
             if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
@@ -1249,12 +1255,8 @@ impl<'src> ParserChirho<'src> {
         self.bump_chirho(); // instance
         self.eat_trivia_chirho();
 
-        // LHS patterns until =
-        self.eat_until_any_chirho(&[
-            RawTokenKindChirho::EqualsChirho,
-            RawTokenKindChirho::VirtualSemicolonChirho,
-            RawTokenKindChirho::VirtualRightBraceChirho,
-        ]);
+        // Open instances and closed equations share the type grammar.
+        self.parse_type_chirho(); // complete family application
 
         if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =

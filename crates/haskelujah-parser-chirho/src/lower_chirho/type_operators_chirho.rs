@@ -112,7 +112,21 @@ impl LowerCtxChirho {
                     // Symbols, including VarSym (`~>`), still name type constructors.
                     let (precedence_chirho, associativity_chirho) =
                         self.operator_fixity_chirho(name_chirho.text_chirho());
-                    let ty_chirho = if kind_chirho == TokenKindChirho::VarIdChirho {
+                    let promoted_start_chirho = index_chirho
+                        .checked_sub(1)
+                        .and_then(|previous_chirho| children_chirho.get(previous_chirho))
+                        .filter(|previous_chirho| {
+                            matches!(previous_chirho.element_chirho,
+                            GreenElementChirho::TokenChirho(token_chirho)
+                                if token_chirho.kind_chirho() == TokenKindChirho::TickChirho)
+                        })
+                        .map(|previous_chirho| previous_chirho.start_chirho);
+                    let ty_chirho = if let Some(start_chirho) = promoted_start_chirho {
+                        TypeChirho::PromotedConChirho {
+                            name_chirho,
+                            span_chirho: self.span_chirho(start_chirho, child_chirho.end_chirho),
+                        }
+                    } else if kind_chirho == TokenKindChirho::VarIdChirho {
                         TypeChirho::VarChirho(name_chirho)
                     } else {
                         TypeChirho::ConChirho(name_chirho)

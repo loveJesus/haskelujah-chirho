@@ -35,12 +35,15 @@ mod ast_conversion_chirho;
 mod ast_conversion_tests_chirho;
 mod equalities_chirho;
 mod evidence_chirho;
+mod family_declarations_chirho;
 mod records_chirho;
 mod rigid_chirho;
 #[cfg(test)]
 mod signature_binder_tests_chirho;
 mod signature_binders_chirho;
 mod signature_conversion_chirho;
+
+use family_declarations_chirho::collect_free_type_vars_from_ast_chirho;
 
 pub use evidence_chirho::{
     LiteralEvidenceChirho, OWN_DICTIONARY_KEY_CHIRHO, ReferenceEvidenceChirho,
@@ -6044,64 +6047,7 @@ impl InferCtxChirho {
             }
         }
 
-        // Phase -0.5: Register type families and type family instances
-        for decl_chirho in &module_chirho.decls_chirho {
-            match decl_chirho {
-                DeclChirho::TypeFamilyDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    equations_chirho,
-                    ..
-                } => {
-                    let family_name_chirho = name_chirho.text_chirho().to_string();
-                    let param_names_chirho: Vec<String> = type_vars_chirho
-                        .iter()
-                        .map(|v_chirho| v_chirho.text_chirho().to_string())
-                        .collect();
-                    let eqs_chirho: Vec<(Vec<TyChirho>, TyChirho)> = equations_chirho
-                        .iter()
-                        .map(|eq_chirho| {
-                            let lhs_chirho: Vec<TyChirho> = eq_chirho
-                                .lhs_types_chirho
-                                .iter()
-                                .map(|t_chirho| {
-                                    ast_type_to_syn_rhs_chirho(t_chirho, &param_names_chirho)
-                                })
-                                .collect();
-                            let rhs_chirho = ast_type_to_syn_rhs_chirho(
-                                &eq_chirho.rhs_chirho,
-                                &param_names_chirho,
-                            );
-                            (lhs_chirho, rhs_chirho)
-                        })
-                        .collect();
-                    self.register_type_family_chirho(family_name_chirho, eqs_chirho);
-                }
-                DeclChirho::TypeFamilyInstanceDeclChirho {
-                    family_name_chirho,
-                    lhs_types_chirho,
-                    rhs_chirho,
-                    ..
-                } => {
-                    let fname_chirho = family_name_chirho.text_chirho().to_string();
-                    // Collect free type variables from LHS types so they become
-                    // ForallVarChirho (matchable pattern vars) in the equation.
-                    let inst_params_chirho =
-                        collect_free_type_vars_from_ast_chirho(lhs_types_chirho);
-                    let lhs_chirho: Vec<TyChirho> = lhs_types_chirho
-                        .iter()
-                        .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &inst_params_chirho))
-                        .collect();
-                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &inst_params_chirho);
-                    self.register_type_family_instance_chirho(
-                        fname_chirho,
-                        lhs_chirho,
-                        rhs_ty_chirho,
-                    );
-                }
-                _ => {}
-            }
-        }
+        self.register_module_type_families_chirho(module_chirho);
 
         for shadowed_name_chirho in collect_module_shadowed_names_chirho(module_chirho) {
             self.env_chirho.remove_chirho(&shadowed_name_chirho);
@@ -21313,55 +21259,6 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     result_chirho.literal_evidence_chirho = literal_evidence_chirho;
     result_chirho.reference_evidence_chirho = reference_evidence_chirho;
     result_chirho
-}
-
-/// Collect free type variable names from AST types (for type family instances).
-fn collect_free_type_vars_from_ast_chirho(types_chirho: &[TypeChirho]) -> Vec<String> {
-    let mut vars_chirho = Vec::new();
-    fn walk_chirho(ty_chirho: &TypeChirho, vars_chirho: &mut Vec<String>) {
-        match ty_chirho {
-            TypeChirho::VarChirho(name_chirho) => {
-                let text_chirho = name_chirho.text_chirho().to_string();
-                if !vars_chirho.contains(&text_chirho) {
-                    vars_chirho.push(text_chirho);
-                }
-            }
-            TypeChirho::AppChirho {
-                fun_chirho,
-                arg_chirho,
-                ..
-            } => {
-                walk_chirho(fun_chirho, vars_chirho);
-                walk_chirho(arg_chirho, vars_chirho);
-            }
-            TypeChirho::FunChirho {
-                arg_chirho,
-                result_chirho,
-                ..
-            } => {
-                walk_chirho(arg_chirho, vars_chirho);
-                walk_chirho(result_chirho, vars_chirho);
-            }
-            TypeChirho::ListChirho { element_chirho, .. } => {
-                walk_chirho(element_chirho, vars_chirho)
-            }
-            TypeChirho::TupleChirho {
-                elements_chirho, ..
-            } => {
-                for e_chirho in elements_chirho {
-                    walk_chirho(e_chirho, vars_chirho);
-                }
-            }
-            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                walk_chirho(inner_chirho, vars_chirho);
-            }
-            _ => {}
-        }
-    }
-    for ty_chirho in types_chirho {
-        walk_chirho(ty_chirho, &mut vars_chirho);
-    }
-    vars_chirho
 }
 
 fn canonical_type_family_name_chirho(name_chirho: &str) -> String {
