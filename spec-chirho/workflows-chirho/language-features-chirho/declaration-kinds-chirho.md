@@ -109,7 +109,31 @@ intermediate result. Application-result metas and unknown constructor kinds
 are not written names. Only captured identities unresolved after elaboration
 become contracts against subsequent body inference; head annotations retain
 their original checking identities. This provenance is not a substitute for
-the still-missing nominal/dependent-kind representation.
+a kind-term representation.
+
+The isolated prototype distinguishes nominal terms, applications and dependent
+functions from the kinds classifying those terms. Kind equality/substitution
+live in a focused module. A required kind argument substitutes its term into
+the result; supplying Bool is not equivalent to supplying Type simply because
+both are classified by Type. Bound terms use lexical de Bruijn positions,
+not inference-variable ids: substitution respects nested scopes and shifts
+free argument references, and equality forbids exporting a local binder into
+an outside inference hole. Scheme generalization/defaulting leave bound terms
+alone. One scoped traversal owns these boundaries.
+
+```mermaid
+flowchart LR
+  WrittenTermChirho[Written kind term] --> AbstractChirho[Abstract required binders into lexical positions]
+  AbstractChirho --> SchemeTermChirho[Store term separately from its classifier]
+  SchemeTermChirho --> DemandChirho[Check supplied argument against binder domain]
+  DemandChirho --> SubstituteTermChirho[Substitute actual term without capture]
+  SubstituteTermChirho --> ResultTermChirho[Check remaining application at dependent result]
+```
+
+This is not complete kind-family or runtime-representation support. AstKind
+applications still collapse, and the type-family reducer still lacks implicit
+kind indices. An unresolved family application cannot be treated as an arbitrary
+fresh result, nor may hidden indices be replaced by newest-equation precedence.
 
 Superclass kinds participate before class publication. Constraint lowering
 delegates to the existing type/constraint conversion so a quantified or

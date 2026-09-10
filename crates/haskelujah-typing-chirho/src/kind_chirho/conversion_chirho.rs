@@ -160,25 +160,7 @@ impl KindInferCtxChirho {
                 KindChirho::ConstraintChirho
             }
             TypeChirho::ConChirho(name_chirho) => {
-                let text_chirho = name_chirho.full_name_chirho();
-                // A named kind (e.g. `N` in `N -> Type`): look it up or
-                // create a fresh kind variable.
-                if let Some(k_chirho) = self.env_chirho.lookup_chirho(&text_chirho) {
-                    // DataKinds: if this name has kind * in the env, it's a
-                    // data type being used as a kind. At the kind level, data
-                    // types are opaque sorts that classify promoted constructors.
-                    // Treat them as equivalent to * for kind-checking purposes,
-                    // since promoted constructors ultimately have kind *.
-                    let k_chirho = k_chirho.clone();
-                    match &k_chirho {
-                        KindChirho::StarChirho => KindChirho::StarChirho,
-                        _ => k_chirho,
-                    }
-                } else {
-                    let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho.bind_chirho(text_chirho, k_chirho.clone());
-                    k_chirho
-                }
+                KindChirho::ConChirho(name_chirho.full_name_chirho())
             }
             TypeChirho::FunChirho {
                 arg_chirho,
@@ -194,22 +176,13 @@ impl KindInferCtxChirho {
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho,
-                span_chirho,
+                ..
             } => {
-                // Kind application: if fun has kind (a -> r), apply arg of kind a
-                // to get result kind r.
-                let f_kind_chirho = self.type_to_kind_chirho(fun_chirho);
-                let a_kind_chirho = self.type_to_kind_chirho(arg_chirho);
-                let result_chirho = self.fresh_kind_chirho();
-                let expected_fun_chirho =
-                    KindChirho::arrow_chirho(a_kind_chirho, result_chirho.clone());
-                self.unify_chirho(
-                    &f_kind_chirho,
-                    &expected_fun_chirho,
-                    "kind application",
-                    *span_chirho,
-                );
-                result_chirho
+                // This is the term `f a`, not the result kind of applying f.
+                KindChirho::app_chirho(
+                    self.type_to_kind_chirho(fun_chirho),
+                    self.type_to_kind_chirho(arg_chirho),
+                )
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => self.type_to_kind_chirho(inner_chirho),
             TypeChirho::ForallChirho {
@@ -224,21 +197,27 @@ impl KindInferCtxChirho {
                 body_chirho,
                 ..
             } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
-                // Interpreting a kind, not kind-checking a term type: these
-                // binders consume visible arguments. Their lexical identities
-                // still scope over the tail. This is not dependent-kind solving.
-                let argument_kinds_chirho: Vec<KindChirho> = vars_chirho
-                    .iter()
-                    .map(|binder_chirho| {
-                        ctx_chirho
-                            .env_chirho
-                            .lookup_chirho(binder_chirho.text_chirho())
-                            .expect("required kind binder was opened")
-                            .clone()
-                    })
-                    .collect();
-                let result_chirho = ctx_chirho.type_to_kind_chirho(body_chirho);
-                KindChirho::arrow_n_chirho(argument_kinds_chirho, result_chirho)
+                let mut result_chirho = ctx_chirho.type_to_kind_chirho(body_chirho);
+                for binder_chirho in vars_chirho.iter().rev() {
+                    let identity_chirho =
+                        ctx_chirho.kind_var_cache_chirho[binder_chirho.text_chirho()];
+                    let argument_chirho = ctx_chirho
+                        .env_chirho
+                        .lookup_chirho(binder_chirho.text_chirho())
+                        .expect("required kind binder was opened")
+                        .clone();
+                    if result_chirho.free_vars_chirho().contains(&identity_chirho) {
+                        let bound_result_chirho =
+                            result_chirho.abstract_variable_chirho(identity_chirho);
+                        result_chirho = KindChirho::DependentChirho {
+                            argument_chirho: Box::new(argument_chirho),
+                            result_chirho: Box::new(bound_result_chirho),
+                        };
+                    } else {
+                        result_chirho = KindChirho::arrow_chirho(argument_chirho, result_chirho);
+                    }
+                }
+                result_chirho
             }),
             _ => {
                 // Fallback: treat unknown shapes as *.
@@ -285,6 +264,22 @@ impl KindInferCtxChirho {
             } => {
                 let k_fun_chirho = self.infer_type_kind_chirho(fun_chirho);
                 let k_arg_chirho = self.infer_type_kind_chirho(arg_chirho);
+                if let KindChirho::DependentChirho {
+                    argument_chirho,
+                    result_chirho,
+                } = self.subst_chirho.apply_chirho(&k_fun_chirho)
+                {
+                    self.unify_chirho(
+                        &argument_chirho,
+                        &k_arg_chirho,
+                        "dependent type application",
+                        *span_chirho,
+                    );
+                    let argument_term_chirho = self.type_to_kind_chirho(arg_chirho);
+                    return self.subst_chirho.apply_chirho(
+                        &result_chirho.substitute_bound_chirho(&argument_term_chirho),
+                    );
+                }
                 let k_result_chirho = self.fresh_kind_chirho();
                 // fun must have kind (k_arg -> k_result)
                 let expected_chirho =

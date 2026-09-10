@@ -65,30 +65,22 @@ impl KindBindingChirho {
 }
 
 fn abstract_rigid_kind_chirho(kind_chirho: &KindChirho) -> KindChirho {
-    match kind_chirho {
+    kind_chirho.map_leaves_chirho(&mut |term_chirho| match term_chirho {
         KindChirho::RigidChirho(variable_chirho) => KindChirho::VarChirho(*variable_chirho),
-        KindChirho::ArrowChirho(argument_chirho, result_chirho) => KindChirho::arrow_chirho(
-            abstract_rigid_kind_chirho(argument_chirho),
-            abstract_rigid_kind_chirho(result_chirho),
-        ),
-        _ => kind_chirho.clone(),
-    }
+        _ => term_chirho.clone(),
+    })
 }
 
 fn default_unbound_chirho(
     kind_chirho: &KindChirho,
     bound_chirho: &HashSet<KindVarChirho>,
 ) -> KindChirho {
-    match kind_chirho {
+    kind_chirho.map_leaves_chirho(&mut |term_chirho| match term_chirho {
         KindChirho::VarChirho(variable_chirho) if !bound_chirho.contains(variable_chirho) => {
             KindChirho::StarChirho
         }
-        KindChirho::ArrowChirho(argument_chirho, result_chirho) => KindChirho::arrow_chirho(
-            default_unbound_chirho(argument_chirho, bound_chirho),
-            default_unbound_chirho(result_chirho, bound_chirho),
-        ),
-        _ => kind_chirho.clone(),
-    }
+        _ => term_chirho.clone(),
+    })
 }
 
 /// Traverse only the scheme and substitution paths it reaches, never copy the
@@ -98,7 +90,7 @@ fn apply_scoped_subst_chirho(
     subst_chirho: &KindSubstChirho,
     bound_chirho: &HashSet<KindVarChirho>,
 ) -> KindChirho {
-    match kind_chirho {
+    kind_chirho.map_leaves_chirho(&mut |term_chirho| match term_chirho {
         KindChirho::VarChirho(variable_chirho) if !bound_chirho.contains(variable_chirho) => {
             subst_chirho
                 .map_chirho
@@ -106,14 +98,10 @@ fn apply_scoped_subst_chirho(
                 .map(|value_chirho| {
                     apply_scoped_subst_chirho(value_chirho, subst_chirho, bound_chirho)
                 })
-                .unwrap_or_else(|| kind_chirho.clone())
+                .unwrap_or_else(|| term_chirho.clone())
         }
-        KindChirho::ArrowChirho(argument_chirho, result_chirho) => KindChirho::arrow_chirho(
-            apply_scoped_subst_chirho(argument_chirho, subst_chirho, bound_chirho),
-            apply_scoped_subst_chirho(result_chirho, subst_chirho, bound_chirho),
-        ),
-        _ => kind_chirho.clone(),
-    }
+        _ => term_chirho.clone(),
+    })
 }
 
 impl KindInferCtxChirho {

@@ -4,6 +4,9 @@
 use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[path = "typing_integration_chirho/kind_terms_chirho.rs"]
+mod kind_terms_chirho;
+
 #[test]
 fn promoted_opaque_occurrences_keep_independent_kinds_and_check_the_body_chirho() {
     // GHC 9.14.1 accepts the source and rejects the Int-result mutation (GHC-83865).

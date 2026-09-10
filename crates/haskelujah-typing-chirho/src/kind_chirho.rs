@@ -17,7 +17,6 @@
 //! analogous to type inference but at the kind level.
 
 use std::collections::HashMap;
-use std::fmt;
 
 use haskelujah_ast_chirho::decl_chirho::{
     AstKindChirho, DataKindSigChirho, DeclChirho, TyVarChirho,
@@ -42,96 +41,11 @@ mod scope_chirho;
 #[cfg(test)]
 mod scope_tests_chirho;
 
-// ---------------------------------------------------------------------------
-// Kind representation
-// ---------------------------------------------------------------------------
-
-/// A kind variable (for kind inference unification).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct KindVarChirho(pub u32);
-
-impl fmt::Display for KindVarChirho {
-    fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f_chirho, "k{}", self.0)
-    }
-}
-
-/// The kind of a type expression.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum KindChirho {
-    /// `*` — the kind of types (also called `Type`).
-    StarChirho,
-
-    /// `k1 -> k2` — the kind of type constructors.
-    ArrowChirho(Box<KindChirho>, Box<KindChirho>),
-
-    /// A kind unification variable (filled in during inference).
-    VarChirho(KindVarChirho),
-
-    /// A source-quantified kind opened for checking, never a substitution key.
-    RigidChirho(KindVarChirho),
-
-    /// `Constraint` — the kind of typeclass constraints.
-    ConstraintChirho,
-}
-
-impl KindChirho {
-    /// Build an arrow kind `k1 -> k2`.
-    pub fn arrow_chirho(from_chirho: KindChirho, to_chirho: KindChirho) -> Self {
-        Self::ArrowChirho(Box::new(from_chirho), Box::new(to_chirho))
-    }
-
-    /// Build a multi-argument arrow kind `k1 -> k2 -> ... -> result`.
-    pub fn arrow_n_chirho(
-        args_chirho: impl IntoIterator<Item = KindChirho>,
-        result_chirho: KindChirho,
-    ) -> Self {
-        let mut k_chirho = result_chirho;
-        let args_vec_chirho: Vec<_> = args_chirho.into_iter().collect();
-        for arg_chirho in args_vec_chirho.into_iter().rev() {
-            k_chirho = Self::arrow_chirho(arg_chirho, k_chirho);
-        }
-        k_chirho
-    }
-
-    /// Collect free kind variables.
-    pub fn free_vars_chirho(&self) -> Vec<KindVarChirho> {
-        let mut vars_chirho = Vec::new();
-        self.collect_free_vars_chirho(&mut vars_chirho);
-        vars_chirho.sort();
-        vars_chirho.dedup();
-        vars_chirho
-    }
-
-    fn collect_free_vars_chirho(&self, out_chirho: &mut Vec<KindVarChirho>) {
-        match self {
-            KindChirho::VarChirho(v_chirho) => out_chirho.push(*v_chirho),
-            KindChirho::StarChirho | KindChirho::ConstraintChirho | KindChirho::RigidChirho(_) => {}
-            KindChirho::ArrowChirho(a_chirho, b_chirho) => {
-                a_chirho.collect_free_vars_chirho(out_chirho);
-                b_chirho.collect_free_vars_chirho(out_chirho);
-            }
-        }
-    }
-}
-
-impl fmt::Display for KindChirho {
-    fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            KindChirho::StarChirho => write!(f_chirho, "*"),
-            KindChirho::ConstraintChirho => write!(f_chirho, "Constraint"),
-            KindChirho::VarChirho(v_chirho) => write!(f_chirho, "{v_chirho}"),
-            KindChirho::RigidChirho(v_chirho) => write!(f_chirho, "rigid {v_chirho}"),
-            KindChirho::ArrowChirho(a_chirho, b_chirho) => {
-                // Parenthesize the left side if it's an arrow
-                match a_chirho.as_ref() {
-                    KindChirho::ArrowChirho(_, _) => write!(f_chirho, "({a_chirho}) -> {b_chirho}"),
-                    _ => write!(f_chirho, "{a_chirho} -> {b_chirho}"),
-                }
-            }
-        }
-    }
-}
+#[cfg(test)]
+mod term_tests_chirho;
+mod terms_chirho;
+use terms_chirho::unify_kind_chirho;
+pub use terms_chirho::{KindChirho, KindErrorChirho, KindSubstChirho, KindVarChirho};
 
 fn is_builtin_typelit_or_typenat_kind_name_chirho(name_chirho: &str) -> bool {
     matches!(
@@ -150,163 +64,6 @@ fn is_builtin_typelit_or_typenat_kind_name_chirho(name_chirho: &str) -> bool {
             | "CharToNat"
             | "NatToChar"
     )
-}
-
-// ---------------------------------------------------------------------------
-// Kind substitution
-// ---------------------------------------------------------------------------
-
-/// A substitution mapping kind variables to kinds.
-#[derive(Debug, Clone, Default)]
-pub struct KindSubstChirho {
-    map_chirho: HashMap<KindVarChirho, KindChirho>,
-}
-
-impl KindSubstChirho {
-    pub fn empty_chirho() -> Self {
-        Self::default()
-    }
-
-    pub fn singleton_chirho(var_chirho: KindVarChirho, kind_chirho: KindChirho) -> Self {
-        let mut map_chirho = HashMap::new();
-        map_chirho.insert(var_chirho, kind_chirho);
-        Self { map_chirho }
-    }
-
-    pub fn is_empty_chirho(&self) -> bool {
-        self.map_chirho.is_empty()
-    }
-
-    /// Apply this substitution to a kind.
-    pub fn apply_chirho(&self, kind_chirho: &KindChirho) -> KindChirho {
-        match kind_chirho {
-            KindChirho::VarChirho(v_chirho) => {
-                if let Some(k_chirho) = self.map_chirho.get(v_chirho) {
-                    self.apply_chirho(k_chirho)
-                } else {
-                    kind_chirho.clone()
-                }
-            }
-            KindChirho::StarChirho | KindChirho::ConstraintChirho | KindChirho::RigidChirho(_) => {
-                kind_chirho.clone()
-            }
-            KindChirho::ArrowChirho(a_chirho, b_chirho) => {
-                KindChirho::arrow_chirho(self.apply_chirho(a_chirho), self.apply_chirho(b_chirho))
-            }
-        }
-    }
-
-    /// Compose two substitutions: `self ∘ other`.
-    /// Applying `compose(s2, s1)` is the same as applying `s1` then `s2`.
-    pub fn compose_chirho(&self, other_chirho: &KindSubstChirho) -> KindSubstChirho {
-        let mut result_chirho: HashMap<KindVarChirho, KindChirho> = other_chirho
-            .map_chirho
-            .iter()
-            .map(|(v_chirho, k_chirho)| (*v_chirho, self.apply_chirho(k_chirho)))
-            .collect();
-        for (v_chirho, k_chirho) in &self.map_chirho {
-            result_chirho
-                .entry(*v_chirho)
-                .or_insert_with(|| k_chirho.clone());
-        }
-        KindSubstChirho {
-            map_chirho: result_chirho,
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Kind unification
-// ---------------------------------------------------------------------------
-
-/// Error from kind unification.
-#[derive(Debug, Clone, PartialEq)]
-pub enum KindErrorChirho {
-    MismatchChirho {
-        expected_chirho: KindChirho,
-        actual_chirho: KindChirho,
-        context_chirho: String,
-        span_chirho: SpanChirho,
-    },
-    OccursCheckChirho {
-        var_chirho: KindVarChirho,
-        kind_chirho: KindChirho,
-        span_chirho: SpanChirho,
-    },
-}
-
-/// Unify two kinds.
-fn unify_kind_chirho(
-    k1_chirho: &KindChirho,
-    k2_chirho: &KindChirho,
-    context_chirho: &str,
-    span_chirho: SpanChirho,
-) -> Result<KindSubstChirho, KindErrorChirho> {
-    match (k1_chirho, k2_chirho) {
-        (KindChirho::RigidChirho(left_chirho), KindChirho::RigidChirho(right_chirho))
-            if left_chirho == right_chirho =>
-        {
-            Ok(KindSubstChirho::empty_chirho())
-        }
-        (KindChirho::StarChirho, KindChirho::StarChirho) => Ok(KindSubstChirho::empty_chirho()),
-        (KindChirho::ConstraintChirho, KindChirho::ConstraintChirho) => {
-            Ok(KindSubstChirho::empty_chirho())
-        }
-
-        // ConstraintKinds: GHC treats Constraint and Type (*) as interchangeable
-        // in many contexts. Allow unification between them to handle patterns like
-        // `Dict :: Constraint -> Type` and constraint tuples in type positions.
-        (KindChirho::StarChirho, KindChirho::ConstraintChirho)
-        | (KindChirho::ConstraintChirho, KindChirho::StarChirho) => {
-            Ok(KindSubstChirho::empty_chirho())
-        }
-
-        (KindChirho::VarChirho(v_chirho), k_chirho)
-        | (k_chirho, KindChirho::VarChirho(v_chirho)) => {
-            bind_kind_var_chirho(*v_chirho, k_chirho, span_chirho)
-        }
-
-        (
-            KindChirho::ArrowChirho(a1_chirho, b1_chirho),
-            KindChirho::ArrowChirho(a2_chirho, b2_chirho),
-        ) => {
-            let s1_chirho = unify_kind_chirho(a1_chirho, a2_chirho, context_chirho, span_chirho)?;
-            let b1_sub_chirho = s1_chirho.apply_chirho(b1_chirho);
-            let b2_sub_chirho = s1_chirho.apply_chirho(b2_chirho);
-            let s2_chirho =
-                unify_kind_chirho(&b1_sub_chirho, &b2_sub_chirho, context_chirho, span_chirho)?;
-            Ok(s2_chirho.compose_chirho(&s1_chirho))
-        }
-
-        _ => Err(KindErrorChirho::MismatchChirho {
-            expected_chirho: k1_chirho.clone(),
-            actual_chirho: k2_chirho.clone(),
-            context_chirho: context_chirho.to_string(),
-            span_chirho,
-        }),
-    }
-}
-
-/// Bind a kind variable to a kind, with occurs check.
-fn bind_kind_var_chirho(
-    var_chirho: KindVarChirho,
-    kind_chirho: &KindChirho,
-    span_chirho: SpanChirho,
-) -> Result<KindSubstChirho, KindErrorChirho> {
-    if *kind_chirho == KindChirho::VarChirho(var_chirho) {
-        return Ok(KindSubstChirho::empty_chirho());
-    }
-    if kind_chirho.free_vars_chirho().contains(&var_chirho) {
-        return Err(KindErrorChirho::OccursCheckChirho {
-            var_chirho,
-            kind_chirho: kind_chirho.clone(),
-            span_chirho,
-        });
-    }
-    Ok(KindSubstChirho::singleton_chirho(
-        var_chirho,
-        kind_chirho.clone(),
-    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -1054,16 +811,10 @@ fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
 
 /// Replace all remaining kind variables with *.
 fn default_kind_vars_chirho(kind_chirho: &KindChirho) -> KindChirho {
-    match kind_chirho {
+    kind_chirho.map_leaves_chirho(&mut |term_chirho| match term_chirho {
         KindChirho::VarChirho(_) => KindChirho::StarChirho,
-        KindChirho::StarChirho | KindChirho::ConstraintChirho | KindChirho::RigidChirho(_) => {
-            kind_chirho.clone()
-        }
-        KindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
-            default_kind_vars_chirho(a_chirho),
-            default_kind_vars_chirho(b_chirho),
-        ),
-    }
+        _ => term_chirho.clone(),
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -2245,7 +1996,7 @@ mod tests_chirho {
     }
 
     #[test]
-    fn polykinds_unannotated_type_family_result_stays_flexible_chirho() {
+    fn family_result_kind_is_not_an_arbitrary_kind_at_each_use_chirho() {
         let mut module_chirho = mk_module_chirho(vec![
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho: mk_name_chirho("FamilyChirho"),
@@ -2291,15 +2042,18 @@ mod tests_chirho {
             .push("PolyKinds".to_string());
 
         let result_chirho = infer_module_kinds_chirho(&module_chirho);
+        // GHC 9.14.1 rejects both applications: the term Family k is not
+        // interchangeable with the kind OF that term. The former assertion
+        // expected this invalid program to pass by freshening the entire term.
+        let errors_chirho = result_chirho.diagnostics_chirho.diagnostics_chirho();
+        assert_eq!(errors_chirho.len(), 2, "{errors_chirho:?}");
         assert!(
-            !result_chirho.diagnostics_chirho.has_errors_chirho(),
-            "unannotated PolyKinds type-family result should remain flexible at use sites: {:?}",
-            result_chirho
-                .diagnostics_chirho
-                .diagnostics_chirho()
-                .iter()
-                .map(|diagnostic_chirho| diagnostic_chirho.to_string())
-                .collect::<Vec<_>>()
+            errors_chirho.iter().all(|error_chirho| {
+                error_chirho.code_chirho == Some(ErrorCodeChirho::error_chirho(300))
+                    && error_chirho.message_chirho.contains("FamilyChirho")
+                    && error_chirho.message_chirho.contains("type application")
+            }),
+            "{errors_chirho:?}"
         );
     }
 

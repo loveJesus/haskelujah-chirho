@@ -381,3 +381,53 @@ Keep conversion, lexical scope, scheme publication and declaration lifecycle
 separate. No new dependency or public deployment; unknown-import metadata is
 still a boundary rather than an authoritative contract. Focused positive/negative
 GHC controls precede the next full diagnostic; main stays unchanged.
+
+### Dependent kind terms checkpoint, not a landing
+
+Tag `dependent-kind-terms-before-chirho` names 6f107c9c. Kind terms,
+substitution and equality now live in `kind_chirho/terms_chirho.rs`, with nominal
+constructors, applications and dependent functions distinct from inference
+metavariables. `type_to_kind` preserves a term; it no longer asks the environment
+for the kind OF that term. A required application substitutes its actual term.
+Bound positions use de Bruijn indices, separate from globally fresh inference
+ids. Two tests exposed flaws in the first id-based prototype: a nested binder
+was substituted through, and a local binder escaped into a free meta. Both are
+now rejected by scoped substitution/equality; abstraction, argument lifting,
+alpha-equivalence and defaulting have explicit controls. No nominal-name exception.
+
+The old unit test expecting `Indexed Maybe` and `Indexed Int` to work when
+`Indexed :: Family k -> Type` was itself wrong. The unchanged equivalent source
+is GHC 9.14.1-rejected at both applications for GHC-83865. Its assertion now
+requires those kind errors; a separately GHC-accepted `Indexed a -> Indexed a`
+companion guards valid use. This is not an oracle inferred from our output.
+Typing 356 passes with zero exclusions. Driver integration 48/49, canaries 7/7:
+the remaining integration error is the concrete TYPE tail in
+`signature_elaboration_metavariables_are_not_written_kind_contracts_chirho`.
+Do not waive it; runtime-representation interpretation is the next unit.
+
+Explicit CLI SHA-256
+`c56160825b8d3a2311677aff78926d156b887fd507c29cb7615eb34230228262`
+accepts unchanged CoerceToVDQ. Eight source-hashed GHC/candidate pairs agree on
+seven verdicts (dependent and nested-dependent positives, Bool/Int negative,
+matching/mismatching family-kind controls, promoted positive/negative). The
+runtime-representation positive remains GHC-accepted/candidate-rejected.
+Evidence: `dependent-scopes-chirho.jsonl`, `term-scopes-red-chirho.log`,
+`term-scopes-typing-chirho.log`, `term-integration-chirho.log` under
+`/private/tmp/haskelujah-kind-terms-chirho.oZJ9Ka/`. No new full-corpus figure.
+
+Remaining contracts: AstKind still conflates nominal constructors with variables
+and collapses application; runtime TYPE terms and primitive consumers are not
+complete. Kind-family application equality/normalization and implicit-kind
+equation indexing are also unimplemented. The T14010 reducer has zero visible
+patterns in both valid instances, but no hidden-kind key, so it chooses the
+newest row. Read-only review confirms the key must survive method schemes and
+later instance specialization; a span-to-final-choice table is insufficient.
+Implicitly quantified kind patterns and explicit forall uniformity are different
+contracts. Do not restore parser loss or presume family application injectivity.
+
+Fourth-pass reject review, source/log inspection rather than a new execution:
+T11356/T11563/T4875/tcfail225 are close reason matches; T15799/T23734/tcfail209
+are not, and T16502 lacks a reference stderr. T16512a still needs a fresh-main
+bracket. T23162b's old wrong reason is measured above. T23162d has no stderr and
+its own `all.T` expects successful compilation: this directory-based reject
+loss is not lost semantic capability. The frozen denominator is unchanged.
