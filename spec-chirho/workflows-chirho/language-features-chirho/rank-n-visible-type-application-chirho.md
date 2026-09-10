@@ -12,8 +12,10 @@ flowchart TD
     cst_chirho --> operators_chirho[Type operators keep token namespace and source spans]
     operators_chirho --> fixity_chirho[Linear type-chain reduction uses the shared fixity table]
     fixity_chirho --> ast_chirho
-    ast_chirho --> kind_chirho[Kind inference handles both forall visibilities]
-    kind_chirho --> conversion_chirho[Convert types with fresh lexical forall identities]
+    ast_chirho --> kind_chirho[Kind inference scopes both forall visibilities and quantified constraints]
+    kind_chirho --> kind_lookup_chirho[Separate variable-kind lookup from kind-variable identity]
+    kind_lookup_chirho --> kind_restore_chirho[Fresh binders then restore touched entries; keep new free names]
+    kind_restore_chirho --> conversion_chirho[Convert types with fresh lexical forall identities]
     conversion_chirho --> predicates_chirho[Attach result predicates under the converted binder identities]
     predicates_chirho --> inventory_chirho[Scoped source occurrences order existing signature variables]
     inventory_chirho --> scheme_chirho[Type inference instantiates ordinary scheme variables]
@@ -54,6 +56,12 @@ flowchart TD
 - Surface conversion gives both forall visibilities fresh local identities and restores
   only their previous name bindings on exit, in reverse order. Free names discovered in
   the body survive. Scope bookkeeping grows with binder count, not environment size.
+- Kind conversion follows the same lexical lifetime, but has two distinct lookup contracts:
+  a type variable's inferred kind lives in the kind environment, while its identity when
+  used as a kind lives in the kind-variable cache. Each explicit binder shadows/restores
+  both entries without equating these two meanings. Kind annotations are converted before
+  their own binder enters scope and after preceding binders; subsequent annotations reuse
+  the nearest kind-variable identity. Quantified constraints use the same bounded scope.
 - Leading signature binders and contexts are processed in lexical order, including
   parentheses: a later shadow cannot capture an earlier predicate. Result-spine predicates
   are converted under the matching internal forall IDs, not against a leaked final map.
@@ -93,11 +101,11 @@ flowchart TD
 - General implicit kind-dependency ordering (GHC's stable topological sort) is not claimed:
   ordinary kind annotations are not retained as a general `TypeChirho` node. Existing
   explicitly written forall order is preserved, not a substitute for the missing information.
-- Kind conversion has a separate measured lexical-scope gap: after an inner
-  `forall fChirho. fChirho -> fChirho`, an outer higher-kinded `fChirho Int` is
-  rejected with E0300. Both the baseline and repaired surface/signature converter
-  reject the same GHC-accepted program. The two kind-converter environments are
-  separate from the surface/signature name map repaired here; see progress row 480's tasklist.
+- Kind-binder lexical lifetime is covered independently of the surface/signature map.
+  It does not add rigid kind skolems, dependent kinds or a polymorphic-kind scheme
+  representation. Standalone-kind-signature binders scope within that signature, not
+  over its following declaration ([GHC standalone-kind-signature scoping rules](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/poly_kinds.html#standalone-kind-signatures-and-polymorphic-recursion)).
+  General declaration-head/standalone-signature reconciliation remains a separate contract.
 - The separate type-synonym RHS converter still uses its existing fixed-ID/name-substitution
   representation. General synonym alpha-renaming/capture avoidance is not claimed by the
   surface/signature scope repair.

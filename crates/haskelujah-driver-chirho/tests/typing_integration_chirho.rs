@@ -37,6 +37,101 @@ fn assert_compile_success_chirho(file_name_chirho: &str, source_chirho: &str) {
 }
 
 #[test]
+fn higher_kinded_forall_shadowing_runs_on_every_engine_chirho() {
+    // This identical source independently ran under GHC 9.14.1.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes #-}
+module Main where
+retainChirho :: fChirho Int -> (forall fChirho. fChirho -> fChirho) -> fChirho Int
+retainChirho valueChirho _ = valueChirho
+retainLaterChirho :: (forall fChirho. fChirho -> fChirho) -> fChirho Int -> fChirho Int
+retainLaterChirho _ valueChirho = valueChirho
+main :: IO ()
+main = do
+  print (sum (retainChirho [42] id))
+  print (sum (retainLaterChirho id [7]))
+"#;
+    assert_execution_chirho(source_chirho, "42\n7\n");
+}
+
+#[test]
+fn required_higher_kinded_forall_shadowing_runs_on_every_engine_chirho() {
+    // This identical source independently ran under GHC 9.14.1.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, RequiredTypeArguments #-}
+module Main where
+retainChirho :: fChirho Int -> (forall fChirho -> fChirho -> fChirho) -> fChirho Int
+retainChirho valueChirho _ = valueChirho
+retainLaterChirho :: (forall fChirho -> fChirho -> fChirho) -> fChirho Int -> fChirho Int
+retainLaterChirho _ valueChirho = valueChirho
+requiredIdChirho :: forall aChirho -> aChirho -> aChirho
+requiredIdChirho typeChirho valueChirho = valueChirho
+main :: IO ()
+main = do
+  print (sum (retainChirho [42] requiredIdChirho))
+  print (sum (retainLaterChirho requiredIdChirho [7]))
+"#;
+    assert_execution_chirho(source_chirho, "42\n7\n");
+}
+
+#[test]
+fn kind_annotated_forall_shadowing_runs_on_every_engine_chirho() {
+    // This identical source independently ran under GHC 9.14.1.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, ScopedTypeVariables, TypeApplications #-}
+module Main where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+retainChirho :: forall kChirho (fChirho :: kChirho -> Type) (aChirho :: kChirho). fChirho aChirho -> (forall kChirho (aChirho :: kChirho). ProxyChirho aChirho -> ProxyChirho aChirho) -> fChirho aChirho
+retainChirho valueChirho _ = valueChirho
+proxyIdChirho :: forall kChirho (aChirho :: kChirho). ProxyChirho aChirho -> ProxyChirho aChirho
+proxyIdChirho valueChirho = valueChirho
+main :: IO ()
+main = do
+  print (sum (retainChirho @Type @[] @Int [42] proxyIdChirho))
+  print (maybe False id (retainChirho @Type @Maybe @Bool (Just True) proxyIdChirho))
+"#;
+    assert_execution_chirho(source_chirho, "42\nTrue\n");
+}
+
+#[test]
+fn quantified_constraint_kind_scope_runs_on_every_engine_chirho() {
+    // This identical source independently ran under GHC 9.14.1.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE QuantifiedConstraints, FlexibleInstances, UndecidableInstances, MonoLocalBinds #-}
+module Main where
+class WitnessChirho aChirho
+instance WitnessChirho aChirho
+retainChirho :: (forall fChirho. WitnessChirho (fChirho Int)) => fChirho -> fChirho
+retainChirho valueChirho = valueChirho
+main :: IO ()
+main = do
+  print (retainChirho (42 :: Int))
+  print (retainChirho True)
+"#;
+    assert_execution_chirho(source_chirho, "42\nTrue\n");
+}
+
+#[test]
+fn a_shadow_does_not_hide_a_genuine_kind_mismatch_chirho() {
+    // GHC 9.14.1 reports GHC-83865: a Type variable cannot also take an argument.
+    let source_chirho = r#"{-# LANGUAGE RankNTypes #-}
+module BadKindScopeChirho where
+badChirho :: (forall fChirho. fChirho -> fChirho Int) -> Bool
+badChirho _ = True
+"#;
+    let errors_chirho = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "BadKindScopeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the same bound variable cannot have both Type and Type -> Type kinds");
+    let text_chirho = errors_chirho.to_string();
+    assert!(text_chirho.contains("kind mismatch"), "{text_chirho}");
+}
+
+#[test]
 fn identity_function_infers_chirho() {
     assert_compile_success_chirho(
         "IdentityFunctionChirho.hs",
