@@ -75,6 +75,11 @@ accept+7/-3, reject+15/-6. T22141f alone recovers from the sixth diagnostic;
 T12045a/T13643/T14010 remain accept regressions, so main is held. Next: measured
 family-kind reductions before choosing the shared elaboration repair.
 
+Post-diagnostic review reproduced a class-method implicit-kind name leak, absent
+from the corpus. The correction is focused-green (typing356, integration68,
+canaries7); its fresh CLI digest is recorded at the tail. Do not attribute the
+seventh diagnostic to this newer code. The family sources are not modified yet.
+
 Multiplicity correction: parser346,typing356,naming136,integration67,canaries7
 green, zero ignored/filtered, actual cargo exits0. Twenty GHC9.14.1/candidate
 pairs have19 verdict agreements and the named existing warning-only linear-use
@@ -716,3 +721,48 @@ main the seven accept gains remain PolytypeDecomp, RuleEqs, SplitWD, T14451,
 T15079, T20922 and tc124; the three losses are T12045a, T13643 and T14010.
 Reject movement remains+15/-6 as listed in the sixth diagnostic, with per-file
 reason arbitration owed before any capability is banked.
+
+### Independent review — class-method scope correction
+
+The review supplied three falsifiable probes. All were executed under GHC9.14.1
+and the explicit15104f0f CLI before any fix. A local non-nullary constructor
+used as a multiplicity and a wrong local where-signature multiplicity both
+remain wrong accepts. These are measured missing promoted metadata/local kind
+checking, not demonstrated newly introduced regressions.
+
+The third probe is a real candidate wrong rejection: one class method's free
+`multiplicityChirho` was reused by the next method. GHC accepts both method
+orders, and merely renaming the second method's variable made the candidate
+accept. The new permanent driver control first failed with E0300 on that exact
+application, then passed after adding one signature-local kind scope. Shared
+class-head constraints still accumulate: a class parameter used at incompatible
+kinds across two methods remains rejected by both GHC and the candidate.
+
+Scope entry uses the existing environment journal and the current fresh-id
+boundary. Cleanup retains outer identities and undoes local bindings, never
+clones the module environment or resets its substitution. Explicit binder
+shadow restoration remains owned by the existing binder helper.
+
+- [x] Demonstrate the new driver test red, then green on the repair.
+- [x] Six GHC/candidate pairs before/after: both method orders recover, renamed
+  control stays accepted, shared-class contradiction stays rejected. The two
+  independently named unsupported cases remain wrong accepts (4/6 agreements).
+- [x] Explicit CLI build; typing356, integration68, canaries7 pass with actual
+  cargo exits0 and no ignored/filtered tests. CLI SHA256:
+  `8687e146d81b770d96049ee48427144916afda40771b26c0ca9977638d5b5ef9`.
+- [ ] Commit/push the correction and compare the next frozen full diagnostic.
+
+Evidence: multiplicity scratch root's `audit-chirho/six-{before,after}-chirho.jsonl`
+and `method-{red,after,typing,integration,build}-chirho.log`.
+Scoped clippy exits0 but still reports52 typing warnings (same count as the prior
+multiplicity checkpoint); none points at the changed scope helper or method loop.
+This is not the project's required zero-warning state.
+
+Family-kind preparation is measured, not implemented: eleven paired reductions
+under `/private/tmp/haskelujah-family-kinds-chirho.iAIit3` distinguish closed
+forward reduction, injective improvement, non-injective ambiguity, explicit kind
+application, implicit kind-pattern dispatch in both equation orders, overlapping
+equations, and explicit-uniform versus implicit-matchable result quantifiers.
+The negative controls demonstrate additional existing gaps; no family capability
+is claimed from the current table. Checkpoint tag`family-kinds-before-chirho`
+atdfff0b4d records the state before this preparation and subsequent scope review.

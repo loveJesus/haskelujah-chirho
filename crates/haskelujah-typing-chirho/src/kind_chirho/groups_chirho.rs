@@ -370,13 +370,16 @@ impl KindInferCtxChirho {
                     self.infer_constraint_kind_chirho(constraint_chirho);
                 }
                 for method_chirho in methods_chirho {
-                    let kind_chirho = self.infer_type_kind_chirho(&method_chirho.ty_chirho);
-                    self.unify_chirho(
-                        &kind_chirho,
-                        &KindChirho::StarChirho,
-                        "class method type",
-                        method_chirho.span_chirho,
-                    );
+                    self.with_signature_kind_scope_chirho(|ctx_chirho| {
+                        let kind_chirho =
+                            ctx_chirho.infer_type_kind_chirho(&method_chirho.ty_chirho);
+                        ctx_chirho.unify_chirho(
+                            &kind_chirho,
+                            &KindChirho::StarChirho,
+                            "class method type",
+                            method_chirho.span_chirho,
+                        );
+                    });
                 }
             }
             DeclChirho::TypeFamilyDeclChirho { .. } => {}

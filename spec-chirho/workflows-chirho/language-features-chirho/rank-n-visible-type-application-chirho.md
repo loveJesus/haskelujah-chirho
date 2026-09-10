@@ -67,6 +67,10 @@ flowchart TD
 - Leading signature binders and contexts are processed in lexical order, including
   parentheses: a later shadow cannot capture an earlier predicate. Result-spine predicates
   are converted under the matching internal forall IDs, not against a leaked final map.
+- On the isolated row484 kind branch, class methods also own separate implicit
+  kind scopes. Their class-head parameters remain shared and constrained, but a
+  free multiplicity/type name in one method cannot bind the same spelling in
+  another. See declaration-kinds-chirho for the journal and evidence boundary.
 - Signature quantification and definition scope are different contracts. Only the single
   syntactically outermost invisible forall group scopes the definition; parentheses or
   later forall groups do not. Existing enclosing scopes survive; explicit local binders

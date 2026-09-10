@@ -237,6 +237,28 @@ the complete following type, including implication and arrow bodies. Known
 standard higher-kinded class heads supply contracts; absent imported metadata
 does not become a fabricated authoritative contract.
 
+Each class method checks its implicitly quantified names in its own child kind
+scope. Class-head identities and their inferred constraints remain shared;
+method-local names do not leak into a sibling signature. The environment journal
+undoes only scoped bindings, while the monotonic fresh-id boundary removes newly
+introduced names from the declaration-local identity cache. It does not clone
+the module environment or roll back constraints on class parameters.
+
+```mermaid
+flowchart LR
+  ClassHeadScopeChirho[Shared class-head identities] --> MethodScopeChirho[Open one signature scope]
+  MethodScopeChirho --> MethodCheckChirho[Check local implicit names and method kind]
+  MethodCheckChirho --> ClassConstraintsChirho[Keep constraints on shared class parameters]
+  MethodCheckChirho --> MethodCloseChirho[Discard only method-local names and bindings]
+  MethodCloseChirho --> SiblingMethodChirho[Open next method independently]
+```
+
+This boundary does not extend the kind pass into local let/where signatures.
+A local `% 'True` annotation and a non-nullary local constructor used as a
+multiplicity remain measured wrong accepts. The former bypasses this pass;
+the latter still lacks its promoted constructor classifier. Neither is a
+validated multiplicity use merely because the top-level/class controls pass.
+
 The local-instance consumer instantiates each class's quantified kind afresh,
 infers argument classifiers in a journaled scope, and checks the resulting
 application with kind equality. It no longer clones the whole environment or

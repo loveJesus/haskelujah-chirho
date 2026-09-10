@@ -136,6 +136,43 @@ main = print (identityChirho @'Many @Int 42)
     }
 }
 
+#[test]
+fn class_method_implicit_kinds_are_independent_but_class_binders_are_shared_chirho() {
+    let first_chirho =
+        "  firstChirho :: ProxyChirho argumentChirho -> Int %multiplicityChirho -> Int\n";
+    let second_chirho = "  secondChirho :: ProxyChirho argumentChirho -> ProxyChirho (multiplicityChirho 'True) -> ()\n";
+    for methods_chirho in [
+        format!("{first_chirho}{second_chirho}"),
+        format!("{second_chirho}{first_chirho}"),
+    ] {
+        assert_compile_success_chirho(
+            "IndependentMethodBindersChirho.hs",
+            &format!(
+                "{{-# LANGUAGE DataKinds, KindSignatures, LinearTypes, PolyKinds #-}}\nmodule IndependentMethodBindersChirho where\ndata ProxyChirho (argumentChirho :: kindChirho) = ProxyChirho\nclass ClassChirho argumentChirho where\n{methods_chirho}"
+            ),
+        );
+    }
+
+    // The class parameter remains shared even though method-local names do not.
+    let errors_chirho = haskelujah_driver::typecheck_source_chirho(
+        "module SharedClassKindChirho where\nclass ClassChirho constructorChirho where\n  firstChirho :: constructorChirho Int -> ()\n  secondChirho :: constructorChirho Maybe -> ()\n",
+        &mut SourceMapChirho::new_chirho(),
+        "SharedClassKindChirho.hs",
+    )
+    .err()
+    .expect("a class parameter cannot have incompatible kinds in its methods");
+    assert!(
+        errors_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|error_chirho| {
+                error_chirho.code_chirho == Some(ErrorCodeChirho::error_chirho(300))
+                    && error_chirho.message_chirho.contains("type application")
+            }),
+        "{errors_chirho}"
+    );
+}
+
 fn assert_multiplicity_error_chirho(source_chirho: &str) {
     let errors_chirho = haskelujah_driver::typecheck_source_chirho(
         source_chirho,

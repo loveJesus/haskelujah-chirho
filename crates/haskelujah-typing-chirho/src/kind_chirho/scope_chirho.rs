@@ -6,6 +6,26 @@
 use super::{KindBindingChirho, KindInferCtxChirho, TyVarChirho};
 
 impl KindInferCtxChirho {
+    /// Implicit names belong to one signature. Outer class-head identities and
+    /// their accumulated constraints remain shared. Fresh ids are monotonic;
+    /// explicit binders already restore any shadowed cache entry themselves.
+    /// Entry is O(1), and cleanup visits this declaration-local name cache, never
+    /// clones/scans the module environment or the accumulated substitution.
+    pub(super) fn with_signature_kind_scope_chirho<ResultChirho>(
+        &mut self,
+        body_chirho: impl FnOnce(&mut Self) -> ResultChirho,
+    ) -> ResultChirho {
+        let first_local_identity_chirho = self.next_var_chirho;
+        self.env_chirho.begin_scope_chirho();
+        let result_chirho = body_chirho(self);
+        self.env_chirho.end_scope_chirho();
+        self.kind_var_cache_chirho
+            .retain(|_name_chirho, identity_chirho| {
+                identity_chirho.0 < first_local_identity_chirho
+            });
+        result_chirho
+    }
+
     /// Open a binder group, preserving two different meanings of each source name:
     /// `env` holds its inferred kind as a type variable; the cache holds its
     /// identity when used AS a kind (including subsequent binder annotations).
