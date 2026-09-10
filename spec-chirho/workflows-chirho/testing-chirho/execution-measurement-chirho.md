@@ -50,8 +50,20 @@ reruns; all four passes had zero unresolved timeouts and zero unexpected exits. 
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-Main landing and its separate rebuilt-CLI path/execution smoke checks are pending
-at this evidence checkpoint. They are not implied by the completed worktree gates.
+After the fast-forward to evidence commit `e6e19db5`, an explicit CLI rebuild in
+the main checkout completed without warnings. Its separate SHA-256 is
+`461f6bf2ca6981af87f1e18f9834fe6edd593a9085b427c9bc51ec319a4b38c5`.
+Repository-root `check ./ghc-tests-chirho/T001_basic_types.hs`, T23764 and tc156
+all succeed. The four new scope sources, checked to occur verbatim in the frozen
+integration tests, print their exact GHC oracles; in-place T002 prints `120`.
+GivenForallLoop rejects with E0200 identifying the distinct rigid variables.
+All nine cases meet their expected normal exit status and output/diagnostic
+assertions under a 30-second child bound. Main HEAD and CLI digest remain stable
+through those checks. These are post-landing path/execution smokes, not another
+full corpus gate; the complete gates retain the worktree binary's separate provenance.
+The source/evidence main tip was independently confirmed against `gh_chirho`.
+The bounded main-smoke JSONL log has SHA-256
+`df87bdda4a133b8eef924a04183459a0e2f0dc3cbe4e90a5e7428264f34d65c0`.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were

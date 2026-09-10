@@ -4,12 +4,12 @@
 
 L.J. directed continue after the infix/binder landing. Baseline `f3a513d0`;
 owner HASKELUJAH/gpt_chirho, isolated `gpt-forall-scope-chirho` branch.
-Canonical progress row 480 is open in main only. Local reversible compiler work;
+Canonical progress row 480 is closed after the verified main landing. Local reversible compiler work;
 no deployment, AST representation redesign or unrelated lint sweep.
 
 ## Design and acceptance
 
-The main AST-to-type converter currently inserts forall-bound variables into a
+At the baseline, the main AST-to-type converter inserted forall-bound variables into a
 shared name map without restoring the enclosing bindings. Extract conversion
 from the 28,417-line inference root into a focused child module. A lexical scope
 must introduce fresh local binder identities, convert its body, then restore
@@ -24,7 +24,7 @@ must be processed in lexical order, and RHS scope export must be distinct from
 scheme quantification. Only the first syntactically outermost forall scopes the
 definition. Both extraction homes are under `infer_chirho/`; no new dependency.
 
-An independent read-only consumer audit runs alongside the implementation.
+An independent read-only consumer audit ran alongside the implementation.
 Use semantic regressions: repeated Int/Bool use, outer names before/after a
 shadow, free variables first encountered inside the binder, and enclosing
 ScopedTypeVariables. Negative controls must fail for the relevant type error.
@@ -39,8 +39,12 @@ No corpus gain is predicted from source resemblance alone.
 - [x] Run focused semantic tests and relevant existing suites; update workflow.
 - [x] Freeze/push source; full workspace, explicit CLI build, two complete passes
       per upstream axis with exact file deltas and stable binary provenance.
-- [ ] Supersede evidence, fast-forward main, run in-place smoke checks, close
-      row 480, commit/push named paths and release builder/DB leases.
+- [x] Supersede evidence, fast-forward main, run in-place smoke checks, and
+      commit/push the verified source and evidence by named path.
+- [x] Close canonical progress row 480 after that verified main landing.
+
+Closure bookkeeping is committed separately; the builder/DB release is announced
+in the broker after its remote hash is verified, not inferred from a checklist tick.
 
 ## Evidence and scope limits
 
@@ -106,6 +110,24 @@ comparison is recorded below rather than treating formatting duplicates as new d
   log to 493 primary diagnostics at 492 locations; 101 repeated parser renderings
   explain the difference. Root-inference locations shift with the 588-line
   extraction. No new conversion/integration-file diagnostic is identified.
+
+## Main landing
+
+Main fast-forwarded to `e6e19db5f82e38d7fcd9f24eafcad40f1d33cafb`, preserving
+the canonical open DB byte-for-byte. Source and evidence were pushed to
+`gh_chirho/main_chirho`; `ls-remote` confirmed that exact tip. The explicit main
+CLI rebuild is warning-free, SHA256
+`461f6bf2ca6981af87f1e18f9834fe6edd593a9085b427c9bc51ec319a4b38c5`.
+
+Nine bounded main-path checks pass their actual assertions: in-place T001,
+T23764 and tc156 accept; T002 prints `120`; the four exact new integration
+sources print their GHC oracles; GivenForallLoop reports E0200 on distinct rigid
+variables. Source/evidence HEAD and main CLI digest are stable through the checks.
+These are main-checkout smoke tests, not four more complete corpus passes.
+
+Row 480 was closed with an ownership/start-time/end-state guarded, parameterized
+update in the canonical DB at `2026-09-10T04:30:09.508Z`; SQLite quick_check is ok.
+No worktree copy overwrote that DB. No deployment or public-label policy change.
 
 ## Measured next defect, not folded into this freeze
 
