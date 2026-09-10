@@ -36,6 +36,176 @@ fn assert_compile_success_chirho(file_name_chirho: &str, source_chirho: &str) {
     );
 }
 
+fn assert_kind_error_chirho(source_chirho: &str) {
+    let error_chirho = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "InvalidKindContractChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference-invalid kind contract must be diagnosed");
+    let message_chirho = error_chirho.to_string();
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| {
+                diagnostic_chirho.code_chirho
+                    == Some(haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300))
+            }),
+        "{message_chirho}"
+    );
+}
+
+#[test]
+fn written_kind_contracts_are_rigid_but_unannotated_heads_infer_chirho() {
+    // Each variant independently checked with GHC 9.14.1, including the
+    // alpha-renamed binder: a standalone signature does not scope its names
+    // over the declaration, but its quantified kind cannot be specialized.
+    let prefix_chirho = "{-# LANGUAGE PolyKinds, StandaloneKindSignatures #-}\nmodule KindContractChirho where\nimport Data.Kind (Type)\ntype BoxChirho :: forall kChirho. kChirho -> Type\n";
+    assert_kind_error_chirho(&format!(
+        "{prefix_chirho}data BoxChirho (aChirho :: Type)\n"
+    ));
+    for declaration_chirho in [
+        "data BoxChirho aChirho = MkBoxChirho",
+        "data BoxChirho (aChirho :: jChirho) = MkBoxChirho",
+    ] {
+        assert_compile_success_chirho(
+            "KindContractChirho.hs",
+            &format!("{prefix_chirho}{declaration_chirho}\n"),
+        );
+    }
+}
+
+#[test]
+fn rigid_kinds_are_checked_in_ordinary_and_explicit_constructor_fields_chirho() {
+    // Both complete sources are GHC-25897, not unknown-name controls.
+    for declaration_chirho in [
+        "data BoxChirho (aChirho :: kChirho) = MkBoxChirho aChirho",
+        "data BoxChirho aChirho where\n  MkBoxChirho :: forall kChirho (bChirho :: kChirho). bChirho -> BoxChirho bChirho",
+    ] {
+        assert_kind_error_chirho(&format!(
+            "{{-# LANGUAGE GADTs, PolyKinds, ExplicitForAll, NoCUSKs #-}}\nmodule RigidFieldsChirho where\n{declaration_chirho}\n"
+        ));
+    }
+    assert_compile_success_chirho(
+        "InferredFieldChirho.hs",
+        "{-# LANGUAGE PolyKinds, NoCUSKs #-}\nmodule InferredFieldChirho where\ndata BoxChirho aChirho = MkBoxChirho (Maybe aChirho)\n",
+    );
+}
+
+#[test]
+fn cusk_and_incomplete_recursion_use_different_kind_bindings_chirho() {
+    // Identical body: independently accepted with CUSKs and rejected with
+    // NoCUSKs by GHC 9.14.1. The declaration, not its spelling, owns recursion.
+    let program_chirho = |extension_chirho: &str| {
+        format!(
+            "{{-# LANGUAGE PolyKinds, GADTs, {extension_chirho} #-}}\nmodule KindRecursionChirho where\nimport Data.Kind (Type)\ndata TChirho (mChirho :: kChirho -> Type) :: kChirho -> Type where\n  MkTChirho :: mChirho aChirho -> TChirho Maybe (mChirho aChirho) -> TChirho mChirho aChirho\n"
+        )
+    };
+    assert_compile_success_chirho("CompleteKindRecursionChirho.hs", &program_chirho("CUSKs"));
+    assert_kind_error_chirho(&program_chirho("NoCUSKs"));
+    assert_compile_success_chirho(
+        "OrdinaryMonoChirho.hs",
+        "{-# LANGUAGE PolyKinds, NoCUSKs #-}\nmodule OrdinaryMonoChirho where\ndata TChirho mChirho aChirho = MkTChirho (mChirho aChirho) (TChirho Maybe (mChirho aChirho))\n",
+    );
+}
+
+#[test]
+fn kind_inference_uses_local_dependencies_before_generalizing_chirho() {
+    // The forward forms of these independent modules were accepted by GHC
+    // 9.14.1. Neither a later local type nor a recursive peer is an import.
+    for (prefix_chirho, first_chirho, second_chirho) in [
+        (
+            "{-# LANGUAGE KindSignatures #-}\nmodule ForwardClassChirho where\nimport Data.Kind (Type)\n",
+            "class SumSizeChirho fChirho where\n  sumSizeChirho :: TaggedChirho fChirho\n",
+            "newtype TaggedChirho (sChirho :: Type -> Type) = TaggedChirho { unTaggedChirho :: Int }\n",
+        ),
+        (
+            "{-# LANGUAGE PolyKinds, NoCUSKs #-}\nmodule ForwardPolykindChirho where\nimport Data.Proxy (Proxy)\n",
+            "data UsesChirho = UsesChirho (BoxChirho Int) (BoxChirho Maybe)\n",
+            "data BoxChirho aChirho = BoxChirho (Proxy aChirho)\n",
+        ),
+        (
+            "{-# LANGUAGE PolyKinds, NoCUSKs #-}\nmodule RecursiveKindsChirho where\n",
+            "data LeftChirho aChirho = LeftChirho (RightChirho aChirho) (aChirho Int)\n",
+            "data RightChirho bChirho = RightChirho (LeftChirho bChirho)\nuseRightChirho :: RightChirho Maybe -> RightChirho Maybe\nuseRightChirho valueChirho = valueChirho\n",
+        ),
+    ] {
+        for declarations_chirho in [
+            format!("{first_chirho}{second_chirho}"),
+            format!("{second_chirho}{first_chirho}"),
+        ] {
+            assert_compile_success_chirho(
+                "KindDependenciesChirho.hs",
+                &format!("{prefix_chirho}{declarations_chirho}"),
+            );
+        }
+    }
+}
+
+#[test]
+fn complete_kind_signatures_break_inference_cycles_without_skipping_bodies_chirho() {
+    // GHC 9.14.1 accepts the signed cycle and rejects the unsigned cycle.
+    // Checking both bodies in one inference SCC would constrain Unsigned at
+    // Int before it was generalized and wrongly reject the Maybe occurrence.
+    let definitions_chirho = "data SignedChirho aChirho = MkSignedChirho (UnsignedChirho Int) (UnsignedChirho Maybe)\ndata UnsignedChirho bChirho = MkUnsignedChirho (SignedChirho bChirho)\n";
+    let prefix_chirho = "{-# LANGUAGE PolyKinds, StandaloneKindSignatures #-}\nmodule SignedRecursionChirho where\nimport Data.Kind (Type)\n";
+    assert_compile_success_chirho(
+        "SignedRecursionChirho.hs",
+        &format!(
+            "{prefix_chirho}type SignedChirho :: forall kChirho. kChirho -> Type\n{definitions_chirho}"
+        ),
+    );
+    assert_kind_error_chirho(&format!("{prefix_chirho}{definitions_chirho}"));
+}
+
+#[test]
+fn superclass_kinds_reach_the_local_class_before_publication_chirho() {
+    // The unchanged sources were independently checked with GHC 9.14.1.
+    assert_compile_success_chirho(
+        "MonadSuperclassChirho.hs",
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE Haskell2010 #-}\nmodule MonadSuperclassChirho where\nclass Monad m_chirho => CChirho m_chirho\ninstance CChirho Maybe\n",
+    );
+    assert_kind_error_chirho(
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE Haskell2010 #-}\nmodule BadMonadSuperclassChirho where\nclass Monad m_chirho => CChirho m_chirho\ninstance CChirho Int\n",
+    );
+    assert_compile_success_chirho(
+        "VariablePredicateChirho.hs",
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE Haskell2010, ConstraintKinds, QuantifiedConstraints, UndecidableSuperClasses, MultiParamTypeClasses, TypeOperators, GADTs #-}\nmodule VariablePredicateChirho where\nclass CChirho a_chirho b_chirho\nclass (forall x_chirho. f_chirho x_chirho) => LimitChirho f_chirho\ndata DChirho c_chirho where\n  DChirho :: c_chirho => DChirho c_chirho\nwitnessChirho :: DChirho (LimitChirho (CChirho Int))\nwitnessChirho = undefined\n",
+    );
+}
+
+#[test]
+fn recursive_written_kinds_may_equate_but_not_specialize_chirho() {
+    assert_compile_success_chirho(
+        "MutualWrittenKindsChirho.hs",
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE PolyKinds, GADTs #-}\nmodule MutualWrittenKindsChirho where\ndata TChirho (a_chirho :: k1_chirho) k2_chirho (x_chirho :: k2_chirho) = MkTChirho (SChirho a_chirho k2_chirho x_chirho)\ndata SChirho (b_chirho :: k3_chirho) k4_chirho (y_chirho :: k4_chirho) = MkSChirho (TChirho b_chirho k4_chirho y_chirho)\n",
+    );
+    assert_kind_error_chirho(
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE Haskell2010, PolyKinds, NoCUSKs #-}\nmodule IncompleteRigidChirho where\ndata TChirho (a_chirho :: k_chirho) b_chirho = MkTChirho a_chirho\n",
+    );
+}
+
+#[test]
+fn kind_publication_honors_default_edition_and_legacy_completeness_chirho() {
+    assert_compile_success_chirho(
+        "DefaultGeneralizationChirho.hs",
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule DefaultGeneralizationChirho where\nimport Data.Kind (Type)\nimport Data.Proxy (Proxy)\nimport Data.Type.Equality ((:~:))\ndata AppChirho f_chirho a_chirho = MkAppChirho (f_chirho a_chirho)\ntype CatChirho k_chirho = k_chirho -> k_chirho -> Type\ndata FreeCatChirho :: CatChirho k_chirho -> CatChirho k_chirho\nappChirho :: AppChirho Proxy Maybe\nappChirho = undefined\nfreeChirho :: FreeCatChirho (:~:) Maybe Maybe\nfreeChirho = undefined\n",
+    );
+    assert_compile_success_chirho(
+        "RecursiveNoPolyChirho.hs",
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE Haskell2010, NoPolyKinds #-}\nmodule RecursiveNoPolyChirho where\ndata T1Chirho a_chirho = MkT1Chirho T2Chirho\ndata T2Chirho = MkT2Chirho (T1Chirho Maybe)\n",
+    );
+    assert_compile_success_chirho(
+        "RecursivePolyChirho.hs",
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE Haskell2010, PolyKinds #-}\nmodule RecursivePolyChirho where\ndata T1Chirho a_chirho = MkT1Chirho T2Chirho\ndata T2Chirho = MkT2Chirho (T1Chirho Maybe)\n",
+    );
+    assert_kind_error_chirho(
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE Haskell2010, NoPolyKinds, StandaloneKindSignatures #-}\nmodule RecursiveStandaloneChirho where\nimport Data.Kind (Type)\ndata T1Chirho a_chirho = MkT1Chirho T2Chirho\ntype T2Chirho :: Type\ndata T2Chirho = MkT2Chirho (T1Chirho Maybe)\n",
+    );
+}
+
 #[test]
 fn higher_kinded_forall_shadowing_runs_on_every_engine_chirho() {
     // This identical source independently ran under GHC 9.14.1.

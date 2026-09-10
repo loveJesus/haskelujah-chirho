@@ -117,6 +117,26 @@ fn apply_scoped_subst_chirho(
 }
 
 impl KindInferCtxChirho {
+    pub(super) fn rigidify_kind_variables_chirho(
+        &mut self,
+        variables_chirho: impl IntoIterator<Item = KindVarChirho>,
+    ) {
+        let mut variables_chirho: Vec<_> = variables_chirho.into_iter().collect();
+        variables_chirho.sort_unstable();
+        variables_chirho.dedup();
+        for variable_chirho in variables_chirho {
+            if let KindChirho::VarChirho(unresolved_chirho) = self
+                .subst_chirho
+                .apply_chirho(&KindChirho::VarChirho(variable_chirho))
+            {
+                let rigid_chirho = KindChirho::RigidChirho(self.fresh_var_chirho());
+                self.subst_chirho
+                    .map_chirho
+                    .insert(unresolved_chirho, rigid_chirho);
+            }
+        }
+    }
+
     pub(super) fn instantiate_binding_chirho(
         &mut self,
         binding_chirho: &KindBindingChirho,

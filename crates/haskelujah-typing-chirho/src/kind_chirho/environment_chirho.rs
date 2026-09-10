@@ -55,6 +55,25 @@ impl KindEnvChirho {
                 .bind_generalized_chirho(name_chirho.to_string(), star_to_star_chirho.clone());
         }
 
+        // Standard higher-kinded class contracts also constrain superclass
+        // arguments before a local class is published. Local declarations
+        // replace these entries through the same shadowing path as built-in
+        // data constructors; this is not a special case at a use site.
+        let unary_class_chirho =
+            KindChirho::arrow_chirho(star_to_star_chirho.clone(), KindChirho::ConstraintChirho);
+        for name_chirho in &[
+            "Functor",
+            "Applicative",
+            "Monad",
+            "MonadFail",
+            "Alternative",
+            "MonadPlus",
+            "Foldable",
+            "Traversable",
+        ] {
+            env_chirho.bind_generalized_chirho(name_chirho.to_string(), unary_class_chirho.clone());
+        }
+
         // * -> * -> * constructors
         let star2_chirho = KindChirho::arrow_n_chirho(
             vec![KindChirho::StarChirho, KindChirho::StarChirho],
@@ -362,5 +381,22 @@ impl KindEnvChirho {
                 self.bindings_chirho.remove(&name_chirho);
             }
         }
+    }
+
+    /// Save only entries written in this scope for a later checking phase,
+    /// then restore the outer environment. Repeated writes are captured once.
+    pub(super) fn capture_scope_chirho(&mut self) -> Vec<(String, KindBindingChirho)> {
+        let start_chirho = *self.scopes_chirho.last().expect("kind scope was opened");
+        let mut seen_chirho = std::collections::HashSet::new();
+        let mut entries_chirho = Vec::new();
+        for (name_chirho, _) in &self.changes_chirho[start_chirho..] {
+            if seen_chirho.insert(name_chirho.as_str())
+                && let Some(binding_chirho) = self.bindings_chirho.get(name_chirho)
+            {
+                entries_chirho.push((name_chirho.clone(), binding_chirho.clone()));
+            }
+        }
+        self.end_scope_chirho();
+        entries_chirho
     }
 }

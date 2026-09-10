@@ -32,7 +32,9 @@ mod conversion_chirho;
 #[cfg(test)]
 mod declaration_tests_chirho;
 mod declarations_chirho;
+mod dependencies_chirho;
 mod environment_chirho;
+mod groups_chirho;
 #[cfg(test)]
 mod scheme_tests_chirho;
 mod schemes_chirho;
@@ -333,6 +335,7 @@ struct KindInferCtxChirho {
     expanding_type_kind_synonyms_chirho: Vec<String>,
     cusks_enabled_chirho: bool,
     poly_kinds_enabled_chirho: bool,
+    pending_written_kinds_chirho: Vec<(KindVarChirho, SpanChirho)>,
 }
 
 /// Error codes for kind diagnostics.
@@ -359,6 +362,7 @@ impl KindInferCtxChirho {
             expanding_type_kind_synonyms_chirho: Vec::new(),
             cusks_enabled_chirho: true,
             poly_kinds_enabled_chirho: true,
+            pending_written_kinds_chirho: Vec::new(),
         }
     }
 
@@ -935,12 +939,11 @@ impl KindInferCtxChirho {
         }
     }
 
-    /// Process a type alias to determine its kind.
-    fn infer_type_alias_kind_chirho(
+    /// Prebind an alias head; its RHS supplies constraints in its inference SCC.
+    fn prepare_type_alias_kind_chirho(
         &mut self,
         name_chirho: &str,
         type_vars_chirho: &[TyVarChirho],
-        rhs_ty_chirho: &TypeChirho,
         span_chirho: SpanChirho,
     ) {
         // Each type parameter gets a kind: use the annotation if present,
@@ -957,8 +960,7 @@ impl KindInferCtxChirho {
             param_kinds_chirho.push(k_chirho);
         }
 
-        // Infer the kind of the RHS.
-        let rhs_kind_chirho = self.infer_type_kind_chirho(rhs_ty_chirho);
+        let rhs_kind_chirho = self.fresh_kind_chirho();
 
         // The alias kind: k_params -> k_rhs
         let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, rhs_kind_chirho);
@@ -967,16 +969,6 @@ impl KindInferCtxChirho {
             let existing_chirho = existing_chirho.clone();
             self.unify_chirho(&existing_chirho, &kind_chirho, "type alias", span_chirho);
         }
-        self.type_kind_synonyms_chirho.insert(
-            name_chirho.to_string(),
-            KindTypeSynonymChirho {
-                params_chirho: type_vars_chirho
-                    .iter()
-                    .map(|type_var_chirho| type_var_chirho.text_chirho().to_string())
-                    .collect(),
-                rhs_chirho: rhs_ty_chirho.clone(),
-            },
-        );
         self.env_chirho
             .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
@@ -1087,232 +1079,12 @@ pub struct KindResultChirho {
 /// Run kind inference on a module's type declarations and type signatures.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
-    let local_kind_decl_names_chirho: std::collections::HashSet<String> = module_chirho
-        .decls_chirho
-        .iter()
-        .filter_map(|decl_chirho| match decl_chirho {
-            DeclChirho::DataDeclChirho { name_chirho, .. }
-            | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
-            | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
-            | DeclChirho::TypeFamilyDeclChirho { name_chirho, .. }
-            | DeclChirho::ClassDeclChirho { name_chirho, .. } => {
-                Some(name_chirho.text_chirho().to_string())
-            }
-            _ => None,
-        })
-        .collect();
-    for local_kind_decl_name_chirho in &local_kind_decl_names_chirho {
-        ctx_chirho
-            .env_chirho
-            .bindings_chirho
-            .remove(local_kind_decl_name_chirho);
-    }
-    ctx_chirho.local_kind_decl_names_chirho = local_kind_decl_names_chirho.clone();
     ctx_chirho.cusks_enabled_chirho =
         constructors_chirho::cusks_enabled_chirho(&module_chirho.extensions_chirho);
-    let poly_kinds_enabled_chirho = module_chirho
-        .extensions_chirho
-        .iter()
-        .any(|e_chirho| e_chirho == "PolyKinds" || e_chirho == "TypeInType");
+    let poly_kinds_enabled_chirho =
+        constructors_chirho::poly_kinds_enabled_chirho(&module_chirho.extensions_chirho);
     ctx_chirho.poly_kinds_enabled_chirho = poly_kinds_enabled_chirho;
-
-    // Phase 1: Process all type/data/newtype/class declarations to establish
-    // the kind of each type constructor.
-    for decl_chirho in &module_chirho.decls_chirho {
-        // Reset kind variable cache between declarations so that kind
-        // variables from one declaration don't leak into the next.
-        ctx_chirho.kind_var_cache_chirho.clear();
-
-        // Snapshot the env keys so we can remove per-declaration locals
-        // (type variables) after processing this declaration, preventing
-        // scope leaks into subsequent declarations.
-        let env_keys_before_chirho: std::collections::HashSet<String> = ctx_chirho
-            .env_chirho
-            .bindings_chirho
-            .keys()
-            .cloned()
-            .collect();
-        match decl_chirho {
-            DeclChirho::DataDeclChirho {
-                name_chirho,
-                type_vars_chirho,
-                constructors_chirho,
-                kind_sig_chirho,
-                span_chirho,
-                ..
-            } => {
-                ctx_chirho.check_data_definition_chirho(
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    kind_sig_chirho.as_ref(),
-                    constructors_chirho,
-                    *span_chirho,
-                );
-            }
-            DeclChirho::NewtypeDeclChirho {
-                name_chirho,
-                type_vars_chirho,
-                constructor_chirho,
-                kind_sig_chirho,
-                span_chirho,
-                ..
-            } => {
-                ctx_chirho.check_data_definition_chirho(
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    kind_sig_chirho.as_ref(),
-                    std::slice::from_ref(constructor_chirho),
-                    *span_chirho,
-                );
-            }
-            DeclChirho::TypeAliasDeclChirho {
-                name_chirho,
-                type_vars_chirho,
-                rhs_chirho,
-                span_chirho,
-            } => {
-                ctx_chirho.infer_type_alias_kind_chirho(
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    rhs_chirho,
-                    *span_chirho,
-                );
-            }
-            DeclChirho::TypeFamilyDeclChirho {
-                name_chirho,
-                type_vars_chirho,
-                result_kind_chirho,
-                span_chirho,
-                ..
-            } => {
-                ctx_chirho.infer_type_family_decl_kind_chirho(
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    result_kind_chirho.as_ref(),
-                    *span_chirho,
-                    poly_kinds_enabled_chirho,
-                );
-            }
-            DeclChirho::ClassDeclChirho {
-                context_chirho,
-                name_chirho,
-                type_vars_chirho,
-                methods_chirho,
-                associated_tfs_chirho,
-                span_chirho,
-                ..
-            } => {
-                ctx_chirho.infer_class_kind_chirho(
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    *span_chirho,
-                );
-                for assoc_tf_chirho in associated_tfs_chirho {
-                    let mut param_kinds_chirho = Vec::new();
-                    for type_var_name_chirho in &assoc_tf_chirho.type_vars_chirho {
-                        let text_chirho = type_var_name_chirho.text_chirho();
-                        let kind_chirho = if let Some(existing_chirho) =
-                            ctx_chirho.env_chirho.lookup_chirho(text_chirho)
-                        {
-                            existing_chirho.clone()
-                        } else {
-                            let fresh_kind_chirho = ctx_chirho.fresh_kind_chirho();
-                            ctx_chirho
-                                .env_chirho
-                                .bind_chirho(text_chirho.to_string(), fresh_kind_chirho.clone());
-                            fresh_kind_chirho
-                        };
-                        param_kinds_chirho.push(kind_chirho);
-                    }
-
-                    let result_kind_chirho =
-                        if let Some(default_rhs_chirho) = &assoc_tf_chirho.default_rhs_chirho {
-                            ctx_chirho.infer_type_kind_chirho(default_rhs_chirho)
-                        } else {
-                            ctx_chirho.fresh_kind_chirho()
-                        };
-
-                    let family_kind_chirho =
-                        KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho.clone());
-                    let assoc_name_text_chirho = assoc_tf_chirho.name_chirho.text_chirho();
-                    ctx_chirho
-                        .env_chirho
-                        .bind_chirho(assoc_name_text_chirho.to_string(), family_kind_chirho);
-                }
-                // Kind-check superclass constraints — do NOT force args to *,
-                // since constraint args like `f` in `Applicative f` may be `* -> *`.
-                for constraint_chirho in context_chirho {
-                    let _k_chirho = ctx_chirho.infer_constraint_kind_chirho(constraint_chirho);
-                }
-                // Kind-check method type signatures.
-                for method_chirho in methods_chirho {
-                    let k_chirho = ctx_chirho.infer_type_kind_chirho(&method_chirho.ty_chirho);
-                    ctx_chirho.unify_chirho(
-                        &k_chirho,
-                        &KindChirho::StarChirho,
-                        "class method type",
-                        method_chirho.span_chirho,
-                    );
-                }
-            }
-            DeclChirho::TypeSigChirho {
-                ty_chirho,
-                span_chirho,
-                ..
-            } => {
-                // Kind-check standalone type signatures.
-                let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
-                ctx_chirho.unify_chirho(
-                    &k_chirho,
-                    &KindChirho::StarChirho,
-                    "type signature",
-                    *span_chirho,
-                );
-            }
-            _ => {}
-        }
-
-        // Non-data definitions publish only after their body/method constraints.
-        // Their complete-signature/SCC classification remains a separate extension.
-        match decl_chirho {
-            DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
-            | DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } => {
-                ctx_chirho.publish_kind_chirho(name_chirho.text_chirho())
-            }
-            DeclChirho::ClassDeclChirho {
-                name_chirho,
-                associated_tfs_chirho,
-                ..
-            } => {
-                ctx_chirho.publish_kind_chirho(name_chirho.text_chirho());
-                for family_chirho in associated_tfs_chirho {
-                    ctx_chirho.publish_kind_chirho(family_chirho.name_chirho.text_chirho());
-                }
-            }
-            _ => {}
-        }
-
-        // Remove per-declaration locals (type variables like `a`, `b`, `k`)
-        // that were added during this declaration but shouldn't persist.
-        // Keep only type constructor names that were in the env before or
-        // that look like type constructors (uppercase first char).
-        let keys_to_remove_chirho: Vec<String> = ctx_chirho
-            .env_chirho
-            .bindings_chirho
-            .keys()
-            .filter(|k_chirho| {
-                !env_keys_before_chirho.contains(*k_chirho)
-                    && k_chirho
-                        .chars()
-                        .next()
-                        .map_or(true, |c_chirho| c_chirho.is_lowercase())
-            })
-            .cloned()
-            .collect();
-        for key_chirho in keys_to_remove_chirho {
-            ctx_chirho.env_chirho.bindings_chirho.remove(&key_chirho);
-        }
-    }
+    ctx_chirho.check_kind_declarations_chirho(module_chirho);
 
     // Phase 1.5: instance heads. Runs as its own pass so every class kind is
     // established regardless of declaration order (an instance may precede its
@@ -1830,8 +1602,9 @@ mod tests_chirho {
     #[test]
     fn higher_kinded_type_param_chirho() {
         // data App f a = MkApp (f a)
-        // f :: * -> *, a :: *, App :: (* -> *) -> * -> *
-        let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
+        // This legacy-edition control checks defaulting, not GHC2021's
+        // more general App :: forall k. (k -> Type) -> k -> Type.
+        let mut module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("App"),
             type_vars_chirho: vec![mk_name_chirho("f").into(), mk_name_chirho("a").into()],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
@@ -1851,6 +1624,7 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
 
+        module_chirho.extensions_chirho = vec!["Haskell2010".into()];
         let result_chirho = infer_module_kinds_chirho(&module_chirho);
         assert!(!result_chirho.diagnostics_chirho.has_errors_chirho());
         // App :: (* -> *) -> * -> *
@@ -2211,7 +1985,7 @@ mod tests_chirho {
 
     #[test]
     fn standalone_kind_signature_expands_local_kind_synonym_application_chirho() {
-        let module_chirho = mk_module_chirho(vec![
+        let mut module_chirho = mk_module_chirho(vec![
             DeclChirho::TypeAliasDeclChirho {
                 name_chirho: mk_name_chirho("Cat"),
                 type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("k"))],
@@ -2243,6 +2017,9 @@ mod tests_chirho {
             },
         ]);
 
+        // The asserted monomorphic kind is the explicit NoPolyKinds contract.
+        // Default-edition generality is exercised by the source integration control.
+        module_chirho.extensions_chirho = vec!["NoPolyKinds".into()];
         let result_chirho = infer_module_kinds_chirho(&module_chirho);
         assert!(
             !result_chirho.diagnostics_chirho.has_errors_chirho(),

@@ -5,8 +5,8 @@
 
 use super::{
     DataKindSigChirho, DiagnosticChirho, ErrorCodeChirho, KIND_MISMATCH_CODE_CHIRHO,
-    KindBindingChirho, KindChirho, KindInferCtxChirho, KindSchemeChirho, KindSubstChirho,
-    SpanChirho, TyVarChirho, TypeChirho,
+    KindBindingChirho, KindChirho, KindInferCtxChirho, KindSchemeChirho, SpanChirho, TyVarChirho,
+    TypeChirho,
 };
 use std::collections::HashSet;
 
@@ -46,7 +46,7 @@ impl KindInferCtxChirho {
         });
 
         let mut parameter_kinds_chirho = Vec::with_capacity(type_vars_chirho.len());
-        let mut written_variables_chirho = HashSet::new();
+        let mut written_variables_chirho = Vec::new();
         for variable_chirho in type_vars_chirho {
             let kind_chirho = variable_chirho
                 .kind_annotation_chirho
@@ -94,22 +94,24 @@ impl KindInferCtxChirho {
             );
             KindBindingChirho::PolyChirho(complete_scheme_chirho)
         } else {
-            // Explicitly written kind variables are universally bound, even
-            // when missing head annotations require monomorphic recursive inference.
-            // Anonymous inference metavariables remain flexible.
-            for variable_chirho in written_variables_chirho {
-                let resolved_chirho = self
-                    .subst_chirho
-                    .apply_chirho(&KindChirho::VarChirho(variable_chirho));
-                if let KindChirho::VarChirho(variable_chirho) = resolved_chirho {
-                    let rigid_chirho = KindChirho::RigidChirho(self.fresh_var_chirho());
-                    self.subst_chirho =
-                        KindSubstChirho::singleton_chirho(variable_chirho, rigid_chirho)
-                            .compose_chirho(&self.subst_chirho);
-                }
+            // An incomplete recursive group may equate written variables from
+            // different declarations, but may not specialize them to Type or an
+            // arrow. Check that contract after solving the whole inference SCC.
+            // Complete contracts are checked rigidly from the outset.
+            if cusk_chirho && self.poly_kinds_enabled_chirho {
+                self.rigidify_kind_variables_chirho(written_variables_chirho);
+            } else {
+                self.pending_written_kinds_chirho.extend(
+                    written_variables_chirho
+                        .into_iter()
+                        .map(|variable_chirho| (variable_chirho, span_chirho)),
+                );
             }
             let head_kind_chirho = self.subst_chirho.apply_chirho(&head_kind_chirho);
-            if cusk_chirho {
+            // Legacy CUSKs only break inference cycles under PolyKinds. With
+            // NoPolyKinds even a zero-binder declaration must contribute its
+            // body constraints before another group member is defaulted.
+            if cusk_chirho && self.poly_kinds_enabled_chirho {
                 KindBindingChirho::PolyChirho(KindSchemeChirho::generalize_chirho(head_kind_chirho))
             } else {
                 KindBindingChirho::MonoChirho(head_kind_chirho)

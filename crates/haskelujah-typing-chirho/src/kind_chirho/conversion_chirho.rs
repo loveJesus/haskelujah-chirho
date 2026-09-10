@@ -38,10 +38,40 @@ impl KindInferCtxChirho {
         constraint_chirho: &ConstraintChirho,
     ) -> KindChirho {
         match constraint_chirho {
-            ConstraintChirho::ClassChirho { args_chirho, .. } => {
-                for arg_chirho in args_chirho {
-                    let _k_chirho = self.infer_type_kind_chirho(arg_chirho);
+            ConstraintChirho::ClassChirho {
+                class_chirho,
+                args_chirho,
+                span_chirho,
+            } => {
+                // A superclass is an application just like a type constructor.
+                // Ignoring its head loses the only constraint on `m` in
+                // `class Monad m => C m`, before C's kind is generalized.
+                // A variable predicate head uses its shared Mono binding; a
+                // published class scheme is instantiated for this occurrence.
+                let binding_chirho = self
+                    .env_chirho
+                    .lookup_binding_chirho(&class_chirho.full_name_chirho())
+                    .cloned();
+                let head_chirho = binding_chirho
+                    .as_ref()
+                    .map(|binding_chirho| self.instantiate_binding_chirho(binding_chirho));
+                let argument_kinds_chirho: Vec<_> = args_chirho
+                    .iter()
+                    .map(|argument_chirho| self.infer_type_kind_chirho(argument_chirho))
+                    .collect();
+                if let Some(head_chirho) = head_chirho {
+                    self.unify_chirho(
+                        &head_chirho,
+                        &KindChirho::arrow_n_chirho(
+                            argument_kinds_chirho,
+                            KindChirho::ConstraintChirho,
+                        ),
+                        "constraint application",
+                        *span_chirho,
+                    );
                 }
+                // An imported class without kind metadata still cannot supply
+                // an authoritative contract. Its arguments were checked above.
                 KindChirho::ConstraintChirho
             }
             ConstraintChirho::QuantifiedChirho {
@@ -49,7 +79,7 @@ impl KindInferCtxChirho {
                 context_chirho,
                 body_chirho,
                 ..
-            } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
+            } => self.with_checked_kind_binders_chirho(vars_chirho, |ctx_chirho| {
                 for inner_constraint_chirho in context_chirho {
                     let _k_chirho =
                         ctx_chirho.infer_constraint_kind_chirho(inner_constraint_chirho);
@@ -296,7 +326,7 @@ impl KindInferCtxChirho {
                 vars_chirho,
                 body_chirho,
                 span_chirho: _,
-            } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
+            } => self.with_checked_kind_binders_chirho(vars_chirho, |ctx_chirho| {
                 // A forall type has the same kind as its body:
                 // - forall a. a -> a  has kind * (body is *)
                 // - forall a. C a => D (f a)  has kind Constraint (quantified constraint)

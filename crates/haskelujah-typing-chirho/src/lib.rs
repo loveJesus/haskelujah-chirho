@@ -8,6 +8,7 @@
 //! and let-generalization.
 
 pub mod class_chirho;
+mod dependency_chirho;
 pub mod deriving_chirho;
 pub mod env_chirho;
 pub mod exhaust_chirho;
@@ -15,7 +16,9 @@ pub mod infer_chirho;
 pub mod kind_chirho;
 pub mod linearity_chirho;
 pub mod skolem_chirho;
+#[path = "types_chirho/subst_chirho.rs"]
 pub mod subst_chirho;
+#[path = "types_chirho/ty_chirho.rs"]
 pub mod ty_chirho;
 pub mod unify_chirho;
 pub mod validity_chirho;

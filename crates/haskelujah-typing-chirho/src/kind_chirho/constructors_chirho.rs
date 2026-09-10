@@ -2,24 +2,15 @@
 
 //! One head/recursion/constructor/publication lifecycle for data and newtype.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
-use super::{DataKindSigChirho, KindChirho, KindInferCtxChirho, SpanChirho, TyVarChirho};
+use super::{KindChirho, KindInferCtxChirho, TyVarChirho};
 use haskelujah_ast_chirho::decl_chirho::ConDeclChirho;
 
 impl KindInferCtxChirho {
-    pub(super) fn check_data_definition_chirho(
+    pub(super) fn check_data_constructors_chirho(
         &mut self,
-        name_chirho: &str,
         type_vars_chirho: &[TyVarChirho],
-        signature_chirho: Option<&DataKindSigChirho>,
         constructors_chirho: &[ConDeclChirho],
-        span_chirho: SpanChirho,
     ) {
-        self.infer_data_decl_kind_chirho(
-            name_chirho,
-            type_vars_chirho,
-            signature_chirho,
-            span_chirho,
-        );
         for constructor_chirho in constructors_chirho {
             match constructor_chirho {
                 ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
@@ -64,16 +55,28 @@ impl KindInferCtxChirho {
                 }
             }
         }
-        self.publish_kind_chirho(name_chirho);
     }
 }
 
 pub(super) fn cusks_enabled_chirho(extensions_chirho: &[String]) -> bool {
     extensions_chirho.iter().fold(
-        true,
+        false,
         |enabled_chirho, extension_chirho| match extension_chirho.as_str() {
             "NoCUSKs" | "StandaloneKindSignatures" | "GHC2021" | "GHC2024" => false,
             "CUSKs" | "Haskell98" | "Haskell2010" => true,
+            _ => enabled_chirho,
+        },
+    )
+}
+
+/// Match the default GHC2021 edition used by the other front-end passes.
+/// Explicit legacy editions and NoPolyKinds still take effect in source order.
+pub(super) fn poly_kinds_enabled_chirho(extensions_chirho: &[String]) -> bool {
+    extensions_chirho.iter().fold(
+        true,
+        |enabled_chirho, extension_chirho| match extension_chirho.as_str() {
+            "Haskell98" | "Haskell2010" | "NoPolyKinds" => false,
+            "GHC2021" | "GHC2024" | "PolyKinds" | "TypeInType" => true,
             _ => enabled_chirho,
         },
     )

@@ -15,11 +15,12 @@ flowchart TD
   CompleteNamesChirho --> CompleteKindChirho[Convert complete kind with independent kind-name cache]
   HeadNamesChirho --> HeadKindsChirho[Convert parameter kinds and inline result in one head scope]
   HeadKindsChirho --> ComposeChirho[Prepend visible parameter kinds to written result or Type]
-  CompleteKindChirho --> ReconcileChirho[Unify complete and composed kinds when both apply]
+  CompleteKindChirho --> ReconcileChirho[Skolemize complete contract and reconcile composed kind]
   ComposeChirho --> ReconcileChirho
   ReconcileChirho --> FieldsChirho[Check constructor fields with head variables still in scope]
   LowerChirho --> ConstraintChirho[Reject written Constraint return kind on either contract]
-  FieldsChirho --> ResultChirho[Kind environment and source diagnostics]
+  FieldsChirho --> GroupContractChirho[Check inference-group written variables before publication]
+  GroupContractChirho --> ResultChirho[Kind environment and source diagnostics]
   ConstraintChirho --> ResultChirho
   LowerChirho --> VisibilityChirho[Keep every head binder and its visibility]
   VisibilityChirho --> SchemesChirho[Open all binders but apply visible parameters in constructor and selector types]
@@ -54,6 +55,51 @@ the kind of a quantified term type, where both forms have the body's kind.
 See GHC 9.14.1's [type-declaration binders](https://downloads.haskell.org/ghc/9.14.1/docs/users_guide/exts/type_abstractions.html#invisible-binders-in-type-declarations)
 and [required arguments](https://downloads.haskell.org/ghc/9.14.1/docs/users_guide/exts/required_type_arguments.html).
 
+## Isolated kind-binding prototype (row484)
+
+The following is implemented on the isolated kind-schemes branch but is not a
+main-line compatibility claim: the tasklist records known accept regressions
+and gates still owed. The environment distinguishes monomorphic inference
+bindings from polymorphic schemes with an explicit quantified-variable set.
+Each use instantiates a scheme; substitution cannot rewrite its bound variables.
+Written complete contracts are checked with rigid identities, not general
+metavariables that can silently specialize.
+
+```mermaid
+flowchart TD
+  RegistryChirho[Prebind local declaration heads] --> GraphChirho[Collect scoped kind dependencies]
+  GraphChirho --> OuterGroupsChirho[Iterative dependency SCCs]
+  OuterGroupsChirho --> PrepareChirho[Prepare heads and journal local scopes]
+  PrepareChirho --> CompleteChirho[Publish complete signatures for recursive uses]
+  CompleteChirho --> InferenceChirho[Remove completed edges and infer remaining SCCs]
+  InferenceChirho --> BodiesChirho[Check all constructor bodies and class constraints]
+  BodiesChirho --> WrittenChirho[Allow written-variable aliases but reject specialization]
+  WrittenChirho --> PublishChirho[Rigidify checked contracts and publish the whole group]
+  PublishChirho --> SignaturesChirho[Check consuming value signatures]
+```
+
+Dependency collection is phase-specific. The iterative SCC engine is shared
+with value inference without changing value dependency collection. Scope
+journals retain changed entries rather than clone the growing environment for
+each declaration. The graph engine is O(V+E); that does not bound all recursive
+kind conversion or claim that every language form has complete dependencies.
+
+Effective defaults follow GHC2021 in the absence of an explicit edition:
+PolyKinds enabled and CUSKs disabled. Ordered legacy-edition and extension
+overrides are respected. With NoPolyKinds, a legacy complete-looking head must
+still contribute body constraints before defaulting; an explicit standalone
+contract remains complete independently. Incomplete written variables are
+tracked through the whole inference SCC, so two written variables may be
+equated but neither may become Type or an arrow. Complete contracts instead
+use immediate skolems. Publication happens after the relevant group is checked.
+
+Superclass kinds participate before class publication. Constraint lowering
+delegates to the existing type/constraint conversion so a quantified or
+variable-headed constraint is not silently discarded. A leading forall owns
+the complete following type, including implication and arrow bodies. Known
+standard higher-kinded class heads supply contracts; absent imported metadata
+does not become a fabricated authoritative contract.
+
 GHC-55233 is checked on both written contracts with one diagnostic, independently
 of the existing Type/Constraint unification compatibility. Binder annotations
 are not result annotations; local Constraint shadowing retains its previous
@@ -70,8 +116,8 @@ combined-data and combined-newtype contracts, with output 42/7/11/13 through
 STG, LLVM and Cranelift. Execution and full-gate results are recorded in the
 unit tasklist, not inferred from these source-level controls.
 
-Still outside scope: rigid kind skolems, complete polymorphic kind schemes,
-arbitrary promoted/named kinds, imported authoritative kind metadata, and the
+Still outside scope: arbitrary promoted/named/dependent kinds, imported
+authoritative kind metadata, and the
 separate data-family/type-data/refined-GADT-result AST decisions.
 Symbolic standalone signatures, attachment to non-data/newtype declarations,
 and duplicate/orphan signature diagnostics remain separate parser limitations.

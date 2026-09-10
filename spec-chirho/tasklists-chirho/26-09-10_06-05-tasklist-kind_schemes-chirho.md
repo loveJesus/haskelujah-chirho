@@ -75,13 +75,10 @@ rigid annotation used as Type, NoCUSKs recursive specialization), with seven
 valid controls held. Scratch evidence is in
 `/private/tmp/haskelujah-kind-schemes-chirho.h1N3tE/`; it is not a frozen gate.
 
-After non-PolyKinds publication/defaulting was corrected, the full typing lib
-run is 349 passed / 1 failed / zero ignored or filtered (actual Cargo101,
-`typing-second-chirho.log`). The remaining failure is genuine:
-`local_tagged_decl_shadows_builtin_tagged_kind_chirho`. A class referencing a
-later local `Tagged` is generalized/defaulted before that declaration supplies
-its kind. It is not an incidental-shape assertion; do not weaken it or let
-substitution rewrite quantified variables to make it green.
+Checkpoint 7706b150 is pushed on the isolated branch. Its first typing run was
+349 passed / 1 failed: a class referencing later local `Tagged` published its
+kind too early. Dependency scheduling below repairs that failure without
+weakening the assertion or substituting quantified variables.
 
 ### Dependency-order decision checkpoint
 
@@ -106,3 +103,58 @@ renames. Independent read-only review is checking group/scope requirements.
 Canonical row484 remains open; only main writes the DB. Full corpus/workspace,
 fresh final CLI and landing remain owed. The prior main row483 gates are not
 evidence for this prototype.
+
+### Diagnostic reduction, not a landing
+
+The first full diagnostic (CLI SHA-256
+`077a0a95f0ba79e315afa8c3f9e5ee41c52093d224d431bd230fb07da7823154`)
+found 863/938 accept and 230/767 reject, one pass per axis, no timeouts or
+unexpected exits. Nineteen baseline-accepted files failed and none was gained.
+The reject net +9 is not yet classified by each file's own GHC reason; it is
+not nine banked capabilities. Main and published artifacts remain unchanged.
+Evidence: `/private/tmp/haskelujah-kind-schemes-chirho.h1N3tE/diagnostic-first-chirho.log`.
+
+The reduction repaired three roots, without file-name guards:
+
+- Superclass and quantified variable-headed constraints now reach class-kind
+  inference before publication. The flat context lowerer previously dropped
+  every segment containing `forall` or `=>`, despite an existing quantified
+  constraint AST. A focused context module reuses the full type parser and
+  constraint conversion. Leading `forall` now scopes over its whole body,
+  including arrows and premises; binder annotations retain their structure.
+- Effective defaults are GHC2021 (PolyKinds, not CUSKs), with ordered explicit
+  edition/extension overrides. Legacy NoPolyKinds CUSKs must contribute body
+  constraints before publication; standalone signatures still break inference
+  cycles. Eight reduced GHC 9.14.1/candidate pairs agree on those boundaries.
+- Written kind variables in an incomplete inference SCC may alias one another,
+  but may not specialize to concrete or arrow kinds. Retain original variable
+  identities, check the group, validate that contract, then rigidify and publish.
+  The independently rejected NoCUSKs concrete-specialization control remains red.
+
+The latest focused recheck of the original nineteen, on CLI SHA-256
+`7237bcd21b42ad0b3f15a95294a01885418a77672909d47b427866005e73fdcf`,
+recovers ten: T14735, ControlMonadPrimitive, T16609, T18920, T20732, T22383,
+T22560b, T26020, T7196 and tc201. Nine remain: CoerceToVDQ, T10432, T17021a,
+T17817b, T18891, T20187b, T21951b, T22141f and TcTypeNatSimple.
+Evidence: `/private/tmp/haskelujah-kind-groups-chirho.EaepkD/19-after-chirho.jsonl`.
+This is not a new full-corpus count, and recovery does not prove associated
+family or class standalone-kind contracts are represented.
+
+Parser336 and typing352 passed with zero failures, ignores or filters
+(actual Cargo0, `crates-final-chirho.log` in that same directory). The first
+driver run was 40/41 plus canaries7/7: the new helper required literal wording
+`kind mismatch` although the invalid instance correctly returned E0300 with an
+instance-specific message. The helper now checks that machine-readable code;
+the rerun passed integration41 and canaries7 with zero exclusions (Cargo0,
+`integration-code-chirho.log`). The group controls also exercised exhaustive
+three-vertex dependency graphs and 100,000-vertex chain/cycle bounds.
+
+Open representation debts exposed by the remaining nine include named kinds
+being confused with free kind variables, promoted constructor uses sharing a
+monomorphic kind, and visible dependent binders/TYPE terms losing dependency.
+Do not erase those distinctions to regain the count. A separate negative
+`LimitChirho Maybe` control is accepted here but GHC-83865 rejected: existing
+Type/Constraint compatibility is not a proof that a variable predicate returns
+Constraint. That wrong accept is recorded, not hidden by the recovered positive.
+Original reference controls, another full diagnostic, reject-reason attribution
+and the frozen landing gates remain owed.

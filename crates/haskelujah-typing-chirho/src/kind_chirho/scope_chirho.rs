@@ -17,6 +17,25 @@ impl KindInferCtxChirho {
         vars_chirho: &[TyVarChirho],
         body_chirho: impl FnOnce(&mut Self) -> ResultChirho,
     ) -> ResultChirho {
+        self.with_kind_binder_scope_chirho(vars_chirho, false, body_chirho)
+    }
+
+    /// Checking a written forall cannot solve its bound kind identities from
+    /// the body. Conversion of a kind signature instead records quantifiers.
+    pub(super) fn with_checked_kind_binders_chirho<ResultChirho>(
+        &mut self,
+        vars_chirho: &[TyVarChirho],
+        body_chirho: impl FnOnce(&mut Self) -> ResultChirho,
+    ) -> ResultChirho {
+        self.with_kind_binder_scope_chirho(vars_chirho, true, body_chirho)
+    }
+
+    fn with_kind_binder_scope_chirho<ResultChirho>(
+        &mut self,
+        vars_chirho: &[TyVarChirho],
+        checking_chirho: bool,
+        body_chirho: impl FnOnce(&mut Self) -> ResultChirho,
+    ) -> ResultChirho {
         let mut previous_chirho = Vec::with_capacity(vars_chirho.len());
         for binder_chirho in vars_chirho {
             let kind_chirho = binder_chirho
@@ -24,8 +43,14 @@ impl KindInferCtxChirho {
                 .as_ref()
                 .map(|annotation_chirho| self.ast_kind_to_kind_ctx_chirho(annotation_chirho))
                 .unwrap_or_else(|| self.fresh_kind_chirho());
+            if checking_chirho && binder_chirho.kind_annotation_chirho.is_some() {
+                self.rigidify_kind_variables_chirho(kind_chirho.free_vars_chirho());
+            }
             let name_chirho = binder_chirho.text_chirho().to_string();
             let identity_chirho = self.fresh_var_chirho();
+            if checking_chirho {
+                self.rigidify_kind_variables_chirho([identity_chirho]);
+            }
             let old_kind_chirho = self.env_chirho.bindings_chirho.insert(
                 name_chirho.clone(),
                 KindBindingChirho::MonoChirho(kind_chirho),
