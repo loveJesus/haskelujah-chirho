@@ -42,7 +42,7 @@ No corpus gain predicted before reachability is measured.
 - [x] Add failing regression tests and audit both kind-conversion contracts.
 - [x] Extract and repair bounded lexical scope; update its workflow documentation.
 - [x] Focused tests, typing/driver integration, canaries and relevant execution gates.
-- [ ] Freeze source, explicit fresh CLI, two full passes per upstream axis;
+- [x] Freeze source, explicit fresh CLI, two full passes per upstream axis;
       byte-identical repeated sets, named deltas, stable binary provenance.
 - [ ] Meaningful landing gates, named-path commits, push/read-back verification,
       main-path smoke checks and canonical DB closure.
@@ -76,3 +76,27 @@ not results for an edited tree. Existing clippy and structural debt remain open.
 - The remaining 59 accept-axis failures were checked individually against the
   rebuilt CLI; none is newly accepted. This is reachability triage, not a full
   accept-subset regression gate or a published measurement.
+
+## Frozen gate completed
+
+Source checkpoint 3683dae897963c4d61bc3737796a7f2969a76bc8 was pushed and
+independently matched by ls-remote before the broad gate. Fresh explicit debug
+CLI SHA256 f83c9fc56f51eeaf6107032cfbb0b9aad8d60f2515864977edd47ce3bdb321ab.
+All four upstream passes assert HEAD/digest before and after: 879/938 accept,
+223/767 reject, repeated lists byte-identical to each other and the previous
+artifacts, zero gains/losses, unresolved timeouts or unexpected exits.
+
+The exact unfiltered workspace command with RUST_MIN_STACK=16777216 completed
+with observed Cargo exit 0: 3356 passed across 75 targets, zero failed, ignored,
+measured or filtered. Driver library 1773, typing 335, typing integration 23,
+canaries 7, and curated 537/537 are included. All 514 curated execution-source
+hashes still match the previous complete GHC 9.14.1 reference; this lane did not
+rerun all 514 reference programs. The raw completed workspace log SHA256 is
+3c90864404f5bca70a59ffc9e042e91707e48e4dbedb6662d9157892da1e87dc.
+
+No Rust compiler warnings in that workspace command. Targeted typing/driver
+all-target clippy exits zero with 552 warning messages (duplicates included),
+none with a primary span in the new kind modules or edited integration file.
+Existing lint/size debt remains explicitly open. Independent source audit found
+no blocker; full class-kind validation, standalone-signature/head reconciliation,
+rigid kind schemes and synonym alpha-renaming are not claimed.

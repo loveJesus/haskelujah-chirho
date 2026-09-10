@@ -2,7 +2,7 @@
 
 # Execution measurement — 2026-09-10
 
-Frozen compiler/test source: `dace042b98e12ea3c8a885f17fa1e9c320b1481d`.
+Frozen compiler/test source: `3683dae897963c4d61bc3737796a7f2969a76bc8`.
 Measured by HASKELUJAH/gpt_chirho on macOS arm64 in the isolated repair worktree.
 Subsequent evidence-only commits do not change the measured compiler or tests.
 
@@ -10,17 +10,17 @@ Subsequent evidence-only commits do not change the measured compiler or tests.
 
 | Measurement | Result | What it establishes |
 | --- | --- | --- |
-| Complete Rust workspace | 3344 passed; zero failed, ignored or filtered; cargo exit 0 | Unit, integration and doctest outcomes under the command below |
+| Complete Rust workspace | 3356 passed; zero failed, ignored or filtered; cargo exit 0 | Unit, integration and doctest outcomes under the command below |
 | Driver library, included above | 1773/1773 | Includes all 126 native round trips, with exact outputs and bounded children |
 | Curated suite, included above | 537/537 | 514 execution oracles actually compared; 23 compile-only inputs |
 | Independent GHC 9.14.1 reference | Prior complete 514/514 reference; all source hashes still match | Reference retained from the preceding lane, not 514 fresh GHC executions in this lane |
 | Upstream should_compile | 879 of 938 | Typecheck acceptance only; two identical complete passes |
 | Upstream should_fail | 223 of 767 | Typecheck rejection only; two identical complete passes |
 
-The accept set is byte-identical to its previously committed list. The reject
-set gains GivenForallLoop with zero losses: its inner forall no longer captures
-the outer signature variable, producing the rigid mismatch reported by GHC-25897.
-The unchanged file was also freshly checked with GHC 9.14.1. Each axis's two passes agree exactly.
+Both upstream result sets are byte-identical to their previously committed lists:
+879/938 accept and 223/767 reject, with zero gains or losses. Each axis's two
+complete passes agrees exactly. This kind-scope repair fixes GHC-valid programs
+outside the measured upstream subset; unchanged counts do not imply unchanged behavior.
 Neither percentage measures execution correctness; neither corpus is fully passing.
 The workspace's eight bulk tracking tests being green is not a claim that all
 individual upstream inputs pass.
@@ -38,11 +38,11 @@ The summary parser pairs targets/results in launch order and requires each
 libtest-announced count to agree; a deliberately mutated count is rejected.
 Raw completed workspace log SHA-256:
 
-`b51621d1b0746614570b2e25ae9f7920fab8329b34a8ea5214c83be0edc1e11d`
+`3c90864404f5bca70a59ffc9e042e91707e48e4dbedb6662d9157892da1e87dc`
 
 The explicitly rebuilt debug CLI used for all four upstream passes has SHA-256:
 
-`9d449ed5521d4798a5fa626ad08233409d023ecc393f2afc423a5fe363a19c32`
+`f83c9fc56f51eeaf6107032cfbb0b9aad8d60f2515864977edd47ce3bdb321ab`
 
 Its HEAD and digest were asserted before and after every pass. The pure-shell
 runner used four workers and 15 seconds per input, with serial 60-second timeout
@@ -50,20 +50,8 @@ reruns; all four passes had zero unresolved timeouts and zero unexpected exits. 
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-After the fast-forward to evidence commit `e6e19db5`, an explicit CLI rebuild in
-the main checkout completed without warnings. Its separate SHA-256 is
-`461f6bf2ca6981af87f1e18f9834fe6edd593a9085b427c9bc51ec319a4b38c5`.
-Repository-root `check ./ghc-tests-chirho/T001_basic_types.hs`, T23764 and tc156
-all succeed. The four new scope sources, checked to occur verbatim in the frozen
-integration tests, print their exact GHC oracles; in-place T002 prints `120`.
-GivenForallLoop rejects with E0200 identifying the distinct rigid variables.
-All nine cases meet their expected normal exit status and output/diagnostic
-assertions under a 30-second child bound. Main HEAD and CLI digest remain stable
-through those checks. These are post-landing path/execution smokes, not another
-full corpus gate; the complete gates retain the worktree binary's separate provenance.
-The source/evidence main tip was independently confirmed against `gh_chirho`.
-The bounded main-smoke JSONL log has SHA-256
-`df87bdda4a133b8eef924a04183459a0e2f0dc3cbe4e90a5e7428264f34d65c0`.
+Post-landing main-path checks are recorded after the source/evidence fast-forward;
+the complete gates above retain the isolated worktree binary's provenance.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were
@@ -71,7 +59,32 @@ rechecked against the frozen tree. Its sibling read-only verifier reruns GHC;
 it never invents answers from Haskelujah output. The reference manifest excludes
 the 23 compile-only inputs and both upstream typecheck corpora.
 
-## Lexical forall scope repairs (dace042b)
+## Lexical kind-binder scope repair (3683dae8)
+
+Forall and quantified-constraint binders now have lexical lifetimes in kind
+inference. The kind environment stores the kind of a type variable; the
+kind-identity cache stores that variable when interpreted as a kind. The two
+maps receive distinct appropriate identities and restore only touched entries
+in reverse order. Binder annotations see preceding binders but not themselves;
+new free discoveries and substitution/counter progress survive scope exit.
+Declaration-head binders remain available through their fields, methods and RHSs.
+
+Seven kind controls and five driver integration tests explain 3344 -> 3356.
+Typing passes 335/335; typing integration 23/23. Four identical-source executions
+match freshly run GHC 9.14.1 oracles on STG, LLVM and Cranelift: higher-kinded
+shadowing in both source orders, required binders, explicit kind annotations,
+and quantified-constraint shadowing. A genuine inconsistent-kind application
+remains rejected by both GHC and our kind checker. Five new unit controls were
+first shown red on the old implementation; the seventh annotation/cache control
+was added afterward and is not falsely counted as a demonstrated baseline red.
+
+Related conversion logic moved beneath kind_chirho/: conversion is 355 lines,
+scope 58, tests 250. The root loses 377 lines but remains 3364 lines and therefore
+does not meet the size gate. The independent source audit found no blocker.
+Full kind schemes, structural standalone-signature/head reconciliation, complete
+class-head kind validation and synonym alpha-renaming remain separate limits.
+
+## Earlier lexical forall scope repairs (dace042b)
 
 Surface conversion now assigns fresh identities to invisible and required forall
 binders, then restores just their previous map entries in reverse order. Free
@@ -95,15 +108,15 @@ foralls. Negative controls check the relevant rigid mismatch rather than any err
 Three scope unit controls were first demonstrated red against the original converter.
 
 The consumer audit found no remaining in-scope dependency on the leaked map.
-Separate kind-map shadowing and the synonym RHS's fixed-ID/name-substitution
-representation remain open. A higher-kinded shadowing program prints `42/7` under
-GHC and fails E0300 on both baseline and repaired CLIs; the tasklist records its
-reproduction. This lane does not claim that separate kind repair, synonym
-alpha-renaming, nested qualified-type representation, or named required RHS binders.
+At that checkpoint, separate kind-map shadowing and the synonym RHS's fixed-ID/name-
+substitution representation remained open. The higher-kinded shadowing program
+printed 42/7 under GHC and failed E0300 in our compiler; 3683dae8 repairs that
+kind-map lifetime above. Synonym alpha-renaming, nested qualified-type representation,
+and named required RHS binders remain separate limits.
 
 Both approximate public labels retain their existing convention. L.J.'s decision
 on truncation versus nearest remains pending; no policy change or deployment is
-part of this measurement supersede. The exact reject count changes 222 -> 223.
+part of this measurement supersede. The exact reject count previously changed 222 -> 223; it is unchanged here.
 
 ## Earlier infix type and binder repairs (18b7d1c3)
 
@@ -149,15 +162,14 @@ The tasklist records the reductions, failed intermediate gates and repair detail
 
 ## Limits and remaining work
 
-- The full workspace command emitted no Rust compiler warnings. The separate
-  workspace all-target clippy run exited zero but produced **636 warning-output
-  lines**, including 42 Cargo summaries and duplicate rendering. A read-only
-  comparison with the prior 535-line log found the same 493 normalized primary
-  diagnostics at 492 source locations, accounting for extraction line shifts;
-  the extra 101 lines repeat parser diagnostics in the mixed output format.
-  No diagnostic identifies either new conversion module or the edited integration
-  test. This is not the project's zero-warning quality gate. Oversized files and
-  directories remain structural debt; no comprehensive split or lint waiver is claimed.
+- The full workspace command emitted no Rust compiler warnings. A separate
+  targeted all-target clippy run for typing and driver exited zero but emitted
+  **552 warning messages**, including dependency/target duplicates. None has a
+  primary span in the new kind child modules or the edited integration file.
+  This targeted JSON count is not directly comparable with the older workspace
+  mixed-output line count. Existing lint debt remains: this is not the project's
+  zero-warning quality gate. Oversized files/directories remain structural debt;
+  no comprehensive split or lint waiver is claimed.
 - Required licensed fixture slices run without the private package-cache symlink.
   Optional whole-package tests may return early if that cache is absent; a Rust
   pass from that path is not evidence of compiling the missing package.

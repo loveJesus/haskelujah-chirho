@@ -1,9 +1,9 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-10 UTC, AFTER lexical forall scope repair
-# code measured: dace042b98e12ea3c8a885f17fa1e9c320b1481d (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-10 UTC, AFTER lexical kind-binder scope repair
+# code measured: 3683dae897963c4d61bc3737796a7f2969a76bc8 (HASKELUJAH/gpt_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
 #   measured binary: ../haskelujah-gpt-chirho/target/debug/haskelujah
-# CLI SHA256: 9d449ed5521d4798a5fa626ad08233409d023ecc393f2afc423a5fe363a19c32
+# CLI SHA256: f83c9fc56f51eeaf6107032cfbb0b9aad8d60f2515864977edd47ce3bdb321ab
 #   HEAD and binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone with a 60s cap; unexpected nonzero exits fail the runner
@@ -19,17 +19,17 @@
 # Existing approximate labels are retained; truncation versus nearest remains a
 # pending L.J. reporting-policy decision. No policy change or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (18b7d1c3): 879 -> 879, zero gained, zero lost.
-#   Surface/signature conversion now gives nested forall binders fresh lexical IDs,
-#   restores enclosing bindings without losing newly discovered free variables, and
-#   attaches result-spine predicates under the same converted binder identities.
-#   Signature quantification is separate from definition scope: only the first
-#   syntactically outermost invisible forall group scopes the RHS.
-#   No corpus input changed. Separate higher-kinded forall scope and type-synonym
-#   alpha-renaming remain open; the former has a GHC-verified baseline/current failure.
+# CHANGE SINCE LAST MEASUREMENT (dace042b): 879 -> 879, zero gained, zero lost.
+#   Kind inference now scopes forall and quantified-constraint binders lexically,
+#   restoring the kind environment and kind-identity cache separately. Annotations
+#   see preceding binders, local kind identities are fresh, and new free names survive.
+#   Only touched entries are restored; no growing environment is cloned per binder.
+#   Four GHC-confirmed higher-kinded/annotated/required/constraint shadowing programs
+#   now execute correctly outside this upstream subset. No corpus input changed.
+#   Full kind schemes, class-kind validation and synonym alpha-renaming remain open.
 #   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
 # FAILURE-LIST SHA256: f203c5ec56c44daac4ea2ed7279532c59e0a2d9e9e70e93b40d9e75247da96a7
-# EXECUTION EVIDENCE: the same frozen source passes 3344 workspace tests with zero
+# EXECUTION EVIDENCE: the same frozen source passes 3356 workspace tests with zero
 #   failed/ignored/filtered, including 126 native round trips and curated 537/537:
 #   514 execution oracles compared; all source hashes still match the earlier complete
 #   GHC 9.14.1 reference manifest (not rerun in full in this lane); 23 compile-only inputs.
