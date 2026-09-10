@@ -1,9 +1,9 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-09, AFTER infix type namespace/fixity and signature-order repairs
-# code measured: 18b7d1c309a6297c04170658cc1a1f1a59aa3d4a (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-10 UTC, AFTER lexical forall scope repair
+# code measured: dace042b98e12ea3c8a885f17fa1e9c320b1481d (HASKELUJAH/gpt_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
 #   measured binary: ../haskelujah-gpt-chirho/target/debug/haskelujah
-# CLI SHA256: bcb77a970d37d1d34894162925ad2b7951ace8930d190878af50e31141bb2baa
+# CLI SHA256: 9d449ed5521d4798a5fa626ad08233409d023ecc393f2afc423a5fe363a19c32
 #   HEAD and binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4;
 #   timeouts re-run alone with a 60s cap; unexpected nonzero exits fail the runner
@@ -12,29 +12,39 @@
 #
 # RESULT: PASS=879 FAIL=59 TOTAL=938 (93.7%)
 # STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
-#   failing sets byte-identical to each other; exact delta from the previous list below
+#   failing sets byte-identical to each other AND the previously committed list
 # QUOTE-AS: ~94% (879 of 938) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (222 of 767).
-# Accept rounding changes ~93% -> ~94%; reject holds ~29%. No public-site deployment.
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (223 of 767).
+# Existing approximate labels are retained; truncation versus nearest remains a
+# pending L.J. reporting-policy decision. No policy change or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (2f74126d): 877 -> 879, +2 gained, zero lost.
+# CHANGE SINCE LAST MEASUREMENT (18b7d1c3): 879 -> 879, zero gained, zero lost.
+#   Surface/signature conversion now gives nested forall binders fresh lexical IDs,
+#   restores enclosing bindings without losing newly discovered free variables, and
+#   attaches result-spine predicates under the same converted binder identities.
+#   Signature quantification is separate from definition scope: only the first
+#   syntactically outermost invisible forall group scopes the RHS.
+#   No corpus input changed. Separate higher-kinded forall scope and type-synonym
+#   alpha-renaming remain open; the former has a GHC-verified baseline/current failure.
+#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
+# FAILURE-LIST SHA256: f203c5ec56c44daac4ea2ed7279532c59e0a2d9e9e70e93b40d9e75247da96a7
+# EXECUTION EVIDENCE: the same frozen source passes 3344 workspace tests with zero
+#   failed/ignored/filtered, including 126 native round trips and curated 537/537:
+#   514 execution oracles compared; all source hashes still match the earlier complete
+#   GHC 9.14.1 reference manifest (not rerun in full in this lane); 23 compile-only inputs.
+#   Four new shared-source controls match fresh GHC oracles on STG/LLVM/Cranelift.
+#   See workflows-chirho/testing-chirho/
+#   execution-measurement-chirho.md for provenance and explicit scope limits.
+#
+# PREVIOUS MEASUREMENT (18b7d1c3): 877 -> 879, +2 gained, zero lost.
 #   T23764: lowercase infix type variable retained, and visible type arguments consume
 #     signature binders in lexical first-occurrence order rather than allocator-ID order.
 #   tc156: lowercase infix parameter retained; type-chain grouping uses the existing
 #     fixity table. Parenthesizing the signature independently isolated that second defect.
 #   No corpus input changed. tc192 shares the infix shape but still reaches unsupported
 #     proc/x: the already-mapped arrows_proc_notation_chirho feature, not an infix gain.
-#   Full kind-dependency ordering and same-name forall converter shadowing are not claimed.
-#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# FAILURE-LIST SHA256: f203c5ec56c44daac4ea2ed7279532c59e0a2d9e9e70e93b40d9e75247da96a7
-# EXECUTION EVIDENCE: the same frozen source passes 3331 workspace tests with zero
-#   failed/ignored/filtered, including 126 native round trips and curated 537/537:
-#   514 execution oracles compared; all source hashes still match the earlier complete
-#   GHC 9.14.1 reference manifest (not rerun in full in this lane); 23 compile-only inputs.
-#   Two new shared-source controls also match fresh GHC oracles on STG/LLVM/Cranelift.
-#   See workflows-chirho/testing-chirho/
-#   execution-measurement-chirho.md for provenance and explicit scope limits.
+#   That checkpoint did not claim full kind-dependency ordering or forall scope repair.
 #
 # PREVIOUS MEASUREMENT (ffa2561e, 2026-09-07): 877 -> 877. The record-field brick
 #   changed construction/update: a given undeclared field (E0206), an omitted strict
