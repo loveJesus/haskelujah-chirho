@@ -8,6 +8,9 @@
 //! punctuation are discarded; only semantic content survives.
 
 #[cfg(test)]
+mod declaration_kind_tests_chirho;
+mod declaration_kinds_chirho;
+#[cfg(test)]
 mod flat_type_tests_chirho;
 mod flat_types_chirho;
 #[cfg(test)]
@@ -18,7 +21,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use haskelujah_ast_chirho::decl_chirho::{
-    AstKindChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, FixityChirho,
+    AstKindChirho, ConDeclChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho, FixityChirho,
     ForeignDirectionChirho, StrictnessChirho, TyVarChirho, TypeFamilyEquationChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{
@@ -1048,70 +1051,13 @@ impl LowerCtxChirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = tc_chirho.element_chirho {
                 self.lower_type_chirho(n_chirho, tc_chirho.start_chirho)
             } else {
-                self.type_from_flat_children_chirho(&type_children_chirho, span_chirho)
+                self.declaration_kind_from_children_chirho(&type_children_chirho, span_chirho)
             }
         } else {
             return None;
         };
 
         Some((name_chirho.text_chirho().to_string(), kind_chirho))
-    }
-
-    fn attach_standalone_kind_sigs_chirho(
-        &self,
-        decls_chirho: Vec<DeclChirho>,
-        standalone_kind_sigs_chirho: &HashMap<String, TypeChirho>,
-    ) -> Vec<DeclChirho> {
-        decls_chirho
-            .into_iter()
-            .map(|decl_chirho| match decl_chirho {
-                DeclChirho::DataDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    constructors_chirho,
-                    deriving_chirho,
-                    kind_sig_chirho,
-                    span_chirho,
-                } => {
-                    let attached_kind_sig_chirho = kind_sig_chirho.or_else(|| {
-                        standalone_kind_sigs_chirho
-                            .get(name_chirho.text_chirho())
-                            .cloned()
-                    });
-                    DeclChirho::DataDeclChirho {
-                        name_chirho,
-                        type_vars_chirho,
-                        constructors_chirho,
-                        deriving_chirho,
-                        kind_sig_chirho: attached_kind_sig_chirho,
-                        span_chirho,
-                    }
-                }
-                DeclChirho::NewtypeDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    constructor_chirho,
-                    deriving_chirho,
-                    kind_sig_chirho,
-                    span_chirho,
-                } => {
-                    let attached_kind_sig_chirho = kind_sig_chirho.or_else(|| {
-                        standalone_kind_sigs_chirho
-                            .get(name_chirho.text_chirho())
-                            .cloned()
-                    });
-                    DeclChirho::NewtypeDeclChirho {
-                        name_chirho,
-                        type_vars_chirho,
-                        constructor_chirho,
-                        deriving_chirho,
-                        kind_sig_chirho: attached_kind_sig_chirho,
-                        span_chirho,
-                    }
-                }
-                other_chirho => other_chirho,
-            })
-            .collect()
     }
 
     fn lower_pat_bind_parts_chirho(
@@ -2019,7 +1965,7 @@ impl LowerCtxChirho {
                         && !saw_equals_chirho
                         && !saw_where_chirho
                     {
-                        // Standalone kind signature: `data T :: K where`
+                        // Inline result kind: `data T a :: K where`.
                         // Retain the full signature so the shared flat-type
                         // reconstruction handles forall, arrows, applications,
                         // and symbolic type operators consistently.
@@ -2042,9 +1988,11 @@ impl LowerCtxChirho {
                             j_chirho += 1;
                         }
                         if !kind_sig_children_chirho.is_empty() {
-                            kind_sig_chirho = Some(self.type_from_flat_children_chirho(
-                                &kind_sig_children_chirho,
-                                span_chirho,
+                            kind_sig_chirho = Some(DataKindSigChirho::ResultChirho(
+                                self.declaration_kind_from_children_chirho(
+                                    &kind_sig_children_chirho,
+                                    span_chirho,
+                                ),
                             ));
                         }
                         idx_chirho = j_chirho;
@@ -2752,7 +2700,9 @@ impl LowerCtxChirho {
         let kind_sig_chirho = if kind_sig_children_chirho.is_empty() {
             None
         } else {
-            Some(self.type_from_flat_children_chirho(&kind_sig_children_chirho, span_chirho))
+            Some(DataKindSigChirho::ResultChirho(
+                self.declaration_kind_from_children_chirho(&kind_sig_children_chirho, span_chirho),
+            ))
         };
 
         DeclChirho::NewtypeDeclChirho {
@@ -13991,6 +13941,7 @@ data MyList a = Nil | Cons a (MyList a)\n",
         };
         let kind_sig_chirho = kind_sig_chirho
             .as_ref()
+            .and_then(DataKindSigChirho::standalone_chirho)
             .expect("standalone kind sig should attach to data declaration");
         assert_eq!(type_shape_chirho(kind_sig_chirho), "(* -> *)");
     }
@@ -14013,7 +13964,8 @@ data AppChirho :: forall (fChirho :: Type -> Type). Type -> Type where\n",
         };
         let kind_sig_chirho = kind_sig_chirho
             .as_ref()
-            .expect("standalone forall kind signature should lower");
+            .and_then(DataKindSigChirho::result_chirho)
+            .expect("inline forall result kind signature should lower");
         assert_eq!(
             type_shape_chirho(kind_sig_chirho),
             "(forall fChirho. Type -> Type)",

@@ -19,13 +19,18 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use haskelujah_ast_chirho::decl_chirho::{AstKindChirho, DeclChirho, TyVarChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    AstKindChirho, DataKindSigChirho, DeclChirho, TyVarChirho,
+};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
 mod conversion_chirho;
+#[cfg(test)]
+mod declaration_tests_chirho;
+mod declarations_chirho;
 mod scope_chirho;
 #[cfg(test)]
 mod scope_tests_chirho;
@@ -1037,101 +1042,6 @@ impl KindInferCtxChirho {
         }
     }
 
-    /// GHC-55233: a `data`/`newtype` declaration's **return kind** may not be
-    /// `Constraint`. GHC rejects `data Foo :: Constraint` unconditionally — no
-    /// extension licenses it — while it ACCEPTS `data Foo (_ :: Constraint)`,
-    /// whose `Constraint` is a binder's kind, not the declaration's.
-    ///
-    /// This check was unwritable until the data-head binder fix: the parser
-    /// recorded a binder's kind as the declaration's `kind_sig_chirho`, so the two
-    /// forms lowered identically in every field a guard can read
-    /// (spec-chirho/bug-data-binder-kind-misassigned-chirho.md, four refuted
-    /// narrowings). They are distinct now, so the guard is just the arrow tail.
-    ///
-    /// A module that declares its own type named `Constraint` shadows the wired-in
-    /// one, so the check stands down there.
-    fn declared_return_kind_is_constraint_chirho(&self, sig_chirho: &TypeChirho) -> bool {
-        if self.local_kind_decl_names_chirho.contains("Constraint") {
-            return false;
-        }
-        let mut tail_chirho = sig_chirho;
-        loop {
-            match tail_chirho {
-                TypeChirho::FunChirho { result_chirho, .. } => tail_chirho = result_chirho,
-                TypeChirho::ParenChirho { inner_chirho, .. } => tail_chirho = inner_chirho,
-                TypeChirho::ForallChirho { body_chirho, .. } => tail_chirho = body_chirho,
-                _ => break,
-            }
-        }
-        matches!(
-            tail_chirho,
-            TypeChirho::ConChirho(n_chirho) if n_chirho.text_chirho() == "Constraint"
-        )
-    }
-
-    /// Process a data declaration to determine the kind of the type constructor.
-    fn infer_data_decl_kind_chirho(
-        &mut self,
-        name_chirho: &str,
-        type_vars_chirho: &[TyVarChirho],
-        kind_sig_chirho: Option<&TypeChirho>,
-        span_chirho: SpanChirho,
-    ) {
-        // If a standalone kind signature is given (e.g. `data V :: N -> Type where`),
-        // interpret it directly as the type constructor's kind.
-        let kind_chirho = if let Some(sig_chirho) = kind_sig_chirho {
-            if self.declared_return_kind_is_constraint_chirho(sig_chirho) {
-                self.diagnostics_chirho
-                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                        ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
-                        format!("data type `{name_chirho}` has non-`*` return kind `Constraint`"),
-                        span_chirho,
-                    ));
-            }
-            let k_chirho = self.type_to_kind_chirho(sig_chirho);
-            // Still bind any explicit type variable names that appear.
-            for tv_chirho in type_vars_chirho {
-                let tvk_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                    self.ast_kind_to_kind_ctx_chirho(ann_chirho)
-                } else {
-                    self.fresh_kind_chirho()
-                };
-                self.env_chirho
-                    .bind_chirho(tv_chirho.text_chirho().to_string(), tvk_chirho);
-            }
-            k_chirho
-        } else {
-            // Each type parameter gets a kind: use the annotation if present,
-            // otherwise create a fresh kind variable for inference.
-            let mut param_kinds_chirho = Vec::new();
-            for tv_chirho in type_vars_chirho {
-                let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                    self.ast_kind_to_kind_ctx_chirho(ann_chirho)
-                } else {
-                    self.fresh_kind_chirho()
-                };
-                self.env_chirho
-                    .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-                param_kinds_chirho.push(k_chirho);
-            }
-            // The type constructor's kind: k1 -> k2 -> ... -> *
-            KindChirho::arrow_n_chirho(param_kinds_chirho, KindChirho::StarChirho)
-        };
-
-        // If already bound (e.g. from a use site), unify.
-        if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
-            let existing_chirho = existing_chirho.clone();
-            self.unify_chirho(
-                &existing_chirho,
-                &kind_chirho,
-                "data declaration",
-                span_chirho,
-            );
-        }
-        self.env_chirho
-            .bind_chirho(name_chirho.to_string(), kind_chirho);
-    }
-
     /// Process a class declaration to determine the kind of the class.
     fn infer_class_kind_chirho(
         &mut self,
@@ -2130,7 +2040,9 @@ mod tests_chirho {
             type_vars_chirho: vec![],
             constructors_chirho: vec![],
             deriving_chirho: vec![],
-            kind_sig_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Constraint"))),
+            kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::ConChirho(
+                mk_name_chirho("Constraint"),
+            ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
         assert!(
@@ -2181,7 +2093,9 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![],
                 deriving_chirho: vec![],
-                kind_sig_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Constraint"))),
+                kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::ConChirho(
+                    mk_name_chirho("Constraint"),
+                ))),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         ]);
@@ -2683,7 +2597,7 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![],
                 deriving_chirho: vec![],
-                kind_sig_chirho: Some(mk_fun_chirho(
+                kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(mk_fun_chirho(
                     mk_app_chirho(
                         TypeChirho::ConChirho(mk_name_chirho("Cat")),
                         TypeChirho::VarChirho(mk_name_chirho("k")),
@@ -2692,7 +2606,7 @@ mod tests_chirho {
                         TypeChirho::ConChirho(mk_name_chirho("Cat")),
                         TypeChirho::VarChirho(mk_name_chirho("k")),
                     ),
-                )),
+                ))),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         ]);
@@ -2840,7 +2754,7 @@ mod tests_chirho {
             type_vars_chirho: vec![],
             constructors_chirho: vec![],
             deriving_chirho: vec![],
-            kind_sig_chirho: Some(TypeChirho::ForallChirho {
+            kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::ForallChirho {
                 vars_chirho: vec![TyVarChirho::annotated_chirho(
                     mk_name_chirho("fChirho"),
                     AstKindChirho::ArrowChirho(
@@ -2853,7 +2767,7 @@ mod tests_chirho {
                     TypeChirho::ConChirho(mk_name_chirho("Type")),
                 )),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }),
+            })),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }]);
 
@@ -2933,13 +2847,13 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![],
                 deriving_chirho: vec![],
-                kind_sig_chirho: Some(mk_fun_chirho(
+                kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(mk_fun_chirho(
                     mk_app_chirho(
                         TypeChirho::ConChirho(mk_name_chirho("FamilyChirho")),
                         TypeChirho::VarChirho(mk_name_chirho("k")),
                     ),
                     TypeChirho::ConChirho(mk_name_chirho("Type")),
-                )),
+                ))),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             DeclChirho::TypeSigChirho {

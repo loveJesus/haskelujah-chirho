@@ -431,6 +431,66 @@ fn bare_list_constructor_is_not_a_saturated_record_field_type_chirho() {
     }
 }
 
+#[test]
+fn declaration_kind_contracts_execute_on_every_engine_chirho() {
+    // Identical source independently executed under GHC 9.14.1: 42 / 7 / 11 / 13.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, KindSignatures, PolyKinds, StandaloneKindSignatures #-}
+module Main where
+import Data.Kind (Type)
+data InlineChirho (aChirho :: kChirho) (bChirho :: kChirho) :: kChirho -> Type where
+  MkInlineChirho :: InlineChirho aChirho bChirho aChirho
+type CompleteChirho :: Type -> Type
+data CompleteChirho aChirho = MkCompleteChirho aChirho
+type CombinedChirho :: (Type -> Type) -> Type -> Type
+data CombinedChirho (fChirho :: Type -> Type) aChirho :: Type where
+  MkCombinedChirho :: fChirho aChirho -> CombinedChirho fChirho aChirho
+type WrapperChirho :: Type -> Type
+newtype WrapperChirho (aChirho :: Type) :: Type where
+  MkWrapperChirho :: aChirho -> WrapperChirho aChirho
+main :: IO ()
+main = do
+  case (MkInlineChirho :: InlineChirho Int Bool Int) of
+    MkInlineChirho -> print (42 :: Int)
+  case MkCompleteChirho (7 :: Int) of
+    MkCompleteChirho valueChirho -> print valueChirho
+  case MkCombinedChirho [11 :: Int] of
+    MkCombinedChirho valuesChirho -> print (sum valuesChirho)
+  case MkWrapperChirho (13 :: Int) of
+    MkWrapperChirho valueChirho -> print valueChirho
+"#;
+    assert_execution_chirho(source_chirho, "42\n7\n11\n13\n");
+}
+
+#[test]
+fn standalone_kind_contracts_reject_mismatched_heads_and_tails_chirho() {
+    // Each case is GHC-83865. The combined case was accepted after its
+    // standalone signature was silently replaced by the inline Type tail.
+    for declarations_chirho in [
+        "type BoxChirho :: (Type -> Type) -> Type\ndata BoxChirho (aChirho :: Type) = MkBoxChirho aChirho",
+        "type BoxChirho :: Type -> Type\ndata BoxChirho :: Type where\n  MkBoxChirho :: BoxChirho",
+        "type BoxChirho :: Type\ndata BoxChirho :: Type -> Type where\n  MkBoxChirho :: BoxChirho Int",
+        "type BoxChirho :: Type -> Type\ndata BoxChirho where\n  MkBoxChirho :: BoxChirho Int",
+        "type BoxChirho :: Type -> Type -> Type\ndata BoxChirho aChirho where\n  MkBoxChirho :: BoxChirho aChirho bChirho",
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE GADTs, KindSignatures, StandaloneKindSignatures #-}}\nmodule BadDeclarationKindChirho where\nimport Data.Kind (Type)\n{declarations_chirho}\n"
+        );
+        let error_chirho = haskelujah_driver::typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "BadDeclarationKindChirho.hs",
+        )
+        .map(|_| ())
+        .expect_err("a complete signature must constrain the declaration head and result");
+        let message_chirho = error_chirho.to_string();
+        assert!(
+            message_chirho.contains("kind mismatch in data declaration signature"),
+            "{message_chirho}"
+        );
+    }
+}
+
 fn assert_execution_chirho(source_chirho: &str, expected_chirho: &str) {
     use haskelujah_test_harness_chirho::native_chirho::{
         NativeBackendChirho, native_round_trip_chirho,

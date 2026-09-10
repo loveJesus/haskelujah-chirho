@@ -214,7 +214,9 @@ fn inline_gadt_newtype_kind_signature_does_not_inflate_head_arity_chirho() {
 
     assert!(type_vars_chirho.is_empty());
     assert!(matches!(
-        kind_sig_chirho,
+        kind_sig_chirho
+            .as_ref()
+            .and_then(|sig_chirho| sig_chirho.result_chirho()),
         Some(TypeChirho::RequiredForallChirho { .. })
     ));
     assert!(matches!(
@@ -243,7 +245,9 @@ fn operator_kind_signature_keeps_application_order_chirho() {
                 name_chirho,
                 kind_sig_chirho,
                 ..
-            } if name_chirho.text_chirho() == "SymbolChirho" => kind_sig_chirho.as_ref(),
+            } if name_chirho.text_chirho() == "SymbolChirho" => kind_sig_chirho
+                .as_ref()
+                .and_then(|sig_chirho| sig_chirho.result_chirho()),
             _ => None,
         })
         .expect("operator kind signature should survive lowering");

@@ -528,16 +528,20 @@ fn outermost_data_kind_forall_requires_every_variable_binder_chirho() {
         type_vars_chirho: vec![],
         constructors_chirho: vec![],
         deriving_chirho: vec![],
-        kind_sig_chirho: Some(TypeChirho::ForallChirho {
-            vars_chirho: vec![tyvar_chirho("aChirho")],
-            body_chirho: Box::new(TypeChirho::FunChirho {
-                arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
-                mult_chirho: None,
-                result_chirho: Box::new(TypeChirho::VarChirho(name_chirho("bChirho"))),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }),
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        }),
+        kind_sig_chirho: Some(
+            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(
+                TypeChirho::ForallChirho {
+                    vars_chirho: vec![tyvar_chirho("aChirho")],
+                    body_chirho: Box::new(TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
+                        mult_chirho: None,
+                        result_chirho: Box::new(TypeChirho::VarChirho(name_chirho("bChirho"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ),
+        ),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let diagnostics_chirho = check_chirho(
@@ -562,6 +566,91 @@ fn signature_without_outermost_forall_implicitly_quantifies_chirho() {
             &NameEnvChirho::new_chirho(),
         )
         .is_empty_chirho()
+    );
+}
+
+#[test]
+fn both_declaration_kind_annotations_are_checked_chirho() {
+    let decl_chirho = DeclChirho::DataDeclChirho {
+        name_chirho: name_chirho("TChirho"),
+        type_vars_chirho: vec![],
+        constructors_chirho: vec![],
+        deriving_chirho: vec![],
+        kind_sig_chirho: Some(
+            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::StandaloneChirho {
+                signature_chirho: TypeChirho::ConChirho(name_chirho("MissingCompleteChirho")),
+                result_chirho: Some(TypeChirho::ConChirho(name_chirho("MissingTailChirho"))),
+            },
+        ),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let diagnostics_chirho = check_chirho(
+        &module_chirho(vec![decl_chirho]),
+        &NameEnvChirho::new_chirho(),
+    );
+    assert_eq!(diagnostics_chirho.error_count_chirho(), 2);
+    let message_chirho = diagnostics_chirho.to_string();
+    assert!(
+        message_chirho.contains("MissingCompleteChirho")
+            && message_chirho.contains("MissingTailChirho"),
+        "{message_chirho}"
+    );
+}
+
+#[test]
+fn standalone_kind_forall_cannot_capture_a_declaration_head_binder_chirho() {
+    let signature_chirho = TypeChirho::ForallChirho {
+        vars_chirho: vec![tyvar_chirho("aChirho")],
+        body_chirho: Box::new(TypeChirho::VarChirho(name_chirho("kChirho"))),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let decl_chirho = DeclChirho::DataDeclChirho {
+        name_chirho: name_chirho("TChirho"),
+        type_vars_chirho: vec![tyvar_chirho("kChirho")],
+        constructors_chirho: vec![],
+        deriving_chirho: vec![],
+        kind_sig_chirho: Some(
+            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::StandaloneChirho {
+                signature_chirho: signature_chirho.clone(),
+                result_chirho: Some(signature_chirho),
+            },
+        ),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let mut inline_only_chirho = decl_chirho.clone();
+    if let DeclChirho::DataDeclChirho {
+        kind_sig_chirho, ..
+    } = &mut inline_only_chirho
+    {
+        let result_chirho = kind_sig_chirho
+            .as_ref()
+            .unwrap()
+            .result_chirho()
+            .unwrap()
+            .clone();
+        *kind_sig_chirho = Some(
+            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(result_chirho),
+        );
+    }
+    assert!(
+        check_chirho(
+            &module_chirho(vec![inline_only_chirho]),
+            &NameEnvChirho::new_chirho()
+        )
+        .is_empty_chirho(),
+        "the inline annotation really can see the head binder"
+    );
+    let diagnostics_chirho = check_chirho(
+        &module_chirho(vec![decl_chirho]),
+        &NameEnvChirho::new_chirho(),
+    );
+    // The complete signature's explicit forall does not bind k. The inline
+    // signature can see the declaration's k, but cannot excuse the former.
+    assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
+    assert!(
+        diagnostics_chirho
+            .to_string()
+            .contains("type variable not in scope: `kChirho`")
     );
 }
 

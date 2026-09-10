@@ -138,9 +138,18 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 for class_chirho in deriving_chirho {
                     self.check_type_name_chirho(class_chirho, false);
                 }
+                if let Some(signature_chirho) = kind_sig_chirho
+                    .as_ref()
+                    .and_then(|sig_chirho| sig_chirho.standalone_chirho())
+                {
+                    self.walk_signature_type_chirho(signature_chirho);
+                }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
-                if let Some(kind_sig_chirho) = kind_sig_chirho {
-                    self.walk_signature_type_chirho(kind_sig_chirho);
+                if let Some(result_chirho) = kind_sig_chirho
+                    .as_ref()
+                    .and_then(|sig_chirho| sig_chirho.result_chirho())
+                {
+                    self.walk_signature_type_chirho(result_chirho);
                 }
                 for constructor_chirho in constructors_chirho {
                     if !matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
@@ -167,9 +176,18 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 for class_chirho in deriving_chirho {
                     self.check_type_name_chirho(class_chirho, false);
                 }
+                if let Some(signature_chirho) = kind_sig_chirho
+                    .as_ref()
+                    .and_then(|sig_chirho| sig_chirho.standalone_chirho())
+                {
+                    self.walk_signature_type_chirho(signature_chirho);
+                }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
-                if let Some(kind_sig_chirho) = kind_sig_chirho {
-                    self.walk_signature_type_chirho(kind_sig_chirho);
+                if let Some(result_chirho) = kind_sig_chirho
+                    .as_ref()
+                    .and_then(|sig_chirho| sig_chirho.result_chirho())
+                {
+                    self.walk_signature_type_chirho(result_chirho);
                 }
                 if matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
                     self.pop_binders_chirho(&pushed_chirho);

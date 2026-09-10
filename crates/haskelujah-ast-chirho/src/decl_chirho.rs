@@ -85,6 +85,43 @@ impl Deref for TyVarChirho {
     }
 }
 
+/// Written kind contracts on a data/newtype declaration. A result annotation
+/// follows the declaration's binders; a standalone signature describes the
+/// complete constructor kind in an independent lexical scope. Keep both when
+/// both are written. See language-features-chirho/declaration-kinds-chirho.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataKindSigChirho {
+    /// `data T a :: K where`: only the kind remaining after `a`.
+    ResultChirho(TypeChirho),
+    /// `type T :: K`: the complete kind, optionally accompanied by an inline tail.
+    StandaloneChirho {
+        /// Complete constructor kind in the standalone signature's scope.
+        signature_chirho: TypeChirho,
+        /// Separately written tail in the declaration-head scope, if any.
+        result_chirho: Option<TypeChirho>,
+    },
+}
+
+impl DataKindSigChirho {
+    /// The explicitly written inline result kind, never a synthesized tail.
+    pub fn result_chirho(&self) -> Option<&TypeChirho> {
+        match self {
+            Self::ResultChirho(result_chirho) => Some(result_chirho),
+            Self::StandaloneChirho { result_chirho, .. } => result_chirho.as_ref(),
+        }
+    }
+
+    /// The complete standalone signature, never an inline annotation.
+    pub fn standalone_chirho(&self) -> Option<&TypeChirho> {
+        match self {
+            Self::ResultChirho(_) => None,
+            Self::StandaloneChirho {
+                signature_chirho, ..
+            } => Some(signature_chirho),
+        }
+    }
+}
+
 /// A top-level declaration in a Haskell module.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DeclChirho {
@@ -125,8 +162,8 @@ pub enum DeclChirho {
         constructors_chirho: Vec<ConDeclChirho>,
         /// Classes listed in the deriving clause.
         deriving_chirho: Vec<NameChirho>,
-        /// Standalone kind signature for GADT-style: `data T :: K1 -> K2 -> Type where`
-        kind_sig_chirho: Option<crate::ty_chirho::TypeChirho>,
+        /// Optional inline result kind and/or complete standalone kind signature.
+        kind_sig_chirho: Option<DataKindSigChirho>,
         /// Span covering the whole data declaration.
         span_chirho: SpanChirho,
     },
@@ -140,8 +177,8 @@ pub enum DeclChirho {
         constructor_chirho: ConDeclChirho,
         /// Classes listed in the deriving clause.
         deriving_chirho: Vec<NameChirho>,
-        /// Standalone kind signature for GADT-style newtype.
-        kind_sig_chirho: Option<crate::ty_chirho::TypeChirho>,
+        /// Optional inline result kind and/or complete standalone kind signature.
+        kind_sig_chirho: Option<DataKindSigChirho>,
         /// Span covering the whole newtype declaration.
         span_chirho: SpanChirho,
     },
