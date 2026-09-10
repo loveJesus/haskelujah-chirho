@@ -67,10 +67,10 @@ impl KindInferCtxChirho {
         // Head annotations and the inline tail share identities and remain in
         // scope while the caller checks constructor fields, as ordinary heads do.
         let head_names_chirho: HashSet<_> = self.kind_var_cache_chirho.keys().cloned().collect();
-        let result_kind_chirho = result_chirho
-            .map(|tail_chirho| self.type_to_kind_chirho(tail_chirho))
-            .unwrap_or(KindChirho::StarChirho);
-        written_variables_chirho.extend(result_kind_chirho.free_vars_chirho());
+        let (result_kind_chirho, tail_variables_chirho) = result_chirho
+            .map(|tail_chirho| self.elaborate_inline_kind_chirho(tail_chirho))
+            .unwrap_or((KindChirho::StarChirho, Vec::new()));
+        written_variables_chirho.extend(tail_variables_chirho);
         // A top-level :: may use head-bound kind names or explicit forall
         // binders. New implicitly introduced names make that legacy CUSK incomplete.
         let tail_bound_chirho = self

@@ -10,6 +10,46 @@
 use haskelujah_driver::{compile_source_chirho, eval_source_with_machine_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
+// GHC 9.14.1 prints (3,'x') then 7. Both record construction and the
+// type-changing update must check their lambda against the rank-n field.
+const RANK_RECORD_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE RankNTypes #-}
+module Main where
+data RChirho bChirho = MkRChirho
+  { fChirho :: (forall aChirho. aChirho -> aChirho) -> (Int, bChirho)
+  , cChirho :: Int
+  }
+changeChirho :: RChirho Bool -> RChirho Char
+changeChirho rChirho = rChirho { fChirho = \kChirho -> (kChirho 3, kChirho 'x') }
+main :: IO ()
+main = do
+  let beforeChirho = MkRChirho { fChirho = \kChirho -> (kChirho 1, kChirho True), cChirho = 7 }
+  let afterChirho = changeChirho beforeChirho
+  print (fChirho afterChirho id)
+  print (cChirho afterChirho)
+"#;
+
+#[test]
+fn rank_n_record_fields_are_checked_before_their_lambdas_are_inferred_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let (_, machine_chirho) = eval_source_with_machine_chirho(
+        RANK_RECORD_SOURCE_CHIRHO,
+        &mut source_map_chirho,
+        "RankRecordChirho.hs",
+        None,
+    )
+    .expect("GHC accepts the independent Int and Char instantiations of the field argument");
+    assert_eq!(machine_chirho.io_output_chirho, "(3,'x')\n7\n");
+}
+
+#[test]
+fn rank_n_record_update_still_rejects_a_wrong_field_result_chirho() {
+    let source_chirho = RANK_RECORD_SOURCE_CHIRHO
+        .replace("(kChirho 3, kChirho 'x')", "(kChirho True, kChirho 'x')");
+    let error_chirho = check_chirho("BadRankRecordChirho.hs", &source_chirho)
+        .expect_err("a polymorphic argument does not permit Bool in the field's Int result");
+    assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
+}
+
 #[test]
 fn update_on_a_field_no_constructor_declares_is_rejected_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();

@@ -522,7 +522,7 @@ fn outermost_signature_forall_requires_every_variable_binder_chirho() {
 }
 
 #[test]
-fn outermost_data_kind_forall_requires_every_variable_binder_chirho() {
+fn inline_data_kind_forall_still_implicitly_binds_free_kind_variables_chirho() {
     let decl_chirho = DeclChirho::DataDeclChirho {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
@@ -548,8 +548,10 @@ fn outermost_data_kind_forall_requires_every_variable_binder_chirho() {
         &module_chirho(vec![decl_chirho]),
         &NameEnvChirho::new_chirho(),
     );
-    assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
-    assert!(format!("{diagnostics_chirho}").contains("type variable not in scope: `bChirho`"));
+    // Unlike a standalone kind signature, a declaration's inline result kind
+    // can implicitly quantify free kind variables alongside an explicit forall.
+    // GHC 9.14.1 accepts the reduced T23514c inline/standalone pair.
+    assert!(diagnostics_chirho.is_empty_chirho(), "{diagnostics_chirho}");
 }
 
 #[test]

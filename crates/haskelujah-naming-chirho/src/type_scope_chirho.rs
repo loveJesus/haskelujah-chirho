@@ -149,7 +149,10 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.result_chirho())
                 {
-                    self.walk_signature_type_chirho(result_chirho);
+                    // Inline result kinds share the declaration's implicit
+                    // kind binders; only a standalone signature applies the
+                    // outer-forall-or-nothing rule.
+                    self.walk_type_chirho(result_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                 }
                 for constructor_chirho in constructors_chirho {
                     if !matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
@@ -187,7 +190,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.result_chirho())
                 {
-                    self.walk_signature_type_chirho(result_chirho);
+                    self.walk_type_chirho(result_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                 }
                 if matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
                     self.pop_binders_chirho(&pushed_chirho);

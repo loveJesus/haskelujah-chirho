@@ -93,12 +93,29 @@ tracked through the whole inference SCC, so two written variables may be
 equated but neither may become Type or an arrow. Complete contracts instead
 use immediate skolems. Publication happens after the relevant group is checked.
 
+Inline result-kind scope differs from a standalone signature: implicit kind
+variables are still allowed alongside an inline forall; forall-or-nothing
+applies only to the complete standalone signature. Elaborating the inline kind
+captures actual source-variable identities, not every free variable in its
+intermediate result. Application-result metas and unknown constructor kinds
+are not written names. Only captured identities unresolved after elaboration
+become contracts against subsequent body inference; head annotations retain
+their original checking identities. This provenance is not a substitute for
+the still-missing nominal/dependent-kind representation.
+
 Superclass kinds participate before class publication. Constraint lowering
 delegates to the existing type/constraint conversion so a quantified or
 variable-headed constraint is not silently discarded. A leading forall owns
 the complete following type, including implication and arrow bodies. Known
 standard higher-kinded class heads supply contracts; absent imported metadata
 does not become a fabricated authoritative contract.
+
+A bare variable predicate remains a zero-argument predicate (`c`, not `? c`),
+and its first use allocates a shared local kind even before an ordinary type
+occurrence. Class/family/alias head scans consume whole annotated binder groups
+with the same boundary helper as data/newtype. An unreadable annotation still
+does not become faithfully represented, but cannot change the head's arity or
+masquerade as the declaration's result annotation.
 
 GHC-55233 is checked on both written contracts with one diagnostic, independently
 of the existing Type/Constraint unification compatibility. Binder annotations

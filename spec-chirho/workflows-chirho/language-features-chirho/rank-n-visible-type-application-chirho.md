@@ -30,6 +30,8 @@ flowchart TD
     substitution_chirho --> term_chirho[Infer following term arguments]
     scheme_chirho --> equation_chirho[Consume equation patterns and retain residual function type]
     equation_chirho --> expected_chirho[Check RHS against residual expected type]
+    ast_chirho --> record_fields_chirho[Resolve constructor field types for construction or update]
+    record_fields_chirho --> expected_chirho
     expected_chirho --> application_chirho[Constrain application result before checking argument]
     application_chirho --> family_chirho[Reduce family-dependent argument type]
     expected_chirho --> branch_chirho{Polymorphic expected result}
@@ -85,6 +87,12 @@ flowchart TD
   family-dependent argument types, so `F Char ~ Bool` can guide a `Bool` argument.
 - Polymorphic expected types flow through `if` branches and scoped `case` alternatives before
   branch lambdas are inferred; each use of a rank-N lambda parameter is freshly instantiated.
+- Record construction and update also deliver the known field type before lambda inference.
+  A field of type `(forall a. a -> a) -> (Int,b)` may use its argument independently
+  at Int and Char. Type-changing updates preserve the existing two constructor
+  instantiations and equality of untouched fields; only RHS checking gains the
+  expected type. The isolated row484 branch records an exact-output GHC/STG control
+  and a wrong-result-type rejection; this is not a new main-line claim until gated.
 - Monomorphic and GADT branch inference keeps its established lenient merge path.
 - Existing top-level scheme-variable instantiation remains the first path.
 - Unsupported or excessive type arguments remain diagnostics/fallbacks rather than silently

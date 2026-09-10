@@ -3812,7 +3812,11 @@ impl InferCtxChirho {
                                 let (s_chirho, field_ty_chirho) = if let Some(field_chirho) =
                                     matched_field_chirho
                                 {
-                                    self.infer_expr_chirho(&field_chirho.value_chirho)
+                                    self.infer_record_constructor_field_chirho(
+                                        &field_chirho.value_chirho,
+                                        &con_ty_chirho,
+                                        field_chirho.span_chirho,
+                                    )
                                 } else if *has_wildcard_chirho {
                                     let var_scheme_chirho =
                                         self.env_chirho.lookup_chirho(field_name_chirho).cloned();
@@ -3891,8 +3895,12 @@ impl InferCtxChirho {
                                 return (combined_chirho, result_ty_chirho);
                             }
                             for field_chirho in fields_chirho {
-                                let (s_chirho, field_ty_chirho) =
-                                    self.infer_expr_chirho(&field_chirho.value_chirho);
+                                let (s_chirho, field_ty_chirho) = self
+                                    .infer_record_constructor_field_chirho(
+                                        &field_chirho.value_chirho,
+                                        &con_ty_chirho,
+                                        field_chirho.span_chirho,
+                                    );
                                 combined_chirho = s_chirho.compose_chirho(&combined_chirho);
                                 con_ty_chirho = combined_chirho.apply_ty_chirho(&con_ty_chirho);
                                 let result_ty_chirho = self.fresh_var_chirho();

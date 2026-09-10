@@ -10,7 +10,7 @@ use super::{
 use haskelujah_ast_chirho::decl_chirho::{TyVarChirho, TyVarVisibilityChirho};
 
 impl LowerCtxChirho {
-    /// Read one whole data/newtype head binder. An `@` changes visibility, not
+    /// Read one whole declaration-head binder. An `@` changes visibility, not
     /// lexical scope. An unreadable kind is skipped as a group, never rescanned
     /// as declaration syntax (the declaration-kind provenance invariant).
     pub(super) fn declaration_head_binder_chirho(

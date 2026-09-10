@@ -2728,8 +2728,8 @@ impl LowerCtxChirho {
                             type_vars_chirho
                                 .push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
                         } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
-                            if let Some((tv_chirho, skip_chirho)) = self
-                                .try_parse_kind_annotated_tyvar_chirho(&children_chirho, idx_chirho)
+                            if let Some((tv_chirho, skip_chirho)) =
+                                self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
                             {
                                 type_vars_chirho.push(tv_chirho);
                                 idx_chirho += skip_chirho;
@@ -2876,8 +2876,8 @@ impl LowerCtxChirho {
                                     .push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
                             }
                         } else if kind_chirho == TokenKindChirho::LeftParenChirho {
-                            if let Some((tv_chirho, skip_chirho)) = self
-                                .try_parse_kind_annotated_tyvar_chirho(&children_chirho, idx_chirho)
+                            if let Some((tv_chirho, skip_chirho)) =
+                                self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
                             {
                                 type_vars_chirho.push(tv_chirho);
                                 idx_chirho += skip_chirho;
@@ -3250,7 +3250,7 @@ impl LowerCtxChirho {
                 }
             } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho {
                 if let Some((tv_chirho, consumed_chirho)) =
-                    self.try_parse_kind_annotated_tyvar_chirho(&children_chirho, *tok_idx_chirho)
+                    self.declaration_head_binder_chirho(&children_chirho, *tok_idx_chirho)
                 {
                     type_vars_chirho.push(tv_chirho);
                     skip_until_child_idx_chirho = Some(*tok_idx_chirho + consumed_chirho);
@@ -4140,8 +4140,9 @@ impl LowerCtxChirho {
                     span_chirho: *app_span_chirho,
                 }]
             }
-            // Bare constructor: Typeable (zero-arg constraint)
-            TypeChirho::ConChirho(name_chirho) => {
+            // Bare constructor or predicate variable: `Typeable` or `c`.
+            // Both are zero-argument predicates, never a synthetic `? c`.
+            TypeChirho::ConChirho(name_chirho) | TypeChirho::VarChirho(name_chirho) => {
                 vec![ConstraintChirho::ClassChirho {
                     class_chirho: name_chirho.clone(),
                     args_chirho: vec![],

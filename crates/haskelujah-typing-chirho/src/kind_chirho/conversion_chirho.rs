@@ -30,7 +30,39 @@ impl KindInferCtxChirho {
                 .insert(name_chirho.to_string(), var_chirho);
             var_chirho
         };
+        if let Some(captured_chirho) = &mut self.captured_kind_variables_chirho {
+            captured_chirho.push(var_chirho);
+        }
         KindChirho::VarChirho(var_chirho)
+    }
+
+    /// Preserve the origin of a written contract. Fresh application-result
+    /// variables and unknown constructor kinds are inference machinery, not
+    /// implicitly quantified source names. Only source identities still
+    /// unresolved after the annotation itself is elaborated constrain later
+    /// constructor-body inference. Work is local to this signature's syntax.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn elaborate_inline_kind_chirho(
+        &mut self,
+        ty_chirho: &TypeChirho,
+    ) -> (KindChirho, Vec<KindVarChirho>) {
+        let outer_capture_chirho = self.captured_kind_variables_chirho.replace(Vec::new());
+        let kind_chirho = self.type_to_kind_chirho(ty_chirho);
+        let captured_chirho = self.captured_kind_variables_chirho.take().unwrap();
+        self.captured_kind_variables_chirho = outer_capture_chirho;
+        let written_chirho = captured_chirho
+            .into_iter()
+            .filter_map(|variable_chirho| {
+                match self
+                    .subst_chirho
+                    .apply_chirho(&KindChirho::VarChirho(variable_chirho))
+                {
+                    KindChirho::VarChirho(unresolved_chirho) => Some(unresolved_chirho),
+                    _ => None,
+                }
+            })
+            .collect();
+        (kind_chirho, written_chirho)
     }
 
     pub(super) fn infer_constraint_kind_chirho(
@@ -52,9 +84,21 @@ impl KindInferCtxChirho {
                     .env_chirho
                     .lookup_binding_chirho(&class_chirho.full_name_chirho())
                     .cloned();
-                let head_chirho = binding_chirho
-                    .as_ref()
-                    .map(|binding_chirho| self.instantiate_binding_chirho(binding_chirho));
+                let head_chirho = if class_chirho
+                    .text_chirho()
+                    .chars()
+                    .next()
+                    .is_some_and(|first_chirho| first_chirho.is_lowercase() || first_chirho == '_')
+                {
+                    // An implicit predicate variable, as in `MkDict :: c =>
+                    // Dict c`, must bind c before its later use in Dict c.
+                    // Unlike a missing imported class, its kind is ours to infer.
+                    Some(self.infer_type_kind_chirho(&TypeChirho::VarChirho(class_chirho.clone())))
+                } else {
+                    binding_chirho
+                        .as_ref()
+                        .map(|binding_chirho| self.instantiate_binding_chirho(binding_chirho))
+                };
                 let argument_kinds_chirho: Vec<_> = args_chirho
                     .iter()
                     .map(|argument_chirho| self.infer_type_kind_chirho(argument_chirho))

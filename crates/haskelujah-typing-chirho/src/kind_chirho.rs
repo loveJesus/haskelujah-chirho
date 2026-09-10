@@ -336,6 +336,8 @@ struct KindInferCtxChirho {
     cusks_enabled_chirho: bool,
     poly_kinds_enabled_chirho: bool,
     pending_written_kinds_chirho: Vec<(KindVarChirho, SpanChirho)>,
+    /// Scoped source-variable provenance while elaborating an inline kind.
+    captured_kind_variables_chirho: Option<Vec<KindVarChirho>>,
 }
 
 /// Error codes for kind diagnostics.
@@ -363,6 +365,7 @@ impl KindInferCtxChirho {
             cusks_enabled_chirho: true,
             poly_kinds_enabled_chirho: true,
             pending_written_kinds_chirho: Vec::new(),
+            captured_kind_variables_chirho: None,
         }
     }
 

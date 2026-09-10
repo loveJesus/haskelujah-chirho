@@ -58,6 +58,58 @@ fn assert_kind_error_chirho(source_chirho: &str) {
 }
 
 #[test]
+fn grouped_family_parameters_and_implicit_predicates_keep_their_arity_chirho() {
+    // GHC 9.14.1 accepts all four family arguments and rejects the missing
+    // fourth with GHC-83865. A predicate used before its first ordinary type
+    // occurrence must still constrain Dict's parameter to Constraint.
+    let prefix_chirho = r#"{-# LANGUAGE PolyKinds, DataKinds, TypeFamilies, MultiParamTypeClasses, ConstraintKinds, GADTs #-}
+module HeadContextChirho where
+import Data.Kind (Type, Constraint)
+type family CurryChirho (fChirho :: Type -> Type) (xsChirho :: [Type]) (rChirho :: Type) (aChirho :: Type) :: Constraint
+class AllChirho (cChirho :: kChirho -> Constraint) (xsChirho :: [kChirho])
+data DictChirho cChirho where
+  MkDictChirho :: cChirho => DictChirho cChirho
+"#;
+    assert_compile_success_chirho(
+        "HeadContextChirho.hs",
+        &format!(
+            "{prefix_chirho}familyWitnessChirho :: DictChirho (CurryChirho Maybe '[Int] Bool Char)\nfamilyWitnessChirho = undefined\nclassWitnessChirho :: DictChirho (AllChirho Eq '[Int])\nclassWitnessChirho = undefined\n"
+        ),
+    );
+    assert_kind_error_chirho(&format!(
+        "{prefix_chirho}familyWitnessChirho :: DictChirho (CurryChirho Maybe '[Int] Bool)\nfamilyWitnessChirho = undefined\n"
+    ));
+}
+
+#[test]
+fn signature_elaboration_metavariables_are_not_written_kind_contracts_chirho() {
+    // Both accepted independently by GHC 9.14.1. Elaborating an indexed kind
+    // can solve fresh application-result metas; they are not source variables
+    // whose later specialization by a constructor body must be forbidden.
+    assert_compile_success_chirho(
+        "IndexedTailChirho.hs",
+        r#"{-# LANGUAGE PolyKinds, DataKinds, GADTs, NoCUSKs #-}
+module IndexedTailChirho where
+import Data.Kind (Type)
+data DChirho :: Type -> Type
+data SDChirho :: forall aChirho. DChirho aChirho -> Type
+"#,
+    );
+    assert_compile_success_chirho(
+        "ConcreteRuntimeTailChirho.hs",
+        r#"{-# LANGUAGE PolyKinds, DataKinds, GADTs, TypeFamilies, MagicHash, UnliftedNewtypes #-}
+module ConcreteRuntimeTailChirho where
+import GHC.Exts
+data ColorChirho = RedChirho
+type family InterpretChirho (xChirho :: ColorChirho) :: RuntimeRep where
+  InterpretChirho 'RedChirho = 'IntRep
+newtype QuuxChirho :: TYPE (InterpretChirho RedChirho) where
+  MkQChirho :: Int# -> QuuxChirho
+"#,
+    );
+}
+
+#[test]
 fn written_kind_contracts_are_rigid_but_unannotated_heads_infer_chirho() {
     // Each variant independently checked with GHC 9.14.1, including the
     // alpha-renamed binder: a standalone signature does not scope its names

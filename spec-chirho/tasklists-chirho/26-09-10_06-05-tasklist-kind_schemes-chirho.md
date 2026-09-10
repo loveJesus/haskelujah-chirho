@@ -158,3 +158,58 @@ Type/Constraint compatibility is not a proof that a variable predicate returns
 Constraint. That wrong accept is recorded, not hidden by the recovered positive.
 Original reference controls, another full diagnostic, reject-reason attribution
 and the frozen landing gates remain owed.
+
+### Second diagnostic and boundary repairs
+
+Checkpoint 71ec7bd7's full diagnostic, CLI SHA-256
+`3f2084d283fdd3eab331b65a908e652585005a525e1d4450de722951ca2434fb`,
+also accepted 863/938, but it was not the same set: twelve first-pass failures
+recovered and twelve new failures appeared. Relative to main: +T15079/tc124,
+-21 accepted files. Reject239/767 was net +18, still requiring per-file reason
+attribution. Both axes completed with zero timeouts/unexpected exits. Evidence:
+`/private/tmp/haskelujah-kind-groups-chirho.EaepkD/diagnostic-reduction-chirho.log`.
+An unchanged count is not convergence; compare membership on the next full pass.
+
+The next reduction repairs four measured boundaries:
+
+- Class, family and alias heads reuse whole-binder consumption. An unreadable
+  bracketed/application annotation must not turn its inner `::` into a result
+  kind or its variable names into extra parameters. The family AST control
+  demonstrated two binders instead of four before this repair. Bare predicate
+  variables also survive as `c`, not fabricated `? c`, and bind their kind on
+  first constraint use. The four-argument family positive and three-argument
+  GHC-83865 negative now both discriminate correctly.
+- Inline result-kind annotations permit implicit kind variables alongside a
+  forall; standalone signatures retain forall-or-nothing. The former naming
+  test pinned the wrong rule. Its revised control was red before the fix;
+  an independently GHC-rejected standalone counterpart remains rejected.
+- Record construction and update feed known field types into the existing
+  expected-type checker before inferring lambdas. GHC 9.14.1 and the STG test
+  print `(3,'x')` then `7`; a Bool-in-the-Int-result mutation remains E0200.
+  The exact-output test demonstrated red on the previous checker.
+- Inline kind elaboration records source-variable identities explicitly.
+  Temporary application-result metas, including one from a declaration with
+  no written kind variable at all, are not written contracts. Resolve captured
+  identities after annotation elaboration, then constrain later body inference;
+  original head-annotation contracts are unchanged. This does not implement
+  nominal/dependent kinds or claim TYPE is fully represented.
+
+Fresh CLI SHA-256
+`387ee27500b4f0516db114467438fb93c7729824580c6710d8825a4f840822b8`
+recovers all twelve new losses plus T18891 in the 35-file focused recheck.
+Eight original main-relative losses remain there: CoerceToVDQ, T10432, T17021a,
+T17817b, T20187b, T21951b, T22141f, TcTypeNatSimple. T3632 stays accepted;
+HardRecordUpdate still rejects. This is not a full-corpus result.
+The original sixteen GHC/candidate pairs and nine new boundary pairs agree
+on this binary (50 independently run verdict observations). Evidence:
+`boundaries-contracts-after-chirho.jsonl`, `old-controls-contracts-chirho.jsonl`
+in the group scratch directory; new paired reductions in
+`/private/tmp/haskelujah-kind-boundaries-chirho.PpyQZq/after-contracts-chirho.jsonl`
+and `/private/tmp/haskelujah-kind-contracts-chirho.pRvDuM/after-chirho.jsonl`.
+
+Actual Cargo0: parser338, naming134, typing352; integration43, record_fields14,
+canaries7, zero ignores/measured/filtered. One parser invocation omitted the
+documented RUST_MIN_STACK and aborted on nested parens; the complete rerun uses
+16777216 and is green. These focused gates do not cover the full regression
+surface: a third complete diagnostic and final workspace gates remain owed.
+Main, artifact lists and row484 closure are untouched.
