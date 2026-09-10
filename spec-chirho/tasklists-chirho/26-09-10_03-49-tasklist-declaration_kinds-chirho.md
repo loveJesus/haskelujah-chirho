@@ -47,7 +47,7 @@ or broad warning/file-split sweep; existing size/lint debt remains open.
 - [x] Preserve both annotations, separate scopes, compose/reconcile declaration kinds.
 - [x] Focused parser/naming/typing and exact-output driver controls; genuine negatives.
 - [x] Rebase onto verified flat-list landing, freeze, full workspace and two passes per axis.
-- [ ] Named-path commits, branch/main pushes with readback, main CLI smokes, DB closure.
+- [x] Named-path commits, branch/main pushes with readback, main CLI smokes, DB closure.
 
 ## Evidence and limits
 
@@ -252,5 +252,14 @@ ce8c45abd24f2ffba344f0bd64f5e0b7aaafdaab6d62c3d5c3ed05947b244d12.
 Five-crate clippy remains685 messages, zero primary spans on any owned source
 change relative to0093dd40; no zero-warning/size-compliance claim.
 
-Evidence supersede prepared; canonical DB closure and main-path rebuild/smokes
-remain pending until their actual results. No percentage-policy choice or deploy.
+Evidence committed at a1d702dc396ff222c6bebeb66d513c0ee1f09613; both branch and
+main source/evidence pushes confirmed by ls-remote. Main fast-forward preserved
+the canonical open DB byte-for-byte. Explicit main `cargo build -p haskelujah
+-j 3` exited zero without compiler warnings. All 19 bounded main-path predicates
+passed, including the in-place discovery path, three exact-output controls,
+five declaration-contract negatives and two Int/Bool field mutations. Main
+HEAD and CLI hash stayed fixed; main-smoke-chirho.jsonl completed with exit0.
+Main CLI SHA25677cc6d4f1caaba26358ff33e34d2074d6265847254a5ff10efad8cfb71b85eb7;
+smoke log SHA256afc160baa74054c7a435d8b73d335a7bcf4b86e0eae67fa90c21558cd1c5fdc8.
+Canonical row483 closes with these actual results in the final evidence commit;
+no worktree DB was copied over main. No percentage-policy choice or deploy.

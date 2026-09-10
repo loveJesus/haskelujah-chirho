@@ -55,9 +55,17 @@ reruns; all four passes had zero unresolved timeouts and zero unexpected exits. 
 nonzero exits fail the instrument rather than count as acceptance. Exact lists
 and the required paired quotation labels remain in the two measurement artifacts.
 
-Main-path landing and smokes are still pending at this evidence checkpoint.
-The full gates above are the isolated-worktree measurement, not an unrun main
-gate. The preceding main-path evidence remains in the completed row-482 tasklist.
+After fast-forward to evidence checkpoint a1d702dc, the explicit main CLI build
+completed without compiler warnings. Main CLI SHA256:
+`77cc6d4f1caaba26358ff33e34d2074d6265847254a5ff10efad8cfb71b85eb7`.
+All 19 bounded main-path smoke predicates passed with HEAD and CLI digest
+unchanged: in-place T001/T002, both accept gains, the three repaired regressions,
+T17705, Constraint rejection, three exact-output readbacks, five contradictory
+declaration contracts and two Int/Bool field mutations. Smoke log SHA256:
+`afc160baa74054c7a435d8b73d335a7bcf4b86e0eae67fa90c21558cd1c5fdc8`.
+These are main-path behavioral checks, not a second full workspace/corpus gate.
+The full gates above remain the isolated-worktree measurement; measured source
+is unchanged. Main and branch source/evidence pushes were read back at a1d702dc.
 
 `test-data-chirho/curated-oracles-chirho/ghc-9.14.1-chirho.jsonl` contains the
 independent reference outputs and source hashes. Those 514 source hashes were
