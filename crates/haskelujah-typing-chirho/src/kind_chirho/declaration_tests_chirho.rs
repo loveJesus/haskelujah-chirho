@@ -117,7 +117,23 @@ fn result_kind_prefix_retains_shared_head_kind_identity_chirho() {
         SpanChirho::DUMMY_CHIRHO,
     );
     assert!(ctx_chirho.diagnostics_chirho.is_empty_chirho());
-    let shared_chirho = KindChirho::VarChirho(ctx_chirho.kind_var_cache_chirho["kChirho"]);
+    let local_chirho = ctx_chirho.subst_chirho.apply_chirho(&KindChirho::VarChirho(
+        ctx_chirho.kind_var_cache_chirho["kChirho"],
+    ));
+    assert!(matches!(local_chirho, KindChirho::RigidChirho(_)));
+    for name_chirho in ["aChirho", "bChirho"] {
+        assert_eq!(
+            ctx_chirho
+                .subst_chirho
+                .apply_chirho(ctx_chirho.env_chirho.lookup_chirho(name_chirho).unwrap()),
+            local_chirho
+        );
+    }
+    // Publication abstracts the local checking identity; it must retain the
+    // same one-variable relationship across all three argument positions.
+    let published_chirho = ctx_chirho.env_chirho.lookup_chirho("TestChirho").unwrap();
+    assert_eq!(published_chirho.free_vars_chirho().len(), 1);
+    let shared_chirho = KindChirho::VarChirho(published_chirho.free_vars_chirho()[0]);
     assert_eq!(
         ctx_chirho.env_chirho.lookup_chirho("TestChirho"),
         Some(&KindChirho::arrow_n_chirho(

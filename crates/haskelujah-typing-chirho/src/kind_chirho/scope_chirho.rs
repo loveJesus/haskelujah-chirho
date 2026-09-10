@@ -3,7 +3,7 @@
 //! Lexical lifetime of explicit kind/type binders.
 //! Workflow: language-features-chirho/rank-n-visible-type-application-chirho.
 
-use super::{KindInferCtxChirho, TyVarChirho};
+use super::{KindBindingChirho, KindInferCtxChirho, TyVarChirho};
 
 impl KindInferCtxChirho {
     /// Open a binder group, preserving two different meanings of each source name:
@@ -26,10 +26,10 @@ impl KindInferCtxChirho {
                 .unwrap_or_else(|| self.fresh_kind_chirho());
             let name_chirho = binder_chirho.text_chirho().to_string();
             let identity_chirho = self.fresh_var_chirho();
-            let old_kind_chirho = self
-                .env_chirho
-                .kinds_chirho
-                .insert(name_chirho.clone(), kind_chirho);
+            let old_kind_chirho = self.env_chirho.bindings_chirho.insert(
+                name_chirho.clone(),
+                KindBindingChirho::MonoChirho(kind_chirho),
+            );
             let old_identity_chirho = self
                 .kind_var_cache_chirho
                 .insert(name_chirho.clone(), identity_chirho);
@@ -41,10 +41,10 @@ impl KindInferCtxChirho {
         {
             if let Some(kind_chirho) = old_kind_chirho {
                 self.env_chirho
-                    .kinds_chirho
+                    .bindings_chirho
                     .insert(name_chirho.clone(), kind_chirho);
             } else {
-                self.env_chirho.kinds_chirho.remove(&name_chirho);
+                self.env_chirho.bindings_chirho.remove(&name_chirho);
             }
             if let Some(identity_chirho) = old_identity_chirho {
                 self.kind_var_cache_chirho

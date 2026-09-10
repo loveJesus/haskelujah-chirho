@@ -41,7 +41,7 @@ is safe; reductions decide rather than per-corpus guards.
 ## Checklist
 
 - [x] Re-read project/goal/Git; prior landing pushed and remote-exact.
-- [ ] Record baseline/reference controls and audit completeness/binder consumers.
+- [x] Record baseline/reference controls and audit completeness/binder consumers.
 - [ ] Implement explicit binding/checking lifecycle with focused positive/negative tests.
 - [ ] Run parser/naming/typing/driver controls and behavioral execution canaries.
 - [ ] Freeze and run full workspace plus two complete passes on both corpus axes.
@@ -67,7 +67,42 @@ named, never bypassed by a source-name or corpus-file condition.
 
 ## Resume state
 
-Plan/checkpoint only. No compiler source edited or new gates run for this unit.
-Canonical row484 is open; only main writes the DB. A read-only independent
-review is checking the distinction between annotated kind variables and
-recursive instantiation while the main worker audits environment consumers.
+Unlanded prototype: explicit Mono/Poly kind bindings, quantified substitution,
+rigid written-kind checking, journaled constructor scopes and shared data/newtype
+checking. The first explicit CLI build succeeded; fresh GHC 9.14.1/main/prototype
+controls show three real wrong accepts rejected (standalone specialization,
+rigid annotation used as Type, NoCUSKs recursive specialization), with seven
+valid controls held. Scratch evidence is in
+`/private/tmp/haskelujah-kind-schemes-chirho.h1N3tE/`; it is not a frozen gate.
+
+After non-PolyKinds publication/defaulting was corrected, the full typing lib
+run is 349 passed / 1 failed / zero ignored or filtered (actual Cargo101,
+`typing-second-chirho.log`). The remaining failure is genuine:
+`local_tagged_decl_shadows_builtin_tagged_kind_chirho`. A class referencing a
+later local `Tagged` is generalized/defaulted before that declaration supplies
+its kind. It is not an incidental-shape assertion; do not weaken it or let
+substitution rewrite quantified variables to make it green.
+
+### Dependency-order decision checkpoint
+
+Recommendation: infer dependency SCCs, keep incomplete members monomorphic until
+the whole group has been checked, and publish only then. Complete written kinds
+must be available to recursive uses independently of declaration order. Type
+signatures are checked after the kind declarations they consume. This replaces
+source-order publication; it does not add a forward-name exception.
+
+Reuse the existing adjacency-to-SCC algorithm from value inference in one common
+dependency module. Keep source/value dependency collection separate. Typing's
+src directory is already at 15 entries; group the existing type representation
+and substitution files under `types_chirho/` with their public module paths
+preserved, so the common graph module does not grow a 16th root entry. These are
+pure moves; no type/substitution semantics change is intended. Kind scheduling
+and dependency collection live in focused kind child modules, not the large
+root. Confidence: high that early publication is the defect, medium on complete
+signature recursion and declaration-graph integration. Reversal is the isolated
+prototype checkpoint; no main source changes, new dependencies, or public API
+renames. Independent read-only review is checking group/scope requirements.
+
+Canonical row484 remains open; only main writes the DB. Full corpus/workspace,
+fresh final CLI and landing remain owed. The prior main row483 gates are not
+evidence for this prototype.

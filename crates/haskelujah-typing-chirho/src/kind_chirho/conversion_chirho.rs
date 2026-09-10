@@ -190,22 +190,17 @@ impl KindInferCtxChirho {
             }
             TypeChirho::ConChirho(name_chirho) => {
                 let text_chirho = name_chirho.full_name_chirho();
-                if let Some(k_chirho) = self.env_chirho.lookup_chirho(&text_chirho) {
-                    let k_chirho = k_chirho.clone();
-                    // Poly-kinded constructors instantiate at each use site.
-                    // This applies to local classes too: sharing `Forall`'s
-                    // kind variables across all superclass/signature uses
-                    // incorrectly monomorphizes quantified-constraint helpers
-                    // such as `ForallF` before later `ForallT` signatures.
-                    if !k_chirho.free_vars_chirho().is_empty() {
-                        self.instantiate_kind_chirho(&k_chirho)
-                    } else {
-                        k_chirho
-                    }
+                if let Some(binding_chirho) =
+                    self.env_chirho.lookup_binding_chirho(&text_chirho).cloned()
+                {
+                    self.instantiate_binding_chirho(&binding_chirho)
                 } else {
-                    // Unknown type constructor — assign a fresh kind variable.
+                    // Unknown/imported constructors still lack authoritative kind
+                    // metadata. Keep their existing independent-use fallback,
+                    // explicitly separate from local monomorphic recursion.
                     let k_chirho = self.fresh_kind_chirho();
-                    self.env_chirho.bind_chirho(text_chirho, k_chirho.clone());
+                    self.env_chirho
+                        .bind_generalized_chirho(text_chirho, k_chirho.clone());
                     k_chirho
                 }
             }
