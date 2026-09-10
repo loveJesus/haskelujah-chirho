@@ -367,6 +367,70 @@ leakChirho _ functionChirho = functionChirho True
     );
 }
 
+#[test]
+fn prefix_list_constructor_in_a_record_field_executes_chirho() {
+    // GHC 9.14.1 independently prints kept; [] must not acquire a fake element.
+    let source_chirho = r#"module Main where
+data HolderChirho = HolderChirho { fieldChirho :: [] Char }
+main :: IO ()
+main = putStrLn (fieldChirho (HolderChirho "kept"))
+"#;
+    assert_execution_chirho(source_chirho, "kept\n");
+}
+
+#[test]
+fn nested_list_function_in_a_record_field_executes_chirho() {
+    // GHC 9.14.1 independently prints 42; the inner ] cannot close the outer list.
+    let source_chirho = r#"module Main where
+data HolderChirho = HolderChirho { fieldChirho :: [[Int] -> Int] }
+main :: IO ()
+main = case fieldChirho (HolderChirho [\_ -> 42]) of
+  firstChirho : _ -> print (firstChirho [1, 2])
+  [] -> print (0 :: Int)
+"#;
+    assert_execution_chirho(source_chirho, "42\n");
+}
+
+#[test]
+fn gadt_record_list_types_and_following_signature_execute_chirho() {
+    let source_chirho = r#"{-# LANGUAGE GADTs #-}
+module Main where
+data HolderChirho where
+  HolderChirho :: { textChirho :: [] Char, functionsChirho :: [[Int] -> Int] } -> HolderChirho
+main :: IO ()
+main = do
+  let holderChirho = HolderChirho "kept" [\_ -> 42]
+  putStrLn (textChirho holderChirho)
+  case functionsChirho holderChirho of
+    firstChirho : _ -> print (firstChirho [1, 2])
+    [] -> print (0 :: Int)
+"#;
+    assert_execution_chirho(source_chirho, "kept\n42\n");
+}
+
+#[test]
+fn bare_list_constructor_is_not_a_saturated_record_field_type_chirho() {
+    for declaration_chirho in [
+        "data HolderChirho = HolderChirho { fieldChirho :: [] }",
+        "data HolderChirho where\n  HolderChirho :: { fieldChirho :: [] } -> HolderChirho",
+        "data HolderChirho = HolderChirho { fieldChirho :: [] Int Bool }",
+        "data HolderChirho where\n  HolderChirho :: { fieldChirho :: [] Int Bool } -> HolderChirho",
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE GADTs #-}}\nmodule UnsaturatedListChirho where\n{declaration_chirho}\n"
+        );
+        let error_chirho = haskelujah_driver::typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "UnsaturatedListChirho.hs",
+        )
+        .map(|_| ())
+        .expect_err("GHC-83865: [] needs exactly one argument before it is a field type");
+        let message_chirho = error_chirho.to_string();
+        assert!(message_chirho.contains("kind mismatch"), "{message_chirho}");
+    }
+}
+
 fn assert_execution_chirho(source_chirho: &str, expected_chirho: &str) {
     use haskelujah_test_harness_chirho::native_chirho::{
         NativeBackendChirho, native_round_trip_chirho,
