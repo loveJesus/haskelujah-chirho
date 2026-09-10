@@ -4,6 +4,33 @@ use super::{DataKindSigChirho, DeclChirho, FileIdChirho, TypeChirho, lower_modul
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
 #[test]
+fn a_forall_binder_double_colon_survives_inside_a_standalone_kind_chirho() {
+    let source_chirho = "module MChirho where\ntype TChirho :: forall (kChirho :: Type) -> kChirho -> Type\ndata TChirho kChirho aChirho = MkTChirho\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let module_chirho = lower_module_chirho(
+        &parse_to_cst_chirho(source_chirho, file_chirho),
+        file_chirho,
+    );
+    let Some(DeclChirho::DataDeclChirho {
+        kind_sig_chirho: Some(signature_chirho),
+        ..
+    }) = module_chirho.decls_chirho.first()
+    else {
+        panic!("{module_chirho:?}")
+    };
+    let Some(TypeChirho::RequiredForallChirho { vars_chirho, .. }) =
+        signature_chirho.standalone_chirho()
+    else {
+        panic!("{signature_chirho:?}")
+    };
+    assert_eq!(vars_chirho.len(), 1);
+    assert_eq!(
+        vars_chirho[0].kind_annotation_chirho,
+        Some(super::AstKindChirho::StarChirho)
+    );
+}
+
+#[test]
 fn nominal_kind_heads_keep_their_qualification_and_source_span_chirho() {
     use super::AstKindChirho;
     for keyword_chirho in ["data", "newtype"] {

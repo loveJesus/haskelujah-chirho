@@ -1029,7 +1029,9 @@ impl LowerCtxChirho {
                         && tok_chirho.kind_chirho() == TokenKindChirho::TypeKeywordChirho
                     {
                         saw_type_keyword_chirho = true;
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                    } else if !saw_double_colon_chirho
+                        && tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+                    {
                         saw_double_colon_chirho = true;
                     } else if saw_double_colon_chirho {
                         type_children_chirho.push(child_chirho);

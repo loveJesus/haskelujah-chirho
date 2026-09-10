@@ -37,7 +37,10 @@ pub(super) fn builtin_term_chirho(name_chirho: &str) -> Option<KindChirho> {
         | "Lifted" | "Unlifted" | "IntRep" | "WordRep" | "Int8Rep" | "Word8Rep" | "Int16Rep"
         | "Word16Rep" | "Int32Rep" | "Word32Rep" | "Int64Rep" | "Word64Rep" | "AddrRep"
         | "FloatRep" | "DoubleRep" | "TupleRep" | "SumRep" | "VecRep" | "Many" | "One" | "True"
-        | "False" => KindChirho::ConChirho(format!("GHC.Types.{name_chirho}")),
+        | "False" | "VecCount" | "VecElem" | "Vec2" | "Vec4" | "Vec8" | "Vec16" | "Vec32"
+        | "Vec64" | "Int8ElemRep" | "Int16ElemRep" | "Int32ElemRep" | "Int64ElemRep"
+        | "Word8ElemRep" | "Word16ElemRep" | "Word32ElemRep" | "Word64ElemRep" | "FloatElemRep"
+        | "DoubleElemRep" => KindChirho::ConChirho(format!("GHC.Types.{name_chirho}")),
         _ => return None,
     })
 }
@@ -240,6 +243,8 @@ impl KindEnvChirho {
             "Levity",
             "Multiplicity",
             "UnliftedType",
+            "VecCount",
+            "VecElem",
         ] {
             self.bind_runtime_aliases_chirho(name_chirho, KindChirho::StarChirho);
         }
@@ -253,9 +258,57 @@ impl KindEnvChirho {
             "BoxedRep",
             KindChirho::arrow_chirho(levity_chirho.clone(), representation_chirho.clone()),
         );
+        for name_chirho in ["TupleRep", "SumRep"] {
+            self.bind_runtime_constructor_chirho(
+                name_chirho,
+                KindChirho::arrow_chirho(
+                    KindChirho::app_chirho(
+                        KindChirho::ConChirho("[]".into()),
+                        representation_chirho.clone(),
+                    ),
+                    representation_chirho.clone(),
+                ),
+            );
+        }
+        self.bind_runtime_constructor_chirho(
+            "VecRep",
+            KindChirho::arrow_n_chirho(
+                [
+                    builtin_term_chirho("VecCount").unwrap(),
+                    builtin_term_chirho("VecElem").unwrap(),
+                ],
+                representation_chirho.clone(),
+            ),
+        );
+        for (names_chirho, classifier_chirho) in [
+            (&["One", "Many"][..], "Multiplicity"),
+            (
+                &["Vec2", "Vec4", "Vec8", "Vec16", "Vec32", "Vec64"][..],
+                "VecCount",
+            ),
+            (
+                &[
+                    "Int8ElemRep",
+                    "Int16ElemRep",
+                    "Int32ElemRep",
+                    "Int64ElemRep",
+                    "Word8ElemRep",
+                    "Word16ElemRep",
+                    "Word32ElemRep",
+                    "Word64ElemRep",
+                    "FloatElemRep",
+                    "DoubleElemRep",
+                ][..],
+                "VecElem",
+            ),
+        ] {
+            let kind_chirho = builtin_term_chirho(classifier_chirho).unwrap();
+            for name_chirho in names_chirho {
+                self.bind_runtime_constructor_chirho(name_chirho, kind_chirho.clone());
+            }
+        }
         for name_chirho in ["Lifted", "Unlifted"] {
-            self.bind_runtime_aliases_chirho(name_chirho, levity_chirho.clone());
-            self.bind_promoted_generalized_chirho(name_chirho, levity_chirho.clone());
+            self.bind_runtime_constructor_chirho(name_chirho, levity_chirho.clone());
         }
         for name_chirho in [
             "LiftedRep",
@@ -274,8 +327,7 @@ impl KindEnvChirho {
             "FloatRep",
             "DoubleRep",
         ] {
-            self.bind_runtime_aliases_chirho(name_chirho, representation_chirho.clone());
-            self.bind_promoted_generalized_chirho(name_chirho, representation_chirho.clone());
+            self.bind_runtime_constructor_chirho(name_chirho, representation_chirho.clone());
         }
         for (primitive_chirho, representation_name_chirho) in [
             ("Int#", "IntRep"),
@@ -298,6 +350,11 @@ impl KindEnvChirho {
                 runtime_type_chirho(builtin_term_chirho(representation_name_chirho).unwrap()),
             );
         }
+    }
+
+    fn bind_runtime_constructor_chirho(&mut self, name_chirho: &str, kind_chirho: KindChirho) {
+        self.bind_runtime_aliases_chirho(name_chirho, kind_chirho.clone());
+        self.bind_promoted_generalized_chirho(name_chirho, kind_chirho);
     }
 
     fn bind_runtime_aliases_chirho(&mut self, name_chirho: &str, kind_chirho: KindChirho) {

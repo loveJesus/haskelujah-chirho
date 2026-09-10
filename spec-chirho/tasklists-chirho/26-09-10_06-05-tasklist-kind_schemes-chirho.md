@@ -545,3 +545,61 @@ stay open. No site deployment or label-policy choice is inferred.
 Scoped clippy (`typing`, `driver`, lib targets) completed successfully, but
 existing warnings remain, including driver35. Its log reports none in the
 changed kind child modules; this does not claim a warning-free workspace.
+
+### Reviewed boundary fork — 0d089454 pushed, main still held
+
+The checkpoint is remote-exact at 0d089454. Read-only review supplied three
+hypotheses; fresh paired controls confirm the dependent declaration-head loss
+and TYPE Many wrong acceptance. The proposed instance control with explicit
+PolyKinds/FlexibleInstances does not reach the old instance check, so its
+positive already passes and its invalid Int instance also passes. Removing
+those flags without changing the default edition reaches the old check and
+reproduces the false rejection of a valid runtime-polymorphic instance.
+Evidence: `review-extended-boundaries-before-chirho.jsonl` in the same scratch root.
+
+Recommendation before family elaboration: preserve dependent head binder
+identities and reconcile a complete kind one binder at a time; seed the finite
+runtime constructors' actual classifier contracts; use scoped, instantiated
+kind equality at the existing local-instance boundary. Do not broaden the
+unsupported-instance-syntax guard by extension name in this unit. Confidence
+is high in the reproduced controls, medium in the integration. Tag
+`kind-consumer-audit-before-chirho` bounds this local reversible fork.
+The existing large root and environment-copying instance checker are structural
+debt: extract the touched instance consumer rather than add more there; group
+its existing child tests if needed to keep the directory bounded. No new dependency.
+
+### Reviewed boundary results — focused repairs, no new corpus claim
+
+- [x] A parser regression was demonstrated red before repair: the standalone
+  lowerer discarded a nested forall binder's `::`, losing its annotation.
+  Consume only the declaration delimiter; the nested annotation now survives.
+- [x] Complete dependent data/newtype heads consume their contract one rigid
+  binder at a time. A valid dependent head is accepted; specializing its second
+  binder to Type is rejected, matching GHC9.14.1.
+- [x] Finite RuntimeRep constructors have their actual classifiers. TYPE Many,
+  a Bool in TupleRep, and swapped VecRep arguments reject; their positive
+  counterparts accept. Tuple/vector controls now live in driver integration,
+  not only in scratch. This is not a native unboxed/vector execution claim.
+- [x] Extract the local-instance consumer from the large kind root. Each use
+  instantiates its class kind and unifies in a journaled scope; no whole-env
+  cloning or old-kind-shape equality. The existing extension guard is unchanged.
+- [x] Parser345 and typing356 pass with the documented 16MiB Rust test-thread
+  stack; driver integration60 and canaries7 pass. Zero ignored/filtered,
+  actual cargo exits0. The first parser attempt without the stack setting
+  aborted at the nested-parentheses property and is retained as a failed run.
+- [x] Thirty-nine source-hashed GHC/candidate pairs completed:38 agree and one
+  pre-existing mismatch remains. WrongRuntimeKindInstanceChirho is wrongly
+  accepted with explicit PolyKinds/FlexibleInstances because the old guard
+  bypasses that head; removing those flags reaches the repaired check. This is
+  not a 39/39 claim or complete instance-kind validation.
+- [ ] Freeze this checkpoint and run a fresh full diagnostic; main stays held.
+
+Evidence under the same scratch root: `standalone-binder-before-chirho.log`,
+`review-boundaries-crates-stack-chirho.log`,
+`review-boundaries-permanent-integration-chirho.log`,
+`review-boundaries-final-pairs-chirho.jsonl`, `review-boundaries-clippy-chirho.log`.
+Scoped clippy exits0 with existing warnings (driver35), none reported in the
+changed kind child modules. No warning-free or file-size-compliant workspace
+claim: the existing large parser/kind roots remain debt. Dependent abstraction
+is scoped to the declaration, but repeated suffix traversal is not claimed
+linear for arbitrarily long telescopes. That growth boundary remains a follow-up.

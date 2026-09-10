@@ -14,9 +14,10 @@ flowchart TD
   LowerChirho --> HeadNamesChirho[Bind head variables then resolve inline result]
   CompleteNamesChirho --> CompleteKindChirho[Convert complete kind with independent kind-name cache]
   HeadNamesChirho --> HeadKindsChirho[Convert parameter kinds and inline result in one head scope]
-  HeadKindsChirho --> ComposeChirho[Prepend visible parameter kinds to written result or Type]
-  CompleteKindChirho --> ReconcileChirho[Skolemize complete contract and reconcile composed kind]
-  ComposeChirho --> ReconcileChirho
+  HeadKindsChirho --> ComposeChirho[Build an incomplete head with retained binder dependencies]
+  CompleteKindChirho --> ReconcileChirho[Open rigid contract and consume each visible head binder]
+  HeadKindsChirho --> ReconcileChirho
+  ComposeChirho --> FieldsChirho
   ReconcileChirho --> FieldsChirho[Check constructor fields with head variables still in scope]
   LowerChirho --> ConstraintChirho[Reject written Constraint return kind on either contract]
   FieldsChirho --> GroupContractChirho[Check inference-group written variables before publication]
@@ -30,8 +31,15 @@ flowchart TD
 The standalone conversion swaps the kind-name cache instead of cloning the
 growing environment. Fresh identities and accumulated substitutions survive;
 the prior name cache is restored. Head annotations and an inline result share
-their local kind identities. A complete signature is related to the head by
-structural unification, not by matching variable spellings. The cache swap is
+their local kind identities. Every head binder owns a term identity after its
+own annotation has been read. A complete signature is opened once and consumed
+one visible binder at a time: a dependent domain substitutes that rigid head
+term into the remaining contract; an ordinary arrow consumes only its domain.
+The remaining contract then constrains the inline/default result. This uses
+kind equality, not matching variable spellings or flattening a dependent
+contract to ordinary arrows. The standalone lowerer consumes only the
+declaration's first `::`; nested forall-binder annotations must survive it.
+The cache swap is
 O(1); this does not claim the whole module kind pass is linear.
 
 Without a complete standalone contract the no-inline default is Type. The
@@ -158,6 +166,12 @@ the supported literal-family contracts retain their respective kinds; promoted
 lists preserve the common element kind instead of flattening to Type.
 Validation scopes undo temporary bindings, and dependent applications interpret
 an already-checked argument without recursively validating it again.
+Finite representation constructors also carry their classifiers: Many/One are
+Multiplicity, TupleRep/SumRep consume lists of RuntimeRep, and VecRep consumes
+VecCount followed by VecElem. Ordinary and explicitly promoted occurrences use
+the same contracts. TYPE Many and swapped vector arguments are errors, not
+unconstrained nominal applications. These checks do not establish native vector
+or unboxed-tuple execution support.
 
 Qualified kinds use the module's declared import aliases before consulting
 builtin contracts; an arbitrary prefix is not stripped. The prefix function
@@ -181,6 +195,15 @@ variable-headed constraint is not silently discarded. A leading forall owns
 the complete following type, including implication and arrow bodies. Known
 standard higher-kinded class heads supply contracts; absent imported metadata
 does not become a fabricated authoritative contract.
+
+The local-instance consumer instantiates each class's quantified kind afresh,
+infers argument classifiers in a journaled scope, and checks the resulting
+application with kind equality. It no longer clones the whole environment or
+compares only the old Star/Arrow tree shapes. Imported-class authority and the
+historical extension-based instance-head representability guard remain outside
+this unit: an explicit PolyKinds/FlexibleInstances control still demonstrates
+that guard bypassing a wrong instance. A green reachable-path test does not
+establish complete instance-kind validation.
 
 A bare variable predicate remains a zero-argument predicate (`c`, not `? c`),
 and its first use allocates a shared local kind even before an ordinary type

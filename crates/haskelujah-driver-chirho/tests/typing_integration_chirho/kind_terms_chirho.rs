@@ -229,6 +229,86 @@ type ResultChirho = PureChirho FlurmpChirho FlurmpChirho
     );
 }
 
+#[test]
+fn dependent_declaration_heads_follow_the_complete_kind_telescope_chirho() {
+    let source_chirho = r#"{-# LANGUAGE PolyKinds, RankNTypes, StandaloneKindSignatures #-}
+module DependentHeadChirho where
+import Data.Kind (Type)
+type TChirho :: forall (kChirho :: Type) -> kChirho -> Type
+data TChirho kChirho aChirho = MkTChirho
+"#;
+    assert_compile_success_chirho("DependentHeadChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace(
+            "data TChirho kChirho aChirho",
+            "data TChirho kChirho (aChirho :: Type)",
+        ),
+        "data declaration signature",
+    );
+}
+
+#[test]
+fn runtime_representation_constructors_have_their_actual_classifier_chirho() {
+    let source_chirho = r#"{-# LANGUAGE DataKinds, GADTs, StandaloneKindSignatures #-}
+module RuntimeClassificationChirho where
+import GHC.Exts (TYPE, LiftedRep, Multiplicity(Many))
+type BoxChirho :: TYPE LiftedRep
+data BoxChirho = MkBoxChirho
+"#;
+    assert_compile_success_chirho("RuntimeClassificationChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace("TYPE LiftedRep", "TYPE Many"),
+        "Multiplicity",
+    );
+}
+
+#[test]
+fn tuple_runtime_representations_classify_every_element_chirho() {
+    let source_chirho = r#"{-# LANGUAGE DataKinds, TypeFamilies #-}
+module TupleRepresentationChirho where
+import GHC.Exts (TYPE, RuntimeRep(TupleRep, IntRep))
+type family CarrierChirho :: TYPE ('TupleRep '[ 'IntRep ])
+"#;
+    assert_compile_success_chirho("TupleRepresentationChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace("'[ 'IntRep ]", "'[ 'True ]"),
+        "RuntimeRep",
+    );
+}
+
+#[test]
+fn vector_runtime_representations_distinguish_count_and_element_chirho() {
+    let source_chirho = r#"{-# LANGUAGE DataKinds, TypeFamilies #-}
+module VectorRepresentationChirho where
+import GHC.Exts (TYPE, RuntimeRep(VecRep), VecCount(Vec4), VecElem(FloatElemRep))
+type family CarrierChirho :: TYPE ('VecRep 'Vec4 'FloatElemRep)
+"#;
+    assert_compile_success_chirho("VectorRepresentationChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace("'Vec4 'FloatElemRep", "'FloatElemRep 'Vec4"),
+        "VecCount",
+    );
+}
+
+#[test]
+fn represented_local_instance_heads_use_instantiated_kind_equality_chirho() {
+    // No explicit PolyKinds/FlexibleInstances: those names activate a separate
+    // historical lowering guard. The default GHC2021 edition is still polykinded.
+    let source_chirho = r#"{-# LANGUAGE KindSignatures #-}
+module RuntimeKindInstanceDefaultEditionChirho where
+import Data.Kind (Type)
+import GHC.Exts (TYPE)
+class CChirho (fChirho :: Type -> TYPE rChirho)
+data FChirho aChirho = MkFChirho aChirho
+instance CChirho FChirho
+"#;
+    assert_compile_success_chirho("RuntimeKindInstanceDefaultEditionChirho.hs", source_chirho);
+    assert_kind_error_chirho(
+        &source_chirho.replace("instance CChirho FChirho", "instance CChirho Int"),
+        "instance head",
+    );
+}
+
 fn assert_kind_error_chirho(source_chirho: &str, subject_chirho: &str) {
     let errors_chirho = haskelujah_driver::typecheck_source_chirho(
         source_chirho,

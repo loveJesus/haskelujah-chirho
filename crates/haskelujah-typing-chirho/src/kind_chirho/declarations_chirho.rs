@@ -45,7 +45,10 @@ impl KindInferCtxChirho {
             KindSchemeChirho::generalize_chirho(self.subst_chirho.apply_chirho(&kind_chirho))
         });
 
-        let mut parameter_kinds_chirho = Vec::with_capacity(type_vars_chirho.len());
+        let mut complete_tail_chirho = complete_scheme_chirho
+            .as_ref()
+            .map(|scheme_chirho| self.open_kind_scheme_chirho(scheme_chirho, true));
+        let mut parameters_chirho = Vec::with_capacity(type_vars_chirho.len());
         let mut written_variables_chirho = Vec::new();
         for variable_chirho in type_vars_chirho {
             let kind_chirho = variable_chirho
@@ -56,12 +59,29 @@ impl KindInferCtxChirho {
             if variable_chirho.kind_annotation_chirho.is_some() {
                 written_variables_chirho.extend(kind_chirho.free_vars_chirho());
             }
+            // A head binder is a term as well as a classifier. Later annotations
+            // may refer to it; its own annotation is outside its lexical scope.
+            let identity_chirho = self.fresh_var_chirho();
+            self.kind_var_cache_chirho
+                .insert(variable_chirho.text_chirho().to_owned(), identity_chirho);
             self.env_chirho.bind_chirho(
                 variable_chirho.text_chirho().to_owned(),
                 kind_chirho.clone(),
             );
             if variable_chirho.is_visible_chirho() {
-                parameter_kinds_chirho.push(kind_chirho);
+                if let Some(tail_chirho) = complete_tail_chirho.take() {
+                    self.rigidify_kind_variables_chirho([identity_chirho]);
+                    let binder_term_chirho = self
+                        .subst_chirho
+                        .apply_chirho(&KindChirho::VarChirho(identity_chirho));
+                    complete_tail_chirho = Some(self.consume_complete_head_binder_chirho(
+                        tail_chirho,
+                        &kind_chirho,
+                        &binder_term_chirho,
+                        span_chirho,
+                    ));
+                }
+                parameters_chirho.push((identity_chirho, kind_chirho));
             }
         }
         // Head annotations and the inline tail share identities and remain in
@@ -89,18 +109,31 @@ impl KindInferCtxChirho {
             && type_vars_chirho
                 .iter()
                 .all(|variable_chirho| variable_chirho.kind_annotation_chirho.is_some());
-        let head_kind_chirho =
-            KindChirho::arrow_n_chirho(parameter_kinds_chirho, result_kind_chirho);
         let binding_chirho = if let Some(complete_scheme_chirho) = complete_scheme_chirho {
-            let complete_kind_chirho = self.open_kind_scheme_chirho(&complete_scheme_chirho, true);
             self.unify_chirho(
-                &complete_kind_chirho,
-                &head_kind_chirho,
+                &complete_tail_chirho.expect("a complete signature has a remaining kind"),
+                &result_kind_chirho,
                 "data declaration signature",
                 span_chirho,
             );
             KindBindingChirho::PolyChirho(complete_scheme_chirho)
         } else {
+            let mut head_kind_chirho = result_kind_chirho;
+            for (identity_chirho, argument_chirho) in parameters_chirho.into_iter().rev() {
+                head_kind_chirho = if head_kind_chirho
+                    .free_vars_chirho()
+                    .contains(&identity_chirho)
+                {
+                    KindChirho::DependentChirho {
+                        argument_chirho: Box::new(argument_chirho),
+                        result_chirho: Box::new(
+                            head_kind_chirho.abstract_variable_chirho(identity_chirho),
+                        ),
+                    }
+                } else {
+                    KindChirho::arrow_chirho(argument_chirho, head_kind_chirho)
+                };
+            }
             // An incomplete recursive group may equate written variables from
             // different declarations, but may not specialize them to Type or an
             // arrow. Check that contract after solving the whole inference SCC.
@@ -136,6 +169,51 @@ impl KindInferCtxChirho {
         }
         self.env_chirho
             .bind_entry_chirho(name_chirho.to_owned(), binding_chirho);
+    }
+
+    /// Apply a complete kind telescope to this declaration's rigid head term.
+    /// A dependent binder substitutes its term into the remaining contract;
+    /// ordinary arrows merely consume an argument. Neither erases dependency.
+    fn consume_complete_head_binder_chirho(
+        &mut self,
+        tail_chirho: KindChirho,
+        classifier_chirho: &KindChirho,
+        term_chirho: &KindChirho,
+        span_chirho: SpanChirho,
+    ) -> KindChirho {
+        match self.subst_chirho.apply_chirho(&tail_chirho) {
+            KindChirho::DependentChirho {
+                argument_chirho,
+                result_chirho,
+            } => {
+                self.unify_chirho(
+                    &argument_chirho,
+                    classifier_chirho,
+                    "data declaration signature",
+                    span_chirho,
+                );
+                result_chirho.substitute_bound_chirho(term_chirho)
+            }
+            KindChirho::ArrowChirho(argument_chirho, result_chirho) => {
+                self.unify_chirho(
+                    &argument_chirho,
+                    classifier_chirho,
+                    "data declaration signature",
+                    span_chirho,
+                );
+                *result_chirho
+            }
+            other_chirho => {
+                let result_chirho = self.fresh_kind_chirho();
+                self.unify_chirho(
+                    &other_chirho,
+                    &KindChirho::arrow_chirho(classifier_chirho.clone(), result_chirho.clone()),
+                    "data declaration signature",
+                    span_chirho,
+                );
+                result_chirho
+            }
+        }
     }
 
     /// GHC-55233: the return kind of data/newtype cannot be Constraint. This
