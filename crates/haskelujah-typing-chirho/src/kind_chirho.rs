@@ -19,7 +19,7 @@
 use std::collections::HashMap;
 
 use haskelujah_ast_chirho::decl_chirho::{
-    AstKindChirho, DataKindSigChirho, DeclChirho, TyVarChirho,
+    AstKindChirho, DeclChirho, DeclKindSigChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, MultiplicityChirho, TypeChirho};
@@ -1042,7 +1042,7 @@ mod tests_chirho {
             type_vars_chirho: vec![],
             constructors_chirho: vec![],
             deriving_chirho: vec![],
-            kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::ConChirho(
+            kind_sig_chirho: Some(DeclKindSigChirho::ResultChirho(TypeChirho::ConChirho(
                 mk_name_chirho("Constraint"),
             ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1095,7 +1095,7 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![],
                 deriving_chirho: vec![],
-                kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::ConChirho(
+                kind_sig_chirho: Some(DeclKindSigChirho::ResultChirho(TypeChirho::ConChirho(
                     mk_name_chirho("Constraint"),
                 ))),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1601,7 +1601,7 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![],
                 deriving_chirho: vec![],
-                kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(mk_fun_chirho(
+                kind_sig_chirho: Some(DeclKindSigChirho::ResultChirho(mk_fun_chirho(
                     mk_app_chirho(
                         TypeChirho::ConChirho(mk_name_chirho("Cat")),
                         TypeChirho::VarChirho(mk_name_chirho("k")),
@@ -1761,7 +1761,7 @@ mod tests_chirho {
             type_vars_chirho: vec![],
             constructors_chirho: vec![],
             deriving_chirho: vec![],
-            kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::ForallChirho {
+            kind_sig_chirho: Some(DeclKindSigChirho::ResultChirho(TypeChirho::ForallChirho {
                 vars_chirho: vec![TyVarChirho::annotated_chirho(
                     mk_name_chirho("fChirho"),
                     AstKindChirho::ArrowChirho(
@@ -1806,7 +1806,9 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("TrivialFamily"),
                 type_vars_chirho: vec![t_var_chirho.clone()],
                 result_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyResultChirho {
-                    kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
+                    kind_sig_chirho: Some(DeclKindSigChirho::ResultChirho(TypeChirho::ConChirho(
+                        mk_name_chirho("Type"),
+                    ))),
                     ..Default::default()
                 },
                 closed_chirho: false,
@@ -1859,7 +1861,7 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![],
                 deriving_chirho: vec![],
-                kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(mk_fun_chirho(
+                kind_sig_chirho: Some(DeclKindSigChirho::ResultChirho(mk_fun_chirho(
                     mk_app_chirho(
                         TypeChirho::ConChirho(mk_name_chirho("FamilyChirho")),
                         TypeChirho::VarChirho(mk_name_chirho("k")),

@@ -4,7 +4,7 @@
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
 use super::{
-    ChildChirho, DataKindSigChirho, DeclChirho, GreenElementChirho, HashMap, LowerCtxChirho,
+    ChildChirho, DeclChirho, DeclKindSigChirho, GreenElementChirho, HashMap, LowerCtxChirho,
     SpanChirho, TokenKindChirho, TypeChirho,
 };
 use haskelujah_ast_chirho::decl_chirho::{TyVarChirho, TyVarVisibilityChirho};
@@ -102,19 +102,24 @@ impl LowerCtxChirho {
                     kind_sig_chirho,
                     ..
                 } => (name_chirho, kind_sig_chirho),
+                DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    result_chirho,
+                    ..
+                } => (name_chirho, &mut result_chirho.kind_sig_chirho),
                 _ => continue,
             };
             if let Some(signature_chirho) =
                 standalone_kind_sigs_chirho.get(name_chirho.text_chirho())
             {
                 let result_chirho = match kind_sig_chirho.take() {
-                    Some(DataKindSigChirho::ResultChirho(result_chirho)) => Some(result_chirho),
-                    Some(DataKindSigChirho::StandaloneChirho { result_chirho, .. }) => {
+                    Some(DeclKindSigChirho::ResultChirho(result_chirho)) => Some(result_chirho),
+                    Some(DeclKindSigChirho::StandaloneChirho { result_chirho, .. }) => {
                         result_chirho
                     }
                     None => None,
                 };
-                *kind_sig_chirho = Some(DataKindSigChirho::StandaloneChirho {
+                *kind_sig_chirho = Some(DeclKindSigChirho::StandaloneChirho {
                     signature_chirho: signature_chirho.clone(),
                     result_chirho,
                 });

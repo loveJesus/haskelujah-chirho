@@ -8,6 +8,75 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn standalone_family_head_keeps_its_dependent_telescope_chirho() {
+    assert_compile_success_chirho(
+        "FamilyStandaloneHeadChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test-data-chirho/kind-oracles-chirho/FamilyStandaloneHeadChirho.hs"
+        )),
+    );
+}
+
+#[test]
+fn standalone_family_result_and_names_are_checked_chirho() {
+    for (signature_chirho, expected_chirho) in [
+        ("Type -> Bool", "family equation result"),
+        ("MissingKindChirho -> Type", "MissingKindChirho"),
+        ("forall unusedChirho. valueChirho -> Type", "valueChirho"),
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE DataKinds, StandaloneKindSignatures, TypeFamilies #-}}\nmodule FamilyContractChirho where\nimport Data.Kind (Type)\ntype FamilyChirho :: {signature_chirho}\ntype family FamilyChirho valueChirho where\n  FamilyChirho valueChirho = Int\n"
+        );
+        let error_chirho = typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "FamilyContractChirho.hs",
+        )
+        .err()
+        .expect("a family's written head kind must be checked");
+        assert!(
+            error_chirho.to_string().contains(expected_chirho),
+            "{error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn standalone_family_kind_does_not_invent_reduction_arity_or_data_rules_chirho() {
+    let source_chirho = r#"{-# LANGUAGE ConstraintKinds, PolyKinds, StandaloneKindSignatures, TypeFamilies #-}
+module FamilyPoliciesChirho where
+import Data.Kind (Type, Constraint)
+type ConstantChirho :: Type -> Type
+type family ConstantChirho where
+  ConstantChirho = Maybe
+valueChirho :: ConstantChirho Int
+valueChirho = Nothing
+type PredicateChirho :: Type -> Constraint
+type family PredicateChirho valueChirho :: Constraint where
+  PredicateChirho valueChirho = Show valueChirho
+"#;
+    assert_compile_success_chirho("FamilyPoliciesChirho.hs", source_chirho);
+    let invalid_chirho = source_chirho.replace(
+        "type family PredicateChirho valueChirho :: Constraint",
+        "type family PredicateChirho valueChirho :: Type -> Type",
+    );
+    let errors_chirho = typecheck_source_chirho(
+        &invalid_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongFamilyPoliciesChirho.hs",
+    )
+    .err()
+    .expect("an inline result cannot contradict the full head kind");
+    assert!(
+        errors_chirho
+            .to_string()
+            .contains("type family declaration signature"),
+        "{errors_chirho}"
+    );
+}
+
+#[test]
 fn invisible_family_head_binder_is_not_a_visible_equation_argument_chirho() {
     assert_compile_success_chirho(
         "FamilyInvisibleBinderChirho.hs",

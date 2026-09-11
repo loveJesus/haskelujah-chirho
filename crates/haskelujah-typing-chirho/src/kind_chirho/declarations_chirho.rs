@@ -4,22 +4,29 @@
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
 use super::{
-    DataKindSigChirho, DiagnosticChirho, ErrorCodeChirho, KIND_MISMATCH_CODE_CHIRHO,
+    DeclKindSigChirho, DiagnosticChirho, ErrorCodeChirho, KIND_MISMATCH_CODE_CHIRHO,
     KindBindingChirho, KindChirho, KindInferCtxChirho, KindSchemeChirho, SpanChirho, TyVarChirho,
     TypeChirho,
 };
 use std::collections::HashSet;
+
+pub(super) struct PreparedKindHeadChirho {
+    pub(super) complete_scheme_chirho: Option<KindSchemeChirho>,
+    pub(super) complete_tail_chirho: Option<KindChirho>,
+    pub(super) parameters_chirho: Vec<(super::KindVarChirho, KindChirho)>,
+    pub(super) written_variables_chirho: Vec<super::KindVarChirho>,
+}
 
 impl KindInferCtxChirho {
     pub(super) fn infer_data_decl_kind_chirho(
         &mut self,
         name_chirho: &str,
         type_vars_chirho: &[TyVarChirho],
-        kind_sig_chirho: Option<&DataKindSigChirho>,
+        kind_sig_chirho: Option<&DeclKindSigChirho>,
         span_chirho: SpanChirho,
     ) {
-        let standalone_chirho = kind_sig_chirho.and_then(DataKindSigChirho::standalone_chirho);
-        let result_chirho = kind_sig_chirho.and_then(DataKindSigChirho::result_chirho);
+        let standalone_chirho = kind_sig_chirho.and_then(DeclKindSigChirho::standalone_chirho);
+        let result_chirho = kind_sig_chirho.and_then(DeclKindSigChirho::result_chirho);
         // Ordinary unification permits Type/Constraint compatibility, so retain
         // GHC-55233 explicitly on either written contract (one diagnostic).
         if let Some(invalid_chirho) = standalone_chirho
@@ -35,55 +42,17 @@ impl KindInferCtxChirho {
                 ));
         }
 
-        // Standalone binders (including implicitly quantified free kind names)
-        // do not scope over the declaration. Swap only the name cache, O(1),
-        // retaining fresh ids and substitutions; never clone the growing env.
-        let complete_scheme_chirho = standalone_chirho.map(|signature_chirho| {
-            let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
-            let kind_chirho = self.type_to_kind_chirho(signature_chirho);
-            self.kind_var_cache_chirho = outer_names_chirho;
-            KindSchemeChirho::generalize_chirho(self.subst_chirho.apply_chirho(&kind_chirho))
-        });
-
-        let mut complete_tail_chirho = complete_scheme_chirho
-            .as_ref()
-            .map(|scheme_chirho| self.open_kind_scheme_chirho(scheme_chirho, true));
-        let mut parameters_chirho = Vec::with_capacity(type_vars_chirho.len());
-        let mut written_variables_chirho = Vec::new();
-        for variable_chirho in type_vars_chirho {
-            let kind_chirho = variable_chirho
-                .kind_annotation_chirho
-                .as_ref()
-                .map(|annotation_chirho| self.ast_kind_to_kind_ctx_chirho(annotation_chirho))
-                .unwrap_or_else(|| self.fresh_kind_chirho());
-            if variable_chirho.kind_annotation_chirho.is_some() {
-                written_variables_chirho.extend(kind_chirho.free_vars_chirho());
-            }
-            // A head binder is a term as well as a classifier. Later annotations
-            // may refer to it; its own annotation is outside its lexical scope.
-            let identity_chirho = self.fresh_var_chirho();
-            self.kind_var_cache_chirho
-                .insert(variable_chirho.text_chirho().to_owned(), identity_chirho);
-            self.env_chirho.bind_chirho(
-                variable_chirho.text_chirho().to_owned(),
-                kind_chirho.clone(),
-            );
-            if variable_chirho.is_visible_chirho() {
-                if let Some(tail_chirho) = complete_tail_chirho.take() {
-                    self.rigidify_kind_variables_chirho([identity_chirho]);
-                    let binder_term_chirho = self
-                        .subst_chirho
-                        .apply_chirho(&KindChirho::VarChirho(identity_chirho));
-                    complete_tail_chirho = Some(self.consume_complete_head_binder_chirho(
-                        tail_chirho,
-                        &kind_chirho,
-                        &binder_term_chirho,
-                        span_chirho,
-                    ));
-                }
-                parameters_chirho.push((identity_chirho, kind_chirho));
-            }
-        }
+        let PreparedKindHeadChirho {
+            complete_scheme_chirho,
+            complete_tail_chirho,
+            parameters_chirho,
+            mut written_variables_chirho,
+        } = self.prepare_kind_head_chirho(
+            type_vars_chirho,
+            standalone_chirho,
+            span_chirho,
+            "data declaration signature",
+        );
         // Head annotations and the inline tail share identities and remain in
         // scope while the caller checks constructor fields, as ordinary heads do.
         let head_names_chirho: HashSet<_> = self.kind_var_cache_chirho.keys().cloned().collect();
@@ -176,6 +145,74 @@ impl KindInferCtxChirho {
             .bind_entry_chirho(name_chirho.to_owned(), binding_chirho);
     }
 
+    /// Reconcile source head binders with an independently scoped complete
+    /// kind. Data and family declarations share this telescope operation, not
+    /// their result-kind or reduction-arity policies.
+    pub(super) fn prepare_kind_head_chirho(
+        &mut self,
+        type_vars_chirho: &[TyVarChirho],
+        standalone_chirho: Option<&TypeChirho>,
+        span_chirho: SpanChirho,
+        context_chirho: &str,
+    ) -> PreparedKindHeadChirho {
+        // Standalone binders (including implicitly quantified free kind names)
+        // do not scope over the declaration. Swap only the name cache, O(1),
+        // retaining fresh ids and substitutions; never clone the growing env.
+        let complete_scheme_chirho = standalone_chirho.map(|signature_chirho| {
+            let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
+            let kind_chirho = self.type_to_kind_chirho(signature_chirho);
+            self.kind_var_cache_chirho = outer_names_chirho;
+            KindSchemeChirho::generalize_chirho(self.subst_chirho.apply_chirho(&kind_chirho))
+        });
+
+        let mut complete_tail_chirho = complete_scheme_chirho
+            .as_ref()
+            .map(|scheme_chirho| self.open_kind_scheme_chirho(scheme_chirho, true));
+        let mut parameters_chirho = Vec::with_capacity(type_vars_chirho.len());
+        let mut written_variables_chirho = Vec::new();
+        for variable_chirho in type_vars_chirho {
+            let kind_chirho = variable_chirho
+                .kind_annotation_chirho
+                .as_ref()
+                .map(|annotation_chirho| self.ast_kind_to_kind_ctx_chirho(annotation_chirho))
+                .unwrap_or_else(|| self.fresh_kind_chirho());
+            if variable_chirho.kind_annotation_chirho.is_some() {
+                written_variables_chirho.extend(kind_chirho.free_vars_chirho());
+            }
+            // A head binder is a term as well as a classifier. Later annotations
+            // may refer to it; its own annotation is outside its lexical scope.
+            let identity_chirho = self.fresh_var_chirho();
+            self.kind_var_cache_chirho
+                .insert(variable_chirho.text_chirho().to_owned(), identity_chirho);
+            self.env_chirho.bind_chirho(
+                variable_chirho.text_chirho().to_owned(),
+                kind_chirho.clone(),
+            );
+            if variable_chirho.is_visible_chirho() {
+                if let Some(tail_chirho) = complete_tail_chirho.take() {
+                    self.rigidify_kind_variables_chirho([identity_chirho]);
+                    let binder_term_chirho = self
+                        .subst_chirho
+                        .apply_chirho(&KindChirho::VarChirho(identity_chirho));
+                    complete_tail_chirho = Some(self.consume_complete_head_binder_chirho(
+                        tail_chirho,
+                        &kind_chirho,
+                        &binder_term_chirho,
+                        span_chirho,
+                        context_chirho,
+                    ));
+                }
+                parameters_chirho.push((identity_chirho, kind_chirho));
+            }
+        }
+        PreparedKindHeadChirho {
+            complete_scheme_chirho,
+            complete_tail_chirho,
+            parameters_chirho,
+            written_variables_chirho,
+        }
+    }
+
     /// Apply a complete kind telescope to this declaration's rigid head term.
     /// A dependent binder substitutes its term into the remaining contract;
     /// ordinary arrows merely consume an argument. Neither erases dependency.
@@ -185,6 +222,7 @@ impl KindInferCtxChirho {
         classifier_chirho: &KindChirho,
         term_chirho: &KindChirho,
         span_chirho: SpanChirho,
+        context_chirho: &str,
     ) -> KindChirho {
         match self.subst_chirho.apply_chirho(&tail_chirho) {
             KindChirho::DependentChirho {
@@ -194,7 +232,7 @@ impl KindInferCtxChirho {
                 self.unify_chirho(
                     &argument_chirho,
                     classifier_chirho,
-                    "data declaration signature",
+                    context_chirho,
                     span_chirho,
                 );
                 result_chirho.substitute_bound_chirho(term_chirho)
@@ -203,7 +241,7 @@ impl KindInferCtxChirho {
                 self.unify_chirho(
                     &argument_chirho,
                     classifier_chirho,
-                    "data declaration signature",
+                    context_chirho,
                     span_chirho,
                 );
                 *result_chirho
@@ -213,7 +251,7 @@ impl KindInferCtxChirho {
                 self.unify_chirho(
                     &other_chirho,
                     &KindChirho::arrow_chirho(classifier_chirho.clone(), result_chirho.clone()),
-                    "data declaration signature",
+                    context_chirho,
                     span_chirho,
                 );
                 result_chirho

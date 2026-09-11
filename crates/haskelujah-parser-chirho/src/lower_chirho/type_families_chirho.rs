@@ -118,10 +118,11 @@ impl LowerCtxChirho {
                             self.lower_family_result_chirho(n_chirho, child_chirho.start_chirho);
                     } else if saw_double_colon_chirho
                         && !saw_where_chirho
-                        && result_chirho.kind_chirho.is_none()
+                        && result_chirho.kind_sig_chirho.is_none()
                     {
-                        result_chirho.kind_chirho =
-                            Some(self.lower_type_chirho(n_chirho, child_chirho.start_chirho));
+                        result_chirho.kind_sig_chirho = Some(DeclKindSigChirho::ResultChirho(
+                            self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
+                        ));
                         saw_double_colon_chirho = false; // consumed
                     } else if saw_where_chirho && eq_saw_equals_chirho && eq_rhs_chirho.is_none() {
                         eq_rhs_chirho =
@@ -189,8 +190,9 @@ impl LowerCtxChirho {
                 GreenElementChirho::NodeChirho(kind_chirho)
                     if is_type_kind_chirho(kind_chirho.kind_chirho()) =>
                 {
-                    result_chirho.kind_chirho =
-                        Some(self.lower_type_chirho(kind_chirho, child_chirho.start_chirho));
+                    result_chirho.kind_sig_chirho = Some(DeclKindSigChirho::ResultChirho(
+                        self.lower_type_chirho(kind_chirho, child_chirho.start_chirho),
+                    ));
                 }
                 _ => {}
             }

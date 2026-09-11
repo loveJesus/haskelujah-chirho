@@ -216,8 +216,19 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 equations_chirho,
                 ..
             } => {
+                if let Some(signature_chirho) = result_chirho
+                    .kind_sig_chirho
+                    .as_ref()
+                    .and_then(|signature_chirho| signature_chirho.standalone_chirho())
+                {
+                    self.walk_signature_type_chirho(signature_chirho);
+                }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
-                if let Some(result_kind_chirho) = &result_chirho.kind_chirho {
+                if let Some(result_kind_chirho) = result_chirho
+                    .kind_sig_chirho
+                    .as_ref()
+                    .and_then(|signature_chirho| signature_chirho.result_chirho())
+                {
                     self.walk_type_chirho(
                         result_kind_chirho,
                         FreeTyVarPolicyChirho::ImplicitChirho,

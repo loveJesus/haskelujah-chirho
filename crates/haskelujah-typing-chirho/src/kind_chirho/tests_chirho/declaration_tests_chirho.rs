@@ -106,7 +106,7 @@ fn result_kind_prefix_retains_shared_head_kind_identity_chirho() {
             AstKindChirho::VarChirho("kChirho".into()),
         )
     });
-    let sig_chirho = DataKindSigChirho::ResultChirho(arrow_chirho(
+    let sig_chirho = DeclKindSigChirho::ResultChirho(arrow_chirho(
         TypeChirho::VarChirho(name_chirho("kChirho")),
         type_chirho(),
     ));
@@ -150,7 +150,7 @@ fn complete_signature_reconciles_head_kinds_before_constructors_chirho() {
         name_chirho("aChirho"),
         AstKindChirho::StarChirho,
     )];
-    let sig_chirho = DataKindSigChirho::StandaloneChirho {
+    let sig_chirho = DeclKindSigChirho::StandaloneChirho {
         signature_chirho: arrow_chirho(arrow_chirho(type_chirho(), type_chirho()), type_chirho()),
         result_chirho: None,
     };
@@ -173,7 +173,7 @@ fn complete_signature_reconciles_head_kinds_before_constructors_chirho() {
 fn complete_signature_does_not_double_count_head_parameters_chirho() {
     for result_chirho in [None, Some(type_chirho())] {
         let mut ctx_chirho = context_chirho();
-        let sig_chirho = DataKindSigChirho::StandaloneChirho {
+        let sig_chirho = DeclKindSigChirho::StandaloneChirho {
             signature_chirho: arrow_chirho(type_chirho(), type_chirho()),
             result_chirho,
         };
@@ -212,7 +212,7 @@ fn missing_or_contradictory_result_tail_is_rejected_at_declaration_chirho() {
         } else {
             type_chirho()
         };
-        let sig_chirho = DataKindSigChirho::StandaloneChirho {
+        let sig_chirho = DeclKindSigChirho::StandaloneChirho {
             signature_chirho,
             result_chirho,
         };
@@ -239,7 +239,7 @@ fn standalone_implicit_names_do_not_capture_enclosing_kind_identity_chirho() {
     ctx_chirho
         .kind_var_cache_chirho
         .insert("kChirho".into(), enclosing_chirho);
-    let sig_chirho = DataKindSigChirho::StandaloneChirho {
+    let sig_chirho = DeclKindSigChirho::StandaloneChirho {
         signature_chirho: arrow_chirho(
             TypeChirho::VarChirho(name_chirho("kChirho")),
             type_chirho(),
@@ -270,7 +270,7 @@ fn standalone_implicit_names_do_not_capture_enclosing_kind_identity_chirho() {
 
 #[test]
 fn both_constraint_contracts_report_once_and_keep_local_shadow_boundary_chirho() {
-    let sig_chirho = DataKindSigChirho::StandaloneChirho {
+    let sig_chirho = DeclKindSigChirho::StandaloneChirho {
         signature_chirho: TypeChirho::ConChirho(name_chirho("Constraint")),
         result_chirho: Some(TypeChirho::ConChirho(name_chirho("Constraint"))),
     };

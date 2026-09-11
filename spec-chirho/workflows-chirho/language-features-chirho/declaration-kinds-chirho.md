@@ -4,7 +4,7 @@
 
 An inline `data T a :: K` annotation describes only the remaining result kind.
 A separate `type T :: K` describes the complete kind in a separate lexical
-scope. `DataKindSigChirho` retains either or both; absence is not a fabricated
+scope. `DeclKindSigChirho` retains either or both; absence is not a fabricated
 annotation. This distinction is shared by data and newtype declarations.
 
 ```mermaid
@@ -315,6 +315,17 @@ declarations are checked. Kind and type consumers adapt their terms to one
 ordered matcher: a blocked earlier row cannot select a later catch-all, and a
 stuck family is not nominally injective.
 
+The family's kind slot uses the shared `DeclKindSigChirho` contract, so complete
+standalone signatures are attached as complete heads, never inline tails.
+Naming visits a complete signature outside the declaration-header scope; both
+written contracts contribute dependency edges. `prepare_kind_head_chirho`
+shares telescope application and binder reconciliation with data/newtype, while
+family declarations retain their own result-kind and reduction-arity policy.
+For example a zero-parameter family may return Maybe, and a family may return
+Constraint; neither is a data-declaration rule. A full signature does not add
+equation arguments. Ordinary family inference remains separate when no complete
+signature is written. This does not supply missing hidden argument consumers.
+
 ```mermaid
 flowchart TD
   FamilyMetadataChirho[Retained result binder kind dependency and closed form] --> FamilyScopeChirho[Fresh equation scope and classifier checking]
@@ -397,7 +408,7 @@ unit tasklist, not inferred from these source-level controls.
 Still outside scope: arbitrary promoted/named/dependent kinds, imported
 authoritative kind metadata, and the
 separate data-family/type-data/refined-GADT-result AST decisions.
-Symbolic standalone signatures, attachment to non-data/newtype declarations,
+Symbolic standalone signatures, attachment to aliases/classes,
 and duplicate/orphan signature diagnostics remain separate parser limitations.
 The representation repair is not full TypeAbstractions checking: inferred versus
 specified binder matching, dependent constructor/selector quantifier metadata,

@@ -444,12 +444,16 @@ fn family_result_kind_resolves_type_namespace_names_chirho() {
         name_chirho: name_chirho("FamilyChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         result_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyResultChirho {
-            kind_chirho: Some(TypeChirho::FunChirho {
-                arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
-                mult_chirho: None,
-                result_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Constraint"))),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }),
+            kind_sig_chirho: Some(
+                haskelujah_ast_chirho::decl_chirho::DeclKindSigChirho::ResultChirho(
+                    TypeChirho::FunChirho {
+                        arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
+                        mult_chirho: None,
+                        result_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Constraint"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                ),
+            ),
             ..Default::default()
         },
         closed_chirho: false,
@@ -533,7 +537,7 @@ fn inline_data_kind_forall_still_implicitly_binds_free_kind_variables_chirho() {
         constructors_chirho: vec![],
         deriving_chirho: vec![],
         kind_sig_chirho: Some(
-            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(
+            haskelujah_ast_chirho::decl_chirho::DeclKindSigChirho::ResultChirho(
                 TypeChirho::ForallChirho {
                     vars_chirho: vec![tyvar_chirho("aChirho")],
                     body_chirho: Box::new(TypeChirho::FunChirho {
@@ -583,7 +587,7 @@ fn both_declaration_kind_annotations_are_checked_chirho() {
         constructors_chirho: vec![],
         deriving_chirho: vec![],
         kind_sig_chirho: Some(
-            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::StandaloneChirho {
+            haskelujah_ast_chirho::decl_chirho::DeclKindSigChirho::StandaloneChirho {
                 signature_chirho: TypeChirho::ConChirho(name_chirho("MissingCompleteChirho")),
                 result_chirho: Some(TypeChirho::ConChirho(name_chirho("MissingTailChirho"))),
             },
@@ -616,7 +620,7 @@ fn standalone_kind_forall_cannot_capture_a_declaration_head_binder_chirho() {
         constructors_chirho: vec![],
         deriving_chirho: vec![],
         kind_sig_chirho: Some(
-            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::StandaloneChirho {
+            haskelujah_ast_chirho::decl_chirho::DeclKindSigChirho::StandaloneChirho {
                 signature_chirho: signature_chirho.clone(),
                 result_chirho: Some(signature_chirho),
             },
@@ -635,7 +639,7 @@ fn standalone_kind_forall_cannot_capture_a_declaration_head_binder_chirho() {
             .unwrap()
             .clone();
         *kind_sig_chirho = Some(
-            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(result_chirho),
+            haskelujah_ast_chirho::decl_chirho::DeclKindSigChirho::ResultChirho(result_chirho),
         );
     }
     assert!(

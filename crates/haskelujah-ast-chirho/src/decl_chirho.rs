@@ -49,7 +49,8 @@ pub struct TypeFamilyEquationChirho {
 /// injectivity; equation validation must establish that separate annotation.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TypeFamilyResultChirho {
-    pub kind_chirho: Option<TypeChirho>,
+    /// Full head and inline result contracts have distinct scopes.
+    pub kind_sig_chirho: Option<DeclKindSigChirho>,
     pub binder_chirho: Option<NameChirho>,
     pub injectivity_chirho: Option<TypeFamilyInjectivityChirho>,
 }
@@ -140,12 +141,12 @@ impl Deref for TyVarChirho {
     }
 }
 
-/// Written kind contracts on a data/newtype declaration. A result annotation
+/// Written kind contracts on a declaration. A result annotation
 /// follows the declaration's binders; a standalone signature describes the
 /// complete constructor kind in an independent lexical scope. Keep both when
 /// both are written. See language-features-chirho/declaration-kinds-chirho.
 #[derive(Debug, Clone, PartialEq)]
-pub enum DataKindSigChirho {
+pub enum DeclKindSigChirho {
     /// `data T a :: K where`: only the kind remaining after `a`.
     ResultChirho(TypeChirho),
     /// `type T :: K`: the complete kind, optionally accompanied by an inline tail.
@@ -157,7 +158,7 @@ pub enum DataKindSigChirho {
     },
 }
 
-impl DataKindSigChirho {
+impl DeclKindSigChirho {
     /// The explicitly written inline result kind, never a synthesized tail.
     pub fn result_chirho(&self) -> Option<&TypeChirho> {
         match self {
@@ -218,7 +219,7 @@ pub enum DeclChirho {
         /// Classes listed in the deriving clause.
         deriving_chirho: Vec<NameChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
-        kind_sig_chirho: Option<DataKindSigChirho>,
+        kind_sig_chirho: Option<DeclKindSigChirho>,
         /// Span covering the whole data declaration.
         span_chirho: SpanChirho,
     },
@@ -233,7 +234,7 @@ pub enum DeclChirho {
         /// Classes listed in the deriving clause.
         deriving_chirho: Vec<NameChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
-        kind_sig_chirho: Option<DataKindSigChirho>,
+        kind_sig_chirho: Option<DeclKindSigChirho>,
         /// Span covering the whole newtype declaration.
         span_chirho: SpanChirho,
     },

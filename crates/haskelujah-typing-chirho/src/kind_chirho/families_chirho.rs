@@ -21,10 +21,65 @@ impl KindInferCtxChirho {
         &mut self,
         name_chirho: &str,
         type_vars_chirho: &[TyVarChirho],
-        result_kind_chirho: Option<&TypeChirho>,
+        kind_sig_chirho: Option<&DeclKindSigChirho>,
         span_chirho: SpanChirho,
         poly_kinds_enabled_chirho: bool,
     ) {
+        if let Some(standalone_chirho) =
+            kind_sig_chirho.and_then(DeclKindSigChirho::standalone_chirho)
+        {
+            let head_chirho = self.prepare_kind_head_chirho(
+                type_vars_chirho,
+                Some(standalone_chirho),
+                span_chirho,
+                "type family declaration signature",
+            );
+            if let Some(result_chirho) = kind_sig_chirho.and_then(DeclKindSigChirho::result_chirho)
+            {
+                let (result_kind_chirho, written_chirho, _) =
+                    self.elaborate_inline_kind_chirho(result_chirho);
+                self.unify_chirho(
+                    &head_chirho
+                        .complete_tail_chirho
+                        .expect("complete head has a tail"),
+                    &result_kind_chirho,
+                    "type family declaration signature",
+                    span_chirho,
+                );
+                self.pending_written_kinds_chirho.extend(
+                    written_chirho
+                        .into_iter()
+                        .map(|variable_chirho| (variable_chirho, span_chirho)),
+                );
+            }
+            self.pending_written_kinds_chirho.extend(
+                head_chirho
+                    .written_variables_chirho
+                    .into_iter()
+                    .map(|variable_chirho| (variable_chirho, span_chirho)),
+            );
+            let binding_chirho = KindBindingChirho::PolyChirho(
+                head_chirho
+                    .complete_scheme_chirho
+                    .expect("complete signature has a scheme"),
+            );
+            if let Some(existing_chirho) =
+                self.env_chirho.lookup_binding_chirho(name_chirho).cloned()
+            {
+                let existing_chirho = self.instantiate_binding_chirho(&existing_chirho);
+                let kind_chirho = self.instantiate_binding_chirho(&binding_chirho);
+                self.unify_chirho(
+                    &existing_chirho,
+                    &kind_chirho,
+                    "type family declaration",
+                    span_chirho,
+                );
+            }
+            self.env_chirho
+                .bind_entry_chirho(name_chirho.to_owned(), binding_chirho);
+            return;
+        }
+        let result_kind_chirho = kind_sig_chirho.and_then(DeclKindSigChirho::result_chirho);
         let mut param_kinds_chirho = Vec::new();
         for tv_chirho in type_vars_chirho {
             let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {

@@ -82,8 +82,8 @@ T12045a/T14010 remain red. The follow-up repairs equation scope, anonymous
 patterns, invisible family binders, vacuous dependent arrows and StarIsType.
 Seven of those ten recover in focused checks; no updated full count is claimed.
 Current parser349, naming136, typing363, integration79 and canaries7 pass.
-The current full driver gate is still running; do not replace that with its
-green focused reruns. Eighteen GHC/candidate verdict pairs agree. Main is held.
+The full driver gate completed1772/1772 with zero exclusions on45c4a108.
+Eighteen GHC/candidate verdict pairs agree. Main is held.
 
 At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
 returned a provider usage-limit error instead of a result. No retry is scheduled.
@@ -963,7 +963,9 @@ Eighteen fresh GHC9.14.1/candidate checks agree on verdicts, with source hashes
 and diagnostics in `test-data-chirho/kind-oracles-chirho/family-followup-chirho.jsonl`.
 These are typecheck observations, not eighteen execution claims. Current
 parser349/naming136/typing363/integration79/canaries7 pass with zero exclusions;
-full driver is pending. Format check passes. All-target scoped clippy exits0
+full driver1772 passes (1104.48s, three test threads, actual Cargo0).
+That count moves one test from lib to integration, not to an ignore/filter.
+Format check passes. All-target scoped clippy exits0
 with559 warning messages (417 distinct JSON diagnostics), not zero warnings.
 
 Seven focused recoveries: T10776, T16995, T17594f, T20241, T22560d, T22762 and
@@ -980,3 +982,32 @@ name known GHC issues, not invalid Haskell. T14761c is broken only in named
 coverage/profiling/optimized ways; InstanceGivenOverlap2 uses compile_fail.
 No denominator, membership, label policy, main or DB changes follow from this
 audit. These repairs are still an isolated checkpoint, not a final landing.
+
+### Complete family-head contract, reversible next brick
+
+45c4a108 is pushed and remote-exact; local tag family-head-contract-before-chirho
+bounds this next change. Reuse the existing complete/result declaration-kind
+shape under the general name DeclKindSigChirho, and retype the family's kind
+slot to carry it. A complete family kind is not its result annotation and
+does not determine reduction arity. Naming visits the signature independently
+of header binders; dependency scheduling retains both contracts. Extract the
+existing complete-head binder reconciliation for data and families to share,
+while keeping data-only return-kind rules and ordinary family inference distinct.
+Confidence medium; reversal is the isolated checkpoint. No new dependency,
+data-family-instance representation, higher-rank family reduction or publication
+authority is implied. Prove source retention, a dependent data-family head,
+contradictory result kinds and missing type names before another full diagnostic.
+
+The two new driver tests were red0/2 before this repair and green2/2 afterward.
+Further controls preserve both written spans, distinguish standalone forall
+scope from header scope, allow a zero-argument family returning Maybe, and allow
+a Constraint-valued family while rejecting a contradictory inline arrow kind.
+Seven fresh GHC9.14.1/CLI verdict pairs agree; the four rejections also name the
+same contracts/locations. Evidence: kind-oracles-chirho/family-head-contracts-chirho.jsonl.
+Parser350, naming136, typing363, integration82 and canaries7 pass, zero exclusions.
+Explicit CLI SHA25634dea8604503cc7c4cef3e819e8f1f0f49270ae29f506ea84a777a67e59bd42f.
+CoerceToVDQ checks successfully on that CLI; this is not a full-corpus count.
+Clippy on parser/naming/typing all-targets exits0 with596 warning messages,
+417 distinct JSON diagnostics; no zero-warning claim. The prior full driver1772
+belongs to45c4a108, before this head repair. Freeze and full diagnostic are next;
+main, published artifacts, the rounding decision and canonical DB remain held.

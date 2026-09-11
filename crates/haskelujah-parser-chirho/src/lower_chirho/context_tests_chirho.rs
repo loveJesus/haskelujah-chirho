@@ -125,7 +125,7 @@ fn class_and_family_binder_groups_do_not_change_head_arity_chirho() {
         ["fChirho", "xsChirho", "rChirho", "aChirho"]
     );
     assert!(
-        matches!(&result_chirho.kind_chirho, Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Constraint")
+        matches!(result_chirho.kind_sig_chirho.as_ref().and_then(DeclKindSigChirho::result_chirho), Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Constraint")
     );
     let DeclChirho::ClassDeclChirho {
         type_vars_chirho, ..

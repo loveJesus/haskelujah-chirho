@@ -4,6 +4,49 @@
 use super::*;
 
 #[test]
+fn standalone_and_result_family_contracts_keep_independent_spans_chirho() {
+    for declaration_chirho in ["type family", "data family"] {
+        let source_chirho = format!(
+            "module FamilyChirho where\ntype FamilyChirho :: forall kindChirho. kindChirho -> Type\n{declaration_chirho} FamilyChirho (valueChirho :: localChirho) :: Type\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let module_chirho = lower_module_chirho(
+            &crate::cst_parser_chirho::parse_to_cst_chirho(&source_chirho, file_chirho),
+            file_chirho,
+        );
+        let DeclChirho::TypeFamilyDeclChirho {
+            type_vars_chirho,
+            result_chirho,
+            equations_chirho,
+            ..
+        } = &module_chirho.decls_chirho[0]
+        else {
+            panic!("{module_chirho:?}");
+        };
+        let signature_chirho = result_chirho.kind_sig_chirho.as_ref().unwrap();
+        for (kind_chirho, written_chirho) in [
+            (
+                signature_chirho.standalone_chirho().unwrap(),
+                "forall kindChirho. kindChirho -> Type",
+            ),
+            (signature_chirho.result_chirho().unwrap(), "Type"),
+        ] {
+            let span_chirho = kind_chirho.span_chirho();
+            assert_eq!(
+                &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+                    ..span_chirho.end_chirho().as_usize_chirho()],
+                written_chirho
+            );
+        }
+        assert_eq!(type_vars_chirho.len(), 1);
+        assert!(equations_chirho.is_empty());
+        assert!(
+            matches!(&module_chirho.decls_chirho[1], DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "canaryChirho")
+        );
+    }
+}
+
+#[test]
 fn family_head_binders_preserve_invisible_scope_chirho() {
     for invisible_chirho in ["@kChirho", "@(kChirho :: Type)"] {
         let source_chirho = format!(
@@ -53,7 +96,7 @@ fn family_result_binder_kind_and_dependency_survive_lowering_chirho() {
         "resultChirho"
     );
     assert!(
-        matches!(&result_chirho.kind_chirho, Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Type")
+        matches!(result_chirho.kind_sig_chirho.as_ref().and_then(DeclKindSigChirho::result_chirho), Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Type")
     );
     let dependency_chirho = result_chirho.injectivity_chirho.as_ref().unwrap();
     assert_eq!(

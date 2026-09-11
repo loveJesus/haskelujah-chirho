@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-use super::{DataKindSigChirho, DeclChirho, FileIdChirho, TypeChirho, lower_module_chirho};
+use super::{DeclChirho, DeclKindSigChirho, FileIdChirho, TypeChirho, lower_module_chirho};
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
 #[test]
@@ -130,7 +130,7 @@ fn kind_signature_chirho(
     keyword_chirho: &str,
     complete_chirho: bool,
     inline_chirho: bool,
-) -> DataKindSigChirho {
+) -> DeclKindSigChirho {
     let standalone_chirho = if complete_chirho {
         "type BoxChirho :: Type -> Type\n"
     } else {
@@ -250,7 +250,7 @@ fn composite_inline_kind_span_covers_only_the_written_tail_chirho() {
                     kind_sig_chirho, ..
                 } => kind_sig_chirho
                     .as_ref()
-                    .and_then(DataKindSigChirho::result_chirho),
+                    .and_then(DeclKindSigChirho::result_chirho),
                 _ => None,
             })
             .expect("the written result kind must survive");

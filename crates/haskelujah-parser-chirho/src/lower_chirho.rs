@@ -31,7 +31,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use haskelujah_ast_chirho::decl_chirho::{
-    AstKindChirho, ConDeclChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho, FixityChirho,
+    AstKindChirho, ConDeclChirho, DeclChirho, DeclKindSigChirho, FieldDeclChirho, FixityChirho,
     ForeignDirectionChirho, StrictnessChirho, TyVarChirho, TypeFamilyEquationChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{
@@ -2000,7 +2000,7 @@ impl LowerCtxChirho {
                             j_chirho += 1;
                         }
                         if !kind_sig_children_chirho.is_empty() {
-                            kind_sig_chirho = Some(DataKindSigChirho::ResultChirho(
+                            kind_sig_chirho = Some(DeclKindSigChirho::ResultChirho(
                                 self.declaration_kind_from_children_chirho(
                                     &kind_sig_children_chirho,
                                     span_chirho,
@@ -2680,7 +2680,7 @@ impl LowerCtxChirho {
         let kind_sig_chirho = if kind_sig_children_chirho.is_empty() {
             None
         } else {
-            Some(DataKindSigChirho::ResultChirho(
+            Some(DeclKindSigChirho::ResultChirho(
                 self.declaration_kind_from_children_chirho(&kind_sig_children_chirho, span_chirho),
             ))
         };
@@ -13274,7 +13274,7 @@ data MyList a = Nil | Cons a (MyList a)\n",
         };
         let kind_sig_chirho = kind_sig_chirho
             .as_ref()
-            .and_then(DataKindSigChirho::standalone_chirho)
+            .and_then(DeclKindSigChirho::standalone_chirho)
             .expect("standalone kind sig should attach to data declaration");
         assert_eq!(type_shape_chirho(kind_sig_chirho), "(* -> *)");
     }
@@ -13297,7 +13297,7 @@ data AppChirho :: forall (fChirho :: Type -> Type). Type -> Type where\n",
         };
         let kind_sig_chirho = kind_sig_chirho
             .as_ref()
-            .and_then(DataKindSigChirho::result_chirho)
+            .and_then(DeclKindSigChirho::result_chirho)
             .expect("inline forall result kind signature should lower");
         assert_eq!(
             type_shape_chirho(kind_sig_chirho),
@@ -14114,7 +14114,7 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
             } => {
                 assert_eq!(name_chirho.text_chirho(), "G");
                 assert!(
-                    result_chirho.kind_chirho.is_some(),
+                    result_chirho.kind_sig_chirho.is_some(),
                     "should have result kind annotation"
                 );
             }
