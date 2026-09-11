@@ -33,6 +33,8 @@ pub(super) fn builtin_term_chirho(name_chirho: &str) -> Option<KindChirho> {
         "UnliftedType" => runtime_type_chirho(boxed_rep_chirho("Unlifted")),
         "Nat" => KindChirho::ConChirho("GHC.TypeNats.Nat".into()),
         "Symbol" => KindChirho::ConChirho("GHC.TypeLits.Symbol".into()),
+        ":~:" => KindChirho::ConChirho("Data.Type.Equality.:~:".into()),
+        "Refl" => KindChirho::ConChirho("Data.Type.Equality.Refl".into()),
         "Bool" | "Char" | "Ordering" | "RuntimeRep" | "Levity" | "Multiplicity" | "BoxedRep"
         | "Lifted" | "Unlifted" | "IntRep" | "WordRep" | "Int8Rep" | "Word8Rep" | "Int16Rep"
         | "Word16Rep" | "Int32Rep" | "Word32Rep" | "Int64Rep" | "Word64Rep" | "AddrRep"
@@ -204,6 +206,7 @@ impl KindInferCtxChirho {
                             | "GHC.TypeLits"
                             | "GHC.TypeNats"
                             | "Data.Kind"
+                            | "Data.Type.Equality"
                     )
                 })
         };

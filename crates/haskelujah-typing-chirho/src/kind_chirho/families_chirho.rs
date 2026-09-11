@@ -177,26 +177,33 @@ impl KindInferCtxChirho {
         }
 
         let canonical_chirho = self.canonical_kind_name_chirho(name_chirho);
-        let family_kind_chirho = self.subst_chirho.apply_chirho(
-            self.env_chirho
-                .lookup_chirho(&canonical_chirho)
-                .expect("family head prepared"),
-        );
-        // Written kind names can be matched implicitly by equations, unlike
-        // unsolved classifier holes which equations still need to determine.
-        let source_variables_chirho: std::collections::HashSet<_> =
-            self.kind_var_cache_chirho.values().copied().collect();
-        let quantified_chirho: Vec<_> = family_kind_chirho
-            .free_vars_chirho()
-            .into_iter()
-            .filter(|variable_chirho| source_variables_chirho.contains(variable_chirho))
-            .collect();
-        let represented_inputs_chirho = quantified_chirho.is_empty()
-            && binders_chirho.iter().all(TyVarChirho::is_visible_chirho);
-        let family_binding_chirho = KindBindingChirho::PolyChirho(KindSchemeChirho {
-            quantified_chirho,
-            body_chirho: family_kind_chirho,
-        });
+        let scheme_chirho = match self
+            .env_chirho
+            .lookup_binding_chirho(&canonical_chirho)
+            .expect("family head prepared")
+        {
+            // A complete signature owns its quantifiers. Header names have
+            // independently scoped identities and cannot reconstruct them.
+            KindBindingChirho::PolyChirho(scheme_chirho) => scheme_chirho.clone(),
+            KindBindingChirho::MonoChirho(kind_chirho) => {
+                let body_chirho = self.subst_chirho.apply_chirho(kind_chirho);
+                // Written kind names may be matched by equations, unlike
+                // classifier holes which the equation bodies must determine.
+                let source_variables_chirho: std::collections::HashSet<_> =
+                    self.kind_var_cache_chirho.values().copied().collect();
+                let quantified_chirho = body_chirho
+                    .free_vars_chirho()
+                    .into_iter()
+                    .filter(|variable_chirho| source_variables_chirho.contains(variable_chirho))
+                    .collect();
+                KindSchemeChirho {
+                    quantified_chirho,
+                    body_chirho,
+                }
+            }
+        };
+        let mut represented_inputs_chirho =
+            binders_chirho.iter().all(TyVarChirho::is_visible_chirho);
         let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
         let mut rows_chirho = Vec::new();
         for equation_chirho in equations_chirho {
@@ -224,20 +231,21 @@ impl KindInferCtxChirho {
                 self.env_chirho.hide_chirho(name_chirho);
             }
             self.kind_var_cache_chirho.clear();
-            let mut classifier_chirho = self.instantiate_binding_chirho(&family_binding_chirho);
+            let (mut classifier_chirho, hidden_chirho) =
+                self.open_kind_scheme_parts_chirho(&scheme_chirho, false);
             let mut patterns_chirho = Vec::new();
             let mut represented_chirho = true;
             for argument_chirho in &equation_chirho.lhs_types_chirho {
                 let argument_kind_chirho = self.infer_type_kind_chirho(argument_chirho);
-                let result_kind_chirho = self.fresh_kind_chirho();
-                self.unify_chirho(
-                    &classifier_chirho,
-                    &KindChirho::arrow_chirho(argument_kind_chirho, result_kind_chirho.clone()),
-                    "family equation argument",
+                let pattern_chirho = self.family_term_chirho(argument_chirho);
+                classifier_chirho = self.consume_kind_argument_chirho(
+                    classifier_chirho,
+                    &argument_kind_chirho,
+                    pattern_chirho.as_ref(),
                     argument_chirho.span_chirho(),
+                    "family equation argument",
                 );
-                classifier_chirho = result_kind_chirho;
-                if let Some(pattern_chirho) = self.family_term_chirho(argument_chirho) {
+                if let Some(pattern_chirho) = pattern_chirho {
                     patterns_chirho.push(pattern_chirho);
                 } else {
                     represented_chirho = false;
@@ -250,9 +258,42 @@ impl KindInferCtxChirho {
                 "family equation result",
                 equation_chirho.rhs_chirho.span_chirho(),
             );
+            // A visible-only row is sound only when checking the WHOLE row imposes no
+            // condition on any hidden input: each remains distinct and free.
+            // Kind-indexed rows remain unrepresented, never silently projected.
+            let mut hidden_variables_chirho = std::collections::HashSet::new();
+            // A constructor pattern can have its own hidden indices. Until
+            // those are represented too, only wholly variable patterns prove
+            // uniformity without needing a hidden-argument matching spine.
+            if !hidden_chirho.is_empty() {
+                represented_inputs_chirho &= patterns_chirho
+                    .iter()
+                    .all(|pattern_chirho| matches!(pattern_chirho, KindChirho::VarChirho(_)));
+            }
+            for argument_chirho in &hidden_chirho {
+                if let KindChirho::VarChirho(variable_chirho) =
+                    self.subst_chirho.apply_chirho(argument_chirho)
+                {
+                    represented_inputs_chirho &= hidden_variables_chirho.insert(variable_chirho);
+                } else {
+                    represented_inputs_chirho = false;
+                }
+            }
             if let Some(rhs_chirho) = self.family_term_chirho(&equation_chirho.rhs_chirho)
                 && represented_chirho
             {
+                let close_chirho =
+                    |term_chirho: &KindChirho| self.subst_chirho.apply_chirho(term_chirho);
+                let patterns_chirho: Vec<_> = patterns_chirho.iter().map(close_chirho).collect();
+                let rhs_chirho = close_chirho(&rhs_chirho);
+                let bound_chirho: std::collections::HashSet<_> = patterns_chirho
+                    .iter()
+                    .flat_map(KindChirho::free_vars_chirho)
+                    .collect();
+                represented_inputs_chirho &= rhs_chirho
+                    .free_vars_chirho()
+                    .iter()
+                    .all(|variable_chirho| bound_chirho.contains(variable_chirho));
                 rows_chirho.push((patterns_chirho, rhs_chirho));
             }
             self.env_chirho.end_scope_chirho();
@@ -368,7 +409,7 @@ impl KindInferCtxChirho {
         true
     }
 
-    fn family_term_chirho(&mut self, ty_chirho: &TypeChirho) -> Option<KindChirho> {
+    pub(super) fn family_term_chirho(&mut self, ty_chirho: &TypeChirho) -> Option<KindChirho> {
         // A synonym is transparent to injectivity. Keeping `Erase a` as a
         // nominal application would falsely prove that its result determines a.
         if let Some((name_chirho, expanded_chirho)) =

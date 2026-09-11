@@ -101,7 +101,11 @@ impl KindInferCtxChirho {
                         );
                     }
                 }
-                ConDeclChirho::GadtChirho { ty_chirho, .. } => {
+                ConDeclChirho::GadtChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
+                } => {
                     // GADT constructor type variables are independently quantified;
                     // declaration-head names do not scope over their signatures.
                     self.env_chirho.begin_scope_chirho();
@@ -109,16 +113,56 @@ impl KindInferCtxChirho {
                         self.env_chirho.hide_chirho(variable_chirho.text_chirho());
                     }
                     let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
+                    let errors_before_chirho = self.diagnostics_chirho.error_count_chirho();
                     let kind_chirho = self.infer_type_kind_chirho(ty_chirho);
                     self.check_runtime_kind_chirho(
                         &kind_chirho,
                         "GADT constructor type",
                         ty_chirho.span_chirho(),
                     );
+                    // The promoted classifier is the checked signature's TERM,
+                    // including its result index, not merely its result owner.
+                    // Unsupported contexts/higher-rank fields remain opaque;
+                    // no nearby ordinary constructor contract is fabricated.
+                    if self.diagnostics_chirho.error_count_chirho() == errors_before_chirho
+                        && let Some(promoted_chirho) =
+                            self.promoted_gadt_signature_chirho(ty_chirho)
+                    {
+                        let promoted_chirho = self.subst_chirho.apply_chirho(&promoted_chirho);
+                        self.env_chirho.bind_promoted_generalized_chirho(
+                            name_chirho.text_chirho(),
+                            promoted_chirho.clone(),
+                        );
+                        if let Some(module_chirho) = &self.local_kind_module_chirho {
+                            self.env_chirho.bind_promoted_generalized_chirho(
+                                &format!("{module_chirho}.{}", name_chirho.text_chirho()),
+                                promoted_chirho,
+                            );
+                        }
+                    }
                     self.kind_var_cache_chirho = outer_names_chirho;
                     self.env_chirho.end_scope_chirho();
                 }
             }
+        }
+    }
+
+    fn promoted_gadt_signature_chirho(
+        &mut self,
+        ty_chirho: &super::TypeChirho,
+    ) -> Option<KindChirho> {
+        match ty_chirho {
+            super::TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
+                ctx_chirho.promoted_gadt_signature_chirho(body_chirho)
+            }),
+            super::TypeChirho::ParenChirho { inner_chirho, .. } => {
+                self.promoted_gadt_signature_chirho(inner_chirho)
+            }
+            _ => self.family_term_chirho(ty_chirho),
         }
     }
 }

@@ -8,6 +8,92 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn equation_rows_consume_complete_classifiers_independently_chirho() {
+    for (name_chirho, source_chirho) in [
+        (
+            "FamilyRowClassifiersChirho.hs",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../test-data-chirho/kind-oracles-chirho/FamilyRowClassifiersChirho.hs"
+            )),
+        ),
+        (
+            "FamilyRequiredRowsChirho.hs",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../test-data-chirho/kind-oracles-chirho/FamilyRequiredRowsChirho.hs"
+            )),
+        ),
+        (
+            "FamilyIndexedClassifierChirho.hs",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../test-data-chirho/kind-oracles-chirho/FamilyIndexedClassifierChirho.hs"
+            )),
+        ),
+    ] {
+        assert_compile_success_chirho(name_chirho, source_chirho);
+    }
+}
+
+#[test]
+fn equation_rhs_can_infer_indices_but_cannot_contradict_fixed_ones_chirho() {
+    // GHC accepts both inferred-index declarations, including the wildcard
+    // Cast RHS. Making those row variables rigid would be a false rejection.
+    let inferred_chirho = r#"{-# LANGUAGE PolyKinds, StandaloneKindSignatures, TypeFamilies #-}
+module InferredRowChirho where
+import Data.Kind (Type)
+type PickChirho :: forall kindChirho. kindChirho -> kindChirho
+type family PickChirho valueChirho where
+  PickChirho valueChirho = Int
+"#;
+    assert_compile_success_chirho("InferredRowChirho.hs", inferred_chirho);
+    let required_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/FamilyRequiredRowsChirho.hs"
+    ))
+    .replace("= valueChirho", "= Int");
+    assert_compile_success_chirho("InferredRequiredRowChirho.hs", &required_chirho);
+    let indexed_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/FamilyIndexedClassifierChirho.hs"
+    ));
+    for source_chirho in [
+        required_chirho.replace("CastChirho _ _ Refl", "CastChirho Bool Bool Refl"),
+        indexed_chirho.replace(
+            "ClassifierChirho OnlyChirho = Type",
+            "ClassifierChirho OnlyChirho = Bool",
+        ),
+    ] {
+        let error_chirho = typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "WrongRowChirho.hs",
+        )
+        .err()
+        .expect("the result must have the fixed argument's kind");
+        assert!(
+            error_chirho.to_string().contains("family equation result"),
+            "{error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn local_promoted_equality_preserves_its_own_constructor_contract_chirho() {
+    let source_chirho = r#"{-# LANGUAGE DataKinds, GADTs, PolyKinds, StandaloneKindSignatures, TypeFamilies #-}
+module PromotedLocalEqualityChirho where
+import Data.Kind (Type)
+data RelationChirho (leftChirho :: kindChirho) (rightChirho :: kindChirho) where
+  Refl :: RelationChirho valueChirho valueChirho
+type CastChirho :: forall aChirho bChirho -> RelationChirho aChirho bChirho -> aChirho -> bChirho
+type family CastChirho aChirho bChirho proofChirho valueChirho where
+  CastChirho _ _ Refl valueChirho = valueChirho
+"#;
+    assert_compile_success_chirho("PromotedLocalEqualityChirho.hs", source_chirho);
+}
+
+#[test]
 fn standalone_family_head_keeps_its_dependent_telescope_chirho() {
     assert_compile_success_chirho(
         "FamilyStandaloneHeadChirho.hs",

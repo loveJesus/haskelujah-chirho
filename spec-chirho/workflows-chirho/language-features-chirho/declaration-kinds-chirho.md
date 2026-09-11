@@ -326,10 +326,37 @@ Constraint; neither is a data-declaration rule. A full signature does not add
 equation arguments. Ordinary family inference remains separate when no complete
 signature is written. This does not supply missing hidden argument consumers.
 
+Equation checking instantiates the actual complete scheme for each row. It
+does not reconstruct its quantifiers from independently scoped header names.
+`consume_kind_argument_chirho` applies both declaration and equation arguments:
+a dependent result substitutes the supplied term, an arrow only checks its
+classifier. The same fresh wildcard term feeds both substitution and the stored
+pattern. Unknown dependent terms produce an error, not a guessed result contract.
+
+A row's RHS may infer its implicit indices or anonymous patterns: GHC accepts
+`Pick x = Int` at `Pick :: forall k. k -> k`, and accepts `Cast _ _ Refl x = Int`
+when Cast's explicit indices are inferred as Type. Making all row variables
+rigid is not sound. Fixed Bool indices still reject an Int result. Reduction
+therefore stores the substituted patterns, not their unsolved predecessors.
+An all-variable row may omit hidden inputs only when whole-row checking leaves
+each input distinct and unconstrained and the stored RHS uses only bound
+pattern variables. Otherwise reduction remains unrepresented. Constructor
+patterns with hidden indices are not projected by this limited uniformity proof.
+
+Represented context-free GADT signatures publish their promoted classifiers,
+including the result index, after the constructor has been checked. Unsupported
+contexts and higher-rank fields remain opaque rather than acquiring a fabricated
+owner-only classifier. Local constructors shadow the seeded Refl classifier;
+that classifier carries the same argument on both sides of homogeneous equality.
+Stored type equations and signature conversion share the explicit-promotion name
+constructor, retaining namespace and qualification. This does not claim complete
+unticked promotion resolution or cross-module constructor-kind interfaces.
+
 ```mermaid
 flowchart TD
   FamilyMetadataChirho[Retained result binder kind dependency and closed form] --> FamilyScopeChirho[Fresh equation scope and classifier checking]
-  FamilyScopeChirho --> EquationValidityChirho[Reject polymorphic equations and family patterns]
+  FamilyScopeChirho --> RowSchemeChirho[Instantiate complete scheme and consume dependent arguments]
+  RowSchemeChirho --> EquationValidityChirho[Reject polymorphic equations and family patterns]
   EquationValidityChirho --> TransparentAliasesChirho[Expand synonyms before interpreting equations]
   TransparentAliasesChirho --> FamilyRowsChirho[Register fully represented local closed rows]
   FamilyRowsChirho --> ForwardChirho[Ordered shared reduction with output budget]
@@ -384,7 +411,7 @@ semantics. Source controls exercise both distinctions independently.
 Still unfinished: hidden kind indices, explicit kind applications, open/associated
 kind-family equation checking, higher-rank family result contracts, and complete
 injectivity validation beyond this first-order fragment. No row with missing
-hidden arguments is registered as a visible-only approximation. The retained
+hidden matching conditions is registered as a visible-only approximation. The retained
 metadata is not a claim that those missing consumers now work. Design reference:
 [GHC development guide, type families](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/type_families.html#injective-type-families);
 executable controls use installed GHC9.14.1, not that guide's development version.

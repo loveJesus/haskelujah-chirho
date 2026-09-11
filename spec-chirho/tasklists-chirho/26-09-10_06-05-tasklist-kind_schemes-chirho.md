@@ -85,6 +85,17 @@ Current parser349, naming136, typing363, integration79 and canaries7 pass.
 The full driver gate completed1772/1772 with zero exclusions on45c4a108.
 Eighteen GHC/candidate verdict pairs agree. Main is held.
 
+Latest pushed code2311cd9f has a tenth full diagnostic of883/938
+accept and238/767 reject, one pass each with zero timeouts/unexpected exits and
+stable HEAD/CLI. Eight ninth-pass failures recover, but T12919/T14366 newly
+fail. Main-relative accept+7/-6, so there is still no landable checkpoint.
+The following isolated repairs recover T12919/T14366 in fresh CLI checks;
+their full diagnostic is next. Nine GHC9.14.1/candidate pairs agree, including
+two fixed-kind rejections and two valid inferred-index controls which refuted
+a proposed RHS-rigidity guard. Parser350/naming136/typing363, integration85 and
+canaries7 pass. No new full count or main landing is claimed. See the final
+sections for exact membership, the independent rejection audit and evidence.
+
 At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
 returned a provider usage-limit error instead of a result. No retry is scheduled.
 The prior handoff released SLOT/DB in22046; this continuation reacquired them
@@ -1011,3 +1022,77 @@ Clippy on parser/naming/typing all-targets exits0 with596 warning messages,
 417 distinct JSON diagnostics; no zero-warning claim. The prior full driver1772
 belongs to45c4a108, before this head repair. Freeze and full diagnostic are next;
 main, published artifacts, the rounding decision and canonical DB remain held.
+
+### Tenth diagnostic, complete and still not landable
+
+Frozen2311cd9f and CLI34dea8604503cc7c4cef3e819e8f1f0f49270ae29f506ea84a777a67e59bd42f:
+accept883/938, reject238/767, actual outer runner0/COMPLETE; both axes have
+zero timeouts/unexpected exits, clean HEAD and unchanged binary before/after.
+Versus ninth: +CoerceToVDQ/T10776/T16995/T17594f/T20241/T22560d/T22762/
+type_in_type_hole_fits; -T12919/T14366. The full set confirms the eight
+recoveries but exposes two equation-consumer gaps the focused controls missed.
+T12919 reports an unreduced VC classifier; T14366 cannot consume a required
+dependent argument. These need measured reductions, not signature removal.
+
+Reject+ExplicitSpecificity3/T12803/T15552a/T18640a/T18640b/T5853;
+-CustomTypeErrors05/T22645/T24553. Reasons are under separate read-only review;
+six new errors are not six banked capabilities. Main-relative accept+7/-6:
+T12045a/T12919/T13248/T14010/T14366/T26358 remain regressions.
+Evidence: /private/tmp/haskelujah-family-head-chirho.mGuVQD/diagnostic-head-chirho.log
+and diagnostic-{accept,reject}-chirho/ in that root. The embargo was released
+in22109; SLOT/DB retained. This is not a two-pass landing gate or main change.
+
+### Equation consumers and promotion follow-up
+
+- [x] Three reduced valid sources fail on2311cd9f and pass the repaired candidate.
+- [x] Preserve actual scheme quantifiers per row and consume required arguments by term.
+- [x] Retain promoted GADT result indices and share explicit-promotion type identities.
+- [x] Arbitrate positive and negative controls with GHC before fixing the expectation.
+- [x] Parser350/naming136/typing363, integration85 and canaries7; zero exclusions.
+- [ ] Freeze, commit/push owned paths and run the next complete diagnostic.
+
+The three reductions exposed more than the initially suspected consumer: GADT
+promotion had no result-index contract, and stored equations and signature
+conversion disagreed about the promotion prefix. The shared telescope consumer,
+actual scheme instantiation and checked GADT classifier repair those producers.
+Homogeneous equality's imported Refl classifier expresses reflexivity; the same
+spelling on a local GADT keeps its own contract. No data-family instance or
+unsupported context is fabricated. A duplicate homogeneous-equality seed in an
+intermediate draft was removed; its existing binding now lives with the promoted
+classifier. Two existing digit-grouping warnings in that touched block were fixed.
+
+One important refuted prototype: rigidifying all equation variables before the
+RHS rejects valid Haskell. GHC accepts both Pick x = Int under forall k. k -> k
+and Cast _ _ Refl x = Int, inferring indices. The restriction was removed and
+those controls now prevent its return. Explicit Bool indices reject Int. Any
+visible-only reduction must prove hidden inputs unconstrained after the whole
+row; only wholly variable patterns qualify, with no unbound RHS variables.
+This is a bounded uniformity proof, not complete hidden-index reduction.
+
+The indexed fixture originally reused WitnessChirho as its constructor and type
+name without a quote. GHC rejected it; it was repaired to OnlyWitnessChirho
+before being used as a positive oracle. All nine final pairs agree in verdict;
+the two negatives report the same kind contract, not necessarily identical
+diagnostic ordering. Sources, hashes and diagnostics are retained in
+test-data-chirho/kind-oracles-chirho/family-equation-contracts-chirho.jsonl.
+Full driver1772 still belongs to45c4a108, not this follow-up. No execution count,
+full workspace result, published count, DB closure or main merge follows here.
+Final explicit CLI73e3e94341fbc57fc5feb82a46ca1b7565d3f6bdc2dcba6f2086fda6666217aa;
+nine reference pairs rerun on that binary, actual runner0. Final typing363,
+integration85 and canaries7 rerun, actual Cargo0 and zero exclusions. Format and
+diff checks pass. Scoped all-target clippy exits0 with590 warning messages,
+414 distinct JSON diagnostics, not zero warnings; three prior digit-grouping
+diagnostics disappear through the touched seed cleanup. T12919/T14366 recover
+in fresh focused checks; T12045a/T13248/T14010/T26358 remain red.
+
+### Independent ninth-to-tenth reject audit (Claude2,22111)
+
+The first-error comparison finds matching contracts only for T18640a/T18640b.
+T15552a has the right verdict for adjacent nested-family validity; T12803 and
+T5853 have unrelated kind errors; ExplicitSpecificity3 is rejected by GHC at
+parse time but by the candidate later in kind checking. Thus six count gains
+are not six capabilities. Lost CustomTypeErrors05/T22645/T24553 rejected on
+different lines and rules from GHC; do not restore those accidental reasons.
+This is a source/log audit, not proof that every later diagnostic agrees or
+that GHC's every rejection establishes invalid Haskell. Original evidence:
+/private/tmp/haskelujah-family-head-chirho.mGuVQD/reject-reason-audit-claude2-chirho.md.

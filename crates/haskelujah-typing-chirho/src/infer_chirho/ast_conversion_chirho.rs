@@ -144,7 +144,7 @@ impl InferCtxChirho {
             }
             // DataKinds: promoted constructor is a type-level constant
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                TyChirho::ConChirho(name_chirho.full_name_chirho())
+                promoted_constructor_type_chirho(name_chirho)
             }
             // DataKinds: promoted list is represented as nested type application
             TypeChirho::PromotedListChirho {
@@ -406,7 +406,7 @@ impl SynonymTypeConverterChirho {
                 }
             }
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                TyChirho::ConChirho(format!("'{}", name_chirho.text_chirho()))
+                promoted_constructor_type_chirho(name_chirho)
             }
             TypeChirho::PromotedListChirho {
                 elements_chirho, ..
@@ -438,4 +438,12 @@ impl SynonymTypeConverterChirho {
             TypeChirho::LitChirho { value_chirho, .. } => TyChirho::ConChirho(value_chirho.clone()),
         }
     }
+}
+
+/// Promotion identifies a distinct constructor namespace in both signatures
+/// and stored family equations, preserving qualification in either producer.
+fn promoted_constructor_type_chirho(
+    name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+) -> TyChirho {
+    TyChirho::ConChirho(format!("'{}", name_chirho.full_name_chirho()))
 }

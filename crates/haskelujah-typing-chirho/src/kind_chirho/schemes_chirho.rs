@@ -144,6 +144,15 @@ impl KindInferCtxChirho {
         scheme_chirho: &KindSchemeChirho,
         rigid_chirho: bool,
     ) -> KindChirho {
+        self.open_kind_scheme_parts_chirho(scheme_chirho, rigid_chirho)
+            .0
+    }
+
+    pub(super) fn open_kind_scheme_parts_chirho(
+        &mut self,
+        scheme_chirho: &KindSchemeChirho,
+        rigid_chirho: bool,
+    ) -> (KindChirho, Vec<KindChirho>) {
         let bound_chirho = scheme_chirho.quantified_chirho.iter().copied().collect();
         let body_chirho = apply_scoped_subst_chirho(
             &scheme_chirho.body_chirho,
@@ -151,6 +160,7 @@ impl KindInferCtxChirho {
             &bound_chirho,
         );
         let mut replacement_chirho = KindSubstChirho::empty_chirho();
+        let mut arguments_chirho = Vec::with_capacity(scheme_chirho.quantified_chirho.len());
         for variable_chirho in &scheme_chirho.quantified_chirho {
             let fresh_chirho = self.fresh_var_chirho();
             let kind_chirho = if rigid_chirho {
@@ -161,9 +171,13 @@ impl KindInferCtxChirho {
             };
             replacement_chirho
                 .map_chirho
-                .insert(*variable_chirho, kind_chirho);
+                .insert(*variable_chirho, kind_chirho.clone());
+            arguments_chirho.push(kind_chirho);
         }
-        replacement_chirho.apply_chirho(&body_chirho)
+        (
+            replacement_chirho.apply_chirho(&body_chirho),
+            arguments_chirho,
+        )
     }
 
     pub(super) fn publish_kind_chirho(

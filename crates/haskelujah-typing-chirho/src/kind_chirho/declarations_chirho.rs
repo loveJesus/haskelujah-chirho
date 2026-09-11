@@ -194,10 +194,10 @@ impl KindInferCtxChirho {
                     let binder_term_chirho = self
                         .subst_chirho
                         .apply_chirho(&KindChirho::VarChirho(identity_chirho));
-                    complete_tail_chirho = Some(self.consume_complete_head_binder_chirho(
+                    complete_tail_chirho = Some(self.consume_kind_argument_chirho(
                         tail_chirho,
                         &kind_chirho,
-                        &binder_term_chirho,
+                        Some(&binder_term_chirho),
                         span_chirho,
                         context_chirho,
                     ));
@@ -213,14 +213,14 @@ impl KindInferCtxChirho {
         }
     }
 
-    /// Apply a complete kind telescope to this declaration's rigid head term.
+    /// Apply a kind telescope to a checked declaration or equation argument.
     /// A dependent binder substitutes its term into the remaining contract;
     /// ordinary arrows merely consume an argument. Neither erases dependency.
-    fn consume_complete_head_binder_chirho(
+    pub(super) fn consume_kind_argument_chirho(
         &mut self,
         tail_chirho: KindChirho,
         classifier_chirho: &KindChirho,
-        term_chirho: &KindChirho,
+        term_chirho: Option<&KindChirho>,
         span_chirho: SpanChirho,
         context_chirho: &str,
     ) -> KindChirho {
@@ -235,7 +235,17 @@ impl KindInferCtxChirho {
                     context_chirho,
                     span_chirho,
                 );
-                result_chirho.substitute_bound_chirho(term_chirho)
+                if let Some(term_chirho) = term_chirho {
+                    result_chirho.substitute_bound_chirho(term_chirho)
+                } else {
+                    self.diagnostics_chirho
+                        .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                            ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
+                            format!("unrepresented dependent argument in {context_chirho}"),
+                            span_chirho,
+                        ));
+                    self.fresh_kind_chirho()
+                }
             }
             KindChirho::ArrowChirho(argument_chirho, result_chirho) => {
                 self.unify_chirho(

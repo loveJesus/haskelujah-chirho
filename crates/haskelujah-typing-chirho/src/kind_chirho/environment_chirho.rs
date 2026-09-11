@@ -181,19 +181,8 @@ impl KindEnvChirho {
                 KindChirho::StarChirho,
             ),
         );
-        let equality_kind_var_chirho = KindVarChirho(10_003_1);
-        env_chirho.bind_generalized_chirho(
-            ":~:".to_string(),
-            KindChirho::arrow_n_chirho(
-                vec![
-                    KindChirho::VarChirho(equality_kind_var_chirho),
-                    KindChirho::VarChirho(equality_kind_var_chirho),
-                ],
-                KindChirho::StarChirho,
-            ),
-        );
-        let hetero_eq_left_kind_chirho = KindVarChirho(10_003_2);
-        let hetero_eq_right_kind_chirho = KindVarChirho(10_003_3);
+        let hetero_eq_left_kind_chirho = KindVarChirho(100_032);
+        let hetero_eq_right_kind_chirho = KindVarChirho(100_033);
         env_chirho.bind_generalized_chirho(
             ":~~:".to_string(),
             KindChirho::arrow_n_chirho(
@@ -314,7 +303,32 @@ impl KindEnvChirho {
         );
 
         env_chirho.seed_runtime_kinds_chirho();
+        env_chirho.seed_equality_kinds_chirho();
         env_chirho
+    }
+
+    /// The ordinary imported equality constructor proves reflexivity in its
+    /// promoted classifier too. Local declarations shadow these seed bindings.
+    fn seed_equality_kinds_chirho(&mut self) {
+        let classifier_chirho = KindChirho::VarChirho(KindVarChirho(10_020));
+        let value_chirho = KindChirho::VarChirho(KindVarChirho(10_021));
+        let equality_kind_chirho = KindChirho::arrow_n_chirho(
+            [classifier_chirho.clone(), classifier_chirho],
+            KindChirho::StarChirho,
+        );
+        let reflexivity_chirho = KindChirho::app_chirho(
+            KindChirho::app_chirho(
+                KindChirho::ConChirho("Data.Type.Equality.:~:".into()),
+                value_chirho.clone(),
+            ),
+            value_chirho,
+        );
+        for name_chirho in [":~:", "Data.Type.Equality.:~:"] {
+            self.bind_generalized_chirho(name_chirho.to_owned(), equality_kind_chirho.clone());
+        }
+        for name_chirho in ["Refl", "Data.Type.Equality.Refl"] {
+            self.bind_promoted_generalized_chirho(name_chirho, reflexivity_chirho.clone());
+        }
     }
 
     pub(super) fn bind_promoted_generalized_chirho(
