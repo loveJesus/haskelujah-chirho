@@ -98,10 +98,12 @@ exclusions. Seventeen GHC9.14.1/candidate contract pairs agree; an eighteenth,
 separately labelled annotation observation still disagrees. See the final
 sections for exact membership, remaining representation gaps and evidence.
 
-Newest frozen diagnostic: fdcd3655,885/938 accept and236/767 reject, one pass
-each. No timeout/unexpected exit, clean HEAD and unchanged CLI4933651d before
-and after both axes. Versus eleventh: +SplitWD/T26256a, -T15079 on accept;
-+T18640b,-T15801 on reject. Four main regressions remain, so no landing.
+Newest frozen diagnostic: b362f326,886/938 accept and236/767 reject, one pass
+each. No timeout/unexpected exit, clean HEAD and unchanged CLI5ad93438 before
+and after both axes. Versus twelfth: only T13248 recovers, no accept losses;
+reject sets unchanged. Main-relative accept+7/-3, reject+18/-3. T12045a/T14010/
+T26358 remain accept regressions, so no landing. The full detailed result and
+remaining source-representation work are at the end of this tasklist.
 
 At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
 returned a provider usage-limit error instead of a result. No retry is scheduled.
@@ -1225,3 +1227,41 @@ T13248 passes in the freshly rebuilt CLI. No updated corpus count is claimed
 until this checkpoint's frozen diagnostic; main and the final landing gates
 remain held. General nested inverse solving, hidden inputs and the remaining
 accept regressions are not fixed by proving this dependency composition.
+
+### Thirteenth diagnostic — composed proof, not a landing
+
+b362f326d6997c49a876af1afcb98c21a11755cc is committed, pushed and remote-exact.
+Its frozen one-pass-per-axis diagnostic ran 2026-09-10 23:42:28 through23:46:32
+EDT: accept886/938, reject236/767, actual runner0/COMPLETE, zero timeouts and
+unexpected exits. Clean HEAD and SHA256
+5ad934381d01b3a56ff704d6e4f6d86ce52f89a22036ad050bd634c8e6fa1ff2 were asserted
+before and after both axes. Versus twelfth, T13248 is the only accept change
+and it recovers; the reject membership is unchanged, not just its count.
+
+Against main121d4f2c, accept gains are PolytypeDecomp/RuleEqs/SplitWD/T14451/
+T20922/T26256a/tc124. The three regressions are T12045a/T14010/T26358. The
+baseline set was recomputed from the committed 56-file list and checked to
+contain882 accepted files before comparison. Reject gains by counting rule:
+T10836/T11356/T11563/T11623/T12430/T15799/T16502/T18640a/T18640b/T23162c/
+T23734/T4875/T6018failclosed/T7368a/T9634/UnliftedNewtypesInfinite/tcfail209/
+tcfail225. Losses: T16512a/T23162b/T23162d. The reject baseline is the complement
+of the committed546 wrong accepts, checked to contain221 files. These18 gains
+are not a claim of18 independently matching GHC reasons; the reason audit and
+accidental-verdict distinctions above remain mandatory before any landing.
+
+Evidence: /private/tmp/haskelujah-family-head-chirho.mGuVQD/diagnostic-composition-chirho.log,
+diagnostic-composition-{accept,reject}-chirho/ and diagnostic-composition-chirho.ts.
+Broker22116/22117 bracketed START/DONE. The machine-load embargo is released;
+SLOT/DB remain with this lane and canonical row484 stays open. Main, published
+artifacts, denominators and label policy are unchanged. Full workspace and the
+final two-pass landing gate remain owed.
+
+Next source boundary verified by reading, not implemented: lower_type_chirho's
+AppType arm explicitly drops an @ token and the following type node. A proper
+repair must preserve the explicit application and its span, resolve its type
+names, consume the intended invisible kind binder, and keep hidden family/type
+arguments coherent in consumers. Merely retaining it as an ordinary argument
+or fixing only the parser is not that repair. T15079 separately needs its
+higher-rank local kind classifier; T26358 requires separately scoped equation
+variables and correlated apartness, not name-based identity conflation. None
+of these mechanisms is claimed fixed by this diagnostic checkpoint.
