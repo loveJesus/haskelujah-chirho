@@ -98,6 +98,11 @@ exclusions. Seventeen GHC9.14.1/candidate contract pairs agree; an eighteenth,
 separately labelled annotation observation still disagrees. See the final
 sections for exact membership, remaining representation gaps and evidence.
 
+Newest frozen diagnostic: fdcd3655,885/938 accept and236/767 reject, one pass
+each. No timeout/unexpected exit, clean HEAD and unchanged CLI4933651d before
+and after both axes. Versus eleventh: +SplitWD/T26256a, -T15079 on accept;
++T18640b,-T15801 on reject. Four main regressions remain, so no landing.
+
 At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
 returned a provider usage-limit error instead of a result. No retry is scheduled.
 The prior handoff released SLOT/DB in22046; this continuation reacquired them
@@ -1158,3 +1163,65 @@ includes were updated before the full focused gates. Clippy exits0 with590
 warning messages/414 distinct diagnostics, unchanged, not zero warnings.
 Full driver1772 still belongs to45c4a108; full workspace and final two-pass
 landing gates remain owed. Freeze and next full diagnostic are next.
+
+### Twelfth diagnostic and composed-injectivity decision
+
+fdcd3655 is committed, pushed and remote-exact. The twelfth diagnostic completed
+885/938 accept and236/767 reject with actual runner0/COMPLETE, no timeouts or
+unexpected exits, clean source and SHA256
+4933651da2f53bbb2fa298501730104c9b0c1341b478760687f4623a6b745f50 unchanged.
+Accept+SplitWD/T26256a,-T15079 versus eleventh; reject+T18640b,-T15801.
+The unchanged reject total hides a different set. T18640b's result-dependency
+contract is recovered. T15801 formerly failed in its line23 superclass; GHC's
+GHC-18872 is about nominal roles in the line52 instance, not that old reason.
+T15079 now exposes a higher-rank local classifier: c at forall i. i -> Type
+is used at two distinct kinds. Its separate complete operator signature now
+survives, so previously merged kinds no longer hide that missing binder contract.
+This is still open, not a claim that the whole file was right previously.
+Evidence: /private/tmp/haskelujah-family-head-chirho.mGuVQD/diagnostic-head-followup-chirho.log
+and diagnostic-head-followup-{accept,reject}-chirho/. Embargo released22115;
+SLOT/DB retained. Main and its four-regression gate stay unchanged.
+
+Next reversible decision: prove a single covering family equation by composing
+already validated injective argument positions. Existing blanket family-headed
+RHS rejection blocks T13248's Bar(Foo x) even though Foo and Bar have independently
+validated dependencies. Place the bounded proof in the existing shared family
+validator; no AST/dependency direction change or recursive speculative validation.
+Only registered, arity-matched proofs are eligible. Missing proofs, a non-injective
+inner family, uncovered patterns, and multi-row family-result interactions remain
+unproved/rejected, never permission to project an argument. Confidence medium;
+fdcd3655 bounds reversal. Test the actual proof as well as declaration acceptance.
+GHC9.14.1's blanket family-headed ban is an explicitly recorded difference; a
+constructor-wrapped equivalent and negative erasure controls arbitrate the
+composition property independently. No corpus gain or hidden-argument support
+is claimed before measurement. T12045a/T14010/T26358 and T15079 remain separate.
+
+The covering-composition driver control was red before the implementation and
+green afterward. An initial exact-filter invocation ran zero tests; it was not
+counted. The corrected fully qualified invocation ran one and failed at the
+family-headed RHS, then passed after the proof. Expanding the negative to
+Either () (Wrap (Erase x)) revealed a second gap: tracing showed rows=[] because
+family-term conversion did not represent the unit tuple. Both signature terms
+and family terms now share tuple constructor composition. The negative then
+rejects for injectivity instead of satisfying a test by not being checked.
+The final control also checks ordinary tuple wrapping and the wrong concrete
+result type. Neither wrapping nor erasure is inferred from an error-count total.
+
+Two generic proof tests check every required dependency link, arity, an empty
+injectivity set, and budget exhaustion returning unproved. Full typing365,
+driver integration89 and canaries7 pass with zero ignored/filtered; the expanded
+tuple control also passes. The explicit CLI build is current, SHA256
+5ad934381d01b3a56ff704d6e4f6d86ce52f89a22036ad050bd634c8e6fa1ff2.
+Eight bounded GHC9.14.1/candidate observations are stored in
+kind-oracles-chirho/family-equations-chirho/composed-injectivity-chirho.jsonl:
+six agree in verdict and two intentionally differ (T13248 and the reduced
+family-headed composition). The latter are not described as GHC-accepted.
+GHC accepts both constructor-wrapped forms and rejects their erasing mutations.
+The wrong-result unwrapped reference still stops at GHC's family-head ban;
+only our diagnostic reaches that wrong result, as the record states.
+Scoped typing all-target clippy exits0 with107 messages/56 distinct diagnostics,
+none on the changed family/kind files; this is not a zero-warning claim.
+T13248 passes in the freshly rebuilt CLI. No updated corpus count is claimed
+until this checkpoint's frozen diagnostic; main and the final landing gates
+remain held. General nested inverse solving, hidden inputs and the remaining
+accept regressions are not fixed by proving this dependency composition.

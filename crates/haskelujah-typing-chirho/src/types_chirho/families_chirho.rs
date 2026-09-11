@@ -20,6 +20,7 @@ pub(crate) trait FamilyTermChirho: Clone + Eq {
     fn variable_chirho(&self) -> Option<Self::VariableChirho>;
     fn unknown_chirho(&self) -> bool;
     fn head_name_chirho(&self) -> Option<&str>;
+    fn application_parts_chirho(&self) -> Option<(&Self, &Self)>;
     fn parts_chirho(&self) -> Option<(&'static str, Vec<&Self>)>;
     fn map_children_chirho(&self, map_chirho: &mut impl FnMut(&Self) -> Self) -> Self;
     fn application_chirho(fun_chirho: Self, argument_chirho: Self) -> Self;

@@ -199,6 +199,14 @@ impl KindInferCtxChirho {
                 KindChirho::ConChirho("[]".into()),
                 self.interpret_kind_term_chirho(element_chirho),
             ),
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            } => KindChirho::tuple_chirho(
+                elements_chirho
+                    .iter()
+                    .map(|element_chirho| self.interpret_kind_term_chirho(element_chirho))
+                    .collect(),
+            ),
             TypeChirho::FunChirho {
                 arg_chirho,
                 result_chirho,

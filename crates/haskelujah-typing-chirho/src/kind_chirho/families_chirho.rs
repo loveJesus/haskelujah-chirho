@@ -302,9 +302,16 @@ impl KindInferCtxChirho {
             return;
         }
         if result_chirho.injectivity_chirho.is_some() {
-            match validate_injectivity_chirho(&rows_chirho, &injective_chirho, &|head_chirho| {
-                self.kind_family_names_chirho.contains(head_chirho)
-            }) {
+            match validate_injectivity_chirho(
+                &rows_chirho,
+                &injective_chirho,
+                &|head_chirho| self.kind_family_names_chirho.contains(head_chirho),
+                &|head_chirho, arity_chirho| {
+                    let family_chirho = self.kind_families_chirho.get(head_chirho)?;
+                    (family_chirho.equations_chirho.first()?.0.len() == arity_chirho)
+                        .then_some(family_chirho.injective_chirho.as_slice())
+                },
+            ) {
                 Ok(true) => {}
                 Ok(false) => injective_chirho.clear(),
                 Err(message_chirho) => {
@@ -449,6 +456,14 @@ impl KindInferCtxChirho {
                 KindChirho::ConChirho("[]".into()),
                 self.family_term_chirho(element_chirho)?,
             )),
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            } => Some(KindChirho::tuple_chirho(
+                elements_chirho
+                    .iter()
+                    .map(|element_chirho| self.family_term_chirho(element_chirho))
+                    .collect::<Option<Vec<_>>>()?,
+            )),
             TypeChirho::ParenChirho { inner_chirho, .. } => self.family_term_chirho(inner_chirho),
             _ => None,
         }
@@ -490,6 +505,13 @@ impl FamilyTermChirho for KindChirho {
                 result_chirho,
             } => Some(("dependent_chirho", vec![argument_chirho, result_chirho])),
             _ => None,
+        }
+    }
+    fn application_parts_chirho(&self) -> Option<(&Self, &Self)> {
+        if let Self::AppChirho(fun_chirho, argument_chirho) = self {
+            Some((fun_chirho, argument_chirho))
+        } else {
+            None
         }
     }
     fn map_children_chirho(&self, map_chirho: &mut impl FnMut(&Self) -> Self) -> Self {

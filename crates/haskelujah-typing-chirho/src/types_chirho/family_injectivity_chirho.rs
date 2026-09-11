@@ -37,12 +37,15 @@ pub(crate) fn contains_family_chirho<TermChirho: FamilyTermChirho>(
 }
 
 /// `Ok(true)` is a proof within the represented first-order fragment.
-/// `Ok(false)` is unproved (opaque/nested-family terms or exhausted local budget),
+/// `Ok(false)` is unproved (opaque terms or exhausted local budget),
 /// never permission to infer an argument. Equation variables must be fresh per row.
-pub(crate) fn validate_injectivity_chirho<TermChirho: FamilyTermChirho>(
+/// Compositions use only earlier validated, arity-matched dependencies: the
+/// callback must not provisionally trust an annotation in a recursive group.
+pub(crate) fn validate_injectivity_chirho<'proof_chirho, TermChirho: FamilyTermChirho>(
     equations_chirho: &[(Vec<TermChirho>, TermChirho)],
     injective_chirho: &[usize],
     family_chirho: &impl Fn(&str) -> bool,
+    injective_arguments_chirho: &impl Fn(&str, usize) -> Option<&'proof_chirho [usize]>,
 ) -> Result<bool, &'static str> {
     let mut budget_chirho = 16_384;
     for (patterns_chirho, result_chirho) in equations_chirho {
@@ -55,10 +58,44 @@ pub(crate) fn validate_injectivity_chirho<TermChirho: FamilyTermChirho>(
                 pending_chirho.extend(children_chirho);
             }
         }
-        if result_chirho.head_name_chirho().is_some_and(family_chirho) {
-            return Err("injectivity cannot be established by a family-headed result");
-        }
         if contains_family_chirho(result_chirho, family_chirho) {
+            // With one covering equation there is no cross-row overlap to
+            // justify. Equality of results determines each variable only along
+            // nominal constructors and independently proved injective positions.
+            // Partial patterns and multi-row compositions need a stronger proof.
+            let variables_chirho: Option<HashSet<_>> = patterns_chirho
+                .iter()
+                .map(FamilyTermChirho::variable_chirho)
+                .collect();
+            if equations_chirho.len() == 1
+                && variables_chirho
+                    .is_some_and(|variables_chirho| variables_chirho.len() == patterns_chirho.len())
+            {
+                if let Some(determined_chirho) = determining_variables_chirho(
+                    result_chirho,
+                    family_chirho,
+                    injective_arguments_chirho,
+                    &mut budget_chirho,
+                ) {
+                    if injective_chirho.iter().all(|index_chirho| {
+                        patterns_chirho
+                            .get(*index_chirho)
+                            .and_then(FamilyTermChirho::variable_chirho)
+                            .is_some_and(|variable_chirho| {
+                                determined_chirho.contains(&variable_chirho)
+                            })
+                    }) {
+                        continue;
+                    }
+                    return Err("injectivity loses a determining argument variable in the result");
+                }
+                if budget_chirho == 0 {
+                    return Ok(false);
+                }
+            }
+            if result_chirho.head_name_chirho().is_some_and(family_chirho) {
+                return Err("injectivity cannot be established by a family-headed result");
+            }
             return Ok(false);
         }
         if result_chirho.variable_chirho().is_some() {
@@ -135,6 +172,44 @@ pub(crate) fn validate_injectivity_chirho<TermChirho: FamilyTermChirho>(
         }
     }
     Ok(true)
+}
+
+/// A family result does not expose every variable written inside it. Follow
+/// only its proved determining positions, without normalizing or validating
+/// another family recursively. This traverses local terms under a fixed budget.
+fn determining_variables_chirho<'proof_chirho, TermChirho: FamilyTermChirho>(
+    result_chirho: &TermChirho,
+    family_chirho: &impl Fn(&str) -> bool,
+    injective_arguments_chirho: &impl Fn(&str, usize) -> Option<&'proof_chirho [usize]>,
+    budget_chirho: &mut usize,
+) -> Option<HashSet<TermChirho::VariableChirho>> {
+    let mut determined_chirho = HashSet::new();
+    let mut pending_chirho = vec![result_chirho];
+    while let Some(term_chirho) = pending_chirho.pop() {
+        *budget_chirho = budget_chirho.checked_sub(1)?;
+        if let Some(variable_chirho) = term_chirho.variable_chirho() {
+            determined_chirho.insert(variable_chirho);
+        } else if term_chirho.unknown_chirho() {
+            return None;
+        } else if let Some(name_chirho) = term_chirho.head_name_chirho()
+            && family_chirho(name_chirho)
+        {
+            let mut head_chirho = term_chirho;
+            let mut arguments_chirho = Vec::new();
+            while let Some((fun_chirho, argument_chirho)) = head_chirho.application_parts_chirho() {
+                *budget_chirho = budget_chirho.checked_sub(1)?;
+                arguments_chirho.push(argument_chirho);
+                head_chirho = fun_chirho;
+            }
+            arguments_chirho.reverse();
+            for &index_chirho in injective_arguments_chirho(name_chirho, arguments_chirho.len())? {
+                pending_chirho.push(*arguments_chirho.get(index_chirho)?);
+            }
+        } else if let Some((_, children_chirho)) = term_chirho.parts_chirho() {
+            pending_chirho.extend(children_chirho);
+        }
+    }
+    Some(determined_chirho)
 }
 
 fn unify_results_chirho<TermChirho: FamilyTermChirho>(

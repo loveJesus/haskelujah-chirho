@@ -8,6 +8,80 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn covering_family_composition_requires_validated_dependencies_chirho() {
+    // GHC #13248 rejects the family-headed form wholesale. The independently
+    // checked constructor-wrapped form proves the same determining-variable
+    // dependency; the unwrapped form exercises our compositional proof.
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/ComposedInjectivityChirho.hs"
+    ));
+    assert_compile_success_chirho("ComposedInjectivityChirho.hs", source_chirho);
+    let wrapped_chirho = source_chirho
+        .replace(
+            "= WrapChirho (EncodeChirho valueChirho)",
+            "= Either () (WrapChirho (EncodeChirho valueChirho))",
+        )
+        .replace(
+            "PipelineChirho Int -> Maybe Int",
+            "PipelineChirho Int -> Either () (Maybe Int)",
+        );
+    assert_compile_success_chirho("WrappedCompositionChirho.hs", &wrapped_chirho);
+    let tuple_chirho = source_chirho
+        .replace(
+            "= WrapChirho (EncodeChirho valueChirho)",
+            "= (WrapChirho (EncodeChirho valueChirho), Bool)",
+        )
+        .replace(
+            "PipelineChirho Int -> Maybe Int",
+            "PipelineChirho Int -> (Maybe Int, Bool)",
+        );
+    assert_compile_success_chirho("TupleCompositionChirho.hs", &tuple_chirho);
+    for (wrong_chirho, expected_chirho) in [
+        (
+            source_chirho.replace(
+                "WrapChirho (EncodeChirho valueChirho)",
+                "WrapChirho (EraseChirho valueChirho)",
+            ),
+            "injectivity",
+        ),
+        (
+            wrapped_chirho.replace(
+                "WrapChirho (EncodeChirho valueChirho)",
+                "WrapChirho (EraseChirho valueChirho)",
+            ),
+            "injectivity",
+        ),
+        (
+            tuple_chirho.replace(
+                "WrapChirho (EncodeChirho valueChirho)",
+                "WrapChirho (EraseChirho valueChirho)",
+            ),
+            "injectivity",
+        ),
+        (
+            source_chirho.replace(
+                "PipelineChirho Int -> Maybe Int",
+                "PipelineChirho Int -> Maybe Bool",
+            ),
+            "type mismatch",
+        ),
+    ] {
+        let error_chirho = typecheck_source_chirho(
+            &wrong_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "InvalidCompositionChirho.hs",
+        )
+        .err()
+        .expect("erasing the determining variable or claiming a different result must fail");
+        assert!(
+            error_chirho.to_string().contains(expected_chirho),
+            "{error_chirho}"
+        );
+    }
+}
+
+#[test]
 fn indexed_operator_family_rows_keep_their_complete_contract_chirho() {
     let source_chirho = r#"{-# LANGUAGE DataKinds, GADTs, PolyKinds, StandaloneKindSignatures, TypeFamilies, TypeOperators #-}
 module IndexedOperatorChirho where

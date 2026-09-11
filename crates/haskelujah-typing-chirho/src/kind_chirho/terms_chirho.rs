@@ -71,6 +71,16 @@ impl KindChirho {
         Self::AppChirho(Box::new(fun_chirho), Box::new(arg_chirho))
     }
 
+    /// Tuple syntax and its prefix constructor denote the same nominal term.
+    /// Used by both signature interpretation and family-equation validation.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn tuple_chirho(elements_chirho: Vec<Self>) -> Self {
+        let name_chirho = format!("({})", ",".repeat(elements_chirho.len().saturating_sub(1)));
+        elements_chirho
+            .into_iter()
+            .fold(Self::ConChirho(name_chirho), Self::app_chirho)
+    }
+
     /// Map atomic terms without duplicating the tree walk across substitution,
     /// scheme abstraction and defaulting. Bound identities remain a distinct case.
     pub(super) fn map_leaves_chirho(&self, mapper_chirho: &mut impl FnMut(&Self) -> Self) -> Self {

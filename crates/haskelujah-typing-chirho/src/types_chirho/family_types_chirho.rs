@@ -60,6 +60,13 @@ impl FamilyTermChirho for TyChirho {
             _ => None,
         }
     }
+    fn application_parts_chirho(&self) -> Option<(&Self, &Self)> {
+        if let Self::AppChirho(fun_chirho, argument_chirho) = self {
+            Some((fun_chirho, argument_chirho))
+        } else {
+            None
+        }
+    }
     fn map_children_chirho(&self, map_chirho: &mut impl FnMut(&Self) -> Self) -> Self {
         match self {
             Self::AppChirho(fun_chirho, argument_chirho) => {

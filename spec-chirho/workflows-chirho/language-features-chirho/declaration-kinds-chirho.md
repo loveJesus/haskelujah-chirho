@@ -387,13 +387,43 @@ flowchart TD
 ```
 
 Only the represented first-order fragment can certify inverse improvement.
-Opaque terms, nested family results and exhausted verification budgets do not
-certify it. Invalid determining-variable coverage and conflicting equations are
+Opaque terms, unsupported multi-row family results and exhausted verification
+budgets do not certify it. Invalid determining-variable coverage and conflicting equations are
 diagnosed before any use. Transparent aliases must be expanded: `Erase a = Bool`
 cannot make `Family a = Erase a` injective. GHC9.14.1 independently rejects that
 control and accepts its `Maybe a` counterpart. It also rejects forall types on
 either side of a family equation (GHC-91510); those are validity errors, not
 requests for capture-avoiding polymorphic family reduction.
+
+A single covering equation may compose independently validated dependencies.
+Starting at its result, the proof walks nominal constructor arguments and only
+the validated injective positions of each exactly saturated family application.
+Every declared determining input must be recovered. Missing metadata never
+supplies a dependency, and the proof does not recursively validate another
+declaration or assume its own annotation in a cycle. The local work limit yields
+unproved, never permission to improve an argument. This validates the composition
+contract; it does not add general nested-family inverse solving.
+
+```mermaid
+flowchart TD
+  CoveringCompositionChirho[One equation with distinct variable patterns] --> ResultWalkChirho[Inspect result under local work budget]
+  ResultWalkChirho --> NominalPathChirho[Follow nominal constructor arguments]
+  ResultWalkChirho --> FamilyPathChirho[Require registered arity-matched injective positions]
+  NominalPathChirho --> DeterminedInputsChirho[Collect only recoverable input variables]
+  FamilyPathChirho --> DeterminedInputsChirho
+  DeterminedInputsChirho --> CoverageProofChirho[Require every declared determining input]
+  CoverageProofChirho --> PublishedProofChirho[Publish validated dependency]
+  ResultWalkChirho --> UnprovedCompositionChirho[Unknown metadata or exhausted budget gives no proof]
+```
+
+This is intentionally stronger than GHC9.14.1's blanket ban on family-headed
+injective results (upstream issue13248). The same composition beneath a nominal
+constructor is accepted by GHC; an erasing inner family is rejected. Both source
+forms and counterexamples are measured separately, not labelled all GHC-agreeing.
+Tuple and unit terms now use the same nominal constructor representation in
+signature interpretation and equation validation. Previously a unit argument
+made that entire equation unrepresented, skipping its injectivity check; the
+constructor-wrapped negative control exposed this before the checkpoint.
 
 Matching fresh occurrence choices is separate from inverse improvement. It may
 choose fresh instantiated variables to make two whole terms identical, but it
