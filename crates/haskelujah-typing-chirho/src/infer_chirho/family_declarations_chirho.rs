@@ -48,18 +48,19 @@ impl InferCtxChirho {
     }
 }
 
-fn lower_family_equation_chirho(
+pub(super) fn lower_family_equation_chirho(
     patterns_chirho: &[TypeChirho],
     result_chirho: &TypeChirho,
 ) -> (Vec<TyChirho>, TyChirho) {
     // Each equation binds its own pattern variables. Declaration-head names
     // neither bind differently named equation locals nor scope over the RHS.
     let parameters_chirho = collect_free_type_vars_from_ast_chirho(patterns_chirho);
+    let mut converter_chirho = super::ast_conversion_chirho::SynonymTypeConverterChirho::default();
     let patterns_chirho = patterns_chirho
         .iter()
-        .map(|pattern_chirho| ast_type_to_syn_rhs_chirho(pattern_chirho, &parameters_chirho))
+        .map(|pattern_chirho| converter_chirho.convert_chirho(pattern_chirho, &parameters_chirho))
         .collect();
-    let result_chirho = ast_type_to_syn_rhs_chirho(result_chirho, &parameters_chirho);
+    let result_chirho = converter_chirho.convert_chirho(result_chirho, &parameters_chirho);
     (patterns_chirho, result_chirho)
 }
 

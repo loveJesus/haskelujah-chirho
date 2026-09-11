@@ -8,6 +8,63 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn invisible_family_head_binder_is_not_a_visible_equation_argument_chirho() {
+    assert_compile_success_chirho(
+        "FamilyInvisibleBinderChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test-data-chirho/kind-oracles-chirho/FamilyInvisibleBinderChirho.hs"
+        )),
+    );
+}
+
+#[test]
+fn family_reduction_can_remove_a_dependent_kind_occurrence_chirho() {
+    assert_compile_success_chirho(
+        "FamilyDependentConstChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test-data-chirho/kind-oracles-chirho/FamilyDependentConstChirho.hs"
+        )),
+    );
+}
+
+#[test]
+fn family_equation_variables_do_not_inherit_header_scope_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/FamilyEquationScopeChirho.hs"
+    ));
+    assert_compile_success_chirho("FamilyEquationScopeChirho.hs", source_chirho);
+    let invalid_chirho = source_chirho.replace(
+        "SecondChirho ('PairChirho _ aChirho) = aChirho",
+        "SecondChirho ('PairChirho _ aChirho) = Int",
+    );
+    let error_chirho = typecheck_source_chirho(
+        &invalid_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "FamilyEquationScopeChirho.hs",
+    )
+    .err()
+    .expect("the equation result must still have the declared Bool kind");
+    assert!(
+        error_chirho.to_string().contains("family equation result"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn family_wildcards_infer_their_classifiers_independently_chirho() {
+    assert_compile_success_chirho(
+        "FamilyWildcardKindsChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test-data-chirho/kind-oracles-chirho/FamilyWildcardKindsChirho.hs"
+        )),
+    );
+}
+
+#[test]
 fn polymorphic_family_equations_are_not_silently_opaque_chirho() {
     for equation_chirho in [
         "BadChirho (forall bChirho. bChirho -> bChirho) = Int",

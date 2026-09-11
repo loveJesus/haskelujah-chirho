@@ -164,6 +164,27 @@ impl KindChirho {
         }
     }
 
+    /// Whether this term uses one particular surrounding binder. Inner binders
+    /// shift that position in their body, but not in their own annotation.
+    pub(super) fn references_bound_chirho(&self, index_chirho: u32) -> bool {
+        match self {
+            Self::BoundChirho(found_chirho) => *found_chirho == index_chirho,
+            Self::ArrowChirho(left_chirho, right_chirho)
+            | Self::AppChirho(left_chirho, right_chirho) => {
+                left_chirho.references_bound_chirho(index_chirho)
+                    || right_chirho.references_bound_chirho(index_chirho)
+            }
+            Self::DependentChirho {
+                argument_chirho,
+                result_chirho,
+            } => {
+                argument_chirho.references_bound_chirho(index_chirho)
+                    || result_chirho.references_bound_chirho(index_chirho + 1)
+            }
+            _ => false,
+        }
+    }
+
     /// Build a multi-argument arrow kind `k1 -> k2 -> ... -> result`.
     pub fn arrow_n_chirho(
         args_chirho: impl IntoIterator<Item = KindChirho>,

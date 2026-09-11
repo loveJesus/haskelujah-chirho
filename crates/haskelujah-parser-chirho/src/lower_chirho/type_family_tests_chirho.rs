@@ -4,6 +4,33 @@
 use super::*;
 
 #[test]
+fn family_head_binders_preserve_invisible_scope_chirho() {
+    for invisible_chirho in ["@kChirho", "@(kChirho :: Type)"] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE TypeFamilies, TypeAbstractions #-}}\nmodule FamilyChirho where\ntype family IdentityChirho {invisible_chirho} (aChirho :: kChirho) :: kChirho where\n  IdentityChirho aChirho = aChirho\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(&source_chirho, file_chirho);
+        let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
+        let DeclChirho::TypeFamilyDeclChirho {
+            type_vars_chirho,
+            equations_chirho,
+            ..
+        } = &module_chirho.decls_chirho[0]
+        else {
+            panic!("expected the family declaration");
+        };
+        assert_eq!(type_vars_chirho.len(), 2);
+        assert_eq!(type_vars_chirho[0].text_chirho(), "kChirho");
+        assert!(!type_vars_chirho[0].is_visible_chirho());
+        assert_eq!(type_vars_chirho[1].text_chirho(), "aChirho");
+        assert!(type_vars_chirho[1].is_visible_chirho());
+        assert_eq!(equations_chirho[0].lhs_types_chirho.len(), 1);
+        assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| matches!(declaration_chirho, DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")));
+    }
+}
+
+#[test]
 fn family_result_binder_kind_and_dependency_survive_lowering_chirho() {
     let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule FamilyChirho where\ntype family IdentityChirho (aChirho :: Type) = (resultChirho :: Type) | resultChirho -> aChirho where\n  IdentityChirho aChirho = aChirho\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n";
     let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;

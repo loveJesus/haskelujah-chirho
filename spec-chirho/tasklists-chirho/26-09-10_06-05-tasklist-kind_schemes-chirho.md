@@ -75,10 +75,15 @@ rejected set files are byte-identical to the seventh diagnostic. Against main:
 accept+7/-3, reject+15/-6. T12045a/T13643/T14010 remain accept regressions, so
 main is held. The class-method scope correction is included in this diagnostic;
 typing356, integration68 and canaries7 also passed on this code checkpoint.
-The family foundation is now implemented in the isolated worktree (details at
-the tail below). T13643 recovers in a focused fresh-CLI check; T12045a and
-T14010 remain red, and UnliftedNewtypesDifficultUnification stays green. A new
-full diagnostic is owed; the eighth counts above remain the last frozen set.
+The family foundation is committed and pushed at58795e47. Its ninth diagnostic
+completed877/235, one pass per axis, zero timeouts/unexpected exits and stable
+CLI SHA256. T13643 recovers but ten previously accepted files newly fail;
+T12045a/T14010 remain red. The follow-up repairs equation scope, anonymous
+patterns, invisible family binders, vacuous dependent arrows and StarIsType.
+Seven of those ten recover in focused checks; no updated full count is claimed.
+Current parser349, naming136, typing363, integration79 and canaries7 pass.
+The current full driver gate is still running; do not replace that with its
+green focused reruns. Eighteen GHC/candidate verdict pairs agree. Main is held.
 
 At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
 returned a provider usage-limit error instead of a result. No retry is scheduled.
@@ -851,7 +856,7 @@ Checkpoint family-vertical-before-chirho at ea72bb12 bounds this reversible fork
 - [x] Share ordered equation matching and bound kind-family output growth without treating stuck applications as nominally injective.
 - [x] Validate represented first-order injectivity before improvement; preserve the non-injective negative.
 - [x] Re-run the eleven reference pairs and UnliftedNewtypesDifficultUnification control.
-- [ ] Focused crate/integration tests, then frozen diagnostic before any landing claim.
+- [x] Focused crate/integration tests, then frozen diagnostic before any landing claim.
 
 ### Family foundation — measured before the next diagnostic
 
@@ -909,3 +914,69 @@ before/after logs, crate/integration gates, clippy JSONL and the11-pair
 contains the six additional sources, the measured erasing-alias wrong accept,
 and final pairs. Main/DB/published artifacts remain unchanged. Next: freeze this
 foundation and compare complete sets before adding explicit/hidden kind inputs.
+
+### Ninth diagnostic: family foundation, not landable
+
+Frozen58795e47, explicit CLI SHA256a0e1025f98374c25824a1397b1df53f5b71a9283d94312c20591fd8ebf474318:
+accept877/938 and reject235/767. Both complete runs exit0 with zero timeouts
+or unexpected exits. Clean Git HEAD and binary hash held before/after each
+axis; the outer runner emitted COMPLETE and exited0. This is one diagnostic
+per axis, not the final two-pass landing gate. Embargo released in22099;
+SLOT/DB retained, no main/artifact/DB writes.
+
+Compared with eighth886/230: accept+T13643; -CoerceToVDQ, T10776, T13248,
+T16995, T17594f, T20241, T22560d, T22762, T26358,
+type_in_type_hole_fits. Reject+CustomTypeErrors05, T10836, T11623, T12430,
+T23162c, T6018failclosed; -T16821. The latter changes are not yet certified
+as correct-reason capabilities. Main stays unchanged.
+
+Evidence: `/private/tmp/haskelujah-family-kinds-chirho.iAIit3/diagnostic-foundation-chirho.log`
+and its `diagnostic-foundation-{accept,reject}-chirho/` sibling directories.
+Reduce equation-local scope and wildcard classification first; the displayed
+errors also include nested injectivity, invisible binders, dependent kinds
+and closed-family apartness. Do not collapse those into a single hypothesis.
+
+### Family follow-up: shared producer repairs and reference arbitration
+
+Equation rows now hide declaration-head names in a journaled scope. Their
+variables are fresh even when spellings match a header. Anonymous patterns get
+independent kind classifiers and independent stored type variables, not Type
+or a fabricated constructor. Open/closed/associated rows share one converter;
+the relevant 168-line converter moved out of the oversized inference root.
+Family head lowering retains bare and annotated invisible binders with the
+shared binder parser, but only visible binders contribute ordinary arity.
+An initial draft lost the first binder of an infix family; the full parser
+gate caught it (348/349), and the existing assertion was kept while fixing it.
+
+Family normalization can erase a genuinely unused dependent binder, shifting
+surviving outer indices rather than dropping their scope. A negative preserves
+a live dependency. StarIsType is unqualified syntax, independent of qualified
+Nat multiplication and disabled by NoStarIsType. Two unchanged driver tests
+exposed that classifier bug. Three other driver failures were invalid inputs:
+local TYPE was used as the built-in (GHC-83865 once DataKinds is enabled), and
+two percent-Many tests omitted its import. Corrected inputs preserve intended
+results; the TYPE test moves to integration with a local-shadow negative.
+
+Final explicit CLI SHA256:
+`a5818688a41dc5739d6cb34d0c3e82cf3df435fe6d09955a06ddf73080ef3336`.
+Eighteen fresh GHC9.14.1/candidate checks agree on verdicts, with source hashes
+and diagnostics in `test-data-chirho/kind-oracles-chirho/family-followup-chirho.jsonl`.
+These are typecheck observations, not eighteen execution claims. Current
+parser349/naming136/typing363/integration79/canaries7 pass with zero exclusions;
+full driver is pending. Format check passes. All-target scoped clippy exits0
+with559 warning messages (417 distinct JSON diagnostics), not zero warnings.
+
+Seven focused recoveries: T10776, T16995, T17594f, T20241, T22560d, T22762 and
+type_in_type_hole_fits. CoerceToVDQ/T13248/T26358 still fail; T13643 stays green,
+T12045a/T14010 remain red. An executed AST/kind dump shows CoerceToVDQ's data
+family already becomes TypeFamilyDeclChirho, but its full standalone signature
+is not attached. Do not confuse that missing head contract with an inline
+result kind or infer a dropped declaration from an unrelated scanner branch.
+
+The fifteen upstream expect_broken candidates were independently run unchanged
+under bounded normal GHC9.14.1 fno-code: thirteen reject, T10770b/T14761c pass.
+`upstream-expectations-chirho.jsonl` records hashes/diagnostics. These markers
+name known GHC issues, not invalid Haskell. T14761c is broken only in named
+coverage/profiling/optimized ways; InstanceGivenOverlap2 uses compile_fail.
+No denominator, membership, label policy, main or DB changes follow from this
+audit. These repairs are still an isolated checkpoint, not a final landing.

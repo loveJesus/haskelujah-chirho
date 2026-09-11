@@ -25,7 +25,7 @@ pub(super) fn runtime_type_chirho(representation_chirho: KindChirho) -> KindChir
 
 pub(super) fn builtin_term_chirho(name_chirho: &str) -> Option<KindChirho> {
     Some(match name_chirho {
-        "Type" | "*" => KindChirho::StarChirho,
+        "Type" => KindChirho::StarChirho,
         "Constraint" => KindChirho::ConstraintChirho,
         "TYPE" => KindChirho::ConChirho(TYPE_CHIRHO.into()),
         "LiftedRep" => boxed_rep_chirho("Lifted"),
@@ -92,6 +92,16 @@ impl KindInferCtxChirho {
     /// Qualified spelling is interpreted through declared imports, never by
     /// stripping an arbitrary prefix. Conflicting aliases remain unresolved.
     pub(super) fn record_source_kind_qualifiers_chirho(&mut self, module_chirho: &ModuleChirho) {
+        self.star_is_type_chirho = module_chirho
+            .extensions_chirho
+            .iter()
+            .rev()
+            .find_map(|extension_chirho| match extension_chirho.as_str() {
+                "NoStarIsType" => Some(false),
+                "StarIsType" | "Haskell98" | "Haskell2010" | "GHC2021" | "GHC2024" => Some(true),
+                _ => None,
+            })
+            .unwrap_or(true);
         self.local_kind_module_chirho = Some(module_chirho.name_chirho.full_name_chirho());
         for import_chirho in &module_chirho.imports_chirho {
             let target_chirho = import_chirho.module_chirho.full_name_chirho();
@@ -128,6 +138,9 @@ impl KindInferCtxChirho {
     }
 
     pub(super) fn named_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {
+        if self.is_type_star_syntax_chirho(name_chirho) {
+            return KindChirho::StarChirho;
+        }
         let full_chirho = self.canonical_kind_name_chirho(name_chirho);
         if self
             .env_chirho
@@ -141,6 +154,12 @@ impl KindInferCtxChirho {
             return self.named_promoted_kind_term_chirho(name_chirho);
         }
         self.named_term_in_namespace_chirho(name_chirho, &self.local_kind_decl_names_chirho)
+    }
+
+    /// StarIsType licenses unqualified syntax, not a same-spelled named
+    /// operator. Qualified multiplication and NoStarIsType use name lookup.
+    pub(super) fn is_type_star_syntax_chirho(&self, name_chirho: &NameChirho) -> bool {
+        self.star_is_type_chirho && name_chirho.full_name_chirho() == "*"
     }
 
     pub(super) fn named_promoted_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {

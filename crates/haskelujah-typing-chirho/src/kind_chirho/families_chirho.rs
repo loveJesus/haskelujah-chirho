@@ -16,6 +16,53 @@ pub(super) struct KindFamilyChirho {
 }
 
 impl KindInferCtxChirho {
+    /// Process a type family declaration to determine the kind of the family.
+    pub(super) fn infer_type_family_decl_kind_chirho(
+        &mut self,
+        name_chirho: &str,
+        type_vars_chirho: &[TyVarChirho],
+        result_kind_chirho: Option<&TypeChirho>,
+        span_chirho: SpanChirho,
+        poly_kinds_enabled_chirho: bool,
+    ) {
+        let mut param_kinds_chirho = Vec::new();
+        for tv_chirho in type_vars_chirho {
+            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+            } else {
+                self.fresh_kind_chirho()
+            };
+            self.env_chirho
+                .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
+            if tv_chirho.is_visible_chirho() {
+                param_kinds_chirho.push(k_chirho);
+            }
+        }
+
+        let result_kind_chirho = result_kind_chirho
+            .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
+            .unwrap_or_else(|| {
+                if poly_kinds_enabled_chirho {
+                    self.fresh_kind_chirho()
+                } else {
+                    KindChirho::StarChirho
+                }
+            });
+        let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho);
+
+        if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
+            let existing_chirho = existing_chirho.clone();
+            self.unify_chirho(
+                &existing_chirho,
+                &kind_chirho,
+                "type family declaration",
+                span_chirho,
+            );
+        }
+        self.env_chirho
+            .bind_chirho(name_chirho.to_string(), kind_chirho);
+    }
+
     pub(super) fn check_kind_family_chirho(
         &mut self,
         name_chirho: &NameChirho,
@@ -110,6 +157,17 @@ impl KindInferCtxChirho {
                 continue;
             }
             self.env_chirho.begin_scope_chirho();
+            // Header variables specify the family contract, not the lexical
+            // identities bound by each equation. Even an identical spelling
+            // on a row is fresh (and may have a different kind). The undo log
+            // restores only these local entries, never clones the module map.
+            for name_chirho in binders_chirho
+                .iter()
+                .map(|binder_chirho| binder_chirho.text_chirho())
+                .chain(outer_names_chirho.keys().map(String::as_str))
+            {
+                self.env_chirho.hide_chirho(name_chirho);
+            }
             self.kind_var_cache_chirho.clear();
             let mut classifier_chirho = self.instantiate_binding_chirho(&family_binding_chirho);
             let mut patterns_chirho = Vec::new();
@@ -273,6 +331,9 @@ impl KindInferCtxChirho {
             return term_chirho;
         }
         match ty_chirho {
+            // Every anonymous pattern binds independently; it is not Type and
+            // must not share a textual key with another underscore.
+            TypeChirho::WildcardChirho { .. } => Some(self.fresh_kind_chirho()),
             TypeChirho::VarChirho(_)
             | TypeChirho::ConChirho(_)
             | TypeChirho::PromotedConChirho { .. }

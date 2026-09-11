@@ -46,8 +46,9 @@ main = g 21
 fn percent_many_arrow_parses_chirho() {
     // %Many -> is the unrestricted (normal) arrow
     let src_chirho = "\
-{-# LANGUAGE LinearTypes #-}
+{-# LANGUAGE DataKinds, LinearTypes #-}
 module Test where
+import GHC.Types (Multiplicity(Many))
 h :: Int %Many -> Int
 h x = x + x
 main = h 21
@@ -161,8 +162,9 @@ dup x = x + x
 fn unrestricted_param_no_linearity_check_chirho() {
     // Even with LinearTypes, %Many -> params should not be checked
     let src_chirho = "\
-{-# LANGUAGE LinearTypes #-}
+{-# LANGUAGE DataKinds, LinearTypes #-}
 module Test where
+import GHC.Types (Multiplicity(Many))
 h :: Int %Many -> Int
 h x = x + x
 ";

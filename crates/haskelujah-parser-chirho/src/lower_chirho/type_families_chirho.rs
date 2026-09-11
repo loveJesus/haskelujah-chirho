@@ -22,7 +22,6 @@ impl LowerCtxChirho {
         let mut saw_where_chirho = false;
         let mut saw_double_colon_chirho = false;
         let mut saw_injectivity_result_chirho = false;
-        let mut skip_visible_binder_chirho = false;
 
         // Collect equation tokens: group tokens between ; markers
         let mut eq_lhs_types_chirho: Vec<TypeChirho> = Vec::new();
@@ -94,12 +93,7 @@ impl LowerCtxChirho {
                     {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if kind_chirho == TokenKindChirho::AtSignChirho {
-                            // A declaration binder such as `@kind` names an
-                            // inferred kind variable; it is not an additional
-                            // visible family argument.
-                            skip_visible_binder_chirho = true;
-                        } else if matches!(
+                        if matches!(
                             kind_chirho,
                             TokenKindChirho::ConIdChirho
                                 | TokenKindChirho::ConSymChirho
@@ -109,16 +103,8 @@ impl LowerCtxChirho {
                         ) && name_chirho.is_none()
                         {
                             name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
-                        } else if kind_chirho == TokenKindChirho::VarIdChirho {
-                            if skip_visible_binder_chirho {
-                                skip_visible_binder_chirho = false;
-                            } else {
-                                type_vars_chirho
-                                    .push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
-                            }
-                        } else if kind_chirho == TokenKindChirho::LeftParenChirho
-                            && let Some((tv_chirho, skip_chirho)) =
-                                self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
+                        } else if let Some((tv_chirho, skip_chirho)) =
+                            self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
                         {
                             type_vars_chirho.push(tv_chirho);
                             idx_chirho += skip_chirho;

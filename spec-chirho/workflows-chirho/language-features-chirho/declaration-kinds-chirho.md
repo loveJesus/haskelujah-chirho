@@ -354,6 +354,22 @@ global bound on type inference, synonym expansion, or all normalization paths.
 The generic type adapter gives numeric and named variables disjoint enum keys;
 the string `tv0` cannot collide with numeric variable0.
 
+An equation's lexical scope hides declaration-header variable identities before
+its patterns are classified. The journal restores those bindings afterward.
+Every underscore gets its own classifier and stored pattern variable; a single
+converter owns all patterns and the result of one equation. Invisible family
+head binders remain in lexical scope but do not add ordinary argument arrows.
+This producer repair does not claim that explicit applications or hidden indices
+are fully consumed. If reduction erases a dependent binder's final occurrence,
+normalization removes that binder and shifts the surrounding indices; a still
+referenced binder remains dependent.
+
+Unqualified `*` under StarIsType is syntax for Type, not a named multiplication
+operator. Qualified multiplication and NoStarIsType use normal name lookup.
+The ordered source extension settings govern this distinction, and local TYPE
+declarations remain nominal rather than acquiring the built-in representation
+semantics. Source controls exercise both distinctions independently.
+
 Still unfinished: hidden kind indices, explicit kind applications, open/associated
 kind-family equation checking, higher-rank family result contracts, and complete
 injectivity validation beyond this first-order fragment. No row with missing

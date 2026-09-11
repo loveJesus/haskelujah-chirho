@@ -4,6 +4,60 @@
 use super::{SourceMapChirho, assert_compile_success_chirho};
 
 #[test]
+fn star_syntax_and_qualified_multiplication_keep_distinct_kinds_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/StarKindContractsChirho.hs"
+    ));
+    assert_compile_success_chirho("StarKindContractsChirho.hs", source_chirho);
+    let no_star_chirho =
+        source_chirho.replace("LANGUAGE DataKinds", "LANGUAGE NoStarIsType, DataKinds");
+    let errors_chirho = haskelujah_driver::typecheck_source_chirho(
+        &no_star_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "UnboundStarChirho.hs",
+    )
+    .err()
+    .expect("NoStarIsType requires an actual operator binding");
+    assert!(
+        errors_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|error_chirho| {
+                error_chirho.code_chirho
+                    == Some(haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(101))
+                    && error_chirho.message_chirho.contains('*')
+            }),
+        "{errors_chirho}"
+    );
+    assert_compile_success_chirho(
+        "QualifiedMultiplicationChirho.hs",
+        &no_star_chirho.replace(":: * -> *", ":: Type -> Type"),
+    );
+}
+
+#[test]
+fn frontend_type_binder_type_runtime_rep_annotation_preserves_newtype_application_kind_chirho() {
+    // The former driver test declared its own TYPE. GHC rejects that use;
+    // the intended runtime-representation control must import the real TYPE.
+    let source_chirho = r#"{-# LANGUAGE PolyKinds, KindSignatures #-}
+module CodeKindMiniChirho where
+import GHC.Exts (TYPE)
+newtype CodeChirho mChirho (aChirho :: TYPE rChirho) = CodeChirho (mChirho aChirho)
+valueChirho :: CodeChirho Maybe Int
+valueChirho = undefined
+"#;
+    assert_compile_success_chirho("CodeKindMiniChirho.hs", source_chirho);
+    let shadowed_chirho = source_chirho
+        .replace("LANGUAGE PolyKinds", "LANGUAGE DataKinds, PolyKinds")
+        .replace(
+            "import GHC.Exts (TYPE)",
+            "data RuntimeRep\ndata TYPE (rChirho :: RuntimeRep)",
+        );
+    assert_kind_error_chirho(&shadowed_chirho, "TYPE");
+}
+
+#[test]
 fn required_kind_argument_substitutes_its_term_not_the_kind_of_that_term_chirho() {
     let source_chirho = r#"{-# LANGUAGE PolyKinds, RankNTypes, StandaloneKindSignatures #-}
 module DependentChirho where

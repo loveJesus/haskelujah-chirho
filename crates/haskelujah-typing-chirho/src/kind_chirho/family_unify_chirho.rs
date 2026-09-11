@@ -90,9 +90,23 @@ impl KindInferCtxChirho {
             return term_chirho.clone();
         }
         *fuel_chirho -= 1;
-        let normalized_chirho = term_chirho.map_children_chirho(&mut |child_chirho| {
+        let mut normalized_chirho = term_chirho.map_children_chirho(&mut |child_chirho| {
             self.normalize_kind_family_chirho(child_chirho, fuel_chirho)
         });
+        // Reduction may erase the last use of a dependent binder. Its result
+        // is then an ordinary arrow, with surrounding de Bruijn positions
+        // shifted out of the removed scope. Never erase a surviving dependency.
+        if let KindChirho::DependentChirho {
+            argument_chirho,
+            result_chirho,
+        } = &normalized_chirho
+            && !result_chirho.references_bound_chirho(0)
+        {
+            normalized_chirho = KindChirho::arrow_chirho(
+                argument_chirho.as_ref().clone(),
+                result_chirho.substitute_bound_chirho(&KindChirho::StarChirho),
+            );
+        }
         if let Some((name_chirho, arguments_chirho)) = family_spine_chirho(&normalized_chirho)
             && let Some(family_chirho) = self.kind_families_chirho.get(name_chirho)
         {

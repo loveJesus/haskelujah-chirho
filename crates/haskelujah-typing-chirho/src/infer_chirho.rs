@@ -43,6 +43,7 @@ mod signature_binder_tests_chirho;
 mod signature_binders_chirho;
 mod signature_conversion_chirho;
 
+use ast_conversion_chirho::ast_type_to_syn_rhs_chirho;
 use family_declarations_chirho::collect_free_type_vars_from_ast_chirho;
 
 pub use evidence_chirho::{
@@ -2394,15 +2395,11 @@ impl InferCtxChirho {
             // Register associated type family instances from this instance decl
             for atfi_chirho in assoc_tf_instances_chirho {
                 let fname_chirho = atfi_chirho.family_name_chirho.text_chirho().to_string();
-                let inst_params_chirho =
-                    collect_free_type_vars_from_ast_chirho(&atfi_chirho.lhs_types_chirho);
-                let lhs_chirho: Vec<TyChirho> = atfi_chirho
-                    .lhs_types_chirho
-                    .iter()
-                    .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &inst_params_chirho))
-                    .collect();
-                let rhs_ty_chirho =
-                    ast_type_to_syn_rhs_chirho(&atfi_chirho.rhs_chirho, &inst_params_chirho);
+                let (lhs_chirho, rhs_ty_chirho) =
+                    family_declarations_chirho::lower_family_equation_chirho(
+                        &atfi_chirho.lhs_types_chirho,
+                        &atfi_chirho.rhs_chirho,
+                    );
                 self.register_type_family_instance_chirho(fname_chirho, lhs_chirho, rhs_ty_chirho);
             }
 
@@ -7207,174 +7204,6 @@ impl InferCtxChirho {
 // ---------------------------------------------------------------------------
 // Type synonym helpers
 // ---------------------------------------------------------------------------
-
-/// Convert an AST `TypeChirho` to a `TyChirho` suitable for storing as a type
-/// synonym RHS. Synonym parameters are represented as `ForallVarChirho` so
-/// they can be substituted during expansion.
-fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) -> TyChirho {
-    match ty_chirho {
-        TypeChirho::VarChirho(name_chirho) => {
-            let text_chirho = name_chirho.text_chirho().to_string();
-            if params_chirho.contains(&text_chirho) {
-                TyChirho::ForallVarChirho(text_chirho)
-            } else {
-                // Unknown type variable — treat as Con (might be a bug upstream)
-                TyChirho::ConChirho(text_chirho)
-            }
-        }
-        TypeChirho::ConChirho(name_chirho) => TyChirho::ConChirho(name_chirho.full_name_chirho()),
-        TypeChirho::ListChirho { element_chirho, .. } => TyChirho::ListChirho(Box::new(
-            ast_type_to_syn_rhs_chirho(element_chirho, params_chirho),
-        )),
-        TypeChirho::FunChirho {
-            arg_chirho,
-            mult_chirho,
-            result_chirho,
-            ..
-        } => {
-            let m_chirho = if mult_chirho.as_ref().is_some_and(
-                haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::is_explicit_one_chirho,
-            ) {
-                MultChirho::OneChirho
-            } else {
-                MultChirho::ManyChirho
-            };
-            TyChirho::FunChirho(
-                Box::new(ast_type_to_syn_rhs_chirho(arg_chirho, params_chirho)),
-                Box::new(ast_type_to_syn_rhs_chirho(result_chirho, params_chirho)),
-                m_chirho,
-            )
-        }
-        TypeChirho::TupleChirho {
-            elements_chirho, ..
-        } => TyChirho::TupleChirho(
-            elements_chirho
-                .iter()
-                .map(|e_chirho| ast_type_to_syn_rhs_chirho(e_chirho, params_chirho))
-                .collect(),
-        ),
-        TypeChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
-            ..
-        } => TyChirho::AppChirho(
-            Box::new(ast_type_to_syn_rhs_chirho(fun_chirho, params_chirho)),
-            Box::new(ast_type_to_syn_rhs_chirho(arg_chirho, params_chirho)),
-        ),
-        TypeChirho::ParenChirho { inner_chirho, .. } => {
-            ast_type_to_syn_rhs_chirho(inner_chirho, params_chirho)
-        }
-        TypeChirho::QualChirho {
-            context_chirho,
-            body_chirho,
-            ..
-        } => {
-            // Preserve constraint context but convert the body.
-            // For now, just pass through the body since constraints in
-            // synonym RHS are handled during instantiation.
-            // TODO: properly preserve constraints as deferred predicates
-            let _ = context_chirho;
-            ast_type_to_syn_rhs_chirho(body_chirho, params_chirho)
-        }
-        TypeChirho::ForallChirho {
-            vars_chirho,
-            body_chirho,
-            ..
-        } => {
-            // Preserve the forall structure in the synonym RHS so that
-            // higher-rank type synonyms like `type Locker = forall a. IO a -> IO a`
-            // retain their polymorphic structure when expanded.
-            let forall_var_names_chirho: Vec<String> = vars_chirho
-                .iter()
-                .map(|v_chirho| v_chirho.text_chirho().to_string())
-                .collect();
-            // Extend params with forall-bound vars so they become ForallVarChirho
-            let mut extended_params_chirho = params_chirho.to_vec();
-            extended_params_chirho.extend(forall_var_names_chirho.iter().cloned());
-            let body_ty_chirho = ast_type_to_syn_rhs_chirho(body_chirho, &extended_params_chirho);
-            // Create ForallChirho with TyVarChirho identifiers for the bound vars
-            let bound_vars_chirho: Vec<TyVarChirho> = forall_var_names_chirho
-                .iter()
-                .enumerate()
-                .map(|(i_chirho, _)| TyVarChirho(8000 + i_chirho as u32))
-                .collect();
-            // Replace ForallVarChirho names with the TyVarChirho references
-            let mut renamed_body_chirho = body_ty_chirho;
-            for (name_chirho, tv_chirho) in
-                forall_var_names_chirho.iter().zip(bound_vars_chirho.iter())
-            {
-                renamed_body_chirho = subst_named_var_chirho(
-                    &renamed_body_chirho,
-                    name_chirho,
-                    &TyChirho::VarChirho(*tv_chirho),
-                );
-            }
-            TyChirho::ForallChirho {
-                vars_chirho: bound_vars_chirho,
-                body_chirho: Box::new(renamed_body_chirho),
-            }
-        }
-        TypeChirho::RequiredForallChirho {
-            vars_chirho,
-            body_chirho,
-            ..
-        } => {
-            let binder_names_chirho: Vec<String> = vars_chirho
-                .iter()
-                .map(|var_chirho| var_chirho.text_chirho().to_string())
-                .collect();
-            let mut extended_params_chirho = params_chirho.to_vec();
-            extended_params_chirho.extend(binder_names_chirho.iter().cloned());
-            let body_ty_chirho = ast_type_to_syn_rhs_chirho(body_chirho, &extended_params_chirho);
-            let bound_vars_chirho: Vec<TyVarChirho> = binder_names_chirho
-                .iter()
-                .enumerate()
-                .map(|(index_chirho, _)| TyVarChirho(8500 + index_chirho as u32))
-                .collect();
-            let mut renamed_body_chirho = body_ty_chirho;
-            for (name_chirho, ty_var_chirho) in
-                binder_names_chirho.iter().zip(bound_vars_chirho.iter())
-            {
-                renamed_body_chirho = subst_named_var_chirho(
-                    &renamed_body_chirho,
-                    name_chirho,
-                    &TyChirho::VarChirho(*ty_var_chirho),
-                );
-            }
-            TyChirho::RequiredForallChirho {
-                vars_chirho: bound_vars_chirho,
-                body_chirho: Box::new(renamed_body_chirho),
-            }
-        }
-        TypeChirho::PromotedConChirho { name_chirho, .. } => {
-            TyChirho::ConChirho(format!("'{}", name_chirho.text_chirho()))
-        }
-        TypeChirho::PromotedListChirho {
-            elements_chirho, ..
-        } => {
-            let nil_chirho = TyChirho::ConChirho("'[]".to_string());
-            elements_chirho
-                .iter()
-                .rev()
-                .fold(nil_chirho, |acc_chirho, elem_chirho| {
-                    let elem_ty_chirho = ast_type_to_syn_rhs_chirho(elem_chirho, params_chirho);
-                    let cons_chirho = TyChirho::ConChirho("':".to_string());
-                    TyChirho::AppChirho(
-                        Box::new(TyChirho::AppChirho(
-                            Box::new(cons_chirho),
-                            Box::new(elem_ty_chirho),
-                        )),
-                        Box::new(acc_chirho),
-                    )
-                })
-        }
-        // PartialTypeSignatures: wildcard in a type synonym RHS is a fresh
-        // anonymous variable (synthesised as "_wildcard_chirho").
-        TypeChirho::WildcardChirho { .. } => TyChirho::ConChirho("_wildcard_chirho".to_string()),
-        // Type-level literal (DataKinds): treat as a type-level constant.
-        TypeChirho::LitChirho { value_chirho, .. } => TyChirho::ConChirho(value_chirho.clone()),
-    }
-}
 
 fn build_infix_app_expr_chirho(
     left_chirho: &ExprChirho,

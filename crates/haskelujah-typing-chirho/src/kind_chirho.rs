@@ -106,6 +106,7 @@ struct KindInferCtxChirho {
     expanding_type_kind_synonyms_chirho: Vec<String>,
     cusks_enabled_chirho: bool,
     poly_kinds_enabled_chirho: bool,
+    star_is_type_chirho: bool,
     pending_written_kinds_chirho: Vec<(KindVarChirho, SpanChirho)>,
     /// Scoped source-variable provenance while elaborating an inline kind.
     captured_kind_variables_chirho: Option<Vec<KindVarChirho>>,
@@ -142,6 +143,7 @@ impl KindInferCtxChirho {
             expanding_type_kind_synonyms_chirho: Vec::new(),
             cusks_enabled_chirho: true,
             poly_kinds_enabled_chirho: true,
+            star_is_type_chirho: true,
             pending_written_kinds_chirho: Vec::new(),
             captured_kind_variables_chirho: None,
             kind_families_chirho: HashMap::new(),
@@ -604,51 +606,6 @@ impl KindInferCtxChirho {
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
             let existing_chirho = existing_chirho.clone();
             self.unify_chirho(&existing_chirho, &kind_chirho, "type alias", span_chirho);
-        }
-        self.env_chirho
-            .bind_chirho(name_chirho.to_string(), kind_chirho);
-    }
-
-    /// Process a type family declaration to determine the kind of the family.
-    fn infer_type_family_decl_kind_chirho(
-        &mut self,
-        name_chirho: &str,
-        type_vars_chirho: &[TyVarChirho],
-        result_kind_chirho: Option<&TypeChirho>,
-        span_chirho: SpanChirho,
-        poly_kinds_enabled_chirho: bool,
-    ) {
-        let mut param_kinds_chirho = Vec::new();
-        for tv_chirho in type_vars_chirho {
-            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
-            } else {
-                self.fresh_kind_chirho()
-            };
-            self.env_chirho
-                .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-            param_kinds_chirho.push(k_chirho);
-        }
-
-        let result_kind_chirho = result_kind_chirho
-            .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
-            .unwrap_or_else(|| {
-                if poly_kinds_enabled_chirho {
-                    self.fresh_kind_chirho()
-                } else {
-                    KindChirho::StarChirho
-                }
-            });
-        let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho);
-
-        if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
-            let existing_chirho = existing_chirho.clone();
-            self.unify_chirho(
-                &existing_chirho,
-                &kind_chirho,
-                "type family declaration",
-                span_chirho,
-            );
         }
         self.env_chirho
             .bind_chirho(name_chirho.to_string(), kind_chirho);

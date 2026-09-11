@@ -281,6 +281,9 @@ impl KindInferCtxChirho {
                 }
             }
             TypeChirho::ConChirho(name_chirho) => {
+                if self.is_type_star_syntax_chirho(name_chirho) {
+                    return KindChirho::StarChirho;
+                }
                 let text_chirho = self.canonical_kind_name_chirho(name_chirho);
                 if let Some(binding_chirho) = self
                     .env_chirho
@@ -466,10 +469,10 @@ impl KindInferCtxChirho {
                     self.subst_chirho.apply_chirho(&element_kind_chirho),
                 )
             }
-            // PartialTypeSignatures: `_` is a wildcard that will be filled in
-            // during type inference. Kind-wise it is treated as * (a regular
-            // monotype position).
-            TypeChirho::WildcardChirho { .. } => KindChirho::StarChirho,
+            // A wildcard's classifier is constrained by its actual position.
+            // In family patterns it may stand for a Bool, a higher-kinded head,
+            // or any other kind; separate occurrences never share a binding.
+            TypeChirho::WildcardChirho { .. } => self.fresh_kind_chirho(),
             TypeChirho::LitChirho { value_chirho, .. } => {
                 let name_chirho = if value_chirho.starts_with('"') {
                     "Symbol"
