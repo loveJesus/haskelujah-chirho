@@ -54,6 +54,8 @@ pub enum SyntaxKindChirho {
     TypeAliasDeclChirho,
     /// `type family F a :: *` or `type family F a where ...` — type family.
     TypeFamilyDeclChirho,
+    /// Named result and optional injectivity contract, separate from head binders.
+    TypeFamilyResultChirho,
     /// `type instance F Int = Bool` — open type family instance.
     TypeFamilyInstanceDeclChirho,
     /// `newtype Name = Con Type`.

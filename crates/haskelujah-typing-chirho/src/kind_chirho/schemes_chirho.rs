@@ -156,6 +156,7 @@ impl KindInferCtxChirho {
             let kind_chirho = if rigid_chirho {
                 KindChirho::RigidChirho(fresh_chirho)
             } else {
+                self.instantiated_kind_variables_chirho.insert(fresh_chirho);
                 KindChirho::VarChirho(fresh_chirho)
             };
             replacement_chirho
@@ -170,6 +171,39 @@ impl KindInferCtxChirho {
         name_chirho: &str,
         named_variables_chirho: &HashSet<KindVarChirho>,
     ) {
+        // A leading explicit forall may have been published before the body,
+        // while ordinary head classifiers remained inference holes. Close those
+        // remaining holes at the same SCC boundary as a wholly inferred head.
+        if let Some(KindBindingChirho::PolyChirho(mut scheme_chirho)) =
+            self.env_chirho.lookup_binding_chirho(name_chirho).cloned()
+        {
+            scheme_chirho.apply_subst_chirho(&self.subst_chirho);
+            let mut protected_chirho = named_variables_chirho.clone();
+            protected_chirho.extend(scheme_chirho.quantified_chirho.iter().copied());
+            self.default_inferred_runtime_variables_chirho(
+                &scheme_chirho.body_chirho,
+                &protected_chirho,
+            );
+            scheme_chirho.apply_subst_chirho(&self.subst_chirho);
+            if self.poly_kinds_enabled_chirho {
+                scheme_chirho.body_chirho = abstract_rigid_kind_chirho(&scheme_chirho.body_chirho);
+                for variable_chirho in scheme_chirho.body_chirho.free_vars_chirho() {
+                    if !scheme_chirho.quantified_chirho.contains(&variable_chirho) {
+                        scheme_chirho.quantified_chirho.push(variable_chirho);
+                    }
+                }
+            } else {
+                scheme_chirho.body_chirho = default_unbound_chirho(
+                    &scheme_chirho.body_chirho,
+                    &scheme_chirho.quantified_chirho.iter().copied().collect(),
+                );
+            }
+            self.env_chirho.bind_entry_chirho(
+                name_chirho.to_owned(),
+                KindBindingChirho::PolyChirho(scheme_chirho),
+            );
+            return;
+        }
         if let Some(KindBindingChirho::MonoChirho(kind_chirho)) =
             self.env_chirho.lookup_binding_chirho(name_chirho).cloned()
         {

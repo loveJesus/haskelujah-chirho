@@ -18,6 +18,8 @@
 
 use std::sync::Arc;
 
+mod families_chirho;
+
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
@@ -1160,111 +1162,6 @@ impl<'src> ParserChirho<'src> {
                 }
             }
         }
-    }
-
-    fn parse_type_family_decl_chirho(&mut self) {
-        self.builder_chirho
-            .start_node_chirho(SyntaxKindChirho::TypeFamilyDeclChirho);
-
-        if self.at_chirho(RawTokenKindChirho::TypeChirho) {
-            self.bump_chirho(); // type
-        } else {
-            self.expect_chirho(RawTokenKindChirho::DataChirho); // data
-        }
-        self.eat_trivia_chirho();
-        self.bump_chirho(); // family
-        self.eat_trivia_chirho();
-
-        // Family name and type variables until `where`, `::`, or end of decl
-        self.eat_until_any_top_level_chirho(&[
-            RawTokenKindChirho::WhereChirho,
-            RawTokenKindChirho::ColonColonChirho,
-            RawTokenKindChirho::VirtualSemicolonChirho,
-            RawTokenKindChirho::VirtualRightBraceChirho,
-        ]);
-
-        // Optional result kind annotation `:: *`
-        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
-            self.bump_chirho(); // ::
-            self.eat_trivia_chirho();
-            self.parse_type_chirho(); // kind
-        }
-
-        // Check for `where` (closed type family)
-        if self.at_chirho(RawTokenKindChirho::WhereChirho) {
-            self.bump_chirho(); // where
-            self.eat_trivia_chirho();
-            // Parse equations: each is `F lhs_types = rhs_type`
-            if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
-                || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
-            {
-                self.bump_chirho();
-            }
-            while !self.at_eof_chirho()
-                && !self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
-                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-            {
-                self.eat_trivia_chirho();
-                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
-                    || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
-                {
-                    self.bump_chirho();
-                    continue;
-                }
-                if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
-                    || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-                {
-                    break;
-                }
-                // Patterns use the same type grammar as their RHS. Retain
-                // promoted lists, literals and grouped applications as nodes;
-                // lowering must not reconstruct a second grammar from tokens.
-                // Workflow: language-features-chirho/declaration-kinds-chirho.
-                let before_chirho = self.pos_chirho;
-                self.parse_type_chirho(); // complete family application
-                if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
-                    self.bump_chirho(); // =
-                    self.eat_trivia_chirho();
-                    self.parse_type_chirho(); // rhs
-                }
-                if self.pos_chirho == before_chirho {
-                    // A malformed pattern may start with a token that cannot
-                    // begin a type. Keep recovery bounded and visible.
-                    self.builder_chirho
-                        .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
-                    self.bump_chirho();
-                    self.builder_chirho.finish_node_chirho();
-                }
-            }
-            if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
-                || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-            {
-                self.bump_chirho();
-            }
-        }
-
-        self.builder_chirho.finish_node_chirho();
-    }
-
-    fn parse_type_family_instance_decl_chirho(&mut self) {
-        self.builder_chirho
-            .start_node_chirho(SyntaxKindChirho::TypeFamilyInstanceDeclChirho);
-
-        self.expect_chirho(RawTokenKindChirho::TypeChirho); // type
-        self.eat_trivia_chirho();
-        self.bump_chirho(); // instance
-        self.eat_trivia_chirho();
-
-        // Open instances and closed equations share the type grammar.
-        self.parse_type_chirho(); // complete family application
-
-        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
-            self.bump_chirho(); // =
-            self.eat_trivia_chirho();
-            self.parse_type_chirho(); // RHS type
-        }
-
-        self.builder_chirho.finish_node_chirho();
     }
 
     fn parse_type_alias_decl_chirho(&mut self) {

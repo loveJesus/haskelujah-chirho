@@ -45,6 +45,22 @@ pub struct TypeFamilyEquationChirho {
     pub span_chirho: SpanChirho,
 }
 
+/// Written family result contract. Naming a result does not itself promise
+/// injectivity; equation validation must establish that separate annotation.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TypeFamilyResultChirho {
+    pub kind_chirho: Option<TypeChirho>,
+    pub binder_chirho: Option<NameChirho>,
+    pub injectivity_chirho: Option<TypeFamilyInjectivityChirho>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeFamilyInjectivityChirho {
+    pub result_chirho: NameChirho,
+    pub parameters_chirho: Vec<NameChirho>,
+    pub span_chirho: SpanChirho,
+}
+
 /// Whether a declaration-head binder consumes an ordinary type argument.
 /// This is not the specified/inferred distinction on invisible forall binders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,8 +256,10 @@ pub enum DeclChirho {
         name_chirho: NameChirho,
         /// Family parameters introduced by the declaration.
         type_vars_chirho: Vec<TyVarChirho>,
-        /// Optional result kind annotation after `::`.
-        result_kind_chirho: Option<TypeChirho>,
+        /// Result kind, optional named binder and written injectivity contract.
+        result_chirho: TypeFamilyResultChirho,
+        /// `where {}` is closed even when it contains no equations.
+        closed_chirho: bool,
         /// Equations for closed families; empty for open families.
         equations_chirho: Vec<TypeFamilyEquationChirho>,
         /// Span covering the whole family declaration.

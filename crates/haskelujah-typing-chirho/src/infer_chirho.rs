@@ -803,32 +803,26 @@ impl InferCtxChirho {
         family_name_chirho: &str,
         args_chirho: &[TyChirho],
     ) -> Option<TyChirho> {
-        let equation_sets_chirho = self.lookup_type_family_equation_sets_chirho(family_name_chirho);
-        for equations_chirho in equation_sets_chirho {
-            for (lhs_chirho, rhs_chirho) in equations_chirho {
-                if lhs_chirho.len() > args_chirho.len() {
-                    continue;
+        // Shared ordered matching distinguishes apart from stuck; an unknown
+        // input cannot skip an earlier equation and select a catch-all.
+        // Workflow: language-features-chirho/declaration-kinds-chirho.
+        for equations_chirho in self.lookup_type_family_equation_sets_chirho(family_name_chirho) {
+            match crate::families_chirho::reduce_equations_chirho(
+                equations_chirho,
+                args_chirho,
+                &|name_chirho| {
+                    self.type_families_chirho.contains_key(name_chirho)
+                        || self
+                            .type_families_chirho
+                            .contains_key(name_chirho.rsplit('.').next().unwrap_or(name_chirho))
+                },
+            ) {
+                crate::families_chirho::FamilyReductionChirho::ReducedChirho(result_chirho) => {
+                    return Some(result_chirho);
                 }
-                // Try to match each LHS pattern against the corresponding arg
-                let mut bindings_chirho: HashMap<String, TyChirho> = HashMap::new();
-                let mut matched_chirho = true;
-                for (pat_chirho, arg_chirho) in lhs_chirho.iter().zip(args_chirho.iter()) {
-                    if !match_type_pattern_chirho(pat_chirho, arg_chirho, &mut bindings_chirho) {
-                        matched_chirho = false;
-                        break;
-                    }
-                }
-                if matched_chirho {
-                    let mut reduced_chirho =
-                        substitute_type_vars_chirho(rhs_chirho, &bindings_chirho);
-                    for extra_arg_chirho in &args_chirho[lhs_chirho.len()..] {
-                        reduced_chirho = TyChirho::AppChirho(
-                            Box::new(reduced_chirho),
-                            Box::new(extra_arg_chirho.clone()),
-                        );
-                    }
-                    return Some(reduced_chirho);
-                }
+                crate::families_chirho::FamilyReductionChirho::StuckChirho
+                | crate::families_chirho::FamilyReductionChirho::LimitedChirho => return None,
+                crate::families_chirho::FamilyReductionChirho::ApartChirho => {}
             }
         }
         reduce_builtin_type_family_application_chirho(family_name_chirho, args_chirho)
@@ -21517,121 +21511,21 @@ fn reduce_builtin_type_family_application_chirho(
     reduced_chirho
 }
 
-/// Match a type family LHS pattern against a concrete type argument.
-/// Type variables in the pattern bind to the corresponding argument types.
-/// Type constructors must match exactly.
-fn match_type_pattern_chirho(
-    pat_chirho: &TyChirho,
-    arg_chirho: &TyChirho,
-    bindings_chirho: &mut HashMap<String, TyChirho>,
-) -> bool {
-    match pat_chirho {
-        // A type variable in the pattern matches anything
-        TyChirho::VarChirho(tv_chirho) => {
-            let var_name_chirho = format!("tv{}", tv_chirho.0);
-            if let Some(existing_chirho) = bindings_chirho.get(&var_name_chirho) {
-                existing_chirho == arg_chirho
-            } else {
-                bindings_chirho.insert(var_name_chirho, arg_chirho.clone());
-                true
-            }
-        }
-        // ForallVar in the pattern — a named type variable from type family LHS
-        // (e.g. `a` in `F (Maybe a) = [a]`). Matches any argument type.
-        TyChirho::ForallVarChirho(name_chirho) => {
-            if let Some(existing_chirho) = bindings_chirho.get(name_chirho) {
-                existing_chirho == arg_chirho
-            } else {
-                bindings_chirho.insert(name_chirho.clone(), arg_chirho.clone());
-                true
-            }
-        }
-        // A constructor must match the same constructor
-        TyChirho::ConChirho(name_chirho) => {
-            matches!(arg_chirho, TyChirho::ConChirho(arg_name_chirho) if arg_name_chirho == name_chirho)
-        }
-        // Type application: both sides must be apps with matching structure
-        TyChirho::AppChirho(f_chirho, a_chirho) => {
-            if let TyChirho::AppChirho(af_chirho, aa_chirho) = arg_chirho {
-                match_type_pattern_chirho(f_chirho, af_chirho, bindings_chirho)
-                    && match_type_pattern_chirho(a_chirho, aa_chirho, bindings_chirho)
-            } else {
-                false
-            }
-        }
-        TyChirho::ListChirho(inner_chirho) => {
-            if let TyChirho::ListChirho(arg_inner_chirho) = arg_chirho {
-                match_type_pattern_chirho(inner_chirho, arg_inner_chirho, bindings_chirho)
-            } else {
-                false
-            }
-        }
-        TyChirho::TupleChirho(elems_chirho) => {
-            if let TyChirho::TupleChirho(arg_elems_chirho) = arg_chirho {
-                if elems_chirho.len() != arg_elems_chirho.len() {
-                    return false;
-                }
-                elems_chirho
-                    .iter()
-                    .zip(arg_elems_chirho.iter())
-                    .all(|(p_chirho, a_chirho)| {
-                        match_type_pattern_chirho(p_chirho, a_chirho, bindings_chirho)
-                    })
-            } else {
-                false
-            }
-        }
-        TyChirho::FunChirho(a_chirho, r_chirho, _) => {
-            if let TyChirho::FunChirho(aa_chirho, ar_chirho, _) = arg_chirho {
-                match_type_pattern_chirho(a_chirho, aa_chirho, bindings_chirho)
-                    && match_type_pattern_chirho(r_chirho, ar_chirho, bindings_chirho)
-            } else {
-                false
-            }
-        }
-        // Int, Bool, Char literals — exact match only
-        _ => pat_chirho == arg_chirho,
-    }
-}
-
-/// Substitute type variables in a type family equation RHS using the
-/// bindings collected during pattern matching.
+/// Substitute equation variables with the same capture boundary as kind families.
 fn substitute_type_vars_chirho(
     ty_chirho: &TyChirho,
     bindings_chirho: &HashMap<String, TyChirho>,
 ) -> TyChirho {
-    match ty_chirho {
-        TyChirho::VarChirho(tv_chirho) => {
-            let var_name_chirho = format!("tv{}", tv_chirho.0);
-            bindings_chirho
-                .get(&var_name_chirho)
-                .cloned()
-                .unwrap_or_else(|| ty_chirho.clone())
-        }
-        TyChirho::ForallVarChirho(name_chirho) => bindings_chirho
-            .get(name_chirho)
-            .cloned()
-            .unwrap_or_else(|| ty_chirho.clone()),
-        TyChirho::AppChirho(f_chirho, a_chirho) => TyChirho::AppChirho(
-            Box::new(substitute_type_vars_chirho(f_chirho, bindings_chirho)),
-            Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
-        ),
-        TyChirho::FunChirho(a_chirho, r_chirho, _) => TyChirho::FunChirho(
-            Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
-            Box::new(substitute_type_vars_chirho(r_chirho, bindings_chirho)),
-            MultChirho::ManyChirho,
-        ),
-        TyChirho::ListChirho(inner_chirho) => TyChirho::ListChirho(Box::new(
-            substitute_type_vars_chirho(inner_chirho, bindings_chirho),
-        )),
-        TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-            elems_chirho
-                .iter()
-                .map(|e_chirho| substitute_type_vars_chirho(e_chirho, bindings_chirho))
-                .collect(),
-        ),
-        _ => ty_chirho.clone(),
-    }
+    let bindings_chirho = bindings_chirho
+        .iter()
+        .map(|(name_chirho, value_chirho)| {
+            (
+                crate::families_chirho::FamilyTypeVariableChirho::NamedChirho(name_chirho.clone()),
+                value_chirho.clone(),
+            )
+        })
+        .collect();
+    crate::families_chirho::FamilyTermChirho::substitute_chirho(ty_chirho, &bindings_chirho)
 }
 
 #[cfg(test)]

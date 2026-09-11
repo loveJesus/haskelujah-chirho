@@ -37,9 +37,12 @@ impl KindInferCtxChirho {
     pub(super) fn elaborate_inline_kind_chirho(
         &mut self,
         ty_chirho: &TypeChirho,
-    ) -> (KindChirho, Vec<KindVarChirho>) {
+    ) -> (KindChirho, Vec<KindVarChirho>, Vec<KindVarChirho>) {
         let outer_capture_chirho = self.captured_kind_variables_chirho.replace(Vec::new());
-        let kind_chirho = self.type_to_kind_chirho(ty_chirho);
+        self.env_chirho.begin_scope_chirho();
+        let _classifier_chirho = self.infer_type_kind_chirho(ty_chirho);
+        let (kind_chirho, quantified_chirho) = self.interpret_inline_kind_chirho(ty_chirho);
+        self.env_chirho.end_scope_chirho();
         let captured_chirho = self.captured_kind_variables_chirho.take().unwrap();
         self.captured_kind_variables_chirho = outer_capture_chirho;
         let written_chirho = captured_chirho
@@ -54,7 +57,38 @@ impl KindInferCtxChirho {
                 }
             })
             .collect();
-        (kind_chirho, written_chirho)
+        (kind_chirho, written_chirho, quantified_chirho)
+    }
+
+    /// Leading invisible binders are quantified even in an otherwise inferred
+    /// head. Constructor uses instantiate them; they cannot specialize the
+    /// declaration's own written identity. Required binders remain Pi arguments.
+    fn interpret_inline_kind_chirho(
+        &mut self,
+        ty_chirho: &TypeChirho,
+    ) -> (KindChirho, Vec<KindVarChirho>) {
+        match ty_chirho {
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                self.interpret_inline_kind_chirho(inner_chirho)
+            }
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
+                let identities_chirho: Vec<_> = vars_chirho
+                    .iter()
+                    .map(|binder_chirho| {
+                        ctx_chirho.kind_var_cache_chirho[binder_chirho.text_chirho()]
+                    })
+                    .collect();
+                let (kind_chirho, mut quantified_chirho) =
+                    ctx_chirho.interpret_inline_kind_chirho(body_chirho);
+                quantified_chirho.extend(identities_chirho);
+                (kind_chirho, quantified_chirho)
+            }),
+            _ => (self.interpret_kind_term_chirho(ty_chirho), Vec::new()),
+        }
     }
 
     pub(super) fn infer_constraint_kind_chirho(
@@ -140,7 +174,7 @@ impl KindInferCtxChirho {
         term_chirho
     }
 
-    fn interpret_kind_term_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
+    pub(super) fn interpret_kind_term_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
         if let Some((name_chirho, expanded_chirho)) =
             self.expand_type_kind_synonym_once_chirho(ty_chirho)
             && !self

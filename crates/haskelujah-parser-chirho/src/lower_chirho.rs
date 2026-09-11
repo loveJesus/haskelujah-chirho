@@ -14109,12 +14109,12 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
         match decl_chirho.unwrap() {
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
-                result_kind_chirho,
+                result_chirho,
                 ..
             } => {
                 assert_eq!(name_chirho.text_chirho(), "G");
                 assert!(
-                    result_kind_chirho.is_some(),
+                    result_chirho.kind_chirho.is_some(),
                     "should have result kind annotation"
                 );
             }

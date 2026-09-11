@@ -12,6 +12,8 @@ mod dependency_chirho;
 pub mod deriving_chirho;
 pub mod env_chirho;
 pub mod exhaust_chirho;
+#[path = "types_chirho/families_chirho.rs"]
+mod families_chirho;
 pub mod infer_chirho;
 pub mod kind_chirho;
 pub mod linearity_chirho;

@@ -75,15 +75,22 @@ rejected set files are byte-identical to the seventh diagnostic. Against main:
 accept+7/-3, reject+15/-6. T12045a/T13643/T14010 remain accept regressions, so
 main is held. The class-method scope correction is included in this diagnostic;
 typing356, integration68 and canaries7 also passed on this code checkpoint.
-The family sources are not modified yet. Next is the measured family-kind
-representation/reduction repair, not weakening the declaration contracts.
+The family foundation is now implemented in the isolated worktree (details at
+the tail below). T13643 recovers in a focused fresh-CLI check; T12045a and
+T14010 remain red, and UnliftedNewtypesDifficultUnification stays green. A new
+full diagnostic is owed; the eighth counts above remain the last frozen set.
 
-The goal reports usageLimited and the independent rejection-reason reviewer
+At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
 returned a provider usage-limit error instead of a result. No retry is scheduled.
-After recording the eighth diagnostic, publish CORPUS-PASSES-DONE and release
-SLOT/DB; reacquire both from current room state before further builds or DB
-writes. The project is not complete, and no main landing is authorized by these
+The prior handoff released SLOT/DB in22046; this continuation reacquired them
+in22091. The project is not complete, and no main landing is authorized by these
 diagnostic counts. Canonical DB row484 remains open; this checkpoint writes no DB.
+
+Direct L.J. continuation resumed this work at ea72bb12 with main unchanged.
+Runtime identity is now HASKELUJAH:3:%154, re-registered in the broker. SLOT/DB
+reclaimed in message22091 after checking there was no intervening claim. The
+automatic goal still reports usageLimited; this direct interactive work does not
+claim that automated allowance is restored. No exhausted subagent is retried.
 
 Multiplicity correction: parser346,typing356,naming136,integration67,canaries7
 green, zero ignored/filtered, actual cargo exits0. Twenty GHC9.14.1/candidate
@@ -820,3 +827,85 @@ injectivity negatives. Hidden kind-pattern dispatch (T14010) and explicit kind
 application (T12045a) require retained semantic arguments, not per-file guards.
 Record that placement decision before editing; the prior read-only design review
 does not substitute for a compiling, behaviorally verified implementation.
+
+### Family vertical placement decision
+
+Recommendation: start with local closed-family normalization and validated
+injectivity, while preserving the head's actual result binder/kind/annotation
+and whether the declaration is closed. Retype the AST result slot so its current
+kind consumers must be revisited. Extract CST family parsing to its own child
+module; do not add another large arm to the oversized parser root. Share the
+ordered matching policy between Ty and Kind through a small term adapter under
+typing/types_chirho, rather than implement two family solvers. Group the four
+existing kind test files before adding the family consumer to that directory.
+
+Confidence: medium in the complete integration, high in the eleven independently
+measured reductions. Alternative of reducing only declaration syntax loses
+instantiation-dependent reduction; treating a stuck family as a fresh kind loses
+soundness. Inverse improvement must use validated injectivity only. Unsupported
+hidden kind arguments remain explicit follow-on work, not invented arguments.
+Checkpoint family-vertical-before-chirho at ea72bb12 bounds this reversible fork.
+
+- [x] Demonstrate forward reduction, injective improvement and invalid annotation controls red.
+- [x] Retain family result metadata and equation form through parser/naming consumers.
+- [x] Share ordered equation matching and bound kind-family output growth without treating stuck applications as nominally injective.
+- [x] Validate represented first-order injectivity before improvement; preserve the non-injective negative.
+- [x] Re-run the eleven reference pairs and UnliftedNewtypesDifficultUnification control.
+- [ ] Focused crate/integration tests, then frozen diagnostic before any landing claim.
+
+### Family foundation — measured before the next diagnostic
+
+The three new driver controls actually failed0/3 before implementation, then
+passed3/3: closed forward reduction, validated injective improvement and an
+invalid annotation rejected without uses. A subsequent full integration run
+found a real regression in the existing non-injective repeated-use control;
+GHC9.14.1 accepts its exact source. Fresh occurrence matching fixes it without
+cancelling a family on written/rigid variables. The explicit leading forall
+also stays quantified in an otherwise inferred data head, rather than being
+specialized by its first GADT constructor.
+
+Claude2's read-only review supplied a real numeric/named variable-key collision.
+The adapter now uses an enum, with a direct reduction control. Its two forall
+probes are both illegal GHC equations (GHC-91510), not missing substitution
+contracts; both were candidate wrong accepts and are now diagnosed. A separate
+probe found a real unsound annotation: `Erase a = Bool` was nominally retained
+on an injective RHS. Synonyms now expand before validity/validation; the erasing
+case rejects and the independently GHC-accepted `Maybe a` counterpart passes.
+
+The normalizer charges expanded output nodes before copying a duplicating RHS.
+The growth control reaches a specific work-limit result rather than allocating
+until the OS kills it. This is a local kind-family bound, not a claim that the
+whole type checker or synonym expansion is bounded. Opaque/nested-family terms
+and verification-budget exhaustion never certify injectivity.
+
+Fresh focused results: parser348, naming136, typing362, integration73, canaries7,
+all actual cargo exits0 with zero ignored/filtered tests. Seven focused parser
+family tests also retain the result binder/kind/dependency and distinguish
+closed-empty from open families. The explicit CLI build has no compiler warning.
+Final CLI SHA256: `a0e1025f98374c25824a1397b1df53f5b71a9283d94312c20591fd8ebf474318`.
+
+Seventeen paired GHC9.14.1/CLI reductions have11 verdict agreements and6 named
+unfinished contracts. The original11 now agree on forward/injective/invalid-
+injectivity/non-injective/implicit-matchable cases; explicit kind application,
+hidden pattern dispatch in both orders, invalid explicit kind application,
+explicit-uniform open-family checking and overlapping open equations remain
+unfinished. The six additional review/alias/shared-use sources all agree.
+Focused corpus: T13643 recovers, T12045a/T14010 remain red, and the already-green
+UnliftedNewtypesDifficultUnification remains green. No full-count prediction is
+banked from those four checks.
+
+Scoped clippy exits0 with146 warning messages across dependencies: diagnostics3,
+syntax1, parser88, typing54. Two are new enum-postfix style warnings that conflict
+with the mandatory Chirho naming rule; no suppression or gratuitous public API
+was added to hide them. The new collapsible-if and const-mutation warnings were
+fixed. This is not zero-warning project completion; existing oversized roots
+and structural debt also remain. Family CST parsing was extracted and four kind
+test files grouped before adding focused consumers; new implementation files
+remain below400 lines.
+
+Evidence: `/private/tmp/haskelujah-family-kinds-chirho.iAIit3/` contains driver-
+before/after logs, crate/integration gates, clippy JSONL and the11-pair
+`foundation-after-chirho.jsonl`. `/private/tmp/haskelujah-family-review-chirho.09U6QK/`
+contains the six additional sources, the measured erasing-alias wrong accept,
+and final pairs. Main/DB/published artifacts remain unchanged. Next: freeze this
+foundation and compare complete sets before adding explicit/hidden kind inputs.

@@ -111,7 +111,7 @@ fn class_and_family_binder_groups_do_not_change_head_arity_chirho() {
     let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
     let DeclChirho::TypeFamilyDeclChirho {
         type_vars_chirho,
-        result_kind_chirho,
+        result_chirho,
         ..
     } = &module_chirho.decls_chirho[0]
     else {
@@ -125,7 +125,7 @@ fn class_and_family_binder_groups_do_not_change_head_arity_chirho() {
         ["fChirho", "xsChirho", "rChirho", "aChirho"]
     );
     assert!(
-        matches!(result_kind_chirho, Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Constraint")
+        matches!(&result_chirho.kind_chirho, Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Constraint")
     );
     let DeclChirho::ClassDeclChirho {
         type_vars_chirho, ..

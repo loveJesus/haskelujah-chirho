@@ -31,12 +31,14 @@ fn data_family_header_survives_ast_lowering_chirho() {
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
                 type_vars_chirho,
-                result_kind_chirho,
+                result_chirho,
                 equations_chirho,
                 ..
-            } if name_chirho.text_chirho() == "SingChirho" => {
-                Some((type_vars_chirho, result_kind_chirho, equations_chirho))
-            }
+            } if name_chirho.text_chirho() == "SingChirho" => Some((
+                type_vars_chirho,
+                &result_chirho.kind_chirho,
+                equations_chirho,
+            )),
             _ => None,
         })
         .expect("data-family header should lower to the shared family declaration shape");

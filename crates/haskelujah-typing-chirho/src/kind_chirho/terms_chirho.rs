@@ -308,6 +308,9 @@ impl KindSubstChirho {
 /// Error from kind unification.
 #[derive(Debug, Clone, PartialEq)]
 pub enum KindErrorChirho {
+    ReductionLimitChirho {
+        span_chirho: SpanChirho,
+    },
     MismatchChirho {
         expected_chirho: KindChirho,
         actual_chirho: KindChirho,

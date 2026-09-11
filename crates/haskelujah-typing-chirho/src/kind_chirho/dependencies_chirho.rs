@@ -128,15 +128,20 @@ fn declaration_refs_chirho(declaration_chirho: &DeclChirho, refs_chirho: &mut Ha
         }
         DeclChirho::TypeFamilyDeclChirho {
             type_vars_chirho,
-            result_kind_chirho,
+            result_chirho,
+            equations_chirho,
             ..
         } => {
             binder_refs_chirho(type_vars_chirho, refs_chirho);
-            if let Some(kind_chirho) = result_kind_chirho {
+            if let Some(kind_chirho) = &result_chirho.kind_chirho {
                 type_refs_chirho(kind_chirho, refs_chirho);
             }
-            // Equation checking is not implemented by this kind pass. Do not
-            // couple inference groups through syntax it does not consume yet.
+            for equation_chirho in equations_chirho {
+                for argument_chirho in &equation_chirho.lhs_types_chirho {
+                    type_refs_chirho(argument_chirho, refs_chirho);
+                }
+                type_refs_chirho(&equation_chirho.rhs_chirho, refs_chirho);
+            }
         }
         DeclChirho::ClassDeclChirho {
             type_vars_chirho,

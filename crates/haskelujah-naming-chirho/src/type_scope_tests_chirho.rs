@@ -443,12 +443,16 @@ fn family_result_kind_resolves_type_namespace_names_chirho() {
     let decl_chirho = DeclChirho::TypeFamilyDeclChirho {
         name_chirho: name_chirho("FamilyChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
-        result_kind_chirho: Some(TypeChirho::FunChirho {
-            arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
-            mult_chirho: None,
-            result_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Constraint"))),
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        }),
+        result_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyResultChirho {
+            kind_chirho: Some(TypeChirho::FunChirho {
+                arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
+                mult_chirho: None,
+                result_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Constraint"))),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+            ..Default::default()
+        },
+        closed_chirho: false,
         equations_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };

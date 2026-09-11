@@ -87,7 +87,7 @@ impl KindInferCtxChirho {
         // Head annotations and the inline tail share identities and remain in
         // scope while the caller checks constructor fields, as ordinary heads do.
         let head_names_chirho: HashSet<_> = self.kind_var_cache_chirho.keys().cloned().collect();
-        let (result_kind_chirho, tail_variables_chirho) = result_chirho
+        let (result_kind_chirho, tail_variables_chirho, quantified_chirho) = result_chirho
             .map(|tail_chirho| self.elaborate_inline_kind_chirho(tail_chirho))
             .unwrap_or_else(|| {
                 let result_chirho = if complete_scheme_chirho.is_some() {
@@ -95,7 +95,7 @@ impl KindInferCtxChirho {
                 } else {
                     KindChirho::StarChirho
                 };
-                (result_chirho, Vec::new())
+                (result_chirho, Vec::new(), Vec::new())
             });
         written_variables_chirho.extend(tail_variables_chirho);
         // A top-level :: may use head-bound kind names or explicit forall
@@ -153,6 +153,11 @@ impl KindInferCtxChirho {
             // body constraints before another group member is defaulted.
             if cusk_chirho && self.poly_kinds_enabled_chirho {
                 KindBindingChirho::PolyChirho(KindSchemeChirho::generalize_chirho(head_kind_chirho))
+            } else if !quantified_chirho.is_empty() {
+                KindBindingChirho::PolyChirho(KindSchemeChirho {
+                    quantified_chirho,
+                    body_chirho: head_kind_chirho,
+                })
             } else {
                 KindBindingChirho::MonoChirho(head_kind_chirho)
             }

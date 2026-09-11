@@ -4,6 +4,7 @@
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
 use super::*;
+use haskelujah_ast_chirho::decl_chirho::{TypeFamilyInjectivityChirho, TypeFamilyResultChirho};
 
 impl LowerCtxChirho {
     pub(super) fn lower_type_family_decl_chirho(
@@ -16,7 +17,7 @@ impl LowerCtxChirho {
         let mut name_chirho = None;
         let mut type_vars_chirho = Vec::new();
         let mut equations_chirho: Vec<TypeFamilyEquationChirho> = Vec::new();
-        let mut result_kind_chirho = None;
+        let mut result_chirho = TypeFamilyResultChirho::default();
         let mut saw_family_chirho = false;
         let mut saw_where_chirho = false;
         let mut saw_double_colon_chirho = false;
@@ -126,9 +127,14 @@ impl LowerCtxChirho {
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
-                    if saw_double_colon_chirho && !saw_where_chirho && result_kind_chirho.is_none()
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::TypeFamilyResultChirho {
+                        result_chirho =
+                            self.lower_family_result_chirho(n_chirho, child_chirho.start_chirho);
+                    } else if saw_double_colon_chirho
+                        && !saw_where_chirho
+                        && result_chirho.kind_chirho.is_none()
                     {
-                        result_kind_chirho =
+                        result_chirho.kind_chirho =
                             Some(self.lower_type_chirho(n_chirho, child_chirho.start_chirho));
                         saw_double_colon_chirho = false; // consumed
                     } else if saw_where_chirho && eq_saw_equals_chirho && eq_rhs_chirho.is_none() {
@@ -157,10 +163,61 @@ impl LowerCtxChirho {
         DeclChirho::TypeFamilyDeclChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
-            result_kind_chirho,
+            result_chirho,
+            closed_chirho: saw_where_chirho,
             equations_chirho,
             span_chirho,
         }
+    }
+
+    fn lower_family_result_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> TypeFamilyResultChirho {
+        let mut result_chirho = TypeFamilyResultChirho::default();
+        let mut dependency_result_chirho = None;
+        let mut parameters_chirho = Vec::new();
+        let mut after_pipe_chirho = false;
+        let mut after_arrow_chirho = false;
+        for child_chirho in self.semantic_children_chirho(node_chirho, base_chirho) {
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(token_chirho) => match token_chirho.kind_chirho() {
+                    TokenKindChirho::PipeChirho => after_pipe_chirho = true,
+                    TokenKindChirho::RightArrowChirho => after_arrow_chirho = true,
+                    TokenKindChirho::VarIdChirho => {
+                        let name_chirho = self.name_from_token_chirho(
+                            token_chirho,
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                        );
+                        if after_arrow_chirho {
+                            parameters_chirho.push(name_chirho);
+                        } else if after_pipe_chirho {
+                            dependency_result_chirho = Some(name_chirho);
+                        } else {
+                            result_chirho.binder_chirho = Some(name_chirho);
+                        }
+                    }
+                    _ => {}
+                },
+                GreenElementChirho::NodeChirho(kind_chirho)
+                    if is_type_kind_chirho(kind_chirho.kind_chirho()) =>
+                {
+                    result_chirho.kind_chirho =
+                        Some(self.lower_type_chirho(kind_chirho, child_chirho.start_chirho));
+                }
+                _ => {}
+            }
+        }
+        if let Some(dependency_result_chirho) = dependency_result_chirho {
+            let span_chirho = dependency_result_chirho.span_chirho();
+            result_chirho.injectivity_chirho = Some(TypeFamilyInjectivityChirho {
+                result_chirho: dependency_result_chirho,
+                parameters_chirho,
+                span_chirho,
+            });
+        }
+        result_chirho
     }
 
     pub(super) fn lower_type_family_instance_decl_chirho(

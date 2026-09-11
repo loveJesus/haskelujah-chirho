@@ -4,6 +4,72 @@
 use super::*;
 
 #[test]
+fn family_result_binder_kind_and_dependency_survive_lowering_chirho() {
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule FamilyChirho where\ntype family IdentityChirho (aChirho :: Type) = (resultChirho :: Type) | resultChirho -> aChirho where\n  IdentityChirho aChirho = aChirho\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
+    let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
+    let DeclChirho::TypeFamilyDeclChirho {
+        type_vars_chirho,
+        result_chirho,
+        closed_chirho,
+        equations_chirho,
+        ..
+    } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("family declaration missing");
+    };
+    assert_eq!(type_vars_chirho.len(), 1);
+    assert_eq!(type_vars_chirho[0].text_chirho(), "aChirho");
+    assert_eq!(
+        result_chirho.binder_chirho.as_ref().unwrap().text_chirho(),
+        "resultChirho"
+    );
+    assert!(
+        matches!(&result_chirho.kind_chirho, Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Type")
+    );
+    let dependency_chirho = result_chirho.injectivity_chirho.as_ref().unwrap();
+    assert_eq!(
+        dependency_chirho.result_chirho.text_chirho(),
+        "resultChirho"
+    );
+    assert_eq!(
+        dependency_chirho
+            .parameters_chirho
+            .iter()
+            .map(NameChirho::text_chirho)
+            .collect::<Vec<_>>(),
+        ["aChirho"]
+    );
+    assert!(*closed_chirho);
+    assert_eq!(equations_chirho.len(), 1);
+    assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| matches!(declaration_chirho, DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")));
+}
+
+#[test]
+fn an_empty_closed_family_is_not_an_open_family_chirho() {
+    let source_chirho = "{-# LANGUAGE TypeFamilies #-}\nmodule FamilyChirho where\ntype family OpenChirho aChirho\ntype family ClosedChirho aChirho where {}\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
+    let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
+    for (declaration_chirho, expected_closed_chirho) in
+        module_chirho.decls_chirho.iter().zip([false, true])
+    {
+        let DeclChirho::TypeFamilyDeclChirho {
+            closed_chirho,
+            equations_chirho,
+            ..
+        } = declaration_chirho
+        else {
+            panic!("family declaration missing");
+        };
+        assert_eq!(*closed_chirho, expected_closed_chirho);
+        assert!(equations_chirho.is_empty());
+    }
+    assert_eq!(module_chirho.decls_chirho.len(), 2);
+}
+
+#[test]
 fn literal_family_patterns_keep_values_and_equation_boundaries_chirho() {
     let source_chirho = "{-# LANGUAGE DataKinds, TypeFamilies #-}\nmodule FamilyChirho where\ntype family LiteralChirho aChirho bChirho where { LiteralChirho 0 \"zero\" = Int; LiteralChirho 1 \"one\" = Bool }\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n";
     let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;

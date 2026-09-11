@@ -33,6 +33,10 @@ impl KindInferCtxChirho {
         // Aliases used as kind syntax are expanded independently of source order.
         // Their inferred kinds still belong to the dependency groups below.
         for declaration_chirho in &graph_chirho.declarations_chirho {
+            if let DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } = declaration_chirho {
+                self.kind_family_names_chirho
+                    .insert(self.canonical_kind_name_chirho(name_chirho));
+            }
             if let DeclChirho::TypeAliasDeclChirho {
                 name_chirho,
                 type_vars_chirho,
@@ -91,7 +95,10 @@ impl KindInferCtxChirho {
                         .all(|name_chirho| {
                             matches!(
                                 self.env_chirho.lookup_binding_chirho(name_chirho),
-                                Some(KindBindingChirho::PolyChirho(_))
+                                Some(KindBindingChirho::PolyChirho(scheme_chirho))
+                                    if scheme_chirho.body_chirho.free_vars_chirho().iter().all(|variable_chirho| {
+                                        scheme_chirho.quantified_chirho.contains(variable_chirho)
+                                    })
                             )
                         })
                 })
@@ -208,14 +215,14 @@ impl KindInferCtxChirho {
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
                 type_vars_chirho,
-                result_kind_chirho,
+                result_chirho,
                 span_chirho,
                 ..
             } => {
                 self.infer_type_family_decl_kind_chirho(
                     name_chirho.text_chirho(),
                     type_vars_chirho,
-                    result_kind_chirho.as_ref(),
+                    result_chirho.kind_chirho.as_ref(),
                     *span_chirho,
                     self.poly_kinds_enabled_chirho,
                 );
@@ -382,7 +389,23 @@ impl KindInferCtxChirho {
                     });
                 }
             }
-            DeclChirho::TypeFamilyDeclChirho { .. } => {}
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                result_chirho,
+                closed_chirho,
+                equations_chirho,
+                span_chirho,
+            } => {
+                self.check_kind_family_chirho(
+                    name_chirho,
+                    type_vars_chirho,
+                    result_chirho,
+                    *closed_chirho,
+                    equations_chirho,
+                    *span_chirho,
+                );
+            }
             _ => unreachable!("only kind declarations enter dependency groups"),
         }
     }

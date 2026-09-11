@@ -29,21 +29,30 @@ use haskelujah_span_chirho::SpanChirho;
 mod constructors_chirho;
 mod conversion_chirho;
 #[cfg(test)]
+#[path = "kind_chirho/tests_chirho/declaration_tests_chirho.rs"]
 mod declaration_tests_chirho;
 mod declarations_chirho;
 mod dependencies_chirho;
 mod environment_chirho;
+mod families_chirho;
+#[cfg(test)]
+#[path = "kind_chirho/tests_chirho/family_tests_chirho.rs"]
+mod family_tests_chirho;
+mod family_unify_chirho;
 mod groups_chirho;
 mod instances_chirho;
 mod runtime_chirho;
 #[cfg(test)]
+#[path = "kind_chirho/tests_chirho/scheme_tests_chirho.rs"]
 mod scheme_tests_chirho;
 mod schemes_chirho;
 mod scope_chirho;
 #[cfg(test)]
+#[path = "kind_chirho/tests_chirho/scope_tests_chirho.rs"]
 mod scope_tests_chirho;
 
 #[cfg(test)]
+#[path = "kind_chirho/tests_chirho/term_tests_chirho.rs"]
 mod term_tests_chirho;
 mod terms_chirho;
 use terms_chirho::unify_kind_chirho;
@@ -100,6 +109,10 @@ struct KindInferCtxChirho {
     pending_written_kinds_chirho: Vec<(KindVarChirho, SpanChirho)>,
     /// Scoped source-variable provenance while elaborating an inline kind.
     captured_kind_variables_chirho: Option<Vec<KindVarChirho>>,
+    kind_families_chirho: HashMap<String, families_chirho::KindFamilyChirho>,
+    kind_family_names_chirho: std::collections::HashSet<String>,
+    /// Fresh choices at a polymorphic occurrence, not written binder identities.
+    instantiated_kind_variables_chirho: std::collections::HashSet<KindVarChirho>,
 }
 
 /// Error codes for kind diagnostics.
@@ -131,6 +144,9 @@ impl KindInferCtxChirho {
             poly_kinds_enabled_chirho: true,
             pending_written_kinds_chirho: Vec::new(),
             captured_kind_variables_chirho: None,
+            kind_families_chirho: HashMap::new(),
+            kind_family_names_chirho: std::collections::HashSet::new(),
+            instantiated_kind_variables_chirho: std::collections::HashSet::new(),
         }
     }
 
@@ -474,7 +490,7 @@ impl KindInferCtxChirho {
     ) {
         let k1_applied_chirho = self.subst_chirho.apply_chirho(k1_chirho);
         let k2_applied_chirho = self.subst_chirho.apply_chirho(k2_chirho);
-        match unify_kind_chirho(
+        match self.unify_family_kinds_chirho(
             &k1_applied_chirho,
             &k2_applied_chirho,
             context_chirho,
@@ -485,6 +501,11 @@ impl KindInferCtxChirho {
             }
             Err(err_chirho) => {
                 let (msg_chirho, span_chirho, code_chirho) = match err_chirho {
+                    KindErrorChirho::ReductionLimitChirho { span_chirho } => (
+                        "kind-family reduction exceeded its work limit".to_owned(),
+                        span_chirho,
+                        KIND_MISMATCH_CODE_CHIRHO,
+                    ),
                     KindErrorChirho::MismatchChirho {
                         expected_chirho,
                         actual_chirho,
@@ -1827,7 +1848,11 @@ mod tests_chirho {
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho: mk_name_chirho("TrivialFamily"),
                 type_vars_chirho: vec![t_var_chirho.clone()],
-                result_kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
+                result_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyResultChirho {
+                    kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
+                    ..Default::default()
+                },
+                closed_chirho: false,
                 equations_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
@@ -1867,7 +1892,8 @@ mod tests_chirho {
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho: mk_name_chirho("FamilyChirho"),
                 type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
-                result_kind_chirho: None,
+                result_chirho: Default::default(),
+                closed_chirho: false,
                 equations_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },

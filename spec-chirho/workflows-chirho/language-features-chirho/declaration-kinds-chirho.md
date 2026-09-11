@@ -303,9 +303,64 @@ Equation variables do not come from the family declaration's parameter names.
 Open and closed registration share the same conversion; a local variable under
 `Maybe` or a nested promoted list must remain matchable. The variable collector
 visits each pattern node once with a set for deduplication. This does not claim
-global linear normalization, closed-family apartness, injectivity metadata or
-complete unresolved-wanted reporting. The existing reducer's support for extra
+global linear normalization or complete unresolved-wanted reporting. The existing reducer's support for extra
 arguments is preserved, not disabled to compensate for missing patterns.
+
+### Local closed families in kinds (isolated row484 continuation)
+
+Family results retain the optional kind, named result binder and dependency
+annotation together. An explicit closed flag distinguishes `where {}` from an
+open declaration. Equation patterns/results contribute dependency edges before
+declarations are checked. Kind and type consumers adapt their terms to one
+ordered matcher: a blocked earlier row cannot select a later catch-all, and a
+stuck family is not nominally injective.
+
+```mermaid
+flowchart TD
+  FamilyMetadataChirho[Retained result binder kind dependency and closed form] --> FamilyScopeChirho[Fresh equation scope and classifier checking]
+  FamilyScopeChirho --> EquationValidityChirho[Reject polymorphic equations and family patterns]
+  EquationValidityChirho --> TransparentAliasesChirho[Expand synonyms before interpreting equations]
+  TransparentAliasesChirho --> FamilyRowsChirho[Register fully represented local closed rows]
+  FamilyRowsChirho --> ForwardChirho[Ordered shared reduction with output budget]
+  FamilyRowsChirho --> ValidateInverseChirho[Validate determining variables and compatible RHS pairs]
+  ValidateInverseChirho --> InverseChirho[Only proved dependencies propose argument equalities]
+  ForwardChirho --> KindEqualityChirho[Ordinary occurs and rigid checking]
+  InverseChirho --> KindEqualityChirho
+  FreshOccurrenceChirho[Fresh polymorphic occurrence arguments] --> ForwardMatchChirho[Choose arguments making whole terms identical]
+  ForwardMatchChirho --> KindEqualityChirho
+```
+
+Only the represented first-order fragment can certify inverse improvement.
+Opaque terms, nested family results and exhausted verification budgets do not
+certify it. Invalid determining-variable coverage and conflicting equations are
+diagnosed before any use. Transparent aliases must be expanded: `Erase a = Bool`
+cannot make `Family a = Erase a` injective. GHC9.14.1 independently rejects that
+control and accepts its `Maybe a` counterpart. It also rejects forall types on
+either side of a family equation (GHC-91510); those are validity errors, not
+requests for capture-avoiding polymorphic family reduction.
+
+Matching fresh occurrence choices is separate from inverse improvement. It may
+choose fresh instantiated variables to make two whole terms identical, but it
+cannot derive equality of written or rigid arguments by cancelling a family
+head. Leading explicit invisible forall binders remain quantified even when
+other head classifiers await SCC inference. They are instantiated at constructor
+uses, not specialized by those uses. Remaining classifier holes close only at
+the normal publication boundary.
+
+Kind-family reduction accounts for substituted output nodes before copying a
+duplicating RHS. Exhaustion produces a specific work-limit diagnostic, not an
+acceptance or a claimed kind mismatch. This local budget does not establish a
+global bound on type inference, synonym expansion, or all normalization paths.
+The generic type adapter gives numeric and named variables disjoint enum keys;
+the string `tv0` cannot collide with numeric variable0.
+
+Still unfinished: hidden kind indices, explicit kind applications, open/associated
+kind-family equation checking, higher-rank family result contracts, and complete
+injectivity validation beyond this first-order fragment. No row with missing
+hidden arguments is registered as a visible-only approximation. The retained
+metadata is not a claim that those missing consumers now work. Design reference:
+[GHC development guide, type families](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/type_families.html#injective-type-families);
+executable controls use installed GHC9.14.1, not that guide's development version.
 
 GHC-55233 is checked on both written contracts with one diagnostic, independently
 of the existing Type/Constraint unification compatibility. Binder annotations
