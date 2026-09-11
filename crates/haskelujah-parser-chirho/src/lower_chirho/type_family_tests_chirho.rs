@@ -4,6 +4,57 @@
 use super::*;
 
 #[test]
+fn operator_family_standalone_kinds_are_not_aliases_chirho() {
+    for operator_chirho in ["+++", ":+:"] {
+        let source_chirho = format!(
+            "module OperatorKindChirho where\ntype ({operator_chirho}) :: Type -> Type -> Type\ntype family leftChirho {operator_chirho} rightChirho where\n  leftChirho {operator_chirho} rightChirho = leftChirho\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let module_chirho = lower_module_chirho(
+            &crate::cst_parser_chirho::parse_to_cst_chirho(&source_chirho, file_chirho),
+            file_chirho,
+        );
+        let family_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find_map(|declaration_chirho| {
+                if let DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    result_chirho,
+                    ..
+                } = declaration_chirho
+                {
+                    (name_chirho.text_chirho() == operator_chirho).then_some(result_chirho)
+                } else {
+                    None
+                }
+            })
+            .expect("operator family must survive");
+        let signature_chirho = family_chirho
+            .kind_sig_chirho
+            .as_ref()
+            .and_then(DeclKindSigChirho::standalone_chirho)
+            .expect("the operator's complete signature must survive as its contract");
+        let span_chirho = signature_chirho.span_chirho();
+        assert_eq!(
+            &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+                ..span_chirho.end_chirho().as_usize_chirho()],
+            "Type -> Type -> Type"
+        );
+        assert!(
+            !module_chirho
+                .decls_chirho
+                .iter()
+                .any(|declaration_chirho| matches!(
+                    declaration_chirho,
+                    DeclChirho::TypeAliasDeclChirho { .. }
+                ))
+        );
+        assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| matches!(declaration_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "canaryChirho")));
+    }
+}
+
+#[test]
 fn standalone_and_result_family_contracts_keep_independent_spans_chirho() {
     for declaration_chirho in ["type family", "data family"] {
         let source_chirho = format!(

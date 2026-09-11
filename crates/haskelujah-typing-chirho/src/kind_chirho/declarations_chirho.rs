@@ -87,22 +87,8 @@ impl KindInferCtxChirho {
             );
             KindBindingChirho::PolyChirho(complete_scheme_chirho)
         } else {
-            let mut head_kind_chirho = result_kind_chirho;
-            for (identity_chirho, argument_chirho) in parameters_chirho.into_iter().rev() {
-                head_kind_chirho = if head_kind_chirho
-                    .free_vars_chirho()
-                    .contains(&identity_chirho)
-                {
-                    KindChirho::DependentChirho {
-                        argument_chirho: Box::new(argument_chirho),
-                        result_chirho: Box::new(
-                            head_kind_chirho.abstract_variable_chirho(identity_chirho),
-                        ),
-                    }
-                } else {
-                    KindChirho::arrow_chirho(argument_chirho, head_kind_chirho)
-                };
-            }
+            let head_kind_chirho =
+                Self::compose_kind_head_chirho(parameters_chirho, result_kind_chirho);
             // An incomplete recursive group may equate written variables from
             // different declarations, but may not specialize them to Type or an
             // arrow. Check that contract after solving the whole inference SCC.
@@ -143,6 +129,29 @@ impl KindInferCtxChirho {
         }
         self.env_chirho
             .bind_entry_chirho(name_chirho.to_owned(), binding_chirho);
+    }
+
+    /// Data and family heads share lexical dependency, even though their
+    /// result defaults and generalization rules differ. A visible parameter
+    /// occurring in a later classifier is a binder, not another free kind.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn compose_kind_head_chirho(
+        parameters_chirho: Vec<(super::KindVarChirho, KindChirho)>,
+        mut result_chirho: KindChirho,
+    ) -> KindChirho {
+        for (identity_chirho, argument_chirho) in parameters_chirho.into_iter().rev() {
+            result_chirho = if result_chirho.free_vars_chirho().contains(&identity_chirho) {
+                KindChirho::DependentChirho {
+                    argument_chirho: Box::new(argument_chirho),
+                    result_chirho: Box::new(
+                        result_chirho.abstract_variable_chirho(identity_chirho),
+                    ),
+                }
+            } else {
+                KindChirho::arrow_chirho(argument_chirho, result_chirho)
+            };
+        }
+        result_chirho
     }
 
     /// Reconcile source head binders with an independently scoped complete

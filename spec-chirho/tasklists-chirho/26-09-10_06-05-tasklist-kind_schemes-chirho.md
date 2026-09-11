@@ -89,12 +89,14 @@ Latest pushed code2311cd9f has a tenth full diagnostic of883/938
 accept and238/767 reject, one pass each with zero timeouts/unexpected exits and
 stable HEAD/CLI. Eight ninth-pass failures recover, but T12919/T14366 newly
 fail. Main-relative accept+7/-6, so there is still no landable checkpoint.
-The following isolated repairs recover T12919/T14366 in fresh CLI checks;
-their full diagnostic is next. Nine GHC9.14.1/candidate pairs agree, including
-two fixed-kind rejections and two valid inferred-index controls which refuted
-a proposed RHS-rigidity guard. Parser350/naming136/typing363, integration85 and
-canaries7 pass. No new full count or main landing is claimed. See the final
-sections for exact membership, the independent rejection audit and evidence.
+The eleventh diagnostic at77b11701 is884/236. T12919/T14366 recover, SplitWD
+loses its gain, and four main-relative regressions remain (T12045a/T13248/
+T14010/T26358). The following head fixes restore SplitWD and T18640b in focused
+checks; no new full count is claimed until their next frozen diagnostic.
+Parser351/naming136/typing363, integration88 and canaries7 pass with zero
+exclusions. Seventeen GHC9.14.1/candidate contract pairs agree; an eighteenth,
+separately labelled annotation observation still disagrees. See the final
+sections for exact membership, remaining representation gaps and evidence.
 
 At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
 returned a provider usage-limit error instead of a result. No retry is scheduled.
@@ -1049,7 +1051,7 @@ in22109; SLOT/DB retained. This is not a two-pass landing gate or main change.
 - [x] Retain promoted GADT result indices and share explicit-promotion type identities.
 - [x] Arbitrate positive and negative controls with GHC before fixing the expectation.
 - [x] Parser350/naming136/typing363, integration85 and canaries7; zero exclusions.
-- [ ] Freeze, commit/push owned paths and run the next complete diagnostic.
+- [x] Freeze, commit/push owned paths and run the next complete diagnostic.
 
 The three reductions exposed more than the initially suspected consumer: GADT
 promotion had no result-index contract, and stored equations and signature
@@ -1096,3 +1098,63 @@ different lines and rules from GHC; do not restore those accidental reasons.
 This is a source/log audit, not proof that every later diagnostic agrees or
 that GHC's every rejection establishes invalid Haskell. Original evidence:
 /private/tmp/haskelujah-family-head-chirho.mGuVQD/reject-reason-audit-claude2-chirho.md.
+
+### Eleventh diagnostic and dependent family-head follow-up
+
+Frozen77b11701 completed884/938 accept and236/767 reject, one complete pass per
+axis, actual runner0/COMPLETE, zero timeouts/unexpected exits. Clean HEAD and
+CLI73e3e94341fbc57fc5feb82a46ca1b7565d3f6bdc2dcba6f2086fda6666217aa stayed
+unchanged throughout. T12919/T14366 recover; SplitWD loses its earlier gain.
+Against main there are six gains and four regressions: T12045a/T13248/T14010/
+T26358 remain red. This is not a landable checkpoint or final two-pass gate.
+Reject loses T15552a/T18640b versus tenth, gains none. The former had an adjacent
+wrong reason; the latter had a matching contract, so investigate that loss rather
+than calling both accidental. Main-relative reject+18/-3 still needs complete
+reason accounting. Main's reject artifact lists wrong accepts, so compare its
+complement against the measured rejected set, not the list directly.
+Evidence: /private/tmp/haskelujah-family-head-chirho.mGuVQD/diagnostic-equations-chirho.log
+and diagnostic-equations-{accept,reject}-chirho/. Embargo released in22113;
+SLOT/DB retained, no main/artifact/DB changes.
+
+Next bounded implementation: an inline family result can refer to its visible
+head binder, as in data family F (k :: Type) :: k. Reuse data's existing binder
+identity/telescope construction rather than give families an unrelated arrow
+builder. The current family path registers classifiers without term identities
+and always constructs non-dependent arrows. Prove both result-dependent uses
+and a contradictory higher-rank equation against GHC before changing it. Check
+SplitWD's cross-row classifier sharing separately; no assumption that this same
+repair fixes it. Explicit @ retention and the four main regressions remain open.
+
+The dependent-head repair now shares prepare/compose with data declarations;
+its two controls were red before the fix. T18640b now reports the matching
+GHC-83865 contract at14:10 (family equation result), and ordinary family uses
+cannot select a result kind independently of the supplied argument. The first
+ordinary-use control used a parenthesized kind annotation, which lowering
+drops entirely. Its false acceptance remains recorded, not fixed or waived.
+The retained control demands the same kind through Maybe/FlagBox application,
+so its negative reaches the family classifier instead of the missing syntax.
+
+SplitWD reduced to a parser classification defect: changing only its infix
+family into prefix Append makes it pass; changing only its constructor spelling
+does not. GHC accepts all three reductions. The dispatcher recognized only a
+single name token before ::, so type (+++) :: ... became an alias and the family
+lost its independent complete scheme. Dispatch moved out of the oversized CST
+root into its existing family child; bounded name lookahead handles identifiers
+and parenthesized operators without scanning a binder annotation or later line.
+The new parser contract test was red before, green after; the indexed-family
+driver control and all unchanged siblings pass. No assertion was relaxed.
+
+Current gates: parser351 plus its three property and three golden tests,
+naming136, typing363, integration88 and canaries7, all actual Cargo0 and zero
+ignored/filtered. Explicit CLI build0, SHA256
+4933651da2f53bbb2fa298501730104c9b0c1341b478760687f4623a6b745f50.
+Seventeen reference contract pairs agree; the separate InlineFamilyWrongChirho
+observation remains GHC1/candidate0. Source hashes, both diagnostics and the
+scope distinction are in kind-oracles-chirho/family-equations-chirho/
+family-head-followup-chirho.jsonl. The three previous equation fixtures and
+their evidence moved together into that child, keeping the parent at11 entries
+and the child at5, not growing an ungrouped fifteenth sibling. All consumer
+includes were updated before the full focused gates. Clippy exits0 with590
+warning messages/414 distinct diagnostics, unchanged, not zero warnings.
+Full driver1772 still belongs to45c4a108; full workspace and final two-pass
+landing gates remain owed. Freeze and next full diagnostic are next.

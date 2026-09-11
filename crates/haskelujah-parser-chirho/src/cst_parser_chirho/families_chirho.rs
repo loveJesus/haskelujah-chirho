@@ -6,6 +6,75 @@
 use super::*;
 
 impl<'source_chirho> ParserChirho<'source_chirho> {
+    /// Classify the declaration by its complete name, not a one-token guess.
+    /// The lookahead consumes only a name and `::`; it cannot mistake a
+    /// parameter annotation or a later declaration's signature for this one.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn parse_type_or_family_decl_chirho(&mut self) {
+        let name_index_chirho = self.skip_trivia_idx_chirho(self.pos_chirho + 1);
+        let next_text_chirho = self
+            .tokens_chirho
+            .get(name_index_chirho)
+            .map(|token_chirho| self.token_text_chirho(token_chirho))
+            .unwrap_or("");
+        match next_text_chirho {
+            "family" => self.parse_type_family_decl_chirho(),
+            "instance" => self.parse_type_family_instance_decl_chirho(),
+            _ if next_text_chirho == "role"
+                || self.at_standalone_kind_head_chirho(name_index_chirho) =>
+            {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::TypeSigDeclChirho);
+                self.eat_until_decl_end_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
+            _ => self.parse_type_alias_decl_chirho(),
+        }
+    }
+
+    fn at_standalone_kind_head_chirho(&self, name_index_chirho: usize) -> bool {
+        let Some(name_chirho) = self.tokens_chirho.get(name_index_chirho) else {
+            return false;
+        };
+        let after_name_chirho = match name_chirho.kind_chirho {
+            RawTokenKindChirho::ConIdChirho => name_index_chirho + 1,
+            RawTokenKindChirho::LeftParenChirho => {
+                let operator_index_chirho = self.skip_trivia_idx_chirho(name_index_chirho + 1);
+                if !self
+                    .tokens_chirho
+                    .get(operator_index_chirho)
+                    .is_some_and(|token_chirho| {
+                        matches!(
+                            token_chirho.kind_chirho,
+                            RawTokenKindChirho::VarSymChirho
+                                | RawTokenKindChirho::ConSymChirho
+                                | RawTokenKindChirho::TildeChirho
+                        )
+                    })
+                {
+                    return false;
+                }
+                let close_index_chirho = self.skip_trivia_idx_chirho(operator_index_chirho + 1);
+                if !self
+                    .tokens_chirho
+                    .get(close_index_chirho)
+                    .is_some_and(|token_chirho| {
+                        token_chirho.kind_chirho == RawTokenKindChirho::RightParenChirho
+                    })
+                {
+                    return false;
+                }
+                close_index_chirho + 1
+            }
+            _ => return false,
+        };
+        self.tokens_chirho
+            .get(self.skip_trivia_idx_chirho(after_name_chirho))
+            .is_some_and(|token_chirho| {
+                token_chirho.kind_chirho == RawTokenKindChirho::ColonColonChirho
+            })
+    }
+
     pub(super) fn parse_type_family_decl_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::TypeFamilyDeclChirho);

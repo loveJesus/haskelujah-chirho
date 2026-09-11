@@ -80,19 +80,12 @@ impl KindInferCtxChirho {
             return;
         }
         let result_kind_chirho = kind_sig_chirho.and_then(DeclKindSigChirho::result_chirho);
-        let mut param_kinds_chirho = Vec::new();
-        for tv_chirho in type_vars_chirho {
-            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
-            } else {
-                self.fresh_kind_chirho()
-            };
-            self.env_chirho
-                .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-            if tv_chirho.is_visible_chirho() {
-                param_kinds_chirho.push(k_chirho);
-            }
-        }
+        let head_chirho = self.prepare_kind_head_chirho(
+            type_vars_chirho,
+            None,
+            span_chirho,
+            "type family declaration",
+        );
 
         let result_kind_chirho = result_kind_chirho
             .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
@@ -103,7 +96,8 @@ impl KindInferCtxChirho {
                     KindChirho::StarChirho
                 }
             });
-        let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho);
+        let kind_chirho =
+            Self::compose_kind_head_chirho(head_chirho.parameters_chirho, result_kind_chirho);
 
         if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
             let existing_chirho = existing_chirho.clone();

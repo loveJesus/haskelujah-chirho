@@ -326,6 +326,24 @@ Constraint; neither is a data-declaration rule. A full signature does not add
 equation arguments. Ordinary family inference remains separate when no complete
 signature is written. This does not supply missing hidden argument consumers.
 
+That ordinary family path now uses the same head identities and telescope
+composition as data declarations. In `data family F (k :: Type) :: k`, the
+result refers to the supplied argument; it is not independently quantified.
+`F Bool` consequently has kind Bool, and a family RHS with a remaining dependent
+binder cannot replace an unrelated outer result with that binder. The shared
+composition abstracts only actual occurrences, preserving non-dependent arrows.
+
+Standalone-kind dispatch recognizes a complete declaration name: a constructor
+identifier or a parenthesized type operator, followed immediately by `::` modulo
+trivia. It does not scan through header parameters or following declarations.
+`type (+++) :: ...` therefore retains the same complete contract as its prefix
+equivalent instead of becoming a fabricated alias. Dispatch lives with the
+existing family parser rather than growing the large parser root. A retained
+signature matters to checking separate indexed equations, not only AST shape.
+Parenthesized type-term annotations such as `(F Bool :: Type)` and explicit
+kind applications still have separate missing AST/consumer contracts; these
+head repairs do not claim to validate either.
+
 Equation checking instantiates the actual complete scheme for each row. It
 does not reconstruct its quantifiers from independently scoped header names.
 `consume_kind_argument_chirho` applies both declaration and equation arguments:

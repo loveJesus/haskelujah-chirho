@@ -8,27 +8,100 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn indexed_operator_family_rows_keep_their_complete_contract_chirho() {
+    let source_chirho = r#"{-# LANGUAGE DataKinds, GADTs, PolyKinds, StandaloneKindSignatures, TypeFamilies, TypeOperators #-}
+module IndexedOperatorChirho where
+import Data.Kind (Type)
+data NatChirho = ZeroChirho | SuccChirho NatChirho
+type family PlusChirho leftChirho rightChirho where
+  PlusChirho ZeroChirho rightChirho = rightChirho
+  PlusChirho (SuccChirho leftChirho) rightChirho = SuccChirho (PlusChirho leftChirho rightChirho)
+data VecChirho :: Type -> NatChirho -> Type where
+  NilChirho :: VecChirho itemChirho ZeroChirho
+  ConsChirho :: itemChirho -> VecChirho itemChirho sizeChirho -> VecChirho itemChirho (SuccChirho sizeChirho)
+type (+++) :: VecChirho itemChirho leftChirho -> VecChirho itemChirho rightChirho -> VecChirho itemChirho (PlusChirho leftChirho rightChirho)
+type family leftChirho +++ rightChirho where
+  NilChirho +++ rightChirho = rightChirho
+  (ConsChirho itemChirho restChirho) +++ rightChirho = ConsChirho itemChirho (restChirho +++ rightChirho)
+"#;
+    assert_compile_success_chirho("IndexedOperatorChirho.hs", source_chirho);
+}
+
+#[test]
+fn inline_family_heads_preserve_their_result_dependency_chirho() {
+    let source_chirho = r#"{-# LANGUAGE DataKinds, PolyKinds, TypeFamilies #-}
+module InlineFamilyHeadChirho where
+import Data.Kind (Type)
+data family FamilyChirho (kindChirho :: Type) :: kindChirho
+data FlagBoxChirho (flagChirho :: Bool)
+type ValueChirho = Maybe (FamilyChirho Type)
+type FlagChirho = FlagBoxChirho (FamilyChirho Bool)
+"#;
+    assert_compile_success_chirho("InlineFamilyHeadChirho.hs", source_chirho);
+    let wrong_chirho = source_chirho.replace(
+        "FlagBoxChirho (FamilyChirho Bool)",
+        "Maybe (FamilyChirho Bool)",
+    );
+    let error_chirho = typecheck_source_chirho(
+        &wrong_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "InlineFamilyWrongChirho.hs",
+    )
+    .err()
+    .expect("supplying Bool makes the result kind Bool, not an independently chosen Type");
+    assert!(
+        error_chirho.to_string().contains("kind mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn remaining_family_binders_cannot_determine_an_outer_result_chirho() {
+    let source_chirho = r#"{-# LANGUAGE PolyKinds, RankNTypes, StandaloneKindSignatures, TypeFamilies #-}
+module FamilyRemainingBinderChirho where
+import Data.Kind (Type)
+data family FamilyChirho (kindChirho :: Type) :: kindChirho
+type ResultChirho :: forall (outerChirho :: Type) -> forall (innerChirho :: Type) -> outerChirho
+type family ResultChirho outerChirho where
+  ResultChirho outerChirho = FamilyChirho
+"#;
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "FamilyRemainingBinderChirho.hs",
+    )
+    .err()
+    .expect("the RHS depends on its own binder, not the equation's outer argument");
+    assert!(
+        error_chirho.to_string().contains("family equation result"),
+        "{error_chirho}"
+    );
+    let valid_chirho = source_chirho.replace("-> outerChirho\n", "-> innerChirho\n");
+    assert_compile_success_chirho("FamilyMatchingBinderChirho.hs", &valid_chirho);
+}
+
+#[test]
 fn equation_rows_consume_complete_classifiers_independently_chirho() {
     for (name_chirho, source_chirho) in [
         (
             "FamilyRowClassifiersChirho.hs",
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../test-data-chirho/kind-oracles-chirho/FamilyRowClassifiersChirho.hs"
+                "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/FamilyRowClassifiersChirho.hs"
             )),
         ),
         (
             "FamilyRequiredRowsChirho.hs",
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../test-data-chirho/kind-oracles-chirho/FamilyRequiredRowsChirho.hs"
+                "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/FamilyRequiredRowsChirho.hs"
             )),
         ),
         (
             "FamilyIndexedClassifierChirho.hs",
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../test-data-chirho/kind-oracles-chirho/FamilyIndexedClassifierChirho.hs"
+                "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/FamilyIndexedClassifierChirho.hs"
             )),
         ),
     ] {
@@ -50,13 +123,13 @@ type family PickChirho valueChirho where
     assert_compile_success_chirho("InferredRowChirho.hs", inferred_chirho);
     let required_chirho = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../test-data-chirho/kind-oracles-chirho/FamilyRequiredRowsChirho.hs"
+        "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/FamilyRequiredRowsChirho.hs"
     ))
     .replace("= valueChirho", "= Int");
     assert_compile_success_chirho("InferredRequiredRowChirho.hs", &required_chirho);
     let indexed_chirho = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../test-data-chirho/kind-oracles-chirho/FamilyIndexedClassifierChirho.hs"
+        "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/FamilyIndexedClassifierChirho.hs"
     ));
     for source_chirho in [
         required_chirho.replace("CastChirho _ _ Refl", "CastChirho Bool Bool Refl"),
