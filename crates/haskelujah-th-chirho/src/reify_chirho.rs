@@ -180,6 +180,23 @@ pub fn ast_tyvar_to_th_chirho(tv_chirho: &TyVarChirho) -> ThTyVarBndrChirho {
 /// This does not imply that the separate TH-to-AST conversion retains kinds.
 fn ast_kind_to_th_chirho(kind_chirho: &AstKindChirho) -> ThTypeChirho {
     match kind_chirho {
+        AstKindChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => ThTypeChirho::ForallTChirho(
+            vars_chirho.iter().map(ast_tyvar_to_th_chirho).collect(),
+            Vec::new(),
+            Box::new(ast_kind_to_th_chirho(body_chirho)),
+        ),
+        AstKindChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => ThTypeChirho::ForallVisTChirho(
+            vars_chirho.iter().map(ast_tyvar_to_th_chirho).collect(),
+            Box::new(ast_kind_to_th_chirho(body_chirho)),
+        ),
         AstKindChirho::StarChirho => ThTypeChirho::StarTChirho,
         AstKindChirho::ConstraintChirho => ThTypeChirho::ConstraintTChirho,
         AstKindChirho::VarChirho(name_chirho) => {

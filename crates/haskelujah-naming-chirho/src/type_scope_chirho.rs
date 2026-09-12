@@ -598,6 +598,21 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         free_var_policy_chirho: FreeTyVarPolicyChirho,
     ) {
         match kind_chirho {
+            AstKindChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            }
+            | AstKindChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                let pushed_chirho =
+                    self.push_explicit_binders_chirho(vars_chirho, free_var_policy_chirho);
+                self.walk_binder_kind_chirho(body_chirho, span_chirho, free_var_policy_chirho);
+                self.pop_binders_chirho(&pushed_chirho);
+            }
             AstKindChirho::ConChirho(name_chirho) => self.check_type_name_chirho(name_chirho, true),
             AstKindChirho::VarChirho(name_chirho)
                 if is_lexical_type_variable_chirho(name_chirho)
@@ -1162,6 +1177,26 @@ fn is_unboxed_tuple_or_sum_constructor_text_chirho(text_chirho: &str) -> bool {
 
 fn collect_kind_variable_names_chirho(kind_chirho: &AstKindChirho, names_chirho: &mut Vec<String>) {
     match kind_chirho {
+        AstKindChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        }
+        | AstKindChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            let mut local_chirho = Vec::new();
+            collect_kind_variable_names_chirho(body_chirho, &mut local_chirho);
+            for binder_chirho in vars_chirho.iter().rev() {
+                local_chirho.retain(|name_chirho| name_chirho != binder_chirho.text_chirho());
+                if let Some(annotation_chirho) = &binder_chirho.kind_annotation_chirho {
+                    collect_kind_variable_names_chirho(annotation_chirho, &mut local_chirho);
+                }
+            }
+            names_chirho.extend(local_chirho);
+        }
         AstKindChirho::VarChirho(name_chirho) if is_lexical_type_variable_chirho(name_chirho) => {
             names_chirho.push(name_chirho.clone());
         }

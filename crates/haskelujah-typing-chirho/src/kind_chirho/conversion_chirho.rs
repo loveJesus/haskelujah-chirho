@@ -85,6 +85,17 @@ impl KindInferCtxChirho {
         &mut self,
         ty_chirho: &TypeChirho,
     ) -> (KindChirho, Vec<KindVarChirho>) {
+        if let Some((name_chirho, expanded_chirho)) =
+            self.expand_type_kind_synonym_once_chirho(ty_chirho)
+            && !self
+                .expanding_type_kind_synonyms_chirho
+                .contains(&name_chirho)
+        {
+            self.expanding_type_kind_synonyms_chirho.push(name_chirho);
+            let result_chirho = self.interpret_inline_kind_chirho(&expanded_chirho);
+            self.expanding_type_kind_synonyms_chirho.pop();
+            return result_chirho;
+        }
         match ty_chirho {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.interpret_inline_kind_chirho(inner_chirho)
@@ -108,6 +119,39 @@ impl KindInferCtxChirho {
             }),
             _ => (self.interpret_kind_term_chirho(ty_chirho), Vec::new()),
         }
+    }
+
+    /// An explicit higher-rank binder owns a scheme, not one shared instance of
+    /// its body. Free outer identities remain free: only written quantifiers
+    /// and their dependencies are instantiated at subsequent occurrences.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn annotated_kind_binding_chirho(
+        &mut self,
+        annotation_chirho: &AstKindChirho,
+    ) -> KindBindingChirho {
+        let (kind_chirho, written_chirho, quantified_chirho) =
+            self.elaborate_inline_kind_chirho(&ast_kind_type_chirho(annotation_chirho));
+        if quantified_chirho.is_empty() {
+            return KindBindingChirho::MonoChirho(kind_chirho);
+        }
+        let mut scheme_chirho = self.bind_source_kind_scheme_chirho(
+            kind_chirho.clone(),
+            quantified_chirho,
+            &written_chirho.into_iter().collect(),
+        );
+        // Declaration publication abstracts rigid head identities. A nested
+        // binder instead captures its outer scope, which must stay rigid.
+        scheme_chirho.body_chirho = self.subst_chirho.apply_chirho(&kind_chirho);
+        for (identity_chirho, classifier_chirho) in scheme_chirho
+            .quantified_chirho
+            .iter()
+            .zip(&mut scheme_chirho.classifiers_chirho)
+        {
+            if let Some(source_chirho) = self.kind_binder_classifiers_chirho.get(identity_chirho) {
+                *classifier_chirho = self.subst_chirho.apply_chirho(source_chirho);
+            }
+        }
+        KindBindingChirho::PolyChirho(scheme_chirho)
     }
 
     pub(super) fn infer_constraint_kind_chirho(
@@ -308,8 +352,10 @@ impl KindInferCtxChirho {
         match ty_chirho {
             TypeChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho();
-                if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {
-                    k_chirho.clone()
+                if let Some(binding_chirho) =
+                    self.env_chirho.lookup_binding_chirho(text_chirho).cloned()
+                {
+                    self.instantiate_binding_chirho(&binding_chirho)
                 } else {
                     // Unknown type variable — assign a fresh kind variable.
                     let k_chirho = self.fresh_kind_chirho();
@@ -513,6 +559,24 @@ fn ast_kind_type_chirho(kind_chirho: &AstKindChirho) -> TypeChirho {
         AstKindChirho::VarChirho(variable_chirho) => {
             TypeChirho::VarChirho(name_chirho(variable_chirho))
         }
+        AstKindChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            span_chirho,
+        } => TypeChirho::ForallChirho {
+            vars_chirho: vars_chirho.clone(),
+            body_chirho: Box::new(ast_kind_type_chirho(body_chirho)),
+            span_chirho: *span_chirho,
+        },
+        AstKindChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            span_chirho,
+        } => TypeChirho::RequiredForallChirho {
+            vars_chirho: vars_chirho.clone(),
+            body_chirho: Box::new(ast_kind_type_chirho(body_chirho)),
+            span_chirho: *span_chirho,
+        },
         AstKindChirho::ArrowChirho(left_chirho, right_chirho)
         | AstKindChirho::AppChirho(left_chirho, right_chirho)
         | AstKindChirho::KindAppChirho(left_chirho, right_chirho) => {

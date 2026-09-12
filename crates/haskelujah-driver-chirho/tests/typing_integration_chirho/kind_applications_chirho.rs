@@ -41,6 +41,14 @@ const LOCAL_CHIRHO: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/LocalKindChirho.hs"
 ));
+const HIGHER_BINDER_CHIRHO: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/HigherKindBinderChirho.hs"
+));
+const REFINED_CHIRHO: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/RefinedKindChirho.hs"
+));
 
 fn rejection_chirho(source_chirho: &str) -> String {
     typecheck_source_chirho(
@@ -101,6 +109,24 @@ fn wildcard_kind_arguments_are_inferred_from_the_ordinary_argument_chirho() {
 #[test]
 fn recursive_nominal_fields_keep_the_group_kind_arguments_chirho() {
     assert_execution_chirho(RECURSIVE_CHIRHO, "42\n7\n");
+}
+
+#[test]
+fn forall_annotated_kind_binders_instantiate_at_each_use_chirho() {
+    assert_compile_success_chirho("HigherKindBinderChirho.hs", HIGHER_BINDER_CHIRHO);
+    let monomorphic_chirho =
+        HIGHER_BINDER_CHIRHO.replace("forall kindChirho. kindChirho -> Type", "Type -> Type");
+    assert!(rejection_chirho(&monomorphic_chirho).contains("kind mismatch"));
+}
+
+#[test]
+fn constructor_refinement_reaches_the_indexed_nominal_head_chirho() {
+    assert_execution_chirho(REFINED_CHIRHO, "42\n");
+    let no_equality_chirho = REFINED_CHIRHO.replace(
+        "ReflChirho :: EqualChirho valueChirho valueChirho",
+        "ReflChirho :: EqualChirho leftChirho rightChirho",
+    );
+    assert!(rejection_chirho(&no_equality_chirho).contains("type mismatch"));
 }
 
 #[test]

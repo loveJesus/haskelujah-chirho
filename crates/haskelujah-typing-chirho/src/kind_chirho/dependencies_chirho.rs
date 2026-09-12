@@ -199,6 +199,19 @@ fn binder_refs_chirho(binders_chirho: &[TyVarChirho], refs_chirho: &mut HashSet<
 
 fn kind_refs_chirho(kind_chirho: &AstKindChirho, refs_chirho: &mut HashSet<String>) {
     match kind_chirho {
+        AstKindChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        }
+        | AstKindChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            binder_refs_chirho(vars_chirho, refs_chirho);
+            kind_refs_chirho(body_chirho, refs_chirho);
+        }
         AstKindChirho::ConChirho(name_chirho) => {
             refs_chirho.insert(name_chirho.full_name_chirho());
         }

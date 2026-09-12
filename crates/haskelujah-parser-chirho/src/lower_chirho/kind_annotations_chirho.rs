@@ -21,6 +21,24 @@ impl LowerCtxChirho {
             TypeChirho::VarChirho(name_chirho) => Some(AstKindChirho::VarChirho(
                 name_chirho.text_chirho().to_string(),
             )),
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho,
+            } => Some(AstKindChirho::ForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(Self::try_type_to_ast_kind_chirho(body_chirho)?),
+                span_chirho: *span_chirho,
+            }),
+            TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho,
+            } => Some(AstKindChirho::RequiredForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(Self::try_type_to_ast_kind_chirho(body_chirho)?),
+                span_chirho: *span_chirho,
+            }),
             TypeChirho::FunChirho {
                 arg_chirho,
                 result_chirho,

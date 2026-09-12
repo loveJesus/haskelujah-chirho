@@ -58,14 +58,22 @@ impl KindInferCtxChirho {
     ) -> ResultChirho {
         let mut previous_chirho = Vec::with_capacity(vars_chirho.len());
         for binder_chirho in vars_chirho {
-            let kind_chirho = binder_chirho
+            let mut binding_chirho = binder_chirho
                 .kind_annotation_chirho
                 .as_ref()
-                .map(|annotation_chirho| self.ast_kind_to_kind_ctx_chirho(annotation_chirho))
-                .unwrap_or_else(|| self.fresh_kind_chirho());
+                .map(|annotation_chirho| self.annotated_kind_binding_chirho(annotation_chirho))
+                .unwrap_or_else(|| KindBindingChirho::MonoChirho(self.fresh_kind_chirho()));
             if checking_chirho && binder_chirho.kind_annotation_chirho.is_some() {
-                self.rigidify_kind_variables_chirho(kind_chirho.free_vars_chirho());
+                let mut free_chirho = binding_chirho.body_chirho().free_vars_chirho();
+                if let KindBindingChirho::PolyChirho(scheme_chirho) = &binding_chirho {
+                    free_chirho.retain(|identity_chirho| {
+                        !scheme_chirho.quantified_chirho.contains(identity_chirho)
+                    });
+                }
+                self.rigidify_kind_variables_chirho(free_chirho);
+                binding_chirho.apply_subst_chirho(&self.subst_chirho);
             }
+            let kind_chirho = binding_chirho.body_chirho().clone();
             let name_chirho = binder_chirho.text_chirho().to_string();
             let identity_chirho = self.fresh_var_chirho();
             self.kind_binder_names_chirho
@@ -77,10 +85,10 @@ impl KindInferCtxChirho {
             if checking_chirho {
                 self.rigidify_kind_variables_chirho([identity_chirho]);
             }
-            let old_kind_chirho = self.env_chirho.bindings_chirho.insert(
-                name_chirho.clone(),
-                KindBindingChirho::MonoChirho(kind_chirho),
-            );
+            let old_kind_chirho = self
+                .env_chirho
+                .bindings_chirho
+                .insert(name_chirho.clone(), binding_chirho);
             let old_identity_chirho = self
                 .kind_var_cache_chirho
                 .insert(name_chirho.clone(), identity_chirho);

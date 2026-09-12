@@ -33,6 +33,18 @@ pub enum AstKindChirho {
     AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
     /// Explicit invisible application, distinct from an ordinary kind argument.
     KindAppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
+    /// Lexically quantified kind, as in `(f :: forall k. k -> Type)`.
+    ForallChirho {
+        vars_chirho: Vec<TyVarChirho>,
+        body_chirho: Box<AstKindChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// Required quantification (`forall k -> ...`), not invisible instantiation.
+    RequiredForallChirho {
+        vars_chirho: Vec<TyVarChirho>,
+        body_chirho: Box<AstKindChirho>,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// One equation in a closed type family:

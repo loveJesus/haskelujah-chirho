@@ -660,6 +660,9 @@ impl KindInferCtxChirho {
 #[cfg(test)]
 fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
     match ast_chirho {
+        AstKindChirho::ForallChirho { .. } | AstKindChirho::RequiredForallChirho { .. } => {
+            panic!("quantified kind conversion requires the scoped kind context")
+        }
         AstKindChirho::StarChirho => KindChirho::StarChirho,
         AstKindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
             ast_kind_to_kind_chirho(a_chirho),

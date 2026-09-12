@@ -72,14 +72,14 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-The last frozen full diagnostic is b362f326,886/938 accept and236/767 reject,
-one pass each with no timeout/unexpected exit and stable CLI5ad93438. It had
-three main-relative accept regressions: T12045a/T14010/T26358. Its complete
-membership and reason qualifications remain in the thirteenth-diagnostic section.
+The latest frozen diagnostic is f5c4eedb,875/938 accept and234/767 reject,
+one pass each with no timeout/unexpected exit and stable CLI d1f4f2ac. Thirteen
+main-relative accept regressions remain; this checkpoint is NOT landable.
+Full sets are recorded in the visible-application diagnostic section below.
 
 Visible-application checkpoint3bbcd49c is committed, pushed and remote-exact.
-The following recursive/local nominal follow-up makes T12045a pass on a fresh CLI;
-T14010 and T26358 remain open. No updated full count is claimed yet. Kind-index
+Its recursive/local nominal follow-up f5c4eedb is also pushed and remote-exact;
+T12045a recovers, but twelve other accept files regress against b362f326. Kind-index
 capture is keyed to the final quantified identities, including monomorphic SCC
 uses; local expression signatures instantiate known nominal slots. Family/synonym/
 imported index consumers and complete local classifier checking remain unfinished.
@@ -88,7 +88,7 @@ Latest typing365, driver integration99 and canaries7 passed, zero ignored/filter
 including the imported-index normalization follow-up.
 Seventeen bounded GHC9.14.1/candidate observations agree, four in execution mode,
 with source and binary hashes retained beside the visible-application fixtures.
-The checkpoint is not a compatibility landing; freeze/diagnostic, full workspace,
+The checkpoint is not a compatibility landing; regression repair, full workspace,
 final two-pass gate and DB closure remain owed. Latest detail is at the file's end.
 
 ### Historical prototype baseline
@@ -1321,3 +1321,55 @@ STG/LLVM/Cranelift. SHA256 d1f4f2acb3d414a704f51d555d408669878262989cf8d2390ba37
 identifies the explicit CLI. T12045a passes there; T14010/T26358 remain open.
 No corpus movement is banked until the following frozen diagnostic. Main and
 row484 closure remain held, with all unfinished consumers recorded in workflow.
+
+### Visible-application frozen diagnostic and consumer repairs
+
+f5c4eedb, CLI SHA256 d1f4f2acb3d414a704f51d555d408669878262989cf8d2390ba377cd05eb1e77,
+completed one pass per axis:875 accept,234 reject, zero timeout/unexpected exits,
+938/767 denominators verified, clean source/CLI stable before and after both.
+Main unchanged at882/221; no artifact, label, DB or membership changes.
+
+Main-relative accept regressions: DeepSubsumption02, GivenTypeSynonym, LocalGivenEqs,
+T13879, T13951, T14010, T15942, T18986a, T21583, T22560c, T23501b, T26358, tc151.
+Main-relative accept gains: PolytypeDecomp, RuleEqs, SplitWD, T14451, T26256a, tc124.
+Against b362f326: T12045a recovers; the new failures are those thirteen excluding
+T14010/T26358, plus T20922 (already red on main). Counts alone hide that trade.
+
+Reject versus b362f326: gains T12045b/T15474; losses ExplicitSpecificity3/T12803/
+T17563/T5853. These are verdict deltas only; no matching-reason claim without audit.
+Previous main-relative reject qualifications remain applicable, not erased by234.
+
+- [ ] Restore consumers of nominal indices without dropping the retained arguments:
+  synonym/equation RHS conversion, constructor refinement detection and equalities.
+- [ ] Preserve higher-rank kind binders and associated-family binder contracts.
+- [ ] Reduce the remaining dependent/family-kind failures with positive/negative controls.
+- [ ] Repeat frozen diagnostic, then the full landing gate only after no new accept loss.
+
+Evidence: /private/tmp/haskelujah-visible-kind-app-chirho.X3Kq8n/diagnostic-visible-applications-chirho.log
+and its accept/reject directories. Both frozen checkpoints are pushed; CPU embargo
+ended at CORPUS-PASSES-DONE22171, SLOT/DB retained. No corpus names enter compiler rules.
+
+### Indexed GADT refinements and quantified kind binders
+
+Two added source controls were red on f5c4eedb, while GHC9.14.1 accepted both.
+Constructor-result refinement stopped at KindApp instead of reaching the nominal
+head; it now traverses both application forms without erasing either index.
+The cast control prints42 on STG/LLVM/Cranelift, and its non-equality mutation
+rejects. A higher-rank annotation was lost even before binding: AstKind had no
+forall form. Explicit invisible/required forall kinds now retain source scope;
+naming, dependency discovery and TH visit them. A forall-annotated variable owns
+a scheme instantiated per use, capturing outer identities rather than generalizing
+them. Alias expansion also preserves a leading quantified kind contract.
+
+Focused fresh CLI recoveries versus f5c4eedb: T13951,T20922,T15942,T18986a,T23501b.
+T13879 reaches a later E0200 on HRefl versus r; it is NOT recovered. T22560c still
+lacks an associated-family specified-binder contract. No new full count claimed.
+
+Gates: naming136, parser353, typing365, TH16, integration101, canaries7, all zero
+ignored/filtered and actual cargo0; workspace all-target check0. The reference
+artifact holds1 metadata+21 bounded observations, all GHC/candidate verdicts
+agree, including five exact execution pairs. CLI SHA256
+f8e5edefd37c353044f57c9309158b35a07f311fd71117b090e4499a0725b4e8.
+No full workspace test, final two-pass gate or main landing is claimed. The
+remaining work includes stored synonym/equation indices, associated families,
+T14010 and T26358. Checkpoint before that producer repair; row484 stays open.

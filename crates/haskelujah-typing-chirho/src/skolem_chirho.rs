@@ -250,7 +250,11 @@ pub fn constructor_result_refines_chirho(con_ty_chirho: &TyChirho) -> bool {
     }
     let mut args_chirho: Vec<&TyChirho> = Vec::new();
     let mut head_chirho = result_chirho;
-    while let TyChirho::AppChirho(fun_chirho, arg_chirho) = head_chirho {
+    // Invisible arguments belong to the nominal result too. Stopping at one
+    // hides the constructor and loses GADT refinements of its ordinary indices.
+    while let TyChirho::AppChirho(fun_chirho, arg_chirho)
+    | TyChirho::KindAppChirho(fun_chirho, arg_chirho) = head_chirho
+    {
         args_chirho.push(arg_chirho);
         head_chirho = fun_chirho;
     }

@@ -522,10 +522,31 @@ path. Kind-term names use the same imported-type normalization as ordinary types
 A local phantom-index mismatch must still reject. This is not complete local
 classifier checking; the old absence of that kind-pass traversal remains open.
 
+Constructor-refinement detection walks both ordinary and invisible application
+spines to the nominal head. Otherwise a retained kind index hides an equality
+witness from GADT refinement. A shared-source cast executes as42 on all three
+engines; replacing its equality witness with independent parameters rejects.
+
+Nested forall annotations retain their binders, visibility and span in AstKind.
+Naming scopes them lexically, dependency discovery visits their annotations,
+and TH reification retains invisible versus required quantification. An explicitly
+polymorphic binder is stored as a scheme, with outer free identities captured,
+and instantiated at every use. Transparent kind synonyms preserve leading forall
+binders too. This does not yet provide arbitrary higher-rank kind subsumption.
+
+```mermaid
+flowchart LR
+  BinderSyntaxChirho[Full quantified annotation] --> ScopedBindingChirho[Lexical binder scheme]
+  ScopedBindingChirho --> FirstUseChirho[Fresh instantiation at first use]
+  ScopedBindingChirho --> NextUseChirho[Independent instantiation at next use]
+  OuterKindChirho[Captured outer identities] --> FirstUseChirho
+  OuterKindChirho --> NextUseChirho
+```
+
 Not complete: synonym/family equation indices, imported constructor schemes and
-specificity, and some higher-rank kind annotations. T12045a now passes in the
-focused fresh CLI check, but only a frozen corpus diagnostic can establish its
-delta and the surrounding regression surface. Keeping KindApp in the type IR
+specificity, and complete higher-rank kind subsumption. The frozen f5c4eedb
+diagnostic recovered T12045a but exposed twelve new accept failures relative to
+its predecessor; that checkpoint is not landable. Keeping KindApp in the type IR
 does not establish that every producer has supplied its inferred arguments.
 
 ## Evidence boundary
