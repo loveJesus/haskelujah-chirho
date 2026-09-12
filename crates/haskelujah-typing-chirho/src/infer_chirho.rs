@@ -48,7 +48,6 @@ mod type_synonyms_chirho;
 
 use ast_conversion_chirho::ast_type_to_syn_rhs_chirho;
 pub use family_declarations_chirho::TypeFamilyClauseChirho;
-use family_declarations_chirho::collect_free_type_vars_from_ast_chirho;
 use module_inputs_chirho::is_placeholder_import_scheme_chirho;
 pub use type_synonyms_chirho::TypeSynonymChirho;
 
@@ -2196,79 +2195,11 @@ impl InferCtxChirho {
                 context_chirho: inst_context_chirho,
             });
 
-            // Register associated type family instances from this instance decl
-            for atfi_chirho in assoc_tf_instances_chirho {
-                let fname_chirho = atfi_chirho.family_name_chirho.text_chirho().to_string();
-                let (lhs_chirho, rhs_ty_chirho) =
-                    family_declarations_chirho::lower_family_equation_chirho(
-                        &atfi_chirho.lhs_types_chirho,
-                        &atfi_chirho.rhs_chirho,
-                    );
-                self.register_type_family_instance_chirho(fname_chirho, lhs_chirho, rhs_ty_chirho);
-            }
-
-            // Associated families this instance leaves undefined take the
-            // class's default, specialized to the instance head.
-            if let Some(defaults_chirho) = self
-                .assoc_type_defaults_chirho
-                .get(class_chirho.text_chirho())
-                .cloned()
-            {
-                let inst_free_vars_chirho = collect_free_type_vars_from_ast_chirho(types_chirho);
-                for default_chirho in defaults_chirho {
-                    let defined_here_chirho = assoc_tf_instances_chirho.iter().any(|atfi_chirho| {
-                        atfi_chirho.family_name_chirho.text_chirho() == default_chirho.family_chirho
-                    });
-                    if defined_here_chirho {
-                        continue;
-                    }
-                    // Family parameter `i` names class parameter `j` when the
-                    // family DECLARATION spells position `i` with the class
-                    // parameter's name; the default equation may use other
-                    // spellings, so the mapping goes through positions.
-                    let declared_names_chirho: Vec<String> = self
-                        .assoc_type_declared_params_chirho
-                        .get(&default_chirho.family_chirho)
-                        .cloned()
-                        .unwrap_or_else(|| default_chirho.family_params_chirho.clone());
-                    let mut bindings_chirho: HashMap<String, TyChirho> = HashMap::new();
-                    let mut lhs_chirho = Vec::new();
-                    for (position_chirho, param_chirho) in
-                        default_chirho.family_params_chirho.iter().enumerate()
-                    {
-                        let declared_chirho = declared_names_chirho
-                            .get(position_chirho)
-                            .unwrap_or(param_chirho);
-                        match default_chirho
-                            .class_params_chirho
-                            .iter()
-                            .position(|class_param_chirho| class_param_chirho == declared_chirho)
-                        {
-                            Some(index_chirho) if index_chirho < types_chirho.len() => {
-                                let head_ty_chirho = ast_type_to_syn_rhs_chirho(
-                                    &types_chirho[index_chirho],
-                                    &inst_free_vars_chirho,
-                                );
-                                bindings_chirho
-                                    .insert(param_chirho.clone(), head_ty_chirho.clone());
-                                lhs_chirho.push(head_ty_chirho);
-                            }
-                            _ => lhs_chirho.push(TyChirho::ForallVarChirho(param_chirho.clone())),
-                        }
-                    }
-                    let rhs_pattern_chirho = ast_type_to_syn_rhs_chirho(
-                        &default_chirho.rhs_chirho,
-                        &default_chirho.family_params_chirho,
-                    );
-                    let rhs_chirho =
-                        substitute_type_vars_chirho(&rhs_pattern_chirho, &bindings_chirho);
-                    self.register_type_family_instance_chirho(
-                        default_chirho.family_chirho.clone(),
-                        lhs_chirho,
-                        rhs_chirho,
-                    );
-                }
-            }
+            self.register_associated_family_equations_chirho(
+                class_chirho.text_chirho(),
+                types_chirho,
+                assoc_tf_instances_chirho,
+            );
         }
     }
 
@@ -25375,18 +25306,23 @@ mod tests_chirho {
 
     #[test]
     fn collect_free_type_vars_walks_parenthesized_assoc_family_lhs_chirho() {
-        let vars_chirho = collect_free_type_vars_from_ast_chirho(&[TypeChirho::ParenChirho {
-            inner_chirho: Box::new(TypeChirho::AppChirho {
-                fun_chirho: Box::new(TypeChirho::AppChirho {
-                    fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Product"))),
-                    arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+        let vars_chirho =
+            super::family_declarations_chirho::collect_free_type_vars_from_ast_chirho(&[
+                TypeChirho::ParenChirho {
+                    inner_chirho: Box::new(TypeChirho::AppChirho {
+                        fun_chirho: Box::new(TypeChirho::AppChirho {
+                            fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                "Product",
+                            ))),
+                            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("g"))),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
-                }),
-                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("g"))),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }),
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        }]);
+                },
+            ]);
         assert_eq!(vars_chirho, vec!["f".to_string(), "g".to_string()]);
     }
 

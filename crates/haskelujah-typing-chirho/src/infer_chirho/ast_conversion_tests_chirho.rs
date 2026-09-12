@@ -77,6 +77,22 @@ fn promoted_self_qualification_requires_an_exact_owned_alias_chirho() {
             context_chirho.promoted_source_constructor_type_chirho(&name_chirho),
             TyChirho::ConChirho(expected_chirho.to_owned()),
         );
+        let promoted_chirho = TypeChirho::PromotedConChirho {
+            name_chirho: name_chirho.clone(),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        assert_eq!(
+            context_chirho
+                .owned_synonym_converter_chirho()
+                .convert_chirho(&promoted_chirho, &[]),
+            TyChirho::ConChirho(expected_chirho.to_owned()),
+            "owned associated equations must agree with signature identity",
+        );
+        assert_eq!(
+            super::ast_conversion_chirho::ast_type_to_syn_rhs_chirho(&promoted_chirho, &[]),
+            TyChirho::ConChirho(format!("'{}", name_chirho.full_name_chirho())),
+            "context-free imported syntax cannot borrow a consumer's alias",
+        );
         assert_eq!(
             context_chirho.ast_type_to_ty_chirho(
                 &TypeChirho::ConChirho(name_chirho.clone()),

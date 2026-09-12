@@ -79,8 +79,12 @@ checking and fails, in a signature and in a flat record field alike.
 
 For local promoted constructors, kind elaboration hands type inference the exact
 self-qualified-to-local alias pairs already established by the constructor
-registry. Signature, local synonym and family-equation conversion share that
-lookup. Equal bare names from other modules do not authorize normalization, and
+registry. Signature, local synonym and top-level/associated family-equation
+conversion share that lookup. The stored-syntax converter borrows it for local
+associated instance patterns, results and default specialization; context-free
+imported conversion receives no aliases from the consuming module. Associated
+parameter binding and explicit-instance-over-default precedence are unchanged.
+Equal bare names from other modules do not authorize normalization, and
 ordinary type names are not rewritten through this promoted-namespace map. The
 map is built once from local declarations and retired with the module. This does
 not establish complete imported-constructor alias or malformed-syntax support.
@@ -91,6 +95,7 @@ flowchart LR
     SyntaxChirho -->|Symbol| NameChirho[Exact symbol and qualifier]
     SyntaxChirho -->|Tuple| TupleChirho[All tuple operands]
     NameChirho --> RegistryChirho[Known local alias identity or unchanged foreign name]
+    AssociatedChirho[Owned associated equations and defaults] --> RegistryChirho
     RegistryChirho --> CheckChirho[Kind and type checking]
     TupleChirho --> CheckChirho
 ```

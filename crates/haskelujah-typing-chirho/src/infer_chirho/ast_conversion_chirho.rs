@@ -377,8 +377,9 @@ impl InferCtxChirho {
 /// Convert stored synonym/equation syntax without inventing a type constructor
 /// for an anonymous pattern. Workflow: declaration-kinds-chirho.
 #[derive(Default)]
-pub(super) struct SynonymTypeConverterChirho {
+pub(super) struct SynonymTypeConverterChirho<'scope_chirho> {
     next_wildcard_chirho: usize,
+    local_promoted_aliases_chirho: Option<&'scope_chirho HashMap<String, String>>,
 }
 
 pub(super) fn ast_type_to_syn_rhs_chirho(
@@ -388,7 +389,7 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
     SynonymTypeConverterChirho::default().convert_chirho(ty_chirho, params_chirho)
 }
 
-impl SynonymTypeConverterChirho {
+impl SynonymTypeConverterChirho<'_> {
     pub(super) fn convert_chirho(
         &mut self,
         ty_chirho: &TypeChirho,
@@ -541,7 +542,7 @@ impl SynonymTypeConverterChirho {
                 }
             }
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                promoted_constructor_type_chirho(name_chirho)
+                promoted_constructor_type_chirho(name_chirho, self.local_promoted_aliases_chirho)
             }
             TypeChirho::PromotedListChirho {
                 elements_chirho, ..
@@ -576,6 +577,19 @@ impl SynonymTypeConverterChirho {
 }
 
 impl InferCtxChirho {
+    /// Borrow only this module's proven identities for its stored equations.
+    /// Imported syntax continues to use the context-free default converter.
+    /// Workflow: language-features-chirho/flat-type-syntax-chirho.
+    pub(super) fn owned_synonym_converter_chirho(&self) -> SynonymTypeConverterChirho<'_> {
+        SynonymTypeConverterChirho {
+            next_wildcard_chirho: 0,
+            local_promoted_aliases_chirho: self
+                .kind_elaboration_chirho
+                .as_ref()
+                .map(|elaboration_chirho| &elaboration_chirho.local_promoted_aliases_chirho),
+        }
+    }
+
     /// The kind registry proves self-qualification aliases for local constructors.
     /// Preserve every other full name; matching a bare suffix is not name resolution.
     /// Workflow: language-features-chirho/flat-type-syntax-chirho.
@@ -583,25 +597,24 @@ impl InferCtxChirho {
         &self,
         name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
     ) -> TyChirho {
-        let full_chirho = name_chirho.full_name_chirho();
-        let canonical_chirho = self
-            .kind_elaboration_chirho
-            .as_ref()
-            .and_then(|elaboration_chirho| {
-                elaboration_chirho
-                    .local_promoted_aliases_chirho
-                    .get(&full_chirho)
-            })
-            .map(String::as_str)
-            .unwrap_or(&full_chirho);
-        TyChirho::ConChirho(format!("'{canonical_chirho}"))
+        promoted_constructor_type_chirho(
+            name_chirho,
+            self.owned_synonym_converter_chirho()
+                .local_promoted_aliases_chirho,
+        )
     }
 }
 
 /// Promotion identifies a distinct constructor namespace in both signatures
-/// and stored family equations, preserving qualification in either producer.
+/// and stored family equations. Only exact proven aliases may erase qualification.
 pub(super) fn promoted_constructor_type_chirho(
     name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+    local_promoted_aliases_chirho: Option<&HashMap<String, String>>,
 ) -> TyChirho {
-    TyChirho::ConChirho(format!("'{}", name_chirho.full_name_chirho()))
+    let full_chirho = name_chirho.full_name_chirho();
+    let canonical_chirho = local_promoted_aliases_chirho
+        .and_then(|aliases_chirho| aliases_chirho.get(&full_chirho))
+        .map(String::as_str)
+        .unwrap_or(&full_chirho);
+    TyChirho::ConChirho(format!("'{canonical_chirho}"))
 }

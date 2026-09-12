@@ -69,3 +69,44 @@ The full current driver target, full workspace execution, and final two-pass
 corpus gates are still owed. Earlier1774/1774 belongs to a426, not these edits.
 The last frozen corpus diagnostic remains885/248 at1c183b98 and is not a
 measurement of this newer source. Main and the published artifacts remain put.
+
+## Associated producer follow-up
+
+Checkpoint5b954deb is pushed and remote-exact. Read-only review identified that
+associated instance equations and class defaults still use the context-free
+converter, unlike top-level equations. This is a hypothesis until unchanged
+GHC/reference and frozen5b probes exercise the mismatch. Reuse the existing
+converter with a borrowed, exact local identity map if confirmed; imported
+syntax must not inherit the consumer module's aliases. Keep associated binder
+semantics unchanged, and move its registration block out of the oversized
+infer root into the existing family-declarations module rather than extending
+that root. Sources/evidence live in the promoted-symbols associated leaf.
+
+- [x] Reference and frozen-before controls for associated patterns, RHS/defaults.
+- [x] One promoted-identity conversion for all owned producers; negative controls.
+- [ ] Gate, checkpoint and push this repair before the current full driver run.
+
+Six unchanged sources are now independently checked by GHC9.14.1: three valid
+associated pattern/result/default cases and three invalid coordinate swaps.
+Frozen5b correctly checks the pattern pair but rejects the valid result/default
+cases on qualified constructor spelling. Its two invalid result/default cases
+also reject on that spelling, not Int/Bool. The focused suite proves sensitivity:
+8/12 pass, four fail,200 filtered. This is not a broad gate.
+
+The first default draft left its class parameter's kind implicit. GHC rejected
+the default with GHC-41522 because it specialized a hidden kind argument. Both
+retained default probes explicitly bind the parameter at Type and were rerun;
+the invalid draft does not establish a compiler obligation.
+
+Final associated checkpoint gates: parser366, typing381, integration212,
+canaries7, all green with zero ignored/filtered. All12 unchanged reference
+sources agree on the explicit CLI; each coordinate negative now reports
+Int/Bool E0200 instead of qualified-spelling E0200. CLI SHA256:
+45609f0461430cd18d723a3eab86ff082d4fd4e473fe6ef885e0310ab23bb7ab.
+Format, workspace all-target check and explicit build pass without compiler
+warnings. Selected clippy completes with467 warning-message lines including
+duplicates/summaries; not lint-clean. Commands and log hashes are in
+promoted-symbols-chirho/associated-gates-chirho.json. The first crate gate
+could not compile because a pre-existing unit test used the removed root
+re-export; it now names its owning module explicitly. That failed attempt is
+not counted as a test run. The full current driver and corpus gates remain owed.

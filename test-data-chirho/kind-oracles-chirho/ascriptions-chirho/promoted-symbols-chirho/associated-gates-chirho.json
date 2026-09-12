@@ -1,0 +1,155 @@
+{
+  "base_commit_chirho": "5b954debfe0a30216a7d060cf14be32f27289d31",
+  "recorded_at_chirho": "2026-09-12T12:38:12.650Z",
+  "binary_sha256_chirho": "45609f0461430cd18d723a3eab86ff082d4fd4e473fe6ef885e0310ab23bb7ab",
+  "records_chirho": [
+    {
+      "name_chirho": "fmt",
+      "command_chirho": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-symbols-final-fmt-chirho.log",
+      "log_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name_chirho": "crates",
+      "command_chirho": [
+        "env",
+        "RUST_MIN_STACK=16777216",
+        "cargo",
+        "test",
+        "-p",
+        "haskelujah-parser",
+        "-p",
+        "haskelujah-typing",
+        "--lib",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "summaries_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 366,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 381,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-symbols-final-crates-chirho.log",
+      "log_sha256_chirho": "fe6d004cf14d8cc79de75c4e97fcd853d56af78ea2fc35489b5882bcad032595"
+    },
+    {
+      "name_chirho": "integration",
+      "command_chirho": [
+        "env",
+        "RUST_MIN_STACK=16777216",
+        "cargo",
+        "test",
+        "-p",
+        "haskelujah-driver",
+        "--test",
+        "typing_integration_chirho",
+        "--test",
+        "canaries_chirho",
+        "-j",
+        "3",
+        "--no-fail-fast"
+      ],
+      "exit_chirho": 0,
+      "summaries_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 7,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 212,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-symbols-final-integration-chirho.log",
+      "log_sha256_chirho": "43fd05acb4ab7122bffc8adaf24db124bd7f6b05e213161bee1b9c8107348c76"
+    },
+    {
+      "name_chirho": "build",
+      "command_chirho": [
+        "cargo",
+        "build",
+        "-p",
+        "haskelujah",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-symbols-final-build-chirho.log",
+      "log_sha256_chirho": "ef27159e192a18f5f6248c146ff9f17027380519ab111f7dbab6887f01f266b3"
+    },
+    {
+      "name_chirho": "check",
+      "command_chirho": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-symbols-final-check-chirho.log",
+      "log_sha256_chirho": "4f67a64f2a7817c7a3015d3d19fe0c9ad437bc15f6d53ed4dc8441a6cfeae6f1"
+    },
+    {
+      "name_chirho": "clippy",
+      "command_chirho": [
+        "cargo",
+        "clippy",
+        "-p",
+        "haskelujah-parser",
+        "-p",
+        "haskelujah-typing",
+        "-p",
+        "haskelujah-driver",
+        "--all-targets",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_message_lines_chirho": 467,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-symbols-final-clippy-chirho.log",
+      "log_sha256_chirho": "eccdad4c29659cfdab7f05201d6f89f139e906f48839b9b18d9c9983b1d2a1bc"
+    }
+  ],
+  "red_control_chirho": {
+    "passed_chirho": 8,
+    "failed_chirho": 4,
+    "filtered_chirho": 200,
+    "log_sha256_chirho": "86bfac0012e128452ae7aac6a8878249aef5be5b20d0b33c44e5d852e65f14c0"
+  },
+  "scope_chirho": "Focused associated promotion identity checkpoint; full current driver/workspace execution and final two-pass corpus gates are not covered. Warning-message counts include duplicates/summaries; not lint-clean."
+}

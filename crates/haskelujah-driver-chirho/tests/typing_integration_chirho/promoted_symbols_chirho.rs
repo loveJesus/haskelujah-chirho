@@ -56,3 +56,76 @@ fn qualified_promoted_family_pattern_matches_the_local_constructor_chirho() {
         ),
     );
 }
+
+#[test]
+fn qualified_promoted_associated_pattern_reduces_chirho() {
+    assert_compile_success_chirho(
+        "AssociatedPatternChirho.hs",
+        include_str!(
+            "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/promoted-symbols-chirho/associated-chirho/pattern_chirho.hs"
+        ),
+    );
+}
+
+#[test]
+fn qualified_promoted_associated_result_reduces_chirho() {
+    assert_compile_success_chirho(
+        "AssociatedResultChirho.hs",
+        include_str!(
+            "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/promoted-symbols-chirho/associated-chirho/result_chirho.hs"
+        ),
+    );
+}
+
+#[test]
+fn qualified_promoted_associated_default_reduces_chirho() {
+    assert_compile_success_chirho(
+        "AssociatedDefaultChirho.hs",
+        include_str!(
+            "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/promoted-symbols-chirho/associated-chirho/default_chirho.hs"
+        ),
+    );
+}
+
+fn assert_coordinate_error_chirho(source_chirho: &str) {
+    let error_chirho = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut super::SourceMapChirho::new_chirho(),
+        "WrongAssociatedChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the selected coordinate must constrain the result");
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| {
+                diagnostic_chirho.code_chirho
+                    == Some(haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(200))
+                    && diagnostic_chirho.message_chirho.contains("Int")
+                    && diagnostic_chirho.message_chirho.contains("Bool")
+            }),
+        "wrong coordinate must fail at its actual type, not qualified spelling: {error_chirho}",
+    );
+}
+
+#[test]
+fn qualified_promoted_associated_pattern_checks_the_coordinate_chirho() {
+    assert_coordinate_error_chirho(include_str!(
+        "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/promoted-symbols-chirho/associated-chirho/wrong_pattern_chirho.hs"
+    ));
+}
+
+#[test]
+fn qualified_promoted_associated_result_checks_the_coordinate_chirho() {
+    assert_coordinate_error_chirho(include_str!(
+        "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/promoted-symbols-chirho/associated-chirho/wrong_result_chirho.hs"
+    ));
+}
+
+#[test]
+fn qualified_promoted_associated_default_checks_the_coordinate_chirho() {
+    assert_coordinate_error_chirho(include_str!(
+        "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/promoted-symbols-chirho/associated-chirho/wrong_default_chirho.hs"
+    ));
+}
