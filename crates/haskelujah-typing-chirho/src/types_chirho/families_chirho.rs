@@ -80,6 +80,46 @@ pub(crate) enum FamilyReductionChirho<TermChirho> {
     LimitedChirho,
 }
 
+/// Match one complete input spine with one substitution shared across hidden
+/// and visible positions. Rebuilding oversaturated applications belongs to the
+/// caller, which retains whether each remaining argument is visible.
+pub(crate) fn reduce_one_equation_chirho<
+    'term_chirho,
+    TermChirho: FamilyTermChirho + 'term_chirho,
+>(
+    patterns_chirho: impl Iterator<Item = &'term_chirho TermChirho>,
+    result_chirho: &TermChirho,
+    arguments_chirho: &[TermChirho],
+    family_chirho: &impl Fn(&str) -> bool,
+    budget_chirho: &mut usize,
+) -> FamilyReductionChirho<TermChirho> {
+    let mut bindings_chirho = HashMap::new();
+    match combine_matches_chirho(patterns_chirho.enumerate().map(
+        |(index_chirho, pattern_chirho)| {
+            arguments_chirho.get(index_chirho).map_or(
+                FamilyMatchChirho::StuckChirho,
+                |argument_chirho| {
+                    match_pattern_chirho(
+                        pattern_chirho,
+                        argument_chirho,
+                        &mut bindings_chirho,
+                        family_chirho,
+                    )
+                },
+            )
+        },
+    )) {
+        FamilyMatchChirho::ApartChirho => FamilyReductionChirho::ApartChirho,
+        FamilyMatchChirho::StuckChirho => FamilyReductionChirho::StuckChirho,
+        FamilyMatchChirho::MatchedChirho => result_chirho
+            .substitute_bounded_chirho(&bindings_chirho, budget_chirho)
+            .map_or(
+                FamilyReductionChirho::LimitedChirho,
+                FamilyReductionChirho::ReducedChirho,
+            ),
+    }
+}
+
 pub(crate) fn match_pattern_chirho<TermChirho: FamilyTermChirho>(
     pattern_chirho: &TermChirho,
     target_chirho: &TermChirho,
@@ -164,20 +204,6 @@ fn compare_terms_chirho<TermChirho: FamilyTermChirho>(
     }
 }
 
-pub(crate) fn reduce_equations_chirho<TermChirho: FamilyTermChirho>(
-    equations_chirho: &[(Vec<TermChirho>, TermChirho)],
-    arguments_chirho: &[TermChirho],
-    family_chirho: &impl Fn(&str) -> bool,
-) -> FamilyReductionChirho<TermChirho> {
-    let mut budget_chirho = usize::MAX;
-    reduce_equations_bounded_chirho(
-        equations_chirho,
-        arguments_chirho,
-        family_chirho,
-        &mut budget_chirho,
-    )
-}
-
 pub(crate) fn reduce_equations_bounded_chirho<TermChirho: FamilyTermChirho>(
     equations_chirho: &[(Vec<TermChirho>, TermChirho)],
     arguments_chirho: &[TermChirho],
@@ -188,25 +214,17 @@ pub(crate) fn reduce_equations_bounded_chirho<TermChirho: FamilyTermChirho>(
         if patterns_chirho.len() > arguments_chirho.len() {
             return FamilyReductionChirho::StuckChirho;
         }
-        let mut bindings_chirho = HashMap::new();
-        match combine_matches_chirho(patterns_chirho.iter().zip(arguments_chirho).map(
-            |(pattern_chirho, argument_chirho)| {
-                match_pattern_chirho(
-                    pattern_chirho,
-                    argument_chirho,
-                    &mut bindings_chirho,
-                    family_chirho,
-                )
-            },
-        )) {
-            FamilyMatchChirho::ApartChirho => continue,
-            FamilyMatchChirho::StuckChirho => return FamilyReductionChirho::StuckChirho,
-            FamilyMatchChirho::MatchedChirho => {
-                let Some(mut reduced_chirho) =
-                    result_chirho.substitute_bounded_chirho(&bindings_chirho, budget_chirho)
-                else {
-                    return FamilyReductionChirho::LimitedChirho;
-                };
+        match reduce_one_equation_chirho(
+            patterns_chirho.iter(),
+            result_chirho,
+            arguments_chirho,
+            family_chirho,
+            budget_chirho,
+        ) {
+            FamilyReductionChirho::ApartChirho => continue,
+            FamilyReductionChirho::StuckChirho => return FamilyReductionChirho::StuckChirho,
+            FamilyReductionChirho::LimitedChirho => return FamilyReductionChirho::LimitedChirho,
+            FamilyReductionChirho::ReducedChirho(mut reduced_chirho) => {
                 for argument_chirho in &arguments_chirho[patterns_chirho.len()..] {
                     let Some(argument_chirho) =
                         argument_chirho.substitute_bounded_chirho(&HashMap::new(), budget_chirho)

@@ -47,6 +47,7 @@ impl KindInferCtxChirho {
                 continue;
             };
             self.check_family_equation_kinds_chirho(
+                &name_chirho,
                 &scheme_chirho,
                 &[],
                 lhs_types_chirho,
@@ -60,6 +61,7 @@ impl KindInferCtxChirho {
     /// occurrence arguments here, before the type-level equation is converted.
     fn check_family_equation_kinds_chirho(
         &mut self,
+        name_chirho: &str,
         scheme_chirho: &KindSchemeChirho,
         binders_chirho: &[TyVarChirho],
         arguments_chirho: &[TypeChirho],
@@ -110,6 +112,12 @@ impl KindInferCtxChirho {
             &classifier_chirho,
             &result_kind_chirho,
             "family equation result",
+            result_chirho.span_chirho(),
+        );
+        self.record_equation_kind_inputs_chirho(
+            name_chirho,
+            scheme_chirho,
+            hidden_chirho.clone(),
             result_chirho.span_chirho(),
         );
         let result_chirho = self.family_term_chirho(result_chirho);
@@ -309,6 +317,7 @@ impl KindInferCtxChirho {
         let mut rows_chirho = Vec::new();
         for equation_chirho in equations_chirho {
             let Some(row_chirho) = self.check_family_equation_kinds_chirho(
+                &canonical_chirho,
                 &scheme_chirho,
                 binders_chirho,
                 &equation_chirho.lhs_types_chirho,

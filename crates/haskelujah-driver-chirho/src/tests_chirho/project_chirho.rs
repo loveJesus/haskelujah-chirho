@@ -171,10 +171,11 @@ mod tests_chirho {
     #[test]
     fn extend_imported_type_families_preserves_existing_equations_chirho() {
         use crate::extend_imported_type_families_chirho;
+        use haskelujah_typing_chirho::infer_chirho::TypeFamilyClauseChirho;
 
         let mut target_families_chirho = std::collections::HashMap::from([(
             "PrimState".to_string(),
-            vec![(
+            vec![TypeFamilyClauseChirho::ordinary_chirho(
                 vec![TyChirho::AppChirho(
                     Box::new(TyChirho::ConChirho("ST".to_string())),
                     Box::new(TyChirho::ForallVarChirho("s".to_string())),

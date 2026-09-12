@@ -5,7 +5,187 @@
 
 use super::*;
 
+/// Matching inputs retain their visibility when exported to another module.
+/// A kind input is not an extra ordinary argument or mere source annotation.
+#[derive(Clone, Debug)]
+pub struct TypeFamilyClauseChirho {
+    pub kind_inputs_chirho: Vec<TyChirho>,
+    pub type_inputs_chirho: Vec<TyChirho>,
+    pub result_chirho: TyChirho,
+}
+
+impl TypeFamilyClauseChirho {
+    pub fn ordinary_chirho(type_inputs_chirho: Vec<TyChirho>, result_chirho: TyChirho) -> Self {
+        Self {
+            kind_inputs_chirho: Vec::new(),
+            type_inputs_chirho,
+            result_chirho,
+        }
+    }
+}
+
 impl InferCtxChirho {
+    pub(super) fn reduce_type_family_application_chirho(
+        &self,
+        name_chirho: &str,
+        arguments_chirho: &[TyChirho],
+    ) -> Option<TyChirho> {
+        self.reduce_family_spine_chirho(
+            name_chirho,
+            &arguments_chirho
+                .iter()
+                .map(|argument_chirho| (argument_chirho.clone(), false))
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    fn reduce_family_spine_chirho(
+        &self,
+        name_chirho: &str,
+        arguments_chirho: &[(TyChirho, bool)],
+    ) -> Option<TyChirho> {
+        use crate::families_chirho::{FamilyReductionChirho, reduce_one_equation_chirho};
+        let mut budget_chirho = 16_384;
+        let terms_chirho: Vec<_> = arguments_chirho
+            .iter()
+            .map(|(term_chirho, _)| term_chirho.clone())
+            .collect();
+        for equations_chirho in self.lookup_type_family_equation_sets_chirho(name_chirho) {
+            for equation_chirho in equations_chirho {
+                let hidden_chirho = equation_chirho.kind_inputs_chirho.len();
+                let arity_chirho = hidden_chirho + equation_chirho.type_inputs_chirho.len();
+                if arguments_chirho.len() < arity_chirho
+                    || arguments_chirho.iter().take(arity_chirho).enumerate().any(
+                        |(index_chirho, (_, invisible_chirho))| {
+                            *invisible_chirho != (index_chirho < hidden_chirho)
+                        },
+                    )
+                {
+                    return None;
+                }
+                match reduce_one_equation_chirho(
+                    equation_chirho
+                        .kind_inputs_chirho
+                        .iter()
+                        .chain(&equation_chirho.type_inputs_chirho),
+                    &equation_chirho.result_chirho,
+                    &terms_chirho[..arity_chirho],
+                    &|head_chirho| {
+                        self.type_families_chirho.contains_key(head_chirho)
+                            || self
+                                .type_families_chirho
+                                .contains_key(head_chirho.rsplit('.').next().unwrap_or(head_chirho))
+                    },
+                    &mut budget_chirho,
+                ) {
+                    FamilyReductionChirho::ReducedChirho(mut result_chirho) => {
+                        for (argument_chirho, invisible_chirho) in &arguments_chirho[arity_chirho..]
+                        {
+                            result_chirho = if *invisible_chirho {
+                                TyChirho::KindAppChirho(
+                                    Box::new(result_chirho),
+                                    Box::new(argument_chirho.clone()),
+                                )
+                            } else {
+                                TyChirho::AppChirho(
+                                    Box::new(result_chirho),
+                                    Box::new(argument_chirho.clone()),
+                                )
+                            };
+                        }
+                        return Some(result_chirho);
+                    }
+                    FamilyReductionChirho::ApartChirho => {}
+                    FamilyReductionChirho::StuckChirho | FamilyReductionChirho::LimitedChirho => {
+                        return None;
+                    }
+                }
+            }
+        }
+        if arguments_chirho
+            .iter()
+            .any(|(_, invisible_chirho)| *invisible_chirho)
+        {
+            return None;
+        }
+        reduce_builtin_type_family_application_chirho(name_chirho, &terms_chirho)
+    }
+
+    pub(super) fn reduce_families_chirho(
+        &self,
+        ty_chirho: &TyChirho,
+        depth_chirho: usize,
+    ) -> TyChirho {
+        if depth_chirho > 100 {
+            return ty_chirho.clone();
+        }
+        match ty_chirho {
+            TyChirho::ConChirho(_) | TyChirho::AppChirho(_, _) | TyChirho::KindAppChirho(_, _) => {
+                let (head_chirho, arguments_chirho) = family_application_spine_chirho(ty_chirho);
+                let arguments_chirho: Vec<_> = arguments_chirho
+                    .into_iter()
+                    .map(|(argument_chirho, invisible_chirho)| {
+                        (
+                            self.reduce_families_chirho(argument_chirho, depth_chirho + 1),
+                            invisible_chirho,
+                        )
+                    })
+                    .collect();
+                if let TyChirho::ConChirho(name_chirho) = head_chirho {
+                    if let Some(result_chirho) =
+                        self.reduce_family_spine_chirho(name_chirho, &arguments_chirho)
+                    {
+                        return self.reduce_families_chirho(&result_chirho, depth_chirho + 1);
+                    }
+                }
+                let mut result_chirho = if matches!(head_chirho, TyChirho::ConChirho(_)) {
+                    head_chirho.clone()
+                } else {
+                    self.reduce_families_chirho(head_chirho, depth_chirho + 1)
+                };
+                for (argument_chirho, invisible_chirho) in arguments_chirho {
+                    result_chirho = if invisible_chirho {
+                        TyChirho::KindAppChirho(Box::new(result_chirho), Box::new(argument_chirho))
+                    } else {
+                        TyChirho::AppChirho(Box::new(result_chirho), Box::new(argument_chirho))
+                    };
+                }
+                result_chirho
+            }
+            TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
+                TyChirho::FunChirho(
+                    Box::new(self.reduce_families_chirho(argument_chirho, depth_chirho)),
+                    Box::new(self.reduce_families_chirho(result_chirho, depth_chirho)),
+                    *multiplicity_chirho,
+                )
+            }
+            TyChirho::ListChirho(element_chirho) => TyChirho::ListChirho(Box::new(
+                self.reduce_families_chirho(element_chirho, depth_chirho),
+            )),
+            TyChirho::TupleChirho(elements_chirho) => TyChirho::TupleChirho(
+                elements_chirho
+                    .iter()
+                    .map(|element_chirho| self.reduce_families_chirho(element_chirho, depth_chirho))
+                    .collect(),
+            ),
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => TyChirho::ForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(self.reduce_families_chirho(body_chirho, depth_chirho)),
+            },
+            TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => TyChirho::RequiredForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(self.reduce_families_chirho(body_chirho, depth_chirho)),
+            },
+            _ => ty_chirho.clone(),
+        }
+    }
+
     pub(super) fn register_module_type_families_chirho(&mut self, module_chirho: &ModuleChirho) {
         for declaration_chirho in &module_chirho.decls_chirho {
             match declaration_chirho {
@@ -23,7 +203,7 @@ impl InferCtxChirho {
                             )
                         })
                         .collect();
-                    self.register_type_family_chirho(
+                    self.register_elaborated_type_family_chirho(
                         name_chirho.text_chirho().to_string(),
                         equations_chirho,
                     );
@@ -34,15 +214,14 @@ impl InferCtxChirho {
                     rhs_chirho,
                     ..
                 } => {
-                    let Some((patterns_chirho, result_chirho)) =
+                    let Some(equation_chirho) =
                         self.lower_local_family_equation_chirho(lhs_types_chirho, rhs_chirho)
                     else {
                         continue;
                     };
-                    self.register_type_family_instance_chirho(
+                    self.register_elaborated_type_family_chirho(
                         family_name_chirho.text_chirho().to_string(),
-                        patterns_chirho,
-                        result_chirho,
+                        vec![equation_chirho],
                     );
                 }
                 _ => {}
@@ -58,11 +237,27 @@ impl InferCtxChirho {
         &mut self,
         patterns_chirho: &[TypeChirho],
         result_chirho: &TypeChirho,
-    ) -> Option<(Vec<TyChirho>, TyChirho)> {
+    ) -> Option<TypeFamilyClauseChirho> {
         let mut variables_chirho = HashMap::new();
         let policy_chirho =
             super::ast_conversion_chirho::TypeConversionChirho::FamilyEquationChirho;
-        let patterns_chirho: Vec<_> = patterns_chirho
+        let hidden_chirho = self
+            .kind_elaboration_chirho
+            .as_ref()
+            .and_then(|elaboration_chirho| {
+                elaboration_chirho
+                    .equation_inputs_chirho
+                    .get(&result_chirho.span_chirho())
+            })
+            .cloned()
+            .unwrap_or_default();
+        let kind_inputs_chirho: Vec<_> = hidden_chirho
+            .iter()
+            .map(|argument_chirho| {
+                self.kind_term_type_chirho(argument_chirho, &mut variables_chirho, &mut Vec::new())
+            })
+            .collect();
+        let type_inputs_chirho: Vec<_> = patterns_chirho
             .iter()
             .map(|pattern_chirho| {
                 self.ast_type_with_policy_chirho(
@@ -74,8 +269,9 @@ impl InferCtxChirho {
             .collect();
         let body_chirho =
             self.ast_type_with_policy_chirho(result_chirho, &mut variables_chirho, policy_chirho);
-        let bound_chirho: HashSet<_> = patterns_chirho
+        let bound_chirho: HashSet<_> = kind_inputs_chirho
             .iter()
+            .chain(&type_inputs_chirho)
             .flat_map(TyChirho::free_vars_chirho)
             .collect();
         if !body_chirho
@@ -91,8 +287,36 @@ impl InferCtxChirho {
                 ));
             return None;
         }
-        Some((patterns_chirho, body_chirho))
+        Some(TypeFamilyClauseChirho {
+            kind_inputs_chirho,
+            type_inputs_chirho,
+            result_chirho: body_chirho,
+        })
     }
+}
+
+/// Inspect one application spine without treating invisible inputs as ordinary
+/// arguments. Used by reduction and by the no-injectivity deferral check.
+pub(super) fn family_application_spine_chirho(
+    ty_chirho: &TyChirho,
+) -> (&TyChirho, Vec<(&TyChirho, bool)>) {
+    let mut head_chirho = ty_chirho;
+    let mut arguments_chirho = Vec::new();
+    loop {
+        match head_chirho {
+            TyChirho::AppChirho(fun_chirho, argument_chirho) => {
+                arguments_chirho.push((argument_chirho.as_ref(), false));
+                head_chirho = fun_chirho;
+            }
+            TyChirho::KindAppChirho(fun_chirho, argument_chirho) => {
+                arguments_chirho.push((argument_chirho.as_ref(), true));
+                head_chirho = fun_chirho;
+            }
+            _ => break,
+        }
+    }
+    arguments_chirho.reverse();
+    (head_chirho, arguments_chirho)
 }
 
 // Associated instances still use their enclosing class/instance parameter

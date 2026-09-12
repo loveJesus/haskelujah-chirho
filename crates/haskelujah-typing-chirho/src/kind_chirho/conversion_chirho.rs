@@ -374,8 +374,18 @@ impl KindInferCtxChirho {
                 {
                     self.instantiate_binding_chirho(&binding_chirho)
                 } else {
-                    // Unknown type variable — assign a fresh kind variable.
-                    let k_chirho = self.fresh_kind_chirho();
+                    // Annotation checking has a scoped environment, but a named
+                    // kind variable's identity/classifier lives for the enclosing
+                    // declaration. Re-enter that known classifier rather than
+                    // giving the same kind name a new kind-of-kind at each use.
+                    let k_chirho = self
+                        .kind_var_cache_chirho
+                        .get(text_chirho)
+                        .and_then(|identity_chirho| {
+                            self.kind_binder_classifiers_chirho.get(identity_chirho)
+                        })
+                        .cloned()
+                        .unwrap_or_else(|| self.fresh_kind_chirho());
                     self.env_chirho
                         .bind_chirho(text_chirho.to_string(), k_chirho.clone());
                     k_chirho

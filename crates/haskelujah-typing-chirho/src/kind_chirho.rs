@@ -118,6 +118,8 @@ struct KindInferCtxChirho {
     classifier_session_chirho: Option<runtime_chirho::ClassifierSessionChirho>,
     kind_binder_names_chirho: HashMap<KindVarChirho, String>,
     kind_applications_chirho: HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
+    kind_equation_inputs_chirho:
+        HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
     kind_binder_specificity_chirho:
         HashMap<KindVarChirho, haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho>,
     kind_families_chirho: HashMap<String, families_chirho::KindFamilyChirho>,
@@ -160,6 +162,7 @@ impl KindInferCtxChirho {
             classifier_session_chirho: None,
             kind_binder_names_chirho: HashMap::new(),
             kind_applications_chirho: HashMap::new(),
+            kind_equation_inputs_chirho: HashMap::new(),
             kind_binder_specificity_chirho: HashMap::new(),
             kind_families_chirho: HashMap::new(),
             kind_family_names_chirho: std::collections::HashSet::new(),

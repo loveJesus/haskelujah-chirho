@@ -47,6 +47,7 @@ mod signature_conversion_chirho;
 mod type_synonyms_chirho;
 
 use ast_conversion_chirho::ast_type_to_syn_rhs_chirho;
+pub use family_declarations_chirho::TypeFamilyClauseChirho;
 use family_declarations_chirho::collect_free_type_vars_from_ast_chirho;
 use module_inputs_chirho::is_placeholder_import_scheme_chirho;
 use type_synonyms_chirho::TypeSynonymChirho;
@@ -70,7 +71,7 @@ const RECORD_FIELD_CODE_CHIRHO: u16 = 206;
 /// (GHC-95909: "does not have the required strict field").
 const RECORD_STRICT_FIELD_CODE_CHIRHO: u16 = 207;
 
-pub type TypeFamilyEnvChirho = HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>;
+pub type TypeFamilyEnvChirho = HashMap<String, Vec<TypeFamilyClauseChirho>>;
 
 /// The default equation of an associated type family, remembered on its
 /// class and instantiated for each instance that does not define the family
@@ -765,16 +766,36 @@ impl InferCtxChirho {
         name_chirho: String,
         equations_chirho: Vec<(Vec<TyChirho>, TyChirho)>,
     ) {
-        let normalized_equations_chirho: Vec<(Vec<TyChirho>, TyChirho)> = equations_chirho
+        self.register_elaborated_type_family_chirho(
+            name_chirho,
+            equations_chirho
+                .into_iter()
+                .map(|(inputs_chirho, result_chirho)| {
+                    TypeFamilyClauseChirho::ordinary_chirho(inputs_chirho, result_chirho)
+                })
+                .collect(),
+        );
+    }
+
+    pub fn register_elaborated_type_family_chirho(
+        &mut self,
+        name_chirho: String,
+        equations_chirho: Vec<TypeFamilyClauseChirho>,
+    ) {
+        let normalized_equations_chirho: Vec<_> = equations_chirho
             .into_iter()
-            .map(|(lhs_types_chirho, rhs_chirho)| {
-                (
-                    lhs_types_chirho
-                        .into_iter()
-                        .map(|lhs_ty_chirho| self.normalize_imported_ty_chirho(&lhs_ty_chirho))
-                        .collect(),
-                    self.normalize_imported_ty_chirho(&rhs_chirho),
-                )
+            .map(|equation_chirho| TypeFamilyClauseChirho {
+                kind_inputs_chirho: equation_chirho
+                    .kind_inputs_chirho
+                    .iter()
+                    .map(|input_chirho| self.normalize_imported_ty_chirho(input_chirho))
+                    .collect(),
+                type_inputs_chirho: equation_chirho
+                    .type_inputs_chirho
+                    .into_iter()
+                    .map(|lhs_ty_chirho| self.normalize_imported_ty_chirho(&lhs_ty_chirho))
+                    .collect(),
+                result_chirho: self.normalize_imported_ty_chirho(&equation_chirho.result_chirho),
             })
             .collect();
         let registered_equations_chirho = self.type_families_chirho.entry(name_chirho).or_default();
@@ -796,15 +817,7 @@ impl InferCtxChirho {
         lhs_types_chirho: Vec<TyChirho>,
         rhs_chirho: TyChirho,
     ) {
-        let normalized_lhs_types_chirho: Vec<TyChirho> = lhs_types_chirho
-            .iter()
-            .map(|lhs_ty_chirho| self.normalize_imported_ty_chirho(lhs_ty_chirho))
-            .collect();
-        let normalized_rhs_chirho = self.normalize_imported_ty_chirho(&rhs_chirho);
-        self.type_families_chirho
-            .entry(family_name_chirho)
-            .or_default()
-            .insert(0, (normalized_lhs_types_chirho, normalized_rhs_chirho));
+        self.register_type_family_chirho(family_name_chirho, vec![(lhs_types_chirho, rhs_chirho)]);
     }
 
     /// Try to reduce a type family application `F args...` by matching
@@ -818,46 +831,16 @@ impl InferCtxChirho {
         self.reduce_type_family_application_chirho(family_name_chirho, args_chirho)
     }
 
-    fn reduce_type_family_application_chirho(
-        &self,
-        family_name_chirho: &str,
-        args_chirho: &[TyChirho],
-    ) -> Option<TyChirho> {
-        // Shared ordered matching distinguishes apart from stuck; an unknown
-        // input cannot skip an earlier equation and select a catch-all.
-        // Workflow: language-features-chirho/declaration-kinds-chirho.
-        for equations_chirho in self.lookup_type_family_equation_sets_chirho(family_name_chirho) {
-            match crate::families_chirho::reduce_equations_chirho(
-                equations_chirho,
-                args_chirho,
-                &|name_chirho| {
-                    self.type_families_chirho.contains_key(name_chirho)
-                        || self
-                            .type_families_chirho
-                            .contains_key(name_chirho.rsplit('.').next().unwrap_or(name_chirho))
-                },
-            ) {
-                crate::families_chirho::FamilyReductionChirho::ReducedChirho(result_chirho) => {
-                    return Some(result_chirho);
-                }
-                crate::families_chirho::FamilyReductionChirho::StuckChirho
-                | crate::families_chirho::FamilyReductionChirho::LimitedChirho => return None,
-                crate::families_chirho::FamilyReductionChirho::ApartChirho => {}
-            }
-        }
-        reduce_builtin_type_family_application_chirho(family_name_chirho, args_chirho)
-    }
-
     fn lookup_type_family_equation_sets_chirho(
         &self,
         family_name_chirho: &str,
-    ) -> Vec<&[(Vec<TyChirho>, TyChirho)]> {
+    ) -> Vec<&[TypeFamilyClauseChirho]> {
         let bare_name_chirho = family_name_chirho
             .rsplit_once('.')
             .map(|(_prefix_chirho, bare_name_chirho)| bare_name_chirho)
             .unwrap_or(family_name_chirho);
         let mut seen_names_chirho: HashSet<String> = HashSet::new();
-        let mut equation_sets_chirho: Vec<&[(Vec<TyChirho>, TyChirho)]> = Vec::new();
+        let mut equation_sets_chirho: Vec<&[TypeFamilyClauseChirho]> = Vec::new();
 
         // Prefer the bare family name so local equations can win over empty
         // imported qualified declarations for the same family.
@@ -934,97 +917,6 @@ impl InferCtxChirho {
             }
         }
         None
-    }
-
-    fn reduce_families_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
-        if depth_chirho > 100 {
-            return ty_chirho.clone();
-        }
-        match ty_chirho {
-            TyChirho::ConChirho(name_chirho) => {
-                // Nullary type family (no arguments)
-                if let Some(reduced_chirho) = self.reduce_type_family_chirho(name_chirho, &[]) {
-                    return self.reduce_families_chirho(&reduced_chirho, depth_chirho + 1);
-                }
-                ty_chirho.clone()
-            }
-            TyChirho::AppChirho(_, _) => {
-                // Collect spine and check if head is a type family
-                let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
-                if let TyChirho::ConChirho(name_chirho) = &head_chirho {
-                    // Recursively reduce arguments first
-                    let reduced_args_chirho: Vec<TyChirho> = args_chirho
-                        .iter()
-                        .map(|a_chirho| self.reduce_families_chirho(a_chirho, depth_chirho + 1))
-                        .collect();
-                    if let Some(result_chirho) = self
-                        .reduce_type_family_application_chirho(name_chirho, &reduced_args_chirho)
-                    {
-                        return self.reduce_families_chirho(&result_chirho, depth_chirho + 1);
-                    }
-                    // Not a family — rebuild with reduced args
-                    let mut result_chirho = head_chirho.clone();
-                    for a_chirho in &reduced_args_chirho {
-                        result_chirho = TyChirho::AppChirho(
-                            Box::new(result_chirho),
-                            Box::new(a_chirho.clone()),
-                        );
-                    }
-                    return result_chirho;
-                }
-                // Head is not a Con — just reduce sub-parts
-                let ef_chirho = self.reduce_families_chirho(
-                    match ty_chirho {
-                        TyChirho::AppChirho(f, _) => f,
-                        _ => unreachable!(),
-                    },
-                    depth_chirho,
-                );
-                let ea_chirho = self.reduce_families_chirho(
-                    match ty_chirho {
-                        TyChirho::AppChirho(_, a) => a,
-                        _ => unreachable!(),
-                    },
-                    depth_chirho,
-                );
-                TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
-            }
-            TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
-                // Kind-indexed family rows are not yet registered here. Do not
-                // reduce a bare nullary family before consulting its hidden input.
-                fun_chirho.clone(),
-                Box::new(self.reduce_families_chirho(arg_chirho, depth_chirho)),
-            ),
-            TyChirho::FunChirho(a_chirho, b_chirho, m_chirho) => TyChirho::FunChirho(
-                Box::new(self.reduce_families_chirho(a_chirho, depth_chirho)),
-                Box::new(self.reduce_families_chirho(b_chirho, depth_chirho)),
-                *m_chirho,
-            ),
-            TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(Box::new(
-                self.reduce_families_chirho(el_chirho, depth_chirho),
-            )),
-            TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-                elems_chirho
-                    .iter()
-                    .map(|e_chirho| self.reduce_families_chirho(e_chirho, depth_chirho))
-                    .collect(),
-            ),
-            TyChirho::ForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::ForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.reduce_families_chirho(body_chirho, depth_chirho)),
-            },
-            TyChirho::RequiredForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::RequiredForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.reduce_families_chirho(body_chirho, depth_chirho)),
-            },
-            _ => ty_chirho.clone(),
-        }
     }
 
     /// Generate a fresh unification variable.

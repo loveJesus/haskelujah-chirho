@@ -6,7 +6,7 @@ use super::*;
 impl LowerCtxChirho {
     /// Try to convert a lowered `TypeChirho` into an `AstKindChirho` for kind
     /// annotations. Nominal names retain their source identity; applications
-    /// retain both sides. Unsupported promoted/list syntax remains a separate
+    /// retain both sides. Unsupported promoted syntax remains a separate
     /// boundary rather than masquerading as an ordinary kind variable.
     pub(super) fn try_type_to_ast_kind_chirho(ty_chirho: &TypeChirho) -> Option<AstKindChirho> {
         match ty_chirho {
@@ -70,8 +70,17 @@ impl LowerCtxChirho {
                 Box::new(Self::try_type_to_ast_kind_chirho(fun_chirho)?),
                 Box::new(Self::try_type_to_ast_kind_chirho(arg_chirho)?),
             )),
-            // Lists, tuples etc. can't be represented as AstKindChirho —
-            // return None so the kind checker infers the kind.
+            TypeChirho::ListChirho {
+                element_chirho,
+                span_chirho,
+            } => Some(AstKindChirho::AppChirho(
+                Box::new(AstKindChirho::ConChirho(NameChirho::RawChirho(
+                    RawNameChirho::unqualified_chirho("[]", *span_chirho),
+                ))),
+                Box::new(Self::try_type_to_ast_kind_chirho(element_chirho)?),
+            )),
+            // Promoted values and tuples still need their own kind representation;
+            // the caller cannot recover their written contract from None.
             _ => None,
         }
     }

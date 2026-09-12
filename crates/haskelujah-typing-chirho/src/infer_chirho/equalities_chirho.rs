@@ -49,7 +49,8 @@ impl InferCtxChirho {
 
     /// Whether the type is an application headed by a known type family.
     pub(super) fn ty_is_family_app_chirho(&self, ty_chirho: &TyChirho) -> bool {
-        let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
+        let (head_chirho, args_chirho) =
+            super::family_declarations_chirho::family_application_spine_chirho(ty_chirho);
         match &head_chirho {
             TyChirho::ConChirho(name_chirho) => {
                 !args_chirho.is_empty() && self.is_type_family_name_chirho(name_chirho)

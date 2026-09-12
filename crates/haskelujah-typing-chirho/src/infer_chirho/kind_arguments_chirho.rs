@@ -55,6 +55,11 @@ impl InferCtxChirho {
                 elaboration_chirho
                     .synonym_heads_chirho
                     .get(&name_chirho.full_name_chirho())
+            })
+            .or_else(|| {
+                elaboration_chirho
+                    .family_heads_chirho
+                    .get(&name_chirho.full_name_chirho())
             })?
             .clone();
         let recorded_chirho = elaboration_chirho
@@ -75,7 +80,7 @@ impl InferCtxChirho {
                 .collect()
         } else {
             // Expression/local signatures are not all visited by the module
-            // kind pass. Instantiate the KNOWN nominal head's quantified slots,
+            // kind pass. Instantiate the KNOWN local head's quantified slots,
             // just as constructor inference does, instead of returning a bare
             // head with a different arity. Unknown/imported heads never enter
             // this path. This is not a substitute for their classifier checking.
@@ -135,7 +140,7 @@ impl InferCtxChirho {
 
     /// Kind metavariables share only inside the caller's lexical conversion map.
     /// They never become a module-global type variable reused across signatures.
-    fn kind_term_type_chirho(
+    pub(super) fn kind_term_type_chirho(
         &mut self,
         term_chirho: &KindChirho,
         variables_chirho: &mut HashMap<String, TyVarChirho>,

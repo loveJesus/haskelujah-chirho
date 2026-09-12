@@ -3,8 +3,68 @@
 use super::*;
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
+fn reduce_equations_chirho<TermChirho: FamilyTermChirho>(
+    equations_chirho: &[(Vec<TermChirho>, TermChirho)],
+    arguments_chirho: &[TermChirho],
+    family_chirho: &impl Fn(&str) -> bool,
+) -> FamilyReductionChirho<TermChirho> {
+    reduce_equations_bounded_chirho(
+        equations_chirho,
+        arguments_chirho,
+        family_chirho,
+        &mut 16_384,
+    )
+}
+
 fn family_application_chirho(name_chirho: &str, argument_chirho: TyChirho) -> TyChirho {
     TyChirho::application_chirho(TyChirho::ConChirho(name_chirho.into()), argument_chirho)
+}
+
+#[test]
+fn imported_family_matching_preserves_kind_input_visibility_chirho() {
+    use crate::infer_chirho::{InferCtxChirho, TypeFamilyClauseChirho, TypeFamilyEnvChirho};
+    let equations_chirho = TypeFamilyEnvChirho::from([(
+        "PickChirho".to_owned(),
+        vec![
+            TypeFamilyClauseChirho {
+                kind_inputs_chirho: vec![TyChirho::ConChirho("Type".into())],
+                type_inputs_chirho: vec![],
+                result_chirho: TyChirho::ConChirho("Maybe".into()),
+            },
+            TypeFamilyClauseChirho {
+                kind_inputs_chirho: vec![TyChirho::bool_chirho()],
+                type_inputs_chirho: vec![],
+                result_chirho: TyChirho::ConChirho("FlagChirho".into()),
+            },
+        ],
+    )]);
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    for (name_chirho, equations_chirho) in equations_chirho {
+        context_chirho.register_elaborated_type_family_chirho(name_chirho, equations_chirho);
+    }
+    let application_chirho = |argument_chirho| {
+        TyChirho::KindAppChirho(
+            Box::new(TyChirho::ConChirho("PickChirho".into())),
+            Box::new(argument_chirho),
+        )
+    };
+    assert_eq!(
+        context_chirho
+            .reduce_type_families_in_ty_chirho(&application_chirho(TyChirho::bool_chirho())),
+        TyChirho::ConChirho("FlagChirho".into())
+    );
+    let ordinary_chirho = family_application_chirho("PickChirho", TyChirho::bool_chirho());
+    assert_eq!(
+        context_chirho.reduce_type_families_in_ty_chirho(&ordinary_chirho),
+        ordinary_chirho,
+        "a transported hidden input cannot be consumed as an ordinary argument"
+    );
+    let unsolved_chirho = application_chirho(TyChirho::VarChirho(TyVarChirho(3100)));
+    assert_eq!(
+        context_chirho.reduce_type_families_in_ty_chirho(&unsolved_chirho),
+        unsolved_chirho,
+        "an unknown kind must not select whichever row was imported first"
+    );
 }
 
 #[test]

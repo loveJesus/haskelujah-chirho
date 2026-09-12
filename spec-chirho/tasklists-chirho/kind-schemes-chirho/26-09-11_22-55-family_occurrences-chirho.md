@@ -112,3 +112,46 @@ pushed checkpoint. Kind-ascription/promoted-constructor indices still require
 their own real representation after this family-spine step; their existing red
 control stays enabled. Open-kind reduction and data-family classification also
 remain explicit gates rather than incidental accept/reject totals.
+
+## Hidden-input implementation checkpoint
+
+Checkpoint tag family-matching-indices-before-chirho points atde8fa2ed. The
+chosen isolated implementation is typed clauses carrying separate kind/type
+inputs, plus solved family-occurrence indices. Registration, imported clause
+transport, reduction and equality deferral all retain visibility. One shared
+matcher binds hidden and ordinary patterns together; source-kind authority for
+imports and kind-level hidden-row reduction remain outside this result.
+
+- [x] FamilyKindSelectionChirho: GHC9.14.1 executes49; new driver control shown
+  red before implementation and green afterward. Reversed open-row order and
+  implicit kind applications also execute49; wrong constructor rejects.
+- [x] ListKindFamilyRhsChirho: a written `[k] -> k -> Type` annotation was erased
+  wholesale, allowing Maybe at the wrong kind. Preserve it as the existing
+  list-constructor application. The positive/negative driver control was shown
+  red before that conversion and green afterward; GHC independently agrees.
+- [x] Existing flexible-kind application control recovered. Annotation scopes
+  now reuse a known implicit name's lexical classifier rather than giving its
+  second occurrence a fresh kind-of-kind. No assertion changed in that test.
+- [x] RecursiveFamilyKindsChirho: GHC executes49; driver control shown red then
+  green. Captured equation keys now follow the substituted published identity,
+  not the stale pre-rigidification key. Conflicting captures emit an error.
+- [x] Fresh explicit CLI accepts T16502b and T25597 again; T21583 stays accepted.
+  Remaining focused failures: CoerceToVDQ,T12381,T17067,T13879,T14010,T22560c,T26358.
+- [x] Remove all temporary family-input trace instrumentation; explicit CLI build
+  warning-free, SHA256a29b95bb00153a8d0c95137f6e2d39c1e2c048ccf5d887f017fcf4c6319d7dec.
+- [x] Parser356/356, typing369/369, canaries7/7, zero ignored/filtered;
+  workspace all-target check passes. The parser's old `[Symbol]` test pinned an
+  absent binder annotation: replace that assertion with the complete list kind,
+  retaining its separate no-declaration-kind assertion. No scanner guard removed.
+- [ ] Integration113/114, zero ignored/filtered: only the existing legal
+  ClassifierCycleChirho annotation control is red. It remains enabled unchanged.
+  Driver--lib is running separately; full workspace tests remain owed.
+- [ ] Freeze/push owned checkpoint; measure exact corpus sets on the frozen CLI.
+- [ ] Type-pattern ascriptions/promoted constructor indices, existing classifier
+  control, kind-level open rows and all accept regressions remain open.
+
+The prior corpus880/247 does not describe this hidden-input checkpoint. The legacy
+usize::MAX reducer wrapper is removed now that the type consumer calls a bounded
+single-row matcher; this is not the cause of the earlier T15552a abort. That abort
+was independently reduced to classifier recursion and fixed in the22-20 leaf.
+No main merge, canonical DB update, denominator/label edit or site deployment.

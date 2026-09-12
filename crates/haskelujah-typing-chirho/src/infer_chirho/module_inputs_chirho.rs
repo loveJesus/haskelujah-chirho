@@ -175,8 +175,10 @@ pub fn infer_module_with_inputs_chirho(
     let mut sorted_type_families_chirho: Vec<_> = imported_type_families_chirho.iter().collect();
     sorted_type_families_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
     for (family_name_chirho, equations_chirho) in sorted_type_families_chirho {
-        ctx_chirho
-            .register_type_family_chirho(family_name_chirho.clone(), equations_chirho.clone());
+        ctx_chirho.register_elaborated_type_family_chirho(
+            family_name_chirho.clone(),
+            equations_chirho.clone(),
+        );
     }
     // Seed the type environment with imported type schemes, but only if
     // placeholder imports do not override precise built-ins, while real

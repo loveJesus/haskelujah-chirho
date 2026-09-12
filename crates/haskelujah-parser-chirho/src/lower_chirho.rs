@@ -12973,9 +12973,8 @@ foo = 1
 
     #[test]
     fn lower_data_binder_kind_never_becomes_the_declaration_kind_chirho() {
-        // `[Symbol]` is a kind our kind grammar cannot read yet. It belongs to the
-        // BINDER; recording it as the declaration's own return kind gave `A` a
-        // fabricated kind (and dropped the brackets on the way).
+        // `[Symbol]` belongs to the BINDER. Its contract must survive there,
+        // without becoming the declaration's own return kind or losing `[]`.
         let module_chirho = parse_and_lower_chirho("module M where\ndata A (b :: [Symbol]) = A\n");
         match &module_chirho.decls_chirho[0] {
             DeclChirho::DataDeclChirho {
@@ -12985,7 +12984,15 @@ foo = 1
             } => {
                 assert_eq!(type_vars_chirho.len(), 1);
                 assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "b");
-                assert_eq!(type_vars_chirho[0].kind_annotation_chirho, None);
+                assert!(
+                    matches!(&type_vars_chirho[0].kind_annotation_chirho,
+                        Some(AstKindChirho::AppChirho(constructor_chirho, element_chirho))
+                            if matches!(constructor_chirho.as_ref(), AstKindChirho::ConChirho(name_chirho)
+                                if name_chirho.text_chirho() == "[]")
+                            && matches!(element_chirho.as_ref(), AstKindChirho::ConChirho(name_chirho)
+                                if name_chirho.text_chirho() == "Symbol")),
+                    "the binder must retain its whole list-kind annotation"
+                );
                 assert!(
                     kind_sig_chirho.is_none(),
                     "a binder's kind must not become the declaration's kind: {kind_sig_chirho:?}"

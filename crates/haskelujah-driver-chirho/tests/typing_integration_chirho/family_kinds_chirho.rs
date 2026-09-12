@@ -8,6 +8,38 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn family_equations_match_hidden_kind_inputs_before_visible_arguments_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/FamilyKindSelectionChirho.hs"
+    ));
+    assert_execution_chirho(source_chirho, "49\n");
+    // Disjoint open rows cannot be selected by their registration order.
+    let reversed_chirho = source_chirho.replace(
+        "type instance PickChirho = Maybe\ntype instance PickChirho = FlagChirho",
+        "type instance PickChirho = FlagChirho\ntype instance PickChirho = Maybe",
+    );
+    assert_execution_chirho(&reversed_chirho, "49\n");
+    let implicit_chirho = source_chirho
+        .replace("PickChirho @Type Int", "PickChirho Int")
+        .replace("PickChirho @Bool 'True", "PickChirho 'True");
+    assert_execution_chirho(&implicit_chirho, "49\n");
+    let wrong_chirho =
+        source_chirho.replace("ordinaryChirho = Just 42", "ordinaryChirho = FlagChirho 42");
+    let error_chirho = typecheck_source_chirho(
+        &wrong_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongFamilyKindSelectionChirho.hs",
+    )
+    .err()
+    .expect("the Type equation must not choose the Bool-indexed constructor");
+    assert!(
+        error_chirho.to_string().contains("type mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
 fn family_equation_rhs_retains_solved_nominal_kind_arguments_chirho() {
     let open_chirho = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -33,6 +65,36 @@ fn family_equation_rhs_retains_solved_nominal_kind_arguments_chirho() {
             "{diagnostic_chirho}"
         );
     }
+}
+
+#[test]
+fn family_binder_list_kind_is_checked_instead_of_inferred_away_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/ListKindFamilyRhsChirho.hs"
+    ));
+    assert_compile_success_chirho("ListKindFamilyRhsChirho.hs", source_chirho);
+    let wrong_chirho = format!("{source_chirho}\ntype WrongChirho = ResultChirho Maybe Int\n");
+    let error_chirho = typecheck_source_chirho(
+        &wrong_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongListKindFamilyRhsChirho.hs",
+    )
+    .err()
+    .expect("Maybe does not take a list-kind argument followed by a value-kind argument");
+    assert!(
+        error_chirho.to_string().contains("kind mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn recursive_family_rows_keep_the_published_kind_identity_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/RecursiveFamilyKindsChirho.hs"
+    ));
+    assert_execution_chirho(source_chirho, "49\n");
 }
 
 #[test]

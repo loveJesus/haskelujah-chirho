@@ -58,20 +58,24 @@ fn seed_builtin_type_families_chirho() -> ImportedTypeFamiliesChirho {
     let s_var_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::TyVarChirho(9900));
     families_chirho.insert(
         "PrimState".to_string(),
-        vec![(
-            vec![TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ST".to_string())),
-                Box::new(s_var_chirho.clone()),
-            )],
-            s_var_chirho.clone(),
-        )],
+        vec![
+            haskelujah_typing_chirho::infer_chirho::TypeFamilyClauseChirho::ordinary_chirho(
+                vec![TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("ST".to_string())),
+                    Box::new(s_var_chirho.clone()),
+                )],
+                s_var_chirho.clone(),
+            ),
+        ],
     );
 
     // type instance PrimState IO = RealWorld
-    families_chirho.get_mut("PrimState").unwrap().push((
-        vec![TyChirho::ConChirho("IO".to_string())],
-        TyChirho::ConChirho("RealWorld".to_string()),
-    ));
+    families_chirho.get_mut("PrimState").unwrap().push(
+        haskelujah_typing_chirho::infer_chirho::TypeFamilyClauseChirho::ordinary_chirho(
+            vec![TyChirho::ConChirho("IO".to_string())],
+            TyChirho::ConChirho("RealWorld".to_string()),
+        ),
+    );
 
     families_chirho
 }

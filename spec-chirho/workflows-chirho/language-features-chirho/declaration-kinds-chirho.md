@@ -599,8 +599,9 @@ classifier validation, not a claim that every compiler traversal is bounded.
 The flat annotation producer retains qualified Type/Constraint names and explicit
 constructor/list promotion. Losing a qualifier changes binding authority; losing
 the tick on '[] changes a promoted value into the list type constructor. The
-AstKind conversion still cannot represent promoted/list annotations and therefore
-leaves those annotations unproved rather than fabricating their neighbouring type.
+AstKind conversion preserves an ordinary list kind as an application of `[]` to
+its element kind. Promoted values and tuple annotations still lack that conversion
+and remain unproved rather than fabricating their neighbouring type.
 In particular, recovering T11723 does not establish complete TupleRep checking.
 
 Annotation checking must constrain the expression's classifier to Type, not only
@@ -632,7 +633,40 @@ pattern is currently erased by lowering, so a variable bound only there cannot
 reach the matching row. The resulting valid-program rejection is an OPEN gate
 failure, not fixed by inventing an RHS variable or weakening the test.
 
-Not complete: hidden family matching indices, promoted-constructor pattern indices,
+Family equations now store distinct invisible-kind and ordinary-type inputs in
+TypeFamilyClauseChirho. The same solved occurrence map supplies invisible family
+applications at use sites. One substitution matches both input sets; an unknown
+kind cannot select whichever equation happens to be first. Reduction preserves
+visibility while rebuilding an oversaturated result, and equality deferral finds
+the family through either application form. The driver transports these typed
+clauses between modules instead of flattening their inputs into a positional list.
+This transport does not yet establish authoritative imported source kind schemes.
+
+Captured quantifier keys follow identity substitution when SCC publication replaces
+a written metavariable with its rigid representative. Neither source spelling nor
+equation order identifies that representative. Conflicting captures for a single
+published binder emit an error. An annotation's implicit name likewise reuses its
+known lexical classifier after the temporary annotation environment closes; its
+next occurrence must not acquire a fresh kind-of-kind.
+
+```mermaid
+flowchart LR
+  FamilyContractChirho[Family kind scheme] --> RowInputsChirho[Solved equation kind inputs]
+  FamilyContractChirho --> UseInputsChirho[Solved occurrence kind arguments]
+  RowInputsChirho --> PublishedKeysChirho[Follow published binder identities]
+  PublishedKeysChirho --> ClauseChirho[Distinct kind and type matching inputs]
+  ClauseChirho --> SharedMatchChirho[One substitution across both input sets]
+  UseInputsChirho --> SharedMatchChirho
+  SharedMatchChirho --> ReducedChirho[Bounded RHS substitution and visibility-preserving application]
+```
+
+The type-level family normalizer has a16384-node substitution budget per family
+application and retains its existing depth limit. The shared equation matcher no
+longer exposes an unbounded production wrapper. This is not a bound on all compiler
+traversals. Kind-level family reduction still uses its guarded visible-only rows;
+the new type-level inputs do not silently extend its injectivity claim.
+
+Not complete: hidden inputs in kind-level family reduction, promoted-constructor pattern indices,
 type-pattern kind ascriptions, associated-row scope, imported constructor schemes and
 specificity, and complete higher-rank kind subsumption. The frozen f5c4eedb
 diagnostic recovered T12045a but exposed twelve new accept failures relative to
