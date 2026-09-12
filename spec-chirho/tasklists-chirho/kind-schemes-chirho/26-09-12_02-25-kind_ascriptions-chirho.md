@@ -217,3 +217,28 @@ kind error. The other failures remain live. This is focused evidence, not an
 inferred full-corpus count. Next: freeze this owned checkpoint, explicitly build,
 run one diagnostic per axis, and compare exact sets before the next reduction.
 Main121d4f2c, canonical row484, corpus membership and public labels stay unchanged.
+
+## Frozen producer diagnostic at351bdbb3
+
+Implementation351bdbb36202ebe5b8efa04dcf4cd410b3c33617 is pushed, remote exact.
+Local tag kind-producer-reconciliation-before-chirho points to6b56f3d0.
+The post-commit explicit build retains SHA256
+7bb16c445516e1f32e522c120bbcea7de2aa705d7acd3c0d5f7af9a1f0ad4bab.
+One diagnostic per axis, P4/15s with isolated timeout reruns, clean source and
+unchanged binary before/after: accept875/938 and reject252/767, zero timeouts or
+unexpected exits. This is not the final two-pass gate or artifact supersession.
+
+Versus250b22fb, accept gains eight: LevPolyResult,T10856,T12734,T12850,T18185,
+T18831,T26737,tc184; loses T26256a and T7903. Thus six net recoveries but two
+newly failing files, not a clean repair. The two new diagnostics both involve
+the function constructor (->) on the shared instance-token route. Main-relative
+membership is now ten gains and17 losses; no failure is waived.
+
+Reject total252 is unchanged but its membership is not: +T18714,-T12102.
+Both GHC stderr files demand GHC-01259, illegal constraints in a kind. Our new
+T18714 error is instead an escaping polymorphic-ascription binder, so it is not
+credited as implementing that contract. T12102 now passes; the actual illegal-
+kind-constraint rule remains unimplemented. Exact sets/deltas/hashes are in
+producers-chirho/diagnostic-chirho.jsonl. Broad driver results from3458 do not
+cover351bdbb3. CPU embargo released; SLOT/DB remains mine while the instance
+grammar and remaining list occurrence/equation-index failures are reduced.
