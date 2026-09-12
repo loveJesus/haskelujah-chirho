@@ -656,6 +656,38 @@ a fresh imported classifier. Local declarations may shadow these entries through
 the normal binding path. This supplies known builtin contracts only, not missing
 authoritative kind schemes for arbitrary imported modules.
 
+Constraint synonym licensing is checked on each alias's solved terminal result
+kind, including a partially applied class such as `type Showish = Show`. Without
+ConstraintKinds it emits GHC-75844's declaration-level contract even if the alias
+is never used; an unrelated application error cannot stand in for this check.
+Type-family declarations are distinct and may manipulate Constraint without this
+alias license. The rule is documented by the
+[GHC constraint-kind guide](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/constraint_kind.html)
+and tested separately against installed GHC9.14.1.
+
+Raw pragma extraction retains edition directives until all LANGUAGE/OPTIONS_GHC
+tokens have been collected. One shared normalizer selects the last edition and
+puts its defaults before all explicit feature choices in their original order.
+Thus an explicit NoConstraintKinds is not undone by a later GHC2021, and an
+explicit ConstraintKinds survives a later Haskell2010. The same normalized state
+feeds pre-layout contextual classification and the lowered module. No-explicit-
+edition behavior remains unchanged. This does not claim complete extension
+implications or edition membership: the existing GHC2024-as-GHC2021 expansion
+is still incomplete. See the
+[GHC edition guide](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/control.html).
+
+```mermaid
+flowchart LR
+  PragmasChirho[Raw LANGUAGE and OPTIONS_GHC directives] --> EditionChirho[Last edition supplies defaults]
+  PragmasChirho --> ExplicitChirho[Explicit feature choices retain their order]
+  EditionChirho --> EffectiveChirho[Defaults followed by explicit choices]
+  ExplicitChirho --> EffectiveChirho
+  EffectiveChirho --> LayoutFlagsChirho[Contextual keyword classification]
+  EffectiveChirho --> ModuleFlagsChirho[Lowered module extension state]
+  SolvedAliasChirho[Solved alias terminal result kind] --> AliasLicenseChirho[ConstraintKinds declaration check]
+  ModuleFlagsChirho --> AliasLicenseChirho
+```
+
 ```mermaid
 flowchart LR
   FamilyContractChirho[Family kind scheme] --> RowInputsChirho[Solved equation kind inputs]

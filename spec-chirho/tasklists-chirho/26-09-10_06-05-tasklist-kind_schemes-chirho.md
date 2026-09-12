@@ -76,14 +76,16 @@ Latest corpus diagnostice1d76a55: accept881/938, nine main-relative regressions
 and eight gains; reject247/767, zero timeouts or unexpected exits. One pass per
 axis, not a final gate. Source checkpoint is pushed and remote-exact.
 Typed family clauses retain hidden inputs, published identities and list kinds.
-Parser356,typing369,canaries7 green; integration113/114, annotation control red.
 Driver--lib1760/1772; twelve fail on parent/current but PASS freshly built main.
-Nine fresh GHC controls agree, five exact executions. Accept total unchanged but
-T16188/T16502b/T25597 recovered and ControlMonadClassesState/T18129/T20356 regressed.
 Thirteen known Prelude class kinds restored; T20356 and its positive/negative/
-shadowing controls recover. Typing369,canaries7,workspace check green;
-integration116/117 retains the annotation red. Next: actual ConstraintKinds alias
-licensing (tcfail209 was an accidental rejection), then imported kind contracts.
+shadowing controls recover. The following isolated repair enforces ConstraintKinds
+on solved alias kinds, not use-site accidents. Raw pragma directives now retain
+edition provenance; selected defaults precede explicit flags in a shared lexer/
+lowerer normalizer. Seventeen GHC9.14.1 verdict controls agree; parser3/3 new
+controls, parser356,typing369,naming136,canaries7 and workspace check pass.
+Integration118/119 retains the annotation red. No corpus measurement yet of this
+license/edition repair. Next: imported classifier and closed-synonym contracts;
+the imported/local/annotated Identity reduction confirms the producer boundary.
 Detail/reference evidence and next hidden-family-input decision:
 kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md. The earlier classifier
 repair and accidental UnliftedNewtypes rejection audit are in the22-20 leaf.

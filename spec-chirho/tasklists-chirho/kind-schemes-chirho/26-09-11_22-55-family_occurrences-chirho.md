@@ -252,3 +252,36 @@ alias return kinds against the actual extension state, with enabled/disabled,
 legacy/default-edition and ordinary-type controls. Do not restore the old
 application error. Then continue the imported-kind contract repair behind the
 twelve driver regressions. No main/DB/artifact/label/membership/deployment change.
+
+## Constraint synonym licensing and edition provenance
+
+The new declaration-only GHC-75844 control was shown red before the solved-kind
+check, then green. Constraint families remain distinct: a TypeFamilies source
+returning `Type -> Constraint` is accepted by GHC9.14.1 without ConstraintKinds.
+Typing369/canaries7 pass; integration118/119 retains the existing annotation red.
+
+Additional GHC controls expose a producer defect before freeze: explicit
+`ConstraintKinds` survives a later Haskell2010 edition, while explicit
+`NoConstraintKinds` survives a later GHC2021. Per-pragma expansion discarded
+that distinction, and OPTIONS_GHC did not expand editions at all. Three new
+parser controls were shown0/3, and the augmented driver control0/1. The repair
+retains raw directives until all pragmas are collected, selects only the last
+edition, then places its defaults before the explicit choices in source order.
+Pre-layout classification and AST lowering share this bounded linear pass.
+No new dependency or change to the no-explicit-edition default; the existing
+GHC2024-as-GHC2021 table approximation remains a named limitation.
+
+- [x] Verify edition/explicit-choice controls: parser3/3 and alias driver2/2.
+  Seventeen fresh GHC9.14.1/candidate verdicts agree, including cross-pragma and
+  OPTIONS_GHC cases. No execution claim for this syntax/license matrix.
+  Parser356,typing369,naming136 and canaries7 pass; integration118/119 still
+  fails only the enabled ClassifierCycle annotation control. Workspace all-target
+  check passes without warnings; broad lint/structural debt is not cleared.
+- [ ] Freeze/push the rule with focused gates and exact reference evidence.
+- [ ] Continue authoritative imported classifier transport; all twelve driver
+  regressions remain enabled and unresolved.
+
+The Parsec reduction is measured, not repaired: imported Identity leaves a
+hidden classifier unclosed, while locally declared Identity and an explicitly
+Type-annotated forall binder both pass. GHC9.14.1 accepts all three. Do not alter
+the real fixture to force Type; retain its imported classifier contract instead.

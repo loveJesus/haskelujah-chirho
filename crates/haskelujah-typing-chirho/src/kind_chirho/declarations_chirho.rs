@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Compose result-kind tails and reconcile complete data/newtype signatures.
+//! Reconcile declaration kind contracts and their extension licensing.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
 use super::{
@@ -18,6 +18,64 @@ pub(super) struct PreparedKindHeadChirho {
 }
 
 impl KindInferCtxChirho {
+    /// GHC-75844 is a declaration rule, not a malformed constraint application.
+    /// Check the solved alias kind, even if no signature ever uses the alias.
+    /// Family declarations are distinct and are not subject to this alias rule.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn check_constraint_synonym_licenses_chirho(
+        &mut self,
+        module_chirho: &super::ModuleChirho,
+    ) {
+        // The parser places the selected edition and its defaults before explicit
+        // feature choices. A late edition must not undo an explicit No flag.
+        // Without an edition directive the compiler's default remains GHC2021.
+        let enabled_chirho = module_chirho.extensions_chirho.iter().fold(
+            true,
+            |enabled_chirho, extension_chirho| match extension_chirho.as_str() {
+                "Haskell98" | "Haskell2010" | "NoConstraintKinds" => false,
+                "GHC2021" | "GHC2024" | "ConstraintKinds" => true,
+                _ => enabled_chirho,
+            },
+        );
+        if enabled_chirho {
+            return;
+        }
+        for declaration_chirho in &module_chirho.decls_chirho {
+            let super::DeclChirho::TypeAliasDeclChirho {
+                name_chirho,
+                span_chirho,
+                ..
+            } = declaration_chirho
+            else {
+                continue;
+            };
+            let Some(mut kind_chirho) = self.env_chirho.lookup_chirho(name_chirho.text_chirho())
+            else {
+                continue;
+            };
+            while let KindChirho::ArrowChirho(_, result_chirho)
+            | KindChirho::DependentChirho { result_chirho, .. } = kind_chirho
+            {
+                kind_chirho = result_chirho;
+            }
+            if *kind_chirho == KindChirho::ConstraintChirho {
+                self.diagnostics_chirho.push_chirho(
+                    DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(206),
+                        format!(
+                            "constraint synonym `{}` requires ConstraintKinds",
+                            name_chirho.text_chirho()
+                        ),
+                        *span_chirho,
+                    )
+                    .with_note_chirho(
+                        "perhaps you intended to use the `ConstraintKinds` extension",
+                    ),
+                );
+            }
+        }
+    }
+
     pub(super) fn infer_data_decl_kind_chirho(
         &mut self,
         name_chirho: &str,

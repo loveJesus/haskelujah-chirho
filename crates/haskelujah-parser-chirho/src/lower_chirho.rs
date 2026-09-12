@@ -54,7 +54,9 @@ use haskelujah_syntax_chirho::green_chirho::{
 };
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
-use crate::pragma_chirho::pragma_extensions_from_text_chirho;
+use crate::pragma_chirho::{
+    normalize_edition_extensions_chirho, pragma_extensions_from_text_chirho,
+};
 use crate::rec_stmt_chirho::{DoSegmentChirho, transform_recursive_do_chirho};
 use crate::type_member_lowering_chirho::partition_class_members_chirho;
 
@@ -193,7 +195,7 @@ impl LowerCtxChirho {
                 }
             }
         }
-        extensions_chirho
+        normalize_edition_extensions_chirho(extensions_chirho)
     }
 
     /// Walk all pragma tokens and extract INLINE/NOINLINE/INLINABLE annotations.

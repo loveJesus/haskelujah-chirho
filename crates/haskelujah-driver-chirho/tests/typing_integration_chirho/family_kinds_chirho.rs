@@ -8,6 +8,59 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn constraint_alias_rule_does_not_reject_constraint_families_chirho() {
+    // GHC9.14.1 permits this distinct declaration without ConstraintKinds.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE Haskell2010, TypeFamilies, KindSignatures, NoConstraintKinds #-}
+module FamilyLicenseChirho where
+import Data.Kind (Type, Constraint)
+type family FamilyChirho aChirho :: Type -> Constraint where
+  FamilyChirho Int = Show
+"#;
+    assert_compile_success_chirho("FamilyLicenseChirho.hs", source_chirho);
+}
+
+#[test]
+fn constraint_alias_licensing_follows_the_effective_extension_chirho() {
+    for extensions_chirho in [
+        "Haskell2010",
+        "NoConstraintKinds",
+        "Haskell2010, ConstraintKinds, NoConstraintKinds",
+        "NoConstraintKinds, GHC2021",
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE {extensions_chirho} #-}}\nmodule AliasLicenseChirho where\ntype ShowishChirho = Show\n"
+        );
+        let error_chirho = typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "AliasLicenseChirho.hs",
+        )
+        .err()
+        .expect("GHC-75844 rejects the declaration without ConstraintKinds, even without uses");
+        assert!(
+            error_chirho.to_string().contains("ConstraintKinds"),
+            "{extensions_chirho}: {error_chirho}"
+        );
+    }
+    for extensions_chirho in [
+        "GHC2021",
+        "Haskell2010, ConstraintKinds",
+        "NoConstraintKinds, ConstraintKinds",
+        "ConstraintKinds, Haskell2010",
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE {extensions_chirho} #-}}\nmodule AliasLicenseChirho where\ntype ShowishChirho = Show\n"
+        );
+        assert_compile_success_chirho("AliasLicenseChirho.hs", &source_chirho);
+    }
+    assert_compile_success_chirho(
+        "OrdinaryAliasChirho.hs",
+        "{-# LANGUAGE Haskell2010 #-}\nmodule OrdinaryAliasChirho where\ntype TypeOnlyChirho = Maybe\n",
+    );
+}
+
+#[test]
 fn local_class_shadows_the_builtin_classifier_chirho() {
     // Eq's unsuffixed spelling is the builtin contract being shadowed here.
     // GHC9.14.1 accepts the same local higher-kinded declaration.

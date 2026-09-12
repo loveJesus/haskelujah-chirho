@@ -60,8 +60,9 @@ const GHC2021_EXTENSIONS_CHIRHO: &[&str] = &[
 
 /// Parse the inner text between `{-#` and `#-}` into extension flags.
 ///
-/// LANGUAGE names preserve source order because `NoFoo` must be able to override an earlier
-/// `Foo`. OPTIONS and OPTIONS_GHC contribute their `-X...` flags through the same path.
+/// Retain edition directives until all pragmas have been collected. Expanding an edition here
+/// would mistake its defaults for explicit flags and let it override an earlier `NoFoo`.
+/// OPTIONS and OPTIONS_GHC contribute their `-X...` directives through the same path.
 pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
     let inner_chirho = inner_chirho.trim();
     let Some((keyword_chirho, rest_chirho)) = inner_chirho.split_once(char::is_whitespace) else {
@@ -71,19 +72,9 @@ pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
     if keyword_chirho.eq_ignore_ascii_case("LANGUAGE") {
         return rest_chirho
             .split(',')
-            .flat_map(|extension_chirho| {
-                let extension_chirho = extension_chirho.trim();
-                if matches!(extension_chirho, "GHC2021" | "GHC2024") {
-                    GHC2021_EXTENSIONS_CHIRHO
-                        .iter()
-                        .map(|extension_chirho| (*extension_chirho).to_string())
-                        .collect::<Vec<_>>()
-                } else if extension_chirho.is_empty() {
-                    Vec::new()
-                } else {
-                    vec![extension_chirho.to_string()]
-                }
-            })
+            .map(str::trim)
+            .filter(|extension_chirho| !extension_chirho.is_empty())
+            .map(str::to_string)
             .collect();
     }
 
@@ -101,6 +92,46 @@ pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
     Vec::new()
 }
 
+fn is_edition_chirho(extension_chirho: &str) -> bool {
+    matches!(
+        extension_chirho,
+        "Haskell98" | "Haskell2010" | "GHC2021" | "GHC2024"
+    )
+}
+
+/// Select the last edition, then apply every explicit feature choice in source order.
+/// Edition selection and explicit extension choices are independent in GHC. Keep only the
+/// selected edition's defaults, even across LANGUAGE and OPTIONS_GHC token boundaries.
+/// No explicit edition leaves the existing downstream default-edition policy unchanged.
+/// Workflow: language-features-chirho/declaration-kinds-chirho.
+pub(crate) fn normalize_edition_extensions_chirho(extensions_chirho: Vec<String>) -> Vec<String> {
+    let edition_chirho = extensions_chirho
+        .iter()
+        .rev()
+        .find(|extension_chirho| is_edition_chirho(extension_chirho))
+        .cloned();
+    let Some(edition_chirho) = edition_chirho else {
+        return extensions_chirho;
+    };
+    let mut normalized_chirho =
+        Vec::with_capacity(extensions_chirho.len() + GHC2021_EXTENSIONS_CHIRHO.len());
+    let modern_chirho = matches!(edition_chirho.as_str(), "GHC2021" | "GHC2024");
+    normalized_chirho.push(edition_chirho);
+    if modern_chirho {
+        normalized_chirho.extend(
+            GHC2021_EXTENSIONS_CHIRHO
+                .iter()
+                .map(|extension_chirho| (*extension_chirho).to_string()),
+        );
+    }
+    normalized_chirho.extend(
+        extensions_chirho
+            .into_iter()
+            .filter(|extension_chirho| !is_edition_chirho(extension_chirho)),
+    );
+    normalized_chirho
+}
+
 /// Parse a complete pragma token such as `{-# LANGUAGE RecursiveDo #-}`.
 pub fn pragma_extensions_from_text_chirho(text_chirho: &str) -> Vec<String> {
     let inner_chirho = text_chirho
@@ -115,7 +146,7 @@ pub fn collect_raw_pragma_extensions_chirho(
     source_chirho: &str,
     tokens_chirho: &[RawTokenChirho],
 ) -> Vec<String> {
-    tokens_chirho
+    let extensions_chirho = tokens_chirho
         .iter()
         .filter(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::PragmaChirho)
         .flat_map(|token_chirho| {
@@ -126,7 +157,8 @@ pub fn collect_raw_pragma_extensions_chirho(
                 .map(pragma_extensions_from_text_chirho)
                 .unwrap_or_default()
         })
-        .collect()
+        .collect();
+    normalize_edition_extensions_chirho(extensions_chirho)
 }
 
 /// Evaluate an extension flag sequence with GHC-style `NoFoo` override order.

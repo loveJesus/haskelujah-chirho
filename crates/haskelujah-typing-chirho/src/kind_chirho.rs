@@ -767,6 +767,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
 
     // Phase 2: Finalize — apply substitution and default unconstrained vars.
     ctx_chirho.finalize_chirho(poly_kinds_enabled_chirho);
+    ctx_chirho.check_constraint_synonym_licenses_chirho(module_chirho);
 
     KindResultChirho {
         elaboration_chirho: ctx_chirho.finish_kind_elaboration_chirho(module_chirho),
