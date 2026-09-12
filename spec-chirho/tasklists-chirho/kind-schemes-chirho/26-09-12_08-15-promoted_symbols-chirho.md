@@ -31,7 +31,7 @@ is built once per module and looked up by full spelling, not rebuilt per use.
 - [x] Parser regression controls distinguish symbols from tuple operands.
 - [x] Repair both routes; preserve the symbol namespace, qualifier and span.
 - [x] Focused and broader parser/typing/integration/CLI gates.
-- [ ] Checkpoint/push and run the current full driver target.
+- [x] Checkpoint/push and run the current full driver target.
 - [ ] Return to main-relative regressions; final landing gates remain required.
 
 This local/reversible pre-beta choice is within L.J.'s continue authority. A
@@ -84,7 +84,7 @@ that root. Sources/evidence live in the promoted-symbols associated leaf.
 
 - [x] Reference and frozen-before controls for associated patterns, RHS/defaults.
 - [x] One promoted-identity conversion for all owned producers; negative controls.
-- [ ] Gate, checkpoint and push this repair before the current full driver run.
+- [x] Gate, checkpoint and push this repair before the current full driver run.
 
 Six unchanged sources are now independently checked by GHC9.14.1: three valid
 associated pattern/result/default cases and three invalid coordinate swaps.
@@ -109,4 +109,32 @@ duplicates/summaries; not lint-clean. Commands and log hashes are in
 promoted-symbols-chirho/associated-gates-chirho.json. The first crate gate
 could not compile because a pre-existing unit test used the removed root
 re-export; it now names its owning module explicitly. That failed attempt is
-not counted as a test run. The full current driver and corpus gates remain owed.
+not counted as a test run. The full driver and corpus were still owed at that
+checkpoint; the frozen results below supersede that pending status.
+
+## Frozen current driver and corpus diagnostic
+
+Compiler checkpoint8c30a457 is pushed and remote-exact. Its unchanged source
+passes the full driver library target:1774 passed,0 failed,0 ignored,0 filtered,
+with the documented16MiB Rust test-thread stack. The test body took368.67s;
+the bounded build/test command took374838ms. There were0 compiler-warning
+message lines in this run. The retained driver JSON names stdout and stderr
+separately, hashes each, and identifies the combined stdout-then-stderr hash.
+
+One frozen diagnostic per axis on the same source/CLI completes at885/938
+accept and248/767 reject. Both verdict sets are byte-identical to1c183b98:
+no file moved in either direction. There are0 unresolved timeouts and0
+unexpected exits. The CLI digest above and clean source were checked before
+and after both passes. This is not the final two-pass landing gate.
+
+Main-relative accept gains remain13 and regressions remain10: CoerceToVDQ,
+ControlMonadClassesState, T13879, T16204a, T16204b, T17067, T18129, T22560c,
+T23543 and T26358. Main121d4f2c, the canonical DB and published artifacts
+remain untouched. The next reduced boundary is imported-family equation
+checking: GHC accepts an unchanged equation with either a local or imported
+family declaration, while this checkpoint only accepts the local form.
+Do not weaken RHS closure to cover that missing imported contract.
+
+Evidence: promoted-symbols-chirho/associated-full-driver-chirho.json and
+associated-diagnostic-chirho.jsonl. Full workspace execution and the final
+two-pass corpus gate remain owed after the regressions are repaired.

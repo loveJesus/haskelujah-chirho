@@ -1,0 +1,38 @@
+{
+  "source_commit_chirho": "8c30a457c2642e7ed12e679001e40e77dcdbf67d",
+  "started_at_chirho": "2026-09-12T12:40:27.913Z",
+  "finished_at_chirho": "2026-09-12T12:46:42.751Z",
+  "elapsed_ms_chirho": 374838,
+  "command_chirho": [
+    "gtimeout",
+    "--kill-after=2",
+    "1800",
+    "env",
+    "RUST_MIN_STACK=16777216",
+    "cargo",
+    "test",
+    "-p",
+    "haskelujah-driver",
+    "--lib",
+    "-j",
+    "3"
+  ],
+  "exit_chirho": 0,
+  "unchanged_chirho": true,
+  "summaries_chirho": [
+    {
+      "status_chirho": "ok",
+      "passed_chirho": 1774,
+      "failed_chirho": 0,
+      "ignored_chirho": 0,
+      "filtered_chirho": 0
+    }
+  ],
+  "warning_message_lines_chirho": 0,
+  "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-full-driver-final-chirho.log",
+  "combined_log_sha256_chirho": "1aefb35979c9539b82317a1e629bc0a01d955b72e059cc4e696a7b77734b70e7",
+  "hash_scope_chirho": "combined hash is stdout bytes followed by stderr bytes; individual hashes retained separately",
+  "stdout_sha256_chirho": "0bec4b7170cdf2f27cf2e1eb99f3f7366bde8bf97d3063582f63d34954c6f766",
+  "stderr_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/associated-full-driver-stderr-chirho.log",
+  "stderr_sha256_chirho": "ec8fbc987f6fa2bb0f125eee0b0c799a2414b5e803e750c44b375fbbbcd9cea8"
+}
