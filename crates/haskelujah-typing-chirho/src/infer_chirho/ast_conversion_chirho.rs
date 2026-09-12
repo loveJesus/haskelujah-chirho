@@ -230,6 +230,20 @@ impl InferCtxChirho {
                     .and_then(|indices_chirho| indices_chirho.first().cloned())
                     .map(|index_chirho| {
                         self.kind_term_type_chirho(&index_chirho, var_map_chirho, &mut Vec::new())
+                    })
+                    .or_else(|| {
+                        // Unvisited expression/local syntax must instantiate the
+                        // known promoted-list contract just like an explicit
+                        // constructor occurrence. One literal has ONE element
+                        // index, shared by its entire cons/nil spine. This does
+                        // not replace expression-level classifier checking.
+                        let binders_chirho = self
+                            .kind_elaboration_chirho
+                            .as_ref()?
+                            .promoted_heads_chirho
+                            .get("[]")?;
+                        assert_eq!(binders_chirho.len(), 1, "promoted list kind contract");
+                        Some(self.fresh_var_chirho())
                     });
                 let constructor_chirho = |name_chirho: &str| {
                     let head_chirho = TyChirho::ConChirho(name_chirho.to_owned());

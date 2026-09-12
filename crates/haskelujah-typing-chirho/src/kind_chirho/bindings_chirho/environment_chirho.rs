@@ -337,11 +337,20 @@ impl KindEnvChirho {
         env_chirho
     }
 
-    /// The ordinary imported equality constructor proves reflexivity in its
-    /// promoted classifier too. Local declarations shadow these seed bindings.
+    /// Constraint equality shares one classifier across its operands, including
+    /// family RHS applications outside a context. The imported equality data
+    /// constructor also proves reflexivity in its promoted classifier.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
     fn seed_equality_kinds_chirho(&mut self) {
         let classifier_chirho = KindChirho::VarChirho(KindVarChirho(10_020));
         let value_chirho = KindChirho::VarChirho(KindVarChirho(10_021));
+        self.bind_generalized_chirho(
+            "~".to_owned(),
+            KindChirho::arrow_n_chirho(
+                [classifier_chirho.clone(), classifier_chirho.clone()],
+                KindChirho::ConstraintChirho,
+            ),
+        );
         let equality_kind_chirho = KindChirho::arrow_n_chirho(
             [classifier_chirho.clone(), classifier_chirho.clone()],
             KindChirho::StarChirho,

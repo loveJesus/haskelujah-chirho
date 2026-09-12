@@ -15,6 +15,46 @@ const ASCRIBED_SPINE_CHIRHO: &str = include_str!(concat!(
 ));
 
 #[test]
+fn function_constructor_instance_dispatch_executes_chirho() {
+    let source_chirho = r#"{-# LANGUAGE KindSignatures, FlexibleInstances #-}
+module Main where
+import Data.Kind (Type)
+class CatChirho (kChirho :: Type -> Type -> Type) where
+  composeChirho :: kChirho aChirho bChirho -> kChirho xChirho aChirho -> kChirho xChirho bChirho
+instance CatChirho (->) where
+  composeChirho = (.)
+main = print (composeChirho (+2) (*2) (20 :: Int))
+"#;
+    assert_execution_chirho(source_chirho, "42\n");
+}
+
+#[test]
+fn partial_function_constructor_ascriptions_keep_their_domain_chirho() {
+    let source_chirho = "{-# LANGUAGE KindSignatures, FlexibleInstances #-}\nmodule ArrowChirho where\nimport Data.Kind (Type)\nclass MarkerChirho aChirho\ninstance MarkerChirho (((->) Int :: Type -> Type) Bool)\n";
+    typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ArrowChirho.hs",
+    )
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+    let wrong_chirho = format!(
+        "{{-# LANGUAGE DataKinds #-}}\n{}",
+        source_chirho.replace(":: Type -> Type", ":: Bool -> Type")
+    );
+    let error_chirho = typecheck_source_chirho(
+        &wrong_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongArrowChirho.hs",
+    )
+    .map(|_result_chirho| ())
+    .expect_err("the arrow constructor cannot acquire a Bool domain kind");
+    assert!(
+        error_chirho.to_string().contains("kind mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
 fn annotated_heads_keep_the_same_solved_indices_as_bare_heads_chirho() {
     // The same source was accepted and executed by GHC9.14.1.
     assert_execution_chirho(ASCRIBED_SPINE_CHIRHO, "ascribed spines\n");

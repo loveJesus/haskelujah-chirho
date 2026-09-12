@@ -33,6 +33,12 @@ is the constructor of kind `Type -> Type`; `[a]` is its application to `a`.
 `[] Char` must therefore lower without a fabricated placeholder argument, and
 bare `[]` as a record field must remain unsaturated so kind checking rejects it.
 
+An instance argument keeps its outer parentheses until this shared atom grammar
+reads them. The single arrow in `(->)` is a constructor, not an incomplete
+function with two invented operands; `((->) Int :: Type -> Type) Bool` retains
+that constructor, application and annotation. A bare arrow is not licensed as
+an atomic type by this rule, nor is promoted arrow syntax.
+
 The flat bracket scan owns the closing bracket at its own depth. In
 `[[Int] -> Int]`, the inner closing bracket cannot discard the function tail.
 The scan advances monotonically within that group and borrows the inner slice;

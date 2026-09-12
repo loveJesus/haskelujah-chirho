@@ -202,7 +202,25 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 rhs_chirho,
                 ..
             } => {
-                let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
+                let mut pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
+                // GHC9.14 still implicitly quantifies free kind names in an
+                // OUTERMOST synonym RHS ascription (with GHC-16382). Nested
+                // annotations do not gain this scope, nor do arbitrary RHS
+                // type variables. Workflow: type-scope-resolution-chirho.
+                let mut outer_rhs_chirho = rhs_chirho;
+                while let TypeChirho::ParenChirho { inner_chirho, .. } = outer_rhs_chirho {
+                    outer_rhs_chirho = inner_chirho;
+                }
+                if let TypeChirho::KindAnnotChirho { kind_chirho, .. } = outer_rhs_chirho {
+                    let mut implicit_chirho = Vec::new();
+                    collect_type_kind_variable_names_chirho(kind_chirho, &mut implicit_chirho);
+                    let mut seen_chirho = HashSet::new();
+                    implicit_chirho.retain(|name_chirho| {
+                        !self.bound_tyvars_chirho.contains_key(name_chirho)
+                            && seen_chirho.insert(name_chirho.clone())
+                    });
+                    pushed_chirho.extend(self.push_name_binders_chirho(implicit_chirho));
+                }
                 if !(self.type_data_lowering_may_be_incomplete_chirho
                     && type_alias_may_be_type_data_recovery_chirho(type_vars_chirho, rhs_chirho))
                 {

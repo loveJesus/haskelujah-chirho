@@ -799,8 +799,28 @@ An anonymous source pattern owns one identity keyed by its real span. Kind
 checking and type conversion share that identity; they must not invent separate
 LHS and RHS wildcards. The map is module-scoped and bounded by source occurrences.
 Promoted list literals use the same solved element-kind index for their cons and
-nil terms as explicit promoted constructors do. This covers the primary checked
-conversion path, not the older static converter without kind elaboration.
+nil terms as explicit promoted constructors do. An unvisited expression/local
+literal instantiates that known head contract once, sharing the fresh index
+through the whole list spine. The static converter without kind elaboration and
+complete expression-level classifier checking remain outside this guarantee.
+
+Homogeneous constraint equality has the builtin classifier
+`(~) :: forall k. k -> k -> Constraint`. Both operands share one instantiated k,
+including an equality used as a family RHS type rather than a signature context.
+This solves a nil operand's element kind from the other operand and rejects
+incompatible operand kinds. It does not create extra family matching inputs;
+the RHS closure check continues to reject truly unbound identities.
+
+```mermaid
+flowchart LR
+  ListOccurrenceChirho[Promoted list occurrence] --> KnownIndexChirho{Solved occurrence index?}
+  KnownIndexChirho -->|Yes| PreserveIndexChirho[Retain solved identity]
+  KnownIndexChirho -->|No with known contract| FreshListIndexChirho[Instantiate one element-kind index]
+  PreserveIndexChirho --> ListSpineChirho[Share index across cons and nil]
+  FreshListIndexChirho --> ListSpineChirho
+  EqualityHeadChirho[Homogeneous equality contract] --> SharedOperandsChirho[Constrain both operand classifiers together]
+  SharedOperandsChirho --> PreserveIndexChirho
+```
 
 The fresh AscribedKeyChirho and AscribedSpineChirho sources have independently
 measured GHC9.14.1 outputs and run unchanged through STG, LLVM and Cranelift.

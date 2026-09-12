@@ -594,7 +594,22 @@ impl LowerCtxChirho {
                                     .expect("opening parenthesis is present")
                                     .end_chirho,
                             );
-                            if !top_level_commas_chirho(&inner_chirho).is_empty() {
+                            if !promoted_chirho
+                                && matches!(inner_chirho.as_slice(), [child_chirho]
+                                    if matches!(child_chirho.element_chirho,
+                                        GreenElementChirho::TokenChirho(token_chirho)
+                                            if token_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho))
+                            {
+                                // Parentheses make the arrow a constructor.
+                                // Parsing its isolated token as a function would
+                                // invent two wildcard operands and change arity.
+                                atoms_chirho.push_chirho(TypeChirho::ConChirho(
+                                    NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                        "->",
+                                        group_span_chirho,
+                                    )),
+                                ));
+                            } else if !top_level_commas_chirho(&inner_chirho).is_empty() {
                                 atoms_chirho.push_chirho(self.type_from_flat_children_chirho(
                                     &inner_chirho,
                                     group_span_chirho,

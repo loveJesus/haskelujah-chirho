@@ -242,3 +242,84 @@ kind-constraint rule remains unimplemented. Exact sets/deltas/hashes are in
 producers-chirho/diagnostic-chirho.jsonl. Broad driver results from3458 do not
 cover351bdbb3. CPU embargo released; SLOT/DB remains mine while the instance
 grammar and remaining list occurrence/equation-index failures are reduced.
+
+The next measured reduction isolates both new failures: a class instance for
+(->) and a partially applied, ascribed (->) both pass GHC9.14.1 and fail351bdbb3.
+The shared atom grammar must own the parenthesized constructor boundary. Retain
+the outer instance group's delimiters until that grammar sees them; recognize
+the single arrow inside a parenthesized atom, not a bare arrow as a valid type.
+This completes the shared grammar rather than restoring the duplicate lowerer.
+
+Fresh GHC9.14.1 controls now distinguish two additional missing contracts.
+Promoted-list literals at expression-level @ applications fail while identical
+signature literals carry the solved index; empty, singleton, explicit-cons and
+two-element forms all fail351 and execute42 under GHC. Instantiate the existing
+promoted-head contract once for an unvisited literal, sharing its one index
+across every cons and nil. Do not invent a head for an unknown import or claim
+that this supplies the missing expression-wide kind-checking traversal.
+
+For family RHS constraints, DirectNil and Reflexive controls pass both compilers,
+but xs ~ '[] fails351's closure check and xs ~ 'True wrongly passes it. GHC accepts
+the former and rejects the latter for operand kinds. The builtin homogeneous
+equality contract is absent: seed (~) with forall k. k -> k -> Constraint in the
+existing environment, so its operands share the same classifier. Keep the RHS
+closure rule unchanged; an orphaned nil index is not a new matching input.
+
+Parser360 is green after the arrow repair, but its first exact execution control
+exposed a missing STG binding for the instance body alias (.). That failure remains
+open; a passing typecheck is not an execution claim.
+
+The first-class composition gap is outside the instance mechanism: its dictionary
+contains the actual method body, but the Prelude body registry lacks (.) while
+typing supplies its scheme. Repair that registry, not instance aliases or STG's
+missing-global diagnostic. Extract the basic combinator catalog and registration
+loop from the17,538-line prelude_chirho.rs into prelude_chirho/functions_chirho.rs,
+then generate the ordinary three-lambda composition body there. This removes
+roughly240 lines from the root; it is not a claim that the remaining structural
+debt is resolved. Preserve source-body precedence and test laziness as well as
+the direct alias and the original instance dispatch.
+
+The broad driver gate exposed one additional regression already present at351:
+the heterogeneous-equality alias's outer RHS annotation uses a kind variable not
+on the LHS. GHC9.14.1 still accepts this with GHC-16382, warning that a future
+release will reject it. It is not a bad test today. Eight fresh controls show
+that only the OUTERMOST RHS ascription introduces this legacy kind scope; nested
+annotations, free RHS type variables, unknown nominal kinds and sibling/forall
+scope escapes still reject. The naming pass now binds only free variables in
+that outer classifier for this one alias's scope, using its existing collector.
+The original driver test is unchanged. Future GHC policy and warning promotion
+are not claimed by this compatibility repair.
+
+## Occurrence follow-up results and next gate
+
+The shared parenthesized-arrow path now recovers T26256a and T7903. Promoted
+list occurrence indices recover T12734a; homogeneous equality recovers T15772
+and T19682. These are five focused checks, not an inferred corpus count.
+The equality RHS closure check is unchanged. First-class composition now has
+a real Prelude body; direct, aliased, unused-argument and source-shadow controls
+execute on STG, LLVM and Cranelift, as does the original function-instance
+program. Their independent GHC9.14.1 observations, the list controls and the
+eight alias-scope cases are retained as24 observations in producers-chirho.
+
+The full driver run completed1773/1774 with zero ignored/filtered BEFORE the
+alias naming repair. Its sole red is the unchanged heterogeneous-prefix alias
+test; a fresh focused run passes it afterward. Alias controls8/8, naming136,
+integration162 and canaries7 are green. The last two suites have zero
+ignored/filtered. A full driver rerun on the repaired source is still owed;
+1773 plus one focused pass is not being relabelled a1774 full-suite result.
+
+Workspace all-target check, explicit CLI build and format check pass. Selected
+all-target clippy completes with471 warning-message lines including summaries
+and duplicates; this is not lint-clean. The relocated Prelude catalog's type-
+complexity warning is repaired using a named body type, not suppressed. Its
+composition controls pass afterward. Large pre-existing roots and directory
+debt remain; the new source files are bounded subject modules.
+
+Commands, exact result scopes and log hashes are in
+producers-chirho/occurrence-gates-chirho.json. Next: save this isolated owned
+checkpoint, run one frozen diagnostic per axis and compare membership against
+351bdbb3 and main; then repeat the full driver gate before the next meaningful
+landing. The full workspace execution and final two-pass gate remain owed.
+The next root under read-only review is open-family row ownership, dependency
+ordering and hidden-argument retention; no rows are registered speculatively.
+Main121d4f2c, canonical row484, corpus membership and public labels are unchanged.

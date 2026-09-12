@@ -63,7 +63,11 @@ flowchart TD
     tyvar_use_chirho --> explicit_scope_chirho[Track declaration and explicit forall binders]
     explicit_scope_chirho --> policy_chirho{Declaration policy}
     policy_chirho -->|Signature without outer forall, existential or family scope| implicit_quantification_chirho[Preserve permitted implicit quantification]
-    policy_chirho -->|Type synonym or ordinary field| lexical_lookup_chirho{Lexically bound?}
+    policy_chirho -->|Type synonym| alias_annotation_chirho{Outermost RHS kind ascription?}
+    alias_annotation_chirho -->|Yes| alias_kind_scope_chirho[Bind free classifier variables in this alias only]
+    alias_kind_scope_chirho --> lexical_lookup_chirho{Lexically bound?}
+    alias_annotation_chirho -->|No| lexical_lookup_chirho
+    policy_chirho -->|Ordinary field| lexical_lookup_chirho
     lexical_lookup_chirho -->|No| undefined_tyvar_chirho[Emit E0101 type-variable diagnostic]
     lexical_lookup_chirho -->|Yes| continue_chirho
 
@@ -94,6 +98,15 @@ flowchart TD
 ```
 
 The walker performs no filesystem lookup or module scanning. Its successful-resolution path is linear in the lowered AST with hash-backed namespace lookups; the error-only suggestion path compares against the already-populated in-memory environment, and duplicate diagnostics are suppressed by issue/name/span.
+
+For GHC9.14 compatibility, an outermost type-synonym RHS ascription implicitly
+quantifies otherwise-free variables in its classifier, after declaration-head
+binders enter scope. Only parentheses are peeled to find this outer ascription;
+nested annotations do not introduce this scope, nominal names are still resolved,
+and the implicit variables cannot escape to a sibling alias. Eight exact reference
+sources cover those boundaries. GHC9.14.1 accepts the two legacy forms with
+GHC-16382 and warns that a future version will reject them. This compatibility
+path does not implement that future policy or warning promotion.
 
 Canonical interface maps are the authority for imported names. Type and value operators are normalized once at that boundary, and associated families remain first-class type exports while carrying their parent-class relation through selected imports, hiding, explicit exports, and module re-exports. An associated member imported through a qualified class may be used bare only inside an instance of that same visible class; it is not inserted into the module's general unqualified type namespace. This is the `GHC.Exts.IsList` / `Item` boundary exercised by the real `containers` projects.
 

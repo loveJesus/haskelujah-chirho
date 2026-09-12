@@ -4,8 +4,12 @@
 use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[path = "typing_integration_chirho/alias_scopes_chirho.rs"]
+mod alias_scopes_chirho;
 #[path = "typing_integration_chirho/family_kinds_chirho.rs"]
 mod family_kinds_chirho;
+#[path = "typing_integration_chirho/function_values_chirho.rs"]
+mod function_values_chirho;
 #[path = "typing_integration_chirho/import_contracts_chirho.rs"]
 mod import_contracts_chirho;
 #[path = "typing_integration_chirho/kind_applications_chirho.rs"]
@@ -16,6 +20,8 @@ mod kind_ascriptions_chirho;
 mod kind_terms_chirho;
 #[path = "typing_integration_chirho/multiplicities_chirho.rs"]
 mod multiplicities_chirho;
+#[path = "typing_integration_chirho/promoted_lists_chirho.rs"]
+mod promoted_lists_chirho;
 
 #[test]
 fn promoted_opaque_occurrences_keep_independent_kinds_and_check_the_body_chirho() {

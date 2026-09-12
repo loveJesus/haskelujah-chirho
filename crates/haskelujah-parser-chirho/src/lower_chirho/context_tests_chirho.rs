@@ -14,6 +14,40 @@ fn class_context_chirho(source_chirho: &str) -> Vec<ConstraintChirho> {
 }
 
 #[test]
+fn instance_arrow_constructor_groups_do_not_invent_function_operands_chirho() {
+    let source_chirho = "module ArrowChirho where\ninstance CChirho (->)\ninstance CChirho ((->) Int)\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
+    let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
+    let DeclChirho::InstanceDeclChirho { types_chirho, .. } = &module_chirho.decls_chirho[0] else {
+        panic!("expected first instance");
+    };
+    assert!(
+        matches!(types_chirho[0].unannotated_chirho(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "->")
+    );
+    let DeclChirho::InstanceDeclChirho { types_chirho, .. } = &module_chirho.decls_chirho[1] else {
+        panic!("expected second instance");
+    };
+    let TypeChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+        ..
+    } = types_chirho[0].unannotated_chirho()
+    else {
+        panic!("expected one applied constructor argument");
+    };
+    assert!(
+        matches!(fun_chirho.unannotated_chirho(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "->")
+    );
+    assert!(
+        matches!(arg_chirho.unannotated_chirho(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Int")
+    );
+    assert!(
+        matches!(&module_chirho.decls_chirho[2], DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")
+    );
+}
+
+#[test]
 fn quantified_superclass_scopes_over_its_premise_and_conclusion_chirho() {
     let context_chirho = class_context_chirho(
         "module MChirho where\nclass (forall (aChirho :: Type). Eq aChirho => CChirho fChirho aChirho) => DChirho fChirho\n",

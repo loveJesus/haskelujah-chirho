@@ -3392,20 +3392,17 @@ impl LowerCtxChirho {
                         TokenKindChirho::LeftParenChirho,
                         TokenKindChirho::RightParenChirho,
                     ) {
-                        let inner_tokens_chirho =
-                            &head_tokens_chirho[idx_chirho + 1..end_idx_chirho];
                         let head_span_chirho = head_tokens_chirho[idx_chirho]
                             .1
                             .merge_chirho(head_tokens_chirho[end_idx_chirho].1)
                             .unwrap_or(span_chirho);
-                        let inner_ty_chirho = self.lower_type_from_token_slice_chirho(
-                            inner_tokens_chirho,
+                        // The shared grammar owns the parenthesized atom,
+                        // including constructor sections such as (->) and (,).
+                        let head_ty_chirho = self.lower_type_from_token_slice_chirho(
+                            &head_tokens_chirho[idx_chirho..=end_idx_chirho],
                             head_span_chirho,
                         );
-                        types_chirho.push(TypeChirho::ParenChirho {
-                            inner_chirho: Box::new(inner_ty_chirho),
-                            span_chirho: head_span_chirho,
-                        });
+                        types_chirho.push(head_ty_chirho);
                         idx_chirho = end_idx_chirho + 1;
                     } else {
                         idx_chirho += 1;

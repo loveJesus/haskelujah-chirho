@@ -99,6 +99,26 @@ transitively when an instantiation resolves to another local binding's variable 
 checkDiv n 2`). Methods, literals and constrained references at that variable carry the key;
 two disagreeing instantiations prove nothing and keep today's path.
 
+## First-class Prelude function bodies
+
+The generated Prelude registry supplies ordinary Core bodies for first-class
+functions. Its basic combinator catalog lives in prelude_chirho/functions_chirho.rs.
+Composition is a three-argument lambda, so a bare (.) or an instance method alias
+has the same executable meaning as its infix form. It uses the canonical binding
+identity, not a new per-reference name, and an actual source definition takes
+precedence. Neither the intermediate call nor the final argument is forced by
+the composition wrapper; demand belongs to the composed functions.
+
+```mermaid
+flowchart LR
+  CompositionReferenceChirho[First-class composition reference] --> CanonicalCompositionChirho[Canonical binding identity]
+  CanonicalCompositionChirho --> SourceCompositionChirho{Source body exists?}
+  SourceCompositionChirho -->|Yes| KeepSourceCompositionChirho[Retain user definition]
+  SourceCompositionChirho -->|No| GenerateCompositionChirho[Generate lazy three-argument Core body]
+  GenerateCompositionChirho --> CompositionExecutionChirho[Ordinary STG and native execution]
+  KeepSourceCompositionChirho --> CompositionExecutionChirho
+```
+
 ## Current boundary
 
 - Infix references (`x \`f\` y`) and operator sections still resolve through the shared
