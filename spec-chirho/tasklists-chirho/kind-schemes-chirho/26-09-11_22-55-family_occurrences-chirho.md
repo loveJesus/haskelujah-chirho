@@ -227,7 +227,28 @@ them. No family-name special case or imported-kind default was added.
 - [ ] Integration116/117, zero ignored/filtered: the same ClassifierCycle kind-
   annotation control remains red and enabled. This does not clear the twelve
   driver failures or any unmeasured corpus regression.
-- [ ] Freeze/push the owned fix, retain fresh reference observations, and measure
-  exact corpus sets before reporting a new diagnostic. The5280 figure is stale
-  for this change. Run the twelve driver failures against main explicitly;
-  parentde8fa2ed alone was not an inheritance bracket.
+- [x] Freeze/pushe1d76a55, remote-exact. Four fresh GHC9.14.1 observations
+  agree, one exact execution; sources/hashes/diagnostics are retained in
+  classifier-contracts-chirho/prelude-classifiers-chirho.jsonl.
+- [x] Fresh main121d4f2c lib build:12/12 pass,1761 filtered; currente1d76a55:
+  0/12 pass,1760 filtered. Both focused sets used the exact twelve names,
+  16MiB test-thread stacks and bounded children. This confirms lane regressions;
+  the parent-only bracket never cleared them. Driver-bracket-chirho.json keeps
+  names, counts, durations and main test-binary hash. No full main suite claim.
+
+The completed one-pass-per-axis diagnostic at2026-09-12 00:31:43EDT is881/938
+accept and247/767 reject. Zero timeouts/unexpected exits; clean source and CLI
+SHA2562c6e41d69d77131c81e7b6bc797f2d9e2e5bcfe4a6af64bab7a2e315a9555756
+held before/after both axes. Evidence directories are diagnostic-known-classifiers-
+{accept,reject}-chirho under the same scratch root. T20356 recovers with no new
+accept failures versus5280: eight main-relative gains, nine regressions. The
+twelve driver regressions and annotation control remain additional blockers.
+
+Only reject movement is loss of tcfail209. Its old E0300 at6:7 wrongly diagnosed
+the Showish constraint application; fresh GHC9.14.1 agrees with the committed
+stderr at4:1, GHC-75844: a constraint synonym needs ConstraintKinds. That rule
+is missing, not a capability erased by the builtin-kind fix. Next check solved
+alias return kinds against the actual extension state, with enabled/disabled,
+legacy/default-edition and ordinary-type controls. Do not restore the old
+application error. Then continue the imported-kind contract repair behind the
+twelve driver regressions. No main/DB/artifact/label/membership/deployment change.

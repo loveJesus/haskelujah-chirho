@@ -72,17 +72,18 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-Latest corpus diagnostic5280f1ff: accept880/938, ten main-relative regressions
-and eight gains; reject248/767, zero timeouts or unexpected exits. One pass per
+Latest corpus diagnostice1d76a55: accept881/938, nine main-relative regressions
+and eight gains; reject247/767, zero timeouts or unexpected exits. One pass per
 axis, not a final gate. Source checkpoint is pushed and remote-exact.
 Typed family clauses retain hidden inputs, published identities and list kinds.
 Parser356,typing369,canaries7 green; integration113/114, annotation control red.
-Driver--lib1760/1772; all twelve also fail on parentde8fa2ed, still lane blockers.
+Driver--lib1760/1772; twelve fail on parent/current but PASS freshly built main.
 Nine fresh GHC controls agree, five exact executions. Accept total unchanged but
 T16188/T16502b/T25597 recovered and ControlMonadClassesState/T18129/T20356 regressed.
-Next fix restores thirteen known Prelude class kinds; T20356 and its positive/
-negative/shadowing controls recover. Typing369,canaries7,workspace check green;
-integration116/117 retains the annotation red. New corpus/main-driver A/B owed.
+Thirteen known Prelude class kinds restored; T20356 and its positive/negative/
+shadowing controls recover. Typing369,canaries7,workspace check green;
+integration116/117 retains the annotation red. Next: actual ConstraintKinds alias
+licensing (tcfail209 was an accidental rejection), then imported kind contracts.
 Detail/reference evidence and next hidden-family-input decision:
 kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md. The earlier classifier
 repair and accidental UnliftedNewtypes rejection audit are in the22-20 leaf.
