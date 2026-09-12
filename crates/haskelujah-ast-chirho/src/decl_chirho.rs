@@ -31,6 +31,8 @@ pub enum AstKindChirho {
     ConChirho(NameChirho),
     /// Kind application: `TYPE representation` in `(a :: TYPE representation)`.
     AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
+    /// Explicit invisible application, distinct from an ordinary kind argument.
+    KindAppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
 }
 
 /// One equation in a closed type family:
@@ -72,6 +74,14 @@ pub enum TyVarVisibilityChirho {
     InvisibleChirho,
 }
 
+/// Whether an invisible forall binder can be selected with visible `@` syntax.
+/// This is independent of whether a declaration-head argument is required.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TyVarSpecificityChirho {
+    SpecifiedChirho,
+    InferredChirho,
+}
+
 /// A type variable, optionally annotated with a kind signature.
 ///
 /// Without KindSignatures: `data Foo a = ...` → `TyVarChirho { name: a, kind: None }`
@@ -84,6 +94,8 @@ pub struct TyVarChirho {
     pub kind_annotation_chirho: Option<AstKindChirho>,
     /// Head binders remain in lexical scope even when they are invisible.
     pub visibility_chirho: TyVarVisibilityChirho,
+    /// Braced forall binders (`forall {k}.`) are inferred, never selected by `@`.
+    pub specificity_chirho: TyVarSpecificityChirho,
 }
 
 impl TyVarChirho {
@@ -93,6 +105,7 @@ impl TyVarChirho {
             name_chirho,
             kind_annotation_chirho: None,
             visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
+            specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
         }
     }
 
@@ -102,6 +115,7 @@ impl TyVarChirho {
             name_chirho,
             kind_annotation_chirho: Some(kind_chirho),
             visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
+            specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
         }
     }
 

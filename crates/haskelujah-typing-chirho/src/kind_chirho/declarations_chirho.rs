@@ -107,12 +107,17 @@ impl KindInferCtxChirho {
             // NoPolyKinds even a zero-binder declaration must contribute its
             // body constraints before another group member is defaulted.
             if cusk_chirho && self.poly_kinds_enabled_chirho {
-                KindBindingChirho::PolyChirho(KindSchemeChirho::generalize_chirho(head_kind_chirho))
-            } else if !quantified_chirho.is_empty() {
-                KindBindingChirho::PolyChirho(KindSchemeChirho {
+                KindBindingChirho::PolyChirho(self.source_kind_scheme_chirho(
+                    head_kind_chirho,
                     quantified_chirho,
-                    body_chirho: head_kind_chirho,
-                })
+                    &HashSet::new(),
+                ))
+            } else if !quantified_chirho.is_empty() {
+                KindBindingChirho::PolyChirho(self.source_kind_scheme_chirho(
+                    head_kind_chirho,
+                    quantified_chirho,
+                    &HashSet::new(),
+                ))
             } else {
                 KindBindingChirho::MonoChirho(head_kind_chirho)
             }
@@ -169,9 +174,14 @@ impl KindInferCtxChirho {
         // retaining fresh ids and substitutions; never clone the growing env.
         let complete_scheme_chirho = standalone_chirho.map(|signature_chirho| {
             let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
-            let kind_chirho = self.type_to_kind_chirho(signature_chirho);
+            let (kind_chirho, written_chirho, explicit_chirho) =
+                self.elaborate_inline_kind_chirho(signature_chirho);
             self.kind_var_cache_chirho = outer_names_chirho;
-            KindSchemeChirho::generalize_chirho(self.subst_chirho.apply_chirho(&kind_chirho))
+            self.source_kind_scheme_chirho(
+                kind_chirho,
+                explicit_chirho,
+                &written_chirho.into_iter().collect(),
+            )
         });
 
         let mut complete_tail_chirho = complete_scheme_chirho

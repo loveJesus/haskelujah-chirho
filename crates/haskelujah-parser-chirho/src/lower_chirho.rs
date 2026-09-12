@@ -3210,6 +3210,11 @@ impl LowerCtxChirho {
                                 fun_chirho,
                                 arg_chirho,
                                 ..
+                            }
+                            | TypeChirho::KindAppChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
                             } => {
                                 collect_type_var_names_from_ast_type_chirho(fun_chirho, out_chirho);
                                 collect_type_var_names_from_ast_type_chirho(arg_chirho, out_chirho);
@@ -4531,62 +4536,7 @@ impl LowerCtxChirho {
                 self.lower_function_type_chirho(node_chirho, base_chirho)
             }
             SyntaxKindChirho::AppTypeChirho => {
-                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let mut skip_visible_type_app_arg_chirho = false;
-                let type_nodes_chirho: Vec<_> = children_chirho
-                    .iter()
-                    .filter_map(|c_chirho| match c_chirho.element_chirho {
-                        GreenElementChirho::TokenChirho(tok_chirho)
-                            if tok_chirho.kind_chirho() == TokenKindChirho::AtSignChirho =>
-                        {
-                            skip_visible_type_app_arg_chirho = true;
-                            None
-                        }
-                        GreenElementChirho::NodeChirho(n_chirho)
-                            if is_type_kind_chirho(n_chirho.kind_chirho()) =>
-                        {
-                            if skip_visible_type_app_arg_chirho {
-                                skip_visible_type_app_arg_chirho = false;
-                                None
-                            } else {
-                                Some(c_chirho)
-                            }
-                        }
-                        _ => None,
-                    })
-                    .collect();
-                if type_nodes_chirho.is_empty() {
-                    return self.placeholder_type_chirho();
-                }
-                let lowered_types_chirho = type_nodes_chirho
-                    .iter()
-                    .map(|tc_chirho| self.lower_type_from_child_chirho(tc_chirho))
-                    .collect::<Vec<_>>();
-                if let [left_chirho, op_chirho, right_chirho] = lowered_types_chirho.as_slice() {
-                    if is_qualified_symbol_type_operator_chirho(op_chirho) {
-                        return TypeChirho::AppChirho {
-                            fun_chirho: Box::new(TypeChirho::AppChirho {
-                                fun_chirho: Box::new(op_chirho.clone()),
-                                arg_chirho: Box::new(left_chirho.clone()),
-                                span_chirho,
-                            }),
-                            arg_chirho: Box::new(right_chirho.clone()),
-                            span_chirho,
-                        };
-                    }
-                }
-                let mut type_iter_chirho = lowered_types_chirho.into_iter();
-                let mut result_chirho = type_iter_chirho
-                    .next()
-                    .unwrap_or_else(|| self.placeholder_type_chirho());
-                for arg_chirho in type_iter_chirho {
-                    result_chirho = TypeChirho::AppChirho {
-                        fun_chirho: Box::new(result_chirho),
-                        arg_chirho: Box::new(arg_chirho),
-                        span_chirho,
-                    };
-                }
-                result_chirho
+                self.lower_type_application_chirho(node_chirho, base_chirho)
             }
             SyntaxKindChirho::VarTypeChirho => {
                 let name_chirho = self.extract_name_from_node_chirho(node_chirho, base_chirho);
@@ -4829,6 +4779,7 @@ impl LowerCtxChirho {
                 let mut vars_chirho = Vec::new();
                 let mut saw_delimiter_chirho = false;
                 let mut required_chirho = false;
+                let mut inferred_chirho = false;
                 let mut body_chirho = None;
 
                 for child_chirho in &children_chirho {
@@ -4841,8 +4792,17 @@ impl LowerCtxChirho {
                                     child_chirho.start_chirho,
                                     child_chirho.end_chirho,
                                 );
-                                vars_chirho
-                                    .push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
+                                let mut binder_chirho = TyVarChirho::plain_chirho(
+                                    self.name_from_token_chirho(tok_chirho, s_chirho),
+                                );
+                                if inferred_chirho {
+                                    binder_chirho.specificity_chirho = haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho;
+                                }
+                                vars_chirho.push(binder_chirho);
+                            } else if kind_chirho == TokenKindChirho::LeftBraceChirho {
+                                inferred_chirho = true;
+                            } else if kind_chirho == TokenKindChirho::RightBraceChirho {
+                                inferred_chirho = false;
                             } else if kind_chirho == TokenKindChirho::VarSymChirho
                                 && tok_chirho.text_chirho() == "."
                             {
@@ -4855,12 +4815,15 @@ impl LowerCtxChirho {
                         GreenElementChirho::NodeChirho(n_chirho) if !saw_delimiter_chirho => {
                             // Before the delimiter: handle kind-annotated binders.
                             if n_chirho.kind_chirho() == SyntaxKindChirho::ParenTypeChirho {
-                                if let Some(tv_chirho) = self
+                                if let Some(mut tv_chirho) = self
                                     .try_lower_kind_annotated_forall_binder_chirho(
                                         n_chirho,
                                         child_chirho.start_chirho,
                                     )
                                 {
+                                    if inferred_chirho {
+                                        tv_chirho.specificity_chirho = haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho;
+                                    }
                                     vars_chirho.push(tv_chirho);
                                 }
                             }
@@ -8885,6 +8848,15 @@ mod tests_chirho {
                 type_shape_chirho(fun_chirho),
                 type_shape_chirho(arg_chirho)
             ),
+            TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => format!(
+                "({} @{})",
+                type_shape_chirho(fun_chirho),
+                type_shape_chirho(arg_chirho)
+            ),
             TypeChirho::FunChirho {
                 arg_chirho,
                 result_chirho,
@@ -11486,6 +11458,14 @@ data ViewRChirho aChirho = EmptyRChirho | SeqChirho aChirho :> aChirho\n",
                     type_contains_name_chirho(fun_chirho, wanted_chirho)
                         || type_contains_name_chirho(arg_chirho, wanted_chirho)
                 }
+                TypeChirho::KindAppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    type_contains_name_chirho(fun_chirho, wanted_chirho)
+                        || type_contains_name_chirho(arg_chirho, wanted_chirho)
+                }
                 TypeChirho::FunChirho {
                     arg_chirho,
                     result_chirho,
@@ -13308,7 +13288,7 @@ data AppChirho :: forall (fChirho :: Type -> Type). Type -> Type where\n",
     }
 
     #[test]
-    fn lower_flat_record_field_visible_type_application_erases_invisible_arg_chirho() {
+    fn lower_flat_record_field_visible_type_application_retains_invisible_arg_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "{-# LANGUAGE TypeApplications #-}\n\
 module M where\n\
@@ -13331,8 +13311,8 @@ data BoxChirho fChirho aChirho = BoxChirho { unBoxChirho :: AppChirho @fChirho a
 
         assert_eq!(
             type_shape_chirho(&fields_chirho[0].ty_chirho),
-            "(AppChirho aChirho)",
-            "flat visible @fChirho should not become an ordinary type argument: {:?}",
+            "((AppChirho @fChirho) aChirho)",
+            "flat @fChirho must survive as an invisible argument, not an ordinary argument: {:?}",
             fields_chirho[0].ty_chirho
         );
     }
@@ -13663,7 +13643,7 @@ type Consed l ls = l ': ls\n",
     }
 
     #[test]
-    fn lower_visible_type_application_in_type_spine_erases_invisible_arg_chirho() {
+    fn lower_visible_type_application_in_type_spine_retains_invisible_arg_chirho() {
         let module_chirho = parse_and_lower_chirho(
             "{-# LANGUAGE TypeApplications #-}\n\
 module M where\n\
@@ -13686,8 +13666,8 @@ type VisibleChirho fChirho aChirho = AppChirho @fChirho aChirho\n",
 
         assert_eq!(
             type_shape_chirho(rhs_chirho),
-            "(AppChirho aChirho)",
-            "visible @fChirho should not become an ordinary AppChirho argument: {:?}",
+            "((AppChirho @fChirho) aChirho)",
+            "@fChirho must survive as KindAppChirho, not disappear or become AppChirho: {:?}",
             rhs_chirho
         );
     }
@@ -14016,6 +13996,14 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
             }
             match ty_chirho {
                 TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    contains_l_star_head_chirho(fun_chirho)
+                        || contains_l_star_head_chirho(arg_chirho)
+                }
+                TypeChirho::KindAppChirho {
                     fun_chirho,
                     arg_chirho,
                     ..

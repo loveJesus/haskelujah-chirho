@@ -555,6 +555,11 @@ fn walk_type_chirho(
             fun_chirho,
             arg_chirho,
             ..
+        }
+        | TypeChirho::KindAppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
         } => {
             // The head keeps the current position; the argument is
             // impredicative (`Maybe (forall a. a)`).
@@ -641,6 +646,15 @@ fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
             ..
         } => format!(
             "{} {}",
+            render_type_chirho(fun_chirho),
+            render_type_chirho(arg_chirho)
+        ),
+        TypeChirho::KindAppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => format!(
+            "{} @{}",
             render_type_chirho(fun_chirho),
             render_type_chirho(arg_chirho)
         ),

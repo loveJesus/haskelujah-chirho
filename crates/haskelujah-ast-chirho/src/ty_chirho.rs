@@ -60,6 +60,14 @@ pub enum TypeChirho {
         /// Span covering the whole type application.
         span_chirho: SpanChirho,
     },
+    /// An invisible argument supplied explicitly (`Proxy @Bool`). It does not
+    /// consume an ordinary arrow in the constructor's kind and is retained
+    /// separately until kind elaboration chooses its quantified binder.
+    KindAppChirho {
+        fun_chirho: Box<TypeChirho>,
+        arg_chirho: Box<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
     /// Function type (`a -> b`, `a %1 -> b`, `a ⊸ b`).
     FunChirho {
         /// Argument type accepted by the function.
@@ -194,6 +202,7 @@ impl TypeChirho {
             Self::VarChirho(n_chirho) => n_chirho.span_chirho(),
             Self::ConChirho(n_chirho) => n_chirho.span_chirho(),
             Self::AppChirho { span_chirho, .. }
+            | Self::KindAppChirho { span_chirho, .. }
             | Self::FunChirho { span_chirho, .. }
             | Self::TupleChirho { span_chirho, .. }
             | Self::ListChirho { span_chirho, .. }

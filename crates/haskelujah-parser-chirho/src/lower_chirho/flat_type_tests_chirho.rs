@@ -67,6 +67,15 @@ fn shape_chirho(ty_chirho: &TypeChirho) -> String {
             shape_chirho(fun_chirho),
             shape_chirho(arg_chirho)
         ),
+        TypeChirho::KindAppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => format!(
+            "({} @{})",
+            shape_chirho(fun_chirho),
+            shape_chirho(arg_chirho)
+        ),
         TypeChirho::ListChirho { element_chirho, .. } => {
             format!("[{}]", shape_chirho(element_chirho))
         }
@@ -119,6 +128,18 @@ fn empty_brackets_remain_a_constructor_without_fabricated_element_chirho() {
         ("[] Char", "([] Char)"),
         ("([]) Char", "([] Char)"),
         ("Maybe []", "(Maybe [])"),
+    ]);
+}
+
+#[test]
+fn visible_kind_arguments_survive_record_and_signature_paths_chirho() {
+    check_shapes_chirho(&[
+        ("ProxyChirho @Bool True", "((ProxyChirho @Bool) True)"),
+        (
+            "PairChirho @(Type -> Type) @Bool Maybe True",
+            "((((PairChirho @(Type -> Type)) @Bool) Maybe) True)",
+        ),
+        ("[ProxyChirho @Bool True]", "[((ProxyChirho @Bool) True)]"),
     ]);
 }
 

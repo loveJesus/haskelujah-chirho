@@ -180,6 +180,11 @@ fn free_type_variable_names_chirho(ty_chirho: &TypeChirho) -> HashSet<String> {
             fun_chirho,
             arg_chirho,
             ..
+        }
+        | TypeChirho::KindAppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
         } => {
             let mut names_chirho = free_type_variable_names_chirho(fun_chirho);
             names_chirho.extend(free_type_variable_names_chirho(arg_chirho));

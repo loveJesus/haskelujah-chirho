@@ -62,6 +62,11 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
             arg_chirho: Box::new(th_type_to_ast_chirho(arg_chirho)),
             span_chirho: TH_SPAN_CHIRHO,
         },
+        ThTypeChirho::AppKindTChirho(fun_chirho, arg_chirho) => TypeChirho::KindAppChirho {
+            fun_chirho: Box::new(th_type_to_ast_chirho(fun_chirho)),
+            arg_chirho: Box::new(th_type_to_ast_chirho(arg_chirho)),
+            span_chirho: TH_SPAN_CHIRHO,
+        },
         ThTypeChirho::ArrowTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("->")),
         ThTypeChirho::ListTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("[]")),
         ThTypeChirho::TupleTChirho(n_chirho) => {

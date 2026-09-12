@@ -4,6 +4,46 @@ use super::{DeclChirho, DeclKindSigChirho, FileIdChirho, TypeChirho, lower_modul
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
 #[test]
+fn forall_annotation_retains_its_invisible_argument_chirho() {
+    use super::AstKindChirho;
+    let source_chirho = "module MChirho where\nfChirho :: forall (aChirho :: ProxyChirho @MissingKindChirho Int). Int\nfChirho = 1\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let module_chirho = lower_module_chirho(
+        &parse_to_cst_chirho(source_chirho, file_chirho),
+        file_chirho,
+    );
+    let DeclChirho::TypeSigChirho {
+        ty_chirho: TypeChirho::ForallChirho { vars_chirho, .. },
+        ..
+    } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("{module_chirho:?}")
+    };
+    assert_eq!(
+        vars_chirho.len(),
+        1,
+        "the annotated binder must survive: {vars_chirho:?}"
+    );
+    let Some(AstKindChirho::AppChirho(fun_chirho, _)) = &vars_chirho[0].kind_annotation_chirho
+    else {
+        panic!("{:?}", vars_chirho[0])
+    };
+    let AstKindChirho::KindAppChirho(_, argument_chirho) = fun_chirho.as_ref() else {
+        panic!("{fun_chirho:?}")
+    };
+    let AstKindChirho::ConChirho(name_chirho) = argument_chirho.as_ref() else {
+        panic!("{argument_chirho:?}")
+    };
+    assert_eq!(name_chirho.text_chirho(), "MissingKindChirho");
+    let span_chirho = name_chirho.span_chirho();
+    assert_eq!(
+        &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+            ..span_chirho.end_chirho().as_usize_chirho()],
+        "MissingKindChirho"
+    );
+}
+
+#[test]
 fn a_forall_binder_double_colon_survives_inside_a_standalone_kind_chirho() {
     let source_chirho = "module MChirho where\ntype TChirho :: forall (kChirho :: Type) -> kChirho -> Type\ndata TChirho kChirho aChirho = MkTChirho\n";
     let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;

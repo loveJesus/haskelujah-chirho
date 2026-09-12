@@ -81,7 +81,8 @@ impl InferCtxChirho {
         }
         match ty_chirho {
             TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+            TyChirho::AppChirho(fun_chirho, arg_chirho)
+            | TyChirho::KindAppChirho(fun_chirho, arg_chirho) => {
                 self.ty_mentions_family_chirho(fun_chirho)
                     || self.ty_mentions_family_chirho(arg_chirho)
             }
@@ -154,6 +155,10 @@ impl InferCtxChirho {
                 ty_chirho.clone()
             }
             TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
+                Box::new(self.apply_given_rewrites_chirho(fun_chirho)),
+                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
+            ),
+            TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
                 Box::new(self.apply_given_rewrites_chirho(fun_chirho)),
                 Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
             ),
@@ -600,7 +605,8 @@ fn ty_contains_subterm_chirho(haystack_chirho: &TyChirho, needle_chirho: &TyChir
     }
     match haystack_chirho {
         TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
-        TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+        TyChirho::AppChirho(fun_chirho, arg_chirho)
+        | TyChirho::KindAppChirho(fun_chirho, arg_chirho) => {
             ty_contains_subterm_chirho(fun_chirho, needle_chirho)
                 || ty_contains_subterm_chirho(arg_chirho, needle_chirho)
         }

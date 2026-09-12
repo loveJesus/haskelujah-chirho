@@ -53,8 +53,9 @@ parameters, so its arrow is retained. Complete kinds are never prefixed twice.
 Declaration-head `@a` binds a lexical variable without consuming an ordinary
 type argument. `TyVarVisibilityChirho` preserves that distinction; shared parser
 group handling prevents annotation tokens from becoming extra parameters. Kind
-composition and constructor/selector result types apply only visible parameters,
-while naming and field conversion keep every binder in scope. Deriving filters
+composition consumes only visible parameters as ordinary arrows. Constructor
+result types additionally retain the solved invisible indices described below;
+naming and field conversion keep every binder in scope. Deriving filters
 at its entry boundaries, borrowing ordinary binder slices and copying only a
 slice that actually contains invisible binders. This is linear in the head, not
 in the growing module environment.
@@ -340,9 +341,9 @@ trivia. It does not scan through header parameters or following declarations.
 equivalent instead of becoming a fabricated alias. Dispatch lives with the
 existing family parser rather than growing the large parser root. A retained
 signature matters to checking separate indexed equations, not only AST shape.
-Parenthesized type-term annotations such as `(F Bool :: Type)` and explicit
-kind applications still have separate missing AST/consumer contracts; these
-head repairs do not claim to validate either.
+Parenthesized type-term annotations such as `(F Bool :: Type)` still have a
+separate missing AST/consumer contract. Explicit kind applications are retained
+by the isolated continuation below, with family-index consumers still incomplete.
 
 Equation checking instantiates the actual complete scheme for each row. It
 does not reconstruct its quantifiers from independently scoped header names.
@@ -456,7 +457,7 @@ The ordered source extension settings govern this distinction, and local TYPE
 declarations remain nominal rather than acquiring the built-in representation
 semantics. Source controls exercise both distinctions independently.
 
-Still unfinished: hidden kind indices, explicit kind applications, open/associated
+Still unfinished: hidden family indices, complete explicit family applications, open/associated
 kind-family equation checking, higher-rank family result contracts, and complete
 injectivity validation beyond this first-order fragment. No row with missing
 hidden matching conditions is registered as a visible-only approximation. The retained
@@ -468,6 +469,49 @@ GHC-55233 is checked on both written contracts with one diagnostic, independentl
 of the existing Type/Constraint unification compatibility. Binder annotations
 are not result annotations; local Constraint shadowing retains its previous
 boundary. No broadening of that compatibility rule is part of this repair.
+
+### Visible kind applications and local nominal indices (isolated row484)
+
+TypeChirho and AstKindChirho retain an @ application separately from ordinary
+application, with both operands and the complete source span. Naming and kind
+dependency visitors traverse the supplied type; an unknown kind cannot disappear
+because it follows @. The forall CST recognizer recognizes a binder prefix rather
+than whitelisting the tokens in its annotation; the normal type grammar owns the
+annotation and its boundary. Unsupported annotation forms remain separate gaps.
+
+```mermaid
+flowchart LR
+  AtSourceChirho[Source @ or implicit head occurrence] --> AtAstChirho[Retain mixed application spine and binder specificity]
+  AtAstChirho --> AtScopeChirho[Resolve both operands and open one ordered kind scheme]
+  AtScopeChirho --> AtConsumeChirho[Skip inferred binders for @ and check the specified classifier]
+  AtConsumeChirho --> AtSolvedChirho[Record solved invisible arguments by source span]
+  AtSolvedChirho --> AtInputsChirho[Pass kind elaboration through named inference inputs]
+  AtInputsChirho --> AtNominalChirho[Materialize local nominal indices in signatures and constructors]
+  AtNominalChirho --> AtEqualityChirho[Retain indices during substitution and type equality]
+```
+
+Source schemes order binder dependencies before uses and retain explicit phantom
+binders. An inferred classifier is not a specified argument; supplying @_ gives
+an inference hole, not Type. Provisional family schemes bind only selected source
+variables: classifier holes must remain shared until equation checking, rather
+than being independently instantiated by every row.
+
+KindElaborationChirho is a solved phase result, not namespace-preservation
+metadata. The driver passes it through InferInputsChirho instead of reconstructing
+arguments from names. This initial type consumer covers local data/newtype heads,
+matching their qualified identity, not unrelated imports with the same basename.
+Type conversion shares kind identities within the caller's lexical variable map;
+it does not leak type variables across signatures. Phantom indices remain present
+even when no field mentions them. Two GHC-checked executable controls construct a
+kind-indexed value and read it through implicit and explicit signatures on STG,
+LLVM and Cranelift, each requiring the independently measured output 42 plus LF.
+
+Not complete: recursive monomorphic occurrences, synonym/family equation indices,
+imported constructor schemes and imported specificity, and some higher-rank kind
+annotations still lack complete consumers. The current T12045a reduction reaches
+an unindexed recursive FreeCat field versus an indexed result; no compatibility
+gain is claimed for that file. Keeping KindApp in the type IR is necessary but
+does not establish that every producer has supplied its inferred arguments.
 
 ## Evidence boundary
 
@@ -485,7 +529,7 @@ authoritative kind metadata, and the
 separate data-family/type-data/refined-GADT-result AST decisions.
 Symbolic standalone signatures, attachment to aliases/classes,
 and duplicate/orphan signature diagnostics remain separate parser limitations.
-The representation repair is not full TypeAbstractions checking: inferred versus
-specified binder matching, dependent constructor/selector quantifier metadata,
+The representation repair is not full TypeAbstractions checking: declaration-head
+specificity matching, complete dependent constructor/selector quantifier metadata,
 TH reification visibility, and authoritative cross-module kind schemes remain
 unimplemented. The tasklist keeps independently reproduced counterexamples.

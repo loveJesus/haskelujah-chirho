@@ -1265,3 +1265,67 @@ or fixing only the parser is not that repair. T15079 separately needs its
 higher-rank local kind classifier; T26358 requires separately scoped equation
 variables and correlated apartness, not name-based identity conflation. None
 of these mechanisms is claimed fixed by this diagnostic checkpoint.
+
+### Visible kind application — representation decision
+
+2026-09-11, direct L.J. continuation at549fc904, clean owned worktree and main,
+no intervening broker lease claim. Row484/SLOT/DB remain owned by GPT.
+Recommendation: represent type-level @ with a dedicated KindAppChirho AST
+shape; name/scope visitors must traverse both operands, and kind inference
+must consume ordered invisible binders without confusing them with ordinary
+arguments. Bindings must retain specified/inferred status and classifier
+dependencies, including explicitly quantified names absent from the body.
+Hidden arguments must not disappear before family/type equality consumers;
+retaining syntax alone is not completion. Existing public inferred-type and
+constructor builders need the same elaboration contract rather than unrelated
+arity/name heuristics. No dependency or main/API release is authorized here.
+
+This is isolated, reversible compiler work, confidence medium. Alternative of
+turning @ into ordinary App changes arity and is incorrect; retaining only a
+span annotation preserves the wrong representation. Checkpoint tag
+visible-kind-applications-before-chirho at549fc904 bounds reversal. Extract
+application lowering from the oversized root into its existing flat-type
+module, and keep new signature machinery in focused typing children. Prove
+positive/negative @ selection, source ordering, inferred-binder skipping,
+phantom kind distinction and an executed control against GHC before any
+updated corpus or broad feature claim. Main's three-regression gate remains.
+
+### Visible application checkpoint — retained arguments, incomplete consumers
+
+- [x] Dedicated Type/AstKind KindApp, source spans and specified/inferred binders;
+  mixed-spine lowering and visitors retain @ rather than an ordinary argument.
+- [x] Ordered source schemes retain phantom binders and classifier dependencies.
+  Provisional family schemes leave unselected classifier holes shared across rows.
+- [x] Solved local nominal indices cross the driver/type-inference boundary in
+  KindElaboration and InferInputs; constructor results and signature equality
+  retain them. New machinery lives in focused children; oversized roots shrink.
+- [x] Complex forall annotations reach the ordinary CST type grammar. A binder
+  whitelist previously dropped the binder entirely; the new parser control was
+  demonstrated red before this repair. Missing/wrong @ kinds are diagnosed.
+- [x] Wildcard @ arguments are inferred, never fabricated as Type. Eight focused
+  controls pass; the original five were demonstrated red on the old implementation.
+- [x] Fresh GHC9.14.1/candidate evidence: reference-chirho.jsonl beside the seven
+  visible-application fixtures contains one metadata and14 observation records,
+  all agreeing in verdict. Both execution pairs require42 plus LF; the same two
+  sources also pass exact-output STG/LLVM/Cranelift integration. CLI SHA256 is
+  029835e8f04ce6314676c7b66583a5898f624871cc4464612d317cae1a3eb42b.
+- [x] Post-edit gates: naming136, parser353, typing365, core128, TH16,
+  driver integration97, canaries7; actual cargo0, zero ignored/filtered. Two
+  prior parser tests explicitly asserted invisible-argument erasure; their
+  expectations now require the distinct retained application, not erasure.
+- [ ] Complete recursive nominal, synonym/family equation and imported-index
+  consumers before any feature/compatibility completion claim. T12045a now
+  reaches E0200 on line35: FreeCat versus FreeCat @t60, after its @kind checks
+  recover. T14010/T26358 remain red. This is not a landed corpus gain.
+- [ ] Frozen corpus diagnostic, no-new-accept-regression gate, full workspace,
+  final two-pass measurement, DB closure and main landing are still owed.
+
+Access resumed normally in the same process; no chmod, remount or security
+bypass occurred. The TCC explanation remains a hypothesis, not a diagnosed
+cause. Main121d4f2c and its published artifacts/denominators/labels are untouched.
+Row484 remains open with SLOT/DB reserved; this is an isolated checkpoint.
+Evidence scratch: /private/tmp/haskelujah-visible-kind-app-chirho.X3Kq8n/.
+Six-crate all-target clippy exits0 but reports684 warning messages/365 distinct
+diagnostics. This is not warning-free. The relocated legacy eight-argument
+wrapper retains its existing too-many-arguments warning; new elaboration and
+mixed-spine scheme functions have no diagnostic. No warning suppression added.

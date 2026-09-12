@@ -65,6 +65,10 @@ pub fn rewrite_skolems_chirho(
             Box::new(rewrite_skolems_chirho(fun_chirho, rewrite_chirho)),
             Box::new(rewrite_skolems_chirho(arg_chirho, rewrite_chirho)),
         ),
+        TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
+            Box::new(rewrite_skolems_chirho(fun_chirho, rewrite_chirho)),
+            Box::new(rewrite_skolems_chirho(arg_chirho, rewrite_chirho)),
+        ),
         TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
             Box::new(rewrite_skolems_chirho(arg_chirho, rewrite_chirho)),
             Box::new(rewrite_skolems_chirho(result_chirho, rewrite_chirho)),
@@ -147,6 +151,10 @@ fn close_skolems_with_chirho(
         },
         TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => ty_chirho.clone(),
         TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
+            Box::new(close_skolems_with_chirho(fun_chirho, back_chirho)),
+            Box::new(close_skolems_with_chirho(arg_chirho, back_chirho)),
+        ),
+        TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
             Box::new(close_skolems_with_chirho(fun_chirho, back_chirho)),
             Box::new(close_skolems_with_chirho(arg_chirho, back_chirho)),
         ),

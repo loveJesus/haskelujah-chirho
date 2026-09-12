@@ -82,6 +82,11 @@ pub(super) fn collect_free_type_vars_from_ast_chirho(
                 fun_chirho,
                 arg_chirho,
                 ..
+            }
+            | TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
             } => {
                 pending_chirho.push(arg_chirho);
                 pending_chirho.push(fun_chirho);

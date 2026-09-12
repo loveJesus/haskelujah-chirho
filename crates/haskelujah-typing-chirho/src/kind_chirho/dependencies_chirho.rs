@@ -203,7 +203,8 @@ fn kind_refs_chirho(kind_chirho: &AstKindChirho, refs_chirho: &mut HashSet<Strin
             refs_chirho.insert(name_chirho.full_name_chirho());
         }
         AstKindChirho::ArrowChirho(argument_chirho, result_chirho)
-        | AstKindChirho::AppChirho(argument_chirho, result_chirho) => {
+        | AstKindChirho::AppChirho(argument_chirho, result_chirho)
+        | AstKindChirho::KindAppChirho(argument_chirho, result_chirho) => {
             kind_refs_chirho(argument_chirho, refs_chirho);
             kind_refs_chirho(result_chirho, refs_chirho);
         }
@@ -219,6 +220,11 @@ fn type_refs_chirho(ty_chirho: &TypeChirho, refs_chirho: &mut HashSet<String>) {
             refs_chirho.insert(name_chirho.full_name_chirho());
         }
         TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAppChirho {
             fun_chirho,
             arg_chirho,
             ..

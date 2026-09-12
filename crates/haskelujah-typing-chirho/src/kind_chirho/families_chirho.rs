@@ -190,10 +190,11 @@ impl KindInferCtxChirho {
                     .into_iter()
                     .filter(|variable_chirho| source_variables_chirho.contains(variable_chirho))
                     .collect();
-                KindSchemeChirho {
-                    quantified_chirho,
+                self.bind_source_kind_scheme_chirho(
                     body_chirho,
-                }
+                    quantified_chirho,
+                    &source_variables_chirho,
+                )
             }
         };
         let mut represented_inputs_chirho =
@@ -488,12 +489,17 @@ impl FamilyTermChirho for KindChirho {
     fn head_name_chirho(&self) -> Option<&str> {
         match self {
             Self::ConChirho(name_chirho) => Some(name_chirho),
-            Self::AppChirho(fun_chirho, _) => fun_chirho.head_name_chirho(),
+            Self::AppChirho(fun_chirho, _) | Self::KindAppChirho(fun_chirho, _) => {
+                fun_chirho.head_name_chirho()
+            }
             _ => None,
         }
     }
     fn parts_chirho(&self) -> Option<(&'static str, Vec<&Self>)> {
         match self {
+            Self::KindAppChirho(fun_chirho, argument_chirho) => {
+                Some(("kind_application_chirho", vec![fun_chirho, argument_chirho]))
+            }
             Self::AppChirho(fun_chirho, argument_chirho) => {
                 Some(("application_chirho", vec![fun_chirho, argument_chirho]))
             }
@@ -516,6 +522,10 @@ impl FamilyTermChirho for KindChirho {
     }
     fn map_children_chirho(&self, map_chirho: &mut impl FnMut(&Self) -> Self) -> Self {
         match self {
+            Self::KindAppChirho(fun_chirho, argument_chirho) => Self::KindAppChirho(
+                Box::new(map_chirho(fun_chirho)),
+                Box::new(map_chirho(argument_chirho)),
+            ),
             Self::AppChirho(fun_chirho, argument_chirho) => {
                 Self::app_chirho(map_chirho(fun_chirho), map_chirho(argument_chirho))
             }

@@ -82,6 +82,8 @@ fn is_builtin_typelit_or_typenat_kind_name_chirho(name_chirho: &str) -> bool {
 // ---------------------------------------------------------------------------
 
 pub use environment_chirho::KindEnvChirho;
+mod elaboration_chirho;
+pub use elaboration_chirho::KindElaborationChirho;
 use schemes_chirho::{KindBindingChirho, KindSchemeChirho};
 
 /// Kind inference context with fresh variable generation.
@@ -110,6 +112,13 @@ struct KindInferCtxChirho {
     pending_written_kinds_chirho: Vec<(KindVarChirho, SpanChirho)>,
     /// Scoped source-variable provenance while elaborating an inline kind.
     captured_kind_variables_chirho: Option<Vec<KindVarChirho>>,
+    /// Classifiers and specificity belong to the quantified identity, not its
+    /// temporary source spelling. They survive lexical-scope restoration.
+    kind_binder_classifiers_chirho: HashMap<KindVarChirho, KindChirho>,
+    kind_binder_names_chirho: HashMap<KindVarChirho, String>,
+    kind_applications_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
+    kind_binder_specificity_chirho:
+        HashMap<KindVarChirho, haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho>,
     kind_families_chirho: HashMap<String, families_chirho::KindFamilyChirho>,
     kind_family_names_chirho: std::collections::HashSet<String>,
     /// Fresh choices at a polymorphic occurrence, not written binder identities.
@@ -146,6 +155,10 @@ impl KindInferCtxChirho {
             star_is_type_chirho: true,
             pending_written_kinds_chirho: Vec::new(),
             captured_kind_variables_chirho: None,
+            kind_binder_classifiers_chirho: HashMap::new(),
+            kind_binder_names_chirho: HashMap::new(),
+            kind_applications_chirho: HashMap::new(),
+            kind_binder_specificity_chirho: HashMap::new(),
             kind_families_chirho: HashMap::new(),
             kind_family_names_chirho: std::collections::HashSet::new(),
             instantiated_kind_variables_chirho: std::collections::HashSet::new(),
@@ -247,6 +260,23 @@ impl KindInferCtxChirho {
             | TypeChirho::ConChirho(_)
             | TypeChirho::WildcardChirho { .. }
             | TypeChirho::LitChirho { .. } => ty_chirho.clone(),
+            TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho: inner_arg_chirho,
+                span_chirho,
+            } => TypeChirho::KindAppChirho {
+                fun_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    fun_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                arg_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    inner_arg_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho: inner_arg_chirho,
@@ -643,6 +673,10 @@ fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
             ast_kind_to_kind_chirho(fun_chirho),
             ast_kind_to_kind_chirho(arg_chirho),
         ),
+        AstKindChirho::KindAppChirho(fun_chirho, arg_chirho) => KindChirho::KindAppChirho(
+            Box::new(ast_kind_to_kind_chirho(fun_chirho)),
+            Box::new(ast_kind_to_kind_chirho(arg_chirho)),
+        ),
         // PolyKinds: kind variables default to * when used outside a context
         AstKindChirho::VarChirho(_) => KindChirho::StarChirho,
     }
@@ -665,6 +699,8 @@ fn default_kind_vars_chirho(kind_chirho: &KindChirho) -> KindChirho {
 pub struct KindResultChirho {
     /// The kind environment after inference (type constructors → kinds).
     pub env_chirho: KindEnvChirho,
+    /// Solved hidden arguments consumed by type inference, not discarded after checking.
+    pub elaboration_chirho: KindElaborationChirho,
     /// Diagnostics (errors and warnings) from kind checking.
     pub diagnostics_chirho: DiagnosticBundleChirho,
 }
@@ -724,6 +760,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
     ctx_chirho.finalize_chirho(poly_kinds_enabled_chirho);
 
     KindResultChirho {
+        elaboration_chirho: ctx_chirho.finish_kind_elaboration_chirho(module_chirho),
         env_chirho: ctx_chirho.env_chirho,
         diagnostics_chirho: ctx_chirho.diagnostics_chirho,
     }

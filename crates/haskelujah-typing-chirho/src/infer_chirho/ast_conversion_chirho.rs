@@ -21,12 +21,16 @@ impl InferCtxChirho {
         binders_chirho: &[AstTyVarChirho],
     ) -> (TyChirho, HashMap<String, TyVarChirho>) {
         let mut variables_chirho = HashMap::with_capacity(binders_chirho.len());
-        let mut result_chirho = TyChirho::ConChirho(name_chirho.to_owned());
         for binder_chirho in binders_chirho {
             let variable_chirho = TyVarChirho(self.next_var_chirho);
             self.next_var_chirho += 1;
             variables_chirho.insert(binder_chirho.text_chirho().to_owned(), variable_chirho);
+        }
+        let mut result_chirho =
+            self.data_head_kind_arguments_chirho(name_chirho, &mut variables_chirho);
+        for binder_chirho in binders_chirho {
             if binder_chirho.is_visible_chirho() {
+                let variable_chirho = variables_chirho[binder_chirho.text_chirho()];
                 result_chirho = TyChirho::AppChirho(
                     Box::new(result_chirho),
                     Box::new(TyChirho::VarChirho(variable_chirho)),
@@ -46,6 +50,11 @@ impl InferCtxChirho {
         ast_ty_chirho: &TypeChirho,
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> TyChirho {
+        if let Some(ty_chirho) =
+            self.elaborated_nominal_application_chirho(ast_ty_chirho, var_map_chirho)
+        {
+            return ty_chirho;
+        }
         match ast_ty_chirho {
             TypeChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho().to_string();
@@ -81,6 +90,14 @@ impl InferCtxChirho {
                 // Reduce type family applications (e.g. F Int → Bool)
                 self.reduce_type_families_in_ty_chirho(&expanded_chirho)
             }
+            TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => TyChirho::KindAppChirho(
+                Box::new(self.ast_type_to_ty_chirho(fun_chirho, var_map_chirho)),
+                Box::new(self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho)),
+            ),
             TypeChirho::FunChirho {
                 arg_chirho,
                 mult_chirho,
@@ -317,6 +334,14 @@ impl SynonymTypeConverterChirho {
                 arg_chirho,
                 ..
             } => TyChirho::AppChirho(
+                Box::new(self.convert_chirho(fun_chirho, params_chirho)),
+                Box::new(self.convert_chirho(arg_chirho, params_chirho)),
+            ),
+            TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => TyChirho::KindAppChirho(
                 Box::new(self.convert_chirho(fun_chirho, params_chirho)),
                 Box::new(self.convert_chirho(arg_chirho, params_chirho)),
             ),

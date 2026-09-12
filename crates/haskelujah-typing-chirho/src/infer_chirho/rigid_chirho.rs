@@ -382,7 +382,8 @@ impl InferCtxChirho {
                         .classes_chirho
                         .contains_key(name_chirho)
             }
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+            TyChirho::AppChirho(fun_chirho, arg_chirho)
+            | TyChirho::KindAppChirho(fun_chirho, arg_chirho) => {
                 self.ty_is_simple_rigid_arg_chirho(fun_chirho)
                     && self.ty_is_simple_rigid_arg_chirho(arg_chirho)
             }

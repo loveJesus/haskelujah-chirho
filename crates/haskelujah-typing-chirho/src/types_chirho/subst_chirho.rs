@@ -112,6 +112,10 @@ impl SubstChirho {
                 Box::new(self.apply_ty_chirho(f_chirho)),
                 Box::new(self.apply_ty_chirho(a_chirho)),
             ),
+            TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
+                Box::new(self.apply_ty_chirho(fun_chirho)),
+                Box::new(self.apply_ty_chirho(arg_chirho)),
+            ),
             TyChirho::FunChirho(a_chirho, b_chirho, m_chirho) => TyChirho::FunChirho(
                 Box::new(self.apply_ty_chirho(a_chirho)),
                 Box::new(self.apply_ty_chirho(b_chirho)),

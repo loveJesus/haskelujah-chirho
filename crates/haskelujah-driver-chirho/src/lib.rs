@@ -35,8 +35,7 @@ use haskelujah_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::{
-    InferResultChirho, TypeFamilyEnvChirho, infer_module_chirho,
-    infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
+    InferInputsChirho, InferResultChirho, TypeFamilyEnvChirho, infer_module_with_inputs_chirho,
 };
 
 #[cfg(test)]
@@ -261,6 +260,11 @@ fn collect_type_constructor_names_chirho(
             names_chirho.insert(name_chirho.full_name_chirho());
         }
         TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAppChirho {
             fun_chirho,
             arg_chirho,
             ..
@@ -1938,28 +1942,22 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         }
     }
 
-    // Phase 4: Type inference — use import-aware variant when upstream
-    // type schemes are available, plain variant otherwise.
-    let infer_result_chirho = if merged_imported_types_chirho.is_empty()
-        && merged_imported_type_synonyms_chirho.is_empty()
-        && merged_imported_type_families_chirho.is_empty()
-        && merged_imported_record_field_names_chirho.is_empty()
-        && imported_class_env_chirho.classes_chirho.is_empty()
-        && imported_class_env_chirho.instances_chirho.is_empty()
-    {
-        infer_module_chirho(&module_chirho)
-    } else {
-        infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
-            &module_chirho,
-            &merged_imported_types_chirho,
-            &merged_imported_type_synonyms_chirho,
-            &merged_imported_type_families_chirho,
+    // Phase 4: Pass import contracts and the solved kind arguments together.
+    // Workflow: language-features-chirho/declaration-kinds-chirho.
+    let infer_result_chirho = infer_module_with_inputs_chirho(
+        &module_chirho,
+        InferInputsChirho {
+            imported_types_chirho: &merged_imported_types_chirho,
+            imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
+            imported_type_families_chirho: &merged_imported_type_families_chirho,
             imported_class_env_chirho,
-            &merged_imported_record_field_names_chirho,
-            &safe_unqualified_imported_type_names_chirho,
-            &preferred_qualified_type_names_chirho,
-        )
-    };
+            imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
+            safe_unqualified_imported_type_names_chirho:
+                &safe_unqualified_imported_type_names_chirho,
+            preferred_qualified_type_names_chirho: &preferred_qualified_type_names_chirho,
+            kind_elaboration_chirho: Some(kind_result_chirho.elaboration_chirho),
+        },
+    );
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(infer_result_chirho.diagnostics_chirho);
     }

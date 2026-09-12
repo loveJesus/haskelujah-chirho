@@ -1026,6 +1026,15 @@ impl DesugarCtxChirho {
                     Self::type_key_from_ast_chirho(arg_chirho)
                 )
             }
+            TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => format!(
+                "({} @{})",
+                Self::type_key_from_ast_chirho(fun_chirho),
+                Self::type_key_from_ast_chirho(arg_chirho)
+            ),
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 Self::type_key_from_ast_chirho(inner_chirho)
             }

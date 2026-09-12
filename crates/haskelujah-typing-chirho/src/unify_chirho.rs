@@ -107,7 +107,11 @@ pub fn unify_chirho(
         }
 
         // Type application
-        (TyChirho::AppChirho(f1_chirho, a1_chirho), TyChirho::AppChirho(f2_chirho, a2_chirho)) => {
+        (TyChirho::AppChirho(f1_chirho, a1_chirho), TyChirho::AppChirho(f2_chirho, a2_chirho))
+        | (
+            TyChirho::KindAppChirho(f1_chirho, a1_chirho),
+            TyChirho::KindAppChirho(f2_chirho, a2_chirho),
+        ) => {
             let s1_chirho = unify_chirho(f1_chirho, f2_chirho, span_chirho)?;
             let a1_sub_chirho = s1_chirho.apply_ty_chirho(a1_chirho);
             let a2_sub_chirho = s1_chirho.apply_ty_chirho(a2_chirho);

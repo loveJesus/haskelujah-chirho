@@ -6,9 +6,18 @@
 use super::{KindChirho, KindInferCtxChirho, KindSubstChirho, KindVarChirho};
 use std::collections::HashSet;
 
+pub(super) struct OpenKindBinderChirho {
+    pub(super) argument_chirho: KindChirho,
+    pub(super) classifier_chirho: KindChirho,
+    pub(super) specified_chirho: bool,
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct KindSchemeChirho {
     pub(super) quantified_chirho: Vec<KindVarChirho>,
+    pub(super) specified_chirho: HashSet<KindVarChirho>,
+    pub(super) classifiers_chirho: Vec<KindChirho>,
+    pub(super) source_names_chirho: Vec<Option<String>>,
     pub(super) body_chirho: KindChirho,
 }
 
@@ -23,6 +32,17 @@ impl KindSchemeChirho {
         let body_chirho = abstract_rigid_kind_chirho(&kind_chirho);
         Self {
             quantified_chirho: body_chirho.free_vars_chirho(),
+            specified_chirho: body_chirho.free_vars_chirho().into_iter().collect(),
+            classifiers_chirho: body_chirho
+                .free_vars_chirho()
+                .iter()
+                .map(|_| KindChirho::StarChirho)
+                .collect(),
+            source_names_chirho: body_chirho
+                .free_vars_chirho()
+                .iter()
+                .map(|_| None)
+                .collect(),
             body_chirho,
         }
     }
@@ -31,6 +51,10 @@ impl KindSchemeChirho {
         let bound_chirho = self.quantified_chirho.iter().copied().collect();
         self.body_chirho =
             apply_scoped_subst_chirho(&self.body_chirho, subst_chirho, &bound_chirho);
+        for classifier_chirho in &mut self.classifiers_chirho {
+            *classifier_chirho =
+                apply_scoped_subst_chirho(classifier_chirho, subst_chirho, &bound_chirho);
+        }
     }
 }
 
@@ -105,6 +129,101 @@ fn apply_scoped_subst_chirho(
 }
 
 impl KindInferCtxChirho {
+    /// Generalize source identities in dependency order. Explicit binders are
+    /// retained even when phantom; inferred classifiers precede their users.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn source_kind_scheme_chirho(
+        &self,
+        kind_chirho: KindChirho,
+        explicit_chirho: Vec<KindVarChirho>,
+        written_chirho: &HashSet<KindVarChirho>,
+    ) -> KindSchemeChirho {
+        let mut variables_chirho = explicit_chirho;
+        variables_chirho.extend(
+            abstract_rigid_kind_chirho(&self.subst_chirho.apply_chirho(&kind_chirho))
+                .free_vars_chirho(),
+        );
+        self.bind_source_kind_scheme_chirho(kind_chirho, variables_chirho, written_chirho)
+    }
+
+    /// Bind only the selected source variables and their dependencies. During
+    /// family inference, unselected classifier holes remain shared metavariables:
+    /// equations determine them, rather than each equation freshening them away.
+    pub(super) fn bind_source_kind_scheme_chirho(
+        &self,
+        kind_chirho: KindChirho,
+        variables_chirho: Vec<KindVarChirho>,
+        written_chirho: &HashSet<KindVarChirho>,
+    ) -> KindSchemeChirho {
+        let body_chirho = abstract_rigid_kind_chirho(&self.subst_chirho.apply_chirho(&kind_chirho));
+        let mut ordered_chirho = Vec::new();
+        let mut seen_chirho = HashSet::new();
+        let mut classifiers_chirho = Vec::new();
+        let mut source_names_chirho = Vec::new();
+        let mut specified_chirho = HashSet::new();
+        let mut pending_chirho = variables_chirho;
+        pending_chirho.reverse();
+        // A two-stage DFS adds dependencies before their binder without sorting
+        // away source order. The visited set bounds work even on malformed cycles.
+        let mut stack_chirho: Vec<_> = pending_chirho
+            .into_iter()
+            .map(|identity_chirho| (identity_chirho, false))
+            .collect();
+        while let Some((identity_chirho, ready_chirho)) = stack_chirho.pop() {
+            let resolved_chirho = abstract_rigid_kind_chirho(
+                &self
+                    .subst_chirho
+                    .apply_chirho(&KindChirho::VarChirho(identity_chirho)),
+            );
+            let KindChirho::VarChirho(variable_chirho) = resolved_chirho else {
+                continue;
+            };
+            let classifier_chirho = self
+                .kind_binder_classifiers_chirho
+                .get(&identity_chirho)
+                .or_else(|| self.kind_binder_classifiers_chirho.get(&variable_chirho))
+                .map(|kind_chirho| {
+                    abstract_rigid_kind_chirho(&self.subst_chirho.apply_chirho(kind_chirho))
+                })
+                .unwrap_or(KindChirho::StarChirho);
+            if ready_chirho {
+                ordered_chirho.push(variable_chirho);
+                classifiers_chirho.push(classifier_chirho);
+                source_names_chirho.push(
+                    self.kind_binder_names_chirho
+                        .get(&identity_chirho)
+                        .or_else(|| self.kind_binder_names_chirho.get(&variable_chirho))
+                        .cloned(),
+                );
+                let specificity_chirho = self
+                    .kind_binder_specificity_chirho
+                    .get(&identity_chirho)
+                    .or_else(|| self.kind_binder_specificity_chirho.get(&variable_chirho));
+                if matches!(
+                    specificity_chirho,
+                    Some(
+                        haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho
+                    )
+                ) || (specificity_chirho.is_none() && written_chirho.contains(&variable_chirho))
+                {
+                    specified_chirho.insert(variable_chirho);
+                }
+            } else if seen_chirho.insert(variable_chirho) {
+                stack_chirho.push((identity_chirho, true));
+                for dependency_chirho in classifier_chirho.free_vars_chirho().into_iter().rev() {
+                    stack_chirho.push((dependency_chirho, false));
+                }
+            }
+        }
+        KindSchemeChirho {
+            quantified_chirho: ordered_chirho,
+            specified_chirho,
+            classifiers_chirho,
+            source_names_chirho,
+            body_chirho,
+        }
+    }
+
     pub(super) fn rigidify_kind_variables_chirho(
         &mut self,
         variables_chirho: impl IntoIterator<Item = KindVarChirho>,
@@ -148,11 +267,48 @@ impl KindInferCtxChirho {
             .0
     }
 
+    pub(super) fn instantiate_source_binding_chirho(
+        &mut self,
+        binding_chirho: &KindBindingChirho,
+        span_chirho: super::SpanChirho,
+    ) -> KindChirho {
+        match binding_chirho {
+            KindBindingChirho::MonoChirho(kind_chirho) => {
+                self.subst_chirho.apply_chirho(kind_chirho)
+            }
+            KindBindingChirho::PolyChirho(scheme_chirho) => {
+                let (kind_chirho, arguments_chirho) =
+                    self.open_kind_scheme_parts_chirho(scheme_chirho, false);
+                if !arguments_chirho.is_empty() {
+                    self.kind_applications_chirho
+                        .insert(span_chirho, arguments_chirho);
+                }
+                kind_chirho
+            }
+        }
+    }
+
     pub(super) fn open_kind_scheme_parts_chirho(
         &mut self,
         scheme_chirho: &KindSchemeChirho,
         rigid_chirho: bool,
     ) -> (KindChirho, Vec<KindChirho>) {
+        let (body_chirho, binders_chirho) =
+            self.open_kind_scheme_contract_chirho(scheme_chirho, rigid_chirho);
+        (
+            body_chirho,
+            binders_chirho
+                .into_iter()
+                .map(|binder_chirho| binder_chirho.argument_chirho)
+                .collect(),
+        )
+    }
+
+    fn open_kind_scheme_contract_chirho(
+        &mut self,
+        scheme_chirho: &KindSchemeChirho,
+        rigid_chirho: bool,
+    ) -> (KindChirho, Vec<OpenKindBinderChirho>) {
         let bound_chirho = scheme_chirho.quantified_chirho.iter().copied().collect();
         let body_chirho = apply_scoped_subst_chirho(
             &scheme_chirho.body_chirho,
@@ -176,8 +332,139 @@ impl KindInferCtxChirho {
         }
         (
             replacement_chirho.apply_chirho(&body_chirho),
-            arguments_chirho,
+            arguments_chirho
+                .into_iter()
+                .enumerate()
+                .map(|(index_chirho, argument_chirho)| OpenKindBinderChirho {
+                    argument_chirho,
+                    classifier_chirho: replacement_chirho.apply_chirho(&apply_scoped_subst_chirho(
+                        &scheme_chirho.classifiers_chirho[index_chirho],
+                        &self.subst_chirho,
+                        &bound_chirho,
+                    )),
+                    specified_chirho: scheme_chirho
+                        .specified_chirho
+                        .contains(&scheme_chirho.quantified_chirho[index_chirho]),
+                })
+                .collect(),
         )
+    }
+
+    /// Open one head, then consume its entire mixed argument spine once. An @
+    /// argument selects the next specified quantifier; it is never an arrow.
+    pub(super) fn infer_type_application_kind_chirho(
+        &mut self,
+        ty_chirho: &super::TypeChirho,
+    ) -> KindChirho {
+        use super::TypeChirho;
+        let mut head_chirho = ty_chirho;
+        let mut arguments_chirho = Vec::new();
+        loop {
+            match head_chirho {
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    span_chirho,
+                }
+                | TypeChirho::KindAppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    span_chirho,
+                } => {
+                    arguments_chirho.push((
+                        arg_chirho.as_ref(),
+                        matches!(head_chirho, TypeChirho::KindAppChirho { .. }),
+                        *span_chirho,
+                    ));
+                    head_chirho = fun_chirho;
+                }
+                TypeChirho::ParenChirho { inner_chirho, .. } => head_chirho = inner_chirho,
+                _ => break,
+            }
+        }
+        let binding_chirho = match head_chirho {
+            TypeChirho::ConChirho(name_chirho) => {
+                let name_chirho = self.canonical_kind_name_chirho(name_chirho);
+                self.env_chirho
+                    .lookup_binding_chirho(&name_chirho)
+                    .or_else(|| self.env_chirho.lookup_promoted_binding_chirho(&name_chirho))
+                    .cloned()
+            }
+            TypeChirho::VarChirho(name_chirho) => self
+                .env_chirho
+                .lookup_binding_chirho(name_chirho.text_chirho())
+                .cloned(),
+            TypeChirho::PromotedConChirho { name_chirho, .. } => self
+                .env_chirho
+                .lookup_promoted_binding_chirho(&self.canonical_kind_name_chirho(name_chirho))
+                .cloned(),
+            _ => None,
+        };
+        let authoritative_chirho = binding_chirho.is_some();
+        let (mut tail_chirho, binders_chirho) = match binding_chirho {
+            Some(KindBindingChirho::PolyChirho(scheme_chirho)) => {
+                self.open_kind_scheme_contract_chirho(&scheme_chirho, false)
+            }
+            Some(KindBindingChirho::MonoChirho(kind_chirho)) => {
+                (self.subst_chirho.apply_chirho(&kind_chirho), Vec::new())
+            }
+            None => (self.infer_type_kind_chirho(head_chirho), Vec::new()),
+        };
+        let mut binder_index_chirho = 0;
+        for (argument_chirho, invisible_chirho, span_chirho) in arguments_chirho.into_iter().rev() {
+            let classifier_chirho = self.infer_type_kind_chirho(argument_chirho);
+            if invisible_chirho {
+                while binder_index_chirho < binders_chirho.len()
+                    && !binders_chirho[binder_index_chirho].specified_chirho
+                {
+                    binder_index_chirho += 1;
+                }
+                if let Some(binder_chirho) = binders_chirho.get(binder_index_chirho) {
+                    self.unify_chirho(
+                        &binder_chirho.classifier_chirho,
+                        &classifier_chirho,
+                        "visible kind argument",
+                        argument_chirho.span_chirho(),
+                    );
+                    let term_chirho = self.interpret_kind_term_chirho(argument_chirho);
+                    self.unify_chirho(
+                        &binder_chirho.argument_chirho,
+                        &term_chirho,
+                        "visible kind argument",
+                        span_chirho,
+                    );
+                    binder_index_chirho += 1;
+                } else if authoritative_chirho {
+                    self.diagnostics_chirho.push_chirho(
+                        super::DiagnosticChirho::error_with_code_chirho(
+                            super::ErrorCodeChirho::error_chirho(super::KIND_MISMATCH_CODE_CHIRHO),
+                            "no specified kind argument is available for this @ application",
+                            argument_chirho.span_chirho(),
+                        ),
+                    );
+                }
+            } else {
+                binder_index_chirho = binders_chirho.len();
+                let term_chirho = self.interpret_kind_term_chirho(argument_chirho);
+                tail_chirho = self.consume_kind_argument_chirho(
+                    tail_chirho,
+                    &classifier_chirho,
+                    Some(&term_chirho),
+                    span_chirho,
+                    "type application",
+                );
+            }
+        }
+        if !binders_chirho.is_empty() {
+            self.kind_applications_chirho.insert(
+                ty_chirho.span_chirho(),
+                binders_chirho
+                    .into_iter()
+                    .map(|binder_chirho| binder_chirho.argument_chirho)
+                    .collect(),
+            );
+        }
+        self.subst_chirho.apply_chirho(&tail_chirho)
     }
 
     pub(super) fn publish_kind_chirho(
@@ -204,6 +491,20 @@ impl KindInferCtxChirho {
                 for variable_chirho in scheme_chirho.body_chirho.free_vars_chirho() {
                     if !scheme_chirho.quantified_chirho.contains(&variable_chirho) {
                         scheme_chirho.quantified_chirho.push(variable_chirho);
+                        scheme_chirho
+                            .source_names_chirho
+                            .push(self.kind_binder_names_chirho.get(&variable_chirho).cloned());
+                        scheme_chirho.classifiers_chirho.push(
+                            self.kind_binder_classifiers_chirho
+                                .get(&variable_chirho)
+                                .map(|classifier_chirho| {
+                                    self.subst_chirho.apply_chirho(classifier_chirho)
+                                })
+                                .unwrap_or(KindChirho::StarChirho),
+                        );
+                        if named_variables_chirho.contains(&variable_chirho) {
+                            scheme_chirho.specified_chirho.insert(variable_chirho);
+                        }
                     }
                 }
             } else {
@@ -221,6 +522,10 @@ impl KindInferCtxChirho {
         if let Some(KindBindingChirho::MonoChirho(kind_chirho)) =
             self.env_chirho.lookup_binding_chirho(name_chirho).cloned()
         {
+            // Retain identity provenance before substitution turns a written
+            // variable into its rigid representative. The representative alone
+            // does not tell us whether the source binder was specified.
+            let source_variables_chirho = kind_chirho.free_vars_chirho();
             let kind_chirho = self.subst_chirho.apply_chirho(&kind_chirho);
             self.default_inferred_runtime_variables_chirho(&kind_chirho, named_variables_chirho);
             let kind_chirho = self.subst_chirho.apply_chirho(&kind_chirho);
@@ -229,8 +534,14 @@ impl KindInferCtxChirho {
             } else {
                 super::default_kind_vars_chirho(&abstract_rigid_kind_chirho(&kind_chirho))
             };
-            self.env_chirho
-                .bind_generalized_chirho(name_chirho.to_owned(), kind_chirho);
+            self.env_chirho.bind_entry_chirho(
+                name_chirho.to_owned(),
+                KindBindingChirho::PolyChirho(self.source_kind_scheme_chirho(
+                    kind_chirho,
+                    source_variables_chirho,
+                    named_variables_chirho,
+                )),
+            );
         }
     }
 }

@@ -6,6 +6,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 #[path = "typing_integration_chirho/family_kinds_chirho.rs"]
 mod family_kinds_chirho;
+#[path = "typing_integration_chirho/kind_applications_chirho.rs"]
+mod kind_applications_chirho;
 #[path = "typing_integration_chirho/kind_terms_chirho.rs"]
 mod kind_terms_chirho;
 #[path = "typing_integration_chirho/multiplicities_chirho.rs"]

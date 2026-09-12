@@ -71,6 +71,14 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
             Box::new(ast_type_to_th_chirho(fun_chirho)),
             Box::new(ast_type_to_th_chirho(arg_chirho)),
         ),
+        TypeChirho::KindAppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => ThTypeChirho::AppKindTChirho(
+            Box::new(ast_type_to_th_chirho(fun_chirho)),
+            Box::new(ast_type_to_th_chirho(arg_chirho)),
+        ),
         TypeChirho::FunChirho {
             arg_chirho,
             result_chirho,
@@ -181,6 +189,10 @@ fn ast_kind_to_th_chirho(kind_chirho: &AstKindChirho) -> ThTypeChirho {
             ThNameChirho::mk_name_chirho(&name_chirho.full_name_chirho()),
         ),
         AstKindChirho::AppChirho(fun_chirho, arg_chirho) => ThTypeChirho::AppTChirho(
+            Box::new(ast_kind_to_th_chirho(fun_chirho)),
+            Box::new(ast_kind_to_th_chirho(arg_chirho)),
+        ),
+        AstKindChirho::KindAppChirho(fun_chirho, arg_chirho) => ThTypeChirho::AppKindTChirho(
             Box::new(ast_kind_to_th_chirho(fun_chirho)),
             Box::new(ast_kind_to_th_chirho(arg_chirho)),
         ),

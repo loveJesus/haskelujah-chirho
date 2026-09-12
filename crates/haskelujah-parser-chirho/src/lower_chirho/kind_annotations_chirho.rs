@@ -44,6 +44,14 @@ impl LowerCtxChirho {
                 Box::new(Self::try_type_to_ast_kind_chirho(fun_chirho)?),
                 Box::new(Self::try_type_to_ast_kind_chirho(arg_chirho)?),
             )),
+            TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => Some(AstKindChirho::KindAppChirho(
+                Box::new(Self::try_type_to_ast_kind_chirho(fun_chirho)?),
+                Box::new(Self::try_type_to_ast_kind_chirho(arg_chirho)?),
+            )),
             // Lists, tuples etc. can't be represented as AstKindChirho —
             // return None so the kind checker infers the kind.
             _ => None,
@@ -60,10 +68,24 @@ impl LowerCtxChirho {
         let (mut lhs_chirho, mut pos_chirho) =
             self.parse_kind_atom_chirho(children_chirho, start_chirho)?;
 
-        while let Some((arg_chirho, end_chirho)) =
-            self.parse_kind_atom_chirho(children_chirho, pos_chirho)
-        {
-            lhs_chirho = AstKindChirho::AppChirho(Box::new(lhs_chirho), Box::new(arg_chirho));
+        loop {
+            let invisible_chirho = children_chirho.get(pos_chirho).is_some_and(|child_chirho| {
+                matches!(child_chirho.element_chirho, GreenElementChirho::TokenChirho(token_chirho) if token_chirho.kind_chirho() == TokenKindChirho::AtSignChirho)
+            });
+            let Some((arg_chirho, end_chirho)) = self.parse_kind_atom_chirho(
+                children_chirho,
+                pos_chirho + usize::from(invisible_chirho),
+            ) else {
+                if invisible_chirho {
+                    return None;
+                }
+                break;
+            };
+            lhs_chirho = if invisible_chirho {
+                AstKindChirho::KindAppChirho(Box::new(lhs_chirho), Box::new(arg_chirho))
+            } else {
+                AstKindChirho::AppChirho(Box::new(lhs_chirho), Box::new(arg_chirho))
+            };
             pos_chirho = end_chirho;
         }
 

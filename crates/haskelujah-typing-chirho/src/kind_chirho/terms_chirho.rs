@@ -43,6 +43,8 @@ pub enum KindChirho {
 
     /// Application in the kind language, such as `TYPE representation`.
     AppChirho(Box<KindChirho>, Box<KindChirho>),
+    /// An invisible index in a type/kind term, not an ordinary family argument.
+    KindAppChirho(Box<KindChirho>, Box<KindChirho>),
 
     /// A de Bruijn index in a dependent result: zero denotes its nearest
     /// enclosing binder. Unlike inference ids, these are lexical positions.
@@ -105,6 +107,10 @@ impl KindChirho {
                 fun_chirho.map_scoped_leaves_chirho(depth_chirho, mapper_chirho),
                 arg_chirho.map_scoped_leaves_chirho(depth_chirho, mapper_chirho),
             ),
+            Self::KindAppChirho(fun_chirho, arg_chirho) => Self::KindAppChirho(
+                Box::new(fun_chirho.map_scoped_leaves_chirho(depth_chirho, mapper_chirho)),
+                Box::new(arg_chirho.map_scoped_leaves_chirho(depth_chirho, mapper_chirho)),
+            ),
             Self::DependentChirho {
                 argument_chirho,
                 result_chirho,
@@ -159,7 +165,8 @@ impl KindChirho {
         match self {
             Self::BoundChirho(index_chirho) => *index_chirho >= depth_chirho,
             Self::ArrowChirho(left_chirho, right_chirho)
-            | Self::AppChirho(left_chirho, right_chirho) => {
+            | Self::AppChirho(left_chirho, right_chirho)
+            | Self::KindAppChirho(left_chirho, right_chirho) => {
                 left_chirho.has_free_bound_chirho(depth_chirho)
                     || right_chirho.has_free_bound_chirho(depth_chirho)
             }
@@ -180,7 +187,8 @@ impl KindChirho {
         match self {
             Self::BoundChirho(found_chirho) => *found_chirho == index_chirho,
             Self::ArrowChirho(left_chirho, right_chirho)
-            | Self::AppChirho(left_chirho, right_chirho) => {
+            | Self::AppChirho(left_chirho, right_chirho)
+            | Self::KindAppChirho(left_chirho, right_chirho) => {
                 left_chirho.references_bound_chirho(index_chirho)
                     || right_chirho.references_bound_chirho(index_chirho)
             }
@@ -226,7 +234,8 @@ impl KindChirho {
             | KindChirho::BoundChirho(_)
             | KindChirho::ConChirho(_) => {}
             KindChirho::ArrowChirho(a_chirho, b_chirho)
-            | KindChirho::AppChirho(a_chirho, b_chirho) => {
+            | KindChirho::AppChirho(a_chirho, b_chirho)
+            | KindChirho::KindAppChirho(a_chirho, b_chirho) => {
                 a_chirho.collect_free_vars_chirho(out_chirho);
                 b_chirho.collect_free_vars_chirho(out_chirho);
             }
@@ -251,6 +260,9 @@ impl fmt::Display for KindChirho {
             KindChirho::RigidChirho(v_chirho) => write!(f_chirho, "rigid {v_chirho}"),
             KindChirho::BoundChirho(v_chirho) => write!(f_chirho, "bound {v_chirho}"),
             KindChirho::ConChirho(name_chirho) => write!(f_chirho, "{name_chirho}"),
+            KindChirho::KindAppChirho(fun_chirho, arg_chirho) => {
+                write!(f_chirho, "({fun_chirho} @{arg_chirho})")
+            }
             KindChirho::AppChirho(fun_chirho, arg_chirho) => {
                 write!(f_chirho, "({fun_chirho} {arg_chirho})")
             }
@@ -436,6 +448,10 @@ pub(super) fn unify_kind_chirho(
         | (
             KindChirho::AppChirho(a1_chirho, b1_chirho),
             KindChirho::AppChirho(a2_chirho, b2_chirho),
+        )
+        | (
+            KindChirho::KindAppChirho(a1_chirho, b1_chirho),
+            KindChirho::KindAppChirho(a2_chirho, b2_chirho),
         ) => {
             let s1_chirho = unify_kind_chirho(a1_chirho, a2_chirho, context_chirho, span_chirho)?;
             let b1_sub_chirho = s1_chirho.apply_chirho(b1_chirho);

@@ -25,6 +25,24 @@ impl KindInferCtxChirho {
         if let Some(captured_chirho) = &mut self.captured_kind_variables_chirho {
             captured_chirho.push(var_chirho);
         }
+        if !self
+            .kind_binder_classifiers_chirho
+            .contains_key(&var_chirho)
+        {
+            self.kind_binder_names_chirho
+                .insert(var_chirho, name_chirho.to_owned());
+            let classifier_chirho = self
+                .env_chirho
+                .lookup_chirho(name_chirho)
+                .cloned()
+                .unwrap_or_else(|| self.fresh_kind_chirho());
+            self.kind_binder_classifiers_chirho
+                .insert(var_chirho, classifier_chirho);
+            self.kind_binder_specificity_chirho.insert(
+                var_chirho,
+                haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+            );
+        }
         KindChirho::VarChirho(var_chirho)
     }
 
@@ -76,16 +94,17 @@ impl KindInferCtxChirho {
                 body_chirho,
                 ..
             } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
-                let identities_chirho: Vec<_> = vars_chirho
+                let _classifier_chirho = ctx_chirho.infer_type_kind_chirho(body_chirho);
+                let mut identities_chirho: Vec<_> = vars_chirho
                     .iter()
                     .map(|binder_chirho| {
                         ctx_chirho.kind_var_cache_chirho[binder_chirho.text_chirho()]
                     })
                     .collect();
-                let (kind_chirho, mut quantified_chirho) =
+                let (kind_chirho, quantified_chirho) =
                     ctx_chirho.interpret_inline_kind_chirho(body_chirho);
-                quantified_chirho.extend(identities_chirho);
-                (kind_chirho, quantified_chirho)
+                identities_chirho.extend(quantified_chirho);
+                (kind_chirho, identities_chirho)
             }),
             _ => (self.interpret_kind_term_chirho(ty_chirho), Vec::new()),
         }
@@ -195,6 +214,9 @@ impl KindInferCtxChirho {
             TypeChirho::LitChirho { value_chirho, .. } => {
                 KindChirho::ConChirho(value_chirho.clone())
             }
+            // A written @_ asks inference to choose this argument. Type is a
+            // concrete choice and must not be fabricated for the wildcard.
+            TypeChirho::WildcardChirho { .. } => self.fresh_kind_chirho(),
             TypeChirho::ListChirho { element_chirho, .. } => KindChirho::app_chirho(
                 KindChirho::ConChirho("[]".into()),
                 self.interpret_kind_term_chirho(element_chirho),
@@ -229,6 +251,14 @@ impl KindInferCtxChirho {
                     self.interpret_kind_term_chirho(arg_chirho),
                 )
             }
+            TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => KindChirho::KindAppChirho(
+                Box::new(self.interpret_kind_term_chirho(fun_chirho)),
+                Box::new(self.interpret_kind_term_chirho(arg_chirho)),
+            ),
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.interpret_kind_term_chirho(inner_chirho)
             }
@@ -299,7 +329,7 @@ impl KindInferCtxChirho {
                     .or_else(|| self.env_chirho.lookup_promoted_binding_chirho(&text_chirho))
                     .cloned()
                 {
-                    self.instantiate_binding_chirho(&binding_chirho)
+                    self.instantiate_source_binding_chirho(&binding_chirho, ty_chirho.span_chirho())
                 } else {
                     // Unknown/imported constructors still lack authoritative kind
                     // metadata. Keep their existing independent-use fallback,
@@ -310,42 +340,8 @@ impl KindInferCtxChirho {
                     k_chirho
                 }
             }
-            TypeChirho::AppChirho {
-                fun_chirho,
-                arg_chirho,
-                span_chirho,
-            } => {
-                let k_fun_chirho = self.infer_type_kind_chirho(fun_chirho);
-                let k_arg_chirho = self.infer_type_kind_chirho(arg_chirho);
-                if let KindChirho::DependentChirho {
-                    argument_chirho,
-                    result_chirho,
-                } = self.subst_chirho.apply_chirho(&k_fun_chirho)
-                {
-                    self.unify_chirho(
-                        &argument_chirho,
-                        &k_arg_chirho,
-                        "dependent type application",
-                        *span_chirho,
-                    );
-                    // Its classifier was checked above. Rechecking the whole
-                    // argument here duplicates work at every nested Pi call.
-                    let argument_term_chirho = self.interpret_kind_term_chirho(arg_chirho);
-                    return self.subst_chirho.apply_chirho(
-                        &result_chirho.substitute_bound_chirho(&argument_term_chirho),
-                    );
-                }
-                let k_result_chirho = self.fresh_kind_chirho();
-                // fun must have kind (k_arg -> k_result)
-                let expected_chirho =
-                    KindChirho::arrow_chirho(k_arg_chirho, k_result_chirho.clone());
-                self.unify_chirho(
-                    &k_fun_chirho,
-                    &expected_chirho,
-                    "type application",
-                    *span_chirho,
-                );
-                k_result_chirho
+            TypeChirho::AppChirho { .. } | TypeChirho::KindAppChirho { .. } => {
+                self.infer_type_application_kind_chirho(ty_chirho)
             }
             TypeChirho::FunChirho {
                 arg_chirho,
@@ -514,7 +510,8 @@ fn ast_kind_type_chirho(kind_chirho: &AstKindChirho) -> TypeChirho {
             TypeChirho::VarChirho(name_chirho(variable_chirho))
         }
         AstKindChirho::ArrowChirho(left_chirho, right_chirho)
-        | AstKindChirho::AppChirho(left_chirho, right_chirho) => {
+        | AstKindChirho::AppChirho(left_chirho, right_chirho)
+        | AstKindChirho::KindAppChirho(left_chirho, right_chirho) => {
             let left_chirho = ast_kind_type_chirho(left_chirho);
             let right_chirho = ast_kind_type_chirho(right_chirho);
             let span_chirho = left_chirho
@@ -532,6 +529,12 @@ fn ast_kind_type_chirho(kind_chirho: &AstKindChirho) -> TypeChirho {
                     arg_chirho: Box::new(left_chirho),
                     result_chirho: Box::new(right_chirho),
                     mult_chirho: None,
+                    span_chirho,
+                }
+            } else if matches!(kind_chirho, AstKindChirho::KindAppChirho(_, _)) {
+                TypeChirho::KindAppChirho {
+                    fun_chirho: Box::new(left_chirho),
+                    arg_chirho: Box::new(right_chirho),
                     span_chirho,
                 }
             } else {

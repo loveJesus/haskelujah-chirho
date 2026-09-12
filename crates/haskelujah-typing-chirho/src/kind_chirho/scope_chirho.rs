@@ -68,6 +68,12 @@ impl KindInferCtxChirho {
             }
             let name_chirho = binder_chirho.text_chirho().to_string();
             let identity_chirho = self.fresh_var_chirho();
+            self.kind_binder_names_chirho
+                .insert(identity_chirho, name_chirho.clone());
+            self.kind_binder_classifiers_chirho
+                .insert(identity_chirho, kind_chirho.clone());
+            self.kind_binder_specificity_chirho
+                .insert(identity_chirho, binder_chirho.specificity_chirho);
             if checking_chirho {
                 self.rigidify_kind_variables_chirho([identity_chirho]);
             }

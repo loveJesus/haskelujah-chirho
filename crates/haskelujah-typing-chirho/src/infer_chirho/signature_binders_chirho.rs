@@ -93,6 +93,11 @@ impl<'a> SignatureOccurrencesChirho<'a> {
                 fun_chirho,
                 arg_chirho,
                 ..
+            }
+            | TypeChirho::KindAppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
             } => {
                 self.type_chirho(fun_chirho);
                 self.type_chirho(arg_chirho);

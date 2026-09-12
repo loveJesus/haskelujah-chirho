@@ -648,6 +648,11 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
             fun_chirho,
             arg_chirho,
             ..
+        }
+        | TypeChirho::KindAppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
         } => {
             result_chirho.extend(type_con_names_chirho(fun_chirho));
             result_chirho.extend(type_con_names_chirho(arg_chirho));

@@ -55,6 +55,8 @@ pub enum TyChirho {
 
     /// Type application (`Maybe Int` = App(Con("Maybe"), Con("Int"))`).
     AppChirho(Box<TyChirho>, Box<TyChirho>),
+    /// A retained invisible kind argument, distinct from the ordinary type spine.
+    KindAppChirho(Box<TyChirho>, Box<TyChirho>),
 
     /// Function type (`a -> b` or `a %1 -> b`). Syntactically sugar for
     /// `App(App(Con("->"), a), b)`, but kept explicit for readability and fast matching.
@@ -182,7 +184,8 @@ impl TyChirho {
         match self {
             TyChirho::VarChirho(_) => true,
             TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
-            TyChirho::AppChirho(f_chirho, a_chirho) => {
+            TyChirho::AppChirho(f_chirho, a_chirho)
+            | TyChirho::KindAppChirho(f_chirho, a_chirho) => {
                 f_chirho.contains_var_chirho() || a_chirho.contains_var_chirho()
             }
             TyChirho::FunChirho(a_chirho, b_chirho, _) => {
@@ -207,7 +210,8 @@ impl TyChirho {
         match self {
             TyChirho::VarChirho(v_chirho) => out_chirho.push(*v_chirho),
             TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
-            TyChirho::AppChirho(f_chirho, a_chirho) => {
+            TyChirho::AppChirho(f_chirho, a_chirho)
+            | TyChirho::KindAppChirho(f_chirho, a_chirho) => {
                 f_chirho.collect_free_vars_chirho(out_chirho);
                 a_chirho.collect_free_vars_chirho(out_chirho);
             }
@@ -254,6 +258,9 @@ impl fmt::Display for TyChirho {
                 "{}",
                 crate::skolem_chirho::skolem_display_name_chirho(name_chirho)
             ),
+            TyChirho::KindAppChirho(fun_chirho, arg_chirho) => {
+                write!(f_chirho, "({fun_chirho} @{arg_chirho})")
+            }
             TyChirho::AppChirho(fun_chirho, arg_chirho) => {
                 write!(f_chirho, "({fun_chirho} {arg_chirho})")
             }
