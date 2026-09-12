@@ -323,3 +323,25 @@ landing. The full workspace execution and final two-pass gate remain owed.
 The next root under read-only review is open-family row ownership, dependency
 ordering and hidden-argument retention; no rows are registered speculatively.
 Main121d4f2c, canonical row484, corpus membership and public labels are unchanged.
+
+## Frozen occurrence diagnostic at a4260137
+
+Implementation a42601374f1f8654f7a44019d5858890958c1766 is pushed, remote exact.
+The explicit post-commit CLI has SHA256
+b70f1aabbc9e3d6c5862a56cbd8c970f4f3dde2e651d082f37db4db9dc127898.
+One diagnostic per axis, P4/15s with serial timeout reruns: accept878/938 and
+reject249/767, zero timeouts or unexpected exits. Source remained clean and the
+CLI hash was identical before/after both passes. This is not the final gate.
+
+All five focused recoveries survived: T12734a,T15772,T19682,T26256a,T7903.
+T18185 and T21473 newly fail, so the accept improvement is net3, not a clean
+repair. Versus main this is11 gains and15 losses: CoerceToVDQ,
+ControlMonadClassesState,T11348,T12381,T13879,T14010,T16204a,T16204b,T17067,
+T18129,T18185,T21473,T22560c,T23543,T26358. No failure is waived.
+
+Reject movement versus351 is+LazyFieldsDisabled and-T16502,-T24090a,-T24090b,
+-T24470a. These five movements are unaudited verdicts, not capability claims.
+Exact sets, deltas and hashes are in producers-chirho/occurrence-diagnostic-chirho.jsonl.
+Next: reduce the two new accept failures and audit the reject movement; repeat
+the full repaired-driver suite. Open-kind row registration stays behind that
+reduction. CPU embargo released, SLOT/DB retained, main/artifacts unchanged.
