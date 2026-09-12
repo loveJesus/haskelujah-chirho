@@ -72,14 +72,15 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-Latest corpus diagnostic1b742b11: accept880/938, nine main-relative regressions
-and seven gains; reject247/767, zero timeouts or unexpected exits. One pass per
-axis, not a final gate. These counts do not describe the current hidden-input fix.
-Current source stores typed family clauses with hidden matching inputs, follows
-published binder identities and retains list-kind annotations. Parser356,typing369,
-canaries7 green; integration113/114, existing classifier-annotation control red.
-Focused fresh CLI recovers T16502b/T25597; T21583 held. Seven other main-relative
-failures remain. Next: freeze/push and a new exact-set diagnostic; no main landing.
+Latest corpus diagnostic5280f1ff: accept880/938, ten main-relative regressions
+and eight gains; reject248/767, zero timeouts or unexpected exits. One pass per
+axis, not a final gate. Source checkpoint is pushed and remote-exact.
+Typed family clauses retain hidden inputs, published identities and list kinds.
+Parser356,typing369,canaries7 green; integration113/114, annotation control red.
+Driver--lib1760/1772; all twelve also fail on parentde8fa2ed, still lane blockers.
+Nine fresh GHC controls agree, five exact executions. Accept total unchanged but
+T16188/T16502b/T25597 recovered and ControlMonadClassesState/T18129/T20356 regressed.
+Next: reduce those failures and retained alias/equation classifiers; no main landing.
 Detail/reference evidence and next hidden-family-input decision:
 kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md. The earlier classifier
 repair and accidental UnliftedNewtypes rejection audit are in the22-20 leaf.

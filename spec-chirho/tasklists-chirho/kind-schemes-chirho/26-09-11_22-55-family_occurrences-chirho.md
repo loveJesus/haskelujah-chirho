@@ -146,7 +146,7 @@ imports and kind-level hidden-row reduction remain outside this result.
 - [ ] Integration113/114, zero ignored/filtered: only the existing legal
   ClassifierCycleChirho annotation control is red. It remains enabled unchanged.
   Driver--lib is running separately; full workspace tests remain owed.
-- [ ] Freeze/push owned checkpoint; measure exact corpus sets on the frozen CLI.
+- [x] Freeze/push5280f1ff, remote-exact; one diagnostic pass per axis completed.
 - [ ] Type-pattern ascriptions/promoted constructor indices, existing classifier
   control, kind-level open rows and all accept regressions remain open.
 
@@ -155,3 +155,53 @@ usize::MAX reducer wrapper is removed now that the type consumer calls a bounded
 single-row matcher; this is not the cause of the earlier T15552a abort. That abort
 was independently reduced to classifier recursion and fixed in the22-20 leaf.
 No main merge, canonical DB update, denominator/label edit or site deployment.
+
+## Hidden-input diagnostic and broader gate,2026-09-12 00:06EDT
+
+Source5280f1ff stayed clean throughout. Driver--lib completed1760/1772, zero
+ignored/filtered,885.49s. All twelve exact failures also failed on a freshly built
+parentde8fa2ed (0/12,1760 filtered in that focused A/B). That establishes only
+that5280 did not introduce these failures; all twelve remain row484 landing
+blockers. The earlier full green at45c4a108 is a bracket to preserve, not a reason
+to call these inherited. The failures concern imported/re-exported aliases,
+associated-family schemes and two real parsec source slices. Raw final diagnostics
+are hidden-family-{parent-,}driver-lib-chirho.log under the scratch directory.
+
+After restoring5280, explicit cargo build -p haskelujah relinked a different CLI.
+The old-hash provenance guard stopped BEFORE the first corpus file. No failed
+measurement was counted. Nine reference controls were rerun on the rebuilt CLI:
+all agree with GHC9.14.1, including five exact executions. Their sources, hashes,
+exits and output are committed in family-equations-chirho/hidden-inputs-chirho.jsonl.
+The corpus then used SHA256
+`78b0c5eb63303b62c4a2b455c6bc9efb86335a781c58b7a3b77efcbe576b021c`,
+unchanged before/after each axis. Diagnostic completed2026-09-12 00:05:53EDT;
+both axes have zero timeouts/unexpected exits. Evidence directories are
+diagnostic-hidden-family-inputs-{accept,reject}-chirho under the same scratch root.
+
+Accept880/938, reject248/767. Accept880->880 hides three recovered files and
+three new failures: T16188/T16502b/T25597 recover; ControlMonadClassesState,
+T18129,T20356 newly fail. Against main: eight gains (PolytypeDecomp,RuleEqs,
+SplitWD,T14451,T16188,T20922,T26256a,tc124), ten regressions (CoerceToVDQ,
+T12381,T13879,T14010,ControlMonadClassesState,T17067,T18129,T20356,T22560c,
+T26358). These are verdict movements, not ten independently validated features.
+T16188 still contains unrepresented data instances; acceptance is not execution
+or singleton-refinement proof. Main remains882/221; no final gate or landing.
+
+Reject delta from247: +ContextStack2,+VisFlag2,-T11347. ContextStack2 is a FALSE
+REJECTION on an equation-closure error at8:26: the file itself says it succeeds
+with the post2016 approach, and fresh GHC9.14.1 accepts it. It has no committed
+stderr oracle. VisFlag2's closure error at14:23 is not GHC's required/invisible
+forall-kind mismatch; both its committed stderr and fresh GHC9.14.1 name that
+visibility contract. Neither gain is bankable. T11347's old E0204 at19:18 is not
+the deriving representation-coercion error at6:41 (GHC9.14.1 GHC-10283; older
+committed stderr GHC-25897). The lost verdict was not proof of that deriving rule.
+Membership and all public labels are unchanged.
+
+The simple no-PolyKinds hypothesis for the import failures was refuted by source:
+the compiler defaults to GHC2021, which enables PolyKinds. Do not default away
+valid hidden binders to repair an imported contract. Next reduce the new three
+failures and alias/equation closure evidence before a new representation sweep.
+Observed additional lead: tuple kind inference returns Type when its common
+element classifier is unresolved, without constraining that classifier; retained
+family occurrences then expose the unsolved classifier as an unbound input.
+This is a hypothesis to prove with positive/negative controls, not a finished fix.
