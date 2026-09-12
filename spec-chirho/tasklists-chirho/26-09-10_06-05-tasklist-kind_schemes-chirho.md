@@ -72,14 +72,15 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-Latest frozen diagnostic3c56cf99 completed: accept884/938, five main-relative
-regressions; reject244/767, zero timeouts or unexpected exits. T11723/T13142/tc269
-recover and T15552a no longer aborts. UnliftedNewtypesMismatchedKindRecord loses
-an accidental E0101, not GHC's representation check; the genuine rule stays open.
-This is one diagnostic pass per axis, not a final gate. Main/artifacts/row484
-stay unchanged. Diagnostic detail: kind-schemes-chirho/26-09-11_22-20-classifier_provenance-chirho.md.
-The next consumer fixes T21583 in focused checks but exposes erased type-pattern
-kind ascriptions (driver110/111); see kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md.
+Latest frozen diagnostic1b742b11 completed: accept880/938, nine main-relative
+regressions and seven gains; reject247/767, zero timeouts or unexpected exits.
+T21583 recovers against3c56cf99; five files newly fail on missing family/annotation
+consumers. All three new reject gains are unearned by their GHC reasons. Driver
+integration remains110/111 with the legal classifier annotation control red.
+One diagnostic pass per axis, not a final gate. Main/artifacts/row484 unchanged.
+Detail/reference evidence and next hidden-family-input decision:
+kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md. The earlier classifier
+repair and accidental UnliftedNewtypes rejection audit are in the22-20 leaf.
 
 Visible-application checkpoint3bbcd49c is committed, pushed and remote-exact.
 Its recursive/local nominal follow-up f5c4eedb is also pushed and remote-exact;
