@@ -277,7 +277,9 @@ GHC2024-as-GHC2021 table approximation remains a named limitation.
   Parser356,typing369,naming136 and canaries7 pass; integration118/119 still
   fails only the enabled ClassifierCycle annotation control. Workspace all-target
   check passes without warnings; broad lint/structural debt is not cleared.
-- [ ] Freeze/push the rule with focused gates and exact reference evidence.
+- [x] Freeze/push43833550, remote-exact. Nineteen frozen GHC9.14.1 observations
+  agree, including the separate ordinary-alias and constraint-family controls.
+  Sources/hashes/diagnostics are in classifier-contracts-chirho/constraint-licenses-chirho.jsonl.
 - [ ] Continue authoritative imported classifier transport; all twelve driver
   regressions remain enabled and unresolved.
 
@@ -285,3 +287,35 @@ The Parsec reduction is measured, not repaired: imported Identity leaves a
 hidden classifier unclosed, while locally declared Identity and an explicitly
 Type-annotated forall binder both pass. GHC9.14.1 accepts all three. Do not alter
 the real fixture to force Type; retain its imported classifier contract instead.
+
+One diagnostic pass per axis completed2026-09-12 01:01:25EDT at43833550.
+Accept881/938: rejected list byte-identical to e1d76a55, so all eight gains and
+nine main-relative regressions retain their identities. Reject248/767: only
+change is +tcfail209, no losses. Its new E0206 at4:1 names ConstraintKinds,
+matching committed GHC-75844 and fresh GHC9.14.1 rather than the old use error.
+Both axes have zero timeouts and unexpected exits. Clean source and CLI SHA256
+e732510533721e1704e2d16bfeffeeba1c75c195dff0a3f81639dc8db7f80ac8
+held before/after each axis. Scratch evidence is under
+`/private/tmp/haskelujah-pragma-choices-chirho.0RhIIA/diagnostic-constraint-licenses-{accept,reject}-chirho/`.
+CPU embargo released; SLOT/DB remain ours. This is not a final two-pass gate and
+does not clear the twelve driver regressions or the enabled annotation failure.
+
+## Next imported-contract decision
+
+Retain a typing-owned semantic companion alongside naming's module interface:
+portable defining-module kind schemes and closed synonym bodies with ordinary
+and hidden parameters. The driver applies the existing export/re-export/import
+authority, seeds kinds BEFORE the receiving kind pass, and seeds closed aliases
+without reconstructing them from raw AST. No naming-to-typing dependency.
+Interface-only builtin modules need explicit authored semantic contracts, not
+inferred arities or a guessed Type classifier at an arbitrary unknown import.
+
+This is a reversible implementation decision, not permission to change corpus
+membership or the deferred declaration shapes. Confidence is high in the three
+Identity controls and in both discarded producer contracts; individual driver
+recoveries remain unproved. Keep old AST-only wrappers explicit until replaced,
+and prove qualified/selective imports, local shadowing, private dependencies,
+independent quantifier instantiation and alias use through re-exports. No claim
+that carrying metadata alone fixes the associated-family consumers. Put the
+transport/composition helpers in focused children; the existing oversized driver
+and kind roots are structural debt, not places for another large implementation.
