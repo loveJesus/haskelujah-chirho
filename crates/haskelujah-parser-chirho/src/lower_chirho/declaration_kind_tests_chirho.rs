@@ -4,6 +4,64 @@ use super::{DeclChirho, DeclKindSigChirho, FileIdChirho, TypeChirho, lower_modul
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
 #[test]
+fn infix_binder_annotations_keep_the_operator_operands_and_boundary_chirho() {
+    use super::AstKindChirho;
+    for keyword_chirho in ["data", "newtype"] {
+        let source_chirho = format!(
+            "module MChirho where\n{keyword_chirho} ProofChirho (proofChirho :: True :~: False) = ProofChirho Int\nafterChirho :: MissingChirho\nafterChirho = ()\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let module_chirho = lower_module_chirho(
+            &parse_to_cst_chirho(&source_chirho, file_chirho),
+            file_chirho,
+        );
+        let binders_chirho = match &module_chirho.decls_chirho[0] {
+            DeclChirho::DataDeclChirho {
+                type_vars_chirho,
+                kind_sig_chirho,
+                ..
+            }
+            | DeclChirho::NewtypeDeclChirho {
+                type_vars_chirho,
+                kind_sig_chirho,
+                ..
+            } => {
+                assert!(kind_sig_chirho.is_none(), "the kind belongs to the binder");
+                type_vars_chirho
+            }
+            other_chirho => panic!("{other_chirho:?}"),
+        };
+        assert_eq!(binders_chirho.len(), 1);
+        let Some(AstKindChirho::AppChirho(left_chirho, right_chirho)) =
+            &binders_chirho[0].kind_annotation_chirho
+        else {
+            panic!("the infix annotation must survive: {binders_chirho:?}")
+        };
+        let AstKindChirho::AppChirho(operator_chirho, left_chirho) = left_chirho.as_ref() else {
+            panic!("the operator must keep both arguments")
+        };
+        for (kind_chirho, text_chirho) in [
+            (operator_chirho.as_ref(), ":~:"),
+            (left_chirho.as_ref(), "True"),
+            (right_chirho.as_ref(), "False"),
+        ] {
+            let AstKindChirho::ConChirho(name_chirho) = kind_chirho else {
+                panic!("expected nominal kind {text_chirho}")
+            };
+            assert_eq!(name_chirho.text_chirho(), text_chirho);
+            let span_chirho = name_chirho.span_chirho();
+            assert_eq!(
+                &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+                    ..span_chirho.end_chirho().as_usize_chirho()],
+                text_chirho
+            );
+        }
+        assert!(module_chirho.decls_chirho.iter().any(|decl_chirho| matches!(decl_chirho,
+            DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "afterChirho")));
+    }
+}
+
+#[test]
 fn forall_annotation_retains_its_invisible_argument_chirho() {
     use super::AstKindChirho;
     let source_chirho = "module MChirho where\nfChirho :: forall (aChirho :: ProxyChirho @MissingKindChirho Int). Int\nfChirho = 1\n";

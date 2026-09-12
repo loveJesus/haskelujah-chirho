@@ -114,6 +114,109 @@ impl InferCtxChirho {
         self.expand_syn_chirho(ty_chirho, 0)
     }
 
+    /// A stored forall is a template binder, not an identity shared by its
+    /// uses. Freshen only when source conversion introduces an expansion;
+    /// normalization of an already-converted type must remain idempotent.
+    pub(super) fn expand_source_type_synonyms_chirho(&mut self, ty_chirho: &TyChirho) -> TyChirho {
+        let expanded_chirho = self.expand_type_synonyms_chirho(ty_chirho);
+        if expanded_chirho == *ty_chirho {
+            return expanded_chirho;
+        }
+        self.freshen_synonym_binders_chirho(&expanded_chirho, &mut HashMap::new())
+    }
+
+    fn freshen_synonym_binders_chirho(
+        &mut self,
+        ty_chirho: &TyChirho,
+        bindings_chirho: &mut HashMap<TyVarChirho, TyVarChirho>,
+    ) -> TyChirho {
+        match ty_chirho {
+            TyChirho::VarChirho(variable_chirho) => TyChirho::VarChirho(
+                bindings_chirho
+                    .get(variable_chirho)
+                    .copied()
+                    .unwrap_or(*variable_chirho),
+            ),
+            TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => ty_chirho.clone(),
+            TyChirho::AppChirho(fun_chirho, argument_chirho)
+            | TyChirho::KindAppChirho(fun_chirho, argument_chirho) => {
+                let fun_chirho =
+                    Box::new(self.freshen_synonym_binders_chirho(fun_chirho, bindings_chirho));
+                let argument_chirho =
+                    Box::new(self.freshen_synonym_binders_chirho(argument_chirho, bindings_chirho));
+                if matches!(ty_chirho, TyChirho::KindAppChirho(..)) {
+                    TyChirho::KindAppChirho(fun_chirho, argument_chirho)
+                } else {
+                    TyChirho::AppChirho(fun_chirho, argument_chirho)
+                }
+            }
+            TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
+                TyChirho::FunChirho(
+                    Box::new(self.freshen_synonym_binders_chirho(argument_chirho, bindings_chirho)),
+                    Box::new(self.freshen_synonym_binders_chirho(result_chirho, bindings_chirho)),
+                    *multiplicity_chirho,
+                )
+            }
+            TyChirho::ListChirho(element_chirho) => TyChirho::ListChirho(Box::new(
+                self.freshen_synonym_binders_chirho(element_chirho, bindings_chirho),
+            )),
+            TyChirho::TupleChirho(elements_chirho) => TyChirho::TupleChirho(
+                elements_chirho
+                    .iter()
+                    .map(|element_chirho| {
+                        self.freshen_synonym_binders_chirho(element_chirho, bindings_chirho)
+                    })
+                    .collect(),
+            ),
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                let mut fresh_chirho = Vec::with_capacity(vars_chirho.len());
+                let mut prior_chirho = Vec::with_capacity(vars_chirho.len());
+                for variable_chirho in vars_chirho {
+                    let replacement_chirho = TyVarChirho(self.next_var_chirho);
+                    self.next_var_chirho += 1;
+                    if let Some(name_chirho) =
+                        self.tyvar_source_names_chirho.get(variable_chirho).cloned()
+                    {
+                        self.tyvar_source_names_chirho
+                            .insert(replacement_chirho, name_chirho);
+                    }
+                    fresh_chirho.push(replacement_chirho);
+                    prior_chirho.push((
+                        *variable_chirho,
+                        bindings_chirho.insert(*variable_chirho, replacement_chirho),
+                    ));
+                }
+                let body_chirho =
+                    Box::new(self.freshen_synonym_binders_chirho(body_chirho, bindings_chirho));
+                for (variable_chirho, previous_chirho) in prior_chirho.into_iter().rev() {
+                    if let Some(previous_chirho) = previous_chirho {
+                        bindings_chirho.insert(variable_chirho, previous_chirho);
+                    } else {
+                        bindings_chirho.remove(&variable_chirho);
+                    }
+                }
+                if matches!(ty_chirho, TyChirho::RequiredForallChirho { .. }) {
+                    TyChirho::RequiredForallChirho {
+                        vars_chirho: fresh_chirho,
+                        body_chirho,
+                    }
+                } else {
+                    TyChirho::ForallChirho {
+                        vars_chirho: fresh_chirho,
+                        body_chirho,
+                    }
+                }
+            }
+        }
+    }
+
     fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
         if depth_chirho > 100 {
             return ty_chirho.clone();

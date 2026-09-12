@@ -313,7 +313,7 @@ impl KindEnvChirho {
         let classifier_chirho = KindChirho::VarChirho(KindVarChirho(10_020));
         let value_chirho = KindChirho::VarChirho(KindVarChirho(10_021));
         let equality_kind_chirho = KindChirho::arrow_n_chirho(
-            [classifier_chirho.clone(), classifier_chirho],
+            [classifier_chirho.clone(), classifier_chirho.clone()],
             KindChirho::StarChirho,
         );
         let reflexivity_chirho = KindChirho::app_chirho(
@@ -326,8 +326,15 @@ impl KindEnvChirho {
         for name_chirho in [":~:", "Data.Type.Equality.:~:"] {
             self.bind_generalized_chirho(name_chirho.to_owned(), equality_kind_chirho.clone());
         }
+        let reflexivity_scheme_chirho = KindSchemeChirho {
+            quantified_chirho: vec![KindVarChirho(10_020), KindVarChirho(10_021)],
+            specified_chirho: [KindVarChirho(10_021)].into_iter().collect(),
+            classifiers_chirho: vec![KindChirho::StarChirho, classifier_chirho],
+            source_names_chirho: vec![None, None],
+            body_chirho: reflexivity_chirho,
+        };
         for name_chirho in ["Refl", "Data.Type.Equality.Refl"] {
-            self.bind_promoted_generalized_chirho(name_chirho, reflexivity_chirho.clone());
+            self.bind_promoted_scheme_chirho(name_chirho, reflexivity_scheme_chirho.clone());
         }
     }
 
@@ -336,9 +343,20 @@ impl KindEnvChirho {
         name_chirho: &str,
         kind_chirho: KindChirho,
     ) {
+        self.bind_promoted_scheme_chirho(
+            name_chirho,
+            KindSchemeChirho::generalize_chirho(kind_chirho),
+        );
+    }
+
+    pub(super) fn bind_promoted_scheme_chirho(
+        &mut self,
+        name_chirho: &str,
+        scheme_chirho: KindSchemeChirho,
+    ) {
         self.promoted_bindings_chirho.insert(
             name_chirho.to_owned(),
-            KindBindingChirho::PolyChirho(KindSchemeChirho::generalize_chirho(kind_chirho)),
+            KindBindingChirho::PolyChirho(scheme_chirho),
         );
     }
 

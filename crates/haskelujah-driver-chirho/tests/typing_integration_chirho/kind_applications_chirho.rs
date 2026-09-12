@@ -81,6 +81,64 @@ fn rejection_chirho(source_chirho: &str) -> String {
 }
 
 #[test]
+fn nested_synonym_foralls_are_fresh_and_still_rigid_chirho() {
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes #-}
+module Main where
+type ResultChirho valueChirho = forall argumentChirho. argumentChirho -> valueChirho
+answerChirho :: ResultChirho (ResultChirho Int)
+answerChirho firstChirho secondChirho = 42
+main = print (answerChirho 'c' True)
+"#;
+    assert_execution_chirho(source_chirho, "42\n");
+    let wrong_chirho = source_chirho.replace(
+        "secondChirho = 42",
+        "secondChirho = if secondChirho then 42 else 0",
+    );
+    assert!(rejection_chirho(&wrong_chirho).contains("type mismatch"));
+    let lambda_chirho = source_chirho.replace(
+        "answerChirho firstChirho secondChirho = 42",
+        "answerChirho = \\firstChirho secondChirho -> 42",
+    );
+    assert_execution_chirho(&lambda_chirho, "42\n");
+    let wrong_lambda_chirho = lambda_chirho.replace(
+        "secondChirho -> 42",
+        "secondChirho -> if secondChirho then 42 else 0",
+    );
+    assert!(rejection_chirho(&wrong_lambda_chirho).contains("type mismatch"));
+}
+
+#[test]
+fn inferred_hidden_arguments_solve_their_dependent_classifiers_chirho() {
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds #-}
+module Main where
+data ProxyChirho (valueChirho :: kindChirho) = ProxyChirho
+data TagChirho (indexChirho :: ProxyChirho valueChirho) = TagChirho Int
+type PairChirho (leftChirho :: ProxyChirho Either) (rightChirho :: ProxyChirho Maybe) = (TagChirho leftChirho, TagChirho rightChirho)
+readChirho :: PairChirho 'ProxyChirho 'ProxyChirho -> Int
+readChirho (TagChirho leftChirho, TagChirho rightChirho) = leftChirho + rightChirho
+main = print (readChirho (TagChirho 40, TagChirho 2))
+"#;
+    assert_execution_chirho(source_chirho, "42\n");
+}
+
+#[test]
+fn promoted_reflexivity_retains_the_kind_of_its_value_chirho() {
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, TypeOperators #-}
+module PromotedReflexivityChirho where
+import Data.Type.Equality
+data ProofChirho (proofChirho :: True :~: True)
+keepChirho :: ProofChirho Refl -> ProofChirho Refl
+keepChirho valueChirho = valueChirho
+"#;
+    assert_compile_success_chirho("PromotedReflexivityChirho.hs", source_chirho);
+    let wrong_chirho = source_chirho.replace("True :~: True", "True :~: False");
+    assert!(rejection_chirho(&wrong_chirho).contains("kind mismatch"));
+}
+
+#[test]
 fn visible_kind_argument_selects_the_family_classifier_chirho() {
     assert_compile_success_chirho("FamilyKindApplicationsChirho.hs", FAMILY_CHIRHO);
     let wrong_chirho = FAMILY_CHIRHO.replace("BoxChirho @Type Maybe", "BoxChirho @Type Int");

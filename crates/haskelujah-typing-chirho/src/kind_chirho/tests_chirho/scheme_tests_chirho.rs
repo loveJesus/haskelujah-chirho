@@ -3,6 +3,63 @@
 use super::*;
 
 #[test]
+fn inferred_kind_arguments_solve_classifiers_without_sharing_occurrences_chirho() {
+    let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    let kind_chirho = KindVarChirho(200);
+    let value_chirho = KindVarChirho(201);
+    let scheme_chirho = KindSchemeChirho {
+        quantified_chirho: vec![kind_chirho, value_chirho],
+        specified_chirho: [kind_chirho, value_chirho].into_iter().collect(),
+        classifiers_chirho: vec![KindChirho::StarChirho, KindChirho::VarChirho(kind_chirho)],
+        source_names_chirho: vec![None, None],
+        body_chirho: KindChirho::arrow_chirho(
+            KindChirho::VarChirho(value_chirho),
+            KindChirho::StarChirho,
+        ),
+    };
+    let (_, first_chirho) = context_chirho.open_kind_scheme_parts_chirho(&scheme_chirho, false);
+    let (_, second_chirho) = context_chirho.open_kind_scheme_parts_chirho(&scheme_chirho, false);
+    context_chirho.unify_chirho(
+        &first_chirho[1],
+        &KindChirho::ConChirho("Either".into()),
+        "inferred argument",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    context_chirho.unify_chirho(
+        &second_chirho[1],
+        &KindChirho::ConChirho("Int".into()),
+        "independent argument",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert_eq!(
+        context_chirho.subst_chirho.apply_chirho(&first_chirho[0]),
+        KindChirho::arrow_n_chirho(
+            [KindChirho::StarChirho, KindChirho::StarChirho],
+            KindChirho::StarChirho
+        )
+    );
+    assert_eq!(
+        context_chirho.subst_chirho.apply_chirho(&second_chirho[0]),
+        KindChirho::StarChirho
+    );
+    assert!(!context_chirho.diagnostics_chirho.has_errors_chirho());
+    let (_, invalid_chirho) = context_chirho.open_kind_scheme_parts_chirho(&scheme_chirho, false);
+    context_chirho.unify_chirho(
+        &invalid_chirho[0],
+        &KindChirho::StarChirho,
+        "fixed classifier",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    context_chirho.unify_chirho(
+        &invalid_chirho[1],
+        &KindChirho::ConChirho("Either".into()),
+        "wrong inferred argument",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(context_chirho.diagnostics_chirho.has_errors_chirho());
+}
+
+#[test]
 fn opaque_promoted_occurrences_neither_capture_each_other_nor_type_names_chirho() {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
     let name_chirho = haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(

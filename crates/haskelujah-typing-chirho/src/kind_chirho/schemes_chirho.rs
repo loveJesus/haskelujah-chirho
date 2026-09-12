@@ -332,23 +332,32 @@ impl KindInferCtxChirho {
                 .insert(*variable_chirho, kind_chirho.clone());
             arguments_chirho.push(kind_chirho);
         }
+        let binders_chirho: Vec<_> = arguments_chirho
+            .into_iter()
+            .enumerate()
+            .map(|(index_chirho, argument_chirho)| OpenKindBinderChirho {
+                argument_chirho,
+                classifier_chirho: replacement_chirho.apply_chirho(&apply_scoped_subst_chirho(
+                    &scheme_chirho.classifiers_chirho[index_chirho],
+                    &self.subst_chirho,
+                    &bound_chirho,
+                )),
+                specified_chirho: scheme_chirho
+                    .specified_chirho
+                    .contains(&scheme_chirho.quantified_chirho[index_chirho]),
+            })
+            .collect();
+        for binder_chirho in &binders_chirho {
+            if let KindChirho::VarChirho(identity_chirho)
+            | KindChirho::RigidChirho(identity_chirho) = &binder_chirho.argument_chirho
+            {
+                self.kind_binder_classifiers_chirho
+                    .insert(*identity_chirho, binder_chirho.classifier_chirho.clone());
+            }
+        }
         (
             replacement_chirho.apply_chirho(&body_chirho),
-            arguments_chirho
-                .into_iter()
-                .enumerate()
-                .map(|(index_chirho, argument_chirho)| OpenKindBinderChirho {
-                    argument_chirho,
-                    classifier_chirho: replacement_chirho.apply_chirho(&apply_scoped_subst_chirho(
-                        &scheme_chirho.classifiers_chirho[index_chirho],
-                        &self.subst_chirho,
-                        &bound_chirho,
-                    )),
-                    specified_chirho: scheme_chirho
-                        .specified_chirho
-                        .contains(&scheme_chirho.quantified_chirho[index_chirho]),
-                })
-                .collect(),
+            binders_chirho,
         )
     }
 

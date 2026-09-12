@@ -90,8 +90,13 @@ observations agree, six in execution mode, with sources and binary hashes retain
 beside the visible-application fixtures. The diagnostic confirms recovery of
 DeepSubsumption02, GivenTypeSynonym, LocalGivenEqs and tc151, but newly loses
 T12928 and tc160. Reduce those two before the next family-equation consumer repair.
-The checkpoint is not a compatibility landing; regression repair, full workspace,
-final two-pass gate and DB closure remain owed. Latest detail is at the file's end.
+The synonym-identity/classifier follow-up now recovers T12928 and tc160 on the
+explicit rebuilt CLI. Parser354, typing367, integration107 and canaries7 pass;
+34 bounded GHC/candidate observations agree, nine exact execution pairs. The
+new inferred-classifier producer checks and bounded annotation lowering still
+need a full frozen diagnostic. The checkpoint is not a compatibility landing;
+full workspace tests, final two-pass gate and DB closure remain owed. Latest
+detail is at the file's end.
 
 ### Historical prototype baseline
 
@@ -1437,3 +1442,35 @@ The runner, full sets and per-file logs are under
 `/private/tmp/haskelujah-visible-kind-app-chirho.X3Kq8n/diagnostic-synonym-contracts-{accept,reject}-chirho/`;
 the runner log also records exact HEAD9720465cd21a95ddcccf172bccd00cd2be4c0474
 and CLI hash above. CPU embargo released in broker22185; row484 remains open.
+
+### Synonym identities and inferred kind classifiers
+
+tc160 reused a stored forall identity at nested source uses. Source expansion
+now freshens template binders lexically; normalization stays idempotent. Its
+GHC-accepted reduction prints42 on all three engines. A Bool-specializing mutation
+then exposed flexible stripping of an expected result forall: equations and
+lambdas now open those binders rigidly. Both negative forms reject for type mismatch.
+
+T12928 had inferred nominal kind arguments whose classifiers were not constrained.
+Opened scheme parameters now retain their classifiers; only newly solved equality
+entries are checked against authoritative known term contracts. The dependent
+synonym control prints42 on all three engines. Arrow representation binders and
+promoted GADT schemes needed their real classifiers, not generic Type defaults.
+Refl now separates its inferred kind from its specified value parameter.
+
+The reflexivity negative initially passed because flat head lowering DROPPED its
+`True :~: False` annotation. Measured AST trace: kind_annotation=None. The original
+positive/negative source is unchanged; the bounded binder now uses shared flat
+type lowering. Its helper moved out of the oversized lowering root, replacing
+the smaller duplicate kind parser. Operator, operands, spans and following
+signature are pinned as the parser contract. Unsupported list/promoted AstKind
+forms remain named limitations, not claimed support. Temporary traces removed.
+
+Gates: parser354, typing367, integration107, canaries7, zero ignored/filtered;
+workspace all-target check0, explicit CLI build0. Reference JSONL now1 metadata
+plus34 observations, including9 exact execution pairs, all GHC9.14.1/candidate
+verdicts agree. CLI SHA256 117bb4d1af6e671fa0f485d0b5c655f75759fdadb99d591b2f739afc08eff1e5.
+Typing clippy0 still reports103 warning messages including duplicates; it is NOT
+warning-free. Actual focused T12928/tc160 recover; the other five main-relative
+regressions remain. Freeze/push, then measure exact corpus sets before proceeding
+to family-equation consumers. Main, public artifacts and canonical row484 unchanged.

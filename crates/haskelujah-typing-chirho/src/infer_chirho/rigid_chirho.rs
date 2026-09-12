@@ -8,6 +8,39 @@
 use super::*;
 
 impl InferCtxChirho {
+    /// A pattern consumes an expected arrow, not its universal quantifier.
+    /// Foralls encountered on the result spine are opened rigidly for checking;
+    /// argument-position polymorphism and any unconsumed result stay intact.
+    pub(super) fn split_expected_fun_ty_for_arity_chirho(
+        &mut self,
+        ty_chirho: &TyChirho,
+        arity_chirho: usize,
+    ) -> Option<(Vec<TyChirho>, TyChirho)> {
+        let mut current_chirho = ty_chirho.clone();
+        let mut parameters_chirho = Vec::with_capacity(arity_chirho);
+        for _index_chirho in 0..arity_chirho {
+            while let TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } = current_chirho
+            {
+                current_chirho = self
+                    .skolemize_scheme_parts_chirho(&SchemeChirho {
+                        vars_chirho,
+                        preds_chirho: Vec::new(),
+                        ty_chirho: *body_chirho,
+                    })
+                    .0;
+            }
+            let TyChirho::FunChirho(argument_chirho, result_chirho, _) = current_chirho else {
+                return None;
+            };
+            parameters_chirho.push(*argument_chirho);
+            current_chirho = *result_chirho;
+        }
+        Some((parameters_chirho, current_chirho))
+    }
+
     /// Instantiate a signature scheme for CHECKING a binding against it:
     /// every quantified variable becomes a rigid skolem, so the body may use
     /// the variable but can never decide what it is (`f :: a -> a; f x = x + 1`

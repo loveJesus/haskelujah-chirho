@@ -530,6 +530,7 @@ impl KindInferCtxChirho {
         ) {
             Ok(s_chirho) => {
                 self.subst_chirho = s_chirho.compose_chirho(&self.subst_chirho);
+                self.check_solved_kind_classifiers_chirho(&s_chirho, context_chirho, span_chirho);
             }
             Err(err_chirho) => {
                 let (msg_chirho, span_chirho, code_chirho) = match err_chirho {

@@ -53,7 +53,7 @@ impl InferCtxChirho {
         if let Some(ty_chirho) =
             self.elaborated_head_application_chirho(ast_ty_chirho, var_map_chirho)
         {
-            return self.expand_type_synonyms_chirho(&ty_chirho);
+            return self.expand_source_type_synonyms_chirho(&ty_chirho);
         }
         match ast_ty_chirho {
             TypeChirho::VarChirho(name_chirho) => {
@@ -75,7 +75,7 @@ impl InferCtxChirho {
                     self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho());
                 let raw_chirho = TyChirho::ConChirho(text_chirho);
                 // Eagerly expand nullary type synonyms (e.g. String → [Char])
-                self.expand_type_synonyms_chirho(&raw_chirho)
+                self.expand_source_type_synonyms_chirho(&raw_chirho)
             }
             TypeChirho::AppChirho {
                 fun_chirho,
@@ -86,7 +86,7 @@ impl InferCtxChirho {
                 let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
                 let raw_chirho = TyChirho::AppChirho(Box::new(f_chirho), Box::new(a_chirho));
                 // Expand parameterised type synonyms (e.g. Pair Int → (Int, Int))
-                let expanded_chirho = self.expand_type_synonyms_chirho(&raw_chirho);
+                let expanded_chirho = self.expand_source_type_synonyms_chirho(&raw_chirho);
                 // Reduce type family applications (e.g. F Int → Bool)
                 self.reduce_type_families_in_ty_chirho(&expanded_chirho)
             }

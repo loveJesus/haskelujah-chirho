@@ -129,14 +129,20 @@ impl KindInferCtxChirho {
                             self.promoted_gadt_signature_chirho(ty_chirho)
                     {
                         let promoted_chirho = self.subst_chirho.apply_chirho(&promoted_chirho);
-                        self.env_chirho.bind_promoted_generalized_chirho(
+                        let variables_chirho = promoted_chirho.free_vars_chirho();
+                        let scheme_chirho = self.bind_source_kind_scheme_chirho(
+                            promoted_chirho,
+                            variables_chirho.clone(),
+                            &variables_chirho.into_iter().collect(),
+                        );
+                        self.env_chirho.bind_promoted_scheme_chirho(
                             name_chirho.text_chirho(),
-                            promoted_chirho.clone(),
+                            scheme_chirho.clone(),
                         );
                         if let Some(module_chirho) = &self.local_kind_module_chirho {
-                            self.env_chirho.bind_promoted_generalized_chirho(
+                            self.env_chirho.bind_promoted_scheme_chirho(
                                 &format!("{module_chirho}.{}", name_chirho.text_chirho()),
-                                promoted_chirho,
+                                scheme_chirho,
                             );
                         }
                     }

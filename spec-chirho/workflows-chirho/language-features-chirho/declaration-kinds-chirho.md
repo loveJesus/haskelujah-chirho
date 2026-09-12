@@ -42,6 +42,12 @@ declaration's first `::`; nested forall-binder annotations must survive it.
 The cache swap is
 O(1); this does not claim the whole module kind pass is linear.
 
+Parenthesized head-binder annotations are bounded by their own closing parenthesis
+and use the same flat type lowering as declaration signatures. An infix annotation
+such as `True :~: False` must retain the operator and both operands, not silently
+become an unannotated binder. The bounded helper lives with kind-annotation lowering;
+list and explicitly promoted AstKind forms still have the limitations named below.
+
 Without a complete standalone contract the no-inline default is Type. The
 isolated runtime-kind continuation lets a complete contract determine the
 result's TYPE representation, but never invents another head argument. GHC 9.14.1
@@ -557,6 +563,20 @@ is decided before traversing arguments; an undersaturated spine is rebuilt once,
 not re-expanded at every prefix. Imported synonyms keep their existing contract;
 this local elaboration does not invent missing imported kind metadata.
 
+Source expansion freshens each stored forall binder lexically, including nested
+aliases, before any use can enter the rigid checking map. Normalization of an
+already-converted type remains idempotent and does not allocate another binder.
+Checking equations and lambdas opens expected result-spine foralls rigidly while
+consuming pattern arguments; it cannot strip the binder and specialize it to Bool.
+
+An opened invisible kind parameter retains its classifier even when the argument
+is inferred. Each newly solved equality checks that classifier using known local
+or builtin term contracts, and propagates it across unresolved variable aliases.
+It visits the new substitution entries, not the entire growing environment.
+Runtime-polymorphic arrow binders therefore carry RuntimeRep, promoted GADT schemes
+keep their source classifiers, and Refl quantifies its inferred kind separately
+from its specified value. Unknown imports and open bound terms remain unproved.
+
 Annotation checking must constrain the expression's classifier to Type, not only
 compute and discard it. In Haskell2010/NoPolyKinds publication, defaulting updates
 the identities shared by the body, pending applications and binder discovery;
@@ -568,7 +588,11 @@ flowchart LR
   AliasBodyChirho --> AliasTemplateChirho[Close declaration-local parameters]
   AliasUseChirho[Ordinary and invisible use arguments] --> AliasExpandChirho[Simultaneous saturated expansion]
   AliasTemplateChirho --> AliasExpandChirho
-  AliasExpandChirho --> AliasEqualityChirho[Compare fully indexed types]
+  AliasExpandChirho --> AliasFreshChirho[Fresh lexical forall identities at source introduction]
+  AliasFreshChirho --> AliasRigidChirho[Open expected result quantifiers rigidly]
+  AliasRigidChirho --> AliasEqualityChirho[Compare fully indexed types]
+  SolvedIndexChirho[Inferred invisible argument equality] --> CheckClassifierChirho[Unify its retained classifier]
+  CheckClassifierChirho --> AliasTemplateChirho
 ```
 
 Not complete: family equation indices, imported constructor schemes and

@@ -5199,8 +5199,8 @@ impl InferCtxChirho {
                     match_chirho
                 })
                 .collect();
-            let Some((param_tys_chirho, result_ty_chirho)) =
-                Self::split_fun_ty_for_arity_chirho(&required_body_chirho, term_arity_chirho)
+            let Some((param_tys_chirho, result_ty_chirho)) = self
+                .split_expected_fun_ty_for_arity_chirho(&required_body_chirho, term_arity_chirho)
             else {
                 return self.infer_matches_chirho(matches_chirho, span_chirho);
             };
@@ -5237,7 +5237,7 @@ impl InferCtxChirho {
             return self.infer_matches_chirho(matches_chirho, span_chirho);
         }
         if let Some((param_tys_chirho, result_ty_chirho)) =
-            Self::split_fun_ty_for_arity_chirho(expected_ty_chirho, arity_chirho)
+            self.split_expected_fun_ty_for_arity_chirho(expected_ty_chirho, arity_chirho)
         {
             self.infer_matches_with_seed_chirho(
                 matches_chirho,
@@ -5313,7 +5313,7 @@ impl InferCtxChirho {
     ) -> Option<(SubstChirho, TyChirho)> {
         let arity_chirho = pats_chirho.len();
         let (param_tys_chirho, result_ty_chirho) =
-            Self::split_fun_ty_for_arity_chirho(expected_ty_chirho, arity_chirho)?;
+            self.split_expected_fun_ty_for_arity_chirho(expected_ty_chirho, arity_chirho)?;
         Some(self.infer_lambda_with_seed_chirho(
             pats_chirho,
             body_chirho,

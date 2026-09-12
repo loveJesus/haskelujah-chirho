@@ -48,6 +48,131 @@ pub(super) fn builtin_term_chirho(name_chirho: &str) -> Option<KindChirho> {
 }
 
 impl KindInferCtxChirho {
+    /// Inference of an invisible argument must respect its binder classifier
+    /// just as an explicit @ argument does. Visit only newly solved identities,
+    /// never scan all earlier applications or the module environment.
+    pub(super) fn check_solved_kind_classifiers_chirho(
+        &mut self,
+        substitution_chirho: &super::KindSubstChirho,
+        context_chirho: &str,
+        span_chirho: SpanChirho,
+    ) {
+        for (identity_chirho, term_chirho) in &substitution_chirho.map_chirho {
+            let Some(expected_chirho) = self
+                .kind_binder_classifiers_chirho
+                .get(identity_chirho)
+                .cloned()
+            else {
+                continue;
+            };
+            let term_chirho = self.subst_chirho.apply_chirho(term_chirho);
+            if let KindChirho::VarChirho(target_chirho) | KindChirho::RigidChirho(target_chirho) =
+                &term_chirho
+            {
+                self.kind_binder_classifiers_chirho
+                    .entry(*target_chirho)
+                    .or_insert_with(|| expected_chirho.clone());
+            }
+            if let Some(actual_chirho) =
+                self.known_kind_term_classifier_chirho(&term_chirho, span_chirho)
+            {
+                self.unify_chirho(
+                    &expected_chirho,
+                    &actual_chirho,
+                    context_chirho,
+                    span_chirho,
+                );
+            }
+        }
+    }
+
+    /// Classify already-interpreted terms from authoritative bindings only.
+    /// Unknown/imported heads and open de Bruijn terms remain unproved; no
+    /// classifier is manufactured for them. Source validation remains separate.
+    fn known_kind_term_classifier_chirho(
+        &mut self,
+        term_chirho: &KindChirho,
+        span_chirho: SpanChirho,
+    ) -> Option<KindChirho> {
+        let term_chirho = self.subst_chirho.apply_chirho(term_chirho);
+        let mut head_chirho = &term_chirho;
+        let mut arguments_chirho = Vec::new();
+        while let KindChirho::AppChirho(fun_chirho, argument_chirho)
+        | KindChirho::KindAppChirho(fun_chirho, argument_chirho) = head_chirho
+        {
+            arguments_chirho.push((
+                argument_chirho.as_ref(),
+                matches!(head_chirho, KindChirho::KindAppChirho(..)),
+            ));
+            head_chirho = fun_chirho;
+        }
+        let mut hidden_chirho = Vec::new();
+        let mut classifier_chirho = match head_chirho {
+            KindChirho::StarChirho
+            | KindChirho::ConstraintChirho
+            | KindChirho::ArrowChirho(..)
+            | KindChirho::DependentChirho { .. } => KindChirho::StarChirho,
+            KindChirho::VarChirho(identity_chirho) | KindChirho::RigidChirho(identity_chirho) => {
+                self.kind_binder_classifiers_chirho
+                    .get(identity_chirho)?
+                    .clone()
+            }
+            KindChirho::ConChirho(name_chirho) => {
+                let binding_chirho = self
+                    .env_chirho
+                    .lookup_binding_chirho(name_chirho)
+                    .or_else(|| self.env_chirho.lookup_promoted_binding_chirho(name_chirho))?
+                    .clone();
+                match binding_chirho {
+                    super::KindBindingChirho::MonoChirho(kind_chirho) => kind_chirho,
+                    super::KindBindingChirho::PolyChirho(scheme_chirho) => {
+                        let (body_chirho, indices_chirho) =
+                            self.open_kind_scheme_parts_chirho(&scheme_chirho, false);
+                        hidden_chirho = scheme_chirho
+                            .quantified_chirho
+                            .iter()
+                            .zip(indices_chirho)
+                            .filter_map(|(identity_chirho, argument_chirho)| {
+                                scheme_chirho
+                                    .specified_chirho
+                                    .contains(identity_chirho)
+                                    .then_some(argument_chirho)
+                            })
+                            .collect();
+                        body_chirho
+                    }
+                }
+            }
+            KindChirho::BoundChirho(_) => return None,
+            KindChirho::AppChirho(..) | KindChirho::KindAppChirho(..) => {
+                unreachable!("application spine was collected")
+            }
+        };
+        let mut hidden_chirho = hidden_chirho.into_iter();
+        for (argument_chirho, invisible_chirho) in arguments_chirho.into_iter().rev() {
+            if invisible_chirho {
+                let parameter_chirho = hidden_chirho.next()?;
+                self.unify_chirho(
+                    &parameter_chirho,
+                    argument_chirho,
+                    "inferred kind argument",
+                    span_chirho,
+                );
+            } else {
+                let argument_classifier_chirho =
+                    self.known_kind_term_classifier_chirho(argument_chirho, span_chirho)?;
+                classifier_chirho = self.consume_kind_argument_chirho(
+                    classifier_chirho,
+                    &argument_classifier_chirho,
+                    Some(argument_chirho),
+                    span_chirho,
+                    "inferred kind argument",
+                );
+            }
+        }
+        Some(self.subst_chirho.apply_chirho(&classifier_chirho))
+    }
+
     /// GHC does not infer representation polymorphism. Default only unsolved
     /// representation/levity holes, not names retained from source annotations.
     /// Visit this inference group's kind terms, not the module-wide environment.
@@ -288,14 +413,19 @@ impl KindEnvChirho {
         }
         // A prefix function arrow has the same representation-polymorphic
         // domains as a syntactic function type. Boxed [] remains Type -> Type.
-        self.bind_generalized_chirho(
+        let arrow_body_chirho = KindChirho::arrow_n_chirho(
+            [10_010, 10_011].map(|identity_chirho| {
+                runtime_type_chirho(KindChirho::VarChirho(KindVarChirho(identity_chirho)))
+            }),
+            KindChirho::StarChirho,
+        );
+        let mut arrow_scheme_chirho = super::KindSchemeChirho::generalize_chirho(arrow_body_chirho);
+        arrow_scheme_chirho
+            .classifiers_chirho
+            .fill(builtin_term_chirho("RuntimeRep").unwrap());
+        self.bind_entry_chirho(
             "->".into(),
-            KindChirho::arrow_n_chirho(
-                [10_010, 10_011].map(|identity_chirho| {
-                    runtime_type_chirho(KindChirho::VarChirho(KindVarChirho(identity_chirho)))
-                }),
-                KindChirho::StarChirho,
-            ),
+            super::KindBindingChirho::PolyChirho(arrow_scheme_chirho),
         );
         for name_chirho in [
             "Type",
