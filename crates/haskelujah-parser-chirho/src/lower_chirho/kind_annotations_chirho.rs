@@ -117,8 +117,12 @@ impl LowerCtxChirho {
                 ))),
                 Box::new(Self::try_type_to_ast_kind_chirho(element_chirho)?),
             )),
-            // Promoted values and tuples still need their own kind representation;
-            // the caller cannot recover their written contract from None.
+            TypeChirho::PromotedConChirho { .. }
+            | TypeChirho::PromotedListChirho { .. }
+            | TypeChirho::TupleChirho { .. }
+            | TypeChirho::LitChirho { .. } => {
+                Some(AstKindChirho::TypeSyntaxChirho(Box::new(ty_chirho.clone())))
+            }
             _ => None,
         }
     }

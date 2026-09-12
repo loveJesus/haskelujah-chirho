@@ -173,3 +173,74 @@ fn alias_binder_group_does_not_absorb_the_following_parameter_chirho() {
         matches!(&module_chirho.decls_chirho[1], DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")
     );
 }
+
+#[test]
+fn implicit_parameter_payload_is_a_constraint_argument_not_a_kind_chirho() {
+    let source_chirho = "{-# LANGUAGE ImplicitParams #-}\nmodule MChirho where\nfChirho :: (?flagChirho :: Bool) => Int\nfChirho = 1\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
+    let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
+    let DeclChirho::TypeSigChirho {
+        ty_chirho: TypeChirho::QualChirho { context_chirho, .. },
+        ..
+    } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("expected a qualified signature");
+    };
+    assert_eq!(context_chirho.len(), 1);
+    let ConstraintChirho::ClassChirho {
+        class_chirho,
+        args_chirho,
+        ..
+    } = &context_chirho[0]
+    else {
+        panic!("implicit parameter evidence is not a quantified predicate");
+    };
+    assert_eq!(class_chirho.text_chirho(), "?flagChirho");
+    assert!(
+        matches!(args_chirho.as_slice(), [TypeChirho::ConChirho(name_chirho)] if name_chirho.text_chirho() == "Bool")
+    );
+}
+
+#[test]
+fn constructor_context_without_forall_is_not_a_positional_field_chirho() {
+    let source_chirho = "{-# LANGUAGE ImplicitParams, ExistentialQuantification #-}\nmodule MChirho where\ndata RecordChirho = (?flagChirho :: Bool) => RecordChirho { fieldChirho :: Int }\ndata PlainChirho = (?flagChirho :: Bool) => PlainChirho Int\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
+    let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
+    let DeclChirho::DataDeclChirho {
+        constructors_chirho,
+        ..
+    } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("expected record data declaration");
+    };
+    assert!(
+        matches!(constructors_chirho.as_slice(), [ConDeclChirho::RecordChirho { name_chirho, fields_chirho, .. }] if name_chirho.text_chirho() == "RecordChirho" && fields_chirho.len() == 1),
+        "{constructors_chirho:#?}"
+    );
+    let DeclChirho::DataDeclChirho {
+        constructors_chirho,
+        ..
+    } = &module_chirho.decls_chirho[1]
+    else {
+        panic!("expected ordinary data declaration");
+    };
+    let [
+        ConDeclChirho::OrdinaryChirho {
+            name_chirho,
+            fields_chirho,
+            ..
+        },
+    ] = constructors_chirho.as_slice()
+    else {
+        panic!("expected one ordinary constructor");
+    };
+    assert_eq!(name_chirho.text_chirho(), "PlainChirho");
+    assert!(
+        matches!(fields_chirho.as_slice(), [(StrictnessChirho::LazyChirho, TypeChirho::ConChirho(name_chirho))] if name_chirho.text_chirho() == "Int")
+    );
+    assert!(
+        matches!(&module_chirho.decls_chirho[2], DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")
+    );
+}

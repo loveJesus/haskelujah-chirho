@@ -1,0 +1,50 @@
+{
+  "base_commit_chirho": "6b56f3d0c613625d8624054d2d81e135aa6c9b38",
+  "scope_chirho": "Producer reconciliation checkpoint; no full driver, workspace execution, clippy-clean or final corpus claim",
+  "recorded_at_chirho": "2026-09-12T08:25:16.457Z",
+  "runs_chirho": [
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-parser -p haskelujah-naming -p haskelujah-typing -p haskelujah-th --lib -j 3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "passed_per_target_chirho": [
+        136,
+        359,
+        17,
+        371
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/producer-frontends-final-chirho.log",
+      "log_sha256_chirho": "e17e7b53875f13f27d0aa5b48663cce4895a106feb5b914e288d7431ec6c071f"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --test typing_integration_chirho --test canaries_chirho -j 3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "passed_per_target_chirho": [
+        7,
+        141
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/producer-integration-final-chirho.log",
+      "log_sha256_chirho": "6b59803bd7a02f29bbd18348ac932b4be4c0af43237bce44cff602929f910cdd"
+    },
+    {
+      "command_chirho": "cargo check --workspace --all-targets -j 3",
+      "exit_chirho": 0,
+      "passed_per_target_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/producer-workspace-check-chirho.log",
+      "log_sha256_chirho": "6eef1fe648ce49902c5d26dfe3f050f44bc9d4a393bacd59ca851c4432f8e312"
+    },
+    {
+      "command_chirho": "cargo build -p haskelujah -j 3",
+      "exit_chirho": 0,
+      "passed_per_target_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/producer-cli-export-chirho.log",
+      "log_sha256_chirho": "dacae299ca6c3f0ef35e7a6b09ab891038ab00a41b58a655d2f9bee559cd9924"
+    }
+  ],
+  "format_check_chirho": "cargo fmt --all --check exited 0",
+  "explicit_cli_sha256_chirho": "7bb16c445516e1f32e522c120bbcea7de2aa705d7acd3c0d5f7af9a1f0ad4bab",
+  "reference_observation_count_chirho": 22
+}

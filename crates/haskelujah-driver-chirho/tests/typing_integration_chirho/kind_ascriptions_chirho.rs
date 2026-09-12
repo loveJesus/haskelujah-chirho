@@ -188,3 +188,217 @@ fn forall_binder_nested_ascriptions_are_checked_chirho() {
         "fChirho :: forall kChirho (aChirho :: (kChirho :: Type)). ()\nfChirho = ()\n",
     );
 }
+
+fn binder_syntax_source_chirho(body_chirho: &str) -> String {
+    format!(
+        "{{-# LANGUAGE DataKinds, KindSignatures, PolyKinds, RankNTypes #-}}\nmodule BinderChirho where\nimport Data.Kind (Type)\nimport GHC.Exts (TYPE, RuntimeRep(..), Levity(..))\ndata ProxyChirho (aChirho :: kChirho) = ProxyChirho\n{body_chirho}"
+    )
+}
+
+#[test]
+fn runtime_classifier_exports_obey_explicit_import_visibility_chirho() {
+    // Both accepted and missing-import controls were independently checked by GHC9.14.1.
+    for (import_chirho, classifier_chirho, visible_chirho) in [
+        (
+            "import GHC.Types (RuntimeRep(..), TYPE)",
+            "TYPE 'IntRep",
+            true,
+        ),
+        (
+            "import qualified GHC.Types as RepresentationChirho",
+            "RepresentationChirho.TYPE 'RepresentationChirho.IntRep",
+            true,
+        ),
+        ("import GHC.Types (RuntimeRep(..))", "TYPE 'IntRep", false),
+        ("import GHC.Types hiding (TYPE)", "TYPE 'IntRep", false),
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE DataKinds, KindSignatures, ExplicitForAll #-}}\nmodule RuntimeExportChirho where\n{import_chirho}\nfChirho :: forall (aChirho :: {classifier_chirho}). aChirho -> aChirho\nfChirho xChirho = xChirho\n"
+        );
+        let result_chirho = typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "RuntimeExportChirho.hs",
+        );
+        if visible_chirho {
+            result_chirho.unwrap_or_else(|error_chirho| panic!("{source_chirho}\n{error_chirho}"));
+        } else {
+            let error_chirho = result_chirho
+                .map(|_result_chirho| ())
+                .expect_err("a wired-in classifier is not globally imported");
+            assert!(
+                error_chirho
+                    .to_string()
+                    .contains("type not in scope: `TYPE`"),
+                "{error_chirho}"
+            );
+        }
+    }
+}
+
+#[test]
+fn binder_classifiers_keep_promoted_compound_and_literal_syntax_chirho() {
+    // Each source is independently accepted by GHC9.14.1; frozen250b22fb
+    // dropped its annotated binder and reported E0101 on the bound variable.
+    for body_chirho in [
+        "fChirho :: forall (vChirho :: Levity) (aChirho :: TYPE ('BoxedRep vChirho)). (Int -> aChirho) -> aChirho\nfChirho gChirho = gChirho 42\n",
+        "fChirho :: forall (pChirho :: (Bool, Bool)). ProxyChirho pChirho -> ProxyChirho pChirho\nfChirho xChirho = xChirho\n",
+        "fChirho :: forall (rChirho :: RuntimeRep) (aChirho :: TYPE ('TupleRep '[rChirho])). ProxyChirho aChirho -> ProxyChirho aChirho\nfChirho xChirho = xChirho\n",
+        "fChirho :: forall (aChirho :: ProxyChirho 0). ProxyChirho aChirho -> ProxyChirho aChirho\nfChirho xChirho = xChirho\n",
+    ] {
+        let source_chirho = binder_syntax_source_chirho(body_chirho);
+        typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "BinderChirho.hs",
+        )
+        .unwrap_or_else(|error_chirho| panic!("{source_chirho}\n{error_chirho}"));
+    }
+}
+
+#[test]
+fn promoted_binder_classifiers_reject_wrong_representation_arguments_chirho() {
+    for body_chirho in [
+        "fChirho :: forall (aChirho :: TYPE ('BoxedRep 'True)). ProxyChirho aChirho -> ProxyChirho aChirho\nfChirho xChirho = xChirho\n",
+        "fChirho :: forall (aChirho :: TYPE ('TupleRep '[ 'True ])). ProxyChirho aChirho -> ProxyChirho aChirho\nfChirho xChirho = xChirho\n",
+    ] {
+        let source_chirho = binder_syntax_source_chirho(body_chirho);
+        let error_chirho = typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "WrongBinderChirho.hs",
+        )
+        .map(|_result_chirho| ())
+        .expect_err("GHC rejects a Bool supplied as Levity or RuntimeRep");
+        assert!(
+            error_chirho.to_string().contains("kind mismatch"),
+            "{error_chirho}"
+        );
+        assert!(
+            !error_chirho
+                .to_string()
+                .contains("type variable not in scope"),
+            "{error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn constructor_contexts_do_not_become_runtime_fields_chirho() {
+    // GHC9.14.1 produces 42/7 for this exact source. This proves field layout,
+    // not storage/use of implicit evidence, which these AST constructors lack.
+    let source_chirho = "{-# LANGUAGE ImplicitParams, ExistentialQuantification #-}\nmodule Main where\ndata RecordChirho = (?flagChirho :: Bool) => RecordChirho { fieldChirho :: Int }\ndata PlainChirho = (?flagChirho :: Bool) => PlainChirho Int\nreadChirho (PlainChirho nChirho) = nChirho\nmain = let ?flagChirho = True in do\n  print (fieldChirho (RecordChirho 42))\n  print (readChirho (PlainChirho 7))\n";
+    assert_execution_chirho(source_chirho, "42\n7\n");
+    let wrong_chirho = source_chirho.replace("PlainChirho 7", "PlainChirho True");
+    let error_chirho = typecheck_source_chirho(
+        &wrong_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongConstructorContextChirho.hs",
+    )
+    .map(|_result_chirho| ())
+    .expect_err("the supplied runtime field still requires Int");
+    assert!(
+        error_chirho.to_string().contains("type mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn implicit_parameter_contexts_do_not_share_type_variable_classifiers_chirho() {
+    // The signature alone is valid; GHC9.14.1 rejects the corpus-style coerce
+    // body, which is a separate role/evidence question and is not asserted here.
+    let source_chirho = "{-# LANGUAGE ImplicitParams, RankNTypes #-}\nmodule PayloadSignatureChirho where\nnewtype PayloadChirho = PayloadChirho Int\nfChirho :: ((?flagChirho :: PayloadChirho) => Int) -> ((?flagChirho :: Int) => Int)\nfChirho _ = 1\n";
+    typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "PayloadSignatureChirho.hs",
+    )
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn implicit_parameter_payload_names_and_lifted_kinds_are_checked_chirho() {
+    for (payload_chirho, diagnostic_chirho) in [
+        ("NoSuchPayloadChirho", "NoSuchPayloadChirho"),
+        ("Maybe", "kind mismatch"),
+        ("Int#", "kind mismatch"),
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE ImplicitParams, MagicHash #-}}\nmodule PayloadChirho where\nimport GHC.Exts (Int#)\nfChirho :: (?flagChirho :: {payload_chirho}) => Int\nfChirho = 1\n"
+        );
+        let error_chirho = typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "InvalidPayloadChirho.hs",
+        )
+        .map(|_result_chirho| ())
+        .expect_err("implicit parameter payloads must be named lifted types");
+        assert!(
+            error_chirho.to_string().contains(diagnostic_chirho),
+            "{error_chirho}"
+        );
+    }
+}
+
+fn flat_producer_source_chirho(body_chirho: &str) -> String {
+    format!(
+        "{{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, MultiParamTypeClasses, FlexibleContexts, FlexibleInstances, TypeFamilies, TypeOperators, UndecidableSuperClasses #-}}\nmodule FlatProducerChirho where\nimport Data.Kind (Type)\nimport GHC.TypeLits\n{body_chirho}"
+    )
+}
+
+#[test]
+fn instance_arguments_preserve_promotion_like_signatures_chirho() {
+    let source_chirho = flat_producer_source_chirho(
+        "data StackChirho (layersChirho :: [Type]) (tChirho :: Type -> Type) = StackChirho\nclass CChirho aChirho\nokChirho :: StackChirho '[] Maybe\nokChirho = StackChirho\ninstance CChirho (StackChirho '[] Maybe)\n",
+    );
+    typecheck_source_chirho(
+        &source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "PromotedInstanceChirho.hs",
+    )
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+    let invalid_chirho = flat_producer_source_chirho(
+        "data StackChirho (layersChirho :: [Type]) (tChirho :: Type -> Type) = StackChirho\nclass CChirho aChirho\ninstance CChirho (StackChirho [] Maybe)\n",
+    );
+    let error_chirho = typecheck_source_chirho(
+        &invalid_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "OrdinaryListInstanceChirho.hs",
+    )
+    .map(|_result_chirho| ())
+    .expect_err("ordinary [] is not a promoted empty list");
+    assert!(
+        error_chirho.to_string().contains("kind mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn superclass_ascriptions_keep_literal_arguments_chirho() {
+    for body_chirho in [
+        "class ((CmpSymbol symbolChirho symbolChirho :: Ordering) ~ orderingChirho) => VariableChirho (symbolChirho :: Symbol) orderingChirho\n",
+        "class ((CmpSymbol \"a\" \"a\" :: Ordering) ~ orderingChirho) => LiteralChirho orderingChirho\nclass ((CmpNat 1 1 :: Ordering) ~ orderingChirho) => NaturalChirho orderingChirho\n",
+    ] {
+        let source_chirho = flat_producer_source_chirho(body_chirho);
+        typecheck_source_chirho(
+            &source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "LiteralContextChirho.hs",
+        )
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+    }
+    let source_chirho = flat_producer_source_chirho(
+        "class ((CmpSymbol \"a\" \"a\" :: Bool) ~ orderingChirho) => LiteralChirho orderingChirho\n",
+    );
+    let error_chirho = typecheck_source_chirho(
+        &source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongLiteralContextChirho.hs",
+    )
+    .map(|_result_chirho| ())
+    .expect_err("the saturated result is Ordering, not Bool");
+    assert!(
+        error_chirho.to_string().contains("kind mismatch"),
+        "{error_chirho}"
+    );
+}

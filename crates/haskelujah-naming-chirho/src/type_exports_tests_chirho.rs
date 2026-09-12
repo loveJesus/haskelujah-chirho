@@ -88,6 +88,7 @@ fn builtin_interfaces_export_source_visible_type_names_chirho() {
         ("GHC.Exts", "Word8#"),
         ("GHC.Exts", "WithDict"),
         ("GHC.Prim", "ThreadId#"),
+        ("GHC.Types", "TYPE"),
         ("GHC.Base", "ByteArray#"),
         ("Control.Monad.Trans.Reader", "Reader"),
         ("GHC.Generics", "Generically"),

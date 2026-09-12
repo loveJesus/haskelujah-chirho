@@ -199,6 +199,7 @@ fn binder_refs_chirho(binders_chirho: &[TyVarChirho], refs_chirho: &mut HashSet<
 
 fn kind_refs_chirho(kind_chirho: &AstKindChirho, refs_chirho: &mut HashSet<String>) {
     match kind_chirho {
+        AstKindChirho::TypeSyntaxChirho(type_chirho) => type_refs_chirho(type_chirho, refs_chirho),
         AstKindChirho::ForallChirho {
             vars_chirho,
             body_chirho,

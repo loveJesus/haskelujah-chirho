@@ -717,6 +717,7 @@ fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
     match ast_chirho {
         AstKindChirho::ForallChirho { .. }
         | AstKindChirho::RequiredForallChirho { .. }
+        | AstKindChirho::TypeSyntaxChirho(_)
         | AstKindChirho::KindAnnotChirho { .. } => {
             panic!("quantified or ascribed kind conversion requires the scoped kind context")
         }

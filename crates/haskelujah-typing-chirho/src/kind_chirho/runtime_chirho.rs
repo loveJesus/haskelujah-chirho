@@ -360,6 +360,9 @@ impl KindInferCtxChirho {
 
     pub(super) fn named_promoted_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {
         let full_chirho = self.canonical_kind_name_chirho(name_chirho);
+        if full_chirho == "[]" || full_chirho == ":" {
+            return KindChirho::ConChirho(format!("'{full_chirho}"));
+        }
         if self
             .local_promoted_constructor_names_chirho
             .contains(&full_chirho)

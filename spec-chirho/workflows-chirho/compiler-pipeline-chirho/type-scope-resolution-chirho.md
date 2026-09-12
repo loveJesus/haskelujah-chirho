@@ -97,6 +97,13 @@ The walker performs no filesystem lookup or module scanning. Its successful-reso
 
 Canonical interface maps are the authority for imported names. Type and value operators are normalized once at that boundary, and associated families remain first-class type exports while carrying their parent-class relation through selected imports, hiding, explicit exports, and module re-exports. An associated member imported through a qualified class may be used bare only inside an instance of that same visible class; it is not inserted into the module's general unqualified type namespace. This is the `GHC.Exts.IsList` / `Item` boundary exercised by the real `containers` projects.
 
+The built-in GHC.Types interface includes its exported TYPE classifier. It enters
+scope through ordinary explicit/qualified imports; omitting it from a selected
+import or hiding it still produces E0101. A downstream runtime-kind seed is not
+authority to bypass that visibility check. Compound forall-binder classifiers
+delegate to the same type-name walker, including their retained promotion and
+literal syntax.
+
 Layout and lowering preserve scope before naming sees the AST. An explicit right brace first closes implicit contexts nested inside its matching explicit context, so the enclosing module regains its virtual declaration separator. Unsupported data/newtype-family instances are still representation blockers, but their scanner stops at their own layout boundary; it must never consume a following signature or declaration. Data and newtype GADT constructor blocks share one parser, while standalone kind signatures retain their complete flat child sequence for the common type reconstruction path.
 
 The kind/type layer uses the same faithful shape downstream: required foralls contribute the kind of their body; symbolic standalone kind operators preserve application order; imported closed Boolean families reduce only when their leading argument selects an equation and otherwise remain stuck.

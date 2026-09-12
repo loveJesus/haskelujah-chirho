@@ -140,3 +140,80 @@ thirteen new failures by source/diagnostic and inspect T15079's recovery and
 reject movements; do not weaken ascription or closure checks to recover totals.
 Main and canonical row484 remain unchanged. SLOT/DB lease retained, corpus
 CPU embargo released after both passes.
+
+## Producer reconciliation after250b22fb: bounded next step
+
+The new shared forall-binder route exposed a mismatch between the two syntax
+representations: TypeChirho can express promoted constructors/lists, literals
+and tuples, while the narrower AstKind converter returns None and drops the
+ENTIRE binder. LevPolyResult is now E0101 on `a`, whose written classifier
+contains 'BoxedRep. Preserve this syntax using an AstKindChirho::TypeSyntaxChirho
+payload owning the existing TypeChirho subtree, not a second set of tuple/list/
+literal nodes and not a fabricated kind variable. Naming, dependency discovery,
+kind inference and TH reification must delegate that payload to their existing
+type-syntax visitors in the same change. The old simple forms remain compatible.
+This is reuse of the already checked kind-expression grammar, not an opaque
+unrepresented marker or permission to ignore an unknown classifier.
+
+This local/reversible representation completion is within the ongoing ascription
+unit, with pushed6b56f3d0 as the checkpoint. Confidence is high on the measured
+producer loss; its complete reach still requires focused controls and a corpus
+diagnostic. tc184 separately shows a constructor context being mistaken for a
+field; retain the context boundary rather than relaxing field kind checking.
+Neither change introduces the pending data-family/GADT-record declaration shapes.
+
+The first context gate showed the earlier diagnosis was incomplete: the CST
+itself ends the constructor before the context arrow when forall is absent,
+leaving a nameless Ordinary node. Move constructor/record CST parsing into
+cst_parser_chirho/constructors_chirho.rs, with one delimiter-aware context
+lookahead shared by explicit-forall and no-forall paths. Stop at declaration
+boundaries and consume only the located outer arrow, not a nested constraint.
+This removes code from the oversized parser root. Runtime evidence storage for
+ordinary/record constructor contexts remains unrepresented and is not claimed;
+the behavioral control measures surviving names, actual fields and read-back.
+
+## Producer repair results and limits
+
+TypeSyntaxChirho now preserves promoted constructors/lists, tuples and literal
+classifiers without dropping their annotated binder. Naming, dependencies,
+free-variable scope, kind conversion and TH reification consume the same payload.
+The checked term interpreter distinguishes promoted nil/cons from the list type
+constructor and no longer fabricates Type for an unmatched shape.
+
+The constructor CST and lowerer now agree on an optional context before the
+actual constructor. A GHC-verified source constructs two such values, reads
+their real fields, and prints42/7 on STG, LLVM and Cranelift. Unknown implicit-
+parameter payload names and unsaturated/unlifted payload classifiers reject.
+This is not full constructor-context evidence storage: Ordinary/Record still
+cannot retain that evidence and the runtime control does not claim otherwise.
+
+Instance-argument and superclass token slices now use the shared flat grammar.
+The old duplicate dropped the promotion tick in Stack '[] and literal arguments
+in CmpSymbol/CmpNat applications; fresh paired controls reproduced both losses.
+The common path retains tuple arity/application identity and source spans.
+One old parser assertion required an incidental extra Paren around (,,); it now
+peels parentheses while still checking the same constructor arity and argument.
+No acceptance or canary assertion was weakened.
+
+Retaining the binder exposed a separate source-authority defect in T12850:
+GHC.Types did not export TYPE in our interface inventory. The inventory now
+does so; fresh explicit/qualified controls accept while omitted/hidden imports
+still reject. This is not a global wired-in naming exemption.
+
+Twenty-two fresh GHC9.14.1 observations are retained in
+ascriptions-chirho/producers-chirho, including exact source hashes and baseline
+diagnostics. The mixed implicit-context control uses fChirho _ =1: the earlier
+undefined body was rejected by GHC for impredicative instantiation and was not
+a valid positive oracle. The separate coerce control is rejected by GHC-18872;
+our accepting it does not prove implicit-parameter role/evidence correctness.
+
+Current producer gates: naming136, parser359, TH17, typing371, integration141
+and canaries7, all green with zero ignored/filtered. These do not establish full
+driver or corpus health. First focused CLI4afc8474 recovered LevPolyResult,
+T12734, T18185, T26737 and tc184 from the22 known main-relative failures;
+after the interface repair CLI7bb16c44 also accepts T12850. T12734a now reaches
+a type-level promoted-cons index mismatch, rather than the former producer
+kind error. The other failures remain live. This is focused evidence, not an
+inferred full-corpus count. Next: freeze this owned checkpoint, explicitly build,
+run one diagnostic per axis, and compare exact sets before the next reduction.
+Main121d4f2c, canonical row484, corpus membership and public labels stay unchanged.

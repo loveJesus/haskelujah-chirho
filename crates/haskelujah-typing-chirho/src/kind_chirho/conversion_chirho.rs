@@ -174,6 +174,19 @@ impl KindInferCtxChirho {
                 args_chirho,
                 span_chirho,
             } => {
+                if class_chirho.text_chirho().starts_with('?') && class_chirho.text_chirho() != "?"
+                {
+                    for payload_chirho in args_chirho {
+                        let actual_chirho = self.infer_type_kind_chirho(payload_chirho);
+                        self.unify_chirho(
+                            &actual_chirho,
+                            &KindChirho::StarChirho,
+                            "implicit parameter payload",
+                            payload_chirho.span_chirho(),
+                        );
+                    }
+                    return KindChirho::ConstraintChirho;
+                }
                 // A superclass is an application just like a type constructor.
                 // Ignoring its head loses the only constraint on `m` in
                 // `class Monad m => C m`, before C's kind is generalized.
@@ -294,6 +307,20 @@ impl KindInferCtxChirho {
                 KindChirho::ConChirho("[]".into()),
                 self.interpret_kind_term_chirho(element_chirho),
             ),
+            TypeChirho::PromotedListChirho {
+                elements_chirho, ..
+            } => elements_chirho.iter().rev().fold(
+                KindChirho::ConChirho("'[]".into()),
+                |tail_chirho, element_chirho| {
+                    KindChirho::app_chirho(
+                        KindChirho::app_chirho(
+                            KindChirho::ConChirho("':".into()),
+                            self.interpret_kind_term_chirho(element_chirho),
+                        ),
+                        tail_chirho,
+                    )
+                },
+            ),
             TypeChirho::TupleChirho {
                 elements_chirho, ..
             } => KindChirho::tuple_chirho(
@@ -372,9 +399,8 @@ impl KindInferCtxChirho {
                 }
                 result_chirho
             }),
-            _ => {
-                // Fallback: treat unknown shapes as *.
-                KindChirho::StarChirho
+            TypeChirho::QualChirho { body_chirho, .. } => {
+                self.interpret_kind_term_chirho(body_chirho)
             }
         }
     }
@@ -628,6 +654,7 @@ fn ast_kind_type_chirho(kind_chirho: &AstKindChirho) -> TypeChirho {
         ))
     };
     match kind_chirho {
+        AstKindChirho::TypeSyntaxChirho(type_chirho) => *type_chirho.clone(),
         AstKindChirho::ConChirho(constructor_chirho) => {
             TypeChirho::ConChirho(constructor_chirho.clone())
         }

@@ -606,6 +606,9 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         free_var_policy_chirho: FreeTyVarPolicyChirho,
     ) {
         match kind_chirho {
+            AstKindChirho::TypeSyntaxChirho(type_chirho) => {
+                self.walk_type_chirho(type_chirho, free_var_policy_chirho);
+            }
             AstKindChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
@@ -1198,6 +1201,9 @@ fn is_unboxed_tuple_or_sum_constructor_text_chirho(text_chirho: &str) -> bool {
 
 fn collect_kind_variable_names_chirho(kind_chirho: &AstKindChirho, names_chirho: &mut Vec<String>) {
     match kind_chirho {
+        AstKindChirho::TypeSyntaxChirho(type_chirho) => {
+            collect_type_kind_variable_names_chirho(type_chirho, names_chirho);
+        }
         AstKindChirho::ForallChirho {
             vars_chirho,
             body_chirho,
@@ -1239,6 +1245,139 @@ fn collect_kind_variable_names_chirho(kind_chirho: &AstKindChirho, names_chirho:
         | AstKindChirho::ConstraintChirho
         | AstKindChirho::ConChirho(_)
         | AstKindChirho::VarChirho(_) => {}
+    }
+}
+
+fn collect_type_kind_variable_names_chirho(
+    type_chirho: &TypeChirho,
+    names_chirho: &mut Vec<String>,
+) {
+    match type_chirho {
+        TypeChirho::VarChirho(name_chirho) => {
+            if is_lexical_type_variable_chirho(name_chirho.text_chirho()) {
+                names_chirho.push(name_chirho.text_chirho().to_owned());
+            }
+        }
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAnnotChirho {
+            type_chirho: fun_chirho,
+            kind_chirho: arg_chirho,
+            ..
+        } => {
+            collect_type_kind_variable_names_chirho(fun_chirho, names_chirho);
+            collect_type_kind_variable_names_chirho(arg_chirho, names_chirho);
+        }
+        TypeChirho::FunChirho {
+            arg_chirho,
+            result_chirho,
+            mult_chirho,
+            ..
+        } => {
+            collect_type_kind_variable_names_chirho(arg_chirho, names_chirho);
+            if let Some(MultiplicityChirho::ExpressionChirho(mult_chirho)) = mult_chirho {
+                collect_type_kind_variable_names_chirho(mult_chirho, names_chirho);
+            }
+            collect_type_kind_variable_names_chirho(result_chirho, names_chirho);
+        }
+        TypeChirho::TupleChirho {
+            elements_chirho, ..
+        }
+        | TypeChirho::PromotedListChirho {
+            elements_chirho, ..
+        } => {
+            for element_chirho in elements_chirho {
+                collect_type_kind_variable_names_chirho(element_chirho, names_chirho);
+            }
+        }
+        TypeChirho::ListChirho {
+            element_chirho: inner_chirho,
+            ..
+        }
+        | TypeChirho::ParenChirho { inner_chirho, .. } => {
+            collect_type_kind_variable_names_chirho(inner_chirho, names_chirho);
+        }
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            let mut local_chirho = Vec::new();
+            collect_type_kind_variable_names_chirho(body_chirho, &mut local_chirho);
+            for binder_chirho in vars_chirho.iter().rev() {
+                local_chirho.retain(|name_chirho| name_chirho != binder_chirho.text_chirho());
+                if let Some(annotation_chirho) = &binder_chirho.kind_annotation_chirho {
+                    collect_kind_variable_names_chirho(annotation_chirho, &mut local_chirho);
+                }
+            }
+            names_chirho.extend(local_chirho);
+        }
+        TypeChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+            ..
+        } => {
+            for constraint_chirho in context_chirho {
+                collect_constraint_kind_names_chirho(constraint_chirho, names_chirho);
+            }
+            collect_type_kind_variable_names_chirho(body_chirho, names_chirho);
+        }
+        TypeChirho::ConChirho(_)
+        | TypeChirho::PromotedConChirho { .. }
+        | TypeChirho::LitChirho { .. }
+        | TypeChirho::WildcardChirho { .. } => {}
+    }
+}
+
+fn collect_constraint_kind_names_chirho(
+    constraint_chirho: &ConstraintChirho,
+    names_chirho: &mut Vec<String>,
+) {
+    match constraint_chirho {
+        ConstraintChirho::ClassChirho {
+            class_chirho,
+            args_chirho,
+            ..
+        } => {
+            if is_lexical_type_variable_chirho(class_chirho.text_chirho()) {
+                names_chirho.push(class_chirho.text_chirho().to_owned());
+            }
+            for argument_chirho in args_chirho {
+                collect_type_kind_variable_names_chirho(argument_chirho, names_chirho);
+            }
+        }
+        ConstraintChirho::QuantifiedChirho {
+            vars_chirho,
+            context_chirho,
+            body_chirho,
+            ..
+        } => {
+            let mut local_chirho = Vec::new();
+            for constraint_chirho in context_chirho {
+                collect_constraint_kind_names_chirho(constraint_chirho, &mut local_chirho);
+            }
+            collect_constraint_kind_names_chirho(body_chirho, &mut local_chirho);
+            for binder_chirho in vars_chirho.iter().rev() {
+                local_chirho.retain(|name_chirho| name_chirho != binder_chirho.text_chirho());
+                if let Some(annotation_chirho) = &binder_chirho.kind_annotation_chirho {
+                    collect_kind_variable_names_chirho(annotation_chirho, &mut local_chirho);
+                }
+            }
+            names_chirho.extend(local_chirho);
+        }
     }
 }
 

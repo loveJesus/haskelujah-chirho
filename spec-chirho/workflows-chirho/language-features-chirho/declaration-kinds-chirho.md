@@ -46,7 +46,7 @@ Parenthesized head-binder annotations are bounded by their own closing parenthes
 and use the same flat type lowering as declaration signatures. An infix annotation
 such as `True :~: False` must retain the operator and both operands, not silently
 become an unannotated binder. The bounded helper lives with kind-annotation lowering;
-list and explicitly promoted AstKind forms still have the limitations named below.
+compound/promoted annotations use the shared type-syntax payload described below.
 
 Without a complete standalone contract the no-inline default is Type. The
 isolated runtime-kind continuation lets a complete contract determine the
@@ -152,8 +152,8 @@ separately from variables, and retains applications through lowering, naming,
 dependency collection, kind conversion and TH reification. Nominal annotations
 must resolve; they are not implicitly quantified holes. Reification preserves
 these annotations, but the reverse TH conversion and binder visibility are
-separate unfinished contracts. List/promoted annotation parsing is not yet
-complete.
+separate unfinished contracts. Compound/promoted annotations now reuse the
+type-syntax grammar; this does not complete their every downstream consumer.
 
 ```mermaid
 flowchart LR
@@ -601,9 +601,16 @@ The flat annotation producer retains qualified Type/Constraint names and explici
 constructor/list promotion. Losing a qualifier changes binding authority; losing
 the tick on '[] changes a promoted value into the list type constructor. The
 AstKind conversion preserves an ordinary list kind as an application of `[]` to
-its element kind. Promoted values and tuple annotations still lack that conversion
-and remain unproved rather than fabricating their neighbouring type.
-In particular, recovering T11723 does not establish complete TupleRep checking.
+its element kind. Promoted values, tuples and literals now use an
+AstKindChirho::TypeSyntaxChirho payload containing the original TypeChirho,
+instead of dropping the entire annotated binder when the smaller kind grammar
+cannot express it. Naming, dependency collection, lexical free-variable discovery,
+checked conversion and TH reification visit that payload through their type
+visitors. Promoted cons/nil terms are distinct from the ordinary list type
+constructor. The static converter without contextual kind checking cannot infer
+this payload's contract and remains unsupported rather than inventing a kind.
+Controls check BoxedRep, TupleRep, tuple and literal classifiers and reject
+wrong representation arguments; this is not complete TupleRep execution support.
 
 Annotation checking must constrain the expression's classifier to Type, not only
 compute and discard it. In Haskell2010/NoPolyKinds publication, defaulting updates

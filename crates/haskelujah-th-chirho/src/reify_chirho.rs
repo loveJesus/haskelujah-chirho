@@ -206,6 +206,7 @@ fn ast_kind_to_th_chirho(kind_chirho: &AstKindChirho) -> ThTypeChirho {
             Box::new(ast_kind_to_th_chirho(body_chirho)),
         ),
         AstKindChirho::StarChirho => ThTypeChirho::StarTChirho,
+        AstKindChirho::TypeSyntaxChirho(type_chirho) => ast_type_to_th_chirho(type_chirho),
         AstKindChirho::ConstraintChirho => ThTypeChirho::ConstraintTChirho,
         AstKindChirho::VarChirho(name_chirho) => {
             ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho(name_chirho))

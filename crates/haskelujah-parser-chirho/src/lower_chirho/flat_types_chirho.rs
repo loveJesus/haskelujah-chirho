@@ -7,7 +7,9 @@ use haskelujah_ast_chirho::decl_chirho::{TyVarChirho, TyVarSpecificityChirho};
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
-use haskelujah_syntax_chirho::green_chirho::{GreenElementChirho, GreenNodeChirho};
+use haskelujah_syntax_chirho::green_chirho::{
+    GreenElementChirho, GreenNodeChirho, GreenTokenChirho,
+};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use super::{ChildChirho, LowerCtxChirho, is_type_kind_chirho, type_operators_chirho};
@@ -119,6 +121,34 @@ pub(super) fn list_type_chirho(
 }
 
 impl LowerCtxChirho {
+    /// Token-only instance arguments and contexts use the same grammar as
+    /// fields and structured application children. Tokens retain their original
+    /// source spans and share string storage; no reparsing or invented offsets.
+    /// Workflow: language-features-chirho/flat-type-syntax-chirho.
+    pub(super) fn lower_type_from_token_slice_chirho(
+        &self,
+        tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
+        span_chirho: SpanChirho,
+    ) -> TypeChirho {
+        let elements_chirho: Vec<_> = tokens_chirho
+            .iter()
+            .map(|(token_chirho, _)| GreenElementChirho::TokenChirho((*token_chirho).clone()))
+            .collect();
+        let children_chirho: Vec<_> = elements_chirho
+            .iter()
+            .zip(tokens_chirho)
+            .map(|(element_chirho, (_, span_chirho))| ChildChirho {
+                element_chirho,
+                start_chirho: span_chirho.start_chirho().as_usize_chirho(),
+                end_chirho: span_chirho.end_chirho().as_usize_chirho(),
+            })
+            .collect();
+        self.type_from_flat_children_chirho(
+            &children_chirho.iter().collect::<Vec<_>>(),
+            span_chirho,
+        )
+    }
+
     /// Structured signatures and flat fields share the argument-visibility rule.
     /// Workflow: language-features-chirho/declaration-kinds-chirho.
     pub(super) fn lower_type_application_chirho(
@@ -129,7 +159,7 @@ impl LowerCtxChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
-        self.collect_type_atoms_chirho(&children_chirho.iter().collect::<Vec<_>>(), span_chirho)
+        self.collect_type_atoms_chirho(&children_chirho.iter().collect::<Vec<_>>())
             .finish_chirho(span_chirho)
             .unwrap_or_else(|| self.placeholder_type_chirho())
     }
@@ -259,6 +289,41 @@ impl LowerCtxChirho {
             return self.placeholder_type_chirho();
         }
 
+        // A token slice may be the contents of an already-opened tuple group.
+        // Keep its separators and distinguish (,) from a two-element tuple.
+        let commas_chirho = top_level_commas_chirho(children_chirho);
+        if !commas_chirho.is_empty() {
+            let mut start_chirho = 0;
+            let mut parts_chirho = Vec::new();
+            for end_chirho in commas_chirho
+                .into_iter()
+                .chain(std::iter::once(children_chirho.len()))
+            {
+                parts_chirho.push(&children_chirho[start_chirho..end_chirho]);
+                start_chirho = end_chirho + 1;
+            }
+            if parts_chirho
+                .iter()
+                .all(|part_chirho| part_chirho.is_empty())
+            {
+                return TypeChirho::ConChirho(NameChirho::RawChirho(
+                    RawNameChirho::unqualified_chirho(
+                        &format!("({})", ",".repeat(parts_chirho.len() - 1)),
+                        fallback_span_chirho,
+                    ),
+                ));
+            }
+            return TypeChirho::TupleChirho {
+                elements_chirho: parts_chirho
+                    .into_iter()
+                    .map(|part_chirho| {
+                        self.type_from_flat_children_chirho(part_chirho, fallback_span_chirho)
+                    })
+                    .collect(),
+                span_chirho: fallback_span_chirho,
+            };
+        }
+
         // A leading forall scopes over arrows and constraints in its body.
         if let Some(forall_chirho) =
             self.forall_from_flat_children_chirho(children_chirho, fallback_span_chirho)
@@ -349,7 +414,7 @@ impl LowerCtxChirho {
         }
 
         // Build application chain from atom types
-        self.collect_type_atoms_chirho(children_chirho, fallback_span_chirho)
+        self.collect_type_atoms_chirho(children_chirho)
             .finish_chirho(fallback_span_chirho)
             .unwrap_or_else(|| self.placeholder_type_chirho())
     }
@@ -433,11 +498,7 @@ impl LowerCtxChirho {
     }
 
     /// Parse atomic types from a flat token/node sequence.
-    fn collect_type_atoms_chirho(
-        &self,
-        children_chirho: &[&ChildChirho],
-        fallback_span_chirho: SpanChirho,
-    ) -> TypeAtomsChirho {
+    fn collect_type_atoms_chirho(&self, children_chirho: &[&ChildChirho]) -> TypeAtomsChirho {
         let mut atoms_chirho = TypeAtomsChirho::default();
         let mut i_chirho = 0;
         while i_chirho < children_chirho.len() {
@@ -458,6 +519,19 @@ impl LowerCtxChirho {
                         )
                     });
                     match tok_chirho.kind_chirho() {
+                        TokenKindChirho::IntegerLiteralChirho
+                        | TokenKindChirho::StringLiteralChirho
+                        | TokenKindChirho::CharLiteralChirho => {
+                            atoms_chirho.push_chirho(TypeChirho::LitChirho {
+                                value_chirho: tok_chirho.text_chirho().to_owned(),
+                                span_chirho: s_chirho,
+                            });
+                        }
+                        TokenKindChirho::UnderscoreReservedIdChirho => {
+                            atoms_chirho.push_chirho(TypeChirho::WildcardChirho {
+                                span_chirho: s_chirho,
+                            });
+                        }
                         TokenKindChirho::VarIdChirho | TokenKindChirho::QualifiedVarIdChirho => {
                             atoms_chirho.push_chirho(TypeChirho::VarChirho(
                                 self.name_from_token_chirho(tok_chirho, s_chirho),
@@ -511,46 +585,32 @@ impl LowerCtxChirho {
                             // Inner children: start+1 .. i_chirho (exclusive of parens)
                             let inner_chirho: Vec<&ChildChirho> =
                                 children_chirho[start_chirho + 1..i_chirho].to_vec();
-                            // Check for tuple (top-level commas)
-                            let comma_positions_chirho = top_level_commas_chirho(&inner_chirho);
-                            if !comma_positions_chirho.is_empty() {
-                                // Tuple type
-                                let mut elements_chirho = Vec::new();
-                                let mut start_j_chirho = 0;
-                                for &comma_j_chirho in &comma_positions_chirho {
-                                    let segment_chirho: Vec<&ChildChirho> =
-                                        inner_chirho[start_j_chirho..comma_j_chirho].to_vec();
-                                    elements_chirho.push(self.type_from_flat_children_chirho(
-                                        &segment_chirho,
-                                        fallback_span_chirho,
-                                    ));
-                                    start_j_chirho = comma_j_chirho + 1;
-                                }
-                                // Last segment after final comma
-                                let last_chirho: Vec<&ChildChirho> =
-                                    inner_chirho[start_j_chirho..].to_vec();
-                                elements_chirho.push(self.type_from_flat_children_chirho(
-                                    &last_chirho,
-                                    fallback_span_chirho,
+                            let group_span_chirho = self.span_chirho(
+                                children_chirho[start_chirho - usize::from(promoted_chirho)]
+                                    .start_chirho,
+                                children_chirho
+                                    .get(i_chirho)
+                                    .or_else(|| children_chirho.last())
+                                    .expect("opening parenthesis is present")
+                                    .end_chirho,
+                            );
+                            if !top_level_commas_chirho(&inner_chirho).is_empty() {
+                                atoms_chirho.push_chirho(self.type_from_flat_children_chirho(
+                                    &inner_chirho,
+                                    group_span_chirho,
                                 ));
-                                atoms_chirho.push_chirho(TypeChirho::TupleChirho {
-                                    elements_chirho,
-                                    span_chirho: fallback_span_chirho,
-                                });
                             } else if inner_chirho.is_empty() {
-                                // Unit type ()
                                 atoms_chirho.push_chirho(TypeChirho::TupleChirho {
                                     elements_chirho: vec![],
-                                    span_chirho: fallback_span_chirho,
+                                    span_chirho: group_span_chirho,
                                 });
                             } else {
-                                // Parenthesized type
                                 atoms_chirho.push_chirho(TypeChirho::ParenChirho {
                                     inner_chirho: Box::new(self.type_from_flat_children_chirho(
                                         &inner_chirho,
-                                        fallback_span_chirho,
+                                        group_span_chirho,
                                     )),
-                                    span_chirho: fallback_span_chirho,
+                                    span_chirho: group_span_chirho,
                                 });
                             }
                             // Skip past the closing paren

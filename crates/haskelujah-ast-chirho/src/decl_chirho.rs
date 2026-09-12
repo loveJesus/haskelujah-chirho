@@ -29,6 +29,10 @@ pub enum AstKindChirho {
     /// A nominal kind constructor, retaining qualification and source span.
     /// It is not a lexical variable and must never be implicitly quantified.
     ConChirho(NameChirho),
+    /// Type-level syntax shared with ordinary type expressions: promotion,
+    /// literals and tuples must not be lost by a narrower binder-kind grammar.
+    /// Consumers use their normal type-syntax visitor and classifier checker.
+    TypeSyntaxChirho(Box<TypeChirho>),
     /// Kind application: `TYPE representation` in `(a :: TYPE representation)`.
     AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
     /// Explicit invisible application, distinct from an ordinary kind argument.

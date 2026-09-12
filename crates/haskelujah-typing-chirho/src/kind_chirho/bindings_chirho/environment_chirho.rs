@@ -118,6 +118,9 @@ impl KindEnvChirho {
             KindChirho::VarChirho(promoted_cons_elem_kind_chirho),
         );
         env_chirho.bind_promoted_generalized_chirho("[]", promoted_list_kind_chirho.clone());
+        // Interpreted promoted terms retain their namespace. The ordinary []
+        // has kind Type -> Type; the promoted '[] instead has kind forall k. [k].
+        env_chirho.bind_promoted_generalized_chirho("'[]", promoted_list_kind_chirho.clone());
         let promoted_cons_kind_chirho = KindChirho::arrow_n_chirho(
             vec![
                 KindChirho::VarChirho(promoted_cons_elem_kind_chirho),
