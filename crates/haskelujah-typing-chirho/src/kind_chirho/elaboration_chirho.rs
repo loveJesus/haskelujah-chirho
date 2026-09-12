@@ -11,18 +11,29 @@ pub(super) struct PendingKindApplicationChirho {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct NominalKindBinderChirho {
+pub(crate) struct ElaboratedKindBinderChirho {
+    pub(crate) identity_chirho: KindVarChirho,
     pub(crate) name_chirho: Option<String>,
     pub(crate) specified_chirho: bool,
 }
 
-/// This initial consumer covers local data/newtype heads. Family equation
+impl ElaboratedKindBinderChirho {
+    pub(crate) fn parameter_name_chirho(&self) -> String {
+        self.name_chirho
+            .clone()
+            .unwrap_or_else(|| format!("$kind_chirho_{}", self.identity_chirho.0))
+    }
+}
+
+/// Local nominal and transparent-synonym contracts share the solved indices.
+/// Family equation
 /// indices and imported constructor contracts require their own complete
 /// elaboration; a missing entry does not authorize inventing their arguments.
 #[derive(Clone, Debug, Default)]
 pub struct KindElaborationChirho {
     pub(crate) applications_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
-    pub(crate) nominal_heads_chirho: HashMap<String, Vec<NominalKindBinderChirho>>,
+    pub(crate) nominal_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
+    pub(crate) synonym_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) source_names_chirho: HashMap<KindVarChirho, String>,
 }
 
@@ -62,8 +73,9 @@ impl KindInferCtxChirho {
         module_chirho: &ModuleChirho,
     ) -> KindElaborationChirho {
         let mut nominal_heads_chirho = HashMap::new();
+        let mut synonym_heads_chirho = HashMap::new();
         for declaration_chirho in &module_chirho.decls_chirho {
-            let (name_chirho, parameters_chirho) = match declaration_chirho {
+            let (name_chirho, parameters_chirho, heads_chirho) = match declaration_chirho {
                 DeclChirho::DataDeclChirho {
                     name_chirho,
                     type_vars_chirho,
@@ -73,7 +85,20 @@ impl KindInferCtxChirho {
                     name_chirho,
                     type_vars_chirho,
                     ..
-                } => (name_chirho.text_chirho(), type_vars_chirho),
+                } => (
+                    name_chirho.text_chirho(),
+                    type_vars_chirho,
+                    &mut nominal_heads_chirho,
+                ),
+                DeclChirho::TypeAliasDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    ..
+                } => (
+                    name_chirho.text_chirho(),
+                    type_vars_chirho,
+                    &mut synonym_heads_chirho,
+                ),
                 _ => continue,
             };
             let Some(KindBindingChirho::PolyChirho(scheme_chirho)) =
@@ -85,12 +110,13 @@ impl KindInferCtxChirho {
                 .quantified_chirho
                 .iter()
                 .enumerate()
-                .map(|(index_chirho, identity_chirho)| {
-                    elaboration_chirho::NominalKindBinderChirho {
+                .map(
+                    |(index_chirho, identity_chirho)| ElaboratedKindBinderChirho {
+                        identity_chirho: *identity_chirho,
                         name_chirho: scheme_chirho.source_names_chirho[index_chirho].clone(),
                         specified_chirho: scheme_chirho.specified_chirho.contains(identity_chirho),
-                    }
-                })
+                    },
+                )
                 .collect();
             // Explicit declaration-head binders rename the signature's specified
             // quantifiers; the signature spelling does not scope over the body.
@@ -111,12 +137,12 @@ impl KindInferCtxChirho {
             }
             if !binders_chirho.is_empty() {
                 if let Some(module_chirho) = &self.local_kind_module_chirho {
-                    nominal_heads_chirho.insert(
+                    heads_chirho.insert(
                         format!("{module_chirho}.{name_chirho}"),
                         binders_chirho.clone(),
                     );
                 }
-                nominal_heads_chirho.insert(name_chirho.to_owned(), binders_chirho);
+                heads_chirho.insert(name_chirho.to_owned(), binders_chirho);
             }
         }
         let applications_chirho = self
@@ -163,6 +189,7 @@ impl KindInferCtxChirho {
         KindElaborationChirho {
             applications_chirho,
             nominal_heads_chirho,
+            synonym_heads_chirho,
             source_names_chirho,
         }
     }

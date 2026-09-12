@@ -44,10 +44,12 @@ mod rigid_chirho;
 mod signature_binder_tests_chirho;
 mod signature_binders_chirho;
 mod signature_conversion_chirho;
+mod type_synonyms_chirho;
 
 use ast_conversion_chirho::ast_type_to_syn_rhs_chirho;
 use family_declarations_chirho::collect_free_type_vars_from_ast_chirho;
 use module_inputs_chirho::is_placeholder_import_scheme_chirho;
+use type_synonyms_chirho::TypeSynonymChirho;
 
 pub use evidence_chirho::{
     LiteralEvidenceChirho, OWN_DICTIONARY_KEY_CHIRHO, ReferenceEvidenceChirho,
@@ -218,9 +220,9 @@ pub struct InferCtxChirho {
     given_preds_chirho: Vec<PredChirho>,
     /// Accumulated diagnostics.
     diagnostics_chirho: DiagnosticBundleChirho,
-    /// Type synonym environment: name → (param names, expanded RHS TyChirho).
+    /// Type synonym environment: separate ordinary/invisible parameters and RHS.
     /// Populated from `TypeAliasDeclChirho` declarations before inference.
-    type_synonyms_chirho: HashMap<String, (Vec<String>, TyChirho)>,
+    type_synonyms_chirho: HashMap<String, TypeSynonymChirho>,
     /// Type family environment: family name → list of equations (lhs patterns, rhs type).
     /// Each equation is (param type patterns as TyChirho, result TyChirho).
     type_families_chirho: TypeFamilyEnvChirho,
@@ -635,7 +637,15 @@ impl InferCtxChirho {
             local_instantiations_chirho: HashMap::new(),
             given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
-            type_synonyms_chirho,
+            type_synonyms_chirho: type_synonyms_chirho
+                .into_iter()
+                .map(|(name_chirho, (parameters_chirho, body_chirho))| {
+                    (
+                        name_chirho,
+                        TypeSynonymChirho::ordinary_chirho(parameters_chirho, body_chirho),
+                    )
+                })
+                .collect(),
             type_families_chirho: HashMap::new(),
             scoped_tyvars_chirho: HashMap::new(),
             next_skolem_chirho: 0,
@@ -882,127 +892,6 @@ impl InferCtxChirho {
         }
 
         equation_sets_chirho
-    }
-
-    /// Register a type synonym from a `TypeAliasDeclChirho`.
-    pub fn register_type_synonym_chirho(
-        &mut self,
-        name_chirho: String,
-        params_chirho: Vec<String>,
-        rhs_chirho: TyChirho,
-    ) {
-        let normalized_rhs_chirho = self.normalize_imported_ty_chirho(&rhs_chirho);
-        self.type_synonyms_chirho
-            .insert(name_chirho, (params_chirho, normalized_rhs_chirho));
-    }
-
-    /// Expand type synonyms in a `TyChirho`. Handles both nullary synonyms
-    /// (e.g. `String` → `[Char]`) and parameterised synonyms (e.g.
-    /// `Pair Int` → `(Int, Int)` for `type Pair a = (a, a)`).
-    pub fn expand_type_synonyms_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
-        self.expand_syn_chirho(ty_chirho, 0)
-    }
-
-    fn lookup_type_synonym_chirho(&self, name_chirho: &str) -> Option<&(Vec<String>, TyChirho)> {
-        self.type_synonyms_chirho.get(name_chirho).or_else(|| {
-            name_chirho
-                .rsplit_once('.')
-                .and_then(|(_prefix_chirho, bare_name_chirho)| {
-                    self.type_synonyms_chirho.get(bare_name_chirho)
-                })
-        })
-    }
-
-    fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
-        if depth_chirho > 100 {
-            return ty_chirho.clone(); // guard against cycles
-        }
-        match ty_chirho {
-            TyChirho::ConChirho(name_chirho) => {
-                if let Some((params_chirho, rhs_chirho)) =
-                    self.lookup_type_synonym_chirho(name_chirho)
-                {
-                    if params_chirho.is_empty() {
-                        // Nullary synonym — expand and recurse
-                        return self.expand_syn_chirho(rhs_chirho, depth_chirho + 1);
-                    }
-                }
-                ty_chirho.clone()
-            }
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => {
-                // Collect the spine: f a1 a2 ... an
-                let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
-                if let TyChirho::ConChirho(name_chirho) = &head_chirho {
-                    if let Some((params_chirho, rhs_chirho)) =
-                        self.lookup_type_synonym_chirho(name_chirho)
-                    {
-                        if args_chirho.len() >= params_chirho.len() {
-                            // Saturated application — substitute params
-                            let expanded_args_chirho: Vec<TyChirho> = args_chirho
-                                .iter()
-                                .map(|a_chirho| self.expand_syn_chirho(a_chirho, depth_chirho + 1))
-                                .collect();
-                            let mut body_chirho = rhs_chirho.clone();
-                            for (p_chirho, a_chirho) in
-                                params_chirho.iter().zip(expanded_args_chirho.iter())
-                            {
-                                body_chirho =
-                                    subst_named_var_chirho(&body_chirho, p_chirho, a_chirho);
-                            }
-                            // Apply remaining args (over-saturated)
-                            let mut result_chirho =
-                                self.expand_syn_chirho(&body_chirho, depth_chirho + 1);
-                            for a_chirho in &expanded_args_chirho[params_chirho.len()..] {
-                                result_chirho = TyChirho::AppChirho(
-                                    Box::new(result_chirho),
-                                    Box::new(a_chirho.clone()),
-                                );
-                            }
-                            return result_chirho;
-                        }
-                    }
-                }
-                // Not a synonym application — just expand sub-parts
-                let ef_chirho = self.expand_syn_chirho(fun_chirho, depth_chirho);
-                let ea_chirho = self.expand_syn_chirho(arg_chirho, depth_chirho);
-                TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
-            }
-            TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
-                // Preserve the indexed head until synonym binders include their
-                // hidden parameters; expanding its bare nullary head would erase them.
-                fun_chirho.clone(),
-                Box::new(self.expand_syn_chirho(arg_chirho, depth_chirho)),
-            ),
-            TyChirho::FunChirho(a_chirho, b_chirho, _) => TyChirho::FunChirho(
-                Box::new(self.expand_syn_chirho(a_chirho, depth_chirho)),
-                Box::new(self.expand_syn_chirho(b_chirho, depth_chirho)),
-                MultChirho::ManyChirho,
-            ),
-            TyChirho::ListChirho(el_chirho) => {
-                TyChirho::ListChirho(Box::new(self.expand_syn_chirho(el_chirho, depth_chirho)))
-            }
-            TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-                elems_chirho
-                    .iter()
-                    .map(|e_chirho| self.expand_syn_chirho(e_chirho, depth_chirho))
-                    .collect(),
-            ),
-            TyChirho::ForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::ForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.expand_syn_chirho(body_chirho, depth_chirho)),
-            },
-            TyChirho::RequiredForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::RequiredForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.expand_syn_chirho(body_chirho, depth_chirho)),
-            },
-            _ => ty_chirho.clone(),
-        }
     }
 
     /// Reduce type family applications in a `TyChirho`. Walks the type and
@@ -5229,15 +5118,13 @@ impl InferCtxChirho {
     fn matches_function_result_alias_expansion_chirho(&self, ty_chirho: &TyChirho) -> bool {
         let normalized_ty_chirho = self.normalize_ty_chirho(ty_chirho);
         ["ShowS", "ReadS"].iter().any(|synonym_name_chirho| {
-            let Some((params_chirho, rhs_chirho)) =
-                self.lookup_type_synonym_chirho(synonym_name_chirho)
-            else {
+            let Some(synonym_chirho) = self.lookup_type_synonym_chirho(synonym_name_chirho) else {
                 return false;
             };
-            let normalized_rhs_chirho = self.normalize_ty_chirho(rhs_chirho);
+            let normalized_rhs_chirho = self.normalize_ty_chirho(&synonym_chirho.body_chirho);
             let mut bindings_chirho = HashMap::new();
             Self::type_matches_synonym_pattern_chirho(
-                params_chirho,
+                &synonym_chirho.parameters_chirho,
                 &normalized_rhs_chirho,
                 &normalized_ty_chirho,
                 &mut bindings_chirho,
@@ -6000,13 +5887,11 @@ impl InferCtxChirho {
                 ..
             } = decl_chirho
             {
-                let syn_name_chirho = name_chirho.text_chirho().to_string();
-                let params_chirho: Vec<String> = type_vars_chirho
-                    .iter()
-                    .map(|v_chirho| v_chirho.text_chirho().to_string())
-                    .collect();
-                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &params_chirho);
-                self.register_type_synonym_chirho(syn_name_chirho, params_chirho, rhs_ty_chirho);
+                self.register_local_type_synonym_chirho(
+                    name_chirho.text_chirho(),
+                    type_vars_chirho,
+                    rhs_chirho,
+                );
             }
         }
 
@@ -7651,72 +7536,10 @@ fn subst_named_var_chirho(
     name_chirho: &str,
     replacement_chirho: &TyChirho,
 ) -> TyChirho {
-    match ty_chirho {
-        TyChirho::ConChirho(n_chirho) if n_chirho == name_chirho => replacement_chirho.clone(),
-        TyChirho::ForallVarChirho(n_chirho) if n_chirho == name_chirho => {
-            replacement_chirho.clone()
-        }
-        TyChirho::AppChirho(f_chirho, a_chirho) => TyChirho::AppChirho(
-            Box::new(subst_named_var_chirho(
-                f_chirho,
-                name_chirho,
-                replacement_chirho,
-            )),
-            Box::new(subst_named_var_chirho(
-                a_chirho,
-                name_chirho,
-                replacement_chirho,
-            )),
-        ),
-        TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
-            Box::new(subst_named_var_chirho(
-                fun_chirho,
-                name_chirho,
-                replacement_chirho,
-            )),
-            Box::new(subst_named_var_chirho(
-                arg_chirho,
-                name_chirho,
-                replacement_chirho,
-            )),
-        ),
-        TyChirho::FunChirho(a_chirho, b_chirho, _) => TyChirho::FunChirho(
-            Box::new(subst_named_var_chirho(
-                a_chirho,
-                name_chirho,
-                replacement_chirho,
-            )),
-            Box::new(subst_named_var_chirho(
-                b_chirho,
-                name_chirho,
-                replacement_chirho,
-            )),
-            MultChirho::ManyChirho,
-        ),
-        TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(Box::new(subst_named_var_chirho(
-            el_chirho,
-            name_chirho,
-            replacement_chirho,
-        ))),
-        TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-            elems_chirho
-                .iter()
-                .map(|e_chirho| subst_named_var_chirho(e_chirho, name_chirho, replacement_chirho))
-                .collect(),
-        ),
-        TyChirho::ForallChirho {
-            vars_chirho,
-            body_chirho,
-        } => TyChirho::ForallChirho {
-            vars_chirho: vars_chirho.clone(),
-            body_chirho: Box::new(subst_named_var_chirho(
-                body_chirho,
-                name_chirho,
-                replacement_chirho,
-            )),
-        },
-        _ => ty_chirho.clone(),
-    }
+    type_synonyms_chirho::substitute_named_parameters_chirho(
+        ty_chirho,
+        &HashMap::from([(name_chirho, replacement_chirho.clone())]),
+    )
 }
 
 /// Build the applied type `Map k v` for Data.Map builtin signatures. (WI-005)

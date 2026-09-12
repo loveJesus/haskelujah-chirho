@@ -538,6 +538,15 @@ impl KindInferCtxChirho {
             let kind_chirho = if self.poly_kinds_enabled_chirho {
                 kind_chirho
             } else {
+                // Default the identities, not merely a copy of the body. They
+                // also occur in pending applications and the pre-substitution
+                // source variable list below. Otherwise a monokinded head
+                // publishes unused hidden binders with unsolved occurrences.
+                for variable_chirho in abstract_rigid_kind_chirho(&kind_chirho).free_vars_chirho() {
+                    self.subst_chirho
+                        .map_chirho
+                        .insert(variable_chirho, KindChirho::StarChirho);
+                }
                 super::default_kind_vars_chirho(&abstract_rigid_kind_chirho(&kind_chirho))
             };
             self.env_chirho.bind_entry_chirho(

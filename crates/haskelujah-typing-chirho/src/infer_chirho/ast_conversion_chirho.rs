@@ -51,9 +51,9 @@ impl InferCtxChirho {
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> TyChirho {
         if let Some(ty_chirho) =
-            self.elaborated_nominal_application_chirho(ast_ty_chirho, var_map_chirho)
+            self.elaborated_head_application_chirho(ast_ty_chirho, var_map_chirho)
         {
-            return ty_chirho;
+            return self.expand_type_synonyms_chirho(&ty_chirho);
         }
         match ast_ty_chirho {
             TypeChirho::VarChirho(name_chirho) => {

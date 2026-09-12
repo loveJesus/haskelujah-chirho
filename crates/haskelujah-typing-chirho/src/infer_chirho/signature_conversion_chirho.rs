@@ -223,7 +223,7 @@ impl InferCtxChirho {
         let AstConstraintChirho::ClassChirho {
             class_chirho,
             args_chirho,
-            ..
+            span_chirho,
         } = constraint_chirho
         else {
             return;
@@ -235,8 +235,9 @@ impl InferCtxChirho {
             let rhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[1], var_map_chirho);
             equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
         } else if let Some(expanded_preds_chirho) = self.expand_constraint_alias_pred_chirho(
-            &class_name_chirho,
+            class_chirho,
             args_chirho,
+            *span_chirho,
             var_map_chirho,
         ) {
             scheme_preds_chirho.extend(expanded_preds_chirho);
@@ -261,21 +262,23 @@ impl InferCtxChirho {
 
     fn expand_constraint_alias_pred_chirho(
         &mut self,
-        class_name_chirho: &str,
+        class_chirho: &super::NameChirho,
         args_chirho: &[TypeChirho],
+        span_chirho: super::SpanChirho,
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> Option<Vec<SchemePredChirho>> {
-        self.lookup_type_synonym_chirho(class_name_chirho)?;
+        self.lookup_type_synonym_chirho(&class_chirho.full_name_chirho())?;
 
-        let mut alias_ty_chirho = TyChirho::ConChirho(class_name_chirho.to_string());
+        let mut alias_chirho = TypeChirho::ConChirho(class_chirho.clone());
         for arg_chirho in args_chirho {
-            alias_ty_chirho = TyChirho::AppChirho(
-                Box::new(alias_ty_chirho),
-                Box::new(self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho)),
-            );
+            alias_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(alias_chirho),
+                arg_chirho: Box::new(arg_chirho.clone()),
+                span_chirho,
+            };
         }
 
-        let expanded_chirho = self.expand_type_synonyms_chirho(&alias_ty_chirho);
+        let expanded_chirho = self.ast_type_to_ty_chirho(&alias_chirho, var_map_chirho);
         let mut preds_chirho = Vec::new();
         self.scheme_preds_from_constraint_ty_chirho(&expanded_chirho, &mut preds_chirho);
         if preds_chirho.is_empty() {

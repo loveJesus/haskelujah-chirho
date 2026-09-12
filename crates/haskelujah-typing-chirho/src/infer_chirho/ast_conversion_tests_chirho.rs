@@ -9,6 +9,36 @@ use haskelujah_span_chirho::SpanChirho;
 
 use super::{InferCtxChirho, TyChirho};
 
+#[test]
+fn synonym_substitution_is_simultaneous_and_preserves_linear_arrows_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho.register_type_synonym_chirho(
+        "LinearPairChirho".into(),
+        vec!["leftChirho".into(), "rightChirho".into()],
+        TyChirho::FunChirho(
+            Box::new(TyChirho::ForallVarChirho("leftChirho".into())),
+            Box::new(TyChirho::ForallVarChirho("rightChirho".into())),
+            super::MultChirho::OneChirho,
+        ),
+    );
+    let caller_chirho = TyChirho::ForallVarChirho("rightChirho".into());
+    let application_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("LinearPairChirho".into())),
+            Box::new(caller_chirho.clone()),
+        )),
+        Box::new(TyChirho::int_chirho()),
+    );
+    assert_eq!(
+        context_chirho.expand_type_synonyms_chirho(&application_chirho),
+        TyChirho::FunChirho(
+            Box::new(caller_chirho),
+            Box::new(TyChirho::int_chirho()),
+            super::MultChirho::OneChirho,
+        ),
+    );
+}
+
 fn name_chirho(text_chirho: &str) -> NameChirho {
     NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
         text_chirho,

@@ -72,8 +72,8 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-The latest frozen diagnostic is f5c4eedb,875/938 accept and234/767 reject,
-one pass each with no timeout/unexpected exit and stable CLI d1f4f2ac. Thirteen
+The latest frozen diagnostic is01f3be2e,880/938 accept and235/767 reject,
+one pass each with no timeout/unexpected exit and stable CLI f8e5edef. Nine
 main-relative accept regressions remain; this checkpoint is NOT landable.
 Full sets are recorded in the visible-application diagnostic section below.
 
@@ -84,10 +84,11 @@ capture is keyed to the final quantified identities, including monomorphic SCC
 uses; local expression signatures instantiate known nominal slots. Family/synonym/
 imported index consumers and complete local classifier checking remain unfinished.
 
-Latest typing365, driver integration99 and canaries7 passed, zero ignored/filtered,
-including the imported-index normalization follow-up.
-Seventeen bounded GHC9.14.1/candidate observations agree, four in execution mode,
-with source and binary hashes retained beside the visible-application fixtures.
+The new local-synonym repair is ready to freeze after typing366, driver integration104
+and canaries7, zero ignored/filtered. Twenty-seven bounded GHC9.14.1/candidate
+observations agree, six in execution mode, with sources and binary hashes retained
+beside the visible-application fixtures. Fresh focused CLI checks recover
+DeepSubsumption02, GivenTypeSynonym, LocalGivenEqs and tc151; this is not a new corpus count.
 The checkpoint is not a compatibility landing; regression repair, full workspace,
 final two-pass gate and DB closure remain owed. Latest detail is at the file's end.
 
@@ -1373,3 +1374,47 @@ f8e5edefd37c353044f57c9309158b35a07f311fd71117b090e4499a0725b4e8.
 No full workspace test, final two-pass gate or main landing is claimed. The
 remaining work includes stored synonym/equation indices, associated families,
 T14010 and T26358. Checkpoint before that producer repair; row484 stays open.
+
+Frozen01f3be2e diagnostic completed:880/938 accept,235/767 reject, no timeout or
+unexpected exit, stable source/CLI. Exactly the five focused recoveries held;
+no new accept failure versus f5c4eedb. Main-relative regressions: DeepSubsumption02,
+GivenTypeSynonym, LocalGivenEqs, T13879, T14010, T21583, T22560c, T26358, tc151.
+Reject gains only T16946, none lost: NOT matching-reason capability. GHC-71451
+rejects escaping skolems at generalization; ours reports a kind mismatch on the
+same signature. Retain this distinction even though the counted verdict agrees.
+
+Next reversible step: local synonyms need explicit hidden parameter contracts
+and RHS conversion using the same solved indices as ordinary signatures, not a
+static converter that emits unindexed nominal heads. Keep ordinary/invisible
+parameter spines separate and substitute simultaneously. Extract synonym storage/
+expansion from the oversized inference root into a focused child; no new dependency,
+no indexed/unindexed equality bypass. Checkpoint tag synonym-kind-indices-before-chirho
+is01f3be2e. Imported/family equations require their own complete contracts afterward.
+
+### Local synonym kind-index contracts
+
+Local synonym bodies now use the signature converter and close their own ordinary/
+invisible parameter identities. Expansion consumes the two spines separately and
+substitutes simultaneously; caller variables and linear-arrow multiplicity survive.
+Constraint-alias occurrences follow the same recorded-span path. The new focused
+synonym module removes the old expansion and substitution blocks from the oversized
+inference root. A body with unclosed variables errors instead of becoming shared state.
+
+The first source control was red on01f3be2e and now prints42/7/11 on STG, LLVM and
+Cranelift, matching independently executed GHC9.14.1. Its phantom-kind mutation
+rejects in both. Three producer defects surfaced while closing the RHS: an annotation
+classifier was computed but not required to be Type; a parenthesis wrapper looked up
+the wrong occurrence span; NoPolyKinds defaulting rewrote the body but left the old
+identities in the binder list and pending applications. All three producers are
+repaired, not bypassed at equality. Positive/negative defaulting and classifier
+controls agree with GHC; a substitution control preserves caller names and linearity.
+
+Frozen-candidate gates: typing366, integration104, canaries7, zero ignored/filtered;
+workspace all-target check0 and explicit CLI build0. Reference JSONL has1 metadata
+plus27 observations (six exact execution pairs), all verdicts agree. CLI SHA256
+4fedbbec8ef54cd806aa6f0233789c066c4d8687eddedd235fa8167b0349cf84.
+Typing all-target clippy exits0 with103 warning messages/54 distinct diagnostics;
+the new synonym module, elaboration module and argument consumer have none. This
+is not warning-free or a full-workspace test gate. Focused recovery is four files;
+T21583 still exposes the separate family-equation RHS index gap. Freeze/push before
+measuring both axes. Main, public artifacts and row484 closure remain untouched.

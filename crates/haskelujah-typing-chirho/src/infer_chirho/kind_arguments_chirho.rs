@@ -6,11 +6,18 @@ use super::*;
 use crate::kind_chirho::KindChirho;
 
 impl InferCtxChirho {
-    pub(super) fn elaborated_nominal_application_chirho(
+    pub(super) fn elaborated_head_application_chirho(
         &mut self,
         source_chirho: &TypeChirho,
         variables_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> Option<TyChirho> {
+        // The kind pass records the application inside parentheses, not the
+        // wrapper span. Looking up the wrapper would incorrectly freshen solved
+        // indices while converting the very same source occurrence.
+        let mut source_chirho = source_chirho;
+        while let TypeChirho::ParenChirho { inner_chirho, .. } = source_chirho {
+            source_chirho = inner_chirho;
+        }
         let mut head_chirho = source_chirho;
         let mut arguments_chirho = Vec::new();
         loop {
@@ -41,7 +48,12 @@ impl InferCtxChirho {
         let elaboration_chirho = self.kind_elaboration_chirho.as_ref()?;
         let binders_chirho = elaboration_chirho
             .nominal_heads_chirho
-            .get(&name_chirho.full_name_chirho())?
+            .get(&name_chirho.full_name_chirho())
+            .or_else(|| {
+                elaboration_chirho
+                    .synonym_heads_chirho
+                    .get(&name_chirho.full_name_chirho())
+            })?
             .clone();
         let recorded_chirho = elaboration_chirho
             .applications_chirho
@@ -51,7 +63,7 @@ impl InferCtxChirho {
             assert_eq!(
                 indices_chirho.len(),
                 binders_chirho.len(),
-                "published nominal binder contract changed"
+                "published kind binder contract changed"
             );
             indices_chirho
                 .iter()
@@ -199,10 +211,8 @@ impl InferCtxChirho {
             .cloned()
             .unwrap_or_default();
         let mut result_chirho = TyChirho::ConChirho(name_chirho.to_owned());
-        for (index_chirho, binder_chirho) in binders_chirho.into_iter().enumerate() {
-            let name_chirho = binder_chirho
-                .name_chirho
-                .unwrap_or_else(|| format!("$head_kind_chirho_{index_chirho}"));
+        for binder_chirho in binders_chirho {
+            let name_chirho = binder_chirho.parameter_name_chirho();
             let variable_chirho = self.kind_type_variable_chirho(name_chirho, variables_chirho);
             result_chirho = TyChirho::KindAppChirho(
                 Box::new(result_chirho),

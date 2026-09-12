@@ -49,6 +49,23 @@ const REFINED_CHIRHO: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/RefinedKindChirho.hs"
 ));
+const SYNONYM_CHIRHO: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/SynonymKindChirho.hs"
+));
+const CLASSIFIER_CHIRHO: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/KindClassifierChirho.hs"
+));
+const DEFAULTED_SYNONYM_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE Haskell2010, EmptyDataDecls #-}
+module DefaultedSynonymChirho where
+data BoxChirho valueChirho
+data InnerChirho valueChirho
+type AliasChirho valueChirho = BoxChirho (InnerChirho valueChirho)
+preserveChirho :: BoxChirho (InnerChirho Int) -> AliasChirho Int
+preserveChirho valueChirho = valueChirho
+"#;
 
 fn rejection_chirho(source_chirho: &str) -> String {
     typecheck_source_chirho(
@@ -127,6 +144,30 @@ fn constructor_refinement_reaches_the_indexed_nominal_head_chirho() {
         "ReflChirho :: EqualChirho leftChirho rightChirho",
     );
     assert!(rejection_chirho(&no_equality_chirho).contains("type mismatch"));
+}
+
+#[test]
+fn synonym_bodies_keep_solved_kind_arguments_and_parameter_sharing_chirho() {
+    assert_execution_chirho(SYNONYM_CHIRHO, "42\n7\n11\n");
+    let wrong_chirho = SYNONYM_CHIRHO.replace(
+        "PhantomAliasChirho Bool -> PhantomChirho @Bool",
+        "PhantomAliasChirho Bool -> PhantomChirho @Type",
+    );
+    assert!(rejection_chirho(&wrong_chirho).contains("type mismatch"));
+}
+
+#[test]
+fn a_kind_annotation_requires_a_type_not_a_promoted_value_chirho() {
+    assert_compile_success_chirho("KindClassifierChirho.hs", CLASSIFIER_CHIRHO);
+    let wrong_chirho = CLASSIFIER_CHIRHO.replace("kindChirho :: Type", "kindChirho :: Bool");
+    assert!(rejection_chirho(&wrong_chirho).contains("kind annotation"));
+}
+
+#[test]
+fn monokinded_alias_bodies_share_the_defaulted_head_contract_chirho() {
+    assert_compile_success_chirho("DefaultedSynonymChirho.hs", DEFAULTED_SYNONYM_CHIRHO);
+    let wrong_chirho = DEFAULTED_SYNONYM_CHIRHO.replace("InnerChirho Int", "InnerChirho Maybe");
+    assert!(rejection_chirho(&wrong_chirho).contains("kind mismatch"));
 }
 
 #[test]

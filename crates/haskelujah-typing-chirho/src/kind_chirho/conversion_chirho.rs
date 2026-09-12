@@ -58,7 +58,7 @@ impl KindInferCtxChirho {
     ) -> (KindChirho, Vec<KindVarChirho>, Vec<KindVarChirho>) {
         let outer_capture_chirho = self.captured_kind_variables_chirho.replace(Vec::new());
         self.env_chirho.begin_scope_chirho();
-        let _classifier_chirho = self.infer_type_kind_chirho(ty_chirho);
+        self.check_kind_expression_classifier_chirho(ty_chirho);
         let (kind_chirho, quantified_chirho) = self.interpret_inline_kind_chirho(ty_chirho);
         self.env_chirho.end_scope_chirho();
         let captured_chirho = self.captured_kind_variables_chirho.take().unwrap();
@@ -184,9 +184,13 @@ impl KindInferCtxChirho {
                     // Unlike a missing imported class, its kind is ours to infer.
                     Some(self.infer_type_kind_chirho(&TypeChirho::VarChirho(class_chirho.clone())))
                 } else {
-                    binding_chirho
-                        .as_ref()
-                        .map(|binding_chirho| self.instantiate_binding_chirho(binding_chirho))
+                    binding_chirho.as_ref().map(|binding_chirho| {
+                        self.instantiate_source_binding_chirho(
+                            &class_chirho.full_name_chirho(),
+                            binding_chirho,
+                            *span_chirho,
+                        )
+                    })
                 };
                 let argument_kinds_chirho: Vec<_> = args_chirho
                     .iter()
@@ -231,10 +235,23 @@ impl KindInferCtxChirho {
         // TERMS. Keeping the two outputs separate avoids turning TYPE Bool into
         // a plausible runtime kind simply because it has application syntax.
         self.env_chirho.begin_scope_chirho();
-        let _classifier_chirho = self.infer_type_kind_chirho(ty_chirho);
+        self.check_kind_expression_classifier_chirho(ty_chirho);
         let term_chirho = self.interpret_kind_term_chirho(ty_chirho);
         self.env_chirho.end_scope_chirho();
         term_chirho
+    }
+
+    /// An annotation denotes a kind, hence a type, not an arbitrary promoted
+    /// value. Solving this classifier also prevents a spurious extra quantifier
+    /// for the kind of an implicit kind variable from escaping into consumers.
+    fn check_kind_expression_classifier_chirho(&mut self, ty_chirho: &TypeChirho) {
+        let classifier_chirho = self.infer_type_kind_chirho(ty_chirho);
+        self.unify_chirho(
+            &classifier_chirho,
+            &KindChirho::StarChirho,
+            "kind annotation",
+            ty_chirho.span_chirho(),
+        );
     }
 
     pub(super) fn interpret_kind_term_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {

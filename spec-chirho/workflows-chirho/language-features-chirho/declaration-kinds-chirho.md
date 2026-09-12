@@ -543,7 +543,35 @@ flowchart LR
   OuterKindChirho --> NextUseChirho
 ```
 
-Not complete: synonym/family equation indices, imported constructor schemes and
+Local type synonyms now publish their own invisible-parameter contract, separate
+from ordinary parameters. Their bodies use the same solved source-occurrence
+indices as signatures, then abstract only declaration-owned identities. A body
+with unclosed identities emits an error; it never stores globally shared fresh
+variables as if they were parameters. Constraint-alias uses retain their source
+span too. Parenthesized applications look up the inner application's span, where
+kind inference recorded the solution.
+
+Expansion matches the two parameter spines separately and substitutes them
+simultaneously, preserving caller variables and function multiplicity. Saturation
+is decided before traversing arguments; an undersaturated spine is rebuilt once,
+not re-expanded at every prefix. Imported synonyms keep their existing contract;
+this local elaboration does not invent missing imported kind metadata.
+
+Annotation checking must constrain the expression's classifier to Type, not only
+compute and discard it. In Haskell2010/NoPolyKinds publication, defaulting updates
+the identities shared by the body, pending applications and binder discovery;
+rewriting only the body would leave unused phantom quantifiers in the interface.
+
+```mermaid
+flowchart LR
+  AliasKindChirho[Published synonym binder contract] --> AliasBodyChirho[Convert RHS with solved occurrence indices]
+  AliasBodyChirho --> AliasTemplateChirho[Close declaration-local parameters]
+  AliasUseChirho[Ordinary and invisible use arguments] --> AliasExpandChirho[Simultaneous saturated expansion]
+  AliasTemplateChirho --> AliasExpandChirho
+  AliasExpandChirho --> AliasEqualityChirho[Compare fully indexed types]
+```
+
+Not complete: family equation indices, imported constructor schemes and
 specificity, and complete higher-rank kind subsumption. The frozen f5c4eedb
 diagnostic recovered T12045a but exposed twelve new accept failures relative to
 its predecessor; that checkpoint is not landable. Keeping KindApp in the type IR
