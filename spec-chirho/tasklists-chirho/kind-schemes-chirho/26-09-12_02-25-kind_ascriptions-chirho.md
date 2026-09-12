@@ -52,9 +52,10 @@ to waive the corpus gate or edit its membership, public labels or site.
 - [x] Positive distinct-result execution, wrong result/kind/name and scope controls.
 - [x] Recover ClassifierCycle without weakening its assertions.
 - [ ] Inspect the remaining corpus regressions by reason after a frozen CLI diagnostic.
-- [ ] Commit and push the ascription implementation and its reference records.
-- [ ] Focused/full integration and typing gates; freeze, build explicit CLI,
-  compare exact corpus sets before the final broad/two-pass landing gate.
+- [x] Commit and push the ascription implementation and its reference records (250b22fb, remote exact).
+- [x] Focused/full integration and typing gates; freeze, build explicit CLI,
+  and compare exact corpus sets in one diagnostic per axis.
+- [ ] Reduce new corpus failures; final broad/two-pass landing gate remains blocked.
 
 The preceding import repair is fully recorded in26-09-12_01-47-import_contracts-chirho.md.
 Its driver result does not mean this new implementation or all GHC tests pass.
@@ -106,6 +107,27 @@ establish arbitrary higher-rank subsumption, local-signature classifier checking
 complete TH binder conversion, imported promoted schemes or a static converter
 without elaboration.
 
+## Frozen diagnostic at250b22fb
+
+Explicit CLI build at250b22fbaeb62933c41ac57a609014dabf9e4f8b, SHA256
+de6d497cf168c8156f709761e2e1a0762d83421f38823c8658e0565affc82db6.
+One pass per axis with pure-shell output classification, P4/15s and serial
+timeout reruns. Source clean and CLI hash identical before/after both passes.
+Accept869/938; reject252/767; zero timeouts or unexpected exits. This is a
+diagnostic, NOT the final two-pass gate or a public measurement supersession.
+
+Versus compiler3458, accept gains T15079 and loses thirteen:
+LevPolyResult, T11348, T12734, T12734a, T12850, T15772, T16204a, T16204b,
+T18185, T19682, T23543, T26737, tc184. All nine previous main-relative
+regressions remain, so versus main121d4f2c this is nine gains and22 losses.
+The narrow greens did not cover this surface and cannot waive these failures.
+
+Reject versus3458 gains T14904a, T14904b, T24470a, T3540 and tcfail215,
+and loses T15552a. These are verdict movements, not yet audited matching-reason
+capability. Full failing-verdict sets, deltas and list hashes are retained in
+ascriptions-chirho/ascription-diagnostic-chirho.jsonl. Published counts, labels,
+membership and canonical row484 are unchanged.
+
 ## Resume state
 
 db60ff50 is the pushed pre-fork checkpoint. This implementation checkpoint
@@ -113,9 +135,8 @@ records final integration133/canaries7 and frontend136/357/17/371, all green
 with zero ignored/filtered, plus workspace all-target check and format check.
 Commands and log hashes are in ascriptions-chirho/ascription-gates-chirho.json;
 raw logs are in /private/tmp/haskelujah-ascription-chirho.EgTd8V.
-No CLI relink or corpus run has occurred on this implementation. Retained CLI3458 has SHA256
-03e59700eb6073db34a585a7b27582861077641bb4c6b7f60d047dce9ed0534e.
-Next: commit by named paths, push and verify, explicit CLI
-build/hash, then one diagnostic pass per axis comparing exact sets. Main and
-canonical row484 remain unchanged; the nine previous corpus regressions are
-not assumed recovered from the focused greens.
+CLI250b22fb and its frozen diagnostic are recorded above. Next: reduce the
+thirteen new failures by source/diagnostic and inspect T15079's recovery and
+reject movements; do not weaken ascription or closure checks to recover totals.
+Main and canonical row484 remain unchanged. SLOT/DB lease retained, corpus
+CPU embargo released after both passes.
