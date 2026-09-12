@@ -22,24 +22,12 @@ struct TypeChainChirho {
     operators_chirho: Vec<TypeOperatorChirho>,
 }
 
-impl LowerCtxChirho {
-    pub(super) fn lower_infix_type_chirho(
-        &self,
-        node_chirho: &GreenNodeChirho,
-        base_chirho: usize,
-        span_chirho: SpanChirho,
-    ) -> TypeChirho {
-        let mut chain_chirho = TypeChainChirho::default();
-        self.collect_infix_type_chain_chirho(
-            node_chirho,
-            base_chirho,
-            span_chirho,
-            &mut chain_chirho,
-        );
-        if chain_chirho.operands_chirho.len() != chain_chirho.operators_chirho.len() + 1 {
-            return self.placeholder_type_chirho();
+impl TypeChainChirho {
+    fn finish_chirho(self, span_chirho: SpanChirho) -> Option<TypeChirho> {
+        if self.operands_chirho.len() != self.operators_chirho.len() + 1 {
+            return None;
         }
-        let mut operands_chirho = chain_chirho.operands_chirho.into_iter();
+        let mut operands_chirho = self.operands_chirho.into_iter();
         let mut values_chirho = vec![
             operands_chirho
                 .next()
@@ -48,10 +36,8 @@ impl LowerCtxChirho {
         let mut pending_chirho: Vec<TypeOperatorChirho> = Vec::new();
         // Each operator/operand is pushed and reduced once: linear work, no
         // recursive suffix copying. Parenthesized subexpressions are atoms.
-        for (operator_chirho, right_chirho) in chain_chirho
-            .operators_chirho
-            .into_iter()
-            .zip(operands_chirho)
+        for (operator_chirho, right_chirho) in
+            self.operators_chirho.into_iter().zip(operands_chirho)
         {
             while pending_chirho.last().is_some_and(|previous_chirho| {
                 previous_chirho.precedence_chirho > operator_chirho.precedence_chirho
@@ -70,7 +56,175 @@ impl LowerCtxChirho {
         while let Some(operator_chirho) = pending_chirho.pop() {
             reduce_type_operator_chirho(&mut values_chirho, operator_chirho, span_chirho);
         }
-        values_chirho.pop().expect("a type chain has a result")
+        values_chirho.pop()
+    }
+}
+
+impl LowerCtxChirho {
+    pub(super) fn lower_infix_type_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> TypeChirho {
+        let mut chain_chirho = TypeChainChirho::default();
+        self.collect_infix_type_chain_chirho(
+            node_chirho,
+            base_chirho,
+            span_chirho,
+            &mut chain_chirho,
+        );
+        chain_chirho
+            .finish_chirho(span_chirho)
+            .unwrap_or_else(|| self.placeholder_type_chirho())
+    }
+
+    /// Flat declaration/context tokens and structured signatures share one
+    /// fixity resolver. Delimiters shield atoms; ticks belong to the operator,
+    /// not the preceding operand. Each token and operator is visited once.
+    /// Workflow: language-features-chirho/flat-type-syntax-chirho.
+    pub(super) fn lower_flat_type_chain_chirho(
+        &self,
+        children_chirho: &[&ChildChirho],
+        span_chirho: SpanChirho,
+    ) -> Option<TypeChirho> {
+        let mut chain_chirho = TypeChainChirho::default();
+        let mut depth_chirho = 0usize;
+        let mut operand_start_chirho = 0usize;
+        let mut index_chirho = 0usize;
+        while index_chirho < children_chirho.len() {
+            let child_chirho = children_chirho[index_chirho];
+            let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho else {
+                index_chirho += 1;
+                continue;
+            };
+            let operator_chirho = match token_chirho.kind_chirho() {
+                TokenKindChirho::LeftParenChirho
+                | TokenKindChirho::LeftBracketChirho
+                | TokenKindChirho::LeftBraceChirho => {
+                    depth_chirho += 1;
+                    None
+                }
+                TokenKindChirho::RightParenChirho
+                | TokenKindChirho::RightBracketChirho
+                | TokenKindChirho::RightBraceChirho => {
+                    depth_chirho = depth_chirho.saturating_sub(1);
+                    None
+                }
+                TokenKindChirho::BacktickChirho if depth_chirho == 0 => {
+                    let name_chirho = children_chirho.get(index_chirho + 1).copied();
+                    let closing_chirho = children_chirho.get(index_chirho + 2);
+                    if matches!(name_chirho.map(|child_chirho| child_chirho.element_chirho),
+                        Some(GreenElementChirho::TokenChirho(token_chirho))
+                            if matches!(token_chirho.kind_chirho(), TokenKindChirho::VarIdChirho
+                                | TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho))
+                        && matches!(closing_chirho.map(|child_chirho| child_chirho.element_chirho),
+                            Some(GreenElementChirho::TokenChirho(token_chirho))
+                                if token_chirho.kind_chirho() == TokenKindChirho::BacktickChirho)
+                    {
+                        Some((
+                            index_chirho,
+                            index_chirho + 3,
+                            self.type_operator_chirho(
+                                name_chirho.expect("operator name checked"),
+                                None,
+                            ),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                TokenKindChirho::VarSymChirho
+                | TokenKindChirho::ConSymChirho
+                | TokenKindChirho::QualifiedVarSymChirho
+                | TokenKindChirho::QualifiedConSymChirho
+                | TokenKindChirho::TildeChirho
+                    if depth_chirho == 0
+                        && !matches!(
+                            token_chirho.text_chirho(),
+                            "." | "`" | "!" | "%" | "@" | "|" | "->" | "=>"
+                        ) =>
+                {
+                    let promoted_chirho = index_chirho
+                        .checked_sub(1)
+                        .and_then(|previous_chirho| children_chirho.get(previous_chirho))
+                        .filter(|previous_chirho| {
+                            matches!(previous_chirho.element_chirho,
+                            GreenElementChirho::TokenChirho(token_chirho)
+                                if token_chirho.kind_chirho() == TokenKindChirho::TickChirho)
+                        });
+                    let start_chirho = index_chirho - usize::from(promoted_chirho.is_some());
+                    Some((
+                        start_chirho,
+                        index_chirho + 1,
+                        self.type_operator_chirho(
+                            child_chirho,
+                            promoted_chirho.map(|child_chirho| child_chirho.start_chirho),
+                        ),
+                    ))
+                }
+                _ => None,
+            };
+            if let Some((start_chirho, end_chirho, operator_chirho)) = operator_chirho
+                && start_chirho > operand_start_chirho
+                && end_chirho < children_chirho.len()
+            {
+                chain_chirho
+                    .operands_chirho
+                    .push(self.type_from_flat_children_chirho(
+                        &children_chirho[operand_start_chirho..start_chirho],
+                        span_chirho,
+                    ));
+                chain_chirho.operators_chirho.push(operator_chirho);
+                operand_start_chirho = end_chirho;
+                index_chirho = end_chirho;
+            } else {
+                index_chirho += 1;
+            }
+        }
+        if chain_chirho.operators_chirho.is_empty() {
+            return None;
+        }
+        chain_chirho.operands_chirho.push(
+            self.type_from_flat_children_chirho(
+                &children_chirho[operand_start_chirho..],
+                span_chirho,
+            ),
+        );
+        chain_chirho.finish_chirho(span_chirho)
+    }
+
+    fn type_operator_chirho(
+        &self,
+        child_chirho: &ChildChirho,
+        promoted_start_chirho: Option<usize>,
+    ) -> TypeOperatorChirho {
+        let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho else {
+            unreachable!("type operator token was checked");
+        };
+        let name_chirho = self.name_from_token_chirho(
+            token_chirho,
+            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+        );
+        let (precedence_chirho, associativity_chirho) =
+            self.operator_fixity_chirho(name_chirho.text_chirho());
+        // A backticked lowercase name is a quantified variable. Symbols name
+        // constructors; a promotion tick selects the promoted namespace.
+        let ty_chirho = if let Some(start_chirho) = promoted_start_chirho {
+            TypeChirho::PromotedConChirho {
+                name_chirho,
+                span_chirho: self.span_chirho(start_chirho, child_chirho.end_chirho),
+            }
+        } else if token_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
+            TypeChirho::VarChirho(name_chirho)
+        } else {
+            TypeChirho::ConChirho(name_chirho)
+        };
+        TypeOperatorChirho {
+            ty_chirho,
+            precedence_chirho,
+            associativity_chirho,
+        }
     }
 
     fn collect_infix_type_chain_chirho(
@@ -104,14 +258,6 @@ impl LowerCtxChirho {
                     ) {
                         return None;
                     }
-                    let name_chirho = self.name_from_token_chirho(
-                        token_chirho,
-                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
-                    );
-                    // A backticked lowercase identifier is a quantified type variable.
-                    // Symbols, including VarSym (`~>`), still name type constructors.
-                    let (precedence_chirho, associativity_chirho) =
-                        self.operator_fixity_chirho(name_chirho.text_chirho());
                     let promoted_start_chirho = index_chirho
                         .checked_sub(1)
                         .and_then(|previous_chirho| children_chirho.get(previous_chirho))
@@ -121,23 +267,9 @@ impl LowerCtxChirho {
                                 if token_chirho.kind_chirho() == TokenKindChirho::TickChirho)
                         })
                         .map(|previous_chirho| previous_chirho.start_chirho);
-                    let ty_chirho = if let Some(start_chirho) = promoted_start_chirho {
-                        TypeChirho::PromotedConChirho {
-                            name_chirho,
-                            span_chirho: self.span_chirho(start_chirho, child_chirho.end_chirho),
-                        }
-                    } else if kind_chirho == TokenKindChirho::VarIdChirho {
-                        TypeChirho::VarChirho(name_chirho)
-                    } else {
-                        TypeChirho::ConChirho(name_chirho)
-                    };
                     Some((
                         index_chirho,
-                        TypeOperatorChirho {
-                            ty_chirho,
-                            precedence_chirho,
-                            associativity_chirho,
-                        },
+                        self.type_operator_chirho(child_chirho, promoted_start_chirho),
                     ))
                 });
         let Some((index_chirho, operator_chirho)) = operator_chirho else {

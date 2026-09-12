@@ -345,3 +345,77 @@ Exact sets, deltas and hashes are in producers-chirho/occurrence-diagnostic-chir
 Next: reduce the two new accept failures and audit the reject movement; repeat
 the full repaired-driver suite. Open-kind row registration stays behind that
 reduction. CPU embargo released, SLOT/DB retained, main/artifacts unchanged.
+
+## Operator grouping reduction after a4260137
+
+Checkpoint10bbf9f0 is clean, pushed and locally tagged
+kind-operator-precedence-before-chirho. T18185's flat superclass path splits at
+the first operator without consulting fixity. T21473's structured context uses
+the shared fixity table, but that table gives (~) the default precedence9.
+Both now report operand-kind contradictions after homogeneous equality acquired
+its real contract. The hypothesis is wrong grouping, not an overly strict
+equality scheme; parenthesized reductions and fresh GHC controls decide it.
+
+If confirmed, route flat operator chains through the existing linear type-chain
+resolver, preserve promotion/backtick identity and parentheses, and complete the
+builtin equality fixity in the shared table. Do not add a constraint-only split
+or weaken the homogeneous classifier. The existing type-operator child module
+owns this grammar; the oversized parser root should gain no parallel resolver.
+This is an isolated, reversible root repair within row484. Open-family row
+registration remains queued until these newly exposed failures are reduced.
+
+### Measured operator and catalog repair
+
+Fresh GHC9.14.1 and frozen a426 observations confirm both corpus files pass
+unchanged under GHC, fail here, and recover here with explicit parentheses.
+The installed reference reports infix4 for both equality operators. Two new
+parser controls fail0/2 on the original AST grouping, then pass after the shared
+resolver/table repair. The flat path also now retains promotion and backticked
+variable identity while applying declared fixities; no equality scheme or RHS
+closure check was relaxed. The invalid `Int ': 'True` tail was wrongly accepted
+under a synthetic predicate head and now receives a kind error.
+
+The execution control initially failed after parsing was repaired: the module
+catalog knew cons from its signature but not nil, so a literal used only inside
+an expression lost its hidden index. Adding an UNUSED nil signature recovered
+the identical call. The inverse (cons expression after a literal-only signature)
+also failed and recovered after adding an unused cons signature. All four
+exact sources print42 under GHC9.14.1. The provider catalog now publishes the
+existing authoritative promoted schemes once per module, independently of use
+sites. Unknown imports remain unknown. The four focused integration tests pass,
+including all three engines for these four source programs.
+
+The outstanding full driver repeat on compiler a4260137 independently completed
+1774/1774, zero ignored/filtered,1083.40s. This closes that predecessor's repeat;
+it is not attributed to the newer operator/catalog edits. Broader current gates
+and a frozen corpus diagnostic are next. Reference observations live under the
+new bounded ascriptions-chirho/operators-chirho evidence directory.
+
+### Occurrence reject-reason audit (a426 versus351)
+
+Independent read-only review checked all emitted diagnostics against source and
+the files' own stderr, not just the first diagnostic. LazyFieldsDisabled's gain
+is accidental: GHC rejects explicit laziness without StrictData, while our
+field lowerer leaves (~) in the type and equality classification errors. T16502
+has no committed stderr; its comments describe unsatisfied quantified-superclass
+evidence. Our former kind error was not that contract, and quantified evidence
+consumers still need work. Its current acceptance is not capability proof.
+
+T24090b's stderr is warning-only GHC-16382 and all.T says compile: its current
+acceptance agrees with that legacy behavior, without warning parity. T24090a
+and T24470a instead require standalone-alias arity checks. Their former E0101
+errors were not that semantic rule, but the new legacy outer-RHS name scope
+now accepts both invalid contracts. Alias standalone signatures are not carried
+to that consumer today. Preserve the valid legacy control and represent that
+missing contract; do not restore the unrelated E0101 or call these losses fixed.
+The audit did not change corpus membership, labels or the measured counts.
+
+Current checkpoint gates: parser363, typing371, integration166 and canaries7,
+all green with zero ignored/filtered. Workspace all-target check, explicit CLI
+build and format check pass. Three selected-crate all-target clippy completes
+with466 warning-message lines including duplicate/summary notices, not zero
+warnings and not a comparable warning trend against differently scoped runs.
+The14 fresh GHC observations and10 gate records retain source/log hashes.
+The new source files remain bounded; pre-existing large roots are not declared
+structurally compliant. Next: commit/push, freeze the explicit CLI, and compare
+one diagnostic per axis against a426 and main before further implementation.

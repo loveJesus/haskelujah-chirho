@@ -20,6 +20,8 @@ mod kind_ascriptions_chirho;
 mod kind_terms_chirho;
 #[path = "typing_integration_chirho/multiplicities_chirho.rs"]
 mod multiplicities_chirho;
+#[path = "typing_integration_chirho/operator_contexts_chirho.rs"]
+mod operator_contexts_chirho;
 #[path = "typing_integration_chirho/promoted_lists_chirho.rs"]
 mod promoted_lists_chirho;
 

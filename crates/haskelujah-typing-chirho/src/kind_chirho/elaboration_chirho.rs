@@ -143,37 +143,28 @@ impl KindInferCtxChirho {
         let mut synonym_heads_chirho = HashMap::new();
         let mut family_heads_chirho = HashMap::new();
         let mut promoted_heads_chirho = HashMap::new();
-        for occurrence_chirho in self.kind_applications_chirho.values() {
-            if !matches!(
-                occurrence_chirho.namespace_chirho,
-                KindHeadNamespaceChirho::PromotedChirho
-            ) || promoted_heads_chirho.contains_key(&occurrence_chirho.head_chirho)
-            {
-                continue;
-            }
-            if let Some(KindBindingChirho::PolyChirho(scheme_chirho)) = self
-                .env_chirho
-                .lookup_promoted_binding_chirho(&occurrence_chirho.head_chirho)
-            {
-                promoted_heads_chirho.insert(
-                    occurrence_chirho.head_chirho.clone(),
-                    scheme_chirho
-                        .quantified_chirho
-                        .iter()
-                        .enumerate()
-                        .map(
-                            |(index_chirho, identity_chirho)| ElaboratedKindBinderChirho {
-                                identity_chirho: *identity_chirho,
-                                name_chirho: scheme_chirho.source_names_chirho[index_chirho]
-                                    .clone(),
-                                specified_chirho: scheme_chirho
-                                    .specified_chirho
-                                    .contains(identity_chirho),
-                            },
-                        )
-                        .collect(),
-                );
-            }
+        // A provider contract is independent of which signatures happened to
+        // mention it. Otherwise an unused '[] signature changes the arity of
+        // a promoted-list literal in an expression elsewhere in the module.
+        // Walk the authoritative registry once, not once per use or annotation.
+        for (name_chirho, scheme_chirho) in self.env_chirho.promoted_schemes_chirho() {
+            promoted_heads_chirho.insert(
+                name_chirho.to_owned(),
+                scheme_chirho
+                    .quantified_chirho
+                    .iter()
+                    .enumerate()
+                    .map(
+                        |(index_chirho, identity_chirho)| ElaboratedKindBinderChirho {
+                            identity_chirho: *identity_chirho,
+                            name_chirho: scheme_chirho.source_names_chirho[index_chirho].clone(),
+                            specified_chirho: scheme_chirho
+                                .specified_chirho
+                                .contains(identity_chirho),
+                        },
+                    )
+                    .collect(),
+            );
         }
         for (name_chirho, shape_chirho) in &self.imported_kind_shapes_chirho {
             if self.local_kind_decl_names_chirho.contains(name_chirho) {

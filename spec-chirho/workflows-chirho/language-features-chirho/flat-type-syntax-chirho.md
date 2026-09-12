@@ -6,6 +6,28 @@ Some CST contexts, notably record fields, retain a flat token sequence instead
 of structured type nodes. Both routes must preserve the same semantic type.
 This is syntax preservation, not permission to repair an invalid kind later.
 
+The two representations also share the linear operator-chain resolver in
+`lower_chirho/type_operators_chirho.rs`. Flat tokens retain the whole operand,
+then enter the same precedence/associativity stack as structured infix nodes.
+Parentheses shield an operand, backticked lowercase names remain variables,
+and promotion ticks belong to the operator rather than its left operand.
+The shared builtin table gives (~) and (~~) precedence4, as GHC9.14.1 reports.
+Thus `xs :++ x ~ ys` compares `(xs :++ x)` with ys, and `xs ~ x ': rest`
+compares xs with `(x ': rest)`. It must not invent a synthetic predicate head
+that silently hides an invalid list tail. This is not complete fixity-error
+diagnostics: rejecting conflicting/non-associative chains remains a separate
+contract. No constraint-only precedence exception is introduced.
+
+```mermaid
+flowchart LR
+    StructuredOperatorsChirho[Structured infix nodes] --> ChainChirho[Operands and namespace-aware operators]
+    FlatOperatorsChirho[Flat tokens with balanced delimiters] --> ChainChirho
+    ChainChirho --> FixityChirho[One linear fixity resolver]
+    FixityChirho --> ApplicationChirho[Correctly grouped type application]
+    ApplicationChirho --> ConstraintChirho[Extract actual predicate head and operands]
+    ConstraintChirho --> ClassifierChirho[Check every operand classifier]
+```
+
 ```mermaid
 flowchart TD
     A[Source type] --> B{CST representation}
@@ -61,7 +83,7 @@ a lifted payload type; it does not silently erase unknown payload names.
 
 Limits: the outer instance-head splitter is still a separate consumer, and this
 does not establish all unparenthesized instance forms or complete flat
-forall/fixity support. Ordinary/record constructor context evidence is still not
+forall/fixity-error support. Ordinary/record constructor context evidence is still not
 represented in the constructor AST; the boundary/read-back controls do not prove
 full implicit-parameter evidence behavior. GADT-result representation
 and malformed-syntax diagnostics also remain separate contracts.

@@ -390,27 +390,10 @@ impl LowerCtxChirho {
             };
         }
 
-        // Some declaration heads retain a kind signature as a flat token
-        // sequence instead of an `InfixTypeChirho` CST node. Preserve the
-        // operator as the application head: `left ~> right` means
-        // `(~>) left right`, not `left right` with `~>` discarded.
-        if let Some((left_end_chirho, right_start_chirho, operator_chirho)) =
-            self.find_top_level_type_operator_chirho(children_chirho)
+        if let Some(ty_chirho) =
+            self.lower_flat_type_chain_chirho(children_chirho, fallback_span_chirho)
         {
-            let left_chirho = self.type_from_flat_children_chirho(
-                &children_chirho[..left_end_chirho],
-                fallback_span_chirho,
-            );
-            let right_chirho = self.type_from_flat_children_chirho(
-                &children_chirho[right_start_chirho..],
-                fallback_span_chirho,
-            );
-            return type_operators_chirho::binary_type_application_chirho(
-                TypeChirho::ConChirho(operator_chirho),
-                left_chirho,
-                right_chirho,
-                fallback_span_chirho,
-            );
+            return ty_chirho;
         }
 
         // Build application chain from atom types
@@ -422,53 +405,6 @@ impl LowerCtxChirho {
     /// Find a top-level `->` token (not inside parens/brackets).
     fn find_top_level_arrow_chirho(&self, children_chirho: &[&ChildChirho]) -> Option<usize> {
         self.find_top_level_token_chirho(children_chirho, TokenKindChirho::RightArrowChirho)
-    }
-
-    fn find_top_level_type_operator_chirho(
-        &self,
-        children_chirho: &[&ChildChirho],
-    ) -> Option<(usize, usize, NameChirho)> {
-        let mut depth_chirho = 0i32;
-        let mut index_chirho = 0usize;
-        while index_chirho < children_chirho.len() {
-            let child_chirho = children_chirho[index_chirho];
-            let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho else {
-                index_chirho += 1;
-                continue;
-            };
-            match token_chirho.kind_chirho() {
-                TokenKindChirho::LeftParenChirho | TokenKindChirho::LeftBracketChirho => {
-                    depth_chirho += 1;
-                }
-                TokenKindChirho::RightParenChirho | TokenKindChirho::RightBracketChirho => {
-                    depth_chirho -= 1;
-                }
-                TokenKindChirho::VarSymChirho
-                | TokenKindChirho::ConSymChirho
-                | TokenKindChirho::QualifiedVarSymChirho
-                | TokenKindChirho::QualifiedConSymChirho
-                | TokenKindChirho::TildeChirho
-                    if depth_chirho == 0
-                        && index_chirho > 0
-                        && index_chirho + 1 < children_chirho.len()
-                        && !matches!(
-                            token_chirho.text_chirho(),
-                            "." | "`" | "!" | "%" | "@" | "|" | "->" | "=>"
-                        ) =>
-                {
-                    let span_chirho =
-                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                    return Some((
-                        index_chirho,
-                        index_chirho + 1,
-                        self.name_from_token_chirho(token_chirho, span_chirho),
-                    ));
-                }
-                _ => {}
-            }
-            index_chirho += 1;
-        }
-        None
     }
 
     /// Find a top-level token of a specific kind (not inside parens/brackets).

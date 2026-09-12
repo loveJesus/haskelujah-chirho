@@ -804,6 +804,16 @@ literal instantiates that known head contract once, sharing the fresh index
 through the whole list spine. The static converter without kind elaboration and
 complete expression-level classifier checking remain outside this guarantee.
 
+The promoted provider catalog comes from the authoritative environment once per
+module, not from the subset of constructors that appeared in checked signatures.
+Otherwise a signature using cons but not nil gives a later literal a different
+hidden arity, and adding an unused nil signature changes whether the program
+typechecks. The inverse case, a cons expression after only a literal signature,
+has the same defect. Both constructors' known schemes must be available to the
+expression converter independently of those unrelated uses. Opaque imports
+remain absent from this catalog; the change publishes existing contracts, not
+invented metadata. The catalog walk is linear in its registered providers.
+
 Homogeneous constraint equality has the builtin classifier
 `(~) :: forall k. k -> k -> Constraint`. Both operands share one instantiated k,
 including an equality used as a family RHS type rather than a signature context.

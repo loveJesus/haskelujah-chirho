@@ -1,0 +1,161 @@
+{
+  "base_commit_chirho": "10bbf9f0092362826626f2d0c08154d6affea241",
+  "recorded_at_chirho": "2026-09-12T09:47:45.458Z",
+  "explicit_cli_sha256_chirho": "d3a3ab0120f36afa95977e93c0e00c44a88c57995d37acf3408e70e591dc9928",
+  "reference_observation_count_chirho": 14,
+  "scope_chirho": "Operator grouping and promoted-provider catalog checkpoint; full driver1774 belongs to predecessora426, not these new edits. Current parser363/typing371/integration166/canaries7. Full current driver/workspace execution and final two-pass corpus gate remain owed. Not lint-clean.",
+  "runs_chirho": [
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --lib -j3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "source_scope_chirho": "predecessor_a4260137_chirho",
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 1774,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/occurrence-driver-final-chirho.log",
+      "log_sha256_chirho": "71dd983983b4f066278f2ef0dc607db873517275479e1b5a150d78e1d3080cf1"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-parser --lib equality_groups_ -j3 -- --test-threads=3",
+      "exit_chirho": 101,
+      "source_scope_chirho": "new_controls_before_grammar_repair_chirho",
+      "results_chirho": [
+        {
+          "status_chirho": "FAILED",
+          "passed_chirho": 0,
+          "failed_chirho": 2,
+          "ignored_chirho": 0,
+          "filtered_chirho": 360
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-parser-before-chirho.log",
+      "log_sha256_chirho": "aa83c08121f210c6ec7a30ab63fdb1a9fe0c0eac7c8a7ecf7a401d1a4a865b44"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --test typing_integration_chirho operator_contexts_chirho -j3 -- --test-threads=3",
+      "exit_chirho": 101,
+      "source_scope_chirho": "grammar_repaired_before_catalog_chirho",
+      "results_chirho": [
+        {
+          "status_chirho": "FAILED",
+          "passed_chirho": 2,
+          "failed_chirho": 1,
+          "ignored_chirho": 0,
+          "filtered_chirho": 162
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-integration-focused-chirho.log",
+      "log_sha256_chirho": "90b1f619d98ec25f1a4ace49f9a06fa5be89012c063d752ab3763b190fe3efd5"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --test typing_integration_chirho operator_contexts_chirho -j3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "source_scope_chirho": "after_catalog_repair_chirho",
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 4,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 162
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-integration-catalog-chirho.log",
+      "log_sha256_chirho": "31517121d2d969522b0da97a47de1578a776b7999759093493c55e75b60999cc"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-parser -p haskelujah-typing --lib -j3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "source_scope_chirho": "operator_catalog_checkpoint_chirho",
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 363,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 371,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-frontends-final-chirho.log",
+      "log_sha256_chirho": "79af9a1ecce34c90531b2dc08a3b255ee87544e6d889206202c465c90e63d87f"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --test typing_integration_chirho --test canaries_chirho -j3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "source_scope_chirho": "operator_catalog_checkpoint_chirho",
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 7,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 166,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-integration-final-chirho.log",
+      "log_sha256_chirho": "9703eab9e2d9431f6c3d2baa8c3b016c51b46ef1e9b46f9b9139a01b7364a6ad"
+    },
+    {
+      "command_chirho": "cargo check --workspace --all-targets -j3",
+      "exit_chirho": 0,
+      "source_scope_chirho": "operator_catalog_checkpoint_chirho",
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-check-final-chirho.log",
+      "log_sha256_chirho": "c23628e53d2dfc125764d2cb42bf2bca1982cfb150ba8bb76e10850b08de12b5"
+    },
+    {
+      "command_chirho": "cargo clippy -p haskelujah-parser -p haskelujah-typing -p haskelujah-driver --all-targets -j3",
+      "exit_chirho": 0,
+      "source_scope_chirho": "operator_catalog_checkpoint_chirho",
+      "results_chirho": [],
+      "warning_message_lines_chirho": 466,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-clippy-final-chirho.log",
+      "log_sha256_chirho": "89bfd68075913d9129ca0c73453dc6821fd2023fdb40fa02cec0b6a4e7d7be50"
+    },
+    {
+      "command_chirho": "cargo build -p haskelujah -j3",
+      "exit_chirho": 0,
+      "source_scope_chirho": "operator_catalog_checkpoint_chirho",
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-cli-final-chirho.log",
+      "log_sha256_chirho": "0328b58573187e111513ef46c220a8857ec1f6c443ab3bba3a4dc623ece54284"
+    },
+    {
+      "command_chirho": "cargo fmt --all -- --check",
+      "exit_chirho": 0,
+      "source_scope_chirho": "operator_catalog_checkpoint_chirho",
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/operator-fmt-final-chirho.log",
+      "log_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

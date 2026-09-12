@@ -449,6 +449,22 @@ impl KindEnvChirho {
         self.promoted_bindings_chirho.get(name_chirho)
     }
 
+    /// Publish authoritative contracts even when a constructor occurs only in
+    /// expression-level type syntax, outside the module kind walk. An opaque
+    /// imported constructor was never registered here and remains unknown.
+    pub(super) fn promoted_schemes_chirho(
+        &self,
+    ) -> impl Iterator<Item = (&str, &KindSchemeChirho)> {
+        self.promoted_bindings_chirho
+            .iter()
+            .filter_map(|(name_chirho, binding_chirho)| match binding_chirho {
+                KindBindingChirho::PolyChirho(scheme_chirho) => {
+                    Some((name_chirho.as_str(), scheme_chirho))
+                }
+                KindBindingChirho::MonoChirho(_) => None,
+            })
+    }
+
     pub fn apply_subst_chirho(&mut self, subst_chirho: &KindSubstChirho) {
         for binding_chirho in self
             .bindings_chirho
