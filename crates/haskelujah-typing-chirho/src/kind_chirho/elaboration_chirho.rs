@@ -76,7 +76,8 @@ impl KindInferCtxChirho {
         span_chirho: SpanChirho,
     ) {
         if span_chirho == SpanChirho::DUMMY_CHIRHO
-            || !self.local_kind_decl_names_chirho.contains(name_chirho)
+            || !(self.local_kind_decl_names_chirho.contains(name_chirho)
+                || self.imported_kind_shapes_chirho.contains_key(name_chirho))
         {
             return;
         }
@@ -105,6 +106,42 @@ impl KindInferCtxChirho {
         let mut nominal_heads_chirho = HashMap::new();
         let mut synonym_heads_chirho = HashMap::new();
         let mut family_heads_chirho = HashMap::new();
+        for (name_chirho, shape_chirho) in &self.imported_kind_shapes_chirho {
+            if self.local_kind_decl_names_chirho.contains(name_chirho) {
+                continue;
+            }
+            let Some(KindBindingChirho::PolyChirho(scheme_chirho)) =
+                self.env_chirho.lookup_binding_chirho(name_chirho)
+            else {
+                continue;
+            };
+            let heads_chirho = match shape_chirho {
+                imports_chirho::KindHeadShapeChirho::NominalChirho => &mut nominal_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::SynonymChirho => &mut synonym_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::FamilyChirho => &mut family_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::ClassChirho => continue,
+            };
+            if !scheme_chirho.quantified_chirho.is_empty() {
+                heads_chirho.insert(
+                    name_chirho.clone(),
+                    scheme_chirho
+                        .quantified_chirho
+                        .iter()
+                        .enumerate()
+                        .map(
+                            |(index_chirho, identity_chirho)| ElaboratedKindBinderChirho {
+                                identity_chirho: *identity_chirho,
+                                name_chirho: scheme_chirho.source_names_chirho[index_chirho]
+                                    .clone(),
+                                specified_chirho: scheme_chirho
+                                    .specified_chirho
+                                    .contains(identity_chirho),
+                            },
+                        )
+                        .collect(),
+                );
+            }
+        }
         for declaration_chirho in &module_chirho.decls_chirho {
             let (name_chirho, parameters_chirho, heads_chirho) = match declaration_chirho {
                 DeclChirho::DataDeclChirho {

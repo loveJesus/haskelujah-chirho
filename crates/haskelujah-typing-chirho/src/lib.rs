@@ -17,6 +17,8 @@ mod families_chirho;
 pub mod infer_chirho;
 pub mod kind_chirho;
 pub mod linearity_chirho;
+#[path = "types_chirho/module_contracts_chirho.rs"]
+pub mod module_contracts_chirho;
 pub mod skolem_chirho;
 #[path = "types_chirho/subst_chirho.rs"]
 pub mod subst_chirho;

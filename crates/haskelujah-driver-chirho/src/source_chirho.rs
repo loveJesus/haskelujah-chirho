@@ -8,9 +8,9 @@ pub(crate) mod cpp_chirho;
 mod tests_chirho;
 
 use super::{
-    DiagnosticBundleChirho, FrontendResultChirho, ImportedTypeSynonymsChirho, SourceFileChirho,
-    SourceMapChirho, merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_chirho,
-    run_frontend_chirho, run_frontend_with_type_synonyms_and_type_families_chirho,
+    DiagnosticBundleChirho, FrontendInputsChirho, FrontendResultChirho,
+    ImportedTypeContractsChirho, ImportedTypeSynonymsChirho, SourceFileChirho, SourceMapChirho,
+    merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_chirho, run_frontend_with_inputs_chirho,
     seed_builtin_type_families_chirho, source_imports_stdlib_chirho,
 };
 
@@ -37,33 +37,26 @@ pub fn typecheck_source_chirho(
     let mut imported_types_chirho = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
+    let mut imported_type_contracts_chirho = ImportedTypeContractsChirho::new();
     if source_imports_stdlib_chirho(effective_source_chirho) {
         merge_stdlib_frontend_artifacts_chirho(
             &mut builtin_ifaces_chirho,
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
+            &mut imported_type_contracts_chirho,
         );
     }
 
-    if imported_types_chirho.is_empty()
-        && imported_type_synonyms_chirho.is_empty()
-        && imported_type_families_chirho.is_empty()
-    {
-        run_frontend_chirho(
-            effective_source_chirho,
-            file_id_chirho,
-            &builtin_ifaces_chirho,
-            &imported_types_chirho,
-        )
-    } else {
-        run_frontend_with_type_synonyms_and_type_families_chirho(
-            effective_source_chirho,
-            file_id_chirho,
+    run_frontend_with_inputs_chirho(
+        effective_source_chirho,
+        file_id_chirho,
+        FrontendInputsChirho::new_chirho(
             &builtin_ifaces_chirho,
             &imported_types_chirho,
             &imported_type_synonyms_chirho,
             &imported_type_families_chirho,
         )
-    }
+        .with_type_contracts_chirho(&imported_type_contracts_chirho),
+    )
 }

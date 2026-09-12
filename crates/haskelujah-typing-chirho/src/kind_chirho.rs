@@ -33,6 +33,7 @@ mod conversion_chirho;
 mod declaration_tests_chirho;
 mod declarations_chirho;
 mod dependencies_chirho;
+#[path = "kind_chirho/bindings_chirho/environment_chirho.rs"]
 mod environment_chirho;
 mod families_chirho;
 #[cfg(test)]
@@ -40,12 +41,20 @@ mod families_chirho;
 mod family_tests_chirho;
 mod family_unify_chirho;
 mod groups_chirho;
+#[path = "kind_chirho/bindings_chirho/imports_chirho.rs"]
+mod imports_chirho;
 mod instances_chirho;
+pub use imports_chirho::KindContractChirho;
+#[cfg(test)]
+#[path = "kind_chirho/tests_chirho/import_tests_chirho.rs"]
+mod import_tests_chirho;
 mod runtime_chirho;
 #[cfg(test)]
 #[path = "kind_chirho/tests_chirho/scheme_tests_chirho.rs"]
 mod scheme_tests_chirho;
+#[path = "kind_chirho/bindings_chirho/schemes_chirho.rs"]
 mod schemes_chirho;
+#[path = "kind_chirho/bindings_chirho/scope_chirho.rs"]
 mod scope_chirho;
 #[cfg(test)]
 #[path = "kind_chirho/tests_chirho/scope_tests_chirho.rs"]
@@ -101,6 +110,7 @@ struct KindInferCtxChirho {
     /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
     kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
     local_kind_decl_names_chirho: std::collections::HashSet<String>,
+    imported_kind_shapes_chirho: HashMap<String, imports_chirho::KindHeadShapeChirho>,
     local_promoted_constructor_names_chirho: std::collections::HashSet<String>,
     source_kind_qualifiers_chirho: HashMap<String, Option<String>>,
     local_kind_module_chirho: Option<String>,
@@ -148,6 +158,7 @@ impl KindInferCtxChirho {
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             kind_var_cache_chirho: std::collections::HashMap::new(),
             local_kind_decl_names_chirho: std::collections::HashSet::new(),
+            imported_kind_shapes_chirho: HashMap::new(),
             local_promoted_constructor_names_chirho: std::collections::HashSet::new(),
             source_kind_qualifiers_chirho: HashMap::new(),
             local_kind_module_chirho: None,
@@ -706,6 +717,8 @@ fn default_kind_vars_chirho(kind_chirho: &KindChirho) -> KindChirho {
 /// Result of kind inference on a module.
 #[derive(Debug)]
 pub struct KindResultChirho {
+    /// Checked local heads, not naming exports; the driver applies visibility.
+    pub contracts_chirho: HashMap<String, KindContractChirho>,
     /// The kind environment after inference (type constructors → kinds).
     pub env_chirho: KindEnvChirho,
     /// Solved hidden arguments consumed by type inference, not discarded after checking.
@@ -716,7 +729,15 @@ pub struct KindResultChirho {
 
 /// Run kind inference on a module's type declarations and type signatures.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
+    infer_module_kinds_with_imports_chirho(module_chirho, &HashMap::new())
+}
+
+pub fn infer_module_kinds_with_imports_chirho(
+    module_chirho: &ModuleChirho,
+    imported_chirho: &HashMap<String, KindContractChirho>,
+) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    ctx_chirho.seed_imported_kind_contracts_chirho(imported_chirho);
     ctx_chirho.record_source_kind_qualifiers_chirho(module_chirho);
     ctx_chirho.cusks_enabled_chirho =
         constructors_chirho::cusks_enabled_chirho(&module_chirho.extensions_chirho);
@@ -770,6 +791,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
     ctx_chirho.check_constraint_synonym_licenses_chirho(module_chirho);
 
     KindResultChirho {
+        contracts_chirho: ctx_chirho.export_kind_contracts_chirho(module_chirho),
         elaboration_chirho: ctx_chirho.finish_kind_elaboration_chirho(module_chirho),
         env_chirho: ctx_chirho.env_chirho,
         diagnostics_chirho: ctx_chirho.diagnostics_chirho,

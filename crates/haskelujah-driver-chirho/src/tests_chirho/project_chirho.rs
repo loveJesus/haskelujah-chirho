@@ -296,6 +296,7 @@ mod tests_chirho {
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
+            crate::ImportedTypeContractsChirho::new(),
             true,
         )
         .expect("real parsec frontend artifacts should build for the core module slice");
@@ -348,6 +349,7 @@ mod tests_chirho {
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
+            crate::ImportedTypeContractsChirho::new(),
         );
 
         match compile_result_chirho {
@@ -388,6 +390,7 @@ mod tests_chirho {
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
+            crate::ImportedTypeContractsChirho::new(),
         );
 
         assert!(
@@ -2663,6 +2666,7 @@ data StateMiniChirho = MkStateMiniChirho\n\
             std::collections::HashMap::new(),
             ImportedTypeSynonymsChirho::new(),
             ImportedTypeFamiliesChirho::new(),
+            crate::ImportedTypeContractsChirho::new(),
             true,
         )
         .expect("frontend artifact collection should succeed for the defining module");

@@ -76,7 +76,7 @@ Latest corpus diagnostic43833550: accept881/938, nine main-relative regressions
 and eight gains; reject248/767, zero timeouts or unexpected exits. One pass per
 axis, not a final gate. Source checkpoint is pushed and remote-exact.
 Typed family clauses retain hidden inputs, published identities and list kinds.
-Driver--lib1760/1772; twelve fail on parent/current but PASS freshly built main.
+Prior driver--lib1760/1772: twelve failed on parent/current but PASS fresh main.
 Thirteen known Prelude class kinds restored; T20356 and its positive/negative/
 shadowing controls recover. The following isolated repair enforces ConstraintKinds
 on solved alias kinds, not use-site accidents. Raw pragma directives now retain
@@ -85,8 +85,13 @@ lowerer normalizer. Seventeen GHC9.14.1 verdict controls agree; parser3/3 new
 controls, parser356,typing369,naming136,canaries7 and workspace check pass.
 Integration118/119 retains the annotation red. The license/edition diagnostic
 holds the accept set byte-identical and gains only tcfail209 for GHC-75844.
-Nineteen frozen reference observations agree. Next: imported kind/closed-alias contracts;
-the imported/local/annotated Identity reduction confirms the producer boundary.
+Nineteen frozen reference observations agree. The next imported kind/closed-alias
+repair recovers those twelve driver tests in a focused run, plus two transport
+controls (14/14,1760 filtered). Typing371, new import controls4/4 and canaries7
+pass. Full integration121/122 retains the annotation red; full driver and a new
+corpus diagnostic remain owed. Checked templates/closed aliases travel beside
+naming's interface, preserving fresh IDs and private dependency origins.
+Current implementation/gates: kind-schemes-chirho/26-09-12_01-47-import_contracts-chirho.md.
 Detail/reference evidence and next hidden-family-input decision:
 kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md. The earlier classifier
 repair and accidental UnliftedNewtypes rejection audit are in the22-20 leaf.

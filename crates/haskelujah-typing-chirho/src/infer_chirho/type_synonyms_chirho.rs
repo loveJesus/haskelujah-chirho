@@ -6,13 +6,24 @@ use super::*;
 use haskelujah_ast_chirho::decl_chirho::TyVarChirho as AstTyVarChirho;
 
 #[derive(Clone, Debug)]
-pub(super) struct TypeSynonymChirho {
+pub struct TypeSynonymChirho {
     pub(super) parameters_chirho: Vec<String>,
     kind_parameters_chirho: Vec<String>,
     pub(super) body_chirho: TyChirho,
 }
 
 impl TypeSynonymChirho {
+    pub fn map_constructor_names_chirho(
+        &self,
+        rename_chirho: &mut impl FnMut(&str) -> String,
+    ) -> Self {
+        Self {
+            parameters_chirho: self.parameters_chirho.clone(),
+            kind_parameters_chirho: self.kind_parameters_chirho.clone(),
+            body_chirho: self.body_chirho.map_constructor_names_chirho(rename_chirho),
+        }
+    }
+
     pub(super) fn ordinary_chirho(parameters_chirho: Vec<String>, body_chirho: TyChirho) -> Self {
         Self {
             parameters_chirho,

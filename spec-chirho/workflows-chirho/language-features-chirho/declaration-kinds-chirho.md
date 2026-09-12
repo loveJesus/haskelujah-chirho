@@ -526,8 +526,9 @@ names are exercised by one GHC-executed source on all three engines.
 Expression signatures outside the module kind pass instantiate the known local
 nominal scheme's quantified slots. Explicit @ arguments consume only specified
 slots; unsupplied slots are fresh type variables, not an unindexed constructor.
-This requires a declared head contract: imported/unknown heads do not enter this
-path. Kind-term names use the same imported-type normalization as ordinary types.
+This requires a declared head contract: checked imported companions now enter
+this path too; unknown heads do not. Kind-term names use the same imported-type
+normalization as ordinary types.
 A local phantom-index mismatch must still reject. This is not complete local
 classifier checking; the old absence of that kind-pass traversal remains open.
 
@@ -712,6 +713,43 @@ diagnostic recovered T12045a but exposed twelve new accept failures relative to
 its predecessor; that checkpoint is not landable. Keeping KindApp in the type IR
 does not establish that every producer has supplied its inferred arguments.
 
+### Checked module companions (isolated row484)
+
+The driver carries typing-owned ModuleTypeContractsChirho beside naming's
+ModuleIfaceChirho. Published kind templates retain quantified identities,
+classifier dependency order and specificity; aliases retain the already-closed
+ordinary/hidden parameter spines. They are not inferred again from raw AST.
+An export template must be closed, with each classifier referring only to its
+preceding quantified identities. Transport rebases all bound IDs simultaneously
+before kind inference in the receiving module.
+
+Naming chooses the imported/exported roots. A visited dependency closure adds
+private type contracts used by those roots or their value schemes, not every
+contract in the provider. Private names retain the defining module through
+re-exports and never become naming exports. The type unifier's older qualified-
+basename compatibility rule is not replaced by this transport; identity retention
+in the companion is not a claim that every downstream equality consumer is sound.
+
+Checked source companions take priority over authored interface-only contracts.
+The known Identity classifier is Type -> Type. Missing arbitrary imports do not
+authorize a guessed classifier. Legacy raw-AST entry points remain explicit.
+Ordinary module, project, Cabal and file/source paths now carry the companion;
+incremental-cache inputs, complete hs-boot import context, promoted constructor
+templates and kind-family reduction tables still need their own consumers.
+
+```mermaid
+flowchart LR
+  ProviderChirho[Checked provider kinds and closed aliases] --> ClosureChirho[Validate bound classifier identities]
+  ClosureChirho --> CompanionChirho[Typing-owned module companion]
+  NamingRootsChirho[Naming-selected type and value exports] --> ReachableChirho[Reachable dependency closure]
+  CompanionChirho --> ReachableChirho
+  ReachableChirho --> PrivateNamesChirho[Retain defining private names internally]
+  PrivateNamesChirho --> RebaseChirho[Simultaneous fresh kind identities]
+  RebaseChirho --> ConsumerKindChirho[Receiving kind inference]
+  PrivateNamesChirho --> ConsumerAliasChirho[Seed closed aliases without AST reconstruction]
+  ConsumerKindChirho --> ConsumerAliasChirho
+```
+
 ## Evidence boundary
 
 Lowering controls retain both annotations and their exact source-slice spans, and keep
@@ -723,12 +761,12 @@ combined-data and combined-newtype contracts, with output 42/7/11/13 through
 STG, LLVM and Cranelift. Execution and full-gate results are recorded in the
 unit tasklist, not inferred from these source-level controls.
 
-Still outside scope: arbitrary promoted/named/dependent kinds, imported
-authoritative kind metadata, and the
+Still outside scope: arbitrary promoted/named/dependent kinds, complete imported
+constructor/equation metadata, and the
 separate data-family/type-data/refined-GADT-result AST decisions.
 Symbolic standalone signatures, attachment to aliases/classes,
 and duplicate/orphan signature diagnostics remain separate parser limitations.
 The representation repair is not full TypeAbstractions checking: declaration-head
 specificity matching, complete dependent constructor/selector quantifier metadata,
-TH reification visibility, and authoritative cross-module kind schemes remain
-unimplemented. The tasklist keeps independently reproduced counterexamples.
+TH reification visibility, and cross-module consumers beyond the companion paths
+above remain incomplete. The tasklist keeps independently reproduced counterexamples.

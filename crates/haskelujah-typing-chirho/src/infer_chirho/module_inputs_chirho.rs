@@ -9,6 +9,7 @@ use super::*;
 pub struct InferInputsChirho<'input_chirho> {
     pub imported_types_chirho: &'input_chirho HashMap<String, SchemeChirho>,
     pub imported_type_synonyms_chirho: &'input_chirho HashMap<String, (Vec<String>, TypeChirho)>,
+    pub imported_closed_synonyms_chirho: &'input_chirho HashMap<String, TypeSynonymChirho>,
     pub imported_type_families_chirho: &'input_chirho TypeFamilyEnvChirho,
     pub imported_class_env_chirho: &'input_chirho ClassEnvChirho,
     pub imported_record_field_names_chirho: &'input_chirho HashMap<String, Vec<String>>,
@@ -121,6 +122,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
         InferInputsChirho {
             imported_types_chirho,
             imported_type_synonyms_chirho,
+            imported_closed_synonyms_chirho: &HashMap::new(),
             imported_type_families_chirho,
             imported_class_env_chirho,
             imported_record_field_names_chirho,
@@ -138,6 +140,7 @@ pub fn infer_module_with_inputs_chirho(
     let InferInputsChirho {
         imported_types_chirho,
         imported_type_synonyms_chirho,
+        imported_closed_synonyms_chirho,
         imported_type_families_chirho,
         imported_class_env_chirho,
         imported_record_field_names_chirho,
@@ -165,12 +168,31 @@ pub fn infer_module_with_inputs_chirho(
     let mut sorted_type_synonyms_chirho: Vec<_> = imported_type_synonyms_chirho.iter().collect();
     sorted_type_synonyms_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
     for (name_chirho, (params_chirho, rhs_ast_chirho)) in sorted_type_synonyms_chirho {
+        if imported_closed_synonyms_chirho.contains_key(name_chirho) {
+            continue;
+        }
         let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_ast_chirho, params_chirho);
         ctx_chirho.register_type_synonym_chirho(
             name_chirho.clone(),
             params_chirho.clone(),
             rhs_ty_chirho,
         );
+    }
+    let mut sorted_closed_synonyms_chirho: Vec<_> =
+        imported_closed_synonyms_chirho.iter().collect();
+    sorted_closed_synonyms_chirho
+        .sort_by(|left_chirho, right_chirho| left_chirho.0.cmp(right_chirho.0));
+    for (name_chirho, synonym_chirho) in sorted_closed_synonyms_chirho {
+        let synonym_chirho = synonym_chirho.map_constructor_names_chirho(&mut |name_chirho| {
+            ctx_chirho.normalize_imported_type_name_chirho(name_chirho)
+        });
+        let normalized_name_chirho = ctx_chirho.normalize_imported_type_name_chirho(name_chirho);
+        ctx_chirho
+            .type_synonyms_chirho
+            .insert(normalized_name_chirho, synonym_chirho.clone());
+        ctx_chirho
+            .type_synonyms_chirho
+            .insert(name_chirho.clone(), synonym_chirho);
     }
     let mut sorted_type_families_chirho: Vec<_> = imported_type_families_chirho.iter().collect();
     sorted_type_families_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));

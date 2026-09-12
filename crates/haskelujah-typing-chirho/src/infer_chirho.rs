@@ -50,7 +50,7 @@ use ast_conversion_chirho::ast_type_to_syn_rhs_chirho;
 pub use family_declarations_chirho::TypeFamilyClauseChirho;
 use family_declarations_chirho::collect_free_type_vars_from_ast_chirho;
 use module_inputs_chirho::is_placeholder_import_scheme_chirho;
-use type_synonyms_chirho::TypeSynonymChirho;
+pub use type_synonyms_chirho::TypeSynonymChirho;
 
 pub use evidence_chirho::{
     LiteralEvidenceChirho, OWN_DICTIONARY_KEY_CHIRHO, ReferenceEvidenceChirho,
@@ -144,6 +144,8 @@ pub struct InferResultChirho {
     pub class_env_chirho: ClassEnvChirho,
     /// Type family equations available after inferring this module.
     pub type_families_chirho: TypeFamilyEnvChirho,
+    /// Already-closed alias bodies, including hidden kind parameters.
+    pub type_synonyms_chirho: HashMap<String, TypeSynonymChirho>,
     /// Diagnostics collected during inference.
     pub diagnostics_chirho: DiagnosticBundleChirho,
     /// Evidence-threading P2 (design-evidence-threading-chirho.md): per-name,
@@ -7001,6 +7003,7 @@ impl InferCtxChirho {
             env_chirho: self.env_chirho,
             class_env_chirho: self.class_env_chirho,
             type_families_chirho: self.type_families_chirho,
+            type_synonyms_chirho: self.type_synonyms_chirho,
             diagnostics_chirho: self.diagnostics_chirho,
             method_occurrences_chirho: Vec::new(),
             method_occurrence_totals_chirho: HashMap::new(),

@@ -319,3 +319,7 @@ independent quantifier instantiation and alias use through re-exports. No claim
 that carrying metadata alone fixes the associated-family consumers. Put the
 transport/composition helpers in focused children; the existing oversized driver
 and kind roots are structural debt, not places for another large implementation.
+
+Implementation and current gates continue in26-09-12_01-47-import_contracts-chirho.md.
+The exact twelve driver tests have now recovered in a focused run; this older
+leaf's twelve-red entries describe their respective checkpoints, not the new work.
