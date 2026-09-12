@@ -72,8 +72,8 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-The latest frozen diagnostic is01f3be2e,880/938 accept and235/767 reject,
-one pass each with no timeout/unexpected exit and stable CLI f8e5edef. Nine
+The latest frozen diagnostic is9720465c,882/938 accept and244/767 reject,
+one pass each with no timeout/unexpected exit and stable CLI4fedbbec. Seven
 main-relative accept regressions remain; this checkpoint is NOT landable.
 Full sets are recorded in the visible-application diagnostic section below.
 
@@ -84,11 +84,12 @@ capture is keyed to the final quantified identities, including monomorphic SCC
 uses; local expression signatures instantiate known nominal slots. Family/synonym/
 imported index consumers and complete local classifier checking remain unfinished.
 
-The new local-synonym repair is ready to freeze after typing366, driver integration104
+The new local-synonym repair is frozen and pushed after typing366, driver integration104
 and canaries7, zero ignored/filtered. Twenty-seven bounded GHC9.14.1/candidate
 observations agree, six in execution mode, with sources and binary hashes retained
-beside the visible-application fixtures. Fresh focused CLI checks recover
-DeepSubsumption02, GivenTypeSynonym, LocalGivenEqs and tc151; this is not a new corpus count.
+beside the visible-application fixtures. The diagnostic confirms recovery of
+DeepSubsumption02, GivenTypeSynonym, LocalGivenEqs and tc151, but newly loses
+T12928 and tc160. Reduce those two before the next family-equation consumer repair.
 The checkpoint is not a compatibility landing; regression repair, full workspace,
 final two-pass gate and DB closure remain owed. Latest detail is at the file's end.
 
@@ -1418,3 +1419,21 @@ the new synonym module, elaboration module and argument consumer have none. This
 is not warning-free or a full-workspace test gate. Focused recovery is four files;
 T21583 still exposes the separate family-equation RHS index gap. Freeze/push before
 measuring both axes. Main, public artifacts and row484 closure remain untouched.
+
+Frozen9720465c diagnostic completed:882/938 accept,244/767 reject, one pass each;
+zero timeouts/unexpected exits, clean source and CLI4fedbbec stable before/after
+both axes. Compared with01f3be2e, the four named recoveries held but T12928 and
+tc160 newly failed. T12928 hits the new unclosed-synonym-body error; tc160 loses
+alpha-renaming/quantification behavior in a nested rank-n synonym. These are
+regressions to repair, not grounds to remove the closure check or weaken the test.
+
+Main-relative gains: PolytypeDecomp, RuleEqs, SplitWD, T14451, T20922, T26256a,
+tc124. Main-relative regressions: T12928, T13879, T14010, T21583, T22560c,
+T26358, tc160. The total equals main while membership differs by seven each way.
+Reject gains versus01f3be2e: ExplicitSpecificity3, T12803, T12966, T17563,
+T24553, T5853, UnliftedNewtypesFamilyKindFail1, VisFlag1, VisFlag1_ql; none lost.
+Their reasons are NOT yet audited and244 is a verdict count, not a capability claim.
+The runner, full sets and per-file logs are under
+`/private/tmp/haskelujah-visible-kind-app-chirho.X3Kq8n/diagnostic-synonym-contracts-{accept,reject}-chirho/`;
+the runner log also records exact HEAD9720465cd21a95ddcccf172bccd00cd2be4c0474
+and CLI hash above. CPU embargo released in broker22185; row484 remains open.
