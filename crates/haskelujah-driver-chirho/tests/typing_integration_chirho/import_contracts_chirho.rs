@@ -5,6 +5,9 @@
 use haskelujah_driver::{compile_modules_chirho, typecheck_source_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[path = "import_contracts_chirho/search_path_chirho.rs"]
+mod search_path_chirho;
+
 const FAMILY_PROVIDER_CHIRHO: &str = include_str!(
     "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/ProviderChirho.hs"
 );

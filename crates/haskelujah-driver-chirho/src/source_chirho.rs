@@ -1,17 +1,19 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Source-text frontend entry shared by typecheck measurements and full compilation.
-//! This path deliberately has no filesystem search and no backend generation.
+//! Source frontend entry points and checked module companions.
+//! The source-text entry below deliberately performs no filesystem search.
 
 pub(crate) mod cpp_chirho;
+pub(crate) mod modules_chirho;
+#[cfg(test)]
+pub(crate) mod package_fixtures_chirho;
+pub(crate) mod search_chirho;
 #[cfg(test)]
 mod tests_chirho;
 
 use super::{
-    DiagnosticBundleChirho, FrontendInputsChirho, FrontendResultChirho,
-    ImportedTypeContractsChirho, ImportedTypeSynonymsChirho, SourceFileChirho, SourceMapChirho,
-    merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_chirho, run_frontend_with_inputs_chirho,
-    seed_builtin_type_families_chirho, source_imports_stdlib_chirho,
+    DiagnosticBundleChirho, FrontendInputsChirho, FrontendResultChirho, SourceFileChirho,
+    SourceMapChirho, preprocess_cpp_chirho, run_frontend_with_inputs_chirho,
 };
 
 /// Preprocess, parse, resolve and typecheck source text, stopping before Core and
@@ -33,30 +35,18 @@ pub fn typecheck_source_chirho(
     );
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
-    let mut builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
-    let mut imported_types_chirho = std::collections::HashMap::new();
-    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
-    let mut imported_type_contracts_chirho = ImportedTypeContractsChirho::new();
-    if source_imports_stdlib_chirho(effective_source_chirho) {
-        merge_stdlib_frontend_artifacts_chirho(
-            &mut builtin_ifaces_chirho,
-            &mut imported_types_chirho,
-            &mut imported_type_synonyms_chirho,
-            &mut imported_type_families_chirho,
-            &mut imported_type_contracts_chirho,
-        );
-    }
+    let seed_chirho =
+        modules_chirho::FrontendSeedArtifactsChirho::for_source_chirho(effective_source_chirho);
 
     run_frontend_with_inputs_chirho(
         effective_source_chirho,
         file_id_chirho,
         FrontendInputsChirho::new_chirho(
-            &builtin_ifaces_chirho,
-            &imported_types_chirho,
-            &imported_type_synonyms_chirho,
-            &imported_type_families_chirho,
+            &seed_chirho.ifaces_chirho,
+            &seed_chirho.imported_types_chirho,
+            &seed_chirho.imported_type_synonyms_chirho,
+            &seed_chirho.imported_type_families_chirho,
         )
-        .with_type_contracts_chirho(&imported_type_contracts_chirho),
+        .with_type_contracts_chirho(&seed_chirho.type_contracts_chirho),
     )
 }

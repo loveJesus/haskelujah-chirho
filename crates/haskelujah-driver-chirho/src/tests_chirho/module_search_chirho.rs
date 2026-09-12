@@ -1,7 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever
 // believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Bounds on the hierarchical module search.
+//! Bounds and authority on demand-driven source module lookup.
 //!
 //! `haskelujah check <file>` searches the checked file's PARENT directory. For
 //! a file outside a project that is an arbitrary directory, so the walk must be
@@ -12,53 +12,40 @@
 
 use crate::check_source_path_chirho;
 use crate::module_search_chirho::{
-    MAX_MODULE_SEARCH_DIRS_CHIRHO, MAX_MODULE_SEARCH_FILES_CHIRHO, ModuleSearchBoundsChirho,
-    scan_hierarchical_modules_chirho, scan_sibling_module_ifaces_chirho,
+    LocalModuleSearchChirho, MAX_MODULE_SEARCH_DIRS_CHIRHO, MAX_MODULE_SEARCH_FILES_CHIRHO,
+    ModuleSearchBoundsChirho,
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// A scratch directory that removes itself when the test ends.
 struct ScratchDirChirho {
-    path_chirho: PathBuf,
+    directory_chirho: tempfile::TempDir,
 }
 
 impl ScratchDirChirho {
     fn new_chirho(tag_chirho: &str) -> Self {
-        let path_chirho = std::env::temp_dir().join(format!(
-            "haskelujah_module_search_{tag_chirho}_chirho_{}",
-            std::process::id()
-        ));
-        let _ = std::fs::remove_dir_all(&path_chirho);
-        std::fs::create_dir_all(&path_chirho).expect("create scratch dir");
-        Self { path_chirho }
+        let directory_chirho = tempfile::Builder::new()
+            .prefix(&format!("haskelujah_module_search_{tag_chirho}_chirho_"))
+            .tempdir()
+            .expect("create privately owned scratch dir");
+        Self { directory_chirho }
     }
 
     fn path_chirho(&self) -> &Path {
-        &self.path_chirho
+        self.directory_chirho.path()
     }
 }
 
-impl Drop for ScratchDirChirho {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.path_chirho);
-    }
-}
-
-fn scan_chirho(dir_chirho: &Path) -> Vec<String> {
+fn lookup_names_chirho(dir_chirho: &Path, module_chirho: &str) -> Vec<String> {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let mut ifaces_chirho = Vec::new();
-    scan_hierarchical_modules_chirho(
-        dir_chirho,
-        dir_chirho,
-        &mut source_map_chirho,
-        &mut ifaces_chirho,
-        "Main.hs",
-    );
-    ifaces_chirho
+    LocalModuleSearchChirho::new_chirho(dir_chirho)
+        .unwrap()
+        .lookup_chirho(module_chirho, &mut source_map_chirho)
+        .unwrap()
         .into_iter()
-        .map(|iface_chirho| iface_chirho.name_chirho)
+        .map(|source_chirho| source_chirho.name_chirho.clone())
         .collect()
 }
 
@@ -87,15 +74,14 @@ fn file_budget_stops_parsing_chirho() {
 }
 
 #[test]
-fn truncation_is_reported_exactly_once_chirho() {
-    // A truncated search can leave imports unresolvable. It must say so — but
-    // once, not once per directory.
+fn exhausted_search_budget_stays_exhausted_chirho() {
+    // Production callers turn refusal into an error, not a partial success.
     let mut bounds_chirho = ModuleSearchBoundsChirho::new_chirho();
     assert!(!bounds_chirho.warned_chirho);
     bounds_chirho.dirs_entered_chirho = MAX_MODULE_SEARCH_DIRS_CHIRHO;
     assert!(!bounds_chirho.may_enter_dir_chirho());
     assert!(bounds_chirho.warned_chirho, "exhaustion must not be silent");
-    // Second refusal keeps the flag set rather than reporting again.
+    // Further requests cannot silently restart an exhausted invocation.
     assert!(!bounds_chirho.may_enter_dir_chirho());
     assert!(bounds_chirho.warned_chirho);
 }
@@ -118,7 +104,7 @@ fn symlink_cycle_terminates_and_still_finds_siblings_chirho() {
     #[cfg(unix)]
     std::os::unix::fs::symlink("..", sub_chirho.join("up_chirho")).expect("create symlink cycle");
 
-    let names_chirho = scan_chirho(root_chirho);
+    let names_chirho = lookup_names_chirho(root_chirho, "SiblingChirho");
     assert!(
         names_chirho
             .iter()
@@ -141,7 +127,7 @@ fn nested_hierarchical_module_is_still_found_chirho() {
     )
     .expect("write nested module");
 
-    let names_chirho = scan_chirho(root_chirho);
+    let names_chirho = lookup_names_chirho(root_chirho, "Deep.NestedChirho");
     assert!(
         names_chirho
             .iter()
@@ -162,7 +148,7 @@ fn nested_module_name_must_match_its_source_root_path_chirho() {
     )
     .expect("write unrelated nested module");
 
-    let names_chirho = scan_chirho(root_chirho);
+    let names_chirho = lookup_names_chirho(root_chirho, "Deep.NestedChirho");
     assert!(
         !names_chirho
             .iter()
@@ -180,18 +166,10 @@ fn sibling_file_stem_must_match_declared_module_chirho() {
         "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule CanonicalChirho where\ncanonical_value_chirho :: Int\ncanonical_value_chirho = 1\n",
     )
     .expect("write mismatched sibling module");
-    let mut source_map_chirho = SourceMapChirho::new_chirho();
-    let mut ifaces_chirho = Vec::new();
-
-    scan_sibling_module_ifaces_chirho(
-        root_chirho,
-        &mut source_map_chirho,
-        &mut ifaces_chirho,
-        "MainChirho.hs",
-    );
+    let names_chirho = lookup_names_chirho(root_chirho, "CanonicalChirho");
 
     assert!(
-        ifaces_chirho.is_empty(),
+        names_chirho.is_empty(),
         "a sibling filename that does not name the declared module is not authoritative"
     );
 }
@@ -247,4 +225,66 @@ fn root_prelude_source_replaces_seeded_fallback_chirho() {
         result_chirho.is_ok(),
         "a root-level Prelude source must replace the seeded fallback: {result_chirho:?}"
     );
+}
+
+#[test]
+fn lookup_work_does_not_grow_with_unrelated_neighbors_chirho() {
+    for count_chirho in [8, 16, 32] {
+        let directory_chirho = tempfile::tempdir().unwrap();
+        std::fs::write(
+            directory_chirho.path().join("ProviderChirho.hs"),
+            "module ProviderChirho where\nvalueChirho = ()\n",
+        )
+        .unwrap();
+        for index_chirho in 0..count_chirho {
+            std::fs::write(
+                directory_chirho
+                    .path()
+                    .join(format!("Unrelated{index_chirho}Chirho.hs")),
+                "not a provider, and never parsed",
+            )
+            .unwrap();
+        }
+        let mut search_chirho =
+            LocalModuleSearchChirho::new_chirho(directory_chirho.path()).unwrap();
+        let mut source_map_chirho = SourceMapChirho::new_chirho();
+        assert!(
+            search_chirho
+                .lookup_chirho("ProviderChirho", &mut source_map_chirho)
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            search_chirho
+                .lookup_chirho("ProviderChirho", &mut source_map_chirho)
+                .unwrap()
+                .is_some()
+        );
+        assert_eq!(
+            search_chirho.bounds_chirho.files_read_chirho, 1,
+            "unrelated files and repeated requests must not add source reads"
+        );
+    }
+}
+
+#[test]
+fn exact_hierarchical_provider_wins_over_flat_fixture_chirho() {
+    let directory_chirho = tempfile::tempdir().unwrap();
+    std::fs::create_dir(directory_chirho.path().join("DeepChirho")).unwrap();
+    std::fs::write(
+        directory_chirho.path().join("DeepChirho/ProviderChirho.hs"),
+        "module DeepChirho.ProviderChirho where\ntype SelectedChirho = Int\n",
+    )
+    .unwrap();
+    std::fs::write(
+        directory_chirho.path().join("ProviderChirho.hs"),
+        "module DeepChirho.ProviderChirho where\ntype SelectedChirho = Bool\n",
+    )
+    .unwrap();
+    std::fs::write(directory_chirho.path().join("ConsumerChirho.hs"), "module ConsumerChirho where\nimport DeepChirho.ProviderChirho\nvalueChirho :: SelectedChirho\nvalueChirho = 42\n").unwrap();
+    check_source_path_chirho(
+        directory_chirho.path().join("ConsumerChirho.hs"),
+        ExecutionModeChirho::BatchChirho,
+    )
+    .unwrap();
 }

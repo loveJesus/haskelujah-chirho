@@ -836,10 +836,13 @@ authorize a guessed classifier. Legacy raw-AST entry points remain explicit.
 Ordinary module, project, Cabal and file/source paths now carry the companion;
 incremental-cache inputs, complete hs-boot import context, promoted constructor
 templates and kind-family reduction tables still need their own consumers.
-The file-search path currently carries only its seeded companions: raw sibling
-interface discovery does not check those providers or produce their contracts.
-Checked sibling production is a separate open boundary, not established by an
-in-process multi-module control.
+File-search entry points now discover only the reachable authoritative local
+providers, then use the shared frontend-only collector to produce checked
+companions before checking the consumer. Wrong provider kinds, failed CPP and
+source cycles do not become raw interface substitutes. The module-search
+authority workflow states root precedence, bounds, and the remaining boot and
+package-qualified-import limits. Real filesystem and hashed CLI observations
+establish this boundary separately from in-process multi-module controls.
 
 Imported kind contracts retain their defining classifier names and head shape.
 Seeding a family contract also registers it as a family, so a detached local row

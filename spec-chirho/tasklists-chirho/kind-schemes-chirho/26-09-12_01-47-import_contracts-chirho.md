@@ -165,3 +165,43 @@ The current collector's empty-input and duplicate-interface behavior needs care.
 Confidence is high in the missing producer (traced); corpus reach is unmeasured.
 Alternative raw-header inference would repeat the exact authority defect and is
 not selected. Reverting the isolated producer checkpoint is the correction cost.
+
+## Checked source-root producer, continuation2026-09-12
+
+The imported-family checkpoint6cecaa4b is committed, pushed and remote-exact.
+The next isolated change replaces broad neighbor discovery with a bounded
+reachable-import lookup, then reuses the shared frontend-only producer for
+checked companions. The shared module collector and file entry points move
+under source_chirho; the legacy test-only package scanner and its header helpers
+move separately, without making its fallbacks available to production discovery.
+The driver root loses433 lines. Structural debt remains; it is not under1500.
+
+- [x] Four filesystem controls fail before the producer; the unrelated-neighbor
+  control passes. After repair, imported/qualified equations and transitive
+  re-exports pass through both file check and file compile. Wrong kinds/proofs,
+  bad providers, source cycles, failed CPP and source byte limits diagnose.
+- [x] All11 lookup/authority controls pass, including root and nested Prelude,
+  exact-hierarchical precedence, and8/16/32 unrelated-neighbor bounded work.
+- [x] Full driver1776/1776, zero ignored/filtered, Cargo exit0 at
+  2026-09-12T14:44:43Z. Final integration226/226 plus canaries7/7, zero
+  ignored/filtered; the two last integration-only controls are included here.
+- [x] Workspace all-target check, format check and explicit CLI build pass,
+  zero compiler warnings. Driver all-target clippy exits0 with458 warning-message
+  lines including duplicates/summaries, not a lint-clean claim. The moved legacy
+  argument-count and recursion-only-parameter warnings remain existing debt.
+- [x] Twelve hashed-CLI observations agree with their expected verdicts:
+  eight unchanged GHC-referenced cases, bare versus ./ invocation, T001 in-place,
+  and ControlMonadClassesState. The last now genuinely receives its provider's
+  checked family contract. The multiline-import source is independently accepted
+  by GHC9.14.1. Evidence is in imported-families-chirho/source-producer-*.
+- [ ] Commit/push this producer checkpoint, then freeze and measure both full
+  exact corpus sets. One named recovery is not a new corpus total.
+- [ ] Resolve every main-relative regression before final landing gates.
+
+Limits: this does not implement imported runtime-body linkage, package-qualified
+or SOURCE import metadata, checked hs-boot cycles, or all nominal-name
+normalization consumers. Candidate lookup byte bounds are not a CPP subprocess
+resource sandbox. Missing interface-only sources gain no guessed checked kind.
+The independent audit's qualified-only nominal/family collision and nullary
+family-classifier probes remain unmeasured follow-ups, not claims of soundness.
+Main121d4f2c, canonical row484 and published artifacts remain untouched.

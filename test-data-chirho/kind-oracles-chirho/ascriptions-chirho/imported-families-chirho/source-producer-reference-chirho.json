@@ -1,0 +1,31 @@
+{
+  "ghc_version_chirho": "9.14.1",
+  "recorded_at_chirho": "2026-09-12T14:49:04.150Z",
+  "sources_chirho": {
+    "ProviderChirho.hs": {
+      "source_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE DataKinds, PolyKinds, TypeFamilies #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ntype family CanDoChirho (mChirho :: Type -> Type) (effChirho :: kChirho) :: Bool\n",
+      "sha256_chirho": "d1f0dda15112a887a96ed740774f9ea926ec11848196bfb74ec676424a54e926"
+    },
+    "ConsumerChirho.hs": {
+      "source_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE DataKinds, PolyKinds, TypeFamilies, TypeOperators #-}\nmodule ConsumerChirho where\nimport Data.Kind (Type)\nimport Data.Type.Equality ((:~:)(Refl))\nimport\n  ProviderChirho\n  (CanDoChirho)\ndata StateChirho (sChirho :: Type) (mChirho :: Type -> Type) aChirho\ndata ReaderChirho sChirho\ntype instance CanDoChirho (StateChirho sChirho mChirho) effChirho = StateCanDoChirho sChirho effChirho\ntype family StateCanDoChirho sChirho effChirho where\n  StateCanDoChirho sChirho (ReaderChirho sChirho) = 'True\n  StateCanDoChirho sChirho effChirho = 'False\nproofChirho :: CanDoChirho (StateChirho Int Maybe) (ReaderChirho Int) :~: 'True\nproofChirho = Refl\n",
+      "sha256_chirho": "76e1ae5c662f274fd64b964e5cc52bc0c97e69fe7163ee59130bc8528bef12dc"
+    }
+  },
+  "command_chirho": [
+    "gtimeout",
+    "--kill-after=2",
+    "30",
+    "ghc",
+    "-v0",
+    "-fno-code",
+    "-fforce-recomp",
+    "-i/private/tmp/haskelujah-source-imports-chirho.DVIAUZ",
+    "-outputdir",
+    "/private/tmp/haskelujah-source-imports-chirho.DVIAUZ",
+    "/private/tmp/haskelujah-source-imports-chirho.DVIAUZ/ConsumerChirho.hs"
+  ],
+  "exit_chirho": 0,
+  "stdout_chirho": "",
+  "stderr_chirho": "",
+  "scope_chirho": "Multiline import source independently checked. Eight earlier unchanged reference cases live in reference-before-chirho.jsonl; current candidate observations live in source-producer-cli-chirho.jsonl."
+}

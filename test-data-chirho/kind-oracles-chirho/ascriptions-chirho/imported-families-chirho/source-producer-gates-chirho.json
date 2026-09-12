@@ -1,0 +1,198 @@
+{
+  "parent_commit_chirho": "6cecaa4bac65ac56fbf403293b1d056926624150",
+  "recorded_at_chirho": "2026-09-12T14:49:03.781Z",
+  "source_hashes_chirho": {
+    "crates/haskelujah-driver-chirho/src/lib.rs": "2403d32c775e94db344cd3dad1a9041d302545b7dc5580d5f63a20b23fd11d1b",
+    "crates/haskelujah-driver-chirho/src/module_search_chirho.rs": "caa8ebec120e341f2b7e4cf299da9dce04b99ecf79839350d0b4ffcf3f3a11aa",
+    "crates/haskelujah-driver-chirho/src/source_chirho.rs": "6730923c7608bb2a4f10ed321cf9522c7763c4260f7242e7c94d15e1045eb834",
+    "crates/haskelujah-driver-chirho/src/source_chirho/modules_chirho.rs": "5da5712599551ac13cbea565527b0f4ce0204a4cf5eaf5e50f00b7beb6bb51de",
+    "crates/haskelujah-driver-chirho/src/source_chirho/search_chirho.rs": "d110c67258c1871d97bb0749d48d64240da641b46ed7b1ebb78696ac855ec2f2",
+    "crates/haskelujah-driver-chirho/src/source_chirho/package_fixtures_chirho.rs": "cb6e6b614a38829b124fbc690b787494558086fad3aaef1659c35ece6d7869b1",
+    "crates/haskelujah-driver-chirho/src/tests_chirho/module_search_chirho.rs": "97c524b6afa0a3495121def4840da093cddaea3e0cbaba2623690f2f959a3b6b",
+    "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho.rs": "98d6396f388c75f30a58a1b3476ae184dda696bff06e1d73532b13953dd5af98",
+    "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/search_path_chirho.rs": "68fbc58689d9bcefc89037ee497bbf1066f5798a76706c712a9d8441befee2d7"
+  },
+  "binary_sha256_chirho": "93c8ac0be43db896dffe8e8f0c042474d9dc5e11dbc8151b58cab5e0daa23786",
+  "records_chirho": [
+    {
+      "name_chirho": "driver",
+      "command_chirho": [
+        "cargo",
+        "test",
+        "-p",
+        "haskelujah-driver",
+        "--lib",
+        "-j",
+        "3"
+      ],
+      "started_at_chirho": "2026-09-12T14:40:13.911Z",
+      "ended_at_chirho": "2026-09-12T14:44:43.681Z",
+      "exit_chirho": 0,
+      "summaries_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 1776,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-broad-1-driver-chirho.log",
+      "log_hash_scope_chirho": "stdout bytes followed by stderr bytes",
+      "log_sha256_chirho": "e112adcbba7e0a818c9f1badd1b4cc735f4564ffb2ce258b709151830a7b6504"
+    },
+    {
+      "name_chirho": "check",
+      "command_chirho": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "-j",
+        "3"
+      ],
+      "started_at_chirho": "2026-09-12T14:44:43.683Z",
+      "ended_at_chirho": "2026-09-12T14:45:00.503Z",
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-broad-1-check-chirho.log",
+      "log_hash_scope_chirho": "stdout bytes followed by stderr bytes",
+      "log_sha256_chirho": "0d5ec2e138a8e046bd77a24db6a05e3c05bc1d2f3f1461fb0578fd21a728bcf4"
+    },
+    {
+      "name_chirho": "lookup",
+      "command_chirho": [
+        "cargo",
+        "test",
+        "-p",
+        "haskelujah-driver",
+        "--lib",
+        "module_search_chirho",
+        "-j",
+        "3"
+      ],
+      "started_at_chirho": "2026-09-12T14:45:32.777Z",
+      "ended_at_chirho": "2026-09-12T14:45:33.088Z",
+      "exit_chirho": 0,
+      "summaries_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 11,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 1765
+        }
+      ],
+      "warning_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-focused-3-lookup-chirho.log",
+      "log_hash_scope_chirho": "stdout bytes followed by stderr bytes",
+      "log_sha256_chirho": "fe04dc16ac2d792f80f540efed451061f6d614405e00199c5e4ae07b33269791"
+    },
+    {
+      "name_chirho": "integration",
+      "command_chirho": [
+        "cargo",
+        "test",
+        "-p",
+        "haskelujah-driver",
+        "--test",
+        "typing_integration_chirho",
+        "--test",
+        "canaries_chirho",
+        "-j",
+        "3",
+        "--no-fail-fast"
+      ],
+      "started_at_chirho": "2026-09-12T14:45:33.089Z",
+      "ended_at_chirho": "2026-09-12T14:45:58.944Z",
+      "exit_chirho": 0,
+      "summaries_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 7,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 226,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-focused-3-integration-chirho.log",
+      "log_hash_scope_chirho": "stdout bytes followed by stderr bytes",
+      "log_sha256_chirho": "a6998984b02945108a10fea93d416ee73a91d0b6089cc2ba6d746e7d9256f09a"
+    },
+    {
+      "name_chirho": "build",
+      "command_chirho": [
+        "cargo",
+        "build",
+        "-p",
+        "haskelujah",
+        "-j",
+        "3"
+      ],
+      "started_at_chirho": "2026-09-12T14:45:58.944Z",
+      "ended_at_chirho": "2026-09-12T14:45:59.269Z",
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-focused-3-build-chirho.log",
+      "log_hash_scope_chirho": "stdout bytes followed by stderr bytes",
+      "log_sha256_chirho": "0b53209db424367e80c52cd8cde8b75e37af110438a0efde777104a1463956de"
+    },
+    {
+      "name_chirho": "fmt",
+      "command_chirho": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "started_at_chirho": "2026-09-12T14:46:42.873Z",
+      "ended_at_chirho": "2026-09-12T14:46:43.913Z",
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-lint-fmt-chirho.log",
+      "log_hash_scope_chirho": "stdout bytes followed by stderr bytes",
+      "log_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name_chirho": "clippy",
+      "command_chirho": [
+        "cargo",
+        "clippy",
+        "-p",
+        "haskelujah-driver",
+        "--all-targets",
+        "-j",
+        "3"
+      ],
+      "started_at_chirho": "2026-09-12T14:46:43.913Z",
+      "ended_at_chirho": "2026-09-12T14:46:49.488Z",
+      "exit_chirho": 0,
+      "summaries_chirho": [],
+      "warning_lines_chirho": 458,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-lint-clippy-chirho.log",
+      "log_hash_scope_chirho": "stdout bytes followed by stderr bytes",
+      "log_sha256_chirho": "7149e9d93651d3ff87cf55b57db8f03434a330c909d3e879c97a702b746eff52"
+    }
+  ],
+  "red_controls_chirho": {
+    "passed_chirho": 1,
+    "failed_chirho": 4,
+    "ignored_chirho": 0,
+    "scope_chirho": "Original five filesystem controls before producer changes",
+    "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/source-contracts-red-chirho.log",
+    "log_sha256_chirho": "93cc561c695ecab6523b394654f6a99dbd4dc7d661d0e640f0a5f6228f9a9375"
+  },
+  "scope_chirho": "Driver lib 1776/1776 unfiltered; typing integration 226/226 and canaries 7/7; workspace check and explicit CLI. No new parser/typing source in this checkpoint. Full source snapshots are hashed; the final two integration-only controls were added after the full lib run and then included in the unfiltered integration gate. Clippy still emits 458 warning-message lines including duplicates and summaries; not lint-clean. Not a corpus or main landing gate."
+}
