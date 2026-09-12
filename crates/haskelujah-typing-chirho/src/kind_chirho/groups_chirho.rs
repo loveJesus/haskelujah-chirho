@@ -152,6 +152,8 @@ impl KindInferCtxChirho {
             }
         }
 
+        self.check_open_family_equations_chirho(module_chirho);
+
         // A value signature consumes finalized declaration kinds. Its text order
         // cannot turn a forward type constructor into an imported placeholder.
         for declaration_chirho in &module_chirho.decls_chirho {

@@ -3,9 +3,37 @@
 //! Family equations must survive into kinds, not merely erase a kind error.
 //! The positive and negative sources were checked independently by GHC 9.14.1.
 
-use super::assert_compile_success_chirho;
+use super::{assert_compile_success_chirho, assert_execution_chirho};
 use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
+
+#[test]
+fn family_equation_rhs_retains_solved_nominal_kind_arguments_chirho() {
+    let open_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/family-equations-chirho/OpenFamilyRhsChirho.hs"
+    ));
+    let closed_chirho = open_chirho.replace(
+        "type family BaseChirho valueChirho :: Type -> Type\ntype instance BaseChirho Int = BoxChirho Maybe",
+        "type family BaseChirho valueChirho :: Type -> Type where\n  BaseChirho Int = BoxChirho Maybe",
+    );
+    for source_chirho in [open_chirho, closed_chirho.as_str()] {
+        assert_execution_chirho(source_chirho, "True\n");
+        let wrong_chirho = source_chirho.replace("BaseChirho Int Bool", "BaseChirho Int Int");
+        let error_chirho = typecheck_source_chirho(
+            &wrong_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "WrongFamilyRhsChirho.hs",
+        )
+        .err()
+        .expect("retaining a nominal kind argument must not erase its ordinary Bool argument");
+        let diagnostic_chirho = error_chirho.to_string();
+        assert!(
+            diagnostic_chirho.contains("Bool") && diagnostic_chirho.contains("Int"),
+            "{diagnostic_chirho}"
+        );
+    }
+}
 
 #[test]
 fn recursively_constrained_classifiers_finish_and_still_check_arguments_chirho() {

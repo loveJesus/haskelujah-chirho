@@ -11,6 +11,12 @@ use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 use super::{InferCtxChirho, subst_named_var_chirho};
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TypeConversionChirho {
+    SignatureChirho,
+    FamilyEquationChirho,
+}
+
 impl InferCtxChirho {
     /// Open every declaration-head binder lexically, but apply only visible
     /// parameters to the constructor result. Used by data and newtype schemes
@@ -50,8 +56,24 @@ impl InferCtxChirho {
         ast_ty_chirho: &TypeChirho,
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> TyChirho {
+        self.ast_type_with_policy_chirho(
+            ast_ty_chirho,
+            var_map_chirho,
+            TypeConversionChirho::SignatureChirho,
+        )
+    }
+
+    /// Equation syntax shares solved nominal arguments with signatures, but
+    /// must not reduce a family while constructing its own stored matching row.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn ast_type_with_policy_chirho(
+        &mut self,
+        ast_ty_chirho: &TypeChirho,
+        var_map_chirho: &mut HashMap<String, TyVarChirho>,
+        policy_chirho: TypeConversionChirho,
+    ) -> TyChirho {
         if let Some(ty_chirho) =
-            self.elaborated_head_application_chirho(ast_ty_chirho, var_map_chirho)
+            self.elaborated_head_application_chirho(ast_ty_chirho, var_map_chirho, policy_chirho)
         {
             return self.expand_source_type_synonyms_chirho(&ty_chirho);
         }
@@ -82,21 +104,35 @@ impl InferCtxChirho {
                 arg_chirho,
                 ..
             } => {
-                let f_chirho = self.ast_type_to_ty_chirho(fun_chirho, var_map_chirho);
-                let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
+                let f_chirho =
+                    self.ast_type_with_policy_chirho(fun_chirho, var_map_chirho, policy_chirho);
+                let a_chirho =
+                    self.ast_type_with_policy_chirho(arg_chirho, var_map_chirho, policy_chirho);
                 let raw_chirho = TyChirho::AppChirho(Box::new(f_chirho), Box::new(a_chirho));
                 // Expand parameterised type synonyms (e.g. Pair Int → (Int, Int))
                 let expanded_chirho = self.expand_source_type_synonyms_chirho(&raw_chirho);
                 // Reduce type family applications (e.g. F Int → Bool)
-                self.reduce_type_families_in_ty_chirho(&expanded_chirho)
+                if policy_chirho == TypeConversionChirho::FamilyEquationChirho {
+                    expanded_chirho
+                } else {
+                    self.reduce_type_families_in_ty_chirho(&expanded_chirho)
+                }
             }
             TypeChirho::KindAppChirho {
                 fun_chirho,
                 arg_chirho,
                 ..
             } => TyChirho::KindAppChirho(
-                Box::new(self.ast_type_to_ty_chirho(fun_chirho, var_map_chirho)),
-                Box::new(self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho)),
+                Box::new(self.ast_type_with_policy_chirho(
+                    fun_chirho,
+                    var_map_chirho,
+                    policy_chirho,
+                )),
+                Box::new(self.ast_type_with_policy_chirho(
+                    arg_chirho,
+                    var_map_chirho,
+                    policy_chirho,
+                )),
             ),
             TypeChirho::FunChirho {
                 arg_chirho,
@@ -104,8 +140,10 @@ impl InferCtxChirho {
                 result_chirho,
                 ..
             } => {
-                let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
-                let r_chirho = self.ast_type_to_ty_chirho(result_chirho, var_map_chirho);
+                let a_chirho =
+                    self.ast_type_with_policy_chirho(arg_chirho, var_map_chirho, policy_chirho);
+                let r_chirho =
+                    self.ast_type_with_policy_chirho(result_chirho, var_map_chirho, policy_chirho);
                 let m_chirho = if mult_chirho.as_ref().is_some_and(
                     haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::is_explicit_one_chirho,
                 ) {
@@ -120,28 +158,35 @@ impl InferCtxChirho {
             } => {
                 let elems_chirho: Vec<TyChirho> = elements_chirho
                     .iter()
-                    .map(|e_chirho| self.ast_type_to_ty_chirho(e_chirho, var_map_chirho))
+                    .map(|e_chirho| {
+                        self.ast_type_with_policy_chirho(e_chirho, var_map_chirho, policy_chirho)
+                    })
                     .collect();
                 TyChirho::TupleChirho(elems_chirho)
             }
             TypeChirho::ListChirho { element_chirho, .. } => {
-                let elem_chirho = self.ast_type_to_ty_chirho(element_chirho, var_map_chirho);
+                let elem_chirho =
+                    self.ast_type_with_policy_chirho(element_chirho, var_map_chirho, policy_chirho);
                 TyChirho::ListChirho(Box::new(elem_chirho))
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
-                self.ast_type_to_ty_chirho(inner_chirho, var_map_chirho)
+                self.ast_type_with_policy_chirho(inner_chirho, var_map_chirho, policy_chirho)
             }
             TypeChirho::QualChirho { body_chirho, .. } => {
                 // Qualified types: convert the body, constraints are handled separately
-                self.ast_type_to_ty_chirho(body_chirho, var_map_chirho)
+                self.ast_type_with_policy_chirho(body_chirho, var_map_chirho, policy_chirho)
             }
             TypeChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
                 ..
             } => {
-                let (bound_vars_chirho, body_ty_chirho) =
-                    self.ast_forall_body_chirho(vars_chirho, body_chirho, var_map_chirho);
+                let (bound_vars_chirho, body_ty_chirho) = self.ast_forall_body_chirho(
+                    vars_chirho,
+                    body_chirho,
+                    var_map_chirho,
+                    policy_chirho,
+                );
                 TyChirho::ForallChirho {
                     vars_chirho: bound_vars_chirho,
                     body_chirho: Box::new(body_ty_chirho),
@@ -152,8 +197,12 @@ impl InferCtxChirho {
                 body_chirho,
                 ..
             } => {
-                let (bound_vars_chirho, body_ty_chirho) =
-                    self.ast_forall_body_chirho(vars_chirho, body_chirho, var_map_chirho);
+                let (bound_vars_chirho, body_ty_chirho) = self.ast_forall_body_chirho(
+                    vars_chirho,
+                    body_chirho,
+                    var_map_chirho,
+                    policy_chirho,
+                );
                 TyChirho::RequiredForallChirho {
                     vars_chirho: bound_vars_chirho,
                     body_chirho: Box::new(body_ty_chirho),
@@ -173,8 +222,11 @@ impl InferCtxChirho {
                     .iter()
                     .rev()
                     .fold(nil_chirho, |acc_chirho, elem_chirho| {
-                        let elem_ty_chirho =
-                            self.ast_type_to_ty_chirho(elem_chirho, var_map_chirho);
+                        let elem_ty_chirho = self.ast_type_with_policy_chirho(
+                            elem_chirho,
+                            var_map_chirho,
+                            policy_chirho,
+                        );
                         let cons_chirho = TyChirho::ConChirho("':".to_string());
                         TyChirho::AppChirho(
                             Box::new(TyChirho::AppChirho(
@@ -190,6 +242,9 @@ impl InferCtxChirho {
             // programmer is informed of the inferred type position.
             TypeChirho::WildcardChirho { span_chirho } => {
                 let fresh_ty_chirho = self.fresh_var_chirho();
+                if policy_chirho == TypeConversionChirho::FamilyEquationChirho {
+                    return fresh_ty_chirho;
+                }
                 let diag_chirho = DiagnosticChirho::warning_with_code_chirho(
                     ErrorCodeChirho::warning_chirho(4201),
                     "found wildcard `_` in type signature (PartialTypeSignatures)".to_string(),
@@ -215,6 +270,7 @@ impl InferCtxChirho {
         vars_chirho: &[AstTyVarChirho],
         body_chirho: &TypeChirho,
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
+        policy_chirho: TypeConversionChirho,
     ) -> (Vec<TyVarChirho>, TyChirho) {
         let mut bound_vars_chirho = Vec::with_capacity(vars_chirho.len());
         for var_chirho in vars_chirho {
@@ -233,7 +289,7 @@ impl InferCtxChirho {
             bindings_chirho,
             var_map_chirho,
             |context_chirho, map_chirho| {
-                context_chirho.ast_type_to_ty_chirho(body_chirho, map_chirho)
+                context_chirho.ast_type_with_policy_chirho(body_chirho, map_chirho, policy_chirho)
             },
         );
         (bound_vars_chirho, body_ty_chirho)

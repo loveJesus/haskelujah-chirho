@@ -16,8 +16,8 @@ impl InferCtxChirho {
                 } => {
                     let equations_chirho = equations_chirho
                         .iter()
-                        .map(|equation_chirho| {
-                            lower_family_equation_chirho(
+                        .filter_map(|equation_chirho| {
+                            self.lower_local_family_equation_chirho(
                                 &equation_chirho.lhs_types_chirho,
                                 &equation_chirho.rhs_chirho,
                             )
@@ -34,8 +34,11 @@ impl InferCtxChirho {
                     rhs_chirho,
                     ..
                 } => {
-                    let (patterns_chirho, result_chirho) =
-                        lower_family_equation_chirho(lhs_types_chirho, rhs_chirho);
+                    let Some((patterns_chirho, result_chirho)) =
+                        self.lower_local_family_equation_chirho(lhs_types_chirho, rhs_chirho)
+                    else {
+                        continue;
+                    };
                     self.register_type_family_instance_chirho(
                         family_name_chirho.text_chirho().to_string(),
                         patterns_chirho,
@@ -46,8 +49,55 @@ impl InferCtxChirho {
             }
         }
     }
+
+    /// The source converter consumes exactly the kind arguments established at
+    /// these occurrences. Family definitions cannot eagerly reduce themselves,
+    /// and a variable seen only on the RHS is not an invented row parameter.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    fn lower_local_family_equation_chirho(
+        &mut self,
+        patterns_chirho: &[TypeChirho],
+        result_chirho: &TypeChirho,
+    ) -> Option<(Vec<TyChirho>, TyChirho)> {
+        let mut variables_chirho = HashMap::new();
+        let policy_chirho =
+            super::ast_conversion_chirho::TypeConversionChirho::FamilyEquationChirho;
+        let patterns_chirho: Vec<_> = patterns_chirho
+            .iter()
+            .map(|pattern_chirho| {
+                self.ast_type_with_policy_chirho(
+                    pattern_chirho,
+                    &mut variables_chirho,
+                    policy_chirho,
+                )
+            })
+            .collect();
+        let body_chirho =
+            self.ast_type_with_policy_chirho(result_chirho, &mut variables_chirho, policy_chirho);
+        let bound_chirho: HashSet<_> = patterns_chirho
+            .iter()
+            .flat_map(TyChirho::free_vars_chirho)
+            .collect();
+        if !body_chirho
+            .free_vars_chirho()
+            .iter()
+            .all(|variable_chirho| bound_chirho.contains(variable_chirho))
+        {
+            self.diagnostics_chirho
+                .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                    ErrorCodeChirho::error_chirho(300),
+                    "family equation result contains variables outside its matching inputs",
+                    result_chirho.span_chirho(),
+                ));
+            return None;
+        }
+        Some((patterns_chirho, body_chirho))
+    }
 }
 
+// Associated instances still use their enclosing class/instance parameter
+// contract below. Their nominal indices need that scope's elaboration, not a
+// top-level row checker applied without the enclosing instance binders.
 pub(super) fn lower_family_equation_chirho(
     patterns_chirho: &[TypeChirho],
     result_chirho: &TypeChirho,

@@ -77,8 +77,9 @@ regressions; reject244/767, zero timeouts or unexpected exits. T11723/T13142/tc2
 recover and T15552a no longer aborts. UnliftedNewtypesMismatchedKindRecord loses
 an accidental E0101, not GHC's representation check; the genuine rule stays open.
 This is one diagnostic pass per axis, not a final gate. Main/artifacts/row484
-stay unchanged. Current detail, evidence, and next consumer decision:
-kind-schemes-chirho/26-09-11_22-20-classifier_provenance-chirho.md.
+stay unchanged. Diagnostic detail: kind-schemes-chirho/26-09-11_22-20-classifier_provenance-chirho.md.
+The next consumer fixes T21583 in focused checks but exposes erased type-pattern
+kind ascriptions (driver110/111); see kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md.
 
 Visible-application checkpoint3bbcd49c is committed, pushed and remote-exact.
 Its recursive/local nominal follow-up f5c4eedb is also pushed and remote-exact;

@@ -301,8 +301,11 @@ flowchart LR
   EquationSourceChirho[Closed equation or open instance] --> EquationCstChirho[Parse complete family application with shared type grammar]
   EquationCstChirho --> PatternSpineChirho[Keep head and ordered pattern nodes with source spans]
   PatternSpineChirho --> EquationVariablesChirho[Bind variables from this equation including nested promoted lists]
-  EquationVariablesChirho --> EquationTypesChirho[Convert patterns and RHS in the same local scope]
-  EquationTypesChirho --> FamilyRulesChirho[Register source-ordered equations]
+  EquationVariablesChirho --> EquationKindsChirho[Check closed or local open row against its family contract]
+  EquationKindsChirho --> EquationOccurrencesChirho[Record solved nominal arguments at each occurrence]
+  EquationOccurrencesChirho --> EquationTypesChirho[Convert patterns and RHS without eagerly reducing family definitions]
+  EquationTypesChirho --> EquationClosureChirho[Require RHS variables to belong to represented matching inputs]
+  EquationClosureChirho --> FamilyRulesChirho[Register source-ordered equations]
   FamilyRulesChirho --> FamilyReductionChirho[Match patterns then reapply any extra result arguments]
 ```
 
@@ -463,8 +466,8 @@ The ordered source extension settings govern this distinction, and local TYPE
 declarations remain nominal rather than acquiring the built-in representation
 semantics. Source controls exercise both distinctions independently.
 
-Still unfinished: hidden family indices, complete explicit family applications, open/associated
-kind-family equation checking, higher-rank family result contracts, and complete
+Still unfinished: hidden family matching indices, complete explicit family applications,
+imported/associated kind-family equation checking, higher-rank family result contracts, and complete
 injectivity validation beyond this first-order fragment. No row with missing
 hidden matching conditions is registered as a visible-only approximation. The retained
 metadata is not a claim that those missing consumers now work. Design reference:
@@ -618,7 +621,19 @@ flowchart LR
   CheckClassifierChirho --> AliasTemplateChirho
 ```
 
-Not complete: family equation indices, imported constructor schemes and
+Top-level open equations of locally declared families now share the closed-row
+classifier checker, after local declaration kinds are published. Their recorded
+nominal occurrences reach the type-level equation converter. Conversion has an
+explicit equation policy: retain family applications rather than eagerly reducing
+definitions, and do not issue a partial-signature warning for a pattern wildcard.
+Only variables present in the converted matching inputs may occur in the result.
+This exposes an existing missing representation: a kind ascription in a type
+pattern is currently erased by lowering, so a variable bound only there cannot
+reach the matching row. The resulting valid-program rejection is an OPEN gate
+failure, not fixed by inventing an RHS variable or weakening the test.
+
+Not complete: hidden family matching indices, promoted-constructor pattern indices,
+type-pattern kind ascriptions, associated-row scope, imported constructor schemes and
 specificity, and complete higher-rank kind subsumption. The frozen f5c4eedb
 diagnostic recovered T12045a but exposed twelve new accept failures relative to
 its predecessor; that checkpoint is not landable. Keeping KindApp in the type IR

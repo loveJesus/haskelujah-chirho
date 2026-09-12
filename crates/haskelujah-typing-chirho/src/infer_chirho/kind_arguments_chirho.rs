@@ -2,6 +2,7 @@
 
 //! Materialize solved invisible arguments, including implicit source applications.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
+use super::ast_conversion_chirho::TypeConversionChirho;
 use super::*;
 use crate::kind_chirho::KindChirho;
 
@@ -10,6 +11,7 @@ impl InferCtxChirho {
         &mut self,
         source_chirho: &TypeChirho,
         variables_chirho: &mut HashMap<String, TyVarChirho>,
+        policy_chirho: TypeConversionChirho,
     ) -> Option<TyChirho> {
         // The kind pass records the application inside parentheses, not the
         // wrapper span. Looking up the wrapper would incorrectly freshen solved
@@ -95,7 +97,11 @@ impl InferCtxChirho {
                     binder_index_chirho += 1;
                 }
                 if let Some(index_chirho) = indices_chirho.get_mut(binder_index_chirho) {
-                    *index_chirho = self.ast_type_to_ty_chirho(argument_chirho, variables_chirho);
+                    *index_chirho = self.ast_type_with_policy_chirho(
+                        argument_chirho,
+                        variables_chirho,
+                        policy_chirho,
+                    );
                     binder_index_chirho += 1;
                 } else {
                     self.diagnostics_chirho
@@ -117,7 +123,11 @@ impl InferCtxChirho {
         for argument_chirho in ordinary_chirho {
             result_chirho = TyChirho::AppChirho(
                 Box::new(result_chirho),
-                Box::new(self.ast_type_to_ty_chirho(argument_chirho, variables_chirho)),
+                Box::new(self.ast_type_with_policy_chirho(
+                    argument_chirho,
+                    variables_chirho,
+                    policy_chirho,
+                )),
             );
         }
         Some(result_chirho)
