@@ -116,7 +116,7 @@ struct KindInferCtxChirho {
     /// temporary source spelling. They survive lexical-scope restoration.
     kind_binder_classifiers_chirho: HashMap<KindVarChirho, KindChirho>,
     kind_binder_names_chirho: HashMap<KindVarChirho, String>,
-    kind_applications_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
+    kind_applications_chirho: HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
     kind_binder_specificity_chirho:
         HashMap<KindVarChirho, haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho>,
     kind_families_chirho: HashMap<String, families_chirho::KindFamilyChirho>,

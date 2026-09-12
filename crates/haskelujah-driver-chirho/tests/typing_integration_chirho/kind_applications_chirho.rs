@@ -33,6 +33,14 @@ const ANNOTATED_CHIRHO: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/AnnotatedKindChirho.hs"
 ));
+const RECURSIVE_CHIRHO: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/RecursiveKindChirho.hs"
+));
+const LOCAL_CHIRHO: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/LocalKindChirho.hs"
+));
 
 fn rejection_chirho(source_chirho: &str) -> String {
     typecheck_source_chirho(
@@ -88,6 +96,21 @@ fn explicit_kind_signatures_interoperate_with_implicit_constructor_arguments_chi
 #[test]
 fn wildcard_kind_arguments_are_inferred_from_the_ordinary_argument_chirho() {
     assert_execution_chirho(&CONSTRUCTOR_CHIRHO.replace("@Bool", "@_"), "42\n");
+}
+
+#[test]
+fn recursive_nominal_fields_keep_the_group_kind_arguments_chirho() {
+    assert_execution_chirho(RECURSIVE_CHIRHO, "42\n7\n");
+}
+
+#[test]
+fn expression_signatures_instantiate_nominal_kind_slots_without_erasing_them_chirho() {
+    assert_execution_chirho(LOCAL_CHIRHO, "42\n");
+    let wrong_chirho = LOCAL_CHIRHO.replace(
+        "TokenChirho :: TokenChirho @Bool",
+        "TokenChirho :: TokenChirho @Type",
+    );
+    assert!(rejection_chirho(&wrong_chirho).contains("type mismatch"));
 }
 
 #[test]

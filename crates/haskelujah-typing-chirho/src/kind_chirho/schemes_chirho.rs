@@ -269,23 +269,25 @@ impl KindInferCtxChirho {
 
     pub(super) fn instantiate_source_binding_chirho(
         &mut self,
+        name_chirho: &str,
         binding_chirho: &KindBindingChirho,
         span_chirho: super::SpanChirho,
     ) -> KindChirho {
-        match binding_chirho {
+        let (kind_chirho, arguments_chirho) = match binding_chirho {
             KindBindingChirho::MonoChirho(kind_chirho) => {
-                self.subst_chirho.apply_chirho(kind_chirho)
+                (self.subst_chirho.apply_chirho(kind_chirho), Vec::new())
             }
             KindBindingChirho::PolyChirho(scheme_chirho) => {
-                let (kind_chirho, arguments_chirho) =
-                    self.open_kind_scheme_parts_chirho(scheme_chirho, false);
-                if !arguments_chirho.is_empty() {
-                    self.kind_applications_chirho
-                        .insert(span_chirho, arguments_chirho);
-                }
-                kind_chirho
+                self.open_kind_scheme_parts_chirho(scheme_chirho, false)
             }
-        }
+        };
+        self.record_kind_application_chirho(
+            name_chirho,
+            binding_chirho,
+            arguments_chirho,
+            span_chirho,
+        );
+        kind_chirho
     }
 
     pub(super) fn open_kind_scheme_parts_chirho(
@@ -401,12 +403,12 @@ impl KindInferCtxChirho {
             _ => None,
         };
         let authoritative_chirho = binding_chirho.is_some();
-        let (mut tail_chirho, binders_chirho) = match binding_chirho {
+        let (mut tail_chirho, binders_chirho) = match &binding_chirho {
             Some(KindBindingChirho::PolyChirho(scheme_chirho)) => {
-                self.open_kind_scheme_contract_chirho(&scheme_chirho, false)
+                self.open_kind_scheme_contract_chirho(scheme_chirho, false)
             }
             Some(KindBindingChirho::MonoChirho(kind_chirho)) => {
-                (self.subst_chirho.apply_chirho(&kind_chirho), Vec::new())
+                (self.subst_chirho.apply_chirho(kind_chirho), Vec::new())
             }
             None => (self.infer_type_kind_chirho(head_chirho), Vec::new()),
         };
@@ -455,13 +457,17 @@ impl KindInferCtxChirho {
                 );
             }
         }
-        if !binders_chirho.is_empty() {
-            self.kind_applications_chirho.insert(
-                ty_chirho.span_chirho(),
+        if let (TypeChirho::ConChirho(name_chirho), Some(binding_chirho)) =
+            (head_chirho, &binding_chirho)
+        {
+            self.record_kind_application_chirho(
+                &self.canonical_kind_name_chirho(name_chirho),
+                binding_chirho,
                 binders_chirho
                     .into_iter()
                     .map(|binder_chirho| binder_chirho.argument_chirho)
                     .collect(),
+                ty_chirho.span_chirho(),
             );
         }
         self.subst_chirho.apply_chirho(&tail_chirho)

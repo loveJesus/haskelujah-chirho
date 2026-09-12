@@ -506,11 +506,26 @@ even when no field mentions them. Two GHC-checked executable controls construct 
 kind-indexed value and read it through implicit and explicit signatures on STG,
 LLVM and Cranelift, each requiring the independently measured output 42 plus LF.
 
-Not complete: recursive monomorphic occurrences, synonym/family equation indices,
-imported constructor schemes and imported specificity, and some higher-rank kind
-annotations still lack complete consumers. The current T12045a reduction reaches
-an unindexed recursive FreeCat field versus an indexed result; no compatibility
-gain is claimed for that file. Keeping KindApp in the type IR is necessary but
+Recursive occurrences are captured before SCC publication. Already quantified
+binders keep their fresh occurrence arguments; binders generalized afterward
+keep the group's actual identities. Finalization orders both through the final
+scheme, so recursive fields and constructor results share the same index layout.
+The lookup is local to each occurrence's binder set, not a scan of all module
+bindings. Self-recursion and mutually recursive heads with different source kind
+names are exercised by one GHC-executed source on all three engines.
+
+Expression signatures outside the module kind pass instantiate the known local
+nominal scheme's quantified slots. Explicit @ arguments consume only specified
+slots; unsupplied slots are fresh type variables, not an unindexed constructor.
+This requires a declared head contract: imported/unknown heads do not enter this
+path. Kind-term names use the same imported-type normalization as ordinary types.
+A local phantom-index mismatch must still reject. This is not complete local
+classifier checking; the old absence of that kind-pass traversal remains open.
+
+Not complete: synonym/family equation indices, imported constructor schemes and
+specificity, and some higher-rank kind annotations. T12045a now passes in the
+focused fresh CLI check, but only a frozen corpus diagnostic can establish its
+delta and the surrounding regression surface. Keeping KindApp in the type IR
 does not establish that every producer has supplied its inferred arguments.
 
 ## Evidence boundary

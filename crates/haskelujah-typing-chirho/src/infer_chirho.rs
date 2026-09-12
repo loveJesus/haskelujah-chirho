@@ -711,6 +711,10 @@ impl InferCtxChirho {
                 Box::new(self.normalize_imported_ty_chirho(fun_chirho)),
                 Box::new(self.normalize_imported_ty_chirho(arg_chirho)),
             ),
+            TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
+                Box::new(self.normalize_imported_ty_chirho(fun_chirho)),
+                Box::new(self.normalize_imported_ty_chirho(arg_chirho)),
+            ),
             TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
                 Box::new(self.normalize_imported_ty_chirho(arg_chirho)),
                 Box::new(self.normalize_imported_ty_chirho(result_chirho)),

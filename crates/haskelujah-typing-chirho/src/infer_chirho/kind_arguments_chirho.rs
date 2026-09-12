@@ -20,10 +20,17 @@ impl InferCtxChirho {
                     arg_chirho,
                     ..
                 } => {
-                    arguments_chirho.push(arg_chirho.as_ref());
+                    arguments_chirho.push((arg_chirho.as_ref(), false));
                     head_chirho = fun_chirho;
                 }
-                TypeChirho::KindAppChirho { fun_chirho, .. } => head_chirho = fun_chirho,
+                TypeChirho::KindAppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    arguments_chirho.push((arg_chirho.as_ref(), true));
+                    head_chirho = fun_chirho;
+                }
                 TypeChirho::ParenChirho { inner_chirho, .. } => head_chirho = inner_chirho,
                 _ => break,
             }
@@ -34,24 +41,68 @@ impl InferCtxChirho {
         let elaboration_chirho = self.kind_elaboration_chirho.as_ref()?;
         let binders_chirho = elaboration_chirho
             .nominal_heads_chirho
-            .get(&name_chirho.full_name_chirho())?;
-        let indices_chirho = elaboration_chirho
+            .get(&name_chirho.full_name_chirho())?
+            .clone();
+        let recorded_chirho = elaboration_chirho
             .applications_chirho
-            .get(&source_chirho.span_chirho())?;
-        if indices_chirho.len() != binders_chirho.len() {
-            return None;
+            .get(&source_chirho.span_chirho())
+            .cloned();
+        let mut indices_chirho: Vec<_> = if let Some(indices_chirho) = &recorded_chirho {
+            assert_eq!(
+                indices_chirho.len(),
+                binders_chirho.len(),
+                "published nominal binder contract changed"
+            );
+            indices_chirho
+                .iter()
+                .map(|index_chirho| {
+                    self.kind_term_type_chirho(index_chirho, variables_chirho, &mut Vec::new())
+                })
+                .collect()
+        } else {
+            // Expression/local signatures are not all visited by the module
+            // kind pass. Instantiate the KNOWN nominal head's quantified slots,
+            // just as constructor inference does, instead of returning a bare
+            // head with a different arity. Unknown/imported heads never enter
+            // this path. This is not a substitute for their classifier checking.
+            binders_chirho
+                .iter()
+                .map(|_| self.fresh_var_chirho())
+                .collect()
+        };
+        let mut ordinary_chirho = Vec::new();
+        let mut binder_index_chirho = 0;
+        for (argument_chirho, invisible_chirho) in arguments_chirho.into_iter().rev() {
+            if !invisible_chirho {
+                binder_index_chirho = binders_chirho.len();
+                ordinary_chirho.push(argument_chirho);
+            } else if recorded_chirho.is_none() {
+                while binder_index_chirho < binders_chirho.len()
+                    && !binders_chirho[binder_index_chirho].specified_chirho
+                {
+                    binder_index_chirho += 1;
+                }
+                if let Some(index_chirho) = indices_chirho.get_mut(binder_index_chirho) {
+                    *index_chirho = self.ast_type_to_ty_chirho(argument_chirho, variables_chirho);
+                    binder_index_chirho += 1;
+                } else {
+                    self.diagnostics_chirho
+                        .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                            ErrorCodeChirho::error_chirho(300),
+                            "no specified kind argument is available for this @ application",
+                            argument_chirho.span_chirho(),
+                        ));
+                }
+            }
         }
-        let indices_chirho = indices_chirho.clone();
         let mut result_chirho = TyChirho::ConChirho(
             self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho()),
         );
-        for index_chirho in &indices_chirho {
-            let argument_chirho =
-                self.kind_term_type_chirho(index_chirho, variables_chirho, &mut Vec::new());
+        for argument_chirho in indices_chirho {
             result_chirho =
                 TyChirho::KindAppChirho(Box::new(result_chirho), Box::new(argument_chirho));
         }
-        for argument_chirho in arguments_chirho.into_iter().rev() {
+        for argument_chirho in ordinary_chirho {
             result_chirho = TyChirho::AppChirho(
                 Box::new(result_chirho),
                 Box::new(self.ast_type_to_ty_chirho(argument_chirho, variables_chirho)),
@@ -71,7 +122,9 @@ impl InferCtxChirho {
         match term_chirho {
             KindChirho::StarChirho => TyChirho::ConChirho("Type".to_owned()),
             KindChirho::ConstraintChirho => TyChirho::ConChirho("Constraint".to_owned()),
-            KindChirho::ConChirho(name_chirho) => TyChirho::ConChirho(name_chirho.clone()),
+            KindChirho::ConChirho(name_chirho) => {
+                TyChirho::ConChirho(self.normalize_imported_type_name_chirho(name_chirho))
+            }
             KindChirho::VarChirho(identity_chirho) | KindChirho::RigidChirho(identity_chirho) => {
                 let name_chirho = self
                     .kind_elaboration_chirho

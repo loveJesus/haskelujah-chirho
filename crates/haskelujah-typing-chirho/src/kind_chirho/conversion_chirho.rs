@@ -329,7 +329,11 @@ impl KindInferCtxChirho {
                     .or_else(|| self.env_chirho.lookup_promoted_binding_chirho(&text_chirho))
                     .cloned()
                 {
-                    self.instantiate_source_binding_chirho(&binding_chirho, ty_chirho.span_chirho())
+                    self.instantiate_source_binding_chirho(
+                        &text_chirho,
+                        &binding_chirho,
+                        ty_chirho.span_chirho(),
+                    )
                 } else {
                     // Unknown/imported constructors still lack authoritative kind
                     // metadata. Keep their existing independent-use fallback,

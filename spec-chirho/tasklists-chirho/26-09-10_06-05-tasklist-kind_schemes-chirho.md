@@ -67,64 +67,29 @@ named, never bypassed by a source-name or corpus-file condition.
 
 ## Resume state
 
-Main stays at121d4f2c,882/938 accept and221/767 reject. Row484 is unfinished.
-The isolated branch's code checkpoint c838387e is pushed and remote-exact.
-Its eighth diagnostic is886/230, one full pass per axis with no timeouts or
-unexpected exits, clean HEAD and unchanged CLI digest. All four accepted/
-rejected set files are byte-identical to the seventh diagnostic. Against main:
-accept+7/-3, reject+15/-6. T12045a/T13643/T14010 remain accept regressions, so
-main is held. The class-method scope correction is included in this diagnostic;
-typing356, integration68 and canaries7 also passed on this code checkpoint.
-The family foundation is committed and pushed at58795e47. Its ninth diagnostic
-completed877/235, one pass per axis, zero timeouts/unexpected exits and stable
-CLI SHA256. T13643 recovers but ten previously accepted files newly fail;
-T12045a/T14010 remain red. The follow-up repairs equation scope, anonymous
-patterns, invisible family binders, vacuous dependent arrows and StarIsType.
-Seven of those ten recover in focused checks; no updated full count is claimed.
-Current parser349, naming136, typing363, integration79 and canaries7 pass.
-The full driver gate completed1772/1772 with zero exclusions on45c4a108.
-Eighteen GHC/candidate verdict pairs agree. Main is held.
+Main stays at121d4f2c,882/938 accept and221/767 reject. Row484 is unfinished;
+SLOT and sole canonical DB writer remain ours. Runtime identity was verified
+as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
+No DB write, main merge, public artifact change or deployment in this continuation.
 
-Latest pushed code2311cd9f has a tenth full diagnostic of883/938
-accept and238/767 reject, one pass each with zero timeouts/unexpected exits and
-stable HEAD/CLI. Eight ninth-pass failures recover, but T12919/T14366 newly
-fail. Main-relative accept+7/-6, so there is still no landable checkpoint.
-The eleventh diagnostic at77b11701 is884/236. T12919/T14366 recover, SplitWD
-loses its gain, and four main-relative regressions remain (T12045a/T13248/
-T14010/T26358). The following head fixes restore SplitWD and T18640b in focused
-checks; no new full count is claimed until their next frozen diagnostic.
-Parser351/naming136/typing363, integration88 and canaries7 pass with zero
-exclusions. Seventeen GHC9.14.1/candidate contract pairs agree; an eighteenth,
-separately labelled annotation observation still disagrees. See the final
-sections for exact membership, remaining representation gaps and evidence.
+The last frozen full diagnostic is b362f326,886/938 accept and236/767 reject,
+one pass each with no timeout/unexpected exit and stable CLI5ad93438. It had
+three main-relative accept regressions: T12045a/T14010/T26358. Its complete
+membership and reason qualifications remain in the thirteenth-diagnostic section.
 
-Newest frozen diagnostic: b362f326,886/938 accept and236/767 reject, one pass
-each. No timeout/unexpected exit, clean HEAD and unchanged CLI5ad93438 before
-and after both axes. Versus twelfth: only T13248 recovers, no accept losses;
-reject sets unchanged. Main-relative accept+7/-3, reject+18/-3. T12045a/T14010/
-T26358 remain accept regressions, so no landing. The full detailed result and
-remaining source-representation work are at the end of this tasklist.
+Visible-application checkpoint3bbcd49c is committed, pushed and remote-exact.
+The following recursive/local nominal follow-up makes T12045a pass on a fresh CLI;
+T14010 and T26358 remain open. No updated full count is claimed yet. Kind-index
+capture is keyed to the final quantified identities, including monomorphic SCC
+uses; local expression signatures instantiate known nominal slots. Family/synonym/
+imported index consumers and complete local classifier checking remain unfinished.
 
-At the previous handoff the goal reported usageLimited and the independent rejection-reason reviewer
-returned a provider usage-limit error instead of a result. No retry is scheduled.
-The prior handoff released SLOT/DB in22046; this continuation reacquired them
-in22091. The project is not complete, and no main landing is authorized by these
-diagnostic counts. Canonical DB row484 remains open; this checkpoint writes no DB.
-
-Direct L.J. continuation resumed this work at ea72bb12 with main unchanged.
-Runtime identity is now HASKELUJAH:3:%154, re-registered in the broker. SLOT/DB
-reclaimed in message22091 after checking there was no intervening claim. The
-automatic goal still reports usageLimited; this direct interactive work does not
-claim that automated allowance is restored. No exhausted subagent is retried.
-
-Multiplicity correction: parser346,typing356,naming136,integration67,canaries7
-green, zero ignored/filtered, actual cargo exits0. Twenty GHC9.14.1/candidate
-pairs have19 verdict agreements and the named existing warning-only linear-use
-mismatch. Fresh CLI SHA256
-`89805de43947c7b30c455eb131de4f4fab846a78cb4688ce9e85fb95fdbc7cc8`.
-The scoped clippy run exits0 with existing warnings (driver34), none in the new
-arrow module or changed kind child modules. The checkpoint and full diagnostic
-are complete; full workspace/two-pass landing gates remain owed.
+Latest typing365, driver integration99 and canaries7 passed, zero ignored/filtered,
+including the imported-index normalization follow-up.
+Seventeen bounded GHC9.14.1/candidate observations agree, four in execution mode,
+with source and binary hashes retained beside the visible-application fixtures.
+The checkpoint is not a compatibility landing; freeze/diagnostic, full workspace,
+final two-pass gate and DB closure remain owed. Latest detail is at the file's end.
 
 ### Historical prototype baseline
 
@@ -1329,3 +1294,30 @@ Six-crate all-target clippy exits0 but reports684 warning messages/365 distinct
 diagnostics. This is not warning-free. The relocated legacy eight-argument
 wrapper retains its existing too-many-arguments warning; new elaboration and
 mixed-spine scheme functions have no diagnostic. No warning suppression added.
+
+### Recursive and expression-local nominal follow-up
+
+3bbcd49c was pushed and ls-remote verified before continuing. A GHC-executed
+recursive/mutually-recursive fixture prints42/7; its new integration control
+was red on3bbcd49c (missing indices) and green after capture was delayed until
+the final scheme is known. Pending occurrences distinguish already quantified
+arguments from group identities generalized only at publication; neither is
+replaced by a fresh unrelated application or erased to get equality.
+
+The full integration gate then found an existing inline-declaration execution
+control red: its expression signature had never been visited by the module
+kind pass and consequently contained a bare nominal head. The type consumer
+now instantiates the KNOWN local head's quantified slots there, respecting @
+specificity, rather than inventing an imported contract. A new local-expression
+control prints42, while its @Type versus @Bool mutation rejects under both
+GHC9.14.1 and ours. It first exposed a second boundary mismatch (Bool versus
+GHC.Types.Bool); solved kind terms now use ordinary imported-type normalization.
+Complete classifier checking of local annotations is explicitly not claimed.
+
+Post-follow-up typing365, integration99 and canaries7 pass without exclusions.
+The reference JSONL now has1 metadata+17 observations, all verdict-agreeing;
+four execution pairs agree exactly, and the two added executable sources pass
+STG/LLVM/Cranelift. SHA256 d1f4f2acb3d414a704f51d555d408669878262989cf8d2390ba377cd05eb1e77
+identifies the explicit CLI. T12045a passes there; T14010/T26358 remain open.
+No corpus movement is banked until the following frozen diagnostic. Main and
+row484 closure remain held, with all unfinished consumers recorded in workflow.

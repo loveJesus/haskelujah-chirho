@@ -3,6 +3,13 @@
 //! Solved kind arguments crossing into type inference. Workflow: declaration-kinds-chirho.
 use super::*;
 
+pub(super) struct PendingKindApplicationChirho {
+    head_chirho: String,
+    // Already-polymorphic binders have fresh occurrence arguments. A binder
+    // generalized only after this occurrence retains the group's own identity.
+    arguments_chirho: HashMap<KindVarChirho, KindChirho>,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct NominalKindBinderChirho {
     pub(crate) name_chirho: Option<String>,
@@ -20,6 +27,36 @@ pub struct KindElaborationChirho {
 }
 
 impl KindInferCtxChirho {
+    pub(super) fn record_kind_application_chirho(
+        &mut self,
+        name_chirho: &str,
+        binding_chirho: &KindBindingChirho,
+        arguments_chirho: Vec<KindChirho>,
+        span_chirho: SpanChirho,
+    ) {
+        if span_chirho == SpanChirho::DUMMY_CHIRHO
+            || !self.local_kind_decl_names_chirho.contains(name_chirho)
+        {
+            return;
+        }
+        let arguments_chirho = match binding_chirho {
+            KindBindingChirho::MonoChirho(_) => HashMap::new(),
+            KindBindingChirho::PolyChirho(scheme_chirho) => scheme_chirho
+                .quantified_chirho
+                .iter()
+                .copied()
+                .zip(arguments_chirho)
+                .collect(),
+        };
+        self.kind_applications_chirho.insert(
+            span_chirho,
+            PendingKindApplicationChirho {
+                head_chirho: name_chirho.to_owned(),
+                arguments_chirho,
+            },
+        );
+    }
+
     pub(super) fn finish_kind_elaboration_chirho(
         &self,
         module_chirho: &ModuleChirho,
@@ -85,15 +122,28 @@ impl KindInferCtxChirho {
         let applications_chirho = self
             .kind_applications_chirho
             .iter()
-            .filter(|(span_chirho, _)| **span_chirho != SpanChirho::DUMMY_CHIRHO)
-            .map(|(span_chirho, arguments_chirho)| {
-                (
+            .filter_map(|(span_chirho, occurrence_chirho)| {
+                let Some(KindBindingChirho::PolyChirho(scheme_chirho)) = self
+                    .env_chirho
+                    .lookup_binding_chirho(&occurrence_chirho.head_chirho)
+                else {
+                    return None;
+                };
+                Some((
                     *span_chirho,
-                    arguments_chirho
+                    scheme_chirho
+                        .quantified_chirho
                         .iter()
-                        .map(|argument_chirho| self.subst_chirho.apply_chirho(argument_chirho))
+                        .map(|identity_chirho| {
+                            let argument_chirho = occurrence_chirho
+                                .arguments_chirho
+                                .get(identity_chirho)
+                                .cloned()
+                                .unwrap_or(KindChirho::VarChirho(*identity_chirho));
+                            self.subst_chirho.apply_chirho(&argument_chirho)
+                        })
                         .collect(),
-                )
+                ))
             })
             .collect();
         let mut source_names_chirho = HashMap::new();
