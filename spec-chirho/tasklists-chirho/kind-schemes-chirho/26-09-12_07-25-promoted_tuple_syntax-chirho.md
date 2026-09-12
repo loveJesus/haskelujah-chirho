@@ -2,10 +2,11 @@
 
 # Promoted tuple syntax and family operands, row484
 
-Checkpoint969bdfd8 is pushed and tagged promoted-tuples-before-chirho.
-Diagnostic884/938 accept,249/767 reject is not landable: eleven main-relative
-accept regressions remain. Main121d4f2c and canonical DB/public artifacts stay
-untouched; no corpus CPU embargo is active.
+Implementation1c183b98 is committed, pushed and confirmed at the remote tip.
+The preceding checkpoint969bdfd8 is tagged promoted-tuples-before-chirho.
+The frozen diagnostic is885/938 accept,248/767 reject, with ten main-relative
+accept regressions remaining. Main121d4f2c and canonical DB/public artifacts stay
+untouched; the corpus CPU embargo is released, but row484 retains SLOT/DB.
 
 ## Brick 1: preserve the term before judging its binders
 
@@ -37,8 +38,8 @@ NoListTuplePuns or all malformed-syntax recovery.
 - [x] Reference-check independent tuple/projection controls; execute parser reds.
 - [x] Preserve tuple constructor arity, promotion and all operands at both routes.
 - [x] Verify kind/type consumers and independently specified negative controls.
-- [ ] Focused/parser/typing/integration and explicit CLI gates; checkpoint/push.
-- [ ] Frozen diagnostic and exact per-file delta/reason accounting.
+- [x] Focused/parser/typing/integration and explicit CLI gates; checkpoint/push.
+- [x] Frozen diagnostic and exact per-file delta/reason accounting.
 - [ ] Full current driver/workspace and final two-pass gates before main landing.
 
 ## Measured implementation, before freeze
@@ -54,8 +55,9 @@ check exit0. Clippy exits0 with467 warning-message lines, including summaries
 and duplicates; this is not lint-clean and is not comparable to earlier runs
 that omitted the parser target. Final CLI SHA256 is
 927ace4e215e68555ab35c9cd3a78456760f2bd5956ec911fa78cc0a996107c9.
-The frozen diagnostic is pending, as are full current driver/workspace execution
-and the final two-pass landing gate. Main and the published artifacts stay put.
+Full current driver/workspace execution and the final two-pass landing gate
+remain pending. The earlier1774/1774 driver gate belongs to a426, not this
+checkpoint. Main and the published artifacts stay put.
 
 On-demand intrinsic tuple contracts persist beyond the local signature scope
 that first sees them. Unit, pair, 8- and32-component kind controls check exact
@@ -69,3 +71,34 @@ quotes as `'('`, which GHC lexed as a character literal. The retained v2 sources
 include the required whitespace. The flat parser control also needed outer
 parentheses around the complete Proxy argument. Both corrections preceded the
 retained red runs; no expected result was copied from our output.
+
+## Frozen diagnostic and rejection attribution
+
+One pass per axis at P4/15s with solo60s retry completed with zero timeouts or
+unexpected exits. The source was clean and the frozen CLI SHA256 above remained
+unchanged across both passes. Accept885/938 gains only T14010 versus eb8557e1,
+losing nothing; reject248/767 loses only T18723b, gaining nothing. This is a
+diagnostic, not the final two-pass gate and not a public measurement update.
+Exact sets and hashes are retained in
+test-data-chirho/kind-oracles-chirho/ascriptions-chirho/promoted-tuples-chirho/diagnostic-chirho.jsonl.
+
+Versus main there are13 accept gains and ten losses: CoerceToVDQ,
+ControlMonadClassesState, T13879, T16204a, T16204b, T17067, T18129, T22560c,
+T23543 and T26358. The unchanged denominator and zero-regression landing gate
+still apply. The35 main-relative reject gains are verdict observations, not a
+claim that every diagnostic matches GHC's rule.
+
+T18723b's own GHC error is GHC-94803: a65-tuple exceeds GHC's64-component
+capacity. Nine bounded A/B/reference observations are retained in
+reject-reasons-chirho.jsonl beside the diagnostic. GHC9.14.1 accepts the2- and
+64-component controls and rejects65 for that limit. The preceding binary
+rejects all three with the same spurious E0300 at Proxy; the repaired binary
+accepts all three. Thus the old rejection did not demonstrate tuple-size-limit
+support. No capacity guard was introduced to retain that accidental count, and
+GHC's implementation limit is not evidence that the source is invalid Haskell.
+
+Independent read-only review found no tuple-specific blocker, but identified an
+inherited adjacent syntax gap: parenthesized promoted symbols such as '(:) take
+the tuple path. This remains a hypothesis until fresh GHC and frozen-CLI controls
+run. Any repair must preserve both structured and flat routes; it is not part of
+the tuple checkpoint's passing claim.

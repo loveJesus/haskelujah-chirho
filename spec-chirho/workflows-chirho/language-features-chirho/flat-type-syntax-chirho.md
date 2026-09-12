@@ -80,8 +80,8 @@ flowchart LR
     EquationsChirho --> ProjectionChirho[Reduce the requested coordinate]
 ```
 
-The builtin contract is generated once per encountered arity, with work linear
-in that arity, rather than cloning a full tuple catalogue into every module.
+The builtin contract is generated once per encountered arity, with work bounded
+by that arity, rather than cloning a full tuple catalogue into every module.
 It is intrinsic syntax with module lifetime, not a binding owned by the local
 signature scope that first encounters it. Ordinary `(,)` classifies lifted
 types; promoted `'(,)` has kind `forall k1 k2. k1 -> k2 -> (k1,k2)` and `'()`
