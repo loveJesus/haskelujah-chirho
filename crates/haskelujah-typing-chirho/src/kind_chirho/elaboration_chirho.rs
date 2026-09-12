@@ -53,6 +53,93 @@ pub struct KindElaborationChirho {
 }
 
 impl KindInferCtxChirho {
+    /// Materialize one already-checked family occurrence. Explicit @ arguments
+    /// have solved these same provider slots and must not be appended again.
+    /// A mono/incomplete head is not a manufactured polymorphic contract.
+    pub(super) fn family_application_term_chirho(
+        &mut self,
+        ty_chirho: &TypeChirho,
+    ) -> Option<KindChirho> {
+        let mut head_chirho = ty_chirho;
+        let mut visible_chirho = Vec::new();
+        loop {
+            match head_chirho {
+                TypeChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    visible_chirho.push(arg_chirho.as_ref());
+                    head_chirho = fun_chirho;
+                }
+                TypeChirho::KindAppChirho { fun_chirho, .. } => head_chirho = fun_chirho,
+                TypeChirho::ParenChirho { inner_chirho, .. } => head_chirho = inner_chirho,
+                TypeChirho::KindAnnotChirho { type_chirho, .. } => head_chirho = type_chirho,
+                _ => break,
+            }
+        }
+        let TypeChirho::ConChirho(name_chirho) = head_chirho else {
+            return None;
+        };
+        let name_chirho = self.canonical_kind_name_chirho(name_chirho);
+        if !self.kind_family_names_chirho.contains(&name_chirho) {
+            return None;
+        }
+        let occurrence_chirho = self
+            .kind_applications_chirho
+            .get(&ty_chirho.span_chirho())
+            .or_else(|| {
+                self.kind_applications_chirho
+                    .get(&ty_chirho.unannotated_chirho().span_chirho())
+            })?;
+        if occurrence_chirho.head_chirho != name_chirho
+            || !matches!(
+                occurrence_chirho.namespace_chirho,
+                KindHeadNamespaceChirho::TypeChirho
+            )
+        {
+            return None;
+        }
+        let KindBindingChirho::PolyChirho(scheme_chirho) =
+            self.env_chirho.lookup_binding_chirho(&name_chirho)?
+        else {
+            return None;
+        };
+        let indices_chirho = scheme_chirho
+            .quantified_chirho
+            .iter()
+            .map(|identity_chirho| {
+                occurrence_chirho
+                    .arguments_chirho
+                    .get(identity_chirho)
+                    .map(|argument_chirho| self.subst_chirho.apply_chirho(argument_chirho))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        // A published visible-only closed family carries a proof that these
+        // indices impose no matching condition. Its equation terms and uses
+        // must use the SAME projection; retaining an erased index only at a
+        // nested use invents a free RHS variable and can disable injectivity
+        // validation. Open/indexed families have no such erasure authority.
+        let projected_chirho = matches!(
+            self.kind_families_chirho.get(&name_chirho),
+            Some(super::families_chirho::KindFamilyChirho::ClosedChirho { .. })
+        );
+        let mut term_chirho = KindChirho::ConChirho(name_chirho);
+        if !projected_chirho {
+            for index_chirho in indices_chirho {
+                term_chirho =
+                    KindChirho::KindAppChirho(Box::new(term_chirho), Box::new(index_chirho));
+            }
+        }
+        for argument_chirho in visible_chirho.into_iter().rev() {
+            term_chirho = KindChirho::app_chirho(
+                term_chirho,
+                self.interpret_kind_term_chirho(argument_chirho),
+            );
+        }
+        Some(term_chirho)
+    }
+
     /// An anonymous source pattern still owns an identity. Its inferred index
     /// may occur inside the RHS constructor's classifier; freshening the LHS a
     /// second time during conversion would make that valid RHS look unbound.

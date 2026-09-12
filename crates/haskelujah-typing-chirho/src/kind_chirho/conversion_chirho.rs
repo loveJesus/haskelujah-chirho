@@ -278,6 +278,9 @@ impl KindInferCtxChirho {
     }
 
     pub(super) fn interpret_kind_term_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
+        if let Some(term_chirho) = self.family_application_term_chirho(ty_chirho) {
+            return term_chirho;
+        }
         if let Some((name_chirho, expanded_chirho)) =
             self.expand_type_kind_synonym_once_chirho(ty_chirho)
             && !self

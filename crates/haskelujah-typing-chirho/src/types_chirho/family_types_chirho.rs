@@ -2,7 +2,7 @@
 
 //! Type terms adapt to the same equation matcher used by kind terms.
 
-use super::FamilyTermChirho;
+use super::{FamilyChildrenChirho, FamilyTermChirho};
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -42,26 +42,32 @@ impl FamilyTermChirho for TyChirho {
             _ => None,
         }
     }
-    fn parts_chirho(&self) -> Option<(&'static str, Vec<&Self>)> {
+    fn parts_chirho(&self) -> Option<(&'static str, FamilyChildrenChirho<'_, Self>)> {
         match self {
-            Self::KindAppChirho(fun_chirho, argument_chirho) => {
-                Some(("kind_application_chirho", vec![fun_chirho, argument_chirho]))
-            }
-            Self::AppChirho(fun_chirho, argument_chirho) => {
-                Some(("application_chirho", vec![fun_chirho, argument_chirho]))
-            }
+            Self::KindAppChirho(fun_chirho, argument_chirho) => Some((
+                "kind_application_chirho",
+                FamilyChildrenChirho::pair_chirho(fun_chirho, argument_chirho),
+            )),
+            Self::AppChirho(fun_chirho, argument_chirho) => Some((
+                "application_chirho",
+                FamilyChildrenChirho::pair_chirho(fun_chirho, argument_chirho),
+            )),
             Self::FunChirho(argument_chirho, result_chirho, mult_chirho) => Some((
                 if *mult_chirho == MultChirho::OneChirho {
                     "linear_chirho"
                 } else {
                     "function_chirho"
                 },
-                vec![argument_chirho, result_chirho],
+                FamilyChildrenChirho::pair_chirho(argument_chirho, result_chirho),
             )),
-            Self::ListChirho(element_chirho) => Some(("list_chirho", vec![element_chirho])),
-            Self::TupleChirho(elements_chirho) => {
-                Some(("tuple_chirho", elements_chirho.iter().collect()))
-            }
+            Self::ListChirho(element_chirho) => Some((
+                "list_chirho",
+                FamilyChildrenChirho::single_chirho(element_chirho),
+            )),
+            Self::TupleChirho(elements_chirho) => Some((
+                "tuple_chirho",
+                FamilyChildrenChirho::slice_chirho(elements_chirho),
+            )),
             _ => None,
         }
     }

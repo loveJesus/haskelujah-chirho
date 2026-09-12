@@ -54,7 +54,7 @@ fn duplicating_family_reduction_reports_a_resource_limit_chirho() {
         .insert("FamilyChirho".into());
     ctx_chirho.kind_families_chirho.insert(
         "FamilyChirho".into(),
-        families_chirho::KindFamilyChirho {
+        families_chirho::KindFamilyChirho::ClosedChirho {
             equations_chirho: vec![(
                 vec![variable_chirho.clone()],
                 application_chirho(KindChirho::arrow_chirho(
@@ -85,7 +85,7 @@ fn reducing_a_dependent_kind_preserves_outer_and_surviving_binders_chirho() {
     let variable_chirho = ctx_chirho.fresh_kind_chirho();
     ctx_chirho.kind_families_chirho.insert(
         "FamilyChirho".into(),
-        families_chirho::KindFamilyChirho {
+        families_chirho::KindFamilyChirho::ClosedChirho {
             equations_chirho: vec![(vec![variable_chirho], KindChirho::StarChirho)],
             injective_chirho: Vec::new(),
         },

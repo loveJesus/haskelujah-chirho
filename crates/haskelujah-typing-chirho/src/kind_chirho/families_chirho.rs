@@ -4,15 +4,22 @@
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
 use super::*;
-use crate::families_chirho::FamilyTermChirho;
 use crate::families_chirho::family_injectivity_chirho::validate_injectivity_chirho;
+use crate::families_chirho::family_open_chirho::{CompatibleOpenRowsChirho, OpenFamilyErrorChirho};
+use crate::families_chirho::{FamilyChildrenChirho, FamilyTermChirho};
 use haskelujah_ast_chirho::decl_chirho::{TypeFamilyEquationChirho, TypeFamilyResultChirho};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 
 #[derive(Debug, Clone)]
-pub(super) struct KindFamilyChirho {
-    pub(super) equations_chirho: Vec<(Vec<KindChirho>, KindChirho)>,
-    pub(super) injective_chirho: Vec<usize>,
+pub(super) enum KindFamilyChirho {
+    ClosedChirho {
+        equations_chirho: Vec<(Vec<KindChirho>, KindChirho)>,
+        injective_chirho: Vec<usize>,
+    },
+    OpenChirho {
+        equations_chirho: CompatibleOpenRowsChirho<KindChirho>,
+        hidden_arity_chirho: usize,
+    },
 }
 
 struct CheckedKindFamilyRowChirho {
@@ -26,7 +33,23 @@ impl KindInferCtxChirho {
     /// Open rows consume already-published LOCAL family contracts. Imported
     /// family kinds and associated rows need their own authority/scope; neither
     /// is manufactured by this pass. Workflow: declaration-kinds-chirho.
-    pub(super) fn check_open_family_equations_chirho(&mut self, module_chirho: &ModuleChirho) {
+    pub(super) fn check_detached_family_equations_chirho(&mut self, module_chirho: &ModuleChirho) {
+        let owned_chirho: std::collections::HashSet<_> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|declaration_chirho| {
+                if let DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    closed_chirho: false,
+                    ..
+                } = declaration_chirho
+                {
+                    Some(self.canonical_kind_name_chirho(name_chirho))
+                } else {
+                    None
+                }
+            })
+            .collect();
         for declaration_chirho in &module_chirho.decls_chirho {
             let DeclChirho::TypeFamilyInstanceDeclChirho {
                 family_name_chirho,
@@ -38,6 +61,9 @@ impl KindInferCtxChirho {
                 continue;
             };
             let name_chirho = self.canonical_kind_name_chirho(family_name_chirho);
+            if owned_chirho.contains(&name_chirho) {
+                continue;
+            }
             if !self.kind_family_names_chirho.contains(&name_chirho) {
                 continue;
             }
@@ -53,6 +79,111 @@ impl KindInferCtxChirho {
                 lhs_types_chirho,
                 rhs_chirho,
             );
+        }
+    }
+
+    /// A local owner publishes its whole checked batch atomically. Unrepresented
+    /// rows cannot become a partial ordered family; no inverse rule is inferred.
+    pub(super) fn publish_open_kind_rows_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+        declarations_chirho: &[&DeclChirho],
+        span_chirho: SpanChirho,
+    ) {
+        let name_chirho = self.canonical_kind_name_chirho(name_chirho);
+        let Some(KindBindingChirho::PolyChirho(scheme_chirho)) =
+            self.env_chirho.lookup_binding_chirho(&name_chirho).cloned()
+        else {
+            return;
+        };
+        let errors_chirho = self.diagnostics_chirho.error_count_chirho();
+        let mut rows_chirho = Vec::new();
+        let mut budget_chirho = 16_384;
+        for declaration_chirho in declarations_chirho {
+            let DeclChirho::TypeFamilyInstanceDeclChirho {
+                lhs_types_chirho,
+                rhs_chirho,
+                ..
+            } = declaration_chirho
+            else {
+                unreachable!("owner contains only instance rows");
+            };
+            let Some(row_chirho) = self.check_family_equation_kinds_chirho(
+                &name_chirho,
+                &scheme_chirho,
+                &[],
+                lhs_types_chirho,
+                rhs_chirho,
+            ) else {
+                continue;
+            };
+            if !row_chirho.represented_chirho {
+                continue;
+            }
+            let Some(result_chirho) = row_chirho.result_chirho else {
+                continue;
+            };
+            let mut inputs_chirho = Vec::new();
+            for hidden_chirho in &row_chirho.hidden_chirho {
+                // These are matching inputs, unlike a fixed declaration
+                // classifier. Normalize first: GHC permits a reducible kind
+                // expression here, but rejects a remaining family application.
+                let Some(hidden_chirho) = self.normalize_kind_family_chirho(
+                    &self.subst_chirho.apply_chirho(hidden_chirho),
+                    &mut budget_chirho,
+                ) else {
+                    self.family_error_chirho(
+                        "open family equation normalization exceeded its work limit",
+                        declaration_chirho.span_chirho(),
+                    );
+                    return;
+                };
+                if crate::families_chirho::family_injectivity_chirho::contains_family_chirho(
+                    &hidden_chirho,
+                    &|head_chirho| self.kind_family_names_chirho.contains(head_chirho),
+                ) {
+                    self.family_error_chirho(
+                        "illegal type family application in an invisible equation pattern",
+                        declaration_chirho.span_chirho(),
+                    );
+                    return;
+                }
+                inputs_chirho.push(hidden_chirho);
+            }
+            inputs_chirho.extend(
+                row_chirho
+                    .patterns_chirho
+                    .iter()
+                    .map(|term_chirho| self.subst_chirho.apply_chirho(term_chirho)),
+            );
+            rows_chirho.push((
+                inputs_chirho,
+                self.subst_chirho.apply_chirho(&result_chirho),
+            ));
+        }
+        if rows_chirho.len() != declarations_chirho.len()
+            || self.diagnostics_chirho.error_count_chirho() != errors_chirho
+        {
+            return;
+        }
+        match CompatibleOpenRowsChirho::check_chirho(
+            rows_chirho,
+            &|head_chirho| self.kind_family_names_chirho.contains(head_chirho),
+            &mut budget_chirho,
+        ) {
+            Ok(equations_chirho) => {
+                self.kind_families_chirho.insert(
+                    name_chirho,
+                    KindFamilyChirho::OpenChirho {
+                        equations_chirho,
+                        hidden_arity_chirho: scheme_chirho.quantified_chirho.len(),
+                    },
+                );
+            }
+            Err(OpenFamilyErrorChirho::ConflictChirho) => {
+                self.family_error_chirho("conflicting open type family equations", span_chirho)
+            }
+            Err(OpenFamilyErrorChirho::UnprovedChirho) => {}
         }
     }
 
@@ -379,9 +510,15 @@ impl KindInferCtxChirho {
                 &injective_chirho,
                 &|head_chirho| self.kind_family_names_chirho.contains(head_chirho),
                 &|head_chirho, arity_chirho| {
-                    let family_chirho = self.kind_families_chirho.get(head_chirho)?;
-                    (family_chirho.equations_chirho.first()?.0.len() == arity_chirho)
-                        .then_some(family_chirho.injective_chirho.as_slice())
+                    let KindFamilyChirho::ClosedChirho {
+                        equations_chirho,
+                        injective_chirho,
+                    } = self.kind_families_chirho.get(head_chirho)?
+                    else {
+                        return None;
+                    };
+                    (equations_chirho.first()?.0.len() == arity_chirho)
+                        .then_some(injective_chirho.as_slice())
                 },
             ) {
                 Ok(true) => {}
@@ -394,7 +531,7 @@ impl KindInferCtxChirho {
         }
         self.kind_families_chirho.insert(
             canonical_chirho,
-            KindFamilyChirho {
+            KindFamilyChirho::ClosedChirho {
                 equations_chirho: rows_chirho,
                 injective_chirho,
             },
@@ -472,9 +609,9 @@ impl KindInferCtxChirho {
                     ..
                 } => pending_chirho.extend([arg_chirho.as_ref(), result_chirho.as_ref()]),
                 TypeChirho::ParenChirho { inner_chirho, .. } => pending_chirho.push(inner_chirho),
-                // The classifier is checked as a kind, not an equation
-                // pattern: families in a written classifier are not nested
-                // family applications in the matching term itself.
+                // A classifier is not itself a visible matching argument.
+                // Publication separately validates each elaborated invisible
+                // input; a fixed family classifier need not be such an input.
                 TypeChirho::KindAnnotChirho { type_chirho, .. } => pending_chirho.push(type_chirho),
                 TypeChirho::ListChirho { element_chirho, .. } => {
                     pending_chirho.push(element_chirho)
@@ -492,6 +629,9 @@ impl KindInferCtxChirho {
     }
 
     pub(super) fn family_term_chirho(&mut self, ty_chirho: &TypeChirho) -> Option<KindChirho> {
+        if let Some(term_chirho) = self.family_application_term_chirho(ty_chirho) {
+            return Some(term_chirho);
+        }
         // A synonym is transparent to injectivity. Keeping `Erase a` as a
         // nominal application would falsely prove that its result determines a.
         if let Some((name_chirho, expanded_chirho)) =
@@ -578,21 +718,27 @@ impl FamilyTermChirho for KindChirho {
             _ => None,
         }
     }
-    fn parts_chirho(&self) -> Option<(&'static str, Vec<&Self>)> {
+    fn parts_chirho(&self) -> Option<(&'static str, FamilyChildrenChirho<'_, Self>)> {
         match self {
-            Self::KindAppChirho(fun_chirho, argument_chirho) => {
-                Some(("kind_application_chirho", vec![fun_chirho, argument_chirho]))
-            }
-            Self::AppChirho(fun_chirho, argument_chirho) => {
-                Some(("application_chirho", vec![fun_chirho, argument_chirho]))
-            }
-            Self::ArrowChirho(argument_chirho, result_chirho) => {
-                Some(("function_chirho", vec![argument_chirho, result_chirho]))
-            }
+            Self::KindAppChirho(fun_chirho, argument_chirho) => Some((
+                "kind_application_chirho",
+                FamilyChildrenChirho::pair_chirho(fun_chirho, argument_chirho),
+            )),
+            Self::AppChirho(fun_chirho, argument_chirho) => Some((
+                "application_chirho",
+                FamilyChildrenChirho::pair_chirho(fun_chirho, argument_chirho),
+            )),
+            Self::ArrowChirho(argument_chirho, result_chirho) => Some((
+                "function_chirho",
+                FamilyChildrenChirho::pair_chirho(argument_chirho, result_chirho),
+            )),
             Self::DependentChirho {
                 argument_chirho,
                 result_chirho,
-            } => Some(("dependent_chirho", vec![argument_chirho, result_chirho])),
+            } => Some((
+                "dependent_chirho",
+                FamilyChildrenChirho::pair_chirho(argument_chirho, result_chirho),
+            )),
             _ => None,
         }
     }

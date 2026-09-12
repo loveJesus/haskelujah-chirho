@@ -12,6 +12,7 @@ pub(super) struct KindDependenciesChirho<'source_chirho> {
     pub(super) declarations_chirho: Vec<&'source_chirho DeclChirho>,
     pub(super) names_chirho: Vec<Vec<&'source_chirho str>>,
     pub(super) edges_chirho: Vec<Vec<usize>>,
+    pub(super) open_rows_chirho: Vec<Vec<&'source_chirho DeclChirho>>,
 }
 
 impl<'source_chirho> KindDependenciesChirho<'source_chirho> {
@@ -56,11 +57,33 @@ impl<'source_chirho> KindDependenciesChirho<'source_chirho> {
             declarations_chirho.push(declaration_chirho);
             names_chirho.push(declared_chirho);
         }
+        let mut open_rows_chirho = vec![Vec::new(); declarations_chirho.len()];
+        for row_chirho in &module_chirho.decls_chirho {
+            if let DeclChirho::TypeFamilyInstanceDeclChirho {
+                family_name_chirho, ..
+            } = row_chirho
+                && let Some(&owner_chirho) =
+                    owners_chirho.get(&family_name_chirho.full_name_chirho())
+                && matches!(
+                    declarations_chirho[owner_chirho],
+                    DeclChirho::TypeFamilyDeclChirho {
+                        closed_chirho: false,
+                        ..
+                    }
+                )
+            {
+                open_rows_chirho[owner_chirho].push(row_chirho);
+            }
+        }
         let edges_chirho = declarations_chirho
             .iter()
-            .map(|declaration_chirho| {
+            .enumerate()
+            .map(|(index_chirho, declaration_chirho)| {
                 let mut references_chirho = HashSet::new();
                 declaration_refs_chirho(declaration_chirho, &mut references_chirho);
+                for row_chirho in &open_rows_chirho[index_chirho] {
+                    declaration_refs_chirho(row_chirho, &mut references_chirho);
+                }
                 let mut targets_chirho: Vec<_> = references_chirho
                     .into_iter()
                     .filter_map(|name_chirho| owners_chirho.get(&name_chirho).copied())
@@ -74,12 +97,23 @@ impl<'source_chirho> KindDependenciesChirho<'source_chirho> {
             declarations_chirho,
             names_chirho,
             edges_chirho,
+            open_rows_chirho,
         }
     }
 }
 
 fn declaration_refs_chirho(declaration_chirho: &DeclChirho, refs_chirho: &mut HashSet<String>) {
     match declaration_chirho {
+        DeclChirho::TypeFamilyInstanceDeclChirho {
+            lhs_types_chirho,
+            rhs_chirho,
+            ..
+        } => {
+            for argument_chirho in lhs_types_chirho {
+                type_refs_chirho(argument_chirho, refs_chirho);
+            }
+            type_refs_chirho(rhs_chirho, refs_chirho);
+        }
         DeclChirho::DataDeclChirho {
             type_vars_chirho,
             constructors_chirho,

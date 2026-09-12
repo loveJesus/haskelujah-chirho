@@ -206,6 +206,10 @@ fn determining_variables_chirho<'proof_chirho, TermChirho: FamilyTermChirho>(
                 pending_chirho.push(*arguments_chirho.get(index_chirho)?);
             }
         } else if let Some((_, children_chirho)) = term_chirho.parts_chirho() {
+            if children_chirho.len_chirho() > *budget_chirho {
+                *budget_chirho = 0;
+                return None;
+            }
             pending_chirho.extend(children_chirho);
         }
     }
@@ -253,7 +257,7 @@ fn unify_results_chirho<TermChirho: FamilyTermChirho>(
                 Some((left_head_chirho, left_parts_chirho)),
                 Some((right_head_chirho, right_parts_chirho)),
             ) if left_head_chirho == right_head_chirho
-                && left_parts_chirho.len() == right_parts_chirho.len() =>
+                && left_parts_chirho.len_chirho() == right_parts_chirho.len_chirho() =>
             {
                 pending_chirho.extend(left_parts_chirho.into_iter().zip(right_parts_chirho).map(
                     |(left_chirho, right_chirho)| (left_chirho.clone(), right_chirho.clone()),

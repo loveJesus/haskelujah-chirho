@@ -1,0 +1,74 @@
+{
+  "base_commit_chirho": "9801f3e89f2f78bf8111ed7b69d90d1295ddbf60",
+  "recorded_at_chirho": "2026-09-12T10:56:31.509Z",
+  "explicit_cli_sha256_chirho": "f9e93ca42826ea8dc0fda7612f7562e804bf92fc337e1099b506a9b516cc1594",
+  "reference_observation_count_chirho": 21,
+  "focused_observation_count_chirho": 25,
+  "scope_chirho": "Local open-family rows and bounded represented-term matching checkpoint. Current typing379, integration185, canaries7; all zero ignored/filtered. Full driver1774 belongs to a426, not current edits. Full current workspace tests/execution and final two-pass corpus gate remain owed. Not lint-clean; warning lines include summaries and duplicates.",
+  "review_chirho": "Independent read-only review found a hidden-input validity gap and eager tuple-child allocation. Both were repaired and re-reviewed with no additional concrete fault in that scope. GHC controls distinguish stuck hidden inputs from reducible inputs and fixed classifiers.",
+  "runs_chirho": [
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-typing --lib -j3",
+      "exit_chirho": 0,
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 379,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-rows-final-typing-chirho.log",
+      "log_sha256_chirho": "5b3c7df0dbf8ec8530d77623df46644c6997c3241f94029a5cd42f5a06a0f7a7"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --test typing_integration_chirho --test canaries_chirho -j3 --no-fail-fast",
+      "exit_chirho": 0,
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 7,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 185,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-rows-final-integration-chirho.log",
+      "log_sha256_chirho": "780d7368ceb012c495aee40a465f261870c6f32820ae7215be8d334b67b79c18"
+    },
+    {
+      "command_chirho": "cargo build -p haskelujah -j3",
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-rows-final-build-chirho.log",
+      "log_sha256_chirho": "9425dced55f97cd296ce2aff7af38d2d5490b56b443771a8cfc28ff3144b4db0"
+    },
+    {
+      "command_chirho": "cargo check --workspace --all-targets -j3",
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-rows-final-check-chirho.log",
+      "log_sha256_chirho": "9be6d9a680635d7ae82911e717b2a725b2e410c301a2f8e0f1e2a7ed4c0d84ae"
+    },
+    {
+      "command_chirho": "cargo clippy -p haskelujah-typing -p haskelujah-driver --all-targets -j3",
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 461,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-rows-final-clippy-chirho.log",
+      "log_sha256_chirho": "86cd3b9ba331bdf9c797adaf01f19ba95e301b66e56f2e1ffa4e45a72300d2fe"
+    }
+  ]
+}

@@ -707,18 +707,85 @@ flowchart LR
   SharedMatchChirho --> ReducedChirho[Bounded RHS substitution and visibility-preserving application]
 ```
 
-The type-level family normalizer has a16384-node substitution budget per family
+The type-level family normalizer has a16384-node matching/substitution budget per family
 application and retains its existing depth limit. The shared equation matcher no
 longer exposes an unbounded production wrapper. This is not a bound on all compiler
-traversals. Kind-level family reduction still uses its guarded visible-only rows;
-the new type-level inputs do not silently extend its injectivity claim.
+traversals. Closed kind-level families still use their guarded visible-only rows;
+the local open-row continuation below does not extend their injectivity claim.
 
-Not complete: hidden inputs in kind-level family reduction, promoted indices
+Not complete: hidden inputs in closed kind-level family reduction, promoted indices
 outside the represented local/builtin contracts below, associated-row scope,
 imported constructor schemes and specificity, and complete higher-rank kind subsumption. The frozen f5c4eedb
 diagnostic recovered T12045a but exposed twelve new accept failures relative to
 its predecessor; that checkpoint is not landable. Keeping KindApp in the type IR
 does not establish that every producer has supplied its inferred arguments.
+
+### Local open-family ownership and compatibility (isolated row484)
+
+Direct instance declarations of a local open family contribute their LHS/RHS
+dependencies to that family before SCC construction. The checked owner publishes
+its complete row batch after its kind scheme is finalized, before dependent groups
+consume it. Source order does not decide whether a later-written instance exists.
+Imported and associated families do not acquire guessed local ownership; cyclic
+groups without established classifiers do not publish speculative partial rows.
+
+Checked rows match solved hidden indices and visible arguments together. A type
+application supplies its solved occurrence indices once; explicit kind arguments
+at a use fill those slots instead of appending duplicates. A published closed
+family's existing erasure proof authorizes the same projection at its equation
+and reference sites. Retaining a projected-away index only in a nested reference
+can invent a free RHS variable and wrongly disable injectivity validation.
+
+Invisible matching inputs are normalized and validated before publication, even
+for a single equation. A remaining family application is illegal there; a
+reducible classifier or a fixed declaration classifier is not forbidden merely
+because its source mentions a family. The sealed generic collection independently
+refuses family-headed LHS inputs, so pairwise checks cannot license a lone bad row.
+
+An unordered collection is sealed behind whole-batch compatibility validation.
+Pairwise variables are row-local. Constructor clashes establish apartness even
+when another input has an infinitary constraint. After complete rational LHS
+unification, a cycle is incompatible, including with identical results: it proves
+non-apartness but supplies no finite substitution. Only an acyclic substitution
+may establish RHS equality. That comparison is read-only and can compare identical
+family-headed terms structurally; it cannot unify differing RHS variables into
+agreement. Opaque terms and exhausted work are unproved, never nominally apart.
+No open-family inverse improvement is inferred.
+
+```mermaid
+flowchart TD
+  LocalRowsChirho[Direct local open instances] --> OwnerEdgesChirho[Attach row dependencies to family owner]
+  OwnerEdgesChirho --> CheckedOwnerChirho[Check and finalize owner classifier]
+  CheckedOwnerChirho --> IndexedRowsChirho[Close hidden and visible row inputs together]
+  IndexedRowsChirho --> ValidInputsChirho[Normalize and validate invisible matching inputs]
+  ValidInputsChirho --> PairCheckChirho[Bounded rational LHS unification per pair]
+  PairCheckChirho --> ClashChirho{Nominal clash?}
+  ClashChirho -->|Yes| CompatibleChirho[Compatible pair]
+  ClashChirho -->|No| FiniteChirho{Finite substitution?}
+  FiniteChirho -->|No| RejectPairChirho[Reject incompatible pair]
+  FiniteChirho -->|Yes| ResultsChirho[Compare RHSs without further unification]
+  ResultsChirho --> CompatibleChirho
+  CompatibleChirho --> BatchChirho[Publish only a fully checked batch]
+  BatchChirho --> ReduceOpenChirho[Unordered matching then bounded substitution]
+```
+
+Validation has a shared16384-node work budget per collection and128-depth input
+limit. Pairwise work is quadratic in the row count, but cannot grow beyond that
+budget. Matching charges complete pattern/argument trees before recursive
+comparison or binding clones; its work is bounded by charged input size times
+the fixed depth limit, not one debit per comparison. Child views are borrowed
+and constant-work, including wide type tuples; fanout is checked against remaining
+work before enqueuing children. Kind spines borrow their
+inputs, materialized copies and expanded outputs are charged, and normalization
+exhaustion returns an explicit failure rather than cloning the residual tree.
+These are represented-term/work bounds, not a byte-allocation bound for the
+whole compiler or a claim about every opaque type consumer.
+
+GHC9.14.1 controls cover both declaration orders, hidden indices, overlap,
+row-variable identities and contradictory results. An exact equality witness
+runs the same source on STG, LLVM and Cranelift. Explicit kind arguments on an
+INSTANCE LHS remain a separate parser/AST producer limitation; this continuation
+does not mislabel explicit kind arguments at USE sites as fixing that producer.
 
 ### Checked module companions (isolated row484)
 

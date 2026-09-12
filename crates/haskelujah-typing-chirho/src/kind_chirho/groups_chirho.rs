@@ -149,10 +149,28 @@ impl KindInferCtxChirho {
                         self.publish_kind_chirho(name_chirho, &named_variables_chirho);
                     }
                 }
+                // Rows belong to the family declaration, not the last line of
+                // the module. Dependency edges include both their inputs and RHS.
+                for &local_chirho in &inference_group_chirho {
+                    let index_chirho = group_chirho[local_chirho];
+                    if let DeclChirho::TypeFamilyDeclChirho {
+                        name_chirho,
+                        closed_chirho: false,
+                        span_chirho,
+                        ..
+                    } = graph_chirho.declarations_chirho[index_chirho]
+                    {
+                        self.publish_open_kind_rows_chirho(
+                            name_chirho,
+                            &graph_chirho.open_rows_chirho[index_chirho],
+                            *span_chirho,
+                        );
+                    }
+                }
             }
         }
 
-        self.check_open_family_equations_chirho(module_chirho);
+        self.check_detached_family_equations_chirho(module_chirho);
 
         // A value signature consumes finalized declaration kinds. Its text order
         // cannot turn a forward type constructor into an imported placeholder.

@@ -6,8 +6,17 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+#[path = "family_children_chirho.rs"]
+mod family_children_chirho;
+pub(crate) use family_children_chirho::FamilyChildrenChirho;
+
 #[path = "family_injectivity_chirho.rs"]
 pub(crate) mod family_injectivity_chirho;
+#[path = "family_open_chirho.rs"]
+pub(crate) mod family_open_chirho;
+#[cfg(test)]
+#[path = "family_open_tests_chirho.rs"]
+mod family_open_tests_chirho;
 #[path = "family_types_chirho.rs"]
 mod family_types_chirho;
 pub(crate) use family_types_chirho::FamilyTypeVariableChirho;
@@ -21,7 +30,7 @@ pub(crate) trait FamilyTermChirho: Clone + Eq {
     fn unknown_chirho(&self) -> bool;
     fn head_name_chirho(&self) -> Option<&str>;
     fn application_parts_chirho(&self) -> Option<(&Self, &Self)>;
-    fn parts_chirho(&self) -> Option<(&'static str, Vec<&Self>)>;
+    fn parts_chirho(&self) -> Option<(&'static str, FamilyChildrenChirho<'_, Self>)>;
     fn map_children_chirho(&self, map_chirho: &mut impl FnMut(&Self) -> Self) -> Self;
     fn application_chirho(fun_chirho: Self, argument_chirho: Self) -> Self;
 
@@ -55,6 +64,10 @@ pub(crate) trait FamilyTermChirho: Clone + Eq {
             }
             *budget_chirho = budget_chirho.checked_sub(1)?;
             if let Some((_, children_chirho)) = term_chirho.parts_chirho() {
+                if children_chirho.len_chirho() > *budget_chirho {
+                    *budget_chirho = 0;
+                    return None;
+                }
                 pending_chirho.extend(
                     children_chirho
                         .into_iter()
@@ -94,7 +107,30 @@ pub(crate) fn reduce_one_equation_chirho<
     budget_chirho: &mut usize,
 ) -> FamilyReductionChirho<TermChirho> {
     let mut bindings_chirho = HashMap::new();
-    match combine_matches_chirho(patterns_chirho.enumerate().map(
+    let mut bounded_patterns_chirho = Vec::new();
+    for pattern_chirho in patterns_chirho {
+        if bounded_patterns_chirho.len() >= *budget_chirho {
+            *budget_chirho = 0;
+            return FamilyReductionChirho::LimitedChirho;
+        }
+        bounded_patterns_chirho.push(pattern_chirho);
+    }
+    let patterns_chirho = bounded_patterns_chirho;
+    // Bound the complete matching input before recursive equality or binding
+    // clones can inspect it. Each recursive comparison has depth at most 128;
+    // its work is therefore bounded by this input budget times that fixed
+    // depth, including repeated-variable comparisons. Exhaustion is not apart.
+    for (index_chirho, pattern_chirho) in patterns_chirho.iter().enumerate() {
+        let Some(argument_chirho) = arguments_chirho.get(index_chirho) else {
+            return FamilyReductionChirho::StuckChirho;
+        };
+        if !matching_input_fits_chirho(*pattern_chirho, budget_chirho)
+            || !matching_input_fits_chirho(argument_chirho, budget_chirho)
+        {
+            return FamilyReductionChirho::LimitedChirho;
+        }
+    }
+    match combine_matches_chirho(patterns_chirho.into_iter().enumerate().map(
         |(index_chirho, pattern_chirho)| {
             arguments_chirho.get(index_chirho).map_or(
                 FamilyMatchChirho::StuckChirho,
@@ -118,6 +154,34 @@ pub(crate) fn reduce_one_equation_chirho<
                 FamilyReductionChirho::ReducedChirho,
             ),
     }
+}
+
+fn matching_input_fits_chirho<TermChirho: FamilyTermChirho>(
+    term_chirho: &TermChirho,
+    budget_chirho: &mut usize,
+) -> bool {
+    let mut pending_chirho = vec![(term_chirho, 0usize)];
+    while let Some((term_chirho, depth_chirho)) = pending_chirho.pop() {
+        let Some(remaining_chirho) = budget_chirho.checked_sub(1) else {
+            return false;
+        };
+        *budget_chirho = remaining_chirho;
+        if depth_chirho >= 128 {
+            return false;
+        }
+        if let Some((_, children_chirho)) = term_chirho.parts_chirho() {
+            if children_chirho.len_chirho() > *budget_chirho {
+                *budget_chirho = 0;
+                return false;
+            }
+            pending_chirho.extend(
+                children_chirho
+                    .into_iter()
+                    .map(|child_chirho| (child_chirho, depth_chirho + 1)),
+            );
+        }
+    }
+    true
 }
 
 pub(crate) fn match_pattern_chirho<TermChirho: FamilyTermChirho>(
@@ -144,7 +208,8 @@ pub(crate) fn match_pattern_chirho<TermChirho: FamilyTermChirho>(
     }
     match (pattern_chirho.parts_chirho(), target_chirho.parts_chirho()) {
         (Some((left_head_chirho, left_chirho)), Some((right_head_chirho, right_chirho)))
-            if left_head_chirho == right_head_chirho && left_chirho.len() == right_chirho.len() =>
+            if left_head_chirho == right_head_chirho
+                && left_chirho.len_chirho() == right_chirho.len_chirho() =>
         {
             combine_matches_chirho(left_chirho.into_iter().zip(right_chirho).map(
                 |(left_chirho, right_chirho)| {
@@ -192,7 +257,7 @@ fn compare_terms_chirho<TermChirho: FamilyTermChirho>(
             Some((left_head_chirho, left_parts_chirho)),
             Some((right_head_chirho, right_parts_chirho)),
         ) if left_head_chirho == right_head_chirho
-            && left_parts_chirho.len() == right_parts_chirho.len() =>
+            && left_parts_chirho.len_chirho() == right_parts_chirho.len_chirho() =>
         {
             combine_matches_chirho(left_parts_chirho.into_iter().zip(right_parts_chirho).map(
                 |(left_chirho, right_chirho)| {

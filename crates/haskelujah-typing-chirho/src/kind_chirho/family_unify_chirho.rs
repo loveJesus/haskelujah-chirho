@@ -4,6 +4,7 @@
 //! equalities reach the ordinary occurs/rigidity checker.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
+use super::families_chirho::KindFamilyChirho;
 use super::*;
 use crate::families_chirho::family_injectivity_chirho::{
     contains_family_chirho, inverse_equations_chirho,
@@ -12,12 +13,21 @@ use crate::families_chirho::{
     FamilyReductionChirho, FamilyTermChirho, reduce_equations_bounded_chirho,
 };
 
-fn family_spine_chirho(term_chirho: &KindChirho) -> Option<(&str, Vec<KindChirho>)> {
+fn family_spine_chirho(term_chirho: &KindChirho) -> Option<(&str, Vec<(&KindChirho, bool)>)> {
     let mut head_chirho = term_chirho;
     let mut arguments_chirho = Vec::new();
-    while let KindChirho::AppChirho(fun_chirho, argument_chirho) = head_chirho {
-        arguments_chirho.push(argument_chirho.as_ref().clone());
-        head_chirho = fun_chirho;
+    loop {
+        match head_chirho {
+            KindChirho::AppChirho(fun_chirho, argument_chirho) => {
+                arguments_chirho.push((argument_chirho.as_ref(), false));
+                head_chirho = fun_chirho;
+            }
+            KindChirho::KindAppChirho(fun_chirho, argument_chirho) => {
+                arguments_chirho.push((argument_chirho.as_ref(), true));
+                head_chirho = fun_chirho;
+            }
+            _ => break,
+        }
     }
     arguments_chirho.reverse();
     if let KindChirho::ConChirho(name_chirho) = head_chirho {
@@ -69,7 +79,7 @@ impl KindInferCtxChirho {
                     Some((left_head_chirho, left_chirho)),
                     Some((right_head_chirho, right_chirho)),
                 ) if left_head_chirho == right_head_chirho
-                    && left_chirho.len() == right_chirho.len() =>
+                    && left_chirho.len_chirho() == right_chirho.len_chirho() =>
                 {
                     pending_chirho.extend(left_chirho.into_iter().zip(right_chirho))
                 }
@@ -81,18 +91,26 @@ impl KindInferCtxChirho {
         .then_some(bindings_chirho)
     }
 
-    fn normalize_kind_family_chirho(
+    pub(super) fn normalize_kind_family_chirho(
         &self,
         term_chirho: &KindChirho,
         fuel_chirho: &mut usize,
-    ) -> KindChirho {
+    ) -> Option<KindChirho> {
         if *fuel_chirho == 0 {
-            return term_chirho.clone();
+            return None;
         }
         *fuel_chirho -= 1;
+        let mut complete_chirho = true;
         let mut normalized_chirho = term_chirho.map_children_chirho(&mut |child_chirho| {
             self.normalize_kind_family_chirho(child_chirho, fuel_chirho)
+                .unwrap_or_else(|| {
+                    complete_chirho = false;
+                    KindChirho::StarChirho
+                })
         });
+        if !complete_chirho {
+            return None;
+        }
         // Reduction may erase the last use of a dependent binder. Its result
         // is then an ordinary arrow, with surrounding de Bruijn positions
         // shifted out of the removed scope. Never erase a surviving dependency.
@@ -110,22 +128,93 @@ impl KindInferCtxChirho {
         if let Some((name_chirho, arguments_chirho)) = family_spine_chirho(&normalized_chirho)
             && let Some(family_chirho) = self.kind_families_chirho.get(name_chirho)
         {
-            match reduce_equations_bounded_chirho(
-                &family_chirho.equations_chirho,
-                &arguments_chirho,
-                &|head_chirho| self.kind_family_names_chirho.contains(head_chirho),
-                fuel_chirho,
-            ) {
+            let is_family_chirho =
+                |head_chirho: &str| self.kind_family_names_chirho.contains(head_chirho);
+            let reduction_chirho = match family_chirho {
+                KindFamilyChirho::ClosedChirho {
+                    equations_chirho, ..
+                } => {
+                    // Publication proved every erased hidden input unconstrained.
+                    let visible_chirho = arguments_chirho
+                        .iter()
+                        .filter(|(_, hidden_chirho)| !hidden_chirho)
+                        .map(|(term_chirho, _)| {
+                            term_chirho.substitute_bounded_chirho(&HashMap::new(), fuel_chirho)
+                        })
+                        .collect::<Option<Vec<_>>>()?;
+                    reduce_equations_bounded_chirho(
+                        equations_chirho,
+                        &visible_chirho,
+                        &is_family_chirho,
+                        fuel_chirho,
+                    )
+                }
+                KindFamilyChirho::OpenChirho {
+                    equations_chirho,
+                    hidden_arity_chirho,
+                } => {
+                    let Some(arity_chirho) = equations_chirho.arity_chirho() else {
+                        return Some(normalized_chirho);
+                    };
+                    if arguments_chirho.len() < arity_chirho
+                        || arguments_chirho.iter().take(arity_chirho).enumerate().any(
+                            |(index_chirho, (_, hidden_chirho))| {
+                                *hidden_chirho != (index_chirho < *hidden_arity_chirho)
+                            },
+                        )
+                    {
+                        return Some(normalized_chirho);
+                    }
+                    let inputs_chirho = arguments_chirho
+                        .iter()
+                        .take(arity_chirho)
+                        .map(|(term_chirho, _)| {
+                            term_chirho.substitute_bounded_chirho(&HashMap::new(), fuel_chirho)
+                        })
+                        .collect::<Option<Vec<_>>>()?;
+                    match equations_chirho.reduce_chirho(
+                        &inputs_chirho,
+                        &is_family_chirho,
+                        fuel_chirho,
+                    ) {
+                        FamilyReductionChirho::ReducedChirho(mut result_chirho) => {
+                            for (argument_chirho, hidden_chirho) in
+                                &arguments_chirho[arity_chirho..]
+                            {
+                                let Some(argument_chirho) = argument_chirho
+                                    .substitute_bounded_chirho(&HashMap::new(), fuel_chirho)
+                                else {
+                                    *fuel_chirho = 0;
+                                    return None;
+                                };
+                                let remaining_chirho = fuel_chirho.checked_sub(1)?;
+                                *fuel_chirho = remaining_chirho;
+                                result_chirho = if *hidden_chirho {
+                                    KindChirho::KindAppChirho(
+                                        Box::new(result_chirho),
+                                        Box::new(argument_chirho),
+                                    )
+                                } else {
+                                    KindChirho::app_chirho(result_chirho, argument_chirho)
+                                };
+                            }
+                            FamilyReductionChirho::ReducedChirho(result_chirho)
+                        }
+                        other_chirho => other_chirho,
+                    }
+                }
+            };
+            match reduction_chirho {
                 FamilyReductionChirho::ReducedChirho(reduced_chirho)
                     if reduced_chirho != normalized_chirho =>
                 {
                     return self.normalize_kind_family_chirho(&reduced_chirho, fuel_chirho);
                 }
-                FamilyReductionChirho::LimitedChirho => *fuel_chirho = 0,
+                FamilyReductionChirho::LimitedChirho => return None,
                 _ => {}
             }
         }
-        normalized_chirho
+        Some(normalized_chirho)
     }
 
     fn inverse_kind_family_chirho(
@@ -134,15 +223,29 @@ impl KindInferCtxChirho {
         result_chirho: &KindChirho,
     ) -> Option<Vec<(KindChirho, KindChirho)>> {
         let (name_chirho, arguments_chirho) = family_spine_chirho(term_chirho)?;
-        let family_chirho = self.kind_families_chirho.get(name_chirho)?;
-        if family_chirho.injective_chirho.is_empty() {
+        let KindFamilyChirho::ClosedChirho {
+            equations_chirho,
+            injective_chirho,
+        } = self.kind_families_chirho.get(name_chirho)?
+        else {
+            return None;
+        };
+        if injective_chirho.is_empty() {
             return None;
         }
+        let mut budget_chirho = 16_384;
+        let arguments_chirho = arguments_chirho
+            .into_iter()
+            .filter(|(_, hidden_chirho)| !hidden_chirho)
+            .map(|(term_chirho, _)| {
+                term_chirho.substitute_bounded_chirho(&HashMap::new(), &mut budget_chirho)
+            })
+            .collect::<Option<Vec<_>>>()?;
         inverse_equations_chirho(
-            &family_chirho.equations_chirho,
+            equations_chirho,
             &arguments_chirho,
             result_chirho,
-            &family_chirho.injective_chirho,
+            injective_chirho,
             &|head_chirho| self.kind_family_names_chirho.contains(head_chirho),
         )
     }
@@ -177,14 +280,18 @@ impl KindInferCtxChirho {
                     return Err(KindErrorChirho::ReductionLimitChirho { span_chirho });
                 }
                 fuel_chirho -= 1;
-                let left_chirho = self.normalize_kind_family_chirho(
-                    &substitution_chirho.apply_chirho(&left_chirho),
-                    &mut fuel_chirho,
-                );
-                let right_chirho = self.normalize_kind_family_chirho(
-                    &substitution_chirho.apply_chirho(&right_chirho),
-                    &mut fuel_chirho,
-                );
+                let left_chirho = self
+                    .normalize_kind_family_chirho(
+                        &substitution_chirho.apply_chirho(&left_chirho),
+                        &mut fuel_chirho,
+                    )
+                    .ok_or(KindErrorChirho::ReductionLimitChirho { span_chirho })?;
+                let right_chirho = self
+                    .normalize_kind_family_chirho(
+                        &substitution_chirho.apply_chirho(&right_chirho),
+                        &mut fuel_chirho,
+                    )
+                    .ok_or(KindErrorChirho::ReductionLimitChirho { span_chirho })?;
                 if fuel_chirho == 0 {
                     return Err(KindErrorChirho::ReductionLimitChirho { span_chirho });
                 }
