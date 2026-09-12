@@ -531,10 +531,12 @@ impl LowerCtxChirho {
                                     .end_chirho,
                             );
                             if promoted_chirho {
-                                atoms_chirho.push_chirho(self.promoted_tuple_from_children_chirho(
-                                    &inner_chirho,
-                                    group_span_chirho,
-                                ));
+                                atoms_chirho.push_chirho(
+                                    self.promoted_parenthesized_from_children_chirho(
+                                        &inner_chirho,
+                                        group_span_chirho,
+                                    ),
+                                );
                             } else if matches!(inner_chirho.as_slice(), [child_chirho]
                                     if matches!(child_chirho.element_chirho,
                                         GreenElementChirho::TokenChirho(token_chirho)

@@ -38,7 +38,7 @@ impl<'source_chirho> ParserChirho<'source_chirho> {
                 }
                 self.builder_chirho.finish_node_chirho();
             }
-            Some(RawTokenKindChirho::LeftParenChirho) => self.parse_promoted_tuple_chirho(),
+            Some(RawTokenKindChirho::LeftParenChirho) => self.parse_promoted_parenthesized_chirho(),
             _ => {
                 self.builder_chirho
                     .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
@@ -48,14 +48,24 @@ impl<'source_chirho> ParserChirho<'source_chirho> {
         }
     }
 
-    fn parse_promoted_tuple_chirho(&mut self) {
+    fn parse_promoted_parenthesized_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
         self.bump_chirho();
         self.eat_trivia_chirho();
         self.bump_chirho();
         self.eat_trivia_chirho();
-        if self.at_chirho(RawTokenKindChirho::CommaChirho) {
+        if self.current_chirho().is_some_and(|token_chirho| {
+            matches!(
+                map_token_kind_chirho(token_chirho.kind_chirho, self.current_text_chirho()),
+                TokenKindChirho::ConSymChirho | TokenKindChirho::QualifiedConSymChirho
+            )
+        }) && self.is_operator_section_chirho()
+        {
+            // '(:) and '(Module.:*) are promoted symbols, not unary tuples.
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        } else if self.at_chirho(RawTokenKindChirho::CommaChirho) {
             // A constructor section contains separators, not missing operands.
             while self.at_chirho(RawTokenKindChirho::CommaChirho) {
                 self.bump_chirho();

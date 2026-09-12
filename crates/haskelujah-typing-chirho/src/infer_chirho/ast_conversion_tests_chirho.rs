@@ -51,6 +51,44 @@ fn var_chirho(text_chirho: &str) -> TypeChirho {
 }
 
 #[test]
+fn promoted_self_qualification_requires_an_exact_owned_alias_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let mut elaboration_chirho = crate::kind_chirho::KindElaborationChirho::default();
+    elaboration_chirho.local_promoted_aliases_chirho.insert(
+        "OwnerChirho.ConstructorChirho".to_owned(),
+        "ConstructorChirho".to_owned(),
+    );
+    context_chirho.kind_elaboration_chirho = Some(elaboration_chirho);
+    for (qualifier_chirho, text_chirho, expected_chirho) in [
+        ("OwnerChirho", "ConstructorChirho", "'ConstructorChirho"),
+        (
+            "ForeignChirho",
+            "ConstructorChirho",
+            "'ForeignChirho.ConstructorChirho",
+        ),
+        ("OwnerChirho", "OtherChirho", "'OwnerChirho.OtherChirho"),
+    ] {
+        let name_chirho = NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            qualifier_chirho,
+            text_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        ));
+        assert_eq!(
+            context_chirho.promoted_source_constructor_type_chirho(&name_chirho),
+            TyChirho::ConChirho(expected_chirho.to_owned()),
+        );
+        assert_eq!(
+            context_chirho.ast_type_to_ty_chirho(
+                &TypeChirho::ConChirho(name_chirho.clone()),
+                &mut HashMap::new(),
+            ),
+            TyChirho::ConChirho(name_chirho.full_name_chirho()),
+            "a promoted alias must not elect an ordinary type constructor",
+        );
+    }
+}
+
+#[test]
 fn data_head_keeps_invisible_binders_lexical_and_applies_visible_parameters_chirho() {
     use haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho;
     let mut invisible_chirho = AstTyVarChirho::plain_chirho(name_chirho("jChirho"));

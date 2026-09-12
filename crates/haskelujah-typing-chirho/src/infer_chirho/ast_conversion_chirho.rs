@@ -212,7 +212,7 @@ impl InferCtxChirho {
             }
             // DataKinds: promoted constructor is a type-level constant
             TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                promoted_constructor_type_chirho(name_chirho)
+                self.promoted_source_constructor_type_chirho(name_chirho)
             }
             // DataKinds: promoted list is represented as nested type application
             TypeChirho::PromotedListChirho {
@@ -572,6 +572,29 @@ impl SynonymTypeConverterChirho {
             // Type-level literal (DataKinds): treat as a type-level constant.
             TypeChirho::LitChirho { value_chirho, .. } => TyChirho::ConChirho(value_chirho.clone()),
         }
+    }
+}
+
+impl InferCtxChirho {
+    /// The kind registry proves self-qualification aliases for local constructors.
+    /// Preserve every other full name; matching a bare suffix is not name resolution.
+    /// Workflow: language-features-chirho/flat-type-syntax-chirho.
+    pub(super) fn promoted_source_constructor_type_chirho(
+        &self,
+        name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+    ) -> TyChirho {
+        let full_chirho = name_chirho.full_name_chirho();
+        let canonical_chirho = self
+            .kind_elaboration_chirho
+            .as_ref()
+            .and_then(|elaboration_chirho| {
+                elaboration_chirho
+                    .local_promoted_aliases_chirho
+                    .get(&full_chirho)
+            })
+            .map(String::as_str)
+            .unwrap_or(&full_chirho);
+        TyChirho::ConChirho(format!("'{canonical_chirho}"))
     }
 }
 

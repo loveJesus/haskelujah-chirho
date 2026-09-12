@@ -125,7 +125,7 @@ impl InferCtxChirho {
             }
         }
         let mut result_chirho = if promoted_chirho {
-            super::ast_conversion_chirho::promoted_constructor_type_chirho(name_chirho)
+            self.promoted_source_constructor_type_chirho(name_chirho)
         } else {
             TyChirho::ConChirho(
                 self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho()),

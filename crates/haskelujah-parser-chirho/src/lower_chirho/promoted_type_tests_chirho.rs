@@ -13,7 +13,7 @@ fn shape_chirho(ty_chirho: &TypeChirho) -> String {
             name_chirho.text_chirho().to_owned()
         }
         TypeChirho::PromotedConChirho { name_chirho, .. } => {
-            format!("'{}", name_chirho.text_chirho())
+            format!("'{}", name_chirho.full_name_chirho())
         }
         TypeChirho::AppChirho {
             fun_chirho,
@@ -27,6 +27,16 @@ fn shape_chirho(ty_chirho: &TypeChirho) -> String {
             )
         }
         TypeChirho::ParenChirho { inner_chirho, .. } => shape_chirho(inner_chirho),
+        TypeChirho::PromotedListChirho {
+            elements_chirho, ..
+        } => format!(
+            "'[{}]",
+            elements_chirho
+                .iter()
+                .map(shape_chirho)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
         TypeChirho::WildcardChirho { .. } => "_".to_owned(),
         other_chirho => panic!("unexpected tuple component {other_chirho:?}"),
     }
@@ -48,6 +58,9 @@ const FORMS_CHIRHO: &[(&str, &str)] = &[
     ("'(Int, Bool, Char)", "((('(,,) Int) Bool) Char)"),
     ("'(,) Int Bool", "(('(,) Int) Bool)"),
     ("'( '(Int, Bool), Char)", "(('(,) (('(,) Int) Bool)) Char)"),
+    ("'(:)", "':"),
+    ("'(:) Int '[]", "((': Int) '[])"),
+    ("'(ModuleChirho.:*:)", "'ModuleChirho.:*:"),
 ];
 
 #[test]

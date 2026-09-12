@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Structured and flat tuples share one promoted constructor/application builder.
+//! Structured and flat promoted parentheses retain symbols or tuple applications.
 //! Workflow: language-features-chirho/flat-type-syntax-chirho.
 use super::*;
 
@@ -46,17 +46,32 @@ impl LowerCtxChirho {
         let Some(operands_chirho) = children_chirho.get(start_chirho + 1..end_chirho) else {
             return self.placeholder_type_chirho();
         };
-        self.promoted_tuple_from_children_chirho(
+        self.promoted_parenthesized_from_children_chirho(
             &operands_chirho.iter().collect::<Vec<_>>(),
             span_chirho,
         )
     }
 
-    pub(super) fn promoted_tuple_from_children_chirho(
+    pub(super) fn promoted_parenthesized_from_children_chirho(
         &self,
         children_chirho: &[&ChildChirho],
         span_chirho: SpanChirho,
     ) -> TypeChirho {
+        if let [child_chirho] = children_chirho
+            && let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho
+            && matches!(
+                token_chirho.kind_chirho(),
+                TokenKindChirho::ConSymChirho | TokenKindChirho::QualifiedConSymChirho
+            )
+        {
+            return TypeChirho::PromotedConChirho {
+                name_chirho: self.name_from_token_chirho(
+                    token_chirho,
+                    self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                ),
+                span_chirho,
+            };
+        }
         let commas_chirho = super::flat_types_chirho::top_level_commas_chirho(children_chirho);
         let constructor_only_chirho = children_chirho.len() == commas_chirho.len();
         let arity_chirho = if children_chirho.is_empty() {

@@ -48,6 +48,9 @@ pub struct KindElaborationChirho {
     pub(crate) synonym_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) family_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) promoted_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
+    // Exact self-qualified spellings of constructors owned by this module.
+    // Foreign/import aliases are not authorized by an equal bare name.
+    pub(crate) local_promoted_aliases_chirho: HashMap<String, String>,
     pub(crate) equation_inputs_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
     pub(crate) source_names_chirho: HashMap<KindVarChirho, String>,
 }
@@ -465,6 +468,20 @@ impl KindInferCtxChirho {
                     .or_insert_with(|| name_chirho.clone());
             }
         }
+        let mut local_promoted_aliases_chirho = HashMap::new();
+        if let Some(module_chirho) = &self.local_kind_module_chirho {
+            let prefix_chirho = format!("{module_chirho}.");
+            for name_chirho in &self.local_promoted_constructor_names_chirho {
+                if let Some(bare_chirho) = name_chirho.strip_prefix(&prefix_chirho)
+                    && self
+                        .local_promoted_constructor_names_chirho
+                        .contains(bare_chirho)
+                {
+                    local_promoted_aliases_chirho
+                        .insert(name_chirho.clone(), bare_chirho.to_owned());
+                }
+            }
+        }
         KindElaborationChirho {
             applications_chirho,
             wildcard_terms_chirho: self
@@ -478,6 +495,7 @@ impl KindInferCtxChirho {
             synonym_heads_chirho,
             family_heads_chirho,
             promoted_heads_chirho,
+            local_promoted_aliases_chirho,
             equation_inputs_chirho,
             source_names_chirho,
         }

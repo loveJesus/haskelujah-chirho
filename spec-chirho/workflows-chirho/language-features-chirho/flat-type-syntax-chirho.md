@@ -70,6 +70,31 @@ operands; neither is ordinary `(a,b)` or promoted unit `'()`. Constructor-only
 forms retain their arity. This matters for family equations: dropping either
 coordinate invents an unbound RHS variable and destroys a valid projection.
 
+Parenthesized constructor symbols are a distinct alternative: '(:) is the
+promoted list constructor, not a unary tuple or an empty placeholder. The CST
+requires a constructor-symbol token followed by the closing parenthesis; flat
+lowering recognizes the same single-symbol shape. Both preserve qualifiers and
+source spans. Consequently a Bool tail in '(:) Int Bool reaches actual kind
+checking and fails, in a signature and in a flat record field alike.
+
+For local promoted constructors, kind elaboration hands type inference the exact
+self-qualified-to-local alias pairs already established by the constructor
+registry. Signature, local synonym and family-equation conversion share that
+lookup. Equal bare names from other modules do not authorize normalization, and
+ordinary type names are not rewritten through this promoted-namespace map. The
+map is built once from local declarations and retired with the module. This does
+not establish complete imported-constructor alias or malformed-syntax support.
+
+```mermaid
+flowchart LR
+    ParenthesesChirho[Promoted parentheses] --> SyntaxChirho{Constructor symbol or tuple}
+    SyntaxChirho -->|Symbol| NameChirho[Exact symbol and qualifier]
+    SyntaxChirho -->|Tuple| TupleChirho[All tuple operands]
+    NameChirho --> RegistryChirho[Known local alias identity or unchanged foreign name]
+    RegistryChirho --> CheckChirho[Kind and type checking]
+    TupleChirho --> CheckChirho
+```
+
 ```mermaid
 flowchart LR
     StructuredTupleChirho[Promoted CST with parsed operands] --> TupleBuilderChirho[Shared promoted constructor and ordered applications]
