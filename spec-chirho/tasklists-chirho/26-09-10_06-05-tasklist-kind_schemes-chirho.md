@@ -72,7 +72,7 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-Latest corpus diagnostic43833550: accept881/938, nine main-relative regressions
+Latest corpus diagnostic3458e547: accept881/938, nine main-relative regressions
 and eight gains; reject248/767, zero timeouts or unexpected exits. One pass per
 axis, not a final gate. Source checkpoint is pushed and remote-exact.
 Typed family clauses retain hidden inputs, published identities and list kinds.
@@ -88,8 +88,10 @@ holds the accept set byte-identical and gains only tcfail209 for GHC-75844.
 Nineteen frozen reference observations agree. The next imported kind/closed-alias
 repair recovers those twelve driver tests in a focused run, plus two transport
 controls (14/14,1760 filtered). Typing371, new import controls4/4 and canaries7
-pass. Full integration121/122 retains the annotation red; full driver and a new
-corpus diagnostic remain owed. Checked templates/closed aliases travel beside
+pass. Full integration121/122 retains the annotation red; the full driver target
+now passes1774/1774, zero ignored/filtered. Both corpus failing sets remain
+byte-identical to43833550, one diagnostic pass per axis, not the final gate.
+Checked templates/closed aliases travel beside
 naming's interface, preserving fresh IDs and private dependency origins.
 Current implementation/gates: kind-schemes-chirho/26-09-12_01-47-import_contracts-chirho.md.
 Detail/reference evidence and next hidden-family-input decision:

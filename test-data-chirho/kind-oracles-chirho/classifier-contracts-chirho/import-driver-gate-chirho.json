@@ -1,0 +1,18 @@
+{
+  "kind_chirho": "driver_gate_chirho",
+  "source_commit_chirho": "3458e5471eebb5a2b5cc9fa75ce60dcc7d7b067f",
+  "recorded_at_chirho": "2026-09-12T06:19:15.999Z",
+  "command_chirho": "RUST_MIN_STACK=16777216 gtimeout --kill-after=10 1500 cargo test -p haskelujah-driver --lib -j 3 -- --test-threads=3",
+  "cargo_exit_chirho": 0,
+  "passed_chirho": 1774,
+  "failed_chirho": 0,
+  "ignored_chirho": 0,
+  "measured_chirho": 0,
+  "filtered_chirho": 0,
+  "duration_seconds_chirho": 1088.76,
+  "test_binary_chirho": "target/debug/deps/haskelujah_driver-6ae9f8a41439834b",
+  "test_binary_sha256_chirho": "ea6bab555ca939975593c8bf29620a3e70f198fa361ddaefd052e55669d5f492",
+  "log_sha256_chirho": "9a6396d3ec27a9bb72a9b0f3e59ee5a2c068ee605be86167e4043137a3d9b02e",
+  "summary_chirho": "test result: ok. 1774 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1088.76s",
+  "scope_chirho": "Full unfiltered driver lib target, including the twelve row484 regressions and two new transport controls; not the separate integration target or full workspace gate"
+}

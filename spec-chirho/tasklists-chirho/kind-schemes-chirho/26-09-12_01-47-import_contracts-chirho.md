@@ -47,11 +47,20 @@ their Rust module relationships unchanged. No new dependency.
   ascription failure; no assertion weakened. One additional builtin-shadow test
   was subsequently added and passes in the focused4/4.
 - [x] Workspace all-target check passes; broader lint debt remains unclaimed.
-- [ ] Full driver--lib, with no filters or exclusions.
-- [ ] Freeze owned code/docs, explicit CLI build, record source/binary hashes,
+- [x] Full driver--lib1774/1774, zero failed/ignored/measured/filtered,
+  Cargo exit0,1088.76s with the documented16MiB thread stack. The twelve are
+  recovered in the full target, not just the earlier focused bracket.
+- [x] Freeze owned code/docs, explicit CLI build, record source/binary hashes,
   independently arbitrate reference controls and commit/push the checkpoint.
-- [ ] Run a new exact-set corpus diagnostic. The old43833550 result881/248
-  is not a measurement of this implementation.
+- [x] Frozen3458e547 is pushed and remote-exact. Five fresh CLI classifier
+  verdicts agree with GHC9.14.1, including the wrong-Either kind diagnostic.
+  Seven module-graph GHC references are recorded separately; candidate links
+  name in-process tests, not identical CLI runs, and two open audit probes have
+  no candidate-control claim.
+- [x] One diagnostic pass per axis completed2026-09-12 02:20:19EDT:
+  accept881/938,reject248/767, zero timeouts/unexpected exits. Both exact failing
+  sets are byte-identical to43833550. Nine main-relative accept regressions and
+  eight gains are unchanged. This is not the final two-pass landing gate.
 - [ ] Repair all remaining corpus and integration regressions; final broad and
   two-pass gates before any main landing, public artifact change or DB closure.
 
@@ -71,3 +80,26 @@ audit's wrong-cast source is rejected by GHC9.14.1; a CLI run currently stops at
 missing re-exported names, so that run is not evidence about downstream equality.
 No denominator, percentage policy, fixture oracle, deferred declaration shape,
 canonical DB or deployment change.
+
+## Frozen provenance and next step
+
+Source3458e5471eebb5a2b5cc9fa75ce60dcc7d7b067f stayed clean before/after both
+axes; explicit debug CLI SHA256
+03e59700eb6073db34a585a7b27582861077641bb4c6b7f60d047dce9ed0534e stayed
+unchanged. Driver binary SHA256
+ea6bab555ca939975593c8bf29620a3e70f198fa361ddaefd052e55669d5f492 and the
+complete log digest are in classifier-contracts-chirho/import-driver-gate-chirho.json.
+Sibling import-classifiers/import-module-references/import-diagnostic JSONL files
+retain exact sources, reference verdicts, failing-set hashes and main/prior deltas.
+All are under test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/.
+Raw per-file logs and provenance events remain under
+/private/tmp/haskelujah-import-contracts-chirho.X1TVaO/.
+
+The independent annotation audit confirms two necessary halves: retain both
+children of the source kind ascription, then materialize the promoted constructor's
+solved hidden indices inside the actual matching pattern. Adding an RHS variable
+to a whitelist or the family's own hidden inputs does not represent that contract.
+The fresh AscribedKeyChirho reduction is accepted by GHC9.14.1 and rejected by
+the frozen CLI for the unbound matching input plus both distinct equality witnesses.
+It is a next-step source probe, not a repaired or committed execution oracle yet.
+Main remains121d4f2c; CPU embargo released, builder/DB lease retained.
