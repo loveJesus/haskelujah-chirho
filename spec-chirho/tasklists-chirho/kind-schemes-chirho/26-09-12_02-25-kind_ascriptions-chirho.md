@@ -6,6 +6,12 @@ Isolated continuation from pusheddb60ff50, checkpoint tag
 kind-ascription-indices-before-chirho. Main121d4f2c and canonical row484 remain
 unchanged. Builder/DB lease retained; corpus CPU embargo is released.
 
+Latest resume: operator/catalog compiler eb809e70 is pushed and diagnosed at
+882/938 accept,249/767 reject. Four recoveries and no new failures versus a426;
+thirteen main-relative accept regressions remain. The final section records
+membership and measured grammar limits. The next isolated unit is open-family
+row ownership and hidden-input reduction, not a main landing.
+
 ## Brick 1: representation and acceptance
 
 The CST retains `(_ :: ProxyChirho keyChirho)`, but lowering drops the kind and
@@ -419,3 +425,38 @@ The14 fresh GHC observations and10 gate records retain source/log hashes.
 The new source files remain bounded; pre-existing large roots are not declared
 structurally compliant. Next: commit/push, freeze the explicit CLI, and compare
 one diagnostic per axis against a426 and main before further implementation.
+
+## Frozen operator diagnostic at eb809e70
+
+Implementation eb809e70785f565e50d25795ecac75cbcea8d1f0 is pushed, remote exact.
+Post-commit explicit CLI build retains SHA256
+d3a3ab0120f36afa95977e93c0e00c44a88c57995d37acf3408e70e591dc9928.
+One diagnostic per axis, clean source and stable hash before/after each:
+accept882/938, reject249/767, zero timeouts/unexpected exits. Accept gains
+T18185,T18252,T21473,T24845a versus a426 and loses none. Reject membership is
+byte-identical. Fresh GHC9.14.1 whole-file checks also accept T18252 and
+T24845a; the old compiler rejects them and the new one accepts them after
+equality operands acquire their correct grouping.
+
+Versus main121d4f2c, thirteen gains AND thirteen losses remain. Equal totals
+882 do not mean equal sets. Losses are CoerceToVDQ,ControlMonadClassesState,
+T11348,T12381,T13879,T14010,T16204a,T16204b,T17067,T18129,T22560c,T23543,T26358.
+No main landing, corpus membership/label change or artifact supersession.
+Evidence: operators-chirho/diagnostic-chirho.jsonl and delta-reference-chirho.jsonl.
+
+Independent review found no concrete provider-catalog authority/growth defect,
+but named remaining grammar gaps. Measured: T18252a is rejected by GHC for
+mixing non-associative equality operators (GHC-88747), while both frozen a426
+and eb809e70 parse it and reject the later Refl binding for a type mismatch.
+It remains an accidental rejection, not a newly implemented precedence error.
+The parser-corpus T15457 is accepted by GHC and rejected by both binaries;
+the legal (!) operator is still excluded by older grammar paths. T15675 passes
+both binaries and GHC, so that whole-file pass does not prove the missing flat
+operator survived. A period-operator occurrence is an unrun review hypothesis.
+Complete grammar and non-associative/conflicting-fixity diagnostics remain open;
+no passing assertion was weakened to conceal them.
+
+The initial five-file audit runner used the wrong directory for the two parser
+fixtures and stopped with ENOENT; no completed evidence was claimed from it.
+After resolving their actual paths, the bounded five-file run completed and
+its source hashes/verdicts/reasons are the retained delta-reference artifact.
