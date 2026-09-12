@@ -387,6 +387,14 @@ pub(super) fn collect_free_type_vars_from_ast_chirho(
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 pending_chirho.push(inner_chirho);
             }
+            TypeChirho::KindAnnotChirho {
+                type_chirho,
+                kind_chirho,
+                ..
+            } => {
+                pending_chirho.push(kind_chirho);
+                pending_chirho.push(type_chirho);
+            }
             TypeChirho::ConChirho(_)
             | TypeChirho::PromotedConChirho { .. }
             | TypeChirho::LitChirho { .. }

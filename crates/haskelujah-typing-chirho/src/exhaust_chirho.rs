@@ -237,7 +237,7 @@ impl TypeConEnvChirho {
 
 /// Count function arguments in a GADT type signature for arity computation.
 fn extract_gadt_arity_chirho(ty_chirho: &TypeChirho) -> usize {
-    match ty_chirho {
+    match ty_chirho.unannotated_chirho() {
         TypeChirho::FunChirho { result_chirho, .. } => 1 + extract_gadt_arity_chirho(result_chirho),
         TypeChirho::ForallChirho { body_chirho, .. } => extract_gadt_arity_chirho(body_chirho),
         TypeChirho::QualChirho { body_chirho, .. } => extract_gadt_arity_chirho(body_chirho),

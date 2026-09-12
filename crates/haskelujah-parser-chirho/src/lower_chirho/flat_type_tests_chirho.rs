@@ -139,8 +139,34 @@ fn shape_chirho(ty_chirho: &TypeChirho) -> String {
                 .join(",")
         ),
         TypeChirho::ParenChirho { inner_chirho, .. } => shape_chirho(inner_chirho),
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            shape_chirho(type_chirho),
+            shape_chirho(kind_chirho)
+        ),
         other_chirho => panic!("unexpected type shape: {other_chirho:?}"),
     }
+}
+
+#[test]
+fn flat_and_structured_ascriptions_keep_type_and_classifier_chirho() {
+    check_shapes_chirho(&[
+        ("(Int :: Type)", "(Int :: Type)"),
+        (
+            "(Maybe :: Type -> Type) Int",
+            "((Maybe :: (Type -> Type)) Int)",
+        ),
+        ("((Maybe Int) :: Type)", "((Maybe Int) :: Type)"),
+        ("(Int -> Bool :: Type)", "((Int -> Bool) :: Type)"),
+        (
+            "((:~~:) (aChirho :: kChirho) :: jChirho -> Type)",
+            "((:~~: (var(aChirho) :: var(kChirho))) :: (var(jChirho) -> Type))",
+        ),
+    ]);
 }
 
 fn check_shapes_chirho(cases_chirho: &[(&str, &str)]) {

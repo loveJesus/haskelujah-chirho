@@ -213,6 +213,15 @@ fn free_type_variable_names_chirho(ty_chirho: &TypeChirho) -> HashSet<String> {
             inner_chirho: element_chirho,
             ..
         } => free_type_variable_names_chirho(element_chirho),
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => {
+            let mut names_chirho = free_type_variable_names_chirho(type_chirho);
+            names_chirho.extend(free_type_variable_names_chirho(kind_chirho));
+            names_chirho
+        }
         TypeChirho::QualChirho {
             context_chirho,
             body_chirho,

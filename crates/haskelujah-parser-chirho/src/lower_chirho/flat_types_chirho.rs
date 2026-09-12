@@ -266,6 +266,12 @@ impl LowerCtxChirho {
             return forall_chirho;
         }
 
+        if let Some(ascription_chirho) =
+            self.type_ascription_from_children_chirho(children_chirho, fallback_span_chirho)
+        {
+            return ascription_chirho;
+        }
+
         // Split on top-level `=>` (qualified type with context).
         let double_arrow_idx_chirho =
             self.find_top_level_token_chirho(children_chirho, TokenKindChirho::DoubleArrowChirho);
@@ -401,7 +407,7 @@ impl LowerCtxChirho {
     }
 
     /// Find a top-level token of a specific kind (not inside parens/brackets).
-    fn find_top_level_token_chirho(
+    pub(super) fn find_top_level_token_chirho(
         &self,
         children_chirho: &[&ChildChirho],
         kind_chirho: TokenKindChirho,

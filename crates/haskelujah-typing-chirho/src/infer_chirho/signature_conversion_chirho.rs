@@ -419,7 +419,11 @@ impl InferCtxChirho {
                     equality_pairs_chirho,
                 )
             }
-            TypeChirho::ParenChirho { inner_chirho, .. } => self.prepare_signature_body_chirho(
+            TypeChirho::ParenChirho { inner_chirho, .. }
+            | TypeChirho::KindAnnotChirho {
+                type_chirho: inner_chirho,
+                ..
+            } => self.prepare_signature_body_chirho(
                 inner_chirho,
                 var_map_chirho,
                 explicit_vars_chirho,
@@ -477,7 +481,14 @@ impl InferCtxChirho {
                     equality_pairs_chirho,
                 );
             }
-            (TypeChirho::ParenChirho { inner_chirho, .. }, _) => {
+            (
+                TypeChirho::ParenChirho { inner_chirho, .. }
+                | TypeChirho::KindAnnotChirho {
+                    type_chirho: inner_chirho,
+                    ..
+                },
+                _,
+            ) => {
                 self.collect_result_spine_constraints_chirho(
                     inner_chirho,
                     ty_chirho,

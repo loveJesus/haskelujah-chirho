@@ -896,7 +896,7 @@ fn con_field_count_chirho(con_chirho: &ConDeclChirho) -> usize {
 /// Count function arguments in a GADT type signature.
 /// Walks through FunChirho, ForallChirho, and QualChirho to count arrow arguments.
 fn extract_gadt_arg_count_chirho(ty_chirho: &TypeChirho) -> usize {
-    match ty_chirho {
+    match ty_chirho.unannotated_chirho() {
         TypeChirho::FunChirho { result_chirho, .. } => {
             1 + extract_gadt_arg_count_chirho(result_chirho)
         }
@@ -908,7 +908,7 @@ fn extract_gadt_arg_count_chirho(ty_chirho: &TypeChirho) -> usize {
 
 /// Extract argument types from a GADT type signature (everything before the final return type).
 fn extract_gadt_args_chirho(ty_chirho: &TypeChirho) -> Vec<TypeChirho> {
-    match ty_chirho {
+    match ty_chirho.unannotated_chirho() {
         TypeChirho::FunChirho {
             arg_chirho,
             result_chirho,

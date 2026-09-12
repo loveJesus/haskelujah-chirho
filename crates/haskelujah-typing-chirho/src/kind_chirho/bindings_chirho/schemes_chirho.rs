@@ -6,6 +6,15 @@
 use super::{KindChirho, KindInferCtxChirho, KindSubstChirho, KindVarChirho};
 use std::collections::HashSet;
 
+/// The sequence is reversed while peeling, then replayed inside out. An
+/// ascription constrains the same instantiated head as its surrounding
+/// applications, rather than opening a second set of quantified variables.
+enum KindApplicationPartChirho<'type_chirho> {
+    ArgumentChirho(&'type_chirho super::TypeChirho, bool, super::SpanChirho),
+    AnnotationChirho(&'type_chirho super::TypeChirho, super::SpanChirho),
+}
+
+#[derive(Clone)]
 pub(super) struct OpenKindBinderChirho {
     pub(super) argument_chirho: KindChirho,
     pub(super) classifier_chirho: KindChirho,
@@ -283,6 +292,7 @@ impl KindInferCtxChirho {
         };
         self.record_kind_application_chirho(
             name_chirho,
+            super::elaboration_chirho::KindHeadNamespaceChirho::TypeChirho,
             binding_chirho,
             arguments_chirho,
             span_chirho,
@@ -361,6 +371,114 @@ impl KindInferCtxChirho {
         )
     }
 
+    /// Check a polymorphic ascription against rigid binders before opening its
+    /// contract for use. The verification substitution stays local: a skolem
+    /// cannot specialize a written classifier or escape into an outer identity.
+    /// Only this occurrence's provider arguments may depend on its new binders.
+    /// Work visits the annotation and its unifier, not the module environment.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    fn ascribe_kind_chirho(
+        &mut self,
+        actual_chirho: &KindChirho,
+        annotation_chirho: &super::TypeChirho,
+        provider_variables_chirho: &HashSet<KindVarChirho>,
+        span_chirho: super::SpanChirho,
+    ) -> Option<(KindChirho, Vec<OpenKindBinderChirho>)> {
+        let binding_chirho = self.type_kind_binding_chirho(annotation_chirho);
+        let KindBindingChirho::PolyChirho(scheme_chirho) = binding_chirho else {
+            self.unify_chirho(
+                actual_chirho,
+                binding_chirho.body_chirho(),
+                "type kind ascription",
+                span_chirho,
+            );
+            return Some((self.subst_chirho.apply_chirho(actual_chirho), Vec::new()));
+        };
+        let (rigid_body_chirho, rigid_binders_chirho) =
+            self.open_kind_scheme_contract_chirho(&scheme_chirho, true);
+        let rigid_identities_chirho: HashSet<_> = rigid_binders_chirho
+            .iter()
+            .filter_map(|binder_chirho| match binder_chirho.argument_chirho {
+                KindChirho::RigidChirho(identity_chirho) => Some(identity_chirho),
+                _ => None,
+            })
+            .collect();
+        let actual_chirho = self.subst_chirho.apply_chirho(actual_chirho);
+        let checked_chirho = self
+            .unify_family_kinds_chirho(
+                &actual_chirho,
+                &rigid_body_chirho,
+                "polymorphic type kind ascription",
+                span_chirho,
+            )
+            .and_then(|substitution_chirho| {
+                for (identity_chirho, term_chirho) in &substitution_chirho.map_chirho {
+                    if provider_variables_chirho.contains(identity_chirho) {
+                        continue;
+                    }
+                    let mut escapes_chirho = false;
+                    substitution_chirho
+                        .apply_chirho(term_chirho)
+                        .map_leaves_chirho(&mut |leaf_chirho| {
+                            if let KindChirho::RigidChirho(found_chirho) = leaf_chirho {
+                                escapes_chirho |= rigid_identities_chirho.contains(found_chirho);
+                            }
+                            leaf_chirho.clone()
+                        });
+                    if escapes_chirho {
+                        return Err(super::KindErrorChirho::MismatchChirho {
+                            expected_chirho: rigid_body_chirho.clone(),
+                            actual_chirho: actual_chirho.clone(),
+                            context_chirho: "polymorphic type kind ascription (escaping binder)"
+                                .into(),
+                            span_chirho,
+                        });
+                    }
+                }
+                Ok(substitution_chirho)
+            });
+        let mut substitution_chirho = match checked_chirho {
+            Ok(substitution_chirho) => substitution_chirho,
+            Err(error_chirho) => {
+                self.commit_kind_unification_chirho(
+                    Err(error_chirho),
+                    "type kind ascription",
+                    span_chirho,
+                );
+                return None;
+            }
+        };
+        let (body_chirho, binders_chirho) =
+            self.open_kind_scheme_contract_chirho(&scheme_chirho, false);
+        let instances_chirho: std::collections::HashMap<_, _> = rigid_binders_chirho
+            .iter()
+            .zip(&binders_chirho)
+            .filter_map(
+                |(rigid_chirho, instance_chirho)| match rigid_chirho.argument_chirho {
+                    KindChirho::RigidChirho(identity_chirho) => {
+                        Some((identity_chirho, instance_chirho.argument_chirho.clone()))
+                    }
+                    _ => None,
+                },
+            )
+            .collect();
+        for term_chirho in substitution_chirho.map_chirho.values_mut() {
+            *term_chirho = term_chirho.map_leaves_chirho(&mut |leaf_chirho| match leaf_chirho {
+                KindChirho::RigidChirho(identity_chirho) => instances_chirho
+                    .get(identity_chirho)
+                    .cloned()
+                    .unwrap_or_else(|| leaf_chirho.clone()),
+                _ => leaf_chirho.clone(),
+            });
+        }
+        self.commit_kind_unification_chirho(
+            Ok(substitution_chirho),
+            "type kind ascription",
+            span_chirho,
+        );
+        Some((body_chirho, binders_chirho))
+    }
+
     /// Open one head, then consume its entire mixed argument spine once. An @
     /// argument selects the next specified quantifier; it is never an arrow.
     pub(super) fn infer_type_application_kind_chirho(
@@ -382,7 +500,7 @@ impl KindInferCtxChirho {
                     arg_chirho,
                     span_chirho,
                 } => {
-                    arguments_chirho.push((
+                    arguments_chirho.push(KindApplicationPartChirho::ArgumentChirho(
                         arg_chirho.as_ref(),
                         matches!(head_chirho, TypeChirho::KindAppChirho { .. }),
                         *span_chirho,
@@ -390,6 +508,17 @@ impl KindInferCtxChirho {
                     head_chirho = fun_chirho;
                 }
                 TypeChirho::ParenChirho { inner_chirho, .. } => head_chirho = inner_chirho,
+                TypeChirho::KindAnnotChirho {
+                    type_chirho,
+                    kind_chirho,
+                    span_chirho,
+                } => {
+                    arguments_chirho.push(KindApplicationPartChirho::AnnotationChirho(
+                        kind_chirho,
+                        *span_chirho,
+                    ));
+                    head_chirho = type_chirho;
+                }
                 _ => break,
             }
         }
@@ -411,8 +540,8 @@ impl KindInferCtxChirho {
                 .cloned(),
             _ => None,
         };
-        let authoritative_chirho = binding_chirho.is_some();
-        let (mut tail_chirho, binders_chirho) = match &binding_chirho {
+        let mut authoritative_chirho = binding_chirho.is_some();
+        let (mut tail_chirho, provider_binders_chirho) = match &binding_chirho {
             Some(KindBindingChirho::PolyChirho(scheme_chirho)) => {
                 self.open_kind_scheme_contract_chirho(scheme_chirho, false)
             }
@@ -421,8 +550,42 @@ impl KindInferCtxChirho {
             }
             None => (self.infer_type_kind_chirho(head_chirho), Vec::new()),
         };
+        let mut provider_variables_chirho: HashSet<_> = provider_binders_chirho
+            .iter()
+            .flat_map(|binder_chirho| binder_chirho.argument_chirho.free_vars_chirho())
+            .collect();
+        let mut binders_chirho = provider_binders_chirho.clone();
         let mut binder_index_chirho = 0;
-        for (argument_chirho, invisible_chirho, span_chirho) in arguments_chirho.into_iter().rev() {
+        for part_chirho in arguments_chirho.into_iter().rev() {
+            let (argument_chirho, invisible_chirho, span_chirho) = match part_chirho {
+                KindApplicationPartChirho::ArgumentChirho(
+                    argument_chirho,
+                    invisible_chirho,
+                    span_chirho,
+                ) => (argument_chirho, invisible_chirho, span_chirho),
+                KindApplicationPartChirho::AnnotationChirho(kind_chirho, span_chirho) => {
+                    let Some((ascribed_chirho, ascribed_binders_chirho)) = self
+                        .ascribe_kind_chirho(
+                            &tail_chirho,
+                            kind_chirho,
+                            &provider_variables_chirho,
+                            span_chirho,
+                        )
+                    else {
+                        // The error is already recorded. Recover this occurrence
+                        // without opening or publishing the failed contract.
+                        return self.fresh_kind_chirho();
+                    };
+                    tail_chirho = ascribed_chirho;
+                    binders_chirho = ascribed_binders_chirho;
+                    provider_variables_chirho.extend(binders_chirho.iter().flat_map(
+                        |binder_chirho| binder_chirho.argument_chirho.free_vars_chirho(),
+                    ));
+                    binder_index_chirho = 0;
+                    authoritative_chirho = true;
+                    continue;
+                }
+            };
             let classifier_chirho = self.infer_type_kind_chirho(argument_chirho);
             if invisible_chirho {
                 while binder_index_chirho < binders_chirho.len()
@@ -466,18 +629,36 @@ impl KindInferCtxChirho {
                 );
             }
         }
-        if let (TypeChirho::ConChirho(name_chirho), Some(binding_chirho)) =
-            (head_chirho, &binding_chirho)
+        if let (
+            TypeChirho::ConChirho(name_chirho) | TypeChirho::PromotedConChirho { name_chirho, .. },
+            Some(binding_chirho),
+        ) = (head_chirho, &binding_chirho)
         {
+            let namespace_chirho = if matches!(head_chirho, TypeChirho::PromotedConChirho { .. }) {
+                super::elaboration_chirho::KindHeadNamespaceChirho::PromotedChirho
+            } else {
+                super::elaboration_chirho::KindHeadNamespaceChirho::TypeChirho
+            };
+            let indices_chirho: Vec<_> = provider_binders_chirho
+                .into_iter()
+                .map(|binder_chirho| binder_chirho.argument_chirho)
+                .collect();
             self.record_kind_application_chirho(
                 &self.canonical_kind_name_chirho(name_chirho),
+                namespace_chirho,
                 binding_chirho,
-                binders_chirho
-                    .into_iter()
-                    .map(|binder_chirho| binder_chirho.argument_chirho)
-                    .collect(),
+                indices_chirho.clone(),
                 ty_chirho.span_chirho(),
             );
+            if ty_chirho.unannotated_chirho().span_chirho() != ty_chirho.span_chirho() {
+                self.record_kind_application_chirho(
+                    &self.canonical_kind_name_chirho(name_chirho),
+                    namespace_chirho,
+                    binding_chirho,
+                    indices_chirho,
+                    ty_chirho.unannotated_chirho().span_chirho(),
+                );
+            }
         }
         self.subst_chirho.apply_chirho(&tail_chirho)
     }

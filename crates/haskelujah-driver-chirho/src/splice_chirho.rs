@@ -376,6 +376,18 @@ fn type_to_string_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
             type_to_string_chirho(arg_chirho),
             type_to_string_chirho(result_chirho)
         ),
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            type_to_string_chirho(type_chirho),
+            type_to_string_chirho(kind_chirho)
+        ),
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
+            format!("({})", type_to_string_chirho(inner_chirho))
+        }
         _ => "_".to_string(),
     }
 }

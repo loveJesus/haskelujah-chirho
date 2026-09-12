@@ -267,13 +267,13 @@ the latter still lacks its promoted constructor classifier. Neither is a
 validated multiplicity use merely because the top-level/class controls pass.
 
 The local-instance consumer instantiates each class's quantified kind afresh,
-infers argument classifiers in a journaled scope, and checks the resulting
+infers argument classifiers in a journaled scope, and checks a represented
 application with kind equality. It no longer clones the whole environment or
-compares only the old Star/Arrow tree shapes. Imported-class authority and the
-historical extension-based instance-head representability guard remain outside
-this unit: an explicit PolyKinds/FlexibleInstances control still demonstrates
-that guard bypassing a wrong instance. A green reachable-path test does not
-establish complete instance-kind validation.
+compares only the old Star/Arrow tree shapes. Each represented argument is checked
+even when the class is imported or an extension leaves the complete head
+unrepresented: `Int :: Bool` cannot bypass checking through FlexibleInstances.
+Imported-class authority and the historical extension-based guard still limit
+the final class-head arity/equality check. This is not complete instance validation.
 
 A bare variable predicate remains a zero-argument predicate (`c`, not `? c`),
 and its first use allocates a shared local kind even before an ordinary type
@@ -350,9 +350,9 @@ trivia. It does not scan through header parameters or following declarations.
 equivalent instead of becoming a fabricated alias. Dispatch lives with the
 existing family parser rather than growing the large parser root. A retained
 signature matters to checking separate indexed equations, not only AST shape.
-Parenthesized type-term annotations such as `(F Bool :: Type)` still have a
-separate missing AST/consumer contract. Explicit kind applications are retained
-by the isolated continuation below, with family-index consumers still incomplete.
+Parenthesized type-term annotations such as `(F Bool :: Type)` use the ascription
+contract below. Explicit kind applications are retained by the isolated
+continuation below, with family-index consumers still incomplete.
 
 Equation checking instantiates the actual complete scheme for each row. It
 does not reconstruct its quantifiers from independently scoped header names.
@@ -629,10 +629,10 @@ nominal occurrences reach the type-level equation converter. Conversion has an
 explicit equation policy: retain family applications rather than eagerly reducing
 definitions, and do not issue a partial-signature warning for a pattern wildcard.
 Only variables present in the converted matching inputs may occur in the result.
-This exposes an existing missing representation: a kind ascription in a type
-pattern is currently erased by lowering, so a variable bound only there cannot
-reach the matching row. The resulting valid-program rejection is an OPEN gate
-failure, not fixed by inventing an RHS variable or weakening the test.
+Type-pattern kind ascriptions now use the retained syntax and solved promoted
+indices described below. Variables bound only in a classifier must reach the
+actual matching inputs; a new RHS variable or weaker closure check cannot replace
+that representation.
 
 Family equations now store distinct invisible-kind and ordinary-type inputs in
 TypeFamilyClauseChirho. The same solved occurrence map supplies invisible family
@@ -706,9 +706,9 @@ longer exposes an unbounded production wrapper. This is not a bound on all compi
 traversals. Kind-level family reduction still uses its guarded visible-only rows;
 the new type-level inputs do not silently extend its injectivity claim.
 
-Not complete: hidden inputs in kind-level family reduction, promoted-constructor pattern indices,
-type-pattern kind ascriptions, associated-row scope, imported constructor schemes and
-specificity, and complete higher-rank kind subsumption. The frozen f5c4eedb
+Not complete: hidden inputs in kind-level family reduction, promoted indices
+outside the represented local/builtin contracts below, associated-row scope,
+imported constructor schemes and specificity, and complete higher-rank kind subsumption. The frozen f5c4eedb
 diagnostic recovered T12045a but exposed twelve new accept failures relative to
 its predecessor; that checkpoint is not landable. Keeping KindApp in the type IR
 does not establish that every producer has supplied its inferred arguments.
@@ -749,6 +749,60 @@ flowchart LR
   PrivateNamesChirho --> ConsumerAliasChirho[Seed closed aliases without AST reconstruction]
   ConsumerKindChirho --> ConsumerAliasChirho
 ```
+
+### Type ascriptions and promoted matching indices (isolated row484)
+
+TypeChirho::KindAnnotChirho owns both the annotated type and its written kind,
+with their source spans. AstKindChirho carries the same shape inside data and
+forall binder annotations. The flat and structured lowerers preserve the full
+node; the first double colon in a record field is its separator, not a reason
+to discard a later classifier. Bare alias results, instance arguments and nested
+binder annotations enter the same checking path. Naming and dependency visitors
+visit both children. TH SigT conversion and reification retain both children;
+this does not repair the separate loss of kinded forall binders in TH conversion.
+
+```mermaid
+flowchart LR
+  AscriptionSyntaxChirho[Retain type and written classifier] --> AscriptionNamesChirho[Resolve both children and lexical binders]
+  AscriptionNamesChirho --> AscriptionSpineChirho[Open one provider scheme for the mixed application spine]
+  AscriptionSpineChirho --> AscriptionCheckChirho[Check written contract with rigid quantified binders]
+  AscriptionCheckChirho --> AscriptionUseChirho[Instantiate only the ascription's visible quantifiers]
+  AscriptionUseChirho --> AscriptionIndicesChirho[Record solved provider indices and anonymous pattern identities]
+  AscriptionIndicesChirho --> AscriptionTermsChirho[Materialize matching type terms after kind validation]
+  AscriptionTermsChirho --> AscriptionClosureChirho[Require RHS closure over actual matching inputs]
+```
+
+Provider arguments and currently available visible quantifiers are different
+things. A monomorphic `(Proxy :: Bool -> Type)` still needs Proxy's Bool index
+in its elaborated term but offers no `@` argument. A written `forall k. k -> Type`
+checks with rigid binders first; Maybe cannot acquire that polymorphic kind by
+specializing the annotation. Only occurrence-owned provider variables may depend
+on the fresh checking binders. The verification substitution is local and its
+checking skolems are replaced by fresh use variables before it is committed.
+This is a represented-spine contract, not arbitrary higher-rank subsumption.
+
+Promoted occurrences carry their namespace through elaboration; a same-spelled
+type and data constructor must not share a head lookup. A checked context-free
+GADT's promoted scheme uses the same fresh field/result scope as its validation,
+so classifier inference cannot introduce an unrelated extra quantifier. Recorded
+hidden indices become matching inputs to promoted patterns, including keys that
+occur only in field ascriptions. The family RHS closure rule is unchanged.
+
+An anonymous source pattern owns one identity keyed by its real span. Kind
+checking and type conversion share that identity; they must not invent separate
+LHS and RHS wildcards. The map is module-scoped and bounded by source occurrences.
+Promoted list literals use the same solved element-kind index for their cons and
+nil terms as explicit promoted constructors do. This covers the primary checked
+conversion path, not the older static converter without kind elaboration.
+
+The fresh AscribedKeyChirho and AscribedSpineChirho sources have independently
+measured GHC9.14.1 outputs and run unchanged through STG, LLVM and Cranelift.
+Contradictory equality, missing classifier/RHS names, fixed-kind false
+polymorphism, hidden visible-argument use, and nested annotation controls reject.
+Reference records retain exact source hashes and diagnostics under
+test-data-chirho/kind-oracles-chirho/ascriptions-chirho. The legal ClassifierCycle
+control is no longer an expected failure. These focused results do not establish
+that row484 is landable; exact corpus sets and broad gates are recorded separately.
 
 ## Evidence boundary
 

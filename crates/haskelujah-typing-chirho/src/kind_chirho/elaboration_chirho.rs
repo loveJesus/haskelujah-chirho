@@ -6,9 +6,16 @@ use std::collections::HashSet;
 
 pub(super) struct PendingKindApplicationChirho {
     head_chirho: String,
+    namespace_chirho: KindHeadNamespaceChirho,
     // Already-polymorphic binders have fresh occurrence arguments. A binder
     // generalized only after this occurrence retains the group's own identity.
     arguments_chirho: HashMap<KindVarChirho, KindChirho>,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum KindHeadNamespaceChirho {
+    TypeChirho,
+    PromotedChirho,
 }
 
 #[derive(Clone, Debug)]
@@ -36,14 +43,33 @@ impl ElaboratedKindBinderChirho {
 #[derive(Clone, Debug, Default)]
 pub struct KindElaborationChirho {
     pub(crate) applications_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
+    pub(crate) wildcard_terms_chirho: HashMap<SpanChirho, KindChirho>,
     pub(crate) nominal_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) synonym_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) family_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
+    pub(crate) promoted_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) equation_inputs_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
     pub(crate) source_names_chirho: HashMap<KindVarChirho, String>,
 }
 
 impl KindInferCtxChirho {
+    /// An anonymous source pattern still owns an identity. Its inferred index
+    /// may occur inside the RHS constructor's classifier; freshening the LHS a
+    /// second time during conversion would make that valid RHS look unbound.
+    /// This map is bounded by source occurrences and retired with the module.
+    pub(super) fn source_wildcard_term_chirho(&mut self, span_chirho: SpanChirho) -> KindChirho {
+        if span_chirho == SpanChirho::DUMMY_CHIRHO {
+            return self.fresh_kind_chirho();
+        }
+        if let Some(term_chirho) = self.kind_wildcard_terms_chirho.get(&span_chirho) {
+            return self.subst_chirho.apply_chirho(term_chirho);
+        }
+        let term_chirho = self.fresh_kind_chirho();
+        self.kind_wildcard_terms_chirho
+            .insert(span_chirho, term_chirho.clone());
+        term_chirho
+    }
+
     pub(super) fn record_equation_kind_inputs_chirho(
         &mut self,
         name_chirho: &str,
@@ -58,6 +84,7 @@ impl KindInferCtxChirho {
             result_span_chirho,
             PendingKindApplicationChirho {
                 head_chirho: name_chirho.to_owned(),
+                namespace_chirho: KindHeadNamespaceChirho::TypeChirho,
                 arguments_chirho: scheme_chirho
                     .quantified_chirho
                     .iter()
@@ -71,14 +98,22 @@ impl KindInferCtxChirho {
     pub(super) fn record_kind_application_chirho(
         &mut self,
         name_chirho: &str,
+        namespace_chirho: KindHeadNamespaceChirho,
         binding_chirho: &KindBindingChirho,
         arguments_chirho: Vec<KindChirho>,
         span_chirho: SpanChirho,
     ) {
-        if span_chirho == SpanChirho::DUMMY_CHIRHO
-            || !(self.local_kind_decl_names_chirho.contains(name_chirho)
-                || self.imported_kind_shapes_chirho.contains_key(name_chirho))
-        {
+        let known_chirho = match namespace_chirho {
+            KindHeadNamespaceChirho::TypeChirho => {
+                self.local_kind_decl_names_chirho.contains(name_chirho)
+                    || self.imported_kind_shapes_chirho.contains_key(name_chirho)
+            }
+            KindHeadNamespaceChirho::PromotedChirho => self
+                .env_chirho
+                .lookup_promoted_binding_chirho(name_chirho)
+                .is_some(),
+        };
+        if span_chirho == SpanChirho::DUMMY_CHIRHO || !known_chirho {
             return;
         }
         let arguments_chirho = match binding_chirho {
@@ -94,6 +129,7 @@ impl KindInferCtxChirho {
             span_chirho,
             PendingKindApplicationChirho {
                 head_chirho: name_chirho.to_owned(),
+                namespace_chirho,
                 arguments_chirho,
             },
         );
@@ -106,6 +142,39 @@ impl KindInferCtxChirho {
         let mut nominal_heads_chirho = HashMap::new();
         let mut synonym_heads_chirho = HashMap::new();
         let mut family_heads_chirho = HashMap::new();
+        let mut promoted_heads_chirho = HashMap::new();
+        for occurrence_chirho in self.kind_applications_chirho.values() {
+            if !matches!(
+                occurrence_chirho.namespace_chirho,
+                KindHeadNamespaceChirho::PromotedChirho
+            ) || promoted_heads_chirho.contains_key(&occurrence_chirho.head_chirho)
+            {
+                continue;
+            }
+            if let Some(KindBindingChirho::PolyChirho(scheme_chirho)) = self
+                .env_chirho
+                .lookup_promoted_binding_chirho(&occurrence_chirho.head_chirho)
+            {
+                promoted_heads_chirho.insert(
+                    occurrence_chirho.head_chirho.clone(),
+                    scheme_chirho
+                        .quantified_chirho
+                        .iter()
+                        .enumerate()
+                        .map(
+                            |(index_chirho, identity_chirho)| ElaboratedKindBinderChirho {
+                                identity_chirho: *identity_chirho,
+                                name_chirho: scheme_chirho.source_names_chirho[index_chirho]
+                                    .clone(),
+                                specified_chirho: scheme_chirho
+                                    .specified_chirho
+                                    .contains(identity_chirho),
+                            },
+                        )
+                        .collect(),
+                );
+            }
+        }
         for (name_chirho, shape_chirho) in &self.imported_kind_shapes_chirho {
             if self.local_kind_decl_names_chirho.contains(name_chirho) {
                 continue;
@@ -230,10 +299,15 @@ impl KindInferCtxChirho {
             let finished_chirho = occurrences_chirho
                 .iter()
                 .filter_map(|(span_chirho, occurrence_chirho)| {
-                    let Some(KindBindingChirho::PolyChirho(scheme_chirho)) = self
-                        .env_chirho
-                        .lookup_binding_chirho(&occurrence_chirho.head_chirho)
-                    else {
+                    let binding_chirho = match occurrence_chirho.namespace_chirho {
+                        KindHeadNamespaceChirho::TypeChirho => self
+                            .env_chirho
+                            .lookup_binding_chirho(&occurrence_chirho.head_chirho),
+                        KindHeadNamespaceChirho::PromotedChirho => self
+                            .env_chirho
+                            .lookup_promoted_binding_chirho(&occurrence_chirho.head_chirho),
+                    };
+                    let Some(KindBindingChirho::PolyChirho(scheme_chirho)) = binding_chirho else {
                         return None;
                     };
                     // Publishing an inferred head can replace a written
@@ -315,9 +389,17 @@ impl KindInferCtxChirho {
         }
         KindElaborationChirho {
             applications_chirho,
+            wildcard_terms_chirho: self
+                .kind_wildcard_terms_chirho
+                .iter()
+                .map(|(span_chirho, term_chirho)| {
+                    (*span_chirho, self.subst_chirho.apply_chirho(term_chirho))
+                })
+                .collect(),
             nominal_heads_chirho,
             synonym_heads_chirho,
             family_heads_chirho,
+            promoted_heads_chirho,
             equation_inputs_chirho,
             source_names_chirho,
         }

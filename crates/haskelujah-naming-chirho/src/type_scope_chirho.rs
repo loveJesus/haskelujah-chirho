@@ -456,6 +456,14 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.walk_type_chirho(inner_chirho, free_var_policy_chirho);
             }
+            TypeChirho::KindAnnotChirho {
+                type_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.walk_type_chirho(type_chirho, free_var_policy_chirho);
+                self.walk_type_chirho(kind_chirho, free_var_policy_chirho);
+            }
             TypeChirho::QualChirho {
                 context_chirho,
                 body_chirho,
@@ -626,7 +634,12 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 self.walk_binder_kind_chirho(result_chirho, span_chirho, free_var_policy_chirho);
             }
             AstKindChirho::AppChirho(fun_chirho, arg_chirho)
-            | AstKindChirho::KindAppChirho(fun_chirho, arg_chirho) => {
+            | AstKindChirho::KindAppChirho(fun_chirho, arg_chirho)
+            | AstKindChirho::KindAnnotChirho {
+                type_chirho: fun_chirho,
+                kind_chirho: arg_chirho,
+                ..
+            } => {
                 self.walk_binder_kind_chirho(fun_chirho, span_chirho, free_var_policy_chirho);
                 self.walk_binder_kind_chirho(arg_chirho, span_chirho, free_var_policy_chirho);
             }
@@ -962,6 +975,14 @@ fn collect_instance_associated_type_scope_chirho(
 fn record_field_type_scope_reliable_chirho(ty_chirho: &TypeChirho) -> bool {
     match ty_chirho {
         TypeChirho::ForallChirho { .. } => false,
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => {
+            record_field_type_scope_reliable_chirho(type_chirho)
+                && record_field_type_scope_reliable_chirho(kind_chirho)
+        }
         TypeChirho::RequiredForallChirho { body_chirho, .. } => {
             record_field_type_scope_reliable_chirho(body_chirho)
         }
@@ -1205,7 +1226,12 @@ fn collect_kind_variable_names_chirho(kind_chirho: &AstKindChirho, names_chirho:
             collect_kind_variable_names_chirho(result_chirho, names_chirho);
         }
         AstKindChirho::AppChirho(fun_chirho, arg_chirho)
-        | AstKindChirho::KindAppChirho(fun_chirho, arg_chirho) => {
+        | AstKindChirho::KindAppChirho(fun_chirho, arg_chirho)
+        | AstKindChirho::KindAnnotChirho {
+            type_chirho: fun_chirho,
+            kind_chirho: arg_chirho,
+            ..
+        } => {
             collect_kind_variable_names_chirho(fun_chirho, names_chirho);
             collect_kind_variable_names_chirho(arg_chirho, names_chirho);
         }

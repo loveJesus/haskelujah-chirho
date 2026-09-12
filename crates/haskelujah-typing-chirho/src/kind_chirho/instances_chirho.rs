@@ -43,6 +43,16 @@ impl KindInferCtxChirho {
         span_chirho: SpanChirho,
     ) {
         let head_arg_count_chirho = head_types_chirho.len();
+        // An incomplete class head cannot establish class arity, but every
+        // represented argument still has its own contract. In particular an
+        // explicit ascription must be checked even with FlexibleInstances or
+        // an imported class. The local scope keeps unrelated instances apart.
+        let argument_kinds_chirho = self.with_signature_kind_scope_chirho(|ctx_chirho| {
+            head_types_chirho
+                .iter()
+                .map(|argument_chirho| ctx_chirho.infer_type_kind_chirho(argument_chirho))
+                .collect::<Vec<_>>()
+        });
         // Only classes declared in THIS module: an imported class may arrive
         // through a placeholder interface whose kind we do not really know.
         // The existence of a builtin or placeholder entry alone does not prove
@@ -67,9 +77,13 @@ impl KindInferCtxChirho {
         }
         if expected_chirho == head_arg_count_chirho {
             if head_forms_representable_chirho {
-                self.check_instance_head_arg_kinds_chirho(
+                self.unify_chirho(
                     &resolved_kind_chirho,
-                    head_types_chirho,
+                    &KindChirho::arrow_n_chirho(
+                        argument_kinds_chirho,
+                        KindChirho::ConstraintChirho,
+                    ),
+                    "instance head",
                     span_chirho,
                 );
             }
@@ -102,29 +116,5 @@ impl KindInferCtxChirho {
                 message_chirho,
                 span_chirho,
             ));
-    }
-
-    /// A fresh local class contract is unified, not compared by old tree shape.
-    /// A scoped journal restores only this instance's bindings; no whole-env copy.
-    fn check_instance_head_arg_kinds_chirho(
-        &mut self,
-        class_kind_chirho: &KindChirho,
-        head_types_chirho: &[TypeChirho],
-        span_chirho: SpanChirho,
-    ) {
-        self.env_chirho.begin_scope_chirho();
-        let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
-        let argument_kinds_chirho: Vec<_> = head_types_chirho
-            .iter()
-            .map(|argument_chirho| self.infer_type_kind_chirho(argument_chirho))
-            .collect();
-        self.unify_chirho(
-            class_kind_chirho,
-            &KindChirho::arrow_n_chirho(argument_kinds_chirho, KindChirho::ConstraintChirho),
-            "instance head",
-            span_chirho,
-        );
-        self.kind_var_cache_chirho = outer_names_chirho;
-        self.env_chirho.end_scope_chirho();
     }
 }

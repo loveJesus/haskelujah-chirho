@@ -475,6 +475,9 @@ fn unlifted_prim_tycon_name_chirho(ty_chirho: &TypeChirho) -> Option<&str> {
         TypeChirho::ParenChirho { inner_chirho, .. } => {
             unlifted_prim_tycon_name_chirho(inner_chirho)
         }
+        TypeChirho::KindAnnotChirho { type_chirho, .. } => {
+            unlifted_prim_tycon_name_chirho(type_chirho)
+        }
         TypeChirho::ConChirho(name_chirho) => {
             let text_chirho = name_chirho.text_chirho();
             UNLIFTED_PRIM_TYCONS_CHIRHO
@@ -597,6 +600,11 @@ fn walk_type_chirho(
         TypeChirho::ParenChirho { inner_chirho, .. } => {
             walk_type_chirho(inner_chirho, position_chirho, license_chirho, errors_chirho);
         }
+        TypeChirho::KindAnnotChirho { type_chirho, .. } => {
+            // The kind pass owns the classifier's quantification rules; do not
+            // apply value-type impredicativity licensing to a written kind.
+            walk_type_chirho(type_chirho, position_chirho, license_chirho, errors_chirho);
+        }
         TypeChirho::VarChirho(_)
         | TypeChirho::ConChirho(_)
         | TypeChirho::PromotedConChirho { .. }
@@ -681,6 +689,15 @@ fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
             format!("[{}]", render_type_chirho(element_chirho))
         }
         TypeChirho::ParenChirho { inner_chirho, .. } => render_type_chirho(inner_chirho),
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            render_type_chirho(type_chirho),
+            render_type_chirho(kind_chirho)
+        ),
         TypeChirho::QualChirho {
             context_chirho,
             body_chirho,

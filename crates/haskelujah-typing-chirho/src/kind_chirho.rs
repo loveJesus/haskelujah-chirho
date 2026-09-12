@@ -128,6 +128,7 @@ struct KindInferCtxChirho {
     classifier_session_chirho: Option<runtime_chirho::ClassifierSessionChirho>,
     kind_binder_names_chirho: HashMap<KindVarChirho, String>,
     kind_applications_chirho: HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
+    kind_wildcard_terms_chirho: HashMap<SpanChirho, KindChirho>,
     kind_equation_inputs_chirho:
         HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
     kind_binder_specificity_chirho:
@@ -173,6 +174,7 @@ impl KindInferCtxChirho {
             classifier_session_chirho: None,
             kind_binder_names_chirho: HashMap::new(),
             kind_applications_chirho: HashMap::new(),
+            kind_wildcard_terms_chirho: HashMap::new(),
             kind_equation_inputs_chirho: HashMap::new(),
             kind_binder_specificity_chirho: HashMap::new(),
             kind_families_chirho: HashMap::new(),
@@ -216,6 +218,12 @@ impl KindInferCtxChirho {
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 Self::collect_type_app_spine_chirho(inner_chirho, args_chirho)
+            }
+            // Expansion computes a term, never validates the original syntax.
+            // infer_type_kind_chirho still checks every original ascription;
+            // no caller may use synonym expansion as its classifier proof.
+            TypeChirho::KindAnnotChirho { type_chirho, .. } => {
+                Self::collect_type_app_spine_chirho(type_chirho, args_chirho)
             }
             _ => ty_chirho.clone(),
         }
@@ -380,6 +388,23 @@ impl KindInferCtxChirho {
                 )),
                 span_chirho: *span_chirho,
             },
+            TypeChirho::KindAnnotChirho {
+                type_chirho,
+                kind_chirho,
+                span_chirho,
+            } => TypeChirho::KindAnnotChirho {
+                type_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    type_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                kind_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    kind_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
             TypeChirho::QualChirho {
                 context_chirho,
                 body_chirho,
@@ -538,12 +563,25 @@ impl KindInferCtxChirho {
     ) {
         let k1_applied_chirho = self.subst_chirho.apply_chirho(k1_chirho);
         let k2_applied_chirho = self.subst_chirho.apply_chirho(k2_chirho);
-        match self.unify_family_kinds_chirho(
+        let result_chirho = self.unify_family_kinds_chirho(
             &k1_applied_chirho,
             &k2_applied_chirho,
             context_chirho,
             span_chirho,
-        ) {
+        );
+        self.commit_kind_unification_chirho(result_chirho, context_chirho, span_chirho);
+    }
+
+    /// Only a checked substitution may enter the shared inference state. Kind
+    /// ascription subsumption also uses this boundary after its local skolems
+    /// have been checked for escape and instantiated for the actual use.
+    fn commit_kind_unification_chirho(
+        &mut self,
+        result_chirho: Result<KindSubstChirho, KindErrorChirho>,
+        context_chirho: &str,
+        span_chirho: SpanChirho,
+    ) {
+        match result_chirho {
             Ok(s_chirho) => {
                 self.subst_chirho = s_chirho.compose_chirho(&self.subst_chirho);
                 self.check_solved_kind_classifiers_chirho(&s_chirho, context_chirho, span_chirho);
@@ -677,8 +715,10 @@ impl KindInferCtxChirho {
 #[cfg(test)]
 fn ast_kind_to_kind_chirho(ast_chirho: &AstKindChirho) -> KindChirho {
     match ast_chirho {
-        AstKindChirho::ForallChirho { .. } | AstKindChirho::RequiredForallChirho { .. } => {
-            panic!("quantified kind conversion requires the scoped kind context")
+        AstKindChirho::ForallChirho { .. }
+        | AstKindChirho::RequiredForallChirho { .. }
+        | AstKindChirho::KindAnnotChirho { .. } => {
+            panic!("quantified or ascribed kind conversion requires the scoped kind context")
         }
         AstKindChirho::StarChirho => KindChirho::StarChirho,
         AstKindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(

@@ -115,10 +115,11 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
                 }
             }
         }
-        ThTypeChirho::SigTChirho(ty_chirho, _kind_chirho) => {
-            // No KindSig variant in AST, just return the type
-            th_type_to_ast_chirho(ty_chirho)
-        }
+        ThTypeChirho::SigTChirho(ty_chirho, kind_chirho) => TypeChirho::KindAnnotChirho {
+            type_chirho: Box::new(th_type_to_ast_chirho(ty_chirho)),
+            kind_chirho: Box::new(th_type_to_ast_chirho(kind_chirho)),
+            span_chirho: TH_SPAN_CHIRHO,
+        },
         ThTypeChirho::WildCardTChirho => {
             // No Wildcard variant in TypeChirho, use a placeholder
             TypeChirho::VarChirho(mk_ast_name_chirho("_"))

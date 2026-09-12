@@ -33,6 +33,13 @@ pub enum AstKindChirho {
     AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
     /// Explicit invisible application, distinct from an ordinary kind argument.
     KindAppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
+    /// A classifier written inside another binder's kind: `(a :: (k :: Type))`.
+    /// Both children are checked before the outer kind is interpreted.
+    KindAnnotChirho {
+        type_chirho: Box<AstKindChirho>,
+        kind_chirho: Box<AstKindChirho>,
+        span_chirho: SpanChirho,
+    },
     /// Lexically quantified kind, as in `(f :: forall k. k -> Type)`.
     ForallChirho {
         vars_chirho: Vec<TyVarChirho>,

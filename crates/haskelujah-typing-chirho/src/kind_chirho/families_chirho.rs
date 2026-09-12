@@ -472,6 +472,10 @@ impl KindInferCtxChirho {
                     ..
                 } => pending_chirho.extend([arg_chirho.as_ref(), result_chirho.as_ref()]),
                 TypeChirho::ParenChirho { inner_chirho, .. } => pending_chirho.push(inner_chirho),
+                // The classifier is checked as a kind, not an equation
+                // pattern: families in a written classifier are not nested
+                // family applications in the matching term itself.
+                TypeChirho::KindAnnotChirho { type_chirho, .. } => pending_chirho.push(type_chirho),
                 TypeChirho::ListChirho { element_chirho, .. } => {
                     pending_chirho.push(element_chirho)
                 }
@@ -507,7 +511,9 @@ impl KindInferCtxChirho {
         match ty_chirho {
             // Every anonymous pattern binds independently; it is not Type and
             // must not share a textual key with another underscore.
-            TypeChirho::WildcardChirho { .. } => Some(self.fresh_kind_chirho()),
+            TypeChirho::WildcardChirho { span_chirho } => {
+                Some(self.source_wildcard_term_chirho(*span_chirho))
+            }
             TypeChirho::VarChirho(_)
             | TypeChirho::ConChirho(_)
             | TypeChirho::PromotedConChirho { .. }
@@ -542,6 +548,7 @@ impl KindInferCtxChirho {
                     .collect::<Option<Vec<_>>>()?,
             )),
             TypeChirho::ParenChirho { inner_chirho, .. } => self.family_term_chirho(inner_chirho),
+            TypeChirho::KindAnnotChirho { type_chirho, .. } => self.family_term_chirho(type_chirho),
             _ => None,
         }
     }

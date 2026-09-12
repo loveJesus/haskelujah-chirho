@@ -1,0 +1,65 @@
+{
+  "schema_chirho": "haskelujah-ascription-gates-v1-chirho",
+  "source_parent_chirho": "db60ff50ad1b23fac476313e291082e419fd87af",
+  "source_state_chirho": "Owned implementation committed with this record; these tests ran before commit. The subsequent frozen corpus diagnostic must name the explicit CLI build commit and hash.",
+  "stack_bytes_chirho": 16777216,
+  "gates_chirho": [
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-parser -p haskelujah-naming -p haskelujah-typing -p haskelujah-th --lib --no-fail-fast -j3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "summary_lines_chirho": [
+        "test result: ok. 136 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s",
+        "test result: ok. 357 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s",
+        "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 371 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s"
+      ],
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/frontend-sixth-chirho.log",
+      "log_sha256_chirho": "f437466c54042bc597b9aec9188d92229e627431f0d867ce8fd311ca2dec8ffd"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --test typing_integration_chirho --test canaries_chirho -j3 -- --test-threads=3",
+      "exit_chirho": 0,
+      "summary_lines_chirho": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s",
+        "test result: ok. 133 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 75.14s"
+      ],
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/integration-third-chirho.log",
+      "log_sha256_chirho": "ad1086bde55aa1fb308d99a239b6f6e5ce21854cbe0a688a28030f4be92e2ac7"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo check --workspace --all-targets -j3",
+      "exit_chirho": 0,
+      "summary_lines_chirho": [
+        "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 13.92s"
+      ],
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/workspace-check-final-chirho.log",
+      "log_sha256_chirho": "3281a5faaa3c5103da8a101c88f42974cbc738364c64526b058d67600bd72a17"
+    }
+  ],
+  "execution_scope_chirho": "AscribedKeyChirho.hs and AscribedSpineChirho.hs execute identical source with independent GHC9.14.1 output through STG, LLVM and Cranelift inside integration133.",
+  "demonstrated_red_chirho": [
+    {
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/indices-first-chirho.log",
+      "summary_chirho": "Distinct-result ascribed-key integration control: 0 passed, 1 failed before matching indices were represented."
+    },
+    {
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/classifier-cycle-first-chirho.log",
+      "summary_chirho": "Existing legal ClassifierCycle integration control: 0 passed, 1 failed before the shared wildcard identity repair."
+    },
+    {
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/quantifiers-before-chirho.log",
+      "summary_chirho": "Four passed, two failed: monomorphic ascription exposed a provider @ slot and a false polymorphic contract specialized a fixed kind."
+    },
+    {
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/nested-before-chirho.log",
+      "summary_chirho": "Four passed-invalid-program failures: alias result, instance argument, data binder and forall binder annotations were lost or not checked."
+    }
+  ],
+  "audit_chirho": "Read-only helper/caller audit found no concrete green-path identity/scope/occurrence defect in its inspected scope. Failed-poly-ascription recovery now stops that occurrence before opening/publishing an invalid contract; no reproduced cross-occurrence contamination is claimed.",
+  "limits_chirho": [
+    "No corpus diagnostic on this source yet.",
+    "Previous full driver1774/1774 was on compiler3458, not this implementation.",
+    "Clippy selected-crate invocation completed before the final recovery edit with 471 warning-message lines including duplicate/summary notices; lint cleanliness and repository-wide structural compliance not claimed.",
+    "Main, public artifacts, corpus membership and canonical row484 unchanged."
+  ]
+}

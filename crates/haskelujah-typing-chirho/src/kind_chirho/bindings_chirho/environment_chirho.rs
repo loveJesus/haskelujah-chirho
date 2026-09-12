@@ -117,6 +117,7 @@ impl KindEnvChirho {
             KindChirho::ConChirho("[]".into()),
             KindChirho::VarChirho(promoted_cons_elem_kind_chirho),
         );
+        env_chirho.bind_promoted_generalized_chirho("[]", promoted_list_kind_chirho.clone());
         let promoted_cons_kind_chirho = KindChirho::arrow_n_chirho(
             vec![
                 KindChirho::VarChirho(promoted_cons_elem_kind_chirho),

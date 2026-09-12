@@ -100,6 +100,13 @@ pub enum TypeChirho {
         /// Span covering the whole parenthesized type.
         span_chirho: SpanChirho,
     },
+    /// A type with its written classifier (`a :: k`). Both sides are syntax
+    /// until name/kind checking; the annotation is not a runtime argument.
+    KindAnnotChirho {
+        type_chirho: Box<TypeChirho>,
+        kind_chirho: Box<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
     /// Qualified type with context (`Eq a => a -> a -> Bool`).
     QualChirho {
         /// Constraints required before the body type is available.
@@ -196,6 +203,19 @@ impl ConstraintChirho {
 }
 
 impl TypeChirho {
+    /// Navigate a checked type's spine without parentheses or kind ascriptions.
+    /// Name/kind visitors must visit both ascription children before erasure.
+    pub fn unannotated_chirho(&self) -> &Self {
+        let mut current_chirho = self;
+        loop {
+            current_chirho = match current_chirho {
+                Self::ParenChirho { inner_chirho, .. } => inner_chirho,
+                Self::KindAnnotChirho { type_chirho, .. } => type_chirho,
+                _ => return current_chirho,
+            };
+        }
+    }
+
     /// Return the source span covering this type expression.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
@@ -207,6 +227,7 @@ impl TypeChirho {
             | Self::TupleChirho { span_chirho, .. }
             | Self::ListChirho { span_chirho, .. }
             | Self::ParenChirho { span_chirho, .. }
+            | Self::KindAnnotChirho { span_chirho, .. }
             | Self::QualChirho { span_chirho, .. }
             | Self::ForallChirho { span_chirho, .. }
             | Self::RequiredForallChirho { span_chirho, .. }

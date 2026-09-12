@@ -1000,7 +1000,7 @@ impl DesugarCtxChirho {
     /// the format produced by `Display for TyChirho` in the typing layer
     /// so that the `$prim_` binding names align with `dict_chirho.rs`.
     pub fn type_key_from_ast_chirho(ty_chirho: &TypeChirho) -> String {
-        match ty_chirho {
+        match ty_chirho.unannotated_chirho() {
             TypeChirho::ConChirho(name_chirho) => name_chirho.text_chirho().to_string(),
             TypeChirho::VarChirho(name_chirho) => name_chirho.text_chirho().to_string(),
             TypeChirho::ListChirho { element_chirho, .. } => {

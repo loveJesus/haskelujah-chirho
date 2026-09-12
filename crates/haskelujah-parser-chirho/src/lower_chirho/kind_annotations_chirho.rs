@@ -4,6 +4,35 @@
 use super::*;
 
 impl LowerCtxChirho {
+    /// Preserve both sides of a type ascription in structured and flat CST
+    /// paths. Split before arrows: the arrow in `Int :: Type -> Type` belongs
+    /// to the classifier, not to the annotated type's application spine.
+    pub(super) fn type_ascription_from_children_chirho(
+        &self,
+        children_chirho: &[&ChildChirho<'_>],
+        span_chirho: SpanChirho,
+    ) -> Option<TypeChirho> {
+        let index_chirho =
+            self.find_top_level_token_chirho(children_chirho, TokenKindChirho::DoubleColonChirho)?;
+        let left_chirho = &children_chirho[..index_chirho];
+        let right_chirho = &children_chirho[index_chirho + 1..];
+        let child_span_chirho = |parts_chirho: &[&ChildChirho<'_>]| {
+            Some(self.span_chirho(
+                parts_chirho.first()?.start_chirho,
+                parts_chirho.last()?.end_chirho,
+            ))
+        };
+        Some(TypeChirho::KindAnnotChirho {
+            type_chirho: Box::new(
+                self.type_from_flat_children_chirho(left_chirho, child_span_chirho(left_chirho)?),
+            ),
+            kind_chirho: Box::new(
+                self.type_from_flat_children_chirho(right_chirho, child_span_chirho(right_chirho)?),
+            ),
+            span_chirho,
+        })
+    }
+
     /// Try to convert a lowered `TypeChirho` into an `AstKindChirho` for kind
     /// annotations. Nominal names retain their source identity; applications
     /// retain both sides. Unsupported promoted syntax remains a separate
@@ -54,6 +83,15 @@ impl LowerCtxChirho {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 Self::try_type_to_ast_kind_chirho(inner_chirho)
             }
+            TypeChirho::KindAnnotChirho {
+                type_chirho,
+                kind_chirho,
+                span_chirho,
+            } => Some(AstKindChirho::KindAnnotChirho {
+                type_chirho: Box::new(Self::try_type_to_ast_kind_chirho(type_chirho)?),
+                kind_chirho: Box::new(Self::try_type_to_ast_kind_chirho(kind_chirho)?),
+                span_chirho: *span_chirho,
+            }),
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho,

@@ -129,6 +129,14 @@ impl<'a> SignatureOccurrencesChirho<'a> {
                 inner_chirho: element_chirho,
                 ..
             } => self.type_chirho(element_chirho),
+            TypeChirho::KindAnnotChirho {
+                type_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.type_chirho(type_chirho);
+                self.type_chirho(kind_chirho);
+            }
             TypeChirho::QualChirho {
                 context_chirho,
                 body_chirho,

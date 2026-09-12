@@ -26,6 +26,19 @@ fn reified_kind_binders_retain_nominal_names_variables_and_applications_chirho()
             ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho("LibraryChirho.ApplyChirho")),
         ),
         (
+            AstKindChirho::KindAnnotChirho {
+                type_chirho: Box::new(variable_chirho.clone()),
+                kind_chirho: Box::new(AstKindChirho::StarChirho),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            ThTypeChirho::SigTChirho(
+                Box::new(ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho(
+                    "kChirho",
+                ))),
+                Box::new(ThTypeChirho::StarTChirho),
+            ),
+        ),
+        (
             AstKindChirho::AppChirho(Box::new(nominal_chirho), Box::new(variable_chirho.clone())),
             ThTypeChirho::AppTChirho(
                 Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
@@ -66,5 +79,30 @@ fn reified_kind_binders_retain_nominal_names_variables_and_applications_chirho()
         };
         assert_eq!(name_chirho.occ_chirho, "aChirho");
         assert_eq!(*recovered_chirho, expected_chirho);
+    }
+}
+
+#[test]
+fn type_ascription_conversion_and_reification_preserve_both_children_chirho() {
+    let classifier_chirho = ThTypeChirho::SigTChirho(
+        Box::new(ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho(
+            "keyChirho",
+        ))),
+        Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+            "Type",
+        ))),
+    );
+    for kind_chirho in [
+        ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho("Type")),
+        classifier_chirho,
+    ] {
+        let quoted_chirho = ThTypeChirho::SigTChirho(
+            Box::new(ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho(
+                "valueChirho",
+            ))),
+            Box::new(kind_chirho),
+        );
+        let converted_chirho = crate::convert_chirho::th_type_to_ast_chirho(&quoted_chirho);
+        assert_eq!(ast_type_to_th_chirho(&converted_chirho), quoted_chirho);
     }
 }

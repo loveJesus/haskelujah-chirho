@@ -10,6 +10,8 @@ mod family_kinds_chirho;
 mod import_contracts_chirho;
 #[path = "typing_integration_chirho/kind_applications_chirho.rs"]
 mod kind_applications_chirho;
+#[path = "typing_integration_chirho/kind_ascriptions_chirho.rs"]
+mod kind_ascriptions_chirho;
 #[path = "typing_integration_chirho/kind_terms_chirho.rs"]
 mod kind_terms_chirho;
 #[path = "typing_integration_chirho/multiplicities_chirho.rs"]

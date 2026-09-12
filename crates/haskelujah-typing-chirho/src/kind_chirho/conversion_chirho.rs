@@ -100,6 +100,9 @@ impl KindInferCtxChirho {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.interpret_inline_kind_chirho(inner_chirho)
             }
+            TypeChirho::KindAnnotChirho { type_chirho, .. } => {
+                self.interpret_inline_kind_chirho(type_chirho)
+            }
             TypeChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
@@ -129,8 +132,15 @@ impl KindInferCtxChirho {
         &mut self,
         annotation_chirho: &AstKindChirho,
     ) -> KindBindingChirho {
+        self.type_kind_binding_chirho(&ast_kind_type_chirho(annotation_chirho))
+    }
+
+    pub(super) fn type_kind_binding_chirho(
+        &mut self,
+        annotation_chirho: &TypeChirho,
+    ) -> KindBindingChirho {
         let (kind_chirho, written_chirho, quantified_chirho) =
-            self.elaborate_inline_kind_chirho(&ast_kind_type_chirho(annotation_chirho));
+            self.elaborate_inline_kind_chirho(annotation_chirho);
         if quantified_chirho.is_empty() {
             return KindBindingChirho::MonoChirho(kind_chirho);
         }
@@ -277,7 +287,9 @@ impl KindInferCtxChirho {
             }
             // A written @_ asks inference to choose this argument. Type is a
             // concrete choice and must not be fabricated for the wildcard.
-            TypeChirho::WildcardChirho { .. } => self.fresh_kind_chirho(),
+            TypeChirho::WildcardChirho { span_chirho } => {
+                self.source_wildcard_term_chirho(*span_chirho)
+            }
             TypeChirho::ListChirho { element_chirho, .. } => KindChirho::app_chirho(
                 KindChirho::ConChirho("[]".into()),
                 self.interpret_kind_term_chirho(element_chirho),
@@ -322,6 +334,9 @@ impl KindInferCtxChirho {
             ),
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.interpret_kind_term_chirho(inner_chirho)
+            }
+            TypeChirho::KindAnnotChirho { type_chirho, .. } => {
+                self.interpret_kind_term_chirho(type_chirho)
             }
             TypeChirho::ForallChirho {
                 vars_chirho,
@@ -417,7 +432,9 @@ impl KindInferCtxChirho {
                     k_chirho
                 }
             }
-            TypeChirho::AppChirho { .. } | TypeChirho::KindAppChirho { .. } => {
+            TypeChirho::AppChirho { .. }
+            | TypeChirho::KindAppChirho { .. }
+            | TypeChirho::KindAnnotChirho { .. } => {
                 self.infer_type_application_kind_chirho(ty_chirho)
             }
             TypeChirho::FunChirho {
@@ -517,14 +534,31 @@ impl KindInferCtxChirho {
             // Known promoted-constructor contracts instantiate per occurrence.
             // Missing constructor metadata remains an opaque-use boundary,
             // not a monomorphic binding and not a same-spelled type constructor.
-            // This does not reconstruct existential annotations dropped by AST lowering.
-            TypeChirho::PromotedConChirho { name_chirho, .. } => {
+            TypeChirho::PromotedConChirho {
+                name_chirho,
+                span_chirho,
+            } => {
                 if let Some(binding_chirho) = self
                     .env_chirho
                     .lookup_promoted_binding_chirho(&self.canonical_kind_name_chirho(name_chirho))
                     .cloned()
                 {
-                    self.instantiate_binding_chirho(&binding_chirho)
+                    let (kind_chirho, arguments_chirho) = match &binding_chirho {
+                        KindBindingChirho::MonoChirho(kind_chirho) => {
+                            (self.subst_chirho.apply_chirho(kind_chirho), Vec::new())
+                        }
+                        KindBindingChirho::PolyChirho(scheme_chirho) => {
+                            self.open_kind_scheme_parts_chirho(scheme_chirho, false)
+                        }
+                    };
+                    self.record_kind_application_chirho(
+                        &self.canonical_kind_name_chirho(name_chirho),
+                        super::elaboration_chirho::KindHeadNamespaceChirho::PromotedChirho,
+                        &binding_chirho,
+                        arguments_chirho,
+                        *span_chirho,
+                    );
+                    kind_chirho
                 } else {
                     self.fresh_kind_chirho()
                 }
@@ -542,6 +576,22 @@ impl KindInferCtxChirho {
                         &k_chirho,
                         &element_kind_chirho,
                         "promoted list element",
+                        *span_chirho,
+                    );
+                }
+                // List notation carries the same element-kind index as its
+                // explicit promoted constructors. The implicit terminal '[]
+                // gives the whole literal one shared index, including '[] alone.
+                if let Some(binding_chirho) = self
+                    .env_chirho
+                    .lookup_promoted_binding_chirho("[]")
+                    .cloned()
+                {
+                    self.record_kind_application_chirho(
+                        "[]",
+                        super::elaboration_chirho::KindHeadNamespaceChirho::PromotedChirho,
+                        &binding_chirho,
+                        vec![element_kind_chirho.clone()],
                         *span_chirho,
                     );
                 }
@@ -602,6 +652,15 @@ fn ast_kind_type_chirho(kind_chirho: &AstKindChirho) -> TypeChirho {
         } => TypeChirho::RequiredForallChirho {
             vars_chirho: vars_chirho.clone(),
             body_chirho: Box::new(ast_kind_type_chirho(body_chirho)),
+            span_chirho: *span_chirho,
+        },
+        AstKindChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            span_chirho,
+        } => TypeChirho::KindAnnotChirho {
+            type_chirho: Box::new(ast_kind_type_chirho(type_chirho)),
+            kind_chirho: Box::new(ast_kind_type_chirho(kind_chirho)),
             span_chirho: *span_chirho,
         },
         AstKindChirho::ArrowChirho(left_chirho, right_chirho)

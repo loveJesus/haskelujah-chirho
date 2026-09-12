@@ -169,9 +169,11 @@ impl InferCtxChirho {
                     self.ast_type_with_policy_chirho(element_chirho, var_map_chirho, policy_chirho);
                 TyChirho::ListChirho(Box::new(elem_chirho))
             }
-            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                self.ast_type_with_policy_chirho(inner_chirho, var_map_chirho, policy_chirho)
-            }
+            TypeChirho::ParenChirho { inner_chirho, .. }
+            | TypeChirho::KindAnnotChirho {
+                type_chirho: inner_chirho,
+                ..
+            } => self.ast_type_with_policy_chirho(inner_chirho, var_map_chirho, policy_chirho),
             TypeChirho::QualChirho { body_chirho, .. } => {
                 // Qualified types: convert the body, constraints are handled separately
                 self.ast_type_with_policy_chirho(body_chirho, var_map_chirho, policy_chirho)
@@ -214,10 +216,32 @@ impl InferCtxChirho {
             }
             // DataKinds: promoted list is represented as nested type application
             TypeChirho::PromotedListChirho {
-                elements_chirho, ..
+                elements_chirho,
+                span_chirho,
             } => {
-                // '[] → Con("'[]"), '[a, b] → App(App(Con("':"), a), App(App(Con("':"), b), Con("'[]")))
-                let nil_chirho = TyChirho::ConChirho("'[]".to_string());
+                let recorded_chirho = self
+                    .kind_elaboration_chirho
+                    .as_ref()
+                    .and_then(|elaboration_chirho| {
+                        elaboration_chirho.applications_chirho.get(span_chirho)
+                    })
+                    .cloned();
+                let index_chirho = recorded_chirho
+                    .and_then(|indices_chirho| indices_chirho.first().cloned())
+                    .map(|index_chirho| {
+                        self.kind_term_type_chirho(&index_chirho, var_map_chirho, &mut Vec::new())
+                    });
+                let constructor_chirho = |name_chirho: &str| {
+                    let head_chirho = TyChirho::ConChirho(name_chirho.to_owned());
+                    match &index_chirho {
+                        Some(index_chirho) => TyChirho::KindAppChirho(
+                            Box::new(head_chirho),
+                            Box::new(index_chirho.clone()),
+                        ),
+                        None => head_chirho,
+                    }
+                };
+                let nil_chirho = constructor_chirho("'[]");
                 elements_chirho
                     .iter()
                     .rev()
@@ -227,7 +251,7 @@ impl InferCtxChirho {
                             var_map_chirho,
                             policy_chirho,
                         );
-                        let cons_chirho = TyChirho::ConChirho("':".to_string());
+                        let cons_chirho = constructor_chirho("':");
                         TyChirho::AppChirho(
                             Box::new(TyChirho::AppChirho(
                                 Box::new(cons_chirho),
@@ -241,10 +265,24 @@ impl InferCtxChirho {
             // becomes a fresh unification variable. Emit warning W4201 so the
             // programmer is informed of the inferred type position.
             TypeChirho::WildcardChirho { span_chirho } => {
-                let fresh_ty_chirho = self.fresh_var_chirho();
                 if policy_chirho == TypeConversionChirho::FamilyEquationChirho {
-                    return fresh_ty_chirho;
+                    let recorded_chirho = self
+                        .kind_elaboration_chirho
+                        .as_ref()
+                        .and_then(|elaboration_chirho| {
+                            elaboration_chirho.wildcard_terms_chirho.get(span_chirho)
+                        })
+                        .cloned();
+                    return match recorded_chirho {
+                        Some(term_chirho) => self.kind_term_type_chirho(
+                            &term_chirho,
+                            var_map_chirho,
+                            &mut Vec::new(),
+                        ),
+                        None => self.fresh_var_chirho(),
+                    };
                 }
+                let fresh_ty_chirho = self.fresh_var_chirho();
                 let diag_chirho = DiagnosticChirho::warning_with_code_chirho(
                     ErrorCodeChirho::warning_chirho(4201),
                     "found wildcard `_` in type signature (PartialTypeSignatures)".to_string(),
@@ -401,9 +439,11 @@ impl SynonymTypeConverterChirho {
                 Box::new(self.convert_chirho(fun_chirho, params_chirho)),
                 Box::new(self.convert_chirho(arg_chirho, params_chirho)),
             ),
-            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                self.convert_chirho(inner_chirho, params_chirho)
-            }
+            TypeChirho::ParenChirho { inner_chirho, .. }
+            | TypeChirho::KindAnnotChirho {
+                type_chirho: inner_chirho,
+                ..
+            } => self.convert_chirho(inner_chirho, params_chirho),
             TypeChirho::QualChirho {
                 context_chirho,
                 body_chirho,
@@ -523,7 +563,7 @@ impl SynonymTypeConverterChirho {
 
 /// Promotion identifies a distinct constructor namespace in both signatures
 /// and stored family equations, preserving qualification in either producer.
-fn promoted_constructor_type_chirho(
+pub(super) fn promoted_constructor_type_chirho(
     name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
 ) -> TyChirho {
     TyChirho::ConChirho(format!("'{}", name_chirho.full_name_chirho()))

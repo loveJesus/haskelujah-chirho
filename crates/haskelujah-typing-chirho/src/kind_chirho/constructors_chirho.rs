@@ -163,10 +163,18 @@ impl KindInferCtxChirho {
                 body_chirho,
                 ..
             } => self.with_kind_binders_chirho(vars_chirho, |ctx_chirho| {
+                // This is a fresh quantifier scope, distinct from validity
+                // checking above. Solve each binder's classifier from THIS
+                // body before publishing its promoted scheme; otherwise
+                // `forall a. Proxy a -> T` invents an unconstrained kind for a.
+                let _classifier_chirho = ctx_chirho.infer_type_kind_chirho(body_chirho);
                 ctx_chirho.promoted_gadt_signature_chirho(body_chirho)
             }),
             super::TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.promoted_gadt_signature_chirho(inner_chirho)
+            }
+            super::TypeChirho::KindAnnotChirho { type_chirho, .. } => {
+                self.promoted_gadt_signature_chirho(type_chirho)
             }
             _ => self.family_term_chirho(ty_chirho),
         }

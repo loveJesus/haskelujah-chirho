@@ -140,6 +140,14 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
             Box::new(ast_type_to_th_chirho(body_chirho)),
         ),
         TypeChirho::ParenChirho { inner_chirho, .. } => ast_type_to_th_chirho(inner_chirho),
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => ThTypeChirho::SigTChirho(
+            Box::new(ast_type_to_th_chirho(type_chirho)),
+            Box::new(ast_type_to_th_chirho(kind_chirho)),
+        ),
         TypeChirho::PromotedConChirho { name_chirho, .. } => {
             ThTypeChirho::PromotedTChirho(ThNameChirho::mk_name_chirho(name_chirho.text_chirho()))
         }
@@ -212,6 +220,14 @@ fn ast_kind_to_th_chirho(kind_chirho: &AstKindChirho) -> ThTypeChirho {
         AstKindChirho::KindAppChirho(fun_chirho, arg_chirho) => ThTypeChirho::AppKindTChirho(
             Box::new(ast_kind_to_th_chirho(fun_chirho)),
             Box::new(ast_kind_to_th_chirho(arg_chirho)),
+        ),
+        AstKindChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => ThTypeChirho::SigTChirho(
+            Box::new(ast_kind_to_th_chirho(type_chirho)),
+            Box::new(ast_kind_to_th_chirho(kind_chirho)),
         ),
         AstKindChirho::ArrowChirho(arg_chirho, result_chirho) => ThTypeChirho::AppTChirho(
             Box::new(ThTypeChirho::AppTChirho(
@@ -308,7 +324,11 @@ fn extract_gadt_fun_args_chirho(ty_chirho: &TypeChirho, out_chirho: &mut Vec<Typ
         TypeChirho::QualChirho { body_chirho, .. } => {
             extract_gadt_fun_args_chirho(body_chirho, out_chirho);
         }
-        TypeChirho::ParenChirho { inner_chirho, .. } => {
+        TypeChirho::ParenChirho { inner_chirho, .. }
+        | TypeChirho::KindAnnotChirho {
+            type_chirho: inner_chirho,
+            ..
+        } => {
             extract_gadt_fun_args_chirho(inner_chirho, out_chirho);
         }
         _ => {} // Return type — not an argument

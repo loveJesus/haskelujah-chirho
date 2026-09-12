@@ -16,10 +16,7 @@ impl InferCtxChirho {
         // The kind pass records the application inside parentheses, not the
         // wrapper span. Looking up the wrapper would incorrectly freshen solved
         // indices while converting the very same source occurrence.
-        let mut source_chirho = source_chirho;
-        while let TypeChirho::ParenChirho { inner_chirho, .. } = source_chirho {
-            source_chirho = inner_chirho;
-        }
+        let source_chirho = source_chirho.unannotated_chirho();
         let mut head_chirho = source_chirho;
         let mut arguments_chirho = Vec::new();
         loop {
@@ -41,27 +38,36 @@ impl InferCtxChirho {
                     head_chirho = fun_chirho;
                 }
                 TypeChirho::ParenChirho { inner_chirho, .. } => head_chirho = inner_chirho,
+                TypeChirho::KindAnnotChirho { type_chirho, .. } => head_chirho = type_chirho,
                 _ => break,
             }
         }
-        let TypeChirho::ConChirho(name_chirho) = head_chirho else {
-            return None;
+        let (name_chirho, promoted_chirho) = match head_chirho {
+            TypeChirho::ConChirho(name_chirho) => (name_chirho, false),
+            TypeChirho::PromotedConChirho { name_chirho, .. } => (name_chirho, true),
+            _ => return None,
         };
         let elaboration_chirho = self.kind_elaboration_chirho.as_ref()?;
-        let binders_chirho = elaboration_chirho
-            .nominal_heads_chirho
-            .get(&name_chirho.full_name_chirho())
-            .or_else(|| {
-                elaboration_chirho
-                    .synonym_heads_chirho
-                    .get(&name_chirho.full_name_chirho())
-            })
-            .or_else(|| {
-                elaboration_chirho
-                    .family_heads_chirho
-                    .get(&name_chirho.full_name_chirho())
-            })?
-            .clone();
+        let binders_chirho = if promoted_chirho {
+            elaboration_chirho
+                .promoted_heads_chirho
+                .get(&name_chirho.full_name_chirho())
+        } else {
+            elaboration_chirho
+                .nominal_heads_chirho
+                .get(&name_chirho.full_name_chirho())
+                .or_else(|| {
+                    elaboration_chirho
+                        .synonym_heads_chirho
+                        .get(&name_chirho.full_name_chirho())
+                })
+                .or_else(|| {
+                    elaboration_chirho
+                        .family_heads_chirho
+                        .get(&name_chirho.full_name_chirho())
+                })
+        }?
+        .clone();
         let recorded_chirho = elaboration_chirho
             .applications_chirho
             .get(&source_chirho.span_chirho())
@@ -118,9 +124,13 @@ impl InferCtxChirho {
                 }
             }
         }
-        let mut result_chirho = TyChirho::ConChirho(
-            self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho()),
-        );
+        let mut result_chirho = if promoted_chirho {
+            super::ast_conversion_chirho::promoted_constructor_type_chirho(name_chirho)
+        } else {
+            TyChirho::ConChirho(
+                self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho()),
+            )
+        };
         for argument_chirho in indices_chirho {
             result_chirho =
                 TyChirho::KindAppChirho(Box::new(result_chirho), Box::new(argument_chirho));

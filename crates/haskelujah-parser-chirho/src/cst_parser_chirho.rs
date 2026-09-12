@@ -1112,7 +1112,7 @@ impl<'src> ParserChirho<'src> {
         if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
-            self.parse_type_chirho();
+            self.parse_type_with_ascription_chirho();
         }
 
         self.builder_chirho.finish_node_chirho();
@@ -2526,6 +2526,25 @@ impl<'src> ParserChirho<'src> {
         }
     }
 
+    /// Parenthesized types and alias results permit a written classifier.
+    /// Keep it in one CST node so lowering cannot silently choose only the
+    /// first type child. Layout boundaries remain owned by the type parser.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    fn parse_type_with_ascription_chirho(&mut self) {
+        let checkpoint_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_type_chirho();
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.builder_chirho
+                .start_node_at_chirho(checkpoint_chirho, SyntaxKindChirho::KindAnnotTypeChirho);
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            self.parse_type_chirho();
+            self.eat_trivia_chirho();
+            self.builder_chirho.finish_node_chirho();
+        }
+    }
+
     /// Parse a parenthesized, tuple, or function-type-constructor type.
     fn parse_paren_type_chirho(&mut self) {
         // Could be: (type), (type, type, ...), (->), ()
@@ -2556,17 +2575,7 @@ impl<'src> ParserChirho<'src> {
             }
         }
 
-        // Parse first type
-        self.parse_type_chirho();
-        self.eat_trivia_chirho();
-
-        // Kind annotation: (a :: k) — consume :: and the kind type
-        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
-            self.bump_chirho(); // ::
-            self.eat_trivia_chirho();
-            self.parse_type_chirho(); // the kind
-            self.eat_trivia_chirho();
-        }
+        self.parse_type_with_ascription_chirho();
 
         if self.at_chirho(RawTokenKindChirho::CommaChirho) {
             // It's a tuple type — change the node kind would be ideal,

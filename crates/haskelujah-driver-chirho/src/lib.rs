@@ -308,6 +308,14 @@ fn collect_type_constructor_names_chirho(
         TypeChirho::ParenChirho { inner_chirho, .. } => {
             collect_type_constructor_names_chirho(inner_chirho, names_chirho);
         }
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            ..
+        } => {
+            collect_type_constructor_names_chirho(type_chirho, names_chirho);
+            collect_type_constructor_names_chirho(kind_chirho, names_chirho);
+        }
         TypeChirho::QualChirho {
             context_chirho,
             body_chirho,
@@ -1464,6 +1472,26 @@ fn qualify_imported_ast_type_chirho(
             )),
             span_chirho: *span_chirho,
         },
+        TypeChirho::KindAnnotChirho {
+            type_chirho,
+            kind_chirho,
+            span_chirho,
+        } => {
+            let qualify_chirho = |inner_chirho: &TypeChirho| {
+                Box::new(qualify_imported_ast_type_chirho(
+                    inner_chirho,
+                    qualifiable_type_names_chirho,
+                    qualifier_chirho,
+                    unqualified_type_names_chirho,
+                    preferred_qualified_type_names_chirho,
+                ))
+            };
+            TypeChirho::KindAnnotChirho {
+                type_chirho: qualify_chirho(type_chirho),
+                kind_chirho: qualify_chirho(kind_chirho),
+                span_chirho: *span_chirho,
+            }
+        }
         TypeChirho::QualChirho {
             context_chirho,
             body_chirho,
@@ -1749,7 +1777,11 @@ fn check_module_linearity_chirho(
                     AstTypeChirho::QualChirho { body_chirho, .. } => {
                         ty_cursor_chirho = body_chirho;
                     }
-                    AstTypeChirho::ParenChirho { inner_chirho, .. } => {
+                    AstTypeChirho::ParenChirho { inner_chirho, .. }
+                    | AstTypeChirho::KindAnnotChirho {
+                        type_chirho: inner_chirho,
+                        ..
+                    } => {
                         ty_cursor_chirho = inner_chirho;
                     }
                     _ => break,
@@ -2006,7 +2038,11 @@ fn extract_first_fun_arg_chirho(
         TypeChirho::FunChirho { arg_chirho, .. } => Some((**arg_chirho).clone()),
         TypeChirho::ForallChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
         TypeChirho::QualChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
-        TypeChirho::ParenChirho { inner_chirho, .. } => extract_first_fun_arg_chirho(inner_chirho),
+        TypeChirho::ParenChirho { inner_chirho, .. }
+        | TypeChirho::KindAnnotChirho {
+            type_chirho: inner_chirho,
+            ..
+        } => extract_first_fun_arg_chirho(inner_chirho),
         _ => None,
     }
 }
