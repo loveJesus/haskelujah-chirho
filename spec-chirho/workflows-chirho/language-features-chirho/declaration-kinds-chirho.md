@@ -649,6 +649,13 @@ published binder emit an error. An annotation's implicit name likewise reuses it
 known lexical classifier after the temporary annotation environment closes; its
 next occurrence must not acquire a fresh kind-of-kind.
 
+Known Prelude class classifiers enter the same kind environment as other known
+bindings. The ordinary Eq/Ord/Show/Read/numeric/enumeration classes have
+`Type -> Constraint`; using one as a type-family argument must not manufacture
+a fresh imported classifier. Local declarations may shadow these entries through
+the normal binding path. This supplies known builtin contracts only, not missing
+authoritative kind schemes for arbitrary imported modules.
+
 ```mermaid
 flowchart LR
   FamilyContractChirho[Family kind scheme] --> RowInputsChirho[Solved equation kind inputs]

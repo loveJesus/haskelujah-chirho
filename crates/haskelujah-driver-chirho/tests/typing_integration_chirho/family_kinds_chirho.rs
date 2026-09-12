@@ -8,6 +8,62 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn local_class_shadows_the_builtin_classifier_chirho() {
+    // Eq's unsuffixed spelling is the builtin contract being shadowed here.
+    // GHC9.14.1 accepts the same local higher-kinded declaration.
+    let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE KindSignatures #-}
+module ShadowClassChirho where
+import Prelude hiding (Eq)
+import Data.Kind (Type, Constraint)
+class Eq (functionChirho :: Type -> Type)
+data NeedsHigherChirho (classChirho :: (Type -> Type) -> Constraint)
+type LocalChirho = NeedsHigherChirho Eq
+"#;
+    assert_compile_success_chirho("ShadowClassChirho.hs", source_chirho);
+}
+
+const BUILTIN_CLASS_SOURCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE TypeFamilies, PolyKinds, ConstraintKinds #-}
+module Main where
+import Data.Kind (Type, Constraint)
+type family RekindChirho (classChirho :: leftChirho -> Constraint) :: rightChirho -> Constraint
+type instance RekindChirho classChirho = classChirho
+type AliasChirho = RekindChirho Eq
+data HolderChirho (classChirho :: Type -> Constraint) = HolderChirho Int
+valueChirho :: HolderChirho AliasChirho
+valueChirho = HolderChirho 42
+main :: IO ()
+main = case valueChirho of HolderChirho resultChirho -> print resultChirho
+"#;
+
+#[test]
+fn builtin_class_kind_survives_a_hidden_family_input_chirho() {
+    // GHC9.14.1 executes42. The previous kind environment omitted Eq, leaving
+    // a fresh classifier outside this alias's otherwise valid binder contract.
+    assert_execution_chirho(BUILTIN_CLASS_SOURCE_CHIRHO, "42\n");
+}
+
+#[test]
+fn first_order_builtin_class_is_not_an_arbitrary_higher_kinded_class_chirho() {
+    // GHC-83865: Eq :: Type -> Constraint, not (Type -> Type) -> Constraint.
+    let source_chirho = format!(
+        "{BUILTIN_CLASS_SOURCE_CHIRHO}\ndata NeedsHigherChirho (classChirho :: (Type -> Type) -> Constraint)\ntype WrongChirho = NeedsHigherChirho Eq\n"
+    );
+    let error_chirho = typecheck_source_chirho(
+        &source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongBuiltinClassKindChirho.hs",
+    )
+    .err()
+    .expect("a known class kind cannot be invented independently at its use");
+    assert!(
+        error_chirho.to_string().contains("kind mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
 fn family_equations_match_hidden_kind_inputs_before_visible_arguments_chirho() {
     let source_chirho = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

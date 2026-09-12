@@ -205,3 +205,29 @@ Observed additional lead: tuple kind inference returns Type when its common
 element classifier is unresolved, without constraining that classifier; retained
 family occurrences then expose the unsolved classifier as an unbound input.
 This is a hypothesis to prove with positive/negative controls, not a finished fix.
+
+## Known Prelude classifier repair
+
+T20356's new alias-closure failure was reduced to `Rekind Eq`. A temporary
+trace established that Eq's missing kind binding supplied an unconstrained
+classifier, not a binder of the alias. The trace is removed. The environment
+already seeded higher-kinded classes but omitted thirteen ordinary Prelude
+classes. Register Eq/Ord/Show/Read/Bounded/Enum/Num/Real/Integral/Fractional/
+Floating/RealFrac/RealFloat with their actual `Type -> Constraint` kinds through
+the existing binding path. These are normal entries; local classes can shadow
+them. No family-name special case or imported-kind default was added.
+
+- [x] GHC9.14.1 independently checked all thirteen class contracts and the local
+  higher-kinded Eq shadow. The valid hidden-family source executes42; its
+  higher-kinded misuse of Prelude Eq rejects with GHC-83865.
+- [x] The two new positive/negative controls were shown0/2 before this fix and
+  2/2 afterward; a third control preserves local class shadowing.
+- [x] Explicit CLI accepts T20356 again and the thirteen-contract source.
+- [x] Typing369/369, canaries7/7 and workspace all-target check pass.
+- [ ] Integration116/117, zero ignored/filtered: the same ClassifierCycle kind-
+  annotation control remains red and enabled. This does not clear the twelve
+  driver failures or any unmeasured corpus regression.
+- [ ] Freeze/push the owned fix, retain fresh reference observations, and measure
+  exact corpus sets before reporting a new diagnostic. The5280 figure is stale
+  for this change. Run the twelve driver failures against main explicitly;
+  parentde8fa2ed alone was not an inheritance bracket.

@@ -80,7 +80,9 @@ Parser356,typing369,canaries7 green; integration113/114, annotation control red.
 Driver--lib1760/1772; all twelve also fail on parentde8fa2ed, still lane blockers.
 Nine fresh GHC controls agree, five exact executions. Accept total unchanged but
 T16188/T16502b/T25597 recovered and ControlMonadClassesState/T18129/T20356 regressed.
-Next: reduce those failures and retained alias/equation classifiers; no main landing.
+Next fix restores thirteen known Prelude class kinds; T20356 and its positive/
+negative/shadowing controls recover. Typing369,canaries7,workspace check green;
+integration116/117 retains the annotation red. New corpus/main-driver A/B owed.
 Detail/reference evidence and next hidden-family-input decision:
 kind-schemes-chirho/26-09-11_22-55-family_occurrences-chirho.md. The earlier classifier
 repair and accidental UnliftedNewtypes rejection audit are in the22-20 leaf.

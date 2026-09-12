@@ -59,6 +59,32 @@ impl KindEnvChirho {
                 .bind_generalized_chirho(name_chirho.to_string(), star_to_star_chirho.clone());
         }
 
+        // First-order Prelude classes are type-level arguments as well as
+        // predicate heads. Their known classifier must survive a use such as
+        // `Rekind Eq`; an unconstrained imported placeholder loses the family
+        // equation's hidden input. Local declarations still shadow these
+        // ordinary environment entries. Workflow: declaration-kinds-chirho.
+        let first_order_class_chirho =
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::ConstraintChirho);
+        for name_chirho in &[
+            "Eq",
+            "Ord",
+            "Show",
+            "Read",
+            "Bounded",
+            "Enum",
+            "Num",
+            "Real",
+            "Integral",
+            "Fractional",
+            "Floating",
+            "RealFrac",
+            "RealFloat",
+        ] {
+            env_chirho
+                .bind_generalized_chirho(name_chirho.to_string(), first_order_class_chirho.clone());
+        }
+
         // Standard higher-kinded class contracts also constrain superclass
         // arguments before a local class is published. Local declarations
         // replace these entries through the same shadowing path as built-in
