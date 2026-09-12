@@ -2,9 +2,10 @@
 
 # Local open-family rows in kinds, row484
 
-Resume boundary: pushed9801f3e8, local tag open-kind-rows-before-chirho.
-Main121d4f2c, canonical row484 and public artifacts remain unchanged. Last
-diagnostic eb809e70:882/938 accept,249/767 reject; thirteen main-relative
+Resume boundary: implementation e7439871 pushed, remote exact; local tag
+open-kind-rows-before-chirho preserves9801f3e8. Main121d4f2c, canonical row484
+and public artifacts remain unchanged. Latest diagnostic883/938 accept,
+249/767 reject; twelve main-relative
 accept regressions remain. SLOT/DB retained; no corpus CPU embargo now.
 
 ## Brick 1: ownership and representation
@@ -60,13 +61,13 @@ authority or public methodology decision is required to implement and test it.
 - [x] Validate open compatibility and reduce unordered rows with a bounded shared matcher.
 - [x] Execute an independently checked witness on STG/LLVM/Cranelift; preserve negatives.
 - [x] Focused and crate/integration gates on the reviewed implementation.
-- [ ] Commit/push the isolated implementation and freeze its CLI for the diagnostic.
-- [ ] One frozen diagnostic per axis, exact set/reason comparison versus eb809e70/main.
+- [x] Commit/push the isolated implementation and freeze its CLI for the diagnostic.
+- [x] One frozen diagnostic per axis, exact sets versus eb809e70/main; only T12381 recovers.
 - [ ] Final whole-workspace and two-pass landing gates; no main merge with regressions.
 
 ## Resume state
 
-Implementation complete in the owned worktree; checkpoint/frozen diagnostic next.
+Implementation e7439871 is pushed and diagnosed; open-head defaulting is next.
 Scratch evidence is under /private/tmp/haskelujah-ascription-chirho.EgTd8V.
 Typing379/379 and integration185/185 plus canaries7/7 are green with zero ignored
 or filtered. The exact hidden-row witness prints42 on STG/LLVM/Cranelift and
@@ -136,3 +137,20 @@ driver green belongs to a426 and remains explicitly labelled as such.
 - Second independent read-only review found both reported issues closed and
   no further concrete fault within those changes. Current final gates repeat
   typing379, integration185 and canaries7; all have zero ignored/filtered.
+
+## Frozen diagnostic at e7439871
+
+Source e74398713226ac31ef1f4a7396233b116ea75576 stayed clean and the explicit
+CLI SHA256 f9e93ca42826ea8dc0fda7612f7562e804bf92fc337e1099b506a9b516cc1594
+remained unchanged before and after each axis. One pass per axis, P4/15s with
+solo60s timeout reruns: accept883/938, reject249/767, zero timeouts or unexpected
+exits. Exact delta from eb809e70 is +T12381, zero accept losses; the reject list
+is byte-identical. Main-relative accept is thirteen gains and twelve losses:
+CoerceToVDQ, ControlMonadClassesState, T11348, T13879, T14010, T16204a, T16204b,
+T17067, T18129, T22560c, T23543 and T26358. The thirteen gained filenames and
+both full failing sets are in open-rows-chirho/diagnostic-chirho.jsonl.
+
+This is not a landing gate or a new published measurement. Main, canonical DB,
+both public artifacts, labels, corpus membership and deployment are unchanged.
+CPU embargo is released; builder/DB lease retained. The next isolated repair
+addresses open-family defaulting, not inverse improvement from matching rows.
