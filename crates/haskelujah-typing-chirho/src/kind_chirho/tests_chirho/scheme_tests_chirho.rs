@@ -3,6 +3,64 @@
 use super::*;
 
 #[test]
+fn classifier_checks_are_bounded_and_retire_before_the_next_scope_chirho() {
+    let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    let parameter_chirho = context_chirho.fresh_var_chirho();
+    context_chirho
+        .kind_binder_classifiers_chirho
+        .insert(parameter_chirho, KindChirho::StarChirho);
+    let deep_chirho = (0..160).fold(
+        KindChirho::ConChirho("Int".into()),
+        |argument_chirho, _index_chirho| {
+            KindChirho::app_chirho(KindChirho::ConChirho("Maybe".into()), argument_chirho)
+        },
+    );
+    context_chirho.unify_chirho(
+        &KindChirho::VarChirho(parameter_chirho),
+        &deep_chirho,
+        "bounded classifier",
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(
+        context_chirho
+            .diagnostics_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho
+                .message_chirho
+                .contains("classifier checking exceeded its resource bound")),
+        "exhaustion must report its own outcome, not an unrelated error"
+    );
+
+    let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    for (actual_chirho, invalid_chirho) in [
+        (KindChirho::StarChirho, false),
+        (
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
+            true,
+        ),
+    ] {
+        context_chirho
+            .env_chirho
+            .bind_chirho("LocalChirho".into(), actual_chirho);
+        let parameter_chirho = context_chirho.fresh_var_chirho();
+        context_chirho
+            .kind_binder_classifiers_chirho
+            .insert(parameter_chirho, KindChirho::StarChirho);
+        context_chirho.unify_chirho(
+            &KindChirho::VarChirho(parameter_chirho),
+            &KindChirho::ConChirho("LocalChirho".into()),
+            "changed local binding",
+            SpanChirho::DUMMY_CHIRHO,
+        );
+        assert_eq!(
+            context_chirho.diagnostics_chirho.has_errors_chirho(),
+            invalid_chirho
+        );
+    }
+}
+
+#[test]
 fn inferred_kind_arguments_solve_classifiers_without_sharing_occurrences_chirho() {
     let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
     let kind_chirho = KindVarChirho(200);

@@ -81,6 +81,37 @@ fn rejection_chirho(source_chirho: &str) -> String {
 }
 
 #[test]
+fn synonym_contracts_close_anonymous_kind_identities_chirho() {
+    let source_chirho = r#"{-# LANGUAGE RankNTypes, PolyKinds #-}
+module AnonymousSynonymChirho where
+import Data.Kind (Type)
+data TokenChirho (valueChirho :: kindChirho) = TokenChirho
+data StoreChirho (polyChirho :: forall kindChirho. kindChirho -> Type) = StoreChirho (AliasChirho TokenChirho)
+type AliasChirho = (StoreChirho :: (forall kindChirho. kindChirho -> Type) -> Type)
+"#;
+    assert_compile_success_chirho("AnonymousSynonymChirho.hs", source_chirho);
+    let renamed_chirho = source_chirho.replace(
+        "forall kindChirho. kindChirho -> Type",
+        "forall innerChirho. innerChirho -> Type",
+    );
+    assert_compile_success_chirho("AnonymousSynonymChirho.hs", &renamed_chirho);
+}
+
+#[test]
+fn qualified_kind_authority_survives_a_local_builtin_spelling_chirho() {
+    let source_chirho = r#"{-# LANGUAGE DataKinds, KindSignatures #-}
+module QualifiedKindChirho where
+import qualified Data.Kind as KChirho
+data Type = LocalTypeChirho
+data BoxChirho (valueChirho :: KChirho.Type) = BoxChirho
+type GoodChirho = BoxChirho Int
+"#;
+    assert_compile_success_chirho("QualifiedKindChirho.hs", source_chirho);
+    let wrong_chirho = source_chirho.replace("BoxChirho Int", "BoxChirho 'LocalTypeChirho");
+    assert!(rejection_chirho(&wrong_chirho).contains("kind mismatch"));
+}
+
+#[test]
 fn nested_synonym_foralls_are_fresh_and_still_rigid_chirho() {
     let source_chirho = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE RankNTypes #-}

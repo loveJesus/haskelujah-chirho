@@ -8,6 +8,32 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn recursively_constrained_classifiers_finish_and_still_check_arguments_chirho() {
+    // The corpus original omits UndecidableInstances and GHC rejects its nested
+    // family use. Enabling that extension gives a legal classifier-cycle control.
+    let source_chirho = concat!(
+        "{-# LANGUAGE UndecidableInstances #-}\n",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../ghc-tests-chirho/typecheck-chirho/should_fail/T15552a.hs"
+        )),
+    );
+    assert_compile_success_chirho("ClassifierCycleChirho.hs", source_chirho);
+    let wrong_chirho = format!("{source_chirho}\ntype WrongChirho = GetEntryOfVal 'True\n");
+    let error_chirho = typecheck_source_chirho(
+        &wrong_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "WrongClassifierCycleChirho.hs",
+    )
+    .err()
+    .expect("a completed classifier cycle does not permit an argument of kind Bool");
+    assert!(
+        error_chirho.to_string().contains("kind mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
 fn covering_family_composition_requires_validated_dependencies_chirho() {
     // GHC #13248 rejects the family-headed form wholesale. The independently
     // checked constructor-wrapped form proves the same determining-variable

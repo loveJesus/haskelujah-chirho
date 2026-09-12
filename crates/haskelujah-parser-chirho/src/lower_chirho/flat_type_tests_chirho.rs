@@ -7,6 +7,46 @@ use haskelujah_span_chirho::FileIdChirho;
 use super::lower_module_chirho;
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
+#[test]
+fn flat_promotion_keeps_empty_lists_and_constructor_identity_chirho() {
+    for gadt_chirho in [false, true] {
+        for text_chirho in [
+            "ProxyChirho '[]",
+            "ProxyChirho '[Int, Bool]",
+            "ProxyChirho 'True",
+        ] {
+            let (flat_chirho, structured_chirho) = types_chirho(text_chirho, gadt_chirho);
+            for ty_chirho in [flat_chirho, structured_chirho] {
+                let TypeChirho::AppChirho { arg_chirho, .. } = ty_chirho else {
+                    panic!("the proxy argument must survive: {text_chirho}")
+                };
+                match (text_chirho, arg_chirho.as_ref()) {
+                    (
+                        "ProxyChirho '[]",
+                        TypeChirho::PromotedListChirho {
+                            elements_chirho, ..
+                        },
+                    ) => assert!(elements_chirho.is_empty()),
+                    (
+                        "ProxyChirho '[Int, Bool]",
+                        TypeChirho::PromotedListChirho {
+                            elements_chirho, ..
+                        },
+                    ) => {
+                        assert_eq!(elements_chirho.len(), 2);
+                        assert_eq!(shape_chirho(&elements_chirho[0]), "Int");
+                        assert_eq!(shape_chirho(&elements_chirho[1]), "Bool");
+                    }
+                    ("ProxyChirho 'True", TypeChirho::PromotedConChirho { name_chirho, .. }) => {
+                        assert_eq!(name_chirho.text_chirho(), "True")
+                    }
+                    _ => panic!("promotion must not disappear: {text_chirho}: {arg_chirho:?}"),
+                }
+            }
+        }
+    }
+}
+
 fn types_chirho(type_text_chirho: &str, gadt_chirho: bool) -> (TypeChirho, TypeChirho) {
     let declaration_chirho = if gadt_chirho {
         format!(

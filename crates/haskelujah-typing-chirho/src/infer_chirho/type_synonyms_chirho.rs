@@ -49,17 +49,16 @@ impl InferCtxChirho {
             .filter(|binder_chirho| binder_chirho.is_visible_chirho())
             .map(|binder_chirho| binder_chirho.text_chirho().to_owned())
             .collect();
-        let kind_parameters_chirho: Vec<_> = self
+        let kind_binders_chirho = self
             .kind_elaboration_chirho
             .as_ref()
             .and_then(|elaboration_chirho| elaboration_chirho.synonym_heads_chirho.get(name_chirho))
-            .map(|binders_chirho| {
-                binders_chirho
-                    .iter()
-                    .map(|binder_chirho| binder_chirho.parameter_name_chirho())
-                    .collect()
-            })
+            .cloned()
             .unwrap_or_default();
+        let kind_parameters_chirho: Vec<_> = kind_binders_chirho
+            .iter()
+            .map(|binder_chirho| binder_chirho.parameter_name_chirho())
+            .collect();
         let mut variables_chirho = HashMap::new();
         let mut abstraction_chirho = SubstChirho::empty_chirho();
         for parameter_chirho in parameters_chirho.iter().chain(&kind_parameters_chirho) {
@@ -73,6 +72,12 @@ impl InferCtxChirho {
             abstraction_chirho.insert_chirho(
                 variable_chirho,
                 TyChirho::ForallVarChirho(parameter_chirho.clone()),
+            );
+        }
+        for binder_chirho in &kind_binders_chirho {
+            variables_chirho.insert(
+                binder_chirho.identity_key_chirho(),
+                variables_chirho[&binder_chirho.parameter_name_chirho()],
             );
         }
         // Use exactly the conversion used at a signature occurrence, then close

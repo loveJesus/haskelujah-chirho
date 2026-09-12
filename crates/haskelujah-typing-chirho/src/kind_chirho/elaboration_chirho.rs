@@ -18,10 +18,14 @@ pub(crate) struct ElaboratedKindBinderChirho {
 }
 
 impl ElaboratedKindBinderChirho {
+    pub(crate) fn identity_key_chirho(&self) -> String {
+        format!("$kind_chirho_{}", self.identity_chirho.0)
+    }
+
     pub(crate) fn parameter_name_chirho(&self) -> String {
         self.name_chirho
             .clone()
-            .unwrap_or_else(|| format!("$kind_chirho_{}", self.identity_chirho.0))
+            .unwrap_or_else(|| self.identity_key_chirho())
     }
 }
 

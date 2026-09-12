@@ -72,10 +72,12 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-The latest frozen diagnostic is9720465c,882/938 accept and244/767 reject,
-one pass each with no timeout/unexpected exit and stable CLI4fedbbec. Seven
-main-relative accept regressions remain; this checkpoint is NOT landable.
-Full sets are recorded in the visible-application diagnostic section below.
+Latest frozen diagnostic5917c4fd FAILED: accept881/938, eight main-relative
+regressions; reject245 ordinary rejections,521 accepts and T15552a abort134.
+The abort is not a rejection. Main/artifacts/row484 stay unchanged. The bounded
+classifier/provenance repair recovers the crash and three newly lost accepts in
+focused checks; its complete diagnostic remains owed. Current detail and checklist:
+kind-schemes-chirho/26-09-11_22-20-classifier_provenance-chirho.md.
 
 Visible-application checkpoint3bbcd49c is committed, pushed and remote-exact.
 Its recursive/local nominal follow-up f5c4eedb is also pushed and remote-exact;
@@ -90,13 +92,9 @@ observations agree, six in execution mode, with sources and binary hashes retain
 beside the visible-application fixtures. The diagnostic confirms recovery of
 DeepSubsumption02, GivenTypeSynonym, LocalGivenEqs and tc151, but newly loses
 T12928 and tc160. Reduce those two before the next family-equation consumer repair.
-The synonym-identity/classifier follow-up now recovers T12928 and tc160 on the
-explicit rebuilt CLI. Parser354, typing367, integration107 and canaries7 pass;
-34 bounded GHC/candidate observations agree, nine exact execution pairs. The
-new inferred-classifier producer checks and bounded annotation lowering still
-need a full frozen diagnostic. The checkpoint is not a compatibility landing;
-full workspace tests, final two-pass gate and DB closure remain owed. Latest
-detail is at the file's end.
+The synonym-identity/classifier follow-up recovered T12928/tc160 but introduced
+the5917c4fd failures above. Do not infer landability from its focused greens.
+Full workspace tests, final two-pass gate and DB closure remain owed.
 
 ### Historical prototype baseline
 

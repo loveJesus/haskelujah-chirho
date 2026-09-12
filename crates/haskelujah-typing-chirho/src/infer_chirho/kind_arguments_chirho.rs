@@ -138,6 +138,13 @@ impl InferCtxChirho {
                 TyChirho::ConChirho(self.normalize_imported_type_name_chirho(name_chirho))
             }
             KindChirho::VarChirho(identity_chirho) | KindChirho::RigidChirho(identity_chirho) => {
+                // A declaration can re-export an anonymous binder whose source
+                // spelling belongs to another declaration. Its own identity
+                // binding takes precedence over that non-local spelling.
+                let identity_key_chirho = format!("$kind_chirho_{}", identity_chirho.0);
+                if let Some(variable_chirho) = variables_chirho.get(&identity_key_chirho) {
+                    return TyChirho::VarChirho(*variable_chirho);
+                }
                 let name_chirho = self
                     .kind_elaboration_chirho
                     .as_ref()
@@ -145,7 +152,7 @@ impl InferCtxChirho {
                         elaboration_chirho.source_names_chirho.get(identity_chirho)
                     })
                     .cloned()
-                    .unwrap_or_else(|| format!("$kind_chirho_{}", identity_chirho.0));
+                    .unwrap_or(identity_key_chirho);
                 let variable_chirho = self.kind_type_variable_chirho(name_chirho, variables_chirho);
                 TyChirho::VarChirho(variable_chirho)
             }
@@ -214,6 +221,7 @@ impl InferCtxChirho {
         for binder_chirho in binders_chirho {
             let name_chirho = binder_chirho.parameter_name_chirho();
             let variable_chirho = self.kind_type_variable_chirho(name_chirho, variables_chirho);
+            variables_chirho.insert(binder_chirho.identity_key_chirho(), variable_chirho);
             result_chirho = TyChirho::KindAppChirho(
                 Box::new(result_chirho),
                 Box::new(TyChirho::VarChirho(variable_chirho)),

@@ -115,6 +115,7 @@ struct KindInferCtxChirho {
     /// Classifiers and specificity belong to the quantified identity, not its
     /// temporary source spelling. They survive lexical-scope restoration.
     kind_binder_classifiers_chirho: HashMap<KindVarChirho, KindChirho>,
+    classifier_session_chirho: Option<runtime_chirho::ClassifierSessionChirho>,
     kind_binder_names_chirho: HashMap<KindVarChirho, String>,
     kind_applications_chirho: HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
     kind_binder_specificity_chirho:
@@ -156,6 +157,7 @@ impl KindInferCtxChirho {
             pending_written_kinds_chirho: Vec::new(),
             captured_kind_variables_chirho: None,
             kind_binder_classifiers_chirho: HashMap::new(),
+            classifier_session_chirho: None,
             kind_binder_names_chirho: HashMap::new(),
             kind_applications_chirho: HashMap::new(),
             kind_binder_specificity_chirho: HashMap::new(),

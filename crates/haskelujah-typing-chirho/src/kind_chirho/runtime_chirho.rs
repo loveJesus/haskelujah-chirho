@@ -9,6 +9,18 @@ use haskelujah_ast_chirho::name_chirho::NameChirho;
 pub(super) const TYPE_CHIRHO: &str = "GHC.Prim.TYPE";
 const BOXED_REP_CHIRHO: &str = "GHC.Types.BoxedRep";
 
+/// One solved-substitution validation, including its recursive obligations.
+/// An in-progress term owns a result variable which is unified with its actual
+/// classifier before completion. Reusing it does not assume a successful proof.
+/// Retire the whole cache at the outer boundary: local binding scopes can change.
+#[derive(Default)]
+pub(super) struct ClassifierSessionChirho {
+    results_chirho: std::collections::HashMap<KindChirho, Option<KindChirho>>,
+    depth_chirho: usize,
+    work_chirho: usize,
+    limited_chirho: bool,
+}
+
 pub(super) fn boxed_rep_chirho(levity_chirho: &str) -> KindChirho {
     KindChirho::app_chirho(
         KindChirho::ConChirho(BOXED_REP_CHIRHO.into()),
@@ -57,6 +69,10 @@ impl KindInferCtxChirho {
         context_chirho: &str,
         span_chirho: SpanChirho,
     ) {
+        let outer_chirho = self.classifier_session_chirho.is_none();
+        if outer_chirho {
+            self.classifier_session_chirho = Some(ClassifierSessionChirho::default());
+        }
         for (identity_chirho, term_chirho) in &substitution_chirho.map_chirho {
             let Some(expected_chirho) = self
                 .kind_binder_classifiers_chirho
@@ -84,6 +100,9 @@ impl KindInferCtxChirho {
                 );
             }
         }
+        if outer_chirho {
+            self.classifier_session_chirho = None;
+        }
     }
 
     /// Classify already-interpreted terms from authoritative bindings only.
@@ -95,7 +114,57 @@ impl KindInferCtxChirho {
         span_chirho: SpanChirho,
     ) -> Option<KindChirho> {
         let term_chirho = self.subst_chirho.apply_chirho(term_chirho);
-        let mut head_chirho = &term_chirho;
+        let session_chirho = self.classifier_session_chirho.as_mut()?;
+        if let Some(result_chirho) = session_chirho.results_chirho.get(&term_chirho) {
+            return result_chirho
+                .as_ref()
+                .map(|kind_chirho| self.subst_chirho.apply_chirho(kind_chirho));
+        }
+        if session_chirho.depth_chirho >= 128 || session_chirho.work_chirho >= 16_384 {
+            if !session_chirho.limited_chirho {
+                session_chirho.limited_chirho = true;
+                self.diagnostics_chirho.push_chirho(
+                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                            super::KIND_MISMATCH_CODE_CHIRHO,
+                        ),
+                        "kind classifier checking exceeded its resource bound",
+                        span_chirho,
+                    ),
+                );
+            }
+            return None;
+        }
+        session_chirho.depth_chirho += 1;
+        session_chirho.work_chirho += 1;
+        let result_chirho = self.fresh_kind_chirho();
+        self.classifier_session_chirho
+            .as_mut()?
+            .results_chirho
+            .insert(term_chirho.clone(), Some(result_chirho.clone()));
+        let actual_chirho = self.infer_known_kind_term_classifier_chirho(&term_chirho, span_chirho);
+        if let Some(actual_chirho) = &actual_chirho {
+            self.unify_chirho(
+                &result_chirho,
+                actual_chirho,
+                "inferred term classifier",
+                span_chirho,
+            );
+        }
+        let session_chirho = self.classifier_session_chirho.as_mut()?;
+        session_chirho.depth_chirho -= 1;
+        session_chirho
+            .results_chirho
+            .insert(term_chirho, actual_chirho.clone());
+        actual_chirho.map(|kind_chirho| self.subst_chirho.apply_chirho(&kind_chirho))
+    }
+
+    fn infer_known_kind_term_classifier_chirho(
+        &mut self,
+        term_chirho: &KindChirho,
+        span_chirho: SpanChirho,
+    ) -> Option<KindChirho> {
+        let mut head_chirho = term_chirho;
         let mut arguments_chirho = Vec::new();
         while let KindChirho::AppChirho(fun_chirho, argument_chirho)
         | KindChirho::KindAppChirho(fun_chirho, argument_chirho) = head_chirho

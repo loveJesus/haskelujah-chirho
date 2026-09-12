@@ -557,6 +557,12 @@ variables as if they were parameters. Constraint-alias uses retain their source
 span too. Parenthesized applications look up the inner application's span, where
 kind inference recorded the solution.
 
+Declaration conversion binds both each parameter's local name and its stable
+kind identity. Solved occurrences consult that identity first. An anonymous
+synonym binder may share an identity with another declaration's named binder;
+that other declaration's spelling must not create a new free variable in the
+synonym body. This preserves the closure check rather than weakening it.
+
 Expansion matches the two parameter spines separately and substitutes them
 simultaneously, preserving caller variables and function multiplicity. Saturation
 is decided before traversing arguments; an undersaturated spine is rebuilt once,
@@ -576,6 +582,23 @@ It visits the new substitution entries, not the entire growing environment.
 Runtime-polymorphic arrow binders therefore carry RuntimeRep, promoted GADT schemes
 keep their source classifiers, and Refl quantifies its inferred kind separately
 from its specified value. Unknown imports and open bound terms remain unproved.
+
+Classifier validation owns one scoped proof cache. Before checking a term's
+arguments it reserves a result variable; a recursive obligation reuses that
+variable instead of opening the same polymorphic head indefinitely. Completing
+the check unifies the reserved result with the derived classifier, so reuse is
+not an assumption of validity. The cache retires at the outer solved-substitution
+boundary, before local binding authority can change. Distinct work is capped at
+16384 terms and active classifier recursion at128; exhaustion emits its own
+error, not a successful or silently skipped proof. These bounds are local to
+classifier validation, not a claim that every compiler traversal is bounded.
+
+The flat annotation producer retains qualified Type/Constraint names and explicit
+constructor/list promotion. Losing a qualifier changes binding authority; losing
+the tick on '[] changes a promoted value into the list type constructor. The
+AstKind conversion still cannot represent promoted/list annotations and therefore
+leaves those annotations unproved rather than fabricating their neighbouring type.
+In particular, recovering T11723 does not establish complete TupleRep checking.
 
 Annotation checking must constrain the expression's classifier to Type, not only
 compute and discard it. In Haskell2010/NoPolyKinds publication, defaulting updates

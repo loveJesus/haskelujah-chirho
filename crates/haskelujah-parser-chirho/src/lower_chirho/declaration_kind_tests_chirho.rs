@@ -4,6 +4,38 @@ use super::{DeclChirho, DeclKindSigChirho, FileIdChirho, TypeChirho, lower_modul
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
 #[test]
+fn qualified_builtin_binder_kinds_keep_their_source_authority_chirho() {
+    for name_chirho in ["KChirho.Type", "KChirho.Constraint"] {
+        let source_chirho = format!(
+            "module MChirho where\ndata BoxChirho (valueChirho :: {name_chirho}) = BoxChirho\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let module_chirho = lower_module_chirho(
+            &parse_to_cst_chirho(&source_chirho, file_chirho),
+            file_chirho,
+        );
+        let DeclChirho::DataDeclChirho {
+            type_vars_chirho, ..
+        } = &module_chirho.decls_chirho[0]
+        else {
+            panic!("{module_chirho:?}")
+        };
+        let Some(super::AstKindChirho::ConChirho(actual_chirho)) =
+            &type_vars_chirho[0].kind_annotation_chirho
+        else {
+            panic!("qualified names must not become unqualified builtins: {type_vars_chirho:?}")
+        };
+        assert_eq!(actual_chirho.full_name_chirho(), name_chirho);
+        let span_chirho = actual_chirho.span_chirho();
+        assert_eq!(
+            &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+                ..span_chirho.end_chirho().as_usize_chirho()],
+            name_chirho
+        );
+    }
+}
+
+#[test]
 fn infix_binder_annotations_keep_the_operator_operands_and_boundary_chirho() {
     use super::AstKindChirho;
     for keyword_chirho in ["data", "newtype"] {

@@ -11,8 +11,8 @@ impl LowerCtxChirho {
     pub(super) fn try_type_to_ast_kind_chirho(ty_chirho: &TypeChirho) -> Option<AstKindChirho> {
         match ty_chirho {
             TypeChirho::ConChirho(name_chirho) => {
-                let text_chirho = name_chirho.text_chirho();
-                Some(match text_chirho {
+                let text_chirho = name_chirho.full_name_chirho();
+                Some(match text_chirho.as_str() {
                     "Type" | "*" => AstKindChirho::StarChirho,
                     "Constraint" => AstKindChirho::ConstraintChirho,
                     _ => AstKindChirho::ConChirho(name_chirho.clone()),
