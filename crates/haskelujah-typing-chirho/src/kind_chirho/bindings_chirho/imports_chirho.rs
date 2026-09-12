@@ -166,6 +166,15 @@ impl KindInferCtxChirho {
             }
             self.env_chirho
                 .bind_entry_chirho(name_chirho.clone(), binding_chirho);
+            if matches!(
+                contract_chirho.shape_chirho,
+                KindHeadShapeChirho::FamilyChirho
+            ) {
+                // The checked provider owns this classification. Its equations
+                // are not transported here, but neither row checking nor kind
+                // equality may treat the imported head as nominally injective.
+                self.kind_family_names_chirho.insert(name_chirho.clone());
+            }
             self.imported_kind_shapes_chirho
                 .insert(name_chirho.clone(), contract_chirho.shape_chirho);
         }

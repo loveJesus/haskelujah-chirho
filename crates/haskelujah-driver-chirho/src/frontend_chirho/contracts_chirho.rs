@@ -117,7 +117,16 @@ pub(super) fn select_imported_contracts_chirho(
         names_chirho.sort();
         for name_chirho in names_chirho {
             let contract_chirho = reached_chirho.kinds_chirho[name_chirho]
-                .map_constructor_names_chirho(&mut rename_chirho);
+                .map_constructor_names_chirho(&mut |name_chirho| {
+                    // Kind terms already retain defining identities, including
+                    // builtin classifiers. Runtime-type display normalization
+                    // must not turn GHC.Types.Bool back into an unrelated Bool.
+                    if name_chirho.contains('.') {
+                        name_chirho.to_owned()
+                    } else {
+                        rename_chirho(name_chirho)
+                    }
+                });
             if name_chirho.contains('.') {
                 selected_chirho
                     .kinds_chirho

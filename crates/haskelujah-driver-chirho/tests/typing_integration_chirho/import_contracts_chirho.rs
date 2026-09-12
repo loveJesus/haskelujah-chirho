@@ -5,6 +5,140 @@
 use haskelujah_driver::{compile_modules_chirho, typecheck_source_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
+const FAMILY_PROVIDER_CHIRHO: &str = include_str!(
+    "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/ProviderChirho.hs"
+);
+const FAMILY_CONSUMER_CHIRHO: &str = include_str!(
+    "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/ConsumerChirho.hs"
+);
+
+#[test]
+fn imported_family_equations_keep_their_hidden_matching_inputs_chirho() {
+    let qualified_chirho = FAMILY_CONSUMER_CHIRHO
+        .replace(
+            "import ProviderChirho",
+            "import qualified ProviderChirho as PChirho",
+        )
+        .replace(
+            "CanDoChirho (StateChirho",
+            "PChirho.CanDoChirho (StateChirho",
+        );
+    let local_chirho = FAMILY_CONSUMER_CHIRHO.replace(
+        "import ProviderChirho",
+        "type family CanDoChirho (mChirho :: Type -> Type) (effChirho :: kChirho) :: Bool",
+    );
+    for source_chirho in [FAMILY_CONSUMER_CHIRHO, &qualified_chirho, &local_chirho] {
+        compile_modules_chirho(
+            &[
+                ("ProviderChirho.hs", FAMILY_PROVIDER_CHIRHO),
+                ("ConsumerChirho.hs", source_chirho),
+            ],
+            &mut SourceMapChirho::new_chirho(),
+        )
+        .unwrap_or_else(|error_chirho| panic!("{source_chirho}\n{error_chirho}"));
+    }
+}
+
+#[test]
+fn reexported_family_equations_use_the_checked_defining_contract_chirho() {
+    let source_chirho =
+        FAMILY_CONSUMER_CHIRHO.replace("import ProviderChirho", "import ReexportChirho");
+    compile_modules_chirho(
+        &[
+            ("ProviderChirho.hs", FAMILY_PROVIDER_CHIRHO),
+            (
+                "ReexportChirho.hs",
+                "module ReexportChirho (CanDoChirho) where\nimport ProviderChirho\n",
+            ),
+            ("ConsumerChirho.hs", &source_chirho),
+        ],
+        &mut SourceMapChirho::new_chirho(),
+    )
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn imported_family_equations_reject_wrong_argument_and_result_kinds_chirho() {
+    for (source_chirho, context_chirho) in [
+        (
+            FAMILY_CONSUMER_CHIRHO.replace("= StateCanDoChirho sChirho effChirho", "= Int"),
+            "family equation result",
+        ),
+        (
+            FAMILY_CONSUMER_CHIRHO.replace(
+                "type instance CanDoChirho (StateChirho sChirho mChirho)",
+                "type instance CanDoChirho (StateChirho sChirho mChirho Int)",
+            ),
+            "family equation argument",
+        ),
+    ] {
+        let error_chirho = compile_modules_chirho(
+            &[
+                ("ProviderChirho.hs", FAMILY_PROVIDER_CHIRHO),
+                ("ConsumerChirho.hs", &source_chirho),
+            ],
+            &mut SourceMapChirho::new_chirho(),
+        )
+        .map(|_| ())
+        .expect_err("an imported row must satisfy its defining kind contract");
+        assert!(
+            error_chirho
+                .diagnostics_chirho()
+                .iter()
+                .any(|diagnostic_chirho| {
+                    diagnostic_chirho
+                        .code_chirho
+                        .as_ref()
+                        .is_some_and(|code_chirho| code_chirho.to_string() == "E0300")
+                        && diagnostic_chirho.message_chirho.contains(context_chirho)
+                        && diagnostic_chirho.message_chirho.contains("kind mismatch")
+                }),
+            "{error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn imported_family_equation_result_is_checked_at_its_use_chirho() {
+    let source_chirho = FAMILY_CONSUMER_CHIRHO.replace(":~: 'True", ":~: 'False");
+    let error_chirho = compile_modules_chirho(
+        &[
+            ("ProviderChirho.hs", FAMILY_PROVIDER_CHIRHO),
+            ("ConsumerChirho.hs", &source_chirho),
+        ],
+        &mut SourceMapChirho::new_chirho(),
+    )
+    .map(|_| ())
+    .expect_err("a recovered equation cannot prove the contradictory result");
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| {
+                diagnostic_chirho
+                    .code_chirho
+                    .as_ref()
+                    .is_some_and(|code_chirho| code_chirho.to_string() == "E0200")
+                    && diagnostic_chirho.message_chirho.contains("True")
+                    && diagnostic_chirho.message_chirho.contains("False")
+            }),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn local_nominal_head_replaces_the_unqualified_imported_family_classification_chirho() {
+    compile_modules_chirho(
+        &[
+            ("ProviderChirho.hs", FAMILY_PROVIDER_CHIRHO),
+            ("LocalShadowChirho.hs", include_str!(
+                "../../../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/LocalShadowChirho.hs"
+            )),
+        ],
+        &mut SourceMapChirho::new_chirho(),
+    ).unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
 #[test]
 fn checked_source_identity_takes_priority_over_the_builtin_classifier_chirho() {
     let provider_chirho = r#"{-# LANGUAGE PolyKinds, KindSignatures #-}

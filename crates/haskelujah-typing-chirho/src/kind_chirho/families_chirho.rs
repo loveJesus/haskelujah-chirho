@@ -30,9 +30,9 @@ struct CheckedKindFamilyRowChirho {
 }
 
 impl KindInferCtxChirho {
-    /// Open rows consume already-published LOCAL family contracts. Imported
-    /// family kinds and associated rows need their own authority/scope; neither
-    /// is manufactured by this pass. Workflow: declaration-kinds-chirho.
+    /// Detached rows consume checked imported family contracts. Local owners
+    /// already checked their rows as a batch; unknown imports and associated
+    /// scopes are not manufactured here. Workflow: declaration-kinds-chirho.
     pub(super) fn check_detached_family_equations_chirho(&mut self, module_chirho: &ModuleChirho) {
         let owned_chirho: std::collections::HashSet<_> = module_chirho
             .decls_chirho

@@ -45,6 +45,9 @@ impl InferCtxChirho {
         arguments_chirho: &[(TyChirho, bool)],
     ) -> Option<TyChirho> {
         use crate::families_chirho::{FamilyReductionChirho, reduce_one_equation_chirho};
+        if self.is_known_nominal_name_chirho(name_chirho) {
+            return None;
+        }
         let mut budget_chirho = 16_384;
         let terms_chirho: Vec<_> = arguments_chirho
             .iter()
@@ -71,10 +74,13 @@ impl InferCtxChirho {
                     &equation_chirho.result_chirho,
                     &terms_chirho[..arity_chirho],
                     &|head_chirho| {
-                        self.type_families_chirho.contains_key(head_chirho)
-                            || self
-                                .type_families_chirho
-                                .contains_key(head_chirho.rsplit('.').next().unwrap_or(head_chirho))
+                        // Matching visits every node: use bounded hash lookups,
+                        // not the legacy all-family suffix search per node.
+                        !self.is_known_nominal_name_chirho(head_chirho)
+                            && (self.type_families_chirho.contains_key(head_chirho)
+                                || self.type_families_chirho.contains_key(
+                                    head_chirho.rsplit('.').next().unwrap_or(head_chirho),
+                                ))
                     },
                     &mut budget_chirho,
                 ) {

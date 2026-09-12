@@ -103,3 +103,65 @@ The fresh AscribedKeyChirho reduction is accepted by GHC9.14.1 and rejected by
 the frozen CLI for the unbound matching input plus both distinct equality witnesses.
 It is a next-step source probe, not a repaired or committed execution oracle yet.
 Main remains121d4f2c; CPU embargo released, builder/DB lease retained.
+
+## Imported family equation classification, continuation2026-09-12
+
+Parent e7903d1e retains frozen8c30a457's driver1774/1774 and diagnostic885/248;
+ten main-relative accept regressions still block landing. ControlMonadClassesState
+reduces to a valid open equation whose family is imported. GHC9.14.1 accepts
+local, imported and explicitly ascribed forms; frozen8c accepts only the local
+form and rejects the imported pair at RHS closure. Sources and reference output
+are initially in the owned scratch imported-row-chirho.orbH5Q leaf.
+
+Brick1: checked import contracts already distinguish family heads from nominal
+heads. Seed that authoritative classification alongside the imported kind scheme
+so detached local equations use the existing checker and record matching inputs.
+Local declarations must retire a displaced unqualified imported classification;
+qualified imported identities remain separate. Do not invent imported reduction
+tables, infer injectivity from a family name, or weaken RHS closure. This is a
+reversible correction in existing import/group/family owners, not an AST fork.
+
+- [x] Independently reference local/imported/qualified rows and invalid-kind
+  controls; require a result equality so acceptance is not declaration erasure.
+- [x] Prove imported family equality does not gain nominal injectivity and local
+  nominal shadowing still does use its nominal contract.
+- [x] Show focused controls red on the unchanged parent, then repair registration.
+- [ ] Gate typing, import integration, canaries and explicit CLI; check the named
+  corpus regression and run a frozen exact-set diagnostic before quoting movement.
+- [ ] Commit/push owned code and evidence; main/DB/public artifacts stay unchanged
+  until the complete lane satisfies its final gates.
+
+Measured continuation: one typing control was0/1 before registration and1/1
+after; import integration was4/9 before the repair and9/9 after. Registration
+alone did not suffice: transport also normalized authoritative GHC.Types.Bool
+to Bool, and the matcher could not distinguish a zero-hidden-argument nominal
+from a missing contract. Retain defining kind names and explicit zero-argument
+nominal authority, with bounded hash lookups in matching. Do not infer family
+injectivity or weaken equation closure.
+
+Final focused gates2026-09-12: parser366/366, typing382/382, integration217/217,
+canaries7/7, all zero ignored/filtered; explicit CLI build and workspace all-target
+check pass without compiler warnings. Targeted all-target clippy exits0 with467
+warning-message lines, including duplicates/summaries; lint debt is not resolved.
+Eight source cases are independently checked under GHC9.14.1 and retained with
+their unchanged sources and frozen8c CLI observations. Those CLI observations
+are not interchangeable with the in-process module-graph controls.
+
+The fresh CLI still fails ControlMonadClassesState: its search path discovers
+raw sibling interfaces, but produces no checked kind contract for CanDo. This
+is not a failed registration repair; the provider was never checked on that
+entry path. Preserve this coherent checkpoint before changing discovery.
+
+Next architecture choice, reversible in the owned worktree: one shared producer
+under source_chirho should return the existing FrontendSeedArtifactsChirho from
+only the reachable, authoritative dependency closure. Reuse the frontend-only
+module collector; no duplicated kind inference, runtime code generation, or
+scanning/typechecking of every neighbor. Both check and compile search-path
+entry points consume that result. Known-provider read/parse/check failures must
+propagate; unknown interface-only imports gain no fabricated contract. Preserve
+source-root authority, deterministic owner selection and bounded work. Cyclic
+source dependencies require an explicit boot contract, not sequential raw stubs.
+The current collector's empty-input and duplicate-interface behavior needs care.
+Confidence is high in the missing producer (traced); corpus reach is unmeasured.
+Alternative raw-header inference would repeat the exact authority defect and is
+not selected. Reverting the isolated producer checkpoint is the correction cost.

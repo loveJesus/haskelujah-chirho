@@ -30,9 +30,23 @@ impl InferCtxChirho {
         "||",
     ];
 
+    /// Exact nominal authority, including a known zero-hidden-argument head.
+    pub(super) fn is_known_nominal_name_chirho(&self, name_chirho: &str) -> bool {
+        self.kind_elaboration_chirho
+            .as_ref()
+            .is_some_and(|elaboration_chirho| {
+                elaboration_chirho
+                    .nominal_heads_chirho
+                    .contains_key(name_chirho)
+            })
+    }
+
     /// Whether `name_chirho` names a type family known here (declared,
     /// imported, or builtin).
     pub(super) fn is_type_family_name_chirho(&self, name_chirho: &str) -> bool {
+        if self.is_known_nominal_name_chirho(name_chirho) {
+            return false;
+        }
         if self.type_families_chirho.contains_key(name_chirho) {
             return true;
         }

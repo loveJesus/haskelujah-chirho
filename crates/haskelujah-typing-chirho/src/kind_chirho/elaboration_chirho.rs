@@ -271,7 +271,12 @@ impl KindInferCtxChirho {
                 imports_chirho::KindHeadShapeChirho::FamilyChirho => &mut family_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::ClassChirho => continue,
             };
-            if !scheme_chirho.quantified_chirho.is_empty() {
+            if !scheme_chirho.quantified_chirho.is_empty()
+                || matches!(
+                    shape_chirho,
+                    imports_chirho::KindHeadShapeChirho::NominalChirho
+                )
+            {
                 heads_chirho.insert(
                     name_chirho.clone(),
                     scheme_chirho
@@ -362,7 +367,14 @@ impl KindInferCtxChirho {
                     next_chirho += 1;
                 }
             }
-            if !binders_chirho.is_empty() {
+            // A known nominal with zero hidden arguments is still nominal.
+            // Absence would let an imported same-basename family classify it.
+            if !binders_chirho.is_empty()
+                || matches!(
+                    declaration_chirho,
+                    DeclChirho::DataDeclChirho { .. } | DeclChirho::NewtypeDeclChirho { .. }
+                )
+            {
                 if let Some(module_chirho) = &self.local_kind_module_chirho {
                     heads_chirho.insert(
                         format!("{module_chirho}.{name_chirho}"),

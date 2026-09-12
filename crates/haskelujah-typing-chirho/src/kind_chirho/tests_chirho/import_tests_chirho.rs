@@ -3,6 +3,44 @@
 //! Portable contracts must close identities before module boundaries.
 use super::*;
 
+#[test]
+fn imported_family_kind_equality_cannot_invent_nominal_injectivity_chirho() {
+    for (shape_chirho, nominal_chirho) in [
+        (imports_chirho::KindHeadShapeChirho::NominalChirho, true),
+        (imports_chirho::KindHeadShapeChirho::FamilyChirho, false),
+    ] {
+        let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
+        let mut contract_chirho = KindContractChirho::monomorphic_nominal_chirho(
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho),
+        );
+        contract_chirho.shape_chirho = shape_chirho;
+        context_chirho.seed_imported_kind_contracts_chirho(
+            &[("ProviderChirho.FChirho".to_owned(), contract_chirho)]
+                .into_iter()
+                .collect(),
+        );
+        let written_chirho = context_chirho.fresh_kind_chirho();
+        let apply_chirho = |argument_chirho| {
+            KindChirho::app_chirho(
+                KindChirho::ConChirho("ProviderChirho.FChirho".to_owned()),
+                argument_chirho,
+            )
+        };
+        assert_eq!(
+            context_chirho
+                .unify_family_kinds_chirho(
+                    &apply_chirho(written_chirho),
+                    &apply_chirho(KindChirho::StarChirho),
+                    "imported equality",
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .is_ok(),
+            nominal_chirho,
+            "only a nominal contract may cancel the head to solve a written argument"
+        );
+    }
+}
+
 fn dependent_contract_chirho() -> KindContractChirho {
     KindContractChirho {
         binding_chirho: KindBindingChirho::PolyChirho(KindSchemeChirho {

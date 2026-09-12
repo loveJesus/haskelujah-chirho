@@ -836,6 +836,20 @@ authorize a guessed classifier. Legacy raw-AST entry points remain explicit.
 Ordinary module, project, Cabal and file/source paths now carry the companion;
 incremental-cache inputs, complete hs-boot import context, promoted constructor
 templates and kind-family reduction tables still need their own consumers.
+The file-search path currently carries only its seeded companions: raw sibling
+interface discovery does not check those providers or produce their contracts.
+Checked sibling production is a separate open boundary, not established by an
+in-process multi-module control.
+
+Imported kind contracts retain their defining classifier names and head shape.
+Seeding a family contract also registers it as a family, so a detached local row
+uses the defining kind scheme and records hidden matching inputs. Family kind
+equality must remain stuck rather than cancel arguments as if the head were
+nominally injective. A local head replaces an unqualified imported classification;
+qualified provider names remain distinct. A checked nominal with no hidden
+arguments still owns an explicit nominal entry, so same-basename family fallback
+cannot change its identity. Matcher classification uses bounded hash lookups at
+each visited node, not a scan over every family in scope.
 
 ```mermaid
 flowchart LR
@@ -846,6 +860,10 @@ flowchart LR
   ReachableChirho --> PrivateNamesChirho[Retain defining private names internally]
   PrivateNamesChirho --> RebaseChirho[Simultaneous fresh kind identities]
   RebaseChirho --> ConsumerKindChirho[Receiving kind inference]
+  CompanionChirho --> HeadShapeChirho[Retain defining classifier and family or nominal identity]
+  HeadShapeChirho --> DetachedRowsChirho[Check imported-family rows against provider scheme]
+  HeadShapeChirho --> NonInjectiveChirho[Do not cancel a stuck family equality]
+  DetachedRowsChirho --> ConsumerKindChirho
   PrivateNamesChirho --> ConsumerAliasChirho[Seed closed aliases without AST reconstruction]
   ConsumerKindChirho --> ConsumerAliasChirho
 ```

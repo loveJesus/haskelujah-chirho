@@ -28,6 +28,9 @@ impl KindInferCtxChirho {
                 self.local_kind_decl_names_chirho
                     .insert(name_chirho.to_owned());
                 self.env_chirho.bindings_chirho.remove(name_chirho);
+                // A local declaration replaces the unqualified imported head,
+                // including its shape. Qualified provider identities survive.
+                self.kind_family_names_chirho.remove(name_chirho);
             }
         }
         // Aliases used as kind syntax are expanded independently of source order.
