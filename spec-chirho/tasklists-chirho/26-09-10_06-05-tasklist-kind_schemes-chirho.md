@@ -72,11 +72,12 @@ SLOT and sole canonical DB writer remain ours. Runtime identity was verified
 as HASKELUJAH/gpt_chirho@HASKELUJAH:3:%154; no competing broker lease appeared.
 No DB write, main merge, public artifact change or deployment in this continuation.
 
-Latest frozen diagnostic5917c4fd FAILED: accept881/938, eight main-relative
-regressions; reject245 ordinary rejections,521 accepts and T15552a abort134.
-The abort is not a rejection. Main/artifacts/row484 stay unchanged. The bounded
-classifier/provenance repair recovers the crash and three newly lost accepts in
-focused checks; its complete diagnostic remains owed. Current detail and checklist:
+Latest frozen diagnostic3c56cf99 completed: accept884/938, five main-relative
+regressions; reject244/767, zero timeouts or unexpected exits. T11723/T13142/tc269
+recover and T15552a no longer aborts. UnliftedNewtypesMismatchedKindRecord loses
+an accidental E0101, not GHC's representation check; the genuine rule stays open.
+This is one diagnostic pass per axis, not a final gate. Main/artifacts/row484
+stay unchanged. Current detail, evidence, and next consumer decision:
 kind-schemes-chirho/26-09-11_22-20-classifier_provenance-chirho.md.
 
 Visible-application checkpoint3bbcd49c is committed, pushed and remote-exact.

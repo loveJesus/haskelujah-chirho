@@ -59,9 +59,14 @@ Logs and per-file sets: /private/tmp/haskelujah-visible-kind-app-chirho.X3Kq8n/d
 - [x] Private diagnostic classifier7/7: abnormal exits take precedence over any
   preceding error text; a panic/abort cannot satisfy the rejection count. Timeout,
   ordinary error, success, missing diagnostic and a benign panic filename discriminate.
-- [ ] Freeze/commit/push explicit owned paths and run both complete diagnostic axes.
-- [ ] Compare exact sets and record every delta; no main landing while any new
-  should_compile failure remains. Final two-pass/full-workspace gate still owed.
+- [x] Freeze/commit/push explicit owned paths at3c56cf99; remote tip verified exact.
+- [x] One complete diagnostic per axis:884/938 accept,244/767 reject. Before/after
+  source cleanliness and CLI SHA256 unchanged; zero timeouts/unexpected exits.
+- [x] Compare exact sets and audit every delta against5917: three accept recoveries
+  (T11723,T13142,tc269), no new accept loss; no ordinary reject gain, one loss
+  (UnliftedNewtypesMismatchedKindRecord), and T15552a abort134 becomes acceptance.
+- [ ] No main landing while any new should_compile failure remains. Final
+  two-pass/full-workspace gate still owed.
 
 Clippy exited0 but reports existing warning debt; this is NOT warning-free.
 No warning was emitted in the modified classifier/provenance helper files.
@@ -69,3 +74,34 @@ The unchanged original T15552a now accepts: its GHC-22979 nested-family validity
 rule is unimplemented. Crash recovery does not earn reject-axis capability.
 The generic reducer's usize::MAX wrapper is a separate boundedness concern;
 Claude2's candidate mechanism was not the recursion shown by the measured trace.
+
+## Completed diagnostic and next consumer
+
+Main-relative gains remain PolytypeDecomp, RuleEqs, SplitWD, T14451, T20922,
+T26256a, tc124. Five main-relative regressions remain T13879, T14010, T21583,
+T22560c, T26358. No gate, membership, denominator or public label is changed.
+T26358's source describes a correlated-apartness shortcoming in GHC; neither
+GHC's rejection nor its expect_broken marker proves the program invalid or the
+regression permanent. T13879 still needs the deferred data-family-instance shape.
+
+UnliftedNewtypesMismatchedKindRecord's5917 log is E0101 at10:22, IntRep not in
+scope. GHC's own stderr is GHC-83865 at11:23: Word# has WordRep, not IntRep.
+Three fresh bounded reference observations at3c56cf99 show: Int# matching
+control accepted by both; Word# mismatch control and original file rejected by
+GHC9.14.1, accepted by candidate. This removes an accidental naming rejection,
+not earned representation validation. Do not preserve the erroneous name lookup.
+Evidence with sources/hashes/diagnostics is in test-data-chirho/kind-oracles-chirho/
+family-equations-chirho/classifier-delta-chirho.jsonl. No claim the unlifted
+newtype result-representation contract is implemented.
+
+Diagnostic logs/sets are under /private/tmp/haskelujah-visible-kind-app-chirho.X3Kq8n/
+diagnostic-classifier-provenance-{accept,reject}-chirho; completion22:34:47EDT.
+
+Next bounded engineering step: reduce T21583's open-family RHS nominal kind-index
+loss with a GHC-positive constructor/read-back source. Closed rows have local kind
+checking; open rows currently do not, and both type-level registrations use the
+static synonym converter. Shared equation-local checking must record solved
+occurrences before type conversion consumes them; declaration conversion must not
+eagerly reduce family patterns or invent RHS variables. Associated rows additionally
+need their enclosing instance scope, and T14010 needs hidden family matching
+arguments. These dependencies are not claimed solved by a local RHS repair.
