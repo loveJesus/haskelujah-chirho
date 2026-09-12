@@ -3,6 +3,62 @@
 use super::*;
 
 #[test]
+fn promoted_tuple_contracts_preserve_components_and_freshen_each_use_chirho() {
+    let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    for arity_chirho in [0usize, 2, 8, 32] {
+        let name_chirho = format!("({})", ",".repeat(arity_chirho.saturating_sub(1)));
+        context_chirho.env_chirho.begin_scope_chirho();
+        context_chirho
+            .env_chirho
+            .ensure_tuple_contract_chirho(&name_chirho);
+        context_chirho.env_chirho.end_scope_chirho();
+        assert_eq!(
+            context_chirho.env_chirho.lookup_chirho(&name_chirho),
+            Some(&KindChirho::arrow_n_chirho(
+                (0..arity_chirho).map(|_| KindChirho::StarChirho),
+                KindChirho::StarChirho,
+            )),
+            "intrinsic type constructor survives the first use's local scope"
+        );
+        let binding_chirho = context_chirho
+            .env_chirho
+            .lookup_promoted_binding_chirho(&name_chirho)
+            .expect("authoritative promoted contract")
+            .clone();
+        for alternate_chirho in [false, true] {
+            let actual_chirho = context_chirho.instantiate_binding_chirho(&binding_chirho);
+            let components_chirho: Vec<_> = (0..arity_chirho)
+                .map(|position_chirho| {
+                    if alternate_chirho && position_chirho % 2 == 0 {
+                        KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+                    } else {
+                        KindChirho::StarChirho
+                    }
+                })
+                .collect();
+            let expected_chirho = KindChirho::arrow_n_chirho(
+                components_chirho.clone(),
+                KindChirho::tuple_chirho(components_chirho),
+            );
+            context_chirho.unify_chirho(
+                &actual_chirho,
+                &expected_chirho,
+                "tuple constructor classifier",
+                SpanChirho::DUMMY_CHIRHO,
+            );
+            assert!(
+                !context_chirho.diagnostics_chirho.has_errors_chirho(),
+                "arity {arity_chirho}, second independent use {alternate_chirho}"
+            );
+            assert_eq!(
+                context_chirho.subst_chirho.apply_chirho(&actual_chirho),
+                expected_chirho
+            );
+        }
+    }
+}
+
+#[test]
 fn classifier_checks_are_bounded_and_retire_before_the_next_scope_chirho() {
     let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
     let parameter_chirho = context_chirho.fresh_var_chirho();

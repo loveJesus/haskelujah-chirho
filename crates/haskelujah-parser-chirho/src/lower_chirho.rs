@@ -18,6 +18,9 @@ mod flat_type_tests_chirho;
 mod flat_types_chirho;
 mod kind_annotations_chirho;
 #[cfg(test)]
+mod promoted_type_tests_chirho;
+mod promoted_types_chirho;
+#[cfg(test)]
 mod type_arrow_tests_chirho;
 mod type_arrows_chirho;
 mod type_families_chirho;
@@ -4415,39 +4418,7 @@ impl LowerCtxChirho {
                 }
             }
             SyntaxKindChirho::PromotedConTypeChirho => {
-                // DataKinds promoted constructor: 'True, 'Just, ':, etc.
-                // Children: Tick token, ConId/ConSym token
-                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let con_child_chirho = children_chirho.iter().find(|c_chirho| {
-                    matches!(c_chirho.element_chirho, GreenElementChirho::TokenChirho(t_chirho)
-                        if t_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
-                           || t_chirho.kind_chirho() == TokenKindChirho::QualifiedConIdChirho
-                           || t_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
-                           || t_chirho.kind_chirho() == TokenKindChirho::QualifiedConSymChirho)
-                });
-                if let Some(child_chirho) = con_child_chirho {
-                    if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho
-                    {
-                        let s_chirho =
-                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
-                        TypeChirho::PromotedConChirho {
-                            name_chirho,
-                            span_chirho,
-                        }
-                    } else {
-                        self.placeholder_type_chirho()
-                    }
-                } else {
-                    // Promoted tuple: '() — extract text from all tokens
-                    TypeChirho::PromotedConChirho {
-                        name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                            "()",
-                            span_chirho,
-                        )),
-                        span_chirho,
-                    }
-                }
+                self.lower_promoted_type_chirho(node_chirho, base_chirho)
             }
             SyntaxKindChirho::PromotedListTypeChirho => {
                 // DataKinds promoted list: '[], '[Int, Bool], etc.

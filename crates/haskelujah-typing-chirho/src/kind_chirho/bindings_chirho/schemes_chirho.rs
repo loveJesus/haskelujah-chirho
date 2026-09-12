@@ -522,6 +522,12 @@ impl KindInferCtxChirho {
                 _ => break,
             }
         }
+        if let TypeChirho::ConChirho(name_chirho)
+        | TypeChirho::PromotedConChirho { name_chirho, .. } = head_chirho
+        {
+            self.env_chirho
+                .ensure_tuple_contract_chirho(&self.canonical_kind_name_chirho(name_chirho));
+        }
         let binding_chirho = match head_chirho {
             TypeChirho::ConChirho(name_chirho) => {
                 let name_chirho = self.canonical_kind_name_chirho(name_chirho);

@@ -14,7 +14,7 @@ use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use super::{ChildChirho, LowerCtxChirho, is_type_kind_chirho, type_operators_chirho};
 
-fn top_level_commas_chirho(children_chirho: &[&ChildChirho]) -> Vec<usize> {
+pub(super) fn top_level_commas_chirho(children_chirho: &[&ChildChirho]) -> Vec<usize> {
     let mut positions_chirho = Vec::new();
     let mut depth_chirho = 0usize;
     for (index_chirho, child_chirho) in children_chirho.iter().enumerate() {
@@ -530,8 +530,12 @@ impl LowerCtxChirho {
                                     .expect("opening parenthesis is present")
                                     .end_chirho,
                             );
-                            if !promoted_chirho
-                                && matches!(inner_chirho.as_slice(), [child_chirho]
+                            if promoted_chirho {
+                                atoms_chirho.push_chirho(self.promoted_tuple_from_children_chirho(
+                                    &inner_chirho,
+                                    group_span_chirho,
+                                ));
+                            } else if matches!(inner_chirho.as_slice(), [child_chirho]
                                     if matches!(child_chirho.element_chirho,
                                         GreenElementChirho::TokenChirho(token_chirho)
                                             if token_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho))

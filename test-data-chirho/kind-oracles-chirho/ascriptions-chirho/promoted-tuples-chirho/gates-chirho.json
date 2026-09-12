@@ -1,0 +1,198 @@
+{
+  "base_commit_chirho": "969bdfd8646c86a61a8f0f636c7ddc98dc0aa5f6",
+  "recorded_at_chirho": "2026-09-12T11:48:08.185Z",
+  "explicit_cli_sha256_chirho": "927ace4e215e68555ab35c9cd3a78456760f2bd5956ec911fa78cc0a996107c9",
+  "reference_count_chirho": 7,
+  "sensitivity_chirho": [
+    {
+      "name_chirho": "parser-red-v2",
+      "passed_chirho": 0,
+      "failed_chirho": 3,
+      "ignored_chirho": 0,
+      "filtered_chirho": 363,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-parser-red-v2-chirho.log",
+      "log_sha256_chirho": "74daa26250d5f8d60cfa009a84a7406f6ccd0dc00b734462b4466b8101ffcfbd"
+    },
+    {
+      "name_chirho": "parser-green",
+      "passed_chirho": 3,
+      "failed_chirho": 0,
+      "ignored_chirho": 0,
+      "filtered_chirho": 363,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-parser-green-chirho.log",
+      "log_sha256_chirho": "42b411aa655b36eea3328b00a8eb746ee4731c0d9ed0fde92d114e2b058f8ca4"
+    },
+    {
+      "name_chirho": "driver-red",
+      "passed_chirho": 1,
+      "failed_chirho": 6,
+      "ignored_chirho": 0,
+      "filtered_chirho": 193,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-driver-red-chirho.log",
+      "log_sha256_chirho": "54b1e1d0e75889acd5fec05f2f441d477971a9e8cd9640b10be9180f26c9954f"
+    },
+    {
+      "name_chirho": "driver-parser-only",
+      "passed_chirho": 6,
+      "failed_chirho": 1,
+      "ignored_chirho": 0,
+      "filtered_chirho": 193,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-driver-parser-only-chirho.log",
+      "log_sha256_chirho": "60afbc7d1de576f6d65d316d6cfc2738c3b037540845b8c5cca7941a107a7fd0"
+    },
+    {
+      "name_chirho": "driver-contract",
+      "passed_chirho": 7,
+      "failed_chirho": 0,
+      "ignored_chirho": 0,
+      "filtered_chirho": 193,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-driver-contract-chirho.log",
+      "log_sha256_chirho": "a7205c0c84a412e0faf3835f4721cc01df223ea1c8291b22f71dc753db442c03"
+    }
+  ],
+  "runs_chirho": [
+    {
+      "name_chirho": "fmt",
+      "command_chirho": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-fmt-chirho.log",
+      "log_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name_chirho": "crates-final",
+      "command_chirho": [
+        "env",
+        "RUST_MIN_STACK=16777216",
+        "cargo",
+        "test",
+        "-p",
+        "haskelujah-parser",
+        "-p",
+        "haskelujah-typing",
+        "--lib",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 366,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 380,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-crates-final-chirho.log",
+      "log_sha256_chirho": "1b66b781444a809efe109dd74b85740d30741860931e38f1605f409aff76969f"
+    },
+    {
+      "name_chirho": "integration-final",
+      "command_chirho": [
+        "env",
+        "RUST_MIN_STACK=16777216",
+        "cargo",
+        "test",
+        "-p",
+        "haskelujah-driver",
+        "--test",
+        "typing_integration_chirho",
+        "--test",
+        "canaries_chirho",
+        "-j",
+        "3",
+        "--no-fail-fast"
+      ],
+      "exit_chirho": 0,
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 7,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 200,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-integration-final-chirho.log",
+      "log_sha256_chirho": "faba3f778b92f08fb464fb0b5f000f782499e9effa8f55a46efd23f98a19d8f1"
+    },
+    {
+      "name_chirho": "build-final",
+      "command_chirho": [
+        "cargo",
+        "build",
+        "-p",
+        "haskelujah",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-build-final-chirho.log",
+      "log_sha256_chirho": "f4e6793f6b0af00cb742841b34618e349e82b187162d4098b662474710a963bb"
+    },
+    {
+      "name_chirho": "check",
+      "command_chirho": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-check-chirho.log",
+      "log_sha256_chirho": "43de7a7f9676aaa2303b15616e165bd8fa13cef14a2059cc5f7848309beeef85"
+    },
+    {
+      "name_chirho": "clippy",
+      "command_chirho": [
+        "cargo",
+        "clippy",
+        "-p",
+        "haskelujah-parser",
+        "-p",
+        "haskelujah-typing",
+        "-p",
+        "haskelujah-driver",
+        "--all-targets",
+        "-j",
+        "3"
+      ],
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 467,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/promoted-tuples-clippy-chirho.log",
+      "log_sha256_chirho": "fa57c2046603c35932a50e7e8f80f6d0e0c2a3e14abce12c030a53ccef0ea44f"
+    }
+  ],
+  "scope_chirho": "Promoted tuple parsing/lowering and intrinsic classifier checkpoint. Full current parser366, typing380, integration200, canaries7 have zero ignored/filtered. Workspace all-target compilation is not workspace execution; full current driver/workspace execution and final two-pass corpus landing gates remain owed. Clippy warning message count includes duplicate/summary lines; not lint-clean.",
+  "correction_chirho": "Retained v2 reference sources include whitespace between adjacent promotion quotes so they are not character literals. The flat parser control groups the complete Proxy argument. No expected verdict comes from candidate output."
+}

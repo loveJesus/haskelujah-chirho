@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 mod constructors_chirho;
 mod families_chirho;
+mod promoted_types_chirho;
 
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
@@ -2261,70 +2262,6 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
-    }
-
-    /// Parse a DataKinds promoted type: `'Constructor` or `'[Type, ...]`.
-    fn parse_promoted_type_chirho(&mut self) {
-        match self.peek_after_tick_chirho() {
-            Some(RawTokenKindChirho::ConIdChirho)
-            | Some(RawTokenKindChirho::QualifiedIdChirho)
-            | Some(RawTokenKindChirho::ConSymChirho) => {
-                // Promoted constructor: 'True, 'Just, 'Nothing
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
-                self.bump_chirho(); // tick
-                self.bump_chirho(); // ConId or constructor symbol
-                self.builder_chirho.finish_node_chirho();
-            }
-            Some(RawTokenKindChirho::LeftBracketChirho) => {
-                // Promoted list type: '[], '[Int, Bool]
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::PromotedListTypeChirho);
-                self.bump_chirho(); // tick
-                self.bump_chirho(); // [
-                self.eat_trivia_chirho();
-
-                if !self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
-                    self.parse_type_chirho();
-                    self.eat_trivia_chirho();
-                    while self.at_chirho(RawTokenKindChirho::CommaChirho) {
-                        self.bump_chirho(); // ,
-                        self.eat_trivia_chirho();
-                        self.parse_type_chirho();
-                        self.eat_trivia_chirho();
-                    }
-                }
-
-                if self.at_chirho(RawTokenKindChirho::RightBracketChirho) {
-                    self.bump_chirho(); // ]
-                }
-                self.builder_chirho.finish_node_chirho();
-            }
-            Some(RawTokenKindChirho::LeftParenChirho) => {
-                // Promoted tuple or unit: '(), '(,), '(,,)
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
-                self.bump_chirho(); // tick
-                self.bump_chirho(); // (
-                self.eat_trivia_chirho();
-                // Eat commas for promoted tuple constructors
-                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
-                    self.bump_chirho();
-                    self.eat_trivia_chirho();
-                }
-                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                    self.bump_chirho();
-                }
-                self.builder_chirho.finish_node_chirho();
-            }
-            _ => {
-                // Fallback: just consume the tick as an error
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
-                self.bump_chirho();
-                self.builder_chirho.finish_node_chirho();
-            }
-        }
     }
 
     /// Check if the next non-trivia token after current is a ConId.

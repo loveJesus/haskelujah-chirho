@@ -1,6 +1,6 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# Flat type syntax and list constructors
+# Flat type syntax, list and promoted tuple constructors
 
 Some CST contexts, notably record fields, retain a flat token sequence instead
 of structured type nodes. Both routes must preserve the same semantic type.
@@ -60,6 +60,42 @@ reads them. The single arrow in `(->)` is a constructor, not an incomplete
 function with two invented operands; `((->) Int :: Type -> Type) Bool` retains
 that constructor, application and annotation. A bare arrow is not licensed as
 an atomic type by this rule, nor is promoted arrow syntax.
+
+Promoted tuple parentheses retain every component in both paths. Structured
+parsing in `cst_parser_chirho/promoted_types_chirho.rs` owns the delimiters and
+parses each operand; `lower_chirho/promoted_types_chirho.rs` is the shared
+constructor/application builder used by structured nodes and flat fields.
+`'(a,b)` and `'(,) a b` denote the promoted pair constructor applied to two
+operands; neither is ordinary `(a,b)` or promoted unit `'()`. Constructor-only
+forms retain their arity. This matters for family equations: dropping either
+coordinate invents an unbound RHS variable and destroys a valid projection.
+
+```mermaid
+flowchart LR
+    StructuredTupleChirho[Promoted CST with parsed operands] --> TupleBuilderChirho[Shared promoted constructor and ordered applications]
+    FlatTupleChirho[Balanced flat promoted parentheses] --> TupleBuilderChirho
+    TupleBuilderChirho --> ContractChirho[On-demand builtin tuple kind contract]
+    ContractChirho --> ClassifiersChirho[Fresh independent component kinds]
+    ClassifiersChirho --> EquationsChirho[Retain and check both family pattern positions]
+    EquationsChirho --> ProjectionChirho[Reduce the requested coordinate]
+```
+
+The builtin contract is generated once per encountered arity, with work linear
+in that arity, rather than cloning a full tuple catalogue into every module.
+It is intrinsic syntax with module lifetime, not a binding owned by the local
+signature scope that first encounters it. Ordinary `(,)` classifies lifted
+types; promoted `'(,)` has kind `forall k1 k2. k1 -> k2 -> (k1,k2)` and `'()`
+has kind `()`. The component kinds are independently instantiated at every use.
+Interpreted promoted tuple terms keep their quote namespace, like promoted lists.
+These rules implement the [GHC DataKinds promotion contract](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/data_kinds.html#promoted-list-and-tuple-types),
+not `NoListTuplePuns` or all malformed-syntax recovery.
+
+The tuple reference controls use unchanged sources checked by GHC9.14.1:
+two coordinate projections, a wrong-coordinate equality, prefix/unit forms,
+nested tuples, mixed Bool/Nat component kinds, a wrong-kind component, and a
+flat record field. The wrong-coordinate test requires E0200 and the wrong-kind
+test E0300. A parser-only repair made six of seven pass but wrongly accepted the
+wrong-kind case, demonstrating why syntax preservation alone was insufficient.
 
 The flat bracket scan owns the closing bracket at its own depth. In
 `[[Int] -> Int]`, the inner closing bracket cannot discard the function tail.

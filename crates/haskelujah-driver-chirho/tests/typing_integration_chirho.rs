@@ -28,6 +28,8 @@ mod open_family_rows_chirho;
 mod operator_contexts_chirho;
 #[path = "typing_integration_chirho/promoted_lists_chirho.rs"]
 mod promoted_lists_chirho;
+#[path = "typing_integration_chirho/promoted_tuples_chirho.rs"]
+mod promoted_tuples_chirho;
 
 #[test]
 fn promoted_opaque_occurrences_keep_independent_kinds_and_check_the_body_chirho() {

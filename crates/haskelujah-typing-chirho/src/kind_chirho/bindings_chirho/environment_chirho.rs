@@ -7,6 +7,20 @@ use super::{
 };
 use std::collections::HashMap;
 
+/// Boxed tuple punctuation is intrinsic syntax, not a user-defined name.
+/// Unit has arity zero; there is no unary parenthesized tuple constructor.
+pub(super) fn boxed_tuple_arity_chirho(name_chirho: &str) -> Option<usize> {
+    let inner_chirho = name_chirho.strip_prefix('(')?.strip_suffix(')')?;
+    if inner_chirho.is_empty() {
+        Some(0)
+    } else {
+        inner_chirho
+            .bytes()
+            .all(|byte_chirho| byte_chirho == b',')
+            .then_some(inner_chirho.len() + 1)
+    }
+}
+
 /// Type names carry a monomorphic inference kind or an explicitly quantified scheme.
 #[derive(Debug, Clone, Default)]
 pub struct KindEnvChirho {
@@ -22,6 +36,45 @@ pub struct KindEnvChirho {
 impl KindEnvChirho {
     pub fn new_chirho() -> Self {
         Self::default()
+    }
+
+    /// Materialize each encountered tuple contract once, in work linear in its
+    /// arity. No growing catalogue is cloned into every fresh kind environment.
+    /// The promoted constructor has independent component classifiers and a
+    /// tuple of those classifiers as its result, not kind Type.
+    /// Workflow: language-features-chirho/flat-type-syntax-chirho.
+    pub(super) fn ensure_tuple_contract_chirho(&mut self, name_chirho: &str) {
+        let name_chirho = name_chirho.strip_prefix('\'').unwrap_or(name_chirho);
+        if self.promoted_bindings_chirho.contains_key(name_chirho) {
+            return;
+        }
+        let Some(arity_chirho) = boxed_tuple_arity_chirho(name_chirho) else {
+            return;
+        };
+        if !self.bindings_chirho.contains_key(name_chirho) {
+            // Intrinsic punctuation has module lifetime, not the lifetime of
+            // the local signature scope that first happened to encounter it.
+            self.bindings_chirho.insert(
+                name_chirho.to_owned(),
+                KindBindingChirho::PolyChirho(KindSchemeChirho::generalize_chirho(
+                    KindChirho::arrow_n_chirho(
+                        (0..arity_chirho).map(|_| KindChirho::StarChirho),
+                        KindChirho::StarChirho,
+                    ),
+                )),
+            );
+        }
+        // Identities are locally quantified by this scheme, then freshened at
+        // every use. They are not inserted as free inference variables.
+        let components_chirho: Vec<_> = (0..arity_chirho)
+            .map(|index_chirho| KindChirho::VarChirho(KindVarChirho(index_chirho as u32)))
+            .collect();
+        let contract_chirho = KindChirho::arrow_n_chirho(
+            components_chirho.clone(),
+            KindChirho::tuple_chirho(components_chirho),
+        );
+        self.bind_promoted_generalized_chirho(name_chirho, contract_chirho.clone());
+        self.bind_promoted_generalized_chirho(&format!("'{name_chirho}"), contract_chirho);
     }
     /// Seed the environment with built-in type constructor kinds.
     pub fn with_builtins_chirho() -> Self {

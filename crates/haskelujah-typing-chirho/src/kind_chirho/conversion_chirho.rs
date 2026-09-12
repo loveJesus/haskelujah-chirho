@@ -410,6 +410,12 @@ impl KindInferCtxChirho {
 
     /// Infer the kind of a type expression.
     pub(super) fn infer_type_kind_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
+        if let TypeChirho::ConChirho(name_chirho)
+        | TypeChirho::PromotedConChirho { name_chirho, .. } = ty_chirho
+        {
+            self.env_chirho
+                .ensure_tuple_contract_chirho(&self.canonical_kind_name_chirho(name_chirho));
+        }
         match ty_chirho {
             TypeChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho();

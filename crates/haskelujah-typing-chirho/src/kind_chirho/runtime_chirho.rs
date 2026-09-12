@@ -187,6 +187,7 @@ impl KindInferCtxChirho {
                     .clone()
             }
             KindChirho::ConChirho(name_chirho) => {
+                self.env_chirho.ensure_tuple_contract_chirho(name_chirho);
                 let binding_chirho = self
                     .env_chirho
                     .lookup_binding_chirho(name_chirho)
@@ -360,7 +361,10 @@ impl KindInferCtxChirho {
 
     pub(super) fn named_promoted_kind_term_chirho(&self, name_chirho: &NameChirho) -> KindChirho {
         let full_chirho = self.canonical_kind_name_chirho(name_chirho);
-        if full_chirho == "[]" || full_chirho == ":" {
+        if full_chirho == "[]"
+            || full_chirho == ":"
+            || super::environment_chirho::boxed_tuple_arity_chirho(&full_chirho).is_some()
+        {
             return KindChirho::ConChirho(format!("'{full_chirho}"));
         }
         if self
