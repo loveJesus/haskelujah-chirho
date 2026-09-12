@@ -194,7 +194,7 @@ The driver root loses433 lines. Structural debt remains; it is not under1500.
   and ControlMonadClassesState. The last now genuinely receives its provider's
   checked family contract. The multiline-import source is independently accepted
   by GHC9.14.1. Evidence is in imported-families-chirho/source-producer-*.
-- [ ] Commit/push this producer checkpoint, then freeze and measure both full
+- [x] Commit/push this producer checkpoint, then freeze and measure both full
   exact corpus sets. One named recovery is not a new corpus total.
 - [ ] Resolve every main-relative regression before final landing gates.
 
@@ -205,3 +205,30 @@ resource sandbox. Missing interface-only sources gain no guessed checked kind.
 The independent audit's qualified-only nominal/family collision and nullary
 family-classifier probes remain unmeasured follow-ups, not claims of soundness.
 Main121d4f2c, canonical row484 and published artifacts remain untouched.
+
+Frozen5f5505a2 is pushed and remote-exact. One diagnostic pass per axis completed
+2026-09-12T14:52:08Z, source clean and CLI SHA256
+93c8ac0be43db896dffe8e8f0c042474d9dc5e11dbc8151b58cab5e0daa23786 unchanged:
+accept868/938,reject260/767, zero timeouts/unexpected exits. Against measured8c,
+three accepts recover (ControlMonadClassesState,T21010,tc239) and20 newly reject.
+The18 cycle errors are T11062/T11062a,T12064/T12064a,T14396/T14396a,T2412/T2412A,
+T26154/T26154_A/T26154_B,T6018a,Tc266/Tc266a,Tc267a/Tc267b,Tc271/Tc271a.
+The other pair is T13585/T13585b, Unwrapped versus Maybe after provider checking.
+Twelve of13 reject gains are the same blanket cycle rejection and are not
+bankable reason-level capabilities. tcfail186 is an imported-scheme mismatch
+candidate; T16059c is the one reject loss, not yet reason-audited. This is not
+landable despite the broad driver greens. Exact sets are in
+imported-families-chirho/source-producer-diagnostic-chirho.jsonl.
+
+Next brick1, reversible and isolated: retain SOURCE imports in the AST, keep
+implementation and boot providers as distinct dependency nodes, and check real
+boot declarations with the shared frontend before publishing their contracts.
+Select the requested boot interface per import, not whichever same-name version
+was checked last. Missing/invalid boot files and unbroken cycles must fail;
+when the implementation is available, check its agreement with the boot promise.
+The old project SCC helper is not a safe shortcut: it publishes empty interfaces
+after missing/failed boots and does not prove implementation agreement. Reuse
+the frontend and contract owners, not those fallbacks. GHC-checked circular
+controls and mismatched-signature/kind negatives define the acceptance evidence.
+This does not settle the separate AST representation of associated-family
+binders/results or authorize guessed metadata. CPU embargo released; lease held.
