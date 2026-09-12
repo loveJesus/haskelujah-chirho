@@ -13,9 +13,88 @@ pub(crate) struct FrontendSeedArtifactsChirho {
         std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
     pub(crate) imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
     pub(crate) imported_type_families_chirho: ImportedTypeFamiliesChirho,
+    pub(crate) class_env_chirho: haskelujah_typing_chirho::ClassEnvChirho,
 }
 
 impl FrontendSeedArtifactsChirho {
+    pub(super) fn check_chirho(
+        &self,
+        source_chirho: &str,
+        file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+        boot_chirho: bool,
+    ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+        let types_chirho = filter_seeded_imported_types_for_source_chirho(
+            source_chirho,
+            &self.imported_types_chirho,
+        );
+        let synonyms_chirho = filter_seeded_type_synonyms_for_source_chirho(
+            source_chirho,
+            &self.imported_type_synonyms_chirho,
+        );
+        run_frontend_with_inputs_chirho(
+            source_chirho,
+            file_id_chirho,
+            FrontendInputsChirho::new_chirho(
+                &self.ifaces_chirho,
+                &types_chirho,
+                &synonyms_chirho,
+                &self.imported_type_families_chirho,
+            )
+            .with_class_env_chirho(&self.class_env_chirho)
+            .with_boot_chirho(boot_chirho)
+            .with_type_contracts_chirho(&self.type_contracts_chirho),
+        )
+    }
+
+    pub(super) fn publish_chirho(
+        &mut self,
+        frontend_chirho: &FrontendResultChirho,
+        iface_chirho: &ModuleIfaceChirho,
+        slots_chirho: &mut HashMap<String, usize>,
+    ) {
+        insert_exported_schemes_into_imports_chirho(
+            iface_chirho,
+            &frontend_chirho.infer_result_chirho,
+            &mut self.imported_types_chirho,
+        );
+        self.imported_type_synonyms_chirho
+            .extend(exported_type_synonyms_from_module_chirho(
+                &frontend_chirho.module_chirho,
+                iface_chirho,
+                &frontend_chirho.resolved_imported_type_synonyms_chirho,
+            ));
+        self.imported_type_families_chirho.extend(
+            frontend_chirho
+                .infer_result_chirho
+                .type_families_chirho
+                .clone(),
+        );
+        self.class_env_chirho.classes_chirho.extend(
+            frontend_chirho
+                .infer_result_chirho
+                .class_env_chirho
+                .classes_chirho
+                .clone(),
+        );
+        self.class_env_chirho.instances_chirho.extend(
+            frontend_chirho
+                .infer_result_chirho
+                .class_env_chirho
+                .instances_chirho
+                .clone(),
+        );
+        self.type_contracts_chirho.insert(
+            iface_chirho.name_chirho.clone(),
+            frontend_chirho.type_contracts_chirho.clone(),
+        );
+        if let Some(slot_chirho) = slots_chirho.get(&iface_chirho.name_chirho) {
+            self.ifaces_chirho[*slot_chirho] = iface_chirho.clone();
+        } else {
+            slots_chirho.insert(iface_chirho.name_chirho.clone(), self.ifaces_chirho.len());
+            self.ifaces_chirho.push(iface_chirho.clone());
+        }
+    }
+
     pub(crate) fn for_source_chirho(source_chirho: &str) -> Self {
         let mut seed_chirho = Self {
             ifaces_chirho: haskelujah_naming_chirho::builtin_module_ifaces_chirho(),
@@ -69,7 +148,7 @@ fn source_order_chirho(
         }
         let dependencies_chirho: HashSet<_> = imports_chirho
             .iter()
-            .filter_map(|name_chirho| indices_chirho.get(name_chirho.as_str()).copied())
+            .filter_map(|key_chirho| indices_chirho.get(key_chirho.name_chirho.as_str()).copied())
             .collect();
         pending_chirho[index_chirho] = dependencies_chirho.len();
         for dependency_chirho in dependencies_chirho {
@@ -135,8 +214,6 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
     let mut imported_type_synonyms_chirho = initial_imported_type_synonyms_chirho;
     let mut imported_type_families_chirho = initial_imported_type_families_chirho;
     let mut imported_type_contracts_chirho = initial_type_contracts_chirho;
-    let mut imported_class_env_chirho =
-        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
     if seed_stdlib_frontend_artifacts_chirho
         && module_sources_chirho
             .iter()
@@ -151,7 +228,16 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
         );
     }
 
-    let mut iface_slots_chirho: HashMap<_, _> = ifaces_chirho
+    let mut seed_chirho = FrontendSeedArtifactsChirho {
+        ifaces_chirho,
+        imported_types_chirho,
+        imported_type_synonyms_chirho,
+        imported_type_families_chirho,
+        type_contracts_chirho: imported_type_contracts_chirho,
+        class_env_chirho: haskelujah_typing_chirho::ClassEnvChirho::new_chirho(),
+    };
+    let mut iface_slots_chirho: HashMap<_, _> = seed_chirho
+        .ifaces_chirho
         .iter()
         .enumerate()
         .map(|(index_chirho, iface_chirho)| (iface_chirho.name_chirho.clone(), index_chirho))
@@ -166,68 +252,25 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
             source_chirho,
         );
         let file_id_chirho = source_file_chirho.file_id_chirho();
-        let filtered_imported_types_chirho =
-            filter_seeded_imported_types_for_source_chirho(source_chirho, &imported_types_chirho);
-        let filtered_imported_type_synonyms_chirho = filter_seeded_type_synonyms_for_source_chirho(
-            source_chirho,
-            &imported_type_synonyms_chirho,
+        let frontend_result_chirho = seed_chirho
+            .check_chirho(source_chirho, file_id_chirho, false)
+            .map_err(|e_chirho| {
+                format!(
+                    "Error checking dependency {} ({}): {}",
+                    module_name_chirho, file_name_chirho, e_chirho
+                )
+            })?;
+
+        let iface_chirho = build_iface_with_imports_chirho(
+            &frontend_result_chirho.module_chirho,
+            &seed_chirho.ifaces_chirho,
         );
-
-        let frontend_result_chirho = run_frontend_with_inputs_chirho(
-            source_chirho,
-            file_id_chirho,
-            FrontendInputsChirho::new_chirho(
-                &ifaces_chirho,
-                &filtered_imported_types_chirho,
-                &filtered_imported_type_synonyms_chirho,
-                &imported_type_families_chirho,
-            )
-            .with_class_env_chirho(&imported_class_env_chirho)
-            .with_type_contracts_chirho(&imported_type_contracts_chirho),
-        )
-        .map_err(|e_chirho| {
-            format!(
-                "Error checking dependency {} ({}): {}",
-                module_name_chirho, file_name_chirho, e_chirho
-            )
-        })?;
-
-        let FrontendResultChirho {
-            module_chirho,
-            infer_result_chirho,
-            resolved_imported_type_synonyms_chirho,
-            warnings_chirho: _warnings_chirho,
-            type_contracts_chirho,
-        } = frontend_result_chirho;
-
-        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
-        insert_exported_schemes_into_imports_chirho(
+        seed_chirho.publish_chirho(
+            &frontend_result_chirho,
             &iface_chirho,
-            &infer_result_chirho,
-            &mut imported_types_chirho,
+            &mut iface_slots_chirho,
         );
-        imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
-            &module_chirho,
-            &iface_chirho,
-            &resolved_imported_type_synonyms_chirho,
-        ));
-        imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
-        imported_class_env_chirho = infer_result_chirho.class_env_chirho.clone();
-        imported_type_contracts_chirho
-            .insert(iface_chirho.name_chirho.clone(), type_contracts_chirho);
-        if let Some(slot_chirho) = iface_slots_chirho.get(&iface_chirho.name_chirho) {
-            ifaces_chirho[*slot_chirho] = iface_chirho;
-        } else {
-            iface_slots_chirho.insert(iface_chirho.name_chirho.clone(), ifaces_chirho.len());
-            ifaces_chirho.push(iface_chirho);
-        }
     }
 
-    Ok(FrontendSeedArtifactsChirho {
-        ifaces_chirho,
-        imported_types_chirho,
-        imported_type_synonyms_chirho,
-        imported_type_families_chirho,
-        type_contracts_chirho: imported_type_contracts_chirho,
-    })
+    Ok(seed_chirho)
 }

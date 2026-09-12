@@ -6,7 +6,10 @@ File entry points discover the consumer's reachable local providers and check th
 ```mermaid
 flowchart TD
     source_chirho[Consumer source and active root] --> imports_chirho[Parse imports including implicit Prelude]
-    imports_chirho --> lookup_chirho[Look up each requested module once]
+    imports_chirho --> form_chirho{SOURCE import?}
+    form_chirho -- no --> lookup_chirho[Look up requested implementation]
+    form_chirho -- yes --> boot_chirho[Require correctly named hs-boot beside the selected implementation]
+    boot_chirho --> closure_chirho
     lookup_chirho --> rank_chirho[Exact hierarchical path then flat sibling path]
     rank_chirho --> admissible_chirho{Within bounds and complete declared name matches?}
     admissible_chirho -- no candidate --> interface_chirho[Existing interface-only support; no invented contract]
@@ -17,11 +20,13 @@ flowchart TD
     order_chirho -- source cycle without boot contract --> fail_chirho
     order_chirho -- acyclic --> check_chirho[Shared frontend checks providers in dependency order]
     check_chirho -- failure --> fail_chirho
-    check_chirho -- success --> companion_chirho[Checked interface, schemes, aliases, family rows, kind contracts]
+    check_chirho -- success --> companion_chirho[Publish the version selected by this import edge]
     companion_chirho --> unique_chirho[Replace source owner's fallback at its unique interface slot]
     unique_chirho --> frontend_chirho[Consumer naming and typing]
     interface_chirho --> frontend_chirho
-    frontend_chirho --> mode_chirho{Entry point}
+    frontend_chirho --> agreement_chirho[Compare checked boot promises with required checked implementations]
+    agreement_chirho -- mismatch or unrepresented agreement --> fail_chirho
+    agreement_chirho -- agrees --> mode_chirho{Entry point}
     mode_chirho -- check --> summary_chirho[Check summary; no backend work]
     mode_chirho -- compile --> backend_chirho[Consumer Core and backend]
 ```
@@ -34,15 +39,17 @@ flowchart TD
 - Only imports reachable from the consumer are considered. Unrelated malformed neighbors cannot fail the consumer or contribute exports.
 - A source owner is checked before replacing its seeded interface and publishing its companion. The shared producer keeps interface names unique, including a legitimate root-level `Prelude.hs`.
 - Known-provider read, preprocessing and frontend failures stop the consumer. The diagnostic retains the provider path and original diagnostic text; provider offsets are not rendered against consumer source bytes.
-- Source cycles without checked boot input fail explicitly. This producer does not fake a sequentially checked SCC or infer an hs-boot contract.
+- Implementation and boot nodes have distinct keys. Ordinary imports use implementations; SOURCE imports require actual checked boot files. A source implementation is required and scheduled even if reached only through SOURCE, matching the source-graph (`ghc --make`) boundary. Its own boot is not made its dependency. A cycle still present in this graph fails explicitly.
+- Each node selects its imported versions before loading semantic output. A later implementation cannot replace a directly requested boot interface or expose implementation-only names. Mixed direct ordinary and SOURCE imports of one module currently diagnose rather than silently choose one version.
+- Boot checking uses the same naming, kind, type, and validity phases. Only explicit boot mode publishes a value signature without a value body. Implementations are independently checked; their public interface must contain every boot export and member. Exact closed-scheme and kind-template agreement permits alpha-renaming, not specialization, qualified-basename cancellation, or dropped multiplicity. Boot data/newtype constructor layouts, open-family injectivity positions, and closed aliases are also checked. Classes, instances, abstract closed-family promises, and fixity agreement are not yet implemented; those declarations diagnose instead of becoming unchecked authority.
 - The shared collector also serves stdlib and package frontends. It orders supplied modules iteratively, rejects duplicate source owners, and preserves caller-supplied artifacts even for an empty source list. The legacy package-fixture scanner is test-only and does not feed this file-entry producer.
 
 ## Bounds and proof scope
 
-One invocation admits at most64 module-name components,2048 distinct candidate directories,16384 source reads/dependency names,8MiB per source and64MiB of admitted source bytes. Exhaustion is an error, not a partial-success warning. A path cache avoids repeated reads; independent-module ordering uses a deterministic ready set. Filesystem lookup does not grow with unrelated directory contents.
+One invocation admits at most64 module-name components,2048 distinct candidate directories,16384 source reads/dependency names,8MiB per source and64MiB of admitted source bytes. Import-contract closure traversal has a shared1048576-edge budget. Exact value/alias agreement admits16384 type nodes and depth256 per comparison. Exhaustion is an error or unproved agreement, not partial success. A path cache avoids repeated reads; independent-module ordering uses a deterministic ready set. Filesystem lookup does not grow with unrelated directory contents.
 
 These bounds cover discovery and admitted source bytes, not all compiler allocations or CPP subprocess resource use. Existing family-table copies and source maps still have their own costs.
 
 The in-process source-string API remains filesystem-blind. Tests for this workflow create real source roots and exercise both file check and file compile: imported and qualified family equations, transitive re-export, wrong kinds and equality proofs, local nominal shadowing, failed providers and cycles. Separate controls preserve root Prelude authority and verify lookup work for8/16/32 unrelated neighbors. CLI observations must name the built executable hash.
 
-This is checked frontend transport, not a new dependency-body runtime linker. Package-qualified imports and SOURCE/hs-boot distinctions are not retained in the current import AST and are not newly implemented by this producer. Interface-only modules gain no guessed kind contract. Existing import visibility filtering and nominal-name normalization retain their separately documented limits.
+This is checked frontend transport, not a new dependency-body runtime linker. Package-qualified import ownership remains unrepresented; SOURCE mode is retained in the import AST. Interface-only modules gain no guessed kind contract. Multiline imports use the actual parser for value/alias selection as well as discovery. Broader class-environment scope/identity and nominal-name normalization retain their separately documented limits. The explicit supplied-module/package collector has no boot-source input; the filesystem graph is the new boot entry path.

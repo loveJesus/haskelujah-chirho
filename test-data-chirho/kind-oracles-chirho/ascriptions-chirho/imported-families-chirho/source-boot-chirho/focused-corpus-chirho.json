@@ -1,0 +1,261 @@
+{
+  "hashes_chirho": {
+    "candidate_chirho": "55aa4bd462745abbdbbc13fd03271d32300f7d25db7a997d83783e93cc0432ef",
+    "baseline_chirho": "93c8ac0be43db896dffe8e8f0c042474d9dc5e11dbc8151b58cab5e0daa23786"
+  },
+  "scope_chirho": "18 named former source-cycle failures only",
+  "corpus_chirho": [
+    {
+      "name_chirho": "T11062",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T11062.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T11062.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T11062.hs\nmodule: T11062\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T11062\nwasm_stub_size: 27\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T11062a",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T11062a.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T11062a.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T11062a.hs\nmodule: T11062a\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T11062a\nwasm_stub_size: 28\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T12064",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T12064.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T12064.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T12064.hs\nmodule: T12064\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T12064\nwasm_stub_size: 27\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T12064a",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T12064a.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T12064a.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T12064a.hs\nmodule: T12064a\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T12064a\nwasm_stub_size: 28\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T14396",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T14396.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T14396.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T14396.hs\nmodule: T14396\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T14396\nwasm_stub_size: 27\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T14396a",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T14396a.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T14396a.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T14396a.hs\nmodule: T14396a\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T14396a\nwasm_stub_size: 28\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T2412",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T2412.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T2412.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T2412.hs\nmodule: T2412\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T2412\nwasm_stub_size: 26\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T2412A",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T2412A.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T2412A.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T2412A.hs\nmodule: T2412A\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T2412A\nwasm_stub_size: 27\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T26154",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T26154.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T26154.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T26154.hs\nmodule: T26154\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T26154\nwasm_stub_size: 27\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T26154_A",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T26154_A.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T26154_A.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T26154_A.hs\nmodule: T26154_A\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T26154_A\nwasm_stub_size: 29\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T26154_B",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T26154_B.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T26154_B.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/T26154_B.hs\nmodule: T26154_B\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T26154_B\nwasm_stub_size: 29\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "T6018a",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/T6018a.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/T6018a.hs"
+      ],
+      "exit_chirho": 1,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0100]: boot contract for T6018 contains a declaration whose agreement is not represented yet\n\n1 error generated\n"
+    },
+    {
+      "name_chirho": "Tc266",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/Tc266.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/Tc266.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/Tc266.hs\nmodule: Tc266\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module Tc266\nwasm_stub_size: 26\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "Tc266a",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/Tc266a.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/Tc266a.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "source: ghc-tests-chirho/typecheck-chirho/should_compile/Tc266a.hs\nmodule: Tc266a\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module Tc266a\nwasm_stub_size: 27\n",
+      "stderr_chirho": ""
+    },
+    {
+      "name_chirho": "Tc267a",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/Tc267a.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/Tc267a.hs"
+      ],
+      "exit_chirho": 1,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0100]: boot contract for Tc267a contains a declaration whose agreement is not represented yet\n\n1 error generated\n"
+    },
+    {
+      "name_chirho": "Tc267b",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/Tc267b.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/Tc267b.hs"
+      ],
+      "exit_chirho": 1,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0100]: boot contract for Tc267a contains a declaration whose agreement is not represented yet\n\n1 error generated\n"
+    },
+    {
+      "name_chirho": "Tc271",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/Tc271.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/Tc271.hs"
+      ],
+      "exit_chirho": 1,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0100]: boot contract for Tc271 contains a declaration whose agreement is not represented yet\n\n1 error generated\n"
+    },
+    {
+      "name_chirho": "Tc271a",
+      "source_path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/Tc271a.hs",
+      "command_chirho": [
+        "gtimeout",
+        "20",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "ghc-tests-chirho/typecheck-chirho/should_compile/Tc271a.hs"
+      ],
+      "exit_chirho": 1,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0100]: boot contract for Tc271 contains a declaration whose agreement is not represented yet\n\n1 error generated\n"
+    }
+  ]
+}

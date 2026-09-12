@@ -13,6 +13,27 @@ pub struct TypeSynonymChirho {
 }
 
 impl TypeSynonymChirho {
+    /// Hidden and ordinary parameter positions remain distinct promises.
+    pub fn alpha_equivalent_chirho(&self, other_chirho: &Self) -> bool {
+        if self.kind_parameters_chirho.len() != other_chirho.kind_parameters_chirho.len()
+            || self.parameters_chirho.len() != other_chirho.parameters_chirho.len()
+        {
+            return false;
+        }
+        let normalize_chirho = |synonym_chirho: &Self| {
+            crate::scheme_equality_chirho::canonical_named_body_chirho(
+                &synonym_chirho
+                    .kind_parameters_chirho
+                    .iter()
+                    .chain(&synonym_chirho.parameters_chirho)
+                    .map(String::as_str)
+                    .collect::<Vec<_>>(),
+                &synonym_chirho.body_chirho,
+            )
+        };
+        matches!((normalize_chirho(self), normalize_chirho(other_chirho)), (Some(left_chirho), Some(right_chirho)) if left_chirho == right_chirho)
+    }
+
     pub fn map_constructor_names_chirho(
         &self,
         rename_chirho: &mut impl FnMut(&str) -> String,

@@ -1173,6 +1173,7 @@ mod tests_chirho {
     fn mk_ghc_exts_import_chirho(hiding_chirho: bool) -> ImportDeclChirho {
         ImportDeclChirho {
             module_chirho: mk_name_chirho("GHC.Exts"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: Some(ImportSpecChirho {

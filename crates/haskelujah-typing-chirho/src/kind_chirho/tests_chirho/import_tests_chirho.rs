@@ -61,6 +61,50 @@ fn dependent_contract_chirho() -> KindContractChirho {
 }
 
 #[test]
+fn boot_kind_equality_rebases_classifiers_simultaneously_chirho() {
+    let expected_chirho = dependent_contract_chirho();
+    let mut actual_chirho = expected_chirho.clone();
+    let KindBindingChirho::PolyChirho(scheme_chirho) = &mut actual_chirho.binding_chirho else {
+        unreachable!()
+    };
+    // Swapped numeric IDs test simultaneous rather than chasing substitution.
+    scheme_chirho.quantified_chirho = vec![KindVarChirho(1), KindVarChirho(0)];
+    scheme_chirho.specified_chirho = [KindVarChirho(0)].into_iter().collect();
+    scheme_chirho.classifiers_chirho[1] = KindChirho::VarChirho(KindVarChirho(1));
+    scheme_chirho.body_chirho = KindChirho::arrow_chirho(
+        KindChirho::VarChirho(KindVarChirho(0)),
+        KindChirho::StarChirho,
+    );
+    scheme_chirho.source_names_chirho = vec![Some("renamedChirho".to_owned()), None];
+    assert!(expected_chirho.alpha_equivalent_chirho(&actual_chirho));
+    let KindBindingChirho::PolyChirho(scheme_chirho) = &mut actual_chirho.binding_chirho else {
+        unreachable!()
+    };
+    scheme_chirho.classifiers_chirho[1] = KindChirho::StarChirho;
+    assert!(!expected_chirho.alpha_equivalent_chirho(&actual_chirho));
+}
+
+#[test]
+fn boot_kind_equality_preserves_specificity_authority_and_closedness_chirho() {
+    let expected_chirho = dependent_contract_chirho();
+    let mut actual_chirho = expected_chirho.clone();
+    let KindBindingChirho::PolyChirho(scheme_chirho) = &mut actual_chirho.binding_chirho else {
+        unreachable!()
+    };
+    scheme_chirho.specified_chirho.clear();
+    assert!(!expected_chirho.alpha_equivalent_chirho(&actual_chirho));
+    actual_chirho = expected_chirho.clone();
+    actual_chirho.shape_chirho = imports_chirho::KindHeadShapeChirho::FamilyChirho;
+    assert!(!expected_chirho.alpha_equivalent_chirho(&actual_chirho));
+    actual_chirho = expected_chirho.clone();
+    let KindBindingChirho::PolyChirho(scheme_chirho) = &mut actual_chirho.binding_chirho else {
+        unreachable!()
+    };
+    scheme_chirho.classifiers_chirho[0] = KindChirho::VarChirho(KindVarChirho(99));
+    assert!(!actual_chirho.alpha_equivalent_chirho(&actual_chirho));
+}
+
+#[test]
 fn portable_kind_templates_reject_free_and_forward_classifier_identities_chirho() {
     let contract_chirho = dependent_contract_chirho();
     assert!(KindContractChirho::binding_is_closed_chirho(

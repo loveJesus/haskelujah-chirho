@@ -7,6 +7,8 @@ use super::*;
 /// The driver hands its actual phase result over; direct type-inference callers
 /// may request elaboration locally by leaving `kind_elaboration_chirho` absent.
 pub struct InferInputsChirho<'input_chirho> {
+    /// Checked hs-boot declarations publish signatures, never inferred bodies.
+    pub boot_chirho: bool,
     pub imported_types_chirho: &'input_chirho HashMap<String, SchemeChirho>,
     pub imported_type_synonyms_chirho: &'input_chirho HashMap<String, (Vec<String>, TypeChirho)>,
     pub imported_closed_synonyms_chirho: &'input_chirho HashMap<String, TypeSynonymChirho>,
@@ -120,6 +122,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     infer_module_with_inputs_chirho(
         module_chirho,
         InferInputsChirho {
+            boot_chirho: false,
             imported_types_chirho,
             imported_type_synonyms_chirho,
             imported_closed_synonyms_chirho: &HashMap::new(),
@@ -138,6 +141,7 @@ pub fn infer_module_with_inputs_chirho(
     inputs_chirho: InferInputsChirho<'_>,
 ) -> InferResultChirho {
     let InferInputsChirho {
+        boot_chirho,
         imported_types_chirho,
         imported_type_synonyms_chirho,
         imported_closed_synonyms_chirho,
@@ -230,6 +234,22 @@ pub fn infer_module_with_inputs_chirho(
             .insert(constructor_name_chirho.clone(), field_names_chirho.clone());
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
+    if boot_chirho {
+        for declaration_chirho in &module_chirho.decls_chirho {
+            if let DeclChirho::TypeSigChirho {
+                name_chirho,
+                ty_chirho,
+                ..
+            } = declaration_chirho
+            {
+                let scheme_chirho = ctx_chirho.ast_type_to_scheme_chirho(ty_chirho);
+                ctx_chirho.env_chirho.bind_chirho(
+                    canonical_value_name_text_chirho(name_chirho.text_chirho()),
+                    scheme_chirho,
+                );
+            }
+        }
+    }
     let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
     if !default_subst_chirho.is_empty_chirho() {
         ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);

@@ -1702,6 +1702,7 @@ fn inject_prelude_import_chirho(module_chirho: &mut ModuleChirho) {
                     haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
                 ),
             ),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -3297,62 +3298,13 @@ fn extract_module_name_chirho(source_chirho: &str) -> String {
 
 /// Extract imported module names from a Haskell source string.
 fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
-    let mut imports_chirho = Vec::new();
-    for line_chirho in source_chirho.lines() {
-        let trimmed_chirho = line_chirho.trim();
-        if let Some(rest_chirho) = trimmed_chirho.strip_prefix("import ") {
-            if let Some(module_name_chirho) = parse_import_module_name_chirho(rest_chirho) {
-                imports_chirho.push(module_name_chirho);
-            }
-        }
-    }
-    imports_chirho
-}
-
-fn parse_import_module_name_chirho(rest_chirho: &str) -> Option<String> {
-    let mut remaining_chirho = rest_chirho.trim();
-
-    'scan_modifiers_chirho: loop {
-        if let Some(pragma_rest_chirho) = remaining_chirho.strip_prefix("{-#") {
-            if let Some(pragma_end_chirho) = pragma_rest_chirho.find("#-}") {
-                remaining_chirho = pragma_rest_chirho[pragma_end_chirho + 3..].trim_start();
-                continue;
-            }
-        }
-
-        for keyword_chirho in ["qualified", "safe", "unsafe", "interruptible"] {
-            if let Some(after_keyword_chirho) = remaining_chirho.strip_prefix(keyword_chirho) {
-                if after_keyword_chirho
-                    .chars()
-                    .next()
-                    .is_some_and(|char_chirho| char_chirho.is_whitespace())
-                {
-                    remaining_chirho = after_keyword_chirho.trim_start();
-                    continue 'scan_modifiers_chirho;
-                }
-            }
-        }
-
-        if let Some(package_rest_chirho) = remaining_chirho.strip_prefix('"') {
-            if let Some(package_end_chirho) = package_rest_chirho.find('"') {
-                remaining_chirho = package_rest_chirho[package_end_chirho + 1..].trim_start();
-                continue;
-            }
-        }
-
-        break;
-    }
-
-    let module_name_chirho = remaining_chirho
-        .split(|char_chirho: char| char_chirho.is_whitespace() || char_chirho == '(')
-        .next()
-        .unwrap_or("")
-        .trim();
-    if module_name_chirho.is_empty() {
-        None
-    } else {
-        Some(module_name_chirho.to_string())
-    }
+    let file_id_chirho = haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO;
+    let green_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho).parse_chirho();
+    lower_module_chirho(&green_chirho, file_id_chirho)
+        .imports_chirho
+        .into_iter()
+        .map(|import_chirho| import_chirho.module_chirho.full_name_chirho())
+        .collect()
 }
 
 fn filter_seeded_type_synonyms_for_source_chirho(

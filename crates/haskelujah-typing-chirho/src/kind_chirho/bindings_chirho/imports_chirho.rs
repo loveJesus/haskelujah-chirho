@@ -3,7 +3,7 @@
 //! Portable defining-module kind contracts. Workflow: declaration-kinds-chirho.
 use super::*;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum KindHeadShapeChirho {
     NominalChirho,
     SynonymChirho,
@@ -20,6 +20,57 @@ pub struct KindContractChirho {
 }
 
 impl KindContractChirho {
+    /// Exact agreement modulo producer-local quantified identities. A single
+    /// successful instantiation is not proof of a universally quantified kind.
+    /// Workflow: compiler-pipeline-chirho/module-search-authority-chirho.
+    pub fn alpha_equivalent_chirho(&self, other_chirho: &Self) -> bool {
+        if self.shape_chirho != other_chirho.shape_chirho
+            || !Self::binding_is_closed_chirho(&self.binding_chirho)
+            || !Self::binding_is_closed_chirho(&other_chirho.binding_chirho)
+        {
+            return false;
+        }
+        let normalize_chirho = |binding_chirho: &KindBindingChirho| {
+            let scheme_chirho = match binding_chirho {
+                KindBindingChirho::MonoChirho(body_chirho) => {
+                    KindSchemeChirho::generalize_chirho(body_chirho.clone())
+                }
+                KindBindingChirho::PolyChirho(scheme_chirho) => scheme_chirho.clone(),
+            };
+            let identities_chirho: HashMap<_, _> = scheme_chirho
+                .quantified_chirho
+                .iter()
+                .enumerate()
+                .map(|(index_chirho, identity_chirho)| {
+                    (*identity_chirho, KindVarChirho(index_chirho as u32))
+                })
+                .collect();
+            let normalize_term_chirho = |term_chirho: &KindChirho| {
+                term_chirho.map_leaves_chirho(&mut |leaf_chirho| match leaf_chirho {
+                    KindChirho::VarChirho(identity_chirho)
+                    | KindChirho::RigidChirho(identity_chirho) => {
+                        KindChirho::VarChirho(identities_chirho[identity_chirho])
+                    }
+                    _ => leaf_chirho.clone(),
+                })
+            };
+            (
+                scheme_chirho
+                    .quantified_chirho
+                    .iter()
+                    .map(|identity_chirho| scheme_chirho.specified_chirho.contains(identity_chirho))
+                    .collect::<Vec<_>>(),
+                scheme_chirho
+                    .classifiers_chirho
+                    .iter()
+                    .map(normalize_term_chirho)
+                    .collect::<Vec<_>>(),
+                normalize_term_chirho(&scheme_chirho.body_chirho),
+            )
+        };
+        normalize_chirho(&self.binding_chirho) == normalize_chirho(&other_chirho.binding_chirho)
+    }
+
     pub(super) fn binding_is_closed_chirho(binding_chirho: &KindBindingChirho) -> bool {
         let identities_chirho = |kind_chirho: &KindChirho| {
             kind_chirho

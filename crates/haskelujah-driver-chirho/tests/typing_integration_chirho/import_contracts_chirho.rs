@@ -5,6 +5,8 @@
 use haskelujah_driver::{compile_modules_chirho, typecheck_source_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[path = "import_contracts_chirho/boot_chirho.rs"]
+mod boot_chirho;
 #[path = "import_contracts_chirho/search_path_chirho.rs"]
 mod search_path_chirho;
 

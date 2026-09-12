@@ -225,6 +225,59 @@ fn source_paths_follow_multiline_import_syntax_chirho() {
 }
 
 #[test]
+fn source_paths_multiline_imports_retain_value_and_synonym_contracts_chirho() {
+    let directory_chirho = tempfile::tempdir().unwrap();
+    std::fs::write(directory_chirho.path().join("ProviderChirho.hs"),
+        "module ProviderChirho where\ntype CountChirho = Int\nonlyIntChirho :: Int -> Int\nonlyIntChirho xChirho = xChirho\n").unwrap();
+    for import_chirho in [
+        "import ProviderChirho",
+        "import\n  ProviderChirho\n  (onlyIntChirho, CountChirho)",
+    ] {
+        for (binding_chirho, accepts_chirho) in [
+            ("valueChirho :: Int\nvalueChirho = onlyIntChirho 42\n", true),
+            ("valueChirho :: CountChirho\nvalueChirho = 42\n", true),
+            (
+                "valueChirho :: Bool\nvalueChirho = onlyIntChirho True\n",
+                false,
+            ),
+            ("valueChirho :: CountChirho\nvalueChirho = True\n", false),
+        ] {
+            let source_chirho =
+                format!("module ConsumerChirho where\n{import_chirho}\n{binding_chirho}");
+            let path_chirho = directory_chirho.path().join("ConsumerChirho.hs");
+            std::fs::write(&path_chirho, &source_chirho).unwrap();
+            let check_chirho =
+                check_source_path_chirho(&path_chirho, ExecutionModeChirho::BatchChirho)
+                    .map(|_| ());
+            let compile_chirho = compile_source_with_search_path_chirho(
+                &source_chirho,
+                &mut SourceMapChirho::new_chirho(),
+                "ConsumerChirho.hs",
+                directory_chirho.path(),
+            )
+            .map(|_| ());
+            for result_chirho in [check_chirho, compile_chirho] {
+                if accepts_chirho {
+                    result_chirho.unwrap();
+                } else {
+                    let error_chirho = result_chirho
+                        .expect_err(
+                            "an import modifier must not discard a checked value or alias contract",
+                        )
+                        .to_string();
+                    assert!(
+                        error_chirho.contains("E0200")
+                            && error_chirho.contains("Bool")
+                            && error_chirho.contains("Int"),
+                        "{error_chirho}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn provider_preprocessing_and_byte_limit_fail_closed_chirho() {
     let directory_chirho = tempfile::tempdir().unwrap();
     let source_chirho = "module ConsumerChirho where\nimport ProviderChirho\nvalueChirho = ()\n";

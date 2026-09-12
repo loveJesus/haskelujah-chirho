@@ -2,7 +2,7 @@
 
 //! Bounded, demand-driven lookup of authoritative source modules.
 //! Workflow: compiler-pipeline-chirho/module-search-authority-chirho.
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -54,7 +54,15 @@ pub(crate) struct LocalModuleSourceChirho {
     pub(crate) name_chirho: String,
     pub(crate) path_chirho: PathBuf,
     pub(crate) source_chirho: String,
-    pub(crate) imports_chirho: Vec<String>,
+    pub(crate) imports_chirho: Vec<ModuleSourceKeyChirho>,
+}
+
+/// Boot and implementation have one nominal module identity, but are different
+/// dependency nodes and expose different checked interfaces.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct ModuleSourceKeyChirho {
+    pub(crate) name_chirho: String,
+    pub(crate) boot_chirho: bool,
 }
 
 /// Read actual preprocessed syntax, not a line-oriented import approximation.
@@ -62,7 +70,7 @@ pub(crate) fn module_header_chirho(
     source_chirho: &str,
     file_name_chirho: &str,
     source_map_chirho: &mut SourceMapChirho,
-) -> Result<(String, Vec<String>), String> {
+) -> Result<(String, Vec<ModuleSourceKeyChirho>), String> {
     let file_chirho = SourceFileChirho::from_source_map_chirho(
         source_map_chirho,
         file_name_chirho,
@@ -82,7 +90,10 @@ pub(crate) fn module_header_chirho(
     let imports_chirho = module_chirho
         .imports_chirho
         .iter()
-        .map(|import_chirho| import_chirho.module_chirho.full_name_chirho())
+        .map(|import_chirho| ModuleSourceKeyChirho {
+            name_chirho: import_chirho.module_chirho.full_name_chirho(),
+            boot_chirho: import_chirho.source_chirho,
+        })
         .collect();
     Ok((name_chirho, imports_chirho))
 }
@@ -126,6 +137,44 @@ impl LocalModuleSearchChirho {
         module_name_chirho: &str,
         source_map_chirho: &mut SourceMapChirho,
     ) -> Result<Option<Arc<LocalModuleSourceChirho>>, String> {
+        self.lookup_form_chirho(module_name_chirho, false, source_map_chirho)
+    }
+
+    pub(crate) fn lookup_boot_chirho(
+        &mut self,
+        module_name_chirho: &str,
+        source_map_chirho: &mut SourceMapChirho,
+    ) -> Result<Arc<LocalModuleSourceChirho>, String> {
+        // A boot belongs beside the selected implementation. A lower-priority
+        // flat boot may not replace a missing hierarchical owner's promise.
+        let candidate_chirho = if let Some(implementation_chirho) =
+            self.lookup_chirho(module_name_chirho, source_map_chirho)?
+        {
+            let relative_chirho = implementation_chirho
+                .path_chirho
+                .strip_prefix(&self.root_chirho)
+                .map_err(|_| "boot owner is outside the active source root")?
+                .with_extension("hs-boot");
+            self.read_candidate_chirho(&relative_chirho, source_map_chirho)?
+        } else {
+            self.lookup_form_chirho(module_name_chirho, true, source_map_chirho)?
+        };
+        candidate_chirho
+            .filter(|candidate_chirho| candidate_chirho.name_chirho == module_name_chirho)
+            .ok_or_else(|| {
+                format!(
+                    "missing or incorrectly named boot contract: {}.hs-boot",
+                    module_name_chirho.replace('.', "/")
+                )
+            })
+    }
+
+    fn lookup_form_chirho(
+        &mut self,
+        module_name_chirho: &str,
+        boot_chirho: bool,
+        source_map_chirho: &mut SourceMapChirho,
+    ) -> Result<Option<Arc<LocalModuleSourceChirho>>, String> {
         let components_chirho: Vec<_> = module_name_chirho.split('.').collect();
         if components_chirho.len() > MAX_MODULE_SEARCH_DEPTH_CHIRHO
             || components_chirho.iter().any(|part_chirho| {
@@ -143,8 +192,12 @@ impl LocalModuleSearchChirho {
         for component_chirho in &components_chirho {
             hierarchical_chirho.push(component_chirho);
         }
-        hierarchical_chirho.set_extension("hs");
-        let flat_chirho = PathBuf::from(format!("{}.hs", components_chirho.last().unwrap()));
+        let extension_chirho = if boot_chirho { "hs-boot" } else { "hs" };
+        hierarchical_chirho.set_extension(extension_chirho);
+        let flat_chirho = PathBuf::from(format!(
+            "{}.{extension_chirho}",
+            components_chirho.last().unwrap()
+        ));
         let candidates_chirho = if flat_chirho == hierarchical_chirho {
             vec![hierarchical_chirho]
         } else {
@@ -265,57 +318,4 @@ impl LocalModuleSearchChirho {
             imports_chirho,
         })))
     }
-}
-
-/// Discover only reachable providers. Missing interface-only modules stay
-/// missing here; no source or checked contract is fabricated.
-pub(crate) fn reachable_module_sources_chirho(
-    source_chirho: &str,
-    file_name_chirho: &str,
-    root_chirho: &Path,
-    source_map_chirho: &mut SourceMapChirho,
-) -> Result<Vec<(String, String, String)>, String> {
-    let (consumer_chirho, imports_chirho) =
-        module_header_chirho(source_chirho, file_name_chirho, source_map_chirho)?;
-    let mut search_chirho = LocalModuleSearchChirho::new_chirho(root_chirho)?;
-    let mut pending_chirho = VecDeque::new();
-    let mut seen_chirho = HashSet::new();
-    let mut sources_chirho = Vec::new();
-    let enqueue_chirho = |names_chirho: Vec<String>,
-                          seen_chirho: &mut HashSet<String>,
-                          pending_chirho: &mut VecDeque<String>|
-     -> Result<(), String> {
-        for name_chirho in names_chirho {
-            if name_chirho == consumer_chirho {
-                return Err(format!(
-                    "source import cycle reaches {consumer_chirho}; a checked hs-boot contract is required"
-                ));
-            }
-            if seen_chirho.insert(name_chirho.clone()) {
-                if seen_chirho.len() > MAX_MODULE_SEARCH_FILES_CHIRHO {
-                    return Err("module dependency budget exhausted".to_owned());
-                }
-                pending_chirho.push_back(name_chirho);
-            }
-        }
-        Ok(())
-    };
-    enqueue_chirho(imports_chirho, &mut seen_chirho, &mut pending_chirho)?;
-    while let Some(name_chirho) = pending_chirho.pop_front() {
-        if let Some(provider_chirho) =
-            search_chirho.lookup_chirho(&name_chirho, source_map_chirho)?
-        {
-            enqueue_chirho(
-                provider_chirho.imports_chirho.clone(),
-                &mut seen_chirho,
-                &mut pending_chirho,
-            )?;
-            sources_chirho.push((
-                name_chirho,
-                provider_chirho.path_chirho.to_string_lossy().into_owned(),
-                provider_chirho.source_chirho.clone(),
-            ));
-        }
-    }
-    Ok(sources_chirho)
 }

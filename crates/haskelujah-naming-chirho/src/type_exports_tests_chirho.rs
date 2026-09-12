@@ -80,6 +80,54 @@ fn associated_class_chirho() -> DeclChirho {
 }
 
 #[test]
+fn boot_signatures_export_only_in_declaration_mode_and_obey_the_export_list_chirho() {
+    let signature_chirho = |text_chirho| DeclChirho::TypeSigChirho {
+        name_chirho: name_chirho(text_chirho),
+        ty_chirho: TypeChirho::ConChirho(name_chirho("Int")),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let mut module_chirho = module_chirho(
+        "BootChirho",
+        None,
+        vec![],
+        vec![
+            signature_chirho("shownChirho"),
+            signature_chirho("hiddenChirho"),
+        ],
+    );
+    assert!(
+        build_iface_chirho(&module_chirho)
+            .exports_chirho
+            .values_chirho
+            .is_empty()
+    );
+    assert_eq!(
+        crate::iface_chirho::build_boot_iface_with_imports_chirho(&module_chirho, &[])
+            .exports_chirho
+            .values_chirho
+            .len(),
+        2
+    );
+    module_chirho.exports_chirho = Some(vec![ExportSpecChirho::VarChirho(name_chirho(
+        "shownChirho",
+    ))]);
+    let exported_chirho =
+        crate::iface_chirho::build_boot_iface_with_imports_chirho(&module_chirho, &[]);
+    assert!(
+        exported_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("shownChirho")
+    );
+    assert!(
+        !exported_chirho
+            .exports_chirho
+            .values_chirho
+            .contains_key("hiddenChirho")
+    );
+}
+
+#[test]
 fn builtin_interfaces_export_source_visible_type_names_chirho() {
     let modules_chirho = builtin_module_ifaces_chirho();
     let expected_types_chirho = [
@@ -203,6 +251,7 @@ fn module_reexport_respects_selected_associated_import_chirho() {
         ))]),
         vec![ImportDeclChirho {
             module_chirho: name_chirho("SourceChirho"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: Some(ImportSpecChirho {
@@ -247,6 +296,7 @@ fn module_reexport_hiding_all_removes_associated_types_chirho() {
         ))]),
         vec![ImportDeclChirho {
             module_chirho: name_chirho("SourceChirho"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: Some(ImportSpecChirho {
@@ -284,6 +334,7 @@ fn selected_associated_import_reaches_unqualified_type_scope_chirho() {
         None,
         vec![ImportDeclChirho {
             module_chirho: name_chirho("SourceChirho"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: Some(ImportSpecChirho {
@@ -335,6 +386,7 @@ fn selected_associated_import_reaches_qualified_alias_scope_chirho() {
         None,
         vec![ImportDeclChirho {
             module_chirho: name_chirho("SourceChirho"),
+            source_chirho: false,
             qualified_chirho: true,
             alias_chirho: Some(name_chirho("AliasChirho")),
             spec_chirho: Some(ImportSpecChirho {

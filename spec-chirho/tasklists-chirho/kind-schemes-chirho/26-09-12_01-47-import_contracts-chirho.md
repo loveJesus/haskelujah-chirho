@@ -232,3 +232,59 @@ the frontend and contract owners, not those fallbacks. GHC-checked circular
 controls and mismatched-signature/kind negatives define the acceptance evidence.
 This does not settle the separate AST representation of associated-family
 binders/results or authorize guessed metadata. CPU embargo released; lease held.
+
+## Checked boot nodes, continuation2026-09-12
+
+Checkpointdf1529fa is pushed and remote-exact; local before tag is
+source-boot-contract-before-chirho. SOURCE is now retained from actual pragma
+tokens, not comments. Implementation and boot providers have separate graph
+identities and the selected boot must be beside the authoritative implementation.
+Both providers are checked. Exact closed value/kind/alias comparison replaces
+the temptation to use permissive unification for a boot promise.
+
+- [x] Fourteen source-root tests pass through both check and compile. Twenty-five
+  fresh CLI source observations agree with GHC9.14.1, including the multiline
+  import matrix and public value/type/constructor controls. The first positive
+  reference was wrong: its abstract data binder was poly-kinded under GHC defaults.
+  The intended Type binder is now explicit; the polymorphic mismatch is retained
+  as a negative, not accepted by loosening agreement.
+- [x] Seven exact comparison controls pass, including alpha-renaming, capture,
+  classifier dependence/specificity, nominal identities, multiplicity and bounds.
+- [x] The multiline-import audit now has both value and synonym positive/negative
+  controls on one-line and multiline imports, through both filesystem paths.
+- [x] Initial freshly relinked focused CLI run recovers13 of18 former cycle errors;
+  T6018a,Tc267a/Tc267b,Tc271/Tc271a explicitly reject the still-unimplemented boot
+  abstract closed-family, instance or class agreement. This is a focused delta,
+  not a new corpus count. Broader main-relative regressions remain.
+- [x] Freeze and run parser367/367, typing389/389, naming137/137,
+  integration241/241 and canaries7/7, zero ignored/filtered. Lookup11/11,
+  1765 filtered, is a focused lib check. Workspace all-target check, explicit CLI
+  build and format check pass without compiler warnings. Driver all-target
+  clippy exits0 with454 warning-message lines including duplicates/summaries;
+  this is not a lint-clean result.
+- [x] Preserve the exact source observations, reference disagreement, focused
+  corpus results and gate provenance under imported-families-chirho/source-boot-chirho.
+- [ ] Commit/push the owned checked-boot checkpoint.
+- [ ] Complete the remaining boot declaration contracts without accepting erased
+  class/instance/family bodies; then remeasure exact full corpus sets.
+
+The first broad gate caught one missing source_chirho field in a naming-test
+constructor. Fixed as the ordinary-import false case; no test was excluded.
+Root errors retain their diagnostic bundle and caller file ID; dependency errors
+retain provider path and message. Shared source producers now reuse the same
+check/publication methods. No full-driver rerun or complete boot-support claim
+belongs to this intermediate checkpoint. Main and canonical row484 are untouched.
+
+Independent review found two real holes before freezing: a boot promise without
+an implementation was accepted, and a private implementation value could satisfy
+a public boot export. GHC rejects those cases (GHC-87110 and GHC-91999).
+The graph now requires the implementation and agreement checks the actual public
+interface, including type and constructor members. Valid counterparts remain
+accepted. Audit-before observations are retained, not mistaken for final results.
+
+Final CLI SHA25655aa4bd462745abbdbbc13fd03271d32300f7d25db7a997d83783e93cc0432ef
+stayed unchanged across25 source observations and the18-file focused set.
+Thirteen of18 recover; the same five stop at unrepresented agreement. This is
+neither a full corpus pass nor a claim of all boot semantics. The old CLI's
+multiline bad-value accept is now rejected; its bad-alias case already rejected
+and is a retained control, not a newly repaired result.

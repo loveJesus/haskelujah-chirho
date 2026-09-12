@@ -3,7 +3,9 @@
 //! Source frontend entry points and checked module companions.
 //! The source-text entry below deliberately performs no filesystem search.
 
+mod boot_chirho;
 pub(crate) mod cpp_chirho;
+mod graph_chirho;
 pub(crate) mod modules_chirho;
 #[cfg(test)]
 pub(crate) mod package_fixtures_chirho;

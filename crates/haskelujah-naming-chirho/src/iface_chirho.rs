@@ -547,12 +547,48 @@ pub fn build_iface_with_imports_chirho(
     module_chirho: &ModuleChirho,
     imported_ifaces_chirho: &[ModuleIfaceChirho],
 ) -> ModuleIfaceChirho {
+    build_iface_from_definitions_chirho(
+        module_chirho,
+        imported_ifaces_chirho,
+        collect_all_definitions_chirho(module_chirho),
+    )
+}
+
+/// A checked boot signature declares a value contract without a value body.
+/// Ordinary modules must not acquire this authority merely by writing a signature.
+pub fn build_boot_iface_with_imports_chirho(
+    module_chirho: &ModuleChirho,
+    imported_ifaces_chirho: &[ModuleIfaceChirho],
+) -> ModuleIfaceChirho {
+    let mut definitions_chirho = collect_all_definitions_chirho(module_chirho);
+    for declaration_chirho in &module_chirho.decls_chirho {
+        if let haskelujah_ast_chirho::decl_chirho::DeclChirho::TypeSigChirho {
+            name_chirho,
+            span_chirho,
+            ..
+        } = declaration_chirho
+        {
+            let name_chirho = canonical_value_name_chirho(name_chirho.text_chirho());
+            definitions_chirho.values_chirho.insert(
+                name_chirho.clone(),
+                IfaceValueChirho {
+                    name_chirho,
+                    span_chirho: *span_chirho,
+                },
+            );
+        }
+    }
+    build_iface_from_definitions_chirho(module_chirho, imported_ifaces_chirho, definitions_chirho)
+}
+
+fn build_iface_from_definitions_chirho(
+    module_chirho: &ModuleChirho,
+    imported_ifaces_chirho: &[ModuleIfaceChirho],
+    all_exports_chirho: IfaceExportsChirho,
+) -> ModuleIfaceChirho {
     // Use full_name_chirho to preserve qualified module names (e.g., "Sub.Helper"
     // instead of just "Helper"). This is critical for hierarchical module imports.
     let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
-
-    // First, collect ALL definitions in the module.
-    let all_exports_chirho = collect_all_definitions_chirho(module_chirho);
 
     // Then filter by the export list.
     let exports_chirho = match &module_chirho.exports_chirho {
@@ -17045,6 +17081,7 @@ mod tests_chirho {
             ]),
             imports_chirho: vec![ImportDeclChirho {
                 module_chirho: mk_name_chirho("Inner"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: None,
@@ -17123,6 +17160,7 @@ mod tests_chirho {
             ))]),
             imports_chirho: vec![ImportDeclChirho {
                 module_chirho: mk_name_chirho("Inner"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: Some(mk_name_chirho("Alias")),
                 spec_chirho: None,
@@ -17194,6 +17232,7 @@ mod tests_chirho {
             imports_chirho: vec![
                 ImportDeclChirho {
                     module_chirho: mk_name_chirho("LeftMod"),
+                    source_chirho: false,
                     qualified_chirho: false,
                     alias_chirho: Some(mk_name_chirho("Alias")),
                     spec_chirho: Some(ImportSpecChirho {
@@ -17206,6 +17245,7 @@ mod tests_chirho {
                 },
                 ImportDeclChirho {
                     module_chirho: mk_name_chirho("RightMod"),
+                    source_chirho: false,
                     qualified_chirho: false,
                     alias_chirho: Some(mk_name_chirho("Alias")),
                     spec_chirho: None,
@@ -17269,6 +17309,7 @@ mod tests_chirho {
             exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("choice"))]),
             imports_chirho: vec![ImportDeclChirho {
                 module_chirho: mk_name_chirho("InnerChoice"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: None,
@@ -17319,6 +17360,7 @@ mod tests_chirho {
             exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("Parsec"))]),
             imports_chirho: vec![ImportDeclChirho {
                 module_chirho: mk_name_chirho("InnerParsec"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: None,

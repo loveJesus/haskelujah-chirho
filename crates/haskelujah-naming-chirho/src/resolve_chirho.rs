@@ -875,6 +875,7 @@ mod tests_chirho {
     fn prelude_import_chirho() -> ImportDeclChirho {
         ImportDeclChirho {
             module_chirho: dummy_name_chirho("Prelude"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -997,6 +998,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: None, // import all
@@ -1043,6 +1045,7 @@ mod tests_chirho {
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
                 qualified_chirho: true, // qualified only
+                source_chirho: false,
                 alias_chirho: None,
                 spec_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1074,6 +1077,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
+                source_chirho: false,
                 qualified_chirho: true,
                 alias_chirho: Some(dummy_name_chirho("L")),
                 spec_chirho: None,
@@ -1106,6 +1110,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: Some(ImportSpecChirho {
@@ -1163,6 +1168,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: Some(ImportSpecChirho {
@@ -1247,6 +1253,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Control.Monad"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: Some(spec_chirho),
@@ -1314,6 +1321,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
+                source_chirho: false,
                 qualified_chirho: true,
                 alias_chirho: Some(dummy_name_chirho("L")),
                 spec_chirho: None,
@@ -1347,6 +1355,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: Some(ImportSpecChirho {
@@ -1381,6 +1390,7 @@ mod tests_chirho {
             vec![],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Nonexistent"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: None,
@@ -1407,6 +1417,7 @@ mod tests_chirho {
             }],
             vec![ImportDeclChirho {
                 module_chirho: dummy_name_chirho("Lib"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: None,
                 spec_chirho: None,

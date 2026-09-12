@@ -12,6 +12,7 @@ mod tests_chirho;
 pub type ImportedTypeContractsChirho = std::collections::HashMap<String, ModuleTypeContractsChirho>;
 
 pub struct FrontendInputsChirho<'input_chirho> {
+    boot_chirho: bool,
     ifaces_chirho: &'input_chirho [ModuleIfaceChirho],
     imported_types_chirho:
         &'input_chirho std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho>,
@@ -34,6 +35,7 @@ impl<'input_chirho> FrontendInputsChirho<'input_chirho> {
         imported_type_families_chirho: &'input_chirho ImportedTypeFamiliesChirho,
     ) -> Self {
         Self {
+            boot_chirho: false,
             ifaces_chirho,
             imported_types_chirho,
             imported_type_synonyms_chirho,
@@ -56,6 +58,11 @@ impl<'input_chirho> FrontendInputsChirho<'input_chirho> {
         env_chirho: &'input_chirho haskelujah_typing_chirho::ClassEnvChirho,
     ) -> Self {
         self.class_env_chirho = Some(env_chirho);
+        self
+    }
+
+    pub(crate) fn with_boot_chirho(mut self, boot_chirho: bool) -> Self {
+        self.boot_chirho = boot_chirho;
         self
     }
 }
@@ -331,6 +338,7 @@ pub fn run_frontend_with_inputs_chirho(
     let infer_result_chirho = infer_module_with_inputs_chirho(
         &module_chirho,
         InferInputsChirho {
+            boot_chirho: inputs_chirho.boot_chirho,
             imported_types_chirho: &merged_imported_types_chirho,
             imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
             imported_closed_synonyms_chirho: &imported_contracts_chirho.synonyms_chirho,
@@ -416,7 +424,14 @@ pub fn run_frontend_with_inputs_chirho(
         .kinds_chirho
         .extend(kind_result_chirho.contracts_chirho);
     type_contracts_chirho.synonyms_chirho = infer_result_chirho.type_synonyms_chirho.clone();
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, ifaces_chirho);
+    let iface_chirho = if inputs_chirho.boot_chirho {
+        haskelujah_naming_chirho::iface_chirho::build_boot_iface_with_imports_chirho(
+            &module_chirho,
+            ifaces_chirho,
+        )
+    } else {
+        build_iface_with_imports_chirho(&module_chirho, ifaces_chirho)
+    };
     let type_contracts_chirho = contracts_chirho::export_contracts_chirho(
         &module_chirho,
         &iface_chirho,

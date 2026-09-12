@@ -80,6 +80,8 @@ pub enum ExportMembersChirho {
 pub struct ImportDeclChirho {
     /// The imported module name.
     pub module_chirho: NameChirho,
+    /// A SOURCE import requests the distinct, checked hs-boot interface.
+    pub source_chirho: bool,
     /// Whether this is a qualified import.
     pub qualified_chirho: bool,
     /// Optional alias (`as Alias`).
@@ -146,6 +148,7 @@ mod tests_chirho {
                 "Data.List",
                 SpanChirho::DUMMY_CHIRHO,
             )),
+            source_chirho: false,
             qualified_chirho: true,
             alias_chirho: Some(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                 "L",
