@@ -40,8 +40,8 @@ checkpoint; main landing still requires zero main-relative accept regressions.
   signatures, mixed heads and closed-family inference; demonstrate candidate reds.
 - [x] Apply open-head policy before publishing the family scheme.
 - [x] Focused, typing/integration and explicit-CLI gates.
-- [ ] Commit/push separately, then freeze source and CLI for the diagnostic.
-- [ ] One frozen diagnostic per axis and exact set/reason accounting.
+- [x] Commit/push separately, then freeze source and CLI for the diagnostic.
+- [x] One frozen diagnostic per axis and exact set/reason accounting.
 - [ ] Full current driver/workspace execution and final two-pass landing gates.
 
 The first closed-family control misused a Bool-valued family result as a kind.
@@ -64,3 +64,29 @@ sources agree with GHC's verdict in a24-input focused observation. Eleven other
 known main-relative accept regressions remain in that focused set. This is not
 a new corpus figure. Full current driver1774 and full workspace execution remain
 owed; previous full-driver results must not be presented as current evidence.
+
+## Frozen diagnostic
+
+Compiler eb8557e167d9ef708d08fc56669604e7f2c359c1 is pushed; ls-remote agrees.
+One pass each, P4/15s with solo60s timeout retries, returned884/938 accept and
+249/767 reject, with zero timeouts/unexpected exits. Source remained clean and
+CLI SHA256 cf48d6f3a30fbe985178bab0ea10fda16ba965dec5181d97296e0cc67ed3f4fc
+was unchanged before/after both axes. This is diagnostic, not a final gate.
+
+Versus e7439871: T11348 recovered and no accept file was lost. Reject totals
+were identical but sets were not: T11347 newly rejects, ContextStack2 now
+accepts. Fresh GHC9.14.1 measurements establish the distinction:
+
+- T11347: GHC rejects the deriving clause at6:41 for representation inequality
+  (current GHC-10283; committed stderr GHC-25897). We reject a use at19:18 for
+  an undeduced UnsafeCast predicate, E0204. Same file verdict, not proof of the
+  deriving rule; do not bank this as matching-reason capability.
+- ContextStack2: fresh GHC accepts. The old candidate rejected the valid row at
+  line8 as an unbound result variable; input defaulting removes that accidental
+  rejection. No guard should preserve it. Keep corpus membership unchanged.
+
+Main-relative accept state: thirteen gains and eleven losses. Remaining losses:
+CoerceToVDQ, ControlMonadClassesState, T13879, T14010, T16204a, T16204b, T17067,
+T18129, T22560c, T23543, T26358. Main121d4f2c, DB484 and published artifacts
+remain untouched. Raw/summarized source-hashed observations live under
+test-data-chirho/kind-oracles-chirho/ascriptions-chirho/open-defaults-chirho.
