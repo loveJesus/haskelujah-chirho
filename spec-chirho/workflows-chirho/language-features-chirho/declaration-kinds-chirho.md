@@ -722,6 +722,32 @@ does not establish that every producer has supplied its inferred arguments.
 
 ### Local open-family ownership and compatibility (isolated row484)
 
+A direct open-family head has no RHS from which to infer unspecified kinds.
+Without a standalone signature, its unannotated visible parameters default to
+Type, as does an omitted result kind. An explicit parameter annotation, a written
+result telescope and a complete standalone scheme remain authoritative. A closed
+family still infers from its equations; associated families remain on the separate
+class-owned preparation path. Shared lexical head preparation does not imply a
+shared defaulting policy.
+
+```mermaid
+flowchart TD
+  FamilyHeadChirho[Prepare lexical family head] --> CompleteChirho{Standalone scheme?}
+  CompleteChirho -->|Yes| WrittenChirho[Use checked standalone contract]
+  CompleteChirho -->|No| ClosedChirho{Closed family?}
+  ClosedChirho -->|Yes| InferRowsChirho[Infer unspecified kinds from equations]
+  ClosedChirho -->|No| OpenDefaultsChirho[Default only unspecified input and result kinds to Type]
+  WrittenChirho --> PublishHeadChirho[Publish finalized kind scheme]
+  InferRowsChirho --> PublishHeadChirho
+  OpenDefaultsChirho --> PublishHeadChirho
+```
+
+This recovers T11348 at its declaration producer rather than inferring an inverse
+equality from an open row. GHC9.14.1 classifier dumps and positive/negative source
+controls distinguish the policies, including a written polymorphic result tail.
+The [GHC kind-inference principles](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/poly_kinds.html#principles-of-kind-inference)
+state the no-RHS defaulting rule; references are retained under open-defaults-chirho.
+
 Direct instance declarations of a local open family contribute their LHS/RHS
 dependencies to that family before SCC construction. The checked owner publishes
 its complete row batch after its kind scheme is finalized, before dependent groups

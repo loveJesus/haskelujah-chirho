@@ -1,0 +1,94 @@
+{
+  "base_commit_chirho": "3cf1b965f8ab4ae2b6295b8fd9edc4553efdff8b",
+  "recorded_at_chirho": "2026-09-12T11:14:50.139Z",
+  "explicit_cli_sha256_chirho": "cf48d6f3a30fbe985178bab0ea10fda16ba965dec5181d97296e0cc67ed3f4fc",
+  "reference_observation_count_chirho": 11,
+  "focused_observation_count_chirho": 24,
+  "scope_chirho": "Direct open-family defaulting checkpoint. Current typing379, integration193, canaries7; those full targets have zero ignored/filtered. Eight new controls went5/8 to8/8 with185 other integration tests filtered for sensitivity only. Full driver1774 belongs to a426, not current edits. Full current workspace tests/execution and final two-pass corpus gate remain owed. Not lint-clean; warning lines include summaries and duplicates.",
+  "correction_chirho": "The original closed control used a Bool-valued family result as a kind and GHC rejected that source. The retained v2 reference uses an equality witness in Proxy's index. No compiler or oracle claim rests on the invalid original source.",
+  "sensitivity_chirho": [
+    {
+      "phase_chirho": "red",
+      "passed_chirho": 5,
+      "failed_chirho": 3,
+      "ignored_chirho": 0,
+      "filtered_chirho": 185,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-defaults-red-chirho.log",
+      "log_sha256_chirho": "9d8c12b8d2b9887b3017b982c4b451d19aae2c38c8373922857a8a4e18d4f16b"
+    },
+    {
+      "phase_chirho": "green",
+      "passed_chirho": 8,
+      "failed_chirho": 0,
+      "ignored_chirho": 0,
+      "filtered_chirho": 185,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-defaults-green-chirho.log",
+      "log_sha256_chirho": "6a96d74b29813f09c3c3ad6e8821362143e26c05470124aec8558fa827701322"
+    }
+  ],
+  "runs_chirho": [
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-typing --lib -j3",
+      "exit_chirho": 0,
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 379,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-defaults-typing-chirho.log",
+      "log_sha256_chirho": "f91c01f552d4c2fecabb750995dcb5ba05939bd3006289708c1117ad67db5b5f"
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 cargo test -p haskelujah-driver --test typing_integration_chirho --test canaries_chirho -j3 --no-fail-fast",
+      "exit_chirho": 0,
+      "results_chirho": [
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 7,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        },
+        {
+          "status_chirho": "ok",
+          "passed_chirho": 193,
+          "failed_chirho": 0,
+          "ignored_chirho": 0,
+          "filtered_chirho": 0
+        }
+      ],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-defaults-integration-chirho.log",
+      "log_sha256_chirho": "13704b9dea92eb62e0152d605e7e54b0cffa880050432c077e44646509b01296"
+    },
+    {
+      "command_chirho": "cargo build -p haskelujah -j3",
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-defaults-build-chirho.log",
+      "log_sha256_chirho": "654dedf85c04681020a7e76503afaa6537d4078e3d6cf6fdfe81c67fee329424"
+    },
+    {
+      "command_chirho": "cargo check --workspace --all-targets -j3",
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 0,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-defaults-check-chirho.log",
+      "log_sha256_chirho": "44bbcc804f34aaa34b03318fca35822505d4725c402106924be96d23c679e800"
+    },
+    {
+      "command_chirho": "cargo clippy -p haskelujah-typing -p haskelujah-driver --all-targets -j3",
+      "exit_chirho": 0,
+      "results_chirho": [],
+      "warning_message_lines_chirho": 461,
+      "log_path_chirho": "/private/tmp/haskelujah-ascription-chirho.EgTd8V/open-defaults-clippy-chirho.log",
+      "log_sha256_chirho": "cd769a249f5b8d1449e21a4ef16dfd8acd72c3bf1d1ef150ef6d59c353a081b1"
+    }
+  ]
+}

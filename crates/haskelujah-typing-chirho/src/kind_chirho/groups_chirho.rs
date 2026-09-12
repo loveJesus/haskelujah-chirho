@@ -236,6 +236,7 @@ impl KindInferCtxChirho {
                 name_chirho,
                 type_vars_chirho,
                 result_chirho,
+                closed_chirho,
                 span_chirho,
                 ..
             } => {
@@ -244,7 +245,7 @@ impl KindInferCtxChirho {
                     type_vars_chirho,
                     result_chirho.kind_sig_chirho.as_ref(),
                     *span_chirho,
-                    self.poly_kinds_enabled_chirho,
+                    *closed_chirho,
                 );
             }
             DeclChirho::ClassDeclChirho {

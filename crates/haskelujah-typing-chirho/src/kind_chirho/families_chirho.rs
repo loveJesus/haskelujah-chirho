@@ -262,14 +262,16 @@ impl KindInferCtxChirho {
         })
     }
 
-    /// Process a type family declaration to determine the kind of the family.
+    /// Open heads have no equation body from which to infer unspecified kinds.
+    /// Their defaults differ from closed inference, not from lexical binding.
+    /// Workflow: declaration-kinds-chirho (open-family head defaults).
     pub(super) fn infer_type_family_decl_kind_chirho(
         &mut self,
         name_chirho: &str,
         type_vars_chirho: &[TyVarChirho],
         kind_sig_chirho: Option<&DeclKindSigChirho>,
         span_chirho: SpanChirho,
-        poly_kinds_enabled_chirho: bool,
+        closed_chirho: bool,
     ) {
         if let Some(standalone_chirho) =
             kind_sig_chirho.and_then(DeclKindSigChirho::standalone_chirho)
@@ -333,10 +335,27 @@ impl KindInferCtxChirho {
             "type family declaration",
         );
 
+        if !closed_chirho {
+            for (binder_chirho, (_, classifier_chirho)) in type_vars_chirho
+                .iter()
+                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                .zip(&head_chirho.parameters_chirho)
+            {
+                if binder_chirho.kind_annotation_chirho.is_none() {
+                    self.unify_chirho(
+                        classifier_chirho,
+                        &KindChirho::StarChirho,
+                        "open type family parameter default",
+                        binder_chirho.span_chirho(),
+                    );
+                }
+            }
+        }
+
         let result_kind_chirho = result_kind_chirho
             .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
             .unwrap_or_else(|| {
-                if poly_kinds_enabled_chirho {
+                if closed_chirho && self.poly_kinds_enabled_chirho {
                     self.fresh_kind_chirho()
                 } else {
                     KindChirho::StarChirho

@@ -6,6 +6,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 #[path = "typing_integration_chirho/alias_scopes_chirho.rs"]
 mod alias_scopes_chirho;
+#[path = "typing_integration_chirho/family_defaults_chirho.rs"]
+mod family_defaults_chirho;
 #[path = "typing_integration_chirho/family_kinds_chirho.rs"]
 mod family_kinds_chirho;
 #[path = "typing_integration_chirho/function_values_chirho.rs"]
