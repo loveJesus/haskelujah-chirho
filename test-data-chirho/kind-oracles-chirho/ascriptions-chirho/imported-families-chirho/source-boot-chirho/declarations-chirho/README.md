@@ -8,6 +8,9 @@ closure, published corpus artifact update, denominator change or deployment.
 The worktree is now inside haskelujah-workspaces-chirho; historical reference
 records retain the paths at which their commands actually ran.
 
+Compiler/evidence checkpoint d5f30a4e16fa95fad7d15af39675c3c902476cdb is pushed
+to gh_chirho/gpt-kind-schemes-chirho and independently verified with ls-remote.
+
 ## Representation and ownership
 
 Class declarations retain whether their context was written. An omitted empty

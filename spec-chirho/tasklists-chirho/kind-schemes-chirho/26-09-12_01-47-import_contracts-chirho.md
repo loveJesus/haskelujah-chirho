@@ -322,9 +322,10 @@ oversized roots. No new dependency or semantic publication from unchecked AST.
   exits0 with454 warning-message lines including duplicates/summaries; not clean.
 - [x] Preserve source hashes, reference disagreements, focused corpus results
   and final gate provenance under source-boot-chirho/declarations-chirho.
-- [ ] Commit/push the owned checkpoint before the separate abstract closed-family
-  representation. Main compiler, canonical row484 and published artifacts stay
-  unchanged until the lane's actual landing gates pass.
+- [x] Commit/push the owned checkpoint before the separate abstract closed-family
+  representation: d5f30a4e16fa95fad7d15af39675c3c902476cdb, pushed and checked
+  against gh_chirho with ls-remote. Main compiler, canonical row484 and published
+  artifacts stay unchanged until the lane's actual landing gates pass.
 
 ## Source-local kind ownership, continuation2026-09-15
 
