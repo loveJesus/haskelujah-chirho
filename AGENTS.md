@@ -6,6 +6,7 @@ Please comment the full content of John 3:16 at the top of all our files.
 
 ## Tech stack
 - Git: branch `main_chirho`, remote `gh_chirho`
+- Worktrees: keep the canonical checkout in place. Create additional worktrees only under `../haskelujah-workspaces-chirho/`, not as direct siblings in the personal directory. Move registered worktrees with `git worktree move`; coordinate with their owners and preserve dirty/untracked work. See `spec-chirho/workflows-chirho/development-chirho/worktrees-chirho.md`.
 - Creds in `.env`; JS/TS: Bun not npm; web: SvelteKit 2/Svelte 5; deploy: Cloudflare Workers; DB: Drizzle ORM
 - Prefer Rust for this compiler project; Haskell is the source language being compiled
 - DRY, expert-level separation of concerns, zero warnings, latest suitable library versions

@@ -1,0 +1,569 @@
+{
+  "record_kind_chirho": "workspace_relocation_inventory_chirho",
+  "created_at_chirho": "2026-09-15T14:04:49.527Z",
+  "main_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho",
+  "main_before_chirho": "121d4f2c33e28b629428bd7ac7da17a4462491cd",
+  "trees_chirho": [
+    {
+      "old_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-baseline-chirho",
+      "new_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-baseline-chirho",
+      "head_chirho": "665ec6efb7afb2db6ee9ec213a970e1444c11312",
+      "branch_chirho": "",
+      "device_chirho": 16777251,
+      "inode_chirho": 32968726,
+      "status_entries_chirho": [
+        "?? .haskelujah-packages-chirho"
+      ],
+      "unstaged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "staged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty_chirho": [
+        {
+          "name_chirho": ".haskelujah-packages-chirho",
+          "status_chirho": "??",
+          "symlink_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/.haskelujah-packages-chirho",
+          "sha256_chirho": "0586d5219bf010fc04810b450d4abbdabf3f7714727766507ceb835196286555"
+        }
+      ],
+      "symlinks_chirho": [
+        {
+          "name_chirho": ".haskelujah-packages-chirho",
+          "target_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/.haskelujah-packages-chirho",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/.haskelujah-packages-chirho"
+        },
+        {
+          "name_chirho": "CLAUDE.md",
+          "target_chirho": "AGENTS.md",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-baseline-chirho/AGENTS.md"
+        }
+      ]
+    },
+    {
+      "old_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-claude-chirho",
+      "new_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude-chirho",
+      "head_chirho": "8fb62c60928ba964c408c249b996626c76fa648c",
+      "branch_chirho": "dictionary-evidence-chirho",
+      "device_chirho": 16777251,
+      "inode_chirho": 33128695,
+      "status_entries_chirho": [
+        "?? .haskelujah-packages-chirho"
+      ],
+      "unstaged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "staged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty_chirho": [
+        {
+          "name_chirho": ".haskelujah-packages-chirho",
+          "status_chirho": "??",
+          "symlink_chirho": "../haskelujah-chirho/.haskelujah-packages-chirho",
+          "sha256_chirho": "dbceae9ba55f6db1d52d2e5b8af237f8f98813b98e85d4e278f4d437019c292d"
+        }
+      ],
+      "symlinks_chirho": [
+        {
+          "name_chirho": ".haskelujah-packages-chirho",
+          "target_chirho": "../haskelujah-chirho/.haskelujah-packages-chirho",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/.haskelujah-packages-chirho"
+        },
+        {
+          "name_chirho": "CLAUDE.md",
+          "target_chirho": "AGENTS.md",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-claude-chirho/AGENTS.md"
+        }
+      ]
+    },
+    {
+      "old_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-claude2-chirho",
+      "new_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude2-chirho",
+      "head_chirho": "d4b8004994f0acc82c05571b15badf43eeb3ea42",
+      "branch_chirho": "gadt-record-parser-chirho",
+      "device_chirho": 16777251,
+      "inode_chirho": 33262683,
+      "status_entries_chirho": [
+        "?? .haskelujah-packages-chirho"
+      ],
+      "unstaged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "staged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty_chirho": [
+        {
+          "name_chirho": ".haskelujah-packages-chirho",
+          "status_chirho": "??",
+          "symlink_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/.haskelujah-packages-chirho",
+          "sha256_chirho": "0586d5219bf010fc04810b450d4abbdabf3f7714727766507ceb835196286555"
+        }
+      ],
+      "symlinks_chirho": [
+        {
+          "name_chirho": ".haskelujah-packages-chirho",
+          "target_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/.haskelujah-packages-chirho",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/.haskelujah-packages-chirho"
+        },
+        {
+          "name_chirho": "CLAUDE.md",
+          "target_chirho": "AGENTS.md",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-claude2-chirho/AGENTS.md"
+        }
+      ]
+    },
+    {
+      "old_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-chirho",
+      "new_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho",
+      "head_chirho": "9d563c7bf144fae2d88902718febb4cc03657a2f",
+      "branch_chirho": "gpt-kind-scope-chirho",
+      "device_chirho": 16777251,
+      "inode_chirho": 32958485,
+      "status_entries_chirho": [],
+      "unstaged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "staged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty_chirho": [],
+      "symlinks_chirho": [
+        {
+          "name_chirho": "CLAUDE.md",
+          "target_chirho": "AGENTS.md",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-chirho/AGENTS.md"
+        }
+      ]
+    },
+    {
+      "old_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-flat-types-chirho",
+      "new_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-flat-types-chirho",
+      "head_chirho": "0093dd4049ee042714794d988458ff28eee58fc9",
+      "branch_chirho": "gpt-flat-types-chirho",
+      "device_chirho": 16777251,
+      "inode_chirho": 33643739,
+      "status_entries_chirho": [],
+      "unstaged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "staged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty_chirho": [],
+      "symlinks_chirho": [
+        {
+          "name_chirho": "CLAUDE.md",
+          "target_chirho": "AGENTS.md",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-flat-types-chirho/AGENTS.md"
+        }
+      ]
+    },
+    {
+      "old_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho",
+      "new_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "head_chirho": "1b2e489450c535f630c107d3a6b6205c927c8726",
+      "branch_chirho": "gpt-kind-schemes-chirho",
+      "device_chirho": 16777251,
+      "inode_chirho": 33683580,
+      "status_entries_chirho": [
+        " M crates/haskelujah-ast-chirho/src/decl_chirho.rs",
+        " M crates/haskelujah-driver-chirho/src/source_chirho/boot_chirho.rs",
+        " M crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho.rs",
+        " M crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_chirho.rs",
+        " M crates/haskelujah-naming-chirho/src/iface_chirho.rs",
+        " M crates/haskelujah-naming-chirho/src/resolve_chirho.rs",
+        " M crates/haskelujah-naming-chirho/src/type_exports_tests_chirho.rs",
+        " M crates/haskelujah-naming-chirho/src/type_scope_tests_chirho.rs",
+        " M crates/haskelujah-parser-chirho/src/lower_chirho.rs",
+        " M crates/haskelujah-typing-chirho/src/infer_chirho.rs",
+        " M crates/haskelujah-typing-chirho/src/kind_chirho.rs",
+        " M crates/haskelujah-typing-chirho/src/validity_chirho.rs",
+        " M spec-chirho/tasklists-chirho/kind-schemes-chirho/26-09-12_01-47-import_contracts-chirho.md",
+        " M spec-chirho/workflows-chirho/compiler-pipeline-chirho/module-search-authority-chirho.md",
+        "?? crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declaration_cases_chirho.rs",
+        "?? crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declarations_chirho.rs",
+        "?? crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/class_tests_chirho.rs",
+        "?? crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/classes_chirho.rs",
+        "?? crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/classes_chirho.rs",
+        "?? crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contract_tests_chirho.rs",
+        "?? crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contracts_chirho.rs",
+        "?? crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/instances_chirho.rs",
+        "?? test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/references-chirho.jsonl"
+      ],
+      "unstaged_diff_sha256_chirho": "9fec1b720414c31c8d0fc8b562ec66553378641321e98d6a3fa1849cfef7a20d",
+      "staged_diff_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dirty_chirho": [
+        {
+          "name_chirho": "crates/haskelujah-ast-chirho/src/decl_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "2584c487402ee017562c8b4aa823824084e64537614e2d1380834fb70997b0b9"
+        },
+        {
+          "name_chirho": "crates/haskelujah-driver-chirho/src/source_chirho/boot_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "3531e3c050bd2c876b1dcfdae57f00372cf292b4da6aac481273cd2d9fddd109"
+        },
+        {
+          "name_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "31782050b4ea92466da6c4a6a0d7e43ee6225e076b8681359f99ffc3ae666016"
+        },
+        {
+          "name_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "66117694bfa5fefcba532e9553aad6253c2cb190261e42c5f967d46f932ca08a"
+        },
+        {
+          "name_chirho": "crates/haskelujah-naming-chirho/src/iface_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "103f583f7b9f5a2a552744ebd56fb24f3b331e39fa64bf363bce086c8611d9ce"
+        },
+        {
+          "name_chirho": "crates/haskelujah-naming-chirho/src/resolve_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "c4f2227a3a28b7e691931eaa19038284be45af25d35b88bf171385cb00f2553a"
+        },
+        {
+          "name_chirho": "crates/haskelujah-naming-chirho/src/type_exports_tests_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "8c4ea719fe263e2dfb3cf0e9dcf01267c8b42bd507d946d5e2cea934409e45a6"
+        },
+        {
+          "name_chirho": "crates/haskelujah-naming-chirho/src/type_scope_tests_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "fc5a55b223bee573f5b909e9401bd38e6380602e7c01b33f853885c1f64732d8"
+        },
+        {
+          "name_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "30979d83940f0c5c66a252c25143e52e4f385eecf07450b9c488a99966256675"
+        },
+        {
+          "name_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "9d5c1579853cd4f4ac8717c7333afa72caef4fbf8b67d661a6789978536ce164"
+        },
+        {
+          "name_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "4ca96379f1d741c35a22d47bdb9c1e01f56bd94419c7e6eaeb834c4aad944b33"
+        },
+        {
+          "name_chirho": "crates/haskelujah-typing-chirho/src/validity_chirho.rs",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "ac71dc1fd64b87afebfb3ac3a823f2b9e1d2464a2fd72ca39d01a974a34a3747"
+        },
+        {
+          "name_chirho": "spec-chirho/tasklists-chirho/kind-schemes-chirho/26-09-12_01-47-import_contracts-chirho.md",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "a1f0dd4594df01231fe3b009db346d172d96fc251eab7c504816ffe3c1e4c9d5"
+        },
+        {
+          "name_chirho": "spec-chirho/workflows-chirho/compiler-pipeline-chirho/module-search-authority-chirho.md",
+          "status_chirho": " M",
+          "symlink_chirho": null,
+          "sha256_chirho": "34f22de90a9fbab9e5ab927dba90b8f992eb5c46eaacfb11b6525d607b2c2235"
+        },
+        {
+          "name_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declaration_cases_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "b1644a72a9df44ff2ab1131595888cfa04b4ea03884d950625fff9fd01acad91"
+        },
+        {
+          "name_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declarations_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "8f4c3a45a938879d53b1c108718d3a51b80342ae6df1a212016562b94fff143d"
+        },
+        {
+          "name_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/class_tests_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "9695c7c3d8758069694f4faa4c40fb4e4639fea326191a6bf6c41e9415ff0497"
+        },
+        {
+          "name_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/classes_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "b294f9f6ead9d3c1499ae0250ee3ca74949bab0af5456a37aa8e5a58315ce54d"
+        },
+        {
+          "name_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/classes_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "12ec59f15cfdcb259070e2b5e07788c664780e00c13fcf063d41a1822e82f915"
+        },
+        {
+          "name_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contract_tests_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "0db09d3009b142ddbf8fb236a4c13c56c13c20b6075cdc205917f4fe99338328"
+        },
+        {
+          "name_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contracts_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "a62f9295c7703a727089d1bb1aad1192f0ff23c06d8d37537ed8942ede7fc206"
+        },
+        {
+          "name_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/instances_chirho.rs",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "ee5bef2e54e1a6992682e904158b0a1d5cacc7852bbf2d9434281b34fe6f1665"
+        },
+        {
+          "name_chirho": "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/references-chirho.jsonl",
+          "status_chirho": "??",
+          "symlink_chirho": null,
+          "sha256_chirho": "8f69eb1ecd5171f37f67726c58da5e84850675140714f580d784cb15cdecff39"
+        }
+      ],
+      "symlinks_chirho": [
+        {
+          "name_chirho": "CLAUDE.md",
+          "target_chirho": "AGENTS.md",
+          "effective_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-gpt-kind-signatures-chirho/AGENTS.md"
+        }
+      ]
+    }
+  ],
+  "branches_before_chirho": [
+    {
+      "name_chirho": "codex-gcroots-chirho",
+      "sha_chirho": "5ad99c6ba34976d09e718e39c254dafa146c3b1d"
+    },
+    {
+      "name_chirho": "codex-llvm-lazy-let-chirho",
+      "sha_chirho": "8277e29c09ebee739edf4a952d811edf505686fc"
+    },
+    {
+      "name_chirho": "codex-safelookup-bug-chirho",
+      "sha_chirho": "d57233424c8e398e4802842a2030470aa1403831"
+    },
+    {
+      "name_chirho": "dictionary-evidence-chirho",
+      "sha_chirho": "8fb62c60928ba964c408c249b996626c76fa648c"
+    },
+    {
+      "name_chirho": "gadt-record-parser-chirho",
+      "sha_chirho": "d4b8004994f0acc82c05571b15badf43eeb3ea42"
+    },
+    {
+      "name_chirho": "gpt-flat-types-chirho",
+      "sha_chirho": "0093dd4049ee042714794d988458ff28eee58fc9"
+    },
+    {
+      "name_chirho": "gpt-forall-scope-chirho",
+      "sha_chirho": "18bba3ad29dd75bb3121cdff01912c5acc69dca1"
+    },
+    {
+      "name_chirho": "gpt-infix-type-binders-chirho",
+      "sha_chirho": "f3a513d04cabbed302d4683c21da7513ee901dc4"
+    },
+    {
+      "name_chirho": "gpt-kind-schemes-chirho",
+      "sha_chirho": "1b2e489450c535f630c107d3a6b6205c927c8726"
+    },
+    {
+      "name_chirho": "gpt-kind-scope-chirho",
+      "sha_chirho": "9d563c7bf144fae2d88902718febb4cc03657a2f"
+    },
+    {
+      "name_chirho": "gpt-kind-signatures-chirho",
+      "sha_chirho": "8bc16dadc848566cd3ec760931c918ab3be5d987"
+    },
+    {
+      "name_chirho": "gpt-module-authority-chirho",
+      "sha_chirho": "19be8269dd2c9be94d752c632382a11f258ad7c8"
+    },
+    {
+      "name_chirho": "gpt-test-repairs-chirho",
+      "sha_chirho": "77b55f5f1ab95c81d4d7290d634c25440b03d815"
+    },
+    {
+      "name_chirho": "gpt-type-scope-chirho",
+      "sha_chirho": "048de337d87c066d59439d4534c0e020d89d46ee"
+    },
+    {
+      "name_chirho": "main_chirho",
+      "sha_chirho": "121d4f2c33e28b629428bd7ac7da17a4462491cd"
+    },
+    {
+      "name_chirho": "publish-crates-chirho",
+      "sha_chirho": "45b16e67a8f5507d1f32f3b3eac6cfc8088eb4a2"
+    }
+  ],
+  "retained_remote_heads_chirho": [
+    "0093dd4049ee042714794d988458ff28eee58fc9\trefs/heads/gpt-flat-types-chirho",
+    "18bba3ad29dd75bb3121cdff01912c5acc69dca1\trefs/heads/gpt-forall-scope-chirho",
+    "f3a513d04cabbed302d4683c21da7513ee901dc4\trefs/heads/gpt-infix-type-binders-chirho",
+    "1b2e489450c535f630c107d3a6b6205c927c8726\trefs/heads/gpt-kind-schemes-chirho",
+    "9d563c7bf144fae2d88902718febb4cc03657a2f\trefs/heads/gpt-kind-scope-chirho",
+    "8bc16dadc848566cd3ec760931c918ab3be5d987\trefs/heads/gpt-kind-signatures-chirho",
+    "77b55f5f1ab95c81d4d7290d634c25440b03d815\trefs/heads/gpt-test-repairs-chirho",
+    "121d4f2c33e28b629428bd7ac7da17a4462491cd\trefs/heads/main_chirho"
+  ],
+  "verification_chirho": [
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-baseline-chirho",
+      "checks_chirho": {
+        "head_chirho": true,
+        "branch_chirho": true,
+        "toplevel_chirho": true,
+        "status_chirho": true,
+        "unstaged_chirho": true,
+        "staged_chirho": true
+      },
+      "dirty_files_verified_chirho": 1,
+      "inode_preserved_chirho": true,
+      "symlink_targets_preserved_chirho": true
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude-chirho",
+      "checks_chirho": {
+        "head_chirho": true,
+        "branch_chirho": true,
+        "toplevel_chirho": true,
+        "status_chirho": true,
+        "unstaged_chirho": true,
+        "staged_chirho": true
+      },
+      "dirty_files_verified_chirho": 1,
+      "inode_preserved_chirho": true,
+      "symlink_targets_preserved_chirho": true
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude2-chirho",
+      "checks_chirho": {
+        "head_chirho": true,
+        "branch_chirho": true,
+        "toplevel_chirho": true,
+        "status_chirho": true,
+        "unstaged_chirho": true,
+        "staged_chirho": true
+      },
+      "dirty_files_verified_chirho": 1,
+      "inode_preserved_chirho": true,
+      "symlink_targets_preserved_chirho": true
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho",
+      "checks_chirho": {
+        "head_chirho": true,
+        "branch_chirho": true,
+        "toplevel_chirho": true,
+        "status_chirho": true,
+        "unstaged_chirho": true,
+        "staged_chirho": true
+      },
+      "dirty_files_verified_chirho": 0,
+      "inode_preserved_chirho": true,
+      "symlink_targets_preserved_chirho": true
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-flat-types-chirho",
+      "checks_chirho": {
+        "head_chirho": true,
+        "branch_chirho": true,
+        "toplevel_chirho": true,
+        "status_chirho": true,
+        "unstaged_chirho": true,
+        "staged_chirho": true
+      },
+      "dirty_files_verified_chirho": 0,
+      "inode_preserved_chirho": true,
+      "symlink_targets_preserved_chirho": true
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "checks_chirho": {
+        "head_chirho": true,
+        "branch_chirho": true,
+        "toplevel_chirho": true,
+        "status_chirho": true,
+        "unstaged_chirho": true,
+        "staged_chirho": true
+      },
+      "dirty_files_verified_chirho": 23,
+      "inode_preserved_chirho": true,
+      "symlink_targets_preserved_chirho": true
+    }
+  ],
+  "deleted_local_branches_chirho": [
+    {
+      "name_chirho": "codex-gcroots-chirho",
+      "sha_chirho": "5ad99c6ba34976d09e718e39c254dafa146c3b1d"
+    },
+    {
+      "name_chirho": "codex-llvm-lazy-let-chirho",
+      "sha_chirho": "8277e29c09ebee739edf4a952d811edf505686fc"
+    },
+    {
+      "name_chirho": "codex-safelookup-bug-chirho",
+      "sha_chirho": "d57233424c8e398e4802842a2030470aa1403831"
+    },
+    {
+      "name_chirho": "gpt-forall-scope-chirho",
+      "sha_chirho": "18bba3ad29dd75bb3121cdff01912c5acc69dca1"
+    },
+    {
+      "name_chirho": "gpt-infix-type-binders-chirho",
+      "sha_chirho": "f3a513d04cabbed302d4683c21da7513ee901dc4"
+    },
+    {
+      "name_chirho": "gpt-kind-signatures-chirho",
+      "sha_chirho": "8bc16dadc848566cd3ec760931c918ab3be5d987"
+    },
+    {
+      "name_chirho": "gpt-module-authority-chirho",
+      "sha_chirho": "19be8269dd2c9be94d752c632382a11f258ad7c8"
+    },
+    {
+      "name_chirho": "gpt-test-repairs-chirho",
+      "sha_chirho": "77b55f5f1ab95c81d4d7290d634c25440b03d815"
+    },
+    {
+      "name_chirho": "gpt-type-scope-chirho",
+      "sha_chirho": "048de337d87c066d59439d4534c0e020d89d46ee"
+    }
+  ],
+  "verified_at_chirho": "2026-09-15T14:07:48.941Z",
+  "archive_tags_chirho": [
+    {
+      "name_chirho": "archive-chirho/26-09-15-format-test-chirho",
+      "commit_chirho": "993374d64b2e083273e51561b85173080e8d4a4e",
+      "scope_chirho": "local recovery tag; not pushed"
+    },
+    {
+      "name_chirho": "archive-chirho/26-09-15-isolate-current-chirho",
+      "commit_chirho": "357ffc5b043b3947aa470e90de9a078e1db47b36",
+      "scope_chirho": "local recovery tag; not pushed"
+    },
+    {
+      "name_chirho": "archive-chirho/26-09-15-pre-structure-chirho",
+      "commit_chirho": "1a0a452a8aebfc7b36a0055672ad3aee8e06641e",
+      "scope_chirho": "local recovery tag; not pushed"
+    }
+  ],
+  "personal_entries_chirho": [
+    "haskelujah-chirho",
+    "haskelujah-workspaces-chirho"
+  ],
+  "registered_worktrees_chirho": "worktree /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho\nHEAD 121d4f2c33e28b629428bd7ac7da17a4462491cd\nbranch refs/heads/main_chirho\n\nworktree /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-baseline-chirho\nHEAD 665ec6efb7afb2db6ee9ec213a970e1444c11312\ndetached\n\nworktree /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude-chirho\nHEAD 8fb62c60928ba964c408c249b996626c76fa648c\nbranch refs/heads/dictionary-evidence-chirho\n\nworktree /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude2-chirho\nHEAD d4b8004994f0acc82c05571b15badf43eeb3ea42\nbranch refs/heads/gadt-record-parser-chirho\n\nworktree /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho\nHEAD 9d563c7bf144fae2d88902718febb4cc03657a2f\nbranch refs/heads/gpt-kind-scope-chirho\n\nworktree /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-flat-types-chirho\nHEAD 0093dd4049ee042714794d988458ff28eee58fc9\nbranch refs/heads/gpt-flat-types-chirho\n\nworktree /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho\nHEAD 1b2e489450c535f630c107d3a6b6205c927c8726\nbranch refs/heads/gpt-kind-schemes-chirho",
+  "remaining_branches_chirho": [
+    "dictionary-evidence-chirho\t8fb62c60928ba964c408c249b996626c76fa648c",
+    "gadt-record-parser-chirho\td4b8004994f0acc82c05571b15badf43eeb3ea42",
+    "gpt-flat-types-chirho\t0093dd4049ee042714794d988458ff28eee58fc9",
+    "gpt-kind-schemes-chirho\t1b2e489450c535f630c107d3a6b6205c927c8726",
+    "gpt-kind-scope-chirho\t9d563c7bf144fae2d88902718febb4cc03657a2f",
+    "main_chirho\t121d4f2c33e28b629428bd7ac7da17a4462491cd",
+    "publish-crates-chirho\t45b16e67a8f5507d1f32f3b3eac6cfc8088eb4a2"
+  ],
+  "remote_branches_unchanged_chirho": true,
+  "prune_after_chirho": "",
+  "intentional_symlink_change_chirho": {
+    "path_chirho": "haskelujah-claude-chirho/.haskelujah-packages-chirho",
+    "old_target_chirho": "../haskelujah-chirho/.haskelujah-packages-chirho",
+    "new_target_chirho": "../../haskelujah-chirho/.haskelujah-packages-chirho",
+    "effective_target_preserved_chirho": true
+  },
+  "recovery_chirho": "Deleted local branches remain reachable through main; recreate with git branch <recorded name> <recorded SHA>. Three pruned detached commits remain reachable through the named local archive tags.",
+  "runtime_claim_chirho": "Filesystem and Git relocation verified; no compiler rebuild, test rerun, cache reclamation or corpus measurement claimed."
+}
