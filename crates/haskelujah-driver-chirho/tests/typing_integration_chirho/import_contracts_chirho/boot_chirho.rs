@@ -10,7 +10,7 @@ const PROVIDER_CHIRHO: &str = "module ProviderChirho where\nimport ConsumerChirh
 const BOOT_CHIRHO: &str = "{-# LANGUAGE KindSignatures #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho (aChirho :: Type)\nsameChirho :: BoxChirho aChirho -> BoxChirho aChirho\n";
 const CONSUMER_CHIRHO: &str = "module ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\npingChirho :: BoxChirho Int -> BoxChirho Int\npingChirho = sameChirho\n";
 
-fn boot_paths_chirho(
+pub(super) fn boot_paths_chirho(
     provider_chirho: &str,
     boot_chirho: Option<&str>,
     consumer_chirho: &str,
@@ -23,33 +23,45 @@ fn optional_implementation_paths_chirho(
     boot_chirho: Option<&str>,
     consumer_chirho: &str,
 ) -> Vec<Result<(), String>> {
-    let directory_chirho = tempfile::tempdir().unwrap();
+    let mut sources_chirho = Vec::new();
     for (name_chirho, source_chirho) in [
         ("ProviderChirho.hs", provider_chirho),
         ("ConsumerChirho.hs", Some(consumer_chirho)),
     ] {
         if let Some(source_chirho) = source_chirho {
-            std::fs::write(directory_chirho.path().join(name_chirho), source_chirho).unwrap();
+            sources_chirho.push((name_chirho, source_chirho));
         }
     }
     if let Some(boot_chirho) = boot_chirho {
-        std::fs::write(
-            directory_chirho.path().join("ProviderChirho.hs-boot"),
-            boot_chirho,
-        )
-        .unwrap();
+        sources_chirho.push(("ProviderChirho.hs-boot", boot_chirho));
     }
+    source_graph_paths_chirho(&sources_chirho, "ConsumerChirho.hs")
+}
+
+pub(super) fn source_graph_paths_chirho(
+    sources_chirho: &[(&str, &str)],
+    root_chirho: &str,
+) -> Vec<Result<(), String>> {
+    let directory_chirho = tempfile::tempdir().unwrap();
+    for (name_chirho, source_chirho) in sources_chirho {
+        std::fs::write(directory_chirho.path().join(name_chirho), source_chirho).unwrap();
+    }
+    let source_chirho = sources_chirho
+        .iter()
+        .find(|(name_chirho, _)| *name_chirho == root_chirho)
+        .expect("the root must be one of the actual source files")
+        .1;
     vec![
         check_source_path_chirho(
-            directory_chirho.path().join("ConsumerChirho.hs"),
+            directory_chirho.path().join(root_chirho),
             ExecutionModeChirho::BatchChirho,
         )
         .map(|_| ())
         .map_err(|error_chirho| error_chirho.to_string()),
         compile_source_with_search_path_chirho(
-            consumer_chirho,
+            source_chirho,
             &mut SourceMapChirho::new_chirho(),
-            "ConsumerChirho.hs",
+            root_chirho,
             directory_chirho.path(),
         )
         .map(|_| ())

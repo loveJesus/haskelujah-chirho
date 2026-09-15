@@ -48,6 +48,7 @@ fn module_chirho(
 
 fn associated_class_chirho() -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        context_written_chirho: false,
         context_chirho: vec![],
         name_chirho: name_chirho("ContainerChirho"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("itemChirho"))],

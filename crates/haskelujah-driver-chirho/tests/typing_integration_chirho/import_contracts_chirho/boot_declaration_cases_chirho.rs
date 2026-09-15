@@ -1,0 +1,117 @@
+// For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+
+// Generated from committed source-boot-chirho/declarations-chirho/references-chirho.jsonl.
+pub(super) struct ReferenceCaseChirho {
+    pub(super) name_chirho: &'static str,
+    pub(super) provider_chirho: &'static str,
+    pub(super) boot_chirho: &'static str,
+    pub(super) consumer_chirho: &'static str,
+    pub(super) accepted_chirho: bool,
+}
+pub(super) const CASES_CHIRHO: &[ReferenceCaseChirho] = &[
+    ReferenceCaseChirho {
+        name_chirho: "derived_instance_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho = BoxChirho deriving Show\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho\ninstance Show BoxChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: BoxChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: true,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "missing_instance_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho = BoxChirho\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho\ninstance Show BoxChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: BoxChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: false,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "wrong_head_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho = BoxChirho\ndata OtherChirho = OtherChirho deriving Show\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho\ninstance Show BoxChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: BoxChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: false,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "explicit_instance_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho = BoxChirho\ninstance Show BoxChirho where show _ = \"box\"\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho\ninstance Show BoxChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: BoxChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: true,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "empty_boot_body_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho = BoxChirho deriving Show\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho\ninstance Show BoxChirho where {}\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: BoxChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: true,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "populated_boot_body_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho = BoxChirho deriving Show\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho\ninstance Show BoxChirho where { show _ = \"box\" }\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: BoxChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: false,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "context_alpha_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho (bChirho :: Type) = BoxChirho bChirho\ninstance Show bChirho => Show (BoxChirho bChirho) where show _ = \"box\"\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho (aChirho :: Type)\ninstance Show aChirho => Show (BoxChirho aChirho)\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: Show aChirho => BoxChirho aChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: true,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "context_mismatch_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\ndata BoxChirho (bChirho :: Type) = BoxChirho bChirho\ninstance Eq bChirho => Show (BoxChirho bChirho) where show _ = \"box\"\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\ndata BoxChirho (aChirho :: Type)\ninstance Show aChirho => Show (BoxChirho aChirho)\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: Show aChirho => BoxChirho aChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: false,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "extra_context_alpha_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\nclass RelChirho (aChirho :: Type) (bChirho :: Type)\ndata BoxChirho (bChirho :: Type) = BoxChirho bChirho\ninstance RelChirho bChirho Int => Show (BoxChirho bChirho) where show _ = \"box\"\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nclass RelChirho (aChirho :: Type) (bChirho :: Type)\ndata BoxChirho (aChirho :: Type)\ninstance RelChirho aChirho Int => Show (BoxChirho aChirho)\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: RelChirho aChirho Int => BoxChirho aChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: true,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "extra_context_mismatch_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\nclass RelChirho (aChirho :: Type) (bChirho :: Type)\ndata BoxChirho (bChirho :: Type) = BoxChirho bChirho\ninstance RelChirho bChirho Bool => Show (BoxChirho bChirho) where show _ = \"box\"\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nclass RelChirho (aChirho :: Type) (bChirho :: Type)\ndata BoxChirho (aChirho :: Type)\ninstance RelChirho aChirho Int => Show (BoxChirho aChirho)\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nrenderChirho :: RelChirho aChirho Int => BoxChirho aChirho -> String\nrenderChirho = show\n",
+        accepted_chirho: false,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "abstract_class_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\nclass KChirho (aChirho :: Type) where\n  methodChirho :: aChirho -> aChirho\nhChirho :: KChirho aChirho => aChirho -> aChirho\nhChirho = methodChirho\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nclass KChirho (aChirho :: Type) where\nhChirho :: KChirho aChirho => aChirho -> aChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nforwardChirho :: KChirho aChirho => aChirho -> aChirho\nforwardChirho = hChirho\n",
+        accepted_chirho: true,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "explicit_empty_class_chirho",
+        provider_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\nclass KChirho (aChirho :: Type) where\n  methodChirho :: aChirho -> aChirho\nhChirho :: KChirho aChirho => aChirho -> aChirho\nhChirho = methodChirho\n",
+        boot_chirho: "{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nclass () => KChirho (aChirho :: Type) where\nhChirho :: KChirho aChirho => aChirho -> aChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nforwardChirho :: KChirho aChirho => aChirho -> aChirho\nforwardChirho = hChirho\n",
+        accepted_chirho: false,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "fundep_alpha_chirho",
+        provider_chirho: "{-# LANGUAGE FunctionalDependencies #-}\n{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\nclass LinkChirho (xChirho :: Type) (yChirho :: Type) | xChirho -> yChirho where\n  linkChirho :: xChirho -> yChirho\n",
+        boot_chirho: "{-# LANGUAGE FunctionalDependencies #-}\n{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nclass LinkChirho (aChirho :: Type) (bChirho :: Type) | aChirho -> bChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nsameChirho :: LinkChirho Int Bool => Int -> Int\nsameChirho xChirho = xChirho\n",
+        accepted_chirho: true,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "fundep_missing_chirho",
+        provider_chirho: "{-# LANGUAGE FunctionalDependencies #-}\n{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\nclass LinkChirho (xChirho :: Type) (yChirho :: Type) where\n  linkChirho :: xChirho -> yChirho\n",
+        boot_chirho: "{-# LANGUAGE FunctionalDependencies #-}\n{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nclass LinkChirho (aChirho :: Type) (bChirho :: Type) | aChirho -> bChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nsameChirho :: LinkChirho Int Bool => Int -> Int\nsameChirho xChirho = xChirho\n",
+        accepted_chirho: false,
+    },
+    ReferenceCaseChirho {
+        name_chirho: "fundep_reversed_chirho",
+        provider_chirho: "{-# LANGUAGE FunctionalDependencies #-}\n{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nimport ConsumerChirho\nclass LinkChirho (xChirho :: Type) (yChirho :: Type) | yChirho -> xChirho where\n  linkChirho :: xChirho -> yChirho\n",
+        boot_chirho: "{-# LANGUAGE FunctionalDependencies #-}\n{-# LANGUAGE KindSignatures, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, UndecidableInstances #-}\nmodule ProviderChirho where\nimport Data.Kind (Type)\nclass LinkChirho (aChirho :: Type) (bChirho :: Type) | aChirho -> bChirho\n",
+        consumer_chirho: "{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}\nmodule ConsumerChirho where\nimport {-# SOURCE #-} ProviderChirho\nsameChirho :: LinkChirho Int Bool => Int -> Int\nsameChirho xChirho = xChirho\n",
+        accepted_chirho: false,
+    },
+];

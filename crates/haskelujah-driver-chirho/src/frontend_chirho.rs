@@ -335,7 +335,7 @@ pub fn run_frontend_with_inputs_chirho(
 
     // Phase 4: Pass import contracts and the solved kind arguments together.
     // Workflow: language-features-chirho/declaration-kinds-chirho.
-    let infer_result_chirho = infer_module_with_inputs_chirho(
+    let mut infer_result_chirho = infer_module_with_inputs_chirho(
         &module_chirho,
         InferInputsChirho {
             boot_chirho: inputs_chirho.boot_chirho,
@@ -420,6 +420,11 @@ pub fn run_frontend_with_inputs_chirho(
     warnings_chirho.extend(infer_warnings_chirho);
 
     let mut type_contracts_chirho = imported_contracts_chirho;
+    // Local promises and exported dependency closure have different owners.
+    // Workflow: compiler-pipeline-chirho/module-search-authority-chirho.
+    infer_result_chirho
+        .declaration_contracts_chirho
+        .set_local_kind_contracts_chirho(kind_result_chirho.contracts_chirho.clone());
     type_contracts_chirho
         .kinds_chirho
         .extend(kind_result_chirho.contracts_chirho);

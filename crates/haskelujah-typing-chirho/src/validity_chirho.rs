@@ -1010,6 +1010,7 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let decl_chirho = DeclChirho::ClassDeclChirho {
+            context_written_chirho: false,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("C"),
             type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],

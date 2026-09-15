@@ -20,6 +20,16 @@ pub(super) fn validate_boot_declarations_chirho(
                 closed_chirho: false,
                 ..
             } => {}
+            DeclChirho::ClassDeclChirho { name_chirho, .. }
+                if boot_chirho
+                    .infer_result_chirho
+                    .declaration_contracts_chirho
+                    .supports_abstract_boot_class_chirho(name_chirho.text_chirho()) => {}
+            DeclChirho::InstanceDeclChirho {
+                methods_chirho,
+                assoc_tf_instances_chirho,
+                ..
+            } if methods_chirho.is_empty() && assoc_tf_instances_chirho.is_empty() => {}
             DeclChirho::FunBindChirho { name_chirho, .. } => {
                 return Err(format!(
                     "boot contract cannot contain a value definition: {}",
@@ -104,7 +114,21 @@ pub(super) fn check_boot_agreement_chirho(
     boot_iface_chirho: &haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho,
     implementation_iface_chirho: &haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho,
 ) -> Result<(), String> {
-    for name_chirho in boot_iface_chirho.exports_chirho.values_chirho.keys() {
+    boot_chirho
+        .infer_result_chirho
+        .declaration_contracts_chirho
+        .check_boot_promises_chirho(
+            &implementation_chirho
+                .infer_result_chirho
+                .declaration_contracts_chirho,
+        )?;
+    let mut values_chirho: Vec<_> = boot_iface_chirho
+        .exports_chirho
+        .values_chirho
+        .keys()
+        .collect();
+    values_chirho.sort_unstable();
+    for name_chirho in values_chirho {
         if !implementation_iface_chirho
             .exports_chirho
             .values_chirho
@@ -116,7 +140,13 @@ pub(super) fn check_boot_agreement_chirho(
             ));
         }
     }
-    for (name_chirho, expected_chirho) in &boot_iface_chirho.exports_chirho.types_chirho {
+    let mut types_chirho: Vec<_> = boot_iface_chirho
+        .exports_chirho
+        .types_chirho
+        .iter()
+        .collect();
+    types_chirho.sort_unstable_by(|left_chirho, right_chirho| left_chirho.0.cmp(right_chirho.0));
+    for (name_chirho, expected_chirho) in types_chirho {
         let compatible_chirho = implementation_iface_chirho
             .exports_chirho
             .types_chirho
@@ -157,19 +187,9 @@ pub(super) fn check_boot_agreement_chirho(
             boot_chirho.module_chirho.name_chirho.full_name_chirho()
         )
     };
-    for (name_chirho, expected_chirho) in &boot_chirho.type_contracts_chirho.kinds_chirho {
-        if !declarations_chirho.contains_key(name_chirho.as_str())
-            || !implementation_chirho
-                .type_contracts_chirho
-                .kinds_chirho
-                .get(name_chirho)
-                .is_some_and(|actual_chirho| expected_chirho.alpha_equivalent_chirho(actual_chirho))
-        {
-            return Err(mismatch_chirho(name_chirho));
-        }
-    }
     for declaration_chirho in &boot_chirho.module_chirho.decls_chirho {
         let valid_chirho = match declaration_chirho {
+            DeclChirho::ClassDeclChirho { .. } | DeclChirho::InstanceDeclChirho { .. } => true,
             DeclChirho::TypeSigChirho { name_chirho, .. } => {
                 declarations_chirho
                     .get(name_chirho.text_chirho())

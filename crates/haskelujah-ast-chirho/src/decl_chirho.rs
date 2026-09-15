@@ -318,6 +318,8 @@ pub enum DeclChirho {
     ClassDeclChirho {
         /// Class context required by the declaration head.
         context_chirho: Vec<ConstraintChirho>,
+        /// Even an explicitly empty context makes an hs-boot class concrete.
+        context_written_chirho: bool,
         /// Class name being introduced.
         name_chirho: NameChirho,
         /// Class type parameters.

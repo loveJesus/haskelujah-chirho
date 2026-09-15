@@ -1,0 +1,446 @@
+{
+  "kind_chirho": "frozen_source_boot_declaration_gates_chirho",
+  "recorded_at_chirho": "2026-09-15T14:50:14.203Z",
+  "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+  "inputs_chirho": {
+    "head_chirho": "1b2e489450c535f630c107d3a6b6205c927c8726",
+    "tracked_diff_sha256_chirho": "7d29b4e3916ecb14c2278c0518353f71386cd2b5b9cc48ae699772d18ca3736c",
+    "untracked_chirho": [
+      {
+        "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declaration_cases_chirho.rs",
+        "sha256_chirho": "b1644a72a9df44ff2ab1131595888cfa04b4ea03884d950625fff9fd01acad91"
+      },
+      {
+        "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declarations_chirho.rs",
+        "sha256_chirho": "8f4c3a45a938879d53b1c108718d3a51b80342ae6df1a212016562b94fff143d"
+      },
+      {
+        "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_ownership_chirho.rs",
+        "sha256_chirho": "c3172d9d7a8e0794bc936adccb4964da774d4574789e74905cd560c0e28af268"
+      },
+      {
+        "path_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/class_tests_chirho.rs",
+        "sha256_chirho": "9695c7c3d8758069694f4faa4c40fb4e4639fea326191a6bf6c41e9415ff0497"
+      },
+      {
+        "path_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/classes_chirho.rs",
+        "sha256_chirho": "b294f9f6ead9d3c1499ae0250ee3ca74949bab0af5456a37aa8e5a58315ce54d"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/classes_chirho.rs",
+        "sha256_chirho": "12ec59f15cfdcb259070e2b5e07788c664780e00c13fcf063d41a1822e82f915"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contract_tests_chirho.rs",
+        "sha256_chirho": "22d230e5c7137ee350acadedaa2d96790d67e871cdb21de07829ec7c7f383446"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contracts_chirho.rs",
+        "sha256_chirho": "07326abb1cf4ebe7e0a67ef8b9969f129e3da82ef5f674a84bb007b30a67c77a"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/instances_chirho.rs",
+        "sha256_chirho": "ee5bef2e54e1a6992682e904158b0a1d5cacc7852bbf2d9434281b34fe6f1665"
+      },
+      {
+        "path_chirho": "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/ownership-reference-disagreement-chirho.jsonl",
+        "sha256_chirho": "74140c48e3c012d1c6baebaa11f863fc8db4efebd516c103f21100fc9e27b173"
+      },
+      {
+        "path_chirho": "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/ownership-references-chirho.jsonl",
+        "sha256_chirho": "077b118128ac990ca665158701d431bfc29f7b9c7a1470f841f7ab5c0bd9b3fd"
+      },
+      {
+        "path_chirho": "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/references-chirho.jsonl",
+        "sha256_chirho": "8f69eb1ecd5171f37f67726c58da5e84850675140714f580d784cb15cdecff39"
+      }
+    ]
+  },
+  "code_files_chirho": [
+    {
+      "path_chirho": "crates/haskelujah-ast-chirho/src/decl_chirho.rs",
+      "sha256_chirho": "2584c487402ee017562c8b4aa823824084e64537614e2d1380834fb70997b0b9"
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho.rs",
+      "sha256_chirho": "3e9b9ed2a604c1e950f740097d545bfdbb5f6f164c886ff4df2b325ebd964347"
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/source_chirho/boot_chirho.rs",
+      "sha256_chirho": "0e290cec1e69f93ace6cc1b215e570ad0d155f32157d5d4b3320469180d2a69b"
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho.rs",
+      "sha256_chirho": "25e2cf55a26ea360cb8f0c504723b3e3a111ceab6de843acaf08a43da0f64509"
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_chirho.rs",
+      "sha256_chirho": "c74c20b79d7ba73db490719331f2035b7c22e3ec0565932d4e31388038d23b94"
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declaration_cases_chirho.rs",
+      "sha256_chirho": "b1644a72a9df44ff2ab1131595888cfa04b4ea03884d950625fff9fd01acad91"
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_declarations_chirho.rs",
+      "sha256_chirho": "8f4c3a45a938879d53b1c108718d3a51b80342ae6df1a212016562b94fff143d"
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/boot_ownership_chirho.rs",
+      "sha256_chirho": "c3172d9d7a8e0794bc936adccb4964da774d4574789e74905cd560c0e28af268"
+    },
+    {
+      "path_chirho": "crates/haskelujah-naming-chirho/src/iface_chirho.rs",
+      "sha256_chirho": "103f583f7b9f5a2a552744ebd56fb24f3b331e39fa64bf363bce086c8611d9ce"
+    },
+    {
+      "path_chirho": "crates/haskelujah-naming-chirho/src/resolve_chirho.rs",
+      "sha256_chirho": "c4f2227a3a28b7e691931eaa19038284be45af25d35b88bf171385cb00f2553a"
+    },
+    {
+      "path_chirho": "crates/haskelujah-naming-chirho/src/type_exports_tests_chirho.rs",
+      "sha256_chirho": "8c4ea719fe263e2dfb3cf0e9dcf01267c8b42bd507d946d5e2cea934409e45a6"
+    },
+    {
+      "path_chirho": "crates/haskelujah-naming-chirho/src/type_scope_tests_chirho.rs",
+      "sha256_chirho": "fc5a55b223bee573f5b909e9401bd38e6380602e7c01b33f853885c1f64732d8"
+    },
+    {
+      "path_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho.rs",
+      "sha256_chirho": "30979d83940f0c5c66a252c25143e52e4f385eecf07450b9c488a99966256675"
+    },
+    {
+      "path_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/class_tests_chirho.rs",
+      "sha256_chirho": "9695c7c3d8758069694f4faa4c40fb4e4639fea326191a6bf6c41e9415ff0497"
+    },
+    {
+      "path_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/classes_chirho.rs",
+      "sha256_chirho": "b294f9f6ead9d3c1499ae0250ee3ca74949bab0af5456a37aa8e5a58315ce54d"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho.rs",
+      "sha256_chirho": "9d5c1579853cd4f4ac8717c7333afa72caef4fbf8b67d661a6789978536ce164"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/classes_chirho.rs",
+      "sha256_chirho": "12ec59f15cfdcb259070e2b5e07788c664780e00c13fcf063d41a1822e82f915"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/instances_chirho.rs",
+      "sha256_chirho": "ee5bef2e54e1a6992682e904158b0a1d5cacc7852bbf2d9434281b34fe6f1665"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contracts_chirho.rs",
+      "sha256_chirho": "07326abb1cf4ebe7e0a67ef8b9969f129e3da82ef5f674a84bb007b30a67c77a"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/contract_tests_chirho.rs",
+      "sha256_chirho": "22d230e5c7137ee350acadedaa2d96790d67e871cdb21de07829ec7c7f383446"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho.rs",
+      "sha256_chirho": "4ca96379f1d741c35a22d47bdb9c1e01f56bd94419c7e6eaeb834c4aad944b33"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho/bindings_chirho/imports_chirho.rs",
+      "sha256_chirho": "b8b7d70dff6605fde9f8b63419ffd73f8a633e0fe8b0e829c73236e926ff902f"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/import_tests_chirho.rs",
+      "sha256_chirho": "76564a23ed36340290883e7229203ada947f6b2d5629a607b29971de29b39aba"
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/validity_chirho.rs",
+      "sha256_chirho": "ac71dc1fd64b87afebfb3ac3a823f2b9e1d2464a2fd72ca39d01a974a34a3747"
+    }
+  ],
+  "cli_sha256_chirho": "d76de19d240c2e5c4f47dc25b1f458975f030b920f16d1c471e987881282bd73",
+  "source_unchanged_before_packaging_chirho": true,
+  "gates_chirho": [
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "parser_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "test",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah-parser",
+        "--lib"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:37:39.351Z",
+      "ended_at_chirho": "2026-09-15T14:37:46.184Z",
+      "exit_chirho": 0,
+      "summary_chirho": [
+        "test result: ok. 368 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s"
+      ],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "3d9f792193090cdb94f664ba8ecce397bf49ee08f6a2a93edc57ad5ef935f845",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "typing_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "test",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah-typing",
+        "--lib"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:37:46.184Z",
+      "ended_at_chirho": "2026-09-15T14:37:46.381Z",
+      "exit_chirho": 0,
+      "summary_chirho": [
+        "test result: ok. 392 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s"
+      ],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "8b41c9e862c46eb5018a727e6a28473686a42c22a94dc97901f4d37746a01977",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "naming_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "test",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah-naming",
+        "--lib"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:37:46.381Z",
+      "ended_at_chirho": "2026-09-15T14:37:46.520Z",
+      "exit_chirho": 0,
+      "summary_chirho": [
+        "test result: ok. 137 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s"
+      ],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "8e3f4652bcd71fe953dd15053a88ab9e63b7ae780be537908284460740a69d8a",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "integration_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "test",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah-driver",
+        "--test",
+        "typing_integration_chirho"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:37:46.521Z",
+      "ended_at_chirho": "2026-09-15T14:38:14.257Z",
+      "exit_chirho": 0,
+      "summary_chirho": [
+        "test result: ok. 259 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.70s"
+      ],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "d4ba38062180a7bd38c4265f72faea61289e2570aa6b55c6aa417f6a5658277b",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "canaries_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "test",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah-driver",
+        "--test",
+        "canaries_chirho"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:38:14.258Z",
+      "ended_at_chirho": "2026-09-15T14:38:16.618Z",
+      "exit_chirho": 0,
+      "summary_chirho": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s"
+      ],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "a00826fedc8e555b1ccfa4a41fdfe5e47dda465dbad01801c94839fcd485301d",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "driver_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "test",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah-driver",
+        "--lib"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:38:16.618Z",
+      "ended_at_chirho": "2026-09-15T14:43:12.361Z",
+      "exit_chirho": 0,
+      "summary_chirho": [
+        "test result: ok. 1776 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 291.62s"
+      ],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "4328ad5a045bba0ac9d4256ac6dcc3c1d3450a81a0b5ac4ffb0108c5eaf4fb18",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "workspace_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "check",
+        "-j",
+        "3",
+        "--workspace",
+        "--all-targets"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:43:12.361Z",
+      "ended_at_chirho": "2026-09-15T14:43:26.609Z",
+      "exit_chirho": 0,
+      "summary_chirho": [],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "b331b6ab0fab6496514747027ed122820400adc8af170bf588fccbacf6815e26",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "cli_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "build",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:43:26.609Z",
+      "ended_at_chirho": "2026-09-15T14:43:31.559Z",
+      "exit_chirho": 0,
+      "summary_chirho": [],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "44306d7b383daec061cef94232777d6e89f91b4f16806c9e4c3e6bf2a371cd86",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "format_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:43:31.559Z",
+      "ended_at_chirho": "2026-09-15T14:43:32.642Z",
+      "exit_chirho": 0,
+      "summary_chirho": [],
+      "warning_lines_chirho": 0,
+      "output_sha256_chirho": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "failure_tail_chirho": null
+    },
+    {
+      "root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho",
+      "name_chirho": "clippy_chirho",
+      "command_chirho": [
+        "gtimeout",
+        "--kill-after=5",
+        "600s",
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "clippy",
+        "-j",
+        "3",
+        "-p",
+        "haskelujah-driver",
+        "--all-targets"
+      ],
+      "rust_min_stack_chirho": 16777216,
+      "started_at_chirho": "2026-09-15T14:43:32.642Z",
+      "ended_at_chirho": "2026-09-15T14:43:41.099Z",
+      "exit_chirho": 0,
+      "summary_chirho": [],
+      "warning_lines_chirho": 454,
+      "output_sha256_chirho": "1374aa204c60a18c2f3a3845bd8c21a809a1919538db35310ec1e3ad2fb86cc7",
+      "failure_tail_chirho": null
+    }
+  ],
+  "limits_chirho": [
+    "Not a full workspace test run or a full GHC corpus pass.",
+    "Clippy exits zero with 454 warning-message lines including duplicates and summaries; not lint clean.",
+    "The pre-evidence manifest was recorded while sources were uncommitted. Code file hashes permit verification after committing evidence and documentation."
+  ]
+}

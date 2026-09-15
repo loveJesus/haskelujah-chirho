@@ -264,7 +264,7 @@ the temptation to use permissive unification for a boot promise.
   this is not a lint-clean result.
 - [x] Preserve the exact source observations, reference disagreement, focused
   corpus results and gate provenance under imported-families-chirho/source-boot-chirho.
-- [ ] Commit/push the owned checked-boot checkpoint.
+- [x] Commit/push the owned checked-boot checkpoint1b2e4894; ls-remote matches.
 - [ ] Complete the remaining boot declaration contracts without accepting erased
   class/instance/family bodies; then remeasure exact full corpus sets.
 
@@ -288,3 +288,79 @@ Thirteen of18 recover; the same five stop at unrepresented agreement. This is
 neither a full corpus pass nor a claim of all boot semantics. The old CLI's
 multiline bad-value accept is now rejected; its bad-alias case already rejected
 and is a retained control, not a newly repaired result.
+
+Next brick: source-local class and instance contracts, captured after deriving
+by the existing checker. Never use the merged instance inventory as proof that
+the implementation declared its promised instance. Preserve every head/context
+argument in one closed binder namespace; the old ClassEnv registration drops
+extra context arguments and cannot be the agreement authority. Reuse exact
+scheme comparison, not instance search or permissive unification.
+
+Retain written class context in the AST. Class () => K a is a concrete empty
+class, unlike abstract class K a where, and that distinction is erased today.
+Reference correction: GHC9.14.1 accepts an EMPTY instance where-clause, so do
+not add the proposed body-presence restriction. A populated boot instance body
+is checked separately against GHC; existing retained methods carry that case.
+Abstract class agreement checks the existing
+checked head and functional dependencies; full class/default/associated-member
+agreement remains explicit unsupported work. Extract class/instance lowering
+and inference handlers into focused declaration owners rather than growing the
+oversized roots. No new dependency or semantic publication from unchecked AST.
+
+- [x] Reference15 unchanged positive/negative class and instance sources with
+  GHC9.14.1. The extended set includes matching, missing and reversed functional
+  dependencies; seven accepts and eight rejects, with each original diagnostic.
+- [x] Prove source-local agreement, including a derived implementation, missing
+  instance, altered context/extra context argument, and illegal boot body.
+  The original12 integration cases were6/12 before agreement (all six required
+  accepts rejected as unsupported), then12/12 after. Negative cases previously
+  passed via the blanket unsupported guard, not reason-level agreement.
+- [x] Gate the repaired Tc267/Tc271 pairs, broad integration and canaries.
+  Final parser368, typing392, naming137, integration259, canaries7 and full
+  driver1776 all pass, zero ignored/filtered. Workspace all-target check,
+  explicit CLI build and format check pass without compiler warnings. Clippy
+  exits0 with454 warning-message lines including duplicates/summaries; not clean.
+- [x] Preserve source hashes, reference disagreements, focused corpus results
+  and final gate provenance under source-boot-chirho/declarations-chirho.
+- [ ] Commit/push the owned checkpoint before the separate abstract closed-family
+  representation. Main compiler, canonical row484 and published artifacts stay
+  unchanged until the lane's actual landing gates pass.
+
+## Source-local kind ownership, continuation2026-09-15
+
+Both other active agents have read and acknowledged their relocated worktrees.
+This lane now lives under haskelujah-workspaces-chirho. Main6db522ad contains
+only the workspace-maintenance changes beyond its prior compiler lineage.
+
+The exported kind companion was being used as declaration ownership: imported
+dependencies looked local, and private unused declarations disappeared. Retain
+the kind checker's local inventory before export dependency closure. The three
+filesystem controls went1/3 to3/3; the valid dual SOURCE cycle and a private kind
+conflict are independently arbitrated by GHC9.14.1. Check and compile file paths
+both exercise the repair, not the filesystem-blind source-string API.
+
+Independent review confirmed that placement and exposed first-error instability,
+conflated shape/closure/kind reasons and silent omission of a missing local kind
+binding. Two new controls failed before those audit repairs, then passed in the
+full typing392 result. The missing-binding case is fault injection, not a proved
+valid-source path. Sorted keys make diagnostics stable; instance agreement retains
+the shared16384-comparison work bound. The reviewer withdrew the proposed
+per-promise budget after verifying that order does not change total required work.
+
+Final CLI SHA256
+d76de19d240c2e5c4f47dc25b1f458975f030b920f16d1c471e987881282bd73
+is unchanged across45 source-root reference comparisons and29 focused corpus
+observations. Forty-four agree with GHC; the unused private boot head absent from
+the implementation is accepted by GHC but rejected here. That remains explicitly
+unresolved. The original phantom-parameter positive had a GHC role mismatch; its
+corrected constructor uses the parameter, and both reference versions are retained.
+
+Seventeen of18 former cycle files pass, up from13 at1b2e4894: Tc267a/Tc267b and
+Tc271/Tc271a recover. T6018a still fails on abstract closed-family agreement. The
+eleven older focused blockers all still fail: CoerceToVDQ,T13879,T16204a/T16204b,
+T17067,T18129,T22560c,T23543,T26358,T13585/T13585b. These are named focused
+observations, not a complete regression census or a new full corpus figure.
+The source stayed frozen across final gates; code-file hashes in gates-chirho.json
+allow checking the eventual commit. No assertion was weakened and no test was
+excluded to obtain these results; corpus denominators are unchanged. Oversized
+roots and lint debt remain open.

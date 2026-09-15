@@ -4,6 +4,47 @@
 use super::*;
 
 #[test]
+fn missing_declared_kind_contract_reports_the_owner_instead_of_disappearing_chirho() {
+    let name_chirho = |text_chirho| {
+        haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+            haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                text_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            ),
+        )
+    };
+    let module_chirho = ModuleChirho {
+        name_chirho: name_chirho("ProviderChirho"),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![DeclChirho::TypeAliasDeclChirho {
+            name_chirho: name_chirho("MissingHeadChirho"),
+            type_vars_chirho: vec![],
+            rhs_chirho: TypeChirho::ConChirho(name_chirho("Int")),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        extensions_chirho: vec![],
+        inline_pragmas_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    let _contracts_chirho = context_chirho.export_kind_contracts_chirho(&module_chirho);
+    assert!(
+        context_chirho
+            .diagnostics_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho.is_error_chirho()
+                && diagnostic_chirho
+                    .message_chirho
+                    .contains("MissingHeadChirho"))
+    );
+}
+
+#[test]
 fn imported_family_kind_equality_cannot_invent_nominal_injectivity_chirho() {
     for (shape_chirho, nominal_chirho) in [
         (imports_chirho::KindHeadShapeChirho::NominalChirho, true),
@@ -82,6 +123,12 @@ fn boot_kind_equality_rebases_classifiers_simultaneously_chirho() {
     };
     scheme_chirho.classifiers_chirho[1] = KindChirho::StarChirho;
     assert!(!expected_chirho.alpha_equivalent_chirho(&actual_chirho));
+    assert!(
+        expected_chirho
+            .check_agreement_chirho(&actual_chirho)
+            .unwrap_err()
+            .contains("classifiers")
+    );
 }
 
 #[test]
@@ -96,12 +143,24 @@ fn boot_kind_equality_preserves_specificity_authority_and_closedness_chirho() {
     actual_chirho = expected_chirho.clone();
     actual_chirho.shape_chirho = imports_chirho::KindHeadShapeChirho::FamilyChirho;
     assert!(!expected_chirho.alpha_equivalent_chirho(&actual_chirho));
+    assert!(
+        expected_chirho
+            .check_agreement_chirho(&actual_chirho)
+            .unwrap_err()
+            .contains("shapes")
+    );
     actual_chirho = expected_chirho.clone();
     let KindBindingChirho::PolyChirho(scheme_chirho) = &mut actual_chirho.binding_chirho else {
         unreachable!()
     };
     scheme_chirho.classifiers_chirho[0] = KindChirho::VarChirho(KindVarChirho(99));
     assert!(!actual_chirho.alpha_equivalent_chirho(&actual_chirho));
+    assert!(
+        actual_chirho
+            .check_agreement_chirho(&actual_chirho)
+            .unwrap_err()
+            .contains("not closed")
+    );
 }
 
 #[test]

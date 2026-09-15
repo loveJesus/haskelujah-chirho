@@ -24,11 +24,19 @@ impl KindContractChirho {
     /// successful instantiation is not proof of a universally quantified kind.
     /// Workflow: compiler-pipeline-chirho/module-search-authority-chirho.
     pub fn alpha_equivalent_chirho(&self, other_chirho: &Self) -> bool {
-        if self.shape_chirho != other_chirho.shape_chirho
-            || !Self::binding_is_closed_chirho(&self.binding_chirho)
+        self.check_agreement_chirho(other_chirho).is_ok()
+    }
+
+    /// Keep incompatible declaration shapes and unclosed contracts distinct
+    /// from a disagreement between otherwise valid checked kind templates.
+    pub fn check_agreement_chirho(&self, other_chirho: &Self) -> Result<(), &'static str> {
+        if self.shape_chirho != other_chirho.shape_chirho {
+            return Err("declaration shapes differ");
+        }
+        if !Self::binding_is_closed_chirho(&self.binding_chirho)
             || !Self::binding_is_closed_chirho(&other_chirho.binding_chirho)
         {
-            return false;
+            return Err("kind contract is not closed");
         }
         let normalize_chirho = |binding_chirho: &KindBindingChirho| {
             let scheme_chirho = match binding_chirho {
@@ -68,7 +76,12 @@ impl KindContractChirho {
                 normalize_term_chirho(&scheme_chirho.body_chirho),
             )
         };
-        normalize_chirho(&self.binding_chirho) == normalize_chirho(&other_chirho.binding_chirho)
+        if normalize_chirho(&self.binding_chirho) == normalize_chirho(&other_chirho.binding_chirho)
+        {
+            Ok(())
+        } else {
+            Err("kind or quantified classifiers differ")
+        }
     }
 
     pub(super) fn binding_is_closed_chirho(binding_chirho: &KindBindingChirho) -> bool {
@@ -273,6 +286,16 @@ impl KindInferCtxChirho {
                         shape_chirho,
                     },
                 );
+            } else {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
+                        format!(
+                            "declared type {} has no checked kind contract",
+                            name_chirho.text_chirho()
+                        ),
+                        name_chirho.span_chirho(),
+                    ));
             }
         }
         contracts_chirho

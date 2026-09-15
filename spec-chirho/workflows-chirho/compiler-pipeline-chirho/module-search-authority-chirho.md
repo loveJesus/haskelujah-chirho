@@ -41,12 +41,29 @@ flowchart TD
 - Known-provider read, preprocessing and frontend failures stop the consumer. The diagnostic retains the provider path and original diagnostic text; provider offsets are not rendered against consumer source bytes.
 - Implementation and boot nodes have distinct keys. Ordinary imports use implementations; SOURCE imports require actual checked boot files. A source implementation is required and scheduled even if reached only through SOURCE, matching the source-graph (`ghc --make`) boundary. Its own boot is not made its dependency. A cycle still present in this graph fails explicitly.
 - Each node selects its imported versions before loading semantic output. A later implementation cannot replace a directly requested boot interface or expose implementation-only names. Mixed direct ordinary and SOURCE imports of one module currently diagnose rather than silently choose one version.
-- Boot checking uses the same naming, kind, type, and validity phases. Only explicit boot mode publishes a value signature without a value body. Implementations are independently checked; their public interface must contain every boot export and member. Exact closed-scheme and kind-template agreement permits alpha-renaming, not specialization, qualified-basename cancellation, or dropped multiplicity. Boot data/newtype constructor layouts, open-family injectivity positions, and closed aliases are also checked. Classes, instances, abstract closed-family promises, and fixity agreement are not yet implemented; those declarations diagnose instead of becoming unchecked authority.
+- Boot checking uses the same naming, kind, type, and validity phases. Only explicit boot mode publishes a value signature without a value body. Implementations are independently checked; their public interface must contain every boot export and member. Exact closed-scheme and kind-template agreement permits alpha-renaming, not specialization, qualified-basename cancellation, or dropped multiplicity. Boot data/newtype constructor layouts, open-family injectivity positions, and closed aliases are also checked.
+- Class and instance agreement uses a source-local declaration contract, captured by the checker after deriving and before merging imported assumptions. An abstract class promise checks the complete head kind and functional-dependency positions. A written empty context (`class () => K a`) is retained separately from an omitted context; the former is a concrete class, not an abstract promise. Full class methods/defaults/associated-member agreement remains unrepresented and diagnoses.
+- Represented instance promises compare every head and context argument in one closed variable namespace against a source-local implementation instance. Imported instances cannot satisfy that ownership check. The shared instance registration now retains all arguments of multi-parameter constraints rather than only their first argument. An empty boot-instance `where {}` is legal; retained method definitions or associated equations are not. Nullary and quantified-context instance agreement, abstract closed-family promises, and fixity agreement remain explicit unsupported cases. These are not claims of complete GHC boot equivalence or context entailment.
 - The shared collector also serves stdlib and package frontends. It orders supplied modules iteratively, rejects duplicate source owners, and preserves caller-supplied artifacts even for an empty source list. The legacy package-fixture scanner is test-only and does not feed this file-entry producer.
 
 ## Bounds and proof scope
 
-One invocation admits at most64 module-name components,2048 distinct candidate directories,16384 source reads/dependency names,8MiB per source and64MiB of admitted source bytes. Import-contract closure traversal has a shared1048576-edge budget. Exact value/alias agreement admits16384 type nodes and depth256 per comparison. Exhaustion is an error or unproved agreement, not partial success. A path cache avoids repeated reads; independent-module ordering uses a deterministic ready set. Filesystem lookup does not grow with unrelated directory contents.
+Boot kind agreement uses the kind checker's source-local declaration inventory,
+retained before export dependency closure. Imported types reachable through a
+promised value signature are dependencies, not new declarations the importing
+boot module must implement. Conversely, a private declared head still has to
+agree with its implementation even when neither export map contains it. The
+transport companion remains a dependency closure; it is not an ownership proof.
+
+First-error contract and public-export keys are ordered, so randomized map order
+does not select the diagnostic. Shape differences, unclosed kind contracts and
+kind/classifier differences report distinct reasons. A declared local head with
+no kind binding diagnoses instead of silently disappearing from the inventory.
+The unused, unexported boot-head-with-no-implementation edge differs from
+GHC9.14.1 in the retained declaration evidence and remains unresolved; this is not
+a claim of complete private-declaration agreement semantics.
+
+One invocation admits at most64 module-name components,2048 distinct candidate directories,16384 source reads/dependency names,8MiB per source and64MiB of admitted source bytes. Import-contract closure traversal has a shared1048576-edge budget. Exact value/alias/instance agreement admits16384 type nodes and depth256 per comparison. Instance agreement shares a16384-candidate comparison budget per boot/implementation pair. Exhaustion is an error or unproved agreement, not partial success. A path cache avoids repeated reads; independent-module ordering uses a deterministic ready set. Filesystem lookup does not grow with unrelated directory contents.
 
 These bounds cover discovery and admitted source bytes, not all compiler allocations or CPP subprocess resource use. Existing family-table copies and source maps still have their own costs.
 
