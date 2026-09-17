@@ -17,11 +17,17 @@ const command_output_chirho = (command_chirho: string[]) => {
 const head_chirho = command_output_chirho(["git", "rev-parse", "HEAD"]);
 const binary_sha256_chirho = hash_chirho(await readFile(binary_chirho));
 const diff_chirho = command_output_chirho(["git", "diff", "--", "crates/"]);
-const dirty_source_paths_chirho = command_output_chirho(["git", "diff", "--name-only", "--", "crates/"]).split("\n").filter(Boolean);
-const dirty_source_hashes_chirho = Object.fromEntries(await Promise.all(dirty_source_paths_chirho.map(async path_chirho => [path_chirho, hash_chirho(await readFile(path_chirho))])));
+const source_paths_chirho = () => [...new Set([
+  ...command_output_chirho(["git", "diff", "--name-only", "--diff-filter=ACMR", "--", "crates/"]).split("\n"),
+  ...command_output_chirho(["git", "ls-files", "--others", "--exclude-standard", "--", "crates/"]).split("\n"),
+].filter(Boolean))].sort();
+const dirty_source_paths_chirho = source_paths_chirho();
+const source_hashes_chirho = async () => Object.fromEntries(await Promise.all(dirty_source_paths_chirho.map(async path_chirho => [path_chirho, hash_chirho(await readFile(path_chirho))])));
+const dirty_source_hashes_chirho = await source_hashes_chirho();
+const deleted_source_paths_chirho = command_output_chirho(["git", "diff", "--name-only", "--diff-filter=D", "--", "crates/"]).split("\n").filter(Boolean);
 const metadata_chirho = {
   kind_chirho: "metadata_chirho", recorded_at_chirho: new Date().toISOString(), head_chirho,
-  binary_chirho, binary_sha256_chirho, dirty_source_hashes_chirho, diff_sha256_chirho: hash_chirho(diff_chirho),
+  binary_chirho, binary_sha256_chirho, dirty_source_hashes_chirho, deleted_source_paths_chirho, diff_sha256_chirho: hash_chirho(diff_chirho),
   scope_chirho: "One diagnostic pass per axis; no corpus or oracle edits; error[E or panic detector; panics separately recorded; unexpected exits and unresolved timeouts invalidate the run",
 };
 const summaries_chirho = [];
@@ -57,7 +63,8 @@ for (const [axis_chirho, denominator_chirho] of [["compile", 938], ["fail", 767]
     if (verdict_chirho.exitCode !== 0 && verdict_chirho.exitCode !== 1) throw new Error("shell verdict detector failed");
     const rejected_chirho = verdict_chirho.exitCode === 1;
     if (rejected_chirho !== (diagnostic_chirho.includes("error[E") || diagnostic_chirho.includes("panic"))) throw new Error("independent verdict detectors disagree");
-    const unexpected_exit_chirho = exit_chirho !== 0 && !rejected_chirho;
+    // An emitted diagnostic cannot excuse a later crash or abnormal exit.
+    const unexpected_exit_chirho = exit_chirho !== 0 && exit_chirho !== 1;
     return { name_chirho: path_chirho.slice(root_chirho.length + 1), path_chirho, source_sha256_chirho, cap_ms_chirho, exit_chirho, timed_out_chirho, output_limit_chirho, unexpected_exit_chirho, panic_chirho, rejected_chirho, elapsed_ms_chirho: Date.now() - start_chirho, stdout_chirho, stderr_chirho };
   }
   let next_chirho = 0;
@@ -92,5 +99,6 @@ for (const [axis_chirho, denominator_chirho] of [["compile", 938], ["fail", 767]
   console.log(JSON.stringify({ axis_chirho, matching_verdict_count_chirho: summary_chirho.matching_verdict_count_chirho, gains_chirho: summary_chirho.baseline_gains_chirho.length, losses_chirho: summary_chirho.baseline_losses_chirho.length, timeouts_chirho: summary_chirho.unresolved_timeouts_chirho, unexpected_exits_chirho: summary_chirho.unexpected_exits_chirho, panics_chirho: summary_chirho.panics_chirho }));
 }
 if (hash_chirho(await readFile(binary_chirho)) !== binary_sha256_chirho || command_output_chirho(["git", "rev-parse", "HEAD"]) !== head_chirho || hash_chirho(command_output_chirho(["git", "diff", "--", "crates/"])) !== metadata_chirho.diff_sha256_chirho) throw new Error("source or binary changed during diagnostic");
+if (JSON.stringify(source_paths_chirho()) !== JSON.stringify(dirty_source_paths_chirho) || JSON.stringify(await source_hashes_chirho()) !== JSON.stringify(dirty_source_hashes_chirho)) throw new Error("new or moved source changed during diagnostic");
 await Bun.write(join(output_chirho, "diagnostic-chirho.jsonl"), [metadata_chirho, ...summaries_chirho].map(row_chirho => JSON.stringify(row_chirho)).join("\n") + "\n");
 if (summaries_chirho.some(row_chirho => row_chirho.unresolved_timeouts_chirho.length || row_chirho.unexpected_exits_chirho.length || row_chirho.panics_chirho.length)) process.exitCode = 1;

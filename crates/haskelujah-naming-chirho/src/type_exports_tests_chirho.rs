@@ -49,6 +49,7 @@ fn module_chirho(
 fn associated_class_chirho() -> DeclChirho {
     DeclChirho::ClassDeclChirho {
         context_written_chirho: false,
+        minimal_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("ContainerChirho"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("itemChirho"))],
@@ -62,16 +63,26 @@ fn associated_class_chirho() -> DeclChirho {
         associated_tfs_chirho: vec![
             AssocTypeFamilyChirho {
                 name_chirho: name_chirho("ElementChirho"),
-                type_vars_chirho: vec![name_chirho("itemChirho")],
-                default_rhs_chirho: None,
-                default_params_chirho: vec![],
+                type_vars_chirho: vec![name_chirho("itemChirho")]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+                result_chirho: Default::default(),
+                data_chirho: false,
+                head_declared_chirho: true,
+                defaults_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             AssocTypeFamilyChirho {
                 name_chirho: name_chirho("IndexChirho"),
-                type_vars_chirho: vec![name_chirho("itemChirho")],
-                default_rhs_chirho: None,
-                default_params_chirho: vec![],
+                type_vars_chirho: vec![name_chirho("itemChirho")]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+                result_chirho: Default::default(),
+                data_chirho: false,
+                head_declared_chirho: true,
+                defaults_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         ],

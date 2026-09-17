@@ -291,27 +291,43 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 }
                 for method_chirho in methods_chirho {
                     self.walk_signature_type_chirho(&method_chirho.ty_chirho);
+                    if let Some(default_chirho) = &method_chirho.default_sig_chirho {
+                        self.walk_signature_type_chirho(default_chirho);
+                    }
                 }
                 for associated_tf_chirho in associated_tfs_chirho {
-                    let default_binders_chirho = if associated_tf_chirho.default_params_chirho.len()
-                        == associated_tf_chirho.type_vars_chirho.len()
+                    let associated_pushed_chirho =
+                        self.push_decl_binders_chirho(&associated_tf_chirho.type_vars_chirho);
+                    if let Some(signature_chirho) =
+                        &associated_tf_chirho.result_chirho.kind_sig_chirho
+                        && let Some(result_chirho) = signature_chirho.result_chirho()
                     {
-                        &associated_tf_chirho.default_params_chirho
-                    } else {
-                        &associated_tf_chirho.type_vars_chirho
-                    };
-                    let associated_pushed_chirho = self.push_name_binders_chirho(
-                        default_binders_chirho
-                            .iter()
-                            .map(|name_chirho| name_chirho.text_chirho().to_string()),
-                    );
-                    if let Some(default_rhs_chirho) = &associated_tf_chirho.default_rhs_chirho {
-                        self.walk_type_chirho(
-                            default_rhs_chirho,
-                            FreeTyVarPolicyChirho::RequireBoundChirho,
-                        );
+                        self.walk_type_chirho(result_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                     }
                     self.pop_binders_chirho(&associated_pushed_chirho);
+                    for equation_chirho in &associated_tf_chirho.defaults_chirho {
+                        let mut names_chirho = Vec::new();
+                        for argument_chirho in &equation_chirho.lhs_types_chirho {
+                            collect_type_kind_variable_names_chirho(
+                                argument_chirho,
+                                &mut names_chirho,
+                            );
+                        }
+                        let equation_binders_chirho = self.push_name_binders_chirho(names_chirho);
+                        // Keep annotations live: the underlying variable binds the
+                        // default, but its written kind must still resolve.
+                        for argument_chirho in &equation_chirho.lhs_types_chirho {
+                            self.walk_type_chirho(
+                                argument_chirho,
+                                FreeTyVarPolicyChirho::RequireBoundChirho,
+                            );
+                        }
+                        self.walk_type_chirho(
+                            &equation_chirho.rhs_chirho,
+                            FreeTyVarPolicyChirho::RequireBoundChirho,
+                        );
+                        self.pop_binders_chirho(&equation_binders_chirho);
+                    }
                 }
                 self.pop_binders_chirho(&pushed_chirho);
             }

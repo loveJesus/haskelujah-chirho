@@ -4,8 +4,11 @@
 //! Workflow: compiler-pipeline-chirho/module-search-authority-chirho.
 use super::*;
 use crate::kind_chirho::KindContractChirho;
+mod class_contracts_chirho;
 #[path = "families_chirho.rs"]
 mod families_chirho;
+mod minimal_chirho;
+use class_contracts_chirho::ClassContractChirho;
 
 #[cfg(test)]
 #[path = "contract_tests_chirho.rs"]
@@ -19,12 +22,6 @@ fn ordered_entries_chirho<TChirho>(
     let mut ordered_chirho: Vec<_> = entries_chirho.iter().collect();
     ordered_chirho.sort_unstable_by(|left_chirho, right_chirho| left_chirho.0.cmp(right_chirho.0));
     ordered_chirho
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct ClassContractChirho {
-    pub(super) abstract_chirho: bool,
-    pub(super) fundeps_chirho: Option<Vec<(Vec<usize>, Vec<usize>)>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -47,12 +44,21 @@ impl DeclarationContractsChirho {
         self.kinds_chirho = kinds_chirho;
     }
 
-    pub fn supports_abstract_boot_class_chirho(&self, name_chirho: &str) -> bool {
+    pub fn supports_boot_class_chirho(&self, name_chirho: &str) -> bool {
         self.classes_chirho
             .get(name_chirho)
-            .is_some_and(|class_chirho| {
-                class_chirho.abstract_chirho && class_chirho.fundeps_chirho.is_some()
-            })
+            .is_some_and(|class_chirho| class_chirho.fundeps_chirho.is_some())
+    }
+
+    pub fn set_associated_kind_contracts_chirho(
+        &mut self,
+        kinds_chirho: &HashMap<String, KindContractChirho>,
+    ) {
+        for class_chirho in self.classes_chirho.values_mut() {
+            for family_chirho in &mut class_chirho.associated_chirho {
+                family_chirho.kind_chirho = kinds_chirho.get(&family_chirho.name_chirho).cloned();
+            }
+        }
     }
 
     /// Check source-local kind, class and instance promises. Exports and
@@ -82,11 +88,6 @@ impl DeclarationContractsChirho {
         }
         let mut budget_chirho = INSTANCE_COMPARISON_LIMIT_CHIRHO;
         for (name_chirho, expected_chirho) in ordered_entries_chirho(&self.classes_chirho) {
-            if !expected_chirho.abstract_chirho {
-                return Err(format!(
-                    "boot contract full class agreement is not represented: {name_chirho}"
-                ));
-            }
             let Some(actual_chirho) = implementation_chirho.classes_chirho.get(name_chirho) else {
                 if required_heads_chirho.contains(name_chirho) {
                     return Err(format!(
@@ -95,13 +96,11 @@ impl DeclarationContractsChirho {
                 }
                 continue;
             };
-            if expected_chirho.fundeps_chirho.is_none()
-                || expected_chirho.fundeps_chirho != actual_chirho.fundeps_chirho
-            {
-                return Err(format!(
-                    "boot contract class {name_chirho} has different functional dependencies"
-                ));
-            }
+            expected_chirho
+                .check_chirho(actual_chirho)
+                .map_err(|reason_chirho| {
+                    format!("boot contract class {name_chirho}: {reason_chirho}")
+                })?;
         }
         if let Some(name_chirho) = self.unproved_instances_chirho.iter().min() {
             return Err(format!(

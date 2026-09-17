@@ -427,7 +427,8 @@ for the wrong injectivity reason instead of its unreachable-row type mismatch.
   a written annotation as independently validated evidence.
 - [ ] Drive T6018a through the implementation and consumer, with honest remaining
   blockers and wider regression checks before claiming a corpus recovery.
-- [ ] Gate, preserve evidence, commit and push the next coherent owned checkpoint.
+- [x] Gate, preserve evidence, commit and push the closed-injectivity checkpoint:
+  26f77cad80351f0e4691a3647bd31e3b2c69ad9a, remote-tip verified.
 
 Frozen closed-family follow-up: the15 reason-level controls pass15/15 (initially
 6/15), plus6 annotation/partial-injectivity negatives. Only proved source-local
@@ -461,3 +462,107 @@ binder namespace, default presence/type, associated-family/default contracts and
 the measured MINIMAL implication. Existing abstract contracts still compare kind
 and functional dependencies. Claude owns independent GHC probes; GPT alone edits
 production code and holds Cargo/DB. No public metadata or deployment change.
+
+## Concrete boot-class continuation2026-09-17
+
+The reversible boundary is tagged boot-class-contract-before-chirho at26f77cad.
+Claude supplied78 GHC9.14.1 observations and12 associated-result-binder syntax
+observations, with refuted predictions retained. Production edits stay in this
+owned worktree. Main6db522ad and canonical row484 are unchanged.
+
+- [x] Retain typed generic defaults, MINIMAL formulas, associated result kinds,
+  declaration/default distinction and type/data form in class metadata.
+- [x] Capture source-local contracts with fixed class-binder slots, attach checked
+  associated kinds to both providers and compare concrete promises semantically.
+- [x] Preserve negative controls for private/export availability, method and
+  superclass ordering, default presence/type, associated kinds/defaults and the
+  direction of MINIMAL implication. Unproved metadata never agrees.
+- [x] Correct the old parser fixture that wrote an invalid kinded result binder
+  without injectivity. Keep independent invalid-form rejection tests; never drop
+  a default RHS because it contains an unbound name.
+- [x] Initial full integration389/389, zero ignored/filtered, after repairing three implicit
+  associated-head/default parsing regressions and three first-reason controls.
+  Fresh CLI agrees63/63 boot-class reference verdicts and10/12 syntax probes.
+- [x] Run final lib/canary/workspace/lint gates and the full corpus diagnostic;
+  compare file sets with26f77cad as well as main, with reasons for every delta.
+- [ ] Commit and push named owned paths; do not merge main while row484's
+  main-relative accept regressions remain.
+
+The syntax disagreements remain open: S5 is validity of implicit kind arguments
+in an associated default, and S9 is the TypeFamilyDependencies extension gate.
+They are accepted here and rejected by GHC; neither is hidden by an ignored test
+or claimed as repaired. The ten supported syntax contracts have actual consumers.
+The78 reference sources are split into five focused Rust fixture files, all
+under1k lines, after the first combined file exceeded the project size limit.
+MINIMAL's worst-case proof remains bounded/unproved. A16-name control proves that
+an implementation with all defaults short-circuits correctly and that removing
+one required default still yields a counterexample; a proposed exponential cost
+for that particular empty-requirement case was refuted and withdrawn by review.
+
+The first broad driver gate exposed a real regression: the newly retained
+associated `:: *` kind was parsed as binary multiplication with two fabricated
+empty operands. The unchanged driver test's source is accepted by GHC9.14.1.
+A leading-star atom repair makes it pass; the focused AST-validity control was
+demonstrated red before and green after, without re-pinning incidental output.
+
+Eight further independent injectivity-annotation observations agree on4/8 before
+the repair. Unknown result/input names were accepted, while reordered or repeated
+dependency names caused false disagreement. The shared family annotation validator
+now also checks associated declarations; concrete agreement normalizes explicit
+dependency positions as a set, and unproved slots never agree. All8 pass through
+both filesystem entry points. Hidden-kind agreement positions remain unrepresented.
+Ten separately executed GHC probes corroborate these boundaries; they are not
+additional distinct entries in the78-case matrix.
+
+Pre-annotation frozen gates pass parser371, naming137, typing401, integration405,
+canaries7 and full driver1776 with zero ignored/filtered. Formatting, workspace
+all-target check and explicit CLI build pass. Three new collapsible-if findings
+were repaired and the full driver suite rerun on those final bytes. Four-package
+all-target clippy retains464 warning-message lines including duplicates and
+summaries, down from465 at the parent but not lint-clean.
+
+CLI21e7d2ca3f00ccf9b0f832cf242598d7442b4bc1c45c1f302a0ae124212fb4df
+agrees78/78 on the class matrix and10/10 on the separate corroborating annotation
+matrix. The syntax replay remains10/12, with only S5/S9 disagreeing. All100
+observations complete without timeout. Every one of the234 source files in the
+78-case Rust fixtures was checked byte-for-byte against the reference JSONL,
+including the expected verdicts. The first corpus diagnostic completed890/938
+and264/767: eight accept recoveries and one new regression, T18585, relative to
+26f77cad. The original outputs and source hashes remain retained, not superseded.
+
+Claude's17-file reject-reason audit identifies nine matching gains, two adjacent
+arity diagnostics and six old rejections for wrong reasons. No lost capability
+is inferred from those six; their actual missing rules remain named in the audit.
+
+- [x] Reduce T18585's annotated default arguments against GHC9.14.1: two valid
+  annotated/parenthesized variables and five invalid controls, predictions7/7.
+- [x] Demonstrate the new controls red, then preserve annotations through naming
+  and kind checking before erasing them for per-instance default substitution.
+  The focused filter now passes9/9, including two existing promoted controls.
+- [ ] Recheck T18585 and both corpus sets after the default repair; then repeat
+  final frozen gates, archive the reason audit and checkpoint the owned branch.
+
+Post-repair CLI4207c3bb492078aaf21959efd74dd1b2d2c5657bb5d9b1e73e8a0faef80e7ef0
+agrees78/78 class,10/10 separate injectivity and7/7 default-annotation controls.
+Syntax remains10/12. The repeated frozen gates pass parser371, naming137,
+typing401, integration412, canaries7 and driver1776, all zero ignored/filtered.
+Workspace all-target check, format and explicit CLI build pass warning-free;
+Clippy still emits464 warning-message lines including duplicate summaries.
+Gate source hashes exactly match the final corpus diagnostic and the executable
+hash remains unchanged after the final explicit build.
+
+The final diagnostic is891/938 and264/767. Relative26f77cad: eight accept
+recoveries, none lost; eleven reject gains and six lost accidental rejections.
+Relative the first890/264 run: only T18585 recovers. All runs complete without
+unresolved timeouts, abnormal exits or actual panic headers. Main-relative
+regressions remain CoerceToVDQ, T13585, T13585b, T13879, T17067, T22560c,
+T23543, T26358 and T6018a; main6db522ad and public measurements remain held.
+
+Claude's additional six default-scope probes agree2/6 on this frozen CLI. KV1/KV2
+need rigid equation-local kind variables; KV3 is the known implicit-kind default
+argument gap; KV4 allows a class type parameter absent from the LHS into the RHS.
+Both positive controls pass. Sources and disagreeing outputs are retained, with
+no unmeasured historical attribution and no changes made underneath the gate.
+The next scoped validity work must separate equation binders from class type
+parameters while retaining legitimately shared kind variables. This is not a
+claim that associated-default validity or the upstream corpora are complete.

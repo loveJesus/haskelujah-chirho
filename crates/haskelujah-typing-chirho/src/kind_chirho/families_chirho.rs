@@ -378,15 +378,15 @@ impl KindInferCtxChirho {
             .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
-    pub(super) fn check_kind_family_chirho(
+    /// Associated and top-level family annotations share binder validity.
+    /// Returning only represented visible positions does not prove hidden-kind
+    /// agreement or authorize inverse reasoning.
+    pub(super) fn family_annotation_positions_chirho(
         &mut self,
-        name_chirho: &NameChirho,
         binders_chirho: &[TyVarChirho],
         result_chirho: &TypeFamilyResultChirho,
-        body_chirho: &TypeFamilyBodyChirho,
         span_chirho: SpanChirho,
-    ) {
-        let error_count_chirho = self.diagnostics_chirho.error_count_chirho();
+    ) -> Vec<usize> {
         let mut injective_chirho = Vec::new();
         if let Some(annotation_chirho) = &result_chirho.injectivity_chirho {
             if result_chirho
@@ -431,6 +431,20 @@ impl KindInferCtxChirho {
         {
             self.family_error_chirho("family result binder is not fresh", span_chirho);
         }
+        injective_chirho
+    }
+
+    pub(super) fn check_kind_family_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+        binders_chirho: &[TyVarChirho],
+        result_chirho: &TypeFamilyResultChirho,
+        body_chirho: &TypeFamilyBodyChirho,
+        span_chirho: SpanChirho,
+    ) {
+        let error_count_chirho = self.diagnostics_chirho.error_count_chirho();
+        let mut injective_chirho =
+            self.family_annotation_positions_chirho(binders_chirho, result_chirho, span_chirho);
         let equations_chirho = match body_chirho {
             TypeFamilyBodyChirho::ClosedChirho { equations_chirho } => equations_chirho,
             TypeFamilyBodyChirho::OpenChirho | TypeFamilyBodyChirho::AbstractClosedChirho => return,

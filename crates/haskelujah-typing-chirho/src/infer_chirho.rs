@@ -22353,6 +22353,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("MyEqChirho"),
                 type_vars_chirho: vec![dummy_name_chirho("a").into()],
@@ -22423,6 +22424,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![AstConstraintChirho::ClassChirho {
                     class_chirho: dummy_name_chirho("Eq"),
                     args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],
@@ -22514,6 +22516,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("BifunctorMonadChirho"),
                 type_vars_chirho: vec![dummy_name_chirho("t").into()],
@@ -22649,6 +22652,7 @@ mod tests_chirho {
                 },
                 DeclChirho::ClassDeclChirho {
                     context_written_chirho: false,
+                    minimal_chirho: None,
                     context_chirho: vec![],
                     name_chirho: dummy_name_chirho("BifunctorMonadChirho"),
                     type_vars_chirho: vec![dummy_name_chirho("t").into()],
@@ -22756,6 +22760,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("BiapplicativeChirho"),
                 type_vars_chirho: vec![dummy_name_chirho("p").into()],
@@ -22841,6 +22846,7 @@ mod tests_chirho {
             imports_chirho: vec![],
             decls_chirho: vec![DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("BiapplicativeChirho"),
                 type_vars_chirho: vec![dummy_name_chirho("p").into()],
@@ -24486,6 +24492,7 @@ mod tests_chirho {
     fn class_assoc_type_family_default_applies_per_instance_chirho() {
         let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("Representable"),
             type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -24493,13 +24500,29 @@ mod tests_chirho {
             associated_tfs_chirho: vec![
                 haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                     name_chirho: dummy_name_chirho("Rep"),
-                    type_vars_chirho: vec![dummy_name_chirho("f")],
-                    default_rhs_chirho: Some(TypeChirho::AppChirho {
-                        fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
-                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    }),
-                    default_params_chirho: vec![],
+                    type_vars_chirho: vec![dummy_name_chirho("f")]
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
+                    result_chirho: Default::default(),
+                    data_chirho: false,
+                    head_declared_chirho: true,
+                    defaults_chirho: vec![
+                        haskelujah_ast_chirho::decl_chirho::TypeFamilyEquationChirho {
+                            lhs_types_chirho: vec![dummy_name_chirho("f")]
+                                .into_iter()
+                                .map(TypeChirho::VarChirho)
+                                .collect(),
+                            rhs_chirho: TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                    "GRep",
+                                ))),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             ],
@@ -24547,6 +24570,7 @@ mod tests_chirho {
     fn instance_assoc_type_family_override_beats_class_default_chirho() {
         let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("Representable"),
             type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -24554,13 +24578,29 @@ mod tests_chirho {
             associated_tfs_chirho: vec![
                 haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                     name_chirho: dummy_name_chirho("Rep"),
-                    type_vars_chirho: vec![dummy_name_chirho("f")],
-                    default_rhs_chirho: Some(TypeChirho::AppChirho {
-                        fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
-                        arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    }),
-                    default_params_chirho: vec![],
+                    type_vars_chirho: vec![dummy_name_chirho("f")]
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
+                    result_chirho: Default::default(),
+                    data_chirho: false,
+                    head_declared_chirho: true,
+                    defaults_chirho: vec![
+                        haskelujah_ast_chirho::decl_chirho::TypeFamilyEquationChirho {
+                            lhs_types_chirho: vec![dummy_name_chirho("f")]
+                                .into_iter()
+                                .map(TypeChirho::VarChirho)
+                                .collect(),
+                            rhs_chirho: TypeChirho::AppChirho {
+                                fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
+                                    "GRep",
+                                ))),
+                                arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
+                                span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            },
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        },
+                    ],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             ],
@@ -24853,6 +24893,7 @@ mod tests_chirho {
 
         let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("Representable"),
             type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -24884,9 +24925,14 @@ mod tests_chirho {
             associated_tfs_chirho: vec![
                 haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                     name_chirho: dummy_name_chirho("Rep"),
-                    type_vars_chirho: vec![dummy_name_chirho("f")],
-                    default_rhs_chirho: None,
-                    default_params_chirho: vec![],
+                    type_vars_chirho: vec![dummy_name_chirho("f")]
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
+                    result_chirho: Default::default(),
+                    data_chirho: false,
+                    head_declared_chirho: true,
+                    defaults_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             ],
@@ -24981,6 +25027,7 @@ mod tests_chirho {
             decls_chirho: vec![
                 DeclChirho::ClassDeclChirho {
                     context_written_chirho: false,
+                    minimal_chirho: None,
                     context_chirho: vec![],
                     name_chirho: dummy_name_chirho("Representable"),
                     type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -25016,9 +25063,14 @@ mod tests_chirho {
                     associated_tfs_chirho: vec![
                         haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                             name_chirho: dummy_name_chirho("Rep"),
-                            type_vars_chirho: vec![dummy_name_chirho("f")],
-                            default_rhs_chirho: None,
-                            default_params_chirho: vec![],
+                            type_vars_chirho: vec![dummy_name_chirho("f")]
+                                .into_iter()
+                                .map(Into::into)
+                                .collect(),
+                            result_chirho: Default::default(),
+                            data_chirho: false,
+                            head_declared_chirho: true,
+                            defaults_chirho: vec![],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
                     ],
@@ -25144,6 +25196,7 @@ mod tests_chirho {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("Representable"),
             type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -25175,9 +25228,14 @@ mod tests_chirho {
             associated_tfs_chirho: vec![
                 haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                     name_chirho: dummy_name_chirho("Rep"),
-                    type_vars_chirho: vec![dummy_name_chirho("f")],
-                    default_rhs_chirho: None,
-                    default_params_chirho: vec![],
+                    type_vars_chirho: vec![dummy_name_chirho("f")]
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
+                    result_chirho: Default::default(),
+                    data_chirho: false,
+                    head_declared_chirho: true,
+                    defaults_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             ],

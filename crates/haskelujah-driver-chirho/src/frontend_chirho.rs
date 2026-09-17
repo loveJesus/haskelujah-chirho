@@ -110,6 +110,13 @@ pub fn run_frontend_with_inputs_chirho(
     let deriving_warnings_chirho =
         haskelujah_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
 
+    // Class head/default syntax must fail at its declaration, not at an
+    // unrelated consumer that inference happens to visit first.
+    let class_validity_chirho = haskelujah_typing_chirho::validity_chirho::check_class_declaration_validity_diagnostics_chirho(&module_chirho);
+    if !defer_errors_chirho && class_validity_chirho.diagnostics_chirho.has_errors_chirho() {
+        return Err(class_validity_chirho.diagnostics_chirho);
+    }
+
     // Phase 3: Name resolution
     let resolve_result_chirho = resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
     if !defer_errors_chirho && resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
@@ -420,6 +427,9 @@ pub fn run_frontend_with_inputs_chirho(
     warnings_chirho.extend(infer_warnings_chirho);
 
     let mut type_contracts_chirho = imported_contracts_chirho;
+    infer_result_chirho
+        .declaration_contracts_chirho
+        .set_associated_kind_contracts_chirho(&kind_result_chirho.associated_contracts_chirho);
     // Local promises and exported dependency closure have different owners.
     // Workflow: compiler-pipeline-chirho/module-search-authority-chirho.
     infer_result_chirho

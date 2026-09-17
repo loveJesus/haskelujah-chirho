@@ -283,9 +283,33 @@ impl KindInferCtxChirho {
                             );
                             kind_chirho
                         };
+                        if let Some(annotation_chirho) = &parameter_chirho.kind_annotation_chirho {
+                            let annotation_chirho =
+                                self.ast_kind_to_kind_ctx_chirho(annotation_chirho);
+                            self.unify_chirho(
+                                &kind_chirho,
+                                &annotation_chirho,
+                                "associated family parameter",
+                                family_chirho.span_chirho,
+                            );
+                        }
                         parameter_kinds_chirho.push(kind_chirho);
                     }
-                    let result_chirho = self.fresh_kind_chirho();
+                    let result_chirho = if let Some(result_chirho) = family_chirho
+                        .result_chirho
+                        .kind_sig_chirho
+                        .as_ref()
+                        .and_then(|signature_chirho| signature_chirho.result_chirho())
+                    {
+                        self.type_to_kind_chirho(result_chirho)
+                    } else {
+                        self.fresh_kind_chirho()
+                    };
+                    self.family_annotation_positions_chirho(
+                        &family_chirho.type_vars_chirho,
+                        &family_chirho.result_chirho,
+                        family_chirho.span_chirho,
+                    );
                     let kind_chirho =
                         KindChirho::arrow_n_chirho(parameter_kinds_chirho, result_chirho);
                     let existing_chirho = self
@@ -392,29 +416,48 @@ impl KindInferCtxChirho {
                 ..
             } => {
                 for family_chirho in associated_tfs_chirho {
-                    if let Some(rhs_chirho) = &family_chirho.default_rhs_chirho {
-                        self.check_alias_result_chirho(
-                            family_chirho.name_chirho.text_chirho(),
-                            family_chirho.type_vars_chirho.len(),
-                            rhs_chirho,
-                            family_chirho.span_chirho,
-                        );
+                    for equation_chirho in &family_chirho.defaults_chirho {
+                        self.with_signature_kind_scope_chirho(|ctx_chirho| {
+                            // Check the original arguments, including their kind
+                            // annotations, before default instantiation erases them.
+                            let application_chirho = equation_chirho.lhs_types_chirho.iter().fold(
+                                super::TypeChirho::ConChirho(family_chirho.name_chirho.clone()),
+                                |fun_chirho, arg_chirho| super::TypeChirho::AppChirho {
+                                    fun_chirho: Box::new(fun_chirho),
+                                    arg_chirho: Box::new(arg_chirho.clone()),
+                                    span_chirho: equation_chirho.span_chirho,
+                                },
+                            );
+                            let expected_chirho =
+                                ctx_chirho.infer_type_kind_chirho(&application_chirho);
+                            let actual_chirho =
+                                ctx_chirho.infer_type_kind_chirho(&equation_chirho.rhs_chirho);
+                            ctx_chirho.unify_chirho(
+                                &expected_chirho,
+                                &actual_chirho,
+                                "associated family default",
+                                equation_chirho.span_chirho,
+                            );
+                        });
                     }
                 }
                 for constraint_chirho in context_chirho {
                     self.infer_constraint_kind_chirho(constraint_chirho);
                 }
                 for method_chirho in methods_chirho {
-                    self.with_signature_kind_scope_chirho(|ctx_chirho| {
-                        let kind_chirho =
-                            ctx_chirho.infer_type_kind_chirho(&method_chirho.ty_chirho);
-                        ctx_chirho.unify_chirho(
-                            &kind_chirho,
-                            &KindChirho::StarChirho,
-                            "class method type",
-                            method_chirho.span_chirho,
-                        );
-                    });
+                    for signature_chirho in std::iter::once(&method_chirho.ty_chirho)
+                        .chain(method_chirho.default_sig_chirho.as_ref())
+                    {
+                        self.with_signature_kind_scope_chirho(|ctx_chirho| {
+                            let kind_chirho = ctx_chirho.infer_type_kind_chirho(signature_chirho);
+                            ctx_chirho.unify_chirho(
+                                &kind_chirho,
+                                &KindChirho::StarChirho,
+                                "class method type",
+                                method_chirho.span_chirho,
+                            );
+                        });
+                    }
                 }
             }
             DeclChirho::TypeFamilyDeclChirho {

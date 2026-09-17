@@ -7,6 +7,8 @@
 //! the typed AST (`ModuleChirho`). Trivia, virtual layout tokens, and
 //! punctuation are discarded; only semantic content survives.
 
+#[path = "lower_chirho/declarations_chirho/class_metadata_chirho.rs"]
+mod class_metadata_chirho;
 #[cfg(test)]
 #[path = "lower_chirho/declarations_chirho/class_tests_chirho.rs"]
 mod class_tests_chirho;
@@ -2584,58 +2586,6 @@ impl LowerCtxChirho {
                 }
             }
         }
-    }
-
-    /// Try to extract a DefaultSignatures-style default method signature from
-    /// a DefaultDeclChirho CST node: `default methodName :: ConstrainedType`.
-    /// Returns Some((method_name, raw_type_text)) if the node matches this
-    /// pattern, None if it's a regular default declaration like `default (Int, Double)`.
-    fn try_extract_default_sig_chirho(
-        &self,
-        node_chirho: &GreenNodeChirho,
-        base_chirho: usize,
-    ) -> Option<(String, String)> {
-        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        // Pattern: default VarId :: Type
-        let mut saw_default_chirho = false;
-        let mut method_name_chirho: Option<String> = None;
-        let mut saw_double_colon_chirho = false;
-        let mut type_text_parts_chirho: Vec<String> = Vec::new();
-
-        for child_chirho in &children_chirho {
-            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
-                let kind_chirho = tok_chirho.kind_chirho();
-                if kind_chirho == TokenKindChirho::DefaultKeywordChirho {
-                    saw_default_chirho = true;
-                    continue;
-                }
-                if saw_default_chirho && method_name_chirho.is_none() {
-                    if kind_chirho == TokenKindChirho::VarIdChirho {
-                        method_name_chirho = Some(tok_chirho.text_chirho().to_string());
-                        continue;
-                    } else if kind_chirho == TokenKindChirho::LeftParenChirho {
-                        // This is `default (Int, Double)` — not a default sig
-                        return None;
-                    }
-                }
-                if method_name_chirho.is_some() && kind_chirho == TokenKindChirho::DoubleColonChirho
-                {
-                    saw_double_colon_chirho = true;
-                    continue;
-                }
-                if saw_double_colon_chirho {
-                    type_text_parts_chirho.push(tok_chirho.text_chirho().to_string());
-                }
-            }
-        }
-
-        if let Some(name_chirho) = method_name_chirho {
-            if saw_double_colon_chirho && !type_text_parts_chirho.is_empty() {
-                let type_text_chirho = type_text_parts_chirho.join(" ");
-                return Some((name_chirho, type_text_chirho));
-            }
-        }
-        None
     }
 
     /// Lower a default declaration: `default (Int, Double)`.
@@ -11907,12 +11857,9 @@ class Describable a where
                     method_chirho.default_sig_chirho.is_some(),
                     "default signature should be present"
                 );
-                let sig_text_chirho = method_chirho.default_sig_chirho.as_ref().unwrap();
-                assert!(
-                    sig_text_chirho.contains("Int"),
-                    "default sig should contain 'Int': {}",
-                    sig_text_chirho
-                );
+                assert!(matches!(method_chirho.default_sig_chirho.as_ref(),
+                    Some(TypeChirho::FunChirho { result_chirho, .. })
+                        if matches!(result_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Int")));
             }
             other_chirho => panic!("expected ClassDecl, got {:?}", other_chirho),
         }
@@ -12718,9 +12665,9 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
     }
 
     #[test]
-    fn lower_assoc_type_family_placeholder_rhs_does_not_become_default_chirho() {
+    fn lower_assoc_type_family_result_binder_is_not_a_default_chirho() {
         let module_chirho = parse_and_lower_chirho(
-            "module M where\nclass FrozenGen f m where\n  type MutableGen f m = (g :: Type)\n  thawGen :: f -> m (MutableGen f m)\n",
+            "{-# LANGUAGE TypeFamilies, TypeFamilyDependencies #-}\nmodule M where\nclass FrozenGen f m where\n  type MutableGen f m = (g :: Type) | g -> f\n  thawGen :: f -> m (MutableGen f m)\n",
         );
         let class_decl_chirho = find_class_decl_chirho(&module_chirho, "FrozenGen");
         match class_decl_chirho {
@@ -12734,10 +12681,20 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
                     "MutableGen"
                 );
                 assert!(
-                    associated_tfs_chirho[0].default_rhs_chirho.is_none(),
-                    "placeholder associated type family rhs should not lower as a default equation: {:?}",
-                    associated_tfs_chirho[0].default_rhs_chirho
+                    associated_tfs_chirho[0].defaults_chirho.is_empty(),
+                    "a named result is declaration metadata, not a default equation: {:?}",
+                    associated_tfs_chirho[0].defaults_chirho
                 );
+                let result_chirho = &associated_tfs_chirho[0].result_chirho;
+                assert_eq!(
+                    result_chirho.binder_chirho.as_ref().unwrap().text_chirho(),
+                    "g"
+                );
+                assert!(result_chirho.kind_sig_chirho.is_some());
+                let injectivity_chirho = result_chirho.injectivity_chirho.as_ref().unwrap();
+                assert_eq!(injectivity_chirho.result_chirho.text_chirho(), "g");
+                assert_eq!(injectivity_chirho.parameters_chirho.len(), 1);
+                assert_eq!(injectivity_chirho.parameters_chirho[0].text_chirho(), "f");
             }
             other_chirho => panic!("expected class decl, got {:?}", other_chirho),
         }

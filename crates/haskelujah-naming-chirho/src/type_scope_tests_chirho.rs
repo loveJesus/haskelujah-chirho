@@ -126,15 +126,21 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
     let module_chirho = module_chirho(vec![
         DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![],
             name_chirho: name_chirho("ClassChirho"),
             type_vars_chirho: vec![tyvar_chirho("aChirho")],
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
                 name_chirho: name_chirho("FamilyChirho"),
-                type_vars_chirho: vec![name_chirho("aChirho")],
-                default_rhs_chirho: None,
-                default_params_chirho: vec![],
+                type_vars_chirho: vec![name_chirho("aChirho")]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+                result_chirho: Default::default(),
+                data_chirho: false,
+                head_declared_chirho: true,
+                defaults_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             fundeps_chirho: vec![],
@@ -226,15 +232,30 @@ fn qualified_class_import_without_members_does_not_scope_associated_type_chirho(
 fn associated_family_default_requires_a_declared_variable_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
         context_written_chirho: false,
+        minimal_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
             name_chirho: name_chirho("FamilyChirho"),
-            type_vars_chirho: vec![name_chirho("aChirho")],
-            default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("bChirho"))),
-            default_params_chirho: vec![],
+            type_vars_chirho: vec![name_chirho("aChirho")]
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            result_chirho: Default::default(),
+            data_chirho: false,
+            head_declared_chirho: true,
+            defaults_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::TypeFamilyEquationChirho {
+                    lhs_types_chirho: vec![name_chirho("aChirho")]
+                        .into_iter()
+                        .map(TypeChirho::VarChirho)
+                        .collect(),
+                    rhs_chirho: TypeChirho::VarChirho(name_chirho("bChirho")),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -249,15 +270,30 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
 fn associated_family_default_uses_its_equation_binders_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
         context_written_chirho: false,
+        minimal_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
             name_chirho: name_chirho("FamilyChirho"),
-            type_vars_chirho: vec![name_chirho("aChirho"), name_chirho("bChirho")],
-            default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("xChirho"))),
-            default_params_chirho: vec![name_chirho("aChirho"), name_chirho("xChirho")],
+            type_vars_chirho: vec![name_chirho("aChirho"), name_chirho("bChirho")]
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            result_chirho: Default::default(),
+            data_chirho: false,
+            head_declared_chirho: true,
+            defaults_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::TypeFamilyEquationChirho {
+                    lhs_types_chirho: vec![name_chirho("aChirho"), name_chirho("xChirho")]
+                        .into_iter()
+                        .map(TypeChirho::VarChirho)
+                        .collect(),
+                    rhs_chirho: TypeChirho::VarChirho(name_chirho("xChirho")),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -326,6 +362,7 @@ fn datakinds_does_not_treat_a_constructor_as_a_class_chirho() {
     );
     let mut module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
         context_written_chirho: true,
+        minimal_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             class_chirho: name_chirho("True"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
@@ -1120,6 +1157,7 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
 fn unknown_superclass_is_resolved_in_the_type_namespace_chirho() {
     let decl_chirho = DeclChirho::ClassDeclChirho {
         context_written_chirho: true,
+        minimal_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             class_chirho: name_chirho("MissingClassChirho"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],

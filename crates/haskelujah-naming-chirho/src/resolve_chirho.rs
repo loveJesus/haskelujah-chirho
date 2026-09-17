@@ -953,6 +953,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("Describable"),
                 type_vars_chirho: vec![dummy_name_chirho("a").into()],
@@ -1662,6 +1663,7 @@ mod tests_chirho {
             vec![
                 DeclChirho::ClassDeclChirho {
                     context_written_chirho: false,
+                    minimal_chirho: None,
                     context_chirho: vec![],
                     name_chirho: dummy_name_chirho("MyClass"),
                     type_vars_chirho: vec![dummy_name_chirho("a").into()],

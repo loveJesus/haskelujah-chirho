@@ -58,9 +58,12 @@ impl LowerCtxChirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     let kind_chirho = tok_chirho.kind_chirho();
-                    if kind_chirho == TokenKindChirho::TypeKeywordChirho {
-                        // skip
-                    } else if tok_chirho.text_chirho() == "family" {
+                    if matches!(
+                        kind_chirho,
+                        TokenKindChirho::TypeKeywordChirho | TokenKindChirho::DataKeywordChirho
+                    ) || tok_chirho.text_chirho() == "family"
+                    {
+                        // Class-associated heads may omit `family`.
                         saw_family_chirho = true;
                     } else if kind_chirho == TokenKindChirho::WhereKeywordChirho {
                         saw_where_chirho = true;
@@ -238,7 +241,9 @@ impl LowerCtxChirho {
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(token_chirho) => {
-                    if token_chirho.text_chirho() == "instance" {
+                    if token_chirho.text_chirho() == "instance"
+                        || token_chirho.kind_chirho() == TokenKindChirho::TypeKeywordChirho
+                    {
                         saw_instance_chirho = true;
                     } else if token_chirho.kind_chirho() == TokenKindChirho::EqualsChirho {
                         saw_equals_chirho = true;

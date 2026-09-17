@@ -341,6 +341,8 @@ pub enum DeclChirho {
         context_chirho: Vec<ConstraintChirho>,
         /// Even an explicitly empty context makes an hs-boot class concrete.
         context_written_chirho: bool,
+        /// Written MINIMAL requirement; absent uses the methods without defaults.
+        minimal_chirho: Option<crate::class_chirho::MinimalFormulaChirho>,
         /// Class name being introduced.
         name_chirho: NameChirho,
         /// Class type parameters.
@@ -520,8 +522,8 @@ pub struct ClassMethodChirho {
     pub default_chirho: Option<Vec<MatchArmChirho>>,
     /// Default signature from `{-# LANGUAGE DefaultSignatures #-}`:
     /// `default methodName :: MoreConstrained => Type`.
-    /// Stores the raw type text for the more-constrained default method type.
-    pub default_sig_chirho: Option<String>,
+    /// Retained type syntax, checked in the class parameter scope.
+    pub default_sig_chirho: Option<TypeChirho>,
     /// Span covering the whole method declaration.
     pub span_chirho: SpanChirho,
 }
@@ -533,13 +535,16 @@ pub struct AssocTypeFamilyChirho {
     /// Name of the associated type family.
     pub name_chirho: NameChirho,
     /// Family parameters declared in the class body.
-    pub type_vars_chirho: Vec<NameChirho>,
-    /// Optional default: `type FamilyName a = DefaultType`.
-    pub default_rhs_chirho: Option<TypeChirho>,
-    /// The binders the default equation was written with (`type F a x = …`
-    /// may name them differently from the family declaration); empty when
-    /// they coincide with `type_vars_chirho`.
-    pub default_params_chirho: Vec<NameChirho>,
+    pub type_vars_chirho: Vec<TyVarChirho>,
+    /// Retain the declaration's result kind and injectivity, not a guessed `Type`.
+    pub result_chirho: TypeFamilyResultChirho,
+    /// Associated data families are nominal families, not type synonyms.
+    pub data_chirho: bool,
+    /// Recovery retains a default with no family declaration so validity can reject it.
+    pub head_declared_chirho: bool,
+    /// Defaults retain their own left-hand binders and source order. They are
+    /// instantiated per class instance, never installed as general family rows.
+    pub defaults_chirho: Vec<TypeFamilyEquationChirho>,
     /// Span covering the whole associated type declaration.
     pub span_chirho: SpanChirho,
 }

@@ -3,6 +3,30 @@
 use super::*;
 
 #[test]
+fn associated_star_kind_is_syntax_not_multiplication_with_fabricated_operands_chirho() {
+    let source_chirho = "{-# LANGUAGE TypeFamilies #-}\nmodule Test where\nclass MyClass a where\n  type MyFamily a :: *\n  myMethod :: a -> Int\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let green_chirho =
+        crate::cst_parser_chirho::ParserChirho::new_chirho(source_chirho, file_chirho)
+            .parse_chirho();
+    let module_chirho = lower_module_chirho(&green_chirho, file_chirho);
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        methods_chirho,
+        ..
+    } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("class declaration must survive");
+    };
+    assert!(
+        matches!(associated_tfs_chirho[0].result_chirho.kind_sig_chirho.as_ref(), Some(DeclKindSigChirho::ResultChirho(TypeChirho::ConChirho(name_chirho))) if name_chirho.full_name_chirho() == "*"),
+        "{:?}",
+        associated_tfs_chirho[0].result_chirho
+    );
+    assert_eq!(methods_chirho[0].name_chirho.text_chirho(), "myMethod");
+}
+
+#[test]
 fn explicit_empty_class_context_is_not_an_abstract_promise_chirho() {
     for (head_chirho, expected_chirho) in [
         ("class KChirho aChirho", false),

@@ -21,7 +21,7 @@ pub(super) fn validate_boot_declarations_chirho(
                 if boot_chirho
                     .infer_result_chirho
                     .declaration_contracts_chirho
-                    .supports_abstract_boot_class_chirho(name_chirho.text_chirho()) => {}
+                    .supports_boot_class_chirho(name_chirho.text_chirho()) => {}
             DeclChirho::InstanceDeclChirho {
                 methods_chirho,
                 assoc_tf_instances_chirho,
@@ -111,6 +111,41 @@ pub(super) fn check_boot_agreement_chirho(
     boot_iface_chirho: &haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho,
     implementation_iface_chirho: &haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho,
 ) -> Result<(), String> {
+    // Compare local class/type definitions before exported members: a missing
+    // method belongs to class agreement, not just to an export-list mismatch.
+    // A missing top-level export is still an availability error, before any
+    // definition-agreement obligation can be imposed on that missing name.
+    for declaration_chirho in &boot_chirho.module_chirho.decls_chirho {
+        if let Some(name_chirho) = declaration_name_chirho(declaration_chirho)
+            && boot_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key(name_chirho)
+            && !implementation_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key(name_chirho)
+        {
+            return Err(format!(
+                "boot contract exports {name_chirho}, but implementation {} does not export it",
+                implementation_iface_chirho.name_chirho
+            ));
+        }
+    }
+    boot_chirho
+        .infer_result_chirho
+        .declaration_contracts_chirho
+        .check_boot_promises_chirho(
+            &implementation_chirho
+                .infer_result_chirho
+                .declaration_contracts_chirho,
+            &boot_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .keys()
+                .cloned()
+                .collect(),
+        )?;
     let mut values_chirho: Vec<_> = boot_iface_chirho
         .exports_chirho
         .values_chirho
@@ -161,20 +196,6 @@ pub(super) fn check_boot_agreement_chirho(
             ));
         }
     }
-    boot_chirho
-        .infer_result_chirho
-        .declaration_contracts_chirho
-        .check_boot_promises_chirho(
-            &implementation_chirho
-                .infer_result_chirho
-                .declaration_contracts_chirho,
-            &boot_iface_chirho
-                .exports_chirho
-                .types_chirho
-                .keys()
-                .cloned()
-                .collect(),
-        )?;
     let declarations_chirho: HashMap<_, _> = implementation_chirho
         .module_chirho
         .decls_chirho

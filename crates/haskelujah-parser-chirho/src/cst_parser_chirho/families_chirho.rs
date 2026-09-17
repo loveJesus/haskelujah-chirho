@@ -6,6 +6,81 @@
 use super::*;
 
 impl<'source_chirho> ParserChirho<'source_chirho> {
+    /// Only a class body permits the omitted `family` keyword. A bare `= rhs`
+    /// is a default equation; a result binder belongs to a declaration when
+    /// followed by injectivity. Keep the kinded-binder form intact even when
+    /// malformed, so validity can diagnose its missing annotation.
+    pub(super) fn parse_associated_type_decl_chirho(&mut self) {
+        let name_index_chirho = self.skip_trivia_idx_chirho(self.pos_chirho + 1);
+        if self
+            .tokens_chirho
+            .get(name_index_chirho)
+            .is_some_and(|token_chirho| {
+                matches!(self.token_text_chirho(token_chirho), "family" | "instance")
+            })
+        {
+            self.parse_type_or_family_decl_chirho();
+            return;
+        }
+        let mut depth_chirho = 0usize;
+        let mut equals_chirho = None;
+        let mut injective_chirho = false;
+        for index_chirho in name_index_chirho..self.tokens_chirho.len() {
+            let kind_chirho = self.tokens_chirho[index_chirho].kind_chirho;
+            if kind_chirho == RawTokenKindChirho::EofChirho
+                || (depth_chirho == 0
+                    && matches!(
+                        kind_chirho,
+                        RawTokenKindChirho::SemicolonChirho
+                            | RawTokenKindChirho::VirtualSemicolonChirho
+                            | RawTokenKindChirho::RightBraceChirho
+                            | RawTokenKindChirho::VirtualRightBraceChirho
+                    ))
+            {
+                break;
+            }
+            match kind_chirho {
+                RawTokenKindChirho::EqualsChirho if depth_chirho == 0 => {
+                    equals_chirho = Some(index_chirho);
+                }
+                RawTokenKindChirho::PipeChirho if depth_chirho == 0 && equals_chirho.is_some() => {
+                    injective_chirho = true;
+                    break;
+                }
+                RawTokenKindChirho::LeftParenChirho
+                | RawTokenKindChirho::LeftBracketChirho
+                | RawTokenKindChirho::LeftBraceChirho => depth_chirho += 1,
+                RawTokenKindChirho::RightParenChirho
+                | RawTokenKindChirho::RightBracketChirho
+                | RawTokenKindChirho::RightBraceChirho => {
+                    depth_chirho = depth_chirho.saturating_sub(1);
+                }
+                _ => {}
+            }
+        }
+        let kinded_result_chirho = equals_chirho.is_some_and(|equals_index_chirho| {
+            let open_chirho = self.skip_trivia_idx_chirho(equals_index_chirho + 1);
+            let binder_chirho = self.skip_trivia_idx_chirho(open_chirho + 1);
+            let colon_chirho = self.skip_trivia_idx_chirho(binder_chirho + 1);
+            [
+                (open_chirho, RawTokenKindChirho::LeftParenChirho),
+                (binder_chirho, RawTokenKindChirho::VarIdChirho),
+                (colon_chirho, RawTokenKindChirho::ColonColonChirho),
+            ]
+            .into_iter()
+            .all(|(index_chirho, kind_chirho)| {
+                self.tokens_chirho
+                    .get(index_chirho)
+                    .is_some_and(|token_chirho| token_chirho.kind_chirho == kind_chirho)
+            })
+        });
+        if equals_chirho.is_none() || injective_chirho || kinded_result_chirho {
+            self.parse_type_family_decl_chirho();
+        } else {
+            self.parse_type_family_instance_decl_chirho();
+        }
+    }
+
     /// Classify the declaration by its complete name, not a one-token guess.
     /// The lookahead consumes only a name and `::`; it cannot mistake a
     /// parameter annotation or a later declaration's signature for this one.
@@ -85,8 +160,10 @@ impl<'source_chirho> ParserChirho<'source_chirho> {
             self.expect_chirho(RawTokenKindChirho::DataChirho); // data
         }
         self.eat_trivia_chirho();
-        self.bump_chirho(); // family
-        self.eat_trivia_chirho();
+        if self.current_text_chirho() == "family" {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
 
         // Family name and type variables until `where`, `::`, or end of decl
         self.eat_until_any_top_level_chirho(&[
@@ -95,6 +172,8 @@ impl<'source_chirho> ParserChirho<'source_chirho> {
             RawTokenKindChirho::ColonColonChirho,
             RawTokenKindChirho::VirtualSemicolonChirho,
             RawTokenKindChirho::VirtualRightBraceChirho,
+            RawTokenKindChirho::SemicolonChirho,
+            RawTokenKindChirho::RightBraceChirho,
         ]);
 
         // Optional result kind annotation `:: *`
@@ -191,8 +270,10 @@ impl<'source_chirho> ParserChirho<'source_chirho> {
 
         self.expect_chirho(RawTokenKindChirho::TypeChirho); // type
         self.eat_trivia_chirho();
-        self.bump_chirho(); // instance
-        self.eat_trivia_chirho();
+        if self.current_text_chirho() == "instance" {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+        }
 
         // Open instances and closed equations share the type grammar.
         self.parse_type_chirho(); // complete family application

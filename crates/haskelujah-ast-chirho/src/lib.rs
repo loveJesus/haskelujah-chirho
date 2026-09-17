@@ -15,6 +15,7 @@
 //!   structure can be used before and after name resolution (with different
 //!   name representations).
 
+pub mod class_chirho;
 pub mod decl_chirho;
 pub mod expr_chirho;
 pub mod lit_chirho;

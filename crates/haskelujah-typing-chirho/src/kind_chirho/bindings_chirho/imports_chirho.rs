@@ -244,6 +244,36 @@ impl KindInferCtxChirho {
         }
     }
 
+    /// Nested family contracts are kept separate from top-level promises:
+    /// an abstract boot class may omit implementation-side associated families.
+    pub(super) fn export_associated_kind_contracts_chirho(
+        &mut self,
+        module_chirho: &ModuleChirho,
+    ) -> HashMap<String, KindContractChirho> {
+        let mut contracts_chirho = HashMap::new();
+        for declaration_chirho in &module_chirho.decls_chirho {
+            let DeclChirho::ClassDeclChirho {
+                associated_tfs_chirho,
+                ..
+            } = declaration_chirho
+            else {
+                continue;
+            };
+            for family_chirho in associated_tfs_chirho {
+                let name_chirho = family_chirho.name_chirho.text_chirho();
+                match self.env_chirho.lookup_binding_chirho(name_chirho) {
+                    Some(binding_chirho) if KindContractChirho::binding_is_closed_chirho(binding_chirho) => {
+                        contracts_chirho.insert(name_chirho.to_owned(), KindContractChirho { binding_chirho: binding_chirho.clone(), shape_chirho: KindHeadShapeChirho::FamilyChirho });
+                    }
+                    _ => self.diagnostics_chirho.push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
+                        format!("associated family {name_chirho} has no closed checked kind contract"), family_chirho.span_chirho,
+                    )),
+                }
+            }
+        }
+        contracts_chirho
+    }
     pub(super) fn export_kind_contracts_chirho(
         &mut self,
         module_chirho: &ModuleChirho,

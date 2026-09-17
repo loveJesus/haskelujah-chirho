@@ -761,6 +761,7 @@ fn default_kind_vars_chirho(kind_chirho: &KindChirho) -> KindChirho {
 pub struct KindResultChirho {
     /// Checked local heads, not naming exports; the driver applies visibility.
     pub contracts_chirho: HashMap<String, KindContractChirho>,
+    pub associated_contracts_chirho: HashMap<String, KindContractChirho>,
     /// The kind environment after inference (type constructors → kinds).
     pub env_chirho: KindEnvChirho,
     /// Solved hidden arguments consumed by type inference, not discarded after checking.
@@ -834,6 +835,8 @@ pub fn infer_module_kinds_with_imports_chirho(
 
     KindResultChirho {
         contracts_chirho: ctx_chirho.export_kind_contracts_chirho(module_chirho),
+        associated_contracts_chirho: ctx_chirho
+            .export_associated_kind_contracts_chirho(module_chirho),
         elaboration_chirho: ctx_chirho.finish_kind_elaboration_chirho(module_chirho),
         env_chirho: ctx_chirho.env_chirho,
         diagnostics_chirho: ctx_chirho.diagnostics_chirho,
@@ -1444,6 +1447,7 @@ mod tests_chirho {
         // class Eq a where eq :: a -> a -> Bool
         let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("Eq"),
             type_vars_chirho: vec![mk_name_chirho("a").into()],
@@ -1482,6 +1486,7 @@ mod tests_chirho {
         // f :: * -> *, Functor :: (* -> *) -> Constraint
         let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("Functor"),
             type_vars_chirho: vec![mk_name_chirho("f").into()],
@@ -1531,6 +1536,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(vec![
             DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: mk_name_chirho("SumSize"),
                 type_vars_chirho: vec![mk_name_chirho("f").into()],
@@ -1599,6 +1605,7 @@ mod tests_chirho {
     fn class_associated_type_family_shadows_builtin_rep_chirho() {
         let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
             context_written_chirho: false,
+            minimal_chirho: None,
             context_chirho: vec![ConstraintChirho::ClassChirho {
                 class_chirho: mk_name_chirho("Contravariant"),
                 args_chirho: vec![TypeChirho::VarChirho(mk_name_chirho("f"))],
@@ -1648,9 +1655,14 @@ mod tests_chirho {
             ],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
                 name_chirho: mk_name_chirho("Rep"),
-                type_vars_chirho: vec![mk_name_chirho("f")],
-                default_rhs_chirho: None,
-                default_params_chirho: vec![],
+                type_vars_chirho: vec![mk_name_chirho("f")]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+                result_chirho: Default::default(),
+                data_chirho: false,
+                head_declared_chirho: true,
+                defaults_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             fundeps_chirho: vec![],
@@ -2281,6 +2293,7 @@ mod tests_chirho {
         mk_module_chirho(vec![
             DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: mk_name_chirho("CChirho"),
                 type_vars_chirho: class_param_names_chirho

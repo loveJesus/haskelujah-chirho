@@ -9,7 +9,6 @@ impl InferCtxChirho {
     pub(super) fn process_class_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
         if let DeclChirho::ClassDeclChirho {
             context_chirho,
-            context_written_chirho,
             name_chirho,
             type_vars_chirho,
             methods_chirho,
@@ -153,16 +152,19 @@ impl InferCtxChirho {
                     Some((positions_chirho(from_chirho)?, positions_chirho(to_chirho)?))
                 })
                 .collect::<Option<Vec<_>>>();
-            self.declaration_contracts_chirho.classes_chirho.insert(
-                class_name_chirho.clone(),
-                declaration_contracts_chirho::ClassContractChirho {
-                    abstract_chirho: !context_written_chirho
-                        && context_chirho.is_empty()
-                        && methods_chirho.is_empty()
-                        && associated_tfs_chirho.is_empty(),
-                    fundeps_chirho: contract_fundeps_chirho,
-                },
+            let parameters_chirho: Vec<_> = std::iter::once(class_tv_chirho)
+                .chain(extra_vars_chirho.iter().copied())
+                .collect();
+            let contract_chirho = self.capture_class_contract_chirho(
+                decl_chirho,
+                &class_scoped_tyvars_chirho,
+                &parameters_chirho,
+                &method_map_chirho,
+                contract_fundeps_chirho,
             );
+            self.declaration_contracts_chirho
+                .classes_chirho
+                .insert(class_name_chirho.clone(), contract_chirho);
             self.class_env_chirho.add_class_chirho(ClassDeclChirho {
                 name_chirho: class_name_chirho.clone(),
                 supers_chirho,
@@ -192,26 +194,31 @@ impl InferCtxChirho {
                         .map(|param_chirho| param_chirho.text_chirho().to_string())
                         .collect(),
                 );
-                if let Some(default_rhs_chirho) = &atf_chirho.default_rhs_chirho {
-                    let binders_chirho = if atf_chirho.default_params_chirho.len()
-                        == atf_chirho.type_vars_chirho.len()
-                    {
-                        &atf_chirho.default_params_chirho
-                    } else {
-                        &atf_chirho.type_vars_chirho
-                    };
-                    let param_names_chirho: Vec<String> = binders_chirho
+                for equation_chirho in &atf_chirho.defaults_chirho {
+                    let Some(param_names_chirho) = equation_chirho
+                        .lhs_types_chirho
                         .iter()
-                        .map(|param_chirho| param_chirho.text_chirho().to_string())
-                        .collect();
+                        .map(|param_chirho| {
+                            if let TypeChirho::VarChirho(name_chirho) =
+                                param_chirho.unannotated_chirho()
+                            {
+                                Some(name_chirho.text_chirho().to_owned())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Option<Vec<_>>>()
+                    else {
+                        continue;
+                    };
                     self.assoc_type_defaults_chirho
                         .entry(class_name_chirho.clone())
                         .or_default()
                         .push(AssocTypeDefaultChirho {
-                            family_chirho: tf_name_chirho,
+                            family_chirho: tf_name_chirho.clone(),
                             family_params_chirho: param_names_chirho,
                             class_params_chirho: class_params_chirho.clone(),
-                            rhs_chirho: default_rhs_chirho.clone(),
+                            rhs_chirho: equation_chirho.rhs_chirho.clone(),
                         });
                 }
             }

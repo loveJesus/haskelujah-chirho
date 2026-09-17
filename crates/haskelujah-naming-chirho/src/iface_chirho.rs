@@ -16902,6 +16902,7 @@ mod tests_chirho {
             None,
             vec![DeclChirho::ClassDeclChirho {
                 context_written_chirho: false,
+                minimal_chirho: None,
                 context_chirho: vec![],
                 name_chirho: mk_name_chirho("Show"),
                 type_vars_chirho: vec![],

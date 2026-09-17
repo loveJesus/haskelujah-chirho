@@ -24,11 +24,13 @@ flowchart TD
     companion_chirho --> unique_chirho[Replace source owner's fallback at its unique interface slot]
     unique_chirho --> frontend_chirho[Consumer naming and typing]
     interface_chirho --> frontend_chirho
-    frontend_chirho --> availability_chirho[Require the boot's public exports in the implementation]
+    frontend_chirho --> availability_chirho[Require public boot declaration heads in the implementation]
     availability_chirho -- missing export --> fail_chirho
     availability_chirho --> agreement_chirho[Compare present source-local declarations and checked family bodies]
     agreement_chirho -- mismatch or unrepresented agreement --> fail_chirho
-    agreement_chirho -- agrees --> mode_chirho{Entry point}
+    agreement_chirho -- agrees --> members_chirho[Require remaining exported values and members]
+    members_chirho -- missing --> fail_chirho
+    members_chirho -- present --> mode_chirho{Entry point}
     mode_chirho -- check --> summary_chirho[Check summary; no backend work]
     mode_chirho -- compile --> backend_chirho[Consumer Core and backend]
 ```
@@ -44,12 +46,23 @@ flowchart TD
 - Implementation and boot nodes have distinct keys. Ordinary imports use implementations; SOURCE imports require actual checked boot files. A source implementation is required and scheduled even if reached only through SOURCE, matching the source-graph (`ghc --make`) boundary. Its own boot is not made its dependency. A cycle still present in this graph fails explicitly.
 - Each node selects its imported versions before loading semantic output. A later implementation cannot replace a directly requested boot interface or expose implementation-only names. Mixed direct ordinary and SOURCE imports of one module currently diagnose rather than silently choose one version.
 - Boot checking uses the same naming, kind, type, and validity phases. Only explicit boot mode publishes a value signature without a value body. Implementations are independently checked; their public interface must contain every boot export and member. Exact closed-scheme and kind-template agreement permits alpha-renaming, not specialization, qualified-basename cancellation, or dropped multiplicity. Boot data/newtype constructor layouts, open-family injectivity positions, and closed aliases are also checked.
-- Class and instance agreement uses a source-local declaration contract, captured by the checker after deriving and before merging imported assumptions. An abstract class promise checks the complete head kind and functional-dependency positions. A written empty context (`class () => K a`) is retained separately from an omitted context; the former is a concrete class, not an abstract promise. Full class methods/defaults/associated-member agreement remains unrepresented and diagnoses.
+- Class and instance agreement uses a source-local declaration contract, captured by the checker after deriving and before merging imported assumptions. A boot class is abstract exactly when it writes no context and declares no methods or associated families. Empty `where {}` does not make it concrete; an explicit empty context does. Every class compares the complete head kind first and functional-dependency positions, including abstract classes.
+- Concrete classes additionally compare ordered superclass constraints and ordered method names/types/default presence/generic-default types. Class parameters occupy a fixed prefix of each closed scheme, so alpha-renaming cannot exchange their slots. Default bodies are not compared. Associated families compare positionally by checked kinds, type/data form, defaults and injectivity positions, not by member names or same-kinded class-parameter association. Missing checked associated kinds are unproved, never agreement; the shared frontend fills both providers from their local kind inventories before boot comparison.
+- Associated injectivity annotations use the same declaration-name validation as top-level families. The named result must be the declared result binder and dependency names must be in scope. Explicit dependency positions compare as a set, ignoring order and duplicates; an unresolved position cannot count as agreement. This does not newly represent hidden-kind annotation positions in class agreement.
+- MINIMAL is retained as a boolean formula, distinct from an absent pragma or malformed input. An absent pragma requires all methods without defaults. Agreement proves that the boot formula implies the implementation formula; it does not demand equal spelling. Invalid names/formulas and exhausted proof bounds diagnose. Source-level associated heads and defaults are separate: `type T a` is a declaration, `type T a = rhs` is a default, and `= r | r -> a` retains a named result and annotation. A kinded result binder without that annotation is invalid, not a default to delete. Structural class-declaration validity runs before consumers are inferred.
 - Represented instance promises compare every head and context argument in one closed variable namespace against a source-local implementation instance. Imported instances cannot satisfy that ownership check. The shared instance registration now retains all arguments of multi-parameter constraints rather than only their first argument. An empty boot-instance `where {}` is legal; retained method definitions or associated equations are not. Nullary and quantified-context instance agreement and fixity agreement remain explicit unsupported cases. These are not claims of complete GHC boot equivalence or context entailment.
 - Family bodies have distinct open, fully defined closed (including empty), and abstract closed states. Malformed-body recovery is an explicit invalid state, not an empty family. An abstract closed promise (`where ..`) is legal only in a boot file and must be implemented by a closed family; it exposes no equations to consumers. Fully defined closed promises compare checked source-local equations in source order, including hidden kind inputs, visible inputs and results. Row variables are closed in first-occurrence order, allowing alpha-renaming but not changed results or reordered equations. Agreement does not read the merged reduction table.
 - The shared collector also serves stdlib and package frontends. It orders supplied modules iteratively, rejects duplicate source owners, and preserves caller-supplied artifacts even for an empty source list. The legacy package-fixture scanner is test-only and does not feed this file-entry producer.
 
 ## Bounds and proof scope
+
+Associated-default validity separates arity from distinct-variable checking.
+Parentheses and kind annotations do not change variable identity, but naming
+still visits the original annotation and kind inference checks the full family
+application before checking the RHS. Per-instance substitution erases wrappers
+only after those checks. This is not full default scope validity: equation-local
+kind-variable rigidity, class type parameters absent from the default LHS, and
+implicit-kind argument validity have separately retained disagreeing GHC probes.
 
 Boot kind agreement uses the kind checker's source-local declaration inventory,
 retained before export dependency closure. Imported types reachable through a
@@ -74,6 +87,16 @@ a re-export promises the same original name.
 One invocation admits at most64 module-name components,2048 distinct candidate directories,16384 source reads/dependency names,8MiB per source and64MiB of admitted source bytes. Import-contract closure traversal has a shared1048576-edge budget. Exact value/alias/instance agreement admits16384 type nodes and depth256 per comparison. Family-contract capture shares16384 type nodes across one family's equations and admits depth256; unchecked or opaque equations cannot become agreement evidence. Instance agreement shares a16384-candidate comparison budget per boot/implementation pair. Exhaustion is an error or unproved agreement, not partial success. A path cache avoids repeated reads; independent-module ordering uses a deterministic ready set. Filesystem lookup does not grow with unrelated directory contents.
 
 These bounds cover discovery and admitted source bytes, not all compiler allocations or CPP subprocess resource use. Existing family-table copies and source maps still have their own costs.
+
+MINIMAL parsing admits16KiB,4096 atoms and nesting128. Name validation and implication
+share16384 node-evaluation steps, with decision depth128. Partial truth evaluation
+short-circuits empty implementation requirements and disproved boot premises;
+worst-case search remains exponential in formula names but cannot exceed the
+shared work budget. Exhaustion reports unproved implication, not a pragma mismatch.
+The GHC9.14.1 class reference matrix and the two filesystem entry points exercise
+concrete/abstract boundaries, positional comparisons, defaults and implication.
+This is not complete class validity: implicit-kind arguments in associated defaults
+and TypeFamilyDependencies licensing remain separately measured gaps.
 
 The in-process source-string API remains filesystem-blind. Tests for this workflow create real source roots and exercise both file check and file compile: imported and qualified family equations, transitive re-export, wrong kinds and equality proofs, local nominal shadowing, failed providers and cycles. Separate controls preserve root Prelude authority and verify lookup work for8/16/32 unrelated neighbors. CLI observations must name the built executable hash.
 

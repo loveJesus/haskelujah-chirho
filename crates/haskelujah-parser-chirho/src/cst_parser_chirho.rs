@@ -847,7 +847,7 @@ impl<'src> ParserChirho<'src> {
         ]);
 
         if self.at_chirho(RawTokenKindChirho::WhereChirho) {
-            self.parse_where_block_chirho();
+            self.parse_where_block_context_chirho(true);
         }
 
         self.builder_chirho.finish_node_chirho();
@@ -1737,6 +1737,10 @@ impl<'src> ParserChirho<'src> {
     }
 
     fn parse_where_block_chirho(&mut self) {
+        self.parse_where_block_context_chirho(false);
+    }
+
+    fn parse_where_block_context_chirho(&mut self, class_chirho: bool) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::WhereClauseChirho);
 
@@ -1780,7 +1784,11 @@ impl<'src> ParserChirho<'src> {
                     break;
                 }
                 let before_chirho = self.pos_chirho;
-                self.parse_decl_chirho();
+                if class_chirho && self.at_chirho(RawTokenKindChirho::TypeChirho) {
+                    self.parse_associated_type_decl_chirho();
+                } else {
+                    self.parse_decl_chirho();
+                }
                 self.eat_trivia_chirho();
                 if self.pos_chirho == before_chirho {
                     if !self.at_eof_chirho() {
@@ -2037,7 +2045,10 @@ impl<'src> ParserChirho<'src> {
 
     /// Parse a "btype" — type application (juxtaposition of atomic types).
     fn parse_btype_chirho(&mut self) {
-        if !self.can_start_atype_chirho() {
+        // A leading star is the written kind atom, not an infix operator
+        // with missing operands. StarIsType policy is checked downstream;
+        // a star AFTER an operand still belongs to the infix grammar.
+        if !self.can_start_atype_chirho() && !self.at_varsym_chirho("*") {
             return;
         }
 
@@ -2120,6 +2131,12 @@ impl<'src> ParserChirho<'src> {
     /// list, or unit.
     fn parse_atype_chirho(&mut self) {
         match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarSymChirho) if self.at_varsym_chirho("*") => {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ConTypeChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            }
             Some(RawTokenKindChirho::VarIdChirho) => {
                 self.builder_chirho
                     .start_node_chirho(SyntaxKindChirho::VarTypeChirho);
