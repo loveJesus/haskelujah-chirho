@@ -485,7 +485,7 @@ owned worktree. Main6db522ad and canonical row484 are unchanged.
   Fresh CLI agrees63/63 boot-class reference verdicts and10/12 syntax probes.
 - [x] Run final lib/canary/workspace/lint gates and the full corpus diagnostic;
   compare file sets with26f77cad as well as main, with reasons for every delta.
-- [ ] Commit and push named owned paths; do not merge main while row484's
+- [x] Commit and push named owned paths; do not merge main while row484's
   main-relative accept regressions remain.
 
 The syntax disagreements remain open: S5 is validity of implicit kind arguments
@@ -539,7 +539,7 @@ is inferred from those six; their actual missing rules remain named in the audit
 - [x] Demonstrate the new controls red, then preserve annotations through naming
   and kind checking before erasing them for per-instance default substitution.
   The focused filter now passes9/9, including two existing promoted controls.
-- [ ] Recheck T18585 and both corpus sets after the default repair; then repeat
+- [x] Recheck T18585 and both corpus sets after the default repair; then repeat
   final frozen gates, archive the reason audit and checkpoint the owned branch.
 
 Post-repair CLI4207c3bb492078aaf21959efd74dd1b2d2c5657bb5d9b1e73e8a0faef80e7ef0
@@ -566,3 +566,9 @@ no unmeasured historical attribution and no changes made underneath the gate.
 The next scoped validity work must separate equation binders from class type
 parameters while retaining legitimately shared kind variables. This is not a
 claim that associated-default validity or the upstream corpora are complete.
+
+Checkpoint97218fde59e0adda5514223fe4c4ee9b444ed085 is committed and pushed on
+gpt-kind-schemes-chirho; ls-remote confirms the exact tip. Only named owned paths
+were staged. The audit's original text is preserved in JSON; its Markdown display
+normalizes trailing whitespace so the combined diff passes whitespace checks.
+Main and the canonical progress DB were not modified. Row484 remains open.
