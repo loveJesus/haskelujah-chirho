@@ -231,7 +231,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             DeclChirho::TypeFamilyDeclChirho {
                 type_vars_chirho,
                 result_chirho,
-                equations_chirho,
+                body_chirho,
                 ..
             } => {
                 if let Some(signature_chirho) = result_chirho
@@ -253,7 +253,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     );
                 }
                 self.pop_binders_chirho(&pushed_chirho);
-                for equation_chirho in equations_chirho {
+                for equation_chirho in body_chirho.equations_chirho() {
                     for lhs_ty_chirho in &equation_chirho.lhs_types_chirho {
                         self.walk_type_chirho(lhs_ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                     }

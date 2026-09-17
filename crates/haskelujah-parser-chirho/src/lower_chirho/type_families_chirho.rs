@@ -4,7 +4,9 @@
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
 use super::*;
-use haskelujah_ast_chirho::decl_chirho::{TypeFamilyInjectivityChirho, TypeFamilyResultChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    TypeFamilyBodyChirho, TypeFamilyInjectivityChirho, TypeFamilyResultChirho,
+};
 
 impl LowerCtxChirho {
     pub(super) fn lower_type_family_decl_chirho(
@@ -20,6 +22,8 @@ impl LowerCtxChirho {
         let mut result_chirho = TypeFamilyResultChirho::default();
         let mut saw_family_chirho = false;
         let mut saw_where_chirho = false;
+        let mut abstract_chirho = false;
+        let mut invalid_chirho = false;
         let mut saw_double_colon_chirho = false;
         let mut saw_injectivity_result_chirho = false;
 
@@ -113,7 +117,11 @@ impl LowerCtxChirho {
                     }
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
-                    if n_chirho.kind_chirho() == SyntaxKindChirho::TypeFamilyResultChirho {
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::AbstractTypeFamilyBodyChirho {
+                        abstract_chirho = true;
+                    } else if n_chirho.kind_chirho() == SyntaxKindChirho::ErrorNodeChirho {
+                        invalid_chirho = true;
+                    } else if n_chirho.kind_chirho() == SyntaxKindChirho::TypeFamilyResultChirho {
                         result_chirho =
                             self.lower_family_result_chirho(n_chirho, child_chirho.start_chirho);
                     } else if saw_double_colon_chirho
@@ -151,8 +159,15 @@ impl LowerCtxChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
             result_chirho,
-            closed_chirho: saw_where_chirho,
-            equations_chirho,
+            body_chirho: if invalid_chirho {
+                TypeFamilyBodyChirho::InvalidChirho
+            } else if abstract_chirho {
+                TypeFamilyBodyChirho::AbstractClosedChirho
+            } else if saw_where_chirho {
+                TypeFamilyBodyChirho::ClosedChirho { equations_chirho }
+            } else {
+                TypeFamilyBodyChirho::OpenChirho
+            },
             span_chirho,
         }
     }

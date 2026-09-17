@@ -78,10 +78,11 @@ pub(crate) fn partition_class_members_chirho(
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
                 type_vars_chirho,
-                equations_chirho,
+                body_chirho,
                 span_chirho,
                 ..
             } => {
+                let equations_chirho = body_chirho.equations_chirho();
                 let default_rhs_chirho =
                     (equations_chirho.len() == 1).then(|| equations_chirho[0].rhs_chirho.clone());
                 let default_params_chirho = if equations_chirho.len() == 1 {

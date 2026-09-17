@@ -11943,8 +11943,8 @@ class Describable a where
     fn lower_open_type_family_chirho() {
         let module_chirho = parse_and_lower_chirho("module M where\ntype family F a\n");
         assert!(module_chirho.decls_chirho.iter().any(|d_chirho| {
-            matches!(d_chirho, DeclChirho::TypeFamilyDeclChirho { name_chirho, equations_chirho, .. }
-                if name_chirho.text_chirho() == "F" && equations_chirho.is_empty())
+            matches!(d_chirho, DeclChirho::TypeFamilyDeclChirho { name_chirho, body_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho, .. }
+                if name_chirho.text_chirho() == "F")
         }), "should have open type family F with no equations");
     }
 
@@ -11961,7 +11961,10 @@ class Describable a where
         match decl_chirho.unwrap() {
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
-                equations_chirho,
+                body_chirho:
+                    haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::ClosedChirho {
+                        equations_chirho,
+                    },
                 ..
             } => {
                 assert_eq!(name_chirho.text_chirho(), "F");
@@ -12322,7 +12325,10 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
             .filter_map(|decl_chirho| match decl_chirho {
                 DeclChirho::TypeFamilyDeclChirho {
                     name_chirho,
-                    equations_chirho,
+                    body_chirho:
+                        haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::ClosedChirho {
+                            equations_chirho,
+                        },
                     ..
                 } if equations_chirho.len() == 1 => Some(name_chirho.text_chirho()),
                 _ => None,

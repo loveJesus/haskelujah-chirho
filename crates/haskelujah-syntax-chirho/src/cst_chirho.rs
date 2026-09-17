@@ -56,6 +56,8 @@ pub enum SyntaxKindChirho {
     TypeFamilyDeclChirho,
     /// Named result and optional injectivity contract, separate from head binders.
     TypeFamilyResultChirho,
+    /// Literal `..` in an abstract closed family, never an empty equation list.
+    AbstractTypeFamilyBodyChirho,
     /// `type instance F Int = Bool` — open type family instance.
     TypeFamilyInstanceDeclChirho,
     /// `newtype Name = Con Type`.

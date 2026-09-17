@@ -9,8 +9,12 @@ use haskelujah_span_chirho::SourceMapChirho;
 mod boot_chirho;
 #[path = "import_contracts_chirho/boot_declarations_chirho.rs"]
 mod boot_declarations_chirho;
+#[path = "import_contracts_chirho/boot_families_chirho.rs"]
+mod boot_families_chirho;
 #[path = "import_contracts_chirho/boot_ownership_chirho.rs"]
 mod boot_ownership_chirho;
+#[path = "import_contracts_chirho/boot_private_chirho.rs"]
+mod boot_private_chirho;
 #[path = "import_contracts_chirho/search_path_chirho.rs"]
 mod search_path_chirho;
 

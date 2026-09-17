@@ -1925,8 +1925,7 @@ mod tests_chirho {
                     ))),
                     ..Default::default()
                 },
-                closed_chirho: false,
-                equations_chirho: vec![],
+                body_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             DeclChirho::TypeAliasDeclChirho {
@@ -1966,8 +1965,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("FamilyChirho"),
                 type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
                 result_chirho: Default::default(),
-                closed_chirho: false,
-                equations_chirho: vec![],
+                body_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             DeclChirho::DataDeclChirho {

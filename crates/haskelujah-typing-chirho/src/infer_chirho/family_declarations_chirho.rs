@@ -197,10 +197,12 @@ impl InferCtxChirho {
             match declaration_chirho {
                 DeclChirho::TypeFamilyDeclChirho {
                     name_chirho,
-                    equations_chirho,
+                    body_chirho,
+                    span_chirho,
                     ..
                 } => {
-                    let equations_chirho = equations_chirho
+                    let equations_chirho: Vec<_> = body_chirho
+                        .equations_chirho()
                         .iter()
                         .filter_map(|equation_chirho| {
                             self.lower_local_family_equation_chirho(
@@ -209,6 +211,21 @@ impl InferCtxChirho {
                             )
                         })
                         .collect();
+                    if let Err(reason_chirho) =
+                        self.declaration_contracts_chirho.record_family_chirho(
+                            name_chirho.text_chirho(),
+                            body_chirho,
+                            &equations_chirho,
+                        )
+                    {
+                        self.diagnostics_chirho.push_chirho(
+                            DiagnosticChirho::error_with_code_chirho(
+                                ErrorCodeChirho::error_chirho(300),
+                                reason_chirho,
+                                *span_chirho,
+                            ),
+                        );
+                    }
                     self.register_elaborated_type_family_chirho(
                         name_chirho.text_chirho().to_string(),
                         equations_chirho,

@@ -7,7 +7,7 @@ use super::*;
 use crate::families_chirho::family_injectivity_chirho::validate_injectivity_chirho;
 use crate::families_chirho::family_open_chirho::{CompatibleOpenRowsChirho, OpenFamilyErrorChirho};
 use crate::families_chirho::{FamilyChildrenChirho, FamilyTermChirho};
-use haskelujah_ast_chirho::decl_chirho::{TypeFamilyEquationChirho, TypeFamilyResultChirho};
+use haskelujah_ast_chirho::decl_chirho::{TypeFamilyBodyChirho, TypeFamilyResultChirho};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ impl KindInferCtxChirho {
             .filter_map(|declaration_chirho| {
                 if let DeclChirho::TypeFamilyDeclChirho {
                     name_chirho,
-                    closed_chirho: false,
+                    body_chirho: TypeFamilyBodyChirho::OpenChirho,
                     ..
                 } = declaration_chirho
                 {
@@ -382,8 +382,7 @@ impl KindInferCtxChirho {
         name_chirho: &NameChirho,
         binders_chirho: &[TyVarChirho],
         result_chirho: &TypeFamilyResultChirho,
-        closed_chirho: bool,
-        equations_chirho: &[TypeFamilyEquationChirho],
+        body_chirho: &TypeFamilyBodyChirho,
         span_chirho: SpanChirho,
     ) {
         let error_count_chirho = self.diagnostics_chirho.error_count_chirho();
@@ -431,9 +430,14 @@ impl KindInferCtxChirho {
         {
             self.family_error_chirho("family result binder is not fresh", span_chirho);
         }
-        if !closed_chirho {
-            return;
-        }
+        let equations_chirho = match body_chirho {
+            TypeFamilyBodyChirho::ClosedChirho { equations_chirho } => equations_chirho,
+            TypeFamilyBodyChirho::OpenChirho | TypeFamilyBodyChirho::AbstractClosedChirho => return,
+            TypeFamilyBodyChirho::InvalidChirho => {
+                self.family_error_chirho("malformed type family body", span_chirho);
+                return;
+            }
+        };
 
         let canonical_chirho = self.canonical_kind_name_chirho(name_chirho);
         let scheme_chirho = match self

@@ -365,3 +365,47 @@ The source stayed frozen across final gates; code-file hashes in gates-chirho.js
 allow checking the eventual commit. No assertion was weakened and no test was
 excluded to obtain these results; corpus denominators are unchanged. Oversized
 roots and lint debt remain open.
+
+## Boot availability and abstract families, continuation2026-09-17
+
+L.J. directed continued work with Claude. GPT owns production edits and the
+builder; Claude independently probes private boot declarations with GHC9.14.1,
+without Cargo, edits or canonical DB writes. Main and row484 remain unchanged.
+
+Brick1: keep export availability distinct from source-local ownership. An absent
+private promise need not exist, but a present private declaration must agree.
+Represent open, fully defined closed and abstract closed family bodies as three
+exclusive AST states, replacing the old boolean plus equation vector. Checked
+source-local equations, in source order, own full closed-family agreement;
+abstract promises must neither invent equations nor be confused with empty ones.
+
+- [x] Preserve Claude's reference observations, including the refuted privacy
+  prediction, and prove both-path absence/agreement/visibility controls.
+- [x] Reference abstract/empty/full closed-family agreement and legality with GHC;
+  preserve the failing-before controls, including equation read-back.
+- [x] Carry the three family-body states through parsing, naming, kind/type
+  inference and boot agreement, without guessed reduction or implicit fallback.
+- [x] Run focused, broad and resource-bounded gates appropriate to the checkpoint;
+  record failures and limitations, not a new corpus total from a focused run.
+- [ ] Commit and push named owned paths; do not land on main before row484 gates.
+
+Private references19/19 now agree (before12/19 reason-level integration controls).
+Closed-family references17/17 agree (before7/17 integration controls). Each test
+uses both filesystem entry points. A freshly relinked CLI also agrees on all36
+unchanged reference sources, without timeout; its SHA256 is
+2e6d8318b0e7d5a03cf1e36c8eb772977d48932bd71b415d6237ca1c8fb58637.
+Frozen parser370, naming137, typing394, integration295, canaries7 and full
+driver1776 pass with zero ignored/filtered. Workspace all-target check, explicit
+CLI build and format check pass. The expanded parser/naming/typing/driver
+all-target clippy command exits0 but emits465 warning-message lines including
+duplicates/summaries; not lint-clean. New family enums also trigger the mandated
+Chirho-suffix warning. No lint suppression or assertion weakening was added.
+
+T6018a remains rejected, now inside the implementation's injectivity validator:
+Bak's later covering-variable row and Foo's shadowed row are rejected although
+GHC9.14.1 accepts the unchanged file. Claude is independently reducing these
+overlap rules; no corpus recovery is claimed. Seven GHC re-export references
+also remain unimplemented. Their durable owner is an explicit defining-module
+identity on each interface export, not spans or importing aliases. The two
+follow-ups remain separate from this checked checkpoint. No full corpus totals
+or public measurement artifacts have been superseded.

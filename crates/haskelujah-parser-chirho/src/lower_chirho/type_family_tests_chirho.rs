@@ -2,6 +2,54 @@
 
 //! Equation patterns are semantic arguments, including promoted empty groups.
 use super::*;
+use haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho;
+
+#[test]
+fn abstract_family_body_preserves_the_following_signature_chirho() {
+    for body_chirho in ["where ..", "where { .. }"] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE TypeFamilies #-}}\nmodule FamilyChirho where\ntype family HiddenChirho aChirho {body_chirho}\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let module_chirho = lower_module_chirho(
+            &crate::cst_parser_chirho::parse_to_cst_chirho(&source_chirho, file_chirho),
+            file_chirho,
+        );
+        assert!(matches!(
+            &module_chirho.decls_chirho[0],
+            DeclChirho::TypeFamilyDeclChirho {
+                body_chirho: TypeFamilyBodyChirho::AbstractClosedChirho,
+                ..
+            }
+        ));
+        assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| matches!(declaration_chirho, DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")));
+    }
+}
+
+#[test]
+fn hidden_and_concrete_family_bodies_cannot_be_mixed_chirho() {
+    for body_chirho in [
+        "where { ..; HiddenChirho Int = Int }",
+        "where { HiddenChirho Int = Int; .. }",
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE TypeFamilies #-}}\nmodule FamilyChirho where\ntype family HiddenChirho aChirho {body_chirho}\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n"
+        );
+        let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+        let module_chirho = lower_module_chirho(
+            &crate::cst_parser_chirho::parse_to_cst_chirho(&source_chirho, file_chirho),
+            file_chirho,
+        );
+        assert!(matches!(
+            &module_chirho.decls_chirho[0],
+            DeclChirho::TypeFamilyDeclChirho {
+                body_chirho: TypeFamilyBodyChirho::InvalidChirho,
+                ..
+            }
+        ));
+        assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| matches!(declaration_chirho, DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")));
+    }
+}
 
 #[test]
 fn operator_family_standalone_kinds_are_not_aliases_chirho() {
@@ -68,7 +116,7 @@ fn standalone_and_result_family_contracts_keep_independent_spans_chirho() {
         let DeclChirho::TypeFamilyDeclChirho {
             type_vars_chirho,
             result_chirho,
-            equations_chirho,
+            body_chirho,
             ..
         } = &module_chirho.decls_chirho[0]
         else {
@@ -90,7 +138,7 @@ fn standalone_and_result_family_contracts_keep_independent_spans_chirho() {
             );
         }
         assert_eq!(type_vars_chirho.len(), 1);
-        assert!(equations_chirho.is_empty());
+        assert!(matches!(body_chirho, TypeFamilyBodyChirho::OpenChirho));
         assert!(
             matches!(&module_chirho.decls_chirho[1], DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "canaryChirho")
         );
@@ -108,7 +156,7 @@ fn family_head_binders_preserve_invisible_scope_chirho() {
         let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
         let DeclChirho::TypeFamilyDeclChirho {
             type_vars_chirho,
-            equations_chirho,
+            body_chirho: TypeFamilyBodyChirho::ClosedChirho { equations_chirho },
             ..
         } = &module_chirho.decls_chirho[0]
         else {
@@ -133,8 +181,7 @@ fn family_result_binder_kind_and_dependency_survive_lowering_chirho() {
     let DeclChirho::TypeFamilyDeclChirho {
         type_vars_chirho,
         result_chirho,
-        closed_chirho,
-        equations_chirho,
+        body_chirho: TypeFamilyBodyChirho::ClosedChirho { equations_chirho },
         ..
     } = &module_chirho.decls_chirho[0]
     else {
@@ -162,7 +209,6 @@ fn family_result_binder_kind_and_dependency_survive_lowering_chirho() {
             .collect::<Vec<_>>(),
         ["aChirho"]
     );
-    assert!(*closed_chirho);
     assert_eq!(equations_chirho.len(), 1);
     assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| matches!(declaration_chirho, DeclChirho::TypeSigChirho { ty_chirho: TypeChirho::ConChirho(name_chirho), .. } if name_chirho.text_chirho() == "MissingTypeChirho")));
 }
@@ -173,19 +219,16 @@ fn an_empty_closed_family_is_not_an_open_family_chirho() {
     let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
     let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
     let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
-    for (declaration_chirho, expected_closed_chirho) in
-        module_chirho.decls_chirho.iter().zip([false, true])
-    {
-        let DeclChirho::TypeFamilyDeclChirho {
-            closed_chirho,
-            equations_chirho,
-            ..
-        } = declaration_chirho
-        else {
+    for (declaration_chirho, expected_body_chirho) in module_chirho.decls_chirho.iter().zip([
+        TypeFamilyBodyChirho::OpenChirho,
+        TypeFamilyBodyChirho::ClosedChirho {
+            equations_chirho: vec![],
+        },
+    ]) {
+        let DeclChirho::TypeFamilyDeclChirho { body_chirho, .. } = declaration_chirho else {
             panic!("family declaration missing");
         };
-        assert_eq!(*closed_chirho, expected_closed_chirho);
-        assert!(equations_chirho.is_empty());
+        assert_eq!(*body_chirho, expected_body_chirho);
     }
     assert_eq!(module_chirho.decls_chirho.len(), 2);
 }
@@ -197,7 +240,8 @@ fn literal_family_patterns_keep_values_and_equation_boundaries_chirho() {
     let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
     let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
     let DeclChirho::TypeFamilyDeclChirho {
-        equations_chirho, ..
+        body_chirho: TypeFamilyBodyChirho::ClosedChirho { equations_chirho },
+        ..
     } = &module_chirho.decls_chirho[0]
     else {
         panic!("expected a family");
@@ -243,7 +287,8 @@ fn family_cons_patterns_retain_promotion_chirho() {
     let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
     let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
     let DeclChirho::TypeFamilyDeclChirho {
-        equations_chirho, ..
+        body_chirho: TypeFamilyBodyChirho::ClosedChirho { equations_chirho },
+        ..
     } = &module_chirho.decls_chirho[0]
     else {
         panic!("expected a family");
@@ -270,7 +315,8 @@ fn closed_family_keeps_the_empty_promoted_list_pattern_chirho() {
     let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho);
     let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
     let DeclChirho::TypeFamilyDeclChirho {
-        equations_chirho, ..
+        body_chirho: TypeFamilyBodyChirho::ClosedChirho { equations_chirho },
+        ..
     } = &module_chirho.decls_chirho[0]
     else {
         panic!("expected a family");

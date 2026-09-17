@@ -32,12 +32,12 @@ fn data_family_header_survives_ast_lowering_chirho() {
                 name_chirho,
                 type_vars_chirho,
                 result_chirho,
-                equations_chirho,
+                body_chirho,
                 ..
             } if name_chirho.text_chirho() == "SingChirho" => Some((
                 type_vars_chirho,
                 &result_chirho.kind_sig_chirho,
-                equations_chirho,
+                body_chirho.equations_chirho(),
             )),
             _ => None,
         })

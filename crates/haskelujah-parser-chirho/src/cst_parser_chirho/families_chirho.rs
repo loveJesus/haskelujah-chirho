@@ -118,6 +118,27 @@ impl<'source_chirho> ParserChirho<'source_chirho> {
             {
                 self.bump_chirho();
             }
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::DotDotChirho) {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::AbstractTypeFamilyBodyChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+                self.eat_trivia_chirho();
+                // A hidden body cannot also carry equations. Retain an error
+                // node without consuming the closing layout boundary.
+                if !self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
+                    && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                {
+                    self.builder_chirho
+                        .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                    self.eat_until_any_chirho(&[
+                        RawTokenKindChirho::VirtualRightBraceChirho,
+                        RawTokenKindChirho::RightBraceChirho,
+                    ]);
+                    self.builder_chirho.finish_node_chirho();
+                }
+            }
             while !self.at_eof_chirho()
                 && !self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
                 && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)

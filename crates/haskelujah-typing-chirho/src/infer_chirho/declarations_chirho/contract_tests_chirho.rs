@@ -16,7 +16,10 @@ fn boot_first_mismatch_uses_stable_source_names_chirho() {
             );
         }
         let error_chirho = boot_chirho
-            .check_boot_promises_chirho(&DeclarationContractsChirho::default())
+            .check_boot_promises_chirho(
+                &DeclarationContractsChirho::default(),
+                &boot_chirho.kinds_chirho.keys().cloned().collect(),
+            )
             .expect_err("neither type has a local implementation");
         assert!(
             error_chirho.contains("AChirho") && !error_chirho.contains("ZChirho"),
@@ -45,7 +48,7 @@ fn boot_instance_search_exhaustion_never_counts_as_agreement_chirho() {
         .instances_chirho
         .insert("ClassChirho".to_owned(), candidates_chirho);
     boot_chirho
-        .check_boot_promises_chirho(&implementation_chirho)
+        .check_boot_promises_chirho(&implementation_chirho, &HashSet::new())
         .unwrap();
     implementation_chirho
         .instances_chirho
@@ -53,7 +56,7 @@ fn boot_instance_search_exhaustion_never_counts_as_agreement_chirho() {
         .unwrap()
         .insert(0, wrong_chirho);
     let error_chirho = boot_chirho
-        .check_boot_promises_chirho(&implementation_chirho)
+        .check_boot_promises_chirho(&implementation_chirho, &HashSet::new())
         .expect_err("an unseen final match cannot satisfy the promise");
     assert!(
         error_chirho.contains("comparison budget exhausted"),

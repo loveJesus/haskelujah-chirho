@@ -16,10 +16,7 @@ pub(super) fn validate_boot_declarations_chirho(
             | DeclChirho::NewtypeDeclChirho { .. }
             | DeclChirho::TypeAliasDeclChirho { .. }
             | DeclChirho::FixityDeclChirho { .. }
-            | DeclChirho::TypeFamilyDeclChirho {
-                closed_chirho: false,
-                ..
-            } => {}
+            | DeclChirho::TypeFamilyDeclChirho { .. } => {}
             DeclChirho::ClassDeclChirho { name_chirho, .. }
                 if boot_chirho
                     .infer_result_chirho
@@ -114,14 +111,6 @@ pub(super) fn check_boot_agreement_chirho(
     boot_iface_chirho: &haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho,
     implementation_iface_chirho: &haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho,
 ) -> Result<(), String> {
-    boot_chirho
-        .infer_result_chirho
-        .declaration_contracts_chirho
-        .check_boot_promises_chirho(
-            &implementation_chirho
-                .infer_result_chirho
-                .declaration_contracts_chirho,
-        )?;
     let mut values_chirho: Vec<_> = boot_iface_chirho
         .exports_chirho
         .values_chirho
@@ -172,6 +161,20 @@ pub(super) fn check_boot_agreement_chirho(
             ));
         }
     }
+    boot_chirho
+        .infer_result_chirho
+        .declaration_contracts_chirho
+        .check_boot_promises_chirho(
+            &implementation_chirho
+                .infer_result_chirho
+                .declaration_contracts_chirho,
+            &boot_iface_chirho
+                .exports_chirho
+                .types_chirho
+                .keys()
+                .cloned()
+                .collect(),
+        )?;
     let declarations_chirho: HashMap<_, _> = implementation_chirho
         .module_chirho
         .decls_chirho
@@ -188,6 +191,31 @@ pub(super) fn check_boot_agreement_chirho(
         )
     };
     for declaration_chirho in &boot_chirho.module_chirho.decls_chirho {
+        let availability_chirho =
+            if let DeclChirho::TypeSigChirho { name_chirho, .. } = declaration_chirho {
+                Some((
+                    name_chirho.text_chirho(),
+                    boot_iface_chirho
+                        .exports_chirho
+                        .values_chirho
+                        .contains_key(name_chirho.text_chirho()),
+                ))
+            } else {
+                declaration_name_chirho(declaration_chirho).map(|name_chirho| {
+                    (
+                        name_chirho,
+                        boot_iface_chirho
+                            .exports_chirho
+                            .types_chirho
+                            .contains_key(name_chirho),
+                    )
+                })
+            };
+        if availability_chirho.is_some_and(|(name_chirho, exported_chirho)| {
+            !exported_chirho && !declarations_chirho.contains_key(name_chirho)
+        }) {
+            continue;
+        }
         let valid_chirho = match declaration_chirho {
             DeclChirho::ClassDeclChirho { .. } | DeclChirho::InstanceDeclChirho { .. } => true,
             DeclChirho::TypeSigChirho { name_chirho, .. } => {
@@ -238,15 +266,22 @@ pub(super) fn check_boot_agreement_chirho(
                 name_chirho,
                 type_vars_chirho,
                 result_chirho,
-                closed_chirho: false,
                 ..
             } => match declarations_chirho.get(name_chirho.text_chirho()) {
                 Some(DeclChirho::TypeFamilyDeclChirho {
                     type_vars_chirho: actual_vars_chirho,
                     result_chirho: actual_result_chirho,
-                    closed_chirho: false,
                     ..
                 }) => {
+                    boot_chirho
+                        .infer_result_chirho
+                        .declaration_contracts_chirho
+                        .check_boot_family_chirho(
+                            name_chirho.text_chirho(),
+                            &implementation_chirho
+                                .infer_result_chirho
+                                .declaration_contracts_chirho,
+                        )?;
                     let positions_chirho = |parameters_chirho: &[haskelujah_ast_chirho::decl_chirho::TyVarChirho], result_chirho: &haskelujah_ast_chirho::decl_chirho::TypeFamilyResultChirho| {
                         result_chirho.injectivity_chirho.as_ref().map(|dependency_chirho| dependency_chirho.parameters_chirho.iter().map(|name_chirho| parameters_chirho.iter().position(|parameter_chirho| parameter_chirho.name_chirho.text_chirho() == name_chirho.text_chirho())).collect::<Vec<_>>())
                     };

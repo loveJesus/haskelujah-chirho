@@ -154,6 +154,34 @@ pub fn infer_module_with_inputs_chirho(
     } = inputs_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
+    for declaration_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::TypeFamilyDeclChirho {
+            body_chirho,
+            span_chirho,
+            ..
+        } = declaration_chirho
+        {
+            use haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho;
+            let reason_chirho = match body_chirho {
+                TypeFamilyBodyChirho::AbstractClosedChirho if !boot_chirho => {
+                    Some("abstract closed family is only permitted in an hs-boot contract")
+                }
+                TypeFamilyBodyChirho::InvalidChirho => Some("malformed type family body"),
+                TypeFamilyBodyChirho::OpenChirho
+                | TypeFamilyBodyChirho::ClosedChirho { .. }
+                | TypeFamilyBodyChirho::AbstractClosedChirho => None,
+            };
+            if let Some(reason_chirho) = reason_chirho {
+                ctx_chirho.diagnostics_chirho.push_chirho(
+                    DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(1),
+                        reason_chirho,
+                        *span_chirho,
+                    ),
+                );
+            }
+        }
+    }
     ctx_chirho.kind_elaboration_chirho = kind_elaboration_chirho;
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,

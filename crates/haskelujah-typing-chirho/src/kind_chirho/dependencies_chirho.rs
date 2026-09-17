@@ -67,7 +67,8 @@ impl<'source_chirho> KindDependenciesChirho<'source_chirho> {
                 && matches!(
                     declarations_chirho[owner_chirho],
                     DeclChirho::TypeFamilyDeclChirho {
-                        closed_chirho: false,
+                        body_chirho:
+                            haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,
                         ..
                     }
                 )
@@ -163,7 +164,7 @@ fn declaration_refs_chirho(declaration_chirho: &DeclChirho, refs_chirho: &mut Ha
         DeclChirho::TypeFamilyDeclChirho {
             type_vars_chirho,
             result_chirho,
-            equations_chirho,
+            body_chirho,
             ..
         } => {
             binder_refs_chirho(type_vars_chirho, refs_chirho);
@@ -176,7 +177,7 @@ fn declaration_refs_chirho(declaration_chirho: &DeclChirho, refs_chirho: &mut Ha
                     type_refs_chirho(kind_chirho, refs_chirho);
                 }
             }
-            for equation_chirho in equations_chirho {
+            for equation_chirho in body_chirho.equations_chirho() {
                 for argument_chirho in &equation_chirho.lhs_types_chirho {
                     type_refs_chirho(argument_chirho, refs_chirho);
                 }

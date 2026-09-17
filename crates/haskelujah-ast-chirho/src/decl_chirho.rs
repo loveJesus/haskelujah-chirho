@@ -70,6 +70,29 @@ pub struct TypeFamilyEquationChirho {
     pub span_chirho: SpanChirho,
 }
 
+/// The body is a declaration contract, not an empty/nonempty-row heuristic.
+/// An abstract closed family hides its equations; an empty closed family has none.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeFamilyBodyChirho {
+    OpenChirho,
+    ClosedChirho {
+        equations_chirho: Vec<TypeFamilyEquationChirho>,
+    },
+    AbstractClosedChirho,
+    /// Recovery must not turn malformed syntax into a valid empty/abstract body.
+    InvalidChirho,
+}
+
+impl TypeFamilyBodyChirho {
+    /// Syntax traversal only. An empty slice does not determine the family form.
+    pub fn equations_chirho(&self) -> &[TypeFamilyEquationChirho] {
+        match self {
+            Self::ClosedChirho { equations_chirho } => equations_chirho,
+            Self::OpenChirho | Self::AbstractClosedChirho | Self::InvalidChirho => &[],
+        }
+    }
+}
+
 /// Written family result contract. Naming a result does not itself promise
 /// injectivity; equation validation must establish that separate annotation.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -296,10 +319,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Result kind, optional named binder and written injectivity contract.
         result_chirho: TypeFamilyResultChirho,
-        /// `where {}` is closed even when it contains no equations.
-        closed_chirho: bool,
-        /// Equations for closed families; empty for open families.
-        equations_chirho: Vec<TypeFamilyEquationChirho>,
+        /// Open, concrete closed, abstract closed, or failed syntax recovery.
+        body_chirho: TypeFamilyBodyChirho,
         /// Span covering the whole family declaration.
         span_chirho: SpanChirho,
     },

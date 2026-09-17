@@ -461,8 +461,7 @@ fn family_result_kind_resolves_type_namespace_names_chirho() {
             ),
             ..Default::default()
         },
-        closed_chirho: false,
-        equations_chirho: vec![],
+        body_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let diagnostics_chirho = check_chirho(

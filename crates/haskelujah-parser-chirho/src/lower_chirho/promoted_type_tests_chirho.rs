@@ -128,7 +128,11 @@ fn promoted_tuple_family_patterns_keep_both_binding_positions_chirho() {
         .iter()
         .filter_map(|declaration_chirho| {
             let DeclChirho::TypeFamilyDeclChirho {
-                equations_chirho, ..
+                body_chirho:
+                    haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::ClosedChirho {
+                        equations_chirho,
+                    },
+                ..
             } = declaration_chirho
             else {
                 return None;

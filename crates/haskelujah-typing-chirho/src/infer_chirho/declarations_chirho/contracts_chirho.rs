@@ -4,6 +4,8 @@
 //! Workflow: compiler-pipeline-chirho/module-search-authority-chirho.
 use super::*;
 use crate::kind_chirho::KindContractChirho;
+#[path = "families_chirho.rs"]
+mod families_chirho;
 
 #[cfg(test)]
 #[path = "contract_tests_chirho.rs"]
@@ -28,6 +30,7 @@ pub(super) struct ClassContractChirho {
 #[derive(Debug, Clone, Default)]
 pub struct DeclarationContractsChirho {
     kinds_chirho: HashMap<String, KindContractChirho>,
+    families_chirho: HashMap<String, families_chirho::FamilyContractChirho>,
     pub(super) classes_chirho: HashMap<String, ClassContractChirho>,
     pub(super) instances_chirho: HashMap<String, Vec<SchemeChirho>>,
     pub(super) unproved_instances_chirho: HashSet<String>,
@@ -54,14 +57,23 @@ impl DeclarationContractsChirho {
 
     /// Check source-local kind, class and instance promises. Exports and
     /// declaration bodies are checked by their own contract owners.
-    pub fn check_boot_promises_chirho(&self, implementation_chirho: &Self) -> Result<(), String> {
+    pub fn check_boot_promises_chirho(
+        &self,
+        implementation_chirho: &Self,
+        required_heads_chirho: &HashSet<String>,
+    ) -> Result<(), String> {
         for (name_chirho, expected_chirho) in ordered_entries_chirho(&self.kinds_chirho) {
-            let actual_chirho = implementation_chirho
-                .kinds_chirho
-                .get(name_chirho)
-                .ok_or_else(|| {
-                    format!("boot contract type {name_chirho} has no local implementation")
-                })?;
+            let Some(actual_chirho) = implementation_chirho.kinds_chirho.get(name_chirho) else {
+                // Availability requires an implementation only for exported
+                // promises. Privacy never exempts an existing definition from
+                // agreement, and never exempts the boot's own validity checks.
+                if required_heads_chirho.contains(name_chirho) {
+                    return Err(format!(
+                        "boot contract type {name_chirho} has no local implementation"
+                    ));
+                }
+                continue;
+            };
             expected_chirho
                 .check_agreement_chirho(actual_chirho)
                 .map_err(|reason_chirho| {
@@ -76,9 +88,12 @@ impl DeclarationContractsChirho {
                 ));
             }
             let Some(actual_chirho) = implementation_chirho.classes_chirho.get(name_chirho) else {
-                return Err(format!(
-                    "boot contract class {name_chirho} has no local implementation"
-                ));
+                if required_heads_chirho.contains(name_chirho) {
+                    return Err(format!(
+                        "boot contract class {name_chirho} has no local implementation"
+                    ));
+                }
+                continue;
             };
             if expected_chirho.fundeps_chirho.is_none()
                 || expected_chirho.fundeps_chirho != actual_chirho.fundeps_chirho

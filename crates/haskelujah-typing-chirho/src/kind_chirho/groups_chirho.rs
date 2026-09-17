@@ -158,7 +158,8 @@ impl KindInferCtxChirho {
                     let index_chirho = group_chirho[local_chirho];
                     if let DeclChirho::TypeFamilyDeclChirho {
                         name_chirho,
-                        closed_chirho: false,
+                        body_chirho:
+                            haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,
                         span_chirho,
                         ..
                     } = graph_chirho.declarations_chirho[index_chirho]
@@ -239,7 +240,7 @@ impl KindInferCtxChirho {
                 name_chirho,
                 type_vars_chirho,
                 result_chirho,
-                closed_chirho,
+                body_chirho,
                 span_chirho,
                 ..
             } => {
@@ -248,7 +249,10 @@ impl KindInferCtxChirho {
                     type_vars_chirho,
                     result_chirho.kind_sig_chirho.as_ref(),
                     *span_chirho,
-                    *closed_chirho,
+                    !matches!(
+                        body_chirho,
+                        haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho
+                    ),
                 );
             }
             DeclChirho::ClassDeclChirho {
@@ -417,16 +421,14 @@ impl KindInferCtxChirho {
                 name_chirho,
                 type_vars_chirho,
                 result_chirho,
-                closed_chirho,
-                equations_chirho,
+                body_chirho,
                 span_chirho,
             } => {
                 self.check_kind_family_chirho(
                     name_chirho,
                     type_vars_chirho,
                     result_chirho,
-                    *closed_chirho,
-                    equations_chirho,
+                    body_chirho,
                     *span_chirho,
                 );
             }
