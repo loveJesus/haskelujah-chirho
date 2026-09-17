@@ -226,6 +226,7 @@ impl KindInferCtxChirho {
         let KindFamilyChirho::ClosedChirho {
             equations_chirho,
             injective_chirho,
+            ..
         } = self.kind_families_chirho.get(name_chirho)?
         else {
             return None;

@@ -47,12 +47,24 @@ pub struct KindElaborationChirho {
     pub(crate) nominal_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) synonym_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) family_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
+    // Only validated closed-row proofs cross this phase boundary. An annotation
+    // on an open, abstract, opaque or exhausted family grants no improvement.
+    pub(crate) closed_family_injectivity_chirho: HashMap<String, ClosedFamilyInjectivityChirho>,
     pub(crate) promoted_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     // Exact self-qualified spellings of constructors owned by this module.
     // Foreign/import aliases are not authorized by an equal bare name.
     pub(crate) local_promoted_aliases_chirho: HashMap<String, String>,
     pub(crate) equation_inputs_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
     pub(crate) source_names_chirho: HashMap<KindVarChirho, String>,
+}
+
+/// Phase-local occurrence identity, not a serialized/module export identity.
+/// The typed body must retain these same AST rows in this order. This catches
+/// dropping/reordering between representations without trusting a matching name.
+#[derive(Clone, Debug)]
+pub(crate) struct ClosedFamilyInjectivityChirho {
+    pub(crate) positions_chirho: Vec<usize>,
+    pub(crate) source_rows_chirho: Vec<SpanChirho>,
 }
 
 impl KindInferCtxChirho {
@@ -506,6 +518,29 @@ impl KindInferCtxChirho {
             nominal_heads_chirho,
             synonym_heads_chirho,
             family_heads_chirho,
+            closed_family_injectivity_chirho: self
+                .kind_families_chirho
+                .iter()
+                .filter_map(|(name_chirho, family_chirho)| {
+                    let super::families_chirho::KindFamilyChirho::ClosedChirho {
+                        injective_chirho,
+                        source_rows_chirho,
+                        ..
+                    } = family_chirho
+                    else {
+                        return None;
+                    };
+                    (!injective_chirho.is_empty()).then(|| {
+                        (
+                            name_chirho.clone(),
+                            ClosedFamilyInjectivityChirho {
+                                positions_chirho: injective_chirho.clone(),
+                                source_rows_chirho: source_rows_chirho.clone(),
+                            },
+                        )
+                    })
+                })
+                .collect(),
             promoted_heads_chirho,
             local_promoted_aliases_chirho,
             equation_inputs_chirho,

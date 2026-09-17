@@ -92,6 +92,7 @@ fn is_builtin_typelit_or_typenat_kind_name_chirho(name_chirho: &str) -> bool {
 
 pub use environment_chirho::KindEnvChirho;
 mod elaboration_chirho;
+pub(crate) use elaboration_chirho::ClosedFamilyInjectivityChirho;
 pub use elaboration_chirho::KindElaborationChirho;
 use schemes_chirho::{KindBindingChirho, KindSchemeChirho};
 

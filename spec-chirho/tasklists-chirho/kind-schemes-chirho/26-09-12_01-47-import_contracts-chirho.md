@@ -387,7 +387,8 @@ abstract promises must neither invent equations nor be confused with empty ones.
   inference and boot agreement, without guessed reduction or implicit fallback.
 - [x] Run focused, broad and resource-bounded gates appropriate to the checkpoint;
   record failures and limitations, not a new corpus total from a focused run.
-- [ ] Commit and push named owned paths; do not land on main before row484 gates.
+- [x] Commit and push named owned paths:677624014158febb8d7923cb592963c419c5ef97,
+  ls-remote verified. Do not land on main before row484 gates.
 
 Private references19/19 now agree (before12/19 reason-level integration controls).
 Closed-family references17/17 agree (before7/17 integration controls). Each test
@@ -409,3 +410,54 @@ also remain unimplemented. Their durable owner is an explicit defining-module
 identity on each interface export, not spans or importing aliases. The two
 follow-ups remain separate from this checked checkpoint. No full corpus totals
 or public measurement artifacts have been superseded.
+
+## Closed-family injectivity continuation2026-09-17
+
+Claude's fifteen GHC9.14.1 reductions distinguish a later bare-variable result,
+whole-prefix overlap coverage and unreachable-row consumers. Retain the exact
+reference sources and negatives. Brick1: repair the generic closed-equation
+validator, not per-family guards. Compare RHS-unified later inputs against any
+strictly earlier row under a shared work bound. An unknown match is not coverage.
+The initial CLI agrees on11/15 verdicts; three valid Bak/Foo cases fail validity
+and Bar's valid consumer fails ordinary type inference. F4 is initially rejected
+for the wrong injectivity reason instead of its unreachable-row type mismatch.
+
+- [x] Prove ordered whole-prefix injectivity validation and its rejecting controls.
+- [x] Preserve row reachability for reduction and inverse reasoning; do not treat
+  a written annotation as independently validated evidence.
+- [ ] Drive T6018a through the implementation and consumer, with honest remaining
+  blockers and wider regression checks before claiming a corpus recovery.
+- [ ] Gate, preserve evidence, commit and push the next coherent owned checkpoint.
+
+Frozen closed-family follow-up: the15 reason-level controls pass15/15 (initially
+6/15), plus6 annotation/partial-injectivity negatives. Only proved source-local
+closed positions improve ordinary inference. Ordered source-row witnesses tie
+the kind proof to the typed equations; reordered, missing or substituted rows
+stand down, as does inconsistent hidden arity. Tentative inversion commits only
+after forward normalization proves the original equality. Imported/open-family
+and hidden-kind improvement remain unclaimed. T6018a now gets past the repaired
+closed cases but still fails open/imported F/I/KP/G6 consumers.
+
+Final parser370, naming137, typing398, integration316, canaries7 and full
+driver1776 pass with zero ignored/filtered. Workspace check, formatting and
+explicit CLI build pass. Clippy retains465 warning-message lines, including
+duplicates/summaries, and is not clean. The exact-output STG control agrees with
+independent GHC9.14.1 native output: character, Double and unit through Bak-style
+inversion. Frozen source/binary hashes and complete diagnostics are preserved in
+family-equations-chirho/closed-injectivity-chirho.
+
+The final diagnostic is883/938 and259/767. Fresh parent67762401 is883/938 and
+260/767: identical accept sets; only T23162c changes on reject. Its old rejection
+was the erroneous bare-result declaration rule. Main and GHC9.14.1 accept it;
+all.T marks it compile, despite should_fail directory placement. The denominator
+stays unchanged. Main-relative15 accept gains/14 losses still block landing;
+47 reject gains/9 losses are raw verdict deltas, not reason-audited capabilities.
+T20588d_aux and T20661_aux are real positive multimod_compile roots, both also
+failing on the fresh parent, not exclusions. Main remains6db522ad and row484 open.
+
+Next brick1: source-local concrete boot-class contracts, not bypasses of the
+unsupported guard. Preserve ordered superclass and method schemes in the class
+binder namespace, default presence/type, associated-family/default contracts and
+the measured MINIMAL implication. Existing abstract contracts still compare kind
+and functional dependencies. Claude owns independent GHC probes; GPT alone edits
+production code and holds Cargo/DB. No public metadata or deployment change.

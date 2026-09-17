@@ -244,3 +244,72 @@ fn opaque_terms_cannot_certify_injectivity_chirho() {
         Ok(false)
     );
 }
+
+#[test]
+fn closed_injectivity_uses_instantiated_whole_prefix_coverage_chirho() {
+    let variable_chirho = TyChirho::VarChirho(TyVarChirho(6100));
+    let rows_chirho = vec![
+        (vec![TyChirho::char_chirho()], TyChirho::int_chirho()),
+        (vec![TyChirho::bool_chirho()], TyChirho::bool_chirho()),
+        (vec![TyChirho::int_chirho()], TyChirho::char_chirho()),
+        (vec![variable_chirho.clone()], variable_chirho),
+    ];
+    let check_chirho = |rows_chirho: &[(Vec<TyChirho>, TyChirho)]| {
+        family_injectivity_chirho::validate_injectivity_chirho(
+            rows_chirho,
+            &[0],
+            &|_name_chirho| false,
+            &|_name_chirho, _arity_chirho| None,
+        )
+    };
+    assert_eq!(check_chirho(&rows_chirho), Ok(true));
+    let mut uncovered_chirho = rows_chirho.clone();
+    uncovered_chirho.remove(0);
+    assert!(check_chirho(&uncovered_chirho).is_err());
+    let mut later_cover_chirho = rows_chirho;
+    let first_chirho = later_cover_chirho.remove(0);
+    later_cover_chirho.push(first_chirho);
+    assert!(check_chirho(&later_cover_chirho).is_err());
+}
+
+#[test]
+fn inverse_closed_rows_cannot_select_an_unreachable_result_chirho() {
+    let argument_chirho = TyChirho::VarChirho(TyVarChirho(6200));
+    let rows_chirho = vec![
+        (vec![TyChirho::int_chirho()], TyChirho::bool_chirho()),
+        (vec![TyChirho::bool_chirho()], TyChirho::int_chirho()),
+        (vec![TyChirho::bool_chirho()], TyChirho::char_chirho()),
+    ];
+    let inverse_chirho = |result_chirho: &TyChirho| {
+        family_injectivity_chirho::inverse_equations_chirho(
+            &rows_chirho,
+            std::slice::from_ref(&argument_chirho),
+            result_chirho,
+            &[0],
+            &|_name_chirho| false,
+        )
+    };
+    assert_eq!(
+        inverse_chirho(&TyChirho::bool_chirho()),
+        Some(vec![(argument_chirho.clone(), TyChirho::int_chirho())])
+    );
+    assert_eq!(inverse_chirho(&TyChirho::char_chirho()), None);
+    assert_eq!(
+        inverse_chirho(&TyChirho::VarChirho(TyVarChirho(6201))),
+        None
+    );
+}
+
+#[test]
+fn closed_injectivity_admits_no_proof_after_shared_work_exhaustion_chirho() {
+    let rows_chirho = vec![(vec![TyChirho::int_chirho()], TyChirho::int_chirho()); 8193];
+    assert_eq!(
+        family_injectivity_chirho::validate_injectivity_chirho(
+            &rows_chirho,
+            &[0],
+            &|_name_chirho| false,
+            &|_name_chirho, _arity_chirho| None,
+        ),
+        Ok(false),
+    );
+}

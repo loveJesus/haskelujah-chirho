@@ -15,6 +15,7 @@ pub(super) enum KindFamilyChirho {
     ClosedChirho {
         equations_chirho: Vec<(Vec<KindChirho>, KindChirho)>,
         injective_chirho: Vec<usize>,
+        source_rows_chirho: Vec<SpanChirho>,
     },
     OpenChirho {
         equations_chirho: CompatibleOpenRowsChirho<KindChirho>,
@@ -469,6 +470,7 @@ impl KindInferCtxChirho {
         let mut represented_inputs_chirho =
             binders_chirho.iter().all(TyVarChirho::is_visible_chirho);
         let mut rows_chirho = Vec::new();
+        let mut source_rows_chirho = Vec::new();
         for equation_chirho in equations_chirho {
             let Some(row_chirho) = self.check_family_equation_kinds_chirho(
                 &canonical_chirho,
@@ -517,6 +519,7 @@ impl KindInferCtxChirho {
                     .iter()
                     .all(|variable_chirho| bound_chirho.contains(variable_chirho));
                 rows_chirho.push((patterns_chirho, rhs_chirho));
+                source_rows_chirho.push(equation_chirho.span_chirho);
             }
         }
         if !represented_inputs_chirho
@@ -536,6 +539,7 @@ impl KindInferCtxChirho {
                     let KindFamilyChirho::ClosedChirho {
                         equations_chirho,
                         injective_chirho,
+                        ..
                     } = self.kind_families_chirho.get(head_chirho)?
                     else {
                         return None;
@@ -557,6 +561,7 @@ impl KindInferCtxChirho {
             KindFamilyChirho::ClosedChirho {
                 equations_chirho: rows_chirho,
                 injective_chirho,
+                source_rows_chirho,
             },
         );
     }

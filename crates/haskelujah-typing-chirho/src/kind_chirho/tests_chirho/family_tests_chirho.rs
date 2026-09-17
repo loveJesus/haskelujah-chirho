@@ -63,6 +63,7 @@ fn duplicating_family_reduction_reports_a_resource_limit_chirho() {
                 )),
             )],
             injective_chirho: Vec::new(),
+            source_rows_chirho: vec![SpanChirho::DUMMY_CHIRHO],
         },
     );
     assert!(matches!(
@@ -88,6 +89,7 @@ fn reducing_a_dependent_kind_preserves_outer_and_surviving_binders_chirho() {
         families_chirho::KindFamilyChirho::ClosedChirho {
             equations_chirho: vec![(vec![variable_chirho], KindChirho::StarChirho)],
             injective_chirho: Vec::new(),
+            source_rows_chirho: vec![SpanChirho::DUMMY_CHIRHO],
         },
     );
     for (index_chirho, erases_chirho) in [(1, true), (0, false)] {

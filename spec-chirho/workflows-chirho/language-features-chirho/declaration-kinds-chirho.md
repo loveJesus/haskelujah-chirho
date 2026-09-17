@@ -319,8 +319,9 @@ arguments is preserved, not disabled to compensate for missing patterns.
 ### Local closed families in kinds (isolated row484 continuation)
 
 Family results retain the optional kind, named result binder and dependency
-annotation together. An explicit closed flag distinguishes `where {}` from an
-open declaration. Equation patterns/results contribute dependency edges before
+annotation together. Exclusive open, defined-closed, abstract-closed and invalid
+body states distinguish `where {}` from an open declaration or `where ..`.
+Equation patterns/results contribute dependency edges before
 declarations are checked. Kind and type consumers adapt their terms to one
 ordered matcher: a blocked earlier row cannot select a later catch-all, and a
 stuck family is not nominally injective.
@@ -404,6 +405,42 @@ cannot make `Family a = Erase a` injective. GHC9.14.1 independently rejects that
 control and accepts its `Maybe a` counterpart. It also rejects forall types on
 either side of a family equation (GHC-91510); those are validity errors, not
 requests for capture-avoiding polymorphic family reduction.
+
+Closed-row overlap compares RHSs under one substitution, then compares the
+instantiated determining inputs. A conflicting later instance is unreachable
+only if some row in its whole strictly earlier prefix definitely matches those
+instantiated inputs. The covering row need not be the pair's partner; a later
+row never supplies coverage. A bare-variable RHS may follow earlier rows when
+these checks establish compatibility. Shared16384-node work accounting bounds
+validation, prefix search and substitution; exhaustion supplies no proof.
+
+Ordinary type inference now receives validated closed-family positions, tied
+to the ordered source-row occurrences that produced the proof. Inversion reads
+the source-local typed equation contract, not the merged imported reduction
+table. Omitted, reordered or different source rows, inconsistent hidden arity,
+and unknown matches return unproved. Source spans here identify occurrences
+within one frontend invocation; they are not defining-module/export identities.
+Only determining positions propose equalities, and tentative substitutions are
+committed only when forward normalization proves the original whole equality.
+The same ordered-prefix rule excludes unreachable inverse candidates. An absent
+or invalid annotation grants no improvement; non-determining arguments cannot
+be inferred merely because one row currently fits.
+
+```mermaid
+flowchart TD
+  CheckedRowsChirho[Checked source-local closed rows] --> InjectivityProofChirho[Bounded determining-variable and whole-prefix validation]
+  InjectivityProofChirho --> OrderedOriginsChirho[Positions plus ordered source-row occurrences]
+  OrderedOriginsChirho --> TypedBodyChirho[Require the same rows and one hidden-input layout]
+  TypedBodyChirho --> CandidateInverseChirho[Exclude unreachable rows and propose determining equalities]
+  CandidateInverseChirho --> WholeForwardCheckChirho[Forward normalize the original equality]
+  WholeForwardCheckChirho --> CommittedSubstitutionChirho[Commit only exact equality]
+```
+
+The21 independent GHC9.14.1 positive/negative source controls cover Bak/Foo/Bar,
+absent/invalid annotations, partial injectivity and contradictory consumers.
+They do not establish imported/open-family improvement, hidden-kind-dependent
+inversion, or family-to-family injective cancellation. T6018/T6018a still reach
+those unresolved consumers after their closed-row cases pass.
 
 A single covering equation may compose independently validated dependencies.
 Starting at its result, the proof walks nominal constructor arguments and only

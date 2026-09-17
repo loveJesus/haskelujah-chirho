@@ -1,0 +1,58 @@
+{
+  "source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/family-equations-chirho/closed-injectivity-chirho/counterparts-chirho/execution-chirho/main_chirho.hs",
+  "source_sha256_chirho": "d7efed194d364aa218787894429655c05b5d4791f4a1a589ef6de83e130b0be1",
+  "binary_sha256_chirho": "1f478b55aef03b87a00cae51fb62138e604903ad9fb7af5f2d99deef9da66bd1",
+  "records_chirho": [
+    {
+      "command_chirho": [
+        "ghc",
+        "--numeric-version"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "9.14.1\n",
+      "stderr_chirho": "",
+      "timed_out_chirho": false,
+      "elapsed_ms_chirho": 106
+    },
+    {
+      "command_chirho": [
+        "ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-outputdir",
+        "/var/folders/9j/dnrgxh0n7mq_ltr2y46yxd600000gn/T/haskelujah-closed-execution-chirho-Owh1n8",
+        "-o",
+        "/var/folders/9j/dnrgxh0n7mq_ltr2y46yxd600000gn/T/haskelujah-closed-execution-chirho-Owh1n8/reference-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/family-equations-chirho/closed-injectivity-chirho/counterparts-chirho/execution-chirho/main_chirho.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "",
+      "stderr_chirho": "",
+      "timed_out_chirho": false,
+      "elapsed_ms_chirho": 680
+    },
+    {
+      "command_chirho": [
+        "/var/folders/9j/dnrgxh0n7mq_ltr2y46yxd600000gn/T/haskelujah-closed-execution-chirho-Owh1n8/reference-chirho"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "'c'\n1.0\n()\n",
+      "stderr_chirho": "",
+      "timed_out_chirho": false,
+      "elapsed_ms_chirho": 321
+    },
+    {
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "run",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/family-equations-chirho/closed-injectivity-chirho/counterparts-chirho/execution-chirho/main_chirho.hs"
+      ],
+      "exit_chirho": 0,
+      "stdout_chirho": "'c'\n1.0\n()\n",
+      "stderr_chirho": "",
+      "timed_out_chirho": false,
+      "elapsed_ms_chirho": 932
+    }
+  ],
+  "agrees_chirho": true
+}

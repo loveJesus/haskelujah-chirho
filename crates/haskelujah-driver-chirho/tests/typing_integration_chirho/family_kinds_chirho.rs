@@ -708,3 +708,282 @@ type family InterpChirho (codeChirho :: CodeChirho) = (resultChirho :: Type) | r
         "{error_chirho}"
     );
 }
+
+#[test]
+fn closed_injectivity_k0_bak_original_with_consumers_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bak a = r | r -> a where\n    Bak Int = Char\n    Bak Char = Int\n    Bak a = a\nbak :: Bak a -> Bak a\nbak x = x\nbakapp1 :: Char\nbakapp1 = bak 'c'\nbakapp2 :: Double\nbakapp2 = bak 1.0\nbakapp3 :: ()\nbakapp3 = bak ()\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_k1_bak_remove_covering_prior_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bak a = r | r -> a where\n    Bak Int = Char\n    Bak a = a\nbak :: Bak a -> Bak a\nbak x = x\nbakapp1 :: Char\nbakapp1 = bak 'c'\nbakapp2 :: Double\nbakapp2 = bak 1.0\nbakapp3 :: ()\nbakapp3 = bak ()\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("injectivity conflict"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_k2_bak_covering_made_disjoint_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bak a = r | r -> a where\n    Bak Int = Char\n    Bak Double = Int\n    Bak a = a\nbak :: Bak a -> Bak a\nbak x = x\nbakapp1 :: Char\nbakapp1 = bak 'c'\nbakapp2 :: Double\nbakapp2 = bak 1.0\nbakapp3 :: ()\nbakapp3 = bak ()\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("injectivity conflict"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_k3_bak_covering_moved_after_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bak a = r | r -> a where\n    Bak Int = Char\n    Bak a = a\n    Bak Char = Int\nbak :: Bak a -> Bak a\nbak x = x\nbakapp1 :: Char\nbakapp1 = bak 'c'\nbakapp2 :: Double\nbakapp2 = bak 1.0\nbakapp3 :: ()\nbakapp3 = bak ()\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("injectivity conflict"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_k4_bak_cover_in_prefix_not_partner_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bak a = r | r -> a where\n    Bak Char = Int\n    Bak Bool = Bool\n    Bak Int = Char\n    Bak a = a\nbak :: Bak a -> Bak a\nbak x = x\nbakapp1 :: Char\nbakapp1 = bak 'c'\nbakapp2 :: Double\nbakapp2 = bak 1.0\nbakapp3 :: ()\nbakapp3 = bak ()\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_k5_ghc_e2_catch_all_concrete_rhs_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies, DataKinds #-}\nmodule ProbeChirho where\ntype family E2 (a :: Bool) = r | r -> a where\n  E2 False = True\n  E2 True  = False\n  E2 a     = False\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho
+            .to_string()
+            .contains("injectivity loses a determining argument variable"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_f0_foo_original_with_consumers_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Foo a = r | r -> a where\n    Foo Int = Bool\n    Foo Bool = Int\n    Foo Bool = Bool\nfoo :: Foo a -> Foo a\nfoo x = x\nfooapp1 :: Bool\nfooapp1 = foo True\nfooRow2 :: Foo Bool\nfooRow2 = (1 :: Int)\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_f1_foo_remove_covering_prior_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Foo a = r | r -> a where\n    Foo Int = Bool\n    Foo Bool = Bool\nfoo :: Foo a -> Foo a\nfoo x = x\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("injectivity conflict"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_f2_foo_covering_made_disjoint_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Foo a = r | r -> a where\n    Foo Int = Bool\n    Foo Char = Int\n    Foo Bool = Bool\nfoo :: Foo a -> Foo a\nfoo x = x\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("injectivity conflict"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_f3_foo_covering_moved_after_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Foo a = r | r -> a where\n    Foo Int = Bool\n    Foo Bool = Bool\n    Foo Bool = Int\nfoo :: Foo a -> Foo a\nfoo x = x\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("injectivity conflict"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_f4_foo_consumer_of_unreachable_row_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Foo a = r | r -> a where\n    Foo Int = Bool\n    Foo Bool = Int\n    Foo Bool = Bool\nx :: Foo Bool\nx = True\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("type mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_b0_bar_original_with_consumers_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bar a = r | r -> a where\n    Bar Int = Bool\n    Bar Bool = Int\n    Bar Bool = Char\nbar :: Bar a -> Bar a\nbar x = x\nbarapp1 :: Bool\nbarapp1 = bar True\nbarapp2 :: Int\nbarapp2 = bar 1\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_b1_bar_remove_covering_prior_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bar a = r | r -> a where\n    Bar Int = Bool\n    Bar Bool = Char\nbar :: Bar a -> Bar a\nbar x = x\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_b3_bar_covering_moved_after_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bar a = r | r -> a where\n    Bar Int = Bool\n    Bar Bool = Char\n    Bar Bool = Int\nbar :: Bar a -> Bar a\nbar x = x\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_b4_ghc_failclosed2_consumer_of_unreachable_chirho() {
+    // Byte-identical independent GHC9.14.1 reference in closed-injectivity-chirho.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Bar a = r | r -> a where\n    Bar Int = Bool\n    Bar Bool = Int\n    Bar Bool = Char\nbar :: Bar a -> Bar a\nbar x = x\nbarapp :: Char\nbarapp = bar 'c'\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this mutation");
+    assert!(
+        error_chirho.to_string().contains("type mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_n1_no_annotation_consumer_chirho() {
+    // Unchanged independent GHC9.14.1 counterpart source.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Foo a where\n    Foo Int = Bool\n    Foo Bool = Int\nfoo :: Foo a -> Foo a\nfoo x = x\nx :: Bool\nx = foo True\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this counterexample");
+    assert!(
+        error_chirho.to_string().contains("type mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_n2_annotation_makes_it_accept_chirho() {
+    // Unchanged independent GHC9.14.1 counterpart source.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family Foo a = r | r -> a where\n    Foo Int = Bool\n    Foo Bool = Int\nfoo :: Foo a -> Foo a\nfoo x = x\nx :: Bool\nx = foo True\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_p1_partial_other_argument_fixed_chirho() {
+    // Unchanged independent GHC9.14.1 counterpart source.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family P a b = r | r -> a where\n    P Int Char = Bool\n    P Bool Int = Int\np :: P a Char -> P a Char\np x = x\ny :: Bool\ny = p True\n";
+    assert_compile_success_chirho("ProbeChirho.hs", source_chirho);
+}
+
+#[test]
+fn closed_injectivity_p2_partial_other_argument_ambiguous_chirho() {
+    // Unchanged independent GHC9.14.1 counterpart source.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family P a b = r | r -> a where\n    P Int Char = Bool\n    P Bool Int = Int\np :: P a b -> P a b\np x = x\ny :: Bool\ny = p True\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this counterexample");
+    assert!(
+        error_chirho.to_string().contains("type mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_p3_partial_contradicts_forward_reduction_chirho() {
+    // Unchanged independent GHC9.14.1 counterpart source.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family P a b = r | r -> a where\n    P Int Char = Bool\n    P Bool Int = Int\np :: P a Char -> P a Char\np x = x\nz :: Int\nz = p True\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this counterexample");
+    assert!(
+        error_chirho.to_string().contains("type mismatch"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn closed_injectivity_w1_refuted_annotation_declaration_chirho() {
+    // Unchanged independent GHC9.14.1 counterpart source.
+    let source_chirho = "{-# LANGUAGE TypeFamilyDependencies #-}\nmodule ProbeChirho where\ntype family W a = r | r -> a where\n    W Int = Bool\n    W Char = Bool\n";
+    let error_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "ProbeChirho.hs",
+    )
+    .map(|_| ())
+    .expect_err("the reference rejects this counterexample");
+    assert!(
+        error_chirho.to_string().contains("injectivity conflict"),
+        "{error_chirho}"
+    );
+}

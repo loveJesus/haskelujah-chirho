@@ -53,3 +53,74 @@ fn equation_contract_work_is_shared_and_exhaustion_is_unproved_chirho() {
     }
     assert!(equation_scheme_chirho(&deep_chirho, &mut 16_384).is_none());
 }
+
+#[test]
+fn inversion_requires_the_proofs_ordered_source_rows_chirho() {
+    use crate::kind_chirho::ClosedFamilyInjectivityChirho;
+    use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho};
+    let span_chirho = |offset_chirho| {
+        SpanChirho::new_chirho(
+            FileIdChirho::SYNTHETIC_CHIRHO,
+            ByteOffsetChirho::new_chirho(offset_chirho),
+            ByteOffsetChirho::new_chirho(offset_chirho + 1),
+        )
+    };
+    let source_rows_chirho = vec![span_chirho(1), span_chirho(2)];
+    let mut contracts_chirho = DeclarationContractsChirho::default();
+    contracts_chirho.families_chirho.insert(
+        "FChirho".into(),
+        FamilyContractChirho::ClosedChirho(
+            [("Int", "Bool"), ("Char", "Int")]
+                .into_iter()
+                .enumerate()
+                .map(
+                    |(index_chirho, (input_chirho, result_chirho))| FamilyEquationContractChirho {
+                        source_chirho: source_rows_chirho[index_chirho],
+                        scheme_chirho: equation_scheme_chirho(
+                            &TypeFamilyClauseChirho::ordinary_chirho(
+                                vec![TyChirho::ConChirho(input_chirho.into())],
+                                TyChirho::ConChirho(result_chirho.into()),
+                            ),
+                            &mut 16_384,
+                        )
+                        .unwrap(),
+                    },
+                )
+                .collect(),
+        ),
+    );
+    let mut proof_chirho = ClosedFamilyInjectivityChirho {
+        positions_chirho: vec![0],
+        source_rows_chirho,
+    };
+    let argument_chirho = TyChirho::VarChirho(TyVarChirho(100));
+    let invert_chirho = |proof_chirho: &ClosedFamilyInjectivityChirho| {
+        contracts_chirho.inverse_closed_family_chirho(
+            "FChirho",
+            &[(&argument_chirho, false)],
+            &TyChirho::bool_chirho(),
+            proof_chirho,
+            &|_| false,
+        )
+    };
+    assert_eq!(
+        invert_chirho(&proof_chirho),
+        Some(vec![(argument_chirho.clone(), TyChirho::int_chirho())])
+    );
+    proof_chirho.source_rows_chirho.reverse();
+    assert!(
+        invert_chirho(&proof_chirho).is_none(),
+        "a reordered row list is not the validated body"
+    );
+    proof_chirho.source_rows_chirho.reverse();
+    proof_chirho.source_rows_chirho.pop();
+    assert!(
+        invert_chirho(&proof_chirho).is_none(),
+        "an omitted row is not the validated body"
+    );
+    proof_chirho.source_rows_chirho.push(span_chirho(3));
+    assert!(
+        invert_chirho(&proof_chirho).is_none(),
+        "another source row is not the validated body"
+    );
+}

@@ -1679,6 +1679,11 @@ impl InferCtxChirho {
             }
             _ => {}
         }
+        if let Some(substitution_chirho) =
+            self.improve_closed_family_equality_chirho(&n1_chirho, &n2_chirho, span_chirho)
+        {
+            return Ok(substitution_chirho);
+        }
         // A type-family application stuck on an unsolved variable cannot be
         // compared yet: defer the equality rather than report a mismatch
         // (`n ~ N t` before `t` is known). This must happen BEFORE any

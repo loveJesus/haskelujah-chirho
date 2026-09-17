@@ -25,6 +25,72 @@ impl TypeFamilyClauseChirho {
 }
 
 impl InferCtxChirho {
+    /// A validated closed-family dependency can determine arguments from a
+    /// result. Commit the tentative substitutions only if forward reduction
+    /// then proves the ORIGINAL equality; a row-local variable cannot escape.
+    pub(super) fn improve_closed_family_equality_chirho(
+        &self,
+        left_chirho: &TyChirho,
+        right_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Option<SubstChirho> {
+        let elaboration_chirho = self.kind_elaboration_chirho.as_ref()?;
+        for (application_chirho, result_chirho) in
+            [(left_chirho, right_chirho), (right_chirho, left_chirho)]
+        {
+            let (head_chirho, arguments_chirho) =
+                family_application_spine_chirho(application_chirho);
+            let TyChirho::ConChirho(name_chirho) = head_chirho else {
+                continue;
+            };
+            if self.is_known_nominal_name_chirho(name_chirho) {
+                continue;
+            }
+            let Some(positions_chirho) = elaboration_chirho
+                .closed_family_injectivity_chirho
+                .get(name_chirho)
+            else {
+                continue;
+            };
+            let Some(equalities_chirho) = self
+                .declaration_contracts_chirho
+                .inverse_closed_family_chirho(
+                    name_chirho,
+                    &arguments_chirho,
+                    result_chirho,
+                    positions_chirho,
+                    &|name_chirho| self.type_families_chirho.contains_key(name_chirho),
+                )
+            else {
+                continue;
+            };
+            let mut substitution_chirho = SubstChirho::empty_chirho();
+            let mut failed_chirho = false;
+            for (argument_chirho, determined_chirho) in equalities_chirho {
+                match unify_chirho(
+                    &substitution_chirho.apply_ty_chirho(&argument_chirho),
+                    &substitution_chirho.apply_ty_chirho(&determined_chirho),
+                    span_chirho,
+                ) {
+                    Ok(next_chirho) => {
+                        substitution_chirho = next_chirho.compose_chirho(&substitution_chirho)
+                    }
+                    Err(_) => {
+                        failed_chirho = true;
+                        break;
+                    }
+                }
+            }
+            if !failed_chirho
+                && self.normalize_ty_chirho(&substitution_chirho.apply_ty_chirho(left_chirho))
+                    == self.normalize_ty_chirho(&substitution_chirho.apply_ty_chirho(right_chirho))
+            {
+                return Some(substitution_chirho);
+            }
+        }
+        None
+    }
+
     pub(super) fn reduce_type_family_application_chirho(
         &self,
         name_chirho: &str,

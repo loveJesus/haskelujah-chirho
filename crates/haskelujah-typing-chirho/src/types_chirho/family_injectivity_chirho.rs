@@ -3,7 +3,9 @@
 //! A written dependency is not evidence until its equations validate it.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
-use super::{FamilyMatchChirho, FamilyTermChirho, match_pattern_chirho};
+use super::{
+    FamilyMatchChirho, FamilyTermChirho, match_pattern_chirho, matching_input_fits_chirho,
+};
 use std::collections::{HashMap, HashSet};
 
 fn variables_chirho<TermChirho: FamilyTermChirho>(
@@ -49,6 +51,11 @@ pub(crate) fn validate_injectivity_chirho<'proof_chirho, TermChirho: FamilyTermC
 ) -> Result<bool, &'static str> {
     let mut budget_chirho = 16_384;
     for (patterns_chirho, result_chirho) in equations_chirho {
+        for term_chirho in patterns_chirho.iter().chain([result_chirho]) {
+            if !matching_input_fits_chirho(term_chirho, &mut budget_chirho) {
+                return Ok(false);
+            }
+        }
         let mut pending_chirho: Vec<_> = patterns_chirho.iter().chain([result_chirho]).collect();
         while let Some(term_chirho) = pending_chirho.pop() {
             if term_chirho.unknown_chirho() && term_chirho.variable_chirho().is_none() {
@@ -103,12 +110,11 @@ pub(crate) fn validate_injectivity_chirho<'proof_chirho, TermChirho: FamilyTermC
                 .iter()
                 .map(FamilyTermChirho::variable_chirho)
                 .collect();
-            if equations_chirho.len() != 1
-                || bare_chirho
-                    .is_none_or(|variables_chirho| variables_chirho.len() != patterns_chirho.len())
+            if bare_chirho
+                .is_none_or(|variables_chirho| variables_chirho.len() != patterns_chirho.len())
             {
                 return Err(
-                    "injectivity with a bare result variable requires one covering equation",
+                    "injectivity with a bare result variable requires covering variable patterns",
                 );
             }
         }
@@ -138,31 +144,41 @@ pub(crate) fn validate_injectivity_chirho<'proof_chirho, TermChirho: FamilyTermC
             let Some(bindings_chirho) = bindings_chirho else {
                 continue;
             };
-            let compatible_chirho = injective_chirho.iter().all(|&index_chirho| {
-                earlier_patterns_chirho
-                    .get(index_chirho)
-                    .zip(later_patterns_chirho.get(index_chirho))
-                    .is_some_and(|(earlier_chirho, later_chirho)| {
-                        earlier_chirho.substitute_chirho(&bindings_chirho)
-                            == later_chirho.substitute_chirho(&bindings_chirho)
+            let instantiate_chirho = |patterns_chirho: &[TermChirho], budget_chirho: &mut usize| {
+                patterns_chirho
+                    .iter()
+                    .map(|pattern_chirho| {
+                        pattern_chirho.substitute_bounded_chirho(&bindings_chirho, budget_chirho)
                     })
+                    .collect::<Option<Vec<_>>>()
+            };
+            let Some(earlier_chirho) =
+                instantiate_chirho(earlier_patterns_chirho, &mut budget_chirho)
+            else {
+                return Ok(false);
+            };
+            let Some(later_chirho) = instantiate_chirho(later_patterns_chirho, &mut budget_chirho)
+            else {
+                return Ok(false);
+            };
+            let compatible_chirho = injective_chirho.iter().all(|&index_chirho| {
+                earlier_chirho
+                    .get(index_chirho)
+                    .zip(later_chirho.get(index_chirho))
+                    .is_some_and(|(earlier_chirho, later_chirho)| earlier_chirho == later_chirho)
             });
             if !compatible_chirho {
-                // A later closed equation already covered by an earlier one
-                // cannot supply a contradictory result at any call site.
-                let mut covering_chirho = HashMap::new();
-                let covered_chirho = earlier_patterns_chirho.len() == later_patterns_chirho.len()
-                    && earlier_patterns_chirho
-                        .iter()
-                        .zip(later_patterns_chirho)
-                        .all(|(earlier_chirho, later_chirho)| {
-                            match_pattern_chirho(
-                                earlier_chirho,
-                                later_chirho,
-                                &mut covering_chirho,
-                                family_chirho,
-                            ) == FamilyMatchChirho::MatchedChirho
-                        });
+                // Check the conflicting INSTANCE of the later LHS against the
+                // whole earlier prefix. The covering row need not be this pair's
+                // partner, and a row after the later one cannot justify it.
+                let Some(covered_chirho) = covered_by_prefix_chirho(
+                    &equations_chirho[..later_index_chirho],
+                    &later_chirho,
+                    family_chirho,
+                    &mut budget_chirho,
+                ) else {
+                    return Ok(false);
+                };
                 if !covered_chirho {
                     return Err(
                         "injectivity conflict: equal results do not determine equal arguments",
@@ -172,6 +188,46 @@ pub(crate) fn validate_injectivity_chirho<'proof_chirho, TermChirho: FamilyTermC
         }
     }
     Ok(true)
+}
+
+/// A source-ordered prefix excludes a later row only by a definite match.
+/// The caller supplies RHS-instantiated inputs; prefix patterns keep their own
+/// row-local variables. The shared budget bounds prefix scans and binding clones.
+fn covered_by_prefix_chirho<TermChirho: FamilyTermChirho>(
+    prefix_chirho: &[(Vec<TermChirho>, TermChirho)],
+    arguments_chirho: &[TermChirho],
+    family_chirho: &impl Fn(&str) -> bool,
+    budget_chirho: &mut usize,
+) -> Option<bool> {
+    for (patterns_chirho, _) in prefix_chirho {
+        *budget_chirho = budget_chirho.checked_sub(1)?;
+        if patterns_chirho.len() != arguments_chirho.len() {
+            continue;
+        }
+        let mut bindings_chirho = HashMap::new();
+        let mut covered_chirho = true;
+        for (pattern_chirho, argument_chirho) in patterns_chirho.iter().zip(arguments_chirho) {
+            if !matching_input_fits_chirho(pattern_chirho, budget_chirho)
+                || !matching_input_fits_chirho(argument_chirho, budget_chirho)
+            {
+                return None;
+            }
+            if match_pattern_chirho(
+                pattern_chirho,
+                argument_chirho,
+                &mut bindings_chirho,
+                family_chirho,
+            ) != FamilyMatchChirho::MatchedChirho
+            {
+                covered_chirho = false;
+                break;
+            }
+        }
+        if covered_chirho {
+            return Some(true);
+        }
+    }
+    Some(false)
 }
 
 /// A family result does not expose every variable written inside it. Follow
@@ -228,8 +284,12 @@ fn unify_results_chirho<TermChirho: FamilyTermChirho>(
             return Err("injectivity verification exceeded its equation-work limit");
         }
         *budget_chirho -= 1;
-        let left_chirho = left_chirho.substitute_chirho(&bindings_chirho);
-        let right_chirho = right_chirho.substitute_chirho(&bindings_chirho);
+        let left_chirho = left_chirho
+            .substitute_bounded_chirho(&bindings_chirho, budget_chirho)
+            .ok_or("injectivity substitution exceeded its work limit")?;
+        let right_chirho = right_chirho
+            .substitute_bounded_chirho(&bindings_chirho, budget_chirho)
+            .ok_or("injectivity substitution exceeded its work limit")?;
         if left_chirho == right_chirho {
             continue;
         }
@@ -247,7 +307,9 @@ fn unify_results_chirho<TermChirho: FamilyTermChirho>(
             }
             let single_chirho = HashMap::from([(variable_chirho.clone(), value_chirho.clone())]);
             for previous_chirho in bindings_chirho.values_mut() {
-                *previous_chirho = previous_chirho.substitute_chirho(&single_chirho);
+                *previous_chirho = previous_chirho
+                    .substitute_bounded_chirho(&single_chirho, budget_chirho)
+                    .ok_or("injectivity substitution exceeded its work limit")?;
             }
             bindings_chirho.insert(variable_chirho, value_chirho.clone());
             continue;
@@ -279,8 +341,14 @@ pub(crate) fn inverse_equations_chirho<TermChirho: FamilyTermChirho>(
     family_chirho: &impl Fn(&str) -> bool,
 ) -> Option<Vec<(TermChirho, TermChirho)>> {
     let mut selected_chirho: Option<Vec<(TermChirho, TermChirho)>> = None;
-    for (patterns_chirho, rhs_chirho) in equations_chirho {
+    let mut budget_chirho = 16_384;
+    for (index_chirho, (patterns_chirho, rhs_chirho)) in equations_chirho.iter().enumerate() {
         if patterns_chirho.len() != arguments_chirho.len() {
+            return None;
+        }
+        if !matching_input_fits_chirho(rhs_chirho, &mut budget_chirho)
+            || !matching_input_fits_chirho(result_chirho, &mut budget_chirho)
+        {
             return None;
         }
         let mut bindings_chirho = HashMap::new();
@@ -294,7 +362,26 @@ pub(crate) fn inverse_equations_chirho<TermChirho: FamilyTermChirho>(
             FamilyMatchChirho::StuckChirho => return None,
             FamilyMatchChirho::MatchedChirho => {}
         }
+        let instantiated_chirho = patterns_chirho
+            .iter()
+            .map(|pattern_chirho| {
+                pattern_chirho.substitute_bounded_chirho(&bindings_chirho, &mut budget_chirho)
+            })
+            .collect::<Option<Vec<_>>>()?;
+        if covered_by_prefix_chirho(
+            &equations_chirho[..index_chirho],
+            &instantiated_chirho,
+            family_chirho,
+            &mut budget_chirho,
+        )? {
+            continue;
+        }
         let mut argument_bindings_chirho = HashMap::new();
+        for term_chirho in patterns_chirho.iter().chain(arguments_chirho) {
+            if !matching_input_fits_chirho(term_chirho, &mut budget_chirho) {
+                return None;
+            }
+        }
         if patterns_chirho
             .iter()
             .zip(arguments_chirho)
@@ -312,12 +399,12 @@ pub(crate) fn inverse_equations_chirho<TermChirho: FamilyTermChirho>(
         let equalities_chirho: Vec<_> = injective_chirho
             .iter()
             .map(|&index_chirho| {
-                (
-                    arguments_chirho[index_chirho].clone(),
-                    patterns_chirho[index_chirho].substitute_chirho(&bindings_chirho),
-                )
+                Some((
+                    arguments_chirho.get(index_chirho)?.clone(),
+                    instantiated_chirho.get(index_chirho)?.clone(),
+                ))
             })
-            .collect();
+            .collect::<Option<_>>()?;
         if selected_chirho
             .as_ref()
             .is_some_and(|previous_chirho| previous_chirho != &equalities_chirho)

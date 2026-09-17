@@ -12,7 +12,13 @@ mod tests_chirho;
 pub(super) enum FamilyContractChirho {
     OpenChirho,
     AbstractClosedChirho,
-    ClosedChirho(Vec<SchemeChirho>),
+    ClosedChirho(Vec<FamilyEquationContractChirho>),
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct FamilyEquationContractChirho {
+    source_chirho: SpanChirho,
+    scheme_chirho: SchemeChirho,
 }
 
 /// Equation variables are implicitly quantified in occurrence order, not by
@@ -74,6 +80,97 @@ fn equation_scheme_chirho(
 }
 
 impl DeclarationContractsChirho {
+    /// Inversion reads the source-local body that was checked, never the merged
+    /// reduction inventory. The supplied positions come from the kind checker,
+    /// not the written dependency annotation. Hidden inputs retain their slots.
+    pub(in crate::infer_chirho) fn inverse_closed_family_chirho(
+        &self,
+        name_chirho: &str,
+        arguments_chirho: &[(&TyChirho, bool)],
+        result_chirho: &TyChirho,
+        proof_chirho: &crate::kind_chirho::ClosedFamilyInjectivityChirho,
+        family_chirho: &impl Fn(&str) -> bool,
+    ) -> Option<Vec<(TyChirho, TyChirho)>> {
+        use crate::families_chirho::FamilyTermChirho;
+        let FamilyContractChirho::ClosedChirho(schemes_chirho) =
+            self.families_chirho.get(name_chirho)?
+        else {
+            return None;
+        };
+        if !schemes_chirho
+            .iter()
+            .map(|row_chirho| row_chirho.source_chirho)
+            .eq(proof_chirho.source_rows_chirho.iter().copied())
+        {
+            return None;
+        }
+        let injective_chirho = &proof_chirho.positions_chirho;
+        let mut budget_chirho = 16_384;
+        let empty_chirho = HashMap::new();
+        let mut rows_chirho = Vec::new();
+        let mut positions_chirho = None;
+        let mut hidden_arity_chirho = None;
+        for row_chirho in schemes_chirho {
+            let TyChirho::TupleChirho(parts_chirho) = &row_chirho.scheme_chirho.ty_chirho else {
+                return None;
+            };
+            let [
+                TyChirho::TupleChirho(hidden_chirho),
+                TyChirho::TupleChirho(visible_chirho),
+                rhs_chirho,
+            ] = parts_chirho.as_slice()
+            else {
+                return None;
+            };
+            if hidden_arity_chirho.is_some_and(|arity_chirho| arity_chirho != hidden_chirho.len()) {
+                return None;
+            }
+            hidden_arity_chirho = Some(hidden_chirho.len());
+            if arguments_chirho.len() != hidden_chirho.len() + visible_chirho.len()
+                || arguments_chirho.iter().enumerate().any(
+                    |(index_chirho, (_, hidden_argument_chirho))| {
+                        *hidden_argument_chirho != (index_chirho < hidden_chirho.len())
+                    },
+                )
+                || injective_chirho
+                    .iter()
+                    .any(|index_chirho| *index_chirho >= visible_chirho.len())
+            {
+                return None;
+            }
+            positions_chirho = Some(
+                injective_chirho
+                    .iter()
+                    .map(|index_chirho| hidden_chirho.len() + index_chirho)
+                    .collect::<Vec<_>>(),
+            );
+            let inputs_chirho = hidden_chirho
+                .iter()
+                .chain(visible_chirho)
+                .map(|term_chirho| {
+                    term_chirho.substitute_bounded_chirho(&empty_chirho, &mut budget_chirho)
+                })
+                .collect::<Option<Vec<_>>>()?;
+            rows_chirho.push((
+                inputs_chirho,
+                rhs_chirho.substitute_bounded_chirho(&empty_chirho, &mut budget_chirho)?,
+            ));
+        }
+        let arguments_chirho = arguments_chirho
+            .iter()
+            .map(|(term_chirho, _)| {
+                term_chirho.substitute_bounded_chirho(&empty_chirho, &mut budget_chirho)
+            })
+            .collect::<Option<Vec<_>>>()?;
+        crate::families_chirho::family_injectivity_chirho::inverse_equations_chirho(
+            &rows_chirho,
+            &arguments_chirho,
+            result_chirho,
+            &positions_chirho?,
+            family_chirho,
+        )
+    }
+
     pub(in crate::infer_chirho) fn record_family_chirho(
         &mut self,
         name_chirho: &str,
@@ -95,8 +192,15 @@ impl DeclarationContractsChirho {
                 let mut budget_chirho = 16_384;
                 let rows_chirho = equations_chirho
                     .iter()
-                    .map(|equation_chirho| {
-                        equation_scheme_chirho(equation_chirho, &mut budget_chirho)
+                    .zip(source_chirho)
+                    .map(|(equation_chirho, source_chirho)| {
+                        Some(FamilyEquationContractChirho {
+                            source_chirho: source_chirho.span_chirho,
+                            scheme_chirho: equation_scheme_chirho(
+                                equation_chirho,
+                                &mut budget_chirho,
+                            )?,
+                        })
                     })
                     .collect::<Option<Vec<_>>>()
                     .ok_or("family equation contract is unproved or exceeds its work bound")?;
@@ -130,7 +234,9 @@ impl DeclarationContractsChirho {
                 expected_chirho.len() == actual_chirho.len()
                     && expected_chirho.iter().zip(actual_chirho).all(
                         |(expected_chirho, actual_chirho)| {
-                            expected_chirho.alpha_equivalent_chirho(actual_chirho)
+                            expected_chirho
+                                .scheme_chirho
+                                .alpha_equivalent_chirho(&actual_chirho.scheme_chirho)
                         },
                     )
             }
