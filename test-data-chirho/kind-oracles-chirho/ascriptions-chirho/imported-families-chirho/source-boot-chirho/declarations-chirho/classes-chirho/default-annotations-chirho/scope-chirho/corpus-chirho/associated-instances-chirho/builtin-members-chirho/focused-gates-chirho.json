@@ -1,0 +1,34 @@
+{
+  "purpose_chirho": "Builtin member scope control, not live package or corpus proof",
+  "parent_chirho": "f765349d",
+  "source_reference_chirho": "reference-chirho.jsonl",
+  "ghc_cases_chirho": 10,
+  "byte_identical_test_sources_chirho": 10,
+  "before_chirho": {
+    "chunk_id": "0c3818",
+    "wall_time_seconds": 0.000006834,
+    "exit_code": 101,
+    "original_token_count": 389,
+    "output": "   Compiling haskelujah-test-harness v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-test-harness-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.37s\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-15cb8906ab671603)\n\nrunning 1 test\n\nthread 'import_contracts_chirho::builtin_members_chirho::generic_associated_members_follow_import_selection_chirho' (93762846) panicked at crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/builtin_members_chirho.rs:126:5:\nall_members_chirho: error[E0101]: type not in scope: `Rep` (at 250..253)\n  note: did you mean `Read` or `Real`?\nall_higher_members_chirho: error[E0101]: type not in scope: `Rep1` (at 251..255)\n  note: did you mean `Read` or `Real`?\nhidden_members_chirho: wrongly accepted\nqualified_members_chirho: error[E0101]: type not in scope: `GChirho.Rep` (at 271..282)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest import_contracts_chirho::builtin_members_chirho::generic_associated_members_follow_import_selection_chirho ... FAILED\n\nfailures:\n\nfailures:\n    import_contracts_chirho::builtin_members_chirho::generic_associated_members_follow_import_selection_chirho\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 434 filtered out; finished in 0.18s\n\nerror: test failed, to rerun pass `-p haskelujah-driver --test typing_integration_chirho`\n"
+  },
+  "after_chirho": {
+    "chunk_id": "089549",
+    "wall_time_seconds": 0.0000015,
+    "exit_code": 0,
+    "original_token_count": 206,
+    "output": "   Compiling haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n   Compiling haskelujah-test-harness v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-test-harness-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.19s\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-15cb8906ab671603)\n\nrunning 1 test\ntest import_contracts_chirho::builtin_members_chirho::generic_associated_members_follow_import_selection_chirho ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 434 filtered out; finished in 0.23s\n\n"
+  },
+  "naming_chirho": {
+    "passed_chirho": 138,
+    "failed_chirho": 0,
+    "ignored_chirho": 0,
+    "filtered_chirho": 0
+  },
+  "clippy_chirho": {
+    "exit_code_chirho": 0,
+    "warning_messages_chirho": 399,
+    "new_line_warnings_chirho": [],
+    "stderr_chirho": "    Checking haskelujah-naming v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-naming-chirho)\n    Checking haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n    Checking haskelujah-test-harness v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-test-harness-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.53s\n"
+  },
+  "hold_chirho": "Live optional-package and broad/corpus gates held for Claude's landing measurement started2026-09-18 13:20EDT"
+}

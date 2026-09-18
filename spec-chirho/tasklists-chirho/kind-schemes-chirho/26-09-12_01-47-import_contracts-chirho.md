@@ -593,7 +593,7 @@ positive implicit-kind and independent-binder cases before selecting the scope.
   naming ownership and kind rigidity without weakening the positive controls.
 - [ ] Run focused and broader gates proportional to the changed paths; freeze
   source/CLI provenance and inspect corpus set changes before any landing claim.
-- [ ] Commit and push only owned paths with current runtime identity. Main,
+- [x] Commit and push only owned paths with current runtime identity. Main,
   public measurements and canonical row484 stay unchanged until final gates.
 
 The expanded12-case GHC9.14.1 matrix refuted four predictions and the parent's
@@ -713,3 +713,34 @@ the failure assertion uses expect_err, and reference cases have a named type.
 The final structured diagnostic scan finds no primary warning span overlapping
 this checkpoint's added/changed lines; that is narrower than zero warning debt.
 Main, public artifacts, canonical DB and the final broad/two-pass gates remain held.
+
+### Builtin member inventory follow-up
+
+Checkpoint7059976f is pushed and remote-exact. Claude's equality repair67880440
+is carried asf765349d; only the test import's required source_chirho:false field
+was added for this branch. Naming138/138 passes, including the nine-row equality
+table. The initial short-name --exact command selected zero tests; the full
+naming run, not that invocation, supplies the evidence.
+
+The separate Rep failure is an incomplete builtin interface, not a default-scope
+exemption: GHC.Generics exposes Rep and Rep1 but lacked the Generic/Generic1
+parent-member links consumed by Class(..) selection and hiding. Ten exact
+sources independently run on GHC9.14.1 confirm all predictions. The checkpoint
+CLI disagrees on four: three valid all-member imports reject, and hiding the
+members incorrectly leaves Rep visible. The new parameterized driver control
+reproduces all four disagreements before the two inventory registrations;
+afterwards all ten agree (one test,434 filtered). Bare-class and method-only
+imports remain rejected for the missing family. The retained reference sources
+and Rust fixture match byte-for-byte.
+
+- [x] Preserve the ten reference/parent observations and demonstrate the control red.
+- [x] Repair the defining builtin inventory; focused control and naming138 pass.
+- [ ] Rerun the LIVE optional package gate and broader gates after Claude's
+ 13:20 EDT corpus hold ends. Neither the import control nor naming proves the
+ package build; no package recovery is claimed while the gate is pending.
+- [ ] Checkpoint/push the import repair with its evidence, without touching main.
+
+Evidence is in the sibling builtin-members-chirho leaf under
+scope-chirho/corpus-chirho/associated-instances-chirho. Claude's landing runs
+hold heavy builds/full driver/corpora; only the small -j1 import/naming checks
+are run here during that interval.

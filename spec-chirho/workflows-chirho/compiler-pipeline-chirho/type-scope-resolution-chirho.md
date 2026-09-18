@@ -99,6 +99,16 @@ flowchart TD
 
 The walker performs no filesystem lookup or module scanning. Its successful-resolution path is linear in the lowered AST with hash-backed namespace lookups; the error-only suggestion path compares against the already-populated in-memory environment, and duplicate diagnostics are suppressed by issue/name/span.
 
+Builtin interfaces need the same class-member inventory as checked source
+interfaces: GHC.Generics links Generic to Rep and Generic1 to Rep1. A standalone
+type export is not sufficient for Class(..) imports or hiding. The normal
+selection/removal path consumes these links; bare-class and method-only imports
+do not acquire the family, and qualified imports keep their qualifier. Ten
+GHC9.14.1 source controls include both the formerly rejected imports and the
+formerly accepted hidden-member use. Qualified heterogeneous equality likewise
+uses the module's ordinary exports; homogeneous equality retains the separately
+measured GHC qualified-spelling behavior.
+
 An associated-family default temporarily replaces the class lexical scope with
 its own LHS binders, including variables in written kind annotations. The RHS
 cannot borrow a class type parameter or an unwritten class kind name. Restoring

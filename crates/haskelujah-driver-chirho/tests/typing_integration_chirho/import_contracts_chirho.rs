@@ -9,6 +9,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 mod associated_indices_chirho;
 #[path = "import_contracts_chirho/associated_syntax_chirho.rs"]
 mod associated_syntax_chirho;
+#[path = "import_contracts_chirho/builtin_members_chirho.rs"]
+mod builtin_members_chirho;
 #[path = "import_contracts_chirho/default_scopes_chirho.rs"]
 mod default_scopes_chirho;
 

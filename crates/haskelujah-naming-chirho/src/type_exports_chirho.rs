@@ -303,6 +303,11 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
                 }
             }
             "GHC.Generics" => {
+                // Class(..) imports and hiding use the parent-member inventory,
+                // not the presence of a standalone type export with this name.
+                // Workflow: compiler-pipeline-chirho/type-scope-resolution-chirho.
+                ensure_associated_type_export_chirho(module_chirho, "Generic", "Rep");
+                ensure_associated_type_export_chirho(module_chirho, "Generic1", "Rep1");
                 ensure_type_export_chirho(module_chirho, "Generically", &["Generically"]);
                 ensure_type_export_chirho(module_chirho, "NoSelector", &[]);
             }
