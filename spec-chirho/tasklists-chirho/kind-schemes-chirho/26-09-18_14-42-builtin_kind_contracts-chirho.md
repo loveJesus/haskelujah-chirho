@@ -32,7 +32,7 @@ state. No new dependency or environment representation is needed.
  only if those measurements support the hypothesis.
 - [x] Verify fresh references/corpus input, focused frontend/library controls,
  format and changed-line lint; retain all failures and scope limits.
-- [ ] Commit and push owned evidence/code/docs with remote-tip verification.
+- [x] Commit and push owned evidence/code/docs with remote-tip verification.
 - [ ] Repair the remaining corpus failures and run the lane's full final gates;
  no main landing, denominator/label change or canonical DB closure beforehand.
 
@@ -80,3 +80,38 @@ contains exact source graphs, source hashes, GHC/baseline observations, fresh CL
 replay and focused gate receipts. No complete corpus pass or full driver suite
 was rerun for this bounded checkpoint. Next: reduce the remaining associated
 family failures, then remeasure the complete gate before any landing request.
+
+Checkpoint7834a2ce0b1a0f50572a7829b18293f0f6a0c9fe is pushed to
+gh_chirho/gpt-kind-schemes-chirho; ls-remote confirms the exact tip. The cache
+link remains untracked. Main6db522ad and canonical DB remain untouched.
+
+## Next reduction
+
+- [x] Reduce ClassDefaultInHsBootA2 through the real imported associated-family
+ equation path. Capture GHC and immutable-CLI verdicts before changing code.
+- [ ] Trace checked kind applications and typing equation schemes together;
+ preserve hidden binders and module ownership rather than dropping evidence.
+- [ ] Demonstrate positive and contradictory main-path controls red/green,
+ then replay all related corpus inputs and the focused suite.
+
+The three ClassDefaultInHsBoot failures currently share A2's explicit
+`type T I = ()` / `def = ()` mismatch against `((T @t1) I)`. That is a reduction
+lead, not proof that the hidden slot itself is wrong. T11754 and T14441 remain
+separate until evidence joins them. Claude2 may reduce T11754 read-only with
+the immutable7b11cea6 CLI while this branch owns the imported-family repair.
+
+Eight GHC9.14.1 graphs now retained under the sibling associated-methods-chirho
+evidence leaf. All predictions held; four valid cases fail7b11cea6: inferred
+local/imported class kind, explicitly poly-kinded class, and no class default.
+An explicitly Type-kinded class passes, as does a value signature using the
+same imported equation. Contradictory method result still rejects. The static
+method instantiator substitutes ordinary class variables but freshens every
+remaining method variable independently; it retains no link from the parameter
+classifier to the method's hidden kind slot. That is the next representation
+question to settle, not authority to erase a hidden input or weaken reduction.
+
+Claude2's T11754 reduction meanwhile distinguishes Unicode-bearing infix data
+constructors from ASCII/prefix controls. Reading finds lex_operator_chirho's
+continuation restricted to ASCII bytes. Verify the actual token sequence before
+editing. A coherent lexer repair belongs in shared symbol classification and
+maximal-munch scanning, not a special case in associated-family checking.
