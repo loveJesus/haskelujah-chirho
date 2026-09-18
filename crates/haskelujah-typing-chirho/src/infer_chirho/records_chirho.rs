@@ -36,6 +36,25 @@ pub(super) fn con_decl_name_chirho(
 }
 
 impl InferCtxChirho {
+    /// The constructor spine already supplies the next field's expected type.
+    /// Give it to lambda checking before inference can monomorphize a rank-n
+    /// parameter. Unknown imported spines retain ordinary inference.
+    /// Workflow: language-features-chirho/rank-n-visible-type-application-chirho.
+    pub(super) fn infer_record_constructor_field_chirho(
+        &mut self,
+        value_chirho: &ExprChirho,
+        constructor_ty_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> (SubstChirho, TyChirho) {
+        let normalized_chirho = self.normalize_ty_chirho(constructor_ty_chirho);
+        let opened_chirho = self.open_constructor_forall_chirho(normalized_chirho);
+        if let TyChirho::FunChirho(field_ty_chirho, _, _) = opened_chirho {
+            self.infer_expr_against_expected_chirho(value_chirho, &field_ty_chirho, span_chirho)
+        } else {
+            self.infer_expr_chirho(value_chirho)
+        }
+    }
+
     /// Type-changing record update, as in Haskell 2010 §3.15.3: the input
     /// record and the result are two instantiations of the constructor's
     /// type; updated fields take their value's type in the result, and every
@@ -92,8 +111,12 @@ impl InferCtxChirho {
             });
             let unify_result_chirho = match assigned_chirho {
                 Some(field_chirho) => {
-                    let (value_subst_chirho, value_ty_chirho) =
-                        self.infer_expr_chirho(&field_chirho.value_chirho);
+                    let (value_subst_chirho, value_ty_chirho) = self
+                        .infer_expr_against_expected_chirho(
+                            &field_chirho.value_chirho,
+                            &out_ty_chirho,
+                            field_chirho.span_chirho,
+                        );
                     subst_chirho = value_subst_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&value_subst_chirho);
                     let out_ty_chirho = subst_chirho.apply_ty_chirho(&out_ty_chirho);
