@@ -646,7 +646,7 @@ impl DictPassCtxChirho {
     /// generates a top-level binding:
     /// ```text
     /// $fEqInt = $DictEq $prim_Eq_==_Int
-    /// $fNumInt = $DictNum $fEqInt $fShowInt $prim_Num_+_Int ...
+    /// $fNumInt = $DictNum $prim_Num_+_Int ... (Num has no superclass slots)
     /// ```
     pub fn generate_instance_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
         // Two-pass approach to avoid dict id mismatch from HashMap

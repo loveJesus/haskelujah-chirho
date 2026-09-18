@@ -1067,11 +1067,24 @@ mod tests_chirho {
         assert_eq!(ord_layout_chirho.method_slots_chirho[0].0, "compare");
         assert_eq!(ord_layout_chirho.field_count_chirho, 2);
 
-        // Num: 2 supers (Eq, Show), 7 methods (+, *, -, negate, fromInteger, abs, signum)
+        // Num: no supers (GHC dropped Eq and Show from Num in 7.4; the old
+        // expectation here encoded the Haskell 98 report, not GHC), 7 methods
+        // (+, *, -, negate, fromInteger, abs, signum)
         let num_layout_chirho = ctx_chirho.layouts_chirho.get("Num").unwrap();
-        assert_eq!(num_layout_chirho.super_slots_chirho.len(), 2);
+        assert_eq!(num_layout_chirho.super_slots_chirho.len(), 0);
         assert_eq!(num_layout_chirho.method_slots_chirho.len(), 7);
-        assert_eq!(num_layout_chirho.field_count_chirho, 9);
+        assert_eq!(num_layout_chirho.field_count_chirho, 7);
+
+        // Integral: GHC's two supers (Real, Enum)
+        let integral_layout_chirho = ctx_chirho.layouts_chirho.get("Integral").unwrap();
+        assert_eq!(
+            integral_layout_chirho
+                .super_slots_chirho
+                .iter()
+                .map(|(name_chirho, _)| name_chirho.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Real", "Enum"]
+        );
     }
 
     #[test]
@@ -1319,15 +1332,14 @@ mod tests_chirho {
 
         let result_chirho = ctx_chirho.add_dict_params_chirho(&binding_chirho, &scheme_chirho);
 
+        // GHC's chain: Integral => Real => Ord => Eq. Num is not on it.
         let rhs_debug_chirho = format!("{:#?}", result_chirho.rhs_chirho);
-        assert!(
-            rhs_debug_chirho.contains("name_chirho: \"$dNum\""),
-            "{rhs_debug_chirho}"
-        );
-        assert!(
-            rhs_debug_chirho.contains("name_chirho: \"$dEq\""),
-            "{rhs_debug_chirho}"
-        );
+        for dict_name_chirho in ["$dReal", "$dOrd", "$dEq"] {
+            assert!(
+                rhs_debug_chirho.contains(&format!("name_chirho: \"{dict_name_chirho}\"")),
+                "missing {dict_name_chirho}: {rhs_debug_chirho}"
+            );
+        }
     }
 
     #[test]

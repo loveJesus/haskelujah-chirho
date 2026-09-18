@@ -35,6 +35,7 @@ mod ast_conversion_chirho;
 mod ast_conversion_tests_chirho;
 mod equalities_chirho;
 mod evidence_chirho;
+mod instance_obligations_chirho;
 mod records_chirho;
 mod rigid_chirho;
 #[cfg(test)]
@@ -257,6 +258,9 @@ pub struct InferCtxChirho {
     /// is absent, and the record-update check stays silent for it.
     /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
     data_constructors_chirho: HashMap<String, Vec<String>>,
+    /// Instances declared by the module under inference, with their spans,
+    /// for the declaration-time obligations (duplicates, superclasses).
+    local_instances_chirho: Vec<instance_obligations_chirho::LocalInstanceChirho>,
     /// Positional constructors of this module with at least one strict
     /// argument: `C {}` on one omits a strict field (E0207, tcfail112).
     strict_positional_constructors_chirho: HashSet<String>,
@@ -640,6 +644,7 @@ impl InferCtxChirho {
             assoc_type_declared_params_chirho: HashMap::new(),
             tyvar_source_names_chirho: HashMap::new(),
             data_constructors_chirho: HashMap::new(),
+            local_instances_chirho: Vec::new(),
             strict_positional_constructors_chirho: HashSet::new(),
             con_strict_fields_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
@@ -2346,6 +2351,7 @@ impl InferCtxChirho {
             class_chirho,
             types_chirho,
             assoc_tf_instances_chirho,
+            span_chirho,
             ..
         } = decl_chirho
         {
@@ -2396,12 +2402,20 @@ impl InferCtxChirho {
                 .map(|t_chirho| self.expand_type_synonyms_chirho(&t_chirho))
                 .collect();
 
-            self.class_env_chirho.add_instance_chirho(InstDeclChirho {
+            let instance_chirho = InstDeclChirho {
                 class_name_chirho,
                 head_ty_chirho,
                 extra_head_tys_chirho,
                 context_chirho: inst_context_chirho,
-            });
+            };
+            // workflow: language-features-chirho/instance-obligations-chirho
+            self.local_instances_chirho
+                .push(instance_obligations_chirho::LocalInstanceChirho {
+                    instance_chirho: instance_chirho.clone(),
+                    nullary_chirho: types_chirho.is_empty(),
+                    span_chirho: *span_chirho,
+                });
+            self.class_env_chirho.add_instance_chirho(instance_chirho);
 
             // Register associated type family instances from this instance decl
             for atfi_chirho in assoc_tf_instances_chirho {
@@ -6153,6 +6167,8 @@ impl InferCtxChirho {
         for decl_chirho in &module_chirho.decls_chirho {
             self.process_instance_decl_chirho(decl_chirho);
         }
+        // workflow: language-features-chirho/instance-obligations-chirho
+        self.check_local_instance_obligations_chirho(module_chirho);
 
         // Phase 2: Bind data and newtype constructor types
         for decl_chirho in &module_chirho.decls_chirho {

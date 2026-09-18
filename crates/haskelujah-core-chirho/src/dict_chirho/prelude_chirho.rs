@@ -13509,7 +13509,7 @@ impl DictPassCtxChirho {
     /// generates a top-level binding:
     /// ```text
     /// $fEqInt = $DictEq $prim_Eq_==_Int
-    /// $fNumInt = $DictNum $fEqInt $fShowInt $prim_Num_+_Int ...
+    /// $fNumInt = $DictNum $prim_Num_+_Int ... (Num has no superclass slots)
     /// ```
 
     /// Generate Data.Maybe Prelude functions:

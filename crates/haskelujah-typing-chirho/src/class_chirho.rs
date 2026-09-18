@@ -416,6 +416,40 @@ impl ClassEnvChirho {
         }
     }
 
+    /// Two instances are duplicates when their heads are equal up to a
+    /// renaming of their own type variables (GHC-59692); contexts do not
+    /// distinguish them. Consistent matching in both directions: the second
+    /// direction makes the renaming injective.
+    /// workflow: language-features-chirho/instance-obligations-chirho
+    pub fn instance_heads_alpha_equal_chirho(
+        left_chirho: &InstDeclChirho,
+        right_chirho: &InstDeclChirho,
+    ) -> bool {
+        if left_chirho.class_name_chirho != right_chirho.class_name_chirho
+            || left_chirho.extra_head_tys_chirho.len() != right_chirho.extra_head_tys_chirho.len()
+        {
+            return false;
+        }
+        let heads_chirho = |inst_chirho: &InstDeclChirho| -> Vec<TyChirho> {
+            std::iter::once(inst_chirho.head_ty_chirho.clone())
+                .chain(inst_chirho.extra_head_tys_chirho.iter().cloned())
+                .collect()
+        };
+        let (left_heads_chirho, right_heads_chirho) =
+            (heads_chirho(left_chirho), heads_chirho(right_chirho));
+        let one_way_chirho = |patterns_chirho: &[TyChirho], targets_chirho: &[TyChirho]| {
+            let mut bindings_chirho = HashMap::new();
+            patterns_chirho
+                .iter()
+                .zip(targets_chirho)
+                .all(|(pattern_chirho, target_chirho)| {
+                    match_consistently_chirho(pattern_chirho, target_chirho, &mut bindings_chirho)
+                })
+        };
+        one_way_chirho(&left_heads_chirho, &right_heads_chirho)
+            && one_way_chirho(&right_heads_chirho, &left_heads_chirho)
+    }
+
     /// Seed the environment with standard Haskell typeclasses.
     pub fn seed_standard_chirho(&mut self) {
         // Eq
@@ -494,7 +528,10 @@ impl ClassEnvChirho {
         let num_var_chirho = TyVarChirho(9003);
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Num".to_string(),
-            supers_chirho: vec!["Eq".to_string(), "Show".to_string()],
+            // GHC's Num has no superclasses (Eq and Show were dropped in GHC 7.4);
+            // the Haskell 98 pair made `Num a` entail `Eq a` and gave every Num
+            // dictionary two phantom superclass slots.
+            supers_chirho: vec![],
             var_chirho: num_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -1913,8 +1950,9 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
-        // instance Real Int / Integer / Double / Float
-        for ty_name_chirho in &["Int", "Integer", "Double", "Float"] {
+        // instance Real Int / Integer / Word / Double / Float (every Integral
+        // type is Real: Integral's superclass dictionary needs it)
+        for ty_name_chirho in &["Int", "Integer", "Word", "Double", "Float"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Real".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -1923,11 +1961,13 @@ impl ClassEnvChirho {
             });
         }
 
-        // Integral (superclass: Real, Enum — simplified to Num for now)
+        // Integral: GHC's `class (Real a, Enum a) => Integral a`. `==` and `<`
+        // under an `Integral a` context come through Real => Ord => Eq, not
+        // through Num, which has no superclasses.
         let integral_var_chirho = TyVarChirho(9008);
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Integral".to_string(),
-            supers_chirho: vec!["Num".to_string()],
+            supers_chirho: vec!["Real".to_string(), "Enum".to_string()],
             var_chirho: integral_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -3388,6 +3428,65 @@ impl ClassEnvChirho {
 ///
 /// This is NOT unification — it only instantiates variables in `pattern`,
 /// never in `target`.
+/// One-way matching that keeps a repeated pattern variable consistent
+/// (`C a a` does not match `C Int Bool`), unlike `match_ty_chirho`, which
+/// composes sub-matches without comparing them.
+/// workflow: language-features-chirho/instance-obligations-chirho
+fn match_consistently_chirho(
+    pattern_chirho: &TyChirho,
+    target_chirho: &TyChirho,
+    bindings_chirho: &mut HashMap<TyVarChirho, TyChirho>,
+) -> bool {
+    match (pattern_chirho, target_chirho) {
+        (TyChirho::VarChirho(var_chirho), _) => match bindings_chirho.get(var_chirho) {
+            Some(bound_chirho) => bound_chirho == target_chirho,
+            None => {
+                bindings_chirho.insert(*var_chirho, target_chirho.clone());
+                true
+            }
+        },
+        (
+            TyChirho::FunChirho(pattern_arg_chirho, pattern_res_chirho, _),
+            TyChirho::FunChirho(target_arg_chirho, target_res_chirho, _),
+        ) => {
+            match_consistently_chirho(pattern_arg_chirho, target_arg_chirho, bindings_chirho)
+                && match_consistently_chirho(pattern_res_chirho, target_res_chirho, bindings_chirho)
+        }
+        (
+            TyChirho::AppChirho(pattern_fun_chirho, pattern_arg_chirho),
+            TyChirho::AppChirho(target_fun_chirho, target_arg_chirho),
+        ) => {
+            match_consistently_chirho(pattern_fun_chirho, target_fun_chirho, bindings_chirho)
+                && match_consistently_chirho(pattern_arg_chirho, target_arg_chirho, bindings_chirho)
+        }
+        (TyChirho::ListChirho(pattern_elem_chirho), TyChirho::ListChirho(target_elem_chirho)) => {
+            match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
+        }
+        (TyChirho::ListChirho(pattern_elem_chirho), TyChirho::AppChirho(target_fun_chirho, target_elem_chirho))
+            if matches!(target_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") =>
+        {
+            match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
+        }
+        (TyChirho::AppChirho(pattern_fun_chirho, pattern_elem_chirho), TyChirho::ListChirho(target_elem_chirho))
+            if matches!(pattern_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") =>
+        {
+            match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
+        }
+        (TyChirho::TupleChirho(pattern_elems_chirho), TyChirho::TupleChirho(target_elems_chirho))
+            if pattern_elems_chirho.len() == target_elems_chirho.len() =>
+        {
+            pattern_elems_chirho
+                .iter()
+                .zip(target_elems_chirho)
+                .all(|(pattern_elem_chirho, target_elem_chirho)| {
+                    match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
+                })
+        }
+        // Constructors, skolems and quantified types match only themselves.
+        _ => pattern_chirho == target_chirho,
+    }
+}
+
 fn match_ty_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho) -> Option<SubstChirho> {
     match (pattern_chirho, target_chirho) {
         (TyChirho::VarChirho(v_chirho), _) => Some(SubstChirho::singleton_chirho(
@@ -3495,7 +3594,8 @@ mod tests_chirho {
         );
         assert_eq!(
             env_chirho.superclasses_chirho("Num"),
-            vec!["Eq".to_string(), "Show".to_string()]
+            // GHC's Num has no superclasses; Eq and Show left it in GHC 7.4.
+            Vec::<String>::new()
         );
         assert_eq!(
             env_chirho.superclasses_chirho("Monoid"),
