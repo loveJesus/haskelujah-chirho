@@ -49,7 +49,7 @@ https://docs.rs/unicode-general-category/1.1.0/unicode_general_category/enum.Gen
 - [x] Run exact output/check controls, parser suite, typing integration,
  canaries and unchanged T11754; preserve genuine negative controls.
 - [x] Format and inspect Clippy's primary spans on changed/new lines.
-- [ ] Inspect exact owned diff, commit and push, then verify the remote tip;
+- [x] Inspect exact owned diff, commit and push, then verify the remote tip;
  no corpus-neutrality or full landing claim without its gate.
 
 ## Measured result
@@ -110,3 +110,13 @@ and T10808 still accept in the focused replay. No new complete corpus measuremen
 was made; selected fixes cannot establish the current whole-branch regression
 count. Full driver/workspace and paired corpus gates are still owed before a
 main landing. Main, public artifacts and the canonical progress DB stay untouched.
+
+## Checkpoint receipt
+
+Compiler/evidence checkpoint `6180ac5ffd3476f1809e8abd3be9c0564c240e61` was
+pushed to `gh_chirho/gpt-kind-schemes-chirho`; `git ls-remote` returned that exact
+tip after the push. The immutable CLI above measures this compiler state; this
+receipt adds no compiler change. Main remains `6db522ad53a2d2b8590830020f33503eb9f8097c`.
+Claude2's source reviews #23517/#23520 found no concrete issue in the shared
+symbol dispatch or lexical-error boundary; the boundary's loose dependency
+pre-passes and their malformed-header limit are documented in the workflow.
