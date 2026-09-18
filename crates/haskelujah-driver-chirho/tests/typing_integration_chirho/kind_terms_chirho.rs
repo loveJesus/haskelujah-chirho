@@ -4,6 +4,34 @@
 use super::{SourceMapChirho, assert_compile_success_chirho};
 
 #[test]
+fn parenthesized_kind_operators_keep_their_complete_operands_chirho() {
+    // These unchanged sources were run independently under GHC 9.14.1.
+    // The oracle is the measured exit, not the recorded prediction.
+    let cases_chirho: &[(&str, bool, &str)] = &include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/parenthesized-kinds-chirho/fixtures_chirho.rs"
+    ));
+    let mut failures_chirho = Vec::new();
+    for (name_chirho, expected_chirho, source_chirho) in cases_chirho {
+        let result_chirho = haskelujah_driver::typecheck_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "ProbeChirho.hs",
+        );
+        if result_chirho.is_ok() != *expected_chirho {
+            failures_chirho.push(format!(
+                "{name_chirho}: {}",
+                result_chirho
+                    .err()
+                    .map(|error_chirho| error_chirho.to_string())
+                    .unwrap_or_else(|| "wrongly accepted".into())
+            ));
+        }
+    }
+    assert!(failures_chirho.is_empty(), "{}", failures_chirho.join("\n"));
+}
+
+#[test]
 fn star_syntax_and_qualified_multiplication_keep_distinct_kinds_chirho() {
     let source_chirho = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

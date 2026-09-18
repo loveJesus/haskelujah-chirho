@@ -61,6 +61,32 @@ function with two invented operands; `((->) Int :: Type -> Type) Bool` retains
 that constructor, application and annotation. A bare arrow is not licensed as
 an atomic type by this rule, nor is promoted arrow syntax.
 
+The structured CST path has the same boundary. Its small owner,
+`cst_parser_chirho/parenthesized_types_chirho.rs`, recognizes a constructor-only
+symbol only after looking ahead to the next significant closing parenthesis.
+It must not consume the initial star of `(* -> *)` while speculating about `(*)`.
+Every other group enters the ordinary type/ascription parser with all operands
+still present. Lookahead is local to the next significant token, not a scan of
+the remaining declaration or module.
+
+Written stars in binder annotations remain named syntax during AST kind
+conversion. Converting them eagerly to the unconditional Type variant bypasses
+NoStarIsType; naming and kind checking own that extension-sensitive decision.
+The GHC-reference controls cover nested star arrows, parenthesized atomic stars,
+the prefix arrow constructor, equivalent Type spelling, and both an invalid
+argument kind and disabled star syntax. They test acceptance through the real
+frontend, not a particular temporary CST layout.
+
+```mermaid
+flowchart LR
+    OpenParenChirho[Parenthesized source] --> LookaheadChirho{Single symbol then closing parenthesis?}
+    LookaheadChirho -->|Yes| ConstructorChirho[Constructor-only group]
+    LookaheadChirho -->|No| CompleteTypeChirho[Parse full type and ascription without consuming a prefix]
+    ConstructorChirho --> WrittenSyntaxChirho[Retain written symbol identity]
+    CompleteTypeChirho --> WrittenSyntaxChirho
+    WrittenSyntaxChirho --> ExtensionCheckChirho[Naming and kind checks apply extension policy]
+```
+
 Promoted tuple parentheses retain every component in both paths. Structured
 parsing in `cst_parser_chirho/promoted_types_chirho.rs` owns the delimiters and
 parses each operand; `lower_chirho/promoted_types_chirho.rs` is the shared

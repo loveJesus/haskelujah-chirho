@@ -2,6 +2,24 @@
 
 # Imported kind and closed-alias contracts, row484
 
+## Resume snapshot, 2026-09-18 14:36 EDT
+
+Owned branch remains gpt-kind-schemes-chirho; pushed parent4f8e3b8c. Main is
+6db522ad and is not being edited. This checkpoint repairs the parenthesized-star
+producer and retains star syntax for extension checking. Parser372, naming138,
+typing407, typing integration438 and canaries7 pass with zero ignored/filtered.
+The LIVE constraints package test now passes: one actual test,1775 filtered,
+64.15 seconds; this is not a full driver gate. Eleven GHC-reference sources agree
+on the fresh frozen CLI ef0a80b8. Six of the twelve selected checkpoint-relative
+corpus failures still reject; no complete corpus count is inferred here.
+
+Remaining next: preserve/push this checkpoint, then reduce those remaining
+families and rerun both complete axes before any landing. Clippy still reports
+642 warning messages, none with a primary span on this diff's changed lines;
+lint-clean and file-size-clean are not claimed. Claude's separate main-based
+landing remains queued on a measured T10808 regression; his exhausted seat and
+worktree are untouched. Canonical DB and public measurement artifacts stay held.
+
 Continue the import decision in the22-55 leaf. Isolated on gpt-kind-schemes-chirho,
 parent459ebc72; checkpoint tag imported-type-contracts-before-chirho. Main121d4f2c
 and sole canonical DB row484 are unchanged. The twelve driver failures were
@@ -735,9 +753,10 @@ and Rust fixture match byte-for-byte.
 
 - [x] Preserve the ten reference/parent observations and demonstrate the control red.
 - [x] Repair the defining builtin inventory; focused control and naming138 pass.
-- [ ] Rerun the LIVE optional package gate and broader gates after Claude's
- 13:20 EDT corpus hold ends. Neither the import control nor naming proves the
- package build; no package recovery is claimed while the gate is pending.
+- [x] Rerun the LIVE optional package gate after Claude's 13:20 EDT hold.
+ It initially reaches a separate inst1 kind error, not the old Rep/Eq.~~ errors;
+ the parenthesized-star continuation below now passes the actual package test.
+ Full-driver/workspace and final corpus gates remain separate and outstanding.
 - [x] Checkpoint/push the import repair with its evidence, without touching main:
  0ab08ec5 is pushed and remote-exact.
 
@@ -770,8 +789,10 @@ kind. The map is module-local and hot lookups are bounded hash lookups.
  and each new child is under710 lines; no new production owner or dependency.
 - [x] Finish the focused freeze, checkpoint/push code and raw reference evidence:
  65c9b1c1 is pushed and ls-remote exact; main remains6db522ad.
-- [ ] Rebuild/replay the actual corpus case and LIVE optional package gate after
- Claude's landing hold, then resume the outstanding broad/final lane gates.
+- [x] Rebuild/replay the actual corpus case and LIVE optional package gate after
+ Claude's landing hold: T10776 recovers on c05cc2a0; the package reaches a
+ separate star-parser failure, then passes after the continuation below.
+ Outstanding broad/final lane gates remain unclaimed.
 
 The old CLI disagrees on four valid sources; the six invalid sources still
 reject. The first in-memory control attempt ordered an importer before its
@@ -812,9 +833,11 @@ new constraint solver or permission to specialize an unconstrained instance.
  includes the ten new references and the existing nineteen dependent defaults;
 431 tests are filtered, none ignored. Clippy exits0 with399 driver-target and
 59 typing-test warning messages, none on changed lines; lint-clean is unclaimed.
-- [ ] Fresh CLI/package/corpus remain subject to Claude's existing landing hold
- and the complete lane's broad/final gates; no main or canonical DB update.
-- [ ] Commit/push this independently recorded context checkpoint.
+- [x] Fresh c05cc2a0 CLI replay recovers T21323; the package run and subsequent
+ star-parser repair are recorded below. Complete corpus/final gates remain
+ outstanding; no main or canonical DB update.
+- [x] Commit/push this independently recorded context checkpoint: 4f8e3b8c
+ is pushed and the remote tip matches exactly.
 
 The first six-case repair passes, but an extra written-kind control falsifies
 its completeness: `Proxy (a :: k)` with a Type-only context must reject, even
@@ -826,3 +849,108 @@ A nested `Maybe (a :: k)` control also exposes a false accept on the checkpoint
 CLI; a concrete Type annotation remains valid. Ten reference sources now bound
 the intended repair. This does not claim complete explicit instance-forall AST
 retention or extend checking to instances without associated equations/defaults.
+
+### Provider exhaustion and validation resumption, 2026-09-18 14:09 EDT
+
+Work item row484 remains owned by HASKELUJAH/gpt_chirho in the isolated kind
+worktree. At 14:04 EDT, a read of the registered Claude pane showed the landing
+measurement command completed with exit 0, followed by the provider's weekly
+limit notice (reset shown as 20:00 local). Further messages had reached that
+same limit, not an active reviewer. This is confirmed provider exhaustion, not
+an inferred failure from silence. Do not keep retrying that seat.
+
+The corpus hold from message 23460 is released for CPU scheduling only: an
+unfiltered process inventory found no Haskelujah/GHC jobs. A later cargo process
+was identified by its command and cwd as CAIRN, not a surviving Haskelujah child.
+The command's exit 0 is not evidence of matching verdict sets or authority to
+land Claude's branch. Preserve his worktree, branch and evidence unchanged;
+request an independent read-only review of the finished measurement artifacts.
+No canonical DB lease, branch ownership or main write is transferred.
+
+Disposition: proceed with our already-authorized reversible validation. The
+live constraints package fixture exists in this worktree; run that actual test,
+rebuild/hash the CLI, and replay the remaining corpus inputs. Confidence is high
+in the provider/process observation, not yet in Claude's unreviewed results.
+Alternative is to leave his landing queued until the quota resets; the same
+landing remains queued while our independent work proceeds. Correction cost is
+limited to repeating internal checks. No human action is required for our own
+lane, and no provider/account switch is authorized or attempted.
+
+- [x] Record the failure class, preserved checkpoint and bounded fallback.
+- [x] Notify the project coordination route; request artifact review without
+ builds, edits, canonical DB changes or a landing on Claude's behalf.
+- [x] Measure the live package and fresh-CLI results; retain their exact scope
+ in parenthesized-kinds-chirho/before-replay-chirho.jsonl and focused-gates-chirho.json.
+
+Claude2 independently recovered the completed landing receipt and reproduced
+its accept set on the unchanged af676aad CLI:884/938, zero timeouts/crashes,
+gains T15079/T18831/tc124 and one loss T10808. The original two-pass receipt
+also says228/767 rejected, both sets byte-identical; the original runner did not
+retain per-file sets. Claude2's replacement accept manifest retains all938
+verdicts and outputs. His six GHC-arbitrated record reductions isolate a
+type-changing update whose value reads the old record. Nine non-record probes
+do not reproduce it. Static family-decomposition observations do not establish
+the exact dynamic operands or repair site. Do not weaken the record check or
+land Claude's branch on the totals. The full unchanged T10808 is accepted by
+GHC9.14.1; its old r2 error comment is not an oracle. Our fresh ef0a80b8 CLI also
+accepts the unchanged corpus file. Claude2's original c05 column lacked a final
+hash check and is not treated as certified frozen provenance.
+
+Peer evidence stays under the dfa2e4a7-cd78-49b2-85ab-b223620a997e scratchpad
+in the Claude session directory, in full-accept-chirho, t10808-ghc-chirho and
+nonrecord-family-chirho. The source receipt remains the 3bea0419-e38e-4eae-88bd-
+cfdd63bd68c6 tasks/blxen6x11.output file. These are peer diagnostics, not our
+landing gate or authority over his branch.
+
+### Parenthesized star-kind reduction
+
+The live package test ran one actual case and failed in Data.Constraint.Forall,
+at inst1's `p f` use (45.42 seconds, 1775 filtered). The new explicit CLI hash
+c05cc2a03d3134d6cedd5e6676b3abdfd05935367baba907f5775e08369f60ff
+recovers T10776 and T21323; six of the twelve checkpoint-relative failures still
+reject. This is targeted evidence, not a new complete corpus measurement.
+
+Six reference probes reduce the package failure to spelling: the Type-arrow
+signature passes with and without a quantified superclass/instance; the same
+signature with parenthesized star arrows rejects here and accepts under GHC
+9.14.1. The explicit contradictory kind still rejects on both. Static reading
+then finds parse_paren_type_chirho consuming an initial operator before checking
+whether the next token closes the group: in `(* -> *)` it eats the left star
+before ordinary type parsing starts. No kind-checker relaxation is warranted.
+
+Placement: extract this parenthesized-type owner from the 5630-line CST root
+into a small child; recognize the single-operator alternative by lookahead
+before consuming it. Keep the general type/ascription grammar for every other
+parenthesized group. This reduces the oversized root rather than adding another
+special case there. Independent arrow-constructor, atomic-star and NoStarIsType
+controls bound the change.
+
+- [x] Reproduce the package error and spelling discriminator on a hashed CLI.
+- [x] Retain eleven reference observations and demonstrate the behavioral control red.
+- [x] Extract/fix the parenthesized-type owner; run focused syntax/kind controls.
+- [x] Rerun the actual package after Claude2's diagnostic CPU hold and record
+ what it really measures; do not infer recovery from the reduced case alone.
+- [ ] Commit/push the owned checkpoint, then resume the remaining regressions.
+
+The first fix recovers the two valid star-arrow cases but the same control then
+finds a false acceptance under NoStarIsType. Keeping the written star name/span
+through AST-kind conversion restores the extension check. Four parser tests
+expected the old erasure; they now assert this load-bearing provenance and were
+moved out of the oversized lowering root. A module-path compile error during
+the test move was fixed before rerunning the whole target. No red was waived.
+
+Final focused gates: parser372, naming138, typing407, typing integration438 and
+canaries7, all zero ignored/filtered. The actual constraints package test passes
+in64.15s (one test,1775 filtered). An explicit CLI build and immutable snapshot
+have SHA256 ef0a80b8808be6fabe73153085a362e2b2abffe3eaac23e3c12dc11cedb6a511,
+unchanged across all11 reference replays and13 selected corpus checks. The six
+remaining selected failures are ClassDefaultInHsBoot/A2/A3, T11754, T13585a and
+T14441; T10808 still accepts. This is not a complete corpus rerun.
+
+Format and diff checks pass. All-target Clippy for parser/naming/typing/driver
+exits0 with642 warning messages and no primary span on changed lines; the lint
+gate is not clean. Extraction reduces the CST root to5581 and lowering root to
+14854 lines, both still structural debt; the new production child is54 lines.
+Raw red/intermediate/final outputs, reference sources, hashes, commands and exact
+CLI diagnostics live in the parenthesized-kinds-chirho evidence leaf. Main,
+published labels/denominators, canonical DB and other agents' trees are unchanged.

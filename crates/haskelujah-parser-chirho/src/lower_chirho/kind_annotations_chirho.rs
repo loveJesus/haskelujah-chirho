@@ -42,8 +42,11 @@ impl LowerCtxChirho {
             TypeChirho::ConChirho(name_chirho) => {
                 let text_chirho = name_chirho.full_name_chirho();
                 Some(match text_chirho.as_str() {
-                    "Type" | "*" => AstKindChirho::StarChirho,
+                    "Type" => AstKindChirho::StarChirho,
                     "Constraint" => AstKindChirho::ConstraintChirho,
+                    // The star spelling is extension-sensitive. Retain the
+                    // source name so NoStarIsType is checked downstream rather
+                    // than laundering `*` into an unconditional Type contract.
                     _ => AstKindChirho::ConChirho(name_chirho.clone()),
                 })
             }

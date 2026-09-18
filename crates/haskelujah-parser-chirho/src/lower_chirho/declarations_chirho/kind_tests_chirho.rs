@@ -1,7 +1,127 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-use super::{DeclChirho, DeclKindSigChirho, FileIdChirho, TypeChirho, lower_module_chirho};
+use super::{
+    AstKindChirho, DeclChirho, DeclKindSigChirho, FileIdChirho, TypeChirho, lower_module_chirho,
+};
 use crate::cst_parser_chirho::parse_to_cst_chirho;
+use haskelujah_ast_chirho::ModuleChirho;
+
+fn parse_written_kind_source_chirho(source_chirho: &str) -> ModuleChirho {
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    lower_module_chirho(
+        &parse_to_cst_chirho(source_chirho, file_chirho),
+        file_chirho,
+    )
+}
+
+fn assert_written_star_chirho(kind_chirho: &AstKindChirho) {
+    // Naming needs the written symbol and its span to enforce NoStarIsType.
+    // An unconditional Star variant would erase that required provenance.
+    let AstKindChirho::ConChirho(name_chirho) = kind_chirho else {
+        panic!("written star must reach extension checking: {kind_chirho:?}")
+    };
+    assert_eq!(name_chirho.full_name_chirho(), "*");
+    assert_ne!(
+        name_chirho.span_chirho(),
+        haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO
+    );
+}
+
+#[test]
+fn lower_kind_sig_data_star_chirho() {
+    // data Proxy (a :: *) = MkProxy
+    let module_chirho =
+        parse_written_kind_source_chirho("module M where\ndata Proxy (a :: *) = MkProxy\n");
+    match &module_chirho.decls_chirho[0] {
+        DeclChirho::DataDeclChirho {
+            name_chirho,
+            type_vars_chirho,
+            constructors_chirho,
+            ..
+        } => {
+            assert_eq!(name_chirho.text_chirho(), "Proxy");
+            assert_eq!(type_vars_chirho.len(), 1);
+            assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
+            assert_written_star_chirho(
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_ref()
+                    .expect("written annotation"),
+            );
+            assert_eq!(constructors_chirho.len(), 1);
+        }
+        other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+    }
+}
+
+#[test]
+fn lower_kind_sig_arrow_kind_chirho() {
+    // data HKD (f :: * -> *) = MkHKD
+    let module_chirho =
+        parse_written_kind_source_chirho("module M where\ndata HKD (f :: * -> *) = MkHKD\n");
+    match &module_chirho.decls_chirho[0] {
+        DeclChirho::DataDeclChirho {
+            type_vars_chirho, ..
+        } => {
+            assert_eq!(type_vars_chirho.len(), 1);
+            assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "f");
+            let Some(AstKindChirho::ArrowChirho(argument_chirho, result_chirho)) =
+                &type_vars_chirho[0].kind_annotation_chirho
+            else {
+                panic!("the written arrow must retain both endpoints")
+            };
+            assert_written_star_chirho(argument_chirho);
+            assert_written_star_chirho(result_chirho);
+        }
+        other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+    }
+}
+
+#[test]
+fn lower_kind_sig_newtype_chirho() {
+    // newtype Id (a :: *) = MkId a
+    let module_chirho =
+        parse_written_kind_source_chirho("module M where\nnewtype Id (a :: *) = MkId a\n");
+    match &module_chirho.decls_chirho[0] {
+        DeclChirho::NewtypeDeclChirho {
+            type_vars_chirho, ..
+        } => {
+            assert_eq!(type_vars_chirho.len(), 1);
+            assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
+            assert_written_star_chirho(
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_ref()
+                    .expect("written annotation"),
+            );
+        }
+        other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),
+    }
+}
+
+#[test]
+fn lower_kind_sig_star_to_constraint_chirho() {
+    // data Proxy (c :: * -> Constraint) = MkProxy — arrow kind with Constraint
+    let module_chirho = parse_written_kind_source_chirho(
+        "module M where\ndata Proxy (c :: * -> Constraint) = MkProxy\n",
+    );
+    match &module_chirho.decls_chirho[0] {
+        DeclChirho::DataDeclChirho {
+            type_vars_chirho, ..
+        } => {
+            assert_eq!(type_vars_chirho.len(), 1);
+            assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "c");
+            let Some(AstKindChirho::ArrowChirho(argument_chirho, result_chirho)) =
+                &type_vars_chirho[0].kind_annotation_chirho
+            else {
+                panic!("the written arrow must retain both endpoints")
+            };
+            assert_written_star_chirho(argument_chirho);
+            assert_eq!(result_chirho.as_ref(), &AstKindChirho::ConstraintChirho);
+        }
+        other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
+    }
+}
 
 #[test]
 fn qualified_builtin_binder_kinds_keep_their_source_authority_chirho() {

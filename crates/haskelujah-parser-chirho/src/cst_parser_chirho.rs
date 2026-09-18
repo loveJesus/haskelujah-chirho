@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 mod constructors_chirho;
 mod families_chirho;
+mod parenthesized_types_chirho;
 mod promoted_types_chirho;
 mod where_blocks_chirho;
 
@@ -2142,56 +2143,6 @@ impl<'src> ParserChirho<'src> {
             self.eat_trivia_chirho();
             self.builder_chirho.finish_node_chirho();
         }
-    }
-
-    /// Parse a parenthesized, tuple, or function-type-constructor type.
-    fn parse_paren_type_chirho(&mut self) {
-        // Could be: (type), (type, type, ...), (->), ()
-        self.builder_chirho
-            .start_node_chirho(SyntaxKindChirho::ParenTypeChirho);
-
-        self.bump_chirho(); // (
-        self.eat_trivia_chirho();
-
-        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-            // Unit type ()
-            self.bump_chirho();
-            self.builder_chirho.finish_node_chirho();
-            return;
-        }
-
-        // Could be (->) or operator as type constructor
-        if self.at_chirho(RawTokenKindChirho::RightArrowChirho)
-            || self.at_chirho(RawTokenKindChirho::VarSymChirho)
-            || self.at_chirho(RawTokenKindChirho::ConSymChirho)
-        {
-            self.bump_chirho();
-            self.eat_trivia_chirho();
-            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                self.bump_chirho();
-                self.builder_chirho.finish_node_chirho();
-                return;
-            }
-        }
-
-        self.parse_type_with_ascription_chirho();
-
-        if self.at_chirho(RawTokenKindChirho::CommaChirho) {
-            // It's a tuple type — change the node kind would be ideal,
-            // but we just keep ParenType and it wraps the contents.
-            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
-                self.bump_chirho(); // ,
-                self.eat_trivia_chirho();
-                self.parse_type_chirho();
-                self.eat_trivia_chirho();
-            }
-        }
-
-        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-            self.bump_chirho();
-        }
-
-        self.builder_chirho.finish_node_chirho();
     }
 
     /// Parse a list type: [type]
