@@ -21,6 +21,7 @@ use std::sync::Arc;
 mod constructors_chirho;
 mod families_chirho;
 mod promoted_types_chirho;
+mod where_blocks_chirho;
 
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
@@ -847,7 +848,7 @@ impl<'src> ParserChirho<'src> {
         ]);
 
         if self.at_chirho(RawTokenKindChirho::WhereChirho) {
-            self.parse_where_block_context_chirho(true);
+            self.parse_where_block_context_chirho(Self::parse_associated_type_decl_chirho);
         }
 
         self.builder_chirho.finish_node_chirho();
@@ -867,7 +868,7 @@ impl<'src> ParserChirho<'src> {
         ]);
 
         if self.at_chirho(RawTokenKindChirho::WhereChirho) {
-            self.parse_where_block_chirho();
+            self.parse_where_block_context_chirho(Self::parse_type_family_instance_decl_chirho);
         }
 
         self.builder_chirho.finish_node_chirho();
@@ -1737,70 +1738,7 @@ impl<'src> ParserChirho<'src> {
     }
 
     fn parse_where_block_chirho(&mut self) {
-        self.parse_where_block_context_chirho(false);
-    }
-
-    fn parse_where_block_context_chirho(&mut self, class_chirho: bool) {
-        self.builder_chirho
-            .start_node_chirho(SyntaxKindChirho::WhereClauseChirho);
-
-        self.expect_chirho(RawTokenKindChirho::WhereChirho);
-        self.eat_trivia_chirho();
-
-        // Eat the layout block
-        if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
-            || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
-        {
-            self.bump_chirho(); // {
-
-            loop {
-                self.eat_trivia_chirho();
-                if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
-                    || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-                {
-                    self.bump_chirho(); // }
-                    break;
-                }
-                if self.at_eof_chirho() {
-                    break;
-                }
-                if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
-                    || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
-                {
-                    self.bump_chirho();
-                    self.eat_trivia_chirho();
-                    continue;
-                }
-                // A leaked top-level declaration starter here means the
-                // surrounding layout block should have ended already. Stop
-                // instead of swallowing sibling decls into this where-block.
-                if matches!(
-                    self.current_kind_chirho(),
-                    Some(RawTokenKindChirho::InstanceChirho)
-                        | Some(RawTokenKindChirho::ClassChirho)
-                        | Some(RawTokenKindChirho::ImportChirho)
-                        | Some(RawTokenKindChirho::ModuleChirho)
-                ) {
-                    break;
-                }
-                let before_chirho = self.pos_chirho;
-                if class_chirho && self.at_chirho(RawTokenKindChirho::TypeChirho) {
-                    self.parse_associated_type_decl_chirho();
-                } else {
-                    self.parse_decl_chirho();
-                }
-                self.eat_trivia_chirho();
-                if self.pos_chirho == before_chirho {
-                    if !self.at_eof_chirho() {
-                        self.bump_chirho();
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-
-        self.builder_chirho.finish_node_chirho();
+        self.parse_where_block_context_chirho(Self::parse_decl_chirho);
     }
 
     // -----------------------------------------------------------------------

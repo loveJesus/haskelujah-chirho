@@ -992,6 +992,74 @@ test-data-chirho/kind-oracles-chirho/ascriptions-chirho. The legal ClassifierCyc
 control is no longer an expected failure. These focused results do not establish
 that row484 is landable; exact corpus sets and broad gates are recorded separately.
 
+### Associated default equations (isolated row484)
+
+Associated default arguments are independent equation binders, not aliases of
+same-spelled class parameters. The naming walker starts an empty lexical scope
+for each default and binds the names actually written on its LHS, including kind
+annotations. Written LHS kind variables are rigid during kind checking. A valid
+polykinded default can rename those variables without changing its meaning.
+
+Class methods and superclasses first determine the declaration's parameter
+kinds. An omitted associated-family result kind means Type. The default is then
+checked against the finalized family contract, with a fresh instantiation of its
+hidden arguments. Those arguments must remain distinct variables after the RHS
+is checked: a default cannot specialize a polymorphic kind to Type or identify
+two independent hidden parameters. Missing kind metadata diagnoses rather than
+silently certifying a default. Work is local to each equation and its contract;
+scope entry does not clone the growing module environment. A default swaps out
+the outer identity cache and shadows its own LHS variables in the environment's
+undo-log scope; it does not inherit the shared class-method signature policy.
+The check examines only diagnostics newly appended for that equation. A kind
+error or a non-variable/repeated hidden input prevents publishing its checked
+application record, even when recovery continues with the rest of the module.
+An unrelated earlier diagnostic does not suppress a valid later record.
+
+The annotation visitor follows parentheses and kind ascriptions because
+`validity_chirho/classes_chirho::check_class_chirho` requires each default
+argument's `unannotated_chirho()` spine to end in a variable. That AST helper
+peels exactly those two wrappers; other pattern shapes are declaration errors.
+
+```mermaid
+flowchart LR
+  LocalNamesChirho[Default LHS owns lexical binders] --> WrittenKindsChirho[Retain annotations and rigid names]
+  ClassBodiesChirho[Class methods and superclass constraints] --> ClosedFamilyChirho[Finalize associated family kind]
+  ClosedFamilyChirho --> DefaultCheckChirho[Check independent equation against fresh contract]
+  WrittenKindsChirho --> DefaultCheckChirho
+  DefaultCheckChirho --> HiddenValidityChirho[Hidden inputs remain distinct variables]
+  HiddenValidityChirho --> EvidenceGateChirho{No equation-local errors?}
+  EvidenceGateChirho -->|yes| InstanceDefaultsChirho[Publish checked default inputs]
+  EvidenceGateChirho -->|no| RecoveryChirho[Diagnose without publishing this occurrence]
+```
+
+The reference sources and refuted predictions live in the source-boot class
+evidence's default-annotations-chirho/scope-chirho directory. The
+[GHC associated-default rules](https://ghc.gitlab.haskell.org/ghc/doc/users_guide/exts/type_families.html#associated-type-synonym-defaults)
+describe the general contract; the committed GHC9.14.1 executions, not an
+assumption about a newer manual, determine these versioned test verdicts.
+
+Associated instance equations retain their written LHS directly from the family
+grammar; they are not aliases reconstructed from the enclosing class head. The
+where-block owner selects declaration/default syntax for classes and equation
+syntax for instances. Thus a family can use fewer class parameters, no visible
+parameters, or concrete family-only parameters without inventing or dropping an
+argument. An explicit equation suppresses that family's default for the entire
+instance, not just the written argument combination.
+
+Associated heads keep dependent visible binders. Solved classifier substitutions
+are applied before lexical abstraction, so a later parameter's classifier and
+the result continue to refer to the supplied earlier term. Default LHS terms
+are universally bound before checking the RHS, including visible kind terms.
+Per-instance omitted defaults open their own hidden inputs; a family-only term
+gets its own identity with its classifier registered, not the classifier itself
+as its value. Failed instance checks publish no default-elaboration record.
+
+Ordinary promoted constructors now capture checked field and result terms in
+their declaration scope and publish closed schemes after the SCC completes.
+Builtin Bool/Ordering constructors have explicit promoted classifiers; local
+constructors shadow those in the separate promoted namespace. Higher-rank field
+promotion and absent imported metadata are not silently certified by this path.
+
 ## Evidence boundary
 
 Lowering controls retain both annotations and their exact source-slice spans, and keep

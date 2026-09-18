@@ -1,0 +1,32 @@
+{
+  "description_chirho": "Default recovery and independent-scope controls. Pre-audit code already contained the seventeen source-level repairs; this is not an A/B of parent HEAD.",
+  "command_chirho": [
+    "cargo",
+    "test",
+    "-p",
+    "haskelujah-typing",
+    "--lib",
+    "default_tests_chirho",
+    "-j",
+    "3",
+    "--",
+    "--nocapture"
+  ],
+  "rust_min_stack_chirho": 16777216,
+  "before_hashes_chirho": "cb276caaa1754ef597e3bac93d032deec69e0515eb139527217d4d06cd8deacb  crates/haskelujah-typing-chirho/src/kind_chirho/defaults_chirho.rs\n92b7e28825a9ce6aa67bb4fe6ec27c6e68a83357726defaf43627f3f3dba7a9d  crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs\n",
+  "before_chirho": {
+    "chunk_id": "b24abf",
+    "wall_time_seconds": 0.000001667,
+    "exit_code": 101,
+    "original_token_count": 877,
+    "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.26s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_typing-946cba87469fe1d1)\n\nrunning 6 tests\n\nthread 'kind_chirho::default_tests_chirho::default_annotation_cannot_inherit_a_resolved_outer_identity_chirho' (88664929) panicked at crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs:92:5:\nassertion failed: context_chirho.diagnostics_chirho.has_errors_chirho()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\nthread 'kind_chirho::default_tests_chirho::default_kind_error_does_not_publish_an_application_chirho' (88664931) panicked at crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs:95:5:\na failed default must not be usable as checked kind evidence\n\nthread 'kind_chirho::default_tests_chirho::merged_hidden_default_kinds_do_not_publish_an_application_chirho' (88664932) panicked at crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs:95:5:\na failed default must not be usable as checked kind evidence\n\nthread 'kind_chirho::default_tests_chirho::specialized_hidden_default_kind_does_not_publish_an_application_chirho' (88664933) panicked at crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs:95:5:\na failed default must not be usable as checked kind evidence\n\nthread 'kind_chirho::default_tests_chirho::default_argument_shadows_an_outer_type_variable_and_restores_it_chirho' (88664930) panicked at crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs:151:5:\nDiagnosticBundleChirho { diagnostics_chirho: [DiagnosticChirho { severity_chirho: ErrorChirho, code_chirho: Some(ErrorCodeChirho { prefix_chirho: 'E', number_chirho: 300 }), message_chirho: \"kind mismatch in associated family default argument: expected `*`, found `* -> *`\", labels_chirho: [LabelChirho { span_chirho: Span(FileIdChirho(SYNTHETIC), 0..0), message_chirho: None, is_primary_chirho: true }], notes_chirho: [], suggestions_chirho: [] }] }\ntest kind_chirho::default_tests_chirho::unrelated_prior_error_does_not_prevent_a_valid_default_record_chirho ... ok\ntest kind_chirho::default_tests_chirho::merged_hidden_default_kinds_do_not_publish_an_application_chirho ... FAILED\ntest kind_chirho::default_tests_chirho::specialized_hidden_default_kind_does_not_publish_an_application_chirho ... FAILED\ntest kind_chirho::default_tests_chirho::default_annotation_cannot_inherit_a_resolved_outer_identity_chirho ... FAILED\ntest kind_chirho::default_tests_chirho::default_kind_error_does_not_publish_an_application_chirho ... FAILED\ntest kind_chirho::default_tests_chirho::default_argument_shadows_an_outer_type_variable_and_restores_it_chirho ... FAILED\n\nfailures:\n\nfailures:\n    kind_chirho::default_tests_chirho::default_annotation_cannot_inherit_a_resolved_outer_identity_chirho\n    kind_chirho::default_tests_chirho::default_argument_shadows_an_outer_type_variable_and_restores_it_chirho\n    kind_chirho::default_tests_chirho::default_kind_error_does_not_publish_an_application_chirho\n    kind_chirho::default_tests_chirho::merged_hidden_default_kinds_do_not_publish_an_application_chirho\n    kind_chirho::default_tests_chirho::specialized_hidden_default_kind_does_not_publish_an_application_chirho\n\ntest result: FAILED. 1 passed; 5 failed; 0 ignored; 0 measured; 401 filtered out; finished in 0.00s\n\nerror: test failed, to rerun pass `-p haskelujah-typing --lib`\n"
+  },
+  "after_hashes_chirho": "d90e10bbbb2a7a31b3381d167b4a4afaf850e6c5c8cc611518b1d7ca5d4c37f4  crates/haskelujah-typing-chirho/src/kind_chirho/defaults_chirho.rs\nbe1cd015813d3bfe2387e79d115c66c855cac35443aae24d5bc1a46296089e14  crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs\n",
+  "after_chirho": {
+    "chunk_id": "b535c3",
+    "wall_time_seconds": 0.000001042,
+    "exit_code": 0,
+    "original_token_count": 240,
+    "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.24s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_typing-946cba87469fe1d1)\n\nrunning 6 tests\ntest kind_chirho::default_tests_chirho::unrelated_prior_error_does_not_prevent_a_valid_default_record_chirho ... ok\ntest kind_chirho::default_tests_chirho::default_argument_shadows_an_outer_type_variable_and_restores_it_chirho ... ok\ntest kind_chirho::default_tests_chirho::specialized_hidden_default_kind_does_not_publish_an_application_chirho ... ok\ntest kind_chirho::default_tests_chirho::default_kind_error_does_not_publish_an_application_chirho ... ok\ntest kind_chirho::default_tests_chirho::merged_hidden_default_kinds_do_not_publish_an_application_chirho ... ok\ntest kind_chirho::default_tests_chirho::default_annotation_cannot_inherit_a_resolved_outer_identity_chirho ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 401 filtered out; finished in 0.00s\n\n"
+  }
+}

@@ -2037,7 +2037,7 @@ fn multi_module_imported_associated_type_family_reduces_chirho() {
     let sources_chirho: Vec<(&str, &str)> = vec![
         (
             "PrimFamilyProviderChirho.hs",
-            "{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE FlexibleInstances #-}\nmodule PrimFamilyProviderChirho where\nclass PrimMonadChirho mChirho where\n  type PrimStateChirho mChirho\ndata STChirho sChirho aChirho = STChirho aChirho\ndata BoxChirho sChirho aChirho = BoxChirho\nnewArrayChirho :: PrimMonadChirho mChirho => Int -> aChirho -> mChirho (BoxChirho (PrimStateChirho mChirho) aChirho)\nnewArrayChirho = undefined\ninstance PrimMonadChirho (STChirho sChirho) where\n  type PrimStateChirho (STChirho sChirho) = sChirho\n",
+            "{-# LANGUAGE TypeFamilies, KindSignatures #-}\n{-# LANGUAGE FlexibleInstances #-}\nmodule PrimFamilyProviderChirho where\nimport Data.Kind (Type)\nclass PrimMonadChirho (mChirho :: Type -> Type) where\n  type PrimStateChirho mChirho\ndata STChirho (sChirho :: Type) aChirho = STChirho aChirho\ndata BoxChirho (sChirho :: Type) (aChirho :: Type) = BoxChirho\nnewArrayChirho :: PrimMonadChirho mChirho => Int -> aChirho -> mChirho (BoxChirho (PrimStateChirho mChirho) aChirho)\nnewArrayChirho = undefined\ninstance PrimMonadChirho (STChirho sChirho) where\n  type PrimStateChirho (STChirho sChirho) = sChirho\n",
         ),
         (
             "PrimFamilyConsumerChirho.hs",
@@ -2062,7 +2062,7 @@ fn frontend_seed_batch_propagates_associated_type_families_between_modules_chirh
         (
             "PrimFamilyProviderChirho".to_string(),
             "PrimFamilyProviderChirho.hs".to_string(),
-            "{-# LANGUAGE TypeFamilies #-}\n{-# LANGUAGE FlexibleInstances #-}\nmodule PrimFamilyProviderChirho where\nclass PrimMonadChirho mChirho where\n  type PrimStateChirho mChirho\ndata STChirho sChirho aChirho = STChirho aChirho\ndata BoxChirho sChirho aChirho = BoxChirho\nnewArrayChirho :: PrimMonadChirho mChirho => Int -> aChirho -> mChirho (BoxChirho (PrimStateChirho mChirho) aChirho)\nnewArrayChirho = undefined\ninstance PrimMonadChirho (STChirho sChirho) where\n  type PrimStateChirho (STChirho sChirho) = sChirho\n"
+            "{-# LANGUAGE TypeFamilies, KindSignatures #-}\n{-# LANGUAGE FlexibleInstances #-}\nmodule PrimFamilyProviderChirho where\nimport Data.Kind (Type)\nclass PrimMonadChirho (mChirho :: Type -> Type) where\n  type PrimStateChirho mChirho\ndata STChirho (sChirho :: Type) aChirho = STChirho aChirho\ndata BoxChirho (sChirho :: Type) (aChirho :: Type) = BoxChirho\nnewArrayChirho :: PrimMonadChirho mChirho => Int -> aChirho -> mChirho (BoxChirho (PrimStateChirho mChirho) aChirho)\nnewArrayChirho = undefined\ninstance PrimMonadChirho (STChirho sChirho) where\n  type PrimStateChirho (STChirho sChirho) = sChirho\n"
                 .to_string(),
         ),
         (

@@ -572,3 +572,144 @@ gpt-kind-schemes-chirho; ls-remote confirms the exact tip. Only named owned path
 were staged. The audit's original text is preserved in JSON; its Markdown display
 normalizes trailing whitespace so the combined diff passes whitespace checks.
 Main and the canonical progress DB were not modified. Row484 remains open.
+
+## Associated-default scope continuation2026-09-18
+
+Resume from clean, pushed02e74761 over production97218fde. Claude independently
+owns ordinary instance obligations off main6db522ad; the registration hook must
+preserve row484's source-local boot-promise capture when the branches compose.
+No corpus embargo is active at entry, and no new canonical DB writer is claimed.
+
+Brick1: defaults have equation-local type binders, not the class's type-variable
+scope. Preserve kind annotations and the implicit kind inputs carried by the
+associated family. Equation-written kind variables cannot be specialized to
+concrete kinds. Keep this in naming's lexical owner and a small kind-checking
+helper, not a new instance-obligations rule or a corpus-name guard. Check GHC's
+positive implicit-kind and independent-binder cases before selecting the scope.
+
+- [x] Reference the six retained scope cases plus independent/implicit-kind
+  controls against GHC9.14.1; record disagreements without changing the oracle.
+- [x] Demonstrate focused regression controls red before the repair, then check
+  naming ownership and kind rigidity without weakening the positive controls.
+- [ ] Run focused and broader gates proportional to the changed paths; freeze
+  source/CLI provenance and inspect corpus set changes before any landing claim.
+- [ ] Commit and push only owned paths with current runtime identity. Main,
+  public measurements and canonical row484 stay unchanged until final gates.
+
+The expanded12-case GHC9.14.1 matrix refuted four predictions and the parent's
+CLI agreed4/12. The final17-case matrix refuted five predictions (implicit LHS
+kind scope, a class parameter as an implicit kind, a result-only implicit kind,
+a default inferring a class kind, and a method inferring an omitted family result).
+Every measured verdict, including the refutations, is retained. All17 exact
+sources now pass their Rust controls; all23 expanded/original CLI observations
+agreed before the later recovery audit. The Rust sources and reference verdicts
+were compared byte-for-byte, with zero mismatches.
+
+Defaults now consume closed family kinds after class bodies, with omitted
+associated result kinds fixed to Type. Naming swaps the class's lexical stack
+out while checking the equation's own LHS/RHS. Written annotation variables are
+rigid and hidden kind inputs must remain distinct variables. The new helper is
+small and independent; no corpus-name guard or erased annotation was introduced.
+
+Claude2 found one real recovery defect in the first cut: diagnosed defaults
+still published their failed kind application. Six direct controls went1/6 to6/6
+after blocking publication on equation-local errors and separating default scope
+from the deliberately shared class-method scope. Prior unrelated errors do not
+block a valid record. The guard visits only newly appended diagnostics, not the
+module's accumulated history. The annotation visitor's bounded spine is exactly
+the shape admitted by declaration validity, now named in the comment/workflow.
+
+The first corpus diagnostic is890/938 and265/767, with zero timeouts, abnormal
+exits or actual panic headers. Relative97218fde only T5481 is lost on accept and
+AssocTyDef04 gained on reject. Fresh GHC9.14.1 rejects both for the candidate's
+scope/kind contracts. Upstream explicitly marks T5481 compile_fail even though
+it is in should_compile; it is not waived or removed from the denominator.
+Main-relative ten accept losses remain; neither this checkpoint nor Claude's
+independent instance lane is landable.
+
+The first broad gate was deliberately interrupted during driver--lib at11:41 EDT
+to honor Claude's diagnostic corpus pass (zero timeouts, DONE11:44). Its partial
+record is retained, not called a failed test or a completed gate. The post-audit
+freeze is being run from the final source bytes before checkpointing.
+
+### Checked associated-instance and dependent-default continuation
+
+The interrupted run was followed by real failures, not a completed final freeze.
+The stricter instance scope exposed two GHC-invalid driver fixtures (phantom
+kind variables were specialized by associated equations). Explicit declaration
+kind annotations repair those sources without changing their semantic assertions.
+Parameterized ordinary constructors also lacked promoted kind contracts: two
+existing promoted-pattern controls falsely rejected after the instance check
+rigidified their unconstrained classifiers. Capturing their field/result terms
+in the declaration scope and publishing closed promoted schemes at the SCC
+boundary recovers both. The full integration target then passed433/433.
+The typing library was406/407; its direct default-registration unit needed the
+real kind pass and a non-dummy source span, not a fabricated hidden-input record.
+The repaired focused unit and full typing library407/407 pass.
+
+The next diagnostic, before the dependent repairs below, is878/938 and267/767,
+retained in `corpus-chirho/associated-final-chirho`. Relative the890/265 scope
+diagnostic, twelve accept files newly fail and none recover. Relative main,
+seventeen gains and twenty-one losses remain. These are diagnostic sets, not a
+landable checkpoint. The new failures are ClassDefaultInHsBoot/A2/A3, T10776,
+T11401, T11754, T13585a, T14441, T16008, T17566, T21205 and T21323. T21205 was
+already red on main; new losses relative a checkpoint are not automatically
+main-relative losses. Reject reasons for the latest two-count movement remain
+unaudited and are not banked as capabilities.
+
+Load disclosure: Claude reported a surviving driver-test child using roughly
+9.5 cores during this12:39-12:42 EDT run. tc089 had one initial timeout, passed
+its isolated retry, and is not one of the twelve losses. Both axes have zero
+unresolved timeouts, abnormal exits and actual panic headers. Each new loss has
+an ordinary error diagnostic, but this contention-affected run is not a clean
+performance or final landing measurement. Liveness checks use unfiltered
+`rtk proxy /bin/ps`, never the truncated `rtk ps` display.
+
+Claude independently measured19 dependent-default sources with GHC9.14.1,
+including one instance used at Bool and Ordering, explicit overrides, imported
+defaults and contradictory arguments/results. Unchanged raw observations,
+runners, per-source hashes and the generated Rust fixture are preserved under
+`corpus-chirho/associated-instances-chirho/dependent-chirho`. Initial CLI
+agreement was16/19: d06 falsely rejected; d09/d14 falsely accepted. An
+intermediate telescope change also exposed d11 as a false accept (15/19).
+The parameterized integration test now agrees19/19, with no oracle changes:
+
+- Instance-body `type` declarations use the family-equation grammar. The old
+  alias arm invented their LHS from every enclosing instance argument plus free
+  variables, losing concrete family-only arguments. A source-slice parser
+  control demonstrated the missing Bool, then passed for both equation spellings,
+  multi-parameter classes, zero-argument families and infix heads. The184-line
+  reconstruction is deleted; where-block ownership lives in a small module.
+- Associated-family classifier substitutions are applied before dependent
+  parameter abstraction, retaining the supplied term in later classifiers.
+- Default LHS terms, including visible kind parameters, become rigid before the
+  RHS is checked; d11 can no longer specialize a universally bound kind to Bool.
+- Builtin Bool/Ordering promoted constructors carry actual classifiers, so LT
+  cannot silently obtain Bool's kind. Local constructor shadowing still goes
+  through the existing separate promoted namespace.
+
+Full libraries pass parser372/naming137/typing407; typing integration434 and
+canaries7 pass, zero ignored/filtered in those targets. The fresh explicit CLI
+also agrees19/19. A targeted replay of the twelve newly lost files recovers
+T11401, T16008, T17566 and T21205; eight still reject. This is not a new full
+corpus measurement. The records and source/CLI hashes are beside the reference
+matrix. Subsequent lint-only parser/test cleanup is separately rechecked.
+
+The optional constraints package test was previously vacuous because this
+worktree lacked the package cache. Its now-resolving untracked cache link is
+not committed. One actual test runs and fails: boring reports Rep and Eq.~~
+out of scope, followed by missing Data.Boring in constraints. The first command
+selected zero tests under --exact and is explicitly not evidence; the corrected
+command ran one test with1775 filtered. Zero ignored/filtered in other targets
+does not establish this optional coverage. Claude's independent main-based lane
+passes it live; his isolated equality fix67880440 is available to carry after
+this checkpoint, while Rep remains a separate branch-local investigation.
+
+Clippy all-targets for parser/naming/typing/driver exits0 but emits642 warning
+messages (including repeated target/dependency diagnostics), so lint-clean is
+not claimed. Three new warning sites were repaired without suppression: the
+where-block accepts the declaration owner's type-parser function directly,
+the failure assertion uses expect_err, and reference cases have a named type.
+The final structured diagnostic scan finds no primary warning span overlapping
+this checkpoint's added/changed lines; that is narrower than zero warning debt.
+Main, public artifacts, canonical DB and the final broad/two-pass gates remain held.

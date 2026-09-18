@@ -55,6 +55,7 @@ pub struct KindElaborationChirho {
     // Foreign/import aliases are not authorized by an equal bare name.
     pub(crate) local_promoted_aliases_chirho: HashMap<String, String>,
     pub(crate) equation_inputs_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
+    pub(crate) associated_defaults_chirho: HashMap<(SpanChirho, String), Vec<KindChirho>>,
     pub(crate) source_names_chirho: HashMap<KindVarChirho, String>,
 }
 
@@ -309,41 +310,69 @@ impl KindInferCtxChirho {
                 );
             }
         }
-        for declaration_chirho in &module_chirho.decls_chirho {
-            let (name_chirho, parameters_chirho, heads_chirho) = match declaration_chirho {
-                DeclChirho::DataDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
+        let declared_heads_chirho =
+            module_chirho
+                .decls_chirho
+                .iter()
+                .flat_map(|declaration_chirho| {
+                    use imports_chirho::KindHeadShapeChirho;
+                    match declaration_chirho {
+                        DeclChirho::DataDeclChirho {
+                            name_chirho,
+                            type_vars_chirho,
+                            ..
+                        }
+                        | DeclChirho::NewtypeDeclChirho {
+                            name_chirho,
+                            type_vars_chirho,
+                            ..
+                        } => vec![(
+                            name_chirho.text_chirho(),
+                            type_vars_chirho,
+                            KindHeadShapeChirho::NominalChirho,
+                        )],
+                        DeclChirho::TypeAliasDeclChirho {
+                            name_chirho,
+                            type_vars_chirho,
+                            ..
+                        } => vec![(
+                            name_chirho.text_chirho(),
+                            type_vars_chirho,
+                            KindHeadShapeChirho::SynonymChirho,
+                        )],
+                        DeclChirho::TypeFamilyDeclChirho {
+                            name_chirho,
+                            type_vars_chirho,
+                            ..
+                        } => vec![(
+                            name_chirho.text_chirho(),
+                            type_vars_chirho,
+                            KindHeadShapeChirho::FamilyChirho,
+                        )],
+                        DeclChirho::ClassDeclChirho {
+                            associated_tfs_chirho,
+                            ..
+                        } => associated_tfs_chirho
+                            .iter()
+                            .map(|family_chirho| {
+                                (
+                                    family_chirho.name_chirho.text_chirho(),
+                                    &family_chirho.type_vars_chirho,
+                                    KindHeadShapeChirho::FamilyChirho,
+                                )
+                            })
+                            .collect(),
+                        _ => Vec::new(),
+                    }
+                });
+        for (name_chirho, parameters_chirho, shape_chirho) in declared_heads_chirho {
+            let heads_chirho = match shape_chirho {
+                imports_chirho::KindHeadShapeChirho::NominalChirho => &mut nominal_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::SynonymChirho => &mut synonym_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::FamilyChirho => &mut family_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::ClassChirho => {
+                    unreachable!("class heads are not type applications")
                 }
-                | DeclChirho::NewtypeDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                } => (
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    &mut nominal_heads_chirho,
-                ),
-                DeclChirho::TypeAliasDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                } => (
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    &mut synonym_heads_chirho,
-                ),
-                DeclChirho::TypeFamilyDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                } => (
-                    name_chirho.text_chirho(),
-                    type_vars_chirho,
-                    &mut family_heads_chirho,
-                ),
-                _ => continue,
             };
             let Some(KindBindingChirho::PolyChirho(scheme_chirho)) =
                 self.env_chirho.lookup_binding_chirho(name_chirho)
@@ -383,8 +412,8 @@ impl KindInferCtxChirho {
             // Absence would let an imported same-basename family classify it.
             if !binders_chirho.is_empty()
                 || matches!(
-                    declaration_chirho,
-                    DeclChirho::DataDeclChirho { .. } | DeclChirho::NewtypeDeclChirho { .. }
+                    shape_chirho,
+                    imports_chirho::KindHeadShapeChirho::NominalChirho
                 )
             {
                 if let Some(module_chirho) = &self.local_kind_module_chirho {
@@ -544,6 +573,19 @@ impl KindInferCtxChirho {
             promoted_heads_chirho,
             local_promoted_aliases_chirho,
             equation_inputs_chirho,
+            associated_defaults_chirho: self
+                .kind_associated_defaults_chirho
+                .iter()
+                .map(|(key_chirho, inputs_chirho)| {
+                    (
+                        key_chirho.clone(),
+                        inputs_chirho
+                            .iter()
+                            .map(|input_chirho| self.subst_chirho.apply_chirho(input_chirho))
+                            .collect(),
+                    )
+                })
+                .collect(),
             source_names_chirho,
         }
     }

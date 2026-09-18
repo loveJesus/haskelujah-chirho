@@ -12,6 +12,7 @@ impl InferCtxChirho {
             class_chirho,
             types_chirho,
             assoc_tf_instances_chirho,
+            span_chirho,
             ..
         } = decl_chirho
         {
@@ -105,6 +106,7 @@ impl InferCtxChirho {
                 class_chirho.text_chirho(),
                 types_chirho,
                 assoc_tf_instances_chirho,
+                *span_chirho,
             );
         }
     }

@@ -51,10 +51,12 @@ pub(super) fn builtin_term_chirho(name_chirho: &str) -> Option<KindChirho> {
         | "Lifted" | "Unlifted" | "IntRep" | "WordRep" | "Int8Rep" | "Word8Rep" | "Int16Rep"
         | "Word16Rep" | "Int32Rep" | "Word32Rep" | "Int64Rep" | "Word64Rep" | "AddrRep"
         | "FloatRep" | "DoubleRep" | "TupleRep" | "SumRep" | "VecRep" | "Many" | "One" | "True"
-        | "False" | "VecCount" | "VecElem" | "Vec2" | "Vec4" | "Vec8" | "Vec16" | "Vec32"
-        | "Vec64" | "Int8ElemRep" | "Int16ElemRep" | "Int32ElemRep" | "Int64ElemRep"
-        | "Word8ElemRep" | "Word16ElemRep" | "Word32ElemRep" | "Word64ElemRep" | "FloatElemRep"
-        | "DoubleElemRep" => KindChirho::ConChirho(format!("GHC.Types.{name_chirho}")),
+        | "False" | "LT" | "EQ" | "GT" | "VecCount" | "VecElem" | "Vec2" | "Vec4" | "Vec8"
+        | "Vec16" | "Vec32" | "Vec64" | "Int8ElemRep" | "Int16ElemRep" | "Int32ElemRep"
+        | "Int64ElemRep" | "Word8ElemRep" | "Word16ElemRep" | "Word32ElemRep" | "Word64ElemRep"
+        | "FloatElemRep" | "DoubleElemRep" => {
+            KindChirho::ConChirho(format!("GHC.Types.{name_chirho}"))
+        }
         _ => return None,
     })
 }
@@ -506,6 +508,8 @@ impl KindEnvChirho {
         for name_chirho in [
             "Type",
             "Constraint",
+            "Bool",
+            "Ordering",
             "RuntimeRep",
             "Levity",
             "Multiplicity",
@@ -548,6 +552,8 @@ impl KindEnvChirho {
             ),
         );
         for (names_chirho, classifier_chirho) in [
+            (&["False", "True"][..], "Bool"),
+            (&["LT", "EQ", "GT"][..], "Ordering"),
             (&["One", "Many"][..], "Multiplicity"),
             (
                 &["Vec2", "Vec4", "Vec8", "Vec16", "Vec32", "Vec64"][..],

@@ -5,8 +5,158 @@ use super::{
     DiagnosticChirho, ErrorCodeChirho, KIND_MISMATCH_CODE_CHIRHO, KindChirho, KindInferCtxChirho,
     SpanChirho, TypeChirho,
 };
+use haskelujah_ast_chirho::decl_chirho::{AssocTfInstanceChirho, AssocTypeFamilyChirho};
 
 impl KindInferCtxChirho {
+    /// Associated equations consume the closed family contract inside the
+    /// enclosing instance's kind scope. Its generalized variables are rigid:
+    /// an associated RHS must not specialize a polymorphic instance head.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn check_associated_instance_equations_chirho(
+        &mut self,
+        class_name_chirho: &str,
+        head_types_chirho: &[TypeChirho],
+        equations_chirho: &[AssocTfInstanceChirho],
+        defaults_chirho: Option<(&[super::TyVarChirho], &[AssocTypeFamilyChirho])>,
+        span_chirho: SpanChirho,
+    ) {
+        if equations_chirho.is_empty()
+            && !defaults_chirho.is_some_and(|(_, families_chirho)| {
+                families_chirho
+                    .iter()
+                    .any(|family_chirho| !family_chirho.defaults_chirho.is_empty())
+            })
+        {
+            return;
+        }
+        let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
+        self.env_chirho.begin_scope_chirho();
+        let mut class_kind_chirho = self
+            .env_chirho
+            .lookup_binding_chirho(class_name_chirho)
+            .cloned()
+            .map(|binding_chirho| self.instantiate_binding_chirho(&binding_chirho));
+        for argument_chirho in head_types_chirho {
+            let actual_chirho = self.infer_type_kind_chirho(argument_chirho);
+            if let Some(expected_chirho) = class_kind_chirho.take() {
+                let term_chirho = self.interpret_kind_term_chirho(argument_chirho);
+                class_kind_chirho = Some(self.consume_kind_argument_chirho(
+                    expected_chirho,
+                    &actual_chirho,
+                    Some(&term_chirho),
+                    argument_chirho.span_chirho(),
+                    "associated instance head",
+                ));
+            }
+        }
+        let bindings_chirho = self.env_chirho.capture_scope_chirho();
+        let variables_chirho = bindings_chirho
+            .iter()
+            .flat_map(|(_, binding_chirho)| {
+                self.subst_chirho
+                    .apply_chirho(binding_chirho.body_chirho())
+                    .free_vars_chirho()
+            })
+            .collect::<Vec<_>>();
+        self.rigidify_kind_variables_chirho(variables_chirho);
+        self.env_chirho.begin_scope_chirho();
+        for (name_chirho, binding_chirho) in bindings_chirho {
+            self.env_chirho
+                .bind_entry_chirho(name_chirho, binding_chirho);
+        }
+        for equation_chirho in equations_chirho {
+            let name_chirho = self.canonical_kind_name_chirho(&equation_chirho.family_name_chirho);
+            let Some(super::KindBindingChirho::PolyChirho(scheme_chirho)) =
+                self.env_chirho.lookup_binding_chirho(&name_chirho).cloned()
+            else {
+                // An absent imported kind is not a guessed family classifier.
+                continue;
+            };
+            self.with_signature_kind_scope_chirho(|ctx_chirho| {
+                ctx_chirho.check_family_equation_body_chirho(
+                    &name_chirho,
+                    &scheme_chirho,
+                    &equation_chirho.lhs_types_chirho,
+                    &equation_chirho.rhs_chirho,
+                );
+            });
+        }
+        if let Some((class_parameters_chirho, families_chirho)) = defaults_chirho {
+            for family_chirho in families_chirho {
+                let name_chirho = family_chirho.name_chirho.text_chirho();
+                if family_chirho.defaults_chirho.is_empty()
+                    || equations_chirho.iter().any(|equation_chirho| {
+                        equation_chirho.family_name_chirho.text_chirho() == name_chirho
+                    })
+                {
+                    continue;
+                }
+                let Some(super::KindBindingChirho::PolyChirho(scheme_chirho)) =
+                    self.env_chirho.lookup_binding_chirho(name_chirho).cloned()
+                else {
+                    // These defaults come only from this module's checked class
+                    // declarations, unlike an explicit equation for an imported
+                    // family above. Missing local authority is a real error.
+                    self.diagnostics_chirho.push_chirho(
+                        DiagnosticChirho::error_with_code_chirho(
+                            ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
+                            format!("associated default instance has no checked kind for `{name_chirho}`"),
+                            span_chirho,
+                        ),
+                    );
+                    continue;
+                };
+                self.with_signature_kind_scope_chirho(|ctx_chirho| {
+                    let start_chirho = ctx_chirho.diagnostics_chirho.len_chirho();
+                    let (mut expected_chirho, hidden_chirho) =
+                        ctx_chirho.open_kind_scheme_parts_chirho(&scheme_chirho, false);
+                    for parameter_chirho in &family_chirho.type_vars_chirho {
+                        let argument_chirho = class_parameters_chirho
+                            .iter()
+                            .position(|class_parameter_chirho| {
+                                class_parameter_chirho.text_chirho()
+                                    == parameter_chirho.text_chirho()
+                            })
+                            .and_then(|index_chirho| head_types_chirho.get(index_chirho));
+                        let (actual_chirho, term_chirho) =
+                            if let Some(argument_chirho) = argument_chirho {
+                                (
+                                    ctx_chirho.infer_type_kind_chirho(argument_chirho),
+                                    ctx_chirho.interpret_kind_term_chirho(argument_chirho),
+                                )
+                            } else {
+                                // A family-only argument remains an equation binder,
+                                // not an extra parameter of the enclosing instance.
+                                let classifier_chirho = ctx_chirho.fresh_kind_chirho();
+                                let identity_chirho = ctx_chirho.fresh_var_chirho();
+                                ctx_chirho
+                                    .kind_binder_classifiers_chirho
+                                    .insert(identity_chirho, classifier_chirho.clone());
+                                (classifier_chirho, KindChirho::VarChirho(identity_chirho))
+                            };
+                        expected_chirho = ctx_chirho.consume_kind_argument_chirho(
+                            expected_chirho,
+                            &actual_chirho,
+                            Some(&term_chirho),
+                            family_chirho.span_chirho,
+                            "associated default instance argument",
+                        );
+                    }
+                    if !ctx_chirho.diagnostics_chirho.diagnostics_chirho()[start_chirho..]
+                        .iter()
+                        .any(DiagnosticChirho::is_error_chirho)
+                    {
+                        ctx_chirho
+                            .kind_associated_defaults_chirho
+                            .insert((span_chirho, name_chirho.to_owned()), hidden_chirho);
+                    }
+                });
+            }
+        }
+        self.env_chirho.end_scope_chirho();
+        self.kind_var_cache_chirho = outer_names_chirho;
+    }
+
     /// Number of arguments a kind takes before reaching its result, and whether
     /// that count is final. Only a variable in the RESULT position leaves the
     /// arity open (it may still be instantiated to another arrow); a variable

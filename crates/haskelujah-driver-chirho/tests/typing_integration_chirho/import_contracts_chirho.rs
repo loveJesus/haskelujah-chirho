@@ -5,8 +5,12 @@
 use haskelujah_driver::{compile_modules_chirho, typecheck_source_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[path = "import_contracts_chirho/associated_indices_chirho.rs"]
+mod associated_indices_chirho;
 #[path = "import_contracts_chirho/associated_syntax_chirho.rs"]
 mod associated_syntax_chirho;
+#[path = "import_contracts_chirho/default_scopes_chirho.rs"]
+mod default_scopes_chirho;
 
 #[path = "import_contracts_chirho/boot_chirho.rs"]
 mod boot_chirho;

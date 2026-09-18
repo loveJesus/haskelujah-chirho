@@ -1,0 +1,52 @@
+{
+  "recorded_at_chirho": "2026-09-18T17:03:18.727Z",
+  "scope_chirho": "Full parser/naming/typing libs plus driver typing integration and canaries. Not full driver --lib, not a corpus landing gate; optional package fixture absent during these targets.",
+  "rust_min_stack_chirho": 16777216,
+  "head_chirho": "02e747617de6caa11c9d5a12004460d37097545b",
+  "hashes_chirho": {
+    "crates/haskelujah-driver-chirho/src/frontend_chirho.rs": "1eccd6d16fd8454345f772b281a7043dd3847bc6e4fffe270cd69c526f2c1eb8",
+    "crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs": "7d9aaf25a62c199f08dee610f41f137dc9b476d77c0604c039f0857e8794850e",
+    "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho.rs": "8b6f9c462e1274828d37cf36ae8bb7d655fb685d7db3c5e10fa6ad1e116bbc04",
+    "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/associated_indices_chirho.rs": "0905c9cfe7b7f4f1f6d70ac2a1e543a90d5ca72b2676daaddd523965c568be0d",
+    "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/default_scopes_chirho.rs": "353b36127d74645a9290f5428b2bb291fde484b8e0438a75e30c1aa36cec3bc7",
+    "crates/haskelujah-naming-chirho/src/type_scope_chirho.rs": "a844b1072cd45ce76c9c34cf129efd13f71bfa88fcf23e3e585c53fd48792926",
+    "crates/haskelujah-parser-chirho/src/cst_parser_chirho.rs": "11dfea604d87b12ba4777dab4dc085bdddf0b5c6a3dd07262c258c47806fcac6",
+    "crates/haskelujah-parser-chirho/src/cst_parser_chirho/where_blocks_chirho.rs": "ed3782e7625084b9ed3cc3cdb08bb11b109ee5bdf3375ffb903b66d7805457a2",
+    "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/classes_chirho.rs": "b8a452e0ddad063a375f51661143aed6eb7daa8ea2dff654247f44363e665aa2",
+    "crates/haskelujah-parser-chirho/src/lower_chirho/type_family_tests_chirho.rs": "5241d01ebaaf39f8c7dd1d6e6c3b366bdbff81ec8d3357f85d61007886cb75c9",
+    "crates/haskelujah-typing-chirho/src/infer_chirho.rs": "e24600227285081897f3fef60d64d758a81d7f8f14a3b6e0421926f8eb64749a",
+    "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/classes_chirho.rs": "620876e7bf4906f52a95a6e747e3df983ec78e54635020eedb07d4e007d2bcbb",
+    "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/instances_chirho.rs": "51e4dce28bc8769c651e533109408420550c803814ba04764be7449bc36c38b5",
+    "crates/haskelujah-typing-chirho/src/infer_chirho/family_declarations_chirho.rs": "37084fe8702dfb2cba3b8423b7b8dfbdca3a59f677833d63b5f500551d0967e6",
+    "crates/haskelujah-typing-chirho/src/kind_chirho.rs": "9db41feb6aecddebd960a4c2325a9a668740d5a83f8cbbf8177e9968fc0433be",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/constructors_chirho.rs": "e5e19e0b7d5a04ef18f6ecae91794c20d43518a4a2216220c5ad3f0f9c24b138",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/defaults_chirho.rs": "b2e86b8cd1e3e377215ab9acbc4512609e78a6e0a4b6258e287dfc28bdda4f56",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/elaboration_chirho.rs": "ee6e281def46cd0a04f66fa58e3ac1c6003d5ab46587da85fe4f3ec5030045ba",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/families_chirho.rs": "bce9cedd405f726fcf2c87c25313c03e752871d9637f061a508d677f219f5a96",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/groups_chirho.rs": "8241eeccd56582b80d40b64d538835a13055d41c734b0b130030105b2f503dd5",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/instances_chirho.rs": "2b1f50d5c654d7be54cb2a0c7e714ac00e80780c9b054410f077535fa783aeb5",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/runtime_chirho.rs": "8875a63b085d6ea1762a0355ab545b45e44354cdecbcb22aed1b13db811918de",
+    "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs": "be1cd015813d3bfe2387e79d115c66c855cac35443aae24d5bc1a46296089e14",
+    "crates/haskelujah-typing-chirho/src/types_chirho/families_chirho.rs": "8f9f63cc94b0ade2170e992230baddefe5c0f36b03f2226b1046e6387d7a3b50",
+    "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/associated-instances-chirho/dependent-chirho/fixtures_chirho.rs": "0deb38b4f1ce0669acaa48d8935c06e60753e0e52b839793ff05ed42547c61ec"
+  },
+  "source_hashes_stable_chirho": true,
+  "records_chirho": [
+    {
+      "command_chirho": "rtk proxy env RUST_MIN_STACK=16777216 nice -n 5 cargo test -j 3 -p haskelujah-parser -p haskelujah-naming -p haskelujah-typing --lib -- --quiet",
+      "start_chirho": "2026-09-18T16:59:12.670Z",
+      "output_chirho": "   Compiling haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n   Compiling haskelujah-parser v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-parser-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.62s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_naming-cfa69b96ab7a48f4)\n\nrunning 137 tests\n....................................................................................... 87/137\n..................................................\ntest result: ok. 137 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s\n\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_parser-4d17323b2fd92be9)\n\nrunning 372 tests\n....................................................................................... 87/372\n....................................................................................... 174/372\n....................................................................................... 261/372\n....................................................................................... 348/372\n........................\ntest result: ok. 372 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s\n\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_typing-946cba87469fe1d1)\n\nrunning 407 tests\n....................................................................................... 87/407\n....................................................................................... 174/407\n....................................................................................... 261/407\n....................................................................................... 348/407\n...........................................................\ntest result: ok. 407 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s\n\n",
+      "session_id": 37596,
+      "exit_chirho": 0,
+      "end_chirho": "2026-09-18T17:00:25.686Z"
+    },
+    {
+      "command_chirho": "rtk proxy env RUST_MIN_STACK=16777216 nice -n 5 cargo test -j 3 -p haskelujah-driver --test typing_integration_chirho --test canaries_chirho -- --quiet",
+      "start_chirho": "2026-09-18T17:00:47.873Z",
+      "output_chirho": "   Compiling haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.69s\n     Running tests/canaries_chirho.rs (target/debug/deps/canaries_chirho-29cfbcd42c0c8890)\n\nrunning 7 tests\n.......\ntest result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s\n\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-15cb8906ab671603)\n\nrunning 434 tests\n....................................................................................... 87/434\n....................................................................................... 174/434\n....................................................................................... 261/434\n....................................................................................... 348/434\n......................................................................................\ntest result: ok. 434 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 82.48s\n\n",
+      "session_id": 80678,
+      "exit_chirho": 0,
+      "end_chirho": "2026-09-18T17:02:40.120Z"
+    }
+  ]
+}

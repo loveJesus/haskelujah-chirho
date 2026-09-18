@@ -99,6 +99,13 @@ flowchart TD
 
 The walker performs no filesystem lookup or module scanning. Its successful-resolution path is linear in the lowered AST with hash-backed namespace lookups; the error-only suggestion path compares against the already-populated in-memory environment, and duplicate diagnostics are suppressed by issue/name/span.
 
+An associated-family default temporarily replaces the class lexical scope with
+its own LHS binders, including variables in written kind annotations. The RHS
+cannot borrow a class type parameter or an unwritten class kind name. Restoring
+the outer map is an O(1) ownership swap; no module-sized namespace is copied.
+Kind checking then validates those annotations and the family's implicit inputs
+as documented in language-features-chirho/declaration-kinds-chirho.md.
+
 For GHC9.14 compatibility, an outermost type-synonym RHS ascription implicitly
 quantifies otherwise-free variables in its classifier, after declaration-head
 binders enter scope. Only parentheses are peeled to find this outer ascription;

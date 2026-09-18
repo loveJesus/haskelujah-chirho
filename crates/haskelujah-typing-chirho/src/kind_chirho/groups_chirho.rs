@@ -121,6 +121,8 @@ impl KindInferCtxChirho {
             for inference_group_chirho in dependency_groups_chirho(&inference_edges_chirho) {
                 let mut written_chirho = Vec::new();
                 let mut named_variables_chirho = Vec::new();
+                let mut promoted_contracts_chirho = Vec::new();
+                let errors_before_chirho = self.diagnostics_chirho.error_count_chirho();
                 for &local_chirho in &inference_group_chirho {
                     let scope_chirho = std::mem::take(&mut scopes_chirho[local_chirho]);
                     written_chirho.extend(scope_chirho.written_chirho);
@@ -132,6 +134,11 @@ impl KindInferCtxChirho {
                     self.kind_var_cache_chirho = scope_chirho.names_chirho;
                     self.check_kind_declaration_body_chirho(
                         graph_chirho.declarations_chirho[group_chirho[local_chirho]],
+                    );
+                    promoted_contracts_chirho.extend(
+                        self.prepare_ordinary_promoted_contracts_chirho(
+                            graph_chirho.declarations_chirho[group_chirho[local_chirho]],
+                        ),
                     );
                     named_variables_chirho.extend(self.kind_var_cache_chirho.values().copied());
                     self.kind_var_cache_chirho.clear();
@@ -151,6 +158,9 @@ impl KindInferCtxChirho {
                     for &name_chirho in &graph_chirho.names_chirho[group_chirho[local_chirho]] {
                         self.publish_kind_chirho(name_chirho, &named_variables_chirho);
                     }
+                }
+                if self.diagnostics_chirho.error_count_chirho() == errors_before_chirho {
+                    self.publish_ordinary_promoted_contracts_chirho(promoted_contracts_chirho);
                 }
                 // Rows belong to the family declaration, not the last line of
                 // the module. Dependency edges include both their inputs and RHS.
@@ -174,6 +184,10 @@ impl KindInferCtxChirho {
             }
         }
 
+        // Defaults consume the class/family kind, not help infer it. A method
+        // may fix a class parameter's kind; a default may not specialize a
+        // polymorphic implicit argument. Check after those kinds are closed.
+        self.check_associated_default_kinds_chirho(module_chirho);
         self.check_detached_family_equations_chirho(module_chirho);
 
         // A value signature consumes finalized declaration kinds. Its text order
@@ -293,7 +307,17 @@ impl KindInferCtxChirho {
                                 family_chirho.span_chirho,
                             );
                         }
-                        parameter_kinds_chirho.push(kind_chirho);
+                        // A visible family parameter can occur in the classifier
+                        // of a later parameter or in the result. Keep its TERM
+                        // identity so that application substitutes the supplied
+                        // argument, rather than quantifying that dependency away.
+                        let _term_chirho = self.interpret_kind_term_chirho(
+                            &super::TypeChirho::VarChirho(parameter_chirho.name_chirho.clone()),
+                        );
+                        parameter_kinds_chirho.push((
+                            self.kind_var_cache_chirho[parameter_chirho.text_chirho()],
+                            kind_chirho,
+                        ));
                     }
                     let result_chirho = if let Some(result_chirho) = family_chirho
                         .result_chirho
@@ -303,15 +327,32 @@ impl KindInferCtxChirho {
                     {
                         self.type_to_kind_chirho(result_chirho)
                     } else {
-                        self.fresh_kind_chirho()
+                        // An omitted associated result signature means Type;
+                        // methods and defaults cannot infer a different result.
+                        KindChirho::StarChirho
                     };
                     self.family_annotation_positions_chirho(
                         &family_chirho.type_vars_chirho,
                         &family_chirho.result_chirho,
                         family_chirho.span_chirho,
                     );
-                    let kind_chirho =
-                        KindChirho::arrow_n_chirho(parameter_kinds_chirho, result_chirho);
+                    // Resolve the classifier equalities BEFORE abstracting the
+                    // parameter terms. Otherwise a later classifier can retain
+                    // a metavariable whose substitution points to the now-bound
+                    // term, reopening that dependency as a free quantifier.
+                    let parameters_chirho = parameter_kinds_chirho
+                        .into_iter()
+                        .map(|(identity_chirho, classifier_chirho)| {
+                            (
+                                identity_chirho,
+                                self.subst_chirho.apply_chirho(&classifier_chirho),
+                            )
+                        })
+                        .collect();
+                    let kind_chirho = Self::compose_kind_head_chirho(
+                        parameters_chirho,
+                        self.subst_chirho.apply_chirho(&result_chirho),
+                    );
                     let existing_chirho = self
                         .env_chirho
                         .lookup_chirho(family_chirho.name_chirho.text_chirho())
@@ -412,35 +453,8 @@ impl KindInferCtxChirho {
             DeclChirho::ClassDeclChirho {
                 context_chirho,
                 methods_chirho,
-                associated_tfs_chirho,
                 ..
             } => {
-                for family_chirho in associated_tfs_chirho {
-                    for equation_chirho in &family_chirho.defaults_chirho {
-                        self.with_signature_kind_scope_chirho(|ctx_chirho| {
-                            // Check the original arguments, including their kind
-                            // annotations, before default instantiation erases them.
-                            let application_chirho = equation_chirho.lhs_types_chirho.iter().fold(
-                                super::TypeChirho::ConChirho(family_chirho.name_chirho.clone()),
-                                |fun_chirho, arg_chirho| super::TypeChirho::AppChirho {
-                                    fun_chirho: Box::new(fun_chirho),
-                                    arg_chirho: Box::new(arg_chirho.clone()),
-                                    span_chirho: equation_chirho.span_chirho,
-                                },
-                            );
-                            let expected_chirho =
-                                ctx_chirho.infer_type_kind_chirho(&application_chirho);
-                            let actual_chirho =
-                                ctx_chirho.infer_type_kind_chirho(&equation_chirho.rhs_chirho);
-                            ctx_chirho.unify_chirho(
-                                &expected_chirho,
-                                &actual_chirho,
-                                "associated family default",
-                                equation_chirho.span_chirho,
-                            );
-                        });
-                    }
-                }
                 for constraint_chirho in context_chirho {
                     self.infer_constraint_kind_chirho(constraint_chirho);
                 }

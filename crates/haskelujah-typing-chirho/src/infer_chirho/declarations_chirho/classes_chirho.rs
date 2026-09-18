@@ -219,6 +219,7 @@ impl InferCtxChirho {
                             family_params_chirho: param_names_chirho,
                             class_params_chirho: class_params_chirho.clone(),
                             rhs_chirho: equation_chirho.rhs_chirho.clone(),
+                            span_chirho: equation_chirho.span_chirho,
                         });
                 }
             }

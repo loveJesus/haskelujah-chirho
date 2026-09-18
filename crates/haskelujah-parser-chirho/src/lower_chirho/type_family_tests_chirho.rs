@@ -5,6 +5,54 @@ use super::*;
 use haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho;
 
 #[test]
+fn associated_equations_preserve_written_arguments_chirho() {
+    for (head_chirho, equation_chirho, arguments_chirho) in [
+        (
+            "ClassChirho Char",
+            "FamilyChirho Char Bool valueChirho",
+            vec!["Char", "Bool", "valueChirho"],
+        ),
+        ("ClassChirho Int Bool", "FamilyChirho Int", vec!["Int"]),
+        (
+            "ClassChirho (DataChirho valueChirho)",
+            "FamilyChirho",
+            vec![],
+        ),
+        ("ClassChirho Char", "Char :*: Bool", vec!["Char", "Bool"]),
+    ] {
+        for keyword_chirho in ["type", "type instance"] {
+            let source_chirho = format!(
+                "module AssociatedChirho where\ninstance {head_chirho} where\n  {keyword_chirho} {equation_chirho} = Int\ncanaryChirho :: MissingTypeChirho\ncanaryChirho = undefined\n"
+            );
+            let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+            let module_chirho = lower_module_chirho(
+                &crate::cst_parser_chirho::parse_to_cst_chirho(&source_chirho, file_chirho),
+                file_chirho,
+            );
+            let DeclChirho::InstanceDeclChirho {
+                assoc_tf_instances_chirho,
+                ..
+            } = &module_chirho.decls_chirho[0]
+            else {
+                panic!("{module_chirho:?}");
+            };
+            assert_eq!(assoc_tf_instances_chirho.len(), 1, "{source_chirho}");
+            let actual_chirho = assoc_tf_instances_chirho[0]
+                .lhs_types_chirho
+                .iter()
+                .map(|argument_chirho| {
+                    let span_chirho = argument_chirho.span_chirho();
+                    &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+                        ..span_chirho.end_chirho().as_usize_chirho()]
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(actual_chirho, arguments_chirho, "{source_chirho}");
+            assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| matches!(declaration_chirho, DeclChirho::TypeSigChirho { name_chirho, .. } if name_chirho.text_chirho() == "canaryChirho")));
+        }
+    }
+}
+
+#[test]
 fn abstract_family_body_preserves_the_following_signature_chirho() {
     for body_chirho in ["where ..", "where { .. }"] {
         let source_chirho = format!(

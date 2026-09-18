@@ -23,7 +23,7 @@ pub(super) enum KindFamilyChirho {
     },
 }
 
-struct CheckedKindFamilyRowChirho {
+pub(super) struct CheckedKindFamilyRowChirho {
     patterns_chirho: Vec<KindChirho>,
     result_chirho: Option<KindChirho>,
     hidden_chirho: Vec<KindChirho>,
@@ -199,6 +199,36 @@ impl KindInferCtxChirho {
         arguments_chirho: &[TypeChirho],
         result_chirho: &TypeChirho,
     ) -> Option<CheckedKindFamilyRowChirho> {
+        self.env_chirho.begin_scope_chirho();
+        let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
+        for name_chirho in binders_chirho
+            .iter()
+            .map(|binder_chirho| binder_chirho.text_chirho())
+            .chain(outer_names_chirho.keys().map(String::as_str))
+        {
+            self.env_chirho.hide_chirho(name_chirho);
+        }
+        let row_chirho = self.check_family_equation_body_chirho(
+            name_chirho,
+            scheme_chirho,
+            arguments_chirho,
+            result_chirho,
+        );
+        self.env_chirho.end_scope_chirho();
+        self.kind_var_cache_chirho = outer_names_chirho;
+        row_chirho
+    }
+
+    /// The caller owns the binder scope. An associated row shares its enclosing
+    /// instance variables; a top-level row instead opens an independent scope.
+    pub(super) fn check_family_equation_body_chirho(
+        &mut self,
+        name_chirho: &str,
+        scheme_chirho: &KindSchemeChirho,
+        arguments_chirho: &[TypeChirho],
+        result_chirho: &TypeChirho,
+    ) -> Option<CheckedKindFamilyRowChirho> {
+        let diagnostics_start_chirho = self.diagnostics_chirho.len_chirho();
         let valid_patterns_chirho =
             arguments_chirho
                 .iter()
@@ -210,15 +240,6 @@ impl KindInferCtxChirho {
             return None;
         }
 
-        self.env_chirho.begin_scope_chirho();
-        let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
-        for name_chirho in binders_chirho
-            .iter()
-            .map(|binder_chirho| binder_chirho.text_chirho())
-            .chain(outer_names_chirho.keys().map(String::as_str))
-        {
-            self.env_chirho.hide_chirho(name_chirho);
-        }
         let (mut classifier_chirho, hidden_chirho) =
             self.open_kind_scheme_parts_chirho(scheme_chirho, false);
         let mut patterns_chirho = Vec::new();
@@ -246,6 +267,12 @@ impl KindInferCtxChirho {
             "family equation result",
             result_chirho.span_chirho(),
         );
+        if self.diagnostics_chirho.diagnostics_chirho()[diagnostics_start_chirho..]
+            .iter()
+            .any(DiagnosticChirho::is_error_chirho)
+        {
+            return None;
+        }
         self.record_equation_kind_inputs_chirho(
             name_chirho,
             scheme_chirho,
@@ -253,8 +280,6 @@ impl KindInferCtxChirho {
             result_chirho.span_chirho(),
         );
         let result_chirho = self.family_term_chirho(result_chirho);
-        self.env_chirho.end_scope_chirho();
-        self.kind_var_cache_chirho = outer_names_chirho;
         Some(CheckedKindFamilyRowChirho {
             patterns_chirho,
             result_chirho,

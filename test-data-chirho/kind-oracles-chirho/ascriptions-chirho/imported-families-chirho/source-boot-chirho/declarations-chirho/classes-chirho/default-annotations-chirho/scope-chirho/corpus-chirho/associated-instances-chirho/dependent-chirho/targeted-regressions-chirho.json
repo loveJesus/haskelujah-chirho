@@ -1,0 +1,175 @@
+{
+  "scope_chirho": "Targeted replay of the twelve new accept losses; concurrent focused gates, not a clean corpus pass",
+  "binary_sha256_chirho": "b7219ae2b4b90905f54adb2ed096027cca671f8cb85dd48409f2c78ac9faf6d3",
+  "binary_stable_chirho": true,
+  "records_chirho": [
+    {
+      "name_chirho": "ClassDefaultInHsBoot",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/ClassDefaultInHsBoot.hs"
+      ],
+      "source_sha256_chirho": "71798695b505d58251cb5c4bb826be7657cd90ff5609548078dd611ea1e86863",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0100]: Error checking dependency ClassDefaultInHsBootA2 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/ClassDefaultInHsBootA2.hs): error[E0200]: type mismatch: expected `()`, found `((T @t1) I)` (at 151..160)\n  note: expected type: ()\n  note:    found type: ((T @t1) I)\n\n1 error generated\n",
+      "elapsed_ms_chirho": 64
+    },
+    {
+      "name_chirho": "ClassDefaultInHsBootA2",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/ClassDefaultInHsBootA2.hs"
+      ],
+      "source_sha256_chirho": "fe0f29d4c230bcd1a2fc0b85ce0a6e798565db2057336ef03b053a6170493259",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0200]: type mismatch: expected `()`, found `((T @t1) I)`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/ClassDefaultInHsBootA2.hs:10:3\n    |\n  9 |   type T I = ()\n 10 |   def = ()\n    |   ^^^^^^^^\n 11 | \n    | ^\n  = note: expected type: ()\n  = note:    found type: ((T @t1) I)\n\n1 error generated\n",
+      "elapsed_ms_chirho": 56
+    },
+    {
+      "name_chirho": "ClassDefaultInHsBootA3",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/ClassDefaultInHsBootA3.hs"
+      ],
+      "source_sha256_chirho": "9d5d36b1e1a8d0366f89a3a02d5dd2031278444e06ede058013e8f923472bff4",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0100]: Error checking dependency ClassDefaultInHsBootA2 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/ClassDefaultInHsBootA2.hs): error[E0200]: type mismatch: expected `()`, found `((T @t1) I)` (at 151..160)\n  note: expected type: ()\n  note:    found type: ((T @t1) I)\n\n1 error generated\n",
+      "elapsed_ms_chirho": 57
+    },
+    {
+      "name_chirho": "T10776",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T10776.hs"
+      ],
+      "source_sha256_chirho": "7caa647c158f0e627c1098a0b14cbca5299cfac4281ed688f1b7e0083410a9a9",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: kind mismatch in type application: expected `Natural`, found `GHC.TypeNats.Nat`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T10776.hs:14:10\n    |\n 13 | \n 14 | type X = TN 1 101\n    |          ^^^^\n 15 | \n\nerror[E0300]: kind mismatch in type application: expected `Natural`, found `GHC.TypeNats.Nat`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T10776.hs:14:10\n    |\n 13 | \n 14 | type X = TN 1 101\n    |          ^^^^^^^^\n 15 | \n\nerror[E0300]: kind mismatch in family equation result: expected `GHC.TypeNats.Nat`, found `Natural`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T10776.hs:17:27\n    |\n 16 | type family SecondNat (a :: NatPair) :: Nat where\n 17 |     SecondNat ('TN _ a) = a\n    |                           ^\n 18 | \n\n3 errors generated\n",
+      "elapsed_ms_chirho": 20
+    },
+    {
+      "name_chirho": "T11401",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T11401.hs"
+      ],
+      "source_sha256_chirho": "c3dc92f0b2f784bf5187bcff9a2cd968c5fa14e446b8b0379a1702d647649d4b",
+      "exit_chirho": 0,
+      "timed_out_chirho": false,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T11401.hs\nmodule: T11401\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T11401\nwasm_stub_size: 27\n",
+      "stderr_chirho": "",
+      "elapsed_ms_chirho": 110
+    },
+    {
+      "name_chirho": "T11754",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T11754.hs"
+      ],
+      "source_sha256_chirho": "3d3d060d860a4c151502b32f3b7f98da50e77c9e97ad2e91281e239b305752e8",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: kind mismatch in type application: expected `* -> *`, found `*`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T11754.hs:28:28\n    |\n 27 | instance (Differentiable f₁, Differentiable f₂) => Differentiable (f₁ × f₂) where\n 28 |   type D (f₁ × f₂) = (D f₁ × f₂) + (f₁ × D f₂)\n    |                            ^^^^^^\n 29 | \n\nerror[E0300]: kind mismatch in type application: expected `*`, found `* -> *`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T11754.hs:28:28\n    |\n 27 | instance (Differentiable f₁, Differentiable f₂) => Differentiable (f₁ × f₂) where\n 28 |   type D (f₁ × f₂) = (D f₁ × f₂) + (f₁ × D f₂)\n    |                            ^^^^^^^^^^^^^^\n 29 | \n\nerror[E0300]: kind mismatch in type application: expected `* -> *`, found `rigid k100104`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T11754.hs:28:55\n    |\n 27 | instance (Differentiable f₁, Differentiable f₂) => Differentiable (f₁ × f₂) where\n 28 |   type D (f₁ × f₂) = (D f₁ × f₂) + (f₁ × D f₂)\n    |                                                       ^^^^^^\n 29 | \n\n3 errors generated\n",
+      "elapsed_ms_chirho": 23
+    },
+    {
+      "name_chirho": "T13585a",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T13585a.hs"
+      ],
+      "source_sha256_chirho": "ad1efcebf8eca9bbea98a859d0981e91f07a3dcb9ffadd1c81085b08ee203cd3",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: kind mismatch in type application: expected `*`, found `rigid k100171`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T13585a.hs:54:32\n    |\n 53 | instance Wrapped (First a) where\n 54 |     type Unwrapped (First a) = Maybe a\n    |                                ^^^^^^^\n 55 |     _Wrapped' = iso getFirst First\n\n1 error generated\n",
+      "elapsed_ms_chirho": 27
+    },
+    {
+      "name_chirho": "T14441",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T14441.hs"
+      ],
+      "source_sha256_chirho": "ba1c71ffecfd9e17890287473a32503e1ffadc4b208479af4809f02f189692fb",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: kind mismatch in family equation result: expected `(Demote (Prox k100047))`, found `(Prox k100053)`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T14441.hs:16:27\n    |\n 15 | $(return [])\n 16 | type instance DemoteX P = P\n    |                           ^\n 17 | \n\n1 error generated\n",
+      "elapsed_ms_chirho": 22
+    },
+    {
+      "name_chirho": "T16008",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T16008.hs"
+      ],
+      "source_sha256_chirho": "c2040e4f1d53e3e170d9b6e7749e36f876778c66d52ab03fc3f6efa7bdd9e28d",
+      "exit_chirho": 0,
+      "timed_out_chirho": false,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T16008.hs\nmodule: T16008\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T16008\nwasm_stub_size: 27\n",
+      "stderr_chirho": "",
+      "elapsed_ms_chirho": 34
+    },
+    {
+      "name_chirho": "T17566",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T17566.hs"
+      ],
+      "source_sha256_chirho": "4881d15314d5631ea833d7e6606a59459ea7018abd6e8e0588fb67bcc69a0a74",
+      "exit_chirho": 0,
+      "timed_out_chirho": false,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T17566.hs\nmodule: T17566\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T17566\nwasm_stub_size: 27\n",
+      "stderr_chirho": "",
+      "elapsed_ms_chirho": 57
+    },
+    {
+      "name_chirho": "T21205",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T21205.hs"
+      ],
+      "source_sha256_chirho": "b292cf3a2826afbc70bc15e5aead5fede2866dd2d3d401006852d8b3359fd09e",
+      "exit_chirho": 0,
+      "timed_out_chirho": false,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T21205.hs\nmodule: T20855b\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module T20855b\nwasm_stub_size: 28\n",
+      "stderr_chirho": "",
+      "elapsed_ms_chirho": 57
+    },
+    {
+      "name_chirho": "T21323",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T21323.hs"
+      ],
+      "source_sha256_chirho": "54176d333cb8119a83857d14b1b82d6310e195a33678654049b7e11808a00a59",
+      "exit_chirho": 1,
+      "timed_out_chirho": false,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: kind mismatch in family equation result: expected `*`, found `rigid k100087`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/T21323.hs:36:28\n    |\n 35 | instance (Generic a, ForallAuxCoercible a rep) => Generic (ViaRep a rep) where\n 36 |  type Rep (ViaRep a rep) = rep\n    |                            ^^^\n 37 | \n\n1 error generated\n",
+      "elapsed_ms_chirho": 24
+    }
+  ]
+}

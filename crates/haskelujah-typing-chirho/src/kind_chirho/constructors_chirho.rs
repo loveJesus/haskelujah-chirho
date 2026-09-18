@@ -5,12 +5,18 @@
 use super::{DeclChirho, KindChirho, KindInferCtxChirho, ModuleChirho, TyVarChirho};
 use haskelujah_ast_chirho::decl_chirho::ConDeclChirho;
 
+pub(super) struct PreparedPromotedConstructorChirho {
+    name_chirho: String,
+    body_chirho: KindChirho,
+    parameters_chirho: Vec<super::KindVarChirho>,
+}
+
 impl KindInferCtxChirho {
     /// A local constructor owns its promoted name even when its full promoted
     /// contract is not represented. Never inherit a same-spelled builtin row.
     /// Nullary, parameter-free ordinary constructors have a complete classifier
-    /// available directly from their owner; other forms retain the opaque-use
-    /// boundary until their binder/field metadata can be elaborated faithfully.
+    /// available directly from their owner; other contracts are published only
+    /// after their declaration group has checked its fields and closed its kinds.
     /// Workflow: language-features-chirho/declaration-kinds-chirho.
     pub(super) fn register_local_promoted_constructor_heads_chirho(
         &mut self,
@@ -149,6 +155,121 @@ impl KindInferCtxChirho {
                     self.kind_var_cache_chirho = outer_names_chirho;
                     self.env_chirho.end_scope_chirho();
                 }
+            }
+        }
+    }
+
+    /// Capture terms while the declaration's parameters are in scope, but do
+    /// not generalize their classifiers until every body in the SCC is checked.
+    /// This relates a promoted constructor's fields to its actual result indices.
+    /// Unsupported higher-rank fields remain opaque, not guessed arrow kinds.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    pub(super) fn prepare_ordinary_promoted_contracts_chirho(
+        &mut self,
+        declaration_chirho: &DeclChirho,
+    ) -> Vec<PreparedPromotedConstructorChirho> {
+        let (owner_chirho, parameters_chirho, constructors_chirho) = match declaration_chirho {
+            DeclChirho::DataDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                constructors_chirho,
+                ..
+            } => (
+                name_chirho,
+                type_vars_chirho,
+                constructors_chirho.as_slice(),
+            ),
+            DeclChirho::NewtypeDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                constructor_chirho,
+                ..
+            } => (
+                name_chirho,
+                type_vars_chirho,
+                std::slice::from_ref(constructor_chirho),
+            ),
+            _ => return Vec::new(),
+        };
+        let mut result_chirho = self.named_kind_term_chirho(owner_chirho);
+        let mut identities_chirho = Vec::new();
+        for parameter_chirho in parameters_chirho {
+            let term_chirho = self.interpret_kind_term_chirho(&super::TypeChirho::VarChirho(
+                parameter_chirho.name_chirho.clone(),
+            ));
+            identities_chirho.extend(term_chirho.free_vars_chirho());
+            if parameter_chirho.visibility_chirho
+                == haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::VisibleChirho
+            {
+                result_chirho = KindChirho::app_chirho(result_chirho, term_chirho);
+            }
+        }
+        let mut contracts_chirho = Vec::new();
+        for constructor_chirho in constructors_chirho {
+            let (name_chirho, fields_chirho) = match constructor_chirho {
+                ConDeclChirho::OrdinaryChirho {
+                    name_chirho,
+                    fields_chirho,
+                    ..
+                } => (
+                    name_chirho,
+                    fields_chirho
+                        .iter()
+                        .map(|(_, field_chirho)| self.family_term_chirho(field_chirho))
+                        .collect::<Option<Vec<_>>>(),
+                ),
+                ConDeclChirho::RecordChirho {
+                    name_chirho,
+                    fields_chirho,
+                    ..
+                } => {
+                    let mut terms_chirho = Vec::new();
+                    let mut represented_chirho = true;
+                    for field_chirho in fields_chirho {
+                        if let Some(term_chirho) = self.family_term_chirho(&field_chirho.ty_chirho)
+                        {
+                            terms_chirho.extend(std::iter::repeat_n(
+                                term_chirho,
+                                field_chirho.names_chirho.len(),
+                            ));
+                        } else {
+                            represented_chirho = false;
+                            break;
+                        }
+                    }
+                    (name_chirho, represented_chirho.then_some(terms_chirho))
+                }
+                ConDeclChirho::GadtChirho { .. } => continue,
+            };
+            if let Some(fields_chirho) = fields_chirho {
+                contracts_chirho.push(PreparedPromotedConstructorChirho {
+                    name_chirho: name_chirho.text_chirho().to_owned(),
+                    body_chirho: KindChirho::arrow_n_chirho(fields_chirho, result_chirho.clone()),
+                    parameters_chirho: identities_chirho.clone(),
+                });
+            }
+        }
+        contracts_chirho
+    }
+
+    pub(super) fn publish_ordinary_promoted_contracts_chirho(
+        &mut self,
+        contracts_chirho: Vec<PreparedPromotedConstructorChirho>,
+    ) {
+        for contract_chirho in contracts_chirho {
+            let written_chirho = contract_chirho.parameters_chirho.iter().copied().collect();
+            let scheme_chirho = self.source_kind_scheme_chirho(
+                contract_chirho.body_chirho,
+                contract_chirho.parameters_chirho,
+                &written_chirho,
+            );
+            self.env_chirho
+                .bind_promoted_scheme_chirho(&contract_chirho.name_chirho, scheme_chirho.clone());
+            if let Some(module_chirho) = &self.local_kind_module_chirho {
+                self.env_chirho.bind_promoted_scheme_chirho(
+                    &format!("{module_chirho}.{}", contract_chirho.name_chirho),
+                    scheme_chirho,
+                );
             }
         }
     }

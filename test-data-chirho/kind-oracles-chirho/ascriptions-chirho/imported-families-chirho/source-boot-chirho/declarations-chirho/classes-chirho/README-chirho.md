@@ -45,6 +45,11 @@ changed by that split. The CLI replay adds real process/provenance evidence.
 
 ## Scope and limitations
 
+The checkpoint results below describe97218fde. The subsequent default-scope
+repair and its separate reference/recovery controls are recorded in
+`default-annotations-chirho/scope-chirho/README-chirho.md`; historical outputs
+here are not silently overwritten by that continuation.
+
 `before-chirho.jsonl` records the original forty-five probes against the
 pre-brick CLI. Later additions have independent GHC records, not invented
 before-results. `after-chirho.jsonl` is the pre-annotation-repair CLI replay,

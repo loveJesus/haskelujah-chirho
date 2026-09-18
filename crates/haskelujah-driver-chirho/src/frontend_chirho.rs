@@ -438,6 +438,11 @@ pub fn run_frontend_with_inputs_chirho(
     type_contracts_chirho
         .kinds_chirho
         .extend(kind_result_chirho.contracts_chirho);
+    // Nested family kinds travel with exported family names, but remain
+    // nested class promises for SOURCE agreement (never top-level ownership).
+    type_contracts_chirho
+        .kinds_chirho
+        .extend(kind_result_chirho.associated_contracts_chirho);
     type_contracts_chirho.synonyms_chirho = infer_result_chirho.type_synonyms_chirho.clone();
     let iface_chirho = if inputs_chirho.boot_chirho {
         haskelujah_naming_chirho::iface_chirho::build_boot_iface_with_imports_chirho(

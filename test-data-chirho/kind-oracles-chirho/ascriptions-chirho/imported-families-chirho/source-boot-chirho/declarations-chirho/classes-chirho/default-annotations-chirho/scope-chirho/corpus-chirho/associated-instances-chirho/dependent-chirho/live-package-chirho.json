@@ -1,0 +1,44 @@
+{
+  "scope_chirho": "One optional test with its precondition verified live; not whole-package correctness",
+  "cache_link_chirho": "../../haskelujah-chirho/.haskelujah-packages-chirho",
+  "constraints_cabal_sha256_chirho": "31348c35fd0cc970b1f239cffbe44653c06cf81143227ec6ea0c01324519e0c7",
+  "note_chirho": "An earlier --exact invocation with an unqualified test name selected zero tests and is NOT proof. This corrected filter ran one test and failed.",
+  "source_provenance_chirho": {
+    "head_chirho": "02e747617de6caa11c9d5a12004460d37097545b",
+    "hashes_chirho": {
+      "crates/haskelujah-driver-chirho/src/frontend_chirho.rs": "1eccd6d16fd8454345f772b281a7043dd3847bc6e4fffe270cd69c526f2c1eb8",
+      "crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs": "7d9aaf25a62c199f08dee610f41f137dc9b476d77c0604c039f0857e8794850e",
+      "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho.rs": "8b6f9c462e1274828d37cf36ae8bb7d655fb685d7db3c5e10fa6ad1e116bbc04",
+      "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/associated_indices_chirho.rs": "0905c9cfe7b7f4f1f6d70ac2a1e543a90d5ca72b2676daaddd523965c568be0d",
+      "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/default_scopes_chirho.rs": "353b36127d74645a9290f5428b2bb291fde484b8e0438a75e30c1aa36cec3bc7",
+      "crates/haskelujah-naming-chirho/src/type_scope_chirho.rs": "a844b1072cd45ce76c9c34cf129efd13f71bfa88fcf23e3e585c53fd48792926",
+      "crates/haskelujah-parser-chirho/src/cst_parser_chirho.rs": "11dfea604d87b12ba4777dab4dc085bdddf0b5c6a3dd07262c258c47806fcac6",
+      "crates/haskelujah-parser-chirho/src/cst_parser_chirho/where_blocks_chirho.rs": "ed3782e7625084b9ed3cc3cdb08bb11b109ee5bdf3375ffb903b66d7805457a2",
+      "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/classes_chirho.rs": "b8a452e0ddad063a375f51661143aed6eb7daa8ea2dff654247f44363e665aa2",
+      "crates/haskelujah-parser-chirho/src/lower_chirho/type_family_tests_chirho.rs": "5241d01ebaaf39f8c7dd1d6e6c3b366bdbff81ec8d3357f85d61007886cb75c9",
+      "crates/haskelujah-typing-chirho/src/infer_chirho.rs": "e24600227285081897f3fef60d64d758a81d7f8f14a3b6e0421926f8eb64749a",
+      "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/classes_chirho.rs": "620876e7bf4906f52a95a6e747e3df983ec78e54635020eedb07d4e007d2bcbb",
+      "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/instances_chirho.rs": "51e4dce28bc8769c651e533109408420550c803814ba04764be7449bc36c38b5",
+      "crates/haskelujah-typing-chirho/src/infer_chirho/family_declarations_chirho.rs": "37084fe8702dfb2cba3b8423b7b8dfbdca3a59f677833d63b5f500551d0967e6",
+      "crates/haskelujah-typing-chirho/src/kind_chirho.rs": "9db41feb6aecddebd960a4c2325a9a668740d5a83f8cbbf8177e9968fc0433be",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/constructors_chirho.rs": "e5e19e0b7d5a04ef18f6ecae91794c20d43518a4a2216220c5ad3f0f9c24b138",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/defaults_chirho.rs": "b2e86b8cd1e3e377215ab9acbc4512609e78a6e0a4b6258e287dfc28bdda4f56",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/elaboration_chirho.rs": "ee6e281def46cd0a04f66fa58e3ac1c6003d5ab46587da85fe4f3ec5030045ba",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/families_chirho.rs": "bce9cedd405f726fcf2c87c25313c03e752871d9637f061a508d677f219f5a96",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/groups_chirho.rs": "8241eeccd56582b80d40b64d538835a13055d41c734b0b130030105b2f503dd5",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/instances_chirho.rs": "2b1f50d5c654d7be54cb2a0c7e714ac00e80780c9b054410f077535fa783aeb5",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/runtime_chirho.rs": "8875a63b085d6ea1762a0355ab545b45e44354cdecbcb22aed1b13db811918de",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/default_tests_chirho.rs": "be1cd015813d3bfe2387e79d115c66c855cac35443aae24d5bc1a46296089e14",
+      "crates/haskelujah-typing-chirho/src/types_chirho/families_chirho.rs": "8f9f63cc94b0ade2170e992230baddefe5c0f36b03f2226b1046e6387d7a3b50",
+      "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/associated-instances-chirho/dependent-chirho/fixtures_chirho.rs": "0deb38b4f1ce0669acaa48d8935c06e60753e0e52b839793ff05ed42547c61ec"
+    }
+  },
+  "record_chirho": {
+    "command_chirho": "rtk proxy env RUST_MIN_STACK=16777216 nice -n 5 cargo test -j 3 -p haskelujah-driver --lib frontend_constraints_package_regression_chirho -- --nocapture",
+    "start_chirho": "2026-09-18T17:03:32.722Z",
+    "output_chirho": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_driver-6ae9f8a41439834b)\n\nrunning 1 test\nwarning: local dependency 'boring' frontend compile skipped: dependency package 'boring': Error checking dependency Data.Boring (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho/../../.haskelujah-packages-chirho/boring-0.2.2/src/Data/Boring.hs): error[E0101]: type not in scope: `Rep` (at 3670..3673)\n  note: did you mean `Rec1`?\nerror[E0101]: type not in scope: `Eq.~~` (at 5205..5210)\nerror[E0101]: type not in scope: `Rep` (at 6639..6642)\n  note: did you mean `Rec1`?\n\nthread 'tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho' (93507858) panicked at crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs:9712:9:\nconstraints regression: Error compiling Data.Constraint: error[E0102]: could not find module `Data.Boring` (at 2603..2635)\n  note: the module may not have been compiled yet\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho ... FAILED\n\nfailures:\n\nfailures:\n    tests_chirho::compile_chirho::frontend_constraints_package_regression_chirho\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1775 filtered out; finished in 54.60s\n\nerror: test failed, to rerun pass `-p haskelujah-driver --lib`\n",
+    "session_id": 68846,
+    "exit_chirho": 101,
+    "end_chirho": "2026-09-18T17:04:59.877Z"
+  }
+}

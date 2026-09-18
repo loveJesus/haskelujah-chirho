@@ -32,6 +32,10 @@ mod conversion_chirho;
 #[path = "kind_chirho/tests_chirho/declaration_tests_chirho.rs"]
 mod declaration_tests_chirho;
 mod declarations_chirho;
+#[cfg(test)]
+#[path = "kind_chirho/tests_chirho/default_tests_chirho.rs"]
+mod default_tests_chirho;
+mod defaults_chirho;
 mod dependencies_chirho;
 #[path = "kind_chirho/bindings_chirho/environment_chirho.rs"]
 mod environment_chirho;
@@ -132,6 +136,7 @@ struct KindInferCtxChirho {
     kind_wildcard_terms_chirho: HashMap<SpanChirho, KindChirho>,
     kind_equation_inputs_chirho:
         HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
+    kind_associated_defaults_chirho: HashMap<(SpanChirho, String), Vec<KindChirho>>,
     kind_binder_specificity_chirho:
         HashMap<KindVarChirho, haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho>,
     kind_families_chirho: HashMap<String, families_chirho::KindFamilyChirho>,
@@ -177,6 +182,7 @@ impl KindInferCtxChirho {
             kind_applications_chirho: HashMap::new(),
             kind_wildcard_terms_chirho: HashMap::new(),
             kind_equation_inputs_chirho: HashMap::new(),
+            kind_associated_defaults_chirho: HashMap::new(),
             kind_binder_specificity_chirho: HashMap::new(),
             kind_families_chirho: HashMap::new(),
             kind_family_names_chirho: std::collections::HashSet::new(),
@@ -811,10 +817,34 @@ pub fn infer_module_kinds_with_imports_chirho(
                 || e_chirho == "TypeOperators"
                 || e_chirho == "FlexibleInstances"
         });
+    let class_defaults_chirho: HashMap<_, _> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|declaration_chirho| {
+            if let DeclChirho::ClassDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                associated_tfs_chirho,
+                ..
+            } = declaration_chirho
+            {
+                Some((
+                    name_chirho.text_chirho(),
+                    (
+                        type_vars_chirho.as_slice(),
+                        associated_tfs_chirho.as_slice(),
+                    ),
+                ))
+            } else {
+                None
+            }
+        })
+        .collect();
     for decl_chirho in &module_chirho.decls_chirho {
         let DeclChirho::InstanceDeclChirho {
             class_chirho,
             types_chirho,
+            assoc_tf_instances_chirho,
             span_chirho,
             ..
         } = decl_chirho
@@ -825,6 +855,15 @@ pub fn infer_module_kinds_with_imports_chirho(
             class_chirho.text_chirho(),
             types_chirho,
             instance_head_forms_representable_chirho,
+            *span_chirho,
+        );
+        ctx_chirho.check_associated_instance_equations_chirho(
+            class_chirho.text_chirho(),
+            types_chirho,
+            assoc_tf_instances_chirho,
+            class_defaults_chirho
+                .get(class_chirho.text_chirho())
+                .copied(),
             *span_chirho,
         );
     }

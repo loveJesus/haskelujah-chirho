@@ -17,12 +17,11 @@ pub(crate) mod family_open_chirho;
 #[cfg(test)]
 #[path = "family_open_tests_chirho.rs"]
 mod family_open_tests_chirho;
-#[path = "family_types_chirho.rs"]
-mod family_types_chirho;
-pub(crate) use family_types_chirho::FamilyTypeVariableChirho;
 #[cfg(test)]
 #[path = "family_tests_chirho.rs"]
 mod family_tests_chirho;
+#[path = "family_types_chirho.rs"]
+mod family_types_chirho;
 
 pub(crate) trait FamilyTermChirho: Clone + Eq {
     type VariableChirho: Clone + Eq + Hash;

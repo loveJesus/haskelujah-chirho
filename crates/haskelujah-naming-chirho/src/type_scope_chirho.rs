@@ -306,6 +306,11 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     }
                     self.pop_binders_chirho(&associated_pushed_chirho);
                     for equation_chirho in &associated_tf_chirho.defaults_chirho {
+                        // A default owns its equation binders, including names in
+                        // LHS kind annotations. Neither class parameters nor the
+                        // family's declaration binders scope over its RHS.
+                        let enclosing_binders_chirho =
+                            std::mem::take(&mut self.bound_tyvars_chirho);
                         let mut names_chirho = Vec::new();
                         for argument_chirho in &equation_chirho.lhs_types_chirho {
                             collect_type_kind_variable_names_chirho(
@@ -327,6 +332,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                             FreeTyVarPolicyChirho::RequireBoundChirho,
                         );
                         self.pop_binders_chirho(&equation_binders_chirho);
+                        self.bound_tyvars_chirho = enclosing_binders_chirho;
                     }
                 }
                 self.pop_binders_chirho(&pushed_chirho);
