@@ -3462,26 +3462,27 @@ fn match_consistently_chirho(
         (TyChirho::ListChirho(pattern_elem_chirho), TyChirho::ListChirho(target_elem_chirho)) => {
             match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
         }
-        (TyChirho::ListChirho(pattern_elem_chirho), TyChirho::AppChirho(target_fun_chirho, target_elem_chirho))
-            if matches!(target_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") =>
-        {
+        (
+            TyChirho::ListChirho(pattern_elem_chirho),
+            TyChirho::AppChirho(target_fun_chirho, target_elem_chirho),
+        ) if matches!(target_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") => {
             match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
         }
-        (TyChirho::AppChirho(pattern_fun_chirho, pattern_elem_chirho), TyChirho::ListChirho(target_elem_chirho))
-            if matches!(pattern_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") =>
-        {
+        (
+            TyChirho::AppChirho(pattern_fun_chirho, pattern_elem_chirho),
+            TyChirho::ListChirho(target_elem_chirho),
+        ) if matches!(pattern_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") => {
             match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
         }
-        (TyChirho::TupleChirho(pattern_elems_chirho), TyChirho::TupleChirho(target_elems_chirho))
-            if pattern_elems_chirho.len() == target_elems_chirho.len() =>
-        {
-            pattern_elems_chirho
-                .iter()
-                .zip(target_elems_chirho)
-                .all(|(pattern_elem_chirho, target_elem_chirho)| {
-                    match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
-                })
-        }
+        (
+            TyChirho::TupleChirho(pattern_elems_chirho),
+            TyChirho::TupleChirho(target_elems_chirho),
+        ) if pattern_elems_chirho.len() == target_elems_chirho.len() => pattern_elems_chirho
+            .iter()
+            .zip(target_elems_chirho)
+            .all(|(pattern_elem_chirho, target_elem_chirho)| {
+                match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
+            }),
         // Constructors, skolems and quantified types match only themselves.
         _ => pattern_chirho == target_chirho,
     }

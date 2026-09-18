@@ -17,7 +17,74 @@ pub(super) struct LocalInstanceChirho {
     pub(super) instance_chirho: InstDeclChirho,
     /// `instance A` of a nullary class: the head type is a placeholder.
     pub(super) nullary_chirho: bool,
+    /// The class and every type constructor of the head AS WRITTEN, qualifier
+    /// included, in source order. The checker identifies types by bare name,
+    /// which is not identity: `Strict.StateT` and `Lazy.StateT` are different
+    /// types with one bare name (the constraints package declares
+    /// `Lifting Functor` for both). Within one module the same SPELLING does
+    /// denote the same entity, so heads are compared only under equal spellings.
+    pub(super) written_names_chirho: Vec<String>,
     pub(super) span_chirho: SpanChirho,
+}
+
+/// `M.T` and `M.:+:` are qualified; `T`, `:+:` and the operator `.` are not.
+/// A module prefix starts with an uppercase letter and ends at a dot that is
+/// followed by more of the name.
+fn is_qualified_spelling_chirho(written_chirho: &str) -> bool {
+    written_chirho
+        .chars()
+        .next()
+        .is_some_and(|first_chirho| first_chirho.is_uppercase())
+        && written_chirho
+            .find('.')
+            .is_some_and(|dot_chirho| dot_chirho + 1 < written_chirho.len())
+}
+
+/// The written spellings of an instance head; see `written_names_chirho`.
+pub(super) fn written_head_names_chirho(
+    class_chirho: &NameChirho,
+    types_chirho: &[TypeChirho],
+) -> Vec<String> {
+    fn collect_chirho(ty_chirho: &TypeChirho, names_chirho: &mut Vec<String>) {
+        match ty_chirho {
+            TypeChirho::ConChirho(name_chirho) => names_chirho.push(name_chirho.full_name_chirho()),
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                collect_chirho(fun_chirho, names_chirho);
+                collect_chirho(arg_chirho, names_chirho);
+            }
+            TypeChirho::FunChirho {
+                arg_chirho,
+                result_chirho,
+                ..
+            } => {
+                collect_chirho(arg_chirho, names_chirho);
+                collect_chirho(result_chirho, names_chirho);
+            }
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            } => {
+                for element_chirho in elements_chirho {
+                    collect_chirho(element_chirho, names_chirho);
+                }
+            }
+            TypeChirho::ListChirho { element_chirho, .. } => {
+                collect_chirho(element_chirho, names_chirho)
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                collect_chirho(inner_chirho, names_chirho)
+            }
+            _ => {}
+        }
+    }
+    let mut names_chirho = vec![class_chirho.full_name_chirho()];
+    for ty_chirho in types_chirho {
+        collect_chirho(ty_chirho, &mut names_chirho);
+    }
+    names_chirho
 }
 
 fn instance_head_text_chirho(local_chirho: &LocalInstanceChirho) -> String {
@@ -93,11 +160,14 @@ impl InferCtxChirho {
     /// instance's, or to an instance from outside this module (Prelude's
     /// `Eq (a, b)`, tcfail073); an import list cannot hide instances.
     ///
-    /// Types and classes are identified by NAME here, so the non-local half
-    /// fires only when no local declaration can shadow a seeded name: the class
-    /// is not declared in this module, no head mentions a type declared here
-    /// (T11552 defines its own `MaybeT`; T10592 its own `Eq`), and the Prelude
-    /// is implicit.
+    /// Types and classes are identified by NAME here, so two local instances
+    /// are compared only under identical written spellings, and the non-local
+    /// half fires only when a written name can denote nothing but the seeded
+    /// entity: every name is unqualified, the class is not declared in this
+    /// module, no head mentions a type declared here (T11552 defines its own
+    /// `MaybeT`; T10592 its own `Eq`), and the whole Prelude is in scope
+    /// unqualified (a `hiding` or import list may drop a name that another
+    /// import then supplies).
     fn report_duplicate_instances_chirho(&mut self, module_chirho: &ModuleChirho) {
         let mut local_names_chirho: HashSet<String> = HashSet::new();
         for decl_chirho in &module_chirho.decls_chirho {
@@ -114,7 +184,16 @@ impl InferCtxChirho {
         let implicit_prelude_chirho = !module_chirho
             .extensions_chirho
             .iter()
-            .any(|extension_chirho| extension_chirho == "NoImplicitPrelude");
+            .any(|extension_chirho| extension_chirho == "NoImplicitPrelude")
+            // The driver injects `import Prelude` itself; a written one is the
+            // same thing unless it is qualified or carries an import/hiding list.
+            && module_chirho
+                .imports_chirho
+                .iter()
+                .filter(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Prelude")
+                .all(|import_chirho| {
+                    !import_chirho.qualified_chirho && import_chirho.spec_chirho.is_none()
+                });
         let instances_chirho = self.local_instances_chirho.clone();
         for (later_index_chirho, later_chirho) in instances_chirho.iter().enumerate() {
             let comparable_chirho = later_chirho.nullary_chirho
@@ -134,10 +213,16 @@ impl InferCtxChirho {
                     .iter()
                     .any(|earlier_chirho| {
                         earlier_chirho.nullary_chirho == later_chirho.nullary_chirho
+                            && earlier_chirho.written_names_chirho
+                                == later_chirho.written_names_chirho
                             && equal_to_later_chirho(&earlier_chirho.instance_chirho)
                     });
             let names_unshadowed_chirho = implicit_prelude_chirho
                 && !later_chirho.nullary_chirho
+                && later_chirho
+                    .written_names_chirho
+                    .iter()
+                    .all(|written_chirho| !is_qualified_spelling_chirho(written_chirho))
                 && !local_names_chirho.contains(&later_chirho.instance_chirho.class_name_chirho)
                 && !head_tys_chirho(&later_chirho.instance_chirho).any(|ty_chirho| {
                     mentions_constructor_chirho(ty_chirho, &|name_chirho| {
@@ -145,6 +230,7 @@ impl InferCtxChirho {
                     })
                 });
             let non_local_chirho = names_unshadowed_chirho && {
+                // Every local instance is registered too, under any spelling.
                 let local_copies_chirho = instances_chirho
                     .iter()
                     .filter(|local_chirho| equal_to_later_chirho(&local_chirho.instance_chirho))

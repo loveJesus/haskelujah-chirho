@@ -2413,6 +2413,10 @@ impl InferCtxChirho {
                 .push(instance_obligations_chirho::LocalInstanceChirho {
                     instance_chirho: instance_chirho.clone(),
                     nullary_chirho: types_chirho.is_empty(),
+                    written_names_chirho: instance_obligations_chirho::written_head_names_chirho(
+                        class_chirho,
+                        types_chirho,
+                    ),
                     span_chirho: *span_chirho,
                 });
             self.class_env_chirho.add_instance_chirho(instance_chirho);

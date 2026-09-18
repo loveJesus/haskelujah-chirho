@@ -106,3 +106,74 @@ fn a_local_type_sharing_a_library_name_is_not_a_duplicate_chirho() {
         "this module's own `MaybeT` is not the library's; its Functor instance is no duplicate"
     );
 }
+
+/// Type-check `source_chirho` the way the multi-module frontend does once an
+/// import has made a bare type name "safe": every qualified spelling of that
+/// name collapses to the bare name inside the checker. Returns the rendered
+/// diagnostics.
+fn diagnostics_with_collapsed_names_chirho(
+    source_chirho: &str,
+    collapsed_chirho: &[&str],
+) -> String {
+    use haskelujah_parser_chirho::cst_parser_chirho::parse_to_cst_chirho;
+    use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
+    use haskelujah_span_chirho::FileIdChirho;
+    use haskelujah_typing_chirho::infer_chirho::infer_module_with_imports_type_synonyms_families_and_class_env_chirho;
+    use std::collections::{HashMap, HashSet};
+
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let module_chirho = lower_module_chirho(
+        &parse_to_cst_chirho(source_chirho, file_chirho),
+        file_chirho,
+    );
+    let mut class_env_chirho = haskelujah_typing_chirho::ClassEnvChirho::new_chirho();
+    class_env_chirho.seed_standard_chirho();
+    let result_chirho = infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
+        &module_chirho,
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+        &class_env_chirho,
+        &HashMap::new(),
+        &collapsed_chirho
+            .iter()
+            .map(|name_chirho| name_chirho.to_string())
+            .collect::<HashSet<String>>(),
+        &HashMap::new(),
+    );
+    format!("{}", result_chirho.diagnostics_chirho)
+}
+
+const TWO_STATE_TRANSFORMERS_CHIRHO: &str = "module Main where\nimport qualified Control.Monad.Trans.State.Strict as Strict\nimport qualified Control.Monad.Trans.State.Lazy as Lazy\nclass Named f where\n  nameOf :: f a -> String\n";
+
+#[test]
+fn one_bare_name_under_two_qualifiers_is_two_types_chirho() {
+    // GHC 9.14.1 accepts this program. The constraints package declares
+    // `Lifting Functor` for both `Strict.StateT` and `Lazy.StateT`; once the
+    // frontend collapses both spellings to `StateT` the heads look equal.
+    let diagnostics_chirho = diagnostics_with_collapsed_names_chirho(
+        &format!(
+            "{TWO_STATE_TRANSFORMERS_CHIRHO}instance Named (Strict.StateT s m) where\n  nameOf _ = \"strict\"\ninstance Named (Lazy.StateT s m) where\n  nameOf _ = \"lazy\"\n"
+        ),
+        &["StateT"],
+    );
+    assert!(
+        !diagnostics_chirho.contains("duplicate instance declarations"),
+        "{diagnostics_chirho}"
+    );
+}
+
+#[test]
+fn the_same_spelling_twice_is_still_a_duplicate_chirho() {
+    // GHC 9.14.1: GHC-59692 for these two heads.
+    let diagnostics_chirho = diagnostics_with_collapsed_names_chirho(
+        &format!(
+            "{TWO_STATE_TRANSFORMERS_CHIRHO}instance Named (Strict.StateT s m) where\n  nameOf _ = \"strict\"\ninstance Named (Strict.StateT t n) where\n  nameOf _ = \"again\"\n"
+        ),
+        &["StateT"],
+    );
+    assert!(
+        diagnostics_chirho.contains("duplicate instance declarations"),
+        "{diagnostics_chirho}"
+    );
+}

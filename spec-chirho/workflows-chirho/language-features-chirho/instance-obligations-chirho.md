@@ -26,8 +26,17 @@ flowchart TD
   consistent (`C a a` does not match `C Int Bool`); the second direction makes the renaming
   injective. Contexts never distinguish instances. The older `match_ty_chirho` composes
   sub-matches without comparing them and is unchanged for its existing callers.
-- **Names are identities here**, so the non-local half fires only when no local declaration can
-  shadow a seeded name: T11552 declares its own `MaybeT`, T10592 its own `Eq`.
+- **A bare name is not an identity; a written spelling inside one module is.** The checker
+  identifies types by bare name, and the multi-module frontend collapses every qualified spelling
+  of a "safe" imported name to it, so `Strict.StateT` and `Lazy.StateT` become one `StateT` (the
+  constraints package declares `Lifting Functor` for both, and the first cut of this rule rejected
+  it). Each local instance therefore records the class and head constructors AS WRITTEN,
+  qualifier included, and two local instances are compared only under identical spellings. A
+  duplicate written with two spellings of one entity is missed; a valid program is never rejected.
+- **The non-local half needs the seeded entity to be the only possible referent**: every written
+  name unqualified, the class not declared here, no head type declared here (T11552 declares its
+  own `MaybeT`, T10592 its own `Eq`), no `NoImplicitPrelude`, and no Prelude import that is
+  qualified or carries an import/hiding list (the driver's injected `import Prelude` is plain).
 - **A variable spine head is not evidence.** Main lowers type operators, promoted constructors,
   type-level literals and kind-indexed variables in instance heads to fresh type variables;
   comparing them would make unrelated heads equal (T11754, T13943, T22647).

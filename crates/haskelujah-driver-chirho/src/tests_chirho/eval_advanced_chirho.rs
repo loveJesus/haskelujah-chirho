@@ -1500,11 +1500,16 @@ fn eval_repl_style_let_binding_chirho() {
 fn orphan_instance_warning_produced_chirho() {
     // An instance where neither the class nor the type is defined locally
     // should produce a W0402 orphan instance warning.
+    //
+    // The program must be one GHC accepts: `instance Show Int`, which this
+    // test used before, is GHC-59692 (it duplicates the Prelude's instance)
+    // and is rejected before any orphan warning. `Show (a -> b)` has no
+    // instance anywhere, and GHC 9.14.1 reports it as GHC-90177 (-Worphans).
     use crate::frontend_warnings_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Orphan where
-instance Show Int where
-  show x = "int"
+instance Show (a -> b) where
+  show _ = "function"
 main = 42
 "#;
     let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "OrphanChirho.hs")
