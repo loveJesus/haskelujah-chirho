@@ -8,15 +8,20 @@ use haskelujah_typing_chirho::kind_chirho::{KindChirho, KindContractChirho};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 fn builtin_contract_chirho(iface_chirho: &ModuleIfaceChirho) -> Option<ModuleTypeContractsChirho> {
+    // Measured closed nominal contracts belong to the provider, not a global
+    // same-spelled constructor. First must constrain its instance argument
+    // before associated equations quantify that argument's inferred kind.
+    let name_chirho = match iface_chirho.name_chirho.as_str() {
+        "Control.Monad.Identity" | "Data.Functor.Identity" => "Identity",
+        "Data.Monoid" | "Data.Semigroup" => "First",
+        _ => return None,
+    };
     // The synthetic interface's authored source span distinguishes it from a
     // source module shadowing this name. Checked source companions take priority.
-    if !matches!(
-        iface_chirho.name_chirho.as_str(),
-        "Control.Monad.Identity" | "Data.Functor.Identity"
-    ) || iface_chirho
+    if iface_chirho
         .exports_chirho
         .types_chirho
-        .get("Identity")?
+        .get(name_chirho)?
         .span_chirho
         != haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO
     {
@@ -24,7 +29,7 @@ fn builtin_contract_chirho(iface_chirho: &ModuleIfaceChirho) -> Option<ModuleTyp
     }
     let mut contracts_chirho = ModuleTypeContractsChirho::default();
     contracts_chirho.kinds_chirho.insert(
-        "Identity".to_owned(),
+        name_chirho.to_owned(),
         KindContractChirho::monomorphic_nominal_chirho(KindChirho::arrow_chirho(
             KindChirho::StarChirho,
             KindChirho::StarChirho,

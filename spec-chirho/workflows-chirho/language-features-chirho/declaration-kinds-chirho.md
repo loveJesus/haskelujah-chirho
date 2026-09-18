@@ -875,7 +875,13 @@ basename compatibility rule is not replaced by this transport; identity retentio
 in the companion is not a claim that every downstream equality consumer is sound.
 
 Checked source companions take priority over authored interface-only contracts.
-The known Identity classifier is Type -> Type. Missing arbitrary imports do not
+The bounded provider catalogue authors Type -> Type for Identity from
+Control.Monad.Identity/Data.Functor.Identity and First from Data.Monoid/Data.Semigroup.
+These First types share a classifier, not an identity. The same naming-selected
+roots/hiding and qualifier path carries these contracts; a checked source module
+with the same module name retains its own classifier. Known argument classifiers
+must arrive before an associated instance's inferred kinds become rigid, not be
+invented or specialized by the equation RHS. Missing arbitrary imports do not
 authorize a guessed classifier. Legacy raw-AST entry points remain explicit.
 Ordinary module, project, Cabal and file/source paths now carry the companion;
 incremental-cache inputs, complete hs-boot import context, promoted constructor
