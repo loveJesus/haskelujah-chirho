@@ -4,7 +4,9 @@
 
 ## Resume snapshot, 2026-09-18 14:36 EDT
 
-Owned branch remains gpt-kind-schemes-chirho; pushed parent4f8e3b8c. Main is
+Owned branch remains gpt-kind-schemes-chirho; checkpoint3883a6d8 is pushed and
+ls-remote exact. Next active checklist:26-09-18_14-42-builtin_kind_contracts-chirho.md.
+Main is
 6db522ad and is not being edited. This checkpoint repairs the parenthesized-star
 producer and retains star syntax for extension checking. Parser372, naming138,
 typing407, typing integration438 and canaries7 pass with zero ignored/filtered.
@@ -13,7 +15,7 @@ The LIVE constraints package test now passes: one actual test,1775 filtered,
 on the fresh frozen CLI ef0a80b8. Six of the twelve selected checkpoint-relative
 corpus failures still reject; no complete corpus count is inferred here.
 
-Remaining next: preserve/push this checkpoint, then reduce those remaining
+Remaining next: reduce those remaining
 families and rerun both complete axes before any landing. Clippy still reports
 642 warning messages, none with a primary span on this diff's changed lines;
 lint-clean and file-size-clean are not claimed. Claude's separate main-based
@@ -930,7 +932,9 @@ controls bound the change.
 - [x] Extract/fix the parenthesized-type owner; run focused syntax/kind controls.
 - [x] Rerun the actual package after Claude2's diagnostic CPU hold and record
  what it really measures; do not infer recovery from the reduced case alone.
-- [ ] Commit/push the owned checkpoint, then resume the remaining regressions.
+- [x] Commit/push the owned checkpoint3883a6d81b82889974cd82f70d24879b6ab7a77c;
+ ls-remote confirms the exact remote tip. Resume remaining regressions in the
+ 26-09-18_14-42-builtin_kind_contracts-chirho.md checklist.
 
 The first fix recovers the two valid star-arrow cases but the same control then
 finds a false acceptance under NoStarIsType. Keeping the written star name/span
