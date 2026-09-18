@@ -1183,9 +1183,16 @@ fn is_promotable_constructor_spelling_chirho(name_chirho: &str) -> bool {
         .is_some_and(|first_chirho| first_chirho.is_uppercase() || first_chirho == ':')
 }
 
+/// Unqualified, the equality operators are always in scope. Qualified, GHC
+/// 9.14.1 (measured) still accepts `Q.~` through ANY qualifier: out of scope it
+/// is only warning GHC-12003. `Q.~~` is an ordinary export and is decided by
+/// the qualifier's interface (GHC-76037 when the module does not export it).
 fn is_builtin_constraint_name_chirho(name_chirho: &NameChirho) -> bool {
     let (qualifier_chirho, text_chirho) = name_parts_chirho(name_chirho);
-    qualifier_chirho.is_none() && BUILTIN_CONSTRAINT_NAMES_CHIRHO.contains(&text_chirho)
+    match qualifier_chirho {
+        None => BUILTIN_CONSTRAINT_NAMES_CHIRHO.contains(&text_chirho),
+        Some(_) => matches!(text_chirho, "~" | "∼"),
+    }
 }
 
 fn is_builtin_type_name_chirho(name_chirho: &NameChirho) -> bool {

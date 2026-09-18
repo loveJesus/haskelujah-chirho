@@ -191,6 +191,19 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
     for module_chirho in modules_chirho {
         canonicalize_type_map_chirho(module_chirho);
 
+        // GHC 9.14.1, measured through a qualified reference: these modules
+        // export the heterogeneous equality `~~`; the Prelude does not
+        // (`P.~~` is GHC-76037). Declaration contexts such as boring's
+        // `instance a Eq.~~ b => Boring (a Eq.:~~: b)` reach the scope check
+        // since contexts are lowered with the type grammar.
+        // Workflow: language-features-chirho/flat-type-syntax-chirho.
+        if matches!(
+            module_chirho.name_chirho.as_str(),
+            "Data.Type.Equality" | "GHC.Exts" | "GHC.Types"
+        ) {
+            ensure_type_export_chirho(module_chirho, "~~", &[]);
+        }
+
         match module_chirho.name_chirho.as_str() {
             "GHC.Types" => {
                 ensure_type_export_chirho(module_chirho, "TYPE", &[]);

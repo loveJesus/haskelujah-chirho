@@ -1212,3 +1212,60 @@ fn implicit_parameter_predicates_still_check_retained_type_arguments_chirho() {
     );
     assert!(format!("{diagnostics_chirho}").contains("MissingPayloadChirho"));
 }
+
+/// `valueChirho :: a Q.<operator> b => a`, with `import qualified <module> as Q`.
+fn qualified_equality_signature_chirho(
+    imported_module_chirho: &str,
+    operator_chirho: &str,
+) -> ModuleChirho {
+    let mut module_chirho = module_chirho(vec![signature_chirho(TypeChirho::QualChirho {
+        context_chirho: vec![ConstraintChirho::ClassChirho {
+            class_chirho: qualified_name_chirho("Q", operator_chirho),
+            args_chirho: vec![
+                TypeChirho::VarChirho(name_chirho("a")),
+                TypeChirho::VarChirho(name_chirho("b")),
+            ],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        body_chirho: Box::new(TypeChirho::VarChirho(name_chirho("a"))),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    })]);
+    module_chirho.imports_chirho = vec![ImportDeclChirho {
+        module_chirho: name_chirho(imported_module_chirho),
+        source_chirho: false,
+        qualified_chirho: true,
+        alias_chirho: Some(name_chirho("Q")),
+        spec_chirho: None,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }];
+    module_chirho
+}
+
+// GHC 9.14.1, measured with `f :: a Q.op b => a -> b` per row. `Q.~` out of
+// scope is only warning GHC-12003; `Q.~~` out of scope is error GHC-76037.
+// boring's `instance a Eq.~~ b => Boring (a Eq.:~~: b)` needs the first row.
+#[test]
+fn qualified_equality_operators_follow_the_measured_exports_chirho() {
+    for (imported_module_chirho, operator_chirho, accepted_chirho) in [
+        ("Data.Type.Equality", "~~", true),
+        ("Data.Type.Equality", "~", true),
+        ("Prelude", "~", true),
+        ("Prelude", "~~", false),
+        ("GHC.Exts", "~~", true),
+        ("GHC.Exts", "~", true),
+        ("GHC.Types", "~~", true),
+        ("Data.List", "~", true),
+        ("Data.List", "~~", false),
+    ] {
+        let module_chirho =
+            qualified_equality_signature_chirho(imported_module_chirho, operator_chirho);
+        let result_chirho =
+            resolve_module_with_imports_chirho(&module_chirho, &builtin_module_ifaces_chirho());
+        assert_eq!(
+            result_chirho.diagnostics_chirho.is_empty_chirho(),
+            accepted_chirho,
+            "{imported_module_chirho} {operator_chirho}: {}",
+            result_chirho.diagnostics_chirho
+        );
+    }
+}
