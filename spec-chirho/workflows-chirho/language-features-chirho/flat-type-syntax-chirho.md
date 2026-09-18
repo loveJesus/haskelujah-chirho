@@ -6,6 +6,59 @@ Some CST contexts, notably record fields, retain a flat token sequence instead
 of structured type nodes. Both routes must preserve the same semantic type.
 This is syntax preservation, not permission to repair an invalid kind later.
 
+## Operator identity before type reconstruction
+
+`lexer_chirho/symbols_chirho.rs` owns the shared Unicode symbol predicate and
+maximal-munch scanner. It classifies GHC's non-ASCII operator categories
+using the exact-pinned unicode-general-category1.1.0 table: symbols plus
+connector, dash and other punctuation. Bracket and quotation punctuation are
+not operators in GHC9.14.1. This is narrower than the report's general
+symbol/punctuation wording; the implementation follows the explicit category
+mapping in [GHC's lexer interface](https://raw.githubusercontent.com/ghc/ghc/ghc-9.14.1-release/compiler/GHC/Parser/Lexer/Interface.hs),
+with measured GHC-21231 bracket controls, not a spelling blacklist. Letters,
+marks, digits, whitespace and controls are not fabricated operator characters. ASCII
+special delimiters retain their existing treatment. The CST uses the same
+predicate when classifying a qualified operator, and consumes module prefixes
+without dropping dots inside the operator's local spelling.
+
+The entire operator is scanned before reserved punctuation is recognized.
+Thus `:⊗:` is one constructor, and `->⊗` and `→⊗` are complete variable
+operators, not an arrow followed by another token. A dash run followed by a
+Unicode symbol is an operator, not a line comment. A parenthesized hash operator
+is distinguished from an unboxed delimiter using that same predicate.
+Scanning advances monotonically by UTF-8 character lengths; category lookup is
+constant-time. Recovery after a malformed quoted character retains checked
+string access, including when the old quote recovery stopped inside a scalar.
+
+The compiler frontend uses `parse_lexically_checked_chirho` to reject the first
+lexical error from the existing token stream before lowering. This prevents an
+error token from becoming a recovery variable and an accepted declaration.
+Lexical errors remain hard errors even under type-error deferral. The original
+recovering parser remains available to tooling. Dependency-header discovery,
+dependency ordering and import extraction deliberately use that loose pre-pass;
+lexical failure is reported by the actual compile path. A malformed header can
+still distort dependency discovery before compilation. This does not claim
+complete grammar-error propagation or malformed-header scheduling.
+
+```mermaid
+flowchart LR
+    SourceSymbolsChirho[Source spelling] --> CharacterChirho[Shared character classification]
+    CharacterChirho --> CompleteOperatorChirho[Consume complete operator and byte span]
+    CompleteOperatorChirho --> ReservedChirho{Whole spelling reserved?}
+    CharacterChirho -->|Lexical error| RejectChirho[Compiler rejects before lowering]
+    ReservedChirho -->|Yes| PunctuationChirho[Grammar punctuation]
+    ReservedChirho -->|No| IdentityChirho[Constructor or variable operator identity]
+    IdentityChirho --> QualifiedChirho[Preserve module prefix and local spelling]
+    QualifiedChirho --> FrontendChirho[Ordinary declarations, kinds and execution]
+```
+
+The reference controls include unchanged T11754, qualified uses and dots,
+reserved-prefix operators, Unicode spaces/identifiers, and a genuine result-type
+mismatch. Thirteen single-module execution sources have independently measured
+GHC9.14.1 output. This does not establish complete Unicode identifier support,
+all UnicodeSyntax extension checks, or infix-constructor runtime dispatch: the
+separate ASCII constructor execution control already fails on the parent.
+
 The two representations also share the linear operator-chain resolver in
 `lower_chirho/type_operators_chirho.rs`. Flat tokens retain the whole operand,
 then enter the same precedence/associativity stack as structured infix nodes.

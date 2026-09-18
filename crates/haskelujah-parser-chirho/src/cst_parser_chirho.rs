@@ -20,6 +20,7 @@ use std::sync::Arc;
 
 mod constructors_chirho;
 mod families_chirho;
+mod lexical_errors_chirho;
 mod parenthesized_types_chirho;
 mod promoted_types_chirho;
 mod where_blocks_chirho;
@@ -29,7 +30,7 @@ use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use crate::layout_chirho::apply_layout_chirho;
-use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
+use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho, is_symbol_char_chirho};
 use crate::pragma_chirho::classify_contextual_keywords_chirho;
 use haskelujah_span_chirho::FileIdChirho;
 
@@ -37,40 +38,23 @@ use haskelujah_span_chirho::FileIdChirho;
 // Token mapping: RawTokenKindChirho → TokenKindChirho
 // ---------------------------------------------------------------------------
 
-fn is_symbol_start_char_chirho(ch_chirho: char) -> bool {
-    matches!(
-        ch_chirho,
-        '!' | '#'
-            | '$'
-            | '%'
-            | '&'
-            | '*'
-            | '+'
-            | '.'
-            | '/'
-            | '<'
-            | '='
-            | '>'
-            | '?'
-            | '@'
-            | '\\'
-            | '^'
-            | '|'
-            | '-'
-            | '~'
-            | ':'
-    )
-}
-
 fn qualified_local_text_chirho(text_chirho: &str) -> &str {
-    text_chirho.rsplit('.').next().unwrap_or(text_chirho)
+    // Consume module segments, not dots inside the final operator spelling.
+    let mut local_chirho = text_chirho;
+    while let Some((prefix_chirho, rest_chirho)) = local_chirho.split_once('.') {
+        if !prefix_chirho.starts_with(char::is_uppercase) || rest_chirho.is_empty() {
+            break;
+        }
+        local_chirho = rest_chirho;
+    }
+    local_chirho
 }
 
 fn qualified_name_is_operator_chirho(text_chirho: &str) -> bool {
     qualified_local_text_chirho(text_chirho)
         .chars()
         .next()
-        .is_some_and(is_symbol_start_char_chirho)
+        .is_some_and(is_symbol_char_chirho)
 }
 
 fn qualified_name_is_consym_chirho(text_chirho: &str) -> bool {
@@ -115,7 +99,7 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> T
             if local_chirho
                 .chars()
                 .next()
-                .is_some_and(is_symbol_start_char_chirho)
+                .is_some_and(is_symbol_char_chirho)
             {
                 if local_chirho.starts_with(':') {
                     TokenKindChirho::QualifiedConSymChirho

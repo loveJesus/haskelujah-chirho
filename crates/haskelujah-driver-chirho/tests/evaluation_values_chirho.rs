@@ -4,6 +4,32 @@ use haskelujah_runtime_chirho::ValueChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn mixed_unicode_operators_execute_the_complete_name_chirho() {
+    // Unchanged sources and exact outputs independently measured with GHC9.14.1.
+    let cases_chirho: &[(&str, &str, &str)] = &include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/unicode-operators-chirho/fixtures_chirho.rs"
+    ));
+    let mut failures_chirho = Vec::new();
+    for (name_chirho, source_chirho, expected_chirho) in cases_chirho {
+        match haskelujah_driver::eval_source_with_machine_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "Main.hs",
+            None,
+        ) {
+            Ok((_, machine_chirho)) if machine_chirho.io_output_chirho == *expected_chirho => {}
+            Ok((_, machine_chirho)) => failures_chirho.push(format!(
+                "{name_chirho}: expected {expected_chirho:?}, got {:?}",
+                machine_chirho.io_output_chirho
+            )),
+            Err(error_chirho) => failures_chirho.push(format!("{name_chirho}: {error_chirho}")),
+        }
+    }
+    assert!(failures_chirho.is_empty(), "{}", failures_chirho.join("\n"));
+}
+
+#[test]
 fn numeric_application_returns_its_value_chirho() {
     let source_chirho = "module Main where\nf_chirho x_chirho = x_chirho + 1\nmain = f_chirho 0\n";
     let (value_chirho, _machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(

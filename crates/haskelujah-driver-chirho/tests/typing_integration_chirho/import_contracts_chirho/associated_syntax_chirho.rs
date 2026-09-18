@@ -4,6 +4,98 @@ use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
 #[test]
+fn invalid_unicode_tokens_do_not_become_recovery_variables_chirho() {
+    // Four GHC-21231 programs, checked before changing operator categories.
+    let sources_chirho: &[&str] = &[
+        r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE UnicodeSyntax #-}
+module Main where
+(⟨) :: Int -> Int -> Int
+xChirho ⟨ yChirho = xChirho + yChirho
+main :: IO ()
+main = print (19 ⟨ 23)
+"###,
+        r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE UnicodeSyntax #-}
+module Main where
+(⟩) :: Int -> Int -> Int
+xChirho ⟩ yChirho = xChirho + yChirho
+main :: IO ()
+main = print (19 ⟩ 23)
+"###,
+        r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE UnicodeSyntax #-}
+module Main where
+(（⊗）) :: Int -> Int -> Int
+xChirho （⊗） yChirho = xChirho + yChirho
+main :: IO ()
+main = print (19 （⊗） 23)
+"###,
+        r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE UnicodeSyntax #-}
+module Main where
+(「⊗」) :: Int -> Int -> Int
+xChirho 「⊗」 yChirho = xChirho + yChirho
+main :: IO ()
+main = print (19 「⊗」 23)
+"###,
+    ];
+    for source_chirho in sources_chirho {
+        let error_chirho =
+            typecheck_source_chirho(source_chirho, &mut SourceMapChirho::new_chirho(), "Main.hs")
+                .err()
+                .expect("lexical failures cannot become declarations")
+                .to_string();
+        assert!(
+            error_chirho.contains("E0001") && error_chirho.contains("invalid lexical token"),
+            "{error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn qualified_unicode_operators_keep_their_imported_identity_chirho() {
+    type CaseChirho = (&'static str, bool, &'static [(&'static str, &'static str)]);
+    let cases_chirho: &[CaseChirho] = &include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/unicode-operators-chirho/qualified-fixtures_chirho.rs"
+    ));
+    let mut failures_chirho = Vec::new();
+    for (name_chirho, accepts_chirho, files_chirho) in cases_chirho {
+        let result_chirho = haskelujah_driver::compile_modules_chirho(
+            files_chirho,
+            &mut SourceMapChirho::new_chirho(),
+        );
+        match result_chirho {
+            Ok(_) if !accepts_chirho => {
+                failures_chirho.push(format!("{name_chirho}: wrongly accepted"))
+            }
+            Err(error_chirho) if *accepts_chirho || !error_chirho.to_string().contains("E0200") => {
+                failures_chirho.push(format!("{name_chirho}: {error_chirho}"))
+            }
+            _ => {}
+        }
+    }
+    assert!(failures_chirho.is_empty(), "{}", failures_chirho.join("\n"));
+}
+
+#[test]
+fn unicode_constructor_fields_reach_associated_family_kinds_chirho() {
+    // Unchanged T11754 is independently accepted by GHC9.14.1. Splitting :×:
+    // destroyed the data fields and later made the associated instance ill-kinded.
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../ghc-tests-chirho/typecheck-chirho/should_compile/T11754.hs"
+    ));
+    typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "T11754.hs",
+    )
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
 fn associated_injectivity_uses_declared_result_and_parameter_binders_chirho() {
     for (annotation_chirho, reason_chirho) in [
         (

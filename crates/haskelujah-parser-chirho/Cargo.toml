@@ -12,6 +12,7 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+unicode-general-category-chirho = { package = "unicode-general-category", version = "=1.1.0" }
 haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.2" }
 haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.2" }
 haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.2" }
