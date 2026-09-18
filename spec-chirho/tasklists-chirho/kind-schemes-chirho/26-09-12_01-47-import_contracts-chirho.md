@@ -738,9 +738,52 @@ and Rust fixture match byte-for-byte.
 - [ ] Rerun the LIVE optional package gate and broader gates after Claude's
  13:20 EDT corpus hold ends. Neither the import control nor naming proves the
  package build; no package recovery is claimed while the gate is pending.
-- [ ] Checkpoint/push the import repair with its evidence, without touching main.
+- [x] Checkpoint/push the import repair with its evidence, without touching main:
+ 0ab08ec5 is pushed and remote-exact.
 
 Evidence is in the sibling builtin-members-chirho leaf under
 scope-chirho/corpus-chirho/associated-instances-chirho. Claude's landing runs
 hold heavy builds/full driver/corpora; only the small -j1 import/naming checks
 are run here during that interval.
+
+### Natural literal-kind identity continuation
+
+T10776's promoted fields exposed two identities for the same builtin type:
+literal Nat was canonical while imported Natural remained nominal. The narrow
+repair belongs to the existing runtime-kind contract owner. Record selected
+Natural imports from GHC.TypeLits, GHC.TypeNats and Numeric.Natural once, and
+resolve the term through that map after local/checked-source ownership checks.
+Do not turn every same-spelled Natural into a builtin or invent a source-import
+kind. The map is module-local and hot lookups are bounded hash lookups.
+
+- [x] Measure eleven exact sources against GHC9.14.1 and the checkpoint CLI,
+ including promoted fields, all three builtin providers, qualified/unqualified
+ user types, and a checked source module named Numeric.Natural.
+- [x] Focused driver control agrees with all eleven, including each negative's
+ kind diagnostic (one test,435 filtered). Full typing407/407 also passes;
+ all17 kind-term integration controls pass (419 filtered).
+- [x] Move the oversized root's51 inline tests into the existing test directory,
+ grouped as basics/modules/applications with shared fixture helpers. All407 test
+ identities remain after normalizing only the added child-module prefix;
+ assertions are unchanged (one let assignment is reformatted by rustfmt).
+ Typing407/407 passes again, zero ignored/filtered. The root is now893 lines,
+ and each new child is under710 lines; no new production owner or dependency.
+- [ ] Finish the focused freeze, checkpoint/push code and raw reference evidence.
+- [ ] Rebuild/replay the actual corpus case and LIVE optional package gate after
+ Claude's landing hold, then resume the outstanding broad/final lane gates.
+
+The old CLI disagrees on four valid sources; the six invalid sources still
+reject. The first in-memory control attempt ordered an importer before its
+dependency and failed for missing ProviderChirho, not kind identity. Correcting
+the fixture to the entry point's dependency-first order precedes the claimed
+eleven-case agreement. Evidence lives in the sibling natural-kinds-chirho leaf.
+No new corpus count, package recovery, main landing or canonical DB update is
+claimed by these focused results.
+
+Focused Clippy exits0 for the driver integration target and typing library/tests,
+with399,57,59 warning messages respectively (overlapping existing debt, not a
+combined distinct count). None has a primary span on an added/changed line.
+The source hashes, test-identity/body comparisons and exact focused outputs are
+retained in natural-kinds-chirho/focused-gates-chirho.json; lint-clean remains
+unclaimed. The structural extraction changes only test module prefixes and
+whitespace, not production inference or the51 assertions' bodies.

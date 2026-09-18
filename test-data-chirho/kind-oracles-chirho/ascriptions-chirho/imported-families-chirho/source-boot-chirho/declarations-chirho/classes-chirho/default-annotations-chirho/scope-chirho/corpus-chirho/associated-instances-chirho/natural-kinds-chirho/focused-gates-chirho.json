@@ -1,0 +1,114 @@
+{
+  "recorded_at_chirho": "2026-09-18 17:48:07 UTC",
+  "source_parent_chirho": "0ab08ec5b228fdf8df77044f2422345b8d9f159a",
+  "scope_chirho": "Focused Natural literal-kind identity and unchanged inline-test extraction; not a full corpus or package gate.",
+  "rust_min_stack_chirho": 16777216,
+  "provenance_chirho": {
+    "hashes_chirho": {
+      "crates/haskelujah-typing-chirho/src/kind_chirho.rs": "f8a03e5bb63060d516fb09678015d3b0e84d1e73de5f6a5c409adccbd1a10700",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/runtime_chirho.rs": "89fcc2d2db1a522789fabc4a8eac634666ac94ca29a0c24fa19cdfcbee48c7cb",
+      "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/kind_terms_chirho.rs": "5f2dbd246507d87013b609e85b407e2fb8df8ec2f954cb62da86e6d0a7c58e67",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/mod_chirho.rs": "24c0c20f77b464a4505fcf979d358d747197f70142563dd6aba1e02f43c0fb1f",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/basics_chirho.rs": "95d28b33de952469b9a5bdc6fbaadffc914e304eac95afbcf1ddfaee5fad2172",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/modules_chirho.rs": "e3ee976a02d3c83f59036fa898b3cf56ab7e5a0575722ebcc454054902685622",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/applications_chirho.rs": "342af7ea7bd5f505e6125ce39536939d622bc4398095c2165f553dc450091308"
+    },
+    "line_counts_chirho": {
+      "crates/haskelujah-typing-chirho/src/kind_chirho.rs": 893,
+      "crates/haskelujah-typing-chirho/src/kind_chirho/runtime_chirho.rs": 698,
+      "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/kind_terms_chirho.rs": 604,
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/mod_chirho.rs": 53,
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/basics_chirho.rs": 329,
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/modules_chirho.rs": 705,
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho/applications_chirho.rs": 498
+    },
+    "directory_entries_chirho": {
+      "crates/haskelujah-typing-chirho/src/kind_chirho": 14,
+      "crates/haskelujah-typing-chirho/src/kind_chirho/tests_chirho": 11,
+      "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/associated-instances-chirho/natural-kinds-chirho": 1
+    }
+  },
+  "reference_fixture_check_chirho": {
+    "cases_chirho": 11,
+    "reference_prediction_agreements_chirho": 11,
+    "parent_disagreements_chirho": [
+      "promoted_fields_chirho",
+      "numeric_qualified_chirho",
+      "typelits_qualified_chirho",
+      "typenats_qualified_chirho"
+    ],
+    "reference_source_count_chirho": 14,
+    "rust_fixture_source_count_chirho": 14,
+    "rust_fixture_bytes_agree_chirho": true,
+    "hashes_chirho": {
+      "crates/haskelujah-typing-chirho/src/kind_chirho.rs": "8ed26d52de062536c65ed7587bf6ecbb6523bf76354300eaeb54ba301d6cd66b",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/runtime_chirho.rs": "89fcc2d2db1a522789fabc4a8eac634666ac94ca29a0c24fa19cdfcbee48c7cb",
+      "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/kind_terms_chirho.rs": "5f2dbd246507d87013b609e85b407e2fb8df8ec2f954cb62da86e6d0a7c58e67",
+      "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/associated-instances-chirho/natural-kinds-chirho/reference-chirho.jsonl": "59337b912c3fa276dbff3248c6943b725162bfc2433ad42b0cfafc64e999e3db",
+      "target/debug/deps/typing_integration_chirho-15cb8906ab671603": "60eacc65b2f604440aa735176803aab2db6f84301e9b9ac9861f224bf23dae77"
+    }
+  },
+  "focused_reference_gate_chirho": {
+    "command_chirho": "RUST_MIN_STACK=16777216 nice -n 5 cargo test -j1 -p haskelujah-driver --test typing_integration_chirho natural_literal_kinds_share_only_the_builtin_type_identity_chirho -- --nocapture",
+    "exit_code_chirho": 0,
+    "passed_chirho": 1,
+    "failed_chirho": 0,
+    "ignored_chirho": 0,
+    "filtered_chirho": 435,
+    "reference_cases_chirho": 11,
+    "elapsed_seconds_chirho": 6.29,
+    "session_id_chirho": 20548
+  },
+  "final_kind_terms_gate_chirho": {
+    "command_chirho": "RUST_MIN_STACK=16777216 nice -n 5 cargo test -j1 -p haskelujah-driver --test typing_integration_chirho kind_terms_chirho:: -- --quiet",
+    "chunk_id": "d13ab9",
+    "wall_time_seconds": 0.0000015,
+    "exit_code": 0,
+    "original_token_count": 389,
+    "output": "   Compiling haskelujah-core v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-core-chirho)\n   Compiling haskelujah-backend-cranelift v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-cranelift-chirho)\n   Compiling haskelujah-backend-llvm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-llvm-chirho)\n   Compiling haskelujah-backend-wasm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-wasm-chirho)\n   Compiling haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n   Compiling haskelujah-test-harness v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-test-harness-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.28s\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-15cb8906ab671603)\n\nrunning 17 tests\n.................\ntest result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 419 filtered out; finished in 6.74s\n\n"
+  },
+  "final_typing_gate_chirho": {
+    "command_chirho": "RUST_MIN_STACK=16777216 nice -n 5 cargo test -j1 -p haskelujah-typing --lib -- --quiet",
+    "chunk_id": "76e217",
+    "wall_time_seconds": 0.000001291,
+    "exit_code": 0,
+    "original_token_count": 181,
+    "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.38s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_typing-946cba87469fe1d1)\n\nrunning 407 tests\n....................................................................................... 87/407\n....................................................................................... 174/407\n....................................................................................... 261/407\n....................................................................................... 348/407\n...........................................................\ntest result: ok. 407 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s\n\n"
+  },
+  "test_identity_comparison_chirho": {
+    "before_chirho": 407,
+    "after_chirho": 407,
+    "identities_agree_after_only_child_prefix_normalization_chirho": true
+  },
+  "test_body_comparison_chirho": {
+    "old_test_count_chirho": 51,
+    "new_test_count_chirho": 51,
+    "non_whitespace_changed_bodies_chirho": []
+  },
+  "lint_chirho": {
+    "driver_integration_chirho": {
+      "exit_code_chirho": 0,
+      "warning_messages_chirho": 399,
+      "new_line_warnings_chirho": [],
+      "stderr_chirho": "    Checking haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Checking haskelujah-core v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-core-chirho)\n    Checking haskelujah-backend-cranelift v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-cranelift-chirho)\n    Checking haskelujah-backend-llvm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-llvm-chirho)\n    Checking haskelujah-backend-wasm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-wasm-chirho)\n    Checking haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n    Checking haskelujah-test-harness v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-test-harness-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.43s\n"
+    },
+    "typing_library_chirho": {
+      "exit_code_chirho": 0,
+      "warning_messages_chirho": 57,
+      "new_line_warnings_chirho": [],
+      "stderr_chirho": "    Checking haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.71s\n"
+    },
+    "typing_tests_chirho": {
+      "exit_code_chirho": 0,
+      "warning_messages_chirho": 59,
+      "new_line_warnings_chirho": [],
+      "stderr_chirho": "    Checking haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.23s\n"
+    },
+    "limit_chirho": "Successful exit is not lint-clean: warning-message counts are per invocation and overlap. No primary warning span intersects added/changed lines in these scans."
+  },
+  "pending_chirho": [
+    "Rebuild explicit CLI and replay T10776 after Claude landing hold",
+    "Rerun live optional constraints package gate",
+    "Full broad and two-pass corpus lane gates; main and public artifacts remain unchanged"
+  ]
+}

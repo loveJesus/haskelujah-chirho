@@ -363,6 +363,225 @@ instance CChirho FChirho
     );
 }
 
+#[test]
+fn natural_literal_kinds_share_only_the_builtin_type_identity_chirho() {
+    // Exact GHC 9.14.1 sources exercise literal classifiers, promoted fields,
+    // qualified aliases and both local and imported same-spelled user types.
+    type KindReferenceCaseChirho = (&'static str, bool, &'static [(&'static str, &'static str)]);
+    let cases_chirho: &[KindReferenceCaseChirho] = &[
+        (
+            "typenats_qualified_chirho",
+            true,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import qualified GHC.TypeNats as LChirho
+data IndexedChirho (nChirho :: LChirho.Natural)
+type OneChirho = IndexedChirho 1
+"##,
+            )],
+        ),
+        (
+            "checked_builtin_spelling_chirho",
+            false,
+            &[
+                (
+                    "ProbeChirho.hs",
+                    r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import qualified Numeric.Natural as PChirho
+data IndexedChirho (nChirho :: PChirho.Natural)
+type BadChirho = IndexedChirho 1
+"##,
+                ),
+                (
+                    "Numeric/Natural.hs",
+                    r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Numeric.Natural where
+data Natural = LocalChirho
+"##,
+                ),
+            ],
+        ),
+        (
+            "same_type_chirho",
+            true,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import GHC.TypeLits (Nat, Natural)
+import Data.Type.Equality ((:~:)(..))
+witnessChirho :: Nat :~: Natural
+witnessChirho = Refl
+"##,
+            )],
+        ),
+        (
+            "promoted_fields_chirho",
+            true,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import GHC.TypeLits (Nat, Natural)
+data PairChirho = PairChirho Natural Natural
+type family SecondChirho (pairChirho :: PairChirho) :: Nat where
+  SecondChirho ('PairChirho firstChirho secondChirho) = secondChirho
+type ExampleChirho = SecondChirho ('PairChirho 1 2)
+"##,
+            )],
+        ),
+        (
+            "numeric_qualified_chirho",
+            true,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import qualified Numeric.Natural as NChirho
+data IndexedChirho (nChirho :: NChirho.Natural)
+type OneChirho = IndexedChirho 1
+"##,
+            )],
+        ),
+        (
+            "typelits_qualified_chirho",
+            true,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import qualified GHC.TypeLits as LChirho
+data IndexedChirho (nChirho :: LChirho.Natural)
+type OneChirho = IndexedChirho 1
+"##,
+            )],
+        ),
+        (
+            "local_natural_chirho",
+            false,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+data Natural = LocalChirho
+data IndexedChirho (nChirho :: Natural)
+type BadChirho = IndexedChirho 1
+"##,
+            )],
+        ),
+        (
+            "local_nat_chirho",
+            false,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+data Nat = LocalChirho
+data IndexedChirho (nChirho :: Nat)
+type BadChirho = IndexedChirho 1
+"##,
+            )],
+        ),
+        (
+            "wrong_classifier_chirho",
+            false,
+            &[(
+                "ProbeChirho.hs",
+                r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import qualified Numeric.Natural as NChirho
+data IndexedChirho (nChirho :: NChirho.Natural)
+type BadChirho = IndexedChirho 'True
+"##,
+            )],
+        ),
+        (
+            "source_import_chirho",
+            false,
+            &[
+                (
+                    "ProbeChirho.hs",
+                    r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import qualified ProviderChirho as PChirho
+data IndexedChirho (nChirho :: PChirho.Natural)
+type BadChirho = IndexedChirho 1
+"##,
+                ),
+                (
+                    "ProviderChirho.hs",
+                    r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module ProviderChirho where
+data Natural = LocalChirho
+"##,
+                ),
+            ],
+        ),
+        (
+            "source_import_unqualified_chirho",
+            false,
+            &[
+                (
+                    "ProbeChirho.hs",
+                    r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, KindSignatures, EmptyDataDecls #-}
+module ProbeChirho where
+import ProviderChirho (Natural)
+data IndexedChirho (nChirho :: Natural)
+type BadChirho = IndexedChirho 1
+"##,
+                ),
+                (
+                    "ProviderChirho.hs",
+                    r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module ProviderChirho where
+data Natural = LocalChirho
+"##,
+                ),
+            ],
+        ),
+    ];
+    let mut failures_chirho = Vec::new();
+    for (name_chirho, expected_chirho, sources_chirho) in cases_chirho {
+        // The in-memory entry point consumes dependencies before importers;
+        // these two-file cases list Probe first to match the reference command.
+        let ordered_sources_chirho: Vec<_> = sources_chirho.iter().rev().copied().collect();
+        let result_chirho = haskelujah_driver::compile_modules_chirho(
+            &ordered_sources_chirho,
+            &mut SourceMapChirho::new_chirho(),
+        );
+        if result_chirho.is_ok() != *expected_chirho {
+            failures_chirho.push(format!(
+                "{name_chirho}: {}",
+                result_chirho
+                    .err()
+                    .map(|error_chirho| error_chirho.to_string())
+                    .unwrap_or_else(|| "wrongly accepted".to_string()),
+            ));
+        } else if !expected_chirho {
+            let message_chirho = result_chirho.unwrap_err().to_string();
+            assert!(
+                message_chirho.contains("kind mismatch"),
+                "{name_chirho}: {message_chirho}"
+            );
+        }
+    }
+    assert!(failures_chirho.is_empty(), "{}", failures_chirho.join("\n"));
+}
+
 fn assert_kind_error_chirho(source_chirho: &str, subject_chirho: &str) {
     let errors_chirho = haskelujah_driver::typecheck_source_chirho(
         source_chirho,

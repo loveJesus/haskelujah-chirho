@@ -171,6 +171,13 @@ consumer sees it. Type is the lifted boxed representation, while unlifted
 and primitive representations remain distinct. Nat/Symbol/Char literals and
 the supported literal-family contracts retain their respective kinds; promoted
 lists preserve the common element kind instead of flattening to Type.
+The Natural exported by GHC.TypeLits, GHC.TypeNats and Numeric.Natural shares
+the literal Nat identity. Import selection records that builtin alias once per
+module; kind-term lookup uses the existing qualifier resolution and a hash
+lookup rather than rescanning imports. Local definitions and checked source
+contracts take priority, including a source module named Numeric.Natural.
+An unrelated provider's same-spelled Natural remains a distinct nominal kind;
+no general bare-name alias or guessed imported contract is introduced.
 Validation scopes undo temporary bindings, and dependent applications interpret
 an already-checked argument without recursively validating it again.
 Finite representation constructors also carry their classifiers: Many/One are

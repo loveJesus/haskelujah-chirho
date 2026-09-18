@@ -4,6 +4,7 @@
 use super::{
     KindChirho, KindEnvChirho, KindInferCtxChirho, KindVarChirho, ModuleChirho, SpanChirho,
 };
+use haskelujah_ast_chirho::module_chirho::{ImportDeclChirho, ImportItemChirho};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 
 pub(super) const TYPE_CHIRHO: &str = "GHC.Prim.TYPE";
@@ -304,6 +305,7 @@ impl KindInferCtxChirho {
         self.local_kind_module_chirho = Some(module_chirho.name_chirho.full_name_chirho());
         for import_chirho in &module_chirho.imports_chirho {
             let target_chirho = import_chirho.module_chirho.full_name_chirho();
+            self.record_builtin_kind_aliases_chirho(import_chirho, &target_chirho);
             let alias_chirho = import_chirho
                 .alias_chirho
                 .as_ref()
@@ -317,6 +319,46 @@ impl KindInferCtxChirho {
                     }
                 })
                 .or_insert(Some(target_chirho));
+        }
+    }
+
+    /// A builtin alias needs an actual selected import. Recognizing the bare
+    /// spelling globally would identify an unrelated provider's Natural with
+    /// literal Nat. Checked source contracts and local definitions still win.
+    /// Workflow: language-features-chirho/declaration-kinds-chirho.
+    fn record_builtin_kind_aliases_chirho(
+        &mut self,
+        import_chirho: &ImportDeclChirho,
+        module_chirho: &str,
+    ) {
+        if !matches!(
+            module_chirho,
+            "GHC.TypeLits" | "GHC.TypeNats" | "Numeric.Natural"
+        ) {
+            return;
+        }
+        let selected_chirho = import_chirho
+            .spec_chirho
+            .as_ref()
+            .is_none_or(|spec_chirho| {
+                let listed_chirho = spec_chirho.items_chirho.iter().any(|item_chirho| {
+                    let name_chirho = match item_chirho {
+                        ImportItemChirho::VarChirho(name_chirho)
+                        | ImportItemChirho::TyConChirho { name_chirho, .. } => name_chirho,
+                    };
+                    name_chirho.text_chirho() == "Natural"
+                });
+                listed_chirho != spec_chirho.hiding_chirho
+            });
+        if !selected_chirho {
+            return;
+        }
+        let term_chirho = builtin_term_chirho("Nat").unwrap();
+        self.source_builtin_kind_aliases_chirho
+            .insert(format!("{module_chirho}.Natural"), term_chirho.clone());
+        if !import_chirho.qualified_chirho {
+            self.source_builtin_kind_aliases_chirho
+                .insert("Natural".into(), term_chirho);
         }
     }
 
@@ -394,6 +436,12 @@ impl KindInferCtxChirho {
     ) -> KindChirho {
         let full_chirho = self.canonical_kind_name_chirho(name_chirho);
         let text_chirho = name_chirho.text_chirho();
+        if !local_names_chirho.contains(&full_chirho)
+            && !self.imported_kind_shapes_chirho.contains_key(&full_chirho)
+            && let Some(term_chirho) = self.source_builtin_kind_aliases_chirho.get(&full_chirho)
+        {
+            return term_chirho.clone();
+        }
         let builtin_scope_chirho = if full_chirho == text_chirho {
             !local_names_chirho.contains(text_chirho)
         } else {
@@ -446,7 +494,7 @@ impl KindEnvChirho {
     /// These contracts classify literal terms rather than treating all of them
     /// as Type. Workflow: type-level-character-families-chirho.
     pub(super) fn seed_type_literal_kinds_chirho(&mut self) {
-        for name_chirho in ["Nat", "Symbol"] {
+        for name_chirho in ["Nat", "Natural", "Symbol"] {
             self.bind_generalized_chirho(name_chirho.into(), KindChirho::StarChirho);
         }
         for (names_chirho, arguments_chirho, result_chirho) in [
