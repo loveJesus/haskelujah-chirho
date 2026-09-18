@@ -1061,6 +1061,24 @@ Per-instance omitted defaults open their own hidden inputs; a family-only term
 gets its own identity with its classifier registered, not the classifier itself
 as its value. Failed instance checks publish no default-elaboration record.
 
+Before that instance scope is quantified, its head and context jointly infer
+unnamed classifiers. Thus a context requiring a parameter at Type may determine
+that parameter's previously unconstrained kind. Written kind names are different:
+instance-signature ascriptions keep those names rigid from the point they are
+elaborated, including annotations nested below a type application. This scoped
+policy excludes an annotation's own quantified binders and unnamed inference
+variables, and is restored before checking equations/defaults. Associated RHSs
+still cannot specialize classifiers left universally quantified by the header.
+
+```mermaid
+flowchart LR
+  InstanceHeadChirho[Instance head and written rigid annotations] --> ClassifiersChirho[Infer shared local classifiers]
+  InstanceContextChirho[Instance context] --> ClassifiersChirho
+  ClassifiersChirho --> QuantifyChirho[Quantify remaining inferred kinds]
+  QuantifyChirho --> AssociatedRowsChirho[Check equations and defaults]
+  AssociatedRowsChirho --> CheckedInputsChirho[Publish only checked inputs]
+```
+
 Ordinary promoted constructors now capture checked field and result terms in
 their declaration scope and publish closed schemes after the SCC completes.
 Builtin Bool/Ordering constructors have explicit promoted classifiers; local

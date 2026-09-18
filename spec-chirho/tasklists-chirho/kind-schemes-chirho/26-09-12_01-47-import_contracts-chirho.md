@@ -768,7 +768,8 @@ kind. The map is module-local and hot lookups are bounded hash lookups.
  assertions are unchanged (one let assignment is reformatted by rustfmt).
  Typing407/407 passes again, zero ignored/filtered. The root is now893 lines,
  and each new child is under710 lines; no new production owner or dependency.
-- [ ] Finish the focused freeze, checkpoint/push code and raw reference evidence.
+- [x] Finish the focused freeze, checkpoint/push code and raw reference evidence:
+ 65c9b1c1 is pushed and ls-remote exact; main remains6db522ad.
 - [ ] Rebuild/replay the actual corpus case and LIVE optional package gate after
  Claude's landing hold, then resume the outstanding broad/final lane gates.
 
@@ -787,3 +788,41 @@ The source hashes, test-identity/body comparisons and exact focused outputs are
 retained in natural-kinds-chirho/focused-gates-chirho.json; lint-clean remains
 unclaimed. The structural extraction changes only test module prefixes and
 whitespace, not production inference or the51 assertions' bodies.
+
+### Associated instance context before quantification
+
+Six predicted GHC9.14.1 probes separate a universally quantified instance kind
+from one constrained by the instance context. All predictions hold. The old CLI
+disagrees on four: direct context, constraint synonym and independent second
+instance falsely reject; a context contradicting the head's Bool annotation
+falsely accepts. The no-context polymorphic equation and wrong-RHS controls
+already reject and must keep rejecting.
+
+Placement: the existing associated-instance owner already shares one scope for
+head arguments and equations, but omits the source context before it rigidifies
+the head's inferred classifiers. Pass the context from the AST and check it in
+that same scope before capture/rigidification. This is kind inference, not a
+new constraint solver or permission to specialize an unconstrained instance.
+
+- [x] Retain six independent reference and checkpoint-CLI observations under
+ associated-instances-chirho/instance-contexts-chirho, with sources and hashes.
+- [x] Demonstrate the same disagreements in a focused driver control; include
+ context/classifier unification before rigidification, retaining negative cases.
+- [x] Focused typing407/407 and associated-index6/6 controls pass. The latter
+ includes the ten new references and the existing nineteen dependent defaults;
+431 tests are filtered, none ignored. Clippy exits0 with399 driver-target and
+59 typing-test warning messages, none on changed lines; lint-clean is unclaimed.
+- [ ] Fresh CLI/package/corpus remain subject to Claude's existing landing hold
+ and the complete lane's broad/final gates; no main or canonical DB update.
+- [ ] Commit/push this independently recorded context checkpoint.
+
+The first six-case repair passes, but an extra written-kind control falsifies
+its completeness: `Proxy (a :: k)` with a Type-only context must reject, even
+without an explicit forall. My predicted GHC acceptance was wrong; the original
+prediction is retained beside the measured rejection. The intermediate repair
+wrongly accepted it. The signature scope now rigidifies written ascription names
+as annotations are elaborated, rather than freezing anonymous inferred kinds.
+A nested `Maybe (a :: k)` control also exposes a false accept on the checkpoint
+CLI; a concrete Type annotation remains valid. Ten reference sources now bound
+the intended repair. This does not claim complete explicit instance-forall AST
+retention or extend checking to instances without associated equations/defaults.

@@ -1,0 +1,80 @@
+{
+  "recorded_at_chirho": "2026-09-18 18:03:47 UTC",
+  "source_parent_chirho": "65c9b1c15a65b451bb9f79133a59db7ca3969822",
+  "scope_chirho": "Associated-instance head/context kind inference and written ascription rigidity; focused evidence, not a corpus, runtime or package claim.",
+  "rust_min_stack_chirho": 16777216,
+  "fixture_check_chirho": {
+    "reference_cases_chirho": 10,
+    "test_cases_chirho": 10,
+    "source_or_verdict_disagreements_chirho": [],
+    "parent_cli_disagreements_chirho": [
+      "context_fixes_classifier_chirho",
+      "context_alias_fixes_classifier_chirho",
+      "contradictory_head_annotation_chirho",
+      "independent_instance_scopes_chirho",
+      "nested_written_kind_chirho"
+    ],
+    "prediction_disagreements_chirho": [
+      "implicit_kind_annotation_chirho"
+    ],
+    "source_hashes_chirho": {
+      "crates/haskelujah-typing-chirho/src/kind_chirho.rs": "f0c6d795ca1cb3312aaac83452ab0b7ed2857ba47536b96c58b13cd9e8217499",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/conversion_chirho.rs": "6c9fb85ff1b18c8e7423777bf78dad252f6c3ab7072ed11a59820494066377d6",
+      "crates/haskelujah-typing-chirho/src/kind_chirho/instances_chirho.rs": "27c6826000311f34006c8a31d4ebffd45ec9b859e4676b05d108b8f9c884479c",
+      "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/associated_indices_chirho.rs": "6c33a3ac276d24c89ab674b2ad362d51b46cc716574ee6e59c3c6cfaea27469e",
+      "test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/associated-instances-chirho/instance-contexts-chirho/reference-chirho.jsonl": "fbd1f6e91b22f69674b7c611c9194051c3cf114ea7aa37c8c468fc85aea52546"
+    }
+  },
+  "behavioral_before_chirho": {
+    "chunk_id": "8059e7",
+    "wall_time_seconds": 0.000004083,
+    "exit_code": 101,
+    "original_token_count": 377,
+    "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.24s\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-15cb8906ab671603)\n\nrunning 1 test\n\nthread 'import_contracts_chirho::associated_indices_chirho::associated_instance_context_determines_classifiers_before_rigidity_chirho' (95488446) panicked at crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/associated_indices_chirho.rs:130:5:\ncontext_fixes_classifier_chirho: error[E0300]: kind mismatch in type application: expected `*`, found `rigid k100051` (at 648..661)\ncontext_alias_fixes_classifier_chirho: error[E0300]: kind mismatch in type application: expected `*`, found `rigid k100055` (at 707..720)\ncontradictory_head_annotation_chirho: wrongly accepted\nindependent_instance_scopes_chirho: error[E0300]: kind mismatch in type application: expected `*`, found `rigid k100051` (at 648..661)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest import_contracts_chirho::associated_indices_chirho::associated_instance_context_determines_classifiers_before_rigidity_chirho ... FAILED\n\nfailures:\n\nfailures:\n    import_contracts_chirho::associated_indices_chirho::associated_instance_context_determines_classifiers_before_rigidity_chirho\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 436 filtered out; finished in 0.11s\n\nerror: test failed, to rerun pass `-p haskelujah-driver --test typing_integration_chirho`\n"
+  },
+  "intermediate_adversarial_failure_chirho": {
+    "chunk_id": "a7fe5f",
+    "wall_time_seconds": 0.000001292,
+    "exit_code": 101,
+    "original_token_count": 275,
+    "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.64s\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-15cb8906ab671603)\n\nrunning 1 test\n\nthread 'import_contracts_chirho::associated_indices_chirho::associated_instance_context_determines_classifiers_before_rigidity_chirho' (95532306) panicked at crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/associated_indices_chirho.rs:160:5:\nimplicit_kind_annotation_chirho: wrongly accepted\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\ntest import_contracts_chirho::associated_indices_chirho::associated_instance_context_determines_classifiers_before_rigidity_chirho ... FAILED\n\nfailures:\n\nfailures:\n    import_contracts_chirho::associated_indices_chirho::associated_instance_context_determines_classifiers_before_rigidity_chirho\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 436 filtered out; finished in 0.15s\n\nerror: test failed, to rerun pass `-p haskelujah-driver --test typing_integration_chirho`\n"
+  },
+  "final_associated_index_gate_chirho": {
+    "command_chirho": "RUST_MIN_STACK=16777216 nice -n 5 cargo test -j1 -p haskelujah-driver --test typing_integration_chirho associated_indices_chirho:: -- --nocapture",
+    "chunk_id": "5f612c",
+    "wall_time_seconds": 0.000003167,
+    "exit_code": 0,
+    "original_token_count": 265,
+    "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.05s\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-15cb8906ab671603)\n\nrunning 6 tests\ntest import_contracts_chirho::associated_indices_chirho::associated_indices_check_the_equation_result_kind_chirho ... ok\ntest import_contracts_chirho::associated_indices_chirho::associated_indices_cannot_specialize_the_enclosing_instance_kind_chirho ... ok\ntest import_contracts_chirho::associated_indices_chirho::associated_instance_context_determines_classifiers_before_rigidity_chirho ... ok\ntest import_contracts_chirho::associated_indices_chirho::associated_indices_do_not_prove_a_wrong_result_chirho ... ok\ntest import_contracts_chirho::associated_indices_chirho::associated_indices_cross_a_module_boundary_chirho ... ok\ntest import_contracts_chirho::associated_indices_chirho::dependent_associated_defaults_follow_the_reference_contracts_chirho ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 431 filtered out; finished in 7.57s\n\n"
+  },
+  "typing_gate_chirho": {
+    "command_chirho": "RUST_MIN_STACK=16777216 nice -n 5 cargo test -j1 -p haskelujah-typing --lib -- --quiet",
+    "chunk_id": "f25701",
+    "wall_time_seconds": 0.000001083,
+    "exit_code": 0,
+    "original_token_count": 181,
+    "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.52s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_typing-946cba87469fe1d1)\n\nrunning 407 tests\n....................................................................................... 87/407\n....................................................................................... 174/407\n....................................................................................... 261/407\n....................................................................................... 348/407\n...........................................................\ntest result: ok. 407 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s\n\n"
+  },
+  "lint_chirho": {
+    "driver_integration_chirho": {
+      "exit_code_chirho": 0,
+      "warning_messages_chirho": 399,
+      "new_line_warnings_chirho": [],
+      "stderr_chirho": "    Blocking waiting for file lock on build directory\n    Checking haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Checking haskelujah-core v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-core-chirho)\n    Checking haskelujah-backend-cranelift v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-cranelift-chirho)\n    Checking haskelujah-backend-llvm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-llvm-chirho)\n    Checking haskelujah-backend-wasm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-wasm-chirho)\n    Checking haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n    Checking haskelujah-test-harness v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-test-harness-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.81s\n"
+    },
+    "typing_tests_chirho": {
+      "exit_code_chirho": 0,
+      "warning_messages_chirho": 59,
+      "new_line_warnings_chirho": [],
+      "stderr_chirho": "    Checking haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.65s\n"
+    },
+    "limit_chirho": "Existing overlapping warning debt remains; no warning primary span intersects this change."
+  },
+  "limits_chirho": [
+    "Written explicit instance-forall AST retention is not completed",
+    "The path still applies only to instances with associated equations or omitted defaults",
+    "Fresh CLI, live optional package and broad/corpus gates remain pending under Claude's landing hold",
+    "The expected_chirho fields in reference records are predictions; test oracles use measured GHC exit codes, including the one refutation"
+  ],
+  "note_chirho": "A first attempted Rust harness used unwrap_err on a success type without Debug; that compiler error was corrected and is not counted as the behavioral red. The recorded before test actually executed and exposed the four disagreements."
+}

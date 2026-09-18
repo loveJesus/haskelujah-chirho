@@ -139,8 +139,21 @@ impl KindInferCtxChirho {
         &mut self,
         annotation_chirho: &TypeChirho,
     ) -> KindBindingChirho {
-        let (kind_chirho, written_chirho, quantified_chirho) =
+        let (mut kind_chirho, written_chirho, quantified_chirho) =
             self.elaborate_inline_kind_chirho(annotation_chirho);
+        if self.rigid_ascription_names_chirho {
+            // Preserve signature-written names without freezing anonymous
+            // inference variables or the annotation's own polymorphic binders.
+            let quantified_set_chirho: std::collections::HashSet<_> =
+                quantified_chirho.iter().copied().collect();
+            self.rigidify_kind_variables_chirho(
+                written_chirho
+                    .iter()
+                    .copied()
+                    .filter(|identity_chirho| !quantified_set_chirho.contains(identity_chirho)),
+            );
+            kind_chirho = self.subst_chirho.apply_chirho(&kind_chirho);
+        }
         if quantified_chirho.is_empty() {
             return KindBindingChirho::MonoChirho(kind_chirho);
         }

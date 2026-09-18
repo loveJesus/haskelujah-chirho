@@ -128,6 +128,8 @@ struct KindInferCtxChirho {
     pending_written_kinds_chirho: Vec<(KindVarChirho, SpanChirho)>,
     /// Scoped source-variable provenance while elaborating an inline kind.
     captured_kind_variables_chirho: Option<Vec<KindVarChirho>>,
+    /// Scoped instance-header policy, restored before checking its equations.
+    rigid_ascription_names_chirho: bool,
     /// Classifiers and specificity belong to the quantified identity, not its
     /// temporary source spelling. They survive lexical-scope restoration.
     kind_binder_classifiers_chirho: HashMap<KindVarChirho, KindChirho>,
@@ -178,6 +180,7 @@ impl KindInferCtxChirho {
             star_is_type_chirho: true,
             pending_written_kinds_chirho: Vec::new(),
             captured_kind_variables_chirho: None,
+            rigid_ascription_names_chirho: false,
             kind_binder_classifiers_chirho: HashMap::new(),
             classifier_session_chirho: None,
             kind_binder_names_chirho: HashMap::new(),
@@ -845,6 +848,7 @@ pub fn infer_module_kinds_with_imports_chirho(
     for decl_chirho in &module_chirho.decls_chirho {
         let DeclChirho::InstanceDeclChirho {
             class_chirho,
+            context_chirho,
             types_chirho,
             assoc_tf_instances_chirho,
             span_chirho,
@@ -861,6 +865,7 @@ pub fn infer_module_kinds_with_imports_chirho(
         );
         ctx_chirho.check_associated_instance_equations_chirho(
             class_chirho.text_chirho(),
+            context_chirho,
             types_chirho,
             assoc_tf_instances_chirho,
             class_defaults_chirho

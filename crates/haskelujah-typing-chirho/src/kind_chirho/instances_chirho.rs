@@ -15,6 +15,7 @@ impl KindInferCtxChirho {
     pub(super) fn check_associated_instance_equations_chirho(
         &mut self,
         class_name_chirho: &str,
+        context_chirho: &[super::ConstraintChirho],
         head_types_chirho: &[TypeChirho],
         equations_chirho: &[AssocTfInstanceChirho],
         defaults_chirho: Option<(&[super::TyVarChirho], &[AssocTypeFamilyChirho])>,
@@ -31,6 +32,10 @@ impl KindInferCtxChirho {
         }
         let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
         self.env_chirho.begin_scope_chirho();
+        // Written kind names in an instance signature are skolems even when
+        // unnamed classifier variables may still be inferred from its context.
+        let outer_ascriptions_chirho =
+            std::mem::replace(&mut self.rigid_ascription_names_chirho, true);
         let mut class_kind_chirho = self
             .env_chirho
             .lookup_binding_chirho(class_name_chirho)
@@ -49,6 +54,13 @@ impl KindInferCtxChirho {
                 ));
             }
         }
+        // The context constrains the same variables as the instance head.
+        // Infer those classifiers before quantifying them; only the associated
+        // equations are forbidden to specialize a still-polymorphic head.
+        for constraint_chirho in context_chirho {
+            self.infer_constraint_kind_chirho(constraint_chirho);
+        }
+        self.rigid_ascription_names_chirho = outer_ascriptions_chirho;
         let bindings_chirho = self.env_chirho.capture_scope_chirho();
         let variables_chirho = bindings_chirho
             .iter()

@@ -5,6 +5,191 @@
 use haskelujah_driver::{compile_modules_chirho, typecheck_source_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[test]
+fn associated_instance_context_determines_classifiers_before_rigidity_chirho() {
+    // Exact GHC 9.14.1 sources distinguish contextual kind inference from an
+    // invalid specialization of an instance whose kind stays quantified.
+    let cases_chirho = [
+        (
+            "nested_written_kind_chirho",
+            false,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds, ScopedTypeVariables, ExplicitForAll #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance FamilyChirho (Maybe (aChirho :: kChirho)) where
+  type ResultChirho (Maybe aChirho) = Int
+"##,
+        ),
+        (
+            "concrete_annotation_chirho",
+            true,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds, ScopedTypeVariables, ExplicitForAll #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance FamilyChirho (ProxyChirho (aChirho :: Type)) where
+  type ResultChirho (ProxyChirho aChirho) = Maybe aChirho
+"##,
+        ),
+        (
+            "explicit_kind_binder_chirho",
+            false,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds, ScopedTypeVariables, ExplicitForAll #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance forall kChirho (aChirho :: kChirho). TypeOnlyChirho aChirho => FamilyChirho (ProxyChirho aChirho) where
+  type ResultChirho (ProxyChirho aChirho) = Maybe aChirho
+"##,
+        ),
+        (
+            "implicit_kind_annotation_chirho",
+            false,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds, ScopedTypeVariables, ExplicitForAll #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance TypeOnlyChirho aChirho => FamilyChirho (ProxyChirho (aChirho :: kChirho)) where
+  type ResultChirho (ProxyChirho aChirho) = Maybe aChirho
+"##,
+        ),
+        (
+            "unconstrained_polykind_chirho",
+            false,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance FamilyChirho (ProxyChirho aChirho) where
+  type ResultChirho (ProxyChirho aChirho) = Maybe aChirho
+"##,
+        ),
+        (
+            "context_fixes_classifier_chirho",
+            true,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance TypeOnlyChirho aChirho => FamilyChirho (ProxyChirho aChirho) where
+  type ResultChirho (ProxyChirho aChirho) = Maybe aChirho
+"##,
+        ),
+        (
+            "context_alias_fixes_classifier_chirho",
+            true,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+type TypeContextChirho aChirho = TypeOnlyChirho aChirho
+instance TypeContextChirho aChirho => FamilyChirho (ProxyChirho aChirho) where
+  type ResultChirho (ProxyChirho aChirho) = Maybe aChirho
+"##,
+        ),
+        (
+            "contradictory_head_annotation_chirho",
+            false,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance TypeOnlyChirho aChirho => FamilyChirho (ProxyChirho (aChirho :: Bool)) where
+  type ResultChirho (ProxyChirho aChirho) = Int
+"##,
+        ),
+        (
+            "independent_instance_scopes_chirho",
+            true,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance TypeOnlyChirho aChirho => FamilyChirho (ProxyChirho aChirho) where
+  type ResultChirho (ProxyChirho aChirho) = Maybe aChirho
+instance FamilyChirho (ProxyChirho 'True) where
+  type ResultChirho (ProxyChirho 'True) = Int
+"##,
+        ),
+        (
+            "wrong_rhs_kind_chirho",
+            false,
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances, FlexibleContexts, UndecidableInstances, ConstraintKinds #-}
+module ProbeChirho where
+import Data.Kind (Type)
+data ProxyChirho (aChirho :: kChirho) = ProxyChirho
+class TypeOnlyChirho (aChirho :: Type)
+class FamilyChirho (pChirho :: Type) where
+  type ResultChirho pChirho :: Type
+instance TypeOnlyChirho aChirho => FamilyChirho (ProxyChirho aChirho) where
+  type ResultChirho (ProxyChirho aChirho) = 'True
+"##,
+        ),
+    ];
+    let mut failures_chirho = Vec::new();
+    for (name_chirho, expected_chirho, source_chirho) in cases_chirho {
+        let result_chirho = typecheck_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "ProbeChirho.hs",
+        );
+        if result_chirho.is_ok() != expected_chirho {
+            failures_chirho.push(format!(
+                "{name_chirho}: {}",
+                result_chirho
+                    .err()
+                    .map(|error_chirho| error_chirho.to_string())
+                    .unwrap_or_else(|| "wrongly accepted".into())
+            ));
+        } else if let Err(error_chirho) = result_chirho {
+            let message_chirho = error_chirho.to_string();
+            assert!(
+                message_chirho.contains("kind mismatch"),
+                "{name_chirho}: {message_chirho}"
+            );
+        }
+    }
+    assert!(failures_chirho.is_empty(), "{}", failures_chirho.join("\n"));
+}
+
 const PROVIDER_CHIRHO: &str = r####"{-# LANGUAGE TypeFamilies, FlexibleInstances #-}
 module IndexedProviderChirho where
 class SelectChirho mChirho where
