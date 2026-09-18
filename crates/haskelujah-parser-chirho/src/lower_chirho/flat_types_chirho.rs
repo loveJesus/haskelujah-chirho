@@ -31,6 +31,141 @@ pub(super) fn list_type_chirho(
 }
 
 impl LowerCtxChirho {
+    /// A flat sequence that starts with `forall`: the binder telescope up to
+    /// its delimiter (`.` for an ordinary forall, `->` for a required one),
+    /// then the WHOLE remainder as the body. Binders keep their kind
+    /// annotations; a kind's own variables are not mistaken for binders.
+    /// Workflow: language-features-chirho/flat-type-syntax-chirho.
+    fn forall_from_flat_children_chirho(
+        &self,
+        children_chirho: &[&ChildChirho],
+        span_chirho: SpanChirho,
+    ) -> Option<TypeChirho> {
+        if !matches!(children_chirho.first()?.element_chirho,
+            GreenElementChirho::TokenChirho(token_chirho)
+                if token_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho)
+        {
+            return None;
+        }
+        let mut depth_chirho = 0usize;
+        let (delimiter_index_chirho, required_chirho) =
+            children_chirho.iter().enumerate().skip(1).find_map(
+                |(index_chirho, child_chirho)| {
+                    let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho
+                    else {
+                        return None;
+                    };
+                    match token_chirho.kind_chirho() {
+                        TokenKindChirho::LeftParenChirho
+                        | TokenKindChirho::LeftBraceChirho
+                        | TokenKindChirho::LeftBracketChirho => depth_chirho += 1,
+                        TokenKindChirho::RightParenChirho
+                        | TokenKindChirho::RightBraceChirho
+                        | TokenKindChirho::RightBracketChirho => {
+                            depth_chirho = depth_chirho.saturating_sub(1)
+                        }
+                        TokenKindChirho::RightArrowChirho if depth_chirho == 0 => {
+                            return Some((index_chirho, true));
+                        }
+                        TokenKindChirho::VarSymChirho
+                            if depth_chirho == 0 && token_chirho.text_chirho() == "." =>
+                        {
+                            return Some((index_chirho, false));
+                        }
+                        _ => {}
+                    }
+                    None
+                },
+            )?;
+        let binder_children_chirho: Vec<ChildChirho<'_>> = children_chirho
+            [1..delimiter_index_chirho]
+            .iter()
+            .map(|child_chirho| ChildChirho {
+                element_chirho: child_chirho.element_chirho,
+                start_chirho: child_chirho.start_chirho,
+                end_chirho: child_chirho.end_chirho,
+            })
+            .collect();
+        let mut vars_chirho = Vec::new();
+        let mut index_chirho = 0;
+        while index_chirho < binder_children_chirho.len() {
+            if let Some((binder_chirho, consumed_chirho)) =
+                self.try_parse_kind_annotated_tyvar_chirho(&binder_children_chirho, index_chirho)
+            {
+                vars_chirho.push(binder_chirho);
+                index_chirho += consumed_chirho;
+                continue;
+            }
+            let child_chirho = &binder_children_chirho[index_chirho];
+            if let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho {
+                match token_chirho.kind_chirho() {
+                    // An annotated binder this helper could not read (a kind
+                    // main has no form for): keep the binder, skip its kind,
+                    // so the kind's variables are not read as binders.
+                    TokenKindChirho::LeftParenChirho => {
+                        let mut group_depth_chirho = 0usize;
+                        let mut named_chirho = false;
+                        while index_chirho < binder_children_chirho.len() {
+                            let inner_chirho = &binder_children_chirho[index_chirho];
+                            if let GreenElementChirho::TokenChirho(inner_token_chirho) =
+                                inner_chirho.element_chirho
+                            {
+                                match inner_token_chirho.kind_chirho() {
+                                    TokenKindChirho::LeftParenChirho => group_depth_chirho += 1,
+                                    TokenKindChirho::RightParenChirho => {
+                                        group_depth_chirho = group_depth_chirho.saturating_sub(1);
+                                        if group_depth_chirho == 0 {
+                                            break;
+                                        }
+                                    }
+                                    TokenKindChirho::VarIdChirho if !named_chirho => {
+                                        named_chirho = true;
+                                        vars_chirho.push(TyVarChirho::plain_chirho(
+                                            self.name_from_token_chirho(
+                                                inner_token_chirho,
+                                                self.span_chirho(
+                                                    inner_chirho.start_chirho,
+                                                    inner_chirho.end_chirho,
+                                                ),
+                                            ),
+                                        ));
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            index_chirho += 1;
+                        }
+                    }
+                    TokenKindChirho::VarIdChirho => {
+                        vars_chirho.push(TyVarChirho::plain_chirho(self.name_from_token_chirho(
+                            token_chirho,
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                        )));
+                    }
+                    _ => {}
+                }
+            }
+            index_chirho += 1;
+        }
+        let body_chirho = Box::new(self.type_from_flat_children_chirho(
+            &children_chirho[delimiter_index_chirho + 1..],
+            span_chirho,
+        ));
+        Some(if required_chirho {
+            TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho,
+            }
+        } else {
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                span_chirho,
+            }
+        })
+    }
+
     /// Reconstruct a `TypeChirho` from a flat sequence of tokens/nodes.
     /// Handles the common patterns found in record field declarations:
     ///   - `ConId` → ConChirho
@@ -50,55 +185,28 @@ impl LowerCtxChirho {
             return self.placeholder_type_chirho();
         }
 
-        // A required-forall arrow is a quantifier delimiter, not the function
-        // arrow handled below. This flat reconstruction path is used for
-        // record fields whose CST does not retain a nested ForallType node.
-        // workflow: language-features-chirho/rank-n-visible-type-application-chirho
-        if matches!(
-            children_chirho.first().map(|child_chirho| child_chirho.element_chirho),
-            Some(GreenElementChirho::TokenChirho(token_chirho))
-                if token_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho
-        ) {
-            let dot_idx_chirho = children_chirho.iter().position(|child_chirho| {
-                matches!(
-                    child_chirho.element_chirho,
-                    GreenElementChirho::TokenChirho(token_chirho)
-                        if token_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
-                            && token_chirho.text_chirho() == "."
-                )
-            });
-            let arrow_idx_chirho = self.find_top_level_arrow_chirho(children_chirho);
-            if dot_idx_chirho.is_none()
-                && let Some(arrow_idx_chirho) = arrow_idx_chirho
-            {
-                let vars_chirho = children_chirho[1..arrow_idx_chirho]
-                    .iter()
-                    .filter_map(|child_chirho| {
-                        let GreenElementChirho::TokenChirho(token_chirho) =
-                            child_chirho.element_chirho
-                        else {
-                            return None;
-                        };
-                        if token_chirho.kind_chirho() != TokenKindChirho::VarIdChirho {
-                            return None;
-                        }
-                        let span_chirho =
-                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        Some(TyVarChirho::plain_chirho(
-                            self.name_from_token_chirho(token_chirho, span_chirho),
-                        ))
-                    })
-                    .collect();
-                let body_chirho = self.type_from_flat_children_chirho(
-                    &children_chirho[arrow_idx_chirho + 1..],
-                    fallback_span_chirho,
-                );
-                return TypeChirho::RequiredForallChirho {
-                    vars_chirho,
-                    body_chirho: Box::new(body_chirho),
-                    span_chirho: fallback_span_chirho,
-                };
-            }
+        // `(t :: k)`: the annotation is outside everything to its left, a
+        // leading forall included. Main keeps no kind annotation on a type, so
+        // the type on the left is the result, exactly as the structured and
+        // token-slice paths already do. Without this rule `(n :: Nat)` became
+        // the application `n Nat`.
+        if let Some(annotation_index_chirho) = self
+            .find_top_level_token_chirho(children_chirho, TokenKindChirho::DoubleColonChirho)
+            .filter(|index_chirho| *index_chirho > 0)
+        {
+            return self.type_from_flat_children_chirho(
+                &children_chirho[..annotation_index_chirho],
+                fallback_span_chirho,
+            );
+        }
+
+        // A leading forall scopes over the arrows and the context in its body:
+        // `forall b. Eq b => Eq (f b)` is `forall b. (Eq b => Eq (f b))`, never
+        // `(forall b. Eq b) => Eq (f b)`.
+        if let Some(forall_chirho) =
+            self.forall_from_flat_children_chirho(children_chirho, fallback_span_chirho)
+        {
+            return forall_chirho;
         }
 
         // Split on top-level `=>` (qualified type with context).
@@ -152,49 +260,6 @@ impl LowerCtxChirho {
                 result_chirho: Box::new(result_chirho),
                 span_chirho: fallback_span_chirho,
             };
-        }
-
-        // Handle `forall`
-        if let Some(GreenElementChirho::TokenChirho(tok_chirho)) = children_chirho
-            .first()
-            .map(|c_chirho| c_chirho.element_chirho)
-            && tok_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho
-        {
-            // Find the `.` (VarSym ".")
-            let dot_idx_chirho = children_chirho.iter().position(|c_chirho| {
-                if let GreenElementChirho::TokenChirho(t_chirho) = c_chirho.element_chirho {
-                    t_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
-                        && t_chirho.text_chirho() == "."
-                } else {
-                    false
-                }
-            });
-            if let Some(di_chirho) = dot_idx_chirho {
-                // Collect type vars between forall and dot
-                let mut vars_chirho: Vec<haskelujah_ast_chirho::decl_chirho::TyVarChirho> =
-                    Vec::new();
-                for c_chirho in &children_chirho[1..di_chirho] {
-                    if let GreenElementChirho::TokenChirho(t_chirho) = c_chirho.element_chirho
-                        && t_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
-                    {
-                        let s_chirho = self.span_chirho(c_chirho.start_chirho, c_chirho.end_chirho);
-                        vars_chirho.push(
-                            haskelujah_ast_chirho::decl_chirho::TyVarChirho::plain_chirho(
-                                self.name_from_token_chirho(t_chirho, s_chirho),
-                            ),
-                        );
-                    }
-                }
-                let body_chirho = self.type_from_flat_children_chirho(
-                    &children_chirho[di_chirho + 1..],
-                    fallback_span_chirho,
-                );
-                return TypeChirho::ForallChirho {
-                    vars_chirho,
-                    body_chirho: Box::new(body_chirho),
-                    span_chirho: fallback_span_chirho,
-                };
-            }
         }
 
         // Some declaration heads retain a kind signature as a flat token

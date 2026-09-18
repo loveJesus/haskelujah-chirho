@@ -8,6 +8,9 @@
 //! punctuation are discarded; only semantic content survives.
 
 #[cfg(test)]
+mod context_tests_chirho;
+mod contexts_chirho;
+#[cfg(test)]
 mod declaration_kind_tests_chirho;
 mod declaration_kinds_chirho;
 #[cfg(test)]
@@ -3434,16 +3437,22 @@ impl LowerCtxChirho {
             }
         }
 
+        // A leading `forall a b.` binds the instance's variables; it belongs
+        // to neither the context nor the head.
+        // Workflow: language-features-chirho/flat-type-syntax-chirho.
+        let pre_arrow_tokens_chirho =
+            contexts_chirho::strip_instance_forall_chirho(&pre_arrow_tokens_chirho);
+
         // If no `=>` was seen, everything is class + types.
         let head_tokens_chirho = if saw_fat_arrow_chirho {
-            &post_arrow_tokens_chirho
+            &post_arrow_tokens_chirho[..]
         } else {
-            &pre_arrow_tokens_chirho
+            pre_arrow_tokens_chirho
         };
 
-        // Build context from pre-arrow tokens (simplified: "ClassName varName" pairs).
+        // The context is lowered as a type and converted, like a signature's.
         let context_chirho = if saw_fat_arrow_chirho {
-            self.build_instance_context_chirho(&pre_arrow_tokens_chirho)
+            self.build_instance_context_chirho(pre_arrow_tokens_chirho)
         } else {
             vec![]
         };
@@ -3671,132 +3680,6 @@ impl LowerCtxChirho {
             assoc_tf_instances_chirho: assoc_tf_insts_chirho,
             span_chirho,
         }
-    }
-
-    /// Build a simple context from pre-arrow tokens.
-    /// Assumes pattern: `ClassName varName [, ClassName varName ...]` or
-    /// `(ClassName varName, ...) =>`.
-    fn build_instance_context_chirho(
-        &self,
-        tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
-    ) -> Vec<ConstraintChirho> {
-        let mut constraints_chirho = Vec::new();
-        let mut segment_start_chirho = 0usize;
-        let mut paren_depth_chirho = 0usize;
-
-        for (idx_chirho, (tok_chirho, _span_chirho)) in tokens_chirho.iter().enumerate() {
-            match tok_chirho.kind_chirho() {
-                TokenKindChirho::LeftParenChirho => {
-                    paren_depth_chirho += 1;
-                }
-                TokenKindChirho::RightParenChirho => {
-                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
-                }
-                TokenKindChirho::CommaChirho if paren_depth_chirho == 0 => {
-                    if let Some(constraint_chirho) = self.parse_simple_constraint_segment_chirho(
-                        &tokens_chirho[segment_start_chirho..idx_chirho],
-                    ) {
-                        constraints_chirho.push(constraint_chirho);
-                    }
-                    segment_start_chirho = idx_chirho + 1;
-                }
-                _ => {}
-            }
-        }
-
-        if let Some(constraint_chirho) =
-            self.parse_simple_constraint_segment_chirho(&tokens_chirho[segment_start_chirho..])
-        {
-            constraints_chirho.push(constraint_chirho);
-        }
-
-        constraints_chirho
-    }
-
-    fn parse_simple_constraint_segment_chirho(
-        &self,
-        tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
-    ) -> Option<ConstraintChirho> {
-        // Quantified/specialized superclass constraints are not representable in
-        // ConstraintChirho yet. Ignore them here rather than mislowering them
-        // into bogus simple class applications like deepseq's
-        // `forall a. NFData a => NFData (f a)`.
-        if tokens_chirho.iter().any(|(tok_chirho, _)| {
-            matches!(
-                tok_chirho.kind_chirho(),
-                TokenKindChirho::ForallKeywordChirho | TokenKindChirho::DoubleArrowChirho
-            )
-        }) {
-            return None;
-        }
-
-        let mut paren_depth_chirho = 0usize;
-        for (idx_chirho, (token_chirho, token_span_chirho)) in tokens_chirho.iter().enumerate() {
-            match token_chirho.kind_chirho() {
-                TokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
-                TokenKindChirho::RightParenChirho => {
-                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1)
-                }
-                TokenKindChirho::TildeChirho | TokenKindChirho::VarSymChirho
-                    if paren_depth_chirho == 0
-                        && matches!(token_chirho.text_chirho(), "~" | "~~" | "∼") =>
-                {
-                    let lhs_tokens_chirho = &tokens_chirho[..idx_chirho];
-                    let rhs_tokens_chirho = &tokens_chirho[idx_chirho + 1..];
-                    if lhs_tokens_chirho.is_empty() || rhs_tokens_chirho.is_empty() {
-                        break;
-                    }
-                    let span_chirho = lhs_tokens_chirho
-                        .first()
-                        .and_then(|(_, first_span_chirho)| {
-                            rhs_tokens_chirho.last().and_then(|(_, last_span_chirho)| {
-                                first_span_chirho.merge_chirho(*last_span_chirho)
-                            })
-                        })
-                        .unwrap_or(*token_span_chirho);
-                    return Some(ConstraintChirho::ClassChirho {
-                        class_chirho: self.name_from_token_chirho(token_chirho, *token_span_chirho),
-                        args_chirho: vec![
-                            self.lower_type_from_token_slice_chirho(lhs_tokens_chirho, span_chirho),
-                            self.lower_type_from_token_slice_chirho(rhs_tokens_chirho, span_chirho),
-                        ],
-                        span_chirho,
-                    });
-                }
-                _ => {}
-            }
-        }
-
-        let mut current_class_chirho: Option<NameChirho> = None;
-        let mut current_args_chirho: Vec<TypeChirho> = Vec::new();
-        let mut span_chirho = SpanChirho::DUMMY_CHIRHO;
-
-        for (tok_chirho, token_span_chirho) in tokens_chirho {
-            match tok_chirho.kind_chirho() {
-                TokenKindChirho::ConSymChirho
-                | TokenKindChirho::QualifiedConSymChirho
-                | TokenKindChirho::ConIdChirho
-                | TokenKindChirho::QualifiedConIdChirho => {
-                    if current_class_chirho.is_none() {
-                        current_class_chirho =
-                            Some(self.name_from_token_chirho(tok_chirho, *token_span_chirho));
-                        span_chirho = *token_span_chirho;
-                    }
-                }
-                TokenKindChirho::VarIdChirho => {
-                    current_args_chirho.push(TypeChirho::VarChirho(
-                        self.name_from_token_chirho(tok_chirho, *token_span_chirho),
-                    ));
-                }
-                _ => {}
-            }
-        }
-
-        current_class_chirho.map(|class_chirho| ConstraintChirho::ClassChirho {
-            class_chirho,
-            args_chirho: current_args_chirho,
-            span_chirho,
-        })
     }
 
     fn lower_instance_head_types_chirho(
@@ -4199,118 +4082,6 @@ impl LowerCtxChirho {
             }
         }
         None
-    }
-
-    /// Convert a lowered type into a list of constraints for a qualified type
-    /// context. Handles single constraints (`Eq a`), tupled constraints
-    /// (`(Eq a, Show a)`), parenthesized single constraints (`(Eq a)`),
-    /// equality constraints (`a ~ b`), and zero-arg constraints (`Typeable`).
-    fn type_to_constraints_chirho(
-        ty_chirho: &TypeChirho,
-        span_chirho: SpanChirho,
-    ) -> Vec<ConstraintChirho> {
-        match ty_chirho {
-            // Tuple: multiple constraints like (Eq a, Show a)
-            TypeChirho::TupleChirho {
-                elements_chirho, ..
-            } => elements_chirho
-                .iter()
-                .flat_map(|e_chirho| Self::type_to_constraints_chirho(e_chirho, span_chirho))
-                .collect(),
-            // Parens: unwrap (Eq a) → Eq a
-            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                Self::type_to_constraints_chirho(inner_chirho, span_chirho)
-            }
-            // QuantifiedConstraints: preserve `forall a. C a` as quantified
-            // evidence rather than falling through to the synthetic `?` class.
-            TypeChirho::ForallChirho {
-                vars_chirho,
-                body_chirho,
-                span_chirho: forall_span_chirho,
-            } => {
-                let (context_chirho, quantified_body_chirho) = match body_chirho.as_ref() {
-                    TypeChirho::QualChirho {
-                        context_chirho,
-                        body_chirho,
-                        ..
-                    } => (context_chirho.clone(), body_chirho.as_ref()),
-                    other_chirho => (Vec::new(), other_chirho),
-                };
-                Self::type_to_constraints_chirho(quantified_body_chirho, *forall_span_chirho)
-                    .into_iter()
-                    .map(
-                        |body_constraint_chirho| ConstraintChirho::QuantifiedChirho {
-                            vars_chirho: vars_chirho.clone(),
-                            context_chirho: context_chirho.clone(),
-                            body_chirho: Box::new(body_constraint_chirho),
-                            span_chirho: *forall_span_chirho,
-                        },
-                    )
-                    .collect()
-            }
-            // Application: Eq a, Monad m, etc. — collect class name and args
-            TypeChirho::AppChirho {
-                fun_chirho,
-                arg_chirho,
-                span_chirho: app_span_chirho,
-            } => {
-                let (class_name_chirho, mut args_chirho) =
-                    Self::collect_app_class_chirho(fun_chirho);
-                args_chirho.push(arg_chirho.as_ref().clone());
-                vec![ConstraintChirho::ClassChirho {
-                    class_chirho: class_name_chirho,
-                    args_chirho,
-                    span_chirho: *app_span_chirho,
-                }]
-            }
-            // Bare constructor: Typeable (zero-arg constraint)
-            TypeChirho::ConChirho(name_chirho) => {
-                vec![ConstraintChirho::ClassChirho {
-                    class_chirho: name_chirho.clone(),
-                    args_chirho: vec![],
-                    span_chirho,
-                }]
-            }
-            // Anything else — wrap as a single constraint with a synthetic name
-            other_chirho => {
-                vec![ConstraintChirho::ClassChirho {
-                    class_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                        "?",
-                        span_chirho,
-                    )),
-                    args_chirho: vec![other_chirho.clone()],
-                    span_chirho,
-                }]
-            }
-        }
-    }
-
-    /// Walk a left-nested `AppChirho` spine to collect the class name and
-    /// preceding arguments. For `Monad m`, fun is `ConChirho("Monad")` and
-    /// returns `("Monad", [])`. For `MonadReader r m`, fun is
-    /// `AppChirho(ConChirho("MonadReader"), VarChirho("r"))` and returns
-    /// `("MonadReader", [r])`.
-    fn collect_app_class_chirho(ty_chirho: &TypeChirho) -> (NameChirho, Vec<TypeChirho>) {
-        match ty_chirho {
-            TypeChirho::ConChirho(name_chirho) => (name_chirho.clone(), vec![]),
-            TypeChirho::AppChirho {
-                fun_chirho,
-                arg_chirho,
-                ..
-            } => {
-                let (name_chirho, mut args_chirho) = Self::collect_app_class_chirho(fun_chirho);
-                args_chirho.push(arg_chirho.as_ref().clone());
-                (name_chirho, args_chirho)
-            }
-            // Fallback: use the type as a synthetic name
-            other_chirho => (
-                NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                    "?",
-                    other_chirho.span_chirho(),
-                )),
-                vec![],
-            ),
-        }
     }
 
     /// Collect FunBind (and other decl) children from a WhereClause or similar
@@ -4753,6 +4524,7 @@ impl LowerCtxChirho {
 
         let mut saw_instance_chirho = false;
         let mut saw_fat_arrow_chirho = false;
+        let mut paren_depth_chirho = 0usize;
 
         let mut pre_arrow_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho)> = Vec::new();
         let mut post_arrow_tokens_chirho: Vec<(&GreenTokenChirho, SpanChirho)> = Vec::new();
@@ -4767,7 +4539,18 @@ impl LowerCtxChirho {
                     saw_instance_chirho = true;
                     continue;
                 }
-                if kind_chirho == TokenKindChirho::DoubleArrowChirho {
+                if kind_chirho == TokenKindChirho::LeftParenChirho {
+                    paren_depth_chirho += 1;
+                }
+                if kind_chirho == TokenKindChirho::RightParenChirho {
+                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                }
+                // Only the declaration's own `=>` separates context from head;
+                // one inside parentheses belongs to a quantified constraint.
+                if kind_chirho == TokenKindChirho::DoubleArrowChirho
+                    && paren_depth_chirho == 0
+                    && !saw_fat_arrow_chirho
+                {
                     saw_fat_arrow_chirho = true;
                     continue;
                 }
@@ -4783,14 +4566,17 @@ impl LowerCtxChirho {
             }
         }
 
+        // Workflow: language-features-chirho/flat-type-syntax-chirho.
+        let pre_arrow_tokens_chirho =
+            contexts_chirho::strip_instance_forall_chirho(&pre_arrow_tokens_chirho);
         let head_tokens_chirho = if saw_fat_arrow_chirho {
-            &post_arrow_tokens_chirho
+            &post_arrow_tokens_chirho[..]
         } else {
-            &pre_arrow_tokens_chirho
+            pre_arrow_tokens_chirho
         };
 
         let context_chirho = if saw_fat_arrow_chirho {
-            self.build_instance_context_chirho(&pre_arrow_tokens_chirho)
+            self.build_instance_context_chirho(pre_arrow_tokens_chirho)
         } else {
             vec![]
         };
@@ -7063,7 +6849,13 @@ impl LowerCtxChirho {
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
-                    if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                    // Only the first `::` separates the field names from the
+                    // type. A later one is a kind annotation inside the type
+                    // and must reach the type grammar, or `(a :: Type)` loses
+                    // its `::` and reads as the application `a Type`.
+                    if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+                        && !saw_double_colon_chirho
+                    {
                         saw_double_colon_chirho = true;
                     } else if !saw_double_colon_chirho
                         && tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
@@ -13936,8 +13728,8 @@ data AppChirho :: forall (fChirho :: Type -> Type). Type -> Type where\n",
             .expect("inline forall result kind signature should lower");
         assert_eq!(
             type_shape_chirho(kind_sig_chirho),
-            "(forall fChirho. Type -> Type)",
-            "forall binders should remain scoped without becoming kind arguments: {:?}",
+            "forall fChirho. (Type -> Type)",
+            "the forall scopes over the whole result kind, and its binder is not a kind argument: {:?}",
             kind_sig_chirho
         );
     }

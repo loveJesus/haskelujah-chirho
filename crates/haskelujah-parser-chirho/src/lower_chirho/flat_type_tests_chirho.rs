@@ -90,6 +90,49 @@ fn shape_chirho(ty_chirho: &TypeChirho) -> String {
                 .join(",")
         ),
         TypeChirho::ParenChirho { inner_chirho, .. } => shape_chirho(inner_chirho),
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => format!(
+            "forall {}. {}",
+            vars_chirho
+                .iter()
+                .map(|var_chirho| var_chirho.name_chirho.text_chirho().to_owned())
+                .collect::<Vec<_>>()
+                .join(" "),
+            shape_chirho(body_chirho)
+        ),
+        TypeChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+            ..
+        } => format!(
+            "[{}] => {}",
+            context_chirho
+                .iter()
+                .map(|constraint_chirho| {
+                    std::iter::once(
+                        constraint_chirho
+                            .simple_class_chirho()
+                            .expect("these cases use class constraints only")
+                            .text_chirho()
+                            .to_owned(),
+                    )
+                    .chain(
+                        constraint_chirho
+                            .simple_args_chirho()
+                            .expect("these cases use class constraints only")
+                            .iter()
+                            .map(shape_chirho),
+                    )
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                })
+                .collect::<Vec<_>>()
+                .join("; "),
+            shape_chirho(body_chirho)
+        ),
         other_chirho => panic!("unexpected type shape: {other_chirho:?}"),
     }
 }
@@ -182,4 +225,37 @@ fn prefix_list_application_survives_the_operator_context_chirho() {
             "{signature_chirho:?}"
         );
     }
+}
+
+// A forall extends as far to the right as possible. The flat grammar used to
+// split on `=>` and `->` first, so the quantifier covered only the first
+// argument. The structured signature path is the agreement oracle here.
+// Workflow: language-features-chirho/flat-type-syntax-chirho.
+#[test]
+fn a_leading_forall_scopes_over_arrows_and_contexts_chirho() {
+    check_shapes_chirho(&[
+        ("forall a. a -> a", "forall a. (var(a) -> var(a))"),
+        (
+            "forall a. Eq a => a -> Bool",
+            "forall a. [Eq var(a)] => (var(a) -> Bool)",
+        ),
+        (
+            "(forall a. a -> a) -> Int",
+            "(forall a. (var(a) -> var(a)) -> Int)",
+        ),
+        (
+            "forall a. a -> forall b. b -> a",
+            "forall a. (var(a) -> forall b. (var(b) -> var(a)))",
+        ),
+    ]);
+}
+
+// `(t :: k)` is the type `t`: main keeps no kind annotation on a type, and the
+// flat grammar used to read the annotation as one more argument.
+#[test]
+fn a_kind_annotation_is_not_an_argument_chirho() {
+    check_shapes_chirho(&[
+        ("Maybe (a :: Type)", "(Maybe var(a))"),
+        ("Either (a :: Type) (b :: Type)", "((Either var(a)) var(b))"),
+    ]);
 }
