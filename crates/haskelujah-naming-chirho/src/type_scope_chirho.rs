@@ -149,7 +149,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.result_chirho())
                 {
-                    self.walk_signature_type_chirho(result_chirho);
+                    self.walk_declaration_result_kind_chirho(result_chirho);
                 }
                 for constructor_chirho in constructors_chirho {
                     if !matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
@@ -187,7 +187,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.result_chirho())
                 {
-                    self.walk_signature_type_chirho(result_chirho);
+                    self.walk_declaration_result_kind_chirho(result_chirho);
                 }
                 if matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
                     self.pop_binders_chirho(&pushed_chirho);
@@ -345,6 +345,18 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             | DeclChirho::PatSynDeclChirho { .. }
             | DeclChirho::SpliceDeclChirho { .. } => {}
         }
+    }
+
+    /// A declaration header's inline result kind (`data P :: forall a. k -> Type`)
+    /// is NOT under forall-or-nothing: its free variables are quantified by the
+    /// header. GHC 9.14.1, measured: accepted for data with and without a
+    /// standalone kind signature (T23514c's P5), GADT-style data and type
+    /// families, while the same shape in a VALUE signature is GHC-76037.
+    /// The rule was invisible while the flat grammar scoped a leading forall
+    /// over its first argument only, which left the outermost form an arrow.
+    /// Workflow: language-features-chirho/flat-type-syntax-chirho.
+    fn walk_declaration_result_kind_chirho(&mut self, kind_chirho: &TypeChirho) {
+        self.walk_type_chirho(kind_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
     }
 
     fn walk_signature_type_chirho(&mut self, ty_chirho: &TypeChirho) {

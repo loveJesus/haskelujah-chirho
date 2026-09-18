@@ -521,35 +521,52 @@ fn outermost_signature_forall_requires_every_variable_binder_chirho() {
     assert!(format!("{diagnostics_chirho}").contains("type variable not in scope: `bChirho`"));
 }
 
+// GHC 9.14.1, measured. `data T :: forall a. a -> b` IS rejected, but for its
+// return kind (GHC-55233 "Data type has non-* return kind"), not for scope:
+// an inline result kind is quantified by the header, so `data T :: forall a.
+// a -> b -> Type` is accepted. A STANDALONE kind signature is a signature:
+// `type T :: forall a. b -> Type` is GHC-76037. This test used to pin a scope
+// error on the inline form, which no GHC rule produces.
 #[test]
-fn outermost_data_kind_forall_requires_every_variable_binder_chirho() {
-    let decl_chirho = DeclChirho::DataDeclChirho {
+fn only_a_standalone_data_kind_is_under_forall_or_nothing_chirho() {
+    let kind_chirho = || TypeChirho::ForallChirho {
+        vars_chirho: vec![tyvar_chirho("aChirho")],
+        body_chirho: Box::new(TypeChirho::FunChirho {
+            arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
+            mult_chirho: None,
+            result_chirho: Box::new(TypeChirho::VarChirho(name_chirho("bChirho"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let data_chirho = |kind_sig_chirho| DeclChirho::DataDeclChirho {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![],
         deriving_chirho: vec![],
-        kind_sig_chirho: Some(
-            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(
-                TypeChirho::ForallChirho {
-                    vars_chirho: vec![tyvar_chirho("aChirho")],
-                    body_chirho: Box::new(TypeChirho::FunChirho {
-                        arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
-                        mult_chirho: None,
-                        result_chirho: Box::new(TypeChirho::VarChirho(name_chirho("bChirho"))),
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    }),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-            ),
-        ),
+        kind_sig_chirho: Some(kind_sig_chirho),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
-    let diagnostics_chirho = check_chirho(
-        &module_chirho(vec![decl_chirho]),
+
+    let inline_chirho = check_chirho(
+        &module_chirho(vec![data_chirho(
+            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(kind_chirho()),
+        )]),
         &NameEnvChirho::new_chirho(),
     );
-    assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
-    assert!(format!("{diagnostics_chirho}").contains("type variable not in scope: `bChirho`"));
+    assert!(inline_chirho.is_empty_chirho(), "{inline_chirho}");
+
+    let standalone_chirho = check_chirho(
+        &module_chirho(vec![data_chirho(
+            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::StandaloneChirho {
+                signature_chirho: kind_chirho(),
+                result_chirho: None,
+            },
+        )]),
+        &NameEnvChirho::new_chirho(),
+    );
+    assert_eq!(standalone_chirho.error_count_chirho(), 1);
+    assert!(format!("{standalone_chirho}").contains("type variable not in scope: `bChirho`"));
 }
 
 #[test]
@@ -1178,4 +1195,46 @@ fn qualified_equality_operators_follow_the_measured_exports_chirho() {
             result_chirho.diagnostics_chirho
         );
     }
+}
+
+/// `forall a. k -> Type`, as the flat grammar now lowers it: the forall is the
+/// outermost form and `k` is free under it.
+fn forall_with_free_kind_variable_chirho() -> TypeChirho {
+    TypeChirho::ForallChirho {
+        vars_chirho: vec![tyvar_chirho("a")],
+        body_chirho: Box::new(TypeChirho::FunChirho {
+            arg_chirho: Box::new(TypeChirho::VarChirho(name_chirho("k"))),
+            mult_chirho: None,
+            result_chirho: Box::new(TypeChirho::VarChirho(name_chirho("k"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+// GHC 9.14.1, measured: `data P5 :: forall a . k -> Type` is accepted with and
+// without a standalone kind signature (T23514c); `f :: forall a. Proxy k -> a`
+// is GHC-76037. Forall-or-nothing belongs to signatures, not to headers.
+#[test]
+fn a_declaration_result_kind_is_not_under_forall_or_nothing_chirho() {
+    let data_chirho = module_chirho(vec![DeclChirho::DataDeclChirho {
+        name_chirho: name_chirho("P5Chirho"),
+        type_vars_chirho: vec![],
+        constructors_chirho: vec![],
+        deriving_chirho: vec![],
+        kind_sig_chirho: Some(
+            haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(
+                forall_with_free_kind_variable_chirho(),
+            ),
+        ),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }]);
+    assert!(check_chirho(&data_chirho, &NameEnvChirho::new_chirho()).is_empty_chirho());
+
+    let signature_module_chirho = module_chirho(vec![signature_chirho(
+        forall_with_free_kind_variable_chirho(),
+    )]);
+    let diagnostics_chirho = check_chirho(&signature_module_chirho, &NameEnvChirho::new_chirho());
+    assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
+    assert!(format!("{diagnostics_chirho}").contains("`k`"));
 }
