@@ -1,0 +1,84 @@
+{
+  "measured_at_chirho": "2026-09-19",
+  "owner_chirho": "HASKELUJAH/gpt_chirho",
+  "measured_main_chirho": "c74db426",
+  "cli_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/target/debug/haskelujah",
+  "cli_sha256_before_chirho": "965f2d07c3e959f05973ebfe2678921102b9dfecbe68347dd4941210742340c5",
+  "cli_sha256_after_chirho": "965f2d07c3e959f05973ebfe2678921102b9dfecbe68347dd4941210742340c5",
+  "ghc_version_chirho": "The Glorious Glasgow Haskell Compilation System, version 9.14.1",
+  "commands_chirho": {
+    "ghc_chirho": [
+      "runghc",
+      "-v0",
+      "<source>"
+    ],
+    "ours_chirho": [
+      "<cli>",
+      "run",
+      "<source>"
+    ],
+    "deadline_ms_chirho": 15000
+  },
+  "sources_chirho": [
+    {
+      "file_chirho": "GroundSecondArgumentChirho.hs",
+      "sha256_chirho": "ae5073a025dd49d1d202da354fde5a32c4bd2991abcab04796dfc02c6c5b4b6f",
+      "ghc_chirho": {
+        "file_chirho": "GroundSecondArgumentChirho.hs",
+        "stdout_chirho": "3@z\n",
+        "stderr_chirho": "",
+        "exit_chirho": 0
+      },
+      "ours_chirho": {
+        "file_chirho": "GroundSecondArgumentChirho.hs",
+        "stdout_chirho": "3@z\n",
+        "stderr_chirho": "",
+        "exit_chirho": 0
+      }
+    },
+    {
+      "file_chirho": "GroundSecondArgumentGivenChirho.hs",
+      "sha256_chirho": "600089898f30184b26d43246d5ea7583a162c7e7a0199d0d93edee22091a00ae",
+      "ghc_chirho": {
+        "file_chirho": "GroundSecondArgumentGivenChirho.hs",
+        "stdout_chirho": "3@z\n",
+        "stderr_chirho": "/private/tmp/haskelujah-dictionary-review-chirho.bXGz6i/GroundSecondArgumentGivenChirho.hs:10:19: warning: [GHC-62412] [-Wsimplifiable-class-constraints]\n    • The constraint ‘TagChirho Int Char’ matches\n        instance TagChirho Int Char\n          -- Defined at /private/tmp/haskelujah-dictionary-review-chirho.bXGz6i/GroundSecondArgumentGivenChirho.hs:8:10\n      This makes type inference for inner bindings fragile;\n        either use MonoLocalBinds, or simplify it using the instance\n    • In the type signature:\n        describeChirho :: TagChirho Int Char => Int -> String\n   |\n10 | describeChirho :: TagChirho Int Char => Int -> String\n   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n",
+        "exit_chirho": 0
+      },
+      "ours_chirho": {
+        "file_chirho": "GroundSecondArgumentGivenChirho.hs",
+        "stdout_chirho": "\n",
+        "stderr_chirho": "",
+        "exit_chirho": 0
+      }
+    },
+    {
+      "file_chirho": "QuantifiedPrefixControlChirho.hs",
+      "sha256_chirho": "1e405962ef54f754612a5d625d27548ec73c00d381619175386dd83525683b62",
+      "ghc_chirho": {
+        "file_chirho": "QuantifiedPrefixControlChirho.hs",
+        "stdout_chirho": "built\n",
+        "stderr_chirho": "",
+        "exit_chirho": 0
+      },
+      "ours_chirho": {
+        "file_chirho": "QuantifiedPrefixControlChirho.hs",
+        "stdout_chirho": "",
+        "stderr_chirho": "",
+        "exit_chirho": 0
+      }
+    },
+    {
+      "file_chirho": "QuantifiedWitnessForceChirho.hs",
+      "sha256_chirho": "18f1efa017c7dddb0505682e372f02abcbbb67c25b37493ea92a6e2fb9e4dcae",
+      "ghc_chirho": {
+        "file_chirho": "QuantifiedWitnessForceChirho.hs",
+        "stdout_chirho": "F(",
+        "stderr_chirho": "QuantifiedWitnessForceChirho.hs: Uncaught exception ghc-internal:GHC.Internal.Exception.ErrorCall:\n\npair show witness forced\n\nHasCallStack backtrace:\n  error, called at /private/tmp/haskelujah-dictionary-review-chirho.bXGz6i/QuantifiedWitnessForceChirho.hs:7:12 in main:Main\n\n",
+        "exit_chirho": 1
+      },
+      "ours_chirho": null
+    }
+  ],
+  "scope_chirho": "Bounded diagnosis of evidence transport and probe demand, not a code repair or corpus measurement; the forced-witness variant was not run on our compiler."
+}
