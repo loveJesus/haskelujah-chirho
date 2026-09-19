@@ -29,7 +29,10 @@ flowchart TD
 
 - A record names one source token: keys are spans, never per-name ordinals, so inference
   order does not have to match desugar order (a generated node has the dummy span and no
-  record).
+  record). **This invariant was stated here before it was true of method occurrences**: they
+  were joined by a per-name ordinal until 2026-09-19. See "Method occurrences" below; the
+  lesson is that an invariant in this document is not evidence about the code, and the join it
+  describes has to be read.
 - Only a concrete head is evidence. A literal whose type is still a unification variable or a
   rigid variable produces no record; the enclosing binding's dictionary parameter (or today's
   fallback) serves it.
@@ -98,6 +101,42 @@ the binding records its fresh variables (`instantiate_scheme_parts_chirho`), and
 transitively when an instantiation resolves to another local binding's variable (`isPrime n =
 checkDiv n 2`). Methods, literals and constrained references at that variable carry the key;
 two disagreeing instantiations prove nothing and keep today's path.
+
+## Method occurrences (repaired 2026-09-19)
+
+The desugarer mints one occurrence id per free reference of an opted-in class method, in
+DECLARATION order. The checker counts references of that name in INFERENCE-VISIT order, and
+instance method bodies are inferred last (phase 3e). `join_occurrence_evidence_chirho` matched
+those two sequences BY POSITION under a count guard, so a module with two `show` references
+exchanged their evidence: the same program printed `W3` or `WChirho 3` depending only on which
+declaration came first. The occurrence was rewritten to `$prim_Show_show_Int` before any
+dictionary path ran, so the user's instance was found under the wrong key, and the same defect
+crashed ("no matching alternative for tag 66") when a nullary and a one-field instance shared a
+module.
+
+```mermaid
+flowchart TD
+    mint_chirho[resolve_var_chirho mints an occurrence id for an opted-in method] --> span_chirho[reference_occurrence_chirho records its SOURCE SPAN in method_occurrence_spans_chirho]
+    infer_occ_chirho[Inference captures the predicate at that reference] --> record_chirho[MethodOccurrenceRecordChirho carries the same span]
+    span_chirho --> join_chirho[join_occurrence_evidence_chirho: match record span to occurrence span]
+    record_chirho --> join_chirho
+    join_chirho -->|unique span, same name| consume_chirho[Record CONSUMED, occurrence IDENTIFIED]
+    join_chirho -->|no span at the occurrence| leftover_chirho[Unidentified occurrences vs UNCONSUMED records, count-guarded, by position]
+    consume_chirho --> evidence_chirho[occurrence_evidence_chirho]
+    leftover_chirho --> evidence_chirho
+```
+
+- A proof serves ONE reference: a record the span join consumed can never be reused by the
+  positional path, and vacancy in the consumer map is not ownership of a proof.
+- An ambiguous or duplicated span identifies nothing and does not fall through to a positional
+  assignment; its occurrence simply carries no evidence.
+- The positional path exists only because the desugarer mints occurrences at several sites and
+  only the variable-reference site records a span. Deleting it turns 19 driver tests red (all
+  desugared shapes); restricting it to names whose occurrences all lack spans regresses a
+  derived `Show` of a Bool field in a native round trip, where main is correct. It goes away
+  when every mint site carries its own occurrence provenance, which a span alone cannot supply:
+  one do or deriving node can create several references sharing a span, so the identity must be
+  shared with the node that created them.
 
 ## Current boundary
 
