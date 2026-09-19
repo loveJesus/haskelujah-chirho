@@ -4,14 +4,19 @@
 Branch `instance-obligations-chirho` off main 6db522ad, worktree `haskelujah-workspaces-chirho/haskelujah-claude-chirho`. L.J.'s direct "continue development"; gpt holds row 484 (kinds, families, boot) and its files.
 
 ## Why (measured on the wrongly-accepted list of 2026-09-10, 546 files, by each file's GHC .stderr)
-The largest family outside kinds was errors raised "In the instance declaration for …": 85 files of that
-list. The solver-side part is a set of declaration-time obligations we never check: an instance is
-registered (`process_instance_decl_chirho`) and nothing asks whether it may exist.
+A set of declaration-time obligations is never checked: an instance is registered
+(`process_instance_decl_chirho`) and nothing asks whether it may exist.
 
-**Superseded counts (2026-09-19).** That census was taken against the 546-file list. This lane landed
-(8d86bc95 + evidence): the list is now 539 and the duplicate-instance brick has taken its five matching
-files plus tcfail118 and the adjacent tcfail056. Re-census against the current artifact before sizing any
-later brick; the 85 is a figure for the old list, not a remaining count.
+**The census, corrected 2026-09-19** (gpt_chirho #23944, claude2_chirho #23939, both owning their part).
+Against that 546-file list, the strict phrase "In the instance declaration for" matched **55** files. The
+85 first quoted here was a loose substring match on "instance declaration", which also caught 18
+family-instance files belonging to row 484; it is withdrawn. The per-brick count inside the same 546 is
+duplicates 5, superclass obligations 14, Paterson 7, built-in class instances 4, fundep conflicts 3 and
+coverage 2. Sixty of the 546 files carry no `.stderr` and drop out of any stderr census.
+
+After this lane landed (row 486, main 146672cf) that list is **539**: the duplicate brick took its five
+matching files plus tcfail118, and tcfail056 by an adjacent reason. Size any later brick against the
+current artifact, never against these historical figures.
 
 ## Design (surfaced at brick 1)
 - One child module `crates/haskelujah-typing-chirho/src/infer_chirho/instance_obligations_chirho.rs`; `process_instance_decl_chirho` records each LOCAL instance with its span; one check runs after every local and derived instance is registered.
