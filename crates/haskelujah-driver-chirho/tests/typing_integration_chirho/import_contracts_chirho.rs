@@ -7,6 +7,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 #[path = "import_contracts_chirho/associated_indices_chirho.rs"]
 mod associated_indices_chirho;
+#[path = "import_contracts_chirho/associated_methods_chirho.rs"]
+mod associated_methods_chirho;
 #[path = "import_contracts_chirho/associated_syntax_chirho.rs"]
 mod associated_syntax_chirho;
 #[path = "import_contracts_chirho/builtin_members_chirho.rs"]

@@ -47,6 +47,11 @@ impl InferCtxChirho {
                     .insert(ast_var_chirho.text_chirho().to_string(), ty_var_chirho);
             }
 
+            let kind_vars_chirho = self.seed_class_kind_variables_chirho(
+                &class_name_chirho,
+                &mut class_scoped_tyvars_chirho,
+            );
+
             // Superclasses from context
             let supers_chirho: Vec<String> = context_chirho
                 .iter()
@@ -169,6 +174,7 @@ impl InferCtxChirho {
                 name_chirho: class_name_chirho.clone(),
                 supers_chirho,
                 var_chirho: class_tv_chirho,
+                kind_vars_chirho,
                 methods_chirho: method_map_chirho,
                 extra_vars_chirho,
                 fundeps_chirho: resolved_fundeps_chirho,

@@ -1091,6 +1091,39 @@ Builtin Bool/Ordering constructors have explicit promoted classifiers; local
 constructors shadow those in the separate promoted namespace. Higher-rank field
 promotion and absent imported metadata are not silently certified by this path.
 
+## Class-bound method specialization
+
+Checked class heads publish their ordered kind binders in a separate elaboration
+table, including imported source contracts. Typing maps each binder's source name
+and internal identity into the existing class lexical seed. Ordinary class
+parameters must be inserted first: a same-spelled kind reference reuses the
+parameter, while an inner method forall shadows only its own lexical name.
+
+```mermaid
+flowchart LR
+  CheckedClassChirho[Closed class kind and binder identities] --> ClassSeedChirho[Seed ordinary parameters then checked kind aliases]
+  ClassSeedChirho --> MethodSchemeChirho[Convert method in the existing lexical map]
+  CheckedInstanceChirho[Check instance head and context] --> InstanceKindsChirho[Retain solved hidden arguments at instance span]
+  MethodSchemeChirho --> SpecializeMethodChirho[Substitute instance parameters and hidden arguments]
+  InstanceKindsChirho --> SpecializeMethodChirho
+  SpecializeMethodChirho --> RigidMethodChirho[Skolemize remaining method universals]
+  RigidMethodChirho --> CheckBodyChirho[Check implementation body and restore local context]
+```
+
+ClassDecl carries the kind-variable identities alongside method schemes; no new
+dictionary parameter arity is inferred from that list. Missing or mismatched
+checked hidden arguments do not become Type. Failed instance checks discard the
+occurrence before publishing elaboration. Per-method lexical environments are
+restored, but fresh-identity counters keep advancing. Method universals are
+rigid while checking a body; ordinary expression uses may instantiate a scheme.
+
+Both the file-source graph and compile_modules transport ClassEnv. Otherwise an
+imported class may be absent when its implementation is checked, silently
+skipping agreement even though types and family equations were imported.
+The paired driver controls exercise both entry points. The measured dependent
+class-head counterexample CChirho Int 'True remains a separate gap: this channel
+does not certify every monomorphic/dependent instance head or runtime dictionary.
+
 ## Evidence boundary
 
 Lowering controls retain both annotations and their exact source-slice spans, and keep

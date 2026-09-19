@@ -2517,6 +2517,7 @@ pub fn compile_modules_chirho(
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
     let mut imported_type_contracts_chirho = ImportedTypeContractsChirho::new();
+    let mut imported_class_env_chirho = haskelujah_typing_chirho::ClassEnvChirho::new_chirho();
 
     for (file_name_chirho, source_chirho) in sources_chirho {
         let source_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -2536,7 +2537,8 @@ pub fn compile_modules_chirho(
                 &imported_type_synonyms_chirho,
                 &imported_type_families_chirho,
             )
-            .with_type_contracts_chirho(&imported_type_contracts_chirho),
+            .with_type_contracts_chirho(&imported_type_contracts_chirho)
+            .with_class_env_chirho(&imported_class_env_chirho),
         )?;
 
         let FrontendResultChirho {
@@ -2568,6 +2570,9 @@ pub fn compile_modules_chirho(
             &resolved_imported_type_synonyms_chirho,
         ));
         imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
+        // Method obligations travel with their declaring class, not merely
+        // with the method's exported value scheme. Workflow: declaration-kinds-chirho.
+        imported_class_env_chirho = infer_result_chirho.class_env_chirho.clone();
 
         imported_type_contracts_chirho
             .insert(iface_chirho.name_chirho.clone(), type_contracts_chirho);

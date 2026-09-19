@@ -21,16 +21,31 @@ impl KindInferCtxChirho {
         defaults_chirho: Option<(&[super::TyVarChirho], &[AssocTypeFamilyChirho])>,
         span_chirho: SpanChirho,
     ) {
+        // A polymorphic class's method schemes need the instance's hidden
+        // arguments even when this instance has no associated equations.
+        // Only source-owned or imported checked contracts supply that evidence.
+        let has_class_binders_chirho = (self
+            .local_kind_decl_names_chirho
+            .contains(class_name_chirho)
+            || matches!(
+                self.imported_kind_shapes_chirho.get(class_name_chirho),
+                Some(super::imports_chirho::KindHeadShapeChirho::ClassChirho)
+            ))
+            && matches!(self.env_chirho.lookup_binding_chirho(class_name_chirho),
+                Some(super::KindBindingChirho::PolyChirho(scheme_chirho))
+                    if !scheme_chirho.quantified_chirho.is_empty());
         if equations_chirho.is_empty()
             && !defaults_chirho.is_some_and(|(_, families_chirho)| {
                 families_chirho
                     .iter()
                     .any(|family_chirho| !family_chirho.defaults_chirho.is_empty())
             })
+            && !has_class_binders_chirho
         {
             return;
         }
         let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
+        let diagnostic_start_chirho = self.diagnostics_chirho.len_chirho();
         self.env_chirho.begin_scope_chirho();
         // Written kind names in an instance signature are skolems even when
         // unnamed classifier variables may still be inferred from its context.
@@ -40,7 +55,13 @@ impl KindInferCtxChirho {
             .env_chirho
             .lookup_binding_chirho(class_name_chirho)
             .cloned()
-            .map(|binding_chirho| self.instantiate_binding_chirho(&binding_chirho));
+            .map(|binding_chirho| {
+                self.instantiate_source_binding_chirho(
+                    class_name_chirho,
+                    &binding_chirho,
+                    span_chirho,
+                )
+            });
         for argument_chirho in head_types_chirho {
             let actual_chirho = self.infer_type_kind_chirho(argument_chirho);
             if let Some(expected_chirho) = class_kind_chirho.take() {
@@ -167,6 +188,12 @@ impl KindInferCtxChirho {
         }
         self.env_chirho.end_scope_chirho();
         self.kind_var_cache_chirho = outer_names_chirho;
+        if self.diagnostics_chirho.diagnostics_chirho()[diagnostic_start_chirho..]
+            .iter()
+            .any(DiagnosticChirho::is_error_chirho)
+        {
+            self.kind_applications_chirho.remove(&span_chirho);
+        }
     }
 
     /// Number of arguments a kind takes before reaching its result, and whether

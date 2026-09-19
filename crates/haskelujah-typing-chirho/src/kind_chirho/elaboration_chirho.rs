@@ -47,6 +47,9 @@ pub struct KindElaborationChirho {
     pub(crate) nominal_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) synonym_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) family_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
+    // Classes are predicates, not type applications, but their hidden kind
+    // binders also belong to every method's checked signature.
+    pub(crate) class_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     // Only validated closed-row proofs cross this phase boundary. An annotation
     // on an open, abstract, opaque or exhausted family grants no improvement.
     pub(crate) closed_family_injectivity_chirho: HashMap<String, ClosedFamilyInjectivityChirho>,
@@ -245,6 +248,7 @@ impl KindInferCtxChirho {
         let mut nominal_heads_chirho = HashMap::new();
         let mut synonym_heads_chirho = HashMap::new();
         let mut family_heads_chirho = HashMap::new();
+        let mut class_heads_chirho = HashMap::new();
         let mut promoted_heads_chirho = HashMap::new();
         // A provider contract is independent of which signatures happened to
         // mention it. Otherwise an unused '[] signature changes the arity of
@@ -282,7 +286,7 @@ impl KindInferCtxChirho {
                 imports_chirho::KindHeadShapeChirho::NominalChirho => &mut nominal_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::SynonymChirho => &mut synonym_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::FamilyChirho => &mut family_heads_chirho,
-                imports_chirho::KindHeadShapeChirho::ClassChirho => continue,
+                imports_chirho::KindHeadShapeChirho::ClassChirho => &mut class_heads_chirho,
             };
             if !scheme_chirho.quantified_chirho.is_empty()
                 || matches!(
@@ -350,18 +354,23 @@ impl KindInferCtxChirho {
                             KindHeadShapeChirho::FamilyChirho,
                         )],
                         DeclChirho::ClassDeclChirho {
+                            name_chirho,
+                            type_vars_chirho,
                             associated_tfs_chirho,
                             ..
-                        } => associated_tfs_chirho
-                            .iter()
-                            .map(|family_chirho| {
-                                (
-                                    family_chirho.name_chirho.text_chirho(),
-                                    &family_chirho.type_vars_chirho,
-                                    KindHeadShapeChirho::FamilyChirho,
-                                )
-                            })
-                            .collect(),
+                        } => std::iter::once((
+                            name_chirho.text_chirho(),
+                            type_vars_chirho,
+                            KindHeadShapeChirho::ClassChirho,
+                        ))
+                        .chain(associated_tfs_chirho.iter().map(|family_chirho| {
+                            (
+                                family_chirho.name_chirho.text_chirho(),
+                                &family_chirho.type_vars_chirho,
+                                KindHeadShapeChirho::FamilyChirho,
+                            )
+                        }))
+                        .collect(),
                         _ => Vec::new(),
                     }
                 });
@@ -370,9 +379,7 @@ impl KindInferCtxChirho {
                 imports_chirho::KindHeadShapeChirho::NominalChirho => &mut nominal_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::SynonymChirho => &mut synonym_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::FamilyChirho => &mut family_heads_chirho,
-                imports_chirho::KindHeadShapeChirho::ClassChirho => {
-                    unreachable!("class heads are not type applications")
-                }
+                imports_chirho::KindHeadShapeChirho::ClassChirho => &mut class_heads_chirho,
             };
             let Some(KindBindingChirho::PolyChirho(scheme_chirho)) =
                 self.env_chirho.lookup_binding_chirho(name_chirho)
@@ -547,6 +554,7 @@ impl KindInferCtxChirho {
             nominal_heads_chirho,
             synonym_heads_chirho,
             family_heads_chirho,
+            class_heads_chirho,
             closed_family_injectivity_chirho: self
                 .kind_families_chirho
                 .iter()

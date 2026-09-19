@@ -129,6 +129,9 @@ pub struct ClassDeclChirho {
     /// The class type variable (e.g. `a` in `class Eq a`).
     /// For single-parameter classes; use `vars_chirho` for MPTCs.
     pub var_chirho: TyVarChirho,
+    /// Hidden kind variables in the checked class contract's binder order.
+    /// Kept on the declaration so imported methods retain the same identities.
+    pub kind_vars_chirho: Vec<TyVarChirho>,
     /// Method signatures: name → type scheme.
     pub methods_chirho: HashMap<String, SchemeChirho>,
     /// All class type variables. For single-param classes, contains just `[var_chirho]`.
@@ -421,6 +424,7 @@ impl ClassEnvChirho {
         // Eq
         let eq_var_chirho = TyVarChirho(9000);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Eq".to_string(),
             supers_chirho: vec![],
             var_chirho: eq_var_chirho,
@@ -446,6 +450,7 @@ impl ClassEnvChirho {
         // Ord (superclass: Eq)
         let ord_var_chirho = TyVarChirho(9001);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Ord".to_string(),
             supers_chirho: vec!["Eq".to_string()],
             var_chirho: ord_var_chirho,
@@ -471,6 +476,7 @@ impl ClassEnvChirho {
         // Show
         let show_var_chirho = TyVarChirho(9002);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Show".to_string(),
             supers_chirho: vec![],
             var_chirho: show_var_chirho,
@@ -493,6 +499,7 @@ impl ClassEnvChirho {
         // Num
         let num_var_chirho = TyVarChirho(9003);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Num".to_string(),
             supers_chirho: vec!["Eq".to_string(), "Show".to_string()],
             var_chirho: num_var_chirho,
@@ -592,6 +599,7 @@ impl ClassEnvChirho {
         // Fractional (superclass: Num)
         let frac_var_chirho = TyVarChirho(9010);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Fractional".to_string(),
             supers_chirho: vec!["Num".to_string()],
             var_chirho: frac_var_chirho,
@@ -641,6 +649,7 @@ impl ClassEnvChirho {
         // Bits
         let bits_var_chirho = TyVarChirho(9012);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Bits".to_string(),
             supers_chirho: vec![],
             var_chirho: bits_var_chirho,
@@ -825,6 +834,7 @@ impl ClassEnvChirho {
         // FiniteBits (superclass: Bits)
         let finite_bits_var_chirho = TyVarChirho(9013);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "FiniteBits".to_string(),
             supers_chirho: vec!["Bits".to_string()],
             var_chirho: finite_bits_var_chirho,
@@ -875,6 +885,7 @@ impl ClassEnvChirho {
         let functor_a_chirho = TyVarChirho(9040);
         let functor_b_chirho = TyVarChirho(9041);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Functor".to_string(),
             supers_chirho: vec![],
             var_chirho: f_var_chirho,
@@ -919,6 +930,7 @@ impl ClassEnvChirho {
         let app_a_chirho = TyVarChirho(9043);
         let app_b_chirho = TyVarChirho(9044);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Applicative".to_string(),
             supers_chirho: vec!["Functor".to_string()],
             var_chirho: app_var_chirho,
@@ -982,6 +994,7 @@ impl ClassEnvChirho {
         let monad_a_chirho = TyVarChirho(9046);
         let monad_b_chirho = TyVarChirho(9047);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Monad".to_string(),
             supers_chirho: vec!["Applicative".to_string()],
             var_chirho: m_var_chirho,
@@ -1054,6 +1067,7 @@ impl ClassEnvChirho {
         let foldable_a_chirho = TyVarChirho(9081);
         let foldable_m_chirho = TyVarChirho(9082);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Foldable".to_string(),
             supers_chirho: vec![],
             var_chirho: foldable_t_chirho,
@@ -1137,6 +1151,7 @@ impl ClassEnvChirho {
             MultChirho::ManyChirho,
         );
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Traversable".to_string(),
             supers_chirho: vec!["Functor".to_string(), "Foldable".to_string()],
             var_chirho: trav_t_chirho,
@@ -1194,6 +1209,7 @@ impl ClassEnvChirho {
         // instead of the full `readsPrec` / `readList` interface.
         let read_var_chirho = TyVarChirho(9011);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Read".to_string(),
             supers_chirho: vec![],
             var_chirho: read_var_chirho,
@@ -1216,6 +1232,7 @@ impl ClassEnvChirho {
         // Test.Tasty.Options.IsOption
         let is_option_var_chirho = TyVarChirho(9190);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "IsOption".to_string(),
             supers_chirho: vec![],
             var_chirho: is_option_var_chirho,
@@ -1265,6 +1282,7 @@ impl ClassEnvChirho {
         // Enum
         let enum_var_chirho = TyVarChirho(9006);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Enum".to_string(),
             supers_chirho: vec![],
             var_chirho: enum_var_chirho,
@@ -1322,6 +1340,7 @@ impl ClassEnvChirho {
         // Bounded
         let bounded_var_chirho = TyVarChirho(9007);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Bounded".to_string(),
             supers_chirho: vec![],
             var_chirho: bounded_var_chirho,
@@ -1351,6 +1370,7 @@ impl ClassEnvChirho {
         // Floating (superclass: Fractional)
         let floating_var_chirho = TyVarChirho(9009);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Floating".to_string(),
             supers_chirho: vec!["Fractional".to_string()],
             var_chirho: floating_var_chirho,
@@ -1487,6 +1507,7 @@ impl ClassEnvChirho {
         // RealFrac (superclass: Real, Fractional)
         let realfrac_var_chirho = TyVarChirho(9060);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "RealFrac".to_string(),
             supers_chirho: vec!["Real".to_string(), "Fractional".to_string()],
             var_chirho: realfrac_var_chirho,
@@ -1509,6 +1530,7 @@ impl ClassEnvChirho {
         // RealFloat (superclass: RealFrac, Floating)
         let realfloat_var_chirho = TyVarChirho(9061);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "RealFloat".to_string(),
             supers_chirho: vec!["RealFrac".to_string(), "Floating".to_string()],
             var_chirho: realfloat_var_chirho,
@@ -1531,6 +1553,7 @@ impl ClassEnvChirho {
         // MonadIO class
         let monadio_var_chirho = TyVarChirho(9062);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "MonadIO".to_string(),
             supers_chirho: vec!["Monad".to_string()],
             var_chirho: monadio_var_chirho,
@@ -1552,6 +1575,7 @@ impl ClassEnvChirho {
         let monad_fail_m_chirho = TyVarChirho(9063);
         let monad_fail_a_chirho = TyVarChirho(9064);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "MonadFail".to_string(),
             supers_chirho: vec!["Monad".to_string()],
             var_chirho: monad_fail_m_chirho,
@@ -1592,6 +1616,7 @@ impl ClassEnvChirho {
             Box::new(TyChirho::VarChirho(monad_fix_a_chirho)),
         );
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "MonadFix".to_string(),
             supers_chirho: vec!["Monad".to_string()],
             var_chirho: monad_fix_m_chirho,
@@ -1623,6 +1648,7 @@ impl ClassEnvChirho {
         }
         let format_time_var_chirho = TyVarChirho(9065);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "FormatTime".to_string(),
             supers_chirho: vec![],
             var_chirho: format_time_var_chirho,
@@ -1634,6 +1660,7 @@ impl ClassEnvChirho {
 
         let parse_time_var_chirho = TyVarChirho(9066);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "ParseTime".to_string(),
             supers_chirho: vec![],
             var_chirho: parse_time_var_chirho,
@@ -1668,6 +1695,7 @@ impl ClassEnvChirho {
         // We add a universal instance so that any Typeable constraint is satisfied.
         let typeable_var_chirho = TyVarChirho(9070);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Typeable".to_string(),
             supers_chirho: vec![],
             var_chirho: typeable_var_chirho,
@@ -1688,6 +1716,7 @@ impl ClassEnvChirho {
         // Data class (Data.Data)
         let data_var_chirho = TyVarChirho(9072);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Data".to_string(),
             supers_chirho: vec!["Typeable".to_string()],
             var_chirho: data_var_chirho,
@@ -1701,6 +1730,7 @@ impl ClassEnvChirho {
         for class_name_chirho in &["KnownNat", "KnownSymbol", "KnownChar"] {
             let kn_var_chirho = TyVarChirho(9073);
             self.add_class_chirho(ClassDeclChirho {
+                kind_vars_chirho: Vec::new(),
                 name_chirho: class_name_chirho.to_string(),
                 supers_chirho: vec![],
                 var_chirho: kn_var_chirho,
@@ -1714,6 +1744,7 @@ impl ClassEnvChirho {
         // MonadZip (superclass: Monad)
         let monadzip_var_chirho = TyVarChirho(9074);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "MonadZip".to_string(),
             supers_chirho: vec!["Monad".to_string()],
             var_chirho: monadzip_var_chirho,
@@ -1760,6 +1791,7 @@ impl ClassEnvChirho {
         // RandomGen
         let randomgen_var_chirho = TyVarChirho(90741);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "RandomGen".to_string(),
             supers_chirho: vec![],
             var_chirho: randomgen_var_chirho,
@@ -1815,6 +1847,7 @@ impl ClassEnvChirho {
         // SplitGen (superclass: RandomGen)
         let splitgen_var_chirho = TyVarChirho(90742);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "SplitGen".to_string(),
             supers_chirho: vec!["RandomGen".to_string()],
             var_chirho: splitgen_var_chirho,
@@ -1840,6 +1873,7 @@ impl ClassEnvChirho {
         // Contravariant
         let contravariant_var_chirho = TyVarChirho(9078);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Contravariant".to_string(),
             supers_chirho: vec![],
             var_chirho: contravariant_var_chirho,
@@ -1883,6 +1917,7 @@ impl ClassEnvChirho {
         let coercible_var_a_chirho = TyVarChirho(9064);
         let coercible_var_b_chirho = TyVarChirho(9065);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Coercible".to_string(),
             supers_chirho: vec![],
             var_chirho: coercible_var_a_chirho,
@@ -1904,6 +1939,7 @@ impl ClassEnvChirho {
         // Real (superclass: Num, Ord)
         let real_var_chirho = TyVarChirho(9063);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Real".to_string(),
             supers_chirho: vec!["Num".to_string(), "Ord".to_string()],
             var_chirho: real_var_chirho,
@@ -1926,6 +1962,7 @@ impl ClassEnvChirho {
         // Integral (superclass: Real, Enum — simplified to Num for now)
         let integral_var_chirho = TyVarChirho(9008);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Integral".to_string(),
             supers_chirho: vec!["Num".to_string()],
             var_chirho: integral_var_chirho,
@@ -2006,6 +2043,7 @@ impl ClassEnvChirho {
         // NFData
         let nfdata_var_chirho = TyVarChirho(9030);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "NFData".to_string(),
             supers_chirho: vec![],
             var_chirho: nfdata_var_chirho,
@@ -2861,6 +2899,7 @@ impl ClassEnvChirho {
         let alt_var_chirho = TyVarChirho(9055);
         let alt_a_chirho = TyVarChirho(9056);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Alternative".to_string(),
             supers_chirho: vec!["Applicative".to_string()],
             var_chirho: alt_var_chirho,
@@ -2918,6 +2957,7 @@ impl ClassEnvChirho {
         // MonadPlus class (superclass: Monad, Alternative)
         let mp_var_chirho = TyVarChirho(9057);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "MonadPlus".to_string(),
             supers_chirho: vec!["Monad".to_string(), "Alternative".to_string()],
             var_chirho: mp_var_chirho,
@@ -2975,6 +3015,7 @@ impl ClassEnvChirho {
         // Semigroup (no superclass)
         let sg_var_chirho = TyVarChirho(9050);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Semigroup".to_string(),
             supers_chirho: vec![],
             var_chirho: sg_var_chirho,
@@ -3000,6 +3041,7 @@ impl ClassEnvChirho {
         // Monoid (superclass: Semigroup)
         let mon_var_chirho = TyVarChirho(9051);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Monoid".to_string(),
             supers_chirho: vec!["Semigroup".to_string()],
             var_chirho: mon_var_chirho,
@@ -3227,6 +3269,7 @@ impl ClassEnvChirho {
             Box::new(TyChirho::VarChirho(mt_a_chirho)),
         );
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "MonadTrans".to_string(),
             supers_chirho: vec![],
             var_chirho: mt_t_chirho,
@@ -3250,6 +3293,7 @@ impl ClassEnvChirho {
         // IsString (for OverloadedStrings extension)
         let is_string_var_chirho = TyVarChirho(9020);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "IsString".to_string(),
             supers_chirho: vec![],
             var_chirho: is_string_var_chirho,
@@ -3289,6 +3333,7 @@ impl ClassEnvChirho {
         let is_list_var_chirho = TyVarChirho(9035);
         let is_list_item_var_chirho = TyVarChirho(9036);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "IsList".to_string(),
             supers_chirho: vec![],
             var_chirho: is_list_var_chirho,
@@ -3346,6 +3391,7 @@ impl ClassEnvChirho {
         let generic_var_chirho = TyVarChirho(9090);
         let generic_rep_chirho = TyVarChirho(9091);
         self.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Generic".to_string(),
             supers_chirho: vec![],
             var_chirho: generic_var_chirho,
@@ -3634,6 +3680,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(100);
         let b_chirho = TyVarChirho(101);
         let decl_chirho = ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
             var_chirho: a_chirho,
@@ -3684,6 +3731,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(100);
         let b_chirho = TyVarChirho(101);
         env_chirho.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
             var_chirho: a_chirho,
@@ -3740,6 +3788,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(100);
         let b_chirho = TyVarChirho(101);
         env_chirho.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
             var_chirho: a_chirho,
@@ -3789,6 +3838,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(100);
         let b_chirho = TyVarChirho(101);
         env_chirho.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
             var_chirho: a_chirho,
@@ -3824,6 +3874,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(100);
         let b_chirho = TyVarChirho(101);
         let decl_chirho = ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
             var_chirho: a_chirho,
@@ -3847,6 +3898,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(100);
         let b_chirho = TyVarChirho(101);
         env_chirho.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
             var_chirho: a_chirho,
@@ -3887,6 +3939,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(100);
         let b_chirho = TyVarChirho(101);
         env_chirho.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
             var_chirho: a_chirho,

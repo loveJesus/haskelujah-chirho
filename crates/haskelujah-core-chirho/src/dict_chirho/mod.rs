@@ -1183,6 +1183,7 @@ mod tests_chirho {
 
         let mut class_env_chirho = ClassEnvChirho::new_chirho();
         class_env_chirho.add_class_chirho(ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Needs".to_string(),
             supers_chirho: vec![],
             var_chirho: haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
