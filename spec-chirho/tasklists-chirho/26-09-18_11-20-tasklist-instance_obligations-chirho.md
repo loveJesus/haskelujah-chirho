@@ -3,12 +3,19 @@
 
 Branch `instance-obligations-chirho` off main 6db522ad, worktree `haskelujah-workspaces-chirho/haskelujah-claude-chirho`. L.J.'s direct "continue development"; gpt holds row 484 (kinds, families, boot) and its files.
 
-## Why (measured on main's committed wrongly-accepted list, 546 files, by each file's GHC .stderr)
-The largest family outside kinds is errors raised "In the instance declaration for …": 85 files. The solver-side part is a set of declaration-time obligations we never check: an instance is registered (`process_instance_decl_chirho`) and nothing asks whether it may exist.
+## Why (measured on the wrongly-accepted list of 2026-09-10, 546 files, by each file's GHC .stderr)
+The largest family outside kinds was errors raised "In the instance declaration for …": 85 files of that
+list. The solver-side part is a set of declaration-time obligations we never check: an instance is
+registered (`process_instance_decl_chirho`) and nothing asks whether it may exist.
+
+**Superseded counts (2026-09-19).** That census was taken against the 546-file list. This lane landed
+(8d86bc95 + evidence): the list is now 539 and the duplicate-instance brick has taken its five matching
+files plus tcfail118 and the adjacent tcfail056. Re-census against the current artifact before sizing any
+later brick; the 85 is a figure for the old list, not a remaining count.
 
 ## Design (surfaced at brick 1)
 - One child module `crates/haskelujah-typing-chirho/src/infer_chirho/instance_obligations_chirho.rs`; `process_instance_decl_chirho` records each LOCAL instance with its span; one check runs after every local and derived instance is registered.
-- Completeness argument for "no instance exists": an imported module cannot mention a type declared here, so for a head whose outer constructor is LOCAL the only instances that can match are this module's, plus catch-all instances of the class — which we can rule out only for classes declared here or seeded from base. The check fires under exactly that guard, never on "no instance registered".
+- Completeness argument for "no instance exists": an imported module cannot mention a type declared here, so for a head whose outer constructor is LOCAL the only instances that can match are this module's, plus catch-all instances of the class — which we can rule out only for classes declared here or seeded from base. The check fires under exactly that guard, never on "no instance registered". **Bounded by gpt_chirho's SOURCE-cycle counterexample, confirmed under GHC 9.14.1**: a module reached through a `SOURCE` import cycle CAN declare an instance for a type declared here, so the guard also requires that no non-Prelude module is imported. That is a guard on a completeness argument, not on a verdict.
 - STRICT entailment (`entails_strictly_chirho`): by a given with superclass closure, or by an instance whose sub-goals hold strictly; variables are never assumed satisfiable; depth exhaustion is "unproved" and reports nothing. The lenient `entails_chirho` is untouched.
 - Exact-output tests per brick; both corpus axes two passes at landing; every reject gain checked against its `.stderr` reason.
 
@@ -18,7 +25,7 @@ Per brick inside main's wrongly-accepted list: duplicates 5, superclass obligati
 ## Bricks
 - [x] 0. GHC's numeric hierarchy in the seed (found while reading tcfail036): `Num` had the Haskell 98 superclasses `Eq`/`Show`, so `Num a` entailed `Eq a`, every Num dictionary carried two phantom superclass slots, and `Integral` reached `==` only through that leak. Now `Num` has none, `Integral` has `Real` and `Enum`, `Real Word` is seeded. Three assertions that pinned the report's definition were corrected in the same change (typing seed test; core layout test; core transitive-superclass test, which now walks Integral => Real => Ord => Eq). Gate `tests/numeric_hierarchy_chirho.rs`: GHC's own outputs on the interpreter, plus `==`/`show` under only `Num a` rejected. No corpus file moves for this reason (measured: no wrongly-accepted file's GHC complaint is an Eq/Show derived from a numeric context).
 - [x] 1. Duplicate instance declarations (GHC-59692): local-local by alpha-equal heads; against non-local instances only when names cannot be shadowed. All five corpus files rejected for GHC's reason: TcNullaryTCFail, tcfail023, tcfail035, tcfail036, tcfail073. Tests `tests/instance_obligations_chirho.rs` (6).
-- [~] 2. Superclass obligations: WRITTEN AND MEASURED, NOT ENABLED — see the workflow doc. First diagnostic accept pass with it enabled: 872 of 938, ten valid files falsely rejected (LoopOfTheDay1/2/3, T10335 by mangled or unexpanded contexts; six by duplicate guards since added). Waits on faithful context lowering (gpt's branch) and keeps the no-non-Prelude-import completeness guard (gpt's SOURCE-cycle hypothesis, confirmed under GHC 9.14.1).
+- [~] 2. Superclass obligations: WRITTEN AND MEASURED, NOT ENABLED — see the workflow doc. First diagnostic accept pass with it enabled: 872 of 938, ten valid files falsely rejected (LoopOfTheDay1/2/3, T10335 by mangled or unexpanded contexts; six by duplicate guards since added). **Its context prerequisite is met as of 8d86bc95**: declaration contexts are now lowered with the signature grammar in THIS lane, on main, so the mangled-context half of those ten is re-measurable without waiting on another branch. What the kit still needs from brick 8 is the typing side: `process_instance_decl_chirho` keeps only the first argument of each context constraint (`PredChirho::new_multi_chirho` already exists, so this is small) and `supers_chirho: Vec<String>` drops superclass arguments. Re-run the diagnostic accept pass before enabling anything.
 - [ ] 3. Paterson conditions without UndecidableInstances (GHC-22979) — needs faithful contexts too; `paterson_smaller_chirho` is in the kit.
 - [ ] 4. User instances of built-in classes (GHC-97044).
 - [ ] 5. Functional-dependency conflicts and coverage (GHC-46208, GHC-21572) — heads and fundeps only.
