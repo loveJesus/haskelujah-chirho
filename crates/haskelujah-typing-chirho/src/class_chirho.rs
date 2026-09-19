@@ -231,37 +231,38 @@ impl ClassEnvChirho {
     /// matches both the primary and extra type parameters.
     pub fn resolve_chirho(&self, pred_chirho: &PredChirho) -> Option<Vec<PredChirho>> {
         let instances_chirho = self.instances_chirho.get(&pred_chirho.class_name_chirho)?;
+        instances_chirho
+            .iter()
+            .find_map(|inst_chirho| Self::instance_sub_goals_chirho(inst_chirho, pred_chirho))
+    }
 
-        'inst: for inst_chirho in instances_chirho {
-            // Match the primary head type
-            let mut subst_chirho =
-                match match_ty_chirho(&inst_chirho.head_ty_chirho, &pred_chirho.ty_chirho) {
-                    Some(s_chirho) => s_chirho,
-                    None => continue,
-                };
-
-            // For MPTCs, also match extra type params
-            if inst_chirho.extra_head_tys_chirho.len() != pred_chirho.extra_tys_chirho.len() {
-                continue;
+    /// The sub-goals one instance imposes on a predicate it matches: its own
+    /// context under the matching substitution. `None` when the instance does
+    /// not match the predicate at all.
+    /// workflow: language-features-chirho/instance-obligations-chirho
+    pub fn instance_sub_goals_chirho(
+        inst_chirho: &InstDeclChirho,
+        pred_chirho: &PredChirho,
+    ) -> Option<Vec<PredChirho>> {
+        let mut subst_chirho =
+            match_ty_chirho(&inst_chirho.head_ty_chirho, &pred_chirho.ty_chirho)?;
+        if inst_chirho.extra_head_tys_chirho.len() != pred_chirho.extra_tys_chirho.len() {
+            return None;
+        }
+        for (inst_extra_chirho, pred_extra_chirho) in inst_chirho
+            .extra_head_tys_chirho
+            .iter()
+            .zip(pred_chirho.extra_tys_chirho.iter())
+        {
+            // Merge the per-argument substitutions: a variable used twice in the
+            // head must take the same type in both places.
+            let extra_subst_chirho = match_ty_chirho(inst_extra_chirho, pred_extra_chirho)?;
+            if !subst_chirho.merge_chirho(&extra_subst_chirho) {
+                return None;
             }
-            for (inst_extra_chirho, pred_extra_chirho) in inst_chirho
-                .extra_head_tys_chirho
-                .iter()
-                .zip(pred_chirho.extra_tys_chirho.iter())
-            {
-                match match_ty_chirho(inst_extra_chirho, pred_extra_chirho) {
-                    Some(extra_subst_chirho) => {
-                        // Merge substitutions — check for consistency
-                        if !subst_chirho.merge_chirho(&extra_subst_chirho) {
-                            continue 'inst;
-                        }
-                    }
-                    None => continue 'inst,
-                }
-            }
-
-            // Apply the merged substitution to the instance context
-            let sub_goals_chirho: Vec<PredChirho> = inst_chirho
+        }
+        Some(
+            inst_chirho
                 .context_chirho
                 .iter()
                 .map(|ctx_pred_chirho| PredChirho {
@@ -273,11 +274,8 @@ impl ClassEnvChirho {
                         .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
                         .collect(),
                 })
-                .collect();
-            return Some(sub_goals_chirho);
-        }
-
-        None
+                .collect(),
+        )
     }
 
     /// Apply functional dependency improvement to a predicate.

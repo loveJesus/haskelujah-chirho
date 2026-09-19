@@ -16,7 +16,7 @@ use haskelujah_ast_chirho::lit_chirho::{
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
-use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho as AstConstraintChirho, TypeChirho};
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -1359,10 +1359,11 @@ impl InferCtxChirho {
                     && Self::pred_fully_ground_chirho(&pred_chirho)
                     && self.is_certainly_unsolvable_pred_chirho(&pred_chirho)
                 {
+                    let blamed_chirho = self.unsolvable_blame_pred_chirho(&pred_chirho, 0);
                     self.diagnostics_chirho
                         .push_chirho(DiagnosticChirho::error_with_code_chirho(
                             ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
-                            format!("no instance for `{pred_chirho}`"),
+                            format!("no instance for `{blamed_chirho}`"),
                             span_chirho,
                         ));
                     continue;
@@ -1698,6 +1699,18 @@ impl InferCtxChirho {
     /// the in-scope givens do not entail it. GHC reports exactly these as
     /// "No instance for ..." — accepting them silently is unsound.
     fn is_certainly_unsolvable_pred_chirho(&self, pred_chirho: &PredChirho) -> bool {
+        self.is_certainly_unsolvable_pred_depth_chirho(pred_chirho, 0)
+    }
+
+    /// How deep the sub-goals of matching instances are followed before the
+    /// answer becomes "unproved" rather than "unsolvable".
+    const UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO: usize = 8;
+
+    fn is_certainly_unsolvable_pred_depth_chirho(
+        &self,
+        pred_chirho: &PredChirho,
+        depth_chirho: usize,
+    ) -> bool {
         if !self.constraint_generation_faithful_chirho {
             return false;
         }
@@ -1755,10 +1768,42 @@ impl InferCtxChirho {
             .instances_chirho
             .get(class_name_chirho)
         {
-            if instances_chirho.iter().any(|inst_chirho| {
-                Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
-            }) {
-                return false;
+            let candidates_chirho: Vec<&InstDeclChirho> = instances_chirho
+                .iter()
+                .filter(|inst_chirho| {
+                    Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
+                })
+                .collect();
+            if !candidates_chirho.is_empty() {
+                // An instance whose head matches does not make the predicate
+                // solvable: its own context has to hold too. `instance Convert a
+                // String => Render [a]` cannot serve `Render [Int]` when no
+                // `Convert Int String` exists (GHC-39999 at the use site). The
+                // verdict stays conservative: every candidate must carry a
+                // sub-goal that is itself certainly unsolvable, a candidate we
+                // cannot instantiate gives no verdict, and the depth bound ends
+                // in "unproved".
+                // workflow: language-features-chirho/instance-obligations-chirho
+                if depth_chirho >= Self::UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO {
+                    return false;
+                }
+                let every_candidate_fails_chirho = candidates_chirho.iter().all(|inst_chirho| {
+                    match ClassEnvChirho::instance_sub_goals_chirho(
+                        inst_chirho,
+                        &normalized_pred_chirho,
+                    ) {
+                        Some(sub_goals_chirho) => sub_goals_chirho.iter().any(|goal_chirho| {
+                            self.is_certainly_unsolvable_pred_depth_chirho(
+                                goal_chirho,
+                                depth_chirho + 1,
+                            )
+                        }),
+                        None => false,
+                    }
+                });
+                if !every_candidate_fails_chirho {
+                    return false;
+                }
             }
         }
         let normalized_givens_chirho: Vec<PredChirho> = self
@@ -1781,6 +1826,52 @@ impl InferCtxChirho {
             return false;
         }
         true
+    }
+
+    /// The predicate to NAME when one is certainly unsolvable: the sub-goal that
+    /// makes it so, or the predicate itself. GHC reports the missing sub-goal
+    /// ("No instance for `Convert Int String` arising from a use of `render`"),
+    /// not the constraint that led to it.
+    /// workflow: language-features-chirho/instance-obligations-chirho
+    fn unsolvable_blame_pred_chirho(
+        &self,
+        pred_chirho: &PredChirho,
+        depth_chirho: usize,
+    ) -> PredChirho {
+        if depth_chirho >= Self::UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO {
+            return pred_chirho.clone();
+        }
+        let normalized_pred_chirho = PredChirho {
+            class_name_chirho: pred_chirho.class_name_chirho.clone(),
+            ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
+            extra_tys_chirho: pred_chirho
+                .extra_tys_chirho
+                .iter()
+                .map(|ty_chirho| self.normalize_ty_chirho(ty_chirho))
+                .collect(),
+        };
+        let Some(instances_chirho) = self
+            .class_env_chirho
+            .instances_chirho
+            .get(pred_chirho.class_name_chirho.as_str())
+        else {
+            return pred_chirho.clone();
+        };
+        for inst_chirho in instances_chirho.iter().filter(|inst_chirho| {
+            Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
+        }) {
+            let Some(sub_goals_chirho) =
+                ClassEnvChirho::instance_sub_goals_chirho(inst_chirho, &normalized_pred_chirho)
+            else {
+                continue;
+            };
+            if let Some(goal_chirho) = sub_goals_chirho.iter().find(|goal_chirho| {
+                self.is_certainly_unsolvable_pred_depth_chirho(goal_chirho, depth_chirho + 1)
+            }) {
+                return self.unsolvable_blame_pred_chirho(goal_chirho, depth_chirho + 1);
+            }
+        }
+        pred_chirho.clone()
     }
 
     fn pred_entailed_by_givens_chirho(
@@ -2358,26 +2449,27 @@ impl InferCtxChirho {
                 self.fresh_var_chirho()
             };
 
-            // Context constraints (e.g., `Eq a` in `instance Eq a => Eq [a]`)
-            let inst_context_chirho: Vec<PredChirho> = context_chirho
-                .iter()
-                .filter_map(|c_chirho| match c_chirho {
-                    AstConstraintChirho::ClassChirho {
-                        class_chirho,
-                        args_chirho,
-                        ..
-                    } => {
-                        let cn_chirho = class_chirho.text_chirho().to_string();
-                        let ct_chirho = if let Some(arg_chirho) = args_chirho.first() {
-                            self.ast_type_to_ty_chirho(arg_chirho, &mut var_map_chirho)
-                        } else {
-                            self.fresh_var_chirho()
-                        };
-                        Some(PredChirho::new_chirho(&cn_chirho, ct_chirho))
-                    }
-                    AstConstraintChirho::QuantifiedChirho { .. } => None,
+            // Context constraints (e.g., `Eq a` in `instance Eq a => Eq [a]`), through
+            // the SAME conversion a signature's context uses: every argument is kept, so
+            // `Convert a String` does not behave as `Convert a`, and `a ~ Int` keeps both
+            // sides. A quantified premise is still unmodelled and makes the context
+            // incomplete rather than empty.
+            // workflow: language-features-chirho/instance-obligations-chirho
+            let (context_preds_chirho, context_equalities_chirho, _unmodelled_chirho) =
+                self.convert_written_context_chirho(context_chirho, &mut var_map_chirho);
+            let mut inst_context_chirho: Vec<PredChirho> = context_preds_chirho
+                .into_iter()
+                .map(|pred_chirho| PredChirho {
+                    class_name_chirho: pred_chirho.class_name_chirho,
+                    ty_chirho: pred_chirho.ty_chirho,
+                    extra_tys_chirho: pred_chirho.extra_tys_chirho,
                 })
                 .collect();
+            inst_context_chirho.extend(context_equalities_chirho.into_iter().map(
+                |(lhs_chirho, rhs_chirho)| {
+                    PredChirho::new_multi_chirho("~", vec![lhs_chirho, rhs_chirho])
+                },
+            ));
 
             // For MPTCs, extra head types come from types_chirho[1..]
             let extra_head_tys_chirho: Vec<TyChirho> = types_chirho
@@ -7083,10 +7175,12 @@ impl InferCtxChirho {
                     .collect(),
             };
             if self.is_certainly_unsolvable_pred_chirho(&fully_resolved_pred_chirho) {
+                let blamed_chirho =
+                    self.unsolvable_blame_pred_chirho(&fully_resolved_pred_chirho, 0);
                 self.diagnostics_chirho
                     .push_chirho(DiagnosticChirho::error_with_code_chirho(
                         ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
-                        format!("no instance for `{fully_resolved_pred_chirho}`"),
+                        format!("no instance for `{blamed_chirho}`"),
                         span_chirho,
                     ));
                 continue;
@@ -22544,6 +22638,7 @@ mod tests_chirho {
 
     #[test]
     fn infer_visible_type_application_wildcard_uses_signature_equality_chirho() {
+        use haskelujah_ast_chirho::ty_chirho::ConstraintChirho as AstConstraintChirho;
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let var_ast_chirho =
             |name_chirho: &str| TypeChirho::VarChirho(dummy_name_chirho(name_chirho));
@@ -24924,6 +25019,7 @@ mod tests_chirho {
 
     #[test]
     fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
+        use haskelujah_ast_chirho::ty_chirho::ConstraintChirho as AstConstraintChirho;
         let module_chirho = ModuleChirho {
             name_chirho: dummy_name_chirho("FreeASeqMiniChirho"),
             exports_chirho: None,

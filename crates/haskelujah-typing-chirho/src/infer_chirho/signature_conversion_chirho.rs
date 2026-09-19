@@ -213,6 +213,38 @@ impl InferCtxChirho {
         )
     }
 
+    /// One conversion for every WRITTEN context, a signature's and a declaration's
+    /// alike: class predicates keep every argument, `~` keeps both sides, and a
+    /// constraint synonym is expanded. The `bool` is true when the context carries a
+    /// premise this layer does not model (a quantified constraint), so a caller that
+    /// reasons about the context knows it is incomplete rather than empty.
+    /// workflow: language-features-chirho/instance-obligations-chirho
+    pub(super) fn convert_written_context_chirho(
+        &mut self,
+        context_chirho: &[AstConstraintChirho],
+        var_map_chirho: &mut HashMap<String, TyVarChirho>,
+    ) -> (Vec<SchemePredChirho>, Vec<(TyChirho, TyChirho)>, bool) {
+        let mut preds_chirho = Vec::new();
+        let mut equalities_chirho = Vec::new();
+        let mut unmodelled_chirho = false;
+        for constraint_chirho in context_chirho {
+            if matches!(
+                constraint_chirho,
+                AstConstraintChirho::QuantifiedChirho { .. }
+            ) {
+                unmodelled_chirho = true;
+                continue;
+            }
+            self.convert_signature_constraint_chirho(
+                constraint_chirho,
+                var_map_chirho,
+                &mut preds_chirho,
+                &mut equalities_chirho,
+            );
+        }
+        (preds_chirho, equalities_chirho, unmodelled_chirho)
+    }
+
     fn convert_signature_constraint_chirho(
         &mut self,
         constraint_chirho: &AstConstraintChirho,

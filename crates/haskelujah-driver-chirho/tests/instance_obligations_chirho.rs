@@ -177,3 +177,91 @@ fn the_same_spelling_twice_is_still_a_duplicate_chirho() {
         "{diagnostics_chirho}"
     );
 }
+
+// An instance whose own context cannot be satisfied does not satisfy anything.
+// GHC 9.14.1 on this source: "No instance for `ConvertChirho Int String' arising
+// from a use of `renderChirho'" (GHC-39999). Measured 2026-09-19 alongside its
+// three controls below.
+const UNSATISFIABLE_CONTEXT_SOURCE_CHIRHO: &str =
+    r#"{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, UndecidableInstances #-}
+module Main where
+class ConvertChirho a b where
+  convertChirho :: a -> b
+instance ConvertChirho Int Bool where
+  convertChirho n = n > 0
+class RenderChirho a where
+  renderChirho :: a -> String
+instance ConvertChirho a String => RenderChirho [a] where
+  renderChirho xs = concatMap (\x -> convertChirho x ++ ";") xs
+main :: IO ()
+main = putStrLn (renderChirho [1 :: Int, 2])
+"#;
+
+#[test]
+fn an_instance_context_that_cannot_hold_does_not_satisfy_its_head_chirho() {
+    rejected_with_chirho(
+        "UnsatisfiableContextChirho.hs",
+        UNSATISFIABLE_CONTEXT_SOURCE_CHIRHO,
+        "no instance for `ConvertChirho Int [Char]`",
+    );
+}
+
+#[test]
+fn the_same_shape_at_a_data_head_is_rejected_the_same_way_chirho() {
+    let source_chirho = UNSATISFIABLE_CONTEXT_SOURCE_CHIRHO
+        .replace("RenderChirho [a]", "RenderChirho (BoxChirho a)")
+        .replace(
+            "renderChirho xs = concatMap (\\x -> convertChirho x ++ \";\") xs",
+            "renderChirho (BoxChirho x) = convertChirho x",
+        )
+        .replace(
+            "class RenderChirho a where",
+            "data BoxChirho a = BoxChirho a\nclass RenderChirho a where",
+        )
+        .replace("renderChirho [1 :: Int, 2]", "renderChirho (BoxChirho (1 :: Int))");
+    rejected_with_chirho(
+        "UnsatisfiableContextBoxChirho.hs",
+        &source_chirho,
+        "no instance for `ConvertChirho Int [Char]`",
+    );
+}
+
+#[test]
+fn the_same_program_with_the_instance_present_is_accepted_chirho() {
+    let source_chirho = UNSATISFIABLE_CONTEXT_SOURCE_CHIRHO.replace(
+        "instance ConvertChirho Int Bool where\n  convertChirho n = n > 0",
+        "instance ConvertChirho Int String where\n  convertChirho n = show n",
+    );
+    check_chirho("SatisfiableContextChirho.hs", &source_chirho)
+        .expect("GHC accepts this program, and so must we");
+}
+
+#[test]
+fn a_sub_goal_over_a_variable_gives_no_verdict_chirho() {
+    // The same instance used under a GIVEN that discharges its context: the
+    // sub-goal is `ConvertChirho a String` over a rigid `a`, never ground, so the
+    // rule must stay silent rather than invent a rejection. GHC 9.14.1 accepts
+    // this program and prints "ok".
+    let source_chirho = UNSATISFIABLE_CONTEXT_SOURCE_CHIRHO.replace(
+        "main :: IO ()\nmain = putStrLn (renderChirho [1 :: Int, 2])",
+        "allOfChirho :: ConvertChirho a String => [a] -> String\nallOfChirho xs = renderChirho xs\nmain :: IO ()\nmain = putStrLn \"ok\"",
+    );
+    check_chirho("VariableSubGoalChirho.hs", &source_chirho)
+        .expect("a sub-goal over a rigid variable is unproved, not unsolvable");
+}
+
+#[test]
+fn instantiating_that_given_at_a_missing_instance_is_rejected_chirho() {
+    // The same program, used at `[Int]`: GHC rejects it with "No instance for
+    // `ConvertChirho Int String' arising from a use of `allOfChirho'", so the
+    // silence above is about the variable, not about the shape.
+    let source_chirho = UNSATISFIABLE_CONTEXT_SOURCE_CHIRHO.replace(
+        "main :: IO ()\nmain = putStrLn (renderChirho [1 :: Int, 2])",
+        "allOfChirho :: ConvertChirho a String => [a] -> String\nallOfChirho xs = renderChirho xs\nmain :: IO ()\nmain = putStrLn (allOfChirho ([] :: [Int]))",
+    );
+    rejected_with_chirho(
+        "VariableSubGoalUsedChirho.hs",
+        &source_chirho,
+        "no instance for `ConvertChirho Int [Char]`",
+    );
+}
