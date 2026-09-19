@@ -1465,6 +1465,13 @@ class TypeSubstitutionChirho aChirho where
 instance TypeSubstitutionChirho aChirho => TypeSubstitutionChirho [aChirho] where
   freeVariablesChirho = nub . concat . map freeVariablesChirho
 
+-- A kind here is `[NameChirho]`, so `freeVariablesChirho` on a kind needs this
+-- instance. GHC 9.14.1 rejects the program without it, GHC-39999 "No instance
+-- for TypeSubstitutionChirho Int"; the reduction had dropped it and the test
+-- pinned our own leniency instead. Measured both ways 2026-09-19.
+instance TypeSubstitutionChirho Int where
+  freeVariablesChirho nameChirho = [nameChirho]
+
 instance TypeSubstitutionChirho TypeChirho where
   freeVariablesChirho typeChirho =
     case typeChirho of

@@ -1803,9 +1803,16 @@ main = needed (MkAge 1)
     let err_chirho =
         result_chirho.expect_err("GND alias to missing underlying method should fail loudly");
     let msg_chirho = format!("{err_chirho}");
+    // GHC 9.14.1 rejects this source too, and earlier: GHC-22979, `Needs Int` is
+    // no smaller than the head `Needs Age`; with UndecidableInstances it then
+    // reports `main`'s type, never reaching the missing instance (measured
+    // 2026-09-19). We name the missing instance instead, which is adjacent rather
+    // than matching, and it is now a COMPILE-time rejection rather than the
+    // run-time slot failure this test used to pin.
     assert!(
-        msg_chirho.contains("missing method Needs.needed for Int"),
-        "expected named missing-method error for GND underlying method, got {msg_chirho}"
+        msg_chirho.contains("no instance for `Needs Int`")
+            || msg_chirho.contains("missing method Needs.needed for Int"),
+        "expected the missing underlying instance to be named, got {msg_chirho}"
     );
     assert!(
         !msg_chirho.contains("literal 0"),
