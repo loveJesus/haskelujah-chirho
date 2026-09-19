@@ -12,7 +12,8 @@ Against that 546-file list, the strict phrase "In the instance declaration for" 
 85 first quoted here was a loose substring match on "instance declaration", which also caught 18
 family-instance files belonging to row 484; it is withdrawn. The per-brick count inside the same 546 is
 duplicates 5, superclass obligations 14, Paterson 7, built-in class instances 4, fundep conflicts 3 and
-coverage 2. Sixty of the 546 files carry no `.stderr` and drop out of any stderr census.
+coverage 2. Sixty of the 546 files carry no `.stderr` on disk, so any stderr-based census of that
+list runs over 486 files, not 546 (claude2_chirho's denominator caveat).
 
 After this lane landed (row 486, main 146672cf) that list is **539**: the duplicate brick took its five
 matching files plus tcfail118, and tcfail056 by an adjacent reason. Size any later brick against the
@@ -43,9 +44,36 @@ Per brick inside main's wrongly-accepted list: duplicates 5, superclass obligati
       duplicate instance, while GHC stops at this rule first. The other four GHC-54721 files are
       associated TYPES (AssocTyDef01/07/08/09) and belong to the associated-family lane.
 - [ ] 8. **Typing consumers of a faithful context** (precondition of bricks 2 and 3): keep every
-      argument of an instance-context constraint (`Convert a String` still behaves as `Convert a`, so
-      `r3_concrete_argument` dies at run time), skip `~`/`~~`, `?`-marked and quantified premises
-      explicitly, and store superclass predicates with their arguments (the kit has the last part).
+      argument of an instance-context constraint, skip `~`/`~~` and `?`-marked premises explicitly,
+      stop dropping `QuantifiedChirho` silently, and store superclass predicates with their arguments
+      (the kit has the last part). `PredChirho` already carries `extra_tys_chirho` and
+      `new_multi_chirho`, so the instance half is small; `supers_chirho: Vec<String>` is the wider one
+      because every seeded class in `class_chirho.rs` writes it.
+
+### What brick 8 alone will and will not fix (measured 2026-09-19, main 16902b06, CLI 965f2d07)
+
+Four probes against GHC 9.14.1, predictions written first, evidence in
+`/private/tmp/haskelujah-context-consumers-chirho.vbaCzY/`:
+
+| case | GHC | ours today |
+|---|---|---|
+| `instance Convert a String => Render [a]` (UndecidableInstances) | `1;2;` / `yes;no;` | rc=1, "missing STG binding `renderChirho`" |
+| `class Convert a String => Pretty a` with a default method using the superclass | `<7>` | rc=1, "missing method ConvertChirho.convertChirho for Int_[Char]" |
+| a two-argument given whose SECOND argument selects the instance | `3@z` | rc=0 and EMPTY output |
+| a quantified given in an instance context | `built` | rc=0 and EMPTY output |
+
+Two of the four exit 0 and print nothing: a silent wrong answer, which a `check`-only corpus gate cannot
+see. Brick 8 is necessary for all four and sufficient for none, because `generate_instance_dicts_chirho`
+(`core-chirho/src/dict_chirho/instance_chirho.rs:673`) skips every instance that has a context, except
+the one list-head path in `conditional_chirho.rs`, and keys dictionaries by the RENDERED head type.
+
+**Architecture decision to surface, not to take quietly (for L.J. and gpt_chirho):** the GHC translation
+is dictionary ABSTRACTION — `instance C a => D [a]` becomes a dictionary FUNCTION
+`$fD[] :: DictC a -> DictD [a]`, applied at the use site — whereas this pass builds constant dictionaries
+keyed by a rendered type string. Repairing the four probes for the right reason means introducing
+dictionary functions, which is a redesign of a pass whose files are already 72 KB (`mod.rs`) and 215 KB
+(`rewrite_chirho.rs`). The corpus-visible work (bricks 2 and 3, 14 + 7 files on the reject axis) does not
+need it; these four runtime programs do. Sequence and scope are L.J.'s call.
 
 ## Found on the way (not claimed by this lane)
 - Runtime, main, mine to take next: inside an instance body, a use of the class's OWN method at another type is dispatched to the instance being defined. `instance Num V where V a + V b = V (a + b)` dies with "no matching alternative for tag 0"; the same body through helper functions, through a user class, or without the inner call runs. Same failure for `compare x y` inside `instance Ord a => Ord (Box a)`.
