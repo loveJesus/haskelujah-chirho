@@ -11,28 +11,54 @@ fn class_method_kind_scope_and_universals_chirho() {
         env!("CARGO_MANIFEST_DIR"),
         "/../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/associated-methods-chirho/scope_fixtures_chirho.rs"
     ));
+    assert_method_contracts_chirho(cases_chirho.iter().map(
+        |&(name_chirho, accepts_chirho, source_chirho)| {
+            let error_chirho = (!accepts_chirho).then_some(if name_chirho.starts_with("K5_") {
+                "E0300"
+            } else {
+                "E0200"
+            });
+            (name_chirho, error_chirho, source_chirho)
+        },
+    ));
+}
+
+#[test]
+fn class_method_represented_kinds_and_instance_occurrences_chirho() {
+    let cases_chirho: &[(&str, Option<&str>, &str)] = &include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test-data-chirho/kind-oracles-chirho/ascriptions-chirho/imported-families-chirho/source-boot-chirho/declarations-chirho/classes-chirho/default-annotations-chirho/scope-chirho/corpus-chirho/associated-methods-chirho/method-scopes-chirho/repair-chirho/representation-chirho/fixtures_chirho.rs"
+    ));
+    assert_method_contracts_chirho(cases_chirho.iter().copied());
+}
+
+fn assert_method_contracts_chirho<'source_chirho>(
+    cases_chirho: impl IntoIterator<
+        Item = (
+            &'source_chirho str,
+            Option<&'source_chirho str>,
+            &'source_chirho str,
+        ),
+    >,
+) {
     let mut failures_chirho = Vec::new();
-    for (name_chirho, accepts_chirho, source_chirho) in cases_chirho {
+    for (name_chirho, expected_error_chirho, source_chirho) in cases_chirho {
         let result_chirho = haskelujah_driver::typecheck_source_chirho(
             source_chirho,
             &mut SourceMapChirho::new_chirho(),
             name_chirho,
         );
         match result_chirho {
-            Ok(_) if !accepts_chirho => {
+            Ok(_) if expected_error_chirho.is_some() => {
                 failures_chirho.push(format!("{name_chirho}: wrongly accepted"))
             }
-            Err(error_chirho) if *accepts_chirho => {
+            Err(error_chirho) if expected_error_chirho.is_none() => {
                 failures_chirho.push(format!("{name_chirho}: {error_chirho}"))
             }
             Err(error_chirho) => assert!(
                 error_chirho
                     .to_string()
-                    .contains(if name_chirho.starts_with("K5_") {
-                        "E0300"
-                    } else {
-                        "E0200"
-                    }),
+                    .contains(expected_error_chirho.unwrap()),
                 "{name_chirho}: {error_chirho}",
             ),
             _ => {}

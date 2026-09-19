@@ -5,6 +5,7 @@
 use super::*;
 use haskelujah_typing_chirho::module_contracts_chirho::ModuleTypeContractsChirho;
 mod contracts_chirho;
+pub(super) mod import_names_chirho;
 #[cfg(test)]
 mod tests_chirho;
 

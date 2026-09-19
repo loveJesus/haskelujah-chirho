@@ -65,6 +65,7 @@ impl InferCtxChirho {
             // Method signatures and optional default implementations
             let mut method_map_chirho = HashMap::new();
             let mut defaults_map_chirho = HashMap::new();
+            let mut method_var_names_chirho = HashMap::new();
             for method_chirho in methods_chirho {
                 let method_name_chirho = method_chirho.name_chirho.text_chirho().to_string();
                 let (mut scheme_chirho, _method_var_map_chirho) = self
@@ -73,6 +74,12 @@ impl InferCtxChirho {
                         &class_scoped_tyvars_chirho,
                         false,
                     );
+
+                for variable_chirho in &scheme_chirho.vars_chirho {
+                    if let Some(name_chirho) = self.tyvar_source_names_chirho.get(variable_chirho) {
+                        method_var_names_chirho.insert(*variable_chirho, name_chirho.clone());
+                    }
+                }
 
                 let class_pred_chirho = SchemePredChirho {
                     class_name_chirho: class_name_chirho.clone(),
@@ -175,6 +182,7 @@ impl InferCtxChirho {
                 supers_chirho,
                 var_chirho: class_tv_chirho,
                 kind_vars_chirho,
+                method_var_names_chirho,
                 methods_chirho: method_map_chirho,
                 extra_vars_chirho,
                 fundeps_chirho: resolved_fundeps_chirho,

@@ -53,6 +53,7 @@ pub use imports_chirho::KindContractChirho;
 #[path = "kind_chirho/tests_chirho/import_tests_chirho.rs"]
 mod import_tests_chirho;
 mod runtime_chirho;
+pub(crate) use runtime_chirho::is_builtin_nominal_kind_name_chirho;
 #[cfg(test)]
 #[path = "kind_chirho/tests_chirho/scheme_tests_chirho.rs"]
 mod scheme_tests_chirho;
@@ -136,6 +137,7 @@ struct KindInferCtxChirho {
     classifier_session_chirho: Option<runtime_chirho::ClassifierSessionChirho>,
     kind_binder_names_chirho: HashMap<KindVarChirho, String>,
     kind_applications_chirho: HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
+    kind_class_instances_chirho: HashMap<usize, elaboration_chirho::PendingKindApplicationChirho>,
     kind_wildcard_terms_chirho: HashMap<SpanChirho, KindChirho>,
     kind_equation_inputs_chirho:
         HashMap<SpanChirho, elaboration_chirho::PendingKindApplicationChirho>,
@@ -185,6 +187,7 @@ impl KindInferCtxChirho {
             classifier_session_chirho: None,
             kind_binder_names_chirho: HashMap::new(),
             kind_applications_chirho: HashMap::new(),
+            kind_class_instances_chirho: HashMap::new(),
             kind_wildcard_terms_chirho: HashMap::new(),
             kind_equation_inputs_chirho: HashMap::new(),
             kind_associated_defaults_chirho: HashMap::new(),
@@ -845,12 +848,10 @@ pub fn infer_module_kinds_with_imports_chirho(
             }
         })
         .collect();
-    for decl_chirho in &module_chirho.decls_chirho {
+    for (declaration_index_chirho, decl_chirho) in module_chirho.decls_chirho.iter().enumerate() {
         let DeclChirho::InstanceDeclChirho {
             class_chirho,
-            context_chirho,
             types_chirho,
-            assoc_tf_instances_chirho,
             span_chirho,
             ..
         } = decl_chirho
@@ -864,14 +865,11 @@ pub fn infer_module_kinds_with_imports_chirho(
             *span_chirho,
         );
         ctx_chirho.check_associated_instance_equations_chirho(
-            class_chirho.text_chirho(),
-            context_chirho,
-            types_chirho,
-            assoc_tf_instances_chirho,
+            declaration_index_chirho,
+            decl_chirho,
             class_defaults_chirho
                 .get(class_chirho.text_chirho())
                 .copied(),
-            *span_chirho,
         );
     }
 

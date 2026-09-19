@@ -7,6 +7,22 @@ use super::*;
 use crate::kind_chirho::KindChirho;
 
 impl InferCtxChirho {
+    /// Type is the lifted TYPE application, not an apart nominal constructor.
+    /// Keep qualified builtin ownership until ordinary import normalization;
+    /// a user's same-spelled Type/TYPE declaration must not become this alias.
+    pub(super) fn lifted_kind_type_chirho(&self) -> TyChirho {
+        let named_chirho = |name_chirho: &str| {
+            TyChirho::ConChirho(self.normalize_imported_type_name_chirho(name_chirho))
+        };
+        TyChirho::AppChirho(
+            Box::new(named_chirho("GHC.Prim.TYPE")),
+            Box::new(TyChirho::AppChirho(
+                Box::new(named_chirho("GHC.Types.BoxedRep")),
+                Box::new(named_chirho("GHC.Types.Lifted")),
+            )),
+        )
+    }
+
     pub(super) fn elaborated_head_application_chirho(
         &mut self,
         source_chirho: &TypeChirho,
@@ -157,7 +173,7 @@ impl InferCtxChirho {
         bound_chirho: &mut Vec<TyVarChirho>,
     ) -> TyChirho {
         match term_chirho {
-            KindChirho::StarChirho => TyChirho::ConChirho("Type".to_owned()),
+            KindChirho::StarChirho => self.lifted_kind_type_chirho(),
             KindChirho::ConstraintChirho => TyChirho::ConChirho("Constraint".to_owned()),
             KindChirho::ConChirho(name_chirho) => {
                 TyChirho::ConChirho(self.normalize_imported_type_name_chirho(name_chirho))

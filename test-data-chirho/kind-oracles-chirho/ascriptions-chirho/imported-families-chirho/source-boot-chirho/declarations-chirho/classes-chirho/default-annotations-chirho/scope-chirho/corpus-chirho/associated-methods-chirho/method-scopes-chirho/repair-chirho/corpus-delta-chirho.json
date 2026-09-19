@@ -1,0 +1,1 @@
+[{"axis_chirho":"compile","gained_chirho":["ClassDefaultInHsBoot.hs","ClassDefaultInHsBootA2.hs","ClassDefaultInHsBootA3.hs"],"lost_chirho":["T11552.hs","T13142.hs","T14010.hs","T15839a.hs","T15839b.hs","T18129.hs","T21323.hs","T3955.hs","T5676.hs"]},{"axis_chirho":"fail","gained_chirho":["T15712.hs","T26137.hs"],"lost_chirho":[]}]

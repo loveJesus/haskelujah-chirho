@@ -140,6 +140,9 @@ impl InferCtxChirho {
         &self,
         name_chirho: &str,
     ) -> Option<&TypeSynonymChirho> {
+        if self.is_known_nominal_name_chirho(name_chirho) {
+            return None;
+        }
         self.type_synonyms_chirho.get(name_chirho).or_else(|| {
             name_chirho
                 .rsplit_once('.')
@@ -257,6 +260,17 @@ impl InferCtxChirho {
     fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
         if depth_chirho > 100 {
             return ty_chirho.clone();
+        }
+        if let TyChirho::ConChirho(name_chirho) = ty_chirho
+            && matches!(
+                name_chirho.as_str(),
+                "Type" | "Data.Kind.Type" | "GHC.Types.Type"
+            )
+            && !self.is_known_nominal_name_chirho(name_chirho)
+            && self.lookup_type_synonym_chirho(name_chirho).is_none()
+            && !self.type_families_chirho.contains_key(name_chirho)
+        {
+            return self.lifted_kind_type_chirho();
         }
         let mut head_chirho = ty_chirho;
         let mut arguments_chirho = Vec::new();

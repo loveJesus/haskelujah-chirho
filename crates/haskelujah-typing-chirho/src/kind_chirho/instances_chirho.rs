@@ -2,10 +2,10 @@
 
 //! Local class-instance kind consumers; workflow: declaration-kinds-chirho.
 use super::{
-    DiagnosticChirho, ErrorCodeChirho, KIND_MISMATCH_CODE_CHIRHO, KindChirho, KindInferCtxChirho,
-    SpanChirho, TypeChirho,
+    DeclChirho, DiagnosticChirho, ErrorCodeChirho, KIND_MISMATCH_CODE_CHIRHO, KindChirho,
+    KindInferCtxChirho, SpanChirho, TypeChirho,
 };
-use haskelujah_ast_chirho::decl_chirho::{AssocTfInstanceChirho, AssocTypeFamilyChirho};
+use haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho;
 
 impl KindInferCtxChirho {
     /// Associated equations consume the closed family contract inside the
@@ -14,13 +14,23 @@ impl KindInferCtxChirho {
     /// Workflow: language-features-chirho/declaration-kinds-chirho.
     pub(super) fn check_associated_instance_equations_chirho(
         &mut self,
-        class_name_chirho: &str,
-        context_chirho: &[super::ConstraintChirho],
-        head_types_chirho: &[TypeChirho],
-        equations_chirho: &[AssocTfInstanceChirho],
+        declaration_index_chirho: usize,
+        declaration_chirho: &DeclChirho,
         defaults_chirho: Option<(&[super::TyVarChirho], &[AssocTypeFamilyChirho])>,
-        span_chirho: SpanChirho,
     ) {
+        let DeclChirho::InstanceDeclChirho {
+            class_chirho,
+            context_chirho,
+            types_chirho: head_types_chirho,
+            assoc_tf_instances_chirho: equations_chirho,
+            span_chirho,
+            ..
+        } = declaration_chirho
+        else {
+            return;
+        };
+        let class_name_chirho = class_chirho.text_chirho();
+        let span_chirho = *span_chirho;
         // A polymorphic class's method schemes need the instance's hidden
         // arguments even when this instance has no associated equations.
         // Only source-owned or imported checked contracts supply that evidence.
@@ -56,10 +66,10 @@ impl KindInferCtxChirho {
             .lookup_binding_chirho(class_name_chirho)
             .cloned()
             .map(|binding_chirho| {
-                self.instantiate_source_binding_chirho(
+                self.instantiate_instance_class_kind_chirho(
                     class_name_chirho,
                     &binding_chirho,
-                    span_chirho,
+                    declaration_index_chirho,
                 )
             });
         for argument_chirho in head_types_chirho {
@@ -192,7 +202,8 @@ impl KindInferCtxChirho {
             .iter()
             .any(DiagnosticChirho::is_error_chirho)
         {
-            self.kind_applications_chirho.remove(&span_chirho);
+            self.kind_class_instances_chirho
+                .remove(&declaration_index_chirho);
         }
     }
 

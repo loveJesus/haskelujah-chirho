@@ -36,6 +36,15 @@ pub(super) fn runtime_type_chirho(representation_chirho: KindChirho) -> KindChir
     )
 }
 
+/// Only exact defining identities denote these primitive nominal constructors.
+/// A same-spelled local family may not rewrite one through suffix lookup.
+pub(crate) fn is_builtin_nominal_kind_name_chirho(name_chirho: &str) -> bool {
+    let Some((_, bare_chirho)) = name_chirho.rsplit_once('.') else {
+        return false;
+    };
+    matches!(builtin_term_chirho(bare_chirho), Some(KindChirho::ConChirho(canonical_chirho)) if canonical_chirho == name_chirho)
+}
+
 pub(super) fn builtin_term_chirho(name_chirho: &str) -> Option<KindChirho> {
     Some(match name_chirho {
         "Type" => KindChirho::StarChirho,

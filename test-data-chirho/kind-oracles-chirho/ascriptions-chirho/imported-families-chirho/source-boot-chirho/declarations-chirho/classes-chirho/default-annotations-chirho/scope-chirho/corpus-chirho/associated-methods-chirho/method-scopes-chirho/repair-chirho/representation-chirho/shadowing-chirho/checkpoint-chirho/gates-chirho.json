@@ -1,0 +1,133 @@
+{
+  "recorded_at_chirho": "2026-09-19 21:41:03 UTC",
+  "scope_chirho": "Isolated row484 diagnostic checkpoint; not a landing and not a full corpus measurement.",
+  "source_chirho": {
+    "base_chirho": "c2ede82bab5c1624c9e5a94a45d0dc450e0c179a",
+    "diff_sha256_chirho": "e3dd46d4341c719d9dcfa6ebafe44968a6a151378b8766b507b992fd58753a7b",
+    "source_manifest_chirho": [
+      {
+        "path_chirho": "crates/haskelujah-core-chirho/src/dict_chirho/mod.rs",
+        "sha256_chirho": "179e538a37ea3ea02f96e9d5d72a1962303e14f51848da41fb1baaa3b4e50a42"
+      },
+      {
+        "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho.rs",
+        "sha256_chirho": "f6b3ae2e4e87e23e1ce53a0af97adf6cc7115db6773e8e073149b992fdddc154"
+      },
+      {
+        "path_chirho": "crates/haskelujah-driver-chirho/src/lib.rs",
+        "sha256_chirho": "45d1f8d37a9eb462334909133a08ec090aa3acbdb58028b239f8cbbf2a77c9c6"
+      },
+      {
+        "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/import_contracts_chirho/associated_methods_chirho.rs",
+        "sha256_chirho": "3ea14ac230af0fc2a0569bc41d87f4619f437208eb366242cc4563a458f8529f"
+      },
+      {
+        "path_chirho": "crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/classes_chirho.rs",
+        "sha256_chirho": "57bf09a3340d9bddb64a968b7999857ee5a4dffeaf014f0e3e059bb732ac27e8"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/class_chirho.rs",
+        "sha256_chirho": "95c8d90682d628eda8daa2dc4c42d5e0cff85a65ddcd416142c03beccd219fbc"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/classes_chirho.rs",
+        "sha256_chirho": "483efe041fcd2d83ee6119ecafc5950339f7d1938140f6332ad58f0a21cad6e1"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/methods_chirho.rs",
+        "sha256_chirho": "0b3cd6c76e6633d4db5b2b626dd5438dd8da412ce39775b0397624ab641c7238"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/equalities_chirho.rs",
+        "sha256_chirho": "967457bd8bee8d9e99c4a2457ce843a9502f18d4537b3c24f7b779d747e0225e"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/kind_arguments_chirho.rs",
+        "sha256_chirho": "eabcd858c5bc58e2c97ecc3b937ee33e9322a45003438a12032ab538bc6ea693"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/type_synonyms_chirho.rs",
+        "sha256_chirho": "c69a3edc2e4228d2afb8f435bac262eceb0de62798a3bab3c88985241467d9de"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho.rs",
+        "sha256_chirho": "bbe76106613563e7e3da29807def6f79386873e30dbd89187576bb90f9d207e7"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho/elaboration_chirho.rs",
+        "sha256_chirho": "9d9e1dde4fe7340e2931d868c9137b12cde4594027ad95fef954b47f94497008"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho/instances_chirho.rs",
+        "sha256_chirho": "cc62aa5c1ee59f3263aa52196fa75e42e35965a08ff69ce9a06c28cb01749b08"
+      },
+      {
+        "path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho/runtime_chirho.rs",
+        "sha256_chirho": "6df39dd578ff62d027224770f3e28518e55d10383d24c0d7c53314aca709062a"
+      },
+      {
+        "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/import_names_chirho.rs",
+        "sha256_chirho": "f0e9e37bf40987ee60f6ddce23a154e3ed3b5442caa3f67ed7c3c09211b4a116"
+      }
+    ]
+  },
+  "final_cli_chirho": "/private/tmp/haskelujah-method-identity-chirho.yU2Ddo/haskelujah-final-chirho",
+  "final_cli_sha256_chirho": "8344419381552688b1af2dd8eaf2220a3b20f17d312379443963799f7dfb5278",
+  "gates_chirho": [
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 nice -n 10 cargo test -p haskelujah-parser -p haskelujah-naming -p haskelujah-typing -p haskelujah-core --lib --jobs 1 -- --test-threads=2 --quiet",
+      "exit_chirho": 0,
+      "output_chirho": "   Compiling haskelujah-parser v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-parser-chirho)\n   Compiling haskelujah-core v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-core-chirho)\n   Compiling haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.79s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_core-075536191d9fdbbd)\n\nrunning 128 tests\n....................................................................................... 87/128\n.........................................\ntest result: ok. 128 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s\n\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_naming-cfa69b96ab7a48f4)\n\nrunning 138 tests\n....................................................................................... 87/138\n...................................................\ntest result: ok. 138 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s\n\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_parser-91d3e8cd607e925e)\n\nrunning 372 tests\n....................................................................................... 87/372\n....................................................................................... 174/372\n....................................................................................... 261/372\n....................................................................................... 348/372\n........................\ntest result: ok. 372 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s\n\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_typing-946cba87469fe1d1)\n\nrunning 407 tests\n....................................................................................... 87/407\n....................................................................................... 174/407\n....................................................................................... 261/407\n....................................................................................... 348/407\n...........................................................\ntest result: ok. 407 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.91s\n\n",
+      "revision_note_chirho": "Before mechanical regrouping of instance checker arguments; parser, naming and core source unchanged after this run."
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 nice -n 10 cargo test -p haskelujah-driver --lib frontend_constraints_package_regression_chirho --jobs 1 -- --test-threads=1 --quiet",
+      "exit_chirho": 0,
+      "output_chirho": "   Compiling haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.31s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_driver-423c1f8285a54533)\n\nrunning 1 test\n.\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1775 filtered out; finished in 83.70s\n\n",
+      "revision_note_chirho": "After primitive shadow repair, before mechanical argument regrouping. Cache symlink and constraints-0.14.4/constraints.cabal verified present; live test, not early return."
+    },
+    {
+      "command_chirho": "RUST_MIN_STACK=16777216 nice -n 10 cargo test -p haskelujah-typing --lib --jobs 1 -- --test-threads=2 --quiet; then cargo test -p haskelujah-driver --test typing_integration_chirho with same jobs/threads; then cargo build -p haskelujah --bin haskelujah --jobs 1",
+      "exit_chirho": 0,
+      "output_chirho": "   Compiling haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.23s\n     Running unittests src/lib.rs (target/debug/deps/haskelujah_typing-946cba87469fe1d1)\n\nrunning 407 tests\n....................................................................................... 87/407\n....................................................................................... 174/407\n....................................................................................... 261/407\n....................................................................................... 348/407\n...........................................................\ntest result: ok. 407 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s\n\n   Compiling haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n   Compiling haskelujah-core v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-core-chirho)\n   Compiling haskelujah-backend-cranelift v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-cranelift-chirho)\n   Compiling haskelujah-backend-llvm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-llvm-chirho)\n   Compiling haskelujah-backend-wasm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-wasm-chirho)\n   Compiling haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n   Compiling haskelujah-test-harness v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-test-harness-chirho)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.97s\n     Running tests/typing_integration_chirho.rs (target/debug/deps/typing_integration_chirho-7cc3536c9e32ab0c)\n\nrunning 445 tests\n....................................................................................... 87/445\n....................................................................................... 174/445\n....................................................................................... 261/445\n....................................................................................... 348/445\n....................................................................................... 435/445\n..........\ntest result: ok. 445 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 251.30s\n\n   Compiling haskelujah-backend-cranelift v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-cranelift-chirho)\n   Compiling haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n   Compiling haskelujah-lsp v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-lsp-chirho)\n   Compiling haskelujah-gui v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-gui-chirho)\n   Compiling haskelujah-editor v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-editor-chirho)\n   Compiling haskelujah-mcp v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-mcp-chirho)\n   Compiling haskelujah v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-cli-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.90s\n",
+      "revision_note_chirho": "Final production source; shell set -e stopped on any failing command. No rustc warnings."
+    }
+  ],
+  "lint_chirho": {
+    "command_chirho": [
+      "nice",
+      "-n",
+      "10",
+      "cargo",
+      "clippy",
+      "-p",
+      "haskelujah-parser",
+      "-p",
+      "haskelujah-naming",
+      "-p",
+      "haskelujah-typing",
+      "-p",
+      "haskelujah-core",
+      "-p",
+      "haskelujah-driver",
+      "--lib",
+      "--jobs",
+      "1",
+      "--message-format=json"
+    ],
+    "exit_chirho": 0,
+    "warning_count_chirho": 387,
+    "changed_line_warning_count_chirho": 0,
+    "changed_line_warnings_chirho": [],
+    "errors_chirho": [],
+    "stderr_chirho": "    Checking haskelujah-typing v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-typing-chirho)\n    Checking haskelujah-core v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-core-chirho)\n    Checking haskelujah-backend-cranelift v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-cranelift-chirho)\n    Checking haskelujah-backend-llvm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-llvm-chirho)\n    Checking haskelujah-backend-wasm v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-backend-wasm-chirho)\n    Checking haskelujah-driver v0.1.35 (/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/crates/haskelujah-driver-chirho)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.21s\n"
+  },
+  "lint_limit_chirho": "387 warnings remain; zero primary spans intersect changed lines. This is not a warning-free gate. One newly introduced argument-count warning was repaired without suppression.",
+  "open_limits_chirho": [
+    "T3955 still fails: deriving loses written class arguments and does not eta-reduce higher-kinded newtypes.",
+    "G7 wrong-kind deriving false accept is retained in gnd-next-brick-chirho.jsonl.",
+    "Qualified type-synonym bare-name fallback false accept persists on both parent650be538 and candidate40b2154b.",
+    "Full InstanceSigs predicate entailment and builtin method universals lacking source provenance remain incomplete.",
+    "Full corpus membership, workspace/native gates and clean lint are not established by this checkpoint."
+  ]
+}

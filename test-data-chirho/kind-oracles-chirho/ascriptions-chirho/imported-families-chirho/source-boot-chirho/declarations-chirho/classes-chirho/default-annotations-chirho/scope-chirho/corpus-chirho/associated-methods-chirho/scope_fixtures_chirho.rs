@@ -99,4 +99,52 @@ instance CChirho Int where
 instance CChirho Maybe where
   mChirho = ()
 "###),
+    ("instance_signature_scope_chirho.hs", true, r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE InstanceSigs, ScopedTypeVariables #-}
+module ProbeChirho where
+class CChirho aChirho where
+  methodChirho :: bChirho -> aChirho -> [bChirho]
+instance CChirho Int where
+  methodChirho :: forall renamedChirho. renamedChirho -> Int -> [renamedChirho]
+  methodChirho valueChirho _ = resultChirho
+    where
+      resultChirho :: [renamedChirho]
+      resultChirho = [valueChirho]
+"###),
+    ("instance_signature_specialization_chirho.hs", false, r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE InstanceSigs, ScopedTypeVariables #-}
+module ProbeChirho where
+class CChirho aChirho where
+  methodChirho :: bChirho -> aChirho -> [bChirho]
+instance CChirho Int where
+  methodChirho :: Bool -> Int -> [Bool]
+  methodChirho valueChirho _ = [valueChirho]
+"###),
+    ("instance_signature_body_chirho.hs", false, r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE InstanceSigs, ScopedTypeVariables #-}
+module ProbeChirho where
+class CChirho aChirho where
+  methodChirho :: bChirho -> aChirho -> [bChirho]
+instance CChirho Int where
+  methodChirho :: forall renamedChirho. renamedChirho -> Int -> [renamedChirho]
+  methodChirho _ _ = [True]
+"###),
+    ("instance_signature_more_general_chirho.hs", true, r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE InstanceSigs, ScopedTypeVariables #-}
+module ProbeChirho where
+class CChirho aChirho where
+  methodChirho :: aChirho -> aChirho
+instance CChirho Int where
+  methodChirho :: forall bChirho. bChirho -> bChirho
+  methodChirho valueChirho = valueChirho
+"###),
+    ("instance_signature_more_general_body_chirho.hs", false, r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE InstanceSigs, ScopedTypeVariables #-}
+module ProbeChirho where
+class CChirho aChirho where
+  methodChirho :: aChirho -> aChirho
+instance CChirho Int where
+  methodChirho :: forall bChirho. bChirho -> bChirho
+  methodChirho _ = (1 :: Int)
+"###),
 ]

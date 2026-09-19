@@ -402,7 +402,9 @@ impl LowerCtxChirho {
             haskelujah_ast_chirho::decl_chirho::AssocTfInstanceChirho,
         > = Vec::new();
 
-        // Convert method DeclChirho::FunBindChirho into LocalBindChirho::FunBindChirho.
+        // Keep written instance signatures beside their implementations. They
+        // constrain the body and bind its scoped variables; dropping them
+        // silently replaces the written contract with the class signature.
         let methods_chirho: Vec<LocalBindChirho> = method_decls_chirho
             .into_iter()
             .filter_map(|d_chirho| match d_chirho {
@@ -413,6 +415,15 @@ impl LowerCtxChirho {
                 } => Some(LocalBindChirho::FunBindChirho {
                     name_chirho,
                     matches_chirho,
+                    span_chirho,
+                }),
+                DeclChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    span_chirho,
+                } => Some(LocalBindChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
                     span_chirho,
                 }),
                 DeclChirho::TypeFamilyInstanceDeclChirho {
@@ -478,6 +489,41 @@ impl LowerCtxChirho {
                         self.name_from_token_chirho(tok_chirho, tok_span_chirho),
                     ));
                     idx_chirho += 1;
+                }
+                TokenKindChirho::TickChirho if idx_chirho + 1 < head_tokens_chirho.len() => {
+                    // Promotion belongs to the atom. Feed the quote through
+                    // the shared type grammar instead of lowering '[] as [].
+                    let next_chirho = idx_chirho + 1;
+                    let delimiters_chirho = match head_tokens_chirho[next_chirho].0.kind_chirho() {
+                        TokenKindChirho::LeftParenChirho => Some((
+                            TokenKindChirho::LeftParenChirho,
+                            TokenKindChirho::RightParenChirho,
+                        )),
+                        TokenKindChirho::LeftBracketChirho => Some((
+                            TokenKindChirho::LeftBracketChirho,
+                            TokenKindChirho::RightBracketChirho,
+                        )),
+                        _ => None,
+                    };
+                    let end_chirho = delimiters_chirho
+                        .and_then(|(open_chirho, close_chirho)| {
+                            Self::find_matching_token_index_chirho(
+                                head_tokens_chirho,
+                                next_chirho,
+                                open_chirho,
+                                close_chirho,
+                            )
+                        })
+                        .unwrap_or(next_chirho);
+                    let atom_span_chirho = head_tokens_chirho[idx_chirho]
+                        .1
+                        .merge_chirho(head_tokens_chirho[end_chirho].1)
+                        .unwrap_or(span_chirho);
+                    types_chirho.push(self.lower_type_from_token_slice_chirho(
+                        &head_tokens_chirho[idx_chirho..=end_chirho],
+                        atom_span_chirho,
+                    ));
+                    idx_chirho = end_chirho + 1;
                 }
                 TokenKindChirho::LeftParenChirho => {
                     if let Some(end_idx_chirho) = Self::find_matching_token_index_chirho(

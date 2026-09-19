@@ -43,6 +43,9 @@ impl ElaboratedKindBinderChirho {
 #[derive(Clone, Debug, Default)]
 pub struct KindElaborationChirho {
     pub(crate) applications_chirho: HashMap<SpanChirho, Vec<KindChirho>>,
+    // Kind and type inference consume the same post-deriving declaration list.
+    // A source span is not an identity: generated instances share DUMMY spans.
+    pub(crate) class_instances_chirho: HashMap<usize, (String, Vec<KindChirho>)>,
     pub(crate) wildcard_terms_chirho: HashMap<SpanChirho, KindChirho>,
     pub(crate) nominal_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
     pub(crate) synonym_heads_chirho: HashMap<String, Vec<ElaboratedKindBinderChirho>>,
@@ -72,6 +75,113 @@ pub(crate) struct ClosedFamilyInjectivityChirho {
 }
 
 impl KindInferCtxChirho {
+    /// Finish source spans and declaration ordinals through the same checked
+    /// binder identities. Generated declarations share DUMMY spans, not ordinals.
+    fn finish_kind_occurrences_chirho<KeyChirho: Copy + Eq + std::hash::Hash>(
+        &self,
+        occurrences_chirho: &HashMap<KeyChirho, PendingKindApplicationChirho>,
+    ) -> (HashMap<KeyChirho, Vec<KindChirho>>, Vec<KeyChirho>) {
+        let mut invalid_chirho = Vec::new();
+        let finished_chirho = occurrences_chirho
+            .iter()
+            .filter_map(|(key_chirho, occurrence_chirho)| {
+                let binding_chirho = match occurrence_chirho.namespace_chirho {
+                    KindHeadNamespaceChirho::TypeChirho => self
+                        .env_chirho
+                        .lookup_binding_chirho(&occurrence_chirho.head_chirho),
+                    KindHeadNamespaceChirho::PromotedChirho => self
+                        .env_chirho
+                        .lookup_promoted_binding_chirho(&occurrence_chirho.head_chirho),
+                };
+                let Some(KindBindingChirho::PolyChirho(scheme_chirho)) = binding_chirho else {
+                    return None;
+                };
+                // Publishing an inferred head can replace a written
+                // metavariable with its rigid representative. Re-key
+                // captures through that identity substitution, never
+                // through source spelling or equation order.
+                let quantified_chirho: HashSet<_> =
+                    scheme_chirho.quantified_chirho.iter().copied().collect();
+                let mut arguments_chirho = HashMap::new();
+                for (identity_chirho, argument_chirho) in &occurrence_chirho.arguments_chirho {
+                    let resolved_chirho = if quantified_chirho.contains(identity_chirho) {
+                        *identity_chirho
+                    } else {
+                        match self
+                            .subst_chirho
+                            .apply_chirho(&KindChirho::VarChirho(*identity_chirho))
+                        {
+                            KindChirho::VarChirho(resolved_chirho)
+                            | KindChirho::RigidChirho(resolved_chirho) => resolved_chirho,
+                            _ => continue,
+                        }
+                    };
+                    if !quantified_chirho.contains(&resolved_chirho) {
+                        continue;
+                    }
+                    let argument_chirho = self.subst_chirho.apply_chirho(argument_chirho);
+                    if let Some(previous_chirho) =
+                        arguments_chirho.insert(resolved_chirho, argument_chirho.clone())
+                        && previous_chirho != argument_chirho
+                    {
+                        invalid_chirho.push(*key_chirho);
+                        return None;
+                    }
+                }
+                Some((
+                    *key_chirho,
+                    scheme_chirho
+                        .quantified_chirho
+                        .iter()
+                        .map(|identity_chirho| {
+                            let argument_chirho = arguments_chirho
+                                .get(identity_chirho)
+                                .cloned()
+                                .unwrap_or(KindChirho::VarChirho(*identity_chirho));
+                            self.subst_chirho.apply_chirho(&argument_chirho)
+                        })
+                        .collect(),
+                ))
+            })
+            .collect();
+        (finished_chirho, invalid_chirho)
+    }
+
+    pub(super) fn instantiate_instance_class_kind_chirho(
+        &mut self,
+        name_chirho: &str,
+        binding_chirho: &KindBindingChirho,
+        declaration_index_chirho: usize,
+    ) -> KindChirho {
+        let (kind_chirho, arguments_chirho) = match binding_chirho {
+            KindBindingChirho::MonoChirho(kind_chirho) => {
+                (self.subst_chirho.apply_chirho(kind_chirho), HashMap::new())
+            }
+            KindBindingChirho::PolyChirho(scheme_chirho) => {
+                let (kind_chirho, arguments_chirho) =
+                    self.open_kind_scheme_parts_chirho(scheme_chirho, false);
+                (
+                    kind_chirho,
+                    scheme_chirho
+                        .quantified_chirho
+                        .iter()
+                        .copied()
+                        .zip(arguments_chirho)
+                        .collect(),
+                )
+            }
+        };
+        self.kind_class_instances_chirho.insert(
+            declaration_index_chirho,
+            PendingKindApplicationChirho {
+                head_chirho: name_chirho.to_owned(),
+                namespace_chirho: KindHeadNamespaceChirho::TypeChirho,
+                arguments_chirho,
+            },
+        );
+        kind_chirho
+    }
+
     /// Materialize one already-checked family occurrence. Explicit @ arguments
     /// have solved these same provider slots and must not be appended again.
     /// A mono/incomplete head is not a manufactured polymorphic contract.
@@ -432,79 +542,17 @@ impl KindInferCtxChirho {
                 heads_chirho.insert(name_chirho.to_owned(), binders_chirho);
             }
         }
-        let finish_occurrences_chirho = |occurrences_chirho: &HashMap<
-            SpanChirho,
-            PendingKindApplicationChirho,
-        >| {
-            let mut invalid_chirho = Vec::new();
-            let finished_chirho = occurrences_chirho
-                .iter()
-                .filter_map(|(span_chirho, occurrence_chirho)| {
-                    let binding_chirho = match occurrence_chirho.namespace_chirho {
-                        KindHeadNamespaceChirho::TypeChirho => self
-                            .env_chirho
-                            .lookup_binding_chirho(&occurrence_chirho.head_chirho),
-                        KindHeadNamespaceChirho::PromotedChirho => self
-                            .env_chirho
-                            .lookup_promoted_binding_chirho(&occurrence_chirho.head_chirho),
-                    };
-                    let Some(KindBindingChirho::PolyChirho(scheme_chirho)) = binding_chirho else {
-                        return None;
-                    };
-                    // Publishing an inferred head can replace a written
-                    // metavariable with its rigid representative. Re-key
-                    // captures through that identity substitution, never
-                    // through source spelling or equation order.
-                    let quantified_chirho: HashSet<_> =
-                        scheme_chirho.quantified_chirho.iter().copied().collect();
-                    let mut arguments_chirho = HashMap::new();
-                    for (identity_chirho, argument_chirho) in &occurrence_chirho.arguments_chirho {
-                        let resolved_chirho = if quantified_chirho.contains(identity_chirho) {
-                            *identity_chirho
-                        } else {
-                            match self
-                                .subst_chirho
-                                .apply_chirho(&KindChirho::VarChirho(*identity_chirho))
-                            {
-                                KindChirho::VarChirho(resolved_chirho)
-                                | KindChirho::RigidChirho(resolved_chirho) => resolved_chirho,
-                                _ => continue,
-                            }
-                        };
-                        if !quantified_chirho.contains(&resolved_chirho) {
-                            continue;
-                        }
-                        let argument_chirho = self.subst_chirho.apply_chirho(argument_chirho);
-                        if let Some(previous_chirho) =
-                            arguments_chirho.insert(resolved_chirho, argument_chirho.clone())
-                            && previous_chirho != argument_chirho
-                        {
-                            invalid_chirho.push(*span_chirho);
-                            return None;
-                        }
-                    }
-                    Some((
-                        *span_chirho,
-                        scheme_chirho
-                            .quantified_chirho
-                            .iter()
-                            .map(|identity_chirho| {
-                                let argument_chirho = arguments_chirho
-                                    .get(identity_chirho)
-                                    .cloned()
-                                    .unwrap_or(KindChirho::VarChirho(*identity_chirho));
-                                self.subst_chirho.apply_chirho(&argument_chirho)
-                            })
-                            .collect(),
-                    ))
-                })
-                .collect();
-            (finished_chirho, invalid_chirho)
-        };
         let (applications_chirho, mut invalid_chirho) =
-            finish_occurrences_chirho(&self.kind_applications_chirho);
+            self.finish_kind_occurrences_chirho(&self.kind_applications_chirho);
         let (equation_inputs_chirho, invalid_equations_chirho) =
-            finish_occurrences_chirho(&self.kind_equation_inputs_chirho);
+            self.finish_kind_occurrences_chirho(&self.kind_equation_inputs_chirho);
+        let (instance_arguments_chirho, invalid_instances_chirho) =
+            self.finish_kind_occurrences_chirho(&self.kind_class_instances_chirho);
+        invalid_chirho.extend(
+            invalid_instances_chirho
+                .into_iter()
+                .map(|index_chirho| module_chirho.decls_chirho[index_chirho].span_chirho()),
+        );
         invalid_chirho.extend(invalid_equations_chirho);
         for span_chirho in invalid_chirho {
             self.diagnostics_chirho
@@ -544,6 +592,20 @@ impl KindInferCtxChirho {
         }
         KindElaborationChirho {
             applications_chirho,
+            class_instances_chirho: instance_arguments_chirho
+                .into_iter()
+                .map(|(index_chirho, arguments_chirho)| {
+                    (
+                        index_chirho,
+                        (
+                            self.kind_class_instances_chirho[&index_chirho]
+                                .head_chirho
+                                .clone(),
+                            arguments_chirho,
+                        ),
+                    )
+                })
+                .collect(),
             wildcard_terms_chirho: self
                 .kind_wildcard_terms_chirho
                 .iter()

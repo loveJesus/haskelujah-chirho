@@ -1103,10 +1103,12 @@ parameter, while an inner method forall shadows only its own lexical name.
 flowchart LR
   CheckedClassChirho[Closed class kind and binder identities] --> ClassSeedChirho[Seed ordinary parameters then checked kind aliases]
   ClassSeedChirho --> MethodSchemeChirho[Convert method in the existing lexical map]
-  CheckedInstanceChirho[Check instance head and context] --> InstanceKindsChirho[Retain solved hidden arguments at instance span]
+  CheckedInstanceChirho[Check instance head and context] --> InstanceKindsChirho[Retain hidden arguments by declaration ordinal and class identity]
   MethodSchemeChirho --> SpecializeMethodChirho[Substitute instance parameters and hidden arguments]
   InstanceKindsChirho --> SpecializeMethodChirho
-  SpecializeMethodChirho --> RigidMethodChirho[Skolemize remaining method universals]
+  SpecializeMethodChirho --> RigidMethodChirho[Skolemize remaining source method universals]
+  WrittenInstanceSignatureChirho[Retained instance signature] --> CheckSignatureChirho[Check generality then scope its own rigid binders]
+  CheckSignatureChirho --> CheckBodyChirho
   RigidMethodChirho --> CheckBodyChirho[Check implementation body and restore local context]
 ```
 
@@ -1116,6 +1118,34 @@ checked hidden arguments do not become Type. Failed instance checks discard the
 occurrence before publishing elaboration. Per-method lexical environments are
 restored, but fresh-identity counters keep advancing. Method universals are
 rigid while checking a body; ordinary expression uses may instantiate a scheme.
+The source-name provenance travels with ClassDecl, including through imports.
+Synthetic inference holes are not source universals. An instance signature is
+retained by lowering, compared against the specialized class type, and then
+checked under its own quantified names so scoped annotations refer to that
+signature rather than independent class-method skolems. Full InstanceSigs
+predicate entailment remains unimplemented and is not claimed by this relation.
+
+Kind and type checking consume the same post-deriving declaration list. Its
+ordinal is the occurrence identity: generated declarations may share DUMMY
+spans, and two generated instances must not overwrite one another. Source spans
+remain diagnostic positions, not keys for this transport. Failed checking
+publishes no instance evidence. Promotion quotes in written instance heads
+belong to the following atom and reach the shared type parser unchanged.
+
+Builtin Type is canonicalized to TYPE (BoxedRep Lifted) in typing kind terms and
+type-synonym expansion. Family equations over TYPE r therefore match that kind
+without making rigid method variables flexible. A locally declared Type is not
+this builtin alias. The paired nominal-Type and method-parametricity negatives
+guard both boundaries.
+
+Import-name abbreviation counts associated family heads as local type names,
+including when nested under a class. Primitive representation constructors keep
+their exact defining identities when shadowed. Both family and synonym lookup
+honor that nominal evidence before trying a bare-name fallback: a local family
+named TYPE must not rewrite GHC.Prim.TYPE. The negative Proxy Type -> Proxy Bool
+stays rejected while the same module's explicitly qualified local TYPE family
+still reduces to Bool. These are executable driver controls, not an assertion
+that spelling alone distinguishes a builtin from a user declaration.
 
 Both the file-source graph and compile_modules transport ClassEnv. Otherwise an
 imported class may be absent when its implementation is checked, silently

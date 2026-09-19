@@ -42,6 +42,7 @@ impl InferCtxChirho {
     fn instance_method_kind_arguments_chirho(
         &mut self,
         class_decl_chirho: &ClassDeclChirho,
+        declaration_index_chirho: usize,
         span_chirho: SpanChirho,
         variables_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> Option<Vec<TyChirho>> {
@@ -51,7 +52,13 @@ impl InferCtxChirho {
         let arguments_chirho = self
             .kind_elaboration_chirho
             .as_ref()
-            .and_then(|elaboration_chirho| elaboration_chirho.applications_chirho.get(&span_chirho))
+            .and_then(|elaboration_chirho| {
+                elaboration_chirho
+                    .class_instances_chirho
+                    .get(&declaration_index_chirho)
+            })
+            .filter(|(name_chirho, _)| name_chirho == &class_decl_chirho.name_chirho)
+            .map(|(_, arguments_chirho)| arguments_chirho)
             .filter(|arguments_chirho| {
                 arguments_chirho.len() == class_decl_chirho.kind_vars_chirho.len()
             })
@@ -108,11 +115,23 @@ impl InferCtxChirho {
                 .lookup_chirho(method_var_chirho)
                 .is_none()
             {
-                // The instance chooses the class parameters, not a method's
-                // universal variables. This is checking, not an expression use
-                // that may instantiate `forall b. ... b ...` at Bool.
+                // Match ordinary signature checking: only a source binder is
+                // a universal promise. Synthetic inference holes (including
+                // the current builtin Generic representation) remain holes.
+                let Some(name_chirho) = class_decl_chirho
+                    .method_var_names_chirho
+                    .get(method_var_chirho)
+                    .filter(|name_chirho| !name_chirho.is_empty())
+                else {
+                    let fresh_chirho = self.fresh_var_chirho();
+                    method_subst_chirho.insert_chirho(*method_var_chirho, fresh_chirho);
+                    continue;
+                };
+                // Include the identity in the displayed base, not only the
+                // internal suffix, so distinct skolems never print as X ~ X.
+                let label_chirho = format!("{name_chirho}_{}", self.next_skolem_chirho);
                 let skolem_chirho = TyChirho::ForallVarChirho(skolem_name_chirho(
-                    "method_chirho",
+                    &label_chirho,
                     self.next_skolem_chirho,
                 ));
                 self.next_skolem_chirho += 1;
@@ -165,7 +184,8 @@ impl InferCtxChirho {
         &mut self,
         module_chirho: &ModuleChirho,
     ) {
-        for decl_chirho in &module_chirho.decls_chirho {
+        for (declaration_index_chirho, decl_chirho) in module_chirho.decls_chirho.iter().enumerate()
+        {
             let DeclChirho::InstanceDeclChirho {
                 class_chirho,
                 types_chirho,
@@ -196,6 +216,7 @@ impl InferCtxChirho {
                 .collect();
             let Some(instance_kind_tys_chirho) = self.instance_method_kind_arguments_chirho(
                 &class_decl_chirho,
+                declaration_index_chirho,
                 *instance_span_chirho,
                 &mut instance_var_map_chirho,
             ) else {
@@ -227,13 +248,47 @@ impl InferCtxChirho {
                     instance_scoped_tyvars_chirho.extend(instance_var_map_chirho.clone());
                 }
                 self.scoped_tyvars_chirho = instance_scoped_tyvars_chirho;
-                let (specialized_given_preds_chirho, specialized_expected_ty_chirho) = self
+                let (mut specialized_given_preds_chirho, mut specialized_expected_ty_chirho) = self
                     .instantiate_instance_method_expected_parts_chirho(
                         &class_decl_chirho,
                         method_scheme_chirho,
                         &instance_head_tys_chirho,
                         &instance_kind_tys_chirho,
                     );
+                if let Some(signature_chirho) = methods_chirho.iter().find_map(|binding_chirho| {
+                    if let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                        name_chirho,
+                        ty_chirho,
+                        ..
+                    } = binding_chirho
+                        && name_chirho.text_chirho() == method_name_chirho
+                    {
+                        Some(ty_chirho)
+                    } else {
+                        None
+                    }
+                }) {
+                    let (scheme_chirho, names_chirho) =
+                        self.ast_type_to_scheme_with_var_map_chirho(signature_chirho);
+                    // The written instance signature may be MORE general than
+                    // the class obligation. Check that relation flexibly, then
+                    // check its body against its own rigid, lexically scoped
+                    // binders rather than the class signature's independent ones.
+                    let (instance_ty_chirho, _) =
+                        self.instantiate_scheme_parts_chirho(&scheme_chirho);
+                    if let Err(error_chirho) = self.subsume_normalized_chirho(
+                        &instance_ty_chirho,
+                        &specialized_expected_ty_chirho,
+                        *span_chirho,
+                    ) {
+                        self.report_unify_error_chirho(&error_chirho);
+                    }
+                    let (instance_ty_chirho, instance_givens_chirho) =
+                        self.skolemize_scheme_parts_chirho(&scheme_chirho);
+                    self.scope_signature_for_body_chirho(signature_chirho, &names_chirho);
+                    specialized_expected_ty_chirho = instance_ty_chirho;
+                    specialized_given_preds_chirho.extend(instance_givens_chirho);
+                }
                 let expected_ty_chirho = self.normalize_ty_chirho(&specialized_expected_ty_chirho);
                 let (method_subst_chirho, inferred_ty_chirho) =
                     self.with_given_preds_chirho(specialized_given_preds_chirho, |self_chirho| {
