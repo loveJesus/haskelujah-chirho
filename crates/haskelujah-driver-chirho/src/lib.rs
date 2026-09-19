@@ -2726,7 +2726,7 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
 /// ids by (name, source-order ordinal). Names whose reference counts disagree
 /// between the two phases are dropped wholesale (conservative alignment).
 /// workflow: monadic-dispatch-chirho (evidence-threading)
-fn join_occurrence_evidence_chirho(
+pub(crate) fn join_occurrence_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
     method_occurrences_chirho: &std::collections::HashMap<
         haskelujah_core_chirho::CoreIdChirho,
@@ -2882,9 +2882,17 @@ fn join_occurrence_evidence_chirho(
     // which is its own brick.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
+        // UNSPANNED, not merely unidentified. An occurrence whose span is
+        // ambiguous (two occurrences sharing one span) or whose name did not
+        // match is not identified either, and it must NOT become eligible here:
+        // that would assign a proof by position to a reference the span join
+        // deliberately refused (gpt_chirho, room #24075, on a read of this file).
         let unidentified_chirho: Vec<haskelujah_core_chirho::CoreIdChirho> = ids_chirho
             .iter()
-            .filter(|id_chirho| !identified_occurrences_chirho.contains(id_chirho))
+            .filter(|id_chirho| {
+                !identified_occurrences_chirho.contains(id_chirho)
+                    && !reference_occurrence_spans_chirho.contains_key(id_chirho)
+            })
             .copied()
             .collect();
         let unconsumed_chirho: Vec<

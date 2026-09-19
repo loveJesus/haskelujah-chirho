@@ -137,8 +137,8 @@ pub struct InferResultChirho {
     pub type_families_chirho: TypeFamilyEnvChirho,
     /// Diagnostics collected during inference.
     pub diagnostics_chirho: DiagnosticBundleChirho,
-    /// Evidence-threading P2 (design-evidence-threading-chirho.md): per-name,
-    /// source-order occurrence records for references whose instantiated scheme
+    /// Evidence-threading P2 (design-evidence-threading-chirho.md): one record per
+    /// reference whose instantiated scheme
     /// carried class predicates, finalized through the module's composed
     /// substitution (unification + Report defaulting). Only records whose
     /// predicate type resolved to a CONCRETE head key survive finalization.

@@ -21,6 +21,7 @@ pub mod extensions_chirho;
 pub mod install_chirho;
 pub mod linear_chirho;
 pub mod module_search_chirho;
+pub mod occurrence_join_chirho;
 pub mod project_chirho;
 pub mod proptest_chirho;
 pub mod report_chirho;
