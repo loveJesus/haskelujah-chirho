@@ -21,6 +21,9 @@ flowchart TD
     pred_chirho --> use_chirho[Using the binding: instantiate_chirho]
     use_chirho --> wanted_chirho[deferred_equalities_chirho]
     unify_chirho[unify_normalized_chirho meets a family stuck on a variable] --> wanted_chirho
+    unify_chirho --> assign_chirho{Assign whole application to a metavariable?}
+    assign_chirho -->|yes, occurs check passes| subst_chirho
+    assign_chirho -->|no: would invert family arguments| wanted_chirho
     wanted_chirho --> retry_chirho[retry_deferred_equalities_chirho at equation end, given scope end, module end]
     retry_chirho -->|solved side| unify2_chirho[Unify and apply]
     retry_chirho -->|still stuck| wait_chirho[Keep waiting; dropped at module end]
@@ -37,6 +40,16 @@ flowchart TD
 - Deferral happens only when a family application is stuck on a *unification variable*
   (`ty_is_stuck_family_on_var_chirho`); a family stuck on a rigid variable is decided by the given
   rewrite rules or reported.
+- Structural-unification success is not evidence of injectivity.
+  `defer_stuck_family_equality_chirho` also defers `G a ~ G b` rather than deriving
+  `a ~ b`; assigning an entire application to a metavariable is still allowed when the
+  occurs check passes. The GHC 9.14.1 control is a type-changing record update (T10808)
+  where `G T1 = G T2 = Int` while another field changes Char to Bool: checking
+  `y = y r1` against the output record's field type meets `G t8 ~ G t7`, both stuck on
+  unsolved variables, and deriving `t8 ~ t7` forced the output back to `R T1`
+  (observed with an instrumented build, 2026-09-19). Carried from row 484's 327aaef7.
+  This is the noninjective default, not implementation of user-written
+  [injectivity annotations](https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/type_families.html#injective-type-families).
 - Rewrite rules are oriented from the side that cannot otherwise be simplified (a rigid variable
   or a family application) to the other side; two differing closed types (`Int ~ Bool`) also
   become a rule, which is how an insoluble given types its unreachable body.

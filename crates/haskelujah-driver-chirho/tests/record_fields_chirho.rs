@@ -28,6 +28,50 @@ main = do
   print (cChirho afterChirho)
 "#;
 
+// GHC 9.14.1 prints True then 2. Equal family results do not imply
+// equal family arguments: G T1 and G T2 both reduce to Int.
+const FAMILY_RECORD_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE TypeFamilies #-}
+module Main where
+type family FChirho aChirho
+type family GChirho aChirho
+data T1Chirho
+data T2Chirho
+type instance FChirho T1Chirho = Char
+type instance FChirho T2Chirho = Bool
+type instance GChirho T1Chirho = Int
+type instance GChirho T2Chirho = Int
+data RChirho aChirho = RChirho { xChirho :: FChirho aChirho, yChirho :: GChirho aChirho }
+beforeChirho :: RChirho T1Chirho
+beforeChirho = RChirho { xChirho = 'a', yChirho = 2 }
+afterChirho :: RChirho T2Chirho
+afterChirho = beforeChirho { xChirho = True, yChirho = yChirho beforeChirho }
+main :: IO ()
+main = do
+  print (xChirho afterChirho)
+  print (yChirho afterChirho)
+"#;
+
+#[test]
+fn record_update_does_not_invert_a_noninjective_family_chirho() {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let (_, machine_chirho) = eval_source_with_machine_chirho(
+        FAMILY_RECORD_SOURCE_CHIRHO,
+        &mut source_map_chirho,
+        "FamilyRecordChirho.hs",
+        None,
+    )
+    .expect("equal family results permit the independently typed input and output records");
+    assert_eq!(machine_chirho.io_output_chirho, "True\n2\n");
+}
+
+#[test]
+fn record_update_checks_a_deferred_family_after_the_output_type_is_known_chirho() {
+    let source_chirho = FAMILY_RECORD_SOURCE_CHIRHO.replace("xChirho = True", "xChirho = 'z'");
+    let error_chirho = check_chirho("BadFamilyRecordChirho.hs", &source_chirho)
+        .expect_err("F T2 is Bool, not Char, even though G T1 and G T2 coincide");
+    assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
+}
+
 #[test]
 fn rank_n_record_fields_are_checked_before_their_lambdas_are_inferred_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
