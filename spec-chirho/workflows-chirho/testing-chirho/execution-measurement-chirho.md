@@ -1,12 +1,103 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# Execution measurement — 2026-09-10
+# Execution measurement — 2026-09-19
+
+Frozen compiler/test source: `8d86bc95e63939e24fd00b9a16e79a8384d020f4`.
+Measured by HASKELUJAH/claude_chirho on macOS arm64 in the isolated lane worktree
+`haskelujah-workspaces-chirho/haskelujah-claude-chirho`.
+Subsequent evidence-only commits do not change the measured compiler or tests.
+
+## Results at their actual scope
+
+| Measurement | Result | What it establishes |
+| --- | --- | --- |
+| Complete Rust workspace | 3420 passed; zero failed, ignored, filtered or measured; cargo exit 0; zero compiler warnings | Unit, integration and doctest outcomes under the command below |
+| Driver library, included above | 1773/1773 | Includes the native round trips, with exact outputs and bounded children |
+| Curated suite, included above | green | Its committed manifest declares 514 GHC 9.14.1 execution oracles; this lane changes no oracle or input |
+| Declaration contexts through the STG machine | 4/4 exact GHC 9.14.1 outputs | Two superclasses; a two-member instance context; two user classes; an explicit instance forall |
+| Upstream should_compile | 885 of 938 | Typecheck acceptance only; two identical complete passes |
+| Upstream should_fail | 228 of 767 | Typecheck rejection only; two identical complete passes |
+
+Both axes' two complete passes agree exactly and neither has a timeout. Relative to
+3db3b6a6's lists, accept rises 882 -> 885 (T15079, T18831, tc124; no loss) and reject
+rises 221 -> 228 (TcNullaryTCFail, tcfail023, tcfail035, tcfail036, tcfail056,
+tcfail073, tcfail118; no loss). Each artifact gives the reason for every movement,
+including the one gain that is adjacent rather than matching (tcfail056, where GHC
+stops first at GHC-54721). Neither percentage measures execution correctness, and
+neither corpus is fully passing.
+
+## Reproduction and provenance
+
+```sh
+RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4
+```
+
+No test-name skip or filter was supplied. The summary parser pairs each target header
+with one result line in launch order and requires every libtest-announced count to
+agree with its own passed/failed/ignored sum: 78 targets, all consistent. Raw
+completed workspace log SHA-256:
+
+`431a44a669934a8f57aa0b8aea8fe7a713d21da8a9d185408b0411f82bd3273e`
+
+The explicitly rebuilt debug CLI used for all four upstream passes has SHA-256:
+
+`28c98d8c9b750776faf614b4b4dac2c9c421ef456b38c98b0664427fbf340c58`
+
+Its digest was asserted before and after every pass. The pure-shell runner used four
+workers and 15 seconds per input, with timeouts re-run alone; all four passes had zero
+timeouts. A separate exit-code audit of the same binary over both corpora recorded
+every file's exit code beside its error-text flag: every accepted file exits 0 with no
+error text, and every rejected file exits 1 with `error[E`. So no nonzero exit was
+counted as an acceptance, which the corpus detector alone would not have caught.
+
+An earlier tip of this lane (78b832ec) was measured first and lost T10808; it was not
+landed. The repair and its evidence are in the section below.
+
+## Declaration contexts, duplicate instances and noninjective families (8d86bc95)
+
+Lane `instance-obligations-chirho` (HASKELUJAH/claude_chirho), seven commits on main 6db522ad.
+Two of them carry row 484 hunks with provenance and gpt_chirho's agreement: the record checking
+of e028c1a3, and the T10808 half of its companion 327aaef7.
+
+- **Declaration contexts use the signature grammar.** Class, instance and standalone-deriving
+  contexts went through a token scanner. It kept the first constructor and every variable
+  (`(Eq a, Show a)` became `Eq a a`) and dropped any segment with `forall` or `=>`. They now
+  go through `type_from_flat_children_chirho` and `type_to_constraints_chirho`, in
+  `lower_chirho/contexts_chirho.rs`; the scanner is deleted and the parser root shrinks by
+  208 lines, from 17266 to 17058. On main, a class with two superclasses was rejected, and a two-member instance
+  context died at run time. Four exact GHC 9.14.1 outputs in `tests/declaration_contexts_chirho.rs`
+  now match through the interpreter.
+- **The flat grammar** scopes a leading `forall` over `=>` and `->` in its body, and treats
+  a depth-0 `::` as a kind annotation. Gains T15079, tc124 and T18831.
+- **Rank-n record fields** are checked against their field type (e028c1a3), which holds T18802.
+- **Duplicate instances (GHC-59692)** compare written spellings within one module. Five reject
+  gains for GHC's reason, one under GHC-43085 (tcfail118), and one adjacent (tcfail056,
+  where GHC stops first at GHC-54721).
+- **GHC's numeric hierarchy** replaces the report's in the seed: Num has no superclasses, and
+  Integral has Real and Enum.
+- **Qualified equality operators** follow the exports measured in GHC 9.14.1: `Q.~` works through
+  any qualifier, and `Q.~~` only where exported.
+- **A declaration header's inline result kind** is not under forall-or-nothing. This holds T23514c.
+- **Structural unification never inverts a type family** (327aaef7). This recovers T10808, and
+  no should_fail verdict moves.
+
+The first landing measurement of this lane, on 78b832ec, lost T10808. The operands at the
+failing call were then observed with an instrumented build that was never committed:
+`G t8 ~ G t7`, on two unsolved variables. The deferral guard declined it because the
+family-blind structural unifier succeeded by decomposing. This settled the repair site.
+Normalizing at the record site could not help, because `G t7` was already in normal form.
+The record hunk had been carried without its companion; carrying the companion repaired it.
+
+## Declaration-kind contracts and binder visibility (3db3b6a6)
+
+### The 3db3b6a6 measurement, as recorded on 2026-09-10
+
 
 Frozen compiler/test source: `3db3b6a69e30d59b60224346b541c245cc68b3e0`.
 Measured by HASKELUJAH/gpt_chirho on macOS arm64 in the isolated repair worktree.
 Subsequent evidence-only commits do not change the measured compiler or tests.
 
-## Results at their actual scope
+### Results at their actual scope (3db3b6a6)
 
 | Measurement | Result | What it establishes |
 | --- | --- | --- |
@@ -30,7 +121,7 @@ Neither percentage measures execution correctness; neither corpus is fully passi
 The workspace's eight bulk tracking tests being green is not a claim that all
 individual upstream inputs pass.
 
-## Reproduction and provenance
+### Reproduction and provenance (3db3b6a6)
 
 ```sh
 RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4
@@ -73,7 +164,6 @@ rechecked against the frozen tree. Its sibling read-only verifier reruns GHC;
 it never invents answers from Haskelujah output. The reference manifest excludes
 the 23 compile-only inputs and both upstream typecheck corpora.
 
-## Declaration-kind contracts and binder visibility (3db3b6a6)
 
 Inline result kinds and complete standalone signatures are retained separately,
 including when both are written. The former composes with the head; the latter
@@ -242,12 +332,22 @@ The tasklist records the reductions, failed intermediate gates and repair detail
 
 - The full workspace command emitted no Rust compiler warnings. A separate
   targeted all-target clippy run for AST, parser, naming, typing and driver exited
-  zero but emitted **685 warning messages**, including dependency/target duplicates.
-  None has a primary span on any owned source change relative to main0093dd40.
-  This targeted JSON count is not directly comparable with the older workspace
-  mixed-output line count. Existing lint debt remains: this is not the project's
-  zero-warning quality gate. Oversized files/directories remain structural debt;
-  no comprehensive split or lint waiver is claimed.
+  zero and emitted **462 distinct diagnostics** (685 raw records, including
+  dependency/target duplicates). None has a primary span on any of the 1997 lines
+  this lane changed across 21 files, measured against main 6db522ad. This targeted
+  JSON count is not directly comparable with the older workspace mixed-output line
+  count. Existing lint debt remains: this is not the project's zero-warning quality
+  gate. Oversized files/directories remain structural debt (this lane moves the
+  parser root from 17266 to 17058 lines and adds no source file over 320); no comprehensive
+  split or lint waiver is claimed.
+- A family equality left stuck at module end is still dropped rather than reported.
+  GHC reports it ("non-injective type family ... ambiguous"), and it rejects an
+  ambiguous signature such as `G a -> G a` at its own ambiguity check (GHC-83865)
+  where we report use-site mismatches instead. No corpus file moves either way today.
+- An instance of a first-order class at an APPLIED data type (`instance C (Box a)`)
+  still fails to dispatch at run time, and an instance method that calls its own
+  class's method at another type dispatches to the instance being defined. Both
+  predate this lane and are recorded in its tasklists.
 - Required licensed fixture slices run without the private package-cache symlink.
   Optional whole-package tests may return early if that cache is absent; a Rust
   pass from that path is not evidence of compiling the missing package.

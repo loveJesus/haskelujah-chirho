@@ -1,28 +1,59 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-10 UTC, AFTER declaration-kind contracts and head-binder visibility
-# code measured: 3db3b6a69e30d59b60224346b541c245cc68b3e0 (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-19 UTC, AFTER declaration contexts on the type grammar, duplicate
+#   instance declarations, qualified equality exports and noninjective family equalities
+# code measured: 8d86bc95e63939e24fd00b9a16e79a8384d020f4 (HASKELUJAH/claude_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
-#   measured binary: ../haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah
-# CLI SHA256: 9168f50b07a67d23a8ff45f4bb8f2a8690355b44e71ed9bd44dbf3a64d5ec703
-#   HEAD and binary digest asserted unchanged before and after all four corpus passes
-# method: haskelujah check <file>, timeout 15s/file, parallelism 4;
-#   timeouts re-run alone with a 60s cap; a rejection contains `error[E` or `panic`;
-#   unexpected nonzero exits fail the runner instead of silently counting as accepts
+#   measured binary: frozen copy of ../haskelujah-claude-chirho/target/debug/haskelujah
+# CLI SHA256: 28c98d8c9b750776faf614b4b4dac2c9c421ef456b38c98b0664427fbf340c58
+#   binary digest asserted unchanged before and after all four corpus passes
+# method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
+#   alone (none occurred); a rejection contains `error[E` or `panic`; a separate
+#   exit-code audit of the same binary found every accepted file exiting 0
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=221 WRONGLY-ACCEPTED=546 TOTAL=767
+# RESULT: CORRECTLY-REJECTED=228 WRONGLY-ACCEPTED=539 TOTAL=767
 # STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
 #   sets byte-identical to each other; exact delta from prior list below
-# QUOTE-AS: ~29% (221 of 767) — do not quote a third significant figure
+# QUOTE-AS: ~29% (228 of 767) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~94% (882 of 938).
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~94% (885 of 938).
 # Existing approximate labels are carried forward unchanged, with current counts.
 # L.J.'s uniform reporting-policy decision on truncation versus nearest remains
-# pending; the accept label now agrees under both, while the reject label differs.
+# pending; the accept label agrees under both, while the reject label differs:
+# 228 of 767 is 29.7%, ~29% truncated and ~30% nearest. Nearest would move this axis
+# a whole point for the first time since ~29% was set at 222 of 767 (2026-09-07);
+# that is the case the decision governs, so the carried label stays until it is made.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (cb939e35): 222 -> 221, +1 gained, -2 lost.
+# CHANGE SINCE LAST MEASUREMENT (3db3b6a6): 221 -> 228, +7 gained, zero lost.
+#   Duplicate instance declarations (GHC-59692) were never diagnosed. Five files are
+#   rejected for GHC's reason: TcNullaryTCFail, tcfail023, tcfail035, tcfail036,
+#   tcfail073. tcfail118 is the same defect where GHC reports the overlap at the
+#   deriving use (GHC-43085, naming the same two instances). tcfail056 is ADJACENT: a
+#   real duplicate, but GHC stops earlier at GHC-54721 ("`<=` is not a (visible)
+#   method of class `Eq`"), a rule not implemented here; tcfail077, its twin, stays
+#   accepted. Two instances are compared only under identical written spellings (a bare
+#   name is not an identity: Strict.StateT and Lazy.StateT are two types), and against
+#   Prelude instances only when the whole Prelude is implicitly in scope.
+#   The noninjective-family rule (327aaef7's T10808 half) changes no verdict here: the
+#   membership is byte-identical to the same lane measured without it (78b832ec).
+#   The count is verdict presence, not 228 independently matching GHC reasons.
+# WRONG-ACCEPT-LIST SHA256: f7a4fbab66b24ac14950915053261d2a6be5b3f8bf27dbd9fe405a1751698224
+#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
+# EXECUTION EVIDENCE: the same frozen source passes 3420 workspace tests across 78
+#   targets, zero failed/ignored/filtered, Cargo exit 0 and zero compiler warnings, under
+#   `RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4`
+#   (log SHA256 431a44a669934a8f57aa0b8aea8fe7a713d21da8a9d185408b0411f82bd3273e). That run
+#   includes driver `--lib` 1773/1773 with its native round trips, the curated suite (its
+#   committed manifest declares 514 GHC 9.14.1 execution oracles), and four exact GHC outputs
+#   for declaration contexts through the STG machine. An exit-code audit of this binary over
+#   both corpora found every accepted file exiting 0 with no error text and every rejected
+#   file exiting 1 with `error[E`. It does not establish generic record Eq/Show dispatch, an
+#   instance at an applied data type at run time, or any reporting of family equalities left
+#   ambiguous at module end. See workflows-chirho/testing-chirho/execution-measurement-chirho.md.
+#
+# PREVIOUS MEASUREMENT (3db3b6a6, 2026-09-10): 222 -> 221, +1 gained, -2 lost.
 #   T22560_fail_b leaves the wrongly-accepted set: a visible-forall signature does
 #   not match a head containing only an invisible binder. Ours reports generic
 #   declaration-kind arity E0300; GHC reports GHC-57916. This is not full invisible-
@@ -38,16 +69,6 @@
 #   no guard preserves a wrong reason. The count is verdict presence, not 221
 #   independently matching GHC reasons. Open rules/counterexamples are recorded in
 #   tasklists-chirho/26-09-10_03-49-tasklist-declaration_kinds-chirho.md.
-# WRONG-ACCEPT-LIST SHA256: 4063e8964e4ffc621a9df426227d2d56d01ff3cbdc943b042f962c707aae693c
-#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# EXECUTION EVIDENCE: the same frozen source passes 3387 workspace tests across
-#   75 targets, zero failed/ignored/filtered, Cargo exit 0, including 126 native round
-#   trips and curated 537/537: 514 execution oracles compared; all source hashes still
-#   match the earlier complete GHC 9.14.1 reference (not rerun in full in this lane);
-#   23 compile-only inputs. Three new shared-source programs match fresh GHC oracles
-#   on STG/LLVM/Cranelift. This does not establish generic record Eq/Show dispatch,
-#   full polymorphic kind schemes or complete TypeAbstractions checking. See
-#   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
 #
 # PREVIOUS MEASUREMENT (cb939e35): accept 879 -> 880 (+T14761c, no loss),
 #   reject 223 -> 222 (-T14761a, no gain). Flat [] constructor application and nested
@@ -92,7 +113,7 @@
 # (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
 # this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# ---- the 546 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 539 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -469,7 +490,6 @@ TcCoercibleFail.hs
 TcCoercibleFail2.hs
 TcCoercibleFail3.hs
 TcNoNullaryTC.hs
-TcNullaryTCFail.hs
 TcStaticPointersFail02.hs
 TcStaticPointersFail03.hs
 Tcfail186_Help.hs
@@ -519,12 +539,9 @@ tcfail018.hs
 tcfail019.hs
 tcfail020.hs
 tcfail021.hs
-tcfail023.hs
 tcfail027.hs
 tcfail030.hs
 tcfail032.hs
-tcfail035.hs
-tcfail036.hs
 tcfail037.hs
 tcfail038.hs
 tcfail040.hs
@@ -536,12 +553,10 @@ tcfail046.hs
 tcfail047.hs
 tcfail050.hs
 tcfail054.hs
-tcfail056.hs
 tcfail065.hs
 tcfail067.hs
 tcfail071.hs
 tcfail072.hs
-tcfail073.hs
 tcfail075.hs
 tcfail076.hs
 tcfail077.hs
@@ -569,7 +584,6 @@ tcfail109.hs
 tcfail114.hs
 tcfail116.hs
 tcfail117.hs
-tcfail118.hs
 tcfail119.hs
 tcfail121.hs
 tcfail122.hs

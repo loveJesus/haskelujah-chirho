@@ -91,6 +91,13 @@ path and are tested on their own:
   also swallowed every `::` after the first, so the annotation never reached the
   grammar; only the first `::` separates field names from the field type.
 
+Two consumers had been living on the mis-scoped forall and changed with it. The naming phase
+walks a declaration header's inline result kind (`data P5 :: forall a . k -> Type`) with the
+implicit policy: GHC 9.14.1 does not apply forall-or-nothing there (it does to value signatures and
+to standalone kind signatures, GHC-76037). Record construction and update hand the field's type to
+lambda checking, because a field such as `(forall a. a -> a) -> (Int, b)` is now really rank-2
+(`rank-n-visible-type-application-chirho.md`).
+
 An instance's leading `forall a b.` binds its variables. It is stripped from the
 context AND from the head (without a context the telescope sits in front of the
 class name, and the class used to be lost). It is never a quantified given.

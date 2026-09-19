@@ -24,6 +24,17 @@ Per brick inside main's wrongly-accepted list: duplicates 5, superclass obligati
 - [ ] 5. Functional-dependency conflicts and coverage (GHC-46208, GHC-21572) — heads and fundeps only.
 - [ ] 6. Landing of bricks 0 and 1: driver `--lib`, integration suites, curated, both axes two passes, per-file reasons, artifacts, DB row (writer lease coordinated).
 
+## Added 2026-09-18 after the context brick's diagnostic pass
+
+- [ ] 7. **Instance members must belong to the class** (GHC-54721 "`op2` is not a (visible) method of
+      class `Foo`"): tcfail077 is wrongly accepted; tcfail056 is rejected today only through its real
+      duplicate instance, while GHC stops at this rule first. The other four GHC-54721 files are
+      associated TYPES (AssocTyDef01/07/08/09) and belong to the associated-family lane.
+- [ ] 8. **Typing consumers of a faithful context** (precondition of bricks 2 and 3): keep every
+      argument of an instance-context constraint (`Convert a String` still behaves as `Convert a`, so
+      `r3_concrete_argument` dies at run time), skip `~`/`~~`, `?`-marked and quantified premises
+      explicitly, and store superclass predicates with their arguments (the kit has the last part).
+
 ## Found on the way (not claimed by this lane)
 - Runtime, main, mine to take next: inside an instance body, a use of the class's OWN method at another type is dispatched to the instance being defined. `instance Num V where V a + V b = V (a + b)` dies with "no matching alternative for tag 0"; the same body through helper functions, through a user class, or without the inner call runs. Same failure for `compare x y` inside `instance Ord a => Ord (Box a)`.
 - Runtime, main: `bigger :: Real a => a -> a -> Bool; bigger x y = x > y` at Double runs an Int comparison primop (`GtIntChirho: expected Int#`): `>` under a `Real a` context is not projected from the Real dictionary.

@@ -1,28 +1,62 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-10 UTC, AFTER declaration-kind contracts and head-binder visibility
-# code measured: 3db3b6a69e30d59b60224346b541c245cc68b3e0 (HASKELUJAH/gpt_chirho)
+# measured: 2026-09-19 UTC, AFTER declaration contexts on the type grammar, duplicate
+#   instance declarations, qualified equality exports and noninjective family equalities
+# code measured: 8d86bc95e63939e24fd00b9a16e79a8384d020f4 (HASKELUJAH/claude_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
-#   measured binary: ../haskelujah-gpt-kind-signatures-chirho/target/debug/haskelujah
-# CLI SHA256: 9168f50b07a67d23a8ff45f4bb8f2a8690355b44e71ed9bd44dbf3a64d5ec703
-#   HEAD and binary digest asserted unchanged before and after all four corpus passes
-# method: haskelujah check <file>, timeout 15s/file, parallelism 4;
-#   timeouts re-run alone with a 60s cap; a rejection contains `error[E` or `panic`;
-#   unexpected nonzero exits fail the runner instead of silently counting as accepts
+#   measured binary: frozen copy of ../haskelujah-claude-chirho/target/debug/haskelujah
+# CLI SHA256: 28c98d8c9b750776faf614b4b4dac2c9c421ef456b38c98b0664427fbf340c58
+#   binary digest asserted unchanged before and after all four corpus passes
+# method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
+#   alone (none occurred); a rejection contains `error[E` or `panic`; a separate
+#   exit-code audit of the same binary found every accepted file exiting 0
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   (find-based; T16234/ included)
 #
-# RESULT: PASS=882 FAIL=56 TOTAL=938
+# RESULT: PASS=885 FAIL=53 TOTAL=938
 # STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
 #   sets byte-identical to each other; exact delta from prior list below
-# QUOTE-AS: ~94% (882 of 938) — do not quote a third significant figure
+# QUOTE-AS: ~94% (885 of 938) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (221 of 767).
+# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (228 of 767).
 # Existing approximate labels are carried forward unchanged, with current counts.
 # L.J.'s uniform reporting-policy decision on truncation versus nearest remains
-# pending; the accept label now agrees under both, while the reject label differs.
+# pending; the accept label agrees under both, while the reject label differs:
+# 228 of 767 is 29.7%, ~29% truncated and ~30% nearest. Nearest would move this axis
+# a whole point for the first time since ~29% was set at 222 of 767 (2026-09-07);
+# that is the case the decision governs, so the carried label stays until it is made.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (cb939e35): 880 -> 882, +2 gained, zero lost.
+# CHANGE SINCE LAST MEASUREMENT (3db3b6a6): 882 -> 885, +3 gained, zero lost.
+#   T15079, tc124: a leading `forall` now scopes over the `=>` and `->` in its body
+#     (flat type grammar; the record-field lowering bug open since 2026-08-02), so a
+#     rank-n record field is lowered as written, and record construction and update
+#     check the field value against that rank-n type (row 484's e028c1a3, carried).
+#   T18831: `(Type :: Type)`: a depth-0 `::` inside a group is a kind annotation, not
+#     an application of the type to its kind.
+#   Held, each lost by a first trial and repaired for GHC's reason: T18802 (a rank-2
+#     field update needs the carried record checking); T23514c (`data P5 :: forall a
+#     . k -> Type`: a header's inline result kind is not under forall-or-nothing;
+#     GHC 9.14.1 probes); T10808 (type-changing update where G T1 = G T2 = Int: `G t8 ~
+#     G t7` on two unsolved variables is deferred, never decomposed; row 484's 327aaef7).
+#   Class, instance and standalone-deriving contexts are lowered with the signature
+#     grammar (tuple members, applied and multi-argument predicates, equalities, explicit
+#     instance foralls). No file moves for that alone; its proof is exact GHC 9.14.1
+#     outputs in tests/declaration_contexts_chirho.rs.
+# FAILURE-LIST SHA256: 879cacad3900068f525cfa90c548a46eb81c1ce17dc90755b6ee285c7c9ff30e
+#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
+# EXECUTION EVIDENCE: the same frozen source passes 3420 workspace tests across 78
+#   targets, zero failed/ignored/filtered, Cargo exit 0 and zero compiler warnings, under
+#   `RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4`
+#   (log SHA256 431a44a669934a8f57aa0b8aea8fe7a713d21da8a9d185408b0411f82bd3273e). That run
+#   includes driver `--lib` 1773/1773 with its native round trips, the curated suite (its
+#   committed manifest declares 514 GHC 9.14.1 execution oracles), and four exact GHC outputs
+#   for declaration contexts through the STG machine. An exit-code audit of this binary over
+#   both corpora found every accepted file exiting 0 with no error text and every rejected
+#   file exiting 1 with `error[E`. It does not establish generic record Eq/Show dispatch, an
+#   instance at an applied data type at run time, or any reporting of family equalities left
+#   ambiguous at module end. See workflows-chirho/testing-chirho/execution-measurement-chirho.md.
+#
+# PREVIOUS MEASUREMENT (3db3b6a6, 2026-09-10): 880 -> 882, +2 gained, zero lost.
 #   T11811 and T20873: written declaration result kinds retain their head binders;
 #   an inline result tail is no longer treated as the complete kind. Fresh GHC
 #   9.14.1 accepts both unchanged inputs. The first trial lost three valid files;
@@ -32,16 +66,6 @@
 #   contracts. These are behavioral controls, not five upstream corpus gains.
 #   Companion movement is +T22560_fail_b, -tcfail225/-ExplicitSpecificity8; its
 #   header distinguishes a generic-arity rejection from the missing GHC rules.
-# FAILURE-LIST SHA256: e56823120d250c62966e0befef42c336663a9d28ce0dd3f08d55f51a6094c078
-#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# EXECUTION EVIDENCE: the same frozen source passes 3387 workspace tests across
-#   75 targets, zero failed/ignored/filtered, Cargo exit 0, including 126 native round
-#   trips and curated 537/537: 514 execution oracles compared; all source hashes still
-#   match the earlier complete GHC 9.14.1 reference (not rerun in full in this lane);
-#   23 compile-only inputs. Three new shared-source programs match fresh GHC oracles
-#   on STG/LLVM/Cranelift. This does not establish generic record Eq/Show dispatch,
-#   full polymorphic kind schemes or complete TypeAbstractions checking. See
-#   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
 #
 # PREVIOUS MEASUREMENT (cb939e35): accept 879 -> 880 (+T14761c, no loss),
 #   reject 223 -> 222 (-T14761a, no gain). Flat [] constructor application and nested
@@ -78,7 +102,7 @@
 # (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
 # this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# ---- the 56 files we FAIL to accept (GHC accepts these); all deterministic ----
+# ---- the 53 files we FAIL to accept (GHC accepts these); all deterministic ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -95,14 +119,12 @@ T13822.hs
 T13848.hs
 T14451.hs
 T14590.hs
-T15079.hs
 T15370.hs
 T16188.hs
 T17594a.hs
 T17772.hs
 T18036b.hs
 T18252.hs
-T18831.hs
 T20443a.hs
 T20922.hs
 T21010.hs
@@ -126,7 +148,6 @@ T5490.hs
 T6018.hs
 TcSpecPragmas.hs
 UnliftedNewtypesGnd.hs
-tc124.hs
 tc134.hs
 tc135.hs
 tc192.hs

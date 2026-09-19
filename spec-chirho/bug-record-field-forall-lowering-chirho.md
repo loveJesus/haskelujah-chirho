@@ -2,7 +2,14 @@
 # Bug: record-field lowering splits on `=>` before lifting a leading `forall`
 
 **Found:** 2026-08-02, while landing the validity-walker lane (lane 4).
-**Status:** open. Routed around, not fixed — the validity walker skips record fields because of it.
+**Status:** lowering FIXED 2026-09-18 on lane `instance-obligations-chirho` (commit bbdf98b4,
+`forall_from_flat_children_chirho`: a leading forall now scopes over the `=>` and `->` in its body);
+landing pends the corpus gates. The two routed-around consumers are still routed around and are
+separate, verdict-moving bricks: the record arm of the validity walker, and the naming guard
+`record_field_type_scope_reliable_chirho`. Measured consequences of the fix: gains T15079, tc124
+(rank-n record fields) and T18831; T18802 needed record fields checked against their rank-n type
+(carried from row 484); T23514c needed the naming rule that a header's inline result kind is not
+under forall-or-nothing. See `tasklists-chirho/26-09-18_12-10-tasklist-declaration_contexts-chirho.md`.
 **Severity:** latent today (it manufactures an AST that does not match the source), but it
 blocks a real GHC-compatibility check and mis-scopes rank-N record fields.
 

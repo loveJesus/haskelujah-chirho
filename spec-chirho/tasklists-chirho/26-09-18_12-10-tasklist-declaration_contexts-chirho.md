@@ -47,17 +47,17 @@ Signature contexts do NOT have this defect: they are lowered as a type and conve
 
 ## Bricks
 
-- [ ] 1. `contexts_chirho.rs` + move `type_to_constraints_chirho`/`collect_app_class_chirho`; delete the
+- [x] 1. `contexts_chirho.rs` + move `type_to_constraints_chirho`/`collect_app_class_chirho`; delete the
       scanner; three callers unchanged in shape.
-- [ ] 2. Flat grammar: forall-first, `::` annotation. Tests in `flat_type_tests_chirho.rs`; the existing
+- [x] 2. Flat grammar: forall-first, `::` annotation. Tests in `flat_type_tests_chirho.rs`; the existing
       kind-signature test that pinned `(forall f. Type -> Type)` moves to GHC's scoping.
-- [ ] 3. Instance and standalone-deriving: strip the leading forall telescope (context AND head).
-- [ ] 4. Parser tests: tuple members kept; concrete and multi-argument predicates; applications as
+- [x] 3. Instance and standalone-deriving: strip the leading forall telescope (context AND head).
+- [x] 4. Parser tests: tuple members kept; concrete and multi-argument predicates; applications as
       arguments; equality; synonym application; kind-annotated argument; explicit instance forall (with
       and without a context); nested quantified given in class and instance contexts; standalone deriving.
-- [ ] 5. Driver tests with GHC's own outputs for every dictionary claim (two-constraint instance context
+- [x] 5. Driver tests with GHC's own outputs for every dictionary claim (two-constraint instance context
       using both dictionaries; two-superclass class projecting the second superclass).
-- [ ] 6. Gates: parser, typing, core, driver `--lib`, driver integration, curated; then both corpus axes
+- [x] 6. Gates: parser, typing, core, driver `--lib`, driver integration, curated; then both corpus axes
       twice with per-file reasons. No landing on an accept-axis regression.
 - [ ] 7. Workflow doc `language-features-chirho/flat-type-syntax-chirho.md`, DB row, room report.
 
@@ -85,6 +85,82 @@ Signature contexts do NOT have this defect: they are lowered as a type and conve
 - **Pre-existing red, not mine**: `proptest_chirho::parser_handles_nested_parens_chirho` overflows the
   default 2 MB test stack in a debug build on main 6db522ad (verified with my parser edits stashed and a
   visible rebuild). The parser suite is run with `RUST_MIN_STACK=16777216` until that is repaired.
+
+## First diagnostic corpus pass (bbdf98b4, one pass per axis, zero timeouts)
+
+| axis | main | lane | gained | lost |
+|---|---|---|---|---|
+| should_compile | 882 | 883 | T15079, T18831, tc124 | T18802, T23514c |
+| should_fail | 221 | 229 | TcNullaryTCFail, tcfail023, tcfail035, tcfail036, tcfail056, tcfail073, tcfail118, T15807 | none |
+
+- The three accept gains are the repaired grammar itself: rank-n record fields (T15079, tc124) and
+  `(Type :: Type)` (T18831). `spec-chirho/bug-record-field-forall-lowering-chirho.md` (open since
+  2026-08-02) asked for exactly the forall-first move; its follow-ups (re-enable the record arm of the
+  validity walker; retire `record_field_type_scope_reliable_chirho`) are separate, verdict-moving bricks.
+- Both losses had passed on main for the wrong reason and are repaired for GHC's reason:
+  **T23514c** `data P5 :: forall a . k -> Type`: a declaration header's inline result kind is not under
+  forall-or-nothing (8 GHC probes in `result-kind-scope/`; a value signature and a STANDALONE kind
+  signature are, GHC-76037; `data T :: forall a. a -> b` is rejected by GHC for its return kind,
+  GHC-55233, which an old naming test had pinned as a scope error). **T18802**: the record field is
+  rank-2 for the first time, so construction/update must hand the field type to lambda checking; the
+  three record hunks of row 484's e028c1a3 (gpt_chirho) are carried unchanged with their tests.
+  Still rejected on both branches, GHC accepts: a rank-n argument of a POSITIONAL constructor applied
+  to a lambda.
+- Reject gains by reason: five GHC-59692 exact; tcfail118 same defect under GHC-43085 (derived +
+  written `Eq Foo`, GHC reports the overlap at the deriving use and names the same two instances);
+  tcfail056 ADJACENT (a real duplicate, but GHC stops earlier at GHC-54721 "`<=` is not a (visible)
+  method of class `Eq`"; we have no such rule, tcfail077 is its twin); T15807 was a WRONG-reason gain
+  from the forall-or-nothing misfire and is gone after the naming repair. Expect +7.
+
+## First landing measurement (78b832ec, frozen af676aad, two byte-identical passes per axis, zero timeouts)
+
+| axis | main | lane | gained | lost |
+|---|---|---|---|---|
+| should_compile | 882 | 884 | T15079, T18831, tc124 | **T10808** |
+| should_fail | 221 | 228 | TcNullaryTCFail, tcfail023, tcfail035, tcfail036, tcfail056, tcfail073, tcfail118 | none |
+
+claude2_chirho reproduced the same 54 failing names with an independently written runner (#23500,
+#23792). **Not landable**: T10808 is an accept-axis loss.
+
+- **Observed mechanism** (2026-09-19, local instrumented build, never committed; binary sha256
+  13fbd3e3..., evidence
+  `/private/tmp/claude-501/-Volumes-ENC-4TB-WDB-CHIRHO-dev-aleluya-personal-aleluya-haskelujah-chirho/3bea0419-e38e-4eae-88bd-cfdd63bd68c6/scratchpad/lane5/fameq-chirho/manifest-chirho.md`).
+  Checking the updated field
+  `y = y r1` against the OUTPUT record's field type meets `G t8 ~ G t7`: two family applications stuck on
+  two distinct unsolved variables (`t7` is the output record's parameter, `t8` the selector's). The
+  stuck-family guard in `unify_normalized_chirho` classifies the pair as stuck, then asks the
+  family-blind structural unifier (`unify_chirho(..).is_err()`), which succeeds by decomposing; so the
+  guard does not defer and the application arm derives `t8 ~ t7`, inverting a non-injective family.
+  `out_ty` is already in normal form (`G t7`), so normalizing it at the record site cannot help.
+- **Provenance.** gpt_chirho's e028c1a3 (record checking, carried here as 192a1ce1) was followed 24
+  minutes later by 327aaef7, which recovered T10808 by deferring `G a ~ G b` instead of deriving
+  `a ~ b`. The carry omitted that companion. With that rule toggled on, probes A/F/T10808 accept
+  (GHC's verdict) and D, P3, P4, P5 reject with byte-identical diagnostics.
+- **Repair, agreed by gpt_chirho (#23806; split verified by claude2_chirho, #23805):** 327aaef7's T10808
+  half was carried exactly as commit 8d86bc95 (`defer_stuck_family_equality_chirho` + its call site, its
+  two driver tests, its workflow paragraph).
+- **Residual, not this repair:** a deferred family equality still stuck at module end is dropped, where
+  GHC reports it ("non-injective type family ... ambiguous"). P3 shows the related gap: GHC rejects the
+  signature `GChirho a -> GChirho a` in its ambiguity check (GHC-83865); we report use-site mismatches.
+
+## Landing measurement (8d86bc95, frozen CLI 28c98d8c, two byte-identical passes per axis, zero timeouts)
+
+| axis | main | lane | gained | lost |
+|---|---|---|---|---|
+| should_compile | 882 | 885 | T15079, T18831, tc124 | none |
+| should_fail | 221 | 228 | TcNullaryTCFail, tcfail023, tcfail035, tcfail036, tcfail056, tcfail073, tcfail118 | none |
+
+- Binary digest identical before and after all four passes; claude2_chirho verified the membership of
+  all four lists against main's committed artifacts (#23870).
+- The should_fail reject membership is byte-identical to the 78b832ec measurement taken WITHOUT the
+  carried family rule, so that rule moves no reject verdict in the 767 and exactly one accept verdict.
+- Focused gates on 8d86bc95: parser 343, naming 136, typing 344, core 128; driver integration 190 across
+  18 targets; curated ok; driver `--lib` 1772/1773, the miss being the euler1 scale test timing out at
+  its 60 s deadline under load average ~38 (it passes alone in 27.8 s, and passed inside the complete
+  workspace run).
+- Label: `~29% (228 of 767)` is carried forward under the artifacts' interim rule. Nearest rounding would
+  now read ~30%, the first whole-point move on this axis since the label was set at 222 of 767. L.J.'s
+  truncation-versus-nearest decision governs it and is still open.
 
 ## Found on the way, NOT repaired here
 
