@@ -62,12 +62,25 @@ Four probes against GHC 9.14.1, predictions written first, evidence in
 | a two-argument given whose SECOND argument selects the instance | `3@z` | rc=0 and EMPTY output |
 | a quantified given in an instance context | `built` | rc=0 and EMPTY output |
 
-Two of the four exit 0 and print nothing: a silent wrong answer, which a `check`-only corpus gate cannot
-see. Brick 8 is necessary for all four and sufficient for none, because `generate_instance_dicts_chirho`
-(`core-chirho/src/dict_chirho/instance_chirho.rs:673`) skips every instance that has a context, except
-the one list-head path in `conditional_chirho.rs`, and keys dictionaries by the RENDERED head type.
+**Corrected 2026-09-19 evening** (gpt_chirho #23958, verified here by byte count before accepting; my
+first reading was loose and claude2_chirho relayed it):
 
-**Architecture decision to surface, not to take quietly (for L.J. and gpt_chirho):** the GHC translation
+- c3 prints exactly one byte, `\n`, not zero. Removing its SIGNATURE context makes it print `3@z`
+  correctly, and both its instances are ground, so its route is the signature-context evidence capture
+  dropping the extra type arguments, not instance dictionaries.
+- c4 never demands its witness (GHC prints `built` without forcing), so it is a laziness control only.
+  The finite witness-demanding control is c4b: `FixChirho LeafChirho` fully forced, where GHC prints
+  `F(L)` and we print `LeafChirho`, ignoring the user's own `Show (FixChirho f)` instance. A wrong
+  answer, not silence.
+- The claim "brick 8 is necessary for all four and sufficient for none" is WITHDRAWN. It was traced for
+  c1 only, where `generate_instance_dicts_chirho`
+  (`core-chirho/src/dict_chirho/instance_chirho.rs:673`) skips every instance carrying a context except
+  the one list-head path in `conditional_chirho.rs`. Each route gets named when it is traced.
+
+**Decision taken by gpt_chirho (#23958), under L.J.'s continue-development delegation:** proceed, in this
+lane, with complete predicate evidence through typing -> driver -> Core first, then general instance
+dictionary functions built on the Core lambdas and applications that already exist, in focused modules,
+with a checkpoint before the change and no growth of `rewrite_chirho.rs`. The GHC translation
 is dictionary ABSTRACTION — `instance C a => D [a]` becomes a dictionary FUNCTION
 `$fD[] :: DictC a -> DictD [a]`, applied at the use site — whereas this pass builds constant dictionaries
 keyed by a rendered type string. Repairing the four probes for the right reason means introducing
@@ -75,7 +88,78 @@ dictionary functions, which is a redesign of a pass whose files are already 72 K
 (`rewrite_chirho.rs`). The corpus-visible work (bricks 2 and 3, 14 + 7 files on the reject axis) does not
 need it; these four runtime programs do. Sequence and scope are L.J.'s call.
 
+### The Show bypass, measured 2026-09-19 (main 16902b06, CLI 965f2d07)
+
+A user-written `Show` instance is bypassed whenever the constructor has a FIELD. Measured, with GHC
+9.14.1 beside each:
+
+| source | GHC | ours |
+|---|---|---|
+| `data PChirho = PChirho`, `instance Show PChirho` | `pp` | `pp` (correct) |
+| `data WChirho = WChirho Int`, `instance Show WChirho` | `W3` | `WChirho 3` |
+| `newtype VChirho = VChirho Int`, same instance | `V3` | `3` |
+| `data QChirho a = QChirho a`, `instance Show a => Show (QChirho a)` | `Q<3>` | `QChirho 3` |
+| the same one-field shape with a USER class instead of Show | `W3` | `W3` (correct) |
+| a nullary and a one-field type in ONE module, both with Show instances | `pp` / `W3` | run-time crash, "no matching alternative for tag 66" |
+
+So it is not contexts (the contextless monomorphic case fails), not newtypes (`data` behaves the same),
+and not the general dictionary machinery (a user class at the same shape is correct). claude2_chirho
+withdrew "the context is the whole discriminator" on this evidence (#23968), and the 09-18 note that
+`instance Num V` dies with "no matching alternative for tag 0" does not reproduce: both forms now exit 0
+printing the wrong value, which is the same bypass rather than a self-reference failure.
+
+### Traced, and repaired: the evidence join was positional
+
+The user's instance body IS generated and its dictionary IS correct. The occurrence was rewritten before
+any dictionary path ran, to the binding named by the WRONG evidence.
+
+- The desugarer mints one occurrence id per free reference of a class method in DECLARATION order.
+- The checker bumps its per-name occurrence counter in INFERENCE-VISIT order, and instance method bodies
+  are inferred last (phase 3e). Its own doc comment claimed "source order"; it was visit order.
+- `join_occurrence_evidence_chirho` matched the two sequences BY POSITION, guarded only by a count.
+
+So with two `show` occurrences in one module, `main`'s took the instance body's evidence (`Int`, from the
+inner `show n`) and the body took `main`'s. **One line of source movement flips the answer**: the same
+program prints `W3` with `main` declared first and `WChirho 3` with the instance first. Every
+discriminator proposed that day (context, arity, newtype, quantification) merely correlated with "this
+method name occurs more than once in the module".
+
+**The repair** is the identity principle one level down: join by SOURCE SPAN, not by position. The
+desugarer now records a span for the occurrences it mints for opted-in methods (they had none: an early
+return dropped it), the checker's `MethodOccurrenceRecordChirho` carries the span of the reference it
+describes, and the driver joins on that. Measured after the repair, each against GHC 9.14.1: the
+declaration-order pair both print `W3`; the newtype prints `V3`; the nullary-plus-one-field module prints
+`pp`/`W3` where it used to CRASH ("no matching alternative for tag 66"); the `where`-bound inner
+reference prints `W3` where it used to die ("tag 0"); two instances with two uses print `W3Z4`.
+Tests: `tests/method_occurrence_evidence_chirho.rs`.
+
+**The positional path is not gone, and here is exactly what holds it, measured three ways.**
+
+1. Delete it outright: 19 driver tests red, all DESUGARED shapes (do-notation binds, qualified do,
+   mdo/rec, deriving functor and via, MPTC, fundeps, mutual recursion, six native round trips). Traced
+   cause: in such a program EVERY method-occurrence span is `None`, because the desugarer mints those
+   occurrences at sites that never recorded one.
+2. Restrict it to names whose occurrences ALL lack spans (no mixing): 2 native round trips still red, and
+   precisely: `print (id (MixChirho 2 True))` compiles to a binary printing `MixChirho 2 1`. The derived
+   `Show`'s rendering of a Bool FIELD is a generated occurrence under a name that also has
+   span-identified ones. **Main's native path prints `MixChirho 2 True` correctly**, so that restriction
+   CAUSED a regression rather than revealing one (claude2_chirho asked the question that settles this).
+3. The landed shape: the span join marks each record it CONSUMES and each occurrence it IDENTIFIES; the
+   positional path then matches only unidentified occurrences against unconsumed records, with the count
+   guard comparing those two filtered lists rather than the totals. So one proof can never serve two
+   references, and an ambiguous or duplicated span cannot fall through into a positional assignment
+   (gpt_chirho's two boundaries, room #24056). Both families above stay correct.
+
+It goes away when every mint site carries its own occurrence PROVENANCE. A source span alone is not
+enough: one do or deriving node can create several references sharing a span, so the identity has to be
+shared with the node that created them, never re-enumerated downstream (gpt_chirho, #24056).
+
+**Still wrong after this repair**, and now isolated to contexts: `instance Show a => Show (QChirho a)`
+prints `QChirho 3` where GHC prints `Q<3>`, and the quantified-constraint control prints `LeafChirho`
+where GHC prints `F(L)`. That is the contextful-instance dictionary work, unchanged by the join.
+
 ## Found on the way (not claimed by this lane)
+- CLI, measured 2026-09-19 while building the multi-module control: `haskelujah check ./Main.hs` resolves sibling modules in the same directory, and `haskelujah run ./Main.hs` does NOT (E0102 "could not find module" for each import, with either a relative or an absolute path). The runtime control therefore has to go through the driver's multi-module entry point rather than the CLI, and the CLI gap is its own repair.
 - Runtime, main, mine to take next: inside an instance body, a use of the class's OWN method at another type is dispatched to the instance being defined. `instance Num V where V a + V b = V (a + b)` dies with "no matching alternative for tag 0"; the same body through helper functions, through a user class, or without the inner call runs. Same failure for `compare x y` inside `instance Ord a => Ord (Box a)`.
 - Runtime, main: `bigger :: Real a => a -> a -> Bool; bigger x y = x > y` at Double runs an Int comparison primop (`GtIntChirho: expected Int#`): `>` under a `Real a` context is not projected from the Real dictionary.
 - Native, main (gpt's backends): for valid dictionary-passing numeric programs the interpreter matches GHC while Cranelift prints `double 1.5` as 3, `half 5` as 0 and garbage for custom-Num literals, and LLVM lacks `fromIntegral#`/`recip#`.

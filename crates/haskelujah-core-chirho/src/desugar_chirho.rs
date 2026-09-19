@@ -52,6 +52,11 @@ pub struct DesugarOutputChirho {
     /// Reference evidence: the occurrence id minted for a reference to a
     /// constrained top-level name → the reference's source span.
     pub reference_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    /// Per method-occurrence id, the span of the source reference it stands for.
+    /// The evidence join needs this: an occurrence's identity is its span, never
+    /// its position among the occurrences of that name.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub method_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
 }
 
 /// A registered pattern synonym definition used during desugaring.
@@ -106,6 +111,7 @@ pub struct DesugarCtxChirho {
     constrained_names_chirho: HashSet<String>,
     /// Reference evidence: reference occurrence id → the reference's span.
     reference_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    method_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
 }
 
 impl DesugarCtxChirho {
@@ -126,6 +132,7 @@ impl DesugarCtxChirho {
             literal_occurrence_spans_chirho: HashMap::new(),
             constrained_names_chirho: HashSet::new(),
             reference_occurrence_spans_chirho: HashMap::new(),
+            method_occurrence_spans_chirho: HashMap::new(),
         }
     }
 
@@ -159,9 +166,16 @@ impl DesugarCtxChirho {
         id_chirho: CoreIdChirho,
         span_chirho: SpanChirho,
     ) -> CoreIdChirho {
-        if !self.constrained_names_chirho.contains(name_chirho)
-            || self.method_occurrences_chirho.contains_key(&id_chirho)
-        {
+        if self.method_occurrences_chirho.contains_key(&id_chirho) {
+            // `resolve_var_chirho` already minted this occurrence for an opted-in
+            // class method, but it had no span there. The span IS the occurrence's
+            // identity for the evidence join, so record it here.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            self.method_occurrence_spans_chirho
+                .insert(id_chirho, span_chirho);
+            return id_chirho;
+        }
+        if !self.constrained_names_chirho.contains(name_chirho) {
             return id_chirho;
         }
         let occurrence_id_chirho = self.fresh_id_chirho(name_chirho);
@@ -1751,6 +1765,7 @@ impl DesugarCtxChirho {
             method_occurrences_chirho: self.method_occurrences_chirho.clone(),
             literal_occurrence_spans_chirho: self.literal_occurrence_spans_chirho.clone(),
             reference_occurrence_spans_chirho: self.reference_occurrence_spans_chirho.clone(),
+            method_occurrence_spans_chirho: self.method_occurrence_spans_chirho.clone(),
         }
     }
 

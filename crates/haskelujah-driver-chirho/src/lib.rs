@@ -2736,6 +2736,10 @@ fn join_occurrence_evidence_chirho(
         haskelujah_core_chirho::CoreIdChirho,
         haskelujah_span_chirho::SpanChirho,
     >,
+    reference_occurrence_spans_chirho: &std::collections::HashMap<
+        haskelujah_core_chirho::CoreIdChirho,
+        haskelujah_span_chirho::SpanChirho,
+    >,
 ) -> std::collections::HashMap<haskelujah_core_chirho::CoreIdChirho, (String, String)> {
     // Literal evidence joins by span, exactly: the checker solved this very
     // literal. It is inserted first so the per-name ordinal join below never
@@ -2772,24 +2776,35 @@ fn join_occurrence_evidence_chirho(
     for ids_chirho in occ_ids_by_name_chirho.values_mut() {
         ids_chirho.sort_by_key(|id_chirho| id_chirho.0);
     }
-    for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
-        if infer_result_chirho
-            .method_occurrence_totals_chirho
-            .get(name_chirho)
-            .copied()
-            != Some(ids_chirho.len() as u32)
-        {
-            continue;
+    // A method occurrence is identified by its SOURCE SPAN, not by its position.
+    // The checker's ordinal is a per-name counter in inference-visit order, and
+    // instance method bodies are inferred last (phase 3e), while the desugarer
+    // numbers occurrences in declaration order. Joining those by position made
+    // `main`'s `show` and an instance body's `show` exchange evidence, so the
+    // same program printed `W3` or `WChirho 3` depending only on which
+    // declaration came first (measured 2026-09-19). A span that belongs to more
+    // than one occurrence, or to another name, yields no verdict here and falls
+    // through to the ordinal path below.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let mut occ_ids_by_span_chirho: std::collections::HashMap<
+        haskelujah_span_chirho::SpanChirho,
+        Vec<(haskelujah_core_chirho::CoreIdChirho, String)>,
+    > = std::collections::HashMap::new();
+    for (occ_id_chirho, (name_chirho, _canon_chirho)) in method_occurrences_chirho {
+        if let Some(span_chirho) = reference_occurrence_spans_chirho.get(occ_id_chirho) {
+            occ_ids_by_span_chirho
+                .entry(*span_chirho)
+                .or_default()
+                .push((*occ_id_chirho, name_chirho.clone()));
         }
-        for record_chirho in infer_result_chirho
-            .method_occurrences_chirho
-            .iter()
-            .filter(|record_chirho| &record_chirho.name_chirho == name_chirho)
-        {
+    }
+    let record_is_authoritative_chirho =
+        |record_chirho: &haskelujah_typing_chirho::infer_chirho::MethodOccurrenceRecordChirho| {
             // A record is authoritative only when its class either declares
             // this method (`==` -> Eq) or constrains this function's own
             // scheme (`print :: Show a => ...`). Incidental predicates never
             // drive occurrence dispatch.
+            let name_chirho = &record_chirho.name_chirho;
             let class_declares_reference_chirho = infer_result_chirho
                 .class_env_chirho
                 .classes_chirho
@@ -2803,22 +2818,101 @@ fn join_occurrence_evidence_chirho(
                         pred_chirho.class_name_chirho == record_chirho.class_name_chirho
                     })
                 });
-            if !class_declares_reference_chirho && !function_requires_class_chirho {
-                continue;
+            class_declares_reference_chirho || function_requires_class_chirho
+        };
+    let backed_key_chirho =
+        |record_chirho: &haskelujah_typing_chirho::infer_chirho::MethodOccurrenceRecordChirho| {
+            // The engine's body-backed instance rows are keyed "Int"; typing
+            // defaults ambiguous numerics to "Integer" per the Report. Map
+            // the evidence key onto the backed row at this boundary only.
+            if record_chirho.ty_key_chirho == "Integer" {
+                "Int".to_string()
+            } else {
+                record_chirho.ty_key_chirho.clone()
             }
-            if let Some(occ_id_chirho) = ids_chirho.get(record_chirho.ordinal_chirho as usize) {
-                // The engine's body-backed instance rows are keyed "Int"; typing
-                // defaults ambiguous numerics to "Integer" per the Report. Map
-                // the evidence key onto the backed row at this boundary only.
-                let ty_key_chirho = if record_chirho.ty_key_chirho == "Integer" {
-                    "Int".to_string()
-                } else {
-                    record_chirho.ty_key_chirho.clone()
-                };
-                evidence_chirho
-                    .entry(*occ_id_chirho)
-                    .or_insert_with(|| (record_chirho.class_name_chirho.clone(), ty_key_chirho));
-            }
+        };
+    let mut consumed_records_chirho: std::collections::HashSet<usize> =
+        std::collections::HashSet::new();
+    let mut identified_occurrences_chirho: std::collections::HashSet<
+        haskelujah_core_chirho::CoreIdChirho,
+    > = std::collections::HashSet::new();
+    for (record_index_chirho, record_chirho) in infer_result_chirho
+        .method_occurrences_chirho
+        .iter()
+        .enumerate()
+    {
+        if !record_is_authoritative_chirho(record_chirho) {
+            continue;
+        }
+        let Some(candidates_chirho) = occ_ids_by_span_chirho.get(&record_chirho.span_chirho) else {
+            continue;
+        };
+        let [(occ_id_chirho, occ_name_chirho)] = candidates_chirho.as_slice() else {
+            continue;
+        };
+        if occ_name_chirho != &record_chirho.name_chirho {
+            continue;
+        }
+        consumed_records_chirho.insert(record_index_chirho);
+        identified_occurrences_chirho.insert(*occ_id_chirho);
+        evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
+            (
+                record_chirho.class_name_chirho.clone(),
+                backed_key_chirho(record_chirho),
+            )
+        });
+    }
+    // What remains of the old positional join, and the two boundaries it now
+    // respects. The desugarer mints method occurrences at several sites and only
+    // the variable-reference site records a span, so a GENERATED occurrence (a
+    // literal's `fromInteger`, an operator's `+`, a derived Show body's field
+    // rendering) carries none and cannot be identified at all. Those are the only
+    // occurrences this path may fill, and it may only use a record the span join
+    // did NOT already consume: a proof belongs to one reference, and vacancy in
+    // the consumer map is not ownership of it (gpt_chirho, room #24056). The count
+    // guard therefore compares the UNIDENTIFIED occurrences against the UNCONSUMED
+    // records, not the totals.
+    // MEASURED, three ways: deleting this path outright turns 19 driver tests red
+    // (do-notation, mdo, deriving, MPTC, fundeps, six native round trips);
+    // restricting it to names whose occurrences ALL lack spans regresses a derived
+    // Show of a Bool field in a native round trip (`MixChirho 2 1` where main
+    // prints `MixChirho 2 True`, so that restriction CAUSED a regression rather
+    // than revealing one); and the shape below keeps both families correct.
+    // It goes away when every mint site carries its own occurrence provenance,
+    // which is its own brick.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
+        let unidentified_chirho: Vec<haskelujah_core_chirho::CoreIdChirho> = ids_chirho
+            .iter()
+            .filter(|id_chirho| !identified_occurrences_chirho.contains(id_chirho))
+            .copied()
+            .collect();
+        let unconsumed_chirho: Vec<
+            &haskelujah_typing_chirho::infer_chirho::MethodOccurrenceRecordChirho,
+        > = infer_result_chirho
+            .method_occurrences_chirho
+            .iter()
+            .enumerate()
+            .filter(|(index_chirho, record_chirho)| {
+                &record_chirho.name_chirho == name_chirho
+                    && !consumed_records_chirho.contains(index_chirho)
+                    && record_is_authoritative_chirho(record_chirho)
+            })
+            .map(|(_index_chirho, record_chirho)| record_chirho)
+            .collect();
+        if unidentified_chirho.is_empty() || unconsumed_chirho.len() != unidentified_chirho.len() {
+            continue;
+        }
+        for (occ_id_chirho, record_chirho) in unidentified_chirho.iter().zip(unconsumed_chirho) {
+            // The engine's body-backed instance rows are keyed "Int"; typing
+            // defaults ambiguous numerics to "Integer" per the Report. Map
+            // the evidence key onto the backed row at this boundary only.
+            evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
+                (
+                    record_chirho.class_name_chirho.clone(),
+                    backed_key_chirho(record_chirho),
+                )
+            });
         }
     }
     evidence_chirho
@@ -2918,6 +3012,7 @@ fn compile_backend_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
         &desugar_output_chirho.literal_occurrence_spans_chirho,
+        &desugar_output_chirho.method_occurrence_spans_chirho,
     );
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)

@@ -155,8 +155,11 @@ pub struct InferResultChirho {
     pub reference_evidence_chirho: HashMap<SpanChirho, Vec<ReferenceEvidenceChirho>>,
 }
 
-/// Evidence-threading P2: one concrete class-instantiation fact about the
-/// `ordinal`-th source reference of `name` (per-name counter, source order).
+/// Evidence-threading P2: one concrete class-instantiation fact about one
+/// source reference of `name`. `span_chirho` IDENTIFIES the reference; the
+/// ordinal is a per-name counter in INFERENCE-VISIT order, which is not source
+/// order (instance method bodies are inferred last, in phase 3e), so it may only
+/// be used as a fallback where no span is available.
 /// `ty_key_chirho` is the instance-head key (e.g. "Int", "[]", "Maybe").
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodOccurrenceRecordChirho {
@@ -164,6 +167,7 @@ pub struct MethodOccurrenceRecordChirho {
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,
     pub ty_key_chirho: String,
+    pub span_chirho: SpanChirho,
 }
 
 /// The inference context — carries mutable state during inference.
@@ -179,7 +183,7 @@ pub struct InferCtxChirho {
     /// Evidence-threading P2: raw occurrence captures — (name, per-name ordinal,
     /// class, instantiated predicate type). Finalized against the composed
     /// substitution when the public entry builds `InferResultChirho`.
-    occurrence_captures_chirho: Vec<(String, u32, String, TyChirho)>,
+    occurrence_captures_chirho: Vec<(String, u32, String, TyChirho, SpanChirho)>,
     /// Evidence-threading P2: default keys learned when generalized predicates
     /// carry additional numeric-class evidence for an occurrence type variable.
     occurrence_default_hints_chirho: HashMap<TyVarChirho, String>,
@@ -1554,7 +1558,7 @@ impl InferCtxChirho {
             *lhs_chirho = subst_chirho.apply_ty_chirho(lhs_chirho);
             *rhs_chirho = subst_chirho.apply_ty_chirho(rhs_chirho);
         }
-        for (_name_chirho, _ordinal_chirho, _class_chirho, ty_chirho) in
+        for (_name_chirho, _ordinal_chirho, _class_chirho, ty_chirho, _span_chirho) in
             &mut self.occurrence_captures_chirho
         {
             *ty_chirho = subst_chirho.apply_ty_chirho(ty_chirho);
@@ -3075,6 +3079,7 @@ impl InferCtxChirho {
                                     ordinal_chirho,
                                     pred_inst_chirho.class_name_chirho.clone(),
                                     pred_inst_chirho.ty_chirho.clone(),
+                                    span_chirho,
                                 ));
                             }
                         }
@@ -3180,6 +3185,7 @@ impl InferCtxChirho {
                                     ordinal_chirho,
                                     pred_inst_chirho.class_name_chirho.clone(),
                                     pred_inst_chirho.ty_chirho.clone(),
+                                    span_chirho,
                                 ));
                             }
                         }
@@ -7298,67 +7304,73 @@ impl InferCtxChirho {
         }
         self.occurrence_captures_chirho
             .iter()
-            .filter_map(|(name_chirho, ordinal_chirho, class_chirho, ty_chirho)| {
-                let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
-                let hinted_key_chirho = match &resolved_chirho {
-                    TyChirho::VarChirho(var_chirho) => self
-                        .occurrence_default_hints_chirho
-                        .get(var_chirho)
-                        .cloned(),
-                    _ => None,
-                };
-                if hinted_key_chirho.is_none()
-                    && matches!(
-                        &resolved_chirho,
-                        TyChirho::VarChirho(var_chirho)
-                            if self.occurrence_generalized_vars_chirho.contains(var_chirho)
-                    )
-                {
-                    // A local binding's variable: the enclosing code's single
-                    // instantiation is the proof (workflow:
-                    // language-features-chirho/dictionary-evidence-chirho).
-                    if let TyChirho::VarChirho(var_chirho) = &resolved_chirho {
-                        if let Some(key_chirho) =
-                            self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
-                        {
-                            return Some(MethodOccurrenceRecordChirho {
-                                name_chirho: name_chirho.clone(),
-                                ordinal_chirho: *ordinal_chirho,
-                                class_name_chirho: class_chirho.clone(),
-                                ty_key_chirho: key_chirho,
-                            });
+            .filter_map(
+                |(name_chirho, ordinal_chirho, class_chirho, ty_chirho, span_chirho)| {
+                    let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                    let hinted_key_chirho = match &resolved_chirho {
+                        TyChirho::VarChirho(var_chirho) => self
+                            .occurrence_default_hints_chirho
+                            .get(var_chirho)
+                            .cloned(),
+                        _ => None,
+                    };
+                    if hinted_key_chirho.is_none()
+                        && matches!(
+                            &resolved_chirho,
+                            TyChirho::VarChirho(var_chirho)
+                                if self.occurrence_generalized_vars_chirho.contains(var_chirho)
+                        )
+                    {
+                        // A local binding's variable: the enclosing code's single
+                        // instantiation is the proof (workflow:
+                        // language-features-chirho/dictionary-evidence-chirho).
+                        if let TyChirho::VarChirho(var_chirho) = &resolved_chirho {
+                            if let Some(key_chirho) = self
+                                .local_specialization_key_chirho(*var_chirho, final_subst_chirho)
+                            {
+                                return Some(MethodOccurrenceRecordChirho {
+                                    name_chirho: name_chirho.clone(),
+                                    ordinal_chirho: *ordinal_chirho,
+                                    class_name_chirho: class_chirho.clone(),
+                                    ty_key_chirho: key_chirho,
+                                    span_chirho: *span_chirho,
+                                });
+                            }
                         }
+                        return None;
                     }
-                    return None;
-                }
-                // A method used at a rigid variable of the enclosing signature
-                // (`x + 1` inside `f :: Num a => a -> a`) has no instance to
-                // name: its evidence is the binding's own dictionary parameter.
-                // Defaulting it to `Int` here dispatched `f 2.5` to the Int row.
-                // workflow: language-features-chirho/dictionary-evidence-chirho
-                if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho {
-                    return Some(MethodOccurrenceRecordChirho {
+                    // A method used at a rigid variable of the enclosing signature
+                    // (`x + 1` inside `f :: Num a => a -> a`) has no instance to
+                    // name: its evidence is the binding's own dictionary parameter.
+                    // Defaulting it to `Int` here dispatched `f 2.5` to the Int row.
+                    // workflow: language-features-chirho/dictionary-evidence-chirho
+                    if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho {
+                        return Some(MethodOccurrenceRecordChirho {
+                            name_chirho: name_chirho.clone(),
+                            ordinal_chirho: *ordinal_chirho,
+                            class_name_chirho: class_chirho.clone(),
+                            ty_key_chirho: self
+                                .own_key_for_skolem_chirho(class_chirho, skolem_chirho),
+                            span_chirho: *span_chirho,
+                        });
+                    }
+                    let resolved_show_key_chirho = (class_chirho == "Show"
+                        && !resolved_chirho.contains_var_chirho())
+                    .then(|| concrete_show_key_chirho(&resolved_chirho, false))
+                    .flatten();
+                    let key_chirho = resolved_show_key_chirho
+                        .or_else(|| head_key_chirho(&resolved_chirho))
+                        .or(hinted_key_chirho)
+                        .or_else(|| default_occurrence_key_chirho(class_chirho))?;
+                    Some(MethodOccurrenceRecordChirho {
                         name_chirho: name_chirho.clone(),
                         ordinal_chirho: *ordinal_chirho,
                         class_name_chirho: class_chirho.clone(),
-                        ty_key_chirho: self.own_key_for_skolem_chirho(class_chirho, skolem_chirho),
-                    });
-                }
-                let resolved_show_key_chirho = (class_chirho == "Show"
-                    && !resolved_chirho.contains_var_chirho())
-                .then(|| concrete_show_key_chirho(&resolved_chirho, false))
-                .flatten();
-                let key_chirho = resolved_show_key_chirho
-                    .or_else(|| head_key_chirho(&resolved_chirho))
-                    .or(hinted_key_chirho)
-                    .or_else(|| default_occurrence_key_chirho(class_chirho))?;
-                Some(MethodOccurrenceRecordChirho {
-                    name_chirho: name_chirho.clone(),
-                    ordinal_chirho: *ordinal_chirho,
-                    class_name_chirho: class_chirho.clone(),
-                    ty_key_chirho: key_chirho,
-                })
-            })
+                        ty_key_chirho: key_chirho,
+                        span_chirho: *span_chirho,
+                    })
+                },
+            )
             .collect()
     }
 
@@ -22000,6 +22012,7 @@ mod tests_chirho {
             0,
             "Num".to_string(),
             unresolved_ty_chirho,
+            SpanChirho::DUMMY_CHIRHO,
         ));
         let records_chirho =
             ctx_chirho.finalize_occurrence_records_chirho(&SubstChirho::empty_chirho());
@@ -22010,6 +22023,7 @@ mod tests_chirho {
                 ordinal_chirho: 0,
                 class_name_chirho: "Num".to_string(),
                 ty_key_chirho: "Int".to_string(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
             }]
         );
     }
@@ -22052,6 +22066,7 @@ mod tests_chirho {
                 0,
                 "Show".to_string(),
                 TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+                SpanChirho::DUMMY_CHIRHO,
             ),
             (
                 "print".to_string(),
@@ -22061,12 +22076,14 @@ mod tests_chirho {
                     Box::new(TyChirho::ConChirho("Maybe".to_string())),
                     Box::new(TyChirho::string_chirho()),
                 ),
+                SpanChirho::DUMMY_CHIRHO,
             ),
             (
                 "print".to_string(),
                 2,
                 "Show".to_string(),
                 TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::string_chirho()]),
+                SpanChirho::DUMMY_CHIRHO,
             ),
         ]);
 
