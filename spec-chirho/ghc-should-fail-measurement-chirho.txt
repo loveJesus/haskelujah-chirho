@@ -1,32 +1,58 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-19 UTC, AFTER declaration contexts on the type grammar, duplicate
-#   instance declarations, qualified equality exports and noninjective family equalities
-# code measured: 8d86bc95e63939e24fd00b9a16e79a8384d020f4 (HASKELUJAH/claude_chirho)
+# measured: 2026-09-20 UTC, AFTER instance-context obligations and the method-occurrence
+#   evidence join
+# code measured: 11b24799dbdd78fcd0a319de14b08a331c44db2b (HASKELUJAH/claude_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
-#   measured binary: frozen copy of ../haskelujah-claude-chirho/target/debug/haskelujah
-# CLI SHA256: 28c98d8c9b750776faf614b4b4dac2c9c421ef456b38c98b0664427fbf340c58
+#   measured binary: frozen copy in ../haskelujah-claude-chirho/tmp-chirho/landing-chirho/
+# CLI SHA256: 3f978db699e6c8552c764767b43e657d68cb44a37e585a3d89faf9e72013a042
 #   binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
-#   alone (none occurred); a rejection contains `error[E` or `panic`; a separate
-#   exit-code audit of the same binary found every accepted file exiting 0
+#   alone at 60s (none occurred); a rejection contains `error[E` or `panic`; the runner
+#   records each file's EXIT CODE beside its verdict, and no accepted file exited nonzero
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   (no subdirectories)
 #
-# RESULT: CORRECTLY-REJECTED=228 WRONGLY-ACCEPTED=539 TOTAL=767
-# STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
-#   sets byte-identical to each other; exact delta from prior list below
-# QUOTE-AS: ~29% (228 of 767) — do not quote a third significant figure
+# RESULT: CORRECTLY-REJECTED=235 WRONGLY-ACCEPTED=532 TOTAL=767
+# STABILITY: DETERMINISTIC — two complete passes, zero timeouts, zero nonzero-exit
+#   accepts; the two passes are byte-identical to each other
+# QUOTE-AS: 235 of 767 = 30.6% — ~30% truncated, ~31% nearest; NO single label
+#   is published until L.J.'s policy decision (see below). Do not quote a third
+#   significant figure under either reading.
 #
 # QUOTE BOTH AXES TOGETHER. The companion artifact is ~94% (885 of 938).
-# Existing approximate labels are carried forward unchanged, with current counts.
-# L.J.'s uniform reporting-policy decision on truncation versus nearest remains
-# pending; the accept label agrees under both, while the reject label differs:
-# 228 of 767 is 29.7%, ~29% truncated and ~30% nearest. Nearest would move this axis
-# a whole point for the first time since ~29% was set at 222 of 767 (2026-09-07);
-# that is the case the decision governs, so the carried label stays until it is made.
+# THE CARRY RULE IS EXHAUSTED ON THE REJECT AXIS. Earlier artifacts carried the
+# existing approximate label forward with current counts, which stayed honest while
+# ~29% remained a valid reading of the count. 235 of 767 is 30.6%, which is ~30%
+# truncated and ~31% nearest, so no carry of ~29% is a rounding of it under either
+# policy. This artifact therefore publishes the FRACTION with both readings and no
+# single label: that decides nothing and states nothing false. L.J.'s uniform
+# truncation-versus-nearest decision now governs one axis and one choice, 30 or 31.
+# The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (3db3b6a6): 221 -> 228, +7 gained, zero lost.
+# CHANGE SINCE LAST MEASUREMENT (8d86bc95): 228 -> 235, +7 gained, zero lost.
+#   All seven are one shape: an instance whose own context cannot hold no longer
+#   satisfies its head, so a wanted is not discharged by an instance head alone.
+#   SCLoop is the GHC testsuite's own bogus-recursive-dictionary test, and its
+#   source comment says "it's all too easy to succeed with a bogus recursive
+#   dictionary"; we were succeeding exactly that way. Reasons against each file's
+#   committed stderr: SCLoop, T5684, T5684b, T5684e and T5684f match GHC's
+#   predicate, line and code (GHC-39999). T5684c and T5684d report GHC's SECOND
+#   error and not its first, which names a predicate with an unsolved variable that
+#   this rule deliberately refuses to claim: a matching reason on a PARTIAL error
+#   set, not parity. The count is verdict presence, not 235 independently matching
+#   GHC reasons.
+# WRONG-ACCEPT-LIST SHA256: a89ded083f454a80dc04d581f5de02ac5ebb2f9b71b5af8104115c6a0d0c98a5
+#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
+# EXECUTION EVIDENCE: on the same frozen source, the curated GHC suite passes (486s),
+#   the driver library suite is 1778 passed / 0 failed / 0 ignored / 0 filtered, and the
+#   driver integration suites are 202 passed / 0 failed across 19 targets. Five direct
+#   controls pin the evidence join's boundaries, two of them mutation-checked. This does
+#   not establish an instance WITH a context at run time, which is still wrong
+#   (`instance Show a => Show (T a)`), nor generic record Eq/Show dispatch. See
+#   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
+#
+# PREVIOUS MEASUREMENT (8d86bc95, 2026-09-19): 221 -> 228, +7 gained, zero lost.
 #   Duplicate instance declarations (GHC-59692) were never diagnosed. Five files are
 #   rejected for GHC's reason: TcNullaryTCFail, tcfail023, tcfail035, tcfail036,
 #   tcfail073. tcfail118 is the same defect where GHC reports the overlap at the
@@ -39,19 +65,6 @@
 #   The noninjective-family rule (327aaef7's T10808 half) changes no verdict here: the
 #   membership is byte-identical to the same lane measured without it (78b832ec).
 #   The count is verdict presence, not 228 independently matching GHC reasons.
-# WRONG-ACCEPT-LIST SHA256: f7a4fbab66b24ac14950915053261d2a6be5b3f8bf27dbd9fe405a1751698224
-#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# EXECUTION EVIDENCE: the same frozen source passes 3420 workspace tests across 78
-#   targets, zero failed/ignored/filtered, Cargo exit 0 and zero compiler warnings, under
-#   `RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4`
-#   (log SHA256 431a44a669934a8f57aa0b8aea8fe7a713d21da8a9d185408b0411f82bd3273e). That run
-#   includes driver `--lib` 1773/1773 with its native round trips, the curated suite (its
-#   committed manifest declares 514 GHC 9.14.1 execution oracles), and four exact GHC outputs
-#   for declaration contexts through the STG machine. An exit-code audit of this binary over
-#   both corpora found every accepted file exiting 0 with no error text and every rejected
-#   file exiting 1 with `error[E`. It does not establish generic record Eq/Show dispatch, an
-#   instance at an applied data type at run time, or any reporting of family equalities left
-#   ambiguous at module end. See workflows-chirho/testing-chirho/execution-measurement-chirho.md.
 #
 # PREVIOUS MEASUREMENT (3db3b6a6, 2026-09-10): 222 -> 221, +1 gained, -2 lost.
 #   T22560_fail_b leaves the wrongly-accepted set: a visible-forall signature does
@@ -113,7 +126,7 @@
 # (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
 # this environment by a ugrep wrapper with content-dependent `-q` behavior.
 #
-# ---- the 539 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 532 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -155,7 +168,6 @@ MultiAssocDefaults.hs
 OrdErr.hs
 PatSynArity.hs
 PatSynUnboundVar.hs
-SCLoop.hs
 SilentParametersOverlapping.hs
 SpecPragmasFail.hs
 StrictBinds.hs
@@ -428,12 +440,6 @@ T5095.hs
 T5236.hs
 T5246.hs
 T5300.hs
-T5684.hs
-T5684b.hs
-T5684c.hs
-T5684d.hs
-T5684e.hs
-T5684f.hs
 T5689.hs
 T5691.hs
 T5858.hs

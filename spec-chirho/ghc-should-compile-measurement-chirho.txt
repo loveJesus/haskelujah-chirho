@@ -1,32 +1,53 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-19 UTC, AFTER declaration contexts on the type grammar, duplicate
-#   instance declarations, qualified equality exports and noninjective family equalities
-# code measured: 8d86bc95e63939e24fd00b9a16e79a8384d020f4 (HASKELUJAH/claude_chirho)
+# measured: 2026-09-20 UTC, AFTER instance-context obligations and the method-occurrence
+#   evidence join
+# code measured: 11b24799dbdd78fcd0a319de14b08a331c44db2b (HASKELUJAH/claude_chirho)
 # build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
-#   measured binary: frozen copy of ../haskelujah-claude-chirho/target/debug/haskelujah
-# CLI SHA256: 28c98d8c9b750776faf614b4b4dac2c9c421ef456b38c98b0664427fbf340c58
+#   measured binary: frozen copy in ../haskelujah-claude-chirho/tmp-chirho/landing-chirho/
+# CLI SHA256: 3f978db699e6c8552c764767b43e657d68cb44a37e585a3d89faf9e72013a042
 #   binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
-#   alone (none occurred); a rejection contains `error[E` or `panic`; a separate
-#   exit-code audit of the same binary found every accepted file exiting 0
+#   alone at 60s (none occurred); a rejection contains `error[E` or `panic`; the runner
+#   records each file's EXIT CODE beside its verdict, and no accepted file exited nonzero
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   (find-based; T16234/ included)
 #
 # RESULT: PASS=885 FAIL=53 TOTAL=938
-# STABILITY: DETERMINISTIC — two complete passes, zero unresolved timeouts/unexpected exits;
-#   sets byte-identical to each other; exact delta from prior list below
+# STABILITY: DETERMINISTIC — two complete passes, zero timeouts, zero nonzero-exit
+#   accepts; the two passes are byte-identical to each other
 # QUOTE-AS: ~94% (885 of 938) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER. The companion artifact is ~29% (228 of 767).
-# Existing approximate labels are carried forward unchanged, with current counts.
-# L.J.'s uniform reporting-policy decision on truncation versus nearest remains
-# pending; the accept label agrees under both, while the reject label differs:
-# 228 of 767 is 29.7%, ~29% truncated and ~30% nearest. Nearest would move this axis
-# a whole point for the first time since ~29% was set at 222 of 767 (2026-09-07);
-# that is the case the decision governs, so the carried label stays until it is made.
+# QUOTE BOTH AXES TOGETHER. The companion artifact is the fraction 235 of 767 (30.6%), published without a single label.
+# THE CARRY RULE IS EXHAUSTED ON THE REJECT AXIS. Earlier artifacts carried the
+# existing approximate label forward with current counts, which stayed honest while
+# ~29% remained a valid reading of the count. 235 of 767 is 30.6%, which is ~30%
+# truncated and ~31% nearest, so no carry of ~29% is a rounding of it under either
+# policy. This artifact therefore publishes the FRACTION with both readings and no
+# single label: that decides nothing and states nothing false. L.J.'s uniform
+# truncation-versus-nearest decision now governs one axis and one choice, 30 or 31.
+# The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (3db3b6a6): 882 -> 885, +3 gained, zero lost.
+# CHANGE SINCE LAST MEASUREMENT (8d86bc95): 885 -> 885, ZERO movement.
+#   The failure list is identical file for file, and its SHA256 below is unchanged
+#   from the previous artifact. Two repairs landed in this window and neither costs
+#   an accepted file: an instance whose own context cannot hold no longer satisfies
+#   its head (a rejection rule, so this axis is where a false positive would show),
+#   and a class method's evidence is joined to its source reference by SPAN rather
+#   than by position. The second repairs silent WRONG ANSWERS this axis cannot see:
+#   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
+#   depending only on which declaration came first.
+# FAILURE-LIST SHA256: 879cacad3900068f525cfa90c548a46eb81c1ce17dc90755b6ee285c7c9ff30e
+#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
+# EXECUTION EVIDENCE: on the same frozen source, the curated GHC suite passes (486s),
+#   the driver library suite is 1778 passed / 0 failed / 0 ignored / 0 filtered, and the
+#   driver integration suites are 202 passed / 0 failed across 19 targets. Five direct
+#   controls pin the evidence join's boundaries, two of them mutation-checked. This does
+#   not establish an instance WITH a context at run time, which is still wrong
+#   (`instance Show a => Show (T a)`), nor generic record Eq/Show dispatch. See
+#   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
+#
+# PREVIOUS MEASUREMENT (8d86bc95, 2026-09-19): 882 -> 885, +3 gained, zero lost.
 #   T15079, tc124: a leading `forall` now scopes over the `=>` and `->` in its body
 #     (flat type grammar; the record-field lowering bug open since 2026-08-02), so a
 #     rank-n record field is lowered as written, and record construction and update
@@ -42,19 +63,6 @@
 #     grammar (tuple members, applied and multi-argument predicates, equalities, explicit
 #     instance foralls). No file moves for that alone; its proof is exact GHC 9.14.1
 #     outputs in tests/declaration_contexts_chirho.rs.
-# FAILURE-LIST SHA256: 879cacad3900068f525cfa90c548a46eb81c1ce17dc90755b6ee285c7c9ff30e
-#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# EXECUTION EVIDENCE: the same frozen source passes 3420 workspace tests across 78
-#   targets, zero failed/ignored/filtered, Cargo exit 0 and zero compiler warnings, under
-#   `RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4`
-#   (log SHA256 431a44a669934a8f57aa0b8aea8fe7a713d21da8a9d185408b0411f82bd3273e). That run
-#   includes driver `--lib` 1773/1773 with its native round trips, the curated suite (its
-#   committed manifest declares 514 GHC 9.14.1 execution oracles), and four exact GHC outputs
-#   for declaration contexts through the STG machine. An exit-code audit of this binary over
-#   both corpora found every accepted file exiting 0 with no error text and every rejected
-#   file exiting 1 with `error[E`. It does not establish generic record Eq/Show dispatch, an
-#   instance at an applied data type at run time, or any reporting of family equalities left
-#   ambiguous at module end. See workflows-chirho/testing-chirho/execution-measurement-chirho.md.
 #
 # PREVIOUS MEASUREMENT (3db3b6a6, 2026-09-10): 880 -> 882, +2 gained, zero lost.
 #   T11811 and T20873: written declaration result kinds retain their head binders;

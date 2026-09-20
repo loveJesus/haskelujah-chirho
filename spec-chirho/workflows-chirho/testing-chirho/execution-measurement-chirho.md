@@ -1,57 +1,73 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# Execution measurement — 2026-09-19
+# Execution measurement — 2026-09-20
 
-Frozen compiler/test source: `8d86bc95e63939e24fd00b9a16e79a8384d020f4`.
-Measured by HASKELUJAH/claude_chirho on macOS arm64 in the isolated lane worktree
-`haskelujah-workspaces-chirho/haskelujah-claude-chirho`.
-Subsequent evidence-only commits do not change the measured compiler or tests.
+Frozen compiler/test source: `11b24799dbdd78fcd0a319de14b08a331c44db2b`.
+Measured by HASKELUJAH/claude_chirho on macOS arm64 in the isolated lane worktree.
+Evidence lives in that worktree under `tmp-chirho/landing-chirho/`, not in `/private/tmp`:
+a reboot on 2026-09-19 cleared `/private/tmp` and destroyed every receipt published that
+day. The committed tests survived, which is the argument for putting controls there.
 
 ## Results at their actual scope
 
 | Measurement | Result | What it establishes |
 | --- | --- | --- |
-| Complete Rust workspace | 3420 passed; zero failed, ignored, filtered or measured; cargo exit 0; zero compiler warnings | Unit, integration and doctest outcomes under the command below |
-| Driver library, included above | 1773/1773 | Includes the native round trips, with exact outputs and bounded children |
-| Curated suite, included above | green | Its committed manifest declares 514 GHC 9.14.1 execution oracles; this lane changes no oracle or input |
-| Declaration contexts through the STG machine | 4/4 exact GHC 9.14.1 outputs | Two superclasses; a two-member instance context; two user classes; an explicit instance forall |
-| Upstream should_compile | 885 of 938 | Typecheck acceptance only; two identical complete passes |
-| Upstream should_fail | 228 of 767 | Typecheck rejection only; two identical complete passes |
+| Curated GHC suite | passes, 486s | Its committed manifest declares 514 GHC 9.14.1 execution oracles |
+| Driver library | 1778 passed; zero failed, ignored or filtered | Includes the native round trips and the five evidence-join controls |
+| Driver integration | 202 passed across 19 targets, zero failed | |
+| Evidence-join boundaries | 5 direct controls, 2 mutation-checked | Reached by no source program, so exercised at the join itself |
+| Upstream should_compile | 885 of 938 | Typecheck acceptance only; two byte-identical complete passes |
+| Upstream should_fail | 235 of 767 | Typecheck rejection only; two byte-identical complete passes |
 
-Both axes' two complete passes agree exactly and neither has a timeout. Relative to
-3db3b6a6's lists, accept rises 882 -> 885 (T15079, T18831, tc124; no loss) and reject
-rises 221 -> 228 (TcNullaryTCFail, tcfail023, tcfail035, tcfail036, tcfail056,
-tcfail073, tcfail118; no loss). Each artifact gives the reason for every movement,
-including the one gain that is adjacent rather than matching (tcfail056, where GHC
-stops first at GHC-54721). Neither percentage measures execution correctness, and
-neither corpus is fully passing.
+The accept axis did not move: its failure list is identical file for file to the previous
+artifact's, same SHA-256. The reject axis rises 228 -> 235 with no loss, all seven of one
+shape. Neither percentage measures execution correctness, and neither corpus fully passes.
 
 ## Reproduction and provenance
 
 ```sh
-RUST_MIN_STACK=16777216 cargo test --workspace --no-fail-fast -j 3 -- --test-threads=4
+tmp-chirho/landing-chirho/axis_pass_chirho.sh <frozen-cli> <corpus-dir> <out>
 ```
 
-No test-name skip or filter was supplied. The summary parser pairs each target header
-with one result line in launch order and requires every libtest-announced count to
-agree with its own passed/failed/ignored sum: 78 targets, all consistent. Raw
-completed workspace log SHA-256:
+Four workers, 15 seconds per file, every timeout re-run alone at 60s; none occurred. The
+runner records each file's EXIT CODE beside its verdict, so "no accepted file exited
+nonzero" is a property of the pass file itself rather than of a separate audit. The frozen
+CLI is `3f978db699e6c8552c764767b43e657d68cb44a37e585a3d89faf9e72013a042`, hashed before
+and after all four passes and unchanged.
 
-`431a44a669934a8f57aa0b8aea8fe7a713d21da8a9d185408b0411f82bd3273e`
+## What this measurement cannot see
 
-The explicitly rebuilt debug CLI used for all four upstream passes has SHA-256:
+Both axes run `haskelujah check`. Neither ever RUNS a program, so neither can observe the
+defect this lane's second repair fixed: a class method's evidence joined by position rather
+than by source span, which made `instance Show W where show (W n) = "W" ++ show n` print
+`W3` or `WChirho 3` depending only on which declaration came first, at exit 0 with no
+diagnostic. The driver suites and the curated oracles are the instruments for that class of
+defect, and an instance WITH a context is still wrong at run time
+(`instance Show a => Show (T a)` prints a derived rendering).
 
-`28c98d8c9b750776faf614b4b4dac2c9c421ef456b38c98b0664427fbf340c58`
+## Instance-context obligations and the evidence join (11b24799)
 
-Its digest was asserted before and after every pass. The pure-shell runner used four
-workers and 15 seconds per input, with timeouts re-run alone; all four passes had zero
-timeouts. A separate exit-code audit of the same binary over both corpora recorded
-every file's exit code beside its error-text flag: every accepted file exits 0 with no
-error text, and every rejected file exits 1 with `error[E`. So no nonzero exit was
-counted as an acceptance, which the corpus detector alone would not have caught.
-
-An earlier tip of this lane (78b832ec) was measured first and lost T10808; it was not
-landed. The repair and its evidence are in the section below.
+- **An instance whose own context cannot hold satisfies nothing.** A ground wanted was
+  treated as solvable the moment an instance HEAD matched, so `instance Convert a String =>
+  Render [a]` served `Render [Int]` with no `Convert Int String` anywhere. The
+  certainly-unsolvable test now follows each candidate's sub-goals, stays conservative
+  wherever it cannot prove the answer, and names the missing sub-goal as GHC does. Seven
+  reject gains, zero accept losses.
+- **A method's evidence belongs to its source reference.** The desugarer numbers
+  occurrences in declaration order, the checker in inference-visit order with instance
+  bodies last, and the join matched them by position under a count guard. Now it matches by
+  SPAN. What remains positional serves only references nothing can identify: the desugarer
+  mints occurrences at several sites and only the variable-reference site records a span,
+  and the deriving pass gives every reference it generates one placeholder.
+- **Three boundaries, all found by gpt_chirho reading the committed code**: a record
+  consumed by the span join can never be reused by position; an occurrence carrying a
+  genuine span belongs to the span join whether or not that join could use it; and a
+  placeholder span is not an identity on either side. Five controls hold them, two
+  mutation-checked against the previous rule.
+- **Unexplained, recorded as such**: one curated run reported 57 failures on an intermediate
+  commit; the same commit ran green minutes earlier, the red run overlapped concurrent cargo
+  work in one target, and its log was destroyed with `/private/tmp`. Observed once,
+  unreproduced, cause unestablished.
 
 ## Declaration contexts, duplicate instances and noninjective families (8d86bc95)
 
