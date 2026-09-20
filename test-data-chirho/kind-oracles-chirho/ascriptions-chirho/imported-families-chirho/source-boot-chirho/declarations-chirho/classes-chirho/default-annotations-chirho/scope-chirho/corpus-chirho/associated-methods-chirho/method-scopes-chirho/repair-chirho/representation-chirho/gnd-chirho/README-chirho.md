@@ -5,6 +5,8 @@
 Isolated work on gpt-kind-schemes-chirho, not a main-line landing or a public
 compatibility measurement. The pre-change checkpoint is ff75ea3f, tagged
 row484-gnd-kind-seam-before-chirho. Canonical progress row484 remains open.
+The source/evidence checkpoint is f1c99aa687855eed8144ca5b47dbaeba38b5665e,
+pushed to the isolated branch and verified by remote-tip readback.
 
 ## Contract
 

@@ -30,7 +30,7 @@ work per declaration/use.
 - [x] Implement without dropping or fabricating checked kind evidence.
 - [x] Run focused parser/naming/typing/driver, canaries and the live package
  control; compare complete corpus membership at the meaningful gate boundary.
-- [ ] Retain source/hash/result evidence, limits and workflow; commit only owned
+- [x] Retain source/hash/result evidence, limits and workflow; commit only owned
  paths, push and verify the exact remote tip.
 
 ## Acceptance and limits
@@ -393,6 +393,14 @@ T12734 is recovered. Against main c74db426, the full-branch differences remain
 row484 work and main's independent duplicate-instance lane. No overall
 no-regression claim or waiver follows. Ready for an isolated owned checkpoint,
 not main landing; canonical row484 and published measurements stay unchanged.
+
+The isolated source/evidence checkpoint is committed and pushed as
+f1c99aa687855eed8144ca5b47dbaeba38b5665e on gpt-kind-schemes-chirho;
+ls-remote returned that exact SHA after the push. Main is still clean at
+c74db426f9464b9e4e7a820713f0366a89938aaa. No canonical DB write, public
+measurement change, main merge or runtime-coercion claim. The existing package
+cache symlink remains untracked and was not staged. This checklist closes the
+isolated verification checkpoint, not row484's outstanding main-line differences.
 
 Read-only next-unit trace for T17067: the family lowerer recognizes both data
 and type keywords but stores neither in TypeFamilyDeclChirho; the AST has no
