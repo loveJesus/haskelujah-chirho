@@ -140,13 +140,6 @@ pub(crate) fn join_occurrence_evidence_chirho(
                 record_chirho.ty_key_chirho.clone()
             }
         };
-    let record_spans_chirho: std::collections::HashSet<haskelujah_span_chirho::SpanChirho> =
-        infer_result_chirho
-            .method_occurrences_chirho
-            .iter()
-            .map(|record_chirho| record_chirho.span_chirho)
-            .filter(|span_chirho| identifying_span_chirho(span_chirho))
-            .collect();
     let mut consumed_records_chirho: std::collections::HashSet<usize> =
         std::collections::HashSet::new();
     let mut identified_occurrences_chirho: std::collections::HashSet<
@@ -201,30 +194,22 @@ pub(crate) fn join_occurrence_evidence_chirho(
     // which is its own brick.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
-        // Eligible here: an occurrence the span join neither identified nor
-        // REFUSED. It refuses a span that more than one occurrence claims, and a
-        // refusal must never be overturned by position: that is the boundary
-        // gpt_chirho found open on a read of this file (room #24075). But a span
-        // that matches NO checker record was never a decision the join made, so
-        // such an occurrence is unidentifiable rather than refused, exactly like
-        // one with no span at all. That is the derived `Show` body's field
-        // rendering, whose generated references all borrow one span: measured,
-        // treating those as refused regresses `MixChirho 2 True` to
-        // `MixChirho 2 1` in a native round trip.
+        // Eligible here: an occurrence with NO identifying span at all, after the
+        // identified ones are excluded. Anything carrying a genuine span belongs
+        // to the span join, whether or not that join could use it: admitting a
+        // contested span merely because no record happened to claim it would hand
+        // two references their proofs by position, which is the boundary this
+        // join exists to hold (gpt_chirho's counterexample, room #24227 — two
+        // occurrences sharing a genuine span X, two unconsumed records carrying a
+        // different genuine span Y).
+        // A placeholder span is not a span for this purpose, so the deriving
+        // pass's generated references still qualify; that is what keeps a derived
+        // `Show`'s Bool field from rendering as `1` in a native round trip.
         let unidentified_chirho: Vec<haskelujah_core_chirho::CoreIdChirho> = ids_chirho
             .iter()
             .filter(|id_chirho| {
-                if identified_occurrences_chirho.contains(id_chirho) {
-                    return false;
-                }
-                let Some(span_chirho) = occurrence_span_chirho(id_chirho) else {
-                    return true;
-                };
-                let contested_chirho = occ_ids_by_span_chirho
-                    .get(&span_chirho)
-                    .is_some_and(|sharers_chirho| sharers_chirho.len() > 1);
-                let claimed_by_a_record_chirho = record_spans_chirho.contains(&span_chirho);
-                !(contested_chirho && claimed_by_a_record_chirho)
+                !identified_occurrences_chirho.contains(id_chirho)
+                    && occurrence_span_chirho(id_chirho).is_none()
             })
             .copied()
             .collect();

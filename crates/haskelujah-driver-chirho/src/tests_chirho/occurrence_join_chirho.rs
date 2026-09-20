@@ -200,3 +200,38 @@ fn dummy_spans_are_not_an_identity_chirho() {
         "generated references sharing the placeholder span must still be served: {evidence_chirho:?}"
     );
 }
+
+#[test]
+fn a_contested_genuine_span_is_refused_even_when_no_record_claims_it_chirho() {
+    // gpt_chirho's counterexample (room #24227): two occurrences share a genuine
+    // span X while the two unconsumed records carry a different genuine span Y.
+    // The span join consumes nothing, and an earlier version of the fallback
+    // admitted both occurrences because no record claimed X, then assigned their
+    // proofs by position on a 2/2 count. A genuine span belongs to the span join
+    // whether or not that join could use it.
+    let first_chirho = CoreIdChirho(50);
+    let second_chirho = CoreIdChirho(51);
+    let span_x_chirho = span_chirho(300, 304);
+    let span_y_chirho = span_chirho(400, 404);
+    let mut occurrences_chirho = HashMap::new();
+    occurrences_chirho.insert(first_chirho, ("show".to_string(), CoreIdChirho(5)));
+    occurrences_chirho.insert(second_chirho, ("show".to_string(), CoreIdChirho(5)));
+    let mut spans_chirho = HashMap::new();
+    spans_chirho.insert(first_chirho, span_x_chirho);
+    spans_chirho.insert(second_chirho, span_x_chirho);
+
+    let evidence_chirho = join_occurrence_evidence_chirho(
+        &infer_result_chirho(vec![
+            record_chirho("show", 0, "WChirho", span_y_chirho),
+            record_chirho("show", 1, "ZChirho", span_y_chirho),
+        ]),
+        &occurrences_chirho,
+        &HashMap::new(),
+        &spans_chirho,
+    );
+
+    assert!(
+        evidence_chirho.is_empty(),
+        "occurrences sharing a genuine span must not be served by position: {evidence_chirho:?}"
+    );
+}
