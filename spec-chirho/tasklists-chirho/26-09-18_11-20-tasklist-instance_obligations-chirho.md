@@ -144,19 +144,68 @@ Tests: `tests/method_occurrence_evidence_chirho.rs`.
    `Show`'s rendering of a Bool FIELD is a generated occurrence under a name that also has
    span-identified ones. **Main's native path prints `MixChirho 2 True` correctly**, so that restriction
    CAUSED a regression rather than revealing one (claude2_chirho asked the question that settles this).
-3. The landed shape: the span join marks each record it CONSUMES and each occurrence it IDENTIFIES; the
-   positional path then matches only unidentified occurrences against unconsumed records, with the count
-   guard comparing those two filtered lists rather than the totals. So one proof can never serve two
-   references, and an ambiguous or duplicated span cannot fall through into a positional assignment
-   (gpt_chirho's two boundaries, room #24056). Both families above stay correct.
+3. Refuse every occurrence the span join did not uniquely match (f97ea64c, after gpt_chirho read the
+   committed file in #24075 and found the boundary open): the SAME native regression returns,
+   `MixChirho 2 1`. Traced rather than argued this time. The deriving pass gives every reference it
+   generates the same placeholder span, and the checker's records carry it too:
+   `JOIN-OCC show id=12 span=Some(Span(SYNTHETIC, 0..0))` twice, `JOIN-REC show ord=0 key=Int` and
+   `ord=1 key=Bool` on the same span. The rule read that as two references contesting one span.
+4. The landed shape (73560e17): a DUMMY or synthetic span is not an identity on either side, so it
+   neither indexes the span map nor contests anything; a record carrying one identifies nothing; and an
+   occurrence carrying one is unidentifiable rather than refused. A GENUINE span claimed by more than one
+   occurrence is still refused and never rescued by position. The span join marks each record it CONSUMES
+   and each occurrence it IDENTIFIES, and the positional path matches only unidentified occurrences
+   against unconsumed records, count-guarded on those two filtered lists, so one proof can never serve two
+   references (gpt_chirho's boundaries, rooms #24056 and #24075).
+
+Four controls in `tests_chirho/occurrence_join_chirho.rs` hold those boundaries directly, because no
+source program reaches them: a consumed record is never reused; two occurrences sharing a REAL span yield
+nothing; unspanned occurrences take their records in order; and generated references sharing the
+placeholder are still served. The second is mutation-checked. The first two needed a REAL file id to mean
+anything, since a synthetic one is now explicitly not an identity.
 
 It goes away when every mint site carries its own occurrence PROVENANCE. A source span alone is not
 enough: one do or deriving node can create several references sharing a span, so the identity has to be
 shared with the node that created them, never re-enumerated downstream (gpt_chirho, #24056).
 
+### Gates on the landed shape (2026-09-20, after the reboot destroyed every earlier receipt)
+
+curated ok (486s, exit 0); driver library 1777 passed, 0 failed, 0 ignored, 0 filtered, the four join
+controls included; driver integration 19 targets, 202 passed, 0 failed. The join also moved out of
+`lib.rs` (6635 lines, against a 1500 limit) into its own 252-line module beside those tests.
+
+**An unexplained red stays unexplained.** A curated run on 4f6e61d5 reported 57 failures; the same commit
+had run green minutes earlier, the red run overlapped concurrent cargo work of mine in one target, and
+the log that would name the files was destroyed with the rest of /private/tmp. Observed once,
+unreproduced, cause UNESTABLISHED. Today's clean run is not an explanation of it. claude2_chirho proposed
+reproducing it under deliberate contention and then withdrew the proposal, on the grounds that one clean
+trial cannot refute an intermittent race and that manufacturing contention would corrupt someone else's
+measurement; both are right.
+
 **Still wrong after this repair**, and now isolated to contexts: `instance Show a => Show (QChirho a)`
 prints `QChirho 3` where GHC prints `Q<3>`, and the quantified-constraint control prints `LeafChirho`
 where GHC prints `F(L)`. That is the contextful-instance dictionary work, unchanged by the join.
+
+## Diagnostic corpus pass on f97ea64c (frozen CLI b15539b5, one pass per axis, zero timeouts)
+
+| axis | landed main | lane tip | gained | lost |
+|---|---|---|---|---|
+| should_compile | 885 | 885 | none | **none** |
+| should_fail | 228 | 235 | SCLoop, T5684, T5684b, T5684c, T5684d, T5684e, T5684f | none |
+
+The accept axis is identical to the landed artifact file for file, which is what this pass existed to
+measure: the stricter obligation rule is a rejection rule, so a false positive would have shown there.
+
+Every gain is the same shape, an instance whose own context cannot hold no longer satisfying its head,
+and each was checked against its own committed GHC stderr:
+
+- **SCLoop** (GHC-39999, "No instance for `SC ()' arising from a use of `op'", 22:7): ours identical at
+  the same line. The file's own comment is "it's all too easy to succeed with a bogus recursive
+  dictionary", and that is precisely how we were succeeding.
+- **T5684, T5684b, T5684e, T5684f** (GHC-39999, "No instance for `A Bool'"): ours identical.
+- **T5684c, T5684d**: GHC reports TWO errors, `B Char b0` at 12:12 and `A Bool` at 13:12. We report the
+  second only; the first names a predicate with an unsolved variable, which this rule deliberately
+  refuses to claim. A matching reason on a PARTIAL error set, not parity.
 
 ## Found on the way (not claimed by this lane)
 - CLI, measured 2026-09-19 while building the multi-module control: `haskelujah check ./Main.hs` resolves sibling modules in the same directory, and `haskelujah run ./Main.hs` does NOT (E0102 "could not find module" for each import, with either a relative or an absolute path). The runtime control therefore has to go through the driver's multi-module entry point rather than the CLI, and the CLI gap is its own repair.
