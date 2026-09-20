@@ -276,8 +276,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Constructors belonging to the data type.
         constructors_chirho: Vec<ConDeclChirho>,
-        /// Classes listed in the deriving clause.
-        deriving_chirho: Vec<NameChirho>,
+        /// Written class applications, including their supplied arguments.
+        deriving_chirho: Vec<TypeChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
         kind_sig_chirho: Option<DeclKindSigChirho>,
         /// Span covering the whole data declaration.
@@ -291,8 +291,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// The single runtime constructor carried by the newtype.
         constructor_chirho: ConDeclChirho,
-        /// Classes listed in the deriving clause.
-        deriving_chirho: Vec<NameChirho>,
+        /// Written class applications, including their supplied arguments.
+        deriving_chirho: Vec<TypeChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
         kind_sig_chirho: Option<DeclKindSigChirho>,
         /// Span covering the whole newtype declaration.

@@ -379,14 +379,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
             } else {
                 vec![ThDerivClauseChirho {
                     strategy_chirho: None,
-                    classes_chirho: deriving_chirho
-                        .iter()
-                        .map(|d_chirho| {
-                            ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
-                                d_chirho.text_chirho(),
-                            ))
-                        })
-                        .collect(),
+                    classes_chirho: deriving_chirho.iter().map(ast_type_to_th_chirho).collect(),
                 }]
             };
 
@@ -417,14 +410,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
             } else {
                 vec![ThDerivClauseChirho {
                     strategy_chirho: None,
-                    classes_chirho: deriving_chirho
-                        .iter()
-                        .map(|d_chirho| {
-                            ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
-                                d_chirho.text_chirho(),
-                            ))
-                        })
-                        .collect(),
+                    classes_chirho: deriving_chirho.iter().map(ast_type_to_th_chirho).collect(),
                 }]
             };
 
@@ -551,7 +537,7 @@ mod tests_chirho {
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
-            deriving_chirho: vec![mk_name_chirho("Show")],
+            deriving_chirho: vec![TypeChirho::ConChirho(mk_name_chirho("Show"))],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };

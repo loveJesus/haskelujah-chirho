@@ -182,7 +182,14 @@ fn gadt_newtype_constructor_and_deriving_survive_lowering_chirho() {
         "expected preserved GADT constructor, got {constructor_chirho:?}"
     );
     assert_eq!(deriving_chirho.len(), 1);
-    assert_eq!(deriving_chirho[0].text_chirho(), "Eq");
+    assert_eq!(
+        deriving_chirho[0]
+            .constructor_application_chirho()
+            .unwrap()
+            .0
+            .text_chirho(),
+        "Eq"
+    );
 }
 
 #[test]

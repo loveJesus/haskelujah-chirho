@@ -132,9 +132,6 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 kind_sig_chirho,
                 ..
             } => {
-                for class_chirho in deriving_chirho {
-                    self.check_type_name_chirho(class_chirho, false);
-                }
                 if let Some(signature_chirho) = kind_sig_chirho
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.standalone_chirho())
@@ -142,6 +139,12 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.walk_signature_type_chirho(signature_chirho);
                 }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
+                for application_chirho in deriving_chirho {
+                    self.walk_type_chirho(
+                        application_chirho,
+                        FreeTyVarPolicyChirho::RequireBoundChirho,
+                    );
+                }
                 if let Some(result_chirho) = kind_sig_chirho
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.result_chirho())
@@ -173,9 +176,6 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 kind_sig_chirho,
                 ..
             } => {
-                for class_chirho in deriving_chirho {
-                    self.check_type_name_chirho(class_chirho, false);
-                }
                 if let Some(signature_chirho) = kind_sig_chirho
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.standalone_chirho())
@@ -183,6 +183,12 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.walk_signature_type_chirho(signature_chirho);
                 }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
+                for application_chirho in deriving_chirho {
+                    self.walk_type_chirho(
+                        application_chirho,
+                        FreeTyVarPolicyChirho::RequireBoundChirho,
+                    );
+                }
                 if let Some(result_chirho) = kind_sig_chirho
                     .as_ref()
                     .and_then(|sig_chirho| sig_chirho.result_chirho())

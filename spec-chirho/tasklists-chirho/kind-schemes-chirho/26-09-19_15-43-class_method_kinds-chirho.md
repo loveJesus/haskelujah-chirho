@@ -28,7 +28,7 @@ work per declaration/use.
  driver controls that demonstrate the valid failures and genuine contradictions.
 - [x] Trace classifier/term identities and settle the smallest shared repair.
 - [x] Implement without dropping or fabricating checked kind evidence.
-- [ ] Run focused parser/naming/typing/driver, canaries and the live package
+- [x] Run focused parser/naming/typing/driver, canaries and the live package
  control; compare complete corpus membership at the meaningful gate boundary.
 - [ ] Retain source/hash/result evidence, limits and workflow; commit only owned
  paths, push and verify the exact remote tip.
@@ -176,6 +176,21 @@ from this checkpoint.
 
 ### Next-brick phase decision
 
+Implementation resumed from ff75ea3f, checkpoint tag
+`row484-gnd-kind-seam-before-chirho`. Main's independent context/duplicate lane
+has landed; this work remains in the isolated kind worktree, with no canonical
+DB write. Preserve deriving applications as TypeChirho, using the shared type
+lowerer and lexical declaration scope. Split the kind driver into declaration
+preparation and instance/finalization, with a mutable frontend entry point that
+inserts GND between them. Keep the existing immutable kind-check entry point
+for callers that do not request deriving; neither path clones or rebuilds a
+kind checker. Pure representation eta reduction belongs in a deriving child;
+the kind-context adapter owns checked classifiers and diagnostics.
+
+This is a local reversible compiler change. Existing deriving strategies and
+runtime coercion are not being declared complete. Exact GHC-calibrated verdicts
+and generated-head/context behavior, not names or corpus exceptions, gate it.
+
 Keep the GND repair inside one kind-inference context: checked/closed declaration
 kinds, then elaborate GND using the retained written class application, then
 ordinary instance checking, then finalization and ordinal-keyed publication.
@@ -186,19 +201,208 @@ that current Generic deriving emits associated equations was incorrect: its
 emitted instances have empty associated-equation lists. Limit the phase move to
 GND for change scope, not on that false premise.
 
-- [ ] Replace name-only deriving payloads with full represented applications;
+- [x] Replace name-only deriving payloads with full represented applications;
   check their written arguments under the declaration's lexical scope.
-- [ ] Put GND elaboration in a focused child module. Consume checked residual
+- [x] Put GND elaboration in a focused child module. Consume checked residual
   class kind and newtype kind; preserve all written class arguments in both
   the generated instance head and its representation constraint.
-- [ ] Eta-reduce only trailing newtype parameters that the representation can
+- [x] Eta-reduce only trailing newtype parameters that the representation can
   actually remove, keeping generated instances inside the ordinary instance
   pass and declaration-ordinal transport.
-- [ ] Gate G1/G2/G4/G6/G8 positives and the distinct G3 unary, G5 eta and G7
-  wrong-kind negatives by their actual diagnostics, then T3955 and complete
-  corpus membership. No new runtime-coercion claim without execution.
+- [x] Gate G1/G2/G4/G6/G8 positives and the distinct G3 unary, G5 eta and G7
+  wrong-kind negatives by their actual diagnostics, then unchanged T3955.
+- [x] Complete current-revision focused suites, imported-class and live-package
+  controls, immutable CLI replay and lint accounting after the structural split.
+- [x] Compare complete corpus membership before a landing decision. No new
+  runtime-coercion claim without execution.
+
+The first eight-case draft exposed two repair defects, both fixed before the
+14-case gate: generated target nodes reused the written deriving class span,
+aliasing hidden-argument records; and the newtype kind was opened rigidly instead
+of instantiated for its derived use. The eight controls plus arrow/list/tuple,
+free-prefix and two-kind cases now pass, as does the unchanged T3955 source.
+Reference predictions were recorded before the five extra GHC 9.14.1 probes;
+all five held. Imported qualified class arguments have a further positive and
+wrong-kind reference pair, awaiting the full current candidate gate.
+
+Claude2's read-only review #23992 verified closure -> GND -> instance checking
+-> finalization, isolated binder identity, and no instance publication after an
+error. This is a source review, not independent candidate execution. Existing
+deriving strategy, coercion and runtime dictionary limitations remain separate.
+The former 3,635-line deriving root was split into stock, via, syntax-builder,
+higher-kinded and test children. Dispatch now shares one stock-class classification
+across inline data, newtype, standalone and late-GND ownership; the root is 338
+lines. The parser root remains separate pre-existing structural debt, not clean.
+
+### Live-package regression found before checkpoint
+
+The first recorded gate passed naming138, parser374, typing409, TH18, canaries7
+and all460 typing integration tests. The LIVE constraints package test then failed:
+GND incorrectly claimed Generic1 in transformers and tagged, and the builtin Ix
+kind was missing. Dependent mtl/root missing-name errors were downstream, not
+independent regressions. The failed receipt is retained; those green subsets
+never established package acceptance.
+
+Generic1 is stock-owned but its generator is still unimplemented. The unified
+dispatch emits an explicit unsupported-stock warning, rather than manufacturing
+a GND representation constraint or claiming Generic1 works. Ix receives its known
+Type -> Constraint seed; local declarations still shadow it. Four predictions
+were recorded before GHC9.14.1 reference checks: package-shaped Generic1, ordinary
+Ix deriving and a local higher-kinded Ix accept; Ix Maybe rejects for kind arity.
+All four candidate controls pass along with the other16 matching newtype tests.
+This restores strategy ownership, not complete deriving strategies, Generic1
+generation, role/coercion proof or runtime method execution.
+
+Post-split/post-ownership broad gates, live package, a frozen CLI and corpus
+membership remain owed. No landing, main/DB change or public measurement update.
+
+The first retry advanced through the original Generic1/Ix failures but exposed
+Data in transformers/Data.Functor.Constant (62.79s, one live test failed).
+The stock ownership set now includes Data, Typeable and Lift. Their early pass's
+existing metadata-only support is preserved, not promoted to a new claim of
+generated Data/Lift methods. The fifth GHC reference accepts the combined stock
+declarations with a phantom parameter. Revision2 passes naming138, parser374,
+typing409, TH18, canaries7 and ALL465 typing integration tests (zero ignored or
+filtered). The LIVE constraints package then passes: one test, 1775 filtered,
+89.51s. Frozen CLI5d5976ec belongs to that revision only. The remaining new
+Chirho-enum naming lint is removed by storing the selected generator directly
+in the dispatch entry, rather than disabling the lint. Final-revision gates and
+the frozen candidate are being regenerated; the older lint debt remains.
+
+Final revision3 completes those gates on unchanged source: naming138, parser374,
+TH18, typing409, canaries7 and typing integration465, all zero failed, ignored
+or filtered. The LIVE package passes again (1 run, 1775 filtered, 92.78s).
+Frozen CLIbc186a6d41d756ee18cf91b7b5303c8e1cf0d04b3b57fe1474209de7880a191a
+agrees with all20 retained GHC frontend cases and accepts all9 original corpus
+losses, T3955 included; no timeout and binary hashes stable before/after. The
+six negative diagnostics are the intended unary-constraint, eta-reduction or
+kind-arity errors, not missing metadata. Clippy reports433 distinct warnings,
+zero on changed lines; this is existing debt, NOT a clean lint result.
+
+Replay stopped before the imported pair when the retained provider text failed
+its recorded hash. The original scratch source matched the recorded SHA256;
+the retained copy had one extra LF. The copy is corrected and the discrepancy
+recorded on both reference rows; the complete29-case replay then passed. No
+compiler change followed from that evidence-copy correction. One diagnostic
+corpus pass per axis is queued after Claude's driver suite, not a landing gate.
+
+### First GND corpus diagnostic and standard monad follow-up
+
+That diagnostic is complete on frozen bc186a6d: accept889/938, reject268/767,
+zero initial/unresolved timeouts, runtime panics, unexpected exits or output
+limits. Source and binary hashes remained unchanged. Against parent650be538,
+accept gains are the three class-default boot files and T18036b; NEW LOSS
+T12734 is not waived. All9 first-candidate accept losses recovered. The sole
+new reject is T6001; its real Int/Integer instance-signature defect is caught,
+but the message inverts expected/actual, anchors the binding and omits the
+generality rule. Record ADJACENT, not matching (independent review #24081).
+T15712/T26137 wrong-reason rejections are removed. Versus current main there
+remain older row484 differences plus main's independently landed duplicate
+instance work; the total difference is not this unit's capability gain.
+Attribution against the separately retained pre-GND CLI83444193 confirms it
+already rejected T6001 with the identical diagnostic. The +1 is since the older
+parent650be538, from the earlier InstanceSigs work, not a new GND capability.
+That same immutable replay rejects T18036b and accepts T12734, locating those
+two accept-side movements in the current GND continuation.
+
+T12734 reports missing unary classifiers for MonadIO, MonadFix and MonadTrans.
+The central builtin kind seed contains none of them; GHC9.14.1 reports
+MonadIO/MonadFix :: (Type -> Type) -> Constraint and
+MonadTrans :: ((Type -> Type) -> Type -> Type) -> Constraint. Six predictions
+held in reference probes: valid deriving and well-kinded contexts accept,
+three wrong-kind arguments reject, and local first-order same-spelled classes
+shadow the standard contracts. Frozen bc186a6d rejects the valid deriving and
+falsely accepts all three wrong-kind arguments. The repair adds these central
+contracts, not a GND-name workaround or a relaxed unary check. Five new driver
+tests include the unchanged T12734 and that six-case matrix. Code is written;
+its own tests/build/replay remain pending while Claude holds #24080's corpus
+slot. Reference sources and both compilers' outputs are retained beside the
+other GND controls.
 
 ## Storage interruption receipt
+
+### Reboot recovery, 2026-09-20
+
+The host reboot erased /private/tmp, including unarchived GND gate/replay/corpus
+receipts and frozen binaries. Revision4's source and the three retained reference
+JSONL files survived. Its prior running verification is incomplete, not green:
+only the delivered library-stage results are known; no final receipt exists.
+Re-run the same source with persistent, compressed logs in the GND evidence
+directory and the immutable CLI under this worktree's ignored tmp-chirho, not
+the operating system temporary directory. The older figures above remain
+historical reports, not reopenable evidence or a current acceptance gate.
+No source edits, main changes or canonical DB writes are required by recovery.
+
+The repeated gate on unchanged revision4 now passes naming138, parser374,
+TH18, typing409, canaries7 and typing integration470 (zero failed, ignored or
+filtered). The LIVE constraints package passes separately: 1 run, 1775 filtered,
+68.87s, with its cabal prerequisite hashed before and after. No compiler warning
+lines; clippy433 distinct warnings remain, zero primary spans on changed lines.
+Frozen CLI6aab9ed64d2fa159b09350054ef0a4f4adfb033f5dbc31cda27deb98e48b88bb
+matches all26 retained reference verdicts and all10 selected corpus recoveries,
+including T12734. Hashes stable; no replay timeout, panic or unexpected exit.
+Persistent receipts and runners are under gnd-chirho/checkpoint-chirho and
+gnd-chirho/tools-chirho. Complete corpus membership waits for Claude's announced
+quiet boundary, not a guessed completion time.
+
+A separate reference check resolves a misleading next-repair premise: unchanged
+T5481 exits1 under GHC9.14.1 with GHC-76037 for b at6:16 and a at8:16, matching
+our scope rejection. It remains a loss under the frozen should_compile inventory,
+but making it accept would contradict the measured reference. No corpus movement,
+denominator change or waiver is authorized here. The paired T17067 source DOES
+pass GHC and remains a real candidate defect: data-family applications are nominal
+in family equation patterns, unlike type-family applications. Both commands,
+sources and diagnostics are retained in checkpoint-chirho/next-reference-chirho.jsonl.
+The checked all.T directive at line360 also says compile_fail for T5481; its
+file hash and exact directive are in checkpoint-chirho/oracle-note-chirho.json.
+
+The structural gate then caught kind_chirho at16 entries after adding two phase
+files. Move the three declaration-phase files (groups, module driver, GND adapter)
+under phases_chirho using path-selected modules, preserving their logical Rust
+scope and byte-identical contents. The kind directory is now14 entries and its
+phase child3; deriving has7 focused children, all below1500 lines. This is a new
+source layout and gets its own final-gates-chirho receipt and frozen binary;
+the preceding passing run remains retained rather than relabeled as this one.
+
+The final-layout receipt completes at14:43:51 EDT: naming138, parser374, TH18,
+typing409, canaries7 and typing integration470, all zero failed/ignored/filtered.
+The LIVE package passes separately (1 run,1775 filtered,83.54s). Formatting
+passes, no compiler warning lines; clippy433 distinct warnings persist, none
+with a primary span on a changed line. Frozen CLI
+88c17197835dd4ccd6afc1b998f426a9ff5c284f05ebfddda0d84e5e9872063b
+then matches all36 retained checks with stable hashes and no timeout, panic or
+unexpected exit. All nine negative diagnostics were read: the intended unary,
+eta-reduction or kind-arity errors, not a metadata bail-out. Final receipts are
+final-gates-chirho, final-lint-chirho.json and final-replay-chirho.jsonl. The
+complete diagnostic corpus pair still waits for the agreed explicit release.
+
+That release was #24224. The final diagnostic pair (#24225 START / #24226 DONE)
+now completes on88c17197: accept890/938, reject268/767, zero initial/unresolved
+timeouts, runtime panics, unexpected exits or output limits. Every source and
+binary hash is unchanged. Persistent observations and exact membership comparison
+are under checkpoint-chirho/corpus-chirho. One pass per axis, not a landing gate.
+
+All1705 current source hashes match the retained parent650be538 and first
+candidate5c145678 observations. Against that parent: four accept gains
+(ClassDefaultInHsBoot, A2, A3 and T18036b), no accept losses; one reject gain
+(T6001), no reject losses. T6001 remains ADJACENT and predates this GND unit.
+Against the first candidate: all9 accept regressions recover plus T18036b;
+T15712/T26137's wrong-reason rejections disappear, not their missing GHC rules.
+T12734 is recovered. Against main c74db426, the full-branch differences remain
+16 accept gains/11 losses and59 reject gains/19 losses; they include older
+row484 work and main's independent duplicate-instance lane. No overall
+no-regression claim or waiver follows. Ready for an isolated owned checkpoint,
+not main landing; canonical row484 and published measurements stay unchanged.
+
+Read-only next-unit trace for T17067: the family lowerer recognizes both data
+and type keywords but stores neither in TypeFamilyDeclChirho; the AST has no
+form field. Declaration grouping consequently puts both in kind_family_names,
+and exported/imported KindHeadShapeChirho also labels both FamilyChirho. The
+equation-pattern guard then rejects either. Preserve the declaration form at
+the producer and in checked import contracts before changing the guard; do not
+special-case T17067 or make all family patterns legal. The next bounded controls
+need local and imported data-family positives, a type-family negative and local
+shadowing. No implementation or new capability is claimed by this trace.
 
 L.J.'s request to free disk space paused new builds. Owner-verified regenerable
 outputs were removed with cargo clean using each exact cache directory as its

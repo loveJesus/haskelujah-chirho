@@ -6,6 +6,39 @@ use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_span_chirho::SpanChirho;
 
 #[test]
+fn deriving_application_survives_conversion_and_reification_chirho() {
+    let application_chirho = ThTypeChirho::AppTChirho(
+        Box::new(ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+            "ClassChirho",
+        ))),
+        Box::new(ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho(
+            "aChirho",
+        ))),
+    );
+    let quoted_chirho = ThDecChirho::DataDChirho(
+        vec![],
+        ThNameChirho::mk_name_chirho("TypeChirho"),
+        vec![ThTyVarBndrChirho::PlainTVChirho(
+            ThNameChirho::mk_name_chirho("aChirho"),
+        )],
+        None,
+        vec![],
+        vec![ThDerivClauseChirho {
+            strategy_chirho: None,
+            classes_chirho: vec![application_chirho.clone()],
+        }],
+    );
+    let converted_chirho =
+        crate::convert_chirho::th_dec_to_ast_chirho(&quoted_chirho).expect("data declaration");
+    let Some(ThInfoChirho::TyConIChirho(ThDecChirho::DataDChirho(_, _, _, _, _, clauses_chirho))) =
+        reify_decl_chirho(&converted_chirho)
+    else {
+        panic!("converted declaration must reify");
+    };
+    assert_eq!(clauses_chirho[0].classes_chirho, vec![application_chirho]);
+}
+
+#[test]
 fn reified_kind_binders_retain_nominal_names_variables_and_applications_chirho() {
     let variable_chirho = AstKindChirho::VarChirho("kChirho".into());
     let nominal_chirho = AstKindChirho::ConChirho(NameChirho::RawChirho(

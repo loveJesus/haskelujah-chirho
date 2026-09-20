@@ -541,23 +541,15 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
                 .iter()
                 .filter_map(|c_chirho| th_con_to_ast_chirho(c_chirho))
                 .collect();
-            let deriving_names_chirho: Vec<NameChirho> = derivs_chirho
+            let deriving_types_chirho: Vec<TypeChirho> = derivs_chirho
                 .iter()
-                .flat_map(|dc_chirho| {
-                    dc_chirho.classes_chirho.iter().filter_map(|t_chirho| {
-                        if let ThTypeChirho::ConTChirho(n_chirho) = t_chirho {
-                            Some(th_name_to_ast_chirho(n_chirho))
-                        } else {
-                            None
-                        }
-                    })
-                })
+                .flat_map(|dc_chirho| dc_chirho.classes_chirho.iter().map(th_type_to_ast_chirho))
                 .collect();
             Some(DeclChirho::DataDeclChirho {
                 name_chirho: th_name_to_ast_chirho(name_chirho),
                 type_vars_chirho: ast_tyvars_chirho,
                 constructors_chirho: ast_cons_chirho,
-                deriving_chirho: deriving_names_chirho,
+                deriving_chirho: deriving_types_chirho,
                 kind_sig_chirho: None,
                 span_chirho: TH_SPAN_CHIRHO,
             })

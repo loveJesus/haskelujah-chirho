@@ -112,7 +112,7 @@ impl KindEnvChirho {
                 .bind_generalized_chirho(name_chirho.to_string(), star_to_star_chirho.clone());
         }
 
-        // First-order Prelude classes are type-level arguments as well as
+        // Standard first-order classes are type-level arguments as well as
         // predicate heads. Their known classifier must survive a use such as
         // `Rekind Eq`; an unconstrained imported placeholder loses the family
         // equation's hidden input. Local declarations still shadow these
@@ -122,6 +122,7 @@ impl KindEnvChirho {
         for name_chirho in &[
             "Eq",
             "Ord",
+            "Ix",
             "Show",
             "Read",
             "Bounded",
@@ -149,6 +150,8 @@ impl KindEnvChirho {
             "Applicative",
             "Monad",
             "MonadFail",
+            "MonadIO",
+            "MonadFix",
             "Alternative",
             "MonadPlus",
             "Foldable",
@@ -156,6 +159,15 @@ impl KindEnvChirho {
         ] {
             env_chirho.bind_generalized_chirho(name_chirho.to_string(), unary_class_chirho.clone());
         }
+        // MonadTrans consumes a transformer, not an ordinary monad. The same
+        // checked classifier governs contexts and kind-directed GND eta reduction.
+        // Workflow: declaration-kinds-chirho.
+        let transformer_kind_chirho =
+            KindChirho::arrow_chirho(star_to_star_chirho.clone(), star_to_star_chirho.clone());
+        env_chirho.bind_generalized_chirho(
+            "MonadTrans".to_owned(),
+            KindChirho::arrow_chirho(transformer_kind_chirho, KindChirho::ConstraintChirho),
+        );
 
         // * -> * -> * constructors
         let star2_chirho = KindChirho::arrow_n_chirho(

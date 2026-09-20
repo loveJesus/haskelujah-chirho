@@ -203,6 +203,31 @@ impl ConstraintChirho {
 }
 
 impl TypeChirho {
+    /// A constructor-headed visible application, without erasing any argument.
+    /// An explicit kind application needs its own represented consumer and is
+    /// deliberately not converted into an ordinary visible argument here.
+    pub fn constructor_application_chirho(&self) -> Option<(&NameChirho, Vec<&Self>)> {
+        let mut current_chirho = self;
+        let mut arguments_chirho = Vec::new();
+        loop {
+            match current_chirho.unannotated_chirho() {
+                Self::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
+                } => {
+                    arguments_chirho.push(arg_chirho.as_ref());
+                    current_chirho = fun_chirho;
+                }
+                Self::ConChirho(name_chirho) => {
+                    arguments_chirho.reverse();
+                    return Some((name_chirho, arguments_chirho));
+                }
+                _ => return None,
+            }
+        }
+    }
+
     /// Navigate a checked type's spine without parentheses or kind ascriptions.
     /// Name/kind visitors must visit both ascription children before erasure.
     pub fn unannotated_chirho(&self) -> &Self {

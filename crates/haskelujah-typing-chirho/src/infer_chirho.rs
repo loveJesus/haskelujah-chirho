@@ -5339,7 +5339,12 @@ impl InferCtxChirho {
                     deriving_chirho,
                     ..
                 } => {
-                    for class_chirho in deriving_chirho {
+                    for application_chirho in deriving_chirho {
+                        let Some((class_chirho, _)) =
+                            application_chirho.constructor_application_chirho()
+                        else {
+                            continue;
+                        };
                         self.derived_instance_heads_chirho.insert((
                             class_chirho.text_chirho().to_string(),
                             name_chirho.text_chirho().to_string(),

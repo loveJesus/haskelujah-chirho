@@ -678,7 +678,7 @@ impl<'src> ParserChirho<'src> {
 
         // DerivingStrategies: consume optional strategy keyword
         if self.at_varid_text_chirho("stock")
-            || self.at_varid_text_chirho("newtype")
+            || self.at_chirho(RawTokenKindChirho::NewtypeChirho)
             || self.at_varid_text_chirho("anyclass")
         {
             self.bump_chirho(); // strategy keyword
@@ -689,22 +689,22 @@ impl<'src> ParserChirho<'src> {
         if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
             self.bump_chirho();
             self.eat_trivia_chirho();
-            while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho() {
+            let mut depth_chirho = 1usize;
+            while depth_chirho != 0 && !self.at_eof_chirho() {
                 self.eat_trivia_chirho();
-                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                    && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
-                {
-                    self.bump_chirho();
+                if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                    depth_chirho += 1;
+                } else if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    depth_chirho -= 1;
                 }
-                self.eat_trivia_chirho();
-                if self.at_chirho(RawTokenKindChirho::CommaChirho) {
-                    self.bump_chirho();
+                if self.at_eof_chirho() {
+                    break;
                 }
-            }
-            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
                 self.bump_chirho();
             }
-        } else if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
+        } else if self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
+        {
             self.bump_chirho();
         }
 

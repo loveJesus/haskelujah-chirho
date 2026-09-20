@@ -5,6 +5,482 @@ use super::{assert_compile_success_chirho, assert_execution_chirho};
 use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[test]
+fn newtype_standard_monad_contracts_chirho() {
+    let source_chirho = r####"{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, PolyKinds #-}
+module StandardMonadsChirho where
+import Control.Monad.IO.Class
+import Control.Monad.Fix
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Identity
+newtype WrappedChirho (tagChirho :: kChirho) mChirho aChirho = WrappedChirho (IdentityT mChirho aChirho)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadFix, MonadTrans)
+"####;
+    assert_compile_success_chirho("standard_monads_chirho.hs", source_chirho);
+}
+
+#[test]
+fn newtype_standard_monad_constraints_chirho() {
+    let source_chirho = r####"{-# LANGUAGE FlexibleContexts #-}
+module StandardConstraintsChirho where
+import Control.Monad.IO.Class
+import Control.Monad.Fix
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Identity
+ioChirho :: MonadIO IO => Int
+ioChirho = 1
+fixChirho :: MonadFix IO => Int
+fixChirho = 2
+transChirho :: MonadTrans IdentityT => Int
+transChirho = 3
+"####;
+    assert_compile_success_chirho("standard_constraints_chirho.hs", source_chirho);
+}
+
+#[test]
+fn newtype_standard_monad_wrong_kind_chirho() {
+    for (class_chirho, argument_chirho) in [
+        ("MonadIO", "Int"),
+        ("MonadFix", "Int"),
+        ("MonadTrans", "IO"),
+    ] {
+        let source_chirho = format!(
+            r####"{{-# LANGUAGE FlexibleContexts #-}}
+module StandardWrongKindChirho where
+import Control.Monad.IO.Class
+import Control.Monad.Fix
+import Control.Monad.Trans.Class
+badChirho :: {class_chirho} {argument_chirho} => Int
+badChirho = 1
+"####
+        );
+        let message_chirho = rejection_chirho(&source_chirho);
+        assert!(message_chirho.contains("kind mismatch"), "{message_chirho}");
+    }
+}
+
+#[test]
+fn newtype_standard_monad_local_shadow_chirho() {
+    let source_chirho = r####"{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, FlexibleInstances #-}
+module LocalMonadsChirho where
+import Data.Kind (Type)
+class MonadIO (aChirho :: Type)
+class MonadFix (aChirho :: Type)
+class MonadTrans (aChirho :: Type)
+instance MonadIO Int
+instance MonadFix Int
+instance MonadTrans Int
+newtype WrappedChirho = WrappedChirho Int deriving (MonadIO, MonadFix, MonadTrans)
+"####;
+    assert_compile_success_chirho("local_monads_chirho.hs", source_chirho);
+}
+
+#[test]
+fn newtype_t12734_standard_monad_kinds_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../ghc-tests-chirho/typecheck-chirho/should_compile/T12734.hs"
+    ));
+    assert_compile_success_chirho("T12734.hs", source_chirho);
+}
+
+#[test]
+fn newtype_stock_metadata_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DeriveDataTypeable, DeriveLift #-}
+module StockMetadataChirho where
+import Data.Data
+import Language.Haskell.TH.Syntax (Lift)
+newtype ConstantChirho aChirho bChirho = ConstantChirho aChirho deriving (Data, Typeable, Lift)
+"####;
+    assert_compile_success_chirho("stock_metadata_chirho.hs", source_chirho);
+}
+
+#[test]
+fn newtype_stock_generic1_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DeriveGeneric #-}
+module StockGeneric1Chirho where
+import GHC.Generics
+newtype ExceptChirho eChirho mChirho aChirho = ExceptChirho (mChirho (Either eChirho aChirho)) deriving (Generic, Generic1)
+newtype TaggedChirho sChirho bChirho = TaggedChirho bChirho deriving (Generic, Generic1)
+"####;
+    assert_compile_success_chirho("stock_generic1_chirho.hs", source_chirho);
+}
+
+#[test]
+fn newtype_ix_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE Haskell2010 #-}
+module IxChirho where
+import Data.Ix
+newtype IndexChirho aChirho = IndexChirho aChirho deriving (Eq, Ord, Ix)
+"####;
+    assert_compile_success_chirho("ix_chirho.hs", source_chirho);
+}
+
+#[test]
+fn newtype_ix_wrong_kind_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE FlexibleContexts #-}
+module IxWrongKindChirho where
+import Data.Ix
+badChirho :: Ix Maybe => Int
+badChirho = 1
+"####;
+    assert!(rejection_chirho(source_chirho).contains("kind mismatch"));
+}
+
+#[test]
+fn newtype_ix_local_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, FlexibleInstances #-}
+module LocalIxChirho where
+import Data.Kind (Type)
+class Ix (fChirho :: Type -> Type)
+instance Ix []
+newtype WrappedChirho aChirho = WrappedChirho [aChirho] deriving Ix
+"####;
+    assert_compile_success_chirho("ix_local_chirho.hs", source_chirho);
+}
+
+#[test]
+fn newtype_imported_class_kind_checks_written_arguments_chirho() {
+    let consumer_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, MultiParamTypeClasses #-}
+module ConsumerChirho where
+import qualified ProbeChirho as PChirho
+newtype TChirho aChirho xChirho = TChirho (PChirho.RChirho aChirho xChirho)
+  deriving (Functor, Applicative, Monad, PChirho.CChirho aChirho)
+"####;
+    for (source_chirho, accepted_chirho) in [
+        (consumer_chirho.to_owned(), true),
+        (
+            consumer_chirho.replace("PChirho.CChirho aChirho)", "PChirho.CChirho Maybe)"),
+            false,
+        ),
+    ] {
+        let result_chirho = haskelujah_driver::compile_modules_chirho(
+            &[
+                ("ProbeChirho.hs", TYPED_READER_PRELUDE_CHIRHO),
+                ("ConsumerChirho.hs", &source_chirho),
+            ],
+            &mut SourceMapChirho::new_chirho(),
+        );
+        if accepted_chirho {
+            assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+        } else {
+            let Err(error_chirho) = result_chirho else {
+                panic!("the imported class fixes its first argument at Type");
+            };
+            let error_chirho = error_chirho.to_string();
+            assert!(error_chirho.contains("kind mismatch"), "{error_chirho}");
+        }
+    }
+}
+
+// GND checks full applications after declaration kinds close. These controls
+// establish frontend contracts, not runtime method coercion.
+const READER_PRELUDE_CHIRHO: &str = r####"{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances #-}
+module ProbeChirho where
+
+class Monad mChirho => CChirho rChirho mChirho
+
+newtype RChirho rChirho aChirho = RChirho (rChirho -> aChirho)
+
+instance Functor (RChirho rChirho) where
+  fmap fChirho (RChirho gChirho) = RChirho (fChirho . gChirho)
+instance Applicative (RChirho rChirho) where
+  pure xChirho = RChirho (const xChirho)
+  RChirho fChirho <*> RChirho gChirho = RChirho (\rChirho -> fChirho rChirho (gChirho rChirho))
+instance Monad (RChirho rChirho) where
+  RChirho gChirho >>= kChirho =
+    RChirho (\rChirho -> case kChirho (gChirho rChirho) of RChirho hChirho -> hChirho rChirho)
+instance CChirho rChirho (RChirho rChirho)
+
+"####;
+const TYPED_READER_PRELUDE_CHIRHO: &str = r####"{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances, KindSignatures #-}
+module ProbeChirho where
+import Data.Kind (Type)
+
+class Monad mChirho => CChirho (rChirho :: Type) mChirho
+
+newtype RChirho rChirho aChirho = RChirho (rChirho -> aChirho)
+instance Functor (RChirho rChirho) where
+  fmap fChirho (RChirho gChirho) = RChirho (fChirho . gChirho)
+instance Applicative (RChirho rChirho) where
+  pure xChirho = RChirho (const xChirho)
+  RChirho fChirho <*> RChirho gChirho = RChirho (\rChirho -> fChirho rChirho (gChirho rChirho))
+instance Monad (RChirho rChirho) where
+  RChirho gChirho >>= kChirho =
+    RChirho (\rChirho -> case kChirho (gChirho rChirho) of RChirho hChirho -> hChirho rChirho)
+instance CChirho rChirho (RChirho rChirho)
+
+"####;
+
+#[test]
+fn newtype_arrow_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, FlexibleInstances #-}
+module ArrowChirho where
+import Data.Kind (Type)
+class CChirho (fChirho :: Type -> Type)
+instance CChirho ((->) Int)
+newtype TChirho aChirho = TChirho (Int -> aChirho) deriving CChirho
+"####;
+    let result_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "arrow_chirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_prefix_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, FlexibleInstances #-}
+module PrefixChirho where
+import Data.Kind (Type)
+class CChirho (fChirho :: Type -> Type)
+newtype TChirho aChirho = TChirho (aChirho -> aChirho) deriving CChirho
+"####;
+    let result_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "prefix_chirho.hs",
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("GHC rejects a free prefix parameter")
+        .to_string();
+    assert!(error_chirho.contains("cannot eta-reduce"), "{error_chirho}");
+}
+
+#[test]
+fn newtype_two_kinds_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, FlexibleInstances, PolyKinds, DataKinds #-}
+module TwoKindsChirho where
+import Data.Kind (Type)
+class CChirho (fChirho :: kChirho -> Type) where
+  tagChirho :: fChirho aChirho -> Int
+data PChirho (aChirho :: kChirho) = PChirho
+instance CChirho PChirho where tagChirho _ = 7
+newtype TChirho (aChirho :: kChirho) = TChirho (PChirho aChirho) deriving CChirho
+firstChirho :: Int
+firstChirho = tagChirho (TChirho PChirho :: TChirho Int)
+secondChirho :: Int
+secondChirho = tagChirho (TChirho PChirho :: TChirho 'True)
+"####;
+    let result_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "two_kinds_chirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_list_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, FlexibleInstances #-}
+module ListChirho where
+import Data.Kind (Type)
+class CChirho (fChirho :: Type -> Type)
+instance CChirho []
+newtype TChirho aChirho = TChirho [aChirho] deriving CChirho
+"####;
+    let result_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "list_chirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_tuple_chirho() {
+    let source_chirho = r####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, KindSignatures, FlexibleInstances #-}
+module TupleChirho where
+import Data.Kind (Type)
+class CChirho (fChirho :: Type -> Type)
+instance CChirho ((,) Int)
+newtype TChirho aChirho = TChirho (Int, aChirho) deriving CChirho
+"####;
+    let result_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "tuple_chirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_t3955_full_source_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../ghc-tests-chirho/typecheck-chirho/should_compile/T3955.hs"
+    ));
+    let result_chirho = typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "T3955.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_g1_positive_chirho() {
+    let source_chirho = [
+        READER_PRELUDE_CHIRHO,
+        r####"newtype T1Chirho aChirho xChirho = T1Chirho (RChirho aChirho xChirho)
+  deriving (Functor, Applicative, Monad, CChirho aChirho)
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G1_positiveChirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_g2_second_newtype_chirho() {
+    let source_chirho = [
+        READER_PRELUDE_CHIRHO,
+        r####"newtype T2Chirho bChirho yChirho = T2Chirho (RChirho bChirho yChirho)
+  deriving (Functor, Applicative, Monad, CChirho bChirho)
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G2_second_newtypeChirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_g3_argument_omitted_chirho() {
+    let source_chirho = [
+        READER_PRELUDE_CHIRHO,
+        r####"newtype T1Chirho aChirho xChirho = T1Chirho (RChirho aChirho xChirho)
+  deriving (Functor, Applicative, Monad, CChirho)
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G3_argument_omittedChirho.hs",
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("GHC rejects this declaration")
+        .to_string();
+    assert!(
+        error_chirho.contains("not a unary constraint"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn newtype_g4_inferred_kind_accepts_higher_kinded_argument_chirho() {
+    let source_chirho = [
+        READER_PRELUDE_CHIRHO,
+        r####"newtype T1Chirho aChirho xChirho = T1Chirho (RChirho aChirho xChirho)
+  deriving (Functor, Applicative, Monad, CChirho Maybe)
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G4_wrong_kind_argumentChirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_g5_un_eta_reducible_chirho() {
+    let source_chirho = [
+        READER_PRELUDE_CHIRHO,
+        r####"newtype T3Chirho aChirho xChirho = T3Chirho (RChirho aChirho (xChirho, xChirho))
+  deriving (CChirho aChirho)
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G5_un_eta_reducibleChirho.hs",
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("GHC rejects this declaration")
+        .to_string();
+    assert!(error_chirho.contains("cannot eta-reduce"), "{error_chirho}");
+}
+
+#[test]
+fn newtype_g6_un_eta_no_deriving_chirho() {
+    let source_chirho = [
+        READER_PRELUDE_CHIRHO,
+        r####"newtype T3Chirho aChirho xChirho = T3Chirho (RChirho aChirho (xChirho, xChirho))
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G6_un_eta_no_derivingChirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
+#[test]
+fn newtype_g7_wrong_kind_explicit_chirho() {
+    let source_chirho = [
+        TYPED_READER_PRELUDE_CHIRHO,
+        r####"newtype T1Chirho aChirho xChirho = T1Chirho (RChirho aChirho xChirho)
+  deriving (Functor, Applicative, Monad, CChirho Maybe)
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G7_wrong_kind_explicitChirho.hs",
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("GHC rejects this declaration")
+        .to_string();
+    assert!(error_chirho.contains("kind mismatch"), "{error_chirho}");
+}
+
+#[test]
+fn newtype_g8_kindsig_control_chirho() {
+    let source_chirho = [
+        TYPED_READER_PRELUDE_CHIRHO,
+        r####"newtype T1Chirho aChirho xChirho = T1Chirho (RChirho aChirho xChirho)
+  deriving (Functor, Applicative, Monad, CChirho aChirho)
+"####,
+    ]
+    .concat();
+    let result_chirho = typecheck_source_chirho(
+        source_chirho.as_ref(),
+        &mut SourceMapChirho::new_chirho(),
+        "G8_kindsig_controlChirho.hs",
+    );
+    assert!(result_chirho.is_ok(), "{:?}", result_chirho.err());
+}
+
 const FAMILY_CHIRHO: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../test-data-chirho/kind-oracles-chirho/visible-applications-chirho/FamilyKindApplicationsChirho.hs"

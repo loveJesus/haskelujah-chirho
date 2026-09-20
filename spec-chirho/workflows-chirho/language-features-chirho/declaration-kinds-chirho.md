@@ -26,6 +26,10 @@ flowchart TD
   LowerChirho --> VisibilityChirho[Keep every head binder and its visibility]
   VisibilityChirho --> SchemesChirho[Open all binders but apply visible parameters in constructor and selector types]
   VisibilityChirho --> DerivingChirho[Visible parameters form derived instance heads]
+  GroupContractChirho --> WrittenDerivingChirho[Check retained deriving applications in the newtype binder scope]
+  WrittenDerivingChirho --> EtaChirho[Choose target kind then verify representation eta reduction]
+  EtaChirho --> InstancesChirho[Append successful GND instances before ordinary instance checking]
+  InstancesChirho --> InstanceEvidenceChirho[Publish checked hidden arguments by final declaration ordinal]
 ```
 
 The standalone conversion swaps the kind-name cache instead of cloning the
@@ -65,6 +69,62 @@ naming and field conversion keep every binder in scope. Deriving filters
 at its entry boundaries, borrowing ordinary binder slices and copying only a
 slice that actually contains invisible binders. This is linear in the head, not
 in the growing module environment.
+
+On the isolated GND continuation, deriving syntax retains complete class
+applications instead of a list of constructor names. The shared type lowerer
+keeps parenthesized arguments intact, and naming visits the applications under
+the newtype declaration's lexical binders. The existing TH DataD conversion and
+declaration reification preserve the same applications; NewtypeD conversion
+remains an independent gap. Stock and via deriving keep their
+existing phase; this does not claim complete deriving-strategy semantics.
+
+Early dispatch and late-GND ownership share one stock-class classification.
+Generic1 belongs to stock even though its generator is still unimplemented:
+that path reports its unsupported warning and never fabricates a representation
+constraint. This is not evidence of working Generic1 methods or Rep1 equations.
+Ix has the standard Type -> Constraint classifier; as with the other builtin
+contracts, a local declaration shadows it. Import visibility remains naming's
+responsibility, not the kind seed's.
+The standard MonadIO/MonadFix contracts consume Type -> Type; MonadTrans consumes
+(Type -> Type) -> Type -> Type. Their central classifiers check ordinary
+contexts as well as GND and let the latter remove one versus two trailing
+newtype parameters. Local declarations shadow these entries; unknown imported
+classes do not acquire guessed classifiers from this finite standard inventory.
+Data, Typeable and Lift stay on their existing early metadata-only path; moving
+GND must not reinterpret them as representation constraints. Full Data/Lift
+method generation remains outside this phase repair.
+
+GND runs after declaration closure and before instance checking in ONE kind
+context. The module driver, declaration groups and GND adapter live together in
+`kind_chirho/phases_chirho`; the pure syntax/eta helper lives in the deriving
+subsystem. Path-selected Rust modules preserve the existing logical ownership
+while keeping the kind directory below fifteen entries. The newtype's checked telescope supplies the visible parameters'
+classifiers. The written class application must leave exactly one argument to
+Constraint; its supplied arguments are not discarded. The chosen newtype
+application and the eta-reduced representation must both have that argument's
+kind. Eta reduction removes only trailing declaration variables, in order, and
+rejects a remaining use in the representation prefix. Failed work publishes no
+instance. Successful heads and representation contexts carry all written class
+arguments, then participate in ordinary instance checking and ordinal-keyed
+hidden-argument publication. This is a declaration-checking contract, not proof
+that runtime coercion/dictionary methods are complete.
+
+Each derivation opens its newtype's polymorphic kind as a fresh use, not as a
+rigid re-check of the declaration. Hidden source binders and visible parameters
+share the deriving occurrence's isolated lexical map. Generated target syntax
+uses synthetic spans: it must not reuse the written class application's span,
+which would alias unrelated source-occurrence metadata. The final instance
+pass supplies its own declaration-ordinal hidden-argument record.
+
+The search drops as few trailing parameters as the checked class kind permits.
+It examines at most 129 residual kinds (a 128-parameter declaration limit) and
+builds only the selected target AST. Kind-family reduction exhaustion is reported
+as exhaustion, never interpreted as a failed match that licenses another target.
+The representation walk checks a shared 16,384-node budget and depth 128 before
+cloning; type syntax, written binder kinds and quantified constraints share those
+bounds. Unrestricted arrows, lists and tuples expose the same constructor
+applications as their explicit spelling. A limit rejection is an unproved
+derivation, not a language mismatch, and publishes no generated instance.
 
 When interpreting source as a kind, `forall a ->` retains a visible argument
 classified by the binder's kind; `forall a.` does not. This differs from inferring

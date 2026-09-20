@@ -22,6 +22,11 @@ mod contexts_chirho;
 mod declaration_kind_tests_chirho;
 #[path = "lower_chirho/declarations_chirho/kinds_chirho.rs"]
 mod declaration_kinds_chirho;
+#[path = "lower_chirho/declarations_chirho/deriving_chirho.rs"]
+mod deriving_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/declarations_chirho/deriving_tests_chirho.rs"]
+mod deriving_tests_chirho;
 #[cfg(test)]
 mod flat_type_tests_chirho;
 mod flat_types_chirho;
@@ -2211,37 +2216,6 @@ impl LowerCtxChirho {
                 span_chirho,
             },
         }
-    }
-
-    fn lower_deriving_chirho(
-        &self,
-        node_chirho: &GreenNodeChirho,
-        base_chirho: usize,
-    ) -> Vec<NameChirho> {
-        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        let mut names_chirho = Vec::new();
-        let mut saw_via_chirho = false;
-        for child_chirho in &children_chirho {
-            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
-                // If we see "via", these classes belong to DerivingVia, not regular deriving
-                if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
-                    && tok_chirho.text_chirho() == "via"
-                {
-                    saw_via_chirho = true;
-                    continue;
-                }
-                if !saw_via_chirho && tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
-                    let s_chirho =
-                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                    names_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
-                }
-            }
-        }
-        // If `via` was present, these classes are handled by DerivingVia, not regular deriving
-        if saw_via_chirho {
-            names_chirho.clear();
-        }
-        names_chirho
     }
 
     /// Extract class names before "via" from a `deriving (Class) via Type` clause.

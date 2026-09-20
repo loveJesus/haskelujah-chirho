@@ -1,0 +1,8 @@
+{
+  "recorded_at_chirho": "2026-09-20T18:33:30.430Z",
+  "path_chirho": "ghc-tests-chirho/typecheck-chirho/should_compile/all.T",
+  "line_chirho": 360,
+  "directive_chirho": "test('T5481', normal, compile_fail, [''])",
+  "sha256_chirho": "0115b710b65665718443540114978a8708ca6186c0e4894afb3957ff1ae3b99b",
+  "disposition_chirho": "GHC configuration and execution agree that T5481 is a compile-fail test. Preserve existing directory-based corpus membership and counts; label the reference-correct rejection separately from genuine valid-program regressions."
+}

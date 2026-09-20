@@ -107,7 +107,8 @@ pub fn run_frontend_with_inputs_chirho(
     module_chirho.decls_chirho = splice_result_chirho.decls_chirho;
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 
-    // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
+    // Phase 2.5: Stock/via deriving. GND waits for closed declaration kinds
+    // inside phase 3.5, before its instance/hidden-argument publication pass.
     let deriving_warnings_chirho =
         haskelujah_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
 
@@ -136,8 +137,8 @@ pub fn run_frontend_with_inputs_chirho(
         imported_types_chirho,
     );
     let kind_result_chirho =
-        haskelujah_typing_chirho::kind_chirho::infer_module_kinds_with_imports_chirho(
-            &module_chirho,
+        haskelujah_typing_chirho::kind_chirho::infer_module_kinds_with_deriving_chirho(
+            &mut module_chirho,
             &imported_contracts_chirho.kinds_chirho,
         );
     if !defer_errors_chirho && kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
