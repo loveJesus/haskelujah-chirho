@@ -2786,14 +2786,29 @@ pub(crate) fn join_occurrence_evidence_chirho(
     // than one occurrence, or to another name, yields no verdict here and falls
     // through to the ordinal path below.
     // workflow: language-features-chirho/dictionary-evidence-chirho
+    // A DUMMY or synthetic span is not an identity: the deriving pass gives every
+    // reference it generates the same placeholder, so indexing by it would make
+    // unrelated references look like one another. Such an occurrence is treated
+    // as having no span at all, here and in the pool below.
+    let identifying_span_chirho = |span_chirho: &haskelujah_span_chirho::SpanChirho| {
+        *span_chirho != haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO
+            && span_chirho.file_id_chirho()
+                != haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO
+    };
+    let occurrence_span_chirho = |occ_id_chirho: &haskelujah_core_chirho::CoreIdChirho| {
+        reference_occurrence_spans_chirho
+            .get(occ_id_chirho)
+            .filter(|span_chirho| identifying_span_chirho(span_chirho))
+            .copied()
+    };
     let mut occ_ids_by_span_chirho: std::collections::HashMap<
         haskelujah_span_chirho::SpanChirho,
         Vec<(haskelujah_core_chirho::CoreIdChirho, String)>,
     > = std::collections::HashMap::new();
     for (occ_id_chirho, (name_chirho, _canon_chirho)) in method_occurrences_chirho {
-        if let Some(span_chirho) = reference_occurrence_spans_chirho.get(occ_id_chirho) {
+        if let Some(span_chirho) = occurrence_span_chirho(occ_id_chirho) {
             occ_ids_by_span_chirho
-                .entry(*span_chirho)
+                .entry(span_chirho)
                 .or_default()
                 .push((*occ_id_chirho, name_chirho.clone()));
         }
@@ -2831,6 +2846,13 @@ pub(crate) fn join_occurrence_evidence_chirho(
                 record_chirho.ty_key_chirho.clone()
             }
         };
+    let record_spans_chirho: std::collections::HashSet<haskelujah_span_chirho::SpanChirho> =
+        infer_result_chirho
+            .method_occurrences_chirho
+            .iter()
+            .map(|record_chirho| record_chirho.span_chirho)
+            .filter(|span_chirho| identifying_span_chirho(span_chirho))
+            .collect();
     let mut consumed_records_chirho: std::collections::HashSet<usize> =
         std::collections::HashSet::new();
     let mut identified_occurrences_chirho: std::collections::HashSet<
@@ -2842,6 +2864,9 @@ pub(crate) fn join_occurrence_evidence_chirho(
         .enumerate()
     {
         if !record_is_authoritative_chirho(record_chirho) {
+            continue;
+        }
+        if !identifying_span_chirho(&record_chirho.span_chirho) {
             continue;
         }
         let Some(candidates_chirho) = occ_ids_by_span_chirho.get(&record_chirho.span_chirho) else {
@@ -2882,16 +2907,30 @@ pub(crate) fn join_occurrence_evidence_chirho(
     // which is its own brick.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
-        // UNSPANNED, not merely unidentified. An occurrence whose span is
-        // ambiguous (two occurrences sharing one span) or whose name did not
-        // match is not identified either, and it must NOT become eligible here:
-        // that would assign a proof by position to a reference the span join
-        // deliberately refused (gpt_chirho, room #24075, on a read of this file).
+        // Eligible here: an occurrence the span join neither identified nor
+        // REFUSED. It refuses a span that more than one occurrence claims, and a
+        // refusal must never be overturned by position: that is the boundary
+        // gpt_chirho found open on a read of this file (room #24075). But a span
+        // that matches NO checker record was never a decision the join made, so
+        // such an occurrence is unidentifiable rather than refused, exactly like
+        // one with no span at all. That is the derived `Show` body's field
+        // rendering, whose generated references all borrow one span: measured,
+        // treating those as refused regresses `MixChirho 2 True` to
+        // `MixChirho 2 1` in a native round trip.
         let unidentified_chirho: Vec<haskelujah_core_chirho::CoreIdChirho> = ids_chirho
             .iter()
             .filter(|id_chirho| {
-                !identified_occurrences_chirho.contains(id_chirho)
-                    && !reference_occurrence_spans_chirho.contains_key(id_chirho)
+                if identified_occurrences_chirho.contains(id_chirho) {
+                    return false;
+                }
+                let Some(span_chirho) = occurrence_span_chirho(id_chirho) else {
+                    return true;
+                };
+                let contested_chirho = occ_ids_by_span_chirho
+                    .get(&span_chirho)
+                    .is_some_and(|sharers_chirho| sharers_chirho.len() > 1);
+                let claimed_by_a_record_chirho = record_spans_chirho.contains(&span_chirho);
+                !(contested_chirho && claimed_by_a_record_chirho)
             })
             .copied()
             .collect();

@@ -7,14 +7,18 @@
 
 use crate::join_occurrence_evidence_chirho;
 use haskelujah_core_chirho::CoreIdChirho;
-use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho, SpanChirho};
+use haskelujah_span_chirho::{ByteOffsetChirho, SpanChirho};
 use haskelujah_typing_chirho::infer_chirho::{InferResultChirho, MethodOccurrenceRecordChirho};
 use std::collections::HashMap;
 
 fn span_chirho(start_chirho: u32, end_chirho: u32) -> SpanChirho {
-    // The join compares spans for equality only, so any file id serves.
+    // A REAL file id: the join treats a synthetic or dummy span as no identity at
+    // all, so a control built on one would prove nothing about identified spans.
+    let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let file_id_chirho =
+        source_map_chirho.add_file_chirho("OccurrenceJoinChirho.hs", "module M where\n");
     SpanChirho::new_chirho(
-        FileIdChirho::SYNTHETIC_CHIRHO,
+        file_id_chirho,
         ByteOffsetChirho::new_chirho(start_chirho),
         ByteOffsetChirho::new_chirho(end_chirho),
     )
@@ -162,4 +166,37 @@ fn unspanned_occurrences_still_take_their_records_in_order_chirho() {
     );
 
     assert_eq!(evidence_chirho.len(), 2, "{evidence_chirho:?}");
+}
+
+#[test]
+fn dummy_spans_are_not_an_identity_chirho() {
+    // The deriving pass gives every reference it generates the SAME placeholder
+    // span. Treating that as a shared span would make unrelated references look
+    // like one another and refuse them all; measured, that renders a derived
+    // `Show`'s Bool field as `1` in a native round trip. A dummy span counts as
+    // no span, so these two take their records in order.
+    let first_chirho = CoreIdChirho(40);
+    let second_chirho = CoreIdChirho(41);
+    let mut occurrences_chirho = HashMap::new();
+    occurrences_chirho.insert(first_chirho, ("show".to_string(), CoreIdChirho(4)));
+    occurrences_chirho.insert(second_chirho, ("show".to_string(), CoreIdChirho(4)));
+    let mut spans_chirho = HashMap::new();
+    spans_chirho.insert(first_chirho, SpanChirho::DUMMY_CHIRHO);
+    spans_chirho.insert(second_chirho, SpanChirho::DUMMY_CHIRHO);
+
+    let evidence_chirho = join_occurrence_evidence_chirho(
+        &infer_result_chirho(vec![
+            record_chirho("show", 0, "Int", SpanChirho::DUMMY_CHIRHO),
+            record_chirho("show", 1, "Bool", SpanChirho::DUMMY_CHIRHO),
+        ]),
+        &occurrences_chirho,
+        &HashMap::new(),
+        &spans_chirho,
+    );
+
+    assert_eq!(
+        evidence_chirho.len(),
+        2,
+        "generated references sharing the placeholder span must still be served: {evidence_chirho:?}"
+    );
 }
