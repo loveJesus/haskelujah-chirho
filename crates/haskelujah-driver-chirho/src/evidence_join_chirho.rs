@@ -1,24 +1,37 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 //! Joining the checker's per-reference evidence to the desugarer's occurrence
-//! ids. A reference is identified by its SOURCE SPAN; a placeholder span is not
-//! an identity, and a genuine span claimed by more than one occurrence is refused
+//! ids. A reference is identified first by its PROVENANCE, the origin its
+//! producer minted, which both phases read from the same AST node. What has no
+//! provenance yet is identified by its source span; a placeholder span is not an
+//! identity, and a genuine span claimed by more than one occurrence is refused
 //! rather than guessed at.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
+
+use std::collections::HashMap;
+
+use haskelujah_ast_chirho::provenance_chirho::{
+    OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
+};
+use haskelujah_core_chirho::CoreIdChirho;
 
 use crate::InferResultChirho;
 
 /// Join the checker's occurrence records to the desugarer's occurrence ids.
 ///
-/// A record is matched to the reference it describes BY SPAN. The two phases
-/// number references differently (declaration order in the desugarer, inference
-/// order in the checker, with instance bodies last), so position is not an
-/// identity and matching by it exchanged evidence between references.
+/// First by provenance: a record carrying an origin belongs to the occurrence
+/// the desugarer minted for that same use, and to nothing else. An occurrence
+/// with provenance whose record is missing or conflicting receives no evidence,
+/// and it is never rescued by span or by position.
 ///
-/// What remains positional serves only references nothing can identify yet: the
-/// desugarer mints occurrences at several sites and only the variable-reference
-/// site records a span, and the deriving pass gives every reference it generates
-/// the same placeholder. Those take unconsumed records in order, count-guarded.
+/// Then by span, for occurrences without provenance. The two phases number
+/// references differently (declaration order in the desugarer, inference order
+/// in the checker, with instance bodies last), so position is not an identity
+/// and matching by it exchanged evidence between references.
+///
+/// What remains positional serves only the population with no identity at all:
+/// occurrences with neither provenance nor a genuine span, and records with no
+/// origin, taken in order under a count guard.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn join_occurrence_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
@@ -34,6 +47,7 @@ pub(crate) fn join_occurrence_evidence_chirho(
         haskelujah_core_chirho::CoreIdChirho,
         haskelujah_span_chirho::SpanChirho,
     >,
+    occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
 ) -> std::collections::HashMap<haskelujah_core_chirho::CoreIdChirho, (String, String)> {
     // Literal evidence joins by span, exactly: the checker solved this very
     // literal. It is inserted first so the per-name ordinal join below never
@@ -100,7 +114,12 @@ pub(crate) fn join_occurrence_evidence_chirho(
         haskelujah_span_chirho::SpanChirho,
         Vec<(haskelujah_core_chirho::CoreIdChirho, String)>,
     > = std::collections::HashMap::new();
+    let has_provenance_chirho =
+        |occ_id_chirho: &CoreIdChirho| occurrence_provenance_chirho.contains_key(occ_id_chirho);
     for (occ_id_chirho, (name_chirho, _canon_chirho)) in method_occurrences_chirho {
+        if has_provenance_chirho(occ_id_chirho) {
+            continue;
+        }
         if let Some(span_chirho) = occurrence_span_chirho(occ_id_chirho) {
             occ_ids_by_span_chirho
                 .entry(span_chirho)
@@ -146,11 +165,74 @@ pub(crate) fn join_occurrence_evidence_chirho(
     let mut identified_occurrences_chirho: std::collections::HashSet<
         haskelujah_core_chirho::CoreIdChirho,
     > = std::collections::HashSet::new();
+    // By provenance. The desugarer may desugar one source use more than once
+    // (each copy is that same use, at that same type), so every occurrence of an
+    // origin takes the proof; a record for another name (the `/=` rewrite's
+    // `==`) is not this occurrence's proof.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let mut occurrences_by_origin_chirho: HashMap<OriginIdChirho, Vec<(CoreIdChirho, &String)>> =
+        HashMap::new();
+    for (occ_id_chirho, provenance_chirho) in occurrence_provenance_chirho {
+        if provenance_chirho.role_chirho != OccurrenceRoleChirho::Reference {
+            continue;
+        }
+        if let Some((name_chirho, _canon_chirho)) = method_occurrences_chirho.get(occ_id_chirho) {
+            occurrences_by_origin_chirho
+                .entry(provenance_chirho.origin_chirho)
+                .or_default()
+                .push((*occ_id_chirho, name_chirho));
+        }
+    }
+    let mut proofs_by_occurrence_chirho: HashMap<CoreIdChirho, Vec<(String, String)>> =
+        HashMap::new();
     for (record_index_chirho, record_chirho) in infer_result_chirho
         .method_occurrences_chirho
         .iter()
         .enumerate()
     {
+        let Some(origin_chirho) = record_chirho.origin_chirho else {
+            continue;
+        };
+        if !record_is_authoritative_chirho(record_chirho) {
+            continue;
+        }
+        let Some(candidates_chirho) = occurrences_by_origin_chirho.get(&origin_chirho) else {
+            continue;
+        };
+        if candidates_chirho
+            .iter()
+            .any(|(_occ_id_chirho, name_chirho)| **name_chirho != record_chirho.name_chirho)
+        {
+            continue;
+        }
+        consumed_records_chirho.insert(record_index_chirho);
+        for (occ_id_chirho, _name_chirho) in candidates_chirho {
+            identified_occurrences_chirho.insert(*occ_id_chirho);
+            proofs_by_occurrence_chirho
+                .entry(*occ_id_chirho)
+                .or_default()
+                .push((
+                    record_chirho.class_name_chirho.clone(),
+                    backed_key_chirho(record_chirho),
+                ));
+        }
+    }
+    for (occ_id_chirho, proofs_chirho) in &proofs_by_occurrence_chirho {
+        if let Some(proof_chirho) = single_proof_chirho(proofs_chirho) {
+            evidence_chirho
+                .entry(*occ_id_chirho)
+                .or_insert(proof_chirho);
+        }
+    }
+    // By span, for the occurrences without provenance.
+    for (record_index_chirho, record_chirho) in infer_result_chirho
+        .method_occurrences_chirho
+        .iter()
+        .enumerate()
+    {
+        if consumed_records_chirho.contains(&record_index_chirho) {
+            continue;
+        }
         if !record_is_authoritative_chirho(record_chirho) {
             continue;
         }
@@ -211,10 +293,14 @@ pub(crate) fn join_occurrence_evidence_chirho(
         // A placeholder span is not a span for this purpose, so the deriving
         // pass's generated references still qualify; that is what keeps a derived
         // `Show`'s Bool field from rendering as `1` in a native round trip.
+        // An occurrence with provenance belongs to the provenance join alone, and
+        // a record with an origin belongs to its own occurrence alone: the
+        // fallback serves only what has no identity at all (gpt_chirho #24575).
         let unidentified_chirho: Vec<haskelujah_core_chirho::CoreIdChirho> = ids_chirho
             .iter()
             .filter(|id_chirho| {
                 !identified_occurrences_chirho.contains(id_chirho)
+                    && !has_provenance_chirho(id_chirho)
                     && occurrence_span_chirho(id_chirho).is_none()
             })
             .copied()
@@ -227,6 +313,7 @@ pub(crate) fn join_occurrence_evidence_chirho(
             .enumerate()
             .filter(|(index_chirho, record_chirho)| {
                 &record_chirho.name_chirho == name_chirho
+                    && record_chirho.origin_chirho.is_none()
                     && !consumed_records_chirho.contains(index_chirho)
                     && record_is_authoritative_chirho(record_chirho)
             })
@@ -248,4 +335,69 @@ pub(crate) fn join_occurrence_evidence_chirho(
         }
     }
     evidence_chirho
+}
+
+/// Join the checker's per-predicate evidence for constrained references to the
+/// desugarer's reference occurrences: by provenance, or by span for an
+/// occurrence that has no provenance. An occurrence with provenance whose origin
+/// has no agreed evidence receives none; its span is not consulted.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(crate) fn join_reference_evidence_chirho(
+    infer_result_chirho: &InferResultChirho,
+    reference_occurrence_spans_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
+    occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
+) -> HashMap<CoreIdChirho, Vec<(String, Option<String>)>> {
+    reference_occurrence_spans_chirho
+        .iter()
+        .filter_map(|(occ_id_chirho, span_chirho)| {
+            let records_chirho = match occurrence_provenance_chirho.get(occ_id_chirho) {
+                Some(provenance_chirho)
+                    if provenance_chirho.role_chirho == OccurrenceRoleChirho::Reference =>
+                {
+                    infer_result_chirho
+                        .reference_evidence_by_origin_chirho
+                        .get(&provenance_chirho.origin_chirho)?
+                }
+                Some(_other_role_chirho) => return None,
+                None => infer_result_chirho
+                    .reference_evidence_chirho
+                    .get(span_chirho)?,
+            };
+            Some((
+                *occ_id_chirho,
+                records_chirho
+                    .iter()
+                    .map(|record_chirho| {
+                        // The engine's body-backed rows are keyed "Int"; the
+                        // checker defaults an ambiguous numeric to "Integer".
+                        let key_chirho = record_chirho.ty_key_chirho.as_deref().map(|key_chirho| {
+                            if key_chirho == "Integer" {
+                                "Int".to_string()
+                            } else {
+                                key_chirho.to_string()
+                            }
+                        });
+                        (record_chirho.class_name_chirho.clone(), key_chirho)
+                    })
+                    .collect(),
+            ))
+        })
+        .collect()
+}
+
+/// The proof an occurrence takes from the records of its own origin: the first
+/// authoritative one in checker order, unless some class was proved at two
+/// different types, which is a conflict and proves nothing.
+fn single_proof_chirho(proofs_chirho: &[(String, String)]) -> Option<(String, String)> {
+    let conflicting_chirho = proofs_chirho.iter().any(|(class_chirho, key_chirho)| {
+        proofs_chirho
+            .iter()
+            .any(|(other_class_chirho, other_key_chirho)| {
+                class_chirho == other_class_chirho && key_chirho != other_key_chirho
+            })
+    });
+    if conflicting_chirho {
+        return None;
+    }
+    proofs_chirho.first().cloned()
 }

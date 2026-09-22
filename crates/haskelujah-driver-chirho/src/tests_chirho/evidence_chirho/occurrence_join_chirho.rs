@@ -24,7 +24,7 @@ fn span_chirho(start_chirho: u32, end_chirho: u32) -> SpanChirho {
     )
 }
 
-fn record_chirho(
+pub(super) fn record_chirho(
     name_chirho: &str,
     ordinal_chirho: u32,
     ty_key_chirho: &str,
@@ -42,7 +42,9 @@ fn record_chirho(
 
 /// A result carrying only what the join reads, with a class that declares `show`
 /// so every record below is authoritative.
-fn infer_result_chirho(records_chirho: Vec<MethodOccurrenceRecordChirho>) -> InferResultChirho {
+pub(super) fn infer_result_chirho(
+    records_chirho: Vec<MethodOccurrenceRecordChirho>,
+) -> InferResultChirho {
     use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho};
     let mut class_env_chirho = ClassEnvChirho::new_chirho();
     let mut methods_chirho = HashMap::new();
@@ -102,6 +104,7 @@ fn a_record_consumed_by_span_is_never_reused_by_position_chirho() {
         &occurrences_chirho,
         &HashMap::new(),
         &spans_chirho,
+        &HashMap::new(),
     );
 
     assert_eq!(
@@ -139,6 +142,7 @@ fn two_occurrences_sharing_one_span_are_refused_chirho() {
         &occurrences_chirho,
         &HashMap::new(),
         &spans_chirho,
+        &HashMap::new(),
     );
 
     assert!(
@@ -163,6 +167,7 @@ fn unspanned_occurrences_still_take_their_records_in_order_chirho() {
             record_chirho("show", 1, "ZChirho", SpanChirho::DUMMY_CHIRHO),
         ]),
         &occurrences_chirho,
+        &HashMap::new(),
         &HashMap::new(),
         &HashMap::new(),
     );
@@ -194,6 +199,7 @@ fn dummy_spans_are_not_an_identity_chirho() {
         &occurrences_chirho,
         &HashMap::new(),
         &spans_chirho,
+        &HashMap::new(),
     );
 
     assert_eq!(
@@ -230,6 +236,7 @@ fn a_contested_genuine_span_is_refused_even_when_no_record_claims_it_chirho() {
         &occurrences_chirho,
         &HashMap::new(),
         &spans_chirho,
+        &HashMap::new(),
     );
 
     assert!(

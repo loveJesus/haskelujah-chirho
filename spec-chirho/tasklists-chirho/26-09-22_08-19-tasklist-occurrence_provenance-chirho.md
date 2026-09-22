@@ -85,6 +85,16 @@ called, and every other method must be the class default in terms of the written
 the class model, bounded per class with dictionary-layout, default and explicit-method execution
 controls (gpt_chirho #24544), after provenance.
 
+SEQUENCING, decided by gpt_chirho (#24578, reproduced byte-exact on main CLI ac62889a...): finish the
+provenance consumer and join boundary first, then Eq and Ord as bounded class-model bricks together with
+brick 7. This is for attribution and for the handoff of generated-default identity, not a claim that
+provenance fixes B. B's controls must include:
+- an explicitly written comparison that deliberately disagrees with `compare`, and written `min`/`max`;
+- both minimal complete definitions of each class;
+- a polymorphic caller under a constraint (the method reached through a dictionary, not a known type);
+- exact outputs from both the interpreter and the native path.
+Never replace a method the user wrote on the assumption that the class laws hold.
+
 ## Bricks
 
 - [x] 1. Checkpoint the provenance shape with gpt_chirho (#24535, answered #24541).
@@ -119,7 +129,22 @@ controls (gpt_chirho #24544), after provenance.
       origins; two generated references under one placeholder keep distinct evidence by origin and
       none by span. Behaviour unchanged until the join reads origins.
 - [ ] 5. Desugarer: each evidence-bearing mint site above carries the origin ID + role of its construct.
+  - [x] Reference sites: the variable arm (3508), infix `>>`, `>>=` and general operators (4192, 4206,
+        4330) and sections (967) record `ProvenanceChirho { origin, Reference }` for the id they mint
+        (`desugar_chirho/provenance_chirho.rs`). Deliberately NOT the `/=` rewrite's `==` (finding B).
+  - [ ] Do statements (`>>=`, `>>`, `fail`), literals, list literals, arithmetic sequences: need their
+        AST carriers first (StmtChirho, LitChirho, ListChirho, ArithSeqChirho).
 - [ ] 6. Join by origin ID + role; delete the positional path and its count guard.
+  - [x] The join matches by provenance first. An occurrence with provenance takes only the proof of
+        its own origin: if that proof is missing or conflicting, it gets none, and neither span nor
+        position is consulted. A record with an origin serves only its own occurrence; if one class was
+        proved at two types, nothing is proved; every copy of one use takes the proof. Reference
+        evidence joins by origin the same way (`join_reference_evidence_chirho`, moved beside the
+        method join). Span and position now serve only the population with no identity. Controls,
+        each mutation-checked: order independence, no rescue, no positional use of an origin-bearing
+        record, conflict, copies.
+  - [ ] Delete span and positional stages once the remaining carriers exist and the no-identity
+        population is empty.
 - [ ] 7. Separately: producer repair A (ArithSeq checking) and repair B (preserve `/=`).
 - [ ] 8. Gate. Controls: repeated same-role generated references; early and late generator supply
       continuity; record and consumer reordering; missing or conflicting identity yields no evidence.

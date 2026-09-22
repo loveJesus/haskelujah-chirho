@@ -439,6 +439,24 @@ fn literal_head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
     }
 }
 
+/// Keep a key's evidence only when every capture of that key agrees: a key
+/// inferred more than once (a re-check, a speculative branch) proves nothing
+/// when the inferences differ.
+fn agreeing_captures_chirho<KeyChirho: std::hash::Hash + Eq>(
+    captures_chirho: HashMap<KeyChirho, Vec<Vec<ReferenceEvidenceChirho>>>,
+) -> HashMap<KeyChirho, Vec<ReferenceEvidenceChirho>> {
+    captures_chirho
+        .into_iter()
+        .filter_map(|(key_chirho, mut records_chirho)| {
+            let first_chirho = records_chirho.pop()?;
+            records_chirho
+                .iter()
+                .all(|record_chirho| *record_chirho == first_chirho)
+                .then_some((key_chirho, first_chirho))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
@@ -699,22 +717,4 @@ mod tests_chirho {
         assert!(!evidence_chirho.contains_key(&span_chirho(5)));
         assert_eq!(evidence_chirho[&span_chirho(6)].ty_key_chirho, "Int");
     }
-}
-
-/// Keep a key's evidence only when every capture of that key agrees: a key
-/// inferred more than once (a re-check, a speculative branch) proves nothing
-/// when the inferences differ.
-fn agreeing_captures_chirho<KeyChirho: std::hash::Hash + Eq>(
-    captures_chirho: HashMap<KeyChirho, Vec<Vec<ReferenceEvidenceChirho>>>,
-) -> HashMap<KeyChirho, Vec<ReferenceEvidenceChirho>> {
-    captures_chirho
-        .into_iter()
-        .filter_map(|(key_chirho, mut records_chirho)| {
-            let first_chirho = records_chirho.pop()?;
-            records_chirho
-                .iter()
-                .all(|record_chirho| *record_chirho == first_chirho)
-                .then_some((key_chirho, first_chirho))
-        })
-        .collect()
 }

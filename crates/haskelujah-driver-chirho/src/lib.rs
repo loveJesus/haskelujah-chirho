@@ -2790,39 +2790,17 @@ fn compile_backend_chirho(
             constructor_arities_chirho,
         },
     );
-    let reference_evidence_chirho: std::collections::HashMap<
-        haskelujah_core_chirho::CoreIdChirho,
-        Vec<(String, Option<String>)>,
-    > = desugar_output_chirho
-        .reference_occurrence_spans_chirho
-        .iter()
-        .filter_map(|(occ_id_chirho, span_chirho)| {
-            let records_chirho = infer_result_chirho
-                .reference_evidence_chirho
-                .get(span_chirho)?;
-            Some((
-                *occ_id_chirho,
-                records_chirho
-                    .iter()
-                    .map(|record_chirho| {
-                        let key_chirho = record_chirho.ty_key_chirho.as_deref().map(|key_chirho| {
-                            if key_chirho == "Integer" {
-                                "Int".to_string()
-                            } else {
-                                key_chirho.to_string()
-                            }
-                        });
-                        (record_chirho.class_name_chirho.clone(), key_chirho)
-                    })
-                    .collect(),
-            ))
-        })
-        .collect();
+    let reference_evidence_chirho = evidence_join_chirho::join_reference_evidence_chirho(
+        &infer_result_chirho,
+        &desugar_output_chirho.reference_occurrence_spans_chirho,
+        &desugar_output_chirho.occurrence_provenance_chirho,
+    );
     let occurrence_evidence_chirho = join_occurrence_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
         &desugar_output_chirho.literal_occurrence_spans_chirho,
         &desugar_output_chirho.method_occurrence_spans_chirho,
+        &desugar_output_chirho.occurrence_provenance_chirho,
     );
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)

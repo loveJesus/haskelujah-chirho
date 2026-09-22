@@ -10,6 +10,7 @@
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
 mod matches_chirho;
+mod provenance_chirho;
 mod rec_desugar_chirho;
 
 use std::collections::{HashMap, HashSet};
@@ -22,6 +23,9 @@ use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::provenance_chirho::{
+    OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
+};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
@@ -57,6 +61,10 @@ pub struct DesugarOutputChirho {
     /// its position among the occurrences of that name.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub method_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    /// Per minted occurrence id, the producer-minted origin and role of the use
+    /// it stands for, copied from the AST. The join matches by this first.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
 }
 
 /// A registered pattern synonym definition used during desugaring.
@@ -112,6 +120,7 @@ pub struct DesugarCtxChirho {
     /// Reference evidence: reference occurrence id → the reference's span.
     reference_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
     method_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
 }
 
 impl DesugarCtxChirho {
@@ -133,6 +142,7 @@ impl DesugarCtxChirho {
             constrained_names_chirho: HashSet::new(),
             reference_occurrence_spans_chirho: HashMap::new(),
             method_occurrence_spans_chirho: HashMap::new(),
+            occurrence_provenance_chirho: HashMap::new(),
         }
     }
 
@@ -931,6 +941,7 @@ impl DesugarCtxChirho {
     fn build_section_body_chirho(
         &mut self,
         op_name_chirho: &str,
+        op_origin_chirho: Option<OriginIdChirho>,
         left_chirho: CoreExprChirho,
         right_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
@@ -965,6 +976,11 @@ impl DesugarCtxChirho {
         }
         // Fallback: operator as variable reference
         let op_id_chirho = self.resolve_var_chirho(op_name_chirho);
+        self.record_occurrence_provenance_chirho(
+            op_id_chirho,
+            op_origin_chirho,
+            OccurrenceRoleChirho::Reference,
+        );
         CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(CoreExprChirho::VarChirho(op_id_chirho)),
@@ -1766,6 +1782,7 @@ impl DesugarCtxChirho {
             literal_occurrence_spans_chirho: self.literal_occurrence_spans_chirho.clone(),
             reference_occurrence_spans_chirho: self.reference_occurrence_spans_chirho.clone(),
             method_occurrence_spans_chirho: self.method_occurrence_spans_chirho.clone(),
+            occurrence_provenance_chirho: self.occurrence_provenance_chirho.clone(),
         }
     }
 
@@ -3511,6 +3528,11 @@ impl DesugarCtxChirho {
                     id_chirho,
                     name_chirho.span_chirho(),
                 );
+                self.record_occurrence_provenance_chirho(
+                    id_chirho,
+                    name_chirho.origin_chirho(),
+                    OccurrenceRoleChirho::Reference,
+                );
                 CoreExprChirho::VarChirho(id_chirho)
             }
             ExprChirho::ConChirho(name_chirho) => {
@@ -4198,6 +4220,11 @@ impl DesugarCtxChirho {
                 // workflow: monadic-dispatch-chirho
                 if op_name_chirho == ">>" {
                     let then_id_chirho = self.resolve_var_chirho(">>");
+                    self.record_occurrence_provenance_chirho(
+                        then_id_chirho,
+                        op_chirho.origin_chirho(),
+                        OccurrenceRoleChirho::Reference,
+                    );
                     return CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(then_id_chirho)),
@@ -4212,6 +4239,11 @@ impl DesugarCtxChirho {
                 // workflow: monadic-dispatch-chirho
                 if op_name_chirho == ">>=" {
                     let bind_id_chirho = self.resolve_var_chirho(">>=");
+                    self.record_occurrence_provenance_chirho(
+                        bind_id_chirho,
+                        op_chirho.origin_chirho(),
+                        OccurrenceRoleChirho::Reference,
+                    );
                     return CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(bind_id_chirho)),
@@ -4336,6 +4368,11 @@ impl DesugarCtxChirho {
                 // Otherwise: a `op` b → (op a) b
                 let op_core_chirho = {
                     let id_chirho = self.resolve_var_chirho(op_name_chirho);
+                    self.record_occurrence_provenance_chirho(
+                        id_chirho,
+                        op_chirho.origin_chirho(),
+                        OccurrenceRoleChirho::Reference,
+                    );
                     CoreExprChirho::VarChirho(id_chirho)
                 };
                 CoreExprChirho::AppChirho {
@@ -4367,6 +4404,7 @@ impl DesugarCtxChirho {
                 let y_id_chirho = y_binder_chirho.id_chirho;
                 let body_chirho = self.build_section_body_chirho(
                     op_name_chirho,
+                    op_chirho.origin_chirho(),
                     CoreExprChirho::VarChirho(y_id_chirho),
                     arg_core_chirho,
                 );
@@ -4394,6 +4432,7 @@ impl DesugarCtxChirho {
                 let y_id_chirho = y_binder_chirho.id_chirho;
                 let body_chirho = self.build_section_body_chirho(
                     op_name_chirho,
+                    op_chirho.origin_chirho(),
                     arg_core_chirho,
                     CoreExprChirho::VarChirho(y_id_chirho),
                 );

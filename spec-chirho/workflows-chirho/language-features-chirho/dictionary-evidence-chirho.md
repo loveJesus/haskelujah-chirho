@@ -153,10 +153,13 @@ flowchart TD
     derive_chirho[Early deriving: the fresh instances] -->|remint before extend| supply_chirho
     gnd_chirho[Late GND, gpt_chirho's seam: its generated declarations] -->|remint before extend| supply_chirho
     supply_chirho --> ast_chirho[Every occurrence in the AST carries a distinct origin]
-    ast_chirho --> check_chirho[Checker: records keyed by origin and role, NEXT]
-    ast_chirho --> desugar_chirho[Desugarer: each mint site carries its construct's origin and role, NEXT]
-    check_chirho --> join_chirho[Join by origin and role; positional path deleted, NEXT]
+    ast_chirho --> check_chirho[Checker: each record and each reference-evidence entry carries its occurrence's origin]
+    ast_chirho --> desugar_chirho[Desugarer: the variable, operator and section mint sites record origin and role]
+    check_chirho --> join_chirho{Join}
     desugar_chirho --> join_chirho
+    join_chirho -->|occurrence has provenance| own_chirho[Only the proof of its own origin; missing or conflicting gives none]
+    join_chirho -->|no provenance, genuine span| span_chirho[By span]
+    join_chirho -->|no identity at all| position_chirho[By position, count-guarded, records WITHOUT origin only]
 ```
 
 - `occurrences_chirho.rs` in the AST crate is the one statement of where occurrences live. Every
@@ -166,10 +169,12 @@ flowchart TD
   origin. A subtree duplicated as new code is reminted at that duplication. A binder re-read from
   an expression carries no origin.
 - Equality and hashing of a name ignore the origin, so no lookup changes meaning.
-- Occurrence carriers today: variable references and the operators of infix applications and
-  sections. Literals, list literals, arithmetic sequences and do statements get their own
-  carriers next. Three evidence channels are still keyed by span: method occurrences, literal
-  evidence and reference evidence.
+- Occurrence carriers today: variable and constructor references, and the operators of infix
+  applications and sections. Literals, list literals, arithmetic sequences and do statements get
+  their own carriers next; until then their uses have no provenance and are served by span and
+  position exactly as before. Literal evidence is still keyed by span.
+- Keying by origin gives GENERATED references evidence they never had: the checker used to skip
+  a placeholder span at capture. That is a behaviour change, measured, not a neutral re-keying.
 
 ## Current boundary
 
