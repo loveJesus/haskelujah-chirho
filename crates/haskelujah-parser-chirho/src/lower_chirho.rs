@@ -1121,10 +1121,9 @@ impl LowerCtxChirho {
         LoweredPatBindPartsChirho {
             lhs_pats_chirho,
             rhs_chirho: guarded_rhs_chirho.unwrap_or_else(|| {
-                RhsChirho::UnguardedChirho(
-                    rhs_expr_chirho
-                        .unwrap_or(ExprChirho::LitChirho(LitChirho::IntChirho(0, span_chirho))),
-                )
+                RhsChirho::UnguardedChirho(rhs_expr_chirho.unwrap_or(ExprChirho::LitChirho(
+                    LitChirho::IntChirho(0, span_chirho, Some(self.fresh_origin_chirho())),
+                )))
             }),
             where_binds_chirho,
             had_guarded_rhs_chirho,
@@ -1658,6 +1657,7 @@ impl LowerCtxChirho {
                 arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
                     "Non-exhaustive guards".to_string(),
                     SpanChirho::DUMMY_CHIRHO,
+                    Some(self.fresh_origin_chirho()),
                 ))),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }
@@ -5752,6 +5752,7 @@ impl LowerCtxChirho {
                             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
                                 "Non-exhaustive guards in multi-way if".into(),
                                 span_chirho,
+                                Some(self.fresh_origin_chirho()),
                             ))),
                             span_chirho,
                         }),
@@ -6827,6 +6828,7 @@ impl LowerCtxChirho {
             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
                 quoted_name_text_chirho,
                 span_chirho,
+                Some(self.fresh_origin_chirho()),
             ))),
             span_chirho,
         }
@@ -6973,6 +6975,7 @@ impl LowerCtxChirho {
                                 value_chirho = Some(ExprChirho::LitChirho(LitChirho::IntChirho(
                                     n_chirho,
                                     span_chirho,
+                                    Some(self.fresh_origin_chirho()),
                                 )));
                             }
                             TokenKindChirho::StringLiteralChirho => {
@@ -6984,9 +6987,12 @@ impl LowerCtxChirho {
                                     } else {
                                         raw_chirho.to_string()
                                     };
-                                value_chirho = Some(ExprChirho::LitChirho(
-                                    LitChirho::StringChirho(s_chirho, span_chirho),
-                                ));
+                                value_chirho =
+                                    Some(ExprChirho::LitChirho(LitChirho::StringChirho(
+                                        s_chirho,
+                                        span_chirho,
+                                        Some(self.fresh_origin_chirho()),
+                                    )));
                             }
                             TokenKindChirho::FloatLiteralChirho => {
                                 let clean_chirho: String = tok_chirho
@@ -6999,6 +7005,7 @@ impl LowerCtxChirho {
                                 value_chirho = Some(ExprChirho::LitChirho(LitChirho::FloatChirho(
                                     f_chirho,
                                     span_chirho,
+                                    Some(self.fresh_origin_chirho()),
                                 )));
                             }
                             TokenKindChirho::CharLiteralChirho => {
@@ -7014,6 +7021,7 @@ impl LowerCtxChirho {
                                 value_chirho = Some(ExprChirho::LitChirho(LitChirho::CharChirho(
                                     c_chirho,
                                     span_chirho,
+                                    Some(self.fresh_origin_chirho()),
                                 )));
                             }
                             TokenKindChirho::VarIdChirho
@@ -7327,7 +7335,11 @@ impl LowerCtxChirho {
                 match tok_chirho.kind_chirho() {
                     TokenKindChirho::IntegerLiteralChirho => {
                         let val_chirho = parse_integer_literal_chirho(tok_chirho.text_chirho());
-                        return LitChirho::IntChirho(val_chirho, span_chirho);
+                        return LitChirho::IntChirho(
+                            val_chirho,
+                            span_chirho,
+                            Some(self.fresh_origin_chirho()),
+                        );
                     }
                     TokenKindChirho::FloatLiteralChirho => {
                         let clean_chirho: String = tok_chirho
@@ -7337,14 +7349,22 @@ impl LowerCtxChirho {
                             .filter(|c_chirho| *c_chirho != '_')
                             .collect();
                         let val_chirho = clean_chirho.parse::<f64>().unwrap_or(0.0);
-                        return LitChirho::FloatChirho(val_chirho, span_chirho);
+                        return LitChirho::FloatChirho(
+                            val_chirho,
+                            span_chirho,
+                            Some(self.fresh_origin_chirho()),
+                        );
                     }
                     TokenKindChirho::CharLiteralChirho => {
                         let text_chirho = tok_chirho.text_chirho().trim_end_matches('#');
                         let inner_chirho = text_chirho.trim_matches('\'');
                         let ch_chirho =
                             parse_haskell_char_body_chirho(inner_chirho).unwrap_or('\u{FFFD}');
-                        return LitChirho::CharChirho(ch_chirho, span_chirho);
+                        return LitChirho::CharChirho(
+                            ch_chirho,
+                            span_chirho,
+                            Some(self.fresh_origin_chirho()),
+                        );
                     }
                     TokenKindChirho::StringLiteralChirho => {
                         // MagicHash: strip trailing # before quote extraction
@@ -7354,13 +7374,21 @@ impl LowerCtxChirho {
                             .and_then(|s_chirho| s_chirho.strip_suffix('"'))
                             .unwrap_or(text_chirho);
                         let inner_chirho = unescape_string_chirho(raw_chirho);
-                        return LitChirho::StringChirho(inner_chirho, span_chirho);
+                        return LitChirho::StringChirho(
+                            inner_chirho,
+                            span_chirho,
+                            Some(self.fresh_origin_chirho()),
+                        );
                     }
                     _ => {}
                 }
             }
         }
-        LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO)
+        LitChirho::IntChirho(
+            0,
+            SpanChirho::DUMMY_CHIRHO,
+            Some(self.fresh_origin_chirho()),
+        )
     }
 
     // -----------------------------------------------------------------------
@@ -7436,7 +7464,11 @@ impl LowerCtxChirho {
                         _ => {}
                     }
                 }
-                let lit_chirho = lit_chirho.unwrap_or(LitChirho::IntChirho(0, span_chirho));
+                let lit_chirho = lit_chirho.unwrap_or(LitChirho::IntChirho(
+                    0,
+                    span_chirho,
+                    Some(self.fresh_origin_chirho()),
+                ));
                 PatChirho::NegChirho {
                     lit_chirho,
                     span_chirho,
@@ -9051,7 +9083,11 @@ impl LowerCtxChirho {
     ) -> ExprChirho {
         // Gracefully handle mismatched expr/op counts from malformed input.
         if exprs_chirho.is_empty() {
-            return ExprChirho::LitChirho(LitChirho::IntChirho(0, span_chirho));
+            return ExprChirho::LitChirho(LitChirho::IntChirho(
+                0,
+                span_chirho,
+                Some(self.fresh_origin_chirho()),
+            ));
         }
         if ops_chirho.is_empty() || exprs_chirho.len() <= 1 {
             return exprs_chirho.into_iter().next().unwrap();
@@ -9114,6 +9150,7 @@ impl LowerCtxChirho {
                     right_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                         0,
                         span_chirho,
+                        Some(self.fresh_origin_chirho()),
                     ))),
                     span_chirho,
                 };
@@ -15171,7 +15208,7 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
                     matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mkName")
                 );
                 assert!(
-                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) if text_chirho == "bimapConst")
+                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _, _)) if text_chirho == "bimapConst")
                 );
             } else {
                 panic!("quoted TH value name should lower to mkName application");
@@ -15193,7 +15230,7 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
                 &matches_chirho[0].rhs_chirho
             {
                 assert!(
-                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) if text_chirho == ".")
+                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _, _)) if text_chirho == ".")
                 );
             } else {
                 panic!("quoted TH operator name should lower to mkName application");
@@ -15215,7 +15252,7 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
                 &matches_chirho[0].rhs_chirho
             {
                 assert!(
-                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) if text_chirho == "~")
+                    matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _, _)) if text_chirho == "~")
                 );
             } else {
                 panic!("quoted TH tilde operator should lower to mkName application");
@@ -16252,7 +16289,7 @@ fn lower_bits_and_comparison_precedence_chirho() {
             assert!(
                 matches!(
                     &**right_chirho,
-                    ExprChirho::LitChirho(LitChirho::IntChirho(0, _))
+                    ExprChirho::LitChirho(LitChirho::IntChirho(0, _, _))
                 ),
                 "expected rhs zero literal, got {:?}",
                 right_chirho
@@ -16585,11 +16622,11 @@ fn lower_show_composition_keeps_application_groups_around_char_literal_chirho() 
                         if op_chirho.text_chirho() == "."
                             && matches!(left_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
                                 if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "showChar")
-                                    && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::CharChirho(' ', _))))
+                                    && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::CharChirho(' ', _, _))))
                             && matches!(right_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
                                 if matches!(fun_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
                                     if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "spChirho")
-                                        && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::IntChirho(11, _))))
+                                        && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::IntChirho(11, _, _))))
                                     && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "xChirho"))
                 ),
                 "expected the right-associated composition tail to preserve `showChar ' ' . spChirho 11 xChirho`, got {:?}",
@@ -16682,7 +16719,7 @@ fn lower_show_paren_dollar_keeps_composition_rhs_with_char_literal_chirho() {
                     inner_left_chirho.as_ref(),
                     ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
                         if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "showChar")
-                            && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::CharChirho(' ', _)))
+                            && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::CharChirho(' ', _, _)))
                 ),
                 "expected the middle composition operand to stay `showChar ' '`, got {:?}",
                 inner_left_chirho
@@ -16693,7 +16730,7 @@ fn lower_show_paren_dollar_keeps_composition_rhs_with_char_literal_chirho() {
                     ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
                         if matches!(fun_chirho.as_ref(), ExprChirho::AppChirho { fun_chirho, arg_chirho, .. }
                             if matches!(fun_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "spChirho")
-                                && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::IntChirho(11, _))))
+                                && matches!(arg_chirho.as_ref(), ExprChirho::LitChirho(LitChirho::IntChirho(11, _, _))))
                             && matches!(arg_chirho.as_ref(), ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "xChirho")
                 ),
                 "expected the tail operand to stay `spChirho 11 xChirho`, got {:?}",
@@ -16747,7 +16784,7 @@ fn collect_char_literals_from_expr_chirho(
     found_punctuation_chars_chirho: &mut Vec<char>,
 ) {
     match expr_chirho {
-        ExprChirho::LitChirho(LitChirho::CharChirho(char_chirho, _)) => {
+        ExprChirho::LitChirho(LitChirho::CharChirho(char_chirho, _, _)) => {
             found_punctuation_chars_chirho.push(*char_chirho);
         }
         ExprChirho::AppChirho {

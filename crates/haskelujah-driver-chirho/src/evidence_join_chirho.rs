@@ -58,8 +58,17 @@ pub(crate) fn join_occurrence_evidence_chirho(
         haskelujah_core_chirho::CoreIdChirho,
         (String, String),
     > = std::collections::HashMap::new();
+    // A literal with provenance takes the evidence of its own origin or none; a
+    // literal without it (not yet stamped) is still found by its span.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
     for (occ_id_chirho, span_chirho) in literal_occurrence_spans_chirho {
-        if let Some(record_chirho) = infer_result_chirho.literal_evidence_chirho.get(span_chirho) {
+        let record_chirho = match occurrence_provenance_chirho.get(occ_id_chirho) {
+            Some(provenance_chirho) => infer_result_chirho
+                .literal_evidence_by_origin_chirho
+                .get(&provenance_chirho.origin_chirho),
+            None => infer_result_chirho.literal_evidence_chirho.get(span_chirho),
+        };
+        if let Some(record_chirho) = record_chirho {
             let ty_key_chirho = if record_chirho.ty_key_chirho == "Integer" {
                 "Int".to_string()
             } else {

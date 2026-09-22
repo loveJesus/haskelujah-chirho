@@ -147,19 +147,24 @@ impl InferCtxChirho {
         }
     }
 
-    /// Record a literal's overloading predicate for evidence. Generated code
-    /// carries the dummy span and is skipped: a key must name one source token.
+    /// Record a literal's overloading predicate for evidence, under the
+    /// literal's span and its origin. A literal with neither a real span nor an
+    /// origin identifies nothing and is skipped.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn capture_literal_evidence_chirho(
         &mut self,
-        span_chirho: SpanChirho,
+        lit_chirho: &LitChirho,
         class_name_chirho: &str,
         ty_chirho: &TyChirho,
     ) {
-        if span_chirho == SpanChirho::DUMMY_CHIRHO {
+        let span_chirho = lit_chirho.span_chirho();
+        let origin_chirho = lit_chirho.origin_chirho();
+        if span_chirho == SpanChirho::DUMMY_CHIRHO && origin_chirho.is_none() {
             return;
         }
         self.literal_captures_chirho.push((
             span_chirho,
+            origin_chirho,
             class_name_chirho.to_string(),
             ty_chirho.clone(),
         ));
@@ -378,8 +383,8 @@ impl InferCtxChirho {
             }
         }
         (
-            agreeing_captures_chirho(by_span_chirho),
-            agreeing_captures_chirho(by_origin_chirho),
+            agreeing_chirho(by_span_chirho),
+            agreeing_chirho(by_origin_chirho),
         )
     }
 
@@ -392,10 +397,17 @@ impl InferCtxChirho {
     pub(super) fn finalize_literal_evidence_chirho(
         &self,
         final_subst_chirho: &SubstChirho,
-    ) -> HashMap<SpanChirho, LiteralEvidenceChirho> {
+    ) -> (
+        HashMap<SpanChirho, LiteralEvidenceChirho>,
+        HashMap<OriginIdChirho, LiteralEvidenceChirho>,
+    ) {
         let mut keys_by_span_chirho: HashMap<SpanChirho, Vec<LiteralEvidenceChirho>> =
             HashMap::new();
-        for (span_chirho, class_name_chirho, ty_chirho) in &self.literal_captures_chirho {
+        let mut keys_by_origin_chirho: HashMap<OriginIdChirho, Vec<LiteralEvidenceChirho>> =
+            HashMap::new();
+        for (span_chirho, origin_chirho, class_name_chirho, ty_chirho) in
+            &self.literal_captures_chirho
+        {
             let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
             let key_chirho = match &resolved_chirho {
                 TyChirho::VarChirho(var_chirho) => {
@@ -406,24 +418,27 @@ impl InferCtxChirho {
             let Some(key_chirho) = key_chirho else {
                 continue;
             };
-            keys_by_span_chirho
-                .entry(*span_chirho)
-                .or_default()
-                .push(LiteralEvidenceChirho {
-                    class_name_chirho: class_name_chirho.clone(),
-                    ty_key_chirho: key_chirho,
-                });
+            let record_chirho = LiteralEvidenceChirho {
+                class_name_chirho: class_name_chirho.clone(),
+                ty_key_chirho: key_chirho,
+            };
+            if *span_chirho != SpanChirho::DUMMY_CHIRHO {
+                keys_by_span_chirho
+                    .entry(*span_chirho)
+                    .or_default()
+                    .push(record_chirho.clone());
+            }
+            if let Some(origin_chirho) = origin_chirho {
+                keys_by_origin_chirho
+                    .entry(*origin_chirho)
+                    .or_default()
+                    .push(record_chirho);
+            }
         }
-        keys_by_span_chirho
-            .into_iter()
-            .filter_map(|(span_chirho, mut records_chirho)| {
-                let first_chirho = records_chirho.pop()?;
-                records_chirho
-                    .iter()
-                    .all(|record_chirho| *record_chirho == first_chirho)
-                    .then_some((span_chirho, first_chirho))
-            })
-            .collect()
+        (
+            agreeing_chirho(keys_by_span_chirho),
+            agreeing_chirho(keys_by_origin_chirho),
+        )
     }
 }
 
@@ -442,9 +457,9 @@ fn literal_head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
 /// Keep a key's evidence only when every capture of that key agrees: a key
 /// inferred more than once (a re-check, a speculative branch) proves nothing
 /// when the inferences differ.
-fn agreeing_captures_chirho<KeyChirho: std::hash::Hash + Eq>(
-    captures_chirho: HashMap<KeyChirho, Vec<Vec<ReferenceEvidenceChirho>>>,
-) -> HashMap<KeyChirho, Vec<ReferenceEvidenceChirho>> {
+fn agreeing_chirho<KeyChirho: std::hash::Hash + Eq, RecordChirho: PartialEq>(
+    captures_chirho: HashMap<KeyChirho, Vec<RecordChirho>>,
+) -> HashMap<KeyChirho, RecordChirho> {
     captures_chirho
         .into_iter()
         .filter_map(|(key_chirho, mut records_chirho)| {
@@ -461,6 +476,51 @@ fn agreeing_captures_chirho<KeyChirho: std::hash::Hash + Eq>(
 mod tests_chirho {
     use super::*;
 
+    /// An integer literal at `span_chirho`, identified by `origin_chirho`.
+    fn test_int_literal_chirho(
+        span_chirho: SpanChirho,
+        origin_chirho: Option<OriginIdChirho>,
+    ) -> LitChirho {
+        LitChirho::IntChirho(0, span_chirho, origin_chirho)
+    }
+
+    #[test]
+    fn two_generated_literals_under_one_placeholder_keep_their_own_evidence_chirho() {
+        // gpt_chirho's control (#24575): two generated literals share the
+        // placeholder span and need different concrete evidence. The span map
+        // holds neither; the origin map holds each literal's own proof.
+        let mut supply_chirho =
+            haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+        let int_origin_chirho = supply_chirho.fresh_chirho();
+        let double_origin_chirho = supply_chirho.fresh_chirho();
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let int_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let double_ty_chirho = ctx_chirho.fresh_var_chirho();
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(SpanChirho::DUMMY_CHIRHO, Some(int_origin_chirho)),
+            "Num",
+            &int_ty_chirho,
+        );
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(SpanChirho::DUMMY_CHIRHO, Some(double_origin_chirho)),
+            "Num",
+            &double_ty_chirho,
+        );
+        let mut subst_chirho = SubstChirho::empty_chirho();
+        if let TyChirho::VarChirho(var_chirho) = int_ty_chirho {
+            subst_chirho.insert_chirho(var_chirho, TyChirho::int_chirho());
+        }
+        if let TyChirho::VarChirho(var_chirho) = double_ty_chirho {
+            subst_chirho.insert_chirho(var_chirho, TyChirho::ConChirho("Double".to_string()));
+        }
+        let (by_span_chirho, by_origin_chirho) =
+            ctx_chirho.finalize_literal_evidence_chirho(&subst_chirho);
+        assert!(by_span_chirho.is_empty(), "{by_span_chirho:?}");
+        let key_chirho = |origin_chirho| by_origin_chirho[&origin_chirho].ty_key_chirho.clone();
+        assert_eq!(key_chirho(int_origin_chirho), "Int");
+        assert_eq!(key_chirho(double_origin_chirho), "Double");
+    }
+
     fn span_chirho(start_chirho: u32) -> SpanChirho {
         SpanChirho::new_chirho(
             haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
@@ -474,15 +534,23 @@ mod tests_chirho {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let int_lit_chirho = ctx_chirho.fresh_var_chirho();
         let open_lit_chirho = ctx_chirho.fresh_var_chirho();
-        ctx_chirho.capture_literal_evidence_chirho(span_chirho(10), "Num", &int_lit_chirho);
-        ctx_chirho.capture_literal_evidence_chirho(span_chirho(20), "Num", &open_lit_chirho);
         ctx_chirho.capture_literal_evidence_chirho(
-            span_chirho(30),
+            &test_int_literal_chirho(span_chirho(10), None),
+            "Num",
+            &int_lit_chirho,
+        );
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(span_chirho(20), None),
+            "Num",
+            &open_lit_chirho,
+        );
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(span_chirho(30), None),
             "Num",
             &TyChirho::ForallVarChirho("a%1".to_string()),
         );
         ctx_chirho.capture_literal_evidence_chirho(
-            SpanChirho::DUMMY_CHIRHO,
+            &test_int_literal_chirho(SpanChirho::DUMMY_CHIRHO, None),
             "Num",
             &TyChirho::int_chirho(),
         );
@@ -490,7 +558,8 @@ mod tests_chirho {
         if let TyChirho::VarChirho(var_chirho) = int_lit_chirho {
             subst_chirho.insert_chirho(var_chirho, TyChirho::ConChirho("Double".to_string()));
         }
-        let evidence_chirho = ctx_chirho.finalize_literal_evidence_chirho(&subst_chirho);
+        let (evidence_chirho, _by_origin_chirho) =
+            ctx_chirho.finalize_literal_evidence_chirho(&subst_chirho);
         assert_eq!(
             evidence_chirho.get(&span_chirho(10)),
             Some(&LiteralEvidenceChirho {
@@ -704,15 +773,27 @@ mod tests_chirho {
     #[test]
     fn literal_evidence_needs_agreement_for_a_span_seen_twice_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
-        ctx_chirho.capture_literal_evidence_chirho(span_chirho(5), "Num", &TyChirho::int_chirho());
         ctx_chirho.capture_literal_evidence_chirho(
-            span_chirho(5),
+            &test_int_literal_chirho(span_chirho(5), None),
+            "Num",
+            &TyChirho::int_chirho(),
+        );
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(span_chirho(5), None),
             "Num",
             &TyChirho::ConChirho("Double".to_string()),
         );
-        ctx_chirho.capture_literal_evidence_chirho(span_chirho(6), "Num", &TyChirho::int_chirho());
-        ctx_chirho.capture_literal_evidence_chirho(span_chirho(6), "Num", &TyChirho::int_chirho());
-        let evidence_chirho =
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(span_chirho(6), None),
+            "Num",
+            &TyChirho::int_chirho(),
+        );
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(span_chirho(6), None),
+            "Num",
+            &TyChirho::int_chirho(),
+        );
+        let (evidence_chirho, _by_origin_chirho) =
             ctx_chirho.finalize_literal_evidence_chirho(&SubstChirho::empty_chirho());
         assert!(!evidence_chirho.contains_key(&span_chirho(5)));
         assert_eq!(evidence_chirho[&span_chirho(6)].ty_key_chirho, "Int");

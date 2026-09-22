@@ -906,7 +906,11 @@ mod tests_chirho {
     }
 
     fn mk_lit_pat_chirho(val_chirho: i64) -> PatChirho {
-        PatChirho::LitChirho(LitChirho::IntChirho(val_chirho, SpanChirho::DUMMY_CHIRHO))
+        PatChirho::LitChirho(LitChirho::IntChirho(
+            val_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+            None,
+        ))
     }
 
     fn mk_case_decl_chirho(fn_name_chirho: &str, pats_chirho: Vec<PatChirho>) -> DeclChirho {
@@ -917,7 +921,7 @@ mod tests_chirho {
             .map(|p_chirho| AltChirho {
                 pat_chirho: p_chirho,
                 rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
-                    LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
+                    LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO, None),
                 )),
                 where_binds_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -949,7 +953,7 @@ mod tests_chirho {
             .map(|pats_chirho| MatchArmChirho {
                 pats_chirho,
                 rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
-                    LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
+                    LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO, None),
                 )),
                 where_binds_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

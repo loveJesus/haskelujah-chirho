@@ -132,8 +132,21 @@ Never replace a method the user wrote on the assumption that the class laws hold
   - [x] Reference sites: the variable arm (3508), infix `>>`, `>>=` and general operators (4192, 4206,
         4330) and sections (967) record `ProvenanceChirho { origin, Reference }` for the id they mint
         (`desugar_chirho/provenance_chirho.rs`). Deliberately NOT the `/=` rewrite's `==` (finding B).
-  - [ ] Do statements (`>>=`, `>>`, `fail`), literals, list literals, arithmetic sequences: need their
-        AST carriers first (StmtChirho, LitChirho, ListChirho, ArithSeqChirho).
+  - [x] Literals: `LitChirho` carries `Option<OriginIdChirho>` in every variant (equality ignores it,
+        Debug unchanged without one); the walker visits literals in expressions and in patterns
+        (a literal pattern is a comparison); lowering stamps every literal it builds (16 sites), and
+        the producer boundaries remint generated ones. The checker captures literal evidence by span
+        (placeholder never a key, as before) and by origin (`literal_evidence_by_origin_chirho`); the
+        desugarer records `(origin, IntegerLiteral | FractionalLiteral | StringLiteral)` for the
+        conversion it mints; the literal join takes a literal's own origin's evidence or none.
+        Controls, mutation-checked: two generated literals under one placeholder keep distinct
+        evidence (gpt_chirho #24575); a generated literal takes its origin's evidence, never its
+        placeholder span's; a literal with provenance and no evidence is not rescued by span; the
+        desugarer copies each use's origin and role and mints none.
+  - [ ] Do statements (`>>=`, `>>`, `fail`): the checker records NO Monad evidence for them today
+        (its DoChirho arm defers no predicate and captures nothing), so this is producer checking
+        first, a separately controlled step like A, then StmtChirho carriers.
+  - [ ] List literals (OverloadedLists) and arithmetic sequences (finding A).
 - [ ] 6. Join by origin ID + role; delete the positional path and its count guard.
   - [x] The join matches by provenance first. An occurrence with provenance takes only the proof of
         its own origin: if that proof is missing or conflicting, it gets none, and neither span nor

@@ -27,18 +27,26 @@ fn lower_chirho(source_chirho: &str) -> ModuleChirho {
     lower_module_chirho(&cst_chirho, file_chirho)
 }
 
-/// Every occurrence in the module as (text, origin), in source order.
+/// Every occurrence in the module as (text, origin), in source order. A
+/// literal is written as its value in angle brackets.
 fn occurrences_chirho(module_chirho: &mut ModuleChirho) -> Vec<(String, Option<OriginIdChirho>)> {
+    use haskelujah_ast_chirho::lit_chirho::LitChirho;
+    use haskelujah_ast_chirho::occurrences_chirho::OccurrenceMutChirho;
     let mut found_chirho = Vec::new();
     for decl_chirho in &mut module_chirho.decls_chirho {
         visit_decl_chirho(decl_chirho, &mut |occurrence_chirho| {
-            let haskelujah_ast_chirho::occurrences_chirho::OccurrenceMutChirho::ReferenceChirho(
-                name_chirho,
-            ) = &occurrence_chirho;
-            found_chirho.push((
-                name_chirho.text_chirho().to_string(),
-                occurrence_chirho.origin_chirho(),
-            ));
+            let text_chirho = match &occurrence_chirho {
+                OccurrenceMutChirho::ReferenceChirho(name_chirho) => {
+                    name_chirho.text_chirho().to_string()
+                }
+                OccurrenceMutChirho::LiteralChirho(lit_chirho) => match &**lit_chirho {
+                    LitChirho::IntChirho(value_chirho, ..) => format!("<{value_chirho}>"),
+                    LitChirho::FloatChirho(value_chirho, ..) => format!("<{value_chirho}>"),
+                    LitChirho::CharChirho(value_chirho, ..) => format!("<{value_chirho:?}>"),
+                    LitChirho::StringChirho(value_chirho, ..) => format!("<{value_chirho:?}>"),
+                },
+            };
+            found_chirho.push((text_chirho, occurrence_chirho.origin_chirho()));
         });
     }
     found_chirho
@@ -70,11 +78,9 @@ fn assert_origins_exactly_at_occurrences_chirho(
     );
     let rendered_chirho = format!("{:?}", module_chirho.decls_chirho);
     assert_eq!(
-        rendered_chirho
-            .matches("origin_chirho: OriginIdChirho(")
-            .count(),
+        rendered_chirho.matches("OriginIdChirho(").count(),
         stamped_chirho.len(),
-        "a name that is not an occurrence carries an origin"
+        "a name or literal that is not an occurrence carries an origin"
     );
     stamped_chirho
 }
