@@ -19,6 +19,7 @@ use crate::expr_chirho::{
     AltChirho, ExprChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho,
     StmtChirho,
 };
+use crate::lit_chirho::LitChirho;
 use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
 use crate::provenance_chirho::{OriginIdChirho, OriginSupplyChirho};
@@ -28,6 +29,9 @@ pub enum OccurrenceMutChirho<'a> {
     /// A variable or constructor reference (a constructor can carry a class
     /// context), or the operator of an infix application or section.
     ReferenceChirho(&'a mut NameChirho),
+    /// A literal, in an expression or in a pattern: an overloaded literal's
+    /// conversion, and a literal pattern's comparison.
+    LiteralChirho(&'a mut LitChirho),
 }
 
 impl OccurrenceMutChirho<'_> {
@@ -35,6 +39,7 @@ impl OccurrenceMutChirho<'_> {
     pub fn origin_chirho(&self) -> Option<OriginIdChirho> {
         match self {
             Self::ReferenceChirho(name_chirho) => name_chirho.origin_chirho(),
+            Self::LiteralChirho(lit_chirho) => lit_chirho.origin_chirho(),
         }
     }
 
@@ -44,6 +49,7 @@ impl OccurrenceMutChirho<'_> {
             Self::ReferenceChirho(name_chirho) => {
                 name_chirho.set_origin_chirho(Some(origin_chirho))
             }
+            Self::LiteralChirho(lit_chirho) => lit_chirho.set_origin_chirho(Some(origin_chirho)),
         }
     }
 }
@@ -231,8 +237,9 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             visit_expr_chirho(arg_chirho, visit_chirho);
             visit_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
         }
-        // Literals are occurrences with a carrier of their own, still to come.
-        ExprChirho::LitChirho(_) => {}
+        ExprChirho::LitChirho(lit_chirho) => {
+            visit_chirho(OccurrenceMutChirho::LiteralChirho(lit_chirho));
+        }
         ExprChirho::AppChirho {
             fun_chirho,
             arg_chirho,
@@ -417,10 +424,10 @@ fn visit_pat_chirho(pat_chirho: &mut PatChirho, visit_chirho: &mut OccurrenceVis
             }
         }
         PatChirho::TypeAnnotChirho { pat_chirho, .. } => visit_pat_chirho(pat_chirho, visit_chirho),
-        // Literal patterns get their own carrier with the literals.
-        PatChirho::VarChirho(_)
-        | PatChirho::LitChirho(_)
-        | PatChirho::WildcardChirho(_)
-        | PatChirho::NegChirho { .. } => {}
+        // A literal pattern is a comparison, and a use of its literal.
+        PatChirho::LitChirho(lit_chirho) | PatChirho::NegChirho { lit_chirho, .. } => {
+            visit_chirho(OccurrenceMutChirho::LiteralChirho(lit_chirho));
+        }
+        PatChirho::VarChirho(_) | PatChirho::WildcardChirho(_) => {}
     }
 }

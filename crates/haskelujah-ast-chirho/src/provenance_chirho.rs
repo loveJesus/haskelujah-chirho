@@ -36,6 +36,8 @@ pub enum OccurrenceRoleChirho {
     Reference,
     /// `fromInteger` for an integer literal.
     IntegerLiteral,
+    /// `fromRational` for a fractional literal.
+    FractionalLiteral,
     /// `fromString` for a string literal under OverloadedStrings.
     StringLiteral,
     /// `fromList` for a list literal under OverloadedLists.

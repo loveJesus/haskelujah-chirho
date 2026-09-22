@@ -77,6 +77,7 @@ pub(super) fn infer_result_chirho(
         method_occurrences_chirho: records_chirho,
         method_occurrence_totals_chirho: totals_chirho,
         literal_evidence_chirho: HashMap::new(),
+        literal_evidence_by_origin_chirho: HashMap::new(),
         reference_evidence_chirho: HashMap::new(),
         reference_evidence_by_origin_chirho: HashMap::new(),
     }

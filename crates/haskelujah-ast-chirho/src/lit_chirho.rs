@@ -3,30 +3,131 @@
 
 //! # Literal values
 
+use std::fmt;
+
 use haskelujah_span_chirho::SpanChirho;
 
-/// A literal value in source code.
-#[derive(Debug, Clone, PartialEq)]
+use crate::provenance_chirho::{OccurrenceRoleChirho, OriginIdChirho};
+
+/// A literal value in source code: its value, its span, and, once a producer
+/// has stamped it, its origin. A literal is an occurrence: an overloaded
+/// literal is a use of `fromInteger`, `fromRational` or `fromString`, and a
+/// literal pattern is a comparison. The origin is that use's identity for
+/// evidence; equality ignores it, as a name's does.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[derive(Clone)]
 pub enum LitChirho {
-    /// Integer literal and its source span.
-    IntChirho(i64, SpanChirho),
-    /// Floating-point literal and its source span.
-    FloatChirho(f64, SpanChirho),
-    /// Character literal and its source span.
-    CharChirho(char, SpanChirho),
-    /// String literal contents and its source span.
-    StringChirho(String, SpanChirho),
+    /// Integer literal, its source span and its origin.
+    IntChirho(i64, SpanChirho, Option<OriginIdChirho>),
+    /// Floating-point literal, its source span and its origin.
+    FloatChirho(f64, SpanChirho, Option<OriginIdChirho>),
+    /// Character literal, its source span and its origin.
+    CharChirho(char, SpanChirho, Option<OriginIdChirho>),
+    /// String literal contents, its source span and its origin.
+    StringChirho(String, SpanChirho, Option<OriginIdChirho>),
 }
 
 impl LitChirho {
     /// Return the source span covering this literal.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
-            Self::IntChirho(_, s_chirho) => *s_chirho,
-            Self::FloatChirho(_, s_chirho) => *s_chirho,
-            Self::CharChirho(_, s_chirho) => *s_chirho,
-            Self::StringChirho(_, s_chirho) => *s_chirho,
+            Self::IntChirho(_, s_chirho, _) => *s_chirho,
+            Self::FloatChirho(_, s_chirho, _) => *s_chirho,
+            Self::CharChirho(_, s_chirho, _) => *s_chirho,
+            Self::StringChirho(_, s_chirho, _) => *s_chirho,
         }
+    }
+
+    /// The producer-minted origin of this literal occurrence, if it has one.
+    pub fn origin_chirho(&self) -> Option<OriginIdChirho> {
+        match self {
+            Self::IntChirho(_, _, o_chirho)
+            | Self::FloatChirho(_, _, o_chirho)
+            | Self::CharChirho(_, _, o_chirho)
+            | Self::StringChirho(_, _, o_chirho) => *o_chirho,
+        }
+    }
+
+    /// Give this literal occurrence `origin_chirho`, or take its origin away.
+    pub fn set_origin_chirho(&mut self, origin_chirho: Option<OriginIdChirho>) {
+        match self {
+            Self::IntChirho(_, _, o_chirho)
+            | Self::FloatChirho(_, _, o_chirho)
+            | Self::CharChirho(_, _, o_chirho)
+            | Self::StringChirho(_, _, o_chirho) => *o_chirho = origin_chirho,
+        }
+    }
+
+    /// The same literal as an occurrence with a producer-minted origin.
+    pub fn with_origin_chirho(mut self, origin_chirho: OriginIdChirho) -> Self {
+        self.set_origin_chirho(Some(origin_chirho));
+        self
+    }
+
+    /// The method use an overloaded literal of this kind makes in an
+    /// expression. A character literal is never overloaded.
+    pub fn role_chirho(&self) -> Option<OccurrenceRoleChirho> {
+        match self {
+            Self::IntChirho(..) => Some(OccurrenceRoleChirho::IntegerLiteral),
+            Self::FloatChirho(..) => Some(OccurrenceRoleChirho::FractionalLiteral),
+            Self::StringChirho(..) => Some(OccurrenceRoleChirho::StringLiteral),
+            Self::CharChirho(..) => None,
+        }
+    }
+}
+
+impl PartialEq for LitChirho {
+    fn eq(&self, other_chirho: &Self) -> bool {
+        match (self, other_chirho) {
+            (Self::IntChirho(a_chirho, sa_chirho, _), Self::IntChirho(b_chirho, sb_chirho, _)) => {
+                a_chirho == b_chirho && sa_chirho == sb_chirho
+            }
+            (
+                Self::FloatChirho(a_chirho, sa_chirho, _),
+                Self::FloatChirho(b_chirho, sb_chirho, _),
+            ) => a_chirho == b_chirho && sa_chirho == sb_chirho,
+            (
+                Self::CharChirho(a_chirho, sa_chirho, _),
+                Self::CharChirho(b_chirho, sb_chirho, _),
+            ) => a_chirho == b_chirho && sa_chirho == sb_chirho,
+            (
+                Self::StringChirho(a_chirho, sa_chirho, _),
+                Self::StringChirho(b_chirho, sb_chirho, _),
+            ) => a_chirho == b_chirho && sa_chirho == sb_chirho,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Debug for LitChirho {
+    /// Renders as the derived form did, and names the origin only when there is
+    /// one, so output that never involved an origin is unchanged.
+    fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (name_chirho, value_chirho, span_chirho, origin_chirho): (
+            &str,
+            &dyn fmt::Debug,
+            &SpanChirho,
+            &Option<OriginIdChirho>,
+        ) = match self {
+            Self::IntChirho(v_chirho, s_chirho, o_chirho) => {
+                ("IntChirho", v_chirho, s_chirho, o_chirho)
+            }
+            Self::FloatChirho(v_chirho, s_chirho, o_chirho) => {
+                ("FloatChirho", v_chirho, s_chirho, o_chirho)
+            }
+            Self::CharChirho(v_chirho, s_chirho, o_chirho) => {
+                ("CharChirho", v_chirho, s_chirho, o_chirho)
+            }
+            Self::StringChirho(v_chirho, s_chirho, o_chirho) => {
+                ("StringChirho", v_chirho, s_chirho, o_chirho)
+            }
+        };
+        let mut tuple_chirho = f_chirho.debug_tuple(name_chirho);
+        tuple_chirho.field(value_chirho).field(span_chirho);
+        if let Some(origin_chirho) = origin_chirho {
+            tuple_chirho.field(origin_chirho);
+        }
+        tuple_chirho.finish()
     }
 }
 
