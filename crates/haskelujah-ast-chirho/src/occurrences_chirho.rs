@@ -25,7 +25,8 @@ use crate::provenance_chirho::{OriginIdChirho, OriginSupplyChirho};
 
 /// One occurrence, reached for reading or restamping.
 pub enum OccurrenceMutChirho<'a> {
-    /// A variable reference, or the operator of an infix application or section.
+    /// A variable or constructor reference (a constructor can carry a class
+    /// context), or the operator of an infix application or section.
     ReferenceChirho(&'a mut NameChirho),
 }
 
@@ -199,7 +200,9 @@ fn visit_stmts_chirho(stmts_chirho: &mut [StmtChirho], visit_chirho: &mut Occurr
 /// Visit every occurrence in one expression, in source order.
 pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut OccurrenceVisitorChirho) {
     match expr_chirho {
-        ExprChirho::VarChirho(name_chirho) => {
+        // A constructor is a reference too: the checker captures the class
+        // context a constructor can carry, exactly as it does for a variable.
+        ExprChirho::VarChirho(name_chirho) | ExprChirho::ConChirho(name_chirho) => {
             visit_chirho(OccurrenceMutChirho::ReferenceChirho(name_chirho));
         }
         ExprChirho::InfixChirho {
@@ -228,9 +231,8 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             visit_expr_chirho(arg_chirho, visit_chirho);
             visit_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
         }
-        // A constructor use and a literal are not occurrences yet: constructor
-        // contexts are not modelled, and literals get their own carrier.
-        ExprChirho::ConChirho(_) | ExprChirho::LitChirho(_) => {}
+        // Literals are occurrences with a carrier of their own, still to come.
+        ExprChirho::LitChirho(_) => {}
         ExprChirho::AppChirho {
             fun_chirho,
             arg_chirho,
@@ -336,7 +338,12 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
                 visit_stmts_chirho(branch_chirho, visit_chirho);
             }
         }
-        ExprChirho::RecordConChirho { fields_chirho, .. } => {
+        ExprChirho::RecordConChirho {
+            con_chirho,
+            fields_chirho,
+            ..
+        } => {
+            visit_chirho(OccurrenceMutChirho::ReferenceChirho(con_chirho));
             for field_chirho in fields_chirho {
                 visit_expr_chirho(&mut field_chirho.value_chirho, visit_chirho);
             }

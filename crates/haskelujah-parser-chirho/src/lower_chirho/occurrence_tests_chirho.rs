@@ -94,13 +94,26 @@ fn references_and_operators_each_take_their_own_origin_chirho() {
          incChirho = (+ 1)\n\
          halfChirho = (`div` 2)\n\
          justsChirho ms = [y | Just y <- ms]\n\
+         data BoxChirho = BoxChirho { boxedChirho :: Int }\n\
+         boxChirho = BoxChirho { boxedChirho = 1 }\n\
+         wrapChirho = Just 3\n\
          main = print (addChirho 1)\n",
     );
     let stamped_chirho = assert_origins_exactly_at_occurrences_chirho(&mut module_chirho);
     let texts_chirho = texts_chirho(&stamped_chirho);
-    for expected_chirho in ["x", "+", "div", "print", "addChirho"] {
+    // Constructor uses are references too (a constructor can carry a class
+    // context); the `Just` of a pattern is not a use and has no origin.
+    for expected_chirho in ["x", "+", "div", "print", "addChirho", "BoxChirho"] {
         assert!(texts_chirho.contains(&expected_chirho), "{texts_chirho:?}");
     }
+    assert_eq!(
+        texts_chirho
+            .iter()
+            .filter(|text_chirho| **text_chirho == "Just")
+            .count(),
+        1,
+        "{texts_chirho:?}"
+    );
     // `x + x` is two uses of one variable and one use of `+`: three occurrences.
     assert_eq!(
         texts_chirho

@@ -5359,7 +5359,7 @@ impl LowerCtxChirho {
                         _ => false,
                     });
                     ExprChirho::RecordConChirho {
-                        con_chirho: name_chirho,
+                        con_chirho: self.reference_name_chirho(name_chirho),
                         fields_chirho,
                         has_wildcard_chirho,
                         span_chirho,
@@ -5370,7 +5370,7 @@ impl LowerCtxChirho {
                     .next()
                     .map_or(false, |c| c.is_uppercase())
                 {
-                    ExprChirho::ConChirho(name_chirho)
+                    ExprChirho::ConChirho(self.reference_name_chirho(name_chirho))
                 } else {
                     self.reference_expr_chirho(name_chirho)
                 }
@@ -7027,12 +7027,13 @@ impl LowerCtxChirho {
                                 ));
                             }
                             TokenKindChirho::ConIdChirho => {
-                                value_chirho = Some(ExprChirho::ConChirho(NameChirho::RawChirho(
-                                    RawNameChirho::unqualified_chirho(
-                                        tok_chirho.text_chirho().to_string(),
-                                        span_chirho,
-                                    ),
-                                )));
+                                value_chirho =
+                                    Some(ExprChirho::ConChirho(self.reference_name_chirho(
+                                        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                            tok_chirho.text_chirho().to_string(),
+                                            span_chirho,
+                                        )),
+                                    )));
                             }
                             _ => {}
                         }

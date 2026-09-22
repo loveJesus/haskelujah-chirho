@@ -62,6 +62,29 @@ And the deriving pass, which generates references BEFORE typing, all under one p
   method's identity must be preserved; repair the rewrite separately rather than giving it a provenance
   role.
 
+### B, widened: the Prelude class method sets and their defaults are not GHC's (measured 2026-09-22)
+
+Eq declares only `==` and Ord behaves as if it declared only `compare`, with none of GHC's defaults
+between the methods. Measured on main f8eb26bb (CLI built at that commit) against GHC 9.14.1, programs in
+`tmp-chirho/provenance-chirho/probes/` of the claude worktree:
+
+| program | GHC 9.14.1 | main f8eb26bb |
+|---|---|---|
+| Ord by a reversed `compare`: `a < b`, `(< b) a`, `(a <) b`, `a <= b` | False x4 | True x4, silent |
+| same instance: `a > b`, `a >= b` | True, True | False, False, silent |
+| same instance: `max a b == a`, `min a b == b` | True, True | False, False, silent |
+| same instance: `(<) a b` | False | runtime error: missing STG binding `<` |
+| same instance: `compare a b` | GT | GT |
+| Eq defining only `/=` | (False,True,True) | runtime error: missing method Eq.== |
+| Ord defining only `<=` | (GT,False,True) | runtime error: missing method Ord.compare |
+| Eq defining both, `/=` (the original B) | (True,False) | (False,False), silent |
+| `(== x)` section, user Eq | 2 2 | 2 2 |
+
+Both minimal complete definitions of each class must work, each method a user writes must be the one
+called, and every other method must be the class default in terms of the written ones. The repair is
+the class model, bounded per class with dictionary-layout, default and explicit-method execution
+controls (gpt_chirho #24544), after provenance.
+
 ## Bricks
 
 - [x] 1. Checkpoint the provenance shape with gpt_chirho (#24535, answered #24541).
