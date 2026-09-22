@@ -246,7 +246,7 @@ fn extract_type_name_arg_chirho(arg_chirho: &ExprChirho) -> Option<String> {
     }
 
     match mk_name_arg_chirho.as_ref() {
-        ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _)) => {
+        ExprChirho::LitChirho(LitChirho::StringChirho(text_chirho, _, _)) => {
             normalize_th_type_name_chirho(text_chirho)
         }
         _ => None,
@@ -728,6 +728,7 @@ mod tests_chirho {
                         arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
                             "Person".to_string(),
                             SpanChirho::DUMMY_CHIRHO,
+                            None,
                         ))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),

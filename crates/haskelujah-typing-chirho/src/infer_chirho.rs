@@ -151,6 +151,10 @@ pub struct InferResultChirho {
     /// Literal evidence: per source literal (by span), the instance the
     /// checker solved for its overloading class. See `evidence_chirho.rs`.
     pub literal_evidence_chirho: HashMap<SpanChirho, LiteralEvidenceChirho>,
+    /// The same literal evidence keyed by the literal's origin. It also holds
+    /// generated literals, whose placeholder span the span map skips.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub literal_evidence_by_origin_chirho: HashMap<OriginIdChirho, LiteralEvidenceChirho>,
     /// Reference evidence: per constrained reference (by span), one record per
     /// predicate of the instantiated scheme, in scheme order.
     pub reference_evidence_chirho: HashMap<SpanChirho, Vec<ReferenceEvidenceChirho>>,
@@ -205,7 +209,7 @@ pub struct InferCtxChirho {
     occurrence_counters_chirho: HashMap<String, u32>,
     /// Literal evidence captures: (span, overloading class, literal type),
     /// finalized by `finalize_literal_evidence_chirho`.
-    literal_captures_chirho: Vec<(SpanChirho, String, TyChirho)>,
+    literal_captures_chirho: Vec<(SpanChirho, Option<OriginIdChirho>, String, TyChirho)>,
     /// Reference evidence captures: (span, instantiated predicates in scheme
     /// order), finalized by `finalize_reference_evidence_chirho`.
     reference_captures_chirho: Vec<evidence_chirho::ReferenceCaptureChirho>,
@@ -2937,13 +2941,13 @@ impl InferCtxChirho {
                 expr_chirho: inner_chirho,
                 ..
             } => self.expr_to_required_type_arg_chirho(inner_chirho),
-            ExprChirho::LitChirho(LitChirho::IntChirho(value_chirho, _)) => {
+            ExprChirho::LitChirho(LitChirho::IntChirho(value_chirho, _, _)) => {
                 Some(TyChirho::ConChirho(value_chirho.to_string()))
             }
-            ExprChirho::LitChirho(LitChirho::StringChirho(value_chirho, _)) => {
+            ExprChirho::LitChirho(LitChirho::StringChirho(value_chirho, _, _)) => {
                 Some(TyChirho::ConChirho(format!("\"{value_chirho}\"")))
             }
-            ExprChirho::LitChirho(LitChirho::CharChirho(value_chirho, _)) => {
+            ExprChirho::LitChirho(LitChirho::CharChirho(value_chirho, _, _)) => {
                 Some(TyChirho::ConChirho(format!("'{value_chirho}'")))
             }
             _ => None,
@@ -3012,35 +3016,31 @@ impl InferCtxChirho {
     pub fn infer_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
         match expr_chirho {
             ExprChirho::LitChirho(lit_chirho) => match lit_chirho {
-                LitChirho::IntChirho(_, span_chirho) => {
+                LitChirho::IntChirho(_, span_chirho, _) => {
                     let lit_ty_chirho = self.fresh_var_chirho();
                     self.deferred_preds_chirho.push((
                         PredChirho::new_chirho("Num", lit_ty_chirho.clone()),
                         *span_chirho,
                     ));
-                    self.capture_literal_evidence_chirho(*span_chirho, "Num", &lit_ty_chirho);
+                    self.capture_literal_evidence_chirho(lit_chirho, "Num", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
-                LitChirho::FloatChirho(_, span_chirho) => {
+                LitChirho::FloatChirho(_, span_chirho, _) => {
                     let lit_ty_chirho = self.fresh_var_chirho();
                     self.deferred_preds_chirho.push((
                         PredChirho::new_chirho("Fractional", lit_ty_chirho.clone()),
                         *span_chirho,
                     ));
-                    self.capture_literal_evidence_chirho(
-                        *span_chirho,
-                        "Fractional",
-                        &lit_ty_chirho,
-                    );
+                    self.capture_literal_evidence_chirho(lit_chirho, "Fractional", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
-                LitChirho::StringChirho(_, span_chirho) if self.overloaded_strings_chirho => {
+                LitChirho::StringChirho(_, span_chirho, _) if self.overloaded_strings_chirho => {
                     let lit_ty_chirho = self.fresh_var_chirho();
                     self.deferred_preds_chirho.push((
                         PredChirho::new_chirho("IsString", lit_ty_chirho.clone()),
                         *span_chirho,
                     ));
-                    self.capture_literal_evidence_chirho(*span_chirho, "IsString", &lit_ty_chirho);
+                    self.capture_literal_evidence_chirho(lit_chirho, "IsString", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 _ => {
@@ -7370,6 +7370,7 @@ impl InferCtxChirho {
             method_occurrences_chirho: Vec::new(),
             method_occurrence_totals_chirho: HashMap::new(),
             literal_evidence_chirho: HashMap::new(),
+            literal_evidence_by_origin_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
             reference_evidence_by_origin_chirho: HashMap::new(),
         }
@@ -21489,7 +21490,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     let method_occurrences_chirho =
         ctx_chirho.finalize_occurrence_records_chirho(&composed_subst_chirho);
     let method_occurrence_totals_chirho = ctx_chirho.occurrence_counters_chirho.clone();
-    let literal_evidence_chirho =
+    let (literal_evidence_chirho, literal_evidence_by_origin_chirho) =
         ctx_chirho.finalize_literal_evidence_chirho(&composed_subst_chirho);
     let (reference_evidence_chirho, reference_evidence_by_origin_chirho) =
         ctx_chirho.finalize_reference_evidence_chirho(&composed_subst_chirho);
@@ -21498,6 +21499,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     result_chirho.method_occurrences_chirho = method_occurrences_chirho;
     result_chirho.method_occurrence_totals_chirho = method_occurrence_totals_chirho;
     result_chirho.literal_evidence_chirho = literal_evidence_chirho;
+    result_chirho.literal_evidence_by_origin_chirho = literal_evidence_by_origin_chirho;
     result_chirho.reference_evidence_chirho = reference_evidence_chirho;
     result_chirho.reference_evidence_by_origin_chirho = reference_evidence_by_origin_chirho;
     result_chirho
@@ -21943,7 +21945,8 @@ mod tests_chirho {
     #[test]
     fn infer_literal_int_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
-        let expr_chirho = ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO));
+        let expr_chirho =
+            ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO, None));
         let (_s_chirho, ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
         assert!(matches!(ty_chirho, TyChirho::VarChirho(_)));
         assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 1);
@@ -21964,12 +21967,14 @@ mod tests_chirho {
                 arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::CharChirho(
                     'a',
                     SpanChirho::DUMMY_CHIRHO,
+                    None,
                 ))),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }),
             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::CharChirho(
                 'b',
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -22042,6 +22047,7 @@ mod tests_chirho {
             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::FloatChirho(
                 5.5,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -22107,6 +22113,7 @@ mod tests_chirho {
             expr_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 3,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             ty_chirho: TypeChirho::ConChirho(dummy_name_chirho("Int")),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -22144,6 +22151,7 @@ mod tests_chirho {
         let expr_chirho = ExprChirho::LitChirho(LitChirho::StringChirho(
             "hello".to_string(),
             SpanChirho::DUMMY_CHIRHO,
+            None,
         ));
         let (_s_chirho, ty_chirho) = ctx_chirho.infer_expr_chirho(&expr_chirho);
         assert_eq!(ty_chirho, TyChirho::string_chirho());
@@ -22398,6 +22406,7 @@ mod tests_chirho {
             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 1,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -22437,6 +22446,7 @@ mod tests_chirho {
             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 1,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -22556,6 +22566,7 @@ mod tests_chirho {
                     apply_function_chirho(ExprChirho::LitChirho(LitChirho::IntChirho(
                         5,
                         SpanChirho::DUMMY_CHIRHO,
+                        None,
                     ))),
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -22812,10 +22823,12 @@ mod tests_chirho {
             then_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 1,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             else_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 2,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -22839,14 +22852,17 @@ mod tests_chirho {
             cond_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 42,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             then_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 1,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             else_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                 2,
                 SpanChirho::DUMMY_CHIRHO,
+                None,
             ))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -22996,6 +23012,7 @@ mod tests_chirho {
                             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                                 42,
                                 SpanChirho::DUMMY_CHIRHO,
+                                None,
                             ))),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),
@@ -23036,7 +23053,7 @@ mod tests_chirho {
         // (1, True)
         let expr_chirho = ExprChirho::TupleChirho {
             elements_chirho: vec![
-                ExprChirho::LitChirho(LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO)),
+                ExprChirho::LitChirho(LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None)),
                 ExprChirho::ConChirho(dummy_name_chirho("True")),
             ],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -23063,9 +23080,9 @@ mod tests_chirho {
         // [1, 2, 3]
         let expr_chirho = ExprChirho::ListChirho {
             elements_chirho: vec![
-                ExprChirho::LitChirho(LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO)),
-                ExprChirho::LitChirho(LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO)),
-                ExprChirho::LitChirho(LitChirho::IntChirho(3, SpanChirho::DUMMY_CHIRHO)),
+                ExprChirho::LitChirho(LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None)),
+                ExprChirho::LitChirho(LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO, None)),
+                ExprChirho::LitChirho(LitChirho::IntChirho(3, SpanChirho::DUMMY_CHIRHO, None)),
             ],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -23437,10 +23454,10 @@ mod tests_chirho {
                                         dummy_name_chirho("flagChirho"),
                                     )),
                                     then_chirho: Box::new(ExprChirho::LitChirho(
-                                        LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO),
+                                        LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None),
                                     )),
                                     else_chirho: Box::new(ExprChirho::LitChirho(
-                                        LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
+                                        LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO, None),
                                     )),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
@@ -23604,11 +23621,15 @@ mod tests_chirho {
                         alts_chirho: vec![
                             AltChirho {
                                 pat_chirho: PatChirho::NegChirho {
-                                    lit_chirho: LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO),
+                                    lit_chirho: LitChirho::IntChirho(
+                                        1,
+                                        SpanChirho::DUMMY_CHIRHO,
+                                        None,
+                                    ),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 },
                                 rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
-                                    LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO),
+                                    LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None),
                                 )),
                                 where_binds_chirho: vec![],
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -23616,7 +23637,7 @@ mod tests_chirho {
                             AltChirho {
                                 pat_chirho: PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO),
                                 rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(
-                                    LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO),
+                                    LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO, None),
                                 )),
                                 where_binds_chirho: vec![],
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -24568,6 +24589,7 @@ mod tests_chirho {
                             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                                 42,
                                 SpanChirho::DUMMY_CHIRHO,
+                                None,
                             ))),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),
@@ -25324,7 +25346,7 @@ mod tests_chirho {
                                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                                     }),
                                     arg_chirho: Box::new(ExprChirho::LitChirho(
-                                        LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO),
+                                        LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO, None),
                                     )),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
@@ -25474,7 +25496,7 @@ mod tests_chirho {
                                         "Ok",
                                     ))),
                                     arg_chirho: Box::new(ExprChirho::LitChirho(
-                                        LitChirho::IntChirho(21, SpanChirho::DUMMY_CHIRHO),
+                                        LitChirho::IntChirho(21, SpanChirho::DUMMY_CHIRHO, None),
                                     )),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
@@ -25497,7 +25519,7 @@ mod tests_chirho {
                                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                                         }),
                                         arg_chirho: Box::new(ExprChirho::LitChirho(
-                                            LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO),
+                                            LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO, None),
                                         )),
                                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                                     }),
@@ -25658,7 +25680,7 @@ mod tests_chirho {
                                         "Just",
                                     ))),
                                     arg_chirho: Box::new(ExprChirho::LitChirho(
-                                        LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO),
+                                        LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO, None),
                                     )),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 },
@@ -25725,6 +25747,7 @@ mod tests_chirho {
                                             ExprChirho::LitChirho(LitChirho::IntChirho(
                                                 10,
                                                 SpanChirho::DUMMY_CHIRHO,
+                                                None,
                                             )),
                                         ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -27480,6 +27503,7 @@ mod tests_chirho {
                         right_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                             10,
                             SpanChirho::DUMMY_CHIRHO,
+                            None,
                         ))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),
@@ -27501,6 +27525,7 @@ mod tests_chirho {
                         arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::CharChirho(
                             ' ',
                             SpanChirho::DUMMY_CHIRHO,
+                            None,
                         ))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),
@@ -27513,6 +27538,7 @@ mod tests_chirho {
                             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                                 11,
                                 SpanChirho::DUMMY_CHIRHO,
+                                None,
                             ))),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),
@@ -27592,6 +27618,7 @@ mod tests_chirho {
                         right_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                             10,
                             SpanChirho::DUMMY_CHIRHO,
+                            None,
                         ))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),
@@ -27613,6 +27640,7 @@ mod tests_chirho {
                         arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::CharChirho(
                             ' ',
                             SpanChirho::DUMMY_CHIRHO,
+                            None,
                         ))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),
@@ -27625,6 +27653,7 @@ mod tests_chirho {
                             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                                 11,
                                 SpanChirho::DUMMY_CHIRHO,
+                                None,
                             ))),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),
@@ -27700,6 +27729,7 @@ mod tests_chirho {
                         right_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                             10,
                             SpanChirho::DUMMY_CHIRHO,
+                            None,
                         ))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),
@@ -27721,6 +27751,7 @@ mod tests_chirho {
                         arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::CharChirho(
                             ' ',
                             SpanChirho::DUMMY_CHIRHO,
+                            None,
                         ))),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),
@@ -27733,6 +27764,7 @@ mod tests_chirho {
                             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
                                 11,
                                 SpanChirho::DUMMY_CHIRHO,
+                                None,
                             ))),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),

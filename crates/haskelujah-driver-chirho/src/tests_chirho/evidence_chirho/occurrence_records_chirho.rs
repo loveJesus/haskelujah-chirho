@@ -37,8 +37,9 @@ fn occurrence_texts_chirho(
     let mut texts_chirho = HashMap::new();
     for decl_chirho in &mut result_chirho.module_chirho.decls_chirho {
         visit_decl_chirho(decl_chirho, &mut |occurrence_chirho| {
-            let OccurrenceMutChirho::ReferenceChirho(name_chirho) = &occurrence_chirho;
-            if let Some(origin_chirho) = occurrence_chirho.origin_chirho() {
+            if let (OccurrenceMutChirho::ReferenceChirho(name_chirho), Some(origin_chirho)) =
+                (&occurrence_chirho, occurrence_chirho.origin_chirho())
+            {
                 texts_chirho.insert(origin_chirho, name_chirho.text_chirho().to_string());
             }
         });

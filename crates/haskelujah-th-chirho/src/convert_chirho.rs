@@ -213,20 +213,28 @@ pub fn th_pat_to_ast_chirho(pat_chirho: &ThPatChirho) -> PatChirho {
 /// Convert a TH literal to a haskelujah AST literal.
 pub fn th_lit_to_ast_chirho(lit_chirho: &ThLitChirho) -> LitChirho {
     match lit_chirho {
-        ThLitChirho::IntegerLChirho(n_chirho) => LitChirho::IntChirho(*n_chirho, TH_SPAN_CHIRHO),
-        ThLitChirho::RationalLChirho(f_chirho) => LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO),
-        ThLitChirho::CharLChirho(c_chirho) => LitChirho::CharChirho(*c_chirho, TH_SPAN_CHIRHO),
-        ThLitChirho::StringLChirho(s_chirho) => {
-            LitChirho::StringChirho(s_chirho.clone(), TH_SPAN_CHIRHO)
+        ThLitChirho::IntegerLChirho(n_chirho) => {
+            LitChirho::IntChirho(*n_chirho, TH_SPAN_CHIRHO, None)
         }
-        ThLitChirho::IntPrimLChirho(n_chirho) => LitChirho::IntChirho(*n_chirho, TH_SPAN_CHIRHO),
+        ThLitChirho::RationalLChirho(f_chirho) => {
+            LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO, None)
+        }
+        ThLitChirho::CharLChirho(c_chirho) => {
+            LitChirho::CharChirho(*c_chirho, TH_SPAN_CHIRHO, None)
+        }
+        ThLitChirho::StringLChirho(s_chirho) => {
+            LitChirho::StringChirho(s_chirho.clone(), TH_SPAN_CHIRHO, None)
+        }
+        ThLitChirho::IntPrimLChirho(n_chirho) => {
+            LitChirho::IntChirho(*n_chirho, TH_SPAN_CHIRHO, None)
+        }
         ThLitChirho::FloatPrimLChirho(f_chirho) => {
-            LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO)
+            LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO, None)
         }
         ThLitChirho::DoublePrimLChirho(f_chirho) => {
-            LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO)
+            LitChirho::FloatChirho(*f_chirho, TH_SPAN_CHIRHO, None)
         }
-        _ => LitChirho::IntChirho(0, TH_SPAN_CHIRHO), // Fallback
+        _ => LitChirho::IntChirho(0, TH_SPAN_CHIRHO, None), // Fallback
     }
 }
 

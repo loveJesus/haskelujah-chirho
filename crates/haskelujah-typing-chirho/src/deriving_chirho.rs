@@ -1248,12 +1248,14 @@ fn derive_show_chirho(
             ExprChirho::LitChirho(LitChirho::StringChirho(
                 name_chirho.to_string(),
                 gen_span_chirho(),
+                None,
             ))
         } else {
             // Start with "ConName"
             let mut result_chirho = ExprChirho::LitChirho(LitChirho::StringChirho(
                 name_chirho.to_string(),
                 gen_span_chirho(),
+                None,
             ));
 
             for var_name_str_chirho in &a_vars_chirho {
@@ -1264,6 +1266,7 @@ fn derive_show_chirho(
                     ExprChirho::LitChirho(LitChirho::StringChirho(
                         " ".to_string(),
                         gen_span_chirho(),
+                        None,
                     )),
                 );
                 // Append show ai
@@ -1360,6 +1363,7 @@ fn derive_enum_chirho(
             pats_chirho: vec![PatChirho::LitChirho(LitChirho::IntChirho(
                 idx_chirho as i64,
                 gen_span_chirho(),
+                None,
             ))],
             rhs_chirho: RhsChirho::UnguardedChirho(con_expr_chirho(con_name_chirho(con_chirho))),
             where_binds_chirho: vec![],
@@ -1374,6 +1378,7 @@ fn derive_enum_chirho(
             ExprChirho::LitChirho(LitChirho::StringChirho(
                 format!("{}.toEnum: out of range", type_name_chirho.text_chirho()),
                 gen_span_chirho(),
+                None,
             )),
         )),
         where_binds_chirho: vec![],
@@ -1395,6 +1400,7 @@ fn derive_enum_chirho(
             rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LitChirho(LitChirho::IntChirho(
                 idx_chirho as i64,
                 gen_span_chirho(),
+                None,
             ))),
             where_binds_chirho: vec![],
             span_chirho: gen_span_chirho(),
@@ -1431,6 +1437,7 @@ fn derive_enum_chirho(
                 ExprChirho::LitChirho(LitChirho::StringChirho(
                     format!("{}.succ: out of range", type_name_chirho.text_chirho()),
                     gen_span_chirho(),
+                    None,
                 )),
             )),
             where_binds_chirho: vec![],
@@ -1455,6 +1462,7 @@ fn derive_enum_chirho(
                 ExprChirho::LitChirho(LitChirho::StringChirho(
                     format!("{}.pred: out of range", type_name_chirho.text_chirho()),
                     gen_span_chirho(),
+                    None,
                 )),
             )),
             where_binds_chirho: vec![],

@@ -350,7 +350,8 @@ mod tests_chirho {
     #[test]
     fn linear_unused_violation_chirho() {
         // \x -> 42 (x not used = violation)
-        let body_chirho = ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO));
+        let body_chirho =
+            ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO, None));
         let params_chirho = vec![("x".to_string(), true)];
         let violations_chirho =
             check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);
@@ -384,7 +385,8 @@ mod tests_chirho {
     #[test]
     fn unrestricted_unused_ok_chirho() {
         // \x -> 42 with unrestricted x — no violation
-        let body_chirho = ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO));
+        let body_chirho =
+            ExprChirho::LitChirho(LitChirho::IntChirho(42, SpanChirho::DUMMY_CHIRHO, None));
         let params_chirho = vec![("x".to_string(), false)];
         let violations_chirho =
             check_linearity_chirho(&params_chirho, &body_chirho, SpanChirho::DUMMY_CHIRHO);

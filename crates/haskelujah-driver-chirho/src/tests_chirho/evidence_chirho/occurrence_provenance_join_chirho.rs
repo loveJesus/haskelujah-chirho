@@ -4,7 +4,8 @@
 //! (gpt_chirho #24541, #24575): records reach their own occurrences whatever the
 //! order of either side; an occurrence with provenance but no proof is never
 //! rescued; a record with an origin never serves another occurrence; a class
-//! proved at two types proves nothing; every copy of one use takes its proof.
+//! proved at two types proves nothing; every copy of one use takes its proof;
+//! a literal takes its own origin's evidence, never its placeholder span's.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::HashMap;
@@ -244,4 +245,79 @@ fn a_legacy_reference_proof_still_reaches_a_legacy_reference_chirho() {
         legacy_reference_join_chirho(vec![(span_chirho(200, 204), "Int")], vec![]),
         Some(vec![("Show".to_string(), Some("Int".to_string()))])
     );
+}
+
+/// A literal occurrence `10` of `fromInteger` with the given provenance, joined
+/// against origin-keyed and span-keyed literal evidence.
+fn join_literal_chirho(
+    provenance_chirho: Option<ProvenanceChirho>,
+    by_origin_chirho: Vec<(OriginIdChirho, &str)>,
+    by_span_chirho: Vec<(SpanChirho, &str)>,
+) -> Option<(String, String)> {
+    use haskelujah_typing_chirho::infer_chirho::LiteralEvidenceChirho;
+    let evidence_chirho = |key_chirho: &str| LiteralEvidenceChirho {
+        class_name_chirho: "Num".to_string(),
+        ty_key_chirho: key_chirho.to_string(),
+    };
+    let mut result_chirho = infer_result_chirho(vec![]);
+    result_chirho.literal_evidence_by_origin_chirho = by_origin_chirho
+        .into_iter()
+        .map(|(origin_chirho, key_chirho)| (origin_chirho, evidence_chirho(key_chirho)))
+        .collect();
+    result_chirho.literal_evidence_chirho = by_span_chirho
+        .into_iter()
+        .map(|(span_chirho, key_chirho)| (span_chirho, evidence_chirho(key_chirho)))
+        .collect();
+    let occurrences_chirho = HashMap::from([(
+        CoreIdChirho(10),
+        ("fromInteger".to_string(), CoreIdChirho(1)),
+    )]);
+    let literal_spans_chirho = HashMap::from([(CoreIdChirho(10), SpanChirho::DUMMY_CHIRHO)]);
+    let provenance_map_chirho: HashMap<CoreIdChirho, ProvenanceChirho> = provenance_chirho
+        .map(|provenance_chirho| (CoreIdChirho(10), provenance_chirho))
+        .into_iter()
+        .collect();
+    join_occurrence_evidence_chirho(
+        &result_chirho,
+        &occurrences_chirho,
+        &literal_spans_chirho,
+        &HashMap::new(),
+        &provenance_map_chirho,
+    )
+    .remove(&CoreIdChirho(10))
+}
+
+#[test]
+fn a_generated_literal_takes_its_own_origins_evidence_chirho() {
+    // Under the placeholder span the span map could only say what some other
+    // literal was; the literal's own origin says what this one is.
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let literal_chirho = supply_chirho.fresh_chirho();
+    let joined_chirho = join_literal_chirho(
+        Some(ProvenanceChirho::new_chirho(
+            literal_chirho,
+            OccurrenceRoleChirho::IntegerLiteral,
+        )),
+        vec![(literal_chirho, "Double")],
+        vec![(SpanChirho::DUMMY_CHIRHO, "Int")],
+    );
+    assert_eq!(
+        joined_chirho,
+        Some(("Num".to_string(), "Double".to_string()))
+    );
+}
+
+#[test]
+fn a_literal_with_provenance_and_no_evidence_is_not_rescued_by_span_chirho() {
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let literal_chirho = supply_chirho.fresh_chirho();
+    let joined_chirho = join_literal_chirho(
+        Some(ProvenanceChirho::new_chirho(
+            literal_chirho,
+            OccurrenceRoleChirho::IntegerLiteral,
+        )),
+        vec![],
+        vec![(SpanChirho::DUMMY_CHIRHO, "Int")],
+    );
+    assert_eq!(joined_chirho, None);
 }
