@@ -377,3 +377,21 @@ The tasklist records the reductions, failed intermediate gates and repair detail
   three-engine comparisons; shared-source controls are named in the workflow.
 - Data-family/type-data shapes, refined GADT record results and the other red
   upstream corpus inputs remain compatibility work. No site deployment occurred.
+
+## The corpus runner and its one verdict rule (2026-09-22)
+
+The runner is committed beside this document in `corpus-runner-chirho/`, so no landing carries a
+private detector forward again. `classify_chirho.sh` holds the single verdict rule every script uses,
+in the order gpt_chirho's review set (room #24609): a timeout (exit 124) or any exit other than 0 or 1
+is classified first, then a REAL Rust panic header (`thread '...' panicked at`), and only then is a
+diagnostic credited: REJECT needs `error[E` and exit 1, ACCEPT needs exit 0 and no `error[E`. The bare
+substring `panic` is never a verdict, because quoted source can contain it.
+
+- `axis_pass_chirho.sh`: one complete pass of an axis (parallelism 4, 15s, timeouts re-run alone at
+  60s), optionally keeping every file's raw output.
+- `replay_rejects_chirho.sh`: every REJECT row of saved passes re-run on the same frozen CLI, keeping
+  stdout, stderr, exit code and source SHA-256 per file. The pass lists establish status and
+  membership; the replay establishes that each rejection is a diagnostic and not a crash.
+- `execution_chirho.sh`: execution evidence against GHC. A PASS needs `runghc` to exit 0, the tested
+  command to exit 0, and stdout byte-identical to the reference; every command's stdout, stderr and
+  exit code are kept, and a native compile failure is a FAIL with its output, never a skip.

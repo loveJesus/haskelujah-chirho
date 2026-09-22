@@ -158,8 +158,10 @@ flowchart TD
     check_chirho --> join_chirho{Join}
     desugar_chirho --> join_chirho
     join_chirho -->|occurrence has provenance| own_chirho[Only the proof of its own origin; missing or conflicting gives none]
-    join_chirho -->|no provenance, genuine span| span_chirho[By span]
+    join_chirho -->|no provenance, genuine span| span_chirho[By span, records WITHOUT origin only]
     join_chirho -->|no identity at all| position_chirho[By position, count-guarded, records WITHOUT origin only]
+    check_chirho -->|capture WITH an origin| owned_chirho[Published under its origin only]
+    check_chirho -->|capture without an origin| legacy_chirho[Published under its span: the legacy projection]
 ```
 
 - `occurrences_chirho.rs` in the AST crate is the one statement of where occurrences live. Every
@@ -178,8 +180,10 @@ flowchart TD
 
 ## Current boundary
 
-- Infix references (`x \`f\` y`) and operator sections still resolve through the shared
-  canonical id; only prefix references mint occurrence ids.
+- An infix or section use of a class METHOD mints its own occurrence id and carries its
+  operator's provenance, like a prefix use. An infix or section use of a constrained
+  function that is not a method still resolves through the shared canonical id: only a prefix
+  reference mints a reference occurrence for per-predicate reference evidence.
 - Class methods never mint reference occurrences (the method paths key on canonical ids);
   own-parameter evidence therefore reaches the standard method list only, and a user class
   method at a rigid variable is still dispatched by the pass's inferred parameter keys.
