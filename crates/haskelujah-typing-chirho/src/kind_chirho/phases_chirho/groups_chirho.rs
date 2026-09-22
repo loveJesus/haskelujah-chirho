@@ -36,9 +36,27 @@ impl KindInferCtxChirho {
         // Aliases used as kind syntax are expanded independently of source order.
         // Their inferred kinds still belong to the dependency groups below.
         for declaration_chirho in &graph_chirho.declarations_chirho {
-            if let DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } = declaration_chirho {
+            if let DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                data_chirho: false,
+                ..
+            } = declaration_chirho
+            {
                 self.kind_family_names_chirho
                     .insert(self.canonical_kind_name_chirho(name_chirho));
+            }
+            if let DeclChirho::ClassDeclChirho {
+                associated_tfs_chirho,
+                ..
+            } = declaration_chirho
+            {
+                for family_chirho in associated_tfs_chirho
+                    .iter()
+                    .filter(|family_chirho| !family_chirho.data_chirho)
+                {
+                    self.kind_family_names_chirho
+                        .insert(self.canonical_kind_name_chirho(&family_chirho.name_chirho));
+                }
             }
             if let DeclChirho::TypeAliasDeclChirho {
                 name_chirho,
@@ -168,6 +186,7 @@ impl KindInferCtxChirho {
                     let index_chirho = group_chirho[local_chirho];
                     if let DeclChirho::TypeFamilyDeclChirho {
                         name_chirho,
+                        data_chirho: false,
                         body_chirho:
                             haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,
                         span_chirho,
@@ -480,6 +499,7 @@ impl KindInferCtxChirho {
                 result_chirho,
                 body_chirho,
                 span_chirho,
+                ..
             } => {
                 self.check_kind_family_chirho(
                     name_chirho,

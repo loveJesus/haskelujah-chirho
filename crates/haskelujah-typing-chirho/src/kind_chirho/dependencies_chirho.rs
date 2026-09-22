@@ -67,6 +67,7 @@ impl<'source_chirho> KindDependenciesChirho<'source_chirho> {
                 && matches!(
                     declarations_chirho[owner_chirho],
                     DeclChirho::TypeFamilyDeclChirho {
+                        data_chirho: false,
                         body_chirho:
                             haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,
                         ..

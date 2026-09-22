@@ -5,6 +5,53 @@ use super::*;
 use haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho;
 
 #[test]
+fn family_declarations_preserve_data_form_at_the_shared_producer_chirho() {
+    let source_chirho = "{-# LANGUAGE TypeFamilies #-}\nmodule FormsChirho where\ndata family DataChirho aChirho\ntype family TypeChirho aChirho\nclass ClassChirho aChirho where\n  data AssociatedDataChirho aChirho\n  type AssociatedTypeChirho aChirho\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let module_chirho = lower_module_chirho(
+        &crate::cst_parser_chirho::parse_to_cst_chirho(source_chirho, file_chirho),
+        file_chirho,
+    );
+    let forms_chirho: Vec<_> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|declaration_chirho| {
+            if let DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                data_chirho,
+                ..
+            } = declaration_chirho
+            {
+                Some((name_chirho.text_chirho(), *data_chirho))
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(forms_chirho, [("DataChirho", true), ("TypeChirho", false)]);
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        ..
+    } = &module_chirho.decls_chirho[2]
+    else {
+        panic!("class declaration must survive family lowering");
+    };
+    assert_eq!(
+        associated_tfs_chirho
+            .iter()
+            .map(|family_chirho| (
+                family_chirho.name_chirho.text_chirho(),
+                family_chirho.data_chirho
+            ))
+            .collect::<Vec<_>>(),
+        [
+            ("AssociatedDataChirho", true),
+            ("AssociatedTypeChirho", false)
+        ]
+    );
+}
+
+#[test]
 fn associated_equations_preserve_written_arguments_chirho() {
     for (head_chirho, equation_chirho, arguments_chirho) in [
         (

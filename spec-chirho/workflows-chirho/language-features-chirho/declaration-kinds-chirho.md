@@ -1214,6 +1214,41 @@ The paired driver controls exercise both entry points. The measured dependent
 class-head counterexample CChirho Int 'True remains a separate gap: this channel
 does not certify every monomorphic/dependent instance head or runtime dictionary.
 
+## Data-family declaration form
+
+```mermaid
+flowchart TD
+  WrittenFamilyChirho[Written data or type family keyword] --> LowerFamilyChirho[Shared family lowerer retains data_chirho]
+  LowerFamilyChirho --> TopFamilyChirho[Top-level family declaration]
+  LowerFamilyChirho --> AssociatedFamilyChirho[Associated family partition preserves the same flag]
+  TopFamilyChirho --> CheckedShapeChirho[Closed kind contract retains declaration shape]
+  AssociatedFamilyChirho --> CheckedShapeChirho
+  CheckedShapeChirho --> DataFamilyChirho[DataFamily: nominal application, no reduction rows]
+  CheckedShapeChirho --> TypeFamilyChirho[Family: noninjective type-family application]
+  DataFamilyChirho --> PatternChirho[Nominal application allowed in equation patterns]
+  TypeFamilyChirho --> RejectPatternChirho[Existing illegal-family-pattern diagnostic]
+  CheckedShapeChirho --> ImportChirho[Transport exact form under qualified and local-shadow identities]
+  ImportChirho --> DataFamilyChirho
+  ImportChirho --> TypeFamilyChirho
+```
+
+`DataFamilyChirho` is nominal for pattern matching and kind elaboration, but is
+not the same declaration contract as an ordinary data type or a type family.
+Contract agreement compares the retained shape. A zero-hidden-argument data
+family still publishes nominal identity so an imported same-basename type family
+cannot classify it. Associated data declarations use this same producer field;
+their class lowerer no longer re-scans source spans to recover the keyword.
+Neither local nor imported data families register type-family reduction rows.
+The equation-pattern guard itself is unchanged; associated type-family names
+now reach it as well as top-level type-family names.
+
+The bounded controls cover both T17067 declaration arities, local/imported and
+associated data-family patterns, qualified shadowing, and illegal type-family
+patterns in all three positions. They do not implement data-family instance
+constructors, representation coercions, or complete associated-data semantics.
+Persistent reference and candidate observations live under
+`test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/`.
+
 ## Evidence boundary
 
 Lowering controls retain both annotations and their exact source-slice spans, and keep
@@ -1226,8 +1261,8 @@ STG, LLVM and Cranelift. Execution and full-gate results are recorded in the
 unit tasklist, not inferred from these source-level controls.
 
 Still outside scope: arbitrary promoted/named/dependent kinds, complete imported
-constructor/equation metadata, and the
-separate data-family/type-data/refined-GADT-result AST decisions.
+constructor/equation metadata, data-family instance constructor representation,
+and the separate type-data/refined-GADT-result AST decisions.
 Symbolic standalone signatures, attachment to aliases/classes,
 and duplicate/orphan signature diagnostics remain separate parser limitations.
 The representation repair is not full TypeAbstractions checking: declaration-head

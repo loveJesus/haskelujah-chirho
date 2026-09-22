@@ -198,6 +198,9 @@ impl InferCtxChirho {
                 .map(|param_chirho| param_chirho.text_chirho().to_string())
                 .collect();
             for atf_chirho in associated_tfs_chirho {
+                if atf_chirho.data_chirho {
+                    continue;
+                }
                 let tf_name_chirho = atf_chirho.name_chirho.text_chirho().to_string();
                 self.register_type_family_chirho(tf_name_chirho.clone(), vec![]);
                 self.assoc_type_declared_params_chirho.insert(

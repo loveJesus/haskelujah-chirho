@@ -6,10 +6,13 @@ import { git_chirho, hash_chirho, observe_chirho } from "./support_chirho.ts";
 
 const evidence_chirho = resolve(import.meta.dir, "..");
 const gate_directory_chirho = process.argv[2] ?? "gates-chirho";
-const gate_chirho = await Bun.file(`${evidence_chirho}/checkpoint-chirho/${gate_directory_chirho}/receipt-chirho.json`).json();
+const gate_path_chirho = gate_directory_chirho.endsWith(".json")
+  ? resolve(gate_directory_chirho)
+  : `${evidence_chirho}/checkpoint-chirho/${gate_directory_chirho}/receipt-chirho.json`;
+const gate_chirho = await Bun.file(gate_path_chirho).json();
 if (!gate_chirho.complete_chirho) throw new Error("Gates incomplete");
 const binary_chirho: string = gate_chirho.binary_path_chirho;
-const output_chirho = `${evidence_chirho}/checkpoint-chirho/corpus-chirho`;
+const output_chirho = process.argv[3] ? resolve(process.argv[3]) : `${evidence_chirho}/checkpoint-chirho/corpus-chirho`;
 if (await Bun.file(`${output_chirho}/receipt-chirho.json`).exists()) throw new Error("Corpus output exists");
 await mkdir(output_chirho, { recursive: true });
 const before_chirho = hash_chirho(await readFile(binary_chirho));

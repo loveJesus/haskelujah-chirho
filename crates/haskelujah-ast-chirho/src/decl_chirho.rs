@@ -309,12 +309,14 @@ pub enum DeclChirho {
         /// Span covering the whole type alias.
         span_chirho: SpanChirho,
     },
-    /// Type family declaration (open or closed).
+    /// Type or data family declaration (data families are nominal).
     /// Open: `type family F a :: *`
     /// Closed: `type family F a where { F Int = Bool; ... }`
     TypeFamilyDeclChirho {
         /// Family name being declared.
         name_chirho: NameChirho,
+        /// Preserve the written data/type distinction through checked contracts.
+        data_chirho: bool,
         /// Family parameters introduced by the declaration.
         type_vars_chirho: Vec<TyVarChirho>,
         /// Result kind, optional named binder and written injectivity contract.

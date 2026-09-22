@@ -483,6 +483,7 @@ fn synonym_rhs_requires_lexically_bound_type_variables_chirho() {
 #[test]
 fn family_result_kind_resolves_type_namespace_names_chirho() {
     let decl_chirho = DeclChirho::TypeFamilyDeclChirho {
+        data_chirho: false,
         name_chirho: name_chirho("FamilyChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         result_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyResultChirho {

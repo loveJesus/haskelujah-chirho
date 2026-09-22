@@ -17,6 +17,7 @@ impl LowerCtxChirho {
     ) -> DeclChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut name_chirho = None;
+        let mut data_chirho = false;
         let mut type_vars_chirho = Vec::new();
         let mut equations_chirho: Vec<TypeFamilyEquationChirho> = Vec::new();
         let mut result_chirho = TypeFamilyResultChirho::default();
@@ -65,6 +66,7 @@ impl LowerCtxChirho {
                     {
                         // Class-associated heads may omit `family`.
                         saw_family_chirho = true;
+                        data_chirho |= kind_chirho == TokenKindChirho::DataKeywordChirho;
                     } else if kind_chirho == TokenKindChirho::WhereKeywordChirho {
                         saw_where_chirho = true;
                     } else if kind_chirho == TokenKindChirho::DoubleColonChirho && !saw_where_chirho
@@ -160,6 +162,7 @@ impl LowerCtxChirho {
 
         DeclChirho::TypeFamilyDeclChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+            data_chirho,
             type_vars_chirho,
             result_chirho,
             body_chirho: if invalid_chirho {

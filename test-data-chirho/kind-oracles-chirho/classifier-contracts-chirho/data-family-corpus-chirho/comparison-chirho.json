@@ -1,0 +1,28 @@
+{
+  "parent_binary_sha256_chirho": "88c17197835dd4ccd6afc1b998f426a9ff5c284f05ebfddda0d84e5e9872063b",
+  "current_binary_sha256_chirho": "df001df8f8ecac55215afcba9739ae38f5ecff8d64f09b1fdf009712538c643b",
+  "comparisons_chirho": [
+    {
+      "axis_chirho": "compile",
+      "total_chirho": 938,
+      "parent_observations_sha256_chirho": "06e76948dcd462baf8da1d9399ef3946492e7b2c7d39f1e538ca38a91a0988d0",
+      "current_observations_sha256_chirho": "23f64138befa2c0ad10767590eb1e8aa736bc0626c498910050a3bea44709f1d",
+      "gains_chirho": [
+        "T17067.hs"
+      ],
+      "losses_chirho": [
+        "T16188.hs"
+      ]
+    },
+    {
+      "axis_chirho": "fail",
+      "total_chirho": 767,
+      "parent_observations_sha256_chirho": "14ae39f121f24fc904e5a2ee8a2aaa5a07712525254e8b86369ca16cbe65e0ec",
+      "current_observations_sha256_chirho": "2b35a7b371d83de88417494d50d9018e3ee747c66595eabf6b9b502fb4a01585",
+      "gains_chirho": [
+        "T16204c.hs"
+      ],
+      "losses_chirho": []
+    }
+  ]
+}

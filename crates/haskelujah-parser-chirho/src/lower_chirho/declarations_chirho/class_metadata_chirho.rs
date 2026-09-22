@@ -7,42 +7,6 @@ use crate::lexer_chirho::{LexerChirho, RawTokenKindChirho};
 use haskelujah_ast_chirho::class_chirho::MinimalFormulaChirho;
 
 impl LowerCtxChirho {
-    /// The top-level family AST shares type/data syntax. Capture the actual
-    /// keyword here before class members become their own typed contracts.
-    pub(super) fn associated_data_spans_chirho(
-        &self,
-        node_chirho: &GreenNodeChirho,
-        base_chirho: usize,
-    ) -> HashSet<SpanChirho> {
-        let mut spans_chirho = HashSet::new();
-        for child_chirho in self.semantic_children_chirho(node_chirho, base_chirho) {
-            let GreenElementChirho::NodeChirho(where_chirho) = child_chirho.element_chirho else {
-                continue;
-            };
-            if where_chirho.kind_chirho() != SyntaxKindChirho::WhereClauseChirho {
-                continue;
-            }
-            for member_chirho in
-                self.semantic_children_chirho(where_chirho, child_chirho.start_chirho)
-            {
-                let GreenElementChirho::NodeChirho(declaration_chirho) =
-                    member_chirho.element_chirho
-                else {
-                    continue;
-                };
-                if declaration_chirho.kind_chirho() != SyntaxKindChirho::TypeFamilyDeclChirho {
-                    continue;
-                }
-                if self.semantic_children_chirho(declaration_chirho, member_chirho.start_chirho)
-                    .first().is_some_and(|first_chirho| matches!(first_chirho.element_chirho,
-                        GreenElementChirho::TokenChirho(token_chirho) if token_chirho.kind_chirho() == TokenKindChirho::DataKeywordChirho)) {
-                    spans_chirho.insert(self.span_chirho(member_chirho.start_chirho, member_chirho.end_chirho));
-                }
-            }
-        }
-        spans_chirho
-    }
-
     pub(super) fn try_extract_default_sig_chirho(
         &self,
         node_chirho: &GreenNodeChirho,

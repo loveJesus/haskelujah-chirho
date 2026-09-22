@@ -78,6 +78,7 @@ pub(crate) fn partition_class_members_chirho(
             }
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
+                data_chirho,
                 type_vars_chirho,
                 result_chirho,
                 body_chirho,
@@ -87,7 +88,7 @@ pub(crate) fn partition_class_members_chirho(
                     name_chirho,
                     type_vars_chirho: retain_chirho(type_vars_chirho),
                     result_chirho,
-                    data_chirho: false,
+                    data_chirho,
                     head_declared_chirho: true,
                     defaults_chirho: body_chirho.equations_chirho().to_vec(),
                     span_chirho,

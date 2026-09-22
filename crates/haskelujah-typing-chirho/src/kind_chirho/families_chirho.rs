@@ -41,6 +41,7 @@ impl KindInferCtxChirho {
             .filter_map(|declaration_chirho| {
                 if let DeclChirho::TypeFamilyDeclChirho {
                     name_chirho,
+                    data_chirho: false,
                     body_chirho: TypeFamilyBodyChirho::OpenChirho,
                     ..
                 } = declaration_chirho

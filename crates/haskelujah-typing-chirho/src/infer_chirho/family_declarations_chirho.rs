@@ -263,6 +263,7 @@ impl InferCtxChirho {
             match declaration_chirho {
                 DeclChirho::TypeFamilyDeclChirho {
                     name_chirho,
+                    data_chirho,
                     body_chirho,
                     span_chirho,
                     ..
@@ -292,10 +293,14 @@ impl InferCtxChirho {
                             ),
                         );
                     }
-                    self.register_elaborated_type_family_chirho(
-                        name_chirho.text_chirho().to_string(),
-                        equations_chirho,
-                    );
+                    // Data families have nominal applications, not reduction rows.
+                    // Workflow: language-features-chirho/declaration-kinds-chirho.
+                    if !data_chirho {
+                        self.register_elaborated_type_family_chirho(
+                            name_chirho.text_chirho().to_string(),
+                            equations_chirho,
+                        );
+                    }
                 }
                 DeclChirho::TypeFamilyInstanceDeclChirho {
                     family_name_chirho,

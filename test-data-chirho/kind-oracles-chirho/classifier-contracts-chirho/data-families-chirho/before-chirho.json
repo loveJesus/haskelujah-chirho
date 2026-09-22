@@ -1,0 +1,134 @@
+{
+  "binary_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+  "before_chirho": "88c17197835dd4ccd6afc1b998f426a9ff5c284f05ebfddda0d84e5e9872063b",
+  "after_chirho": "88c17197835dd4ccd6afc1b998f426a9ff5c284f05ebfddda0d84e5e9872063b",
+  "stable_chirho": true,
+  "rows_chirho": [
+    {
+      "file_chirho": "LocalChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs:8:28\n   |\n 7 | type family StripChirho aChirho\n 8 | type instance StripChirho (FirstChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^^\n 9 | type instance StripChirho (SecondChirho aChirho) = aChirho\n\nerror[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs:9:28\n    |\n  8 | type instance StripChirho (FirstChirho aChirho) = aChirho\n  9 | type instance StripChirho (SecondChirho aChirho) = aChirho\n    |                            ^^^^^^^^^^^^\n 10 | firstChirho :: StripChirho (FirstChirho Int) -> Int\n\n2 errors generated\n",
+      "source_sha256_chirho": "0f0e29cda916ceb3094b07399d2942106f430f0057feeb09fe5f7de7e036eaf8",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": false
+    },
+    {
+      "file_chirho": "ImportedChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedChirho.hs:6:28\n   |\n 5 | type family StripChirho aChirho\n 6 | type instance StripChirho (PChirho.DataChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^^^^^^^^^\n 7 | type instance StripChirho (PChirho.AssociatedDataChirho aChirho) = aChirho\n\nerror[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedChirho.hs:7:28\n   |\n 6 | type instance StripChirho (PChirho.DataChirho aChirho) = aChirho\n 7 | type instance StripChirho (PChirho.AssociatedDataChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n 8 | keepChirho :: StripChirho (PChirho.DataChirho Int) -> Int\n\n2 errors generated\n",
+      "source_sha256_chirho": "268d51ba8aa181ceb8da4246e698fb127e2251f354c758ec040af22851d88fde",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": false
+    },
+    {
+      "file_chirho": "ShadowChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ShadowChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ShadowChirho.hs:7:28\n   |\n 6 | type family StripChirho aChirho\n 7 | type instance StripChirho (TypeChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^\n 8 | type instance StripChirho (PChirho.DataChirho aChirho) = aChirho\n\nerror[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ShadowChirho.hs:8:28\n   |\n 7 | type instance StripChirho (TypeChirho aChirho) = aChirho\n 8 | type instance StripChirho (PChirho.DataChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^^^^^^^^^\n 9 | keepChirho :: StripChirho (TypeChirho Int) -> Int\n\n2 errors generated\n",
+      "source_sha256_chirho": "2791d14209c8871b1331abe801566cd258068a68bd423143cdfcdbc8caaf3187",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": false
+    },
+    {
+      "file_chirho": "AssociatedChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0200]: type mismatch: expected `(StripChirho ((DataChirho @(GHC.Prim.TYPE (GHC.Types.BoxedRep GHC.Types.Lifted))) Int))`, found `Int`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedChirho.hs:9:1\n    |\n  8 | keepChirho :: StripChirho (DataChirho Int) -> Int\n  9 | keepChirho valueChirho = valueChirho\n    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n 10 | main :: IO ()\n    | ^\n 11 | main = print (keepChirho 7)\n  = note: expected type: (StripChirho ((DataChirho @(GHC.Prim.TYPE (GHC.Types.BoxedRep GHC.Types.Lifted))) Int))\n  = note:    found type: Int\n\nerror[E0200]: type mismatch: expected `Int`, found `(StripChirho ((DataChirho @(GHC.Prim.TYPE (GHC.Types.BoxedRep GHC.Types.Lifted))) Int))`\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedChirho.hs:9:1\n    |\n  8 | keepChirho :: StripChirho (DataChirho Int) -> Int\n  9 | keepChirho valueChirho = valueChirho\n    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n 10 | main :: IO ()\n    | ^\n 11 | main = print (keepChirho 7)\n  = note: expected type: Int\n  = note:    found type: (StripChirho ((DataChirho @(GHC.Prim.TYPE (GHC.Types.BoxedRep GHC.Types.Lifted))) Int))\n\n2 errors generated\n",
+      "source_sha256_chirho": "0c447802052721eb74c877616a6dd77a3dfafe6d07a975030c6ebf331e0551eb",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": false
+    },
+    {
+      "file_chirho": "TypePatternChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/TypePatternChirho.hs"
+      ],
+      "expected_exit_chirho": 1,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/TypePatternChirho.hs:6:28\n   |\n 5 | type family StripChirho aChirho\n 6 | type instance StripChirho (TypeChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^\n 7 | \n\n1 error generated\n",
+      "source_sha256_chirho": "f1543a0ba0583d53a804aaf5b4154abfc86eded16b28fc32c7be527b29abc5fb",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "ImportedTypePatternChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedTypePatternChirho.hs"
+      ],
+      "expected_exit_chirho": 1,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedTypePatternChirho.hs:7:28\n   |\n 6 | type family StripChirho aChirho\n 7 | type instance StripChirho (PChirho.TypeChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^^^^^^^^^\n 8 | \n\n1 error generated\n",
+      "source_sha256_chirho": "e5c518a860ea8960d892cf8ea718c8ff45252764705a86d42488ee4a73919ca8",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "AssociatedTypePatternChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/final-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedTypePatternChirho.hs"
+      ],
+      "expected_exit_chirho": 1,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 0,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedTypePatternChirho.hs\nmodule: AssociatedTypePatternChirho\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module AssociatedTypePatternChirho\nwasm_stub_size: 48\n",
+      "stderr_chirho": "",
+      "source_sha256_chirho": "6850263aaf5ebc1808bb66c1e1426a2f9d9e33ac9b87c935de97fecf1421310f",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": false
+    }
+  ]
+}

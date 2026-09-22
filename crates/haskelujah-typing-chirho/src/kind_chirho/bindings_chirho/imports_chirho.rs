@@ -6,9 +6,24 @@ use super::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum KindHeadShapeChirho {
     NominalChirho,
+    DataFamilyChirho,
     SynonymChirho,
     FamilyChirho,
     ClassChirho,
+}
+
+impl KindHeadShapeChirho {
+    pub(super) fn family_chirho(data_chirho: bool) -> Self {
+        if data_chirho {
+            Self::DataFamilyChirho
+        } else {
+            Self::FamilyChirho
+        }
+    }
+
+    pub(super) fn is_nominal_chirho(self) -> bool {
+        matches!(self, Self::NominalChirho | Self::DataFamilyChirho)
+    }
 }
 
 /// An opaque checked scheme. Its numeric identities are private to this
@@ -263,7 +278,7 @@ impl KindInferCtxChirho {
                 let name_chirho = family_chirho.name_chirho.text_chirho();
                 match self.env_chirho.lookup_binding_chirho(name_chirho) {
                     Some(binding_chirho) if KindContractChirho::binding_is_closed_chirho(binding_chirho) => {
-                        contracts_chirho.insert(name_chirho.to_owned(), KindContractChirho { binding_chirho: binding_chirho.clone(), shape_chirho: KindHeadShapeChirho::FamilyChirho });
+                        contracts_chirho.insert(name_chirho.to_owned(), KindContractChirho { binding_chirho: binding_chirho.clone(), shape_chirho: KindHeadShapeChirho::family_chirho(family_chirho.data_chirho) });
                     }
                     _ => self.diagnostics_chirho.push_chirho(DiagnosticChirho::error_with_code_chirho(
                         ErrorCodeChirho::error_chirho(KIND_MISMATCH_CODE_CHIRHO),
@@ -288,9 +303,14 @@ impl KindInferCtxChirho {
                 DeclChirho::TypeAliasDeclChirho { name_chirho, .. } => {
                     (name_chirho, KindHeadShapeChirho::SynonymChirho)
                 }
-                DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } => {
-                    (name_chirho, KindHeadShapeChirho::FamilyChirho)
-                }
+                DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    data_chirho,
+                    ..
+                } => (
+                    name_chirho,
+                    KindHeadShapeChirho::family_chirho(*data_chirho),
+                ),
                 DeclChirho::ClassDeclChirho { name_chirho, .. } => {
                     (name_chirho, KindHeadShapeChirho::ClassChirho)
                 }

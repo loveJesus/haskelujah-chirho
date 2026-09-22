@@ -1,0 +1,88 @@
+{
+  "log_sha256_chirho": "82a2f59bbe8c191de038d8fdde74eab9d51656a20d39e5c6e8c61dbce8c519ae",
+  "distinct_warnings_chirho": 433,
+  "changed_line_warnings_chirho": [
+    {
+      "rendered": "warning: all variants have the same postfix: `Chirho`\n  --> crates/haskelujah-typing-chirho/src/kind_chirho/bindings_chirho/imports_chirho.rs:7:1\n   |\n 7 | / pub(super) enum KindHeadShapeChirho {\n 8 | |     NominalChirho,\n 9 | |     DataFamilyChirho,\n10 | |     SynonymChirho,\n11 | |     FamilyChirho,\n12 | |     ClassChirho,\n13 | | }\n   | |_^\n   |\n   = help: remove the postfixes and use full paths to the variants instead of glob imports\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#enum_variant_names\n\n",
+      "$message_type": "diagnostic",
+      "children": [
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "remove the postfixes and use full paths to the variants instead of glob imports",
+          "rendered": null,
+          "spans": []
+        },
+        {
+          "children": [],
+          "code": null,
+          "level": "help",
+          "message": "for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#enum_variant_names",
+          "rendered": null,
+          "spans": []
+        }
+      ],
+      "level": "warning",
+      "message": "all variants have the same postfix: `Chirho`",
+      "spans": [
+        {
+          "byte_end": 441,
+          "byte_start": 307,
+          "column_end": 2,
+          "column_start": 1,
+          "expansion": null,
+          "file_name": "crates/haskelujah-typing-chirho/src/kind_chirho/bindings_chirho/imports_chirho.rs",
+          "is_primary": true,
+          "label": null,
+          "line_end": 13,
+          "line_start": 7,
+          "suggested_replacement": null,
+          "suggestion_applicability": null,
+          "text": [
+            {
+              "highlight_end": 38,
+              "highlight_start": 1,
+              "text": "pub(super) enum KindHeadShapeChirho {"
+            },
+            {
+              "highlight_end": 19,
+              "highlight_start": 1,
+              "text": "    NominalChirho,"
+            },
+            {
+              "highlight_end": 22,
+              "highlight_start": 1,
+              "text": "    DataFamilyChirho,"
+            },
+            {
+              "highlight_end": 19,
+              "highlight_start": 1,
+              "text": "    SynonymChirho,"
+            },
+            {
+              "highlight_end": 18,
+              "highlight_start": 1,
+              "text": "    FamilyChirho,"
+            },
+            {
+              "highlight_end": 17,
+              "highlight_start": 1,
+              "text": "    ClassChirho,"
+            },
+            {
+              "highlight_end": 2,
+              "highlight_start": 1,
+              "text": "}"
+            }
+          ]
+        }
+      ],
+      "code": {
+        "code": "clippy::enum_variant_names",
+        "explanation": null
+      }
+    }
+  ],
+  "clean_lint_chirho": false
+}

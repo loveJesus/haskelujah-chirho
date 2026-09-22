@@ -8,6 +8,7 @@ fn type_family_decl_result_kind_guides_later_applications_chirho() {
     let mut module_chirho = mk_module_chirho(vec![
         DeclChirho::TypeFamilyDeclChirho {
             name_chirho: mk_name_chirho("TrivialFamily"),
+            data_chirho: false,
             type_vars_chirho: vec![t_var_chirho.clone()],
             result_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyResultChirho {
                 kind_sig_chirho: Some(DeclKindSigChirho::ResultChirho(TypeChirho::ConChirho(
@@ -53,6 +54,7 @@ fn family_result_kind_is_not_an_arbitrary_kind_at_each_use_chirho() {
     let mut module_chirho = mk_module_chirho(vec![
         DeclChirho::TypeFamilyDeclChirho {
             name_chirho: mk_name_chirho("FamilyChirho"),
+            data_chirho: false,
             type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             result_chirho: Default::default(),
             body_chirho: haskelujah_ast_chirho::decl_chirho::TypeFamilyBodyChirho::OpenChirho,

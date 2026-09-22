@@ -393,17 +393,15 @@ impl KindInferCtxChirho {
                 continue;
             };
             let heads_chirho = match shape_chirho {
-                imports_chirho::KindHeadShapeChirho::NominalChirho => &mut nominal_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::NominalChirho
+                | imports_chirho::KindHeadShapeChirho::DataFamilyChirho => {
+                    &mut nominal_heads_chirho
+                }
                 imports_chirho::KindHeadShapeChirho::SynonymChirho => &mut synonym_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::FamilyChirho => &mut family_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::ClassChirho => &mut class_heads_chirho,
             };
-            if !scheme_chirho.quantified_chirho.is_empty()
-                || matches!(
-                    shape_chirho,
-                    imports_chirho::KindHeadShapeChirho::NominalChirho
-                )
-            {
+            if !scheme_chirho.quantified_chirho.is_empty() || shape_chirho.is_nominal_chirho() {
                 heads_chirho.insert(
                     name_chirho.clone(),
                     scheme_chirho
@@ -456,12 +454,13 @@ impl KindInferCtxChirho {
                         )],
                         DeclChirho::TypeFamilyDeclChirho {
                             name_chirho,
+                            data_chirho,
                             type_vars_chirho,
                             ..
                         } => vec![(
                             name_chirho.text_chirho(),
                             type_vars_chirho,
-                            KindHeadShapeChirho::FamilyChirho,
+                            KindHeadShapeChirho::family_chirho(*data_chirho),
                         )],
                         DeclChirho::ClassDeclChirho {
                             name_chirho,
@@ -477,7 +476,7 @@ impl KindInferCtxChirho {
                             (
                                 family_chirho.name_chirho.text_chirho(),
                                 &family_chirho.type_vars_chirho,
-                                KindHeadShapeChirho::FamilyChirho,
+                                KindHeadShapeChirho::family_chirho(family_chirho.data_chirho),
                             )
                         }))
                         .collect(),
@@ -486,7 +485,10 @@ impl KindInferCtxChirho {
                 });
         for (name_chirho, parameters_chirho, shape_chirho) in declared_heads_chirho {
             let heads_chirho = match shape_chirho {
-                imports_chirho::KindHeadShapeChirho::NominalChirho => &mut nominal_heads_chirho,
+                imports_chirho::KindHeadShapeChirho::NominalChirho
+                | imports_chirho::KindHeadShapeChirho::DataFamilyChirho => {
+                    &mut nominal_heads_chirho
+                }
                 imports_chirho::KindHeadShapeChirho::SynonymChirho => &mut synonym_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::FamilyChirho => &mut family_heads_chirho,
                 imports_chirho::KindHeadShapeChirho::ClassChirho => &mut class_heads_chirho,
@@ -527,12 +529,7 @@ impl KindInferCtxChirho {
             }
             // A known nominal with zero hidden arguments is still nominal.
             // Absence would let an imported same-basename family classify it.
-            if !binders_chirho.is_empty()
-                || matches!(
-                    shape_chirho,
-                    imports_chirho::KindHeadShapeChirho::NominalChirho
-                )
-            {
+            if !binders_chirho.is_empty() || shape_chirho.is_nominal_chirho() {
                 if let Some(module_chirho) = &self.local_kind_module_chirho {
                     heads_chirho.insert(
                         format!("{module_chirho}.{name_chirho}"),

@@ -258,16 +258,12 @@ impl LowerCtxChirho {
             }
         }
 
-        let (methods_chirho, mut assoc_tfs_chirho) = partition_class_members_chirho(
+        let (methods_chirho, assoc_tfs_chirho) = partition_class_members_chirho(
             where_decls_chirho,
             &default_impls_chirho,
             &default_sigs_chirho,
             &visible_kind_binder_names_chirho,
         );
-        let data_spans_chirho = self.associated_data_spans_chirho(node_chirho, base_chirho);
-        for family_chirho in &mut assoc_tfs_chirho {
-            family_chirho.data_chirho |= data_spans_chirho.contains(&family_chirho.span_chirho);
-        }
         DeclChirho::ClassDeclChirho {
             context_chirho,
             context_written_chirho: saw_fat_arrow_chirho,

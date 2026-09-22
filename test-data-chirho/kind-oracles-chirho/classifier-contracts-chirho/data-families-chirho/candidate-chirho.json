@@ -1,0 +1,208 @@
+{
+  "measured_at_chirho": "2026-09-22T12:51:39.986Z",
+  "probe_sha256_chirho": "365cdc007ad3754fc80c7b1aa8241465b82dd2c610e5136c8b4390f4b81d4835",
+  "binary_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+  "before_chirho": "df001df8f8ecac55215afcba9739ae38f5ecff8d64f09b1fdf009712538c643b",
+  "after_chirho": "df001df8f8ecac55215afcba9739ae38f5ecff8d64f09b1fdf009712538c643b",
+  "stable_chirho": true,
+  "rows_chirho": [
+    {
+      "file_chirho": "LocalChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 0,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs\nmodule: Main\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module Main\nwasm_stub_size: 25\n",
+      "stderr_chirho": "",
+      "source_sha256_chirho": "0f0e29cda916ceb3094b07399d2942106f430f0057feeb09fe5f7de7e036eaf8",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "LocalChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "run",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": "7\n",
+      "exit_chirho": 0,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "7\n",
+      "stderr_chirho": "",
+      "source_sha256_chirho": "0f0e29cda916ceb3094b07399d2942106f430f0057feeb09fe5f7de7e036eaf8",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "ImportedChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 0,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedChirho.hs\nmodule: Main\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module Main\nwasm_stub_size: 25\n",
+      "stderr_chirho": "",
+      "source_sha256_chirho": "268d51ba8aa181ceb8da4246e698fb127e2251f354c758ec040af22851d88fde",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "ImportedChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "run",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": "7\n",
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "runtime error: compilation error: DiagnosticBundleChirho { diagnostics_chirho: [DiagnosticChirho { severity_chirho: ErrorChirho, code_chirho: Some(ErrorCodeChirho { prefix_chirho: 'E', number_chirho: 102 }), message_chirho: \"could not find module `ProviderChirho`\", labels_chirho: [LabelChirho { span_chirho: Span(FileIdChirho(0), 213..256), message_chirho: None, is_primary_chirho: true }], notes_chirho: [\"the module may not have been compiled yet\"], suggestions_chirho: [] }] }\n",
+      "source_sha256_chirho": "268d51ba8aa181ceb8da4246e698fb127e2251f354c758ec040af22851d88fde",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": false
+    },
+    {
+      "file_chirho": "ShadowChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ShadowChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 0,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ShadowChirho.hs\nmodule: Main\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module Main\nwasm_stub_size: 25\n",
+      "stderr_chirho": "",
+      "source_sha256_chirho": "2791d14209c8871b1331abe801566cd258068a68bd423143cdfcdbc8caaf3187",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "ShadowChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "run",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ShadowChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": "7\n",
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "runtime error: compilation error: DiagnosticBundleChirho { diagnostics_chirho: [DiagnosticChirho { severity_chirho: ErrorChirho, code_chirho: Some(ErrorCodeChirho { prefix_chirho: 'E', number_chirho: 102 }), message_chirho: \"could not find module `ProviderChirho`\", labels_chirho: [LabelChirho { span_chirho: Span(FileIdChirho(0), 213..256), message_chirho: None, is_primary_chirho: true }], notes_chirho: [\"the module may not have been compiled yet\"], suggestions_chirho: [] }] }\n",
+      "source_sha256_chirho": "2791d14209c8871b1331abe801566cd258068a68bd423143cdfcdbc8caaf3187",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": false
+    },
+    {
+      "file_chirho": "AssociatedChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 0,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "source: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedChirho.hs\nmodule: Main\nmode: BatchChirho\nincremental_session: false\nllvm_preview: ; haskelujah llvm stub for module Main\nwasm_stub_size: 25\n",
+      "stderr_chirho": "",
+      "source_sha256_chirho": "0c447802052721eb74c877616a6dd77a3dfafe6d07a975030c6ebf331e0551eb",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "AssociatedChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "run",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedChirho.hs"
+      ],
+      "expected_exit_chirho": 0,
+      "expected_stdout_chirho": "7\n",
+      "exit_chirho": 0,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "7\n",
+      "stderr_chirho": "",
+      "source_sha256_chirho": "0c447802052721eb74c877616a6dd77a3dfafe6d07a975030c6ebf331e0551eb",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "TypePatternChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/TypePatternChirho.hs"
+      ],
+      "expected_exit_chirho": 1,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/TypePatternChirho.hs:6:28\n   |\n 5 | type family StripChirho aChirho\n 6 | type instance StripChirho (TypeChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^\n 7 | \n\n1 error generated\n",
+      "source_sha256_chirho": "f1543a0ba0583d53a804aaf5b4154abfc86eded16b28fc32c7be527b29abc5fb",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "ImportedTypePatternChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedTypePatternChirho.hs"
+      ],
+      "expected_exit_chirho": 1,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedTypePatternChirho.hs:7:28\n   |\n 6 | type family StripChirho aChirho\n 7 | type instance StripChirho (PChirho.TypeChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^^^^^^^^^\n 8 | \n\n1 error generated\n",
+      "source_sha256_chirho": "e5c518a860ea8960d892cf8ea718c8ff45252764705a86d42488ee4a73919ca8",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    },
+    {
+      "file_chirho": "AssociatedTypePatternChirho.hs",
+      "command_chirho": [
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/tmp-chirho/gnd-resume-chirho/data-family-gates-chirho/haskelujah-frozen-chirho",
+        "check",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedTypePatternChirho.hs"
+      ],
+      "expected_exit_chirho": 1,
+      "expected_stdout_chirho": null,
+      "exit_chirho": 1,
+      "signal_chirho": null,
+      "error_chirho": null,
+      "stdout_chirho": "",
+      "stderr_chirho": "error[E0300]: illegal type family application in an equation pattern\n --> /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kind-signatures-chirho/test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedTypePatternChirho.hs:7:28\n   |\n 6 | type family StripChirho aChirho\n 7 | type instance StripChirho (TypeChirho aChirho) = aChirho\n   |                            ^^^^^^^^^^\n 8 | \n\n1 error generated\n",
+      "source_sha256_chirho": "6850263aaf5ebc1808bb66c1e1426a2f9d9e33ac9b87c935de97fecf1421310f",
+      "provider_sha256_chirho": "f729f237fd61c9776b66d8ad1e5295e34712c914831963640e68b191cf9aeb78",
+      "matches_chirho": true
+    }
+  ]
+}

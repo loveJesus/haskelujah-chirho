@@ -48,6 +48,7 @@ fn missing_declared_kind_contract_reports_the_owner_instead_of_disappearing_chir
 fn imported_family_kind_equality_cannot_invent_nominal_injectivity_chirho() {
     for (shape_chirho, nominal_chirho) in [
         (imports_chirho::KindHeadShapeChirho::NominalChirho, true),
+        (imports_chirho::KindHeadShapeChirho::DataFamilyChirho, true),
         (imports_chirho::KindHeadShapeChirho::FamilyChirho, false),
     ] {
         let mut context_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
@@ -98,6 +99,24 @@ fn dependent_contract_chirho() -> KindContractChirho {
             ),
         }),
         shape_chirho: imports_chirho::KindHeadShapeChirho::NominalChirho,
+    }
+}
+
+#[test]
+fn data_family_kind_contract_is_not_a_type_family_or_ordinary_data_promise_chirho() {
+    let mut expected_chirho = dependent_contract_chirho();
+    expected_chirho.shape_chirho = imports_chirho::KindHeadShapeChirho::DataFamilyChirho;
+    assert!(expected_chirho.alpha_equivalent_chirho(&expected_chirho.clone()));
+    for shape_chirho in [
+        imports_chirho::KindHeadShapeChirho::NominalChirho,
+        imports_chirho::KindHeadShapeChirho::FamilyChirho,
+    ] {
+        let mut actual_chirho = expected_chirho.clone();
+        actual_chirho.shape_chirho = shape_chirho;
+        assert_eq!(
+            expected_chirho.check_agreement_chirho(&actual_chirho),
+            Err("declaration shapes differ")
+        );
     }
 }
 

@@ -7,6 +7,109 @@ use super::{assert_compile_success_chirho, assert_execution_chirho};
 use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+const DATA_FAMILY_LOCAL_CHIRHO: &str = include_str!(
+    "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs"
+);
+const DATA_FAMILY_ASSOCIATED_CHIRHO: &str = include_str!(
+    "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedChirho.hs"
+);
+const DATA_FAMILY_PROVIDER_CHIRHO: &str = include_str!(
+    "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ProviderChirho.hs"
+);
+
+#[test]
+fn data_family_patterns_are_nominal_without_legalizing_type_family_patterns_chirho() {
+    for source_chirho in [
+        DATA_FAMILY_LOCAL_CHIRHO,
+        DATA_FAMILY_ASSOCIATED_CHIRHO,
+        include_str!("../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T17067.hs"),
+    ] {
+        typecheck_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "NominalPatternChirho.hs",
+        )
+        .unwrap_or_else(|error_chirho| panic!("{source_chirho}\n{error_chirho}"));
+    }
+    for source_chirho in [
+        include_str!(
+            "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/TypePatternChirho.hs"
+        ),
+        include_str!(
+            "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/AssociatedTypePatternChirho.hs"
+        ),
+    ] {
+        let error_chirho = typecheck_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "IllegalPatternChirho.hs",
+        )
+        .err()
+        .expect("GHC-73138: a type-family application is not a nominal pattern");
+        assert!(
+            error_chirho
+                .to_string()
+                .contains("illegal type family application in an equation pattern"),
+            "{error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn imported_data_family_patterns_preserve_form_and_qualified_shadowing_chirho() {
+    for (source_chirho, accepted_chirho) in [
+        (
+            include_str!(
+                "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedChirho.hs"
+            ),
+            true,
+        ),
+        (
+            include_str!(
+                "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ShadowChirho.hs"
+            ),
+            true,
+        ),
+        (
+            include_str!(
+                "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/ImportedTypePatternChirho.hs"
+            ),
+            false,
+        ),
+    ] {
+        let result_chirho = haskelujah_driver::compile_modules_chirho(
+            &[
+                ("ProviderChirho.hs", DATA_FAMILY_PROVIDER_CHIRHO),
+                ("ConsumerChirho.hs", source_chirho),
+            ],
+            &mut SourceMapChirho::new_chirho(),
+        );
+        match result_chirho {
+            Ok(_) => assert!(
+                accepted_chirho,
+                "qualified provider type families must remain nonnominal"
+            ),
+            Err(error_chirho) => {
+                assert!(!accepted_chirho, "{source_chirho}\n{error_chirho}");
+                assert!(
+                    error_chirho
+                        .to_string()
+                        .contains("illegal type family application in an equation pattern"),
+                    "{error_chirho}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn data_family_patterns_reduce_on_every_execution_engine_chirho() {
+    // GHC9.14.1 reference-chirho.json executes these same sources to 7\n.
+    for source_chirho in [DATA_FAMILY_LOCAL_CHIRHO, DATA_FAMILY_ASSOCIATED_CHIRHO] {
+        assert_execution_chirho(source_chirho, "7\n");
+    }
+}
+
 #[test]
 fn constraint_alias_rule_does_not_reject_constraint_families_chirho() {
     // GHC9.14.1 permits this distinct declaration without ConstraintKinds.
