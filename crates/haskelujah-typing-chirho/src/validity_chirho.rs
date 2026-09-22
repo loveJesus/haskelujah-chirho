@@ -816,6 +816,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         }
     }
 
@@ -1276,6 +1277,7 @@ mod tests_edition_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
         check_module_type_validity_chirho(&module_chirho).is_empty()
     }

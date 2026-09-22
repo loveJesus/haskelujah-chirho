@@ -2375,8 +2375,9 @@ fn check_source_file_with_search_path_chirho(
     })
 }
 
-/// Result of the full compilation pipeline.
-#[derive(Debug, Clone)]
+/// Result of the full compilation pipeline. Not `Clone`, because the module it
+/// holds is not.
+#[derive(Debug)]
 pub struct CompileResultChirho {
     pub module_chirho: ModuleChirho,
     pub core_chirho: CoreModuleChirho,

@@ -7,6 +7,7 @@ use haskelujah_span_chirho::SpanChirho;
 
 use crate::decl_chirho::DeclChirho;
 use crate::name_chirho::NameChirho;
+use crate::provenance_chirho::OriginSupplyChirho;
 use crate::ty_chirho::TypeChirho;
 
 /// Inline pragma annotation for a binding.
@@ -21,7 +22,12 @@ pub enum InlinePragmaChirho {
 }
 
 /// A complete Haskell module.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Deliberately not `Clone`: the module owns its origin supply, and a copy of
+/// the module would be a second supply able to mint the origins the first one
+/// mints. Nothing in the workspace clones a module (measured 2026-09-22 by
+/// removing the derive and checking every target).
+#[derive(Debug, PartialEq)]
 pub struct ModuleChirho {
     /// Module name (e.g. `Data.List`, `Main`).
     pub name_chirho: NameChirho,
@@ -45,6 +51,11 @@ pub struct ModuleChirho {
     pub deriving_via_chirho: Vec<(NameChirho, NameChirho, TypeChirho)>,
     /// Span covering the entire module.
     pub span_chirho: SpanChirho,
+    /// Mints occurrence origins for this module. Lowering creates it; TH
+    /// expansion, deriving and the late GND pass borrow it through the module,
+    /// so every producer continues one sequence and none restarts it.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub origin_supply_chirho: OriginSupplyChirho,
 }
 
 /// An export specification.
@@ -134,6 +145,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
         assert_eq!(module_chirho.name_chirho.text_chirho(), "Main");
         assert!(module_chirho.exports_chirho.is_none());

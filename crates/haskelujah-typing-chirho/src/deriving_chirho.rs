@@ -2355,6 +2355,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         }
     }
 
@@ -2390,6 +2391,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         }
     }
 
@@ -2534,6 +2536,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.instances_chirho.is_empty());
@@ -2564,6 +2567,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.instances_chirho.is_empty());
@@ -2615,6 +2619,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2670,6 +2675,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = derive_instances_chirho(&module_chirho);
@@ -2721,6 +2727,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         }
     }
 
@@ -2830,6 +2837,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.instances_chirho.is_empty());
@@ -2861,6 +2869,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.instances_chirho.is_empty());
@@ -2903,6 +2912,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -2961,6 +2971,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3020,6 +3031,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3072,6 +3084,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3151,6 +3164,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3203,6 +3217,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3250,6 +3265,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3292,6 +3308,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert_eq!(result_chirho.warnings_chirho.len(), 1);
@@ -3332,6 +3349,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3384,6 +3402,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3462,6 +3481,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3528,6 +3548,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3593,6 +3614,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -3638,6 +3660,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: gen_span_chirho(),
+            origin_supply_chirho: Default::default(),
         };
         let result_chirho = derive_instances_chirho(&module_chirho);
         assert!(result_chirho.warnings_chirho.is_empty());

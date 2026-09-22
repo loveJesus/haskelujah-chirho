@@ -22318,6 +22318,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let _subst_chirho = ctx_chirho.infer_module_chirho(&module_chirho);
@@ -22925,6 +22926,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23007,6 +23009,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23144,6 +23147,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23215,6 +23219,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23270,6 +23275,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23303,6 +23309,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         });
 
         assert!(result_chirho.class_env_chirho.has_class_chirho("Eq"));
@@ -23354,6 +23361,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23450,6 +23458,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23501,6 +23510,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23559,6 +23569,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23621,6 +23632,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23694,6 +23706,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23767,6 +23780,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23853,6 +23867,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -23976,6 +23991,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24103,6 +24119,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24187,6 +24204,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let mut ctx_chirho = InferCtxChirho::new_chirho();
@@ -24383,6 +24401,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24437,6 +24456,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24498,6 +24518,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24559,6 +24580,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24623,6 +24645,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24803,6 +24826,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24886,6 +24910,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -24999,6 +25024,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -25243,6 +25269,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -25314,6 +25341,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -25488,6 +25516,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -25648,6 +25677,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -25717,6 +25747,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -26364,6 +26395,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);
@@ -27789,6 +27821,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let result_chirho = infer_module_chirho(&module_chirho);

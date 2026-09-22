@@ -5936,6 +5936,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -6058,6 +6059,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let desugar_out_chirho = desugar_module_chirho(&module_chirho);
@@ -6377,6 +6379,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
 
         let output_chirho = desugar_module_chirho(&module_chirho);
@@ -6948,6 +6951,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
         let f_rhs_chirho = &output_chirho.module_chirho.bindings_chirho[0].rhs_chirho;
@@ -7057,6 +7061,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
         assert!(
@@ -7162,6 +7167,7 @@ mod tests_chirho {
             foreign_exports_chirho: vec![],
             deriving_via_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_supply_chirho: Default::default(),
         };
         let output_chirho = desugar_module_chirho(&module_chirho);
         let f_rhs_chirho = &output_chirho.module_chirho.bindings_chirho[0].rhs_chirho;

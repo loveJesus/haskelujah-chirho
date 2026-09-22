@@ -45,6 +45,7 @@ fn module_chirho(decls_chirho: Vec<DeclChirho>) -> ModuleChirho {
         foreign_exports_chirho: vec![],
         deriving_via_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
     }
 }
 

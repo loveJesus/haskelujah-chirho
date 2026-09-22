@@ -38,6 +38,7 @@ use haskelujah_ast_chirho::module_chirho::{
 };
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
+use haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho;
 use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho, SpanChirho};
@@ -411,6 +412,7 @@ impl LowerCtxChirho {
             foreign_exports_chirho,
             deriving_via_chirho,
             span_chirho: self.span_chirho(start_chirho, end_chirho),
+            origin_supply_chirho: OriginSupplyChirho::new_chirho(),
         }
     }
 

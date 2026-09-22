@@ -76,7 +76,7 @@ impl ProvenanceChirho {
 /// Mints origins for one module compilation. It is owned at the module
 /// lifetime and borrowed, never copied, by every producer, so two producers
 /// that run at different times can never mint the same origin.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct OriginSupplyChirho {
     next_chirho: u32,
 }
