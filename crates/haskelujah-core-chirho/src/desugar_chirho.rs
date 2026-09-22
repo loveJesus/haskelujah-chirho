@@ -4167,7 +4167,15 @@ impl DesugarCtxChirho {
                     };
                 }
 
-                // (/=) desugars to not (==): x /= y → not (x == y)
+                // UNFIXED SEMANTIC DEFECT, kept only until the Eq class model is repaired:
+                // (/=) is rewritten to not (==), which IGNORES a user instance's own `/=`.
+                // GHC 9.14.1 prints (True,False) for an Eq instance defining
+                // `(==) _ _ = True` and `(/=) _ _ = True` under
+                // `print (x /= x, not (x == x))`; this rewrite prints (False,False).
+                // The seeded Eq class declares only `==`, so `/=` has no dictionary
+                // slot. This is not a provenance contract and must not be given an
+                // evidence role; the repair is Eq's method set with its default.
+                // workflow: language-features-chirho/dictionary-evidence-chirho
                 if op_name_chirho == "/=" {
                     let eq_id_chirho = self.resolve_var_chirho("==");
                     let not_id_chirho = self.resolve_var_chirho("not");
