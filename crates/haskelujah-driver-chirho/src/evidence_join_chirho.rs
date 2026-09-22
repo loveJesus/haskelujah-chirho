@@ -76,9 +76,10 @@ pub(crate) fn join_occurrence_evidence_chirho(
     // numbers occurrences in declaration order. Joining those by position made
     // `main`'s `show` and an instance body's `show` exchange evidence, so the
     // same program printed `W3` or `WChirho 3` depending only on which
-    // declaration came first (measured 2026-09-19). A span that belongs to more
-    // than one occurrence, or to another name, yields no verdict here and falls
-    // through to the ordinal path below.
+    // declaration came first (measured 2026-09-19). A genuine span that belongs
+    // to more than one occurrence, or to another name, yields no verdict here,
+    // and it does NOT fall through to the positional path below either: a genuine
+    // span belongs to this join whether or not this join could use it.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     // A DUMMY or synthetic span is not an identity: the deriving pass gives every
     // reference it generates the same placeholder, so indexing by it would make
@@ -174,24 +175,29 @@ pub(crate) fn join_occurrence_evidence_chirho(
             )
         });
     }
-    // What remains of the old positional join, and the two boundaries it now
+    // What remains of the old positional join, and the three boundaries it
     // respects. The desugarer mints method occurrences at several sites and only
     // the variable-reference site records a span, so a GENERATED occurrence (a
-    // literal's `fromInteger`, an operator's `+`, a derived Show body's field
-    // rendering) carries none and cannot be identified at all. Those are the only
-    // occurrences this path may fill, and it may only use a record the span join
-    // did NOT already consume: a proof belongs to one reference, and vacancy in
-    // the consumer map is not ownership of it (gpt_chirho, room #24056). The count
-    // guard therefore compares the UNIDENTIFIED occurrences against the UNCONSUMED
-    // records, not the totals.
-    // MEASURED, three ways: deleting this path outright turns 19 driver tests red
+    // literal's `fromInteger`, an operator's `+`) carries none, and the deriving
+    // pass gives every reference it generates one placeholder span. Those are the
+    // only occurrences this path may fill.
+    //   1. It may only use a record the span join did NOT consume: a proof belongs
+    //      to one reference, and vacancy in the consumer map is not ownership of
+    //      it (gpt_chirho, room #24056).
+    //   2. An occurrence carrying a GENUINE span is never eligible, whether or not
+    //      the span join could use that span (gpt_chirho's counterexample, room
+    //      #24227).
+    //   3. A placeholder span is not a span at all, on either side.
+    // The count guard compares the unidentified occurrences against the
+    // unconsumed records, not the totals.
+    // MEASURED four ways: deleting this path outright turns 19 driver tests red
     // (do-notation, mdo, deriving, MPTC, fundeps, six native round trips);
-    // restricting it to names whose occurrences ALL lack spans regresses a derived
-    // Show of a Bool field in a native round trip (`MixChirho 2 1` where main
-    // prints `MixChirho 2 True`, so that restriction CAUSED a regression rather
-    // than revealing one); and the shape below keeps both families correct.
-    // It goes away when every mint site carries its own occurrence provenance,
-    // which is its own brick.
+    // restricting it to names whose occurrences ALL lack spans, and separately
+    // refusing every occurrence the span join had not matched, each regress a
+    // derived Show of a Bool field in a native round trip to `MixChirho 2 1`,
+    // where main prints `MixChirho 2 True`; and the shape below keeps both
+    // families correct. It goes away when every mint site carries its own
+    // occurrence provenance, which is its own brick.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
         // Eligible here: an occurrence with NO identifying span at all, after the
