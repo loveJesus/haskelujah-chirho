@@ -2,7 +2,9 @@
 
 # Execution measurement — 2026-09-20
 
-Frozen compiler/test source: `11b24799dbdd78fcd0a319de14b08a331c44db2b`.
+Corpus source: `11b24799dbdd78fcd0a319de14b08a331c44db2b`. Execution-gate source:
+`6ed46217fd58a5c2e07e8775b32b38ac891ed4a7`, which differs from the corpus source only in
+the comments of one file (verified mechanically: every changed crate line is a comment).
 Measured by HASKELUJAH/claude_chirho on macOS arm64 in the isolated lane worktree.
 Evidence lives in that worktree under `tmp-chirho/landing-chirho/`, not in `/private/tmp`:
 a reboot on 2026-09-19 cleared `/private/tmp` and destroyed every receipt published that
@@ -10,14 +12,15 @@ day. The committed tests survived, which is the argument for putting controls th
 
 ## Results at their actual scope
 
-| Measurement | Result | What it establishes |
-| --- | --- | --- |
-| Curated GHC suite | passes, 486s | Its committed manifest declares 514 GHC 9.14.1 execution oracles |
-| Driver library | 1778 passed; zero failed, ignored or filtered | Includes the native round trips and the five evidence-join controls |
-| Driver integration | 202 passed across 19 targets, zero failed | |
-| Evidence-join boundaries | 5 direct controls, 2 mutation-checked | Reached by no source program, so exercised at the join itself |
-| Upstream should_compile | 885 of 938 | Typecheck acceptance only; two byte-identical complete passes |
-| Upstream should_fail | 235 of 767 | Typecheck rejection only; two byte-identical complete passes |
+| Measurement | Source | Result | What it establishes |
+| --- | --- | --- | --- |
+| Curated GHC suite | 6ed46217 | passes, 486.68s | Its committed manifest declares 514 GHC 9.14.1 execution oracles |
+| Driver library | 6ed46217 | 1778 passed; zero failed, ignored or filtered | Includes the native round trips and the five evidence-join controls |
+| Driver integration | 6ed46217 | 202 passed across 19 targets, zero failed | |
+| Evidence-join boundaries | 6ed46217 | 5 direct controls, 2 mutation-checked | Reached by no source program, so exercised at the join itself |
+| Upstream should_compile | 11b24799 | 885 of 938 | Typecheck acceptance only; two byte-identical complete passes |
+| Upstream should_fail | 11b24799 | 235 of 767 | Typecheck rejection only; two byte-identical complete passes |
+| Replay of every rejection | 11b24799 | 288 of 288 credited | Exit 1 with `error[E`, no panic header, timeout or abnormal exit; every output kept |
 
 The accept axis did not move: its failure list is identical file for file to the previous
 artifact's, same SHA-256. The reject axis rises 228 -> 235 with no loss, all seven of one

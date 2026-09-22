@@ -36,20 +36,39 @@
 #   SCLoop is the GHC testsuite's own bogus-recursive-dictionary test, and its
 #   source comment says "it's all too easy to succeed with a bogus recursive
 #   dictionary"; we were succeeding exactly that way. Reasons against each file's
-#   committed stderr: SCLoop, T5684, T5684b, T5684e and T5684f match GHC's
-#   predicate, line and code (GHC-39999). T5684c and T5684d report GHC's SECOND
-#   error and not its first, which names a predicate with an unsolved variable that
-#   this rule deliberately refuses to claim: a matching reason on a PARTIAL error
-#   set, not parity. The count is verdict presence, not 235 independently matching
-#   GHC reasons.
+#   committed stderr, read from a replay that kept every output (below):
+#   - SCLoop: GHC reports one error and we report the same one: predicate `SC ()`,
+#     anchor 22:7, GHC-39999. Full match.
+#   - ALL SIX T5684 variants: GHC reports TWO errors, `A Bool` and `B Char b0`. We
+#     report `A Bool` only and never `B Char b0`, whose unsolved variable this rule
+#     deliberately refuses to claim. A matching predicate on a PARTIAL error set, on
+#     all six, not only on two as the first draft of this artifact said.
+#   - The `A Bool` ANCHOR matches GHC on T5684 (20:12), T5684b (12:12) and T5684d
+#     (13:12), and DIFFERS on T5684c (ours 14:12, GHC 13:12), T5684e (ours 14:12,
+#     GHC 12:12) and T5684f (ours 13:12, GHC 12:12): we name a different use of
+#     `op` than GHC does. No line parity is claimed for those three.
+#   Corrections from gpt_chirho (room #24271), each verified against the replay.
+#   The count is verdict presence, not 235 independently matching GHC reasons.
+# REPLAY OF EVERY REJECTION: all 288 saved REJECT rows (53 accept-axis, 235
+#   reject-axis) were re-run on the same frozen CLI with stdout, stderr, exit code and
+#   source SHA-256 kept per file. Classified timeout and abnormal exit first, then a
+#   real Rust panic header, and only then `error[E` with exit 1: all 288 are credited
+#   rejections, none a timeout, an abnormal exit or a panic. No rejection in either
+#   axis rests on the old detector's bare `panic` substring.
 # WRONG-ACCEPT-LIST SHA256: a89ded083f454a80dc04d581f5de02ac5ebb2f9b71b5af8104115c6a0d0c98a5
 #   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# EXECUTION EVIDENCE: on the same frozen source, the curated GHC suite passes (486s),
-#   the driver library suite is 1778 passed / 0 failed / 0 ignored / 0 filtered, and the
-#   driver integration suites are 202 passed / 0 failed across 19 targets. Five direct
-#   controls pin the evidence join's boundaries, two of them mutation-checked. This does
-#   not establish an instance WITH a context at run time, which is still wrong
-#   (`instance Show a => Show (T a)`), nor generic record Eq/Show dispatch. See
+# EXECUTION EVIDENCE, each gate stated against the source it actually ran on. The four
+#   corpus passes above ran on 11b24799. Every execution gate ran on 6ed46217, which
+#   differs from 11b24799 only in the comments of one file (verified mechanically:
+#   every changed crate line is a comment): the curated GHC suite passes (486.68s); the
+#   driver library is 1778 passed / 0 failed / 0 ignored / 0 filtered, including five
+#   direct controls on the evidence join's boundaries, two of them mutation-checked;
+#   and the driver integration suites are 202 passed / 0 failed across 19 targets.
+#   Logs are kept in the lane worktree, not OS tmp. An earlier curated/integration
+#   pair on 73560e17 and a driver-library run on the pre-format tree of 11b24799 were
+#   superseded by these rather than relabelled. This does not establish an instance
+#   WITH a context at run time, which is still wrong (`instance Show a => Show (T a)`),
+#   nor generic record Eq/Show dispatch. See
 #   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
 #
 # PREVIOUS MEASUREMENT (8d86bc95, 2026-09-19): 221 -> 228, +7 gained, zero lost.

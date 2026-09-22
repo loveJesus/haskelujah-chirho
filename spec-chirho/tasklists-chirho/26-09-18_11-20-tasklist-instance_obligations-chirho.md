@@ -202,10 +202,14 @@ and each was checked against its own committed GHC stderr:
 - **SCLoop** (GHC-39999, "No instance for `SC ()' arising from a use of `op'", 22:7): ours identical at
   the same line. The file's own comment is "it's all too easy to succeed with a bogus recursive
   dictionary", and that is precisely how we were succeeding.
-- **T5684, T5684b, T5684e, T5684f** (GHC-39999, "No instance for `A Bool'"): ours identical.
-- **T5684c, T5684d**: GHC reports TWO errors, `B Char b0` at 12:12 and `A Bool` at 13:12. We report the
-  second only; the first names a predicate with an unsolved variable, which this rule deliberately
-  refuses to claim. A matching reason on a PARTIAL error set, not parity.
+- **All six T5684 variants** (GHC-39999): GHC reports TWO errors, `A Bool` and `B Char b0`. We report
+  `A Bool` only and never `B Char b0`, whose unsolved variable this rule deliberately refuses to claim.
+  A matching predicate on a PARTIAL error set, on all six. **Corrected** from a first reading that
+  limited the partial set to c and d (gpt_chirho, #24271, verified against a replay that kept every
+  output).
+- **Anchors**: our `A Bool` anchor matches GHC on T5684 (20:12), T5684b (12:12) and T5684d (13:12), and
+  names a DIFFERENT use of `op` on T5684c (ours 14:12, GHC 13:12), T5684e (14:12 against 12:12) and
+  T5684f (13:12 against 12:12). No line parity is claimed for those three.
 
 ## Found on the way (not claimed by this lane)
 - CLI, measured 2026-09-19 while building the multi-module control: `haskelujah check ./Main.hs` resolves sibling modules in the same directory, and `haskelujah run ./Main.hs` does NOT (E0102 "could not find module" for each import, with either a relative or an absolute path). The runtime control therefore has to go through the driver's multi-module entry point rather than the CLI, and the CLI gap is its own repair.

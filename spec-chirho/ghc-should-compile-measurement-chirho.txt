@@ -37,14 +37,23 @@
 #   than by position. The second repairs silent WRONG ANSWERS this axis cannot see:
 #   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
 #   depending only on which declaration came first.
+# REPLAY: all 53 failures here, with the other axis's 235 rejections, were re-run on the
+#   same frozen CLI with every output kept. Each is exit 1 with `error[E` and no Rust
+#   panic header, timeout or abnormal exit; none rests on the bare `panic` substring.
 # FAILURE-LIST SHA256: 879cacad3900068f525cfa90c548a46eb81c1ce17dc90755b6ee285c7c9ff30e
 #   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# EXECUTION EVIDENCE: on the same frozen source, the curated GHC suite passes (486s),
-#   the driver library suite is 1778 passed / 0 failed / 0 ignored / 0 filtered, and the
-#   driver integration suites are 202 passed / 0 failed across 19 targets. Five direct
-#   controls pin the evidence join's boundaries, two of them mutation-checked. This does
-#   not establish an instance WITH a context at run time, which is still wrong
-#   (`instance Show a => Show (T a)`), nor generic record Eq/Show dispatch. See
+# EXECUTION EVIDENCE, each gate stated against the source it actually ran on. The four
+#   corpus passes above ran on 11b24799. Every execution gate ran on 6ed46217, which
+#   differs from 11b24799 only in the comments of one file (verified mechanically:
+#   every changed crate line is a comment): the curated GHC suite passes (486.68s); the
+#   driver library is 1778 passed / 0 failed / 0 ignored / 0 filtered, including five
+#   direct controls on the evidence join's boundaries, two of them mutation-checked;
+#   and the driver integration suites are 202 passed / 0 failed across 19 targets.
+#   Logs are kept in the lane worktree, not OS tmp. An earlier curated/integration
+#   pair on 73560e17 and a driver-library run on the pre-format tree of 11b24799 were
+#   superseded by these rather than relabelled. This does not establish an instance
+#   WITH a context at run time, which is still wrong (`instance Show a => Show (T a)`),
+#   nor generic record Eq/Show dispatch. See
 #   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
 #
 # PREVIOUS MEASUREMENT (8d86bc95, 2026-09-19): 882 -> 885, +3 gained, zero lost.
