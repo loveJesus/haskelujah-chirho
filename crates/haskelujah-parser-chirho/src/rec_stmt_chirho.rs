@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, RhsChirho, StmtChirho};
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
+use haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 /// A do statement or an explicit recursive statement group before AST normalization.
@@ -27,10 +28,16 @@ pub(crate) enum DoSegmentChirho {
 }
 
 /// Normalize explicit `rec` groups and `mdo` into ordinary AST do statements.
+///
+/// The user's statements are MOVED into the knot and keep their origins. The
+/// knot's own references (`mfix`, `return`, and the tuple of bound names) are new
+/// occurrences and take fresh origins from the module's supply.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn transform_recursive_do_chirho(
     segments_chirho: Vec<DoSegmentChirho>,
     is_mdo_chirho: bool,
     span_chirho: SpanChirho,
+    supply_chirho: &mut OriginSupplyChirho,
 ) -> Vec<StmtChirho> {
     if is_mdo_chirho {
         let mut stmts_chirho = flatten_segments_chirho(segments_chirho);
@@ -42,7 +49,8 @@ pub(crate) fn transform_recursive_do_chirho(
             stmts_chirho.push(final_stmt_chirho);
             return stmts_chirho;
         }
-        let mut transformed_chirho = transform_recursive_group_chirho(stmts_chirho, span_chirho);
+        let mut transformed_chirho =
+            transform_recursive_group_chirho(stmts_chirho, span_chirho, supply_chirho);
         transformed_chirho.push(final_stmt_chirho);
         return transformed_chirho;
     }
@@ -56,8 +64,11 @@ pub(crate) fn transform_recursive_do_chirho(
             DoSegmentChirho::RecursiveChirho {
                 stmts_chirho,
                 span_chirho,
-            } => transformed_chirho
-                .extend(transform_recursive_group_chirho(stmts_chirho, span_chirho)),
+            } => transformed_chirho.extend(transform_recursive_group_chirho(
+                stmts_chirho,
+                span_chirho,
+                supply_chirho,
+            )),
         }
     }
     transformed_chirho
@@ -80,15 +91,17 @@ fn flatten_segments_chirho(segments_chirho: Vec<DoSegmentChirho>) -> Vec<StmtChi
 fn transform_recursive_group_chirho(
     mut stmts_chirho: Vec<StmtChirho>,
     span_chirho: SpanChirho,
+    supply_chirho: &mut OriginSupplyChirho,
 ) -> Vec<StmtChirho> {
     let bound_names_chirho = collect_stmt_bound_names_chirho(&stmts_chirho);
     if bound_names_chirho.is_empty() {
         return stmts_chirho;
     }
 
-    let result_expr_chirho = tuple_expr_for_names_chirho(&bound_names_chirho, span_chirho);
+    let result_expr_chirho =
+        tuple_expr_for_names_chirho(&bound_names_chirho, span_chirho, supply_chirho);
     stmts_chirho.push(StmtChirho::ExprChirho(app_expr_chirho(
-        raw_var_chirho("return", span_chirho),
+        generated_var_chirho("return", span_chirho, supply_chirho),
         result_expr_chirho,
         span_chirho,
     )));
@@ -113,7 +126,7 @@ fn transform_recursive_group_chirho(
         span_chirho,
     };
     let mfix_expr_chirho = app_expr_chirho(
-        raw_var_chirho("mfix", span_chirho),
+        generated_var_chirho("mfix", span_chirho, supply_chirho),
         knot_function_chirho,
         span_chirho,
     );
@@ -467,25 +480,38 @@ fn tuple_pat_for_names_chirho(names_chirho: &[NameChirho], span_chirho: SpanChir
     }
 }
 
-fn tuple_expr_for_names_chirho(names_chirho: &[NameChirho], span_chirho: SpanChirho) -> ExprChirho {
+/// References to the group's binders: each is a new occurrence.
+fn tuple_expr_for_names_chirho(
+    names_chirho: &[NameChirho],
+    span_chirho: SpanChirho,
+    supply_chirho: &mut OriginSupplyChirho,
+) -> ExprChirho {
+    let mut reference_chirho = |name_chirho: &NameChirho| {
+        ExprChirho::VarChirho(
+            name_chirho
+                .clone()
+                .with_origin_chirho(supply_chirho.fresh_chirho()),
+        )
+    };
     if let [name_chirho] = names_chirho {
-        return ExprChirho::VarChirho(name_chirho.clone());
+        return reference_chirho(name_chirho);
     }
     ExprChirho::TupleChirho {
-        elements_chirho: names_chirho
-            .iter()
-            .cloned()
-            .map(ExprChirho::VarChirho)
-            .collect(),
+        elements_chirho: names_chirho.iter().map(reference_chirho).collect(),
         span_chirho,
     }
 }
 
-fn raw_var_chirho(text_chirho: &str, span_chirho: SpanChirho) -> ExprChirho {
-    ExprChirho::VarChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-        text_chirho,
-        span_chirho,
-    )))
+/// A reference the knot itself introduces, as a new occurrence.
+fn generated_var_chirho(
+    text_chirho: &str,
+    span_chirho: SpanChirho,
+    supply_chirho: &mut OriginSupplyChirho,
+) -> ExprChirho {
+    ExprChirho::VarChirho(NameChirho::RawChirho(
+        RawNameChirho::unqualified_chirho(text_chirho, span_chirho)
+            .with_origin_chirho(supply_chirho.fresh_chirho()),
+    ))
 }
 
 fn app_expr_chirho(
@@ -504,6 +530,13 @@ fn app_expr_chirho(
 mod tests_chirho {
     use super::*;
     use haskelujah_ast_chirho::expr_chirho::RhsChirho;
+
+    fn raw_var_chirho(text_chirho: &str, span_chirho: SpanChirho) -> ExprChirho {
+        ExprChirho::VarChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            text_chirho,
+            span_chirho,
+        )))
+    }
 
     fn name_chirho(text_chirho: &str) -> NameChirho {
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -529,6 +562,7 @@ mod tests_chirho {
             }],
             false,
             SpanChirho::DUMMY_CHIRHO,
+            &mut OriginSupplyChirho::new_chirho(),
         );
 
         let [
@@ -586,6 +620,7 @@ mod tests_chirho {
             ],
             true,
             SpanChirho::DUMMY_CHIRHO,
+            &mut OriginSupplyChirho::new_chirho(),
         );
 
         assert_eq!(transformed_chirho.len(), 2);
@@ -618,6 +653,7 @@ mod tests_chirho {
                 .collect(),
             true,
             SpanChirho::DUMMY_CHIRHO,
+            &mut OriginSupplyChirho::new_chirho(),
         );
 
         assert_eq!(transformed_chirho, source_stmts_chirho);
@@ -635,6 +671,7 @@ mod tests_chirho {
                 }],
                 false,
                 SpanChirho::DUMMY_CHIRHO,
+                &mut OriginSupplyChirho::new_chirho(),
             ),
             vec![stmt_chirho]
         );

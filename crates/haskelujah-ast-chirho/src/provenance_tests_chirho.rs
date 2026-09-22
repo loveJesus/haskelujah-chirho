@@ -8,8 +8,8 @@
 use crate::name_chirho::RawNameChirho;
 use crate::provenance_chirho::{OccurrenceRoleChirho, OriginSupplyChirho, ProvenanceChirho};
 use haskelujah_span_chirho::SpanChirho;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 /// A stand-in for a producer: it borrows the module's supply and mints what it
@@ -89,8 +89,12 @@ fn an_origin_does_not_change_what_a_name_is_chirho() {
     // stay equal names whatever their origins, so no lookup changes meaning.
     let mut supply_chirho = OriginSupplyChirho::new_chirho();
     let bare_chirho = RawNameChirho::unqualified_chirho("show", SpanChirho::DUMMY_CHIRHO);
-    let first_chirho = bare_chirho.clone().with_origin_chirho(supply_chirho.fresh_chirho());
-    let second_chirho = bare_chirho.clone().with_origin_chirho(supply_chirho.fresh_chirho());
+    let first_chirho = bare_chirho
+        .clone()
+        .with_origin_chirho(supply_chirho.fresh_chirho());
+    let second_chirho = bare_chirho
+        .clone()
+        .with_origin_chirho(supply_chirho.fresh_chirho());
     assert_ne!(first_chirho.origin_chirho, second_chirho.origin_chirho);
     for name_chirho in [&first_chirho, &second_chirho] {
         assert_eq!(*name_chirho, bare_chirho);
@@ -119,8 +123,14 @@ fn moving_an_occurrence_keeps_its_origin_chirho() {
 fn a_name_without_an_origin_prints_as_before_chirho() {
     let bare_chirho = RawNameChirho::unqualified_chirho("x", SpanChirho::DUMMY_CHIRHO);
     let rendered_chirho = format!("{bare_chirho:?}");
-    assert!(rendered_chirho.contains("text_chirho: \"x\""), "{rendered_chirho}");
-    assert!(!rendered_chirho.contains("origin_chirho"), "{rendered_chirho}");
+    assert!(
+        rendered_chirho.contains("text_chirho: \"x\""),
+        "{rendered_chirho}"
+    );
+    assert!(
+        !rendered_chirho.contains("origin_chirho"),
+        "{rendered_chirho}"
+    );
     let mut supply_chirho = OriginSupplyChirho::new_chirho();
     let stamped_chirho = bare_chirho.with_origin_chirho(supply_chirho.fresh_chirho());
     assert!(format!("{stamped_chirho:?}").contains("origin_chirho"));

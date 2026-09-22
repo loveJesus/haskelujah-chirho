@@ -1745,8 +1745,10 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     // Phase 2.2: Template Haskell splice expansion
     // Process SpliceDeclChirho entries before name resolution so that
     // generated declarations participate in the normal compilation pipeline.
-    let splice_result_chirho =
-        splice_chirho::expand_splices_chirho(std::mem::take(&mut module_chirho.decls_chirho));
+    let splice_result_chirho = splice_chirho::expand_splices_chirho(
+        std::mem::take(&mut module_chirho.decls_chirho),
+        &mut module_chirho.origin_supply_chirho,
+    );
     module_chirho.decls_chirho = splice_result_chirho.decls_chirho;
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 

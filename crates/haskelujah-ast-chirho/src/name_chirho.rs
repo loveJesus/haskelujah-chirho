@@ -162,6 +162,35 @@ impl NameChirho {
             Self::ResolvedChirho(n_chirho) => n_chirho.raw_chirho.full_name_chirho(),
         }
     }
+
+    /// The producer-minted origin of this occurrence, if it has one.
+    pub fn origin_chirho(&self) -> Option<OriginIdChirho> {
+        match self {
+            Self::RawChirho(n_chirho) => n_chirho.origin_chirho,
+            Self::ResolvedChirho(n_chirho) => n_chirho.raw_chirho.origin_chirho,
+        }
+    }
+
+    /// Give this occurrence `origin_chirho`, or take its origin away.
+    pub fn set_origin_chirho(&mut self, origin_chirho: Option<OriginIdChirho>) {
+        match self {
+            Self::RawChirho(n_chirho) => n_chirho.origin_chirho = origin_chirho,
+            Self::ResolvedChirho(n_chirho) => n_chirho.raw_chirho.origin_chirho = origin_chirho,
+        }
+    }
+
+    /// The same name as an occurrence with a producer-minted origin.
+    pub fn with_origin_chirho(mut self, origin_chirho: OriginIdChirho) -> Self {
+        self.set_origin_chirho(Some(origin_chirho));
+        self
+    }
+
+    /// The same name with no origin: a reference re-read as a binder is no
+    /// longer an occurrence.
+    pub fn without_origin_chirho(mut self) -> Self {
+        self.set_origin_chirho(None);
+        self
+    }
 }
 
 #[cfg(test)]

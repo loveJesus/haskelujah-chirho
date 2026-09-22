@@ -20,6 +20,7 @@ pub mod expr_chirho;
 pub mod lit_chirho;
 pub mod module_chirho;
 pub mod name_chirho;
+pub mod occurrences_chirho;
 pub mod pat_chirho;
 pub mod provenance_chirho;
 #[cfg(test)]

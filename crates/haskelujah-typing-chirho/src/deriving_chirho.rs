@@ -47,6 +47,7 @@ use haskelujah_ast_chirho::expr_chirho::{
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::occurrences_chirho::remint_decls_chirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -792,7 +793,15 @@ fn derive_via_num_methods_chirho(con_name_str_chirho: &str) -> Vec<LocalBindChir
 
 /// Insert generated instances into a module's declaration list.
 pub fn apply_deriving_chirho(module_chirho: &mut ModuleChirho) -> Vec<String> {
-    let result_chirho = derive_instances_chirho(module_chirho);
+    let mut result_chirho = derive_instances_chirho(module_chirho);
+    // The instances are fresh output: every occurrence in them takes a new
+    // origin from the module's supply before anything can read them, including
+    // any subtree a generator copied from user code.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    remint_decls_chirho(
+        &mut result_chirho.instances_chirho,
+        &mut module_chirho.origin_supply_chirho,
+    );
     module_chirho
         .decls_chirho
         .extend(result_chirho.instances_chirho);

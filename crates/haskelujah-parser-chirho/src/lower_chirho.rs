@@ -17,9 +17,13 @@ mod declaration_kinds_chirho;
 mod flat_type_tests_chirho;
 mod flat_types_chirho;
 #[cfg(test)]
+mod occurrence_tests_chirho;
+mod occurrences_chirho;
+#[cfg(test)]
 mod type_operator_tests_chirho;
 mod type_operators_chirho;
 
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -73,6 +77,9 @@ struct LowerCtxChirho {
     file_id_chirho: FileIdChirho,
     offset_chirho: usize,
     fixity_overrides_chirho: HashMap<String, (u8, FixityChirho)>,
+    /// The module's origin supply while lowering builds it. Expression lowering
+    /// borrows the context immutably, so the supply sits in a cell.
+    origin_supply_chirho: RefCell<OriginSupplyChirho>,
 }
 
 /// Parse an integer literal that may have a hex (0x/0X), octal (0o/0O),
@@ -111,6 +118,7 @@ impl LowerCtxChirho {
             file_id_chirho,
             offset_chirho: 0,
             fixity_overrides_chirho: HashMap::new(),
+            origin_supply_chirho: RefCell::new(OriginSupplyChirho::new_chirho()),
         }
     }
 
@@ -412,7 +420,7 @@ impl LowerCtxChirho {
             foreign_exports_chirho,
             deriving_via_chirho,
             span_chirho: self.span_chirho(start_chirho, end_chirho),
-            origin_supply_chirho: OriginSupplyChirho::new_chirho(),
+            origin_supply_chirho: self.take_origin_supply_chirho(),
         }
     }
 
@@ -1646,7 +1654,7 @@ impl LowerCtxChirho {
                 SpanChirho::DUMMY_CHIRHO,
             ));
             ExprChirho::AppChirho {
-                fun_chirho: Box::new(ExprChirho::VarChirho(error_name_chirho)),
+                fun_chirho: Box::new(self.reference_expr_chirho(error_name_chirho)),
                 arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
                     "Non-exhaustive guards".to_string(),
                     SpanChirho::DUMMY_CHIRHO,
@@ -1670,7 +1678,7 @@ impl LowerCtxChirho {
                     then_chirho: Box::new(self.lower_guard_quals_to_expr_chirho(
                         rest_quals_chirho,
                         then_expr_chirho,
-                        else_expr_chirho.clone(),
+                        self.duplicate_as_new_code_chirho(&else_expr_chirho),
                         span_chirho,
                     )),
                     else_chirho: Box::new(else_expr_chirho),
@@ -1689,7 +1697,7 @@ impl LowerCtxChirho {
                                 self.lower_guard_quals_to_expr_chirho(
                                     rest_quals_chirho,
                                     then_expr_chirho,
-                                    else_expr_chirho.clone(),
+                                    self.duplicate_as_new_code_chirho(&else_expr_chirho),
                                     span_chirho,
                                 ),
                             ),
@@ -1906,6 +1914,7 @@ impl LowerCtxChirho {
                         nested_segments_chirho,
                         false,
                         child_span_chirho,
+                        &mut self.origin_supply_chirho.borrow_mut(),
                     );
                     segments_chirho.push(DoSegmentChirho::RecursiveChirho {
                         stmts_chirho: nested_stmts_chirho,
@@ -5363,7 +5372,7 @@ impl LowerCtxChirho {
                 {
                     ExprChirho::ConChirho(name_chirho)
                 } else {
-                    ExprChirho::VarChirho(name_chirho)
+                    self.reference_expr_chirho(name_chirho)
                 }
             }
             SyntaxKindChirho::LiteralExprChirho => {
@@ -5457,7 +5466,9 @@ impl LowerCtxChirho {
                                     child_chirho.start_chirho,
                                     child_chirho.end_chirho,
                                 );
-                                ops_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
+                                ops_chirho.push(self.reference_name_chirho(
+                                    self.name_from_token_chirho(tok_chirho, s_chirho),
+                                ));
                             } else if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
                                 || tok_chirho.kind_chirho() == TokenKindChirho::ConSymChirho
                                 || tok_chirho.kind_chirho()
@@ -5469,7 +5480,9 @@ impl LowerCtxChirho {
                                     child_chirho.start_chirho,
                                     child_chirho.end_chirho,
                                 );
-                                ops_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
+                                ops_chirho.push(self.reference_name_chirho(
+                                    self.name_from_token_chirho(tok_chirho, s_chirho),
+                                ));
                             }
                         }
                     }
@@ -5639,7 +5652,7 @@ impl LowerCtxChirho {
                     "$lc_chirho",
                     span_chirho,
                 ));
-                let fresh_var_chirho = ExprChirho::VarChirho(fresh_name_chirho.clone());
+                let fresh_var_chirho = self.reference_expr_chirho(fresh_name_chirho.clone());
                 let fresh_pat_chirho = PatChirho::VarChirho(fresh_name_chirho);
 
                 let case_expr_chirho = ExprChirho::CaseChirho {
@@ -5730,9 +5743,12 @@ impl LowerCtxChirho {
                         cond_chirho: Box::new(last_guard_chirho),
                         then_chirho: Box::new(last_result_chirho),
                         else_chirho: Box::new(ExprChirho::AppChirho {
-                            fun_chirho: Box::new(ExprChirho::VarChirho(NameChirho::RawChirho(
-                                RawNameChirho::unqualified_chirho("error", span_chirho),
-                            ))),
+                            fun_chirho: Box::new(self.reference_expr_chirho(
+                                NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                                    "error",
+                                    span_chirho,
+                                )),
+                            )),
                             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
                                 "Non-exhaustive guards in multi-way if".into(),
                                 span_chirho,
@@ -5838,8 +5854,12 @@ impl LowerCtxChirho {
                     )
                 });
                 let segments_chirho = self.lower_do_segments_chirho(node_chirho, base_chirho);
-                let stmts_chirho =
-                    transform_recursive_do_chirho(segments_chirho, is_mdo_chirho, span_chirho);
+                let stmts_chirho = transform_recursive_do_chirho(
+                    segments_chirho,
+                    is_mdo_chirho,
+                    span_chirho,
+                    &mut self.origin_supply_chirho.borrow_mut(),
+                );
 
                 ExprChirho::DoChirho {
                     qualifier_chirho,
@@ -6021,7 +6041,9 @@ impl LowerCtxChirho {
                     if let Some(arg_child_chirho) = expr_nodes_chirho.first() {
                         let arg_expr_chirho = self.lower_expr_from_child_chirho(arg_child_chirho);
                         return ExprChirho::LeftSectionChirho {
-                            op_chirho: self.name_from_text_chirho(op_text_chirho, span_chirho),
+                            op_chirho: self.reference_name_chirho(
+                                self.name_from_text_chirho(op_text_chirho, span_chirho),
+                            ),
                             arg_chirho: Box::new(arg_expr_chirho),
                             span_chirho,
                         };
@@ -6034,7 +6056,9 @@ impl LowerCtxChirho {
                         let arg_expr_chirho = self.lower_expr_from_child_chirho(arg_child_chirho);
                         return ExprChirho::RightSectionChirho {
                             arg_chirho: Box::new(arg_expr_chirho),
-                            op_chirho: self.name_from_text_chirho(op_text_chirho, span_chirho),
+                            op_chirho: self.reference_name_chirho(
+                                self.name_from_text_chirho(op_text_chirho, span_chirho),
+                            ),
                             span_chirho,
                         };
                     }
@@ -6135,12 +6159,12 @@ impl LowerCtxChirho {
                                         [..inner_ops_chirho.len() - 1]
                                         .iter()
                                         .map(|(t_chirho, s_chirho)| {
-                                            NameChirho::RawChirho(
+                                            self.reference_name_chirho(NameChirho::RawChirho(
                                                 RawNameChirho::unqualified_chirho(
                                                     t_chirho.clone(),
                                                     *s_chirho,
                                                 ),
-                                            )
+                                            ))
                                         })
                                         .collect();
                                     self.resolve_infix_precedence_chirho(
@@ -6151,12 +6175,12 @@ impl LowerCtxChirho {
                                 };
                                 return ExprChirho::RightSectionChirho {
                                     arg_chirho: Box::new(arg_expr_chirho),
-                                    op_chirho: NameChirho::RawChirho(
+                                    op_chirho: self.reference_name_chirho(NameChirho::RawChirho(
                                         RawNameChirho::unqualified_chirho(
                                             op_text_chirho,
                                             span_chirho,
                                         ),
-                                    ),
+                                    )),
                                     span_chirho,
                                 };
                             }
@@ -6238,7 +6262,7 @@ impl LowerCtxChirho {
                                     RawNameChirho::unqualified_chirho(&name_chirho, span_chirho),
                                 );
                                 params_chirho.push(PatChirho::VarChirho(n_chirho.clone()));
-                                elements_chirho.push(ExprChirho::VarChirho(n_chirho));
+                                elements_chirho.push(self.reference_expr_chirho(n_chirho));
                                 gap_idx_chirho += 1;
                             }
                         }
@@ -6797,7 +6821,7 @@ impl LowerCtxChirho {
         };
 
         ExprChirho::AppChirho {
-            fun_chirho: Box::new(ExprChirho::VarChirho(NameChirho::RawChirho(
+            fun_chirho: Box::new(self.reference_expr_chirho(NameChirho::RawChirho(
                 RawNameChirho::unqualified_chirho("mkName", span_chirho),
             ))),
             arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
@@ -6995,12 +7019,12 @@ impl LowerCtxChirho {
                             TokenKindChirho::VarIdChirho
                             | TokenKindChirho::UnderscoreReservedIdChirho => {
                                 // UnderscoreReservedIdChirho: typed holes (_) in expression position
-                                value_chirho = Some(ExprChirho::VarChirho(NameChirho::RawChirho(
-                                    RawNameChirho::unqualified_chirho(
+                                value_chirho = Some(self.reference_expr_chirho(
+                                    NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                                         tok_chirho.text_chirho().to_string(),
                                         span_chirho,
-                                    ),
-                                )));
+                                    )),
+                                ));
                             }
                             TokenKindChirho::ConIdChirho => {
                                 value_chirho = Some(ExprChirho::ConChirho(NameChirho::RawChirho(
@@ -7027,7 +7051,7 @@ impl LowerCtxChirho {
         // same name as the field, e.g. `Con { x }` means `Con { x = x }`
         let final_value_chirho = value_chirho.unwrap_or_else(|| {
             if let Some(ref fname_chirho) = field_name_chirho {
-                ExprChirho::VarChirho(fname_chirho.clone())
+                self.reference_expr_chirho(fname_chirho.clone())
             } else {
                 self.placeholder_expr_chirho()
             }
@@ -7953,7 +7977,7 @@ impl LowerCtxChirho {
 
                 PatChirho::ViewChirho {
                     expr_chirho: Box::new(
-                        expr_chirho.unwrap_or(ExprChirho::VarChirho(self.dummy_name_chirho())),
+                        expr_chirho.unwrap_or_else(|| self.placeholder_expr_chirho()),
                     ),
                     pat_chirho: Box::new(
                         pat_inner_chirho
@@ -8017,7 +8041,7 @@ impl LowerCtxChirho {
                                 let s_chirho =
                                     self.span_chirho(mc_chirho.start_chirho, mc_chirho.end_chirho);
                                 let name_chirho = self.name_from_token_chirho(tok_chirho, s_chirho);
-                                return ExprChirho::VarChirho(name_chirho);
+                                return self.reference_expr_chirho(name_chirho);
                             }
                         }
                     }
@@ -8476,7 +8500,7 @@ impl LowerCtxChirho {
     }
 
     fn placeholder_expr_chirho(&self) -> ExprChirho {
-        ExprChirho::VarChirho(self.dummy_name_chirho())
+        self.reference_expr_chirho(self.dummy_name_chirho())
     }
 
     fn fold_qual_expr_parts_to_expr_chirho(
@@ -8615,12 +8639,13 @@ impl LowerCtxChirho {
                 {
                     // Constructor with no args
                     PatChirho::ConChirho {
-                        con_chirho: name_chirho.clone(),
+                        con_chirho: name_chirho.clone().without_origin_chirho(),
                         args_chirho: vec![],
                         span_chirho: name_chirho.span_chirho(),
                     }
                 } else {
-                    PatChirho::VarChirho(name_chirho.clone())
+                    // A reference re-read as a binder is no longer an occurrence.
+                    PatChirho::VarChirho(name_chirho.clone().without_origin_chirho())
                 }
             }
             ExprChirho::LitChirho(lit_chirho) => PatChirho::LitChirho(lit_chirho.clone()),
@@ -8678,7 +8703,7 @@ impl LowerCtxChirho {
                             .map_or(false, |c_chirho| c_chirho.is_uppercase()) =>
                     {
                         PatChirho::ConChirho {
-                            con_chirho: name_chirho.clone(),
+                            con_chirho: name_chirho.clone().without_origin_chirho(),
                             args_chirho: app_args_chirho,
                             span_chirho: expr_chirho.span_chirho(),
                         }
@@ -8693,7 +8718,7 @@ impl LowerCtxChirho {
                 span_chirho,
             } => PatChirho::InfixConChirho {
                 left_chirho: Box::new(Self::expr_to_pat_chirho(left_chirho)),
-                op_chirho: op_chirho.clone(),
+                op_chirho: op_chirho.clone().without_origin_chirho(),
                 right_chirho: Box::new(Self::expr_to_pat_chirho(right_chirho)),
                 span_chirho: *span_chirho,
             },

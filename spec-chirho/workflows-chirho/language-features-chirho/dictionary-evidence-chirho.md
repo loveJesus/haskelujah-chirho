@@ -138,6 +138,39 @@ flowchart TD
   one do or deriving node can create several references sharing a span, so the identity must be
   shared with the node that created them.
 
+## Occurrence provenance (in progress, 2026-09-22)
+
+The identity a span cannot supply is minted by the PRODUCER of each occurrence and carried on the
+node. `OriginSupplyChirho` is a field of `ModuleChirho`; lowering creates it, and every later
+producer borrows it through the module, so one sequence runs across all of them. A module is not
+`Clone`, so the supply cannot fork.
+
+```mermaid
+flowchart TD
+    lower_chirho[Lowering: stamps each reference and operator AT CONSTRUCTION] --> supply_chirho[(module origin supply)]
+    dup_chirho[Lowering duplicates a guard fall-through] -->|remint the copy| supply_chirho
+    splice_chirho[Splice expansion: each CONVERTED declaration] -->|remint before push; passthrough keeps its origins| supply_chirho
+    derive_chirho[Early deriving: the fresh instances] -->|remint before extend| supply_chirho
+    gnd_chirho[Late GND, gpt_chirho's seam: its generated declarations] -->|remint before extend| supply_chirho
+    supply_chirho --> ast_chirho[Every occurrence in the AST carries a distinct origin]
+    ast_chirho --> check_chirho[Checker: records keyed by origin and role, NEXT]
+    ast_chirho --> desugar_chirho[Desugarer: each mint site carries its construct's origin and role, NEXT]
+    check_chirho --> join_chirho[Join by origin and role; positional path deleted, NEXT]
+    desugar_chirho --> join_chirho
+```
+
+- `occurrences_chirho.rs` in the AST crate is the one statement of where occurrences live. Every
+  match in it is exhaustive with no fallback arm, so a new expression, pattern, statement or
+  declaration form does not compile until it is classified.
+- Fresh generated output is reminted in full. Moving or keeping an occurrence preserves its
+  origin. A subtree duplicated as new code is reminted at that duplication. A binder re-read from
+  an expression carries no origin.
+- Equality and hashing of a name ignore the origin, so no lookup changes meaning.
+- Occurrence carriers today: variable references and the operators of infix applications and
+  sections. Literals, list literals, arithmetic sequences and do statements get their own
+  carriers next. Three evidence channels are still keyed by span: method occurrences, literal
+  evidence and reference evidence.
+
 ## Current boundary
 
 - Infix references (`x \`f\` y`) and operator sections still resolve through the shared

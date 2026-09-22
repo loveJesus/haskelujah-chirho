@@ -65,8 +65,27 @@ And the deriving pass, which generates references BEFORE typing, all under one p
 ## Bricks
 
 - [x] 1. Checkpoint the provenance shape with gpt_chirho (#24535, answered #24541).
-- [ ] 2. AST provenance module: origin-ID supply owned by the module compilation, created by lowering.
+- [x] 2. AST provenance module: origin-ID supply owned by the module compilation, created by lowering.
+      a44ea7ec types and supply; 6afcafc8 `RawNameChirho.origin_chirho` (equality, hash and Debug checked
+      against their consumers first); 0fb01325 the supply is a `ModuleChirho` field and a module is no
+      longer `Clone` (measured: nothing cloned one).
 - [ ] 3. Producers: lowering, TH expansion, early deriving and late GND all draw from the one supply.
+  - [x] Lowering stamps at construction: every variable, infix operator and section operator, and the
+        references lowering generates itself (a guard's `error`, `mkName`, the `\case` scrutinee, tuple
+        section gaps, the recursive-do knot's `mfix`, `return` and tuple of binders). A reference re-read
+        as a binder loses its origin.
+  - [x] Duplication boundary found inside lowering: a guard's fall-through is placed once per failing
+        qualifier; each copy is reminted, the original keeps its origins (gpt_chirho #24557: remint at an
+        explicit duplication boundary, never stamp-only-None).
+  - [x] `occurrences_chirho.rs` (AST): the one exhaustive statement of where occurrences live, no fallback
+        arm; `remint_decls_chirho` / `remint_expr_chirho` for fresh output only.
+  - [x] Early deriving remints its fresh instances before they join the module; splice expansion remints
+        each converted declaration before its push and never the passthrough (#24557).
+  - [ ] Late GND (gpt_chirho's branch) remints its generated declarations before extend: gpt's seam.
+  - Controls, each mutation-checked (the control fails when its guarantee is removed): distinct origins
+    at every reference and operator; the duplicated fall-through; the recursive-do knot; supply
+    continuity lowering -> splice -> deriving; passthrough identity through splicing and deriving; a
+    re-read binder carries no origin.
 - [ ] 4. Checker: records keyed by origin ID + role; a multi-predicate occurrence keeps every record.
 - [ ] 5. Desugarer: each evidence-bearing mint site above carries the origin ID + role of its construct.
 - [ ] 6. Join by origin ID + role; delete the positional path and its count guard.
@@ -75,6 +94,21 @@ And the deriving pass, which generates references BEFORE typing, all under one p
       continuity; record and consumer reordering; missing or conflicting identity yields no evidence.
       Keep: the 19 desugared-shape driver tests, native derived-Show Bool, qualified do, the five join
       controls, the method-occurrence tests, curated; then both corpus axes twice, no accept-axis loss.
+
+## Channels still keyed by span (brick 4 and 6 must move all three)
+
+The checker has three evidence channels, not one, and each is keyed by SPAN today:
+- method occurrences (`MethodOccurrenceRecordChirho`, span + per-name ordinal), joined in
+  `evidence_join_chirho.rs` by span and then by position;
+- literal evidence (`literal_evidence_chirho`, span -> class and type), joined by the desugarer's
+  literal occurrence spans;
+- reference evidence (`reference_evidence_chirho`, span -> one record per predicate in scheme order),
+  joined in `lib.rs` by the desugarer's reference occurrence spans;
+plus the recursive-reference spans. The literal and reference captures skip DUMMY spans at capture
+(`evidence_chirho.rs`), and a span captured more than once yields evidence only if every capture agrees,
+so generated literals get NO literal evidence today (they take the default dispatch path), rather than
+wrong evidence. Keyed by origin, the capture-side DUMMY skip becomes "no origin, no capture", and
+generated occurrences start receiving real evidence: a behaviour change to measure, not assume.
 
 This is identity transport. It is not yet complete predicate proof terms, and not yet dictionary
 functions.

@@ -23,6 +23,8 @@
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, FieldDeclChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
+use haskelujah_ast_chirho::occurrences_chirho::remint_decls_chirho;
+use haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho;
 
 use haskelujah_th_chirho::convert_chirho::th_dec_to_ast_chirho;
 use haskelujah_th_chirho::th_ast_chirho::*;
@@ -47,7 +49,15 @@ pub struct SpliceExpansionResultChirho {
 ///
 /// The `all_decls_chirho` parameter is the full set of declarations in the
 /// module (needed to look up data types referenced by splices).
-pub fn expand_splices_chirho(decls_chirho: Vec<DeclChirho>) -> SpliceExpansionResultChirho {
+///
+/// Each declaration a splice produces is new code and takes fresh origins from
+/// the module's supply before it is pushed. Every other declaration passes
+/// through with the origins lowering gave it.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub fn expand_splices_chirho(
+    decls_chirho: Vec<DeclChirho>,
+    supply_chirho: &mut OriginSupplyChirho,
+) -> SpliceExpansionResultChirho {
     let mut result_decls_chirho: Vec<DeclChirho> = Vec::new();
     let mut warnings_chirho: Vec<String> = Vec::new();
 
@@ -69,9 +79,13 @@ pub fn expand_splices_chirho(decls_chirho: Vec<DeclChirho>) -> SpliceExpansionRe
                                     &fields_chirho,
                                 );
                                 for th_dec_chirho in &generated_chirho {
-                                    if let Some(ast_dec_chirho) =
+                                    if let Some(mut ast_dec_chirho) =
                                         th_dec_to_ast_chirho(th_dec_chirho)
                                     {
+                                        remint_decls_chirho(
+                                            std::slice::from_mut(&mut ast_dec_chirho),
+                                            supply_chirho,
+                                        );
                                         result_decls_chirho.push(ast_dec_chirho);
                                     }
                                 }
@@ -639,7 +653,8 @@ mod tests_chirho {
         // remove the splice and produce a warning.
         let decls_chirho = vec![make_lenses_splice_chirho("NonExistent")];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         assert!(
             result_chirho.decls_chirho.is_empty(),
@@ -658,7 +673,8 @@ mod tests_chirho {
             make_lenses_splice_chirho("Person"),
         ];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         // The Person data decl should be preserved.
         assert!(
@@ -721,7 +737,8 @@ mod tests_chirho {
             },
         ];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         assert!(
             result_chirho.warnings_chirho.is_empty(),
@@ -744,7 +761,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         assert!(result_chirho.decls_chirho.is_empty());
         assert_eq!(result_chirho.warnings_chirho.len(), 1);
@@ -770,7 +788,8 @@ mod tests_chirho {
             },
         ];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         assert_eq!(result_chirho.decls_chirho.len(), 2);
         assert!(result_chirho.warnings_chirho.is_empty());
@@ -811,7 +830,8 @@ mod tests_chirho {
             make_lenses_splice_chirho("Config"),
         ];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         // Config data + 1 type sig (port) + 1 fun bind (port) = 3
         assert_eq!(
@@ -840,7 +860,8 @@ mod tests_chirho {
             },
         ];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         // Person data decl should pass through, splice should be removed.
         assert_eq!(result_chirho.decls_chirho.len(), 1);
@@ -863,7 +884,8 @@ mod tests_chirho {
             },
         ];
 
-        let result_chirho = expand_splices_chirho(decls_chirho);
+        let result_chirho =
+            expand_splices_chirho(decls_chirho, &mut OriginSupplyChirho::new_chirho());
 
         assert!(result_chirho.warnings_chirho.is_empty());
         // Person data + 4 lens decls = 5

@@ -176,14 +176,16 @@ main = putStrLn "hello"
                     file_id_chirho,
                 );
             let green_chirho = parser_chirho.parse_chirho();
-            let module_chirho = haskelujah_parser_chirho::lower_chirho::lower_module_chirho(
+            let mut module_chirho = haskelujah_parser_chirho::lower_chirho::lower_module_chirho(
                 &green_chirho,
                 file_id_chirho,
             );
 
             // Run splice expansion on the raw AST declarations.
-            let splice_result_chirho =
-                crate::splice_chirho::expand_splices_chirho(module_chirho.decls_chirho.clone());
+            let splice_result_chirho = crate::splice_chirho::expand_splices_chirho(
+                module_chirho.decls_chirho.clone(),
+                &mut module_chirho.origin_supply_chirho,
+            );
 
             // Verify no SpliceDeclChirho remains after expansion.
             let remaining_splices_chirho = splice_result_chirho
