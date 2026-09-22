@@ -13,7 +13,9 @@ Placement: retain data_chirho at the existing family AST producer, use the same 
 - [x] Preserve form through lowering, local/imported kind classification, associated heads and term registration.
 - [x] Verify T17067, local/imported/associated positives, type-family negatives, shadowing and an exact execution control.
 - [x] Run focused parser/typing/driver gates, formatting and changed-line lint review; report existing debt separately.
-- [ ] Update workflow and checkpoint only owned paths. This is not a main landing or a corpus no-regression claim.
+- [x] Update workflow and checkpoint only owned paths. This is not a main landing or a corpus no-regression claim.
+
+Result checkpoint: `69a97a536e54f15c25ddbd4fb517da711e10b721`, with all 19 gated source-manifest hashes rechecked before commit. The missing-instance producer trace is compressed byte-exact, not trimmed to satisfy a whitespace gate. T16188 remains a real regression and this checkpoint remains NOT LANDABLE.
 
 Reference predictions: local nominal-family pattern and execution accept and print 7; qualified imported nominal-family pattern accepts and prints 7; same-spelled local data-family and qualified provider type-family remain distinct; associated data-family pattern accepts; local/imported/associated type-family patterns reject for the illegal-family-application rule. No filename-specific behavior.
 
