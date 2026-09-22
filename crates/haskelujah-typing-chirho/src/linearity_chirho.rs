@@ -329,11 +329,12 @@ mod tests_chirho {
     use haskelujah_ast_chirho::name_chirho::NameChirho;
 
     fn mk_name_chirho(s_chirho: &str) -> NameChirho {
-        NameChirho::RawChirho(haskelujah_ast_chirho::name_chirho::RawNameChirho {
-            text_chirho: s_chirho.to_string(),
-            qualifier_chirho: None,
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        })
+        NameChirho::RawChirho(
+            haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                s_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            ),
+        )
     }
 
     #[test]

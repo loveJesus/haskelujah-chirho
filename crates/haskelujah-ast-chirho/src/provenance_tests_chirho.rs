@@ -5,8 +5,12 @@
 //! restarting it (lowering first, then early deriving, then the late GND pass).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
+use crate::name_chirho::RawNameChirho;
 use crate::provenance_chirho::{OccurrenceRoleChirho, OriginSupplyChirho, ProvenanceChirho};
+use haskelujah_span_chirho::SpanChirho;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 
 /// A stand-in for a producer: it borrows the module's supply and mints what it
 /// needs, the way lowering, deriving and GND each will.
@@ -70,4 +74,54 @@ fn one_construct_distinguishes_its_uses_by_role_chirho() {
         1,
         "roles must not consume origins"
     );
+}
+
+fn hash_of_chirho(name_chirho: &RawNameChirho) -> u64 {
+    let mut hasher_chirho = DefaultHasher::new();
+    name_chirho.hash(&mut hasher_chirho);
+    hasher_chirho.finish()
+}
+
+#[test]
+fn an_origin_does_not_change_what_a_name_is_chirho() {
+    // Name equality serves AST comparison and name lookup. Two occurrences of
+    // `show` under one placeholder span, as derived instances produce them, must
+    // stay equal names whatever their origins, so no lookup changes meaning.
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let bare_chirho = RawNameChirho::unqualified_chirho("show", SpanChirho::DUMMY_CHIRHO);
+    let first_chirho = bare_chirho.clone().with_origin_chirho(supply_chirho.fresh_chirho());
+    let second_chirho = bare_chirho.clone().with_origin_chirho(supply_chirho.fresh_chirho());
+    assert_ne!(first_chirho.origin_chirho, second_chirho.origin_chirho);
+    for name_chirho in [&first_chirho, &second_chirho] {
+        assert_eq!(*name_chirho, bare_chirho);
+        assert_eq!(hash_of_chirho(name_chirho), hash_of_chirho(&bare_chirho));
+    }
+    let names_chirho: HashSet<RawNameChirho> = [first_chirho, second_chirho].into();
+    assert_eq!(names_chirho.len(), 1);
+}
+
+#[test]
+fn moving_an_occurrence_keeps_its_origin_chirho() {
+    // A pass that clones or moves the same occurrence must not lose or renumber
+    // its identity; only the producer mints.
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let origin_chirho = supply_chirho.fresh_chirho();
+    let name_chirho =
+        RawNameChirho::qualified_chirho("Data.List", "sort", SpanChirho::DUMMY_CHIRHO)
+            .with_origin_chirho(origin_chirho);
+    let moved_chirho = Box::new(name_chirho.clone());
+    assert_eq!(name_chirho.origin_chirho, Some(origin_chirho));
+    assert_eq!(moved_chirho.origin_chirho, Some(origin_chirho));
+    assert_eq!(supply_chirho.minted_chirho(), 1);
+}
+
+#[test]
+fn a_name_without_an_origin_prints_as_before_chirho() {
+    let bare_chirho = RawNameChirho::unqualified_chirho("x", SpanChirho::DUMMY_CHIRHO);
+    let rendered_chirho = format!("{bare_chirho:?}");
+    assert!(rendered_chirho.contains("text_chirho: \"x\""), "{rendered_chirho}");
+    assert!(!rendered_chirho.contains("origin_chirho"), "{rendered_chirho}");
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let stamped_chirho = bare_chirho.with_origin_chirho(supply_chirho.fresh_chirho());
+    assert!(format!("{stamped_chirho:?}").contains("origin_chirho"));
 }
