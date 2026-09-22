@@ -336,9 +336,12 @@ impl InferCtxChirho {
     }
 
     /// Finalize the reference captures through the composed substitution, one
-    /// record per predicate in scheme order, keyed twice: by span, as before
-    /// (a placeholder span is never a key there), and by origin. A key captured
-    /// more than once yields evidence only when every capture agrees.
+    /// record per predicate in scheme order. A capture with an origin is
+    /// published under that origin ONLY; the span map is the legacy projection
+    /// and holds only captures without an origin, never a placeholder span, so
+    /// an origin-owned proof cannot reach another reference through its span
+    /// (gpt_chirho review F2, #24598). A key captured more than once yields
+    /// evidence only when every capture agrees.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn finalize_reference_evidence_chirho(
         &self,
@@ -364,17 +367,16 @@ impl InferCtxChirho {
                     ),
                 })
                 .collect();
-            if capture_chirho.span_chirho != SpanChirho::DUMMY_CHIRHO {
-                by_span_chirho
-                    .entry(capture_chirho.span_chirho)
-                    .or_default()
-                    .push(records_chirho.clone());
-            }
-            if let Some(origin_chirho) = capture_chirho.origin_chirho {
-                by_origin_chirho
+            match capture_chirho.origin_chirho {
+                Some(origin_chirho) => by_origin_chirho
                     .entry(origin_chirho)
                     .or_default()
-                    .push(records_chirho);
+                    .push(records_chirho),
+                None if capture_chirho.span_chirho != SpanChirho::DUMMY_CHIRHO => by_span_chirho
+                    .entry(capture_chirho.span_chirho)
+                    .or_default()
+                    .push(records_chirho),
+                None => {}
             }
         }
         (
@@ -499,6 +501,49 @@ mod tests_chirho {
             })
         );
         assert_eq!(evidence_chirho.len(), 1, "{evidence_chirho:?}");
+    }
+
+    /// Finalize one `Show` reference capture at a genuine span, resolved to Int.
+    fn finalize_one_reference_chirho(
+        origin_chirho: Option<OriginIdChirho>,
+    ) -> (
+        HashMap<SpanChirho, Vec<ReferenceEvidenceChirho>>,
+        HashMap<OriginIdChirho, Vec<ReferenceEvidenceChirho>>,
+    ) {
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let ty_chirho = ctx_chirho.fresh_var_chirho();
+        ctx_chirho.capture_reference_evidence_chirho(
+            span_chirho(50),
+            origin_chirho,
+            &[PredChirho::new_chirho("Show", ty_chirho.clone())],
+        );
+        let mut subst_chirho = SubstChirho::empty_chirho();
+        if let TyChirho::VarChirho(var_chirho) = ty_chirho {
+            subst_chirho.insert_chirho(var_chirho, TyChirho::int_chirho());
+        }
+        ctx_chirho.finalize_reference_evidence_chirho(&subst_chirho)
+    }
+
+    #[test]
+    fn an_origin_owned_capture_is_never_published_as_span_evidence_chirho() {
+        // gpt_chirho review F2 (#24598): a capture owned by origin A at a
+        // genuine span S must not also become legacy evidence at S.
+        let mut supply_chirho =
+            haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+        let owner_chirho = supply_chirho.fresh_chirho();
+        let (by_span_chirho, by_origin_chirho) = finalize_one_reference_chirho(Some(owner_chirho));
+        assert!(by_span_chirho.is_empty(), "{by_span_chirho:?}");
+        assert_eq!(by_origin_chirho[&owner_chirho].len(), 1);
+    }
+
+    #[test]
+    fn a_legacy_capture_keeps_its_span_evidence_chirho() {
+        let (by_span_chirho, by_origin_chirho) = finalize_one_reference_chirho(None);
+        assert!(by_origin_chirho.is_empty());
+        assert_eq!(
+            by_span_chirho[&span_chirho(50)][0].ty_key_chirho.as_deref(),
+            Some("Int")
+        );
     }
 
     #[test]

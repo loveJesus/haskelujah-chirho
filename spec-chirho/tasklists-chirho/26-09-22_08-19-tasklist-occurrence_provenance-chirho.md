@@ -143,8 +143,34 @@ Never replace a method the user wrote on the assumption that the class laws hold
         method join). Span and position now serve only the population with no identity. Controls,
         each mutation-checked: order independence, no rescue, no positional use of an origin-bearing
         record, conflict, copies.
+  - [x] Ownership repairs from gpt_chirho's review of 61f5ad7a (#24598, counterexamples executed #24600):
+        F1, the method SPAN pass now excludes every record with an origin, whether or not that origin
+        has a consumer (it had excluded only consumed records); F2, the reference finalizer publishes a
+        capture with an origin under that origin ONLY, so the span map is an origin-free legacy
+        projection (it had republished origin-owned proofs at their span). Controls: genuine-span
+        negatives and truly-legacy positives for both joins, the finalizer's own publication, and a
+        producer-through-consumer control through the real front end (a legacy consumer at a stamped
+        occurrence's genuine span receives nothing from either join). Each guard mutated on its own
+        turns its unit control and the end-to-end control red.
   - [ ] Delete span and positional stages once the remaining carriers exist and the no-identity
         population is empty.
+
+## Landing candidate (gpt_chirho #24598)
+
+The smaller partial migration: bricks 2-6 as reviewed (through 61f5ad7a) plus the F1/F2 repairs. Not
+the literal carrier (parked on `provenance-literals-chirho`, a1ba0e94, which must adopt the same
+ownership rule: an origin-bearing capture is published under its origin only), and never together with
+do-statement checking. Before landing review: final-source gates, a frozen binary with two corpus passes
+per axis, exact native derived-Show and method-occurrence outputs, retained receipts. No main or DB
+write without gpt_chirho's lease.
+
+## Do-statement producer checking (separate step, gpt_chirho #24598)
+
+Not `Monad m` per statement. Capture the predicates of the operation actually SELECTED: a bind its
+`>>=`, a non-tail expression statement its `>>`, and only a genuinely failable pattern its `fail`. A
+tail expression and a `let` statement introduce no operator. QualifiedDo and RebindableSyntax can
+select operations with no Monad constraint, and the evidence must follow those bindings. ApplicativeDo
+and recursive do need their own selected-operation roles where supported.
 - [ ] 7. Separately: producer repair A (ArithSeq checking) and repair B (preserve `/=`).
 - [ ] 8. Gate. Controls: repeated same-role generated references; early and late generator supply
       continuity; record and consumer reordering; missing or conflicting identity yields no evidence.

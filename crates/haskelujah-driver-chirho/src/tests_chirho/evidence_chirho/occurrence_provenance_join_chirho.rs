@@ -16,7 +16,7 @@ use haskelujah_core_chirho::CoreIdChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::infer_chirho::MethodOccurrenceRecordChirho;
 
-use super::occurrence_join_chirho::{infer_result_chirho, record_chirho};
+use super::occurrence_join_chirho::{infer_result_chirho, record_chirho, span_chirho};
 use crate::join_occurrence_evidence_chirho;
 
 /// A record for `show` at `ty_key_chirho`, identified by `origin_chirho`, under
@@ -158,5 +158,90 @@ fn every_copy_of_one_use_takes_its_proof_chirho() {
     assert_eq!(
         evidence_chirho.get(&CoreIdChirho(11)),
         Some(&proof_chirho("Int"))
+    );
+}
+
+/// The method join for one legacy `show` occurrence (no provenance) at the
+/// genuine span S, against `records_chirho`.
+fn legacy_method_join_chirho(
+    records_chirho: Vec<MethodOccurrenceRecordChirho>,
+) -> Option<(String, String)> {
+    let genuine_chirho = span_chirho(200, 204);
+    join_occurrence_evidence_chirho(
+        &infer_result_chirho(records_chirho),
+        &show_occurrences_chirho(&[10]),
+        &HashMap::new(),
+        &HashMap::from([(CoreIdChirho(10), genuine_chirho)]),
+        &HashMap::new(),
+    )
+    .remove(&CoreIdChirho(10))
+}
+
+#[test]
+fn an_origin_owned_record_never_reaches_a_legacy_occurrence_by_span_chirho() {
+    // gpt_chirho review F1 (#24598): the record for origin A sits at genuine span
+    // S and A has no consumer; a legacy occurrence at S must not take A's proof.
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let owner_chirho = supply_chirho.fresh_chirho();
+    let joined_chirho = legacy_method_join_chirho(vec![MethodOccurrenceRecordChirho {
+        origin_chirho: Some(owner_chirho),
+        ..record_chirho("show", 0, "Int", span_chirho(200, 204))
+    }]);
+    assert_eq!(joined_chirho, None);
+}
+
+#[test]
+fn a_legacy_record_still_reaches_a_legacy_occurrence_by_span_chirho() {
+    let joined_chirho =
+        legacy_method_join_chirho(vec![record_chirho("show", 0, "Int", span_chirho(200, 204))]);
+    assert_eq!(joined_chirho, Some(proof_chirho("Int")));
+}
+
+/// The reference join for one legacy occurrence (no provenance) at genuine span
+/// S, with the checker's reference evidence as the finalizer publishes it.
+fn legacy_reference_join_chirho(
+    by_span_chirho: Vec<(SpanChirho, &str)>,
+    by_origin_chirho: Vec<(OriginIdChirho, &str)>,
+) -> Option<Vec<(String, Option<String>)>> {
+    use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
+    let evidence_chirho = |key_chirho: &str| {
+        vec![ReferenceEvidenceChirho {
+            class_name_chirho: "Show".to_string(),
+            ty_key_chirho: Some(key_chirho.to_string()),
+        }]
+    };
+    let mut result_chirho = infer_result_chirho(vec![]);
+    result_chirho.reference_evidence_chirho = by_span_chirho
+        .into_iter()
+        .map(|(span_chirho, key_chirho)| (span_chirho, evidence_chirho(key_chirho)))
+        .collect();
+    result_chirho.reference_evidence_by_origin_chirho = by_origin_chirho
+        .into_iter()
+        .map(|(origin_chirho, key_chirho)| (origin_chirho, evidence_chirho(key_chirho)))
+        .collect();
+    crate::evidence_join_chirho::join_reference_evidence_chirho(
+        &result_chirho,
+        &HashMap::from([(CoreIdChirho(10), span_chirho(200, 204))]),
+        &HashMap::new(),
+    )
+    .remove(&CoreIdChirho(10))
+}
+
+#[test]
+fn an_origin_owned_reference_proof_never_reaches_a_legacy_reference_chirho() {
+    // As the finalizer now publishes it, A's proof exists under A only.
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let owner_chirho = supply_chirho.fresh_chirho();
+    assert_eq!(
+        legacy_reference_join_chirho(vec![], vec![(owner_chirho, "Int")]),
+        None
+    );
+}
+
+#[test]
+fn a_legacy_reference_proof_still_reaches_a_legacy_reference_chirho() {
+    assert_eq!(
+        legacy_reference_join_chirho(vec![(span_chirho(200, 204), "Int")], vec![]),
+        Some(vec![("Show".to_string(), Some("Int".to_string()))])
     );
 }

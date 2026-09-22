@@ -161,3 +161,82 @@ fn records_from_derived_code_are_identified_chirho() {
         );
     }
 }
+
+#[test]
+fn no_origin_owned_proof_reaches_a_legacy_consumer_at_its_span_chirho() {
+    // Producer through consumer (gpt_chirho review F1/F2, #24598). Through the
+    // real front end every proof the checker makes for a stamped occurrence is
+    // owned by that occurrence's origin: the legacy span projection holds none
+    // of them, and a legacy consumer placed at the occurrence's genuine span,
+    // under the same name, receives nothing from either join.
+    use haskelujah_core_chirho::CoreIdChirho;
+    let mut result_chirho = frontend_chirho(
+        "module Main where\n\
+         describeChirho :: (Show a, Num a) => a -> String\n\
+         describeChirho n = show (n + 1)\n\
+         main :: IO ()\n\
+         main = do\n\
+         \x20 putStrLn (describeChirho (2 :: Int))\n\
+         \x20 print (3 == (4 :: Int))\n",
+    );
+    let mut stamped_chirho: Vec<(String, haskelujah_span_chirho::SpanChirho)> = Vec::new();
+    for decl_chirho in &mut result_chirho.module_chirho.decls_chirho {
+        visit_decl_chirho(decl_chirho, &mut |occurrence_chirho| {
+            if let (OccurrenceMutChirho::ReferenceChirho(name_chirho), Some(_origin_chirho)) =
+                (&occurrence_chirho, occurrence_chirho.origin_chirho())
+            {
+                let span_chirho = name_chirho.span_chirho();
+                if span_chirho.file_id_chirho()
+                    != haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO
+                {
+                    stamped_chirho.push((name_chirho.text_chirho().to_string(), span_chirho));
+                }
+            }
+        });
+    }
+    let infer_chirho = &result_chirho.infer_result_chirho;
+    assert!(
+        !infer_chirho.reference_evidence_by_origin_chirho.is_empty(),
+        "the control has no owned reference proof to protect"
+    );
+    for (_text_chirho, span_chirho) in &stamped_chirho {
+        assert!(
+            !infer_chirho
+                .reference_evidence_chirho
+                .contains_key(span_chirho),
+            "an owned reference proof was also published at its span {span_chirho:?}"
+        );
+    }
+    let legacy_spans_chirho: HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho> =
+        stamped_chirho
+            .iter()
+            .enumerate()
+            .map(|(index_chirho, (_text_chirho, span_chirho))| {
+                (CoreIdChirho(10_000 + index_chirho as u32), *span_chirho)
+            })
+            .collect();
+    let legacy_names_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)> = stamped_chirho
+        .iter()
+        .enumerate()
+        .map(|(index_chirho, (text_chirho, _span_chirho))| {
+            (
+                CoreIdChirho(10_000 + index_chirho as u32),
+                (text_chirho.clone(), CoreIdChirho(1)),
+            )
+        })
+        .collect();
+    let references_chirho = crate::evidence_join_chirho::join_reference_evidence_chirho(
+        infer_chirho,
+        &legacy_spans_chirho,
+        &HashMap::new(),
+    );
+    assert!(references_chirho.is_empty(), "{references_chirho:?}");
+    let methods_chirho = crate::join_occurrence_evidence_chirho(
+        infer_chirho,
+        &legacy_names_chirho,
+        &HashMap::new(),
+        &legacy_spans_chirho,
+        &HashMap::new(),
+    );
+    assert!(methods_chirho.is_empty(), "{methods_chirho:?}");
+}

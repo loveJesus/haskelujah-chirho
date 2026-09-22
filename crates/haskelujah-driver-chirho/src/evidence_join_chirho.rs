@@ -224,12 +224,19 @@ pub(crate) fn join_occurrence_evidence_chirho(
                 .or_insert(proof_chirho);
         }
     }
-    // By span, for the occurrences without provenance.
+    // By span, for the occurrences without provenance, and only from records
+    // without an origin: both sides of a legacy join are legacy. A record with an
+    // origin belongs to that origin's occurrence whether or not one exists, so
+    // an origin-owned proof never reaches another occurrence through its span
+    // (gpt_chirho review F1, #24598).
     for (record_index_chirho, record_chirho) in infer_result_chirho
         .method_occurrences_chirho
         .iter()
         .enumerate()
     {
+        if record_chirho.origin_chirho.is_some() {
+            continue;
+        }
         if consumed_records_chirho.contains(&record_index_chirho) {
             continue;
         }

@@ -11,7 +11,7 @@ use haskelujah_span_chirho::{ByteOffsetChirho, SpanChirho};
 use haskelujah_typing_chirho::infer_chirho::{InferResultChirho, MethodOccurrenceRecordChirho};
 use std::collections::HashMap;
 
-fn span_chirho(start_chirho: u32, end_chirho: u32) -> SpanChirho {
+pub(super) fn span_chirho(start_chirho: u32, end_chirho: u32) -> SpanChirho {
     // A REAL file id: the join treats a synthetic or dummy span as no identity at
     // all, so a control built on one would prove nothing about identified spans.
     let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
