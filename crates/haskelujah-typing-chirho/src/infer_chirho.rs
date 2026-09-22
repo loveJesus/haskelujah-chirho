@@ -16,6 +16,7 @@ use haskelujah_ast_chirho::lit_chirho::{
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::provenance_chirho::OriginIdChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -153,6 +154,10 @@ pub struct InferResultChirho {
     /// Reference evidence: per constrained reference (by span), one record per
     /// predicate of the instantiated scheme, in scheme order.
     pub reference_evidence_chirho: HashMap<SpanChirho, Vec<ReferenceEvidenceChirho>>,
+    /// The same reference evidence keyed by the reference's origin. It also
+    /// holds generated references, whose placeholder span the span map skips.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub reference_evidence_by_origin_chirho: HashMap<OriginIdChirho, Vec<ReferenceEvidenceChirho>>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about one
@@ -161,6 +166,10 @@ pub struct InferResultChirho {
 /// order (instance method bodies are inferred last, in phase 3e), so it may only
 /// be used as a fallback where no span is available.
 /// `ty_key_chirho` is the instance-head key (e.g. "Int", "[]", "Maybe").
+/// `origin_chirho` is the reference's producer-minted identity when it has one.
+/// An occurrence with several predicates keeps one record per predicate, all
+/// under the same origin.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodOccurrenceRecordChirho {
     pub name_chirho: String,
@@ -168,6 +177,7 @@ pub struct MethodOccurrenceRecordChirho {
     pub class_name_chirho: String,
     pub ty_key_chirho: String,
     pub span_chirho: SpanChirho,
+    pub origin_chirho: Option<OriginIdChirho>,
 }
 
 /// The inference context — carries mutable state during inference.
@@ -183,7 +193,7 @@ pub struct InferCtxChirho {
     /// Evidence-threading P2: raw occurrence captures — (name, per-name ordinal,
     /// class, instantiated predicate type). Finalized against the composed
     /// substitution when the public entry builds `InferResultChirho`.
-    occurrence_captures_chirho: Vec<(String, u32, String, TyChirho, SpanChirho)>,
+    occurrence_captures_chirho: Vec<evidence_chirho::OccurrenceCaptureChirho>,
     /// Evidence-threading P2: default keys learned when generalized predicates
     /// carry additional numeric-class evidence for an occurrence type variable.
     occurrence_default_hints_chirho: HashMap<TyVarChirho, String>,
@@ -198,7 +208,7 @@ pub struct InferCtxChirho {
     literal_captures_chirho: Vec<(SpanChirho, String, TyChirho)>,
     /// Reference evidence captures: (span, instantiated predicates in scheme
     /// order), finalized by `finalize_reference_evidence_chirho`.
-    reference_captures_chirho: Vec<(SpanChirho, Vec<(String, TyChirho)>)>,
+    reference_captures_chirho: Vec<evidence_chirho::ReferenceCaptureChirho>,
     recursive_references_chirho: evidence_chirho::RecursiveReferencesChirho,
     /// (class, skolem name) → index of that predicate in the signature the
     /// skolem was made for; see `record_own_dictionary_indices_chirho`.
@@ -1558,10 +1568,8 @@ impl InferCtxChirho {
             *lhs_chirho = subst_chirho.apply_ty_chirho(lhs_chirho);
             *rhs_chirho = subst_chirho.apply_ty_chirho(rhs_chirho);
         }
-        for (_name_chirho, _ordinal_chirho, _class_chirho, ty_chirho, _span_chirho) in
-            &mut self.occurrence_captures_chirho
-        {
-            *ty_chirho = subst_chirho.apply_ty_chirho(ty_chirho);
+        for capture_chirho in &mut self.occurrence_captures_chirho {
+            capture_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&capture_chirho.ty_chirho);
         }
         if !self.occurrence_default_hints_chirho.is_empty() {
             let mut updated_hints_chirho = HashMap::new();
@@ -3055,6 +3063,7 @@ impl InferCtxChirho {
                         self.recursive_references_chirho.capture_chirho(
                             text_chirho,
                             span_chirho,
+                            name_chirho.origin_chirho(),
                             &scheme_chirho,
                         );
                         // Evidence-threading P2: instantiate via parts so each
@@ -3062,27 +3071,10 @@ impl InferCtxChirho {
                         // occurrence record (finalized after solving/defaulting).
                         let (ty_chirho, instantiated_preds_chirho) =
                             self.instantiate_scheme_parts_chirho(&scheme_chirho);
-                        if !instantiated_preds_chirho.is_empty() {
-                            self.capture_reference_evidence_chirho(
-                                span_chirho,
-                                &instantiated_preds_chirho,
-                            );
-                            let counter_chirho = self
-                                .occurrence_counters_chirho
-                                .entry(text_chirho.to_string())
-                                .or_insert(0);
-                            let ordinal_chirho = *counter_chirho;
-                            *counter_chirho += 1;
-                            for pred_inst_chirho in &instantiated_preds_chirho {
-                                self.occurrence_captures_chirho.push((
-                                    text_chirho.to_string(),
-                                    ordinal_chirho,
-                                    pred_inst_chirho.class_name_chirho.clone(),
-                                    pred_inst_chirho.ty_chirho.clone(),
-                                    span_chirho,
-                                ));
-                            }
-                        }
+                        self.capture_occurrence_predicates_chirho(
+                            name_chirho,
+                            &instantiated_preds_chirho,
+                        );
                         for pred_inst_chirho in instantiated_preds_chirho {
                             self.defer_pred_chirho(pred_inst_chirho, span_chirho);
                         }
@@ -3168,27 +3160,10 @@ impl InferCtxChirho {
                         // occurrence record (finalized after solving/defaulting).
                         let (ty_chirho, instantiated_preds_chirho) =
                             self.instantiate_scheme_parts_chirho(&scheme_chirho);
-                        if !instantiated_preds_chirho.is_empty() {
-                            self.capture_reference_evidence_chirho(
-                                span_chirho,
-                                &instantiated_preds_chirho,
-                            );
-                            let counter_chirho = self
-                                .occurrence_counters_chirho
-                                .entry(text_chirho.to_string())
-                                .or_insert(0);
-                            let ordinal_chirho = *counter_chirho;
-                            *counter_chirho += 1;
-                            for pred_inst_chirho in &instantiated_preds_chirho {
-                                self.occurrence_captures_chirho.push((
-                                    text_chirho.to_string(),
-                                    ordinal_chirho,
-                                    pred_inst_chirho.class_name_chirho.clone(),
-                                    pred_inst_chirho.ty_chirho.clone(),
-                                    span_chirho,
-                                ));
-                            }
-                        }
+                        self.capture_occurrence_predicates_chirho(
+                            name_chirho,
+                            &instantiated_preds_chirho,
+                        );
                         for pred_inst_chirho in instantiated_preds_chirho {
                             self.defer_pred_chirho(pred_inst_chirho, span_chirho);
                         }
@@ -7305,7 +7280,14 @@ impl InferCtxChirho {
         self.occurrence_captures_chirho
             .iter()
             .filter_map(
-                |(name_chirho, ordinal_chirho, class_chirho, ty_chirho, span_chirho)| {
+                |evidence_chirho::OccurrenceCaptureChirho {
+                     name_chirho,
+                     ordinal_chirho,
+                     class_name_chirho: class_chirho,
+                     ty_chirho,
+                     span_chirho,
+                     origin_chirho,
+                 }| {
                     let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
                     let hinted_key_chirho = match &resolved_chirho {
                         TyChirho::VarChirho(var_chirho) => self
@@ -7334,6 +7316,7 @@ impl InferCtxChirho {
                                     class_name_chirho: class_chirho.clone(),
                                     ty_key_chirho: key_chirho,
                                     span_chirho: *span_chirho,
+                                    origin_chirho: *origin_chirho,
                                 });
                             }
                         }
@@ -7352,6 +7335,7 @@ impl InferCtxChirho {
                             ty_key_chirho: self
                                 .own_key_for_skolem_chirho(class_chirho, skolem_chirho),
                             span_chirho: *span_chirho,
+                            origin_chirho: *origin_chirho,
                         });
                     }
                     let resolved_show_key_chirho = (class_chirho == "Show"
@@ -7368,6 +7352,7 @@ impl InferCtxChirho {
                         class_name_chirho: class_chirho.clone(),
                         ty_key_chirho: key_chirho,
                         span_chirho: *span_chirho,
+                        origin_chirho: *origin_chirho,
                     })
                 },
             )
@@ -7386,6 +7371,7 @@ impl InferCtxChirho {
             method_occurrence_totals_chirho: HashMap::new(),
             literal_evidence_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
+            reference_evidence_by_origin_chirho: HashMap::new(),
         }
     }
 }
@@ -21505,7 +21491,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     let method_occurrence_totals_chirho = ctx_chirho.occurrence_counters_chirho.clone();
     let literal_evidence_chirho =
         ctx_chirho.finalize_literal_evidence_chirho(&composed_subst_chirho);
-    let reference_evidence_chirho =
+    let (reference_evidence_chirho, reference_evidence_by_origin_chirho) =
         ctx_chirho.finalize_reference_evidence_chirho(&composed_subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
     result_chirho.subst_chirho = composed_subst_chirho;
@@ -21513,6 +21499,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     result_chirho.method_occurrence_totals_chirho = method_occurrence_totals_chirho;
     result_chirho.literal_evidence_chirho = literal_evidence_chirho;
     result_chirho.reference_evidence_chirho = reference_evidence_chirho;
+    result_chirho.reference_evidence_by_origin_chirho = reference_evidence_by_origin_chirho;
     result_chirho
 }
 
@@ -21999,6 +21986,23 @@ mod tests_chirho {
         );
     }
 
+    /// A capture as generated code made it before provenance: no span, no origin.
+    fn unspanned_capture_chirho(
+        name_chirho: &str,
+        ordinal_chirho: u32,
+        class_name_chirho: &str,
+        ty_chirho: TyChirho,
+    ) -> evidence_chirho::OccurrenceCaptureChirho {
+        evidence_chirho::OccurrenceCaptureChirho {
+            name_chirho: name_chirho.to_string(),
+            ordinal_chirho,
+            class_name_chirho: class_name_chirho.to_string(),
+            ty_chirho,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+            origin_chirho: None,
+        }
+    }
+
     #[test]
     fn occurrence_record_defaults_unresolved_standard_class_chirho() {
         // Evidence-threading P2c: local/generalized numeric expressions can
@@ -22007,13 +22011,14 @@ mod tests_chirho {
         // a free `+`/`==` reach STG.
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let unresolved_ty_chirho = ctx_chirho.fresh_var_chirho();
-        ctx_chirho.occurrence_captures_chirho.push((
-            "+".to_string(),
-            0,
-            "Num".to_string(),
-            unresolved_ty_chirho,
-            SpanChirho::DUMMY_CHIRHO,
-        ));
+        ctx_chirho
+            .occurrence_captures_chirho
+            .push(unspanned_capture_chirho(
+                "+",
+                0,
+                "Num",
+                unresolved_ty_chirho,
+            ));
         let records_chirho =
             ctx_chirho.finalize_occurrence_records_chirho(&SubstChirho::empty_chirho());
         assert_eq!(
@@ -22024,6 +22029,7 @@ mod tests_chirho {
                 class_name_chirho: "Num".to_string(),
                 ty_key_chirho: "Int".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                origin_chirho: None,
             }]
         );
     }
@@ -22061,29 +22067,26 @@ mod tests_chirho {
     fn occurrence_record_retains_concrete_structured_show_keys_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         ctx_chirho.occurrence_captures_chirho.extend([
-            (
-                "print".to_string(),
+            unspanned_capture_chirho(
+                "print",
                 0,
-                "Show".to_string(),
+                "Show",
                 TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-                SpanChirho::DUMMY_CHIRHO,
             ),
-            (
-                "print".to_string(),
+            unspanned_capture_chirho(
+                "print",
                 1,
-                "Show".to_string(),
+                "Show",
                 TyChirho::AppChirho(
                     Box::new(TyChirho::ConChirho("Maybe".to_string())),
                     Box::new(TyChirho::string_chirho()),
                 ),
-                SpanChirho::DUMMY_CHIRHO,
             ),
-            (
-                "print".to_string(),
+            unspanned_capture_chirho(
+                "print",
                 2,
-                "Show".to_string(),
+                "Show",
                 TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::string_chirho()]),
-                SpanChirho::DUMMY_CHIRHO,
             ),
         ]);
 

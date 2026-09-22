@@ -8,13 +8,36 @@
 
 use super::*;
 
+/// One constrained reference's predicate, captured during inference and
+/// finalized into a `MethodOccurrenceRecordChirho` once the module is solved.
+/// The origin is the reference's identity; the span stays for diagnostics and
+/// for references that have no origin yet.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[derive(Debug, Clone)]
+pub(super) struct OccurrenceCaptureChirho {
+    pub(super) name_chirho: String,
+    pub(super) ordinal_chirho: u32,
+    pub(super) class_name_chirho: String,
+    pub(super) ty_chirho: TyChirho,
+    pub(super) span_chirho: SpanChirho,
+    pub(super) origin_chirho: Option<OriginIdChirho>,
+}
+
+/// One constrained reference's instantiated predicates, in scheme order.
+#[derive(Debug, Clone)]
+pub(super) struct ReferenceCaptureChirho {
+    pub(super) span_chirho: SpanChirho,
+    pub(super) origin_chirho: Option<OriginIdChirho>,
+    pub(super) preds_chirho: Vec<(String, TyChirho)>,
+}
+
 /// A recursive reference sees the group's monomorphic assumption before its
 /// predicates exist. Keep its source identity until generalization supplies
 /// those predicates; never infer its evidence from a sibling argument.
 #[derive(Default)]
 pub(super) struct RecursiveReferencesChirho {
     pub(super) assumptions_chirho: HashMap<String, TyChirho>,
-    spans_chirho: HashMap<String, Vec<SpanChirho>>,
+    references_chirho: HashMap<String, Vec<(SpanChirho, Option<OriginIdChirho>)>>,
 }
 
 impl RecursiveReferencesChirho {
@@ -28,17 +51,18 @@ impl RecursiveReferencesChirho {
         &mut self,
         name_chirho: &str,
         span_chirho: SpanChirho,
+        origin_chirho: Option<OriginIdChirho>,
         scheme_chirho: &SchemeChirho,
     ) {
-        if span_chirho != SpanChirho::DUMMY_CHIRHO
+        if (span_chirho != SpanChirho::DUMMY_CHIRHO || origin_chirho.is_some())
             && scheme_chirho.vars_chirho.is_empty()
             && scheme_chirho.preds_chirho.is_empty()
             && self.assumptions_chirho.get(name_chirho) == Some(&scheme_chirho.ty_chirho)
         {
-            self.spans_chirho
+            self.references_chirho
                 .entry(name_chirho.to_string())
                 .or_default()
-                .push(span_chirho);
+                .push((span_chirho, origin_chirho));
         }
     }
 }
@@ -100,15 +124,16 @@ impl InferCtxChirho {
         self.recursive_references_chirho
             .assumptions_chirho
             .remove(name_chirho);
-        for span_chirho in self
+        for (span_chirho, origin_chirho) in self
             .recursive_references_chirho
-            .spans_chirho
+            .references_chirho
             .remove(name_chirho)
             .unwrap_or_default()
         {
-            self.reference_captures_chirho.push((
+            self.reference_captures_chirho.push(ReferenceCaptureChirho {
                 span_chirho,
-                scheme_chirho
+                origin_chirho,
+                preds_chirho: scheme_chirho
                     .preds_chirho
                     .iter()
                     .map(|pred_chirho| {
@@ -118,7 +143,7 @@ impl InferCtxChirho {
                         )
                     })
                     .collect(),
-            ));
+            });
         }
     }
 
@@ -140,19 +165,58 @@ impl InferCtxChirho {
         ));
     }
 
-    /// Record a constrained reference's instantiated predicates, in the
-    /// scheme's order, for evidence. Dummy spans (generated code) are skipped.
-    pub(super) fn capture_reference_evidence_chirho(
+    /// Record every predicate of one constrained reference: the reference's
+    /// instantiated predicates in scheme order, and one occurrence capture per
+    /// predicate under the per-name ordinal and the reference's origin. An
+    /// occurrence with several predicates keeps all of them.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn capture_occurrence_predicates_chirho(
         &mut self,
-        span_chirho: SpanChirho,
+        name_chirho: &NameChirho,
         preds_chirho: &[PredChirho],
     ) {
-        if span_chirho == SpanChirho::DUMMY_CHIRHO || preds_chirho.is_empty() {
+        if preds_chirho.is_empty() {
             return;
         }
-        self.reference_captures_chirho.push((
+        let span_chirho = name_chirho.span_chirho();
+        let origin_chirho = name_chirho.origin_chirho();
+        self.capture_reference_evidence_chirho(span_chirho, origin_chirho, preds_chirho);
+        let counter_chirho = self
+            .occurrence_counters_chirho
+            .entry(name_chirho.text_chirho().to_string())
+            .or_insert(0);
+        let ordinal_chirho = *counter_chirho;
+        *counter_chirho += 1;
+        for pred_chirho in preds_chirho {
+            self.occurrence_captures_chirho
+                .push(OccurrenceCaptureChirho {
+                    name_chirho: name_chirho.text_chirho().to_string(),
+                    ordinal_chirho,
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: pred_chirho.ty_chirho.clone(),
+                    span_chirho,
+                    origin_chirho,
+                });
+        }
+    }
+
+    /// Record a constrained reference's instantiated predicates, in the
+    /// scheme's order, for evidence. A reference with neither a real span nor
+    /// an origin (generated code before provenance) identifies nothing and is
+    /// skipped.
+    fn capture_reference_evidence_chirho(
+        &mut self,
+        span_chirho: SpanChirho,
+        origin_chirho: Option<OriginIdChirho>,
+        preds_chirho: &[PredChirho],
+    ) {
+        if span_chirho == SpanChirho::DUMMY_CHIRHO && origin_chirho.is_none() {
+            return;
+        }
+        self.reference_captures_chirho.push(ReferenceCaptureChirho {
             span_chirho,
-            preds_chirho
+            origin_chirho,
+            preds_chirho: preds_chirho
                 .iter()
                 .map(|pred_chirho| {
                     (
@@ -161,7 +225,7 @@ impl InferCtxChirho {
                     )
                 })
                 .collect(),
-        ));
+        });
     }
 
     /// Remember, for each predicate of a signature being checked with rigid
@@ -272,16 +336,24 @@ impl InferCtxChirho {
     }
 
     /// Finalize the reference captures through the composed substitution, one
-    /// record per predicate in scheme order. A span captured more than once
-    /// yields evidence only when every capture agrees.
+    /// record per predicate in scheme order, keyed twice: by span, as before
+    /// (a placeholder span is never a key there), and by origin. A key captured
+    /// more than once yields evidence only when every capture agrees.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn finalize_reference_evidence_chirho(
         &self,
         final_subst_chirho: &SubstChirho,
-    ) -> HashMap<SpanChirho, Vec<ReferenceEvidenceChirho>> {
+    ) -> (
+        HashMap<SpanChirho, Vec<ReferenceEvidenceChirho>>,
+        HashMap<OriginIdChirho, Vec<ReferenceEvidenceChirho>>,
+    ) {
         let mut by_span_chirho: HashMap<SpanChirho, Vec<Vec<ReferenceEvidenceChirho>>> =
             HashMap::new();
-        for (span_chirho, preds_chirho) in &self.reference_captures_chirho {
-            let records_chirho: Vec<ReferenceEvidenceChirho> = preds_chirho
+        let mut by_origin_chirho: HashMap<OriginIdChirho, Vec<Vec<ReferenceEvidenceChirho>>> =
+            HashMap::new();
+        for capture_chirho in &self.reference_captures_chirho {
+            let records_chirho: Vec<ReferenceEvidenceChirho> = capture_chirho
+                .preds_chirho
                 .iter()
                 .map(|(class_name_chirho, ty_chirho)| ReferenceEvidenceChirho {
                     class_name_chirho: class_name_chirho.clone(),
@@ -292,21 +364,23 @@ impl InferCtxChirho {
                     ),
                 })
                 .collect();
-            by_span_chirho
-                .entry(*span_chirho)
-                .or_default()
-                .push(records_chirho);
+            if capture_chirho.span_chirho != SpanChirho::DUMMY_CHIRHO {
+                by_span_chirho
+                    .entry(capture_chirho.span_chirho)
+                    .or_default()
+                    .push(records_chirho.clone());
+            }
+            if let Some(origin_chirho) = capture_chirho.origin_chirho {
+                by_origin_chirho
+                    .entry(origin_chirho)
+                    .or_default()
+                    .push(records_chirho);
+            }
         }
-        by_span_chirho
-            .into_iter()
-            .filter_map(|(span_chirho, mut captures_chirho)| {
-                let first_chirho = captures_chirho.pop()?;
-                captures_chirho
-                    .iter()
-                    .all(|capture_chirho| *capture_chirho == first_chirho)
-                    .then_some((span_chirho, first_chirho))
-            })
-            .collect()
+        (
+            agreeing_captures_chirho(by_span_chirho),
+            agreeing_captures_chirho(by_origin_chirho),
+        )
     }
 
     /// Finalize the captures through the module's composed substitution.
@@ -410,6 +484,66 @@ mod tests_chirho {
     }
 
     #[test]
+    fn a_generated_reference_is_keyed_by_its_origin_and_never_by_its_placeholder_chirho() {
+        // Two generated references under one placeholder span need different
+        // evidence (Bool, Int). The span map must not hold the placeholder at
+        // all; the origin map keeps each reference's own proof, and an
+        // occurrence with two predicates keeps both.
+        let mut supply_chirho =
+            haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+        let first_origin_chirho = supply_chirho.fresh_chirho();
+        let second_origin_chirho = supply_chirho.fresh_chirho();
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let first_ty_chirho = ctx_chirho.fresh_var_chirho();
+        let second_ty_chirho = ctx_chirho.fresh_var_chirho();
+        ctx_chirho.capture_reference_evidence_chirho(
+            SpanChirho::DUMMY_CHIRHO,
+            Some(first_origin_chirho),
+            &[PredChirho::new_chirho("Show", first_ty_chirho.clone())],
+        );
+        ctx_chirho.capture_reference_evidence_chirho(
+            SpanChirho::DUMMY_CHIRHO,
+            Some(second_origin_chirho),
+            &[
+                PredChirho::new_chirho("Show", second_ty_chirho.clone()),
+                PredChirho::new_chirho("Num", second_ty_chirho.clone()),
+            ],
+        );
+        let mut subst_chirho = SubstChirho::empty_chirho();
+        if let TyChirho::VarChirho(var_chirho) = first_ty_chirho {
+            subst_chirho.insert_chirho(var_chirho, TyChirho::ConChirho("Bool".to_string()));
+        }
+        if let TyChirho::VarChirho(var_chirho) = second_ty_chirho {
+            subst_chirho.insert_chirho(var_chirho, TyChirho::int_chirho());
+        }
+        let (by_span_chirho, by_origin_chirho) =
+            ctx_chirho.finalize_reference_evidence_chirho(&subst_chirho);
+        assert!(by_span_chirho.is_empty(), "{by_span_chirho:?}");
+        let keys_chirho = |origin_chirho| -> Vec<(String, Option<String>)> {
+            by_origin_chirho[&origin_chirho]
+                .iter()
+                .map(|record_chirho| {
+                    (
+                        record_chirho.class_name_chirho.clone(),
+                        record_chirho.ty_key_chirho.clone(),
+                    )
+                })
+                .collect()
+        };
+        assert_eq!(
+            keys_chirho(first_origin_chirho),
+            vec![("Show".to_string(), Some("Bool".to_string()))]
+        );
+        assert_eq!(
+            keys_chirho(second_origin_chirho),
+            vec![
+                ("Show".to_string(), Some("Int".to_string())),
+                ("Num".to_string(), Some("Int".to_string())),
+            ]
+        );
+    }
+
+    #[test]
     fn reference_evidence_names_the_proof_per_predicate_chirho() {
         // `both :: (Describe a, Describe b) => ...` used at (Bool, Int): one
         // record per predicate, in scheme order; a rigid variable is the
@@ -426,6 +560,7 @@ mod tests_chirho {
         }
         ctx_chirho.capture_reference_evidence_chirho(
             span_chirho(40),
+            None,
             &[
                 PredChirho::new_chirho("Describe", a_chirho.clone()),
                 PredChirho::new_chirho("Describe", b_chirho.clone()),
@@ -441,7 +576,8 @@ mod tests_chirho {
         if let TyChirho::VarChirho(var_chirho) = b_chirho {
             subst_chirho.insert_chirho(var_chirho, TyChirho::int_chirho());
         }
-        let evidence_chirho = ctx_chirho.finalize_reference_evidence_chirho(&subst_chirho);
+        let (evidence_chirho, _by_origin_chirho) =
+            ctx_chirho.finalize_reference_evidence_chirho(&subst_chirho);
         let keys_chirho: Vec<(String, Option<String>)> = evidence_chirho[&span_chirho(40)]
             .iter()
             .map(|record_chirho| {
@@ -563,4 +699,22 @@ mod tests_chirho {
         assert!(!evidence_chirho.contains_key(&span_chirho(5)));
         assert_eq!(evidence_chirho[&span_chirho(6)].ty_key_chirho, "Int");
     }
+}
+
+/// Keep a key's evidence only when every capture of that key agrees: a key
+/// inferred more than once (a re-check, a speculative branch) proves nothing
+/// when the inferences differ.
+fn agreeing_captures_chirho<KeyChirho: std::hash::Hash + Eq>(
+    captures_chirho: HashMap<KeyChirho, Vec<Vec<ReferenceEvidenceChirho>>>,
+) -> HashMap<KeyChirho, Vec<ReferenceEvidenceChirho>> {
+    captures_chirho
+        .into_iter()
+        .filter_map(|(key_chirho, mut records_chirho)| {
+            let first_chirho = records_chirho.pop()?;
+            records_chirho
+                .iter()
+                .all(|record_chirho| *record_chirho == first_chirho)
+                .then_some((key_chirho, first_chirho))
+        })
+        .collect()
 }

@@ -36,6 +36,7 @@ fn record_chirho(
         class_name_chirho: "Show".to_string(),
         ty_key_chirho: ty_key_chirho.to_string(),
         span_chirho,
+        origin_chirho: None,
     }
 }
 
@@ -75,6 +76,7 @@ fn infer_result_chirho(records_chirho: Vec<MethodOccurrenceRecordChirho>) -> Inf
         method_occurrence_totals_chirho: totals_chirho,
         literal_evidence_chirho: HashMap::new(),
         reference_evidence_chirho: HashMap::new(),
+        reference_evidence_by_origin_chirho: HashMap::new(),
     }
 }
 

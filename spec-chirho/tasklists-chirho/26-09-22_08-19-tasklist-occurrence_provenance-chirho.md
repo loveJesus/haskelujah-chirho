@@ -109,7 +109,15 @@ controls (gpt_chirho #24544), after provenance.
     at every reference and operator; the duplicated fall-through; the recursive-do knot; supply
     continuity lowering -> splice -> deriving; passthrough identity through splicing and deriving; a
     re-read binder carries no origin.
-- [ ] 4. Checker: records keyed by origin ID + role; a multi-predicate occurrence keeps every record.
+- [x] 4. Checker: records keyed by origin ID + role; a multi-predicate occurrence keeps every record.
+      Occurrence captures became a struct carrying the origin, one helper for variables and
+      constructors; `MethodOccurrenceRecordChirho.origin_chirho`; reference evidence finalized twice,
+      by span (placeholder never a key, as before) and by origin (`reference_evidence_by_origin_chirho`,
+      which also holds generated references); recursive references keep their origin. Controls,
+      mutation-checked: every record names an occurrence of its own name; `show` at two types keeps
+      two origins; a two-predicate reference keeps both under one origin; derived-code records carry
+      origins; two generated references under one placeholder keep distinct evidence by origin and
+      none by span. Behaviour unchanged until the join reads origins.
 - [ ] 5. Desugarer: each evidence-bearing mint site above carries the origin ID + role of its construct.
 - [ ] 6. Join by origin ID + role; delete the positional path and its count guard.
 - [ ] 7. Separately: producer repair A (ArithSeq checking) and repair B (preserve `/=`).
