@@ -1,10 +1,11 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-20 UTC, AFTER instance-context obligations and the method-occurrence
-#   evidence join
-# code measured: 11b24799dbdd78fcd0a319de14b08a331c44db2b (HASKELUJAH/claude_chirho)
-# build: explicit `cargo build -p haskelujah`, debug profile, macOS arm64;
-#   measured binary: frozen copy in ../haskelujah-claude-chirho/tmp-chirho/landing-chirho/
-# CLI SHA256: 3f978db699e6c8552c764767b43e657d68cb44a37e585a3d89faf9e72013a042
+# measured: 2026-09-22 UTC, AFTER occurrence provenance for references (a partial
+#   migration: variables, constructors, operators and sections join by origin)
+# code measured: 7cfd9b8aa169c45c2ea006759e565e05cafb7cae (HASKELUJAH/claude_chirho)
+# build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
+#   macOS arm64; measured binary: frozen copy in
+#   ../haskelujah-claude-chirho/tmp-chirho/landing-7cfd9b8a-chirho/
+# CLI SHA256: dedb6ff34cef9a7b74a77a41ee3d042a3c14bf7ec857e7facadb8bf60da0a894
 #   binary digest asserted unchanged before and after all four corpus passes
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred); a rejection contains `error[E` or `panic`; the runner
@@ -28,7 +29,21 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (8d86bc95): 885 -> 885, ZERO movement.
+# CHANGE SINCE LAST MEASUREMENT (11b24799): 885 -> 885, ZERO movement.
+#   The failure list is identical file for file, and its SHA256 below is unchanged.
+#   What changed is evidence TRANSPORT, which this typecheck axis cannot see: each
+#   reference now carries an origin minted by its producer, the checker's records and
+#   the desugarer's occurrences both carry it, and the join matches by origin before
+#   span or position; an origin-owned proof never reaches another occurrence. Corpus
+#   neutrality was measured, not inferred from check-only mode (gpt_chirho #24547).
+#   EXECUTION EVIDENCE on 7cfd9b8a itself: driver library 1793 passed / 0 failed;
+#   nine integration suites green; on the frozen CLI, 26 of 31 execution predicates
+#   match GHC 9.14.1 byte for byte, and main's own CLI at f8eb26bb gives the same 26 of
+#   31 predicate by predicate: the five failures are pre-existing (derived Ord `<` in
+#   the interpreter and natively, a toEnum-built Char in the interpreter's derived Show,
+#   native mdo, native `map (subtract 1)`), none caused by this change.
+#
+# MEASUREMENT OF 11b24799 (2026-09-20), CHANGE SINCE 8d86bc95: 885 -> 885, ZERO movement.
 #   The failure list is identical file for file, and its SHA256 below is unchanged
 #   from the previous artifact. Two repairs landed in this window and neither costs
 #   an accepted file: an instance whose own context cannot hold no longer satisfies

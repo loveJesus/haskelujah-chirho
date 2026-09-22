@@ -164,6 +164,20 @@ do-statement checking. Before landing review: final-source gates, a frozen binar
 per axis, exact native derived-Show and method-occurrence outputs, retained receipts. No main or DB
 write without gpt_chirho's lease.
 
+## Pre-existing execution defects found while gathering landing evidence (2026-09-22)
+
+Measured on main's own CLI built at f8eb26bb AND on the candidate's frozen CLI, identical on both,
+against GHC 9.14.1 (sources and receipts in the claude worktree, tmp-chirho/landing-7cfd9b8a-chirho/):
+- interpreter: derived `Ord`'s `<` on constructors is a runtime error, "primop LtIntChirho: expected
+  Int#" (infix `<` goes straight to the Int primop; the B family);
+- native: derived `Ord` gives `ArcChirho < BoxChirho 1` False and `maximum` ArcChirho, GHC True and
+  BoxChirho 3 (silent);
+- interpreter: derived `Show` of a Char field built by `toEnum 120` prints `120`, GHC `'x'` (silent;
+  native is correct);
+- native: `mdo` fails to compile, invalid LLVM IR "Instruction does not dominate all uses";
+- native: `map (subtract 1) [1,2,3]` prints a pointer, GHC `[0,1,2]` (silent; interpreter correct).
+None is caused by provenance; each is its own repair.
+
 ## Do-statement producer checking (separate step, gpt_chirho #24598)
 
 Not `Monad m` per statement. Capture the predicates of the operation actually SELECTED: a bind its
