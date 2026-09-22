@@ -393,9 +393,11 @@ impl InferCtxChirho {
     /// Finalize the captures through the module's composed substitution.
     /// Only a literal whose type resolved to a concrete head yields evidence;
     /// one still on a variable (generalized, or ambiguous) or on a rigid
-    /// variable keeps today's dispatch path. A span inferred more than once
-    /// (a re-check, a speculative branch) yields evidence only when every
-    /// inference agrees.
+    /// variable keeps today's dispatch path. A literal with an origin is
+    /// published under that origin only; the span map holds only literals
+    /// without one. A key inferred more than once (a re-check, a speculative
+    /// branch) yields evidence only when every inference agrees.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn finalize_literal_evidence_chirho(
         &self,
         final_subst_chirho: &SubstChirho,
@@ -424,17 +426,19 @@ impl InferCtxChirho {
                 class_name_chirho: class_name_chirho.clone(),
                 ty_key_chirho: key_chirho,
             };
-            if *span_chirho != SpanChirho::DUMMY_CHIRHO {
-                keys_by_span_chirho
-                    .entry(*span_chirho)
-                    .or_default()
-                    .push(record_chirho.clone());
-            }
-            if let Some(origin_chirho) = origin_chirho {
-                keys_by_origin_chirho
+            // Exclusive publication, as for references (gpt_chirho review F2): a
+            // literal with an origin is published under that origin only, and the
+            // span map is the origin-free legacy projection.
+            match origin_chirho {
+                Some(origin_chirho) => keys_by_origin_chirho
                     .entry(*origin_chirho)
                     .or_default()
-                    .push(record_chirho);
+                    .push(record_chirho),
+                None if *span_chirho != SpanChirho::DUMMY_CHIRHO => keys_by_span_chirho
+                    .entry(*span_chirho)
+                    .or_default()
+                    .push(record_chirho),
+                None => {}
             }
         }
         (
@@ -484,6 +488,25 @@ mod tests_chirho {
         origin_chirho: Option<OriginIdChirho>,
     ) -> LitChirho {
         LitChirho::IntChirho(0, span_chirho, origin_chirho)
+    }
+
+    #[test]
+    fn an_origin_owned_literal_is_never_published_as_span_evidence_chirho() {
+        // The literal analogue of review F2 (#24598): a literal owned by origin A
+        // at a genuine span S must not also become legacy evidence at S.
+        let mut supply_chirho =
+            haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+        let owner_chirho = supply_chirho.fresh_chirho();
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        ctx_chirho.capture_literal_evidence_chirho(
+            &test_int_literal_chirho(span_chirho(70), Some(owner_chirho)),
+            "Num",
+            &TyChirho::int_chirho(),
+        );
+        let (by_span_chirho, by_origin_chirho) =
+            ctx_chirho.finalize_literal_evidence_chirho(&SubstChirho::empty_chirho());
+        assert!(by_span_chirho.is_empty(), "{by_span_chirho:?}");
+        assert_eq!(by_origin_chirho[&owner_chirho].ty_key_chirho, "Int");
     }
 
     #[test]

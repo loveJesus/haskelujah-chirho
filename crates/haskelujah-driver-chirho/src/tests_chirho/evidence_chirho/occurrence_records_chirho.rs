@@ -241,3 +241,63 @@ fn no_origin_owned_proof_reaches_a_legacy_consumer_at_its_span_chirho() {
     );
     assert!(methods_chirho.is_empty(), "{methods_chirho:?}");
 }
+
+#[test]
+fn no_origin_owned_literal_proof_reaches_a_legacy_literal_at_its_span_chirho() {
+    // The literal half of the producer-through-consumer control: every literal
+    // lowering stamped is owned by its origin, so the legacy span projection holds
+    // none of them and a legacy literal occurrence at such a span receives nothing.
+    use haskelujah_core_chirho::CoreIdChirho;
+    let mut result_chirho = frontend_chirho(
+        "module Main where\n\
+         halfChirho :: Double -> Double\n\
+         halfChirho x = x / 2\n\
+         main :: IO ()\n\
+         main = do\n\
+         \x20 print (3 + (4 :: Int))\n\
+         \x20 print (halfChirho 5)\n",
+    );
+    let mut literal_spans_chirho: Vec<haskelujah_span_chirho::SpanChirho> = Vec::new();
+    for decl_chirho in &mut result_chirho.module_chirho.decls_chirho {
+        visit_decl_chirho(decl_chirho, &mut |occurrence_chirho| {
+            if let OccurrenceMutChirho::LiteralChirho(lit_chirho) = &occurrence_chirho {
+                if lit_chirho.origin_chirho().is_some() {
+                    literal_spans_chirho.push(lit_chirho.span_chirho());
+                }
+            }
+        });
+    }
+    let infer_chirho = &result_chirho.infer_result_chirho;
+    assert!(
+        !infer_chirho.literal_evidence_by_origin_chirho.is_empty(),
+        "the control has no owned literal proof to protect"
+    );
+    for span_chirho in &literal_spans_chirho {
+        assert!(
+            !infer_chirho
+                .literal_evidence_chirho
+                .contains_key(span_chirho),
+            "an owned literal proof was also published at its span {span_chirho:?}"
+        );
+    }
+    let legacy_chirho: HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho> =
+        literal_spans_chirho
+            .iter()
+            .enumerate()
+            .map(|(index_chirho, span_chirho)| {
+                (CoreIdChirho(20_000 + index_chirho as u32), *span_chirho)
+            })
+            .collect();
+    let occurrences_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)> = legacy_chirho
+        .keys()
+        .map(|id_chirho| (*id_chirho, ("fromInteger".to_string(), CoreIdChirho(1))))
+        .collect();
+    let joined_chirho = crate::join_occurrence_evidence_chirho(
+        infer_chirho,
+        &occurrences_chirho,
+        &legacy_chirho,
+        &HashMap::new(),
+        &HashMap::new(),
+    );
+    assert!(joined_chirho.is_empty(), "{joined_chirho:?}");
+}
