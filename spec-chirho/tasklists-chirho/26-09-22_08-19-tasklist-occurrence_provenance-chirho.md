@@ -281,3 +281,31 @@ against GHC 9.14.1. Receipts: tmp-chirho/literal-checkpoint-chirho/ in the claud
 - interpreter: `fromIntegral n / 2 :: Double` reports missing STG binding `/`; native reports
   "LLVM does not support fromIntegral#".
 None is caused by the literal carrier; each is its own repair.
+
+## Do-statement unit: brick-0 homework (read-only, 2026-09-24)
+
+What the checker does today: `infer_expr_chirho`'s `DoChirho` arm takes a fresh monad variable and
+unifies `m a` shapes statement by statement. It never looks up `>>=`, never instantiates its scheme,
+and emits NO Monad predicate. So this is not a missing capture point - the checker does not select
+the operator at all, and there is nothing to capture until it does.
+
+What the desugarer selects, all three through `resolve_do_method_chirho(qualifier, name)`, which
+resolves `M.>>=` when the qualifier is not the current module (QualifiedDo):
+- `>>` for every non-tail expression statement;
+- `>>=` for every bind statement;
+- `fail` in the non-Var, non-Wildcard pattern arm only, as the default alternative of the generated
+  case, with the message "Pattern match failure in do expression".
+IO short-circuits at STG by name to `ThenIOChirho`/`BindIOChirho` (INV-001), so evidence for the IO
+case may never be consulted - worth measuring before assuming the capture changes anything there.
+
+TRAP, found before building it: the desugarer's `fail` arm covers constructor, tuple AND literal
+patterns alike, so it emits a `fail` for `(a, b) <- m` too. At runtime that alternative is dead and
+harmless. If the CHECKER mirrors the desugarer arm for arm, it would emit a MonadFail predicate for
+an irrefutable pattern, and `do { (a, b) <- m; ... }` in a Monad with no MonadFail instance would be
+REJECTED where GHC accepts it. That is an accept-axis regression, and it would arrive disguised as
+faithfulness to the producer.
+So the checker must use GHC's failability rule, not the desugarer's structural arm: a pattern is
+irrefutable if it is a variable, a wildcard, a lazy pattern, a newtype pattern, or a
+single-constructor constructor/tuple/record pattern all of whose sub-patterns are irrefutable. Only a
+genuinely failable pattern selects `fail`. Whether to ALSO stop the desugarer emitting the dead
+`fail` for irrefutable patterns is a separate question; the checker must not wait for it.
