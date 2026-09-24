@@ -6,6 +6,10 @@
 # compile failure is kept with its output and is a FAIL, never a skip.
 # usage: execution_chirho.sh <frozen-cli> <sources-dir> <out-dir> [<reject-corpus-dir>]
 cli_chirho="$1"; sources_chirho="$2"; out_chirho="$3"; rejects_chirho="${4:-}"
+here_chirho="$(cd "$(dirname "$0")" && pwd)"
+# The rejection checks below judge with the SAME rule as every corpus pass, never a
+# second copy of the pattern (gpt_chirho review, room #24614).
+. "$here_chirho/classify_chirho.sh"
 mkdir -p "$out_chirho"
 pass_chirho=0; fail_chirho=0
 report_chirho() { if [ "$1" = PASS ]; then pass_chirho=$((pass_chirho+1)); else fail_chirho=$((fail_chirho+1)); fi; printf '%s  %s\n' "$1" "$2"; }
@@ -19,11 +23,15 @@ if [ -n "$rejects_chirho" ]; then
     run_chirho "reject-$file_chirho" "$cli_chirho" check "$rejects_chirho/$file_chirho.hs"
     out_text_chirho="$(cat "$out_chirho/reject-$file_chirho.stdout" "$out_chirho/reject-$file_chirho.stderr")"
     rc_chirho="$(rc_of_chirho "reject-$file_chirho")"
-    case "$out_text_chirho" in
-      *"thread '"*"' panicked at"*) report_chirho FAIL "reject $file_chirho: Rust panic, rc=$rc_chirho";;
-      *"error[E0204]"*"no instance for \`$pred_chirho\`"*) [ "$rc_chirho" -eq 1 ] && report_chirho PASS "reject $file_chirho: E0204 no instance for \`$pred_chirho\`, rc=1" || report_chirho FAIL "reject $file_chirho: rc=$rc_chirho";;
-      *) report_chirho FAIL "reject $file_chirho: expected E0204 naming \`$pred_chirho\`, rc=$rc_chirho";;
-    esac
+    verdict_word_chirho="$(verdict_chirho "$out_text_chirho" "$rc_chirho")"
+    if [ "$verdict_word_chirho" != REJECT ]; then
+      report_chirho FAIL "reject $file_chirho: verdict $verdict_word_chirho, rc=$rc_chirho"
+    else
+      case "$out_text_chirho" in
+        *"error[E0204]"*"no instance for \`$pred_chirho\`"*) report_chirho PASS "reject $file_chirho: E0204 no instance for \`$pred_chirho\`, rc=1";;
+        *) report_chirho FAIL "reject $file_chirho: expected E0204 naming \`$pred_chirho\`, rc=$rc_chirho";;
+      esac
+    fi
   done
 fi
 for source_chirho in "$sources_chirho"/*.hs; do
