@@ -3556,7 +3556,7 @@ impl InferCtxChirho {
                     let is_last_chirho = idx_chirho == stmts_chirho.len() - 1;
 
                     match stmt_chirho {
-                        StmtChirho::ExprChirho(expr_chirho) => {
+                        StmtChirho::ExprChirho { expr_chirho, .. } => {
                             let (s_chirho, ty_chirho) =
                                 match (&last_expected_chirho, is_last_chirho) {
                                     (Some(expected_chirho), true) => {
@@ -4126,7 +4126,7 @@ impl InferCtxChirho {
 
         for qual_chirho in quals_chirho {
             match qual_chirho {
-                StmtChirho::ExprChirho(expr_chirho) => {
+                StmtChirho::ExprChirho { expr_chirho, .. } => {
                     let (guard_subst_chirho, guard_ty_chirho) = self.infer_expr_chirho(expr_chirho);
                     subst_chirho = guard_subst_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&guard_subst_chirho);
@@ -7631,7 +7631,7 @@ fn collect_expr_refs_chirho(
             for stmt_chirho in stmts_chirho {
                 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
                 match stmt_chirho {
-                    StmtChirho::ExprChirho(e_chirho) => {
+                    StmtChirho::ExprChirho { expr_chirho: e_chirho, .. } => {
                         collect_expr_refs_chirho(e_chirho, refs_chirho)
                     }
                     StmtChirho::BindChirho { expr_chirho, .. } => {
@@ -7702,7 +7702,7 @@ fn collect_expr_refs_chirho(
             {
                 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
                 match q_chirho {
-                    StmtChirho::ExprChirho(e_chirho) => {
+                    StmtChirho::ExprChirho { expr_chirho: e_chirho, .. } => {
                         collect_expr_refs_chirho(e_chirho, refs_chirho)
                     }
                     StmtChirho::BindChirho { expr_chirho, .. } => {
@@ -25652,6 +25652,8 @@ mod tests_chirho {
                         stmts_chirho: vec![
                             // x <- Just 42  (simulated: x <- app(Just, 42))
                             StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
                                 pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                                 expr_chirho: ExprChirho::AppChirho {
                                     fun_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho(
@@ -25665,7 +25667,7 @@ mod tests_chirho {
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             },
                             // pure x (simplified: just return x)
-                            StmtChirho::ExprChirho(ExprChirho::VarChirho(dummy_name_chirho("x"))),
+                            StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(dummy_name_chirho("x"))),
                         ],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),
@@ -25733,7 +25735,7 @@ mod tests_chirho {
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             },
                             // y (return it)
-                            StmtChirho::ExprChirho(ExprChirho::VarChirho(
+                            StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(
                                 dummy_name_chirho("y"),
                             )),
                         ],

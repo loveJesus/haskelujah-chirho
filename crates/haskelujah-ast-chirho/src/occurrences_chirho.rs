@@ -22,6 +22,7 @@ use crate::expr_chirho::{
 use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
 use crate::provenance_chirho::{OriginIdChirho, OriginSupplyChirho};
+use crate::stmt_operation_chirho::SelectedOperationChirho;
 
 /// One occurrence, reached for reading or restamping.
 pub enum OccurrenceMutChirho<'a> {
@@ -178,17 +179,42 @@ fn visit_rhs_chirho(rhs_chirho: &mut RhsChirho, visit_chirho: &mut OccurrenceVis
     }
 }
 
+/// The selected operation of a statement, if it selected one. A statement that
+/// selects nothing has no occurrence here, so nothing is stamped for it.
+fn visit_operation_chirho(
+    operation_chirho: &mut Option<SelectedOperationChirho>,
+    visit_chirho: &mut OccurrenceVisitorChirho,
+) {
+    if let Some(operation_chirho) = operation_chirho {
+        visit_chirho(OccurrenceMutChirho::ReferenceChirho(
+            &mut operation_chirho.name_chirho,
+        ));
+    }
+}
+
 fn visit_stmts_chirho(stmts_chirho: &mut [StmtChirho], visit_chirho: &mut OccurrenceVisitorChirho) {
     for stmt_chirho in stmts_chirho {
         match stmt_chirho {
-            StmtChirho::ExprChirho(expr_chirho) => visit_expr_chirho(expr_chirho, visit_chirho),
+            StmtChirho::ExprChirho {
+                expr_chirho,
+                then_chirho,
+            } => {
+                visit_expr_chirho(expr_chirho, visit_chirho);
+                // The `>>` the statement selects is a use like any other: it is
+                // reminted with the statement when a producer duplicates it.
+                visit_operation_chirho(then_chirho, visit_chirho);
+            }
             StmtChirho::BindChirho {
                 pat_chirho,
                 expr_chirho,
+                bind_chirho,
+                fail_chirho,
                 ..
             } => {
                 visit_pat_chirho(pat_chirho, visit_chirho);
                 visit_expr_chirho(expr_chirho, visit_chirho);
+                visit_operation_chirho(bind_chirho, visit_chirho);
+                visit_operation_chirho(fail_chirho, visit_chirho);
             }
             StmtChirho::LetChirho { binds_chirho, .. } => {
                 visit_local_binds_chirho(binds_chirho, visit_chirho);

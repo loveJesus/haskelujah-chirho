@@ -23,6 +23,7 @@ pub mod name_chirho;
 pub mod occurrences_chirho;
 pub mod pat_chirho;
 pub mod provenance_chirho;
+pub mod stmt_operation_chirho;
 #[cfg(test)]
 mod provenance_tests_chirho;
 pub mod ty_chirho;

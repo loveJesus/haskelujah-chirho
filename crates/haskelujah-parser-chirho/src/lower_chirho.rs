@@ -1504,7 +1504,7 @@ impl LowerCtxChirho {
             guard_chirho.quals_chirho.len() == 1
                 && matches!(
                     guard_chirho.quals_chirho.first(),
-                    Some(StmtChirho::ExprChirho(_))
+                    Some(StmtChirho::ExprChirho { expr_chirho: _, .. })
                 )
         });
 
@@ -1513,7 +1513,7 @@ impl LowerCtxChirho {
                 .into_iter()
                 .map(|guard_chirho| GuardedExprChirho {
                     guard_chirho: match guard_chirho.quals_chirho.into_iter().next() {
-                        Some(StmtChirho::ExprChirho(expr_chirho)) => expr_chirho,
+                        Some(StmtChirho::ExprChirho { expr_chirho, .. }) => expr_chirho,
                         _ => self.placeholder_expr_chirho(),
                     },
                     body_chirho: guard_chirho.body_chirho,
@@ -1673,7 +1673,7 @@ impl LowerCtxChirho {
     ) -> ExprChirho {
         if let Some((first_qual_chirho, rest_quals_chirho)) = quals_chirho.split_first() {
             match first_qual_chirho {
-                StmtChirho::ExprChirho(expr_chirho) => ExprChirho::IfChirho {
+                StmtChirho::ExprChirho { expr_chirho, .. } => ExprChirho::IfChirho {
                     cond_chirho: Box::new(expr_chirho.clone()),
                     then_chirho: Box::new(self.lower_guard_quals_to_expr_chirho(
                         rest_quals_chirho,
@@ -1688,7 +1688,7 @@ impl LowerCtxChirho {
                     pat_chirho,
                     expr_chirho,
                     span_chirho: bind_span_chirho,
-                } => ExprChirho::CaseChirho {
+                 .. } => ExprChirho::CaseChirho {
                     scrutinee_chirho: Box::new(expr_chirho.clone()),
                     alts_chirho: vec![
                         AltChirho {
@@ -1896,7 +1896,7 @@ impl LowerCtxChirho {
             let child_span_chirho =
                 self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
             let stmt_chirho = match node_chirho.kind_chirho() {
-                SyntaxKindChirho::DoStmtChirho => StmtChirho::ExprChirho(
+                SyntaxKindChirho::DoStmtChirho => StmtChirho::expr_stmt_chirho(
                     self.lower_first_expr_in_node_chirho(node_chirho, child_chirho.start_chirho),
                 ),
                 SyntaxKindChirho::BindStmtChirho => {
@@ -1922,7 +1922,7 @@ impl LowerCtxChirho {
                     });
                     continue;
                 }
-                _ => StmtChirho::ExprChirho(
+                _ => StmtChirho::expr_stmt_chirho(
                     self.lower_expr_chirho(node_chirho, child_chirho.start_chirho),
                 ),
             };
@@ -7245,7 +7245,7 @@ impl LowerCtxChirho {
                 guard_chirho.quals_chirho.len() == 1
                     && matches!(
                         guard_chirho.quals_chirho.first(),
-                        Some(StmtChirho::ExprChirho(_))
+                        Some(StmtChirho::ExprChirho { expr_chirho: _, .. })
                     )
             });
 
@@ -7255,7 +7255,7 @@ impl LowerCtxChirho {
                         .into_iter()
                         .map(|guard_chirho| GuardedExprChirho {
                             guard_chirho: match guard_chirho.quals_chirho.into_iter().next() {
-                                Some(StmtChirho::ExprChirho(expr_chirho)) => expr_chirho,
+                                Some(StmtChirho::ExprChirho { expr_chirho, .. }) => expr_chirho,
                                 _ => self.placeholder_expr_chirho(),
                             },
                             body_chirho: guard_chirho.body_chirho,
@@ -7312,6 +7312,8 @@ impl LowerCtxChirho {
         }
 
         StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
             pat_chirho: pat_chirho.unwrap_or(PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO)),
             expr_chirho: expr_chirho.unwrap_or_else(|| self.placeholder_expr_chirho()),
             span_chirho,
@@ -8566,6 +8568,8 @@ impl LowerCtxChirho {
                 .unwrap_or_else(|| self.placeholder_expr_chirho());
 
             Some(StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
                 pat_chirho,
                 expr_chirho,
                 span_chirho,
@@ -8581,7 +8585,7 @@ impl LowerCtxChirho {
                 .collect();
             let expr_chirho =
                 self.fold_qual_expr_parts_to_expr_chirho(exprs_chirho, span_chirho)?;
-            Some(StmtChirho::ExprChirho(expr_chirho))
+            Some(StmtChirho::expr_stmt_chirho(expr_chirho))
         }
     }
 
@@ -9783,7 +9787,7 @@ mod tests_chirho {
             ExprChirho::DoChirho { stmts_chirho, .. } => {
                 for (stmt_idx_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
                     match stmt_chirho {
-                        StmtChirho::ExprChirho(stmt_expr_chirho) => {
+                        StmtChirho::ExprChirho { expr_chirho: stmt_expr_chirho, .. } => {
                             collect_placeholder_expr_paths_in_expr_chirho(
                                 stmt_expr_chirho,
                                 &format!("{path_prefix_chirho}.stmt[{stmt_idx_chirho}].expr"),
@@ -9864,7 +9868,7 @@ mod tests_chirho {
                 );
                 for (qual_idx_chirho, qual_chirho) in quals_chirho.iter().enumerate() {
                     match qual_chirho {
-                        StmtChirho::ExprChirho(qual_expr_chirho) => {
+                        StmtChirho::ExprChirho { expr_chirho: qual_expr_chirho, .. } => {
                             collect_placeholder_expr_paths_in_expr_chirho(
                                 qual_expr_chirho,
                                 &format!("{path_prefix_chirho}.qual[{qual_idx_chirho}].expr"),
@@ -9894,7 +9898,7 @@ mod tests_chirho {
                 for (group_idx_chirho, group_chirho) in parallel_quals_chirho.iter().enumerate() {
                     for (qual_idx_chirho, qual_chirho) in group_chirho.iter().enumerate() {
                         match qual_chirho {
-                            StmtChirho::ExprChirho(qual_expr_chirho) => {
+                            StmtChirho::ExprChirho { expr_chirho: qual_expr_chirho, .. } => {
                                 collect_placeholder_expr_paths_in_expr_chirho(
                                     qual_expr_chirho,
                                     &format!(
@@ -17060,7 +17064,7 @@ fn lower_mdo_wraps_statements_before_final_expression_chirho() {
                 ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mfix"
             )
     ));
-    assert!(matches!(stmts_chirho[1], StmtChirho::ExprChirho(_)));
+    assert!(matches!(stmts_chirho[1], StmtChirho::ExprChirho { expr_chirho: _, .. }));
 }
 
 #[cfg(test)]

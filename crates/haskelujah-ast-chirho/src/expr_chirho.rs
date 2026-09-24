@@ -8,6 +8,7 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::lit_chirho::LitChirho;
 use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
+use crate::stmt_operation_chirho::SelectedOperationChirho;
 use crate::ty_chirho::TypeChirho;
 
 /// A Haskell expression.
@@ -294,13 +295,26 @@ pub struct GuardedExprChirho {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StmtChirho {
     /// Expression statement (`expr`).
-    ExprChirho(ExprChirho),
+    ExprChirho {
+        /// The expression evaluated by the statement.
+        expr_chirho: ExprChirho,
+        /// The `>>` this statement selects. `None` for the tail statement of a
+        /// do block, and for a list comprehension's guard, which select none.
+        then_chirho: Option<SelectedOperationChirho>,
+    },
     /// Bind statement (`pat <- expr`).
     BindChirho {
         /// Pattern bound by the statement.
         pat_chirho: PatChirho,
         /// Expression producing the bound value.
         expr_chirho: ExprChirho,
+        /// The `>>=` this statement selects. `None` for a list comprehension's
+        /// generator, which is not a monadic bind.
+        bind_chirho: Option<SelectedOperationChirho>,
+        /// The `fail` this statement selects, present only when the pattern can
+        /// actually fail. An irrefutable pattern selects none, so no MonadFail
+        /// obligation is invented for it.
+        fail_chirho: Option<SelectedOperationChirho>,
         /// Span covering the whole bind statement.
         span_chirho: SpanChirho,
     },
@@ -311,6 +325,33 @@ pub enum StmtChirho {
         /// Span covering the whole let statement.
         span_chirho: SpanChirho,
     },
+}
+
+impl StmtChirho {
+    /// An expression statement that selects nothing: a tail statement, a
+    /// comprehension guard, or generated code that is not a do statement.
+    pub fn expr_stmt_chirho(expr_chirho: ExprChirho) -> Self {
+        Self::ExprChirho {
+            expr_chirho,
+            then_chirho: None,
+        }
+    }
+
+    /// A bind statement that selects nothing: a comprehension generator, or
+    /// generated code lowering has not chosen operations for.
+    pub fn bind_stmt_chirho(
+        pat_chirho: PatChirho,
+        expr_chirho: ExprChirho,
+        span_chirho: SpanChirho,
+    ) -> Self {
+        Self::BindChirho {
+            pat_chirho,
+            expr_chirho,
+            bind_chirho: None,
+            fail_chirho: None,
+            span_chirho,
+        }
+    }
 }
 
 /// A local binding in a let or where clause.

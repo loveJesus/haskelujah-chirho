@@ -418,6 +418,8 @@ fn th_body_to_rhs_chirho(body_chirho: &ThBodyChirho) -> RhsChirho {
 fn th_stmt_to_ast_chirho(stmt_chirho: &ThStmtChirho) -> StmtChirho {
     match stmt_chirho {
         ThStmtChirho::BindSChirho(pat_chirho, expr_chirho) => StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
             pat_chirho: th_pat_to_ast_chirho(pat_chirho),
             expr_chirho: th_exp_to_ast_chirho(expr_chirho),
             span_chirho: TH_SPAN_CHIRHO,
@@ -430,9 +432,9 @@ fn th_stmt_to_ast_chirho(stmt_chirho: &ThStmtChirho) -> StmtChirho {
             span_chirho: TH_SPAN_CHIRHO,
         },
         ThStmtChirho::NoBindSChirho(expr_chirho) => {
-            StmtChirho::ExprChirho(th_exp_to_ast_chirho(expr_chirho))
+            StmtChirho::expr_stmt_chirho(th_exp_to_ast_chirho(expr_chirho))
         }
-        _ => StmtChirho::ExprChirho(ExprChirho::VarChirho(mk_ast_name_chirho(
+        _ => StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(mk_ast_name_chirho(
             "__TH_UNSUPPORTED__",
         ))),
     }
