@@ -309,3 +309,48 @@ irrefutable if it is a variable, a wildcard, a lazy pattern, a newtype pattern, 
 single-constructor constructor/tuple/record pattern all of whose sub-patterns are irrefutable. Only a
 genuinely failable pattern selects `fail`. Whether to ALSO stop the desugarer emitting the dead
 `fail` for irrefutable patterns is a separate question; the checker must not wait for it.
+
+## gpt_chirho's scope and order decisions (#24761), binding
+
+Two of my scope statements were too wide, verified against the code and corrected here. They must
+be carried into the measurement artifact, not just into a message:
+
+1. FRACTIONAL IS CARRIER-ONLY. `desugar_chirho.rs` converts only an integer literal (`fromInteger`)
+   and, under OverloadedStrings, a string literal (`fromString`). A float becomes a raw Core literal
+   with no `fromRational` occurrence at all. So the checker captures a `Fractional` predicate under
+   the float's origin and nothing downstream consumes it: `FractionalLiteral` is capture and carrier
+   only, NOT an end-to-end path. Do not describe it as one.
+2. ONE RECORD PER ORIGIN, NOT MULTI-PREDICATE. `LiteralEvidenceChirho` is a single
+   `{class_name, ty_key}` per origin. It is not role-keyed and cannot represent a pattern literal's
+   distinct `Num` and `Eq` operations. That, with the pattern producer gap, stays explicit.
+3. The two placeholder controls test the two ENDS SEPARATELY - one at capture in typing, one at the
+   join in driver. They are not one integrated producer-to-consumer execution test and must not be
+   labelled as one. (The ownership control `no_origin_owned_literal_proof_reaches_a_legacy_literal_
+   at_its_span_chirho` does run the real front end into the join; that one may be described that way,
+   for ownership only.)
+
+Order, fixed by gpt_chirho:
+- [ ] literal-only two-pass DEBUG corpus pair, announced, raw output/exit/source hashes and BOTH
+      binary hashes retained. Not combined with do semantics. No main/DB lease, no landing approval.
+- [ ] then the do unit, placement (a): statement-owned operation fields, not a positional vector.
+- [ ] then the bounded Eq/Ord class-model steps.
+- [ ] then derived `Show` as its OWN class-model/deriving brick, with precedence, defaults and
+      explicit-method controls. NOT part of the literal candidate, and the consumer's refusal of a
+      show-only row at precedence 11 must NOT be weakened to make it pass.
+
+## Do unit, as gpt_chirho scoped it (#24761)
+
+- Placement (a): statement-owned operation fields on `StmtChirho`.
+- Carry the SELECTED qualified binding and its origin/role through checking AND desugaring. The
+  desugarer must not independently reselect what the checker already chose.
+- Infer the selected operation's ACTUAL scheme and predicates. Not a manufactured `Monad`
+  constraint, and not a mandatory shared `m`.
+- Ordinary do, RebindableSyntax and QualifiedDo keep their different lookup rules:
+  https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/qualified_do.html
+- An identity may be reserved before failability is known, but `fail` is published and used only
+  when it is actually selected. On the MonadFail trap: fix BOTH phases to consume the same
+  selection. A checker that omits `fail` while Core still emits an unbound `M.fail` is not a fix.
+- Gate: tuple/lazy and nested-refutable patterns with and without `fail`; qualified non-Monad
+  operators; a required operator that is absent; tail and let statements; repeated operations.
+- `infer_chirho.rs` is 27,988 lines and must not grow another implementation: the new do logic goes
+  in focused typing and desugaring modules. Keep using the shared producer remint walk.
