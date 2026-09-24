@@ -12,14 +12,16 @@ before any heuristic. Programs without a record keep today's path and today's ve
 ```mermaid
 flowchart TD
     lit_chirho[Literal inferred: infer_expr_chirho pushes Num / Fractional / IsString wanted]
-    lit_chirho --> capture_chirho[capture_literal_evidence_chirho: span, class, literal type; dummy spans skipped]
+    lit_chirho --> capture_chirho[capture_literal_evidence_chirho: the literal's origin and span, class, literal type; a literal with neither identity is skipped]
     solve_chirho[Module solved: unification + Report defaulting composed]
-    capture_chirho --> finalize_chirho[finalize_literal_evidence_chirho: type resolved to a concrete head → key; variables and rigid variables yield nothing; a span seen twice must agree]
+    capture_chirho --> finalize_chirho[finalize_literal_evidence_chirho: type resolved to a concrete head → key; variables and rigid variables yield nothing; a key seen twice must agree]
     solve_chirho --> finalize_chirho
-    finalize_chirho --> result_chirho[InferResultChirho.literal_evidence_chirho: span → LiteralEvidenceChirho]
+    finalize_chirho --> result_chirho[literal_evidence_by_origin_chirho: origin → LiteralEvidenceChirho, plus literal_evidence_chirho as the origin-free legacy span projection]
     desugar_chirho[Desugar: literal becomes App fromInteger-occurrence lit]
-    desugar_chirho --> spans_chirho[record_literal_occurrence_chirho: occurrence id → literal span]
-    result_chirho --> join_chirho[join_occurrence_evidence_chirho: span-first, then the per-name ordinal join]
+    desugar_chirho --> prov_chirho[record_occurrence_provenance_chirho: occurrence id → the literal's origin and role]
+    desugar_chirho --> spans_chirho[record_literal_occurrence_chirho: occurrence id → literal span, for literals with no origin]
+    result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join]
+    prov_chirho --> join_chirho
     spans_chirho --> join_chirho
     join_chirho --> pass_chirho[Dictionary pass occurrence_head_replacement_chirho: prim row or keyed selector from the record]
     pass_chirho --> stg_chirho[STG: the literal's fromInteger has its dictionary]
@@ -27,17 +29,19 @@ flowchart TD
 
 ## Invariants
 
-- A record names one source token: keys are spans, never per-name ordinals, so inference
-  order does not have to match desugar order (a generated node has the dummy span and no
-  record). **This invariant was stated here before it was true of method occurrences**: they
+- A record names one source occurrence, so inference order does not have to match desugar order.
+  The key is the occurrence's ORIGIN where the producer minted one, and its span only where it did
+  not; a generated node used to mean "dummy span, no record", and now means "its own origin, its
+  own record". **This invariant was stated here before it was true of method occurrences**: they
   were joined by a per-name ordinal until 2026-09-19. See "Method occurrences" below; the
   lesson is that an invariant in this document is not evidence about the code, and the join it
   describes has to be read.
 - Only a concrete head is evidence. A literal whose type is still a unification variable or a
   rigid variable produces no record; the enclosing binding's dictionary parameter (or today's
   fallback) serves it.
-- A span the checker inferred more than once (a re-check, a speculative branch) yields a record
-  only when every inference agreed.
+- A key the checker inferred more than once (a re-check, a speculative branch) yields a record
+  only when every inference agreed. An occurrence with an identity whose record is missing or
+  conflicting receives nothing, and is never rescued by its span or its position.
 - The join maps the checker's `Integer` default onto the engine's `Int` rows at the driver
   boundary and nowhere else.
 - No heuristic in the pass is widened by this workflow; records are consulted first, and the
@@ -171,10 +175,14 @@ flowchart TD
   origin. A subtree duplicated as new code is reminted at that duplication. A binder re-read from
   an expression carries no origin.
 - Equality and hashing of a name ignore the origin, so no lookup changes meaning.
-- Occurrence carriers today: variable and constructor references, and the operators of infix
-  applications and sections. Literals, list literals, arithmetic sequences and do statements get
-  their own carriers next; until then their uses have no provenance and are served by span and
-  position exactly as before. Literal evidence is still keyed by span.
+- Occurrence carriers today: variable and constructor references, the operators of infix
+  applications and sections, and literals — in expressions AND in patterns, since lowering stamps
+  every literal at construction. List literals, arithmetic sequences and do statements get their
+  own carriers next; until then their uses have no provenance and are served by span and position
+  exactly as before.
+- A literal in a pattern carries an origin but publishes no evidence yet: the checker captures
+  nothing when it binds a pattern. That is a producer gap, not a transport gap, and it belongs with
+  do-statement checking.
 - Keying by origin gives GENERATED references evidence they never had: the checker used to skip
   a placeholder span at capture. That is a behaviour change, measured, not a neutral re-keying.
 
