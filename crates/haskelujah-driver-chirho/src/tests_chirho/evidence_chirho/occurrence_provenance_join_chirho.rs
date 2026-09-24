@@ -321,3 +321,73 @@ fn a_literal_with_provenance_and_no_evidence_is_not_rescued_by_span_chirho() {
     );
     assert_eq!(joined_chirho, None);
 }
+
+#[test]
+fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
+    // The decisive control for generated code (gpt_chirho #24575, #24724): two
+    // literals a producer wrote share one placeholder span and need different
+    // concrete evidence. A span map has one entry per span, so span keying can
+    // serve at most one of them; each origin serves its own.
+    use haskelujah_typing_chirho::infer_chirho::LiteralEvidenceChirho;
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let double_literal_chirho = supply_chirho.fresh_chirho();
+    let int_literal_chirho = supply_chirho.fresh_chirho();
+    let evidence_chirho = |key_chirho: &str| LiteralEvidenceChirho {
+        class_name_chirho: "Num".to_string(),
+        ty_key_chirho: key_chirho.to_string(),
+    };
+
+    let mut result_chirho = infer_result_chirho(vec![]);
+    result_chirho.literal_evidence_by_origin_chirho = HashMap::from([
+        (double_literal_chirho, evidence_chirho("Double")),
+        (int_literal_chirho, evidence_chirho("Int")),
+    ]);
+    // The one thing the shared span could say, which is right for neither.
+    result_chirho.literal_evidence_chirho =
+        HashMap::from([(SpanChirho::DUMMY_CHIRHO, evidence_chirho("Word"))]);
+
+    let occurrences_chirho = HashMap::from([
+        (
+            CoreIdChirho(10),
+            ("fromInteger".to_string(), CoreIdChirho(1)),
+        ),
+        (
+            CoreIdChirho(11),
+            ("fromInteger".to_string(), CoreIdChirho(1)),
+        ),
+    ]);
+    // One span for both: the placeholder every generated node carries.
+    let literal_spans_chirho = HashMap::from([
+        (CoreIdChirho(10), SpanChirho::DUMMY_CHIRHO),
+        (CoreIdChirho(11), SpanChirho::DUMMY_CHIRHO),
+    ]);
+    let provenance_chirho = HashMap::from([
+        (
+            CoreIdChirho(10),
+            ProvenanceChirho::new_chirho(
+                double_literal_chirho,
+                OccurrenceRoleChirho::IntegerLiteral,
+            ),
+        ),
+        (
+            CoreIdChirho(11),
+            ProvenanceChirho::new_chirho(int_literal_chirho, OccurrenceRoleChirho::IntegerLiteral),
+        ),
+    ]);
+
+    let joined_chirho = join_occurrence_evidence_chirho(
+        &result_chirho,
+        &occurrences_chirho,
+        &literal_spans_chirho,
+        &HashMap::new(),
+        &provenance_chirho,
+    );
+    assert_eq!(
+        joined_chirho.get(&CoreIdChirho(10)),
+        Some(&("Num".to_string(), "Double".to_string()))
+    );
+    assert_eq!(
+        joined_chirho.get(&CoreIdChirho(11)),
+        Some(&("Num".to_string(), "Int".to_string()))
+    );
+}

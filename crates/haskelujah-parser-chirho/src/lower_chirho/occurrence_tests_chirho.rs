@@ -222,3 +222,39 @@ fn a_reference_re_read_as_a_binder_is_no_longer_an_occurrence_chirho() {
     assert_eq!(binder_chirho.text_chirho(), "y");
     assert_eq!(binder_chirho.origin_chirho(), None);
 }
+
+#[test]
+fn a_literal_in_a_pattern_is_an_occurrence_of_its_own_chirho() {
+    // A literal pattern is a comparison against that literal, so it needs its own
+    // evidence and carries its own origin — the same value written in an
+    // expression beside it is a different occurrence. Binders still carry none,
+    // which `assert_origins_exactly_at_occurrences_chirho` checks for the module.
+    let mut module_chirho = lower_chirho(
+        "module Main where\n\
+         classifyChirho 0 = \"zero\"\n\
+         classifyChirho n = show (0 :: Int)\n\
+         nearChirho (-1) = True\n\
+         nearChirho _ = False\n",
+    );
+    let stamped_chirho = assert_origins_exactly_at_occurrences_chirho(&mut module_chirho);
+    let texts_chirho = texts_chirho(&stamped_chirho);
+    // One `0` in pattern position and one in expression position: two
+    // occurrences of the same written value, each with an origin of its own.
+    assert_eq!(
+        texts_chirho
+            .iter()
+            .filter(|text_chirho| **text_chirho == "<0>")
+            .count(),
+        2,
+        "{texts_chirho:?}"
+    );
+    // A negative literal pattern is one occurrence too.
+    assert_eq!(
+        texts_chirho
+            .iter()
+            .filter(|text_chirho| **text_chirho == "<1>")
+            .count(),
+        1,
+        "{texts_chirho:?}"
+    );
+}

@@ -168,6 +168,19 @@ Never replace a method the user wrote on the assumption that the class laws hold
   - [ ] Delete span and positional stages once the remaining carriers exist and the no-identity
         population is empty.
 
+## Pending repairs for the NEXT artifact rewrite (do not rewrite artifacts just for these)
+
+- Both measurement artifacts record the frozen binary's copy at `../haskelujah-claude-chirho/tmp-chirho/...`.
+  Measured: that path resolves only FROM A LANE WORKTREE, whose parent holds the other lane worktrees.
+  The artifacts live at the repository root, and from there the copy is at
+  `../haskelujah-workspaces-chirho/haskelujah-claude-chirho/tmp-chirho/landing-7cfd9b8a-chirho/`. So the
+  locator is written against the wrong root rather than pointing at something deleted
+  (claude2_chirho #24734, gpt_chirho #24735). Write it relative to the repository root next time.
+- The verdict rule's thread-id test uses a shell glob, so `(4worker)` also counts as an id
+  (gpt_chirho #24703): conservative, never false reject credit. Tighten to digits only with a mixed-id
+  control at the next classifier change, together with claude2_chirho's glued-header control (#24713:
+  a real header glued to a preceding partial line, or after a bare CR, currently classifies REJECT).
+
 ## Landing candidate (gpt_chirho #24598)
 
 The smaller partial migration: bricks 2-6 as reviewed (through 61f5ad7a) plus the F1/F2 repairs. Not
@@ -221,3 +234,50 @@ generated occurrences start receiving real evidence: a behaviour change to measu
 
 This is identity transport. It is not yet complete predicate proof terms, and not yet dictionary
 functions.
+
+## Literal carrier unit (branch `provenance-literals-chirho`, gpt_chirho #24724)
+
+Rebased onto main 4f213a4d. `2482360b` carries the literal end to end; `a091b2d0` applies the same
+ownership rule the reference channel has: a literal with an origin is published under that origin
+ONLY, so no legacy consumer can reach it by span.
+
+Transport is complete on both sides: `lower_lit_chirho` stamps at construction, and every literal
+reaches it, so EXPRESSION and PATTERN literals both carry origins (`PatChirho::LitChirho` and
+`NegChirho` are visited as occurrences and reminted with the rest). The desugarer copies the origin
+and the role onto the occurrence id and mints nothing of its own.
+
+Checker-side state, stated plainly: expression literals are captured and published by origin;
+pattern literals carry origins but `bind_pat_chirho` captures nothing for them, so they are inert
+today. That is a PRODUCER gap, not a transport gap, and it belongs with do-statement checking.
+
+Controls (all mutation-checked):
+- [x] two generated literals sharing one placeholder span, each requiring different concrete
+      evidence, each taking its own (kills a span-preferring join: both collapse to the span's answer);
+- [x] a generated literal takes its own origin's evidence over a disagreeing span;
+- [x] a literal with provenance and no evidence is not rescued by its span;
+- [x] no origin-owned literal proof is published at its span, and a legacy literal occurrence there
+      receives nothing;
+- [x] the desugarer carries variable, operator and literal origins with their roles and mints none;
+- [x] a literal in a pattern is an occurrence with its own origin, distinct from the same value in
+      an expression beside it.
+
+### Further pre-existing execution defects (2026-09-24)
+
+Measured on the branch CLI and on main's own CLI (e246670e), identical predicate by predicate,
+against GHC 9.14.1. Receipts: tmp-chirho/literal-checkpoint-chirho/ in the claude worktree.
+- both engines: DERIVED `Show` ignores the precedence argument entirely, so nothing it prints is ever
+  parenthesised (silent). Located precisely: the built-in Show of Prelude constructors IS
+  precedence-aware (`Just (Just 42)` is right), but a derived value nested inside it loses its
+  parens too, because the built-in asks the derived `showsPrec` with d=11 and the derived one
+  ignores d. Three symptoms, one cause, measured on branch and main alike:
+    GHC   Just (Just 42) / Just (LeafChirho 1) / NodeChirho (LeafChirho 1) (LeafChirho 2) / LeafChirho (-3)
+    ours  Just (Just 42) / Just LeafChirho 1   / NodeChirho LeafChirho 1 LeafChirho 2     / LeafChirho -3
+  `show_precedence_chirho` stays green because it only covers Prelude constructors, not deriving;
+- both engines: `showsPrec` applied directly to a derived type is a runtime error, "missing STG
+  binding `showsPrec`" — the derived instance has no real `showsPrec` method binding, which is the
+  same root cause seen from the other side;
+- interpreter: `sum [1.5, 2.5 :: Double]` is a runtime error, "primop AddIntChirho: expected Int#,
+  got (2.5##, 0#)"; native prints `NaN`, GHC `4.0` (the B family again, at `sum`);
+- interpreter: `fromIntegral n / 2 :: Double` reports missing STG binding `/`; native reports
+  "LLVM does not support fromIntegral#".
+None is caused by the literal carrier; each is its own repair.
