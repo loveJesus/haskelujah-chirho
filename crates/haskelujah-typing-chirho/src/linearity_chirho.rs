@@ -107,7 +107,7 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
         ExprChirho::DoChirho { stmts_chirho, .. } => {
             for stmt_chirho in stmts_chirho {
                 match stmt_chirho {
-                    StmtChirho::ExprChirho(e_chirho) => {
+                    StmtChirho::ExprChirho { expr_chirho: e_chirho, .. } => {
                         walk_expr_chirho(e_chirho, counts_chirho);
                     }
                     StmtChirho::BindChirho {
@@ -168,7 +168,7 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
                 .chain(parallel_quals_chirho.iter().flatten())
             {
                 match stmt_chirho {
-                    StmtChirho::ExprChirho(expr_chirho)
+                    StmtChirho::ExprChirho { expr_chirho, .. }
                     | StmtChirho::BindChirho { expr_chirho, .. } => {
                         walk_expr_chirho(expr_chirho, counts_chirho);
                     }

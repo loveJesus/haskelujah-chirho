@@ -4817,7 +4817,7 @@ impl DesugarCtxChirho {
                     }),
                 }
             }
-            StmtChirho::ExprChirho(guard_expr_chirho) => {
+            StmtChirho::ExprChirho { expr_chirho: guard_expr_chirho, .. } => {
                 // Guard: if guard then [e | rest] else []
                 let guard_core_chirho = self.desugar_expr_chirho(guard_expr_chirho);
                 let then_chirho = self.desugar_list_comp_chirho(body_chirho, rest_chirho);
@@ -5010,7 +5010,7 @@ impl DesugarCtxChirho {
                         }
                     }
                 }
-                StmtChirho::ExprChirho(_) => {}
+                StmtChirho::ExprChirho { expr_chirho: _, .. } => {}
             }
         }
         names_chirho
@@ -5201,7 +5201,7 @@ impl DesugarCtxChirho {
                     }),
                 }
             }
-            StmtChirho::ExprChirho(guard_expr_chirho) => {
+            StmtChirho::ExprChirho { expr_chirho: guard_expr_chirho, .. } => {
                 // Guard with continuation: if guard then [e | rest] with k else k
                 let guard_core_chirho = self.desugar_expr_chirho(guard_expr_chirho);
                 let then_chirho = self.desugar_list_comp_with_cont_chirho(
@@ -5476,7 +5476,7 @@ impl DesugarCtxChirho {
 
         if stmts_chirho.len() == 1 {
             return match &stmts_chirho[0] {
-                StmtChirho::ExprChirho(expr_chirho) => self.desugar_expr_chirho(expr_chirho),
+                StmtChirho::ExprChirho { expr_chirho, .. } => self.desugar_expr_chirho(expr_chirho),
                 StmtChirho::BindChirho { expr_chirho, .. } => self.desugar_expr_chirho(expr_chirho),
                 StmtChirho::LetChirho { .. } => {
                     CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))
@@ -5485,7 +5485,7 @@ impl DesugarCtxChirho {
         }
 
         match &stmts_chirho[0] {
-            StmtChirho::ExprChirho(expr_chirho) => {
+            StmtChirho::ExprChirho { expr_chirho, .. } => {
                 // e; stmts → (>>) e (do stmts) — rides the per-type dispatch;
                 // IO falls back to ThenIOChirho by name at STG (INV-001).
                 // workflow: monadic-dispatch-chirho
@@ -6278,11 +6278,13 @@ mod tests_chirho {
             qualifier_chirho: None,
             stmts_chirho: vec![
                 StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
                     pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                     expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("getLine")),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                StmtChirho::ExprChirho(ExprChirho::AppChirho {
+                StmtChirho::expr_stmt_chirho(ExprChirho::AppChirho {
                     fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("putStrLn"))),
                     arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -6354,11 +6356,13 @@ mod tests_chirho {
             qualifier_chirho: Some("FlowChirho".to_string()),
             stmts_chirho: vec![
                 StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
                     pat_chirho: PatChirho::VarChirho(dummy_name_chirho("valueChirho")),
                     expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("actionChirho")),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                StmtChirho::ExprChirho(ExprChirho::VarChirho(dummy_name_chirho("finishChirho"))),
+                StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(dummy_name_chirho("finishChirho"))),
             ],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -6545,6 +6549,8 @@ mod tests_chirho {
         let expr_chirho = ExprChirho::ListCompChirho {
             body_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
             quals_chirho: vec![StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
                 pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                 expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("xs")),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -6573,11 +6579,13 @@ mod tests_chirho {
             body_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
             quals_chirho: vec![
                 StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
                     pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                     expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("xs")),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                StmtChirho::ExprChirho(ExprChirho::AppChirho {
+                StmtChirho::expr_stmt_chirho(ExprChirho::AppChirho {
                     fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("even"))),
                     arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,

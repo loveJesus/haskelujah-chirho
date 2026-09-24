@@ -100,7 +100,7 @@ fn transform_recursive_group_chirho(
 
     let result_expr_chirho =
         tuple_expr_for_names_chirho(&bound_names_chirho, span_chirho, supply_chirho);
-    stmts_chirho.push(StmtChirho::ExprChirho(app_expr_chirho(
+    stmts_chirho.push(StmtChirho::expr_stmt_chirho(app_expr_chirho(
         generated_var_chirho("return", span_chirho, supply_chirho),
         result_expr_chirho,
         span_chirho,
@@ -132,6 +132,8 @@ fn transform_recursive_group_chirho(
     );
 
     vec![StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
         pat_chirho: knot_pat_chirho,
         expr_chirho: mfix_expr_chirho,
         span_chirho,
@@ -167,7 +169,7 @@ fn collect_one_stmt_bound_names_chirho(
                 }
             }
         }
-        StmtChirho::ExprChirho(_) => {}
+        StmtChirho::ExprChirho { expr_chirho: _, .. } => {}
     }
 }
 
@@ -208,7 +210,7 @@ fn statements_need_recursive_knot_chirho(stmts_chirho: &[StmtChirho]) -> bool {
 
 fn collect_stmt_references_chirho(stmt_chirho: &StmtChirho, names_chirho: &mut Vec<String>) {
     match stmt_chirho {
-        StmtChirho::ExprChirho(expr_chirho) | StmtChirho::BindChirho { expr_chirho, .. } => {
+        StmtChirho::ExprChirho { expr_chirho, .. } | StmtChirho::BindChirho { expr_chirho, .. } => {
             collect_expr_references_chirho(expr_chirho, names_chirho);
         }
         StmtChirho::LetChirho { binds_chirho, .. } => {
@@ -547,6 +549,8 @@ mod tests_chirho {
 
     fn bind_stmt_chirho(name_text_chirho: &str) -> StmtChirho {
         StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
             pat_chirho: PatChirho::VarChirho(name_chirho(name_text_chirho)),
             expr_chirho: raw_var_chirho("actionChirho", SpanChirho::DUMMY_CHIRHO),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -606,8 +610,10 @@ mod tests_chirho {
     #[test]
     fn mdo_wraps_forward_dependent_statements_before_the_final_expression_chirho() {
         let final_stmt_chirho =
-            StmtChirho::ExprChirho(raw_var_chirho("finishChirho", SpanChirho::DUMMY_CHIRHO));
+            StmtChirho::expr_stmt_chirho(raw_var_chirho("finishChirho", SpanChirho::DUMMY_CHIRHO));
         let forward_bind_chirho = StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
             pat_chirho: PatChirho::VarChirho(name_chirho("xChirho")),
             expr_chirho: raw_var_chirho("yChirho", SpanChirho::DUMMY_CHIRHO),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -638,12 +644,14 @@ mod tests_chirho {
     fn mdo_without_forward_dependency_stays_sequential_chirho() {
         let first_bind_chirho = bind_stmt_chirho("xChirho");
         let second_bind_chirho = StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
             pat_chirho: PatChirho::VarChirho(name_chirho("yChirho")),
             expr_chirho: raw_var_chirho("xChirho", SpanChirho::DUMMY_CHIRHO),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let final_stmt_chirho =
-            StmtChirho::ExprChirho(raw_var_chirho("finishChirho", SpanChirho::DUMMY_CHIRHO));
+            StmtChirho::expr_stmt_chirho(raw_var_chirho("finishChirho", SpanChirho::DUMMY_CHIRHO));
         let source_stmts_chirho = vec![first_bind_chirho, second_bind_chirho, final_stmt_chirho];
         let transformed_chirho = transform_recursive_do_chirho(
             source_stmts_chirho
@@ -662,7 +670,7 @@ mod tests_chirho {
     #[test]
     fn binder_free_rec_group_stays_sequential_chirho() {
         let stmt_chirho =
-            StmtChirho::ExprChirho(raw_var_chirho("effectChirho", SpanChirho::DUMMY_CHIRHO));
+            StmtChirho::expr_stmt_chirho(raw_var_chirho("effectChirho", SpanChirho::DUMMY_CHIRHO));
         assert_eq!(
             transform_recursive_do_chirho(
                 vec![DoSegmentChirho::RecursiveChirho {
@@ -688,6 +696,8 @@ mod tests_chirho {
         };
         let stmts_chirho = vec![
             StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
                 pat_chirho: tuple_pat_chirho,
                 expr_chirho: raw_var_chirho("actionChirho", SpanChirho::DUMMY_CHIRHO),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

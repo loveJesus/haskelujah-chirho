@@ -530,7 +530,7 @@ impl<'a> ExhaustCheckerChirho<'a> {
 
     fn check_stmt_chirho(&mut self, stmt_chirho: &StmtChirho) {
         match stmt_chirho {
-            StmtChirho::ExprChirho(e_chirho) => self.check_expr_chirho(e_chirho),
+            StmtChirho::ExprChirho { expr_chirho: e_chirho, .. } => self.check_expr_chirho(e_chirho),
             StmtChirho::BindChirho { expr_chirho, .. } => self.check_expr_chirho(expr_chirho),
             StmtChirho::LetChirho { binds_chirho, .. } => {
                 self.check_local_binds_chirho(binds_chirho);

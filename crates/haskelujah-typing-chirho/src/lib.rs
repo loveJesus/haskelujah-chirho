@@ -9,6 +9,9 @@
 
 pub mod class_chirho;
 pub mod deriving_chirho;
+pub mod do_failability_chirho;
+#[cfg(test)]
+mod do_failability_tests_chirho;
 pub mod env_chirho;
 pub mod exhaust_chirho;
 pub mod infer_chirho;
