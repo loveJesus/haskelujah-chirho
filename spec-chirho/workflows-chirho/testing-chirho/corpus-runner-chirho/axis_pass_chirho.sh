@@ -5,9 +5,12 @@
 # usage: axis_pass_chirho.sh <bin> <corpus-dir> <out-file> [<raw-dir>]
 bin_chirho="$1"; dir_chirho="$2"; out_chirho="$3"; raw_chirho="${4:-}"
 here_chirho="$(cd "$(dirname "$0")" && pwd)"
+# One C-collated ordering, so a verdict file and its list hash do not depend on the
+# caller's locale (see sort_chirho.sh).
+. "$here_chirho/sort_chirho.sh"
 find "$dir_chirho" -name '*.hs' -print0 \
   | xargs -0 -P 4 -n 1 "$here_chirho/worker_chirho.sh" "$bin_chirho" "$dir_chirho" 15 "$raw_chirho" \
-  | sort -k2 > "$out_chirho"
+  | sort_rows_chirho > "$out_chirho"
 awk '$1=="TIMEOUT" {print $2}' "$out_chirho" | while read -r rel_chirho; do
   line_chirho="$("$here_chirho/worker_chirho.sh" "$bin_chirho" "$dir_chirho" 60 "$raw_chirho" "$dir_chirho/$rel_chirho")"
   python3 - "$out_chirho" "$rel_chirho" "$line_chirho" <<'PY'

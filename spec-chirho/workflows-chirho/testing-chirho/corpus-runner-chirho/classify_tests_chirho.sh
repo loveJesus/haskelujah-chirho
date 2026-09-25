@@ -43,5 +43,30 @@ case_chirho non_numeric_id_header_chirho "thread 'main' (worker) panicked at fil
 case_chirho signal_kill_chirho "" 137 ABNORMAL
 case_chirho no_markers_exit_one_chirho "some text
 " 1 UNCLASSIFIED
+# gpt_chirho room #24703: the earlier `[0-9]*` glob meant one digit then anything, so
+# a mixed id passed for numeric. It is not what the runtime prints, so it is no header.
+case_chirho mixed_id_header_chirho "thread 'main' (4worker) panicked at file.rs:1:1:
+" 1 UNCLASSIFIED
+case_chirho all_digit_id_header_chirho "thread 'main' (4) panicked at file.rs:1:1:
+" 1 PANIC
+# claude2_chirho's finding: a crash whose header is GLUED to output that ended without
+# a newline used to be missed, and with a diagnostic also present it was credited as a
+# REJECT - a crash counted as a diagnostic, the one direction that must not happen.
+case_chirho glued_header_chirho "partial outputthread 'main' panicked at file.rs:1:1:
+error[E0001]: caught
+" 1 PANIC
+case_chirho cr_separated_header_chirho "progress$(printf '\r')thread 'main' panicked at file.rs:1:1:
+error[E0001]: caught
+" 1 PANIC
+# The other direction still holds: a quotation is not a crash. Behind a gutter, inside
+# a diagnostic line, or merely indented, a header stays a quotation.
+case_chirho glued_into_gutter_chirho "error[E0300]: mismatch
+  3 | labelChirho = thread 'main' panicked at fake
+" 1 REJECT
+case_chirho header_in_error_line_chirho "error[E0001]: bad: thread 'main' panicked at fake
+" 1 REJECT
+case_chirho indented_header_chirho "error[E0300]: mismatch
+     thread 'main' panicked at fake
+" 1 REJECT
 echo "$pass_chirho/$((pass_chirho+fail_chirho)) verdict controls pass"
 [ $fail_chirho -eq 0 ]
