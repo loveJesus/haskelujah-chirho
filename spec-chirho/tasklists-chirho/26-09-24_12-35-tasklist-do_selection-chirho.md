@@ -44,7 +44,7 @@ failability is known, but `fail` is published and used only when actually select
       constructor/tuple/record pattern all of whose sub-patterns are irrefutable. Its own module and
       its own tests. There is no existing general helper — `is_irrefutable_string_case_pat_chirho`
       is narrow and stays where it is.
-- [ ] 3. Lowering selects. It knows the do block's qualifier, the tail position and the pattern, so
+- [x] 3. Lowering selects. It knows the do block's qualifier, the tail position and the pattern, so
       it mints the origins and fills the fields. Controls: tail and let select nothing; a refutable
       pattern selects `fail`; a tuple, lazy or newtype pattern does not; QualifiedDo carries the
       qualified binding; RebindableSyntax keeps its own lookup rule.
@@ -77,6 +77,34 @@ right. A list pattern is failable even when empty, because it fixes the length.
 A constructor the environment does not know is treated as FAILABLE. That is the safe direction: a
 missing `fail` leaves a failing match nowhere to go, and it is what the desugarer already assumed
 for every non-variable pattern.
+
+## Carried forward for the bounded Eq/Ord brick, NOT this unit
+
+gpt_chirho (#24836) asked that these exact controls be retained with that follow-up and not
+broadened into a claim about numeric soundness. Measured on main's own CLI bfd9ad99 against GHC
+9.14.1, one-line `main = print (...)` each:
+
+    1.5 + 2.25 :: Double                 3.75 / 3.75   PASS
+    foldr (+) 0 [1.5, 2.25 :: Double]    3.75 / 3.75   PASS
+    foldl (+) 0 [1.5, 2.25 :: Double]    3.75 / 3.75   PASS
+    sum [1, 2 :: Int]                    3 / 3         PASS
+    sum [1, 2 :: Integer]                3 / 3         PASS
+    sum [1.5, 2.25 :: Double]            3.75 / primop AddIntChirho: expected Int#
+    sum [1.5 :: Double]                  1.5  / primop AddIntChirho: expected Int#
+    sum [] :: Double                     0.0  / primop ShowFloatChirho: expected Double#, got 0#
+    product [1.5, 2 :: Double]           3.0  / primop MulIntChirho: expected Int#
+    maximum [1.5, 2.25 :: Double]        2.25 / primop LeIntChirho: expected Int#
+    sum [1.5, 2.25 :: Float]             3.75 / missing method Show.show for Float
+
+Double arithmetic is SOUND and `+` through any fold is sound. I first narrowed this to `sum`;
+claude2_chirho (#24837) narrowed it further and better, to the Prelude's whole Int-specialised
+AGGREGATE family, and located it: `dict_chirho/prelude_chirho.rs` synthesises `sum` with a `+#`
+body and an `IntChirho(0)` nil case (which is the `sum [] :: Double` failure), `product` with
+`*#`, and `minimum`/`maximum` alongside; `dict_chirho/mod.rs` keeps a fixed-return-type table
+mapping `length | sum | product` to Int regardless of argument type. The checker admits the call
+at Double from the polymorphic Prelude signature while Core substitutes a monomorphic body - two
+descriptions of one function that disagree, found at run time. The repair is one place, the
+aggregate synthesis, not `sum` in isolation. Float's missing `Show` is a separate gap.
 
 ## References
 

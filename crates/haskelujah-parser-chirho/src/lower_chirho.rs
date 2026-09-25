@@ -10,6 +10,9 @@
 #[cfg(test)]
 mod context_tests_chirho;
 mod contexts_chirho;
+mod do_selection_chirho;
+#[cfg(test)]
+mod do_selection_tests_chirho;
 #[cfg(test)]
 mod declaration_kind_tests_chirho;
 mod declaration_kinds_chirho;
@@ -5854,12 +5857,15 @@ impl LowerCtxChirho {
                     )
                 });
                 let segments_chirho = self.lower_do_segments_chirho(node_chirho, base_chirho);
-                let stmts_chirho = transform_recursive_do_chirho(
+                let mut stmts_chirho = transform_recursive_do_chirho(
                     segments_chirho,
                     is_mdo_chirho,
                     span_chirho,
                     &mut self.origin_supply_chirho.borrow_mut(),
                 );
+                // After the recursive-do knot, so the statements that get selections
+                // are the ones that survive into the block.
+                self.select_do_operations_chirho(&mut stmts_chirho, qualifier_chirho.as_deref());
 
                 ExprChirho::DoChirho {
                     qualifier_chirho,
