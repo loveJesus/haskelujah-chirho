@@ -65,6 +65,12 @@ execution test.
 
 Confirmed on this branch's CLI and on main's own CLI, identical predicate by predicate.
 
+FIVE OF THE SEVEN ARE SILENT WRONG ANSWERS: the program exits 0 and prints something
+plausible that is not what GHC prints. Only two announce themselves, one runtime error and
+one compile failure. The silent five are the dangerous category and are counted here
+explicitly rather than left to be tallied from the table, because a silent wrong answer
+survives a green gate.
+
 | Program | Engine | Ours | GHC 9.14.1 |
 | --- | --- | --- | --- |
 | DerivedEqOrd | interpreter | runtime error, `primop LtIntChirho: expected Int#, got (@N, 1#)` | `True/GT/BoxChirho 3/True` |

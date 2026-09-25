@@ -28,18 +28,40 @@
 # usage (sourced): verdict_chirho "<combined output>" <exit-code>  -> prints the verdict word
 
 # True when `$1` begins with a real panic header.
+#
+# Every pattern here is built from QUOTED literals and tested one piece at a time,
+# never as one glob containing bare parentheses. zsh treats an unquoted `(` in a
+# pattern as a grouping operator, so a single combined pattern aborts the function
+# with "bad pattern" and `verdict_chirho` then returns an EMPTY string instead of a
+# verdict. That is fail-unsafe in a measuring instrument, and it was a regression:
+# the rule this replaced worked under zsh. Every runner script here is bash, but the
+# interactive shell in this environment is zsh and the rule is meant to be sourceable
+# by hand. Controls run it under both shells.
 header_shape_chirho() {
   case "$1" in
-    "thread '"*"' panicked at"*) return 0;;
-    "thread '"*"' ("*") panicked at"*)
-      local id_chirho="${1#*\' (}"
-      id_chirho="${id_chirho%%) panicked at*}"
-      case "$id_chirho" in
-        '' | *[!0-9]*) return 1;;
-        *) return 0;;
-      esac;;
+    "thread '"*) ;;
+    *) return 1;;
   esac
-  return 1
+  # Without a thread id.
+  case "$1" in
+    *"' panicked at"*) return 0;;
+  esac
+  # With one, which must be ALL digits.
+  local after_chirho="${1#*\' }"
+  case "$after_chirho" in
+    "("*) ;;
+    *) return 1;;
+  esac
+  local id_chirho="${after_chirho#"("}"
+  case "$id_chirho" in
+    *") panicked at"*) ;;
+    *) return 1;;
+  esac
+  id_chirho="${id_chirho%%") panicked at"*}"
+  case "$id_chirho" in
+    '' | *[!0-9]*) return 1;;
+  esac
+  return 0
 }
 
 # True when the text before a glued header is ordinary output rather than a

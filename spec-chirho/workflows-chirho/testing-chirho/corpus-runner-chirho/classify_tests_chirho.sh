@@ -68,5 +68,31 @@ case_chirho header_in_error_line_chirho "error[E0001]: bad: thread 'main' panick
 case_chirho indented_header_chirho "error[E0300]: mismatch
      thread 'main' panicked at fake
 " 1 REJECT
+# The rule must give the same verdict in whatever shell sources it. Every runner script
+# here is bash, but the interactive shell in this environment is zsh, and a rule that
+# aborts on a pattern returns an EMPTY string rather than a verdict - fail-unsafe, and
+# exactly the regression claude2_chirho caught (#24819). So the shapes most likely to
+# break on a glob-operator difference are run through the OTHER shell too.
+other_shell_chirho() {
+  local shell_chirho="$1"
+  command -v "$shell_chirho" > /dev/null 2>&1 || { printf 'skip  %s not present\n' "$shell_chirho"; return 0; }
+  local probe_chirho
+  for probe_chirho in \
+    "thread 'main' (46403379) panicked at f.rs:1:1:|PANIC" \
+    "thread 'main' panicked at f.rs:1:1:|PANIC" \
+    "thread 'main' (4worker) panicked at f.rs:1:1:|UNCLASSIFIED" \
+    "thread 'main' (worker) panicked at f.rs:1:1:|UNCLASSIFIED" \
+    "error[E0300]: mismatch|REJECT"
+  do
+    local text_chirho="${probe_chirho%|*}" want_chirho="${probe_chirho##*|}" got_chirho
+    got_chirho="$("$shell_chirho" -c ". '$here_chirho/classify_chirho.sh'; verdict_chirho \"\$1\" 1" _ "$text_chirho" 2>&1)"
+    case "$got_chirho" in
+      "$want_chirho") pass_chirho=$((pass_chirho+1)); printf 'ok    %-6s %-46s %s\n' "$shell_chirho" "${text_chirho%%:*}" "$want_chirho";;
+      *) fail_chirho=$((fail_chirho+1)); printf 'FAIL  %-6s %s\n  want %s\n  got  %s\n' "$shell_chirho" "$text_chirho" "$want_chirho" "$got_chirho";;
+    esac
+  done
+}
+other_shell_chirho bash
+other_shell_chirho zsh
 echo "$pass_chirho/$((pass_chirho+fail_chirho)) verdict controls pass"
 [ $fail_chirho -eq 0 ]
