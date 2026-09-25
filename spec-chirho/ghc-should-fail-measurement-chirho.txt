@@ -1,17 +1,35 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-22 UTC, AFTER occurrence provenance for references (a partial
-#   migration: variables, constructors, operators and sections join by origin)
-# code measured: 7cfd9b8aa169c45c2ea006759e565e05cafb7cae (HASKELUJAH/claude_chirho)
+# measured: 2026-09-24 UTC, AFTER occurrence provenance for references AND the literal
+#   carrier. Still a PARTIAL migration: the companion artifact states the literal
+#   channel's transport limits in full.
+# code measured: e8cd6bf4d68b46448d21667e2cf4c15000e67e1d (HASKELUJAH/claude_chirho,
+#   branch provenance-literals-chirho, pushed as gh_chirho/provenance-literals-3-chirho;
+#   a new remote name because the older ref holds the pre-rebase line and no force push
+#   was taken)
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
-#   macOS arm64; measured binary: frozen copy in
-#   ../haskelujah-claude-chirho/tmp-chirho/landing-7cfd9b8a-chirho/
-# CLI SHA256: dedb6ff34cef9a7b74a77a41ee3d042a3c14bf7ec857e7facadb8bf60da0a894
-#   binary digest asserted unchanged before and after all four corpus passes
+#   macOS arm64; measured binary: frozen copy at
+#   tmp-chirho/literal-corpus-chirho/haskelujah-literal-chirho
+#   LOCATOR: that path is relative to the REPOSITORY ROOT of the worktree that measured
+#   it. Earlier artifacts wrote `../haskelujah-claude-chirho/tmp-chirho/...`, which
+#   resolves only from a sibling lane directory and not from a repository root at all.
+# CLI SHA256: fd0da8094f4086db49148e4ddfa31658e08a371bfa16acbdc0ca41f53a28db4a
+#   digest asserted unchanged before and after all four corpus passes, and again before
+#   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
-#   alone at 60s (none occurred); a rejection contains `error[E` or `panic`; the runner
-#   records each file's EXIT CODE beside its verdict, and no accepted file exited nonzero
+#   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
+#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, applied in
+#   this order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a
+#   real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and
+#   no `error[E`). A panic header is the shape the runtime prints, `thread '<name>'
+#   panicked at ...` with an optional ALL-DIGIT thread id, and it must begin a line.
+#   The BARE SUBSTRING `panic` is never a verdict, because source can contain it: the
+#   earlier wording in this artifact ("a rejection contains `error[E` or `panic`")
+#   described a rule that no longer exists and is corrected here. Matching is pure
+#   shell, never interactive `grep`, which is shadowed in this environment by a ugrep
+#   wrapper with content-dependent `-q` behaviour. The runner records each file's EXIT
+#   CODE beside its verdict, and no accepted file exited nonzero.
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
-#   (no subdirectories)
+#   (no subdirectories); per-file source SHA256s retained with the receipts
 #
 # RESULT: CORRECTLY-REJECTED=235 WRONGLY-ACCEPTED=532 TOTAL=767
 # STABILITY: DETERMINISTIC — two complete passes, zero timeouts, zero nonzero-exit
@@ -31,11 +49,18 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (11b24799): 235 -> 235, ZERO movement.
-#   The wrong-accept list is identical file for file, and its SHA256 below is
-#   unchanged. The change measured is evidence transport (occurrence provenance for
-#   references), which a typecheck verdict cannot see; see the companion artifact
-#   for the execution evidence on the same source.
+# CHANGE SINCE LAST MEASUREMENT (7cfd9b8a): 235 -> 235, ZERO movement.
+#   The wrong-accept list is identical file for file, its SHA256 below is unchanged, and
+#   each of the two passes reproduces that list independently. The change measured is
+#   again evidence TRANSPORT — a literal now carries an origin, in expressions and in
+#   patterns, and an owned literal proof is published under its origin only — which a
+#   typecheck verdict cannot see. The companion artifact states the transport limits,
+#   the source-specific gates and the execution evidence on this same source.
+#
+# MEASUREMENT OF 7cfd9b8a (2026-09-22), CHANGE SINCE 11b24799: 235 -> 235, ZERO movement.
+#   The wrong-accept list was identical file for file, and its SHA256 below unchanged.
+#   The change measured was evidence transport (occurrence provenance for
+#   references), which a typecheck verdict cannot see.
 #
 # MEASUREMENT OF 11b24799 (2026-09-20), CHANGE SINCE 8d86bc95: 228 -> 235, +7 gained, zero lost.
 #   All seven are one shape: an instance whose own context cannot hold no longer
@@ -57,12 +82,23 @@
 #   Corrections from gpt_chirho (room #24271), each verified against the replay.
 #   The count is verdict presence, not 235 independently matching GHC reasons.
 # REPLAY OF EVERY REJECTION: all 288 saved REJECT rows (53 accept-axis, 235
-#   reject-axis) were re-run on the same frozen CLI with stdout, stderr, exit code and
-#   source SHA-256 kept per file. Classified timeout and abnormal exit first, then a
-#   real Rust panic header, and only then `error[E` with exit 1: all 288 are credited
-#   rejections, none a timeout, an abnormal exit or a panic. No rejection in either
-#   axis rests on the old detector's bare `panic` substring.
+#   reject-axis) were re-run one at a time on the same frozen CLI fd0da809, with stdout,
+#   stderr, exit code and source SHA-256 kept per file. Classified timeout and abnormal
+#   exit first, then a real Rust panic header, and only then `error[E` with exit 1: all
+#   288 are credited rejections, none a timeout, an abnormal exit or a panic. No
+#   rejection in either axis rests on the old detector's bare `panic` substring.
 # WRONG-ACCEPT-LIST SHA256: a89ded083f454a80dc04d581f5de02ac5ebb2f9b71b5af8104115c6a0d0c98a5
+#   DEFINITION: the SHA256 of the bare filenames listed at the end of this file, one per
+#   line, EACH NEWLINE-TERMINATED, sorted C-COLLATED (LC_ALL=C — every uppercase initial
+#   before every lowercase one). The collation is part of the definition: a case-folding
+#   locale sorts this IDENTICAL list to
+#   11ec56cc53413c5caa77238f0d49ce161170ae92eca1da080755f59ac8efa5d4
+#   instead (claude2_chirho reported the same prefix independently), so a
+#   measurer who did not know the collation would read an unchanged result as movement.
+#   The runner has since been repaired to sort C-collated (corpus-runner-chirho/
+#   sort_chirho.sh, nine controls). The verdict files retained for THIS measurement were
+#   produced before that repair and are in the caller's locale order; their list hashes
+#   reproduce because the hashes were computed explicitly C-collated.
 #   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
 # EXECUTION EVIDENCE, each gate stated against the source it actually ran on. The four
 #   corpus passes above ran on 11b24799. Every execution gate ran on 6ed46217, which
@@ -148,9 +184,17 @@
 # checker's environment). A record update on a bare type variable with an unknown field is
 # still accepted (unknown wildcard imports); that boundary is unchanged.
 #
-# MEASUREMENT TOOLING: the detector is pure-shell pattern matching
-# (`case $out in *"error[E"*|*panic*`), never interactive `grep`, which is shadowed in
-# this environment by a ugrep wrapper with content-dependent `-q` behavior.
+# MEASUREMENT TOOLING: the runner is committed at
+# workflows-chirho/testing-chirho/corpus-runner-chirho/ and every script there sources
+# ONE verdict rule (classify_chirho.sh), so no measurement carries a second copy of the
+# pattern. Matching is pure shell, never interactive `grep`, which is shadowed in this
+# environment by a ugrep wrapper with content-dependent `-q` behaviour. The rule's order
+# and the panic-header shape are stated in the method block at the top of this file; the
+# bare substring `panic` is NOT a verdict. Twenty controls cover the rule, including a
+# header quoted inside a diagnostic, an all-digit versus a mixed thread id, and a header
+# glued to output that ended without a newline; nine more cover the ordering. Every
+# repair to those rules was mutation-checked: reverting it fails the control that was
+# added for it.
 #
 # ---- the 532 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs

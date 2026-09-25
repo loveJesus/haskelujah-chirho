@@ -1,6 +1,88 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
-# Execution measurement — 2026-09-20
+# Execution measurement
+
+Each section below is ONE measurement, newest first. A section states the source it
+actually ran on and is never edited to describe a later source: every section other than
+the first is HISTORICAL, and stays labelled that way.
+
+## 2026-09-24 — the literal carrier (current)
+
+Corpus source and execution source are the same commit:
+`e8cd6bf4d68b46448d21667e2cf4c15000e67e1d` on branch `provenance-literals-chirho`, pushed
+as `gh_chirho/provenance-literals-3-chirho`. Frozen DEBUG CLI
+`fd0da8094f4086db49148e4ddfa31658e08a371bfa16acbdc0ca41f53a28db4a`, digest asserted
+unchanged before and after the four corpus passes and again before and after the
+execution set.
+
+Receipts live in the measuring worktree under `tmp-chirho/literal-corpus-chirho/` and
+`tmp-chirho/literal-landing-chirho/`. Those paths are relative to the REPOSITORY ROOT of
+that worktree. Earlier artifacts wrote `../haskelujah-claude-chirho/tmp-chirho/...`, which
+resolves only from a sibling lane directory and not from a repository root at all; that
+locator is corrected here and in both measurement artifacts.
+
+### Results at their actual scope
+
+| Measurement | Source | Result | What it establishes |
+| --- | --- | --- | --- |
+| Corpus, accept axis | e8cd6bf4 | 885 of 938, twice, byte-identical | Typecheck verdicts only; list SHA identical to the committed artifact |
+| Corpus, reject axis | e8cd6bf4 | 235 of 767, twice, byte-identical | Same, for the wrong-accept list |
+| Rejection replay | e8cd6bf4 | 288 of 288 exit 1 with `error[E`, zero panic headers | Every rejection is a diagnostic, not a crash |
+| Execution set | e8cd6bf4 | 28 of 35 predicates match GHC 9.14.1 byte for byte | Interpreter and native, 14 programs |
+| Same set on main's CLI | e246670e | the same 28 of 35, predicate by predicate | So the seven failures are pre-existing, not caused by this change |
+| Unit suites | 8730d067 | ast 13, core 129, naming 136, parser 349, th 15, typing 349 | 8730d067 differs from e8cd6bf4 in no crate line at all |
+| Driver library | 8730d067 | 1797 passed / 0 failed, 592.73s | |
+| Driver integration | 8730d067 | 85 passed across 9 targets, zero failed | canaries, curated, dictionary evidence, instance obligations, method occurrences, native laziness, numeric hierarchy, show precedence, typing integration |
+| Verdict-rule controls | 059f6b6d | 20 of 20, plus 9 ordering controls | Tools only; the corpus above ran on the runner as committed BEFORE this repair |
+
+The unit and integration suites ran on `8730d067`. It differs from `e8cd6bf4` in no crate
+line whatsoever: the only files that differ are two `spec-chirho` documents, verified
+mechanically. The earlier execution set on this branch's CLI `6e34983c` is retained as an
+earlier receipt; that CLI and `fd0da809` differ in no non-test crate line, the only crate
+files differing between `a091b2d0` and `e8cd6bf4` being two compiled solely under
+`cfg(test)`. Their digests differ because the build is not bit-reproducible, and no
+byte-identity between the two binaries is claimed.
+
+### What the literal carrier does and does not reach
+
+Transport now covers literals in expressions AND in patterns, stamped where lowering
+builds them, and a literal with an origin is published under that origin only. Three
+limits are explicit (gpt_chirho #24761 corrected all three against the code):
+
+- a float literal never becomes `fromRational` — the desugarer converts only an integer
+  literal, and a string literal under OverloadedStrings — so the `FractionalLiteral` role
+  is capture and carrier only, not an end-to-end path;
+- literal evidence is one `{class, type-key}` per origin, neither role-keyed nor
+  multi-predicate, so it cannot represent a pattern literal's distinct `Num` and `Eq`;
+- a pattern literal carries an origin but the checker captures nothing for it, so it
+  publishes no evidence: a producer gap, not a transport gap.
+
+The two placeholder controls test the two ENDS separately, one at capture in the checker
+and one at the join in the driver. They are not one integrated producer-to-consumer
+execution test.
+
+### The seven execution failures, all pre-existing
+
+Confirmed on this branch's CLI and on main's own CLI, identical predicate by predicate.
+
+| Program | Engine | Ours | GHC 9.14.1 |
+| --- | --- | --- | --- |
+| DerivedEqOrd | interpreter | runtime error, `primop LtIntChirho: expected Int#, got (@N, 1#)` | `True/GT/BoxChirho 3/True` |
+| DerivedEqOrd | native | `False/GT/ArcChirho/True` — wrong in the first and third fields, silently | `True/GT/BoxChirho 3/True` |
+| DerivedMix | interpreter | `RecordChirho 1 True 2.5 120 "s"` — a `toEnum`-built Char prints as its code point, silently | `RecordChirho 1 True 2.5 'x' "s"` |
+| GeneratedLiterals | interpreter and native | `NodeChirho LeafChirho 1 NodeChirho LeafChirho -2 LeafChirho 3` — derived `Show` drops every parenthesis, silently | `NodeChirho (LeafChirho 1) (NodeChirho (LeafChirho (-2)) (LeafChirho 3))` |
+| RecursiveDo | native | compile fails, `invalid LLVM IR input: Instruction does not dominate all uses!` | `[1,2,4,8,16]` |
+| Sections | native | `map (subtract 1)` prints a heap pointer, silently | `[0,1,2]` |
+
+The derived-`Show` row was LOCATED in this window rather than introduced: deriving
+generates only a `show`, built by string concatenation, with no `showsPrec` and no
+precedence anywhere. That one cause explains all of it — nothing derived is ever
+parenthesised, a negative field prints bare, `showsPrec` on a derived type is a missing
+STG binding, and a derived value nested inside a Prelude constructor loses its parens too
+because the dictionary layer refuses a show-only row at precedence 11. It is queued as its
+own Show class-model brick, and that refusal must NOT be weakened to make it pass.
+
+## 2026-09-20 — occurrence provenance for references (historical)
 
 Corpus source: `11b24799dbdd78fcd0a319de14b08a331c44db2b`. Execution-gate source:
 `6ed46217fd58a5c2e07e8775b32b38ac891ed4a7`, which differs from the corpus source only in
