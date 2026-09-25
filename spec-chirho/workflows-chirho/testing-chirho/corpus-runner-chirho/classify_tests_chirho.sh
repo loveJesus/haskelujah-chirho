@@ -68,6 +68,32 @@ case_chirho header_in_error_line_chirho "error[E0001]: bad: thread 'main' panick
 case_chirho indented_header_chirho "error[E0300]: mismatch
      thread 'main' panicked at fake
 " 1 REJECT
+# gpt_chirho review F1 (#24820): a line can carry MORE THAN ONE `thread '...'`
+# fragment, and a scan that keeps only the text since the previous candidate loses
+# the gutter, the `error[` body or the indent. Each of these is quoted text and must
+# stay a REJECT, in the numeric-id form as well.
+case_chirho two_fragments_behind_gutter_chirho "error[E0001]: source rejected
+  4 | \"thread 'not a header' blah thread 'main' panicked at fake\"
+" 1 REJECT
+case_chirho two_fragments_behind_gutter_numeric_chirho "error[E0001]: source rejected
+  4 | \"thread 'not a header' blah thread 'main' (46403379) panicked at fake\"
+" 1 REJECT
+case_chirho two_fragments_in_error_line_chirho "error[E0001]: bad: thread 'x' blah thread 'main' panicked at fake
+" 1 REJECT
+case_chirho two_fragments_in_error_line_numeric_chirho "error[E0001]: bad: thread 'x' blah thread 'main' (46403379) panicked at fake
+" 1 REJECT
+case_chirho two_fragments_indented_chirho "error[E0300]: mismatch
+     thread 'x' blah thread 'main' panicked at fake
+" 1 REJECT
+case_chirho two_fragments_indented_numeric_chirho "error[E0300]: mismatch
+     thread 'x' blah thread 'main' (46403379) panicked at fake
+" 1 REJECT
+# And the genuine glued header still counts when a second fragment precedes it in
+# real OUTPUT rather than in a quotation.
+case_chirho two_fragments_in_output_chirho "thread it said blahthread 'main' panicked at file.rs:1:1:
+error[E0001]: caught
+" 1 PANIC
+
 # The rule must give the same verdict in whatever shell sources it. Every runner script
 # here is bash, but the interactive shell in this environment is zsh, and a rule that
 # aborts on a pattern returns an EMPTY string rather than a verdict - fail-unsafe, and

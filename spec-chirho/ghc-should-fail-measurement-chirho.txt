@@ -17,17 +17,31 @@
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
-#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, applied in
-#   this order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a
-#   real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and
-#   no `error[E`). A panic header is the shape the runtime prints, `thread '<name>'
-#   panicked at ...` with an optional ALL-DIGIT thread id, and it must begin a line.
-#   The BARE SUBSTRING `panic` is never a verdict, because source can contain it: the
-#   earlier wording in this artifact ("a rejection contains `error[E` or `panic`")
-#   described a rule that no longer exists and is corrected here. Matching is pure
-#   shell, never interactive `grep`, which is shadowed in this environment by a ugrep
-#   wrapper with content-dependent `-q` behaviour. The runner records each file's EXIT
-#   CODE beside its verdict, and no accepted file exited nonzero.
+#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh.
+#   THE RULE AS MEASURED — the runner revision that produced these counts is the one
+#   committed AT e8cd6bf4, and it is described here, not a later one. Order: TIMEOUT
+#   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
+#   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
+#   A panic header is `thread '<name>' panicked at ...`, optionally with a thread id in
+#   parentheses, and it had to BEGIN A LINE. The BARE SUBSTRING `panic` is never a
+#   verdict, because source can contain it: the earlier wording in this artifact ("a
+#   rejection contains `error[E` or `panic`") described a rule that no longer exists
+#   and is corrected here. Matching is pure shell, never interactive `grep`, which is
+#   shadowed in this environment by a ugrep wrapper with content-dependent `-q`
+#   behaviour. The runner records each file's EXIT CODE beside its verdict, and no
+#   accepted file exited nonzero.
+#   TOOLS REPAIR AFTER THIS MEASUREMENT, stated separately so the two are not
+#   conflated. Later commits on the same branch tightened the rule in three ways that
+#   the measured runner did NOT have: the parenthesised thread id must be ALL DIGITS
+#   (the measured glob accepted `(4worker)`); a header glued to output that ended
+#   without a newline, or following a bare carriage return, now counts, while a line
+#   that is diagnostic rendering carries no crash anywhere along it; and the rule is
+#   sourceable from zsh as well as bash. Those repairs cannot have affected these
+#   counts, and that is measured rather than asserted: all 3,698 retained verdicts
+#   from the four passes and the replay were re-derived with the FINAL rule and every
+#   one agrees with what was recorded, with zero PANIC. gpt_chirho's independent
+#   deliberately unanchored scan over all 7,396 retained stdout/stderr files likewise
+#   found no header candidate at all.
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   (no subdirectories); per-file source SHA256s retained with the receipts
 #
@@ -100,8 +114,9 @@
 #   produced before that repair and are in the caller's locale order; their list hashes
 #   reproduce because the hashes were computed explicitly C-collated.
 #   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# EXECUTION EVIDENCE, each gate stated against the source it actually ran on. The four
-#   corpus passes above ran on 11b24799. Every execution gate ran on 6ed46217, which
+# HISTORICAL EXECUTION EVIDENCE (of the 11b24799 measurement, NOT of the measurement
+#   at the top of this file), each gate stated against the source it actually ran on.
+#   The four corpus passes of THAT measurement ran on 11b24799. Every execution gate ran on 6ed46217, which
 #   differs from 11b24799 only in the comments of one file (verified mechanically:
 #   every changed crate line is a comment): the curated GHC suite passes (486.68s); the
 #   driver library is 1778 passed / 0 failed / 0 ignored / 0 filtered, including five
