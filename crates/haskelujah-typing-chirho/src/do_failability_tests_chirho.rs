@@ -85,7 +85,9 @@ fn wildcard_chirho() -> PatChirho {
 }
 
 fn literal_chirho() -> PatChirho {
-    PatChirho::LitChirho(LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO))
+    // No producer origin: this literal is built here, not lowered from source,
+    // and failability does not depend on identity.
+    PatChirho::LitChirho(LitChirho::IntChirho(0, SpanChirho::DUMMY_CHIRHO, None))
 }
 
 fn tuple_chirho(elements_chirho: Vec<PatChirho>) -> PatChirho {
