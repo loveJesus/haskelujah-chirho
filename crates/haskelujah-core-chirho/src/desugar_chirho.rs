@@ -25,6 +25,7 @@ use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
 };
@@ -916,6 +917,35 @@ impl DesugarCtxChirho {
             self.free_var_cache_chirho
                 .insert(name_chirho.to_string(), id_chirho);
             id_chirho
+        }
+    }
+
+    /// Resolve the operation a do statement SELECTED. Lowering chose it once,
+    /// recording the binding with its qualifier; this looks that binding up and
+    /// does not choose again, so the checker and Core cannot disagree about
+    /// which operation a statement stands for.
+    ///
+    /// A statement carrying no selection never went through lowering's selector
+    /// - Template Haskell and anything else that builds statements directly -
+    /// and falls back to the name this resolver would itself have chosen. That
+    /// is a producer gap to close, not a second opinion: nothing here overrides
+    /// a selection that exists.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn resolve_selected_operation_chirho(
+        &mut self,
+        selected_chirho: Option<&SelectedOperationChirho>,
+        qualifier_chirho: Option<&str>,
+        method_chirho: &str,
+    ) -> CoreIdChirho {
+        match selected_chirho {
+            Some(selected_chirho) => {
+                let name_chirho = &selected_chirho.name_chirho;
+                let text_chirho = name_chirho.text_chirho().to_string();
+                let carried_qualifier_chirho =
+                    name_chirho.qualifier_chirho().map(str::to_string);
+                self.resolve_do_method_chirho(carried_qualifier_chirho.as_deref(), &text_chirho)
+            }
+            None => self.resolve_do_method_chirho(qualifier_chirho, method_chirho),
         }
     }
 
@@ -5485,13 +5515,20 @@ impl DesugarCtxChirho {
         }
 
         match &stmts_chirho[0] {
-            StmtChirho::ExprChirho { expr_chirho, .. } => {
+            StmtChirho::ExprChirho {
+                expr_chirho,
+                then_chirho,
+            } => {
                 // e; stmts → (>>) e (do stmts) — rides the per-type dispatch;
                 // IO falls back to ThenIOChirho by name at STG (INV-001).
                 // workflow: monadic-dispatch-chirho
                 let e_chirho = self.desugar_expr_chirho(expr_chirho);
                 let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
-                let then_id_chirho = self.resolve_do_method_chirho(qualifier_chirho, ">>");
+                let then_id_chirho = self.resolve_selected_operation_chirho(
+                    then_chirho.as_ref(),
+                    qualifier_chirho,
+                    ">>",
+                );
                 CoreExprChirho::AppChirho {
                     fun_chirho: Box::new(CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(then_id_chirho)),
@@ -5503,6 +5540,8 @@ impl DesugarCtxChirho {
             StmtChirho::BindChirho {
                 pat_chirho,
                 expr_chirho,
+                bind_chirho: bind_selected_chirho,
+                fail_chirho: fail_selected_chirho,
                 ..
             } => {
                 // p <- e; stmts → (>>=) e (\p -> do stmts). Non-Var patterns
@@ -5511,7 +5550,11 @@ impl DesugarCtxChirho {
                 // BindIOChirho via the STG name fallback (INV-001).
                 // workflow: monadic-dispatch-chirho
                 let e_chirho = self.desugar_expr_chirho(expr_chirho);
-                let bind_id_chirho = self.resolve_do_method_chirho(qualifier_chirho, ">>=");
+                let bind_id_chirho = self.resolve_selected_operation_chirho(
+                    bind_selected_chirho.as_ref(),
+                    qualifier_chirho,
+                    ">>=",
+                );
                 let lam_chirho = match pat_chirho {
                     PatChirho::VarChirho(n_chirho) => {
                         let var_name_chirho = n_chirho.text_chirho().to_string();
@@ -5579,8 +5622,11 @@ impl DesugarCtxChirho {
                             )),
                             SpanChirho::DUMMY_CHIRHO,
                         );
-                        let fail_id_chirho =
-                            self.resolve_do_method_chirho(qualifier_chirho, "fail");
+                        let fail_id_chirho = self.resolve_selected_operation_chirho(
+                            fail_selected_chirho.as_ref(),
+                            qualifier_chirho,
+                            "fail",
+                        );
                         let fail_chirho = CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(fail_id_chirho)),
                             arg_chirho: Box::new(CoreExprChirho::LitChirho(

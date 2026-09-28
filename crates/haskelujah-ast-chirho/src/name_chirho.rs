@@ -163,6 +163,14 @@ impl NameChirho {
         }
     }
 
+    /// The module qualifier this name was written with, if any.
+    pub fn qualifier_chirho(&self) -> Option<&str> {
+        match self {
+            Self::RawChirho(n_chirho) => n_chirho.qualifier_chirho.as_deref(),
+            Self::ResolvedChirho(n_chirho) => n_chirho.raw_chirho.qualifier_chirho.as_deref(),
+        }
+    }
+
     /// The producer-minted origin of this occurrence, if it has one.
     pub fn origin_chirho(&self) -> Option<OriginIdChirho> {
         match self {
