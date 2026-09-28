@@ -14,6 +14,8 @@ mod do_selection_chirho;
 #[cfg(test)]
 mod do_selection_tests_chirho;
 #[cfg(test)]
+mod walk_hook_tests_chirho;
+#[cfg(test)]
 mod declaration_kind_tests_chirho;
 mod declaration_kinds_chirho;
 #[cfg(test)]

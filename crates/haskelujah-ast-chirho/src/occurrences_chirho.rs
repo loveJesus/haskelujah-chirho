@@ -79,45 +79,116 @@ pub fn remint_expr_chirho(expr_chirho: &mut ExprChirho, supply_chirho: &mut Orig
 /// The visitor every traversal below threads through.
 pub type OccurrenceVisitorChirho<'v> = dyn FnMut(OccurrenceMutChirho<'_>) + 'v;
 
-/// Visit every occurrence in one declaration, in source order.
+/// A statement, reached for reading or rewriting. A statement is NOT an
+/// occurrence.
+pub type StatementVisitorChirho<'v> = dyn FnMut(&mut StmtChirho) + 'v;
+
+/// What one walk carries. The two hooks are deliberately separate kinds
+/// (gpt_chirho #25088): an OCCURRENCE is an evidence-bearing use and may be
+/// restamped, while a STATEMENT is not an occurrence at all. Visiting statements
+/// therefore cannot mint, remint, or change how many occurrences a walk sees -
+/// a statement never reaches `set_origin_chirho`, because it is not an
+/// `OccurrenceMutChirho` and cannot be made into one.
+///
+/// Every walk that existed before this hook passes no statement visitor, so
+/// remint, clone and passthrough keep their exact previous behaviour.
+pub struct WalkChirho<'v> {
+    on_occurrence_chirho: &'v mut OccurrenceVisitorChirho<'v>,
+    on_statement_chirho: Option<&'v mut StatementVisitorChirho<'v>>,
+}
+
+impl<'v> WalkChirho<'v> {
+    /// A walk that sees occurrences only, as every caller did before.
+    pub fn occurrences_chirho(on_occurrence_chirho: &'v mut OccurrenceVisitorChirho<'v>) -> Self {
+        Self {
+            on_occurrence_chirho,
+            on_statement_chirho: None,
+        }
+    }
+
+    /// A walk that also sees every statement, in source order.
+    pub fn with_statements_chirho(
+        on_occurrence_chirho: &'v mut OccurrenceVisitorChirho<'v>,
+        on_statement_chirho: &'v mut StatementVisitorChirho<'v>,
+    ) -> Self {
+        Self {
+            on_occurrence_chirho,
+            on_statement_chirho: Some(on_statement_chirho),
+        }
+    }
+
+    fn occurrence_chirho(&mut self, occurrence_chirho: OccurrenceMutChirho<'_>) {
+        (self.on_occurrence_chirho)(occurrence_chirho);
+    }
+
+    fn statement_chirho(&mut self, stmt_chirho: &mut StmtChirho) {
+        if let Some(on_statement_chirho) = self.on_statement_chirho.as_mut() {
+            on_statement_chirho(stmt_chirho);
+        }
+    }
+}
+
+/// Visit every occurrence in one declaration, in source order. The signature
+/// every caller had before the statement hook existed, and it still carries no
+/// statement visitor.
 pub fn visit_decl_chirho(decl_chirho: &mut DeclChirho, visit_chirho: &mut OccurrenceVisitorChirho) {
+    visit_decl_walk_chirho(decl_chirho, &mut WalkChirho::occurrences_chirho(visit_chirho));
+}
+
+/// Visit every occurrence AND every statement in one declaration, in source
+/// order. The statement hook exists for passes that rewrite a statement without
+/// touching occurrence identity, such as clearing a `fail` a pattern cannot
+/// need.
+pub fn visit_decl_and_statements_chirho(
+    decl_chirho: &mut DeclChirho,
+    visit_chirho: &mut OccurrenceVisitorChirho,
+    statement_chirho: &mut StatementVisitorChirho,
+) {
+    visit_decl_walk_chirho(
+        decl_chirho,
+        &mut WalkChirho::with_statements_chirho(visit_chirho, statement_chirho),
+    );
+}
+
+/// The one traversal both entry points share.
+pub fn visit_decl_walk_chirho(decl_chirho: &mut DeclChirho, walk_chirho: &mut WalkChirho<'_>) {
     match decl_chirho {
         DeclChirho::FunBindChirho { matches_chirho, .. } => {
-            visit_match_arms_chirho(matches_chirho, visit_chirho);
+            visit_match_arms_chirho(matches_chirho, walk_chirho);
         }
         DeclChirho::PatBindChirho {
             pat_chirho,
             rhs_chirho,
             ..
         } => {
-            visit_pat_chirho(pat_chirho, visit_chirho);
-            visit_rhs_chirho(rhs_chirho, visit_chirho);
+            visit_pat_chirho(pat_chirho, walk_chirho);
+            visit_rhs_chirho(rhs_chirho, walk_chirho);
         }
         DeclChirho::ClassDeclChirho { methods_chirho, .. } => {
             for ClassMethodChirho { default_chirho, .. } in methods_chirho {
                 if let Some(arms_chirho) = default_chirho {
-                    visit_match_arms_chirho(arms_chirho, visit_chirho);
+                    visit_match_arms_chirho(arms_chirho, walk_chirho);
                 }
             }
         }
         DeclChirho::InstanceDeclChirho { methods_chirho, .. } => {
-            visit_local_binds_chirho(methods_chirho, visit_chirho);
+            visit_local_binds_chirho(methods_chirho, walk_chirho);
         }
         DeclChirho::PatSynDeclChirho {
             dir_chirho,
             pat_chirho,
             ..
         } => {
-            visit_pat_chirho(pat_chirho, visit_chirho);
+            visit_pat_chirho(pat_chirho, walk_chirho);
             match dir_chirho {
                 PatSynDirChirho::ExplBidirChirho {
                     builder_binds_chirho,
-                } => visit_local_binds_chirho(builder_binds_chirho, visit_chirho),
+                } => visit_local_binds_chirho(builder_binds_chirho, walk_chirho),
                 PatSynDirChirho::ImplBidirChirho | PatSynDirChirho::UnidirChirho => {}
             }
         }
         DeclChirho::SpliceDeclChirho { expr_chirho, .. } => {
-            visit_expr_chirho(expr_chirho, visit_chirho);
+            visit_expr_walk_chirho(expr_chirho, walk_chirho);
         }
         // Declarations that hold types, names and kinds but no expression.
         DeclChirho::TypeSigChirho { .. }
@@ -135,42 +206,42 @@ pub fn visit_decl_chirho(decl_chirho: &mut DeclChirho, visit_chirho: &mut Occurr
 
 fn visit_match_arms_chirho(
     arms_chirho: &mut [MatchArmChirho],
-    visit_chirho: &mut OccurrenceVisitorChirho,
+    walk_chirho: &mut WalkChirho<'_>,
 ) {
     for arm_chirho in arms_chirho {
         for pat_chirho in &mut arm_chirho.pats_chirho {
-            visit_pat_chirho(pat_chirho, visit_chirho);
+            visit_pat_chirho(pat_chirho, walk_chirho);
         }
-        visit_rhs_chirho(&mut arm_chirho.rhs_chirho, visit_chirho);
-        visit_local_binds_chirho(&mut arm_chirho.where_binds_chirho, visit_chirho);
+        visit_rhs_chirho(&mut arm_chirho.rhs_chirho, walk_chirho);
+        visit_local_binds_chirho(&mut arm_chirho.where_binds_chirho, walk_chirho);
     }
 }
 
 fn visit_local_binds_chirho(
     binds_chirho: &mut [LocalBindChirho],
-    visit_chirho: &mut OccurrenceVisitorChirho,
+    walk_chirho: &mut WalkChirho<'_>,
 ) {
     for bind_chirho in binds_chirho {
         match bind_chirho {
             LocalBindChirho::FunBindChirho { matches_chirho, .. } => {
-                visit_match_arms_chirho(matches_chirho, visit_chirho);
+                visit_match_arms_chirho(matches_chirho, walk_chirho);
             }
             LocalBindChirho::PatBindChirho {
                 pat_chirho,
                 rhs_chirho,
                 ..
             } => {
-                visit_pat_chirho(pat_chirho, visit_chirho);
-                visit_rhs_chirho(rhs_chirho, visit_chirho);
+                visit_pat_chirho(pat_chirho, walk_chirho);
+                visit_rhs_chirho(rhs_chirho, walk_chirho);
             }
             LocalBindChirho::TypeSigChirho { .. } => {}
         }
     }
 }
 
-fn visit_rhs_chirho(rhs_chirho: &mut RhsChirho, visit_chirho: &mut OccurrenceVisitorChirho) {
+fn visit_rhs_chirho(rhs_chirho: &mut RhsChirho, walk_chirho: &mut WalkChirho<'_>) {
     match rhs_chirho {
-        RhsChirho::UnguardedChirho(expr_chirho) => visit_expr_chirho(expr_chirho, visit_chirho),
+        RhsChirho::UnguardedChirho(expr_chirho) => visit_expr_walk_chirho(expr_chirho, walk_chirho),
         RhsChirho::GuardedChirho(guarded_chirho) => {
             for GuardedExprChirho {
                 guard_chirho,
@@ -178,8 +249,8 @@ fn visit_rhs_chirho(rhs_chirho: &mut RhsChirho, visit_chirho: &mut OccurrenceVis
                 ..
             } in guarded_chirho
             {
-                visit_expr_chirho(guard_chirho, visit_chirho);
-                visit_expr_chirho(body_chirho, visit_chirho);
+                visit_expr_walk_chirho(guard_chirho, walk_chirho);
+                visit_expr_walk_chirho(body_chirho, walk_chirho);
             }
         }
     }
@@ -189,26 +260,31 @@ fn visit_rhs_chirho(rhs_chirho: &mut RhsChirho, visit_chirho: &mut OccurrenceVis
 /// selects nothing has no occurrence here, so nothing is stamped for it.
 fn visit_operation_chirho(
     operation_chirho: &mut Option<SelectedOperationChirho>,
-    visit_chirho: &mut OccurrenceVisitorChirho,
+    walk_chirho: &mut WalkChirho<'_>,
 ) {
     if let Some(operation_chirho) = operation_chirho {
-        visit_chirho(OccurrenceMutChirho::ReferenceChirho(
+        walk_chirho.occurrence_chirho(OccurrenceMutChirho::ReferenceChirho(
             &mut operation_chirho.name_chirho,
         ));
     }
 }
 
-fn visit_stmts_chirho(stmts_chirho: &mut [StmtChirho], visit_chirho: &mut OccurrenceVisitorChirho) {
+fn visit_stmts_chirho(stmts_chirho: &mut [StmtChirho], walk_chirho: &mut WalkChirho<'_>) {
     for stmt_chirho in stmts_chirho {
+        // Occurrences FIRST, then the statement. A pass that rewrites a
+        // statement - clearing a `fail` its pattern cannot need - therefore
+        // cannot change what this same walk sees, so the occurrences a walk
+        // yields are exactly the ones it would have yielded with no statement
+        // hook at all (gpt_chirho #25088).
         match stmt_chirho {
             StmtChirho::ExprChirho {
                 expr_chirho,
                 then_chirho,
             } => {
-                visit_expr_chirho(expr_chirho, visit_chirho);
+                visit_expr_walk_chirho(expr_chirho, walk_chirho);
                 // The `>>` the statement selects is a use like any other: it is
                 // reminted with the statement when a producer duplicates it.
-                visit_operation_chirho(then_chirho, visit_chirho);
+                visit_operation_chirho(then_chirho, walk_chirho);
             }
             StmtChirho::BindChirho {
                 pat_chirho,
@@ -217,25 +293,31 @@ fn visit_stmts_chirho(stmts_chirho: &mut [StmtChirho], visit_chirho: &mut Occurr
                 fail_chirho,
                 ..
             } => {
-                visit_pat_chirho(pat_chirho, visit_chirho);
-                visit_expr_chirho(expr_chirho, visit_chirho);
-                visit_operation_chirho(bind_chirho, visit_chirho);
-                visit_operation_chirho(fail_chirho, visit_chirho);
+                visit_pat_chirho(pat_chirho, walk_chirho);
+                visit_expr_walk_chirho(expr_chirho, walk_chirho);
+                visit_operation_chirho(bind_chirho, walk_chirho);
+                visit_operation_chirho(fail_chirho, walk_chirho);
             }
             StmtChirho::LetChirho { binds_chirho, .. } => {
-                visit_local_binds_chirho(binds_chirho, visit_chirho);
+                visit_local_binds_chirho(binds_chirho, walk_chirho);
             }
         }
+        walk_chirho.statement_chirho(stmt_chirho);
     }
 }
 
 /// Visit every occurrence in one expression, in source order.
 pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut OccurrenceVisitorChirho) {
+    visit_expr_walk_chirho(expr_chirho, &mut WalkChirho::occurrences_chirho(visit_chirho));
+}
+
+/// The expression traversal both entry points share.
+pub fn visit_expr_walk_chirho(expr_chirho: &mut ExprChirho, walk_chirho: &mut WalkChirho<'_>) {
     match expr_chirho {
         // A constructor is a reference too: the checker captures the class
         // context a constructor can carry, exactly as it does for a variable.
         ExprChirho::VarChirho(name_chirho) | ExprChirho::ConChirho(name_chirho) => {
-            visit_chirho(OccurrenceMutChirho::ReferenceChirho(name_chirho));
+            walk_chirho.occurrence_chirho(OccurrenceMutChirho::ReferenceChirho(name_chirho));
         }
         ExprChirho::InfixChirho {
             left_chirho,
@@ -243,36 +325,36 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             right_chirho,
             ..
         } => {
-            visit_expr_chirho(left_chirho, visit_chirho);
-            visit_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
-            visit_expr_chirho(right_chirho, visit_chirho);
+            visit_expr_walk_chirho(left_chirho, walk_chirho);
+            walk_chirho.occurrence_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
+            visit_expr_walk_chirho(right_chirho, walk_chirho);
         }
         ExprChirho::LeftSectionChirho {
             op_chirho,
             arg_chirho,
             ..
         } => {
-            visit_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
-            visit_expr_chirho(arg_chirho, visit_chirho);
+            walk_chirho.occurrence_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
+            visit_expr_walk_chirho(arg_chirho, walk_chirho);
         }
         ExprChirho::RightSectionChirho {
             arg_chirho,
             op_chirho,
             ..
         } => {
-            visit_expr_chirho(arg_chirho, visit_chirho);
-            visit_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
+            visit_expr_walk_chirho(arg_chirho, walk_chirho);
+            walk_chirho.occurrence_chirho(OccurrenceMutChirho::ReferenceChirho(op_chirho));
         }
         ExprChirho::LitChirho(lit_chirho) => {
-            visit_chirho(OccurrenceMutChirho::LiteralChirho(lit_chirho));
+            walk_chirho.occurrence_chirho(OccurrenceMutChirho::LiteralChirho(lit_chirho));
         }
         ExprChirho::AppChirho {
             fun_chirho,
             arg_chirho,
             ..
         } => {
-            visit_expr_chirho(fun_chirho, visit_chirho);
-            visit_expr_chirho(arg_chirho, visit_chirho);
+            visit_expr_walk_chirho(fun_chirho, walk_chirho);
+            visit_expr_walk_chirho(arg_chirho, walk_chirho);
         }
         ExprChirho::TypeAppChirho { expr_chirho, .. }
         | ExprChirho::NegChirho { expr_chirho, .. }
@@ -280,10 +362,10 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
         | ExprChirho::SpliceChirho { expr_chirho, .. }
         | ExprChirho::TypedSpliceChirho { expr_chirho, .. }
         | ExprChirho::QuoteExprChirho { expr_chirho, .. } => {
-            visit_expr_chirho(expr_chirho, visit_chirho);
+            visit_expr_walk_chirho(expr_chirho, walk_chirho);
         }
         ExprChirho::ParenChirho { inner_chirho, .. } => {
-            visit_expr_chirho(inner_chirho, visit_chirho)
+            visit_expr_walk_chirho(inner_chirho, walk_chirho)
         }
         ExprChirho::LamChirho {
             pats_chirho,
@@ -291,20 +373,20 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             ..
         } => {
             for pat_chirho in pats_chirho {
-                visit_pat_chirho(pat_chirho, visit_chirho);
+                visit_pat_chirho(pat_chirho, walk_chirho);
             }
-            visit_expr_chirho(body_chirho, visit_chirho);
+            visit_expr_walk_chirho(body_chirho, walk_chirho);
         }
         ExprChirho::TypeLamChirho { body_chirho, .. } => {
-            visit_expr_chirho(body_chirho, visit_chirho)
+            visit_expr_walk_chirho(body_chirho, walk_chirho)
         }
         ExprChirho::LetChirho {
             binds_chirho,
             body_chirho,
             ..
         } => {
-            visit_local_binds_chirho(binds_chirho, visit_chirho);
-            visit_expr_chirho(body_chirho, visit_chirho);
+            visit_local_binds_chirho(binds_chirho, walk_chirho);
+            visit_expr_walk_chirho(body_chirho, walk_chirho);
         }
         ExprChirho::IfChirho {
             cond_chirho,
@@ -312,16 +394,16 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             else_chirho,
             ..
         } => {
-            visit_expr_chirho(cond_chirho, visit_chirho);
-            visit_expr_chirho(then_chirho, visit_chirho);
-            visit_expr_chirho(else_chirho, visit_chirho);
+            visit_expr_walk_chirho(cond_chirho, walk_chirho);
+            visit_expr_walk_chirho(then_chirho, walk_chirho);
+            visit_expr_walk_chirho(else_chirho, walk_chirho);
         }
         ExprChirho::CaseChirho {
             scrutinee_chirho,
             alts_chirho,
             ..
         } => {
-            visit_expr_chirho(scrutinee_chirho, visit_chirho);
+            visit_expr_walk_chirho(scrutinee_chirho, walk_chirho);
             for AltChirho {
                 pat_chirho,
                 rhs_chirho,
@@ -329,12 +411,12 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
                 ..
             } in alts_chirho
             {
-                visit_pat_chirho(pat_chirho, visit_chirho);
-                visit_rhs_chirho(rhs_chirho, visit_chirho);
-                visit_local_binds_chirho(where_binds_chirho, visit_chirho);
+                visit_pat_chirho(pat_chirho, walk_chirho);
+                visit_rhs_chirho(rhs_chirho, walk_chirho);
+                visit_local_binds_chirho(where_binds_chirho, walk_chirho);
             }
         }
-        ExprChirho::DoChirho { stmts_chirho, .. } => visit_stmts_chirho(stmts_chirho, visit_chirho),
+        ExprChirho::DoChirho { stmts_chirho, .. } => visit_stmts_chirho(stmts_chirho, walk_chirho),
         ExprChirho::TupleChirho {
             elements_chirho, ..
         }
@@ -342,7 +424,7 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             elements_chirho, ..
         } => {
             for element_chirho in elements_chirho {
-                visit_expr_chirho(element_chirho, visit_chirho);
+                visit_expr_walk_chirho(element_chirho, walk_chirho);
             }
         }
         ExprChirho::ArithSeqChirho {
@@ -351,12 +433,12 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             to_chirho,
             ..
         } => {
-            visit_expr_chirho(from_chirho, visit_chirho);
+            visit_expr_walk_chirho(from_chirho, walk_chirho);
             if let Some(then_chirho) = then_chirho {
-                visit_expr_chirho(then_chirho, visit_chirho);
+                visit_expr_walk_chirho(then_chirho, walk_chirho);
             }
             if let Some(to_chirho) = to_chirho {
-                visit_expr_chirho(to_chirho, visit_chirho);
+                visit_expr_walk_chirho(to_chirho, walk_chirho);
             }
         }
         ExprChirho::ListCompChirho {
@@ -365,10 +447,10 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             parallel_quals_chirho,
             ..
         } => {
-            visit_expr_chirho(body_chirho, visit_chirho);
-            visit_stmts_chirho(quals_chirho, visit_chirho);
+            visit_expr_walk_chirho(body_chirho, walk_chirho);
+            visit_stmts_chirho(quals_chirho, walk_chirho);
             for branch_chirho in parallel_quals_chirho {
-                visit_stmts_chirho(branch_chirho, visit_chirho);
+                visit_stmts_chirho(branch_chirho, walk_chirho);
             }
         }
         ExprChirho::RecordConChirho {
@@ -376,9 +458,9 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             fields_chirho,
             ..
         } => {
-            visit_chirho(OccurrenceMutChirho::ReferenceChirho(con_chirho));
+            walk_chirho.occurrence_chirho(OccurrenceMutChirho::ReferenceChirho(con_chirho));
             for field_chirho in fields_chirho {
-                visit_expr_chirho(&mut field_chirho.value_chirho, visit_chirho);
+                visit_expr_walk_chirho(&mut field_chirho.value_chirho, walk_chirho);
             }
         }
         ExprChirho::RecordUpdateChirho {
@@ -386,36 +468,36 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
             fields_chirho,
             ..
         } => {
-            visit_expr_chirho(expr_chirho, visit_chirho);
+            visit_expr_walk_chirho(expr_chirho, walk_chirho);
             for field_chirho in fields_chirho {
-                visit_expr_chirho(&mut field_chirho.value_chirho, visit_chirho);
+                visit_expr_walk_chirho(&mut field_chirho.value_chirho, walk_chirho);
             }
         }
         ExprChirho::QuoteDeclChirho { decls_chirho, .. } => {
             for decl_chirho in decls_chirho {
-                visit_decl_chirho(decl_chirho, visit_chirho);
+                visit_decl_walk_chirho(decl_chirho, walk_chirho);
             }
         }
-        ExprChirho::QuotePatChirho { pat_chirho, .. } => visit_pat_chirho(pat_chirho, visit_chirho),
+        ExprChirho::QuotePatChirho { pat_chirho, .. } => visit_pat_chirho(pat_chirho, walk_chirho),
         ExprChirho::QuoteTypeChirho { .. } => {}
     }
 }
 
 /// Patterns bind names; a binder is not an occurrence. A view pattern's
 /// function is an expression, so its occurrences are visited.
-fn visit_pat_chirho(pat_chirho: &mut PatChirho, visit_chirho: &mut OccurrenceVisitorChirho) {
+fn visit_pat_chirho(pat_chirho: &mut PatChirho, walk_chirho: &mut WalkChirho<'_>) {
     match pat_chirho {
         PatChirho::ViewChirho {
             expr_chirho,
             pat_chirho,
             ..
         } => {
-            visit_expr_chirho(expr_chirho, visit_chirho);
-            visit_pat_chirho(pat_chirho, visit_chirho);
+            visit_expr_walk_chirho(expr_chirho, walk_chirho);
+            visit_pat_chirho(pat_chirho, walk_chirho);
         }
         PatChirho::ConChirho { args_chirho, .. } => {
             for arg_chirho in args_chirho {
-                visit_pat_chirho(arg_chirho, visit_chirho);
+                visit_pat_chirho(arg_chirho, walk_chirho);
             }
         }
         PatChirho::TupleChirho {
@@ -425,34 +507,34 @@ fn visit_pat_chirho(pat_chirho: &mut PatChirho, visit_chirho: &mut OccurrenceVis
             elements_chirho, ..
         } => {
             for element_chirho in elements_chirho {
-                visit_pat_chirho(element_chirho, visit_chirho);
+                visit_pat_chirho(element_chirho, walk_chirho);
             }
         }
         PatChirho::AsChirho { pattern_chirho, .. } => {
-            visit_pat_chirho(pattern_chirho, visit_chirho)
+            visit_pat_chirho(pattern_chirho, walk_chirho)
         }
         PatChirho::ParenChirho { inner_chirho, .. }
         | PatChirho::LazyChirho { inner_chirho, .. }
         | PatChirho::BangChirho { inner_chirho, .. } => {
-            visit_pat_chirho(inner_chirho, visit_chirho)
+            visit_pat_chirho(inner_chirho, walk_chirho)
         }
         PatChirho::InfixConChirho {
             left_chirho,
             right_chirho,
             ..
         } => {
-            visit_pat_chirho(left_chirho, visit_chirho);
-            visit_pat_chirho(right_chirho, visit_chirho);
+            visit_pat_chirho(left_chirho, walk_chirho);
+            visit_pat_chirho(right_chirho, walk_chirho);
         }
         PatChirho::RecordChirho { fields_chirho, .. } => {
             for field_chirho in fields_chirho {
-                visit_pat_chirho(&mut field_chirho.pattern_chirho, visit_chirho);
+                visit_pat_chirho(&mut field_chirho.pattern_chirho, walk_chirho);
             }
         }
-        PatChirho::TypeAnnotChirho { pat_chirho, .. } => visit_pat_chirho(pat_chirho, visit_chirho),
+        PatChirho::TypeAnnotChirho { pat_chirho, .. } => visit_pat_chirho(pat_chirho, walk_chirho),
         // A literal pattern is a comparison, and a use of its literal.
         PatChirho::LitChirho(lit_chirho) | PatChirho::NegChirho { lit_chirho, .. } => {
-            visit_chirho(OccurrenceMutChirho::LiteralChirho(lit_chirho));
+            walk_chirho.occurrence_chirho(OccurrenceMutChirho::LiteralChirho(lit_chirho));
         }
         PatChirho::VarChirho(_) | PatChirho::WildcardChirho(_) => {}
     }
