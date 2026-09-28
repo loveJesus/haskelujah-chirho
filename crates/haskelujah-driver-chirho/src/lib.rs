@@ -1756,6 +1756,17 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     let deriving_warnings_chirho =
         haskelujah_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
 
+    // Phase 2.6: Do-statement failability — clear the `fail` lowering RESERVED on
+    // every bind wherever the pattern cannot fail, so what survives is a
+    // selection that was really selected. Runs here because the module's own
+    // declarations are final after splices and deriving, and it needs to know how
+    // many constructors a pattern's type has. A constructor from another module
+    // is not in this environment and stays failable, which is the safe direction.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    haskelujah_typing_chirho::do_failability_chirho::refine_do_selections_chirho(
+        &mut module_chirho,
+    );
+
     // Phase 3: Name resolution
     let resolve_result_chirho = resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
     if !defer_errors_chirho && resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {

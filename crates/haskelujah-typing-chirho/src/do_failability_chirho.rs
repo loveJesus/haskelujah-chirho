@@ -20,9 +20,52 @@
 //! lowering.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
+use haskelujah_ast_chirho::expr_chirho::StmtChirho;
+use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::occurrences_chirho::visit_decl_and_statements_chirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 
 use crate::exhaust_chirho::TypeConEnvChirho;
+
+/// Clear the `fail` a bind statement reserved but does not need.
+///
+/// Lowering reserves an identity for `fail` on every bind, because failability
+/// depends on how many constructors the pattern's type has and lowering has no
+/// environment to ask. This runs where that environment exists, and CLEARS the
+/// reservation wherever the pattern cannot fail — so what remains is a
+/// selection that was really selected, and both the checker and the desugarer
+/// read the same one.
+///
+/// It rewrites statements only. The occurrence hook is empty, and a statement is
+/// not an occurrence, so nothing here mints, reminds or changes an origin.
+/// Returns how many reservations were cleared, which the controls read.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub fn refine_do_selections_chirho(module_chirho: &mut ModuleChirho) -> usize {
+    // Built before the mutable walk: the environment reads the whole module.
+    let env_chirho = TypeConEnvChirho::from_module_chirho(module_chirho);
+    let mut cleared_chirho = 0usize;
+    for decl_chirho in &mut module_chirho.decls_chirho {
+        visit_decl_and_statements_chirho(
+            decl_chirho,
+            &mut |_occurrence_chirho| {},
+            &mut |stmt_chirho: &mut StmtChirho| {
+                let StmtChirho::BindChirho {
+                    pat_chirho,
+                    fail_chirho,
+                    ..
+                } = stmt_chirho
+                else {
+                    return;
+                };
+                if fail_chirho.is_some() && !pattern_can_fail_chirho(pat_chirho, &env_chirho) {
+                    *fail_chirho = None;
+                    cleared_chirho += 1;
+                }
+            },
+        );
+    }
+    cleared_chirho
+}
 
 /// Whether matching `pat_chirho` can fail, and so whether its statement selects
 /// `fail`. A constructor this environment does not know is treated as failable:

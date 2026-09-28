@@ -5622,19 +5622,45 @@ impl DesugarCtxChirho {
                             )),
                             SpanChirho::DUMMY_CHIRHO,
                         );
-                        let fail_id_chirho = self.resolve_selected_operation_chirho(
-                            fail_selected_chirho.as_ref(),
-                            qualifier_chirho,
-                            "fail",
-                        );
-                        let fail_chirho = CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(fail_id_chirho)),
-                            arg_chirho: Box::new(CoreExprChirho::LitChirho(
-                                CoreLitChirho::StringChirho(
-                                    "Pattern match failure in do expression".to_string(),
-                                ),
-                            )),
-                        };
+                        // A statement that SELECTED `fail` gets the failure
+                        // alternative. One whose pattern cannot fail selected
+                        // none - the failability pass cleared the reservation -
+                        // so no dead alternative is emitted, and no `fail` has to
+                        // resolve for a monad that does not have one.
+                        //
+                        // "Selected none" and "never asked" are different, and
+                        // only the first may drop it: a statement that never went
+                        // through lowering's selector has no BIND selection
+                        // either (Template Haskell builds statements directly),
+                        // and keeps the alternative it has always had.
+                        let selector_ran_chirho = bind_selected_chirho.is_some();
+                        let emit_fail_chirho =
+                            fail_selected_chirho.is_some() || !selector_ran_chirho;
+                        let mut alts_chirho = vec![CoreAltChirho {
+                            con_chirho,
+                            binders_chirho: top_binders_chirho,
+                            rhs_chirho: wrapped_chirho,
+                        }];
+                        if emit_fail_chirho {
+                            let fail_id_chirho = self.resolve_selected_operation_chirho(
+                                fail_selected_chirho.as_ref(),
+                                qualifier_chirho,
+                                "fail",
+                            );
+                            let fail_expr_chirho = CoreExprChirho::AppChirho {
+                                fun_chirho: Box::new(CoreExprChirho::VarChirho(fail_id_chirho)),
+                                arg_chirho: Box::new(CoreExprChirho::LitChirho(
+                                    CoreLitChirho::StringChirho(
+                                        "Pattern match failure in do expression".to_string(),
+                                    ),
+                                )),
+                            };
+                            alts_chirho.push(CoreAltChirho {
+                                con_chirho: AltConChirho::DefaultChirho,
+                                binders_chirho: vec![],
+                                rhs_chirho: fail_expr_chirho,
+                            });
+                        }
                         let case_chirho = CoreExprChirho::CaseChirho {
                             scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(scrut_id_chirho)),
                             bind_chirho: case_wild_chirho,
@@ -5643,18 +5669,7 @@ impl DesugarCtxChirho {
                                     self.next_id_chirho,
                                 ),
                             ),
-                            alts_chirho: vec![
-                                CoreAltChirho {
-                                    con_chirho,
-                                    binders_chirho: top_binders_chirho,
-                                    rhs_chirho: wrapped_chirho,
-                                },
-                                CoreAltChirho {
-                                    con_chirho: AltConChirho::DefaultChirho,
-                                    binders_chirho: vec![],
-                                    rhs_chirho: fail_chirho,
-                                },
-                            ],
+                            alts_chirho,
                         };
                         CoreExprChirho::LamChirho {
                             binder_chirho: scrut_binder_chirho,
