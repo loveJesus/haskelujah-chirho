@@ -9,6 +9,7 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+mod lazy_patterns_chirho;
 mod matches_chirho;
 mod provenance_chirho;
 #[cfg(test)]
@@ -5555,6 +5556,33 @@ impl DesugarCtxChirho {
                     qualifier_chirho,
                     ">>=",
                 );
+                // A LAZY pattern scrutinises nothing at the binding site: each
+                // variable becomes a selector thunk, so an unused one forces
+                // nothing, demanding one selects its field, and a mismatching
+                // constructor fails only on demand. Taken before the general
+                // path, which would build a case and force at the bind.
+                // workflow: monadic-dispatch-chirho
+                // The selectors are built FIRST, because building them binds the
+                // pattern's variables in scope; the rest of the block is
+                // desugared afterwards so its references resolve to those thunks.
+                if let Some((scrutinee_binder_chirho, selector_binds_chirho)) =
+                    self.lazy_bind_prepare_chirho(pat_chirho)
+                {
+                    let rest_chirho =
+                        self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
+                    let lam_chirho = Self::lazy_bind_lambda_chirho(
+                        scrutinee_binder_chirho,
+                        selector_binds_chirho,
+                        rest_chirho,
+                    );
+                    return CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(bind_id_chirho)),
+                            arg_chirho: Box::new(e_chirho),
+                        }),
+                        arg_chirho: Box::new(lam_chirho),
+                    };
+                }
                 let lam_chirho = match pat_chirho {
                     PatChirho::VarChirho(n_chirho) => {
                         let var_name_chirho = n_chirho.text_chirho().to_string();
