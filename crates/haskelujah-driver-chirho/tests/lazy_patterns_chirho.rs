@@ -110,6 +110,95 @@ fn a_mismatching_lazy_pattern_fails_only_when_demanded_chirho() {
     );
 }
 
+/// Run a whole module and return what it printed, for the shapes that are not a
+/// do statement.
+fn module_output_chirho(body_chirho: &str) -> String {
+    let source_chirho = format!(
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\nmodule Main where\n{body_chirho}\n"
+    );
+    let (_, machine_chirho) = eval_source_with_machine_chirho(
+        &source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "LazyPatternsChirho.hs",
+        None,
+    )
+    .expect("the program compiles");
+    machine_chirho.io_output_chirho
+}
+
+#[test]
+fn a_do_let_pattern_binding_is_lazy_chirho() {
+    // Every Haskell pattern binding is lazy, `~` or not. Demanding selects the
+    // field; leaving it unused forces nothing, even against a scrutinee that
+    // cannot match or that is undefined. All three crashed before the repair.
+    assert_eq!(
+        output_chirho("  let (Just n) = Just (7 :: Int)\n  print n"),
+        "7\n"
+    );
+    assert_eq!(
+        output_chirho("  let (Just n) = (Nothing :: Maybe Int)\n  print (5 :: Int)"),
+        "5\n"
+    );
+    assert_eq!(
+        output_chirho("  let ~(Just n) = (undefined :: Maybe Int)\n  print (5 :: Int)"),
+        "5\n"
+    );
+    assert_eq!(
+        output_chirho("  let (a, b) = (3 :: Int, 4 :: Int)\n  print (a - b)"),
+        "-1\n"
+    );
+}
+
+#[test]
+fn a_where_pattern_binding_is_lazy_chirho() {
+    assert_eq!(
+        module_output_chirho(
+            "valChirho :: Int\nvalChirho = n where (Just n) = Just (7 :: Int)\nmain :: IO ()\nmain = print valChirho"
+        ),
+        "7\n"
+    );
+    assert_eq!(
+        module_output_chirho(
+            "valChirho :: Int\nvalChirho = 5 where (Just n) = (Nothing :: Maybe Int)\nmain :: IO ()\nmain = print valChirho"
+        ),
+        "5\n"
+    );
+}
+
+#[test]
+fn a_let_in_pattern_binding_is_lazy_chirho() {
+    assert_eq!(
+        module_output_chirho(
+            "main :: IO ()\nmain = print (let (Just n) = Just (7 :: Int) in n)"
+        ),
+        "7\n"
+    );
+    assert_eq!(
+        module_output_chirho(
+            "main :: IO ()\nmain = print (let (Just n) = (Nothing :: Maybe Int) in (5 :: Int))"
+        ),
+        "5\n"
+    );
+}
+
+#[test]
+fn a_top_level_pattern_binding_is_lazy_chirho() {
+    // Measured rather than assumed: this path was already correct before the
+    // repair, and the control keeps it that way.
+    assert_eq!(
+        module_output_chirho(
+            "(aChirho, bChirho) = (3 :: Int, 4 :: Int)\nmain :: IO ()\nmain = print (aChirho - bChirho)"
+        ),
+        "-1\n"
+    );
+    assert_eq!(
+        module_output_chirho(
+            "(Just nChirho) = (Nothing :: Maybe Int)\nmain :: IO ()\nmain = print (5 :: Int)"
+        ),
+        "5\n"
+    );
+}
+
 #[test]
 fn a_refutable_bind_still_selects_fail_chirho() {
     // The control gpt_chirho asked to keep unchanged: a genuinely failable

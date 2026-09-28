@@ -52,12 +52,12 @@ established here, not invented.
 - [x] 1. A selector builder: given a scrutinee id, a pattern and one bound variable, produce the
       selector expression. Shared by every path below rather than written per path.
 - [x] 2. Lazy patterns in a do bind (`~p <- m`).
-- [ ] 3. Lazy AND plain pattern bindings in `let` and `where`, since a Haskell pattern binding is
+- [x] 3. Lazy AND plain pattern bindings in `let` and `where`, since a Haskell pattern binding is
       lazy whether or not it is written with `~`. This is the larger half and is pre-existing.
 - [x] 4a. Controls for the DO half, seven of them in
       `crates/haskelujah-driver-chirho/tests/lazy_patterns_chirho.rs`, mutation-checked: with the
       lazy path disabled six fail and the refutable control correctly stays green.
-- [ ] 4b. Controls for the LET half, once brick 3 lands.
+- [x] 4b. Controls for the LET half: do-let, `where`, `let ... in`, and top level.
 - [ ] 4. Controls, as gpt_chirho specified: do and let, non-strictness (unused binding does not
       force `undefined`), demand selects the field, a mismatching constructor fails only on
       demand, and the refutable Maybe control unchanged.
@@ -80,6 +80,28 @@ pattern path takes its variables from case alternative binders, so `prebind_all_
 deliberately does not bind an immediate variable child. Desugaring the body first leaves it
 pointing at an id nothing binds, which surfaces as "missing STG binding `n`" at RUN time rather
 than as a compile error.
+
+## The four pattern-binding paths, measured (2026-09-28)
+
+`"_patscrut"` marks every eager pattern-bind site, and there were four:
+
+    desugar_do_chirho        do-block `let`      was strict   now lazy
+    desugar_arm_rhs_chirho   `where`             was strict   now lazy
+    desugar_expr_chirho      `let ... in`        was strict   now lazy
+    desugar_module_chirho    top level           ALREADY lazy, measured not assumed
+
+Plus the do bind itself for `~p <- m`, which was the shape brick 5 exposed.
+
+    let (Just n) = Just 7; print n                GHC 7   branch 7
+    let (Just n) = Nothing; print 5               GHC 5   branch 5     was a crash
+    let ~(Just n) = undefined; print 5            GHC 5   branch 5     was a crash
+    let (a, b) = (3,4); print (a - b)             GHC -1  branch -1
+    where (Just n) = Just 7                       GHC 7   branch 7
+    where (Just n) = Nothing, unused              GHC 5   branch 5     was a crash
+    let (Just n) = Just 7 in n                    GHC 7   branch 7
+    let (Just n) = Nothing in 5                   GHC 5   branch 5     was a crash
+    top level (a, b) = (3,4)                      GHC -1  branch -1    unchanged
+    top level (Just n) = Nothing, unused          GHC 5   branch 5     unchanged
 
 ## Boundaries gpt_chirho set
 

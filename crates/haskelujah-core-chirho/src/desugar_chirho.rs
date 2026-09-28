@@ -2339,7 +2339,7 @@ impl DesugarCtxChirho {
         let body_core_chirho = self.desugar_rhs_chirho(&arm_chirho.rhs_chirho);
 
         // Desugar fun-bind RHSes
-        let core_binds_chirho =
+        let mut core_binds_chirho =
             self.desugar_where_rhs_chirho(&arm_chirho.where_binds_chirho, pre_binders_chirho);
 
         // Wrap body in case expressions for complex pattern bindings
@@ -2352,6 +2352,27 @@ impl DesugarCtxChirho {
             } = &arm_chirho.where_binds_chirho[idx_chirho]
             {
                 let core_scrut_chirho = self.desugar_rhs_chirho(rhs_chirho);
+                // A where pattern binding is LAZY, like every Haskell pattern
+                // binding: the right-hand side is bound once and each variable
+                // selects from it, so an unused variable forces nothing.
+                // workflow: monadic-dispatch-chirho
+                let scrutinee_binder_chirho = self.fresh_binder_chirho(
+                    "$patbind",
+                    TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                        self.next_id_chirho,
+                    )),
+                    SpanChirho::DUMMY_CHIRHO,
+                );
+                let scrutinee_chirho =
+                    CoreExprChirho::VarChirho(scrutinee_binder_chirho.id_chirho);
+                let selectors_chirho =
+                    self.lazy_selector_bindings_chirho(pat_chirho, &scrutinee_chirho);
+                if let Some(selectors_chirho) = selectors_chirho {
+                    core_binds_chirho.push((scrutinee_binder_chirho, core_scrut_chirho));
+                    core_binds_chirho.extend(selectors_chirho);
+                    pat_binders_map_chirho.remove(&idx_chirho);
+                    continue;
+                }
                 let con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
                 let binders_chirho = pat_binders_map_chirho
                     .remove(&idx_chirho)
@@ -4000,6 +4021,28 @@ impl DesugarCtxChirho {
                     } = &binds_chirho[idx_chirho]
                     {
                         let core_scrut_chirho = self.desugar_rhs_chirho(rhs_chirho);
+                        // `let p = rhs in body` is LAZY: the right-hand side is
+                        // bound once and each variable selects from it, so an
+                        // unused variable forces nothing. Only a shape the
+                        // selector path does not carry keeps the eager case.
+                        // workflow: monadic-dispatch-chirho
+                        let scrutinee_binder_chirho = self.fresh_binder_chirho(
+                            "$patbind",
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        let scrutinee_chirho =
+                            CoreExprChirho::VarChirho(scrutinee_binder_chirho.id_chirho);
+                        let selectors_chirho =
+                            self.lazy_selector_bindings_chirho(pat_chirho, &scrutinee_chirho);
+                        if let Some(selectors_chirho) = selectors_chirho {
+                            core_binds_chirho.push((scrutinee_binder_chirho, core_scrut_chirho));
+                            core_binds_chirho.extend(selectors_chirho);
+                            pat_binders_map_chirho.remove(&idx_chirho);
+                            continue;
+                        }
                         let con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
                         // Reuse the binders created during pre-binding so
                         // that the case alt binders match the ids the body
@@ -5824,37 +5867,66 @@ impl DesugarCtxChirho {
                     } = &binds_chirho[idx_chirho]
                     {
                         let core_scrut_chirho = self.desugar_rhs_chirho(rhs_chirho);
-                        let con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
-                        let binders_chirho = pat_binders_map_chirho
-                            .remove(&idx_chirho)
-                            .unwrap_or_default();
-                        let rhs_nested_chirho = self.wrap_nested_cases_chirho(
-                            result_body_chirho,
-                            &binders_chirho,
-                            pat_chirho,
-                            None,
-                        );
-                        let wild_chirho = self.fresh_binder_chirho(
-                            "_patscrut",
+                        // A pattern binding is LAZY in Haskell whether or not it
+                        // is written with `~`, so nothing here may scrutinise the
+                        // right-hand side. The RHS is bound ONCE and each variable
+                        // selects from that binding, which keeps an unused variable
+                        // from forcing it and keeps the RHS from being recomputed
+                        // per variable.
+                        // workflow: monadic-dispatch-chirho
+                        let scrutinee_binder_chirho = self.fresh_binder_chirho(
+                            "$patbind",
                             TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
                                 self.next_id_chirho,
                             )),
                             SpanChirho::DUMMY_CHIRHO,
                         );
-                        result_body_chirho = CoreExprChirho::CaseChirho {
-                            scrutinee_chirho: Box::new(core_scrut_chirho),
-                            bind_chirho: wild_chirho,
-                            result_ty_chirho: TyChirho::VarChirho(
-                                haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                    self.next_id_chirho,
+                        let scrutinee_chirho =
+                            CoreExprChirho::VarChirho(scrutinee_binder_chirho.id_chirho);
+                        let selectors_chirho =
+                            self.lazy_selector_bindings_chirho(pat_chirho, &scrutinee_chirho);
+                        if let Some(selectors_chirho) = selectors_chirho {
+                            core_binds_chirho.push((scrutinee_binder_chirho, core_scrut_chirho));
+                            core_binds_chirho.extend(selectors_chirho);
+                            pat_binders_map_chirho.remove(&idx_chirho);
+                        } else {
+                            // A record, list or view pattern: not carried by the
+                            // selector path, so it keeps the existing eager case
+                            // rather than binding the wrong field.
+                            let con_chirho = self.pat_to_alt_con_chirho(pat_chirho);
+                            let binders_chirho = pat_binders_map_chirho
+                                .remove(&idx_chirho)
+                                .unwrap_or_default();
+                            let rhs_nested_chirho = self.wrap_nested_cases_chirho(
+                                result_body_chirho,
+                                &binders_chirho,
+                                pat_chirho,
+                                None,
+                            );
+                            let wild_chirho = self.fresh_binder_chirho(
+                                "_patscrut",
+                                TyChirho::VarChirho(
+                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                        self.next_id_chirho,
+                                    ),
                                 ),
-                            ),
-                            alts_chirho: vec![CoreAltChirho {
-                                con_chirho,
-                                binders_chirho,
-                                rhs_chirho: rhs_nested_chirho,
-                            }],
-                        };
+                                SpanChirho::DUMMY_CHIRHO,
+                            );
+                            result_body_chirho = CoreExprChirho::CaseChirho {
+                                scrutinee_chirho: Box::new(core_scrut_chirho),
+                                bind_chirho: wild_chirho,
+                                result_ty_chirho: TyChirho::VarChirho(
+                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                        self.next_id_chirho,
+                                    ),
+                                ),
+                                alts_chirho: vec![CoreAltChirho {
+                                    con_chirho,
+                                    binders_chirho,
+                                    rhs_chirho: rhs_nested_chirho,
+                                }],
+                            };
+                        }
                     }
                 }
 
