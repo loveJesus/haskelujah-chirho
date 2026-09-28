@@ -11,7 +11,7 @@ Placement: a distinct `DataFamilyInstanceDeclChirho` preserves the full instance
 - [x] Verify ordinary/GADT instances, distinct instances of one family, wrong-result/wrong-kind controls and exact execution.
 - [x] Run focused regression gates; retain the actual remaining failures and update the workflow.
 - [ ] Finish the post-lint-cleanup family-test/lint rerun: two test launches stalled before Rust harness entry, not scored as test passes.
-- [ ] Checkpoint only owned paths.
+- [x] Checkpoint only owned paths: source checkpoint `a163d83c`; only this tasklist changes afterward.
 - [ ] Later integration: reconcile the new declaration with main's exhaustive occurrence walker; do-selection stays separate. No landing claim for this old kind-lane checkpoint.
 
 Acceptance is behavioral: unchanged T16188 must typecheck, T17067 must stay accepted, illegal type-family patterns must stay rejected, and constructor execution must produce the specified value. Focused gates are not a corpus no-regression or landing claim. A broader AST feature may expose additional gaps; retain and diagnose those rather than disabling nominal family classification.
