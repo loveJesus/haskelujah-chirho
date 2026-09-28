@@ -18,11 +18,13 @@ flowchart TD
     skolemize_chirho --> givens_chirho[Context becomes givens over the skolems]
     givens_chirho --> body_chirho[Body checked against the rigid seed, no per-equation freshening]
     body_chirho --> pattern_chirho{Constructor pattern meets the scrutinee}
-    pattern_chirho -->|unifies| plain_chirho[Ordinary unification]
+    pattern_chirho -->|unifies| plain_chirho[Unify constructor result before checking field patterns]
+    plain_chirho --> family_given_chirho[GADT result matching retains its deferred family equalities as local givens]
+    family_given_chirho --> scope_chirho
     pattern_chirho -->|GADT constructor| refine_chirho[refine_skolems_by_unification_chirho]
     refine_chirho --> opened_chirho[Skolems opened to fresh vars, unified, split by split_refinement_unifier_chirho]
     opened_chirho --> scope_chirho[Refinements recorded in the innermost TyEnvChirho scope]
-    scope_chirho --> normalize_chirho[normalize_ty_chirho rewrites refined skolems]
+    scope_chirho --> normalize_chirho[normalize_ty_chirho rewrites refined skolems and whole family applications]
     normalize_chirho --> alt_chirho[Case alternatives receive the rigid expected type]
     pattern_chirho -->|plain constructor vs bare skolem| mismatch_chirho[E0200 with rigid-variable note]
     body_chirho --> wanted_chirho[Wanted over a skolem is never quantified away]
@@ -42,12 +44,27 @@ flowchart TD
   marker, so `rewrite_skolems_chirho` never touches them.
 - Refinements are scoped by `TyEnvChirho::push_scope_chirho` / `pop_scope_chirho`: a GADT
   equality disappears exactly when the pattern variables it came with go out of scope.
-  `apply_subst_chirho` and `free_vars_chirho` cover refinement targets.
+  `apply_subst_chirho` and `free_vars_chirho` cover both sides of refinements.
+- Matching a GADT result and constructing a GADT value are different operations.
+  Only equalities introduced by the constructor-result match become pattern givens;
+  pre-existing wanteds and ordinary field-pattern constraints remain wanteds. The
+  outside-in pattern binder passes the actual scrutinee type through tuples and
+  constructor fields instead of inferring a whole pattern and calling all of its
+  constraints givens merely because one nested constructor is a GADT. This matters
+  for `(Refl, True)`: `a ~ b` does not prove an unrelated `F c ~ Bool`.
+  The same distinction holds under an ordinary pair constructor and in an unconstrained
+  field of a GADT. `UnrelatedGivenChirho.hs` was accepted by the first whole-pattern
+  prototype and is now rejected, as GHC 9.14.1 requires.
+- A given between stuck family results never equates the family arguments.
+  Temporarily opened skolems are closed before installing a family equality; no
+  matcher variable becomes a lasting proof identity. Scope tests cover flexible and
+  rigid family arguments and preserve earlier, unrelated wanteds.
 - Only a constructor whose declared result is not `T a b …` with distinct variables may refine
   (`constructor_result_refines_chirho`): `IntE :: Int -> Expr Int`, `Refl :: Equal a a`, or a
   constructor whose equality context was folded into its result.
-- A plain constructor pattern against a bare rigid scrutinee is reported (`f :: a -> Int;
-  f (Just x) = 1`); everything else keeps the pre-existing lenient pattern path.
+- An incompatible ordinary constructor pattern is reported, including a bare rigid
+  scrutinee (`f :: a -> Int; f (Just x) = 1`). GADT inaccessible-pattern handling keeps
+  its existing leniency; this unit does not claim complete implication checking.
 - `generalize_with_io_defaulting_chirho` never absorbs a predicate that mentions a skolem into a
   scheme: it stays deferred for the enclosing signature's givens, or is reported.
 - ScopedTypeVariables: `ast_type_to_scheme_seeded_chirho` applies `skolem_bindings_chirho` and

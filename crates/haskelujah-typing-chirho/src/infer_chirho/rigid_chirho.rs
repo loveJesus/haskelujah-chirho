@@ -7,6 +7,10 @@
 
 use super::*;
 
+#[cfg(test)]
+#[path = "rigid_chirho/family_tests_chirho.rs"]
+mod family_tests_chirho;
+
 impl InferCtxChirho {
     /// A pattern consumes an expected arrow, not its universal quantifier.
     /// Foralls encountered on the result spine are opened rigidly for checking;
@@ -112,8 +116,9 @@ impl InferCtxChirho {
     /// declared result refines the type parameters), try a *refinement*
     /// instead: rigid variables in the scrutinee are locally equated with what
     /// the constructor demands, recorded in the innermost scope. Returns the
-    /// substitution to compose, or `None` when neither succeeds (callers keep
-    /// their existing lenient path).
+    /// substitution to compose, or `None` when neither succeeds. Ordinary
+    /// mismatches are diagnosed; GADT-inaccessible cases keep their existing
+    /// leniency rather than being conflated with ordinary pattern errors.
     /// workflow: language-features-chirho/rigid-type-variables-chirho
     pub(super) fn unify_constructor_result_chirho(
         &mut self,
@@ -122,99 +127,61 @@ impl InferCtxChirho {
         scrutinee_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Option<SubstChirho> {
-        let unify_err_chirho =
-            match self.unify_normalized_chirho(con_result_chirho, scrutinee_chirho, span_chirho) {
-                Ok(subst_chirho) => return Some(subst_chirho),
-                Err(err_chirho) => err_chirho,
-            };
+        let unify_err_chirho = match self.unify_pattern_result_chirho(
+            refining_chirho,
+            con_result_chirho,
+            scrutinee_chirho,
+            span_chirho,
+        ) {
+            Ok(subst_chirho) => return Some(subst_chirho),
+            Err(err_chirho) => err_chirho,
+        };
         if refining_chirho {
-            return self.refine_skolems_by_unification_chirho(con_result_chirho, scrutinee_chirho);
+            return None;
         }
         // A rigid variable can never be matched by a concrete constructor
         // pattern (`f :: a -> Int; f (Just x) = 1`): the constructor's result
         // is a known type and `a` may not become it.
-        let scrutinee_norm_chirho = self.normalize_ty_chirho(scrutinee_chirho);
-        if matches!(&scrutinee_norm_chirho, TyChirho::ForallVarChirho(name_chirho)
-            if crate::skolem_chirho::is_skolem_name_chirho(name_chirho))
-        {
-            self.report_unify_error_chirho(&unify_err_chirho);
-        }
+        self.report_unify_error_chirho(&unify_err_chirho);
         None
     }
 
-    /// A case alternative binds its pattern to a fresh type and only then
-    /// meets the scrutinee; when that meeting fails, a pattern containing a
-    /// GADT-style constructor (`Just Refl`, `IntE n`) may refine the
-    /// scrutinee's rigid variables for the alternative.
-    pub(super) fn refine_scrutinee_by_pattern_chirho(
+    /// Match a pattern result without turning a GADT's equalities into wanteds.
+    /// The ordinary matcher may defer a stuck family equality successfully, so
+    /// waiting for an error before refining loses exactly these givens.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho
+    pub(super) fn unify_pattern_result_chirho(
         &mut self,
-        pat_chirho: &PatChirho,
+        refining_chirho: bool,
         pat_ty_chirho: &TyChirho,
         scrutinee_chirho: &TyChirho,
-    ) -> Option<SubstChirho> {
-        if !self.pattern_contains_refining_constructor_chirho(pat_chirho) {
-            return None;
-        }
-        self.refine_skolems_by_unification_chirho(pat_ty_chirho, scrutinee_chirho)
-    }
-
-    /// Whether a pattern mentions, at any depth, a constructor whose declared
-    /// result type refines its type parameters (see
-    /// `constructor_result_refines_chirho`).
-    pub(super) fn pattern_contains_refining_constructor_chirho(
-        &self,
-        pat_chirho: &PatChirho,
-    ) -> bool {
-        match pat_chirho {
-            PatChirho::ConChirho {
-                con_chirho,
-                args_chirho,
-                ..
-            } => {
-                self.constructor_name_refines_chirho(con_chirho)
-                    || args_chirho.iter().any(|arg_chirho| {
-                        self.pattern_contains_refining_constructor_chirho(arg_chirho)
-                    })
+        span_chirho: SpanChirho,
+    ) -> Result<SubstChirho, UnifyErrorChirho> {
+        let deferred_start_chirho = self.deferred_equalities_chirho.len();
+        match self.unify_normalized_chirho(pat_ty_chirho, scrutinee_chirho, span_chirho) {
+            Ok(subst_chirho) => {
+                if refining_chirho {
+                    let equalities_chirho = self
+                        .deferred_equalities_chirho
+                        .split_off(deferred_start_chirho);
+                    self.install_pattern_equalities_chirho(equalities_chirho.into_iter().map(
+                        |(left_chirho, right_chirho, _span_chirho)| {
+                            (
+                                subst_chirho.apply_ty_chirho(&left_chirho),
+                                subst_chirho.apply_ty_chirho(&right_chirho),
+                            )
+                        },
+                    ));
+                }
+                Ok(subst_chirho)
             }
-            PatChirho::RecordChirho {
-                con_chirho,
-                fields_chirho,
-                ..
-            } => {
-                self.constructor_name_refines_chirho(con_chirho)
-                    || fields_chirho.iter().any(|field_chirho| {
-                        self.pattern_contains_refining_constructor_chirho(
-                            &field_chirho.pattern_chirho,
-                        )
-                    })
+            Err(error_chirho) if refining_chirho => {
+                self.deferred_equalities_chirho
+                    .truncate(deferred_start_chirho);
+                self.refine_skolems_by_unification_chirho(pat_ty_chirho, scrutinee_chirho)
+                    .ok_or(error_chirho)
             }
-            PatChirho::InfixConChirho {
-                left_chirho,
-                op_chirho,
-                right_chirho,
-                ..
-            } => {
-                self.constructor_name_refines_chirho(op_chirho)
-                    || self.pattern_contains_refining_constructor_chirho(left_chirho)
-                    || self.pattern_contains_refining_constructor_chirho(right_chirho)
-            }
-            PatChirho::ParenChirho { inner_chirho, .. }
-            | PatChirho::BangChirho { inner_chirho, .. }
-            | PatChirho::LazyChirho { inner_chirho, .. } => {
-                self.pattern_contains_refining_constructor_chirho(inner_chirho)
-            }
-            PatChirho::AsChirho { pattern_chirho, .. } => {
-                self.pattern_contains_refining_constructor_chirho(pattern_chirho)
-            }
-            PatChirho::TupleChirho {
-                elements_chirho, ..
-            }
-            | PatChirho::ListChirho {
-                elements_chirho, ..
-            } => elements_chirho
-                .iter()
-                .any(|elem_chirho| self.pattern_contains_refining_constructor_chirho(elem_chirho)),
-            _ => false,
+            Err(error_chirho) => Err(error_chirho),
         }
     }
 
@@ -257,18 +224,36 @@ impl InferCtxChirho {
         let opened_right_chirho =
             open_skolems_chirho(&right_norm_chirho, &mut opened_chirho, &mut fresh_chirho);
         self.next_var_chirho = next_var_chirho;
-        let unifier_chirho = self
-            .unify_normalized_chirho(
-                &opened_left_chirho,
-                &opened_right_chirho,
-                SpanChirho::DUMMY_CHIRHO,
-            )
-            .ok()?;
+        let deferred_start_chirho = self.deferred_equalities_chirho.len();
+        let unified_chirho = self.unify_normalized_chirho(
+            &opened_left_chirho,
+            &opened_right_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        );
+        let equalities_chirho = self
+            .deferred_equalities_chirho
+            .split_off(deferred_start_chirho);
+        let unifier_chirho = unified_chirho.ok()?;
         let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho);
         for (skolem_chirho, ty_chirho) in outcome_chirho.refinements_chirho {
             self.env_chirho
                 .add_refinement_chirho(skolem_chirho, ty_chirho);
         }
+        // Opened skolems are temporary matcher variables, never escaping proof identities.
+        self.install_pattern_equalities_chirho(equalities_chirho.into_iter().map(
+            |(left_chirho, right_chirho, _span_chirho)| {
+                (
+                    crate::skolem_chirho::close_skolems_chirho(
+                        &unifier_chirho.apply_ty_chirho(&left_chirho),
+                        &opened_chirho,
+                    ),
+                    crate::skolem_chirho::close_skolems_chirho(
+                        &unifier_chirho.apply_ty_chirho(&right_chirho),
+                        &opened_chirho,
+                    ),
+                )
+            },
+        ));
         Some(outcome_chirho.residual_subst_chirho)
     }
 

@@ -1,0 +1,63 @@
+{
+  "compiler_chirho": "GHC 9.14.1",
+  "date_chirho": "2026-09-28",
+  "command_chirho": "ghc -fforce-recomp -fno-code -v0 <file>",
+  "cases_chirho": [
+    {
+      "file_chirho": "PatternGivenChirho.hs",
+      "sha256_chirho": "e30e5003b8b570e786a5ee75937dea0de1ac5466d14d468bad30267e41d77cc5",
+      "exit_chirho": 0,
+      "combined_output_chirho": ""
+    },
+    {
+      "file_chirho": "PatternSiblingChirho.hs",
+      "sha256_chirho": "1af38345ea8b5fd7fe27d0be4a4dba401889b73f472b819fe0cea9990fc85d21",
+      "exit_chirho": 1,
+      "combined_output_chirho": "PatternSiblingChirho.hs:16:15: error: [GHC-83865]\n    • Couldn't match type ‘True’ with ‘False’\n      Expected: WitnessChirho (IndexChirho aChirho)\n        Actual: WitnessChirho True\n    • In the expression: YesChirho\n      In a case alternative: NoChirho -> YesChirho\n      In the expression:\n        case witnessChirho of\n          YesChirho -> YesChirho\n          NoChirho -> YesChirho\n   |\n16 |   NoChirho -> YesChirho\n   |               ^^^^^^^^^\n\n"
+    },
+    {
+      "file_chirho": "ExpressionWantedChirho.hs",
+      "sha256_chirho": "150a23d85fe1eb386e58ae402c373d1af9371558611d8f6aaddbcc4348fed2fc",
+      "exit_chirho": 1,
+      "combined_output_chirho": "ExpressionWantedChirho.hs:14:18: error: [GHC-83865]\n    • Couldn't match type ‘IndexChirho aChirho’ with ‘True’\n      Expected: WitnessChirho (IndexChirho aChirho)\n        Actual: WitnessChirho True\n    • In the expression: YesChirho\n      In an equation for ‘keepChirho’: keepChirho _ _ = YesChirho\n    • Relevant bindings include\n        keepChirho :: ProxyChirho aChirho\n                      -> WitnessChirho (IndexChirho aChirho)\n                      -> WitnessChirho (IndexChirho aChirho)\n          (bound at ExpressionWantedChirho.hs:14:1)\n   |\n14 | keepChirho _ _ = YesChirho\n   |                  ^^^^^^^^^\n\n"
+    },
+    {
+      "file_chirho": "ConstructorsChirho.hs",
+      "sha256_chirho": "f3f67388c2928bc125686c1543cb2804d58bdac8f7cca7f749b90505bf9bd0ec",
+      "exit_chirho": 0,
+      "combined_output_chirho": ""
+    },
+    {
+      "file_chirho": "WrongResultChirho.hs",
+      "sha256_chirho": "93b1c0ec25645c61082c53c96d2ba3f887b3308c81b5a0179fda5094579420a3",
+      "exit_chirho": 1,
+      "combined_output_chirho": "WrongResultChirho.hs:6:3: error: [GHC-83865]\n    • Couldn't match type ‘Bool’ with ‘Int’\n      Expected: FamilyChirho Int\n        Actual: FamilyChirho Bool\n    • In the result type of data constructor ‘BadChirho’\n      In the data family instance declaration for ‘FamilyChirho’\n  |\n6 |   BadChirho :: FamilyChirho Bool\n  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n"
+    },
+    {
+      "file_chirho": "WrongKindChirho.hs",
+      "sha256_chirho": "5b495cb8765beca94a4037daf95d9eb688da103a42cc2ae71b37e11c58e01dbf",
+      "exit_chirho": 1,
+      "combined_output_chirho": "WrongKindChirho.hs:6:28: error: [GHC-83865]\n    • Expecting one more argument to ‘Maybe’\n      Expected a type, but ‘Maybe’ has kind ‘* -> *’\n    • In the first argument of ‘FamilyChirho’, namely ‘Maybe’\n      In the data family instance declaration for ‘FamilyChirho’\n  |\n6 | data instance FamilyChirho Maybe where\n  |                            ^^^^^\n\n"
+    },
+    {
+      "file_chirho": "UnrelatedGivenChirho.hs",
+      "sha256_chirho": "de148ef76769b58a41e135e5f17bf4b0c08888f8af26930871ae0316bedeb4e6",
+      "exit_chirho": 1,
+      "combined_output_chirho": "UnrelatedGivenChirho.hs:13:16: error: [GHC-05617]\n    • Could not deduce ‘ResultChirho cChirho ~ Bool’\n      from the context: bChirho ~ aChirho\n        bound by a pattern with constructor:\n                   ReflChirho :: forall {k} (aChirho :: k).\n                                 EqualChirho aChirho aChirho,\n                 in a case alternative\n        at UnrelatedGivenChirho.hs:13:4-13\n    • In the pattern: True\n      In the pattern: (ReflChirho, True)\n      In a case alternative: (ReflChirho, True) -> ()\n    • Relevant bindings include\n        valueChirho :: ResultChirho cChirho\n          (bound at UnrelatedGivenChirho.hs:12:30)\n        badTupleChirho :: ProxyChirho cChirho\n                          -> EqualChirho aChirho bChirho -> ResultChirho cChirho -> ()\n          (bound at UnrelatedGivenChirho.hs:12:1)\n   |\n13 |   (ReflChirho, True) -> ()\n   |                ^^^^\n\nUnrelatedGivenChirho.hs:16:25: error: [GHC-05617]\n    • Could not deduce ‘ResultChirho cChirho ~ Bool’\n      from the context: bChirho ~ aChirho\n        bound by a pattern with constructor:\n                   ReflChirho :: forall {k} (aChirho :: k).\n                                 EqualChirho aChirho aChirho,\n                 in a case alternative\n        at UnrelatedGivenChirho.hs:16:14-23\n    • In the pattern: True\n      In the pattern: PairChirho ReflChirho True\n      In a case alternative: PairChirho ReflChirho True -> ()\n    • Relevant bindings include\n        pairChirho :: PairChirho\n                        (EqualChirho aChirho bChirho) (ResultChirho cChirho)\n          (bound at UnrelatedGivenChirho.hs:15:17)\n        badPairChirho :: ProxyChirho cChirho\n                         -> PairChirho (EqualChirho aChirho bChirho) (ResultChirho cChirho)\n                         -> ()\n          (bound at UnrelatedGivenChirho.hs:15:1)\n   |\n16 |   PairChirho ReflChirho True -> ()\n   |                         ^^^^\n\nUnrelatedGivenChirho.hs:19:17: error: [GHC-05617]\n    • Could not deduce ‘ResultChirho cChirho ~ Bool’\n      from the context: aChirho ~ Int\n        bound by a pattern with constructor:\n                   RefinedChirho :: forall bChirho.\n                                    bChirho -> RefinedChirho Int bChirho,\n                 in a case alternative\n        at UnrelatedGivenChirho.hs:19:3-20\n    • In the pattern: True\n      In the pattern: RefinedChirho True\n      In a case alternative: RefinedChirho True -> ()\n    • Relevant bindings include\n        refinedChirho :: RefinedChirho aChirho (ResultChirho cChirho)\n          (bound at UnrelatedGivenChirho.hs:18:18)\n        badFieldChirho :: ProxyChirho cChirho\n                          -> RefinedChirho aChirho (ResultChirho cChirho) -> ()\n          (bound at UnrelatedGivenChirho.hs:18:1)\n   |\n19 |   RefinedChirho True -> ()\n   |                 ^^^^\n\n"
+    }
+  ],
+  "execution_chirho": [
+    {
+      "file_chirho": "PatternGivenChirho.hs",
+      "command_chirho": "runghc PatternGivenChirho.hs",
+      "exit_chirho": 0,
+      "combined_output_chirho": "1\n2\n"
+    },
+    {
+      "file_chirho": "ConstructorsChirho.hs",
+      "command_chirho": "runghc ConstructorsChirho.hs",
+      "exit_chirho": 0,
+      "combined_output_chirho": "7\nTrue\n"
+    }
+  ]
+}

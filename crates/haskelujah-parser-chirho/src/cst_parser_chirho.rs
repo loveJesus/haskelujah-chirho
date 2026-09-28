@@ -563,18 +563,7 @@ impl<'src> ParserChirho<'src> {
             self.parse_type_family_decl_chirho();
             return;
         }
-        if next_text_chirho == "instance" {
-            // Data-family instances need their own constructor-bearing AST
-            // shape; keep skipping them rather than fabricating a data type,
-            // but stop at the end of their own layout block so the next
-            // top-level declaration survives.
-            self.builder_chirho
-                .start_node_chirho(SyntaxKindChirho::DataDeclChirho);
-            self.eat_until_unrepresented_instance_end_chirho();
-            self.builder_chirho.finish_node_chirho();
-            return;
-        }
-
+        // Instance heads share the constructor grammar, but lower to their own AST form.
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::DataDeclChirho);
 
@@ -753,30 +742,7 @@ impl<'src> ParserChirho<'src> {
     // -----------------------------------------------------------------------
 
     fn parse_newtype_decl_chirho(&mut self) {
-        // Check for `newtype instance` — data family instance with newtype
-        let mut look_chirho = self.pos_chirho + 1;
-        while look_chirho < self.tokens_chirho.len()
-            && matches!(
-                self.tokens_chirho[look_chirho].kind_chirho,
-                RawTokenKindChirho::WhitespaceChirho
-                    | RawTokenKindChirho::LineCommentChirho
-                    | RawTokenKindChirho::BlockCommentChirho
-            )
-        {
-            look_chirho += 1;
-        }
-        if look_chirho < self.tokens_chirho.len()
-            && self.token_text_chirho(&self.tokens_chirho[look_chirho]) == "instance"
-        {
-            // newtype instance — parse as a skipped decl without consuming a
-            // following top-level declaration.
-            self.builder_chirho
-                .start_node_chirho(SyntaxKindChirho::NewtypeDeclChirho);
-            self.eat_until_unrepresented_instance_end_chirho();
-            self.builder_chirho.finish_node_chirho();
-            return;
-        }
-
+        // Retain newtype-instance constructors through the ordinary constructor grammar.
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::NewtypeDeclChirho);
 
@@ -4833,69 +4799,6 @@ impl<'src> ParserChirho<'src> {
             RawTokenKindChirho::SemicolonChirho,
             RawTokenKindChirho::RightBraceChirho,
         ]);
-    }
-
-    /// Consume an unsupported data/newtype-family instance without swallowing
-    /// a sibling declaration after a GADT-style `where` layout block.
-    fn eat_until_unrepresented_instance_end_chirho(&mut self) {
-        let mut paren_depth_chirho = 0usize;
-        let mut bracket_depth_chirho = 0usize;
-        let mut brace_depth_chirho = 0usize;
-        let mut saw_top_level_where_chirho = false;
-        let mut where_block_depth_chirho = None;
-
-        while let Some(kind_chirho) = self.current_kind_chirho() {
-            if kind_chirho == RawTokenKindChirho::EofChirho {
-                break;
-            }
-            let at_top_level_chirho =
-                paren_depth_chirho == 0 && bracket_depth_chirho == 0 && brace_depth_chirho == 0;
-            if at_top_level_chirho
-                && matches!(
-                    kind_chirho,
-                    RawTokenKindChirho::VirtualSemicolonChirho
-                        | RawTokenKindChirho::VirtualRightBraceChirho
-                        | RawTokenKindChirho::SemicolonChirho
-                        | RawTokenKindChirho::RightBraceChirho
-                )
-            {
-                break;
-            }
-
-            match kind_chirho {
-                RawTokenKindChirho::WhereChirho if at_top_level_chirho => {
-                    saw_top_level_where_chirho = true;
-                }
-                RawTokenKindChirho::LeftParenChirho => paren_depth_chirho += 1,
-                RawTokenKindChirho::RightParenChirho => {
-                    paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
-                }
-                RawTokenKindChirho::LeftBracketChirho => bracket_depth_chirho += 1,
-                RawTokenKindChirho::RightBracketChirho => {
-                    bracket_depth_chirho = bracket_depth_chirho.saturating_sub(1);
-                }
-                RawTokenKindChirho::LeftBraceChirho
-                | RawTokenKindChirho::VirtualLeftBraceChirho => {
-                    brace_depth_chirho += 1;
-                    if saw_top_level_where_chirho && where_block_depth_chirho.is_none() {
-                        where_block_depth_chirho = Some(brace_depth_chirho);
-                    }
-                }
-                RawTokenKindChirho::RightBraceChirho
-                | RawTokenKindChirho::VirtualRightBraceChirho => {
-                    let closing_where_block_chirho = where_block_depth_chirho
-                        .is_some_and(|depth_chirho| depth_chirho == brace_depth_chirho);
-                    brace_depth_chirho = brace_depth_chirho.saturating_sub(1);
-                    self.bump_chirho();
-                    if closing_where_block_chirho {
-                        break;
-                    }
-                    continue;
-                }
-                _ => {}
-            }
-            self.bump_chirho();
-        }
     }
 
     /// Lookahead: is this a type signature? (name :: ...)

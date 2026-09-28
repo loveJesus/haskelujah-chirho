@@ -19,6 +19,8 @@ pub mod kind_chirho;
 pub mod linearity_chirho;
 #[path = "types_chirho/module_contracts_chirho.rs"]
 pub mod module_contracts_chirho;
+#[path = "types_chirho/rewrites_chirho.rs"]
+mod rewrites_chirho;
 #[path = "types_chirho/scheme_equality_chirho.rs"]
 mod scheme_equality_chirho;
 pub mod skolem_chirho;

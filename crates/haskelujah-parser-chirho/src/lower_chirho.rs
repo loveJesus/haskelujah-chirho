@@ -18,6 +18,11 @@ mod classes_chirho;
 mod context_tests_chirho;
 mod contexts_chirho;
 #[cfg(test)]
+#[path = "lower_chirho/declarations_chirho/data_instance_tests_chirho.rs"]
+mod data_instance_tests_chirho;
+#[path = "lower_chirho/declarations_chirho/data_instances_chirho.rs"]
+mod data_instances_chirho;
+#[cfg(test)]
 #[path = "lower_chirho/declarations_chirho/kind_tests_chirho.rs"]
 mod declaration_kind_tests_chirho;
 #[path = "lower_chirho/declarations_chirho/kinds_chirho.rs"]
@@ -692,19 +697,27 @@ impl LowerCtxChirho {
                 Some(self.lower_fun_bind_chirho(node_chirho, base_chirho, span_chirho))
             }
             SyntaxKindChirho::DataDeclChirho => {
-                // Skip `data family` and `data instance` declarations
-                if self.node_has_keyword_chirho(node_chirho, base_chirho, "family")
-                    || self.node_has_keyword_chirho(node_chirho, base_chirho, "instance")
-                {
+                if self.node_has_keyword_chirho(node_chirho, base_chirho, "instance") {
+                    Some(self.lower_data_instance_chirho(
+                        node_chirho,
+                        base_chirho,
+                        span_chirho,
+                        false,
+                    ))
+                } else if self.node_has_keyword_chirho(node_chirho, base_chirho, "family") {
                     None
                 } else {
                     Some(self.lower_data_decl_chirho(node_chirho, base_chirho, span_chirho))
                 }
             }
             SyntaxKindChirho::NewtypeDeclChirho => {
-                // Skip `newtype instance` declarations
                 if self.node_has_keyword_chirho(node_chirho, base_chirho, "instance") {
-                    None
+                    Some(self.lower_data_instance_chirho(
+                        node_chirho,
+                        base_chirho,
+                        span_chirho,
+                        true,
+                    ))
                 } else {
                     Some(self.lower_newtype_decl_chirho(node_chirho, base_chirho, span_chirho))
                 }

@@ -7,6 +7,9 @@ use super::{assert_compile_success_chirho, assert_execution_chirho};
 use haskelujah_driver::typecheck_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[path = "family_kinds_chirho/data_instances_chirho.rs"]
+mod data_instances_chirho;
+
 const DATA_FAMILY_LOCAL_CHIRHO: &str = include_str!(
     "../../../../test-data-chirho/kind-oracles-chirho/classifier-contracts-chirho/data-families-chirho/LocalChirho.hs"
 );

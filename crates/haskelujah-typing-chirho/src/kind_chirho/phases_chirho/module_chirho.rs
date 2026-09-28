@@ -44,6 +44,7 @@ fn prepare_module_kinds_chirho(
         constructors_chirho::poly_kinds_enabled_chirho(&module_chirho.extensions_chirho);
     ctx_chirho.poly_kinds_enabled_chirho = poly_kinds_enabled_chirho;
     ctx_chirho.check_kind_declarations_chirho(module_chirho);
+    ctx_chirho.check_data_family_instances_chirho(module_chirho);
 
     ctx_chirho
 }

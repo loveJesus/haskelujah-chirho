@@ -28,6 +28,8 @@ use haskelujah_span_chirho::SpanChirho;
 
 mod constructors_chirho;
 mod conversion_chirho;
+#[path = "kind_chirho/phases_chirho/data_instances_chirho.rs"]
+mod data_instances_chirho;
 #[cfg(test)]
 #[path = "kind_chirho/tests_chirho/declaration_tests_chirho.rs"]
 mod declaration_tests_chirho;

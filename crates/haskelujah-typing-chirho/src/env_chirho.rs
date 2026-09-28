@@ -8,14 +8,14 @@
 
 use std::collections::HashMap;
 
-use crate::skolem_chirho::rewrite_skolems_chirho;
+use crate::rewrites_chirho::rewrite_type_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
 /// A type environment: maps variable names to type schemes.
 ///
 /// Each scope also carries the *type refinements* (local given equalities
-/// `skolem ~ type`, see `skolem_chirho`) learned by the patterns bound in
+/// `skolem ~ type` or `family application ~ type`) learned by the patterns bound in
 /// that scope, so a GADT refinement disappears exactly when the pattern
 /// variables it came with go out of scope.
 #[derive(Debug, Clone, Default)]
@@ -23,7 +23,7 @@ pub struct TyEnvChirho {
     /// Stack of scopes. The last entry is the innermost scope.
     scopes_chirho: Vec<HashMap<String, SchemeChirho>>,
     /// One refinement list per scope, parallel to `scopes_chirho`.
-    refinements_chirho: Vec<Vec<(String, TyChirho)>>,
+    refinements_chirho: Vec<Vec<(TyChirho, TyChirho)>>,
 }
 
 impl TyEnvChirho {
@@ -52,11 +52,20 @@ impl TyEnvChirho {
     /// Record a local given equality `skolem ~ ty` in the innermost scope.
     /// workflow: language-features-chirho/rigid-type-variables-chirho
     pub fn add_refinement_chirho(&mut self, skolem_chirho: String, ty_chirho: TyChirho) {
+        self.add_equality_refinement_chirho(TyChirho::ForallVarChirho(skolem_chirho), ty_chirho);
+    }
+
+    /// Record an already oriented pattern equality. It expires with the pattern scope.
+    pub(crate) fn add_equality_refinement_chirho(
+        &mut self,
+        left_chirho: TyChirho,
+        right_chirho: TyChirho,
+    ) {
         if self.refinements_chirho.is_empty() {
             self.refinements_chirho.push(Vec::new());
         }
         if let Some(scope_chirho) = self.refinements_chirho.last_mut() {
-            scope_chirho.push((skolem_chirho, ty_chirho));
+            scope_chirho.push((left_chirho, right_chirho));
         }
     }
 
@@ -73,7 +82,7 @@ impl TyEnvChirho {
             if let Some((_name_chirho, ty_chirho)) = scope_chirho
                 .iter()
                 .rev()
-                .find(|(name_chirho, _ty_chirho)| name_chirho == skolem_chirho)
+                .find(|(name_chirho, _ty_chirho)| matches!(name_chirho, TyChirho::ForallVarChirho(name_chirho) if name_chirho == skolem_chirho))
             {
                 return Some(ty_chirho);
             }
@@ -81,14 +90,19 @@ impl TyEnvChirho {
         None
     }
 
-    /// Rewrite every refined skolem in `ty_chirho` to its refinement (one
+    /// Rewrite refined skolems and family applications to their refinement (one
     /// pass; callers iterate to a fixpoint as part of normalization).
     pub fn apply_refinements_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
         if !self.has_refinements_chirho() {
             return ty_chirho.clone();
         }
-        rewrite_skolems_chirho(ty_chirho, &mut |name_chirho| {
-            self.lookup_refinement_chirho(name_chirho).cloned()
+        rewrite_type_chirho(ty_chirho, &|ty_chirho| {
+            self.refinements_chirho
+                .iter()
+                .rev()
+                .flat_map(|scope_chirho| scope_chirho.iter().rev())
+                .find(|(left_chirho, _right_chirho)| left_chirho == ty_chirho)
+                .map(|(_left_chirho, right_chirho)| right_chirho.clone())
         })
     }
 
@@ -127,7 +141,8 @@ impl TyEnvChirho {
             }
         }
         for scope_chirho in &self.refinements_chirho {
-            for (_name_chirho, ty_chirho) in scope_chirho {
+            for (left_chirho, ty_chirho) in scope_chirho {
+                vars_chirho.extend(left_chirho.free_vars_chirho());
                 vars_chirho.extend(ty_chirho.free_vars_chirho());
             }
         }
@@ -174,7 +189,8 @@ impl TyEnvChirho {
             }
         }
         for scope_chirho in &mut self.refinements_chirho {
-            for (_name_chirho, ty_chirho) in scope_chirho.iter_mut() {
+            for (left_chirho, ty_chirho) in scope_chirho.iter_mut() {
+                *left_chirho = subst_chirho.apply_ty_chirho(left_chirho);
                 *ty_chirho = subst_chirho.apply_ty_chirho(ty_chirho);
             }
         }

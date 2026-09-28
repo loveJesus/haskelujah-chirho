@@ -281,6 +281,34 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 }
                 self.walk_type_chirho(rhs_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
             }
+            DeclChirho::DataFamilyInstanceDeclChirho {
+                head_chirho,
+                constructors_chirho,
+                deriving_chirho,
+                ..
+            } => {
+                self.walk_signature_type_chirho(head_chirho);
+                let mut names_chirho = Vec::new();
+                collect_type_kind_variable_names_chirho(head_chirho, &mut names_chirho);
+                let pushed_chirho = self.push_name_binders_chirho(names_chirho);
+                for constructor_chirho in constructors_chirho {
+                    if !matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
+                        self.walk_constructor_chirho(constructor_chirho);
+                    }
+                }
+                for application_chirho in deriving_chirho {
+                    self.walk_type_chirho(
+                        application_chirho,
+                        FreeTyVarPolicyChirho::RequireBoundChirho,
+                    );
+                }
+                self.pop_binders_chirho(&pushed_chirho);
+                for constructor_chirho in constructors_chirho {
+                    if matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
+                        self.walk_constructor_chirho(constructor_chirho);
+                    }
+                }
+            }
             DeclChirho::ClassDeclChirho {
                 context_chirho,
                 type_vars_chirho,

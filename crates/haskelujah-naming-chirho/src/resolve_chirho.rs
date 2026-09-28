@@ -26,6 +26,8 @@ const UNDEFINED_VALUE_CODE_CHIRHO: u16 = 100;
 pub(crate) const UNDEFINED_TYPE_CODE_CHIRHO: u16 = 101;
 const UNKNOWN_MODULE_CODE_CHIRHO: u16 = 102;
 
+mod data_instances_chirho;
+
 /// Result of name resolution.
 pub struct ResolveResultChirho {
     /// The name environment after resolution (contains all definitions).
@@ -70,45 +72,19 @@ pub fn resolve_module_with_imports_chirho(
                 ..
             } => {
                 bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
-                for con_chirho in constructors_chirho {
-                    match con_chirho {
-                        haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
-                            name_chirho,
-                            ..
-                        }
-                        | haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                            name_chirho,
-                            ..
-                        } => {
-                            bind_name_chirho(
-                                &mut env_chirho,
-                                name_chirho,
-                                NamespaceChirho::ValueChirho,
-                            );
-                        }
-                        haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                            name_chirho,
-                            fields_chirho,
-                            ..
-                        } => {
-                            bind_name_chirho(
-                                &mut env_chirho,
-                                name_chirho,
-                                NamespaceChirho::ValueChirho,
-                            );
-                            // Record field accessor functions are value bindings
-                            for field_chirho in fields_chirho {
-                                for field_name_chirho in &field_chirho.names_chirho {
-                                    bind_name_chirho(
-                                        &mut env_chirho,
-                                        field_name_chirho,
-                                        NamespaceChirho::ValueChirho,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
+                data_instances_chirho::bind_constructor_names_chirho(
+                    &mut env_chirho,
+                    constructors_chirho,
+                );
+            }
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::DataFamilyInstanceDeclChirho {
+                constructors_chirho,
+                ..
+            } => {
+                data_instances_chirho::bind_constructor_names_chirho(
+                    &mut env_chirho,
+                    constructors_chirho,
+                );
             }
             haskelujah_ast_chirho::decl_chirho::DeclChirho::NewtypeDeclChirho {
                 name_chirho,

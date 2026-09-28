@@ -162,51 +162,32 @@ impl InferCtxChirho {
         if self.given_rewrites_chirho.is_empty() {
             return ty_chirho.clone();
         }
-        for (lhs_chirho, rhs_chirho) in &self.given_rewrites_chirho {
-            if ty_chirho == lhs_chirho {
-                return rhs_chirho.clone();
-            }
-        }
-        match ty_chirho {
-            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {
-                ty_chirho.clone()
-            }
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
-                Box::new(self.apply_given_rewrites_chirho(fun_chirho)),
-                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
-            ),
-            TyChirho::KindAppChirho(fun_chirho, arg_chirho) => TyChirho::KindAppChirho(
-                Box::new(self.apply_given_rewrites_chirho(fun_chirho)),
-                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
-            ),
-            TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
-                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
-                Box::new(self.apply_given_rewrites_chirho(result_chirho)),
-                *mult_chirho,
-            ),
-            TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-                elems_chirho
-                    .iter()
-                    .map(|elem_chirho| self.apply_given_rewrites_chirho(elem_chirho))
-                    .collect(),
-            ),
-            TyChirho::ListChirho(inner_chirho) => {
-                TyChirho::ListChirho(Box::new(self.apply_given_rewrites_chirho(inner_chirho)))
-            }
-            TyChirho::ForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::ForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
-            },
-            TyChirho::RequiredForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::RequiredForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
-            },
+        crate::rewrites_chirho::rewrite_type_chirho(ty_chirho, &|ty_chirho| {
+            self.given_rewrites_chirho
+                .iter()
+                .find(|(left_chirho, _right_chirho)| left_chirho == ty_chirho)
+                .map(|(_left_chirho, right_chirho)| right_chirho.clone())
+        })
+    }
+
+    /// Pattern equalities use the same orientation as signature givens, but
+    /// belong to the pattern's lexical environment, not the enclosing signature.
+    pub(super) fn install_pattern_equalities_chirho(
+        &mut self,
+        equalities_chirho: impl Iterator<Item = (TyChirho, TyChirho)>,
+    ) {
+        let predicates_chirho: Vec<_> = equalities_chirho
+            .map(|(left_chirho, right_chirho)| {
+                let mut predicate_chirho = PredChirho::new_chirho("~", left_chirho);
+                predicate_chirho.extra_tys_chirho.push(right_chirho);
+                predicate_chirho
+            })
+            .collect();
+        let start_chirho = self.given_rewrites_chirho.len();
+        self.install_given_equalities_chirho(&predicates_chirho);
+        for (left_chirho, right_chirho) in self.given_rewrites_chirho.split_off(start_chirho) {
+            self.env_chirho
+                .add_equality_refinement_chirho(left_chirho, right_chirho);
         }
     }
 

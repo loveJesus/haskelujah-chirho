@@ -209,6 +209,10 @@ pub fn check_module_type_validity_chirho(module_chirho: &ModuleChirho) -> Vec<Va
             DeclChirho::DataDeclChirho {
                 constructors_chirho,
                 ..
+            }
+            | DeclChirho::DataFamilyInstanceDeclChirho {
+                constructors_chirho,
+                ..
             } => {
                 for constructor_chirho in constructors_chirho {
                     walk_con_decl_chirho(constructor_chirho, license_chirho, &mut errors_chirho);

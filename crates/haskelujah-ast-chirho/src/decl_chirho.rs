@@ -326,6 +326,16 @@ pub enum DeclChirho {
         /// Span covering the whole family declaration.
         span_chirho: SpanChirho,
     },
+    /// Constructor-bearing instance of an existing nominal data family.
+    /// The head retains its application, quantifiers and optional kind ascription;
+    /// this declares constructors, not a second type constructor or a reduction.
+    DataFamilyInstanceDeclChirho {
+        head_chirho: TypeChirho,
+        newtype_chirho: bool,
+        constructors_chirho: Vec<ConDeclChirho>,
+        deriving_chirho: Vec<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
     /// Open type family instance (`type instance F Int = Bool`).
     TypeFamilyInstanceDeclChirho {
         /// Family being instantiated.
@@ -602,6 +612,7 @@ impl DeclChirho {
             | Self::ForeignDeclChirho { span_chirho, .. }
             | Self::PatSynDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
+            | Self::DataFamilyInstanceDeclChirho { span_chirho, .. }
             | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
             | Self::SpliceDeclChirho { span_chirho, .. }
             | Self::StandaloneDerivingDeclChirho { span_chirho, .. } => *span_chirho,

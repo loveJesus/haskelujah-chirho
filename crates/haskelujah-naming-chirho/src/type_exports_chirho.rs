@@ -489,6 +489,28 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                     },
                 );
             }
+            DeclChirho::DataFamilyInstanceDeclChirho {
+                constructors_chirho,
+                span_chirho,
+                ..
+            } => {
+                // The family name is owned by its declaration, not by each instance.
+                for constructor_chirho in constructors_chirho {
+                    let names_chirho =
+                        std::iter::once(con_decl_name_chirho(constructor_chirho).to_owned())
+                            .chain(con_decl_field_names_chirho(constructor_chirho));
+                    for name_chirho in names_chirho {
+                        let name_chirho = canonical_value_name_chirho(&name_chirho);
+                        exports_chirho.values_chirho.insert(
+                            name_chirho.clone(),
+                            IfaceValueChirho {
+                                name_chirho,
+                                span_chirho: *span_chirho,
+                            },
+                        );
+                    }
+                }
+            }
             DeclChirho::NewtypeDeclChirho {
                 name_chirho,
                 constructor_chirho,

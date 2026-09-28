@@ -320,6 +320,10 @@ impl DesugarCtxChirho {
                 DeclChirho::DataDeclChirho {
                     constructors_chirho,
                     ..
+                }
+                | DeclChirho::DataFamilyInstanceDeclChirho {
+                    constructors_chirho,
+                    ..
                 } => constructors_chirho,
                 _ => continue,
             };
@@ -1201,6 +1205,10 @@ impl DesugarCtxChirho {
                 DeclChirho::DataDeclChirho {
                     constructors_chirho,
                     ..
+                }
+                | DeclChirho::DataFamilyInstanceDeclChirho {
+                    constructors_chirho,
+                    ..
                 } => constructors_chirho.as_slice(),
                 DeclChirho::NewtypeDeclChirho {
                     constructor_chirho, ..
@@ -1537,6 +1545,10 @@ impl DesugarCtxChirho {
         for decl_chirho in &module_chirho.decls_chirho {
             let constructors_chirho = match decl_chirho {
                 DeclChirho::DataDeclChirho {
+                    constructors_chirho,
+                    ..
+                }
+                | DeclChirho::DataFamilyInstanceDeclChirho {
                     constructors_chirho,
                     ..
                 } => constructors_chirho.as_slice(),
