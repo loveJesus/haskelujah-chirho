@@ -82,11 +82,19 @@ Probes, the runner and three compilers' raw outputs: `tmp-chirho/lazy-positions-
       288/288 rejections are diagnostics; execution 28/35, the same seven failures with
       identical output; driver library 1803/0; integration 116/0; unit suites green; runner
       controls 37/37 and 9/9; zero warnings. Every probe set rerun on the frozen CLI.
-- [ ] 5. SUBSUMED BY 6. Once case alternatives, equations and lambdas match through
+- [x] 5. SUBSUMED BY 6. Once case alternatives, equations and lambdas match through
       `match_row_chirho`, its `~` case already binds a lazy sub-pattern through brick 2, so no
       separate AST elaboration is needed.
-- [ ] 6. Case alternatives, equations and lambdas through the same row matcher, which repairs
-      N1-N6, K1/K2/K4/K5/K6 and the `~` positions (C, F, L, D rows).
+- [x] 6. Case alternatives, equations and lambdas through the same row matcher, which repairs
+      N1-N6, K1/K2/K4/K5/K6 and the `~` positions (C, F, L, D rows). Built on branch
+      `match-rows-chirho` (stacked on the a9548989 proposal): 6a case expressions (ee4ad26c,
+      plus df47cda0 so the STG's newtype erasure accepts a trailing failure default), 6b-6d
+      equations, lambdas and do binds (d0099ae4), controls (dc6f5bab), 6e list-comprehension
+      generators (cb1ada98). The whole old per-position machinery is deleted.
+- [ ] 6f. Pattern guards fall through (G4): guards must carry their qualifiers in the AST, a
+      parser, typing and desugar change, and its own unit.
+- [ ] 7. `let whole@(a, b) = e` (X5): the parser reads it as a function binding with a visible
+      type argument. Its own parser fix.
 
 Bricks 5 and 6 may be a separate proposal. That sequencing is gpt_chirho's call.
 
@@ -142,3 +150,21 @@ ours fails on a missing binding rather than GHC's pattern failure.
 Also pre-existing and still open, identical on main: `let whole@(a, b) = e` (X5) is parsed as a
 function binding `whole` with a visible type argument `@(a, b)`, and fails at run time on an
 unbound name. It is a parser defect, recorded here and not in this unit.
+
+## Brick 6 as built and measured (2026-09-30, cb1ada98, frozen CLI b29b839b)
+
+- `match_rows_chirho.rs`: rows compiled in source order, joined bottom-up. A row that never falls
+  through drops the rows after it; a continuation used once is inlined, and a row whose only
+  use of it is its default merges with the next row's case on the same variable, so a plain
+  constructor match is one switch and allocates nothing; a continuation used more than once is
+  let-bound. Guards fall through by passing the next row to `desugar_guards_chirho`.
+- Found on the way and fixed: the parser dropped a leading `!` or `-` from a case alternative's
+  pattern (`!_ -> e` forced nothing, `-1 -> e` lost its sign); every case alternative used to
+  force its scrutinee, so `case undefined of _ -> 5` failed where GHC prints 5; a guarded
+  variable alternative became a second default that a later `_` shadowed; list-comprehension
+  generators never matched their pattern.
+- Measured: 80 of 82 probes match GHC 9.14.1 (X5, G4 remain); corpus 885/938 and 235/767, twice,
+  byte-identical, lists unchanged; replay 288/288; execution 28/35, the same seven failures;
+  driver library 1817/0 (14 new controls, four mutations each caught by its own control);
+  integration 116/0; unit suites green, parser 360; zero warnings.
+- `desugar_chirho.rs`: 7,417 lines at the start of this tasklist, about 5,600 now.

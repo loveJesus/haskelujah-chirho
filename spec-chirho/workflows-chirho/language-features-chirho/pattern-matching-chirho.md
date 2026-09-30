@@ -13,10 +13,11 @@ matches its named fields at their DECLARED positions, a list is matched as the c
 is (so its length is part of the match), and `~`, `!`, `@` and view patterns mean what the
 Report and GHC say they mean.
 
-Pattern BINDINGS go through it today. Case alternatives, function equations and lambdas still
-go through the older per-position machinery, which is known to drop nested literals, bind
-record fields by listed position and crash on some list and lambda shapes. Moving them onto the
-matcher is the next brick (see the tasklist below).
+Every position goes through it: pattern BINDINGS (below), and every MATCH position as ROWS
+(`match_rows_chirho.rs`) - case alternatives, function equations, lambdas, do binds and
+list-comprehension generators. A row is its patterns matched left to right, its `where`
+bindings over its guards, and every failure (a pattern or the last guard) continuing with the
+next row. The older per-position machinery is deleted.
 
 ```mermaid
 flowchart TD
@@ -32,6 +33,10 @@ flowchart TD
     PB -->|"banged binding"| WITNESS["$matched witness:\nforce the right-hand side, then the match\nforce_witnesses_chirho before the body"]
     AST -->|"~p <- m"| LAZYBIND["lazy_bind_prepare_chirho\n\\$lazybind -> let (bindings of p) in rest"]
     LAZYBIND --> PB
+    MATCHSRC["case alts, equations, lambdas,\ndo binds, comprehension generators"] --> ROWS["compile_rows_chirho\nrows in source order, joined bottom-up:\nunreachable rows dropped, single-use\ncontinuation inlined or merged into one switch,\nshared continuation let-bound"]
+    ROWS --> ROWONE["compile_row_chirho\nmatch_sequence over the scrutinees,\nthen where bindings over guards"]
+    ROWONE --> ROW
+    ROWONE -->|"last guard fails"| NEXT["next row"]
 ```
 
 ## The rules it implements
@@ -56,12 +61,12 @@ GHC 9.14.1 and the key ones mutation-checked (a skipped literal test, an unforce
 witness that forces the variable, record fields by listed order, an unforced inner bang: each
 fails exactly its own control).
 
-## Not yet on the matcher
+## Not yet covered
 
 Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_match-chirho.md`:
 
-- `~` in case alternatives, equations, lambdas, and below a constructor in a do bind;
-- nested literals, records out of declared order, list alternatives and nested lambda patterns
-  in those same positions;
+- a PATTERN GUARD (`| Just y <- e`) does not fall through to the next row: lowering turns a
+  guarded right-hand side containing one into a single unguarded expression, so the AST has no
+  qualifiers for the rows to continue from;
 - an as-pattern at the head of a binding (`whole@(a, b) = e`), which the parser reads as a
   function binding with a visible type argument.
