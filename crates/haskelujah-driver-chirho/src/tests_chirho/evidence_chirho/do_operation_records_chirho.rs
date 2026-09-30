@@ -104,8 +104,10 @@ fn each_selected_operation_in_io_is_recorded_at_io_chirho() {
     let selections_chirho = selections_chirho(&mut result_chirho);
     // A bind (with its variable pattern, which selects no `fail`) and one
     // non-tail `>>`. The tail selects nothing.
-    let roles_chirho: Vec<OccurrenceRoleChirho> =
-        selections_chirho.iter().map(|(role_chirho, _)| *role_chirho).collect();
+    let roles_chirho: Vec<OccurrenceRoleChirho> = selections_chirho
+        .iter()
+        .map(|(role_chirho, _)| *role_chirho)
+        .collect();
     assert_eq!(
         roles_chirho,
         vec![OccurrenceRoleChirho::Bind, OccurrenceRoleChirho::Then],
@@ -149,7 +151,10 @@ fn an_irrefutable_bind_gets_no_monad_fail_record_chirho() {
         .iter()
         .find(|(role_chirho, _)| *role_chirho == OccurrenceRoleChirho::Bind)
         .expect("the bind is selected");
-    assert_eq!(records_chirho(&result_chirho, bind_chirho.1), monad_chirho("IO"));
+    assert_eq!(
+        records_chirho(&result_chirho, bind_chirho.1),
+        monad_chirho("IO")
+    );
 }
 
 #[test]

@@ -220,9 +220,7 @@ fn a_where_pattern_binding_is_lazy_chirho() {
 #[test]
 fn a_let_in_pattern_binding_is_lazy_chirho() {
     assert_eq!(
-        module_output_chirho(
-            "main :: IO ()\nmain = print (let (Just n) = Just (7 :: Int) in n)"
-        ),
+        module_output_chirho("main :: IO ()\nmain = print (let (Just n) = Just (7 :: Int) in n)"),
         "7\n"
     );
     assert_eq!(
@@ -355,7 +353,9 @@ fn demanding_x_matches_the_whole_pattern_in_a_lazy_do_bind_chirho() {
     // W5.
     let failure_chirho = module_fails_chirho(
         "",
-        &format!("{MAIN_DO_CHIRHO}  ~(x, Just y) <- pure (1 :: Int, Nothing :: Maybe Int)\n  print x"),
+        &format!(
+            "{MAIN_DO_CHIRHO}  ~(x, Just y) <- pure (1 :: Int, Nothing :: Maybe Int)\n  print x"
+        ),
     );
     assert_pattern_failure_chirho(&failure_chirho);
 }
@@ -436,7 +436,10 @@ fn a_record_pattern_binds_fields_by_name_chirho() {
 fn a_list_pattern_binding_matches_its_length_chirho() {
     // WA crashed on main; W8 is the length mismatch, which must fail.
     assert_eq!(
-        module_prints_chirho("", &format!("{MAIN_DO_CHIRHO}  let [x, y] = [1, 2 :: Int]\n  print (x - y)")),
+        module_prints_chirho(
+            "",
+            &format!("{MAIN_DO_CHIRHO}  let [x, y] = [1, 2 :: Int]\n  print (x - y)")
+        ),
         "-1\n"
     );
     let failure_chirho = module_fails_chirho(

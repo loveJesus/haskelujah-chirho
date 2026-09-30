@@ -139,7 +139,9 @@ impl DesugarCtxChirho {
                             args_chirho: names_chirho
                                 .iter()
                                 .map(|name_chirho| {
-                                    CoreExprChirho::VarChirho(ctx_chirho.bound_id_chirho(name_chirho))
+                                    CoreExprChirho::VarChirho(
+                                        ctx_chirho.bound_id_chirho(name_chirho),
+                                    )
                                 })
                                 .collect(),
                         }
@@ -149,7 +151,9 @@ impl DesugarCtxChirho {
                 bindings_chirho.push((matched_binder_chirho, matched_chirho));
                 for (index_chirho, name_chirho) in names_chirho.iter().enumerate() {
                     let fields_chirho: Vec<BinderChirho> = (0..arity_chirho)
-                        .map(|position_chirho| self.row_binder_chirho(&format!("$sel{position_chirho}")))
+                        .map(|position_chirho| {
+                            self.row_binder_chirho(&format!("$sel{position_chirho}"))
+                        })
                         .collect();
                     let chosen_chirho = fields_chirho[index_chirho].id_chirho;
                     let selector_chirho = CoreExprChirho::CaseChirho {
@@ -292,12 +296,18 @@ impl DesugarCtxChirho {
         names_chirho
     }
 
-    fn collect_pattern_variables_chirho(&self, pat_chirho: &PatChirho, out_chirho: &mut Vec<String>) {
+    fn collect_pattern_variables_chirho(
+        &self,
+        pat_chirho: &PatChirho,
+        out_chirho: &mut Vec<String>,
+    ) {
         if let Some(expanded_chirho) = self.expand_pat_syn_chirho(pat_chirho) {
             return self.collect_pattern_variables_chirho(&expanded_chirho, out_chirho);
         }
         match pat_chirho {
-            PatChirho::VarChirho(name_chirho) => out_chirho.push(name_chirho.text_chirho().to_string()),
+            PatChirho::VarChirho(name_chirho) => {
+                out_chirho.push(name_chirho.text_chirho().to_string())
+            }
             PatChirho::AsChirho {
                 name_chirho,
                 pattern_chirho,
@@ -306,13 +316,16 @@ impl DesugarCtxChirho {
                 out_chirho.push(name_chirho.text_chirho().to_string());
                 self.collect_pattern_variables_chirho(pattern_chirho, out_chirho);
             }
-            PatChirho::WildcardChirho(_) | PatChirho::LitChirho(_) | PatChirho::NegChirho { .. } => {}
+            PatChirho::WildcardChirho(_)
+            | PatChirho::LitChirho(_)
+            | PatChirho::NegChirho { .. } => {}
             PatChirho::ParenChirho { inner_chirho, .. }
             | PatChirho::BangChirho { inner_chirho, .. }
             | PatChirho::LazyChirho { inner_chirho, .. } => {
                 self.collect_pattern_variables_chirho(inner_chirho, out_chirho);
             }
-            PatChirho::TypeAnnotChirho { pat_chirho, .. } | PatChirho::ViewChirho { pat_chirho, .. } => {
+            PatChirho::TypeAnnotChirho { pat_chirho, .. }
+            | PatChirho::ViewChirho { pat_chirho, .. } => {
                 self.collect_pattern_variables_chirho(pat_chirho, out_chirho);
             }
             PatChirho::ConChirho { args_chirho, .. } => {
@@ -344,7 +357,10 @@ impl DesugarCtxChirho {
                     expanded_chirho.as_ref().unwrap_or(pat_chirho)
                 {
                     for field_chirho in fields_chirho {
-                        self.collect_pattern_variables_chirho(&field_chirho.pattern_chirho, out_chirho);
+                        self.collect_pattern_variables_chirho(
+                            &field_chirho.pattern_chirho,
+                            out_chirho,
+                        );
                     }
                 }
             }

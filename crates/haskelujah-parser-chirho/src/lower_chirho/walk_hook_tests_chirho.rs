@@ -101,7 +101,10 @@ fn a_statement_hook_changes_no_occurrence_chirho() {
     // Same occurrences, same order, same origins. Carrying a statement hook
     // buys statements and costs nothing.
     assert_eq!(plain_chirho, hooked_chirho);
-    assert!(!plain_chirho.is_empty(), "the sample yielded no occurrences");
+    assert!(
+        !plain_chirho.is_empty(),
+        "the sample yielded no occurrences"
+    );
 }
 
 #[test]
@@ -137,6 +140,9 @@ fn the_statement_hook_mints_nothing_chirho() {
             },
         );
     }
-    assert_eq!(module_chirho.origin_supply_chirho.minted_chirho(), before_chirho);
+    assert_eq!(
+        module_chirho.origin_supply_chirho.minted_chirho(),
+        before_chirho
+    );
     assert_eq!(cleared_chirho, 2, "two binds to clear in the sample");
 }

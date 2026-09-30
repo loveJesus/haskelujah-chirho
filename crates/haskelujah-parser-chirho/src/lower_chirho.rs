@@ -10,14 +10,12 @@
 #[cfg(test)]
 mod context_tests_chirho;
 mod contexts_chirho;
-mod do_selection_chirho;
-#[cfg(test)]
-mod do_selection_tests_chirho;
-#[cfg(test)]
-mod walk_hook_tests_chirho;
 #[cfg(test)]
 mod declaration_kind_tests_chirho;
 mod declaration_kinds_chirho;
+mod do_selection_chirho;
+#[cfg(test)]
+mod do_selection_tests_chirho;
 #[cfg(test)]
 mod flat_type_tests_chirho;
 mod flat_types_chirho;
@@ -27,6 +25,8 @@ mod occurrences_chirho;
 #[cfg(test)]
 mod type_operator_tests_chirho;
 mod type_operators_chirho;
+#[cfg(test)]
+mod walk_hook_tests_chirho;
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -1693,7 +1693,8 @@ impl LowerCtxChirho {
                     pat_chirho,
                     expr_chirho,
                     span_chirho: bind_span_chirho,
-                 .. } => ExprChirho::CaseChirho {
+                    ..
+                } => ExprChirho::CaseChirho {
                     scrutinee_chirho: Box::new(expr_chirho.clone()),
                     alts_chirho: vec![
                         AltChirho {
@@ -7328,8 +7329,8 @@ impl LowerCtxChirho {
         }
 
         StmtChirho::BindChirho {
-                bind_chirho: None,
-                fail_chirho: None,
+            bind_chirho: None,
+            fail_chirho: None,
             pat_chirho: pat_chirho.unwrap_or(PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO)),
             expr_chirho: expr_chirho.unwrap_or_else(|| self.placeholder_expr_chirho()),
             span_chirho,
@@ -9832,7 +9833,10 @@ mod tests_chirho {
             ExprChirho::DoChirho { stmts_chirho, .. } => {
                 for (stmt_idx_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
                     match stmt_chirho {
-                        StmtChirho::ExprChirho { expr_chirho: stmt_expr_chirho, .. } => {
+                        StmtChirho::ExprChirho {
+                            expr_chirho: stmt_expr_chirho,
+                            ..
+                        } => {
                             collect_placeholder_expr_paths_in_expr_chirho(
                                 stmt_expr_chirho,
                                 &format!("{path_prefix_chirho}.stmt[{stmt_idx_chirho}].expr"),
@@ -9913,7 +9917,10 @@ mod tests_chirho {
                 );
                 for (qual_idx_chirho, qual_chirho) in quals_chirho.iter().enumerate() {
                     match qual_chirho {
-                        StmtChirho::ExprChirho { expr_chirho: qual_expr_chirho, .. } => {
+                        StmtChirho::ExprChirho {
+                            expr_chirho: qual_expr_chirho,
+                            ..
+                        } => {
                             collect_placeholder_expr_paths_in_expr_chirho(
                                 qual_expr_chirho,
                                 &format!("{path_prefix_chirho}.qual[{qual_idx_chirho}].expr"),
@@ -9943,7 +9950,10 @@ mod tests_chirho {
                 for (group_idx_chirho, group_chirho) in parallel_quals_chirho.iter().enumerate() {
                     for (qual_idx_chirho, qual_chirho) in group_chirho.iter().enumerate() {
                         match qual_chirho {
-                            StmtChirho::ExprChirho { expr_chirho: qual_expr_chirho, .. } => {
+                            StmtChirho::ExprChirho {
+                                expr_chirho: qual_expr_chirho,
+                                ..
+                            } => {
                                 collect_placeholder_expr_paths_in_expr_chirho(
                                     qual_expr_chirho,
                                     &format!(
@@ -17109,7 +17119,10 @@ fn lower_mdo_wraps_statements_before_final_expression_chirho() {
                 ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "mfix"
             )
     ));
-    assert!(matches!(stmts_chirho[1], StmtChirho::ExprChirho { expr_chirho: _, .. }));
+    assert!(matches!(
+        stmts_chirho[1],
+        StmtChirho::ExprChirho { expr_chirho: _, .. }
+    ));
 }
 
 #[cfg(test)]

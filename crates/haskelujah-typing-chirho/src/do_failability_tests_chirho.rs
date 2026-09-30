@@ -156,7 +156,11 @@ fn irrefutable_patterns_select_no_fail_chirho() {
     // GHC accepted every one of these in a Monad with no MonadFail instance.
     assert_matches_ghc_chirho("variable", var_chirho(), false);
     assert_matches_ghc_chirho("wildcard", wildcard_chirho(), false);
-    assert_matches_ghc_chirho("tuple", tuple_chirho(vec![var_chirho(), var_chirho()]), false);
+    assert_matches_ghc_chirho(
+        "tuple",
+        tuple_chirho(vec![var_chirho(), var_chirho()]),
+        false,
+    );
     assert_matches_ghc_chirho(
         "nested tuple",
         tuple_chirho(vec![

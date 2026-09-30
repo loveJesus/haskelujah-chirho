@@ -91,9 +91,7 @@ pub fn pattern_can_fail_chirho(pat_chirho: &PatChirho, env_chirho: &TypeConEnvCh
             pattern_can_fail_chirho(pat_chirho, env_chirho)
         }
         // A view pattern fails exactly when the pattern it feeds fails.
-        PatChirho::ViewChirho { pat_chirho, .. } => {
-            pattern_can_fail_chirho(pat_chirho, env_chirho)
-        }
+        PatChirho::ViewChirho { pat_chirho, .. } => pattern_can_fail_chirho(pat_chirho, env_chirho),
         // A tuple has one constructor, so it fails only through its parts.
         PatChirho::TupleChirho {
             elements_chirho, ..

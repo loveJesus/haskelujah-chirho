@@ -42,7 +42,9 @@ fn do_stmts_chirho<'m>(module_chirho: &'m ModuleChirho, name_chirho: &str) -> &'
             continue;
         }
         if let Some(RhsChirho::UnguardedChirho(ExprChirho::DoChirho { stmts_chirho, .. })) =
-            matches_chirho.first().map(|arm_chirho| &arm_chirho.rhs_chirho)
+            matches_chirho
+                .first()
+                .map(|arm_chirho| &arm_chirho.rhs_chirho)
         {
             return stmts_chirho;
         }
@@ -52,9 +54,7 @@ fn do_stmts_chirho<'m>(module_chirho: &'m ModuleChirho, name_chirho: &str) -> &'
 
 /// The name the selection will be looked up by, qualifier included, and the role
 /// it plays. The FULL name is what matters: it is the string resolution sees.
-fn described_chirho(
-    operation_chirho: &SelectedOperationChirho,
-) -> (String, OccurrenceRoleChirho) {
+fn described_chirho(operation_chirho: &SelectedOperationChirho) -> (String, OccurrenceRoleChirho) {
     (
         operation_chirho.name_chirho.full_name_chirho(),
         operation_chirho.role_chirho,
@@ -95,7 +95,11 @@ fn a_non_tail_expression_selects_then_and_the_tail_selects_nothing_chirho() {
         panic!("expected an expression statement");
     };
     assert_eq!(
-        described_chirho(then_chirho.as_ref().expect("the first statement selects `>>`")),
+        described_chirho(
+            then_chirho
+                .as_ref()
+                .expect("the first statement selects `>>`")
+        ),
         (">>".to_string(), OccurrenceRoleChirho::Then)
     );
     let StmtChirho::ExprChirho { then_chirho, .. } = &stmts_chirho[1] else {
@@ -200,7 +204,9 @@ fn a_list_comprehension_generator_selects_nothing_chirho() {
             continue;
         };
         let Some(RhsChirho::UnguardedChirho(ExprChirho::ListCompChirho { quals_chirho, .. })) =
-            matches_chirho.first().map(|arm_chirho| &arm_chirho.rhs_chirho)
+            matches_chirho
+                .first()
+                .map(|arm_chirho| &arm_chirho.rhs_chirho)
         else {
             continue;
         };
@@ -233,5 +239,9 @@ fn every_selection_takes_an_origin_of_its_own_chirho() {
         })
         .collect();
     let distinct_chirho: HashSet<OriginIdChirho> = origins_chirho.iter().copied().collect();
-    assert_eq!(distinct_chirho.len(), origins_chirho.len(), "{origins_chirho:?}");
+    assert_eq!(
+        distinct_chirho.len(),
+        origins_chirho.len(),
+        "{origins_chirho:?}"
+    );
 }

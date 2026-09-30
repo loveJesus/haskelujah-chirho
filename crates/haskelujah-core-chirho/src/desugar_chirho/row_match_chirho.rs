@@ -59,9 +59,12 @@ impl DesugarCtxChirho {
                 success_chirho(self)
             }
             PatChirho::WildcardChirho(_) => success_chirho(self),
-            PatChirho::ParenChirho { inner_chirho, .. } => {
-                self.match_row_chirho(inner_chirho, scrutinee_chirho, failure_chirho, success_chirho)
-            }
+            PatChirho::ParenChirho { inner_chirho, .. } => self.match_row_chirho(
+                inner_chirho,
+                scrutinee_chirho,
+                failure_chirho,
+                success_chirho,
+            ),
             PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
                 self.match_row_chirho(pat_chirho, scrutinee_chirho, failure_chirho, success_chirho)
             }
@@ -154,9 +157,12 @@ impl DesugarCtxChirho {
                     success_chirho,
                 )
             }
-            PatChirho::RecordChirho { .. } => {
-                self.match_record_chirho(pat_chirho, scrutinee_chirho, failure_chirho, success_chirho)
-            }
+            PatChirho::RecordChirho { .. } => self.match_record_chirho(
+                pat_chirho,
+                scrutinee_chirho,
+                failure_chirho,
+                success_chirho,
+            ),
             PatChirho::ListChirho {
                 elements_chirho, ..
             } => self.match_list_chirho(
@@ -242,9 +248,14 @@ impl DesugarCtxChirho {
         let Some(((pat_chirho, value_chirho), rest_chirho)) = pending_chirho.split_first() else {
             return success_chirho(self);
         };
-        self.match_row_chirho(pat_chirho, *value_chirho, failure_chirho, &mut |ctx_chirho| {
-            ctx_chirho.match_sequence_chirho(rest_chirho, failure_chirho, success_chirho)
-        })
+        self.match_row_chirho(
+            pat_chirho,
+            *value_chirho,
+            failure_chirho,
+            &mut |ctx_chirho| {
+                ctx_chirho.match_sequence_chirho(rest_chirho, failure_chirho, success_chirho)
+            },
+        )
     }
 
     /// A record pattern names its fields, in any order and any subset. Each is
@@ -271,10 +282,9 @@ impl DesugarCtxChirho {
             Some(declared_chirho) => {
                 let mut positional_chirho = vec![None; declared_chirho.len()];
                 for field_chirho in fields_chirho {
-                    if let Some(index_chirho) = declared_chirho
-                        .iter()
-                        .position(|name_chirho| name_chirho == field_chirho.name_chirho.text_chirho())
-                    {
+                    if let Some(index_chirho) = declared_chirho.iter().position(|name_chirho| {
+                        name_chirho == field_chirho.name_chirho.text_chirho()
+                    }) {
                         positional_chirho[index_chirho] = Some(&field_chirho.pattern_chirho);
                     }
                 }
@@ -389,7 +399,9 @@ impl DesugarCtxChirho {
             };
         }
         let core_lit_chirho = match (self.desugar_lit_chirho(lit_chirho), negated_chirho) {
-            (CoreLitChirho::IntChirho(value_chirho), true) => CoreLitChirho::IntChirho(-value_chirho),
+            (CoreLitChirho::IntChirho(value_chirho), true) => {
+                CoreLitChirho::IntChirho(-value_chirho)
+            }
             (CoreLitChirho::FloatChirho(value_chirho), true) => {
                 CoreLitChirho::FloatChirho(-value_chirho)
             }

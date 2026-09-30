@@ -132,7 +132,10 @@ impl<'v> WalkChirho<'v> {
 /// every caller had before the statement hook existed, and it still carries no
 /// statement visitor.
 pub fn visit_decl_chirho(decl_chirho: &mut DeclChirho, visit_chirho: &mut OccurrenceVisitorChirho) {
-    visit_decl_walk_chirho(decl_chirho, &mut WalkChirho::occurrences_chirho(visit_chirho));
+    visit_decl_walk_chirho(
+        decl_chirho,
+        &mut WalkChirho::occurrences_chirho(visit_chirho),
+    );
 }
 
 /// Visit every occurrence AND every statement in one declaration, in source
@@ -204,10 +207,7 @@ pub fn visit_decl_walk_chirho(decl_chirho: &mut DeclChirho, walk_chirho: &mut Wa
     }
 }
 
-fn visit_match_arms_chirho(
-    arms_chirho: &mut [MatchArmChirho],
-    walk_chirho: &mut WalkChirho<'_>,
-) {
+fn visit_match_arms_chirho(arms_chirho: &mut [MatchArmChirho], walk_chirho: &mut WalkChirho<'_>) {
     for arm_chirho in arms_chirho {
         for pat_chirho in &mut arm_chirho.pats_chirho {
             visit_pat_chirho(pat_chirho, walk_chirho);
@@ -308,7 +308,10 @@ fn visit_stmts_chirho(stmts_chirho: &mut [StmtChirho], walk_chirho: &mut WalkChi
 
 /// Visit every occurrence in one expression, in source order.
 pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut OccurrenceVisitorChirho) {
-    visit_expr_walk_chirho(expr_chirho, &mut WalkChirho::occurrences_chirho(visit_chirho));
+    visit_expr_walk_chirho(
+        expr_chirho,
+        &mut WalkChirho::occurrences_chirho(visit_chirho),
+    );
 }
 
 /// The expression traversal both entry points share.
@@ -510,14 +513,10 @@ fn visit_pat_chirho(pat_chirho: &mut PatChirho, walk_chirho: &mut WalkChirho<'_>
                 visit_pat_chirho(element_chirho, walk_chirho);
             }
         }
-        PatChirho::AsChirho { pattern_chirho, .. } => {
-            visit_pat_chirho(pattern_chirho, walk_chirho)
-        }
+        PatChirho::AsChirho { pattern_chirho, .. } => visit_pat_chirho(pattern_chirho, walk_chirho),
         PatChirho::ParenChirho { inner_chirho, .. }
         | PatChirho::LazyChirho { inner_chirho, .. }
-        | PatChirho::BangChirho { inner_chirho, .. } => {
-            visit_pat_chirho(inner_chirho, walk_chirho)
-        }
+        | PatChirho::BangChirho { inner_chirho, .. } => visit_pat_chirho(inner_chirho, walk_chirho),
         PatChirho::InfixConChirho {
             left_chirho,
             right_chirho,

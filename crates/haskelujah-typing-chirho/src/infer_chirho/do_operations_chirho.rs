@@ -131,7 +131,10 @@ impl InferCtxChirho {
                 let y_chirho = self.fresh_var_chirho();
                 TyChirho::fun_chirho(
                     in_monad_chirho(x_chirho),
-                    TyChirho::fun_chirho(in_monad_chirho(y_chirho.clone()), in_monad_chirho(y_chirho)),
+                    TyChirho::fun_chirho(
+                        in_monad_chirho(y_chirho.clone()),
+                        in_monad_chirho(y_chirho),
+                    ),
                 )
             }
             OccurrenceRoleChirho::Fail => {

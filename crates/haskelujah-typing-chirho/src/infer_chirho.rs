@@ -34,8 +34,8 @@ use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 mod ast_conversion_chirho;
 #[cfg(test)]
 mod ast_conversion_tests_chirho;
-mod equalities_chirho;
 mod do_operations_chirho;
+mod equalities_chirho;
 mod evidence_chirho;
 mod instance_obligations_chirho;
 mod records_chirho;
@@ -3669,8 +3669,9 @@ impl InferCtxChirho {
                             // MonadFail evidence is invented for an irrefutable
                             // pattern.
                             // workflow: language-features-chirho/dictionary-evidence-chirho
-                            for selected_chirho in
-                                [bind_selected_chirho, fail_selected_chirho].into_iter().flatten()
+                            for selected_chirho in [bind_selected_chirho, fail_selected_chirho]
+                                .into_iter()
+                                .flatten()
                             {
                                 self.capture_selected_operation_chirho(
                                     selected_chirho,
@@ -7664,9 +7665,10 @@ fn collect_expr_refs_chirho(
             for stmt_chirho in stmts_chirho {
                 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
                 match stmt_chirho {
-                    StmtChirho::ExprChirho { expr_chirho: e_chirho, .. } => {
-                        collect_expr_refs_chirho(e_chirho, refs_chirho)
-                    }
+                    StmtChirho::ExprChirho {
+                        expr_chirho: e_chirho,
+                        ..
+                    } => collect_expr_refs_chirho(e_chirho, refs_chirho),
                     StmtChirho::BindChirho { expr_chirho, .. } => {
                         collect_expr_refs_chirho(expr_chirho, refs_chirho)
                     }
@@ -7735,9 +7737,10 @@ fn collect_expr_refs_chirho(
             {
                 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
                 match q_chirho {
-                    StmtChirho::ExprChirho { expr_chirho: e_chirho, .. } => {
-                        collect_expr_refs_chirho(e_chirho, refs_chirho)
-                    }
+                    StmtChirho::ExprChirho {
+                        expr_chirho: e_chirho,
+                        ..
+                    } => collect_expr_refs_chirho(e_chirho, refs_chirho),
                     StmtChirho::BindChirho { expr_chirho, .. } => {
                         collect_expr_refs_chirho(expr_chirho, refs_chirho)
                     }
@@ -25706,8 +25709,8 @@ mod tests_chirho {
                         stmts_chirho: vec![
                             // x <- Just 42  (simulated: x <- app(Just, 42))
                             StmtChirho::BindChirho {
-                bind_chirho: None,
-                fail_chirho: None,
+                                bind_chirho: None,
+                                fail_chirho: None,
                                 pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                                 expr_chirho: ExprChirho::AppChirho {
                                     fun_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho(
@@ -25721,7 +25724,9 @@ mod tests_chirho {
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             },
                             // pure x (simplified: just return x)
-                            StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(dummy_name_chirho("x"))),
+                            StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(dummy_name_chirho(
+                                "x",
+                            ))),
                         ],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),

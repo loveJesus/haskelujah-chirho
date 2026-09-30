@@ -27,10 +27,10 @@ use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
-use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
 };
+use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
@@ -944,8 +944,7 @@ impl DesugarCtxChirho {
             Some(selected_chirho) => {
                 let name_chirho = &selected_chirho.name_chirho;
                 let text_chirho = name_chirho.text_chirho().to_string();
-                let carried_qualifier_chirho =
-                    name_chirho.qualifier_chirho().map(str::to_string);
+                let carried_qualifier_chirho = name_chirho.qualifier_chirho().map(str::to_string);
                 self.resolve_do_method_chirho(carried_qualifier_chirho.as_deref(), &text_chirho)
             }
             None => self.resolve_do_method_chirho(qualifier_chirho, method_chirho),
@@ -4689,7 +4688,10 @@ impl DesugarCtxChirho {
                     }),
                 }
             }
-            StmtChirho::ExprChirho { expr_chirho: guard_expr_chirho, .. } => {
+            StmtChirho::ExprChirho {
+                expr_chirho: guard_expr_chirho,
+                ..
+            } => {
                 // Guard: if guard then [e | rest] else []
                 let guard_core_chirho = self.desugar_expr_chirho(guard_expr_chirho);
                 let then_chirho = self.desugar_list_comp_chirho(body_chirho, rest_chirho);
@@ -5073,7 +5075,10 @@ impl DesugarCtxChirho {
                     }),
                 }
             }
-            StmtChirho::ExprChirho { expr_chirho: guard_expr_chirho, .. } => {
+            StmtChirho::ExprChirho {
+                expr_chirho: guard_expr_chirho,
+                ..
+            } => {
                 // Guard with continuation: if guard then [e | rest] with k else k
                 let guard_core_chirho = self.desugar_expr_chirho(guard_expr_chirho);
                 let then_chirho = self.desugar_list_comp_with_cont_chirho(
@@ -5409,8 +5414,7 @@ impl DesugarCtxChirho {
                 if let Some((scrutinee_binder_chirho, selector_binds_chirho)) =
                     self.lazy_bind_prepare_chirho(pat_chirho)
                 {
-                    let rest_chirho =
-                        self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
+                    let rest_chirho = self.desugar_do_chirho(&stmts_chirho[1..], qualifier_chirho);
                     let lam_chirho = Self::lazy_bind_lambda_chirho(
                         scrutinee_binder_chirho,
                         selector_binds_chirho,
@@ -5650,7 +5654,8 @@ impl DesugarCtxChirho {
                     &prebound_chirho,
                     &mut core_binds_chirho,
                 );
-                let result_body_chirho = self.force_witnesses_chirho(&witnesses_chirho, rest_chirho);
+                let result_body_chirho =
+                    self.force_witnesses_chirho(&witnesses_chirho, rest_chirho);
 
                 // Wrap in let if there are fun-binds
                 let result_chirho = if core_binds_chirho.is_empty() {
@@ -6161,8 +6166,8 @@ mod tests_chirho {
             qualifier_chirho: None,
             stmts_chirho: vec![
                 StmtChirho::BindChirho {
-                bind_chirho: None,
-                fail_chirho: None,
+                    bind_chirho: None,
+                    fail_chirho: None,
                     pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                     expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("getLine")),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -6239,13 +6244,15 @@ mod tests_chirho {
             qualifier_chirho: Some("FlowChirho".to_string()),
             stmts_chirho: vec![
                 StmtChirho::BindChirho {
-                bind_chirho: None,
-                fail_chirho: None,
+                    bind_chirho: None,
+                    fail_chirho: None,
                     pat_chirho: PatChirho::VarChirho(dummy_name_chirho("valueChirho")),
                     expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("actionChirho")),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
-                StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(dummy_name_chirho("finishChirho"))),
+                StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(dummy_name_chirho(
+                    "finishChirho",
+                ))),
             ],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
@@ -6462,8 +6469,8 @@ mod tests_chirho {
             body_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
             quals_chirho: vec![
                 StmtChirho::BindChirho {
-                bind_chirho: None,
-                fail_chirho: None,
+                    bind_chirho: None,
+                    fail_chirho: None,
                     pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                     expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("xs")),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
