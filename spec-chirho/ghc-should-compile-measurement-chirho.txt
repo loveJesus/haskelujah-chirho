@@ -1,21 +1,24 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-30 UTC, AFTER do-statement operation selection and lazy pattern
-#   bindings, on top of occurrence provenance for references and the literal carrier.
-# code measured: b049713a (HASKELUJAH/claude_chirho, branch do-selection-chirho, pushed
-#   as gh_chirho/do-selection-2-chirho; a new remote name because the branch was rebased
-#   onto main and the older ref cannot fast-forward, and no force push was taken)
+# measured: 2026-09-30 UTC, AFTER do-statement operation selection and pattern bindings
+#   that match the WHOLE pattern on demand (one single-row matcher), on top of occurrence
+#   provenance for references and the literal carrier. It supersedes the WITHDRAWN
+#   measurement of b049713a below.
+# code measured: 41eff8f6 (HASKELUJAH/claude_chirho, branch lazy-positions-chirho, pushed
+#   as gh_chirho/lazy-positions-chirho). It carries the do unit, whose own tip b049713a
+#   was measured, proposed and then WITHDRAWN (room #25463, #25467), and the repair on
+#   top of it.
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/do-selection-corpus-chirho/haskelujah-do-selection-chirho
+#   tmp-chirho/full-match-corpus-chirho/haskelujah-full-match-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: e6199f92cdf6186c4cc66f3d0e2df8a3adb97c39232c519866eb41367109eacf
+# CLI SHA256: 81b46d205236c6a54c9576995443b386345296f94e8fa5fefd8358ddda3b046b
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT b049713a - which is the repaired rule, so unlike the previous
-#   measurement there is no later tools change to separate from it. Order: TIMEOUT
+#   COMMITTED AT 41eff8f6, unchanged from main (no runner file differs), and the
+#   repaired rule, so there is no later tools change to separate from it. Order: TIMEOUT
 #   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
 #   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
 #   A panic header is `thread '<name>' panicked at ...` with an optional ALL-DIGIT thread
@@ -47,43 +50,67 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (e8cd6bf4): 885 -> 885, ZERO movement.
+# CHANGE SINCE LAST MEASUREMENT ON MAIN (e8cd6bf4): 885 -> 885, ZERO movement.
 #   The failure list is identical file for file, its SHA256 below is unchanged, and each
 #   of the two passes reproduces it independently.
 #   What changed is aimed at execution and designed not to move a typecheck verdict,
-#   which the list below measures rather than assumes: lowering now SELECTS each do
-#   statement's `>>=`, `>>` and `fail` once; a failability pass clears a
-#   `fail` the pattern cannot need, by GHC 9.14.1's measured rule; Core resolves the
-#   binding each statement carries and emits a failure alternative only where `fail`
-#   was selected; the checker records evidence for each selected operation whose type
-#   fits the block's monad, READ-ONLY; and pattern bindings in a do-let, a `where` and a
-#   `let ... in`, and a `~p <- m` bind, now bind their variables through selectors, so an
-#   unused one forces nothing. Two pre-existing
-#   crashes on main are gone (a newtype-constructor bind's unbound `fail`, and let
-#   pattern bindings forcing an unused `undefined` or a non-matching constructor), and
-#   three SILENT wrong answers on main (`let ~(Just n) = Just 7` printing `Just 7`, and
-#   its `where` and `let ... in` forms).
-#   A REGRESSION CAUGHT INSIDE THE UNIT AND RESTORED, so it is on the record: GHC's
-#   T17594f is in this corpus and accepted on main. An intermediate version of the
-#   checker capture COMPOSED its unifier into the do block's substitution, and T17594f's
-#   `Main.do` with `(>>=) = ($)` then failed with an infinite type. The driver library's
-#   T17594f test caught it at 0103d80a (1802 passed, 1 failed) before any corpus run;
-#   unrepaired, that file would have left the accepted list. The capture is read-only in
-#   the measured code, and T17594f is ACCEPT here.
-#   NOT YET COVERED, recorded rather than implied: `~` in a CASE alternative still binds
-#   the whole scrutinee (silent), and a top-level `~` pattern binding still <<loop>>s;
-#   the lambda path handles `~` only for a lazy tuple of variables.
-# SOURCE-SPECIFIC GATES, all on b049713a itself: unit suites green (ast 13, core 129,
-#   naming 136, parser 358, th 15, typing 354); driver library 1803 passed / 0 failed /
-#   0 warnings (581.30s); ten integration targets 99 passed, including 14 lazy-pattern
-#   controls against GHC 9.14.1; runner controls 37/37 and 9/9. Every one of those logs
-#   is retained under tmp-chirho/do-selection-chirho/ (gate-b049713a-driver-lib-chirho.txt
-#   and gates-b049713a-chirho/), zero warnings in any. EXECUTION: 28 of 35
-#   predicates, identical predicate by predicate to the landed literal carrier - those
-#   35 predate this unit and exercise none of its new behaviour, so they show no
-#   regression and nothing more. The new behaviour is measured by the lazy-pattern
-#   controls, and independently by claude2_chirho on this CLI: 24 of 26 programs match
-#   GHC byte for byte, the 2 misses being the two positions not yet covered.
+#   which the list below measures rather than assumes.
+#   - Do statements: lowering SELECTS each statement's `>>=`, `>>` and `fail` once; a
+#     failability pass clears a `fail` the pattern cannot need, by GHC 9.14.1's measured
+#     rule; Core resolves the binding each statement carries and emits a failure
+#     alternative only where `fail` was selected; the checker records evidence for each
+#     selected operation whose type fits the block's monad, READ-ONLY.
+#   - Pattern bindings, in a do-let, `where`, `let ... in`, at top level, and a `~p <- m`
+#     bind: `$patbind = e`, ONE shared match of the WHOLE pattern through a single-row
+#     matcher, and a selector per variable, as Haskell 2010 §3.17.3 defines it. Nothing is
+#     forced where the binding is made; demanding any variable matches the whole pattern.
+#     A banged binding forces the MATCH before the body, never a variable.
+#   - The parser used to SKIP a binding's leading `!`, so no banged binding ever reached
+#     the desugarer as banged. It is kept now. main got `let !(a, b) = undefined in 5`
+#     right only by accident: every pattern binding there was strict whatever it said.
+#   Repaired in binding positions, each measured against GHC 9.14.1 on this CLI: crashes
+#   on main (a newtype-constructor bind's unbound `fail`; let bindings forcing an unused
+#   `undefined` or non-matching constructor; `[x, y]` bindings; a recursive knot; a
+#   top-level `~` binding that <<loop>>ed) and SILENT wrong answers on main (`let
+#   ~(Just n) = Just 7` printing `Just 7` in three positions; a top-level sibling
+#   mismatch and a literal sibling printing a value where GHC fails; a record pattern
+#   out of declaration order swapping its fields; `let !x = undefined` and an inner bang
+#   not forcing).
+#   TWO REGRESSIONS CAUGHT INSIDE THE UNIT, so both are on the record:
+#   - GHC's T17594f, accepted on main: an intermediate checker capture COMPOSED its
+#     unifier into the do block's substitution, and `Main.do` with `(>>=) = ($)` then
+#     failed with an infinite type. The driver library caught it at 0103d80a (1802 passed,
+#     1 failed) before any corpus run. The capture is read-only, and T17594f is ACCEPT here.
+#   - The WITHDRAWN tip b049713a bound each pattern-binding variable through a selector
+#     that checked only the PATH to it, and made banged bindings lazy: seven execution
+#     regressions against main (W1, W3, W4, W5, B2, B3, B7), silent where main crashed.
+#     Neither typecheck axis can see an execution regression, which is why its corpus
+#     pair below was clean. They were found while measuring the next unit, reported in
+#     the room, confirmed by claude2_chirho, and all seven match GHC on this CLI.
+#   NOT YET COVERED, recorded rather than implied, and identical on main: every MATCH
+#   position - case alternatives, equations, lambdas, a do bind below a constructor -
+#   still uses the older machinery, where a literal below a constructor is never tested,
+#   a record pattern binds fields by listed position, `[x, y]` alternatives and nested
+#   lambda patterns crash, `~` binds the whole scrutinee, guards do not fall through to
+#   the next row, and `\case` drops guarded alternatives. Also `let whole@(a, b) = e`,
+#   which the parser reads as a function binding with a visible type argument.
+# SOURCE-SPECIFIC GATES, all on 41eff8f6 itself: unit suites green (ast 13, core 129,
+#   naming 136, parser 359, th 15, typing 354); driver library 1803 passed / 0 failed /
+#   0 warnings (534.53s); ten integration targets 116 passed, including 31 pattern-binding
+#   controls against GHC 9.14.1, five of them mutation-checked; runner controls 37/37 and
+#   9/9. Logs under tmp-chirho/lazy-positions-chirho/gates-fmt-chirho/, zero warnings in
+#   any. EXECUTION: 28 of 35 predicates, the same seven failures with identical output
+#   (addresses normalised) as the literal carrier's receipt; those 35 exercise none of
+#   the new behaviour. The new behaviour's evidence is the controls and the probe sets
+#   rerun on this very CLI (tmp-chirho/full-match-corpus-chirho/probes-chirho/): every
+#   binding-position probe matches GHC, and the match-position sets are unchanged.
+#   An earlier pair on the pre-rustfmt tree (CLI 62a60f46) gave the same counts and lists
+#   and is kept as a superseded early signal; the formatting commit changed no behaviour.
+#
+# WITHDRAWN MEASUREMENT OF b049713a (2026-09-30, HISTORICAL): 885 -> 885, ZERO movement,
+#   on CLI e6199f92, membership identical, receipts tmp-chirho/do-selection-corpus-chirho/.
+#   Proposed in #25462 and WITHDRAWN in #25463 for the seven execution regressions above.
+#   Its counts were true and are superseded, not corrected.
 #
 # MEASUREMENT OF e8cd6bf4 (2026-09-24, HISTORICAL), CHANGE SINCE 7cfd9b8a: 885 -> 885, ZERO movement.
 #   That measurement ran on the runner as committed at e8cd6bf4, before the line-level
@@ -158,7 +185,7 @@
 #   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
 #   depending only on which declaration came first.
 # REPLAY: all 53 failures here, with the other axis's 235 rejections, were re-run one at
-#   a time on the same frozen CLI e6199f92, keeping stdout, stderr, exit code and source
+#   a time on the same frozen CLI 81b46d20, keeping stdout, stderr, exit code and source
 #   SHA256 per file. All 288 are exit 1 carrying `error[E`, and zero carry a panic
 #   header, timeout or abnormal exit; none rests on the bare `panic` substring. Every
 #   rejection is a diagnostic, not a crash.

@@ -6,7 +6,75 @@ Each section below is ONE measurement, newest first. A section states the source
 actually ran on and is never edited to describe a later source: every section other than
 the first is HISTORICAL, and stays labelled that way.
 
-## 2026-09-30 — do-statement selection and lazy pattern bindings (current)
+## 2026-09-30 — pattern bindings match the whole pattern (current)
+
+Corpus source, execution source and every gate below are the same commit: `41eff8f6` on branch
+`lazy-positions-chirho`, pushed as `gh_chirho/lazy-positions-chirho`. It carries the do unit
+(whose own tip was measured in the WITHDRAWN section below) and the repair on top of it. Frozen
+DEBUG CLI `81b46d205236c6a54c9576995443b386345296f94e8fa5fefd8358ddda3b046b`, digest asserted
+unchanged before and after the four corpus passes and again before and after the execution set.
+
+Receipts live in the measuring worktree, relative to its REPOSITORY ROOT:
+`tmp-chirho/full-match-corpus-chirho/` holds the frozen CLI, per-file source hashes, the four
+passes with raw output, the replay, the execution set, and every probe set rerun on this CLI
+(`probes-chirho/`); `tmp-chirho/lazy-positions-chirho/gates-fmt-chirho/` holds the unit,
+driver-library, integration and runner-control logs; `tmp-chirho/lazy-positions-chirho/`
+holds the probe sources, the GHC outputs, main's outputs and the mutation receipts.
+
+### Results at their actual scope
+
+| Measurement | Source | Result | What it establishes |
+| --- | --- | --- | --- |
+| Corpus, accept axis | 41eff8f6 | 885 of 938, twice, byte-identical | Typecheck verdicts only; list SHA identical to the committed artifact |
+| Corpus, reject axis | 41eff8f6 | 235 of 767, twice, byte-identical | Same, for the wrong-accept list |
+| Rejection replay | 41eff8f6 | 288 of 288 exit 1 with `error[E`, zero panic headers | Every rejection is a diagnostic, not a crash |
+| Execution set | 41eff8f6 | 28 of 35, the same seven failures with identical output | These 35 exercise none of the new behaviour: no regression, nothing more |
+| Binding-position probes | CLI 81b46d20 | every one matches GHC 9.14.1 (W, B, S, T, X sets) but X5 | X5 is a parser defect, recorded below |
+| Match-position probes | CLI 81b46d20 | unchanged, as declared | Brick 6's work, recorded below |
+| Pattern-binding controls | 41eff8f6 | 31 of 31, each expectation measured on GHC 9.14.1 | Five mechanisms mutation-checked, each failing exactly its control |
+| Unit suites | 41eff8f6 | ast 13, core 129, naming 136, parser 359, th 15, typing 354 | Zero warnings |
+| Driver library | 41eff8f6 | 1803 passed / 0 failed, 534.53s | Zero warnings |
+| Driver integration | 41eff8f6 | 116 passed across 10 targets | Zero warnings |
+| Verdict-rule controls | 41eff8f6 | 37 of 37, plus 9 ordering controls | The runner is unchanged from main |
+
+An earlier pair on the pre-rustfmt tree (CLI `62a60f46`, `tmp-chirho/lazy-positions-corpus-chirho/`)
+gave the same counts and lists. It is kept as a superseded early signal; the formatting commit
+changed no behaviour and every gate above was rerun after it.
+
+### What changed
+
+- One single-row matcher, `desugar_chirho/row_match_chirho.rs`: one pattern against one
+  variable, for every shape, testing a literal wherever it appears and matching record fields at
+  their DECLARED positions.
+- Pattern bindings (do-let, `where`, `let ... in`, top level, `~p <- m`): `$patbind = e`, one
+  shared match of the WHOLE pattern, a selector per variable. A banged binding forces the match
+  before the body, never a variable.
+- The parser used to skip a binding's leading `!`; it is kept now.
+
+### Two regressions caught inside the unit
+
+- T17594f and the composing checker capture, as recorded in the section below.
+- The withdrawn tip's per-path selectors: demanding `x` in `(x, Just y) = (1, Nothing)` printed 1
+  where GHC fails, in four positions, and banged bindings became lazy (B2, B3, B7). Main crashed
+  or failed on all seven. None of the section-below evidence could see them: the corpus is
+  check-only, the execution set never binds a pattern that way, and no control had a demanded
+  variable whose own path matched while a sibling did not. All seven now have controls.
+
+### What this does not yet reach
+
+Identical on main, recorded in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_match-chirho.md`:
+every MATCH position (case alternatives, equations, lambdas, a do bind below a constructor)
+still uses the older machinery. There, a literal below a constructor is never tested, a record
+binds fields by listed position, `[x, y]` alternatives and nested lambda patterns crash, `~` binds
+the whole scrutinee, guards do not fall through to the next row, and `\case` drops guarded
+alternatives. Also `let whole@(a, b) = e`, read by the parser as a function with a visible type
+argument.
+
+## 2026-09-30 — do-statement selection and lazy pattern bindings (WITHDRAWN, historical)
+
+WITHDRAWN (room #25463, #25467): the tip measured here, `b049713a`, had seven execution
+regressions that nothing in this section could see. The section above states them and the repair.
+What follows is left as it was written, because its measurements were true of that tip.
 
 Corpus source, execution source and every gate below are the same commit: `b049713a` on
 branch `do-selection-chirho`, pushed as `gh_chirho/do-selection-2-chirho` (a new remote

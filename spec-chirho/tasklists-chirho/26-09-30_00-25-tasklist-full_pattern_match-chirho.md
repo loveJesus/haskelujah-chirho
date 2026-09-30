@@ -74,8 +74,14 @@ Probes, the runner and three compilers' raw outputs: `tmp-chirho/lazy-positions-
       fails exactly the three banged-binding controls; a witness that forces the VARIABLE fails
       only B6; record fields by listed order fails only the record control; an unforced inner
       bang fails only B5's control.
-- [ ] 4. Gate: unit suites, driver library, integration suites, execution set, announced
+- [x] 4. Gate: unit suites, driver library, integration suites, execution set, announced
       two-pass corpus pair. Only then may the do unit be proposed again, with steps 1-2 inside.
+      All on 41eff8f6 (after a formatting-only commit: main was rustfmt-clean, and the 17
+      files these two units had left unformatted were formatted, nothing else), frozen CLI
+      81b46d20: corpus 885/938 and 235/767, twice, byte-identical, both lists unchanged;
+      288/288 rejections are diagnostics; execution 28/35, the same seven failures with
+      identical output; driver library 1803/0; integration 116/0; unit suites green; runner
+      controls 37/37 and 9/9; zero warnings. Every probe set rerun on the frozen CLI.
 - [ ] 5. SUBSUMED BY 6. Once case alternatives, equations and lambdas match through
       `match_row_chirho`, its `~` case already binds a lazy sub-pattern through brick 2, so no
       separate AST elaboration is needed.

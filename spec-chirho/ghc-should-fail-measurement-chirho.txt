@@ -1,23 +1,23 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-30 UTC, AFTER do-statement operation selection and lazy pattern
-#   bindings, on top of occurrence provenance for references and the literal carrier.
-#   The companion artifact states what changed, the regression caught inside the unit,
-#   and what is not yet covered.
-# code measured: b049713a (HASKELUJAH/claude_chirho, branch do-selection-chirho, pushed
-#   as gh_chirho/do-selection-2-chirho; a new remote name because the branch was rebased
-#   onto main and the older ref cannot fast-forward, and no force push was taken)
+# measured: 2026-09-30 UTC, AFTER do-statement operation selection and pattern bindings
+#   that match the WHOLE pattern on demand, on top of occurrence provenance for
+#   references and the literal carrier. It supersedes the WITHDRAWN measurement of
+#   b049713a below. The companion artifact states what changed, both regressions caught
+#   inside the unit, and what is not yet covered.
+# code measured: 41eff8f6 (HASKELUJAH/claude_chirho, branch lazy-positions-chirho, pushed
+#   as gh_chirho/lazy-positions-chirho)
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/do-selection-corpus-chirho/haskelujah-do-selection-chirho
+#   tmp-chirho/full-match-corpus-chirho/haskelujah-full-match-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: e6199f92cdf6186c4cc66f3d0e2df8a3adb97c39232c519866eb41367109eacf
+# CLI SHA256: 81b46d205236c6a54c9576995443b386345296f94e8fa5fefd8358ddda3b046b
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT b049713a - the repaired rule, with no later tools change to separate
-#   from it. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC
+#   COMMITTED AT 41eff8f6, unchanged from main, the repaired rule, with no later tools
+#   change to separate from it. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC
 #   (a real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0
 #   and no `error[E`). A panic header has an optional ALL-DIGIT thread id and counts at
 #   a line start (a bare \r also ends a line) or glued to output, never on a line that
@@ -46,13 +46,19 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (e8cd6bf4): 235 -> 235, ZERO movement.
+# CHANGE SINCE LAST MEASUREMENT ON MAIN (e8cd6bf4): 235 -> 235, ZERO movement.
 #   The wrong-accept list is identical file for file, its SHA256 below is unchanged, and
 #   each of the two passes reproduces it independently. The unit is designed not to move
 #   a typecheck verdict - the checker's new do-operation capture only reads the block's
-#   types and pushes no wanted constraint, and the failability pass only CLEARS `fail`
-#   selections - and on this axis that is measured, not assumed: no program this axis
-#   expects rejected became accepted, and none became rejected.
+#   types and pushes no wanted constraint, the failability pass only CLEARS `fail`
+#   selections, and the pattern-binding work is desugaring - and on this axis that is
+#   measured, not assumed: no program this axis expects rejected became accepted, and
+#   none became rejected. The one change that reaches the checker, a binding's leading
+#   `!` now kept rather than skipped by the parser, moved no verdict either.
+#
+# WITHDRAWN MEASUREMENT OF b049713a (2026-09-30, HISTORICAL): 235 -> 235, ZERO movement,
+#   on CLI e6199f92, membership identical. Withdrawn (#25463, #25467) for seven
+#   EXECUTION regressions this axis cannot see; see the companion artifact.
 #
 # MEASUREMENT OF e8cd6bf4 (2026-09-24, HISTORICAL), CHANGE SINCE 7cfd9b8a: 235 -> 235, ZERO movement.
 #   The wrong-accept list is identical file for file, its SHA256 below is unchanged, and
@@ -87,7 +93,7 @@
 #   Corrections from gpt_chirho (room #24271), each verified against the replay.
 #   The count is verdict presence, not 235 independently matching GHC reasons.
 # REPLAY OF EVERY REJECTION: all 288 saved REJECT rows (53 accept-axis, 235
-#   reject-axis) were re-run one at a time on the same frozen CLI e6199f92, with stdout,
+#   reject-axis) were re-run one at a time on the same frozen CLI 81b46d20, with stdout,
 #   stderr, exit code and source SHA-256 kept per file. Classified timeout and abnormal
 #   exit first, then a real Rust panic header, and only then `error[E` with exit 1: all
 #   288 are credited rejections, none a timeout, an abnormal exit or a panic. No
