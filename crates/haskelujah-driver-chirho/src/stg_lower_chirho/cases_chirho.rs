@@ -111,15 +111,29 @@ impl LowerCtxChirho {
         }
         // Newtype case erasure: if the only constructor alt is a
         // newtype constructor, skip case dispatch — the scrutinee
-        // IS the inner value (newtype is erased at runtime).
-        if alts_chirho.len() == 1 {
-            if let AltConChirho::DataConChirho(con_name_chirho) = &alts_chirho[0].con_chirho {
+        // IS the inner value (newtype is erased at runtime). A trailing
+        // DEFAULT is the pattern-match failure a row adds after a
+        // constructor; a newtype has one constructor and no runtime tag, so
+        // that alternative can never be taken.
+        // workflow: language-features-chirho/pattern-matching-chirho
+        let newtype_alt_chirho = match alts_chirho {
+            [first_chirho, rest_chirho @ ..]
+                if rest_chirho
+                    .iter()
+                    .all(|alt_chirho| alt_chirho.con_chirho == AltConChirho::DefaultChirho) =>
+            {
+                Some(first_chirho)
+            }
+            _ => None,
+        };
+        if let Some(newtype_alt_chirho) = newtype_alt_chirho {
+            if let AltConChirho::DataConChirho(con_name_chirho) = &newtype_alt_chirho.con_chirho {
                 if self.newtype_cons_chirho.contains(con_name_chirho)
-                    && alts_chirho[0].binders_chirho.len() == 1
+                    && newtype_alt_chirho.binders_chirho.len() == 1
                 {
                     // Map the single field binder to the scrutinee.
                     // The scrutinee value IS the unwrapped value.
-                    let binder_id_chirho = alts_chirho[0].binders_chirho[0].id_chirho;
+                    let binder_id_chirho = newtype_alt_chirho.binders_chirho[0].id_chirho;
                     // Copy the scrutinee's resolution into the binder
                     match scrutinee_chirho {
                         CoreExprChirho::VarChirho(id_chirho) => {
@@ -144,7 +158,7 @@ impl LowerCtxChirho {
                                 .insert(binder_id_chirho, ValueChirho::HeapPtrChirho(addr_chirho));
                         }
                     }
-                    return self.lower_expr_chirho(&alts_chirho[0].rhs_chirho);
+                    return self.lower_expr_chirho(&newtype_alt_chirho.rhs_chirho);
                 }
             }
         }
