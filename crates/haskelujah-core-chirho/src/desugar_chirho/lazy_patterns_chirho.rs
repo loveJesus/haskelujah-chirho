@@ -26,7 +26,9 @@ use haskelujah_span_chirho::SpanChirho;
 use super::DesugarCtxChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
-use crate::expr_chirho::{BinderChirho, CoreAltChirho, CoreExprChirho};
+use crate::expr_chirho::{
+    AltConChirho, BinderChirho, CoreAltChirho, CoreExprChirho, CoreLitChirho,
+};
 
 impl DesugarCtxChirho {
     /// One binding per variable the pattern binds, each a selector thunk over
@@ -178,11 +180,36 @@ impl DesugarCtxChirho {
             scrutinee_chirho: Box::new(selector_chirho.clone()),
             bind_chirho: wild_chirho,
             result_ty_chirho: self.fresh_selector_ty_chirho(),
-            alts_chirho: vec![CoreAltChirho {
-                con_chirho,
-                binders_chirho: field_binders_chirho,
-                rhs_chirho: CoreExprChirho::VarChirho(chosen_chirho),
-            }],
+            alts_chirho: vec![
+                CoreAltChirho {
+                    con_chirho,
+                    binders_chirho: field_binders_chirho,
+                    rhs_chirho: CoreExprChirho::VarChirho(chosen_chirho),
+                },
+                // A demanded field of a constructor that does not match fails
+                // with GHC's REASON, not with whatever the evaluator happens to
+                // say about a case with no alternative. That reason is what lets
+                // a control tell this repair from the crash it replaced
+                // (claude2_chirho, #25430).
+                CoreAltChirho {
+                    con_chirho: AltConChirho::DefaultChirho,
+                    binders_chirho: vec![],
+                    rhs_chirho: self.lazy_mismatch_error_chirho(),
+                },
+            ],
+        }
+    }
+
+    /// `error "Non-exhaustive patterns in ..."`, the failure GHC 9.14.1 raises
+    /// when a lazy pattern's field is demanded and its constructor does not
+    /// match. Built the way the record path builds its missing-field error.
+    fn lazy_mismatch_error_chirho(&mut self) -> CoreExprChirho {
+        let error_id_chirho = self.fresh_id_chirho("error");
+        CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(error_id_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                "Non-exhaustive patterns in lazy pattern binding".to_string(),
+            ))),
         }
     }
 

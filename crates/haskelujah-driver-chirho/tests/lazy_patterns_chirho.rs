@@ -104,9 +104,53 @@ fn a_mismatching_lazy_pattern_fails_only_when_demanded_chirho() {
     // What matters here is that it fails at all, and that the previous control
     // proves it does not fail when nothing is demanded.
     let failure_chirho = failure_chirho("  ~(Just n) <- pure (Nothing :: Maybe Int)\n  print n");
+    // Reason-aware, not merely non-empty (claude2_chirho, #25430): main passes a
+    // "some failure happened" check today by CRASHING on a missing STG binding,
+    // so only the reason can tell the repair from the defect it replaced. GHC
+    // 9.14.1 raises "Non-exhaustive patterns in Just n".
     assert!(
-        !failure_chirho.is_empty(),
-        "demanding a field of a mismatching lazy pattern must fail"
+        failure_chirho.contains("Non-exhaustive patterns"),
+        "the failure must be GHC's pattern-match reason: {failure_chirho}"
+    );
+    assert!(
+        !failure_chirho.contains("missing STG binding"),
+        "a missing binding is the old crash, not a pattern failure: {failure_chirho}"
+    );
+}
+
+#[test]
+fn a_demanded_mismatching_tilde_let_fails_and_prints_nothing_chirho() {
+    // On main this is a SILENT wrong answer in the other direction: it PRINTS
+    // `Nothing`, the scrutinee standing in for the field (claude2_chirho, #25433).
+    // GHC 9.14.1 fails with "Non-exhaustive patterns in Just n". `failure_chirho`
+    // panics if the program succeeds, so printing anything at all fails this
+    // control, and the reason must be the pattern-match reason.
+    let failure_chirho = failure_chirho("  let ~(Just n) = (Nothing :: Maybe Int)\n  print n");
+    assert!(
+        failure_chirho.contains("Non-exhaustive patterns"),
+        "the failure must be GHC's pattern-match reason: {failure_chirho}"
+    );
+}
+
+#[test]
+fn a_tilde_tuple_let_selects_each_field_chirho() {
+    // Crashes on main: the whole tuple reached `-` as though it were a number.
+    assert_eq!(
+        output_chirho("  let ~(a, b) = (3 :: Int, 4 :: Int)\n  print (a - b)"),
+        "-1\n"
+    );
+}
+
+#[test]
+fn a_tilde_let_binding_selects_the_field_not_the_whole_value_chirho() {
+    // A SILENT wrong answer on main today, measured on main's CLI bfd9ad99: this
+    // prints `Just 7` where GHC 9.14.1 prints 7. The `~` sent the pattern to a
+    // default alternative whose variable bound the whole scrutinee. It was
+    // missing from the first set of controls, which is how a review of them could
+    // truthfully find "no silent wrong answer on main" among the rows it had.
+    assert_eq!(
+        output_chirho("  let ~(Just n) = Just (7 :: Int)\n  print n"),
+        "7\n"
     );
 }
 

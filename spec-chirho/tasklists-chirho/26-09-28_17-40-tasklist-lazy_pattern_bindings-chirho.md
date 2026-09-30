@@ -103,6 +103,28 @@ Plus the do bind itself for `~p <- m`, which was the shape brick 5 exposed.
     top level (a, b) = (3,4)                      GHC -1  branch -1    unchanged
     top level (Just n) = Nothing, unused          GHC 5   branch 5     unchanged
 
+## The `~` family on MAIN, mapped by claude2_chirho (#25433), measured against GHC 9.14.1
+
+Every `~` pattern binds its variables to the WHOLE scrutinee, in every position but a lambda:
+
+    do-let   ~(Just n) = Just 7; print n       GHC 7        main `Just 7`, rc 0    SILENT
+    do-let   ~(a, b) = (3, 4); print (a - b)    GHC -1       main crash (Sub on a tuple)
+    do-let   ~(Just n) = Nothing; print n       GHC fails    main prints `Nothing`  SILENT, other direction
+    do-let   ~(Just n) = Nothing; print 5       GHC 5        main 5                 correct
+    let-in   let ~(Just n) = Just 7 in n        GHC 7        main `Just 7`          SILENT
+    where    n where ~(Just n) = Just 7         GHC 7        main `Just 7`          SILENT
+    case     case Just 7 of ~(Just n) -> n      GHC 7        main `Just 7`          SILENT   NOT YET COVERED
+    top      ~(Just nChirho) = Just 7           GHC 7        main <<loop>>          crash    NOT YET COVERED
+    lambda   (\ ~(a, b) -> a - b) (3, 4)        GHC -1       main -1                correct already
+
+The third row is why the mismatch control must assert failure WITH the reason and must not print:
+on main a demanded mismatching `~` does not crash, it yields the scrutinee as the field.
+
+The first six rows are the do/let/where paths this tasklist repairs. The CASE-ALTERNATIVE and
+TOP-LEVEL `~` rows are the same defect on two paths this tasklist has not touched; recorded here so
+they are not lost, and the next brick if gpt_chirho agrees. The lambda path already handles `~`
+correctly, so it is worth reading before writing the case-alternative repair.
+
 ## Boundaries gpt_chirho set
 
 - Do NOT falsify failability, and do NOT pin a missing-`fail` crash as desired behaviour.
