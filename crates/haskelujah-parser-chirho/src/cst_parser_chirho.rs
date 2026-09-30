@@ -1586,6 +1586,31 @@ impl<'src> ParserChirho<'src> {
                 else {
                     return false;
                 };
+                // `whole@(a, b) = e`: a TIGHT `@` (no space on either side) is an
+                // as-pattern, so this binds a pattern. `f @t ... = e` is a
+                // function with a type argument, and keeps its path.
+                // workflow: language-features-chirho/pattern-matching-chirho
+                let tight_as_chirho =
+                    self.tokens_chirho
+                        .get(self.pos_chirho + 1)
+                        .is_some_and(|token_chirho| {
+                            token_chirho.kind_chirho == RawTokenKindChirho::AtChirho
+                        })
+                        && self.tokens_chirho.get(self.pos_chirho + 2).is_some_and(
+                            |token_chirho| !token_chirho.kind_chirho.is_trivia_chirho(),
+                        );
+                let ends_pattern_chirho = self
+                    .tokens_chirho
+                    .get(self.skip_trivia_idx_chirho(lookahead_idx_chirho))
+                    .is_some_and(|token_chirho| {
+                        matches!(
+                            token_chirho.kind_chirho,
+                            RawTokenKindChirho::EqualsChirho | RawTokenKindChirho::PipeChirho
+                        )
+                    });
+                if tight_as_chirho && ends_pattern_chirho {
+                    return true;
+                }
                 let lookahead_idx_chirho = self.skip_trivia_idx_chirho(lookahead_idx_chirho);
                 self.tokens_chirho
                     .get(lookahead_idx_chirho)
@@ -5996,6 +6021,24 @@ mod tests_chirho {
         assert!(
             kinds_chirho.contains(&SyntaxKindChirho::NegPatChirho),
             "the alternative keeps its negative literal: {kinds_chirho:?}"
+        );
+    }
+
+    #[test]
+    fn parse_tight_as_pattern_binding_is_a_pattern_binding_chirho() {
+        // `whole@(a, b) = e` binds a pattern; it is not a function `whole` with
+        // a visible type argument `@(a, b)`.
+        let root_chirho = parse_chirho(
+            "module MChirho where\nfChirho = let whole@(a, b) = (3, 4) in fst whole + a * b\n",
+        );
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::PatBindChirho),
+            "a tight as-pattern binding is a pattern binding: {kinds_chirho:?}"
+        );
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::AsPatChirho),
+            "it keeps its as-pattern: {kinds_chirho:?}"
         );
     }
 

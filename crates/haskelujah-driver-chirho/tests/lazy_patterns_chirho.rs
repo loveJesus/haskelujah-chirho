@@ -552,3 +552,18 @@ fn an_inner_bang_is_forced_when_the_match_runs_chirho() {
     );
     assert!(failure_chirho.contains("undefined"), "{failure_chirho}");
 }
+
+#[test]
+fn an_as_pattern_binding_binds_the_whole_and_its_parts_chirho() {
+    // X5: the parser read `whole@(a, b) = e` as a function `whole` with a visible
+    // type argument, and the program failed on an unbound name. GHC prints 15.
+    assert_eq!(
+        module_prints_chirho(
+            "",
+            &format!(
+                "{MAIN_DO_CHIRHO}  let whole@(a, b) = (3 :: Int, 4 :: Int)\n  print (fst whole + a * b)"
+            ),
+        ),
+        "15\n"
+    );
+}
