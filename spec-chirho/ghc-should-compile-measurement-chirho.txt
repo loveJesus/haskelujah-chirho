@@ -2,22 +2,22 @@
 # measured: 2026-09-30 UTC, AFTER every match position became rows over one single-row
 #   matcher, on top of pattern bindings that match the WHOLE pattern on demand, do-statement
 #   operation selection, occurrence provenance for references and the literal carrier.
-# code measured: cb1ada98 (HASKELUJAH/claude_chirho, branch match-rows-chirho, pushed as
+# code measured: 6a97e07a (HASKELUJAH/claude_chirho, branch match-rows-chirho, pushed as
 #   gh_chirho/match-rows-chirho), stacked on the 41eff8f6 proposal (#25474). It carries
 #   every match position as rows over one matcher, and the do unit, whose own tip b049713a
 #   was measured, proposed and then WITHDRAWN (room #25463, #25467), and the repair on
 #   top of it.
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/match-rows-corpus-chirho/haskelujah-match-rows-chirho
+#   tmp-chirho/x5-corpus-chirho/haskelujah-x5-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: b29b839b3552d4bdf5c492a08449f8acd15e7da43533d0980907a355cf7c5a9f
+# CLI SHA256: d6c896eb1f6405e7ee6e00380fd6f1b38c79f18fec8d12adec793d50d399afbf
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT cb1ada98, unchanged from main (no runner file differs), and the
+#   COMMITTED AT 6a97e07a, unchanged from main (no runner file differs), and the
 #   repaired rule, so there is no later tools change to separate from it. Order: TIMEOUT
 #   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
 #   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
@@ -58,12 +58,14 @@
 #   `[x, y]` alternatives and nested lambda patterns crashing, `~` binding the whole scrutinee,
 #   guards never falling through to the next row, `\case` dropping guarded alternatives, and
 #   every alternative forcing its scrutinee (`case undefined of _ -> 5` failed). The parser now
-#   also starts an alternative's pattern at a leading `!` or `-`, and moved no verdict. Gates
-#   on cb1ada98: driver library 1817/0, integration 116/0, unit suites green (parser 360), zero
-#   warnings; replay 288/288; execution 28/35 with the same seven failures; 80 of 82 probes
-#   match GHC 9.14.1, the two misses being a pattern guard's fallthrough and the
-#   `whole@(a, b)` binding parse. Receipts: tmp-chirho/match-rows-corpus-chirho/ and
-#   tmp-chirho/match-rows-chirho/.
+#   also starts an alternative's pattern at a leading `!` or `-`, and reads a tight
+#   `whole@(a, b) = e` as the as-pattern binding it is (it was a function head with a visible
+#   type argument); neither moved a verdict. Gates on 6a97e07a: driver library 1817/0,
+#   integration 117/0, unit suites green (parser 361), zero warnings; replay 288/288;
+#   execution 28/35 with the same seven failures; 81 of 82 probes match GHC 9.14.1, the one
+#   miss being a pattern guard's fallthrough. cb1ada98 (CLI b29b839b) measured the same
+#   counts and lists before the binding-parse fix. Receipts: tmp-chirho/x5-corpus-chirho/,
+#   tmp-chirho/match-rows-corpus-chirho/ and tmp-chirho/match-rows-chirho/.
 #
 # MEASUREMENT OF 41eff8f6 (2026-09-30), PROPOSED AS a9548989 IN #25474, CHANGE SINCE MAIN
 #   (e8cd6bf4): 885 -> 885, ZERO movement.
@@ -201,7 +203,7 @@
 #   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
 #   depending only on which declaration came first.
 # REPLAY: all 53 failures here, with the other axis's 235 rejections, were re-run one at
-#   a time on the same frozen CLI b29b839b, keeping stdout, stderr, exit code and source
+#   a time on the same frozen CLI d6c896eb, keeping stdout, stderr, exit code and source
 #   SHA256 per file. All 288 are exit 1 carrying `error[E`, and zero carry a panic
 #   header, timeout or abnormal exit; none rests on the bare `panic` substring. Every
 #   rejection is a diagnostic, not a crash.

@@ -3,19 +3,19 @@
 #   matcher, on top of pattern bindings that match the WHOLE pattern on demand, do-statement
 #   operation selection, occurrence provenance for references and the literal carrier. The companion artifact states what changed, both regressions caught
 #   inside the unit, and what is not yet covered.
-# code measured: cb1ada98 (HASKELUJAH/claude_chirho, branch match-rows-chirho, pushed as
+# code measured: 6a97e07a (HASKELUJAH/claude_chirho, branch match-rows-chirho, pushed as
 #   gh_chirho/match-rows-chirho), stacked on the 41eff8f6 proposal (#25474)
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/match-rows-corpus-chirho/haskelujah-match-rows-chirho
+#   tmp-chirho/x5-corpus-chirho/haskelujah-x5-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: b29b839b3552d4bdf5c492a08449f8acd15e7da43533d0980907a355cf7c5a9f
+# CLI SHA256: d6c896eb1f6405e7ee6e00380fd6f1b38c79f18fec8d12adec793d50d399afbf
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT cb1ada98, unchanged from main, the repaired rule, with no later tools
+#   COMMITTED AT 6a97e07a, unchanged from main, the repaired rule, with no later tools
 #   change to separate from it. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC
 #   (a real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0
 #   and no `error[E`). A panic header has an optional ALL-DIGIT thread id and counts at
@@ -97,7 +97,7 @@
 #   Corrections from gpt_chirho (room #24271), each verified against the replay.
 #   The count is verdict presence, not 235 independently matching GHC reasons.
 # REPLAY OF EVERY REJECTION: all 288 saved REJECT rows (53 accept-axis, 235
-#   reject-axis) were re-run one at a time on the same frozen CLI b29b839b, with stdout,
+#   reject-axis) were re-run one at a time on the same frozen CLI d6c896eb, with stdout,
 #   stderr, exit code and source SHA-256 kept per file. Classified timeout and abnormal
 #   exit first, then a real Rust panic header, and only then `error[E` with exit 1: all
 #   288 are credited rejections, none a timeout, an abnormal exit or a panic. No

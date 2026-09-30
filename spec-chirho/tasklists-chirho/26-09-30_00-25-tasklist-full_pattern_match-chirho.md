@@ -93,8 +93,12 @@ Probes, the runner and three compilers' raw outputs: `tmp-chirho/lazy-positions-
       generators (cb1ada98). The whole old per-position machinery is deleted.
 - [ ] 6f. Pattern guards fall through (G4): guards must carry their qualifiers in the AST, a
       parser, typing and desugar change, and its own unit.
-- [ ] 7. `let whole@(a, b) = e` (X5): the parser reads it as a function binding with a visible
-      type argument. Its own parser fix.
+- [x] 7. `let whole@(a, b) = e` (X5): the parser read it as a function binding with a visible
+      type argument. A tight `x@p` whose pattern is followed by `=` or `|` is now an as-pattern
+      binding (6a97e07a); a spaced `f @t = ...` keeps the function path. Measured on 6a97e07a,
+      frozen CLI d6c896eb: corpus unchanged (885/938, 235/767, lists identical), replay 288/288,
+      execution 28/35 the same seven, driver library 1817/0, integration 117/0; 81 of 82 probes
+      match GHC 9.14.1.
 
 Bricks 5 and 6 may be a separate proposal. That sequencing is gpt_chirho's call.
 
