@@ -227,3 +227,45 @@ fn tail_and_let_statements_select_and_record_nothing_chirho() {
     // for a do operator at all.
     assert!(selections_chirho(&mut result_chirho).is_empty());
 }
+
+#[test]
+fn a_qualified_non_monad_operator_gets_no_invented_evidence_chirho() {
+    // gpt_chirho's gate item: a qualified operator that is NOT a Monad method.
+    // Here `>>=` is a plain local function, `a -> (a -> b) -> b`, used by a
+    // self-qualified do over bare Ints. Its type cannot fit a monadic shape, so
+    // the checker must record NOTHING for it - no Monad evidence invented for an
+    // operation that has no Monad in it. (That it still runs, printing 5, is
+    // eval_self_qualified_do_uses_local_bind_chirho's job.)
+    //
+    // WHAT THIS DOES NOT DISCRIMINATE, measured by mutation: a MANUFACTURED
+    // `Monad m` recorded regardless of fit also passes here, because over bare
+    // Ints the block's `m` never resolves to a concrete head, so the manufactured
+    // claim never finalizes into a record. This control pins the outcome - no
+    // Monad evidence for a non-Monad operator - not which scheme produced it. The
+    // control that DOES catch a manufactured constraint is the refutable-Maybe one
+    // above, where `fail` must come out as MonadFail rather than Monad.
+    let mut result_chirho = frontend_chirho(
+        "{-# LANGUAGE QualifiedDo #-}\n\
+         module QualifiedDoRuntimeChirho where\n\
+         valueChirho >>= nextChirho = nextChirho valueChirho\n\
+         main = print (QualifiedDoRuntimeChirho.do\n\
+         \x20 valueChirho <- 4\n\
+         \x20 valueChirho + 1)\n",
+    );
+    let selections_chirho = selections_chirho(&mut result_chirho);
+    assert!(
+        selections_chirho
+            .iter()
+            .any(|(role_chirho, _)| *role_chirho == OccurrenceRoleChirho::Bind),
+        "the qualified bind is still SELECTED: {selections_chirho:?}"
+    );
+    for (role_chirho, origin_chirho) in selections_chirho {
+        let records_chirho = records_chirho(&result_chirho, origin_chirho);
+        assert!(
+            records_chirho
+                .iter()
+                .all(|(class_chirho, _)| class_chirho != "Monad" && class_chirho != "MonadFail"),
+            "{role_chirho:?} was given evidence it has no class for: {records_chirho:?}"
+        );
+    }
+}
