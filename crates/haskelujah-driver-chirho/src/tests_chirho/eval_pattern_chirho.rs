@@ -3,6 +3,8 @@
 
 // Pattern matching, case expressions, guards tests
 
+mod match_rows_chirho;
+
 #[allow(unused_imports)]
 use crate::{
     check_source_file_chirho, compile_modules_chirho, compile_modules_incremental_chirho,
