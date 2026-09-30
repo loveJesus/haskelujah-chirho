@@ -76,13 +76,53 @@ Probes, the runner and three compilers' raw outputs: `tmp-chirho/lazy-positions-
       bang fails only B5's control.
 - [ ] 4. Gate: unit suites, driver library, integration suites, execution set, announced
       two-pass corpus pair. Only then may the do unit be proposed again, with steps 1-2 inside.
-- [ ] 5. `~` in match positions (case, equations, lambdas, do-bind below a constructor), as an
-      AST elaboration: `~q` becomes a fresh `$`-variable and `q = v` is bound around the arm
-      through brick 2.
+- [ ] 5. SUBSUMED BY 6. Once case alternatives, equations and lambdas match through
+      `match_row_chirho`, its `~` case already binds a lazy sub-pattern through brick 2, so no
+      separate AST elaboration is needed.
 - [ ] 6. Case alternatives, equations and lambdas through the same row matcher, which repairs
-      N1-N6 and K1/K2/K4/K5/K6.
+      N1-N6, K1/K2/K4/K5/K6 and the `~` positions (C, F, L, D rows).
 
 Bricks 5 and 6 may be a separate proposal. That sequencing is gpt_chirho's call.
+
+## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
+
+A row whose guards all fail must fall through to the NEXT row. Ours raises "Non-exhaustive
+guards" instead, in every position except a variable alternative followed by `_`:
+
+    G1 case  x | x > 10 -> 1; _ -> 2            on 5          GHC 2       ours 2      ok
+    G2 eqn   f x | x > 10 = 1; f _ = 2          f 5           GHC 2       ours error
+    G3 case  Just x | x > 10 -> 1; Just x -> x  on Just 5     GHC 5       ours error
+    G4 eqn   pattern guard, then f _ = 0        (Just 6)      GHC 0       ours error
+    G5 \case x | x > 10 -> 1; _ -> 2            on [5, 20]    GHC 2/1     ours 2/2  SILENT
+    G6 eqn   guard with where, then f _ = 2     f 5           GHC 2       ours error
+
+The execution set's GuardFallthroughChirho passes only because its guards live in ONE equation
+and end in `otherwise`. Two causes: `desugar_guards_chirho` ends every guard chain in
+`error "Non-exhaustive guards"`, with no way to reach the next row; and when any guard is a
+pattern or `let` guard, lowering turns the WHOLE guarded right-hand side into one unguarded
+expression (`lower_guard_arms_to_expr_chirho`), so fallthrough cannot even be expressed.
+
+## Brick 6 design: rows over the single-row matcher
+
+- `compile_rows_chirho(scrutinees, rows, failure)`: row `i` is its patterns matched left to
+  right against the scrutinee variables by `match_row_chirho`, its `where` bindings scoped over
+  its guards, and its guards; every failure, whether a pattern or the last guard, continues
+  with `$next_{i+1}`. The continuations are let-bound thunks, exactly as
+  `desugar_nested_case_chain_chirho` already does, so the size stays linear. Rows are desugared
+  in SOURCE order, which the evidence join's ordinals rely on.
+- This IS the Report's semantics (rows top to bottom, columns left to right, a row that forces
+  a diverging column diverges), so correctness does not depend on any grouping.
+- Performance: a first column of constructors in consecutive rows costs one tag test per row
+  instead of one switch. Grouping them (the constructor rule of classic match compilation) is
+  a later optimization, to be taken only if the execution set or the euler benchmarks show it.
+- Order of work, each measured against the probes and the full driver suite:
+  6a case expressions (and `\case`), replacing the string eq-chain special case, since the
+     matcher already compares strings with `eqStr#`; 6b function equations
+     (`compile_multi_pattern_case_chirho`); 6c lambdas (one row, GHC's lambda failure); 6d do
+     binds (one row, failure is the selected `fail`, else a pattern failure); 6e list
+     comprehension generators (failure skips the element); 6f pattern guards, which need
+     guards to carry their qualifiers in the AST: a parser, typing and desugar change, and its
+     own step.
 
 ## Measured after bricks 1-3 (wip2 CLI, against GHC 9.14.1)
 
