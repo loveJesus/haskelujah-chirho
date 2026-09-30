@@ -932,6 +932,7 @@ impl DesugarCtxChirho {
     /// is a producer gap to close, not a second opinion: nothing here overrides
     /// a selection that exists.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
+    /// workflow: language-features-chirho/qualified-do-chirho
     fn resolve_selected_operation_chirho(
         &mut self,
         selected_chirho: Option<&SelectedOperationChirho>,

@@ -177,9 +177,11 @@ flowchart TD
 - Equality and hashing of a name ignore the origin, so no lookup changes meaning.
 - Occurrence carriers today: variable and constructor references, the operators of infix
   applications and sections, and literals — in expressions AND in patterns, since lowering stamps
-  every literal at construction. List literals, arithmetic sequences and do statements get their
-  own carriers next; until then their uses have no provenance and are served by span and position
-  exactly as before.
+  every literal at construction. DO STATEMENTS now carry an origin too, on the operation each one
+  SELECTS - its `>>=`, `>>` or `fail` - rather than on the statement; the checker records evidence
+  for that operation under that origin. The join does not consume it yet, because it takes only
+  the Reference role. List literals and arithmetic sequences get their own carriers next; until
+  then their uses have no provenance and are served by span and position exactly as before.
 - A literal in a pattern carries an origin but publishes no evidence yet: the checker captures
   nothing when it binds a pattern. That is a producer gap, not a transport gap, and it belongs with
   do-statement checking.

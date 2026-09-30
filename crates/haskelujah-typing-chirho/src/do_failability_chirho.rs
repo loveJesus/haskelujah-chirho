@@ -19,6 +19,7 @@
 //! constructor environment and runs after name resolution rather than in
 //! lowering.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
+//! workflow: language-features-chirho/qualified-do-chirho
 
 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;

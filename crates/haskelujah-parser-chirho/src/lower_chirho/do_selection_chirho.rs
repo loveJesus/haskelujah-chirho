@@ -25,6 +25,7 @@
 //! is ever keyed to it, and the occurrence walk only visits a selection that is
 //! present.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
+//! workflow: language-features-chirho/qualified-do-chirho
 
 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};

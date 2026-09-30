@@ -28,6 +28,7 @@
 //!   answer; wrong evidence would dispatch the wrong instance. The block's typing
 //!   itself is unchanged, and it was already permissive about exactly this.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
+//! workflow: language-features-chirho/qualified-do-chirho
 
 use haskelujah_ast_chirho::provenance_chirho::OccurrenceRoleChirho;
 use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
