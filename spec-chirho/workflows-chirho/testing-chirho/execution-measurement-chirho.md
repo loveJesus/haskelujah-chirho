@@ -6,7 +6,84 @@ Each section below is ONE measurement, newest first. A section states the source
 actually ran on and is never edited to describe a later source: every section other than
 the first is HISTORICAL, and stays labelled that way.
 
-## 2026-09-24 — the literal carrier (current)
+## 2026-09-30 — do-statement selection and lazy pattern bindings (current)
+
+Corpus source, execution source and every gate below are the same commit: `b049713a` on
+branch `do-selection-chirho`, pushed as `gh_chirho/do-selection-2-chirho` (a new remote
+name because the branch was rebased onto main and the older ref cannot fast-forward; no
+force push was taken). Frozen DEBUG CLI
+`e6199f92cdf6186c4cc66f3d0e2df8a3adb97c39232c519866eb41367109eacf`, digest asserted
+unchanged before and after the four corpus passes and again before and after the
+execution set.
+
+Receipts live in the measuring worktree, relative to its REPOSITORY ROOT:
+`tmp-chirho/do-selection-corpus-chirho/` holds the frozen CLI, per-file source hashes, the
+four passes with raw output, the replay and the execution set;
+`tmp-chirho/do-selection-chirho/` holds the driver-library gate
+(`gate-b049713a-driver-lib-chirho.txt`), the unit, integration and runner-control logs
+(`gates-b049713a-chirho/`), and the mutation receipts.
+
+### Results at their actual scope
+
+| Measurement | Source | Result | What it establishes |
+| --- | --- | --- | --- |
+| Corpus, accept axis | b049713a | 885 of 938, twice, byte-identical | Typecheck verdicts only; list SHA identical to the committed artifact; T17594f accepted |
+| Corpus, reject axis | b049713a | 235 of 767, twice, byte-identical | Same, for the wrong-accept list |
+| Rejection replay | b049713a | 288 of 288 exit 1 with `error[E`, zero panic headers | Every rejection is a diagnostic, not a crash |
+| Execution set | b049713a | 28 of 35, the same predicates as the literal carrier's receipt | These 35 predate the unit and exercise none of its new behaviour: no regression, nothing more |
+| Lazy-pattern controls | b049713a | 14 of 14, each expectation measured on GHC 9.14.1 | The new behaviour, in the interpreter |
+| Independent programs (claude2_chirho, #25453) | CLI e6199f92 | 24 of 26 match GHC 9.14.1 byte for byte | The two misses are the two positions not yet covered, below |
+| Unit suites | b049713a | ast 13, core 129, naming 136, parser 358, th 15, typing 354 | Zero warnings |
+| Driver library | b049713a | 1803 passed / 0 failed, 581.30s | Zero warnings; includes the six do-operation record controls and T17594f |
+| Driver integration | b049713a | 99 passed across 10 targets | The nine targets of the literal carrier, plus `lazy_patterns_chirho` |
+| Verdict-rule controls | b049713a | 37 of 37, plus 9 ordering controls | The runner that produced the corpus counts, unchanged from main |
+
+### What changed
+
+- Lowering SELECTS each do statement's `>>=`, `>>` and `fail` once — the qualified
+  operation under `M.do` — and gives each selection an origin of its own.
+- A failability pass, run where the constructor environment exists, clears a reserved
+  `fail` the pattern cannot need, by GHC 9.14.1's measured rule: `(a, b) <- m` and
+  `~(Just x) <- m` select no `fail`, `Just x <- m` does.
+- Core resolves exactly the binding each statement carries and emits a failure
+  alternative only where `fail` was selected.
+- The checker records evidence for each selected operation whose type fits the block's
+  monad, READ-ONLY: it pushes no wanted constraint and never writes its unifier into the
+  block's types. An operation that does not fit records nothing.
+- Pattern bindings in a do-let, a `where` and a `let ... in`, and a `~p <- m` bind, now
+  bind their variables through selectors over a right-hand side bound once. An unused
+  variable forces nothing; demanding one selects its own field; a mismatch fails only on
+  demand, with GHC's reason.
+
+Fixed on main by this unit: two crashes (a newtype-constructor bind's unbound `fail`, and
+let pattern bindings forcing an unused `undefined` or a non-matching constructor) and
+three SILENT wrong answers (`let ~(Just n) = Just 7` printing `Just 7`, and its `where` and
+`let ... in` forms).
+
+### A regression caught inside the unit
+
+GHC's T17594f is in the accept corpus and accepted on main. An intermediate version of the
+checker capture COMPOSED its unifier into the do block's substitution; T17594f's `Main.do`
+with `(>>=) = ($)` is a non-Monad operator whose type still unifies with the monadic shape
+by binding the block's monad to `(->) ...`, and the block's own typing then failed with an
+infinite type. The driver library's T17594f test caught it at `0103d80a` (1802 passed, 1
+failed, `gate-0103d80a-driver-lib-chirho.txt`), before any corpus run; unrepaired, that
+file would have left the accepted list. The measured capture only reads. T17594f is its
+guard: reverting the capture to the composing form fails that test
+(`mutation-faithful-chirho.txt`), and it is ACCEPT in the corpus above.
+
+### What this does not yet reach
+
+- The do-operation records reach NO dispatch consumer yet: the evidence join accepts only
+  the `Reference` role. Wiring them to dispatch is its own unit.
+- `~` in a CASE alternative still binds the whole scrutinee, silently; a TOP-LEVEL `~`
+  pattern binding still `<<loop>>`s (a top-level binding WITHOUT `~` is already lazy and
+  has a control); the lambda path handles `~` only for a lazy tuple of variables, and
+  other lambda shapes are unmeasured.
+- The seven execution failures of the literal carrier's receipt are unchanged, predicate
+  by predicate; the table in the section below still describes them.
+
+## 2026-09-24 — the literal carrier (historical)
 
 Corpus source and execution source are the same commit:
 `e8cd6bf4d68b46448d21667e2cf4c15000e67e1d` on branch `provenance-literals-chirho`, pushed

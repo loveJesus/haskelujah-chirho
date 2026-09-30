@@ -54,10 +54,10 @@ failability is known, but `fail` is published and used only when actually select
       against the statement, capture its predicates under the operation's origin and role. Not a
       manufactured `Monad` constraint, and not a mandatory shared `m`. In focused typing modules:
       `infer_chirho.rs` is 27,988 lines and must not grow another implementation.
-- [ ] 6. Gate, as gpt_chirho specified: tuple/lazy and nested-refutable patterns with and without
+- [x] 6. Gate, as gpt_chirho specified: tuple/lazy and nested-refutable patterns with and without
       `fail`; qualified non-Monad operators; a required operator that is absent; tail and let
       statements; repeated operations. Plus the standing suites and an announced two-pass corpus
-      pair before any landing proposal.
+      pair before any landing proposal. (As run on b049713a: see "The gate, as run" below.)
 
 ## Bricks 4 and 5, as built (2026-09-28/29)
 
@@ -79,6 +79,29 @@ failability is known, but `fail` is published and used only when actually select
 STILL NOT DONE, and required before these records do anything: the evidence join drops every role
 but `Reference` (`evidence_join_chirho.rs`), and Core records no occurrence provenance for a do
 operator. So the checker's records exist but reach nothing yet. That is brick 5b.
+
+## The gate, as run (2026-09-30, on b049713a)
+
+Each item of brick 6, and the control that carries it:
+
+- tuple, lazy and nested-refutable patterns, with and without `fail`: the seventeen measured
+  failability cases (`do_failability_tests_chirho.rs`), the fourteen lazy-pattern controls
+  (`tests/lazy_patterns_chirho.rs`), and the irrefutable-bind and refutable-Maybe record controls;
+- qualified non-Monad operators: `a_qualified_non_monad_operator_gets_no_invented_evidence_chirho`,
+  `eval_self_qualified_do_uses_local_bind_chirho`, and GHC's T17594f - which caught the composing
+  capture at 0103d80a and is the guard for the read-only one;
+- a required operator that is absent: `eval_unknown_qualified_do_method_stays_loud_chirho` (a
+  `M.do` over a module with no `>>=` must fail naming `M.>>=`, never fall back to Prelude's). It
+  predates this unit; it now runs through the selection path and still passes;
+- tail and let statements: `tail_and_let_statements_select_and_record_nothing_chirho`;
+- repeated operations: `repeated_operations_each_keep_their_own_record_chirho`.
+
+Standing suites, all on b049713a with logs retained under `tmp-chirho/do-selection-chirho/`:
+unit ast 13, core 129, naming 136, parser 358, th 15, typing 354; driver library 1803 / 0;
+ten integration targets 99 / 0; runner controls 37/37 and 9/9; zero warnings in any. The
+announced two-pass corpus pair: 885 of 938 and 235 of 767, both membership-identical to the
+committed artifacts, recorded in both artifacts and in
+`workflows-chirho/testing-chirho/execution-measurement-chirho.md`.
 
 ## GHC's failability rule, MEASURED not recalled (2026-09-24, GHC 9.14.1)
 

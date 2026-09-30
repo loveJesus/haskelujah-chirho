@@ -1,47 +1,33 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-24 UTC, AFTER occurrence provenance for references AND the literal
-#   carrier. Still a PARTIAL migration: see TRANSPORT LIMITS below for exactly how far
-#   the literal channel reaches.
-# code measured: e8cd6bf4d68b46448d21667e2cf4c15000e67e1d (HASKELUJAH/claude_chirho,
-#   branch provenance-literals-chirho, pushed as gh_chirho/provenance-literals-3-chirho;
-#   a new remote name because the older ref holds the pre-rebase line and no force push
-#   was taken)
+# measured: 2026-09-30 UTC, AFTER do-statement operation selection and lazy pattern
+#   bindings, on top of occurrence provenance for references and the literal carrier.
+# code measured: b049713a (HASKELUJAH/claude_chirho, branch do-selection-chirho, pushed
+#   as gh_chirho/do-selection-2-chirho; a new remote name because the branch was rebased
+#   onto main and the older ref cannot fast-forward, and no force push was taken)
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/literal-corpus-chirho/haskelujah-literal-chirho
-#   LOCATOR: that path is relative to the REPOSITORY ROOT of the worktree that measured
-#   it. Earlier artifacts wrote `../haskelujah-claude-chirho/tmp-chirho/...`, which
-#   resolves only from a sibling lane directory and not from a repository root at all.
-# CLI SHA256: fd0da8094f4086db49148e4ddfa31658e08a371bfa16acbdc0ca41f53a28db4a
+#   tmp-chirho/do-selection-corpus-chirho/haskelujah-do-selection-chirho
+#   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
+# CLI SHA256: e6199f92cdf6186c4cc66f3d0e2df8a3adb97c39232c519866eb41367109eacf
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
-#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh.
-#   THE RULE AS MEASURED — the runner revision that produced these counts is the one
-#   committed AT e8cd6bf4, and it is described here, not a later one. Order: TIMEOUT
+#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
+#   COMMITTED AT b049713a - which is the repaired rule, so unlike the previous
+#   measurement there is no later tools change to separate from it. Order: TIMEOUT
 #   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
 #   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
-#   A panic header is `thread '<name>' panicked at ...`, optionally with a thread id in
-#   parentheses, and it had to BEGIN A LINE. The BARE SUBSTRING `panic` is never a
-#   verdict, because source can contain it: the earlier wording in this artifact ("a
-#   rejection contains `error[E` or `panic`") described a rule that no longer exists
-#   and is corrected here. Matching is pure shell, never interactive `grep`, which is
-#   shadowed in this environment by a ugrep wrapper with content-dependent `-q`
-#   behaviour. The runner records each file's EXIT CODE beside its verdict, and no
-#   accepted file exited nonzero.
-#   TOOLS REPAIR AFTER THIS MEASUREMENT, stated separately so the two are not
-#   conflated. Later commits on the same branch tightened the rule in three ways that
-#   the measured runner did NOT have: the parenthesised thread id must be ALL DIGITS
-#   (the measured glob accepted `(4worker)`); a header glued to output that ended
-#   without a newline, or following a bare carriage return, now counts, while a line
-#   that is diagnostic rendering carries no crash anywhere along it; and the rule is
-#   sourceable from zsh as well as bash. Those repairs cannot have affected these
-#   counts, and that is measured rather than asserted: all 3,698 retained verdicts
-#   from the four passes and the replay were re-derived with the FINAL rule and every
-#   one agrees with what was recorded, with zero PANIC. gpt_chirho's independent
-#   deliberately unanchored scan over all 7,396 retained stdout/stderr files likewise
-#   found no header candidate at all.
+#   A panic header is `thread '<name>' panicked at ...` with an optional ALL-DIGIT thread
+#   id; it counts at the start of a line (a bare \r also ends a line) or glued to
+#   output that ended without a newline, but never on a line that is diagnostic
+#   rendering - a `|` gutter, an `error[`/`warning:` body, or an indented continuation.
+#   The bare substring `panic` is never a verdict. Matching is pure shell, never
+#   interactive `grep`, which is shadowed here by a ugrep wrapper with
+#   content-dependent `-q` behaviour. Verdict files are sorted C-collated by their
+#   filename field (sort_chirho.sh; the retained files pass `LC_ALL=C sort -c -k2`, which
+#   a case-folding locale fails on the same files). The runner records each file's EXIT
+#   CODE beside its verdict, and no accepted file exited nonzero.
 # corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
 #   (find-based; T16234/ included); per-file source SHA256s retained with the receipts
 #
@@ -61,7 +47,48 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT (7cfd9b8a): 885 -> 885, ZERO movement.
+# CHANGE SINCE LAST MEASUREMENT (e8cd6bf4): 885 -> 885, ZERO movement.
+#   The failure list is identical file for file, its SHA256 below is unchanged, and each
+#   of the two passes reproduces it independently.
+#   What changed is aimed at execution and designed not to move a typecheck verdict,
+#   which the list below measures rather than assumes: lowering now SELECTS each do
+#   statement's `>>=`, `>>` and `fail` once; a failability pass clears a
+#   `fail` the pattern cannot need, by GHC 9.14.1's measured rule; Core resolves the
+#   binding each statement carries and emits a failure alternative only where `fail`
+#   was selected; the checker records evidence for each selected operation whose type
+#   fits the block's monad, READ-ONLY; and pattern bindings in a do-let, a `where` and a
+#   `let ... in`, and a `~p <- m` bind, now bind their variables through selectors, so an
+#   unused one forces nothing. Two pre-existing
+#   crashes on main are gone (a newtype-constructor bind's unbound `fail`, and let
+#   pattern bindings forcing an unused `undefined` or a non-matching constructor), and
+#   three SILENT wrong answers on main (`let ~(Just n) = Just 7` printing `Just 7`, and
+#   its `where` and `let ... in` forms).
+#   A REGRESSION CAUGHT INSIDE THE UNIT AND RESTORED, so it is on the record: GHC's
+#   T17594f is in this corpus and accepted on main. An intermediate version of the
+#   checker capture COMPOSED its unifier into the do block's substitution, and T17594f's
+#   `Main.do` with `(>>=) = ($)` then failed with an infinite type. The driver library's
+#   T17594f test caught it at 0103d80a (1802 passed, 1 failed) before any corpus run;
+#   unrepaired, that file would have left the accepted list. The capture is read-only in
+#   the measured code, and T17594f is ACCEPT here.
+#   NOT YET COVERED, recorded rather than implied: `~` in a CASE alternative still binds
+#   the whole scrutinee (silent), and a top-level `~` pattern binding still <<loop>>s;
+#   the lambda path handles `~` only for a lazy tuple of variables.
+# SOURCE-SPECIFIC GATES, all on b049713a itself: unit suites green (ast 13, core 129,
+#   naming 136, parser 358, th 15, typing 354); driver library 1803 passed / 0 failed /
+#   0 warnings (581.30s); ten integration targets 99 passed, including 14 lazy-pattern
+#   controls against GHC 9.14.1; runner controls 37/37 and 9/9. Every one of those logs
+#   is retained under tmp-chirho/do-selection-chirho/ (gate-b049713a-driver-lib-chirho.txt
+#   and gates-b049713a-chirho/), zero warnings in any. EXECUTION: 28 of 35
+#   predicates, identical predicate by predicate to the landed literal carrier - those
+#   35 predate this unit and exercise none of its new behaviour, so they show no
+#   regression and nothing more. The new behaviour is measured by the lazy-pattern
+#   controls, and independently by claude2_chirho on this CLI: 24 of 26 programs match
+#   GHC byte for byte, the 2 misses being the two positions not yet covered.
+#
+# MEASUREMENT OF e8cd6bf4 (2026-09-24, HISTORICAL), CHANGE SINCE 7cfd9b8a: 885 -> 885, ZERO movement.
+#   That measurement ran on the runner as committed at e8cd6bf4, before the line-level
+#   classifier and C-collated ordering repairs; its 3,698 retained verdicts were later
+#   re-derived with the final rule and all agreed, zero PANIC.
 #   The failure list is identical file for file, its SHA256 below is unchanged, and each
 #   of the two passes reproduces that list independently.
 #   What changed is again evidence TRANSPORT, which this typecheck axis cannot see: a
@@ -131,7 +158,7 @@
 #   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
 #   depending only on which declaration came first.
 # REPLAY: all 53 failures here, with the other axis's 235 rejections, were re-run one at
-#   a time on the same frozen CLI fd0da809, keeping stdout, stderr, exit code and source
+#   a time on the same frozen CLI e6199f92, keeping stdout, stderr, exit code and source
 #   SHA256 per file. All 288 are exit 1 carrying `error[E`, and zero carry a panic
 #   header, timeout or abnormal exit; none rests on the bare `panic` substring. Every
 #   rejection is a diagnostic, not a crash.
@@ -145,8 +172,7 @@
 #   as movement. Two agents hit exactly that before establishing set equality, and the
 #   runner has since been repaired to sort C-collated (see corpus-runner-chirho/
 #   sort_chirho.sh, with nine controls). The verdict files retained for THIS measurement
-#   were produced before that repair and are in the caller's locale order; their list
-#   hashes reproduce because the hashes were computed explicitly C-collated.
+#   were produced by that repaired runner and are C-ordered themselves.
 #   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
 # HISTORICAL EXECUTION EVIDENCE (of the 11b24799 measurement, NOT of the measurement
 #   at the top of this file), each gate stated against the source it actually ran on.
