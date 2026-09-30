@@ -3047,7 +3047,7 @@ impl DesugarCtxChirho {
 
                 let var_name_chirho = match pat_chirho {
                     PatChirho::VarChirho(n_chirho) => n_chirho.text_chirho().to_string(),
-                    _ => "_gen".to_string(),
+                    _ => "$elem".to_string(),
                 };
 
                 // Create the recursive "go" function
@@ -3086,7 +3086,6 @@ impl DesugarCtxChirho {
                     )),
                     SpanChirho::DUMMY_CHIRHO,
                 );
-                self.bind_in_scope_chirho(&var_name_chirho, elem_binder_chirho.id_chirho);
 
                 let tail_binder_chirho = self.fresh_binder_chirho(
                     "$rest",
@@ -3106,33 +3105,46 @@ impl DesugarCtxChirho {
                 // If rest_quals is non-empty, we thread the continuation
                 // (go $rest) as the nil-case of the inner loop, avoiding
                 // the need for list append and nested letrecs with captures.
-                let cons_rhs_chirho = if rest_chirho.is_empty() {
-                    // Simple case: (:) e (go $rest) — body desugared here
-                    // while the loop variable is still in scope.
-                    let body_core_chirho = self.desugar_expr_chirho(body_chirho);
-                    CoreExprChirho::ConAppChirho {
-                        con_name_chirho: ":".to_string(),
-                        args_chirho: vec![body_core_chirho, go_rest_chirho],
-                    }
-                } else {
-                    // Multi-generator: thread the continuation through.
-                    // [e | y <- ys, ...rest] with continuation k becomes:
-                    //   letrec inner_go = \$ys -> case $ys of
-                    //     [] -> k
-                    //     (:) y $rest2 -> [e | ...rest] with cont (inner_go $rest2)
-                    //   in inner_go ys
-                    //
-                    // For a single remaining bind qualifier y <- ys:
-                    //   letrec inner_go = \$ys -> case $ys of
-                    //     [] -> go $rest
-                    //     (:) y $rest2 -> e : inner_go $rest2
-                    //   in inner_go ys
-                    self.desugar_list_comp_with_cont_chirho(
-                        body_chirho,
-                        rest_chirho,
-                        go_rest_chirho,
-                    )
-                };
+                // The element is matched against the generator's pattern: a
+                // mismatch SKIPS it (`go $rest`), as Haskell specifies, and a
+                // match binds the pattern's variables for the rest.
+                // workflow: language-features-chirho/pattern-matching-chirho
+                let skip_chirho = go_rest_chirho.clone();
+                let elem_id_chirho = elem_binder_chirho.id_chirho;
+                let cons_rhs_chirho = self.match_row_chirho(
+                    pat_chirho,
+                    elem_id_chirho,
+                    &skip_chirho,
+                    &mut |ctx_chirho| {
+                        if rest_chirho.is_empty() {
+                            // Simple case: (:) e (go $rest) — body desugared here
+                            // while the loop variable is still in scope.
+                            let body_core_chirho = ctx_chirho.desugar_expr_chirho(body_chirho);
+                            CoreExprChirho::ConAppChirho {
+                                con_name_chirho: ":".to_string(),
+                                args_chirho: vec![body_core_chirho, go_rest_chirho.clone()],
+                            }
+                        } else {
+                            // Multi-generator: thread the continuation through.
+                            // [e | y <- ys, ...rest] with continuation k becomes:
+                            //   letrec inner_go = \$ys -> case $ys of
+                            //     [] -> k
+                            //     (:) y $rest2 -> [e | ...rest] with cont (inner_go $rest2)
+                            //   in inner_go ys
+                            //
+                            // For a single remaining bind qualifier y <- ys:
+                            //   letrec inner_go = \$ys -> case $ys of
+                            //     [] -> go $rest
+                            //     (:) y $rest2 -> e : inner_go $rest2
+                            //   in inner_go ys
+                            ctx_chirho.desugar_list_comp_with_cont_chirho(
+                                body_chirho,
+                                rest_chirho,
+                                go_rest_chirho.clone(),
+                            )
+                        }
+                    },
+                );
                 self.pop_scope_chirho();
 
                 // case $xs of { [] -> []; (:) p $rest -> <cons_rhs> }
@@ -3463,7 +3475,7 @@ impl DesugarCtxChirho {
 
                 let var_name_chirho = match pat_chirho {
                     PatChirho::VarChirho(n_chirho) => n_chirho.text_chirho().to_string(),
-                    _ => "_gen".to_string(),
+                    _ => "$elem".to_string(),
                 };
 
                 let go_name_chirho = format!("$lc_go_{}", self.next_id_chirho);
@@ -3499,7 +3511,6 @@ impl DesugarCtxChirho {
                     )),
                     SpanChirho::DUMMY_CHIRHO,
                 );
-                self.bind_in_scope_chirho(&var_name_chirho, elem_binder_chirho.id_chirho);
 
                 let tail_binder_chirho = self.fresh_binder_chirho(
                     "$rest",
@@ -3512,19 +3523,32 @@ impl DesugarCtxChirho {
                     arg_chirho: Box::new(CoreExprChirho::VarChirho(tail_binder_chirho.id_chirho)),
                 };
 
-                let cons_rhs_chirho = if rest_chirho.is_empty() {
-                    let body_core_chirho = self.desugar_expr_chirho(body_chirho);
-                    CoreExprChirho::ConAppChirho {
-                        con_name_chirho: ":".to_string(),
-                        args_chirho: vec![body_core_chirho, go_rest_chirho],
-                    }
-                } else {
-                    self.desugar_list_comp_with_cont_chirho(
-                        body_chirho,
-                        rest_chirho,
-                        go_rest_chirho,
-                    )
-                };
+                // The element is matched against the generator's pattern: a
+                // mismatch SKIPS it (`go $rest`), as Haskell specifies, and a
+                // match binds the pattern's variables for the rest.
+                // workflow: language-features-chirho/pattern-matching-chirho
+                let skip_chirho = go_rest_chirho.clone();
+                let elem_id_chirho = elem_binder_chirho.id_chirho;
+                let cons_rhs_chirho = self.match_row_chirho(
+                    pat_chirho,
+                    elem_id_chirho,
+                    &skip_chirho,
+                    &mut |ctx_chirho| {
+                        if rest_chirho.is_empty() {
+                            let body_core_chirho = ctx_chirho.desugar_expr_chirho(body_chirho);
+                            CoreExprChirho::ConAppChirho {
+                                con_name_chirho: ":".to_string(),
+                                args_chirho: vec![body_core_chirho, go_rest_chirho.clone()],
+                            }
+                        } else {
+                            ctx_chirho.desugar_list_comp_with_cont_chirho(
+                                body_chirho,
+                                rest_chirho,
+                                go_rest_chirho.clone(),
+                            )
+                        }
+                    },
+                );
                 self.pop_scope_chirho();
 
                 let case_body_chirho = CoreExprChirho::CaseChirho {

@@ -274,3 +274,25 @@ fn a_negative_literal_alternative_matches_chirho() {
         "6\n"
     );
 }
+
+#[test]
+fn a_generator_pattern_filters_the_elements_it_does_not_match_chirho() {
+    // Q1, Q2, Q5: every generator pattern but a plain variable crashed on main
+    // with a missing binding; the pattern was never matched at all.
+    assert_eq!(
+        prints_chirho(
+            "main :: IO ()\nmain = print [x | Just x <- [Just (1 :: Int), Nothing, Just 3]]"
+        ),
+        "[1,3]\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "main :: IO ()\nmain = print [a + b | (a, b) <- [(1 :: Int, 2 :: Int), (3, 4)]]"
+        ),
+        "[3,7]\n"
+    );
+    assert_eq!(
+        prints_chirho("main :: IO ()\nmain = print [n | [n] <- [[1 :: Int], [], [2, 3], [4]]]"),
+        "[1,4]\n"
+    );
+}
