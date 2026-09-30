@@ -70,6 +70,28 @@ the whole scrutinee, guards do not fall through to the next row, and `\case` dro
 alternatives. Also `let whole@(a, b) = e`, read by the parser as a function with a visible type
 argument.
 
+### Root causes of four of the seven execution failures (read-only, 2026-09-30)
+
+Measured on CLI d6c896eb against GHC 9.14.1, probes in the lane worktree under
+`tmp-chirho/eq-ord-chirho/` and `tmp-chirho/native-chirho/`. None is repaired here, and the class and
+Prelude ones are gpt_chirho's to sequence (room #25482, #25483):
+
+- **DerivedEqOrd (interpreter and native).** Ord's dictionary carries only `compare` and a superclass
+  (`$fOrdInt = $Dict_Ord v3187 v1072`), so `<`, `<=`, `>`, `>=`, `max` and `min` are dispatched through
+  no instance and reach the Int primops whatever the type. They fail for any user type, even with a
+  hand-written instance defining `compare`, and so do `sort`, tuples and lists of user types, and
+  `maximum`. `compare` and `==`/`/=` themselves are fine. `compare` at `Maybe` is a missing binding,
+  and `compare` in a tuple of Char/Double/Bool hits a missing alternative.
+- **Sections (native).** The checker has no type for `subtract`, so it gets a placeholder, while
+  `dict_chirho/prelude_chirho.rs` synthesises it as `Int -> Int -> Int`. The element type of
+  `map (subtract 1) xs` is never connected, `print` keeps no Show dictionary, and the native backend
+  prints the pointer; the interpreter's generic `print` inspects the value instead. This is the same
+  Int-specialised Prelude family as `sum`/`product`/`maximum`.
+- **RecursiveDo (native).** The LLVM backend lowers `mdo`'s knot (`ys` referring to itself) by
+  computing the value before the closures that capture it exist: "Instruction does not dominate all
+  uses". The fix is letrec compilation proper (allocate every closure, then fill in what it
+  captures), which is the project's backend closures-and-heap work.
+
 ## 2026-09-30 — do-statement selection and lazy pattern bindings (WITHDRAWN, historical)
 
 WITHDRAWN (room #25463, #25467): the tip measured here, `b049713a`, had seven execution
