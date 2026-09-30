@@ -35,6 +35,7 @@ mod ast_conversion_chirho;
 #[cfg(test)]
 mod ast_conversion_tests_chirho;
 mod equalities_chirho;
+mod do_operations_chirho;
 mod evidence_chirho;
 mod instance_obligations_chirho;
 mod records_chirho;
@@ -3556,7 +3557,10 @@ impl InferCtxChirho {
                     let is_last_chirho = idx_chirho == stmts_chirho.len() - 1;
 
                     match stmt_chirho {
-                        StmtChirho::ExprChirho { expr_chirho, .. } => {
+                        StmtChirho::ExprChirho {
+                            expr_chirho,
+                            then_chirho,
+                        } => {
                             let (s_chirho, ty_chirho) =
                                 match (&last_expected_chirho, is_last_chirho) {
                                     (Some(expected_chirho), true) => {
@@ -3613,10 +3617,22 @@ impl InferCtxChirho {
                                 }
                                 last_ty_chirho = ty_chirho;
                             }
+                            // The `>>` this statement SELECTED (a tail selects
+                            // none): its evidence, under its own origin.
+                            if let Some(then_selected_chirho) = then_chirho {
+                                self.capture_selected_operation_chirho(
+                                    then_selected_chirho,
+                                    &m_chirho,
+                                    &mut subst_chirho,
+                                    *span_chirho,
+                                );
+                            }
                         }
                         StmtChirho::BindChirho {
                             pat_chirho,
                             expr_chirho,
+                            bind_chirho: bind_selected_chirho,
+                            fail_chirho: fail_selected_chirho,
                             ..
                         } => {
                             let (s_chirho, ty_chirho) = self.infer_expr_chirho(expr_chirho);
@@ -3647,6 +3663,22 @@ impl InferCtxChirho {
                             subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&sp_chirho);
                             last_ty_chirho = TyChirho::unit_chirho();
+                            // The `>>=` this statement SELECTED, and its `fail`
+                            // only if one is still selected: the failability pass
+                            // cleared it wherever the pattern cannot fail, so no
+                            // MonadFail evidence is invented for an irrefutable
+                            // pattern.
+                            // workflow: language-features-chirho/dictionary-evidence-chirho
+                            for selected_chirho in
+                                [bind_selected_chirho, fail_selected_chirho].into_iter().flatten()
+                            {
+                                self.capture_selected_operation_chirho(
+                                    selected_chirho,
+                                    &m_chirho,
+                                    &mut subst_chirho,
+                                    *span_chirho,
+                                );
+                            }
                         }
                         StmtChirho::LetChirho { binds_chirho, .. } => {
                             self.infer_local_binds_chirho(binds_chirho, &mut subst_chirho);

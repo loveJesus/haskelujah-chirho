@@ -48,9 +48,9 @@ failability is known, but `fail` is published and used only when actually select
       it mints the origins and fills the fields. Controls: tail and let select nothing; a refutable
       pattern selects `fail`; a tuple, lazy or newtype pattern does not; QualifiedDo carries the
       qualified binding; RebindableSyntax keeps its own lookup rule.
-- [ ] 4. Desugaring consumes the selection instead of reselecting. Behaviour-identical EXCEPT that
+- [x] 4. Desugaring consumes the selection instead of reselecting. Behaviour-identical EXCEPT that
       Core stops emitting the dead `fail` for an irrefutable pattern — a real change, to measure.
-- [ ] 5. Checker selects. Resolve the carried binding, instantiate its ACTUAL scheme, unify it
+- [x] 5. Checker selects. Resolve the carried binding, instantiate its ACTUAL scheme, unify it
       against the statement, capture its predicates under the operation's origin and role. Not a
       manufactured `Monad` constraint, and not a mandatory shared `m`. In focused typing modules:
       `infer_chirho.rs` is 27,988 lines and must not grow another implementation.
@@ -58,6 +58,27 @@ failability is known, but `fail` is published and used only when actually select
       `fail`; qualified non-Monad operators; a required operator that is absent; tail and let
       statements; repeated operations. Plus the standing suites and an announced two-pass corpus
       pair before any landing proposal.
+
+## Bricks 4 and 5, as built (2026-09-28/29)
+
+4. Core resolves the binding the statement carries (c3d7fbcd) and emits the `fail` alternative only
+   where `fail` was really selected (10f51730). That fixed a newtype-constructor bind crashing on an
+   unbound `fail`, and EXPOSED a pre-existing lazy-pattern defect that main's crash had been hiding;
+   gpt_chirho chose to repair it first (727f9764, cc420bfc, 2712b0e6 - its own tasklist).
+5. The checker looks up each selected binding, instantiates its ACTUAL scheme, and captures its
+   predicates under the selection's own origin (`infer_chirho/do_operations_chirho.rs`). It pushes NO
+   new wanted constraint and treats a failed unification as "no evidence", so it cannot move a verdict
+   by itself; an operation whose type does not fit the block - an indexed QualifiedDo bind - records
+   nothing rather than something wrong. Five controls through the real front end: IO binds and `>>` at
+   `Monad IO`, a refutable Maybe bind's `fail` at `MonadFail Maybe`, repeated operations each with
+   their own record, tail and let recording nothing, and - the point of the unit - an irrefutable
+   bind with NO MonadFail record. Mutation-checked twice: capturing nothing fails four; disabling the
+   failability pass fails the irrefutable-bind control, so the "no MonadFail invented" guarantee is
+   held end to end, not by the checker alone.
+
+STILL NOT DONE, and required before these records do anything: the evidence join drops every role
+but `Reference` (`evidence_join_chirho.rs`), and Core records no occurrence provenance for a do
+operator. So the checker's records exist but reach nothing yet. That is brick 5b.
 
 ## GHC's failability rule, MEASURED not recalled (2026-09-24, GHC 9.14.1)
 
