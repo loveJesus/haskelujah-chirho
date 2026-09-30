@@ -1550,12 +1550,16 @@ impl<'src> ParserChirho<'src> {
     // -----------------------------------------------------------------------
 
     fn parse_value_decl_chirho(&mut self) {
-        // BangPatterns: skip `!` prefix in let/where bindings (e.g. `let !y = ...`)
+        // BangPatterns: `let !p = e` is a STRICT binding. The `!` is kept, as the
+        // BangPat around the binding's pattern, so the desugarer can force it.
+        // It used to be skipped here, which made every banged `let`/`where`
+        // binding silently lazy: `let !x = undefined in 5` printed 5.
+        // workflow: language-features-chirho/pattern-matching-chirho
         if self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
             && self.current_text_chirho() == "!"
         {
-            self.bump_chirho(); // skip !
-            self.eat_trivia_chirho();
+            self.parse_pat_bind_cst_chirho();
+            return;
         }
         if self.is_type_sig_chirho() {
             self.parse_type_sig_chirho();
@@ -1652,8 +1656,10 @@ impl<'src> ParserChirho<'src> {
         self.parse_pat_chirho();
         self.eat_trivia_chirho();
 
-        // `=` and RHS expression
-        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+        // Guarded right-hand sides, or `=` and one RHS expression
+        if self.at_chirho(RawTokenKindChirho::PipeChirho) {
+            self.parse_guarded_rhs_chirho();
+        } else if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
             self.parse_expr_chirho();
@@ -5957,6 +5963,27 @@ mod tests_chirho {
             "strict constructor case alt should retain the bang subpattern: {:?}",
             kinds_chirho
         );
+    }
+
+    #[test]
+    fn parse_let_banged_pattern_binding_keeps_its_bang_chirho() {
+        // The bang at the head of a binding is what makes it strict. It must
+        // survive parsing as a BangPat inside the PatBind, not be skipped.
+        for source_chirho in [
+            "module MChirho where\n{-# LANGUAGE BangPatterns #-}\nfChirho = let !(aChirho, bChirho) = undefined in 5\n",
+            "module MChirho where\n{-# LANGUAGE BangPatterns #-}\nfChirho = 5 where !xChirho = undefined\n",
+        ] {
+            let root_chirho = parse_chirho(source_chirho);
+            let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+            assert!(
+                kinds_chirho.contains(&SyntaxKindChirho::PatBindChirho),
+                "a banged binding is a pattern binding: {kinds_chirho:?}"
+            );
+            assert!(
+                kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
+                "a banged binding keeps its bang: {kinds_chirho:?}"
+            );
+        }
     }
 
     #[test]
