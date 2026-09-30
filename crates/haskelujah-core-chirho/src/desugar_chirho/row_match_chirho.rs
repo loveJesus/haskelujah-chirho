@@ -214,8 +214,20 @@ impl DesugarCtxChirho {
         failure_chirho: &CoreExprChirho,
         success_chirho: &mut MatchSuccessChirho<'_>,
     ) -> CoreExprChirho {
-        let binders_chirho: Vec<BinderChirho> = (0..fields_chirho.len())
-            .map(|index_chirho| self.row_binder_chirho(&format!("$field{index_chirho}")))
+        // A field matched by a plain variable is named after it, so Core reads
+        // as the source does; any other field gets a positional name.
+        let binders_chirho: Vec<BinderChirho> = fields_chirho
+            .iter()
+            .enumerate()
+            .map(|(index_chirho, field_chirho)| {
+                let name_chirho = match field_chirho.map(strip_parens_chirho) {
+                    Some(PatChirho::VarChirho(name_chirho)) => {
+                        name_chirho.text_chirho().to_string()
+                    }
+                    _ => format!("$field{index_chirho}"),
+                };
+                self.row_binder_chirho(&name_chirho)
+            })
             .collect();
         let pending_chirho: Vec<(&PatChirho, CoreIdChirho)> = fields_chirho
             .iter()
@@ -239,7 +251,7 @@ impl DesugarCtxChirho {
     }
 
     /// Match each pattern against its value, left to right, then succeed.
-    fn match_sequence_chirho(
+    pub(super) fn match_sequence_chirho(
         &mut self,
         pending_chirho: &[(&PatChirho, CoreIdChirho)],
         failure_chirho: &CoreExprChirho,
@@ -489,5 +501,12 @@ impl DesugarCtxChirho {
 
     pub(super) fn row_ty_chirho(&self) -> TyChirho {
         TyChirho::VarChirho(TyVarChirho(self.next_id_chirho))
+    }
+}
+
+fn strip_parens_chirho(pat_chirho: &PatChirho) -> &PatChirho {
+    match pat_chirho {
+        PatChirho::ParenChirho { inner_chirho, .. } => strip_parens_chirho(inner_chirho),
+        other_chirho => other_chirho,
     }
 }

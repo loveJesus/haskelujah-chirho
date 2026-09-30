@@ -657,7 +657,7 @@ fn nest_nonrec_let_binds_chirho(
 }
 
 /// Substitute all occurrences of `var_id` with `replacement` in `expr`.
-fn subst_var_chirho(
+pub(crate) fn subst_var_chirho(
     expr_chirho: &CoreExprChirho,
     var_id_chirho: CoreIdChirho,
     replacement_chirho: &CoreExprChirho,

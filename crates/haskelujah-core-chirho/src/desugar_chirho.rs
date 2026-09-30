@@ -10,6 +10,7 @@
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
 mod lazy_patterns_chirho;
+mod match_rows_chirho;
 mod matches_chirho;
 mod provenance_chirho;
 #[cfg(test)]
@@ -2219,8 +2220,25 @@ impl DesugarCtxChirho {
     /// are present.  Where-clause names are bound *before* the body is
     /// desugared so that references in the body resolve to the Let binders.
     fn desugar_arm_rhs_chirho(&mut self, arm_chirho: &MatchArmChirho) -> CoreExprChirho {
-        if arm_chirho.where_binds_chirho.is_empty() {
-            return self.desugar_rhs_chirho(&arm_chirho.rhs_chirho);
+        self.desugar_rhs_in_where_chirho(
+            &arm_chirho.rhs_chirho,
+            &arm_chirho.where_binds_chirho,
+            None,
+        )
+    }
+
+    /// A right-hand side under its `where` bindings. `fallthrough_chirho` is
+    /// where a failing last guard goes: the next row of a match, or, when
+    /// `None`, the "Non-exhaustive guards" failure.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    fn desugar_rhs_in_where_chirho(
+        &mut self,
+        rhs_chirho: &RhsChirho,
+        where_binds_chirho: &[LocalBindChirho],
+        fallthrough_chirho: Option<&CoreExprChirho>,
+    ) -> CoreExprChirho {
+        if where_binds_chirho.is_empty() {
+            return self.desugar_rhs_or_fall_chirho(rhs_chirho, fallthrough_chirho);
         }
 
         self.push_scope_chirho();
@@ -2228,7 +2246,7 @@ impl DesugarCtxChirho {
         // Separate fun-binds from complex pat-binds (same as let handling)
         let mut fun_bind_indices_chirho: Vec<usize> = Vec::new();
         let mut pat_bind_indices_chirho: Vec<usize> = Vec::new();
-        for (idx_chirho, bind_chirho) in arm_chirho.where_binds_chirho.iter().enumerate() {
+        for (idx_chirho, bind_chirho) in where_binds_chirho.iter().enumerate() {
             match bind_chirho {
                 haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho { .. } => {
                     fun_bind_indices_chirho.push(idx_chirho);
@@ -2250,30 +2268,26 @@ impl DesugarCtxChirho {
         // Pre-bind every variable of every pattern binding, so the body and
         // the function bindings resolve them.
         // workflow: language-features-chirho/pattern-matching-chirho
-        let prebound_chirho = self.prebind_pattern_bindings_chirho(
-            &arm_chirho.where_binds_chirho,
-            &pat_bind_indices_chirho,
-        );
+        let prebound_chirho =
+            self.prebind_pattern_bindings_chirho(where_binds_chirho, &pat_bind_indices_chirho);
 
         // Pre-bind fun-bind names
-        let pre_binders_chirho = self.prebind_where_names_chirho_filtered(
-            &arm_chirho.where_binds_chirho,
-            &fun_bind_indices_chirho,
-        );
+        let pre_binders_chirho =
+            self.prebind_where_names_chirho_filtered(where_binds_chirho, &fun_bind_indices_chirho);
 
         // Desugar body *after* where names are in scope.
-        let body_core_chirho = self.desugar_rhs_chirho(&arm_chirho.rhs_chirho);
+        let body_core_chirho = self.desugar_rhs_or_fall_chirho(rhs_chirho, fallthrough_chirho);
 
         // Desugar fun-bind RHSes
         let mut core_binds_chirho =
-            self.desugar_where_rhs_chirho(&arm_chirho.where_binds_chirho, pre_binders_chirho);
+            self.desugar_where_rhs_chirho(where_binds_chirho, pre_binders_chirho);
 
         // A where pattern binding is LAZY, like every Haskell pattern binding:
         // its variables are bound through one shared match of the WHOLE
         // pattern, performed when any of them is demanded. A banged one forces
         // that match before the body.
         let witnesses_chirho = self.desugar_pattern_bindings_chirho(
-            &arm_chirho.where_binds_chirho,
+            where_binds_chirho,
             &pat_bind_indices_chirho,
             &prebound_chirho,
             &mut core_binds_chirho,
@@ -2380,49 +2394,6 @@ impl DesugarCtxChirho {
                         *span_chirho,
                     );
                     self.bind_in_scope_chirho(name_chirho.text_chirho(), binder_chirho.id_chirho);
-                    pre_binders_chirho.push((idx_chirho, binder_chirho));
-                }
-                _ => {}
-            }
-        }
-        pre_binders_chirho
-    }
-
-    /// Pre-bind all where-clause names in the current scope so that both
-    /// the body and the where-clause RHSes can reference them.
-    fn prebind_where_names_chirho(
-        &mut self,
-        where_binds_chirho: &[haskelujah_ast_chirho::expr_chirho::LocalBindChirho],
-    ) -> Vec<(usize, BinderChirho)> {
-        let mut pre_binders_chirho: Vec<(usize, BinderChirho)> = Vec::new();
-        for (idx_chirho, bind_chirho) in where_binds_chirho.iter().enumerate() {
-            match bind_chirho {
-                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                    name_chirho,
-                    span_chirho,
-                    ..
-                } => {
-                    let binder_chirho = self.fresh_binder_chirho(
-                        name_chirho.text_chirho(),
-                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                            self.next_id_chirho,
-                        )),
-                        *span_chirho,
-                    );
-                    self.bind_in_scope_chirho(name_chirho.text_chirho(), binder_chirho.id_chirho);
-                    pre_binders_chirho.push((idx_chirho, binder_chirho));
-                }
-                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
-                    span_chirho,
-                    ..
-                } => {
-                    let binder_chirho = self.fresh_binder_chirho(
-                        "_where",
-                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                            self.next_id_chirho,
-                        )),
-                        *span_chirho,
-                    );
                     pre_binders_chirho.push((idx_chirho, binder_chirho));
                 }
                 _ => {}
@@ -3018,171 +2989,6 @@ impl DesugarCtxChirho {
             .any(Self::is_nested_con_pat_chirho)
     }
 
-    fn desugar_case_alt_rhs_with_scrutinee_chirho(
-        &mut self,
-        alt_chirho: &haskelujah_ast_chirho::expr_chirho::AltChirho,
-        pat_chirho: &PatChirho,
-        binders_chirho: &[BinderChirho],
-        scrutinee_id_chirho: CoreIdChirho,
-        fallback_rhs_chirho: Option<&CoreExprChirho>,
-    ) -> CoreExprChirho {
-        self.push_scope_chirho();
-        self.prebind_all_pat_vars_chirho(pat_chirho);
-        self.bind_var_pat_to_case_binder_chirho(pat_chirho, scrutinee_id_chirho);
-        let rhs_with_where_chirho = if alt_chirho.where_binds_chirho.is_empty() {
-            self.desugar_rhs_chirho(&alt_chirho.rhs_chirho)
-        } else {
-            self.push_scope_chirho();
-            let pre_b_chirho = self.prebind_where_names_chirho(&alt_chirho.where_binds_chirho);
-            let body_chirho = self.desugar_rhs_chirho(&alt_chirho.rhs_chirho);
-            let binds_chirho =
-                self.desugar_where_rhs_chirho(&alt_chirho.where_binds_chirho, pre_b_chirho);
-            let rec_chirho = Self::is_recursive_binds_chirho(&binds_chirho);
-            let result_chirho = CoreExprChirho::LetChirho {
-                rec_chirho,
-                binds_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-            self.pop_scope_chirho();
-            result_chirho
-        };
-        let rhs_nested_chirho = self.wrap_nested_cases_chirho(
-            rhs_with_where_chirho,
-            binders_chirho,
-            pat_chirho,
-            fallback_rhs_chirho,
-        );
-        let rhs_as_chirho =
-            self.wrap_as_bindings_chirho(rhs_nested_chirho, pat_chirho, scrutinee_id_chirho);
-        let rhs_final_chirho =
-            self.wrap_view_pat_chirho(rhs_as_chirho, pat_chirho, scrutinee_id_chirho);
-        self.pop_scope_chirho();
-        rhs_final_chirho
-    }
-
-    fn should_desugar_string_case_as_eq_chain_chirho(
-        &self,
-        alts_chirho: &[haskelujah_ast_chirho::expr_chirho::AltChirho],
-    ) -> bool {
-        let mut saw_string_lit_chirho = false;
-        for alt_chirho in alts_chirho {
-            let pat_chirho = &alt_chirho.pat_chirho;
-            if self.string_literal_pat_text_chirho(pat_chirho).is_some() {
-                saw_string_lit_chirho = true;
-                continue;
-            }
-            if !self.is_irrefutable_string_case_pat_chirho(pat_chirho) {
-                return false;
-            }
-        }
-        saw_string_lit_chirho
-    }
-
-    fn desugar_string_case_eq_chain_chirho(
-        &mut self,
-        scrutinee_id_chirho: CoreIdChirho,
-        alts_chirho: &[haskelujah_ast_chirho::expr_chirho::AltChirho],
-    ) -> CoreExprChirho {
-        let Some((first_alt_chirho, rest_alts_chirho)) = alts_chirho.split_first() else {
-            let error_id_chirho = self.fresh_id_chirho("error");
-            let msg_chirho = CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                "Non-exhaustive case alternatives".to_string(),
-            ));
-            return CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(error_id_chirho)),
-                arg_chirho: Box::new(msg_chirho),
-            };
-        };
-
-        if let Some(text_chirho) = self.string_literal_pat_text_chirho(&first_alt_chirho.pat_chirho)
-        {
-            let binders_chirho = self.pat_to_binders_chirho(&first_alt_chirho.pat_chirho);
-            let true_rhs_chirho = self.desugar_case_alt_rhs_with_scrutinee_chirho(
-                first_alt_chirho,
-                &first_alt_chirho.pat_chirho,
-                &binders_chirho,
-                scrutinee_id_chirho,
-                None,
-            );
-            let false_rhs_chirho =
-                self.desugar_string_case_eq_chain_chirho(scrutinee_id_chirho, rest_alts_chirho);
-            let cond_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "eqStr#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(scrutinee_id_chirho),
-                    CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(text_chirho)),
-                ],
-            };
-            let bool_binder_chirho = self.fresh_binder_chirho(
-                "str_case_match",
-                TyChirho::bool_chirho(),
-                SpanChirho::DUMMY_CHIRHO,
-            );
-            return CoreExprChirho::CaseChirho {
-                scrutinee_chirho: Box::new(cond_chirho),
-                bind_chirho: bool_binder_chirho,
-                result_ty_chirho: TyChirho::VarChirho(
-                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
-                ),
-                alts_chirho: vec![
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: true_rhs_chirho,
-                    },
-                    CoreAltChirho {
-                        con_chirho: AltConChirho::DataConChirho("False".to_string()),
-                        binders_chirho: vec![],
-                        rhs_chirho: false_rhs_chirho,
-                    },
-                ],
-            };
-        }
-
-        let binders_chirho = self.pat_to_binders_chirho(&first_alt_chirho.pat_chirho);
-        self.desugar_case_alt_rhs_with_scrutinee_chirho(
-            first_alt_chirho,
-            &first_alt_chirho.pat_chirho,
-            &binders_chirho,
-            scrutinee_id_chirho,
-            None,
-        )
-    }
-
-    fn string_literal_pat_text_chirho(&self, pat_chirho: &PatChirho) -> Option<String> {
-        match pat_chirho {
-            PatChirho::LitChirho(LitChirho::StringChirho(text_chirho, _, _)) => {
-                Some(text_chirho.clone())
-            }
-            PatChirho::ParenChirho { inner_chirho, .. } => {
-                self.string_literal_pat_text_chirho(inner_chirho)
-            }
-            PatChirho::AsChirho { pattern_chirho, .. } => {
-                self.string_literal_pat_text_chirho(pattern_chirho)
-            }
-            PatChirho::BangChirho { inner_chirho, .. } => {
-                self.string_literal_pat_text_chirho(inner_chirho)
-            }
-            _ => None,
-        }
-    }
-
-    fn is_irrefutable_string_case_pat_chirho(&self, pat_chirho: &PatChirho) -> bool {
-        match pat_chirho {
-            PatChirho::WildcardChirho(_) | PatChirho::VarChirho(_) => true,
-            PatChirho::ParenChirho { inner_chirho, .. } => {
-                self.is_irrefutable_string_case_pat_chirho(inner_chirho)
-            }
-            PatChirho::AsChirho { pattern_chirho, .. } => {
-                self.is_irrefutable_string_case_pat_chirho(pattern_chirho)
-            }
-            PatChirho::BangChirho { inner_chirho, .. } => {
-                self.is_irrefutable_string_case_pat_chirho(inner_chirho)
-            }
-            _ => false,
-        }
-    }
-
     /// Wrap `rhs_chirho` with `let as_name = scrutinee in rhs` for every
     /// as-pattern (`name@pat`) found in the outer pattern.
     fn wrap_as_bindings_chirho(
@@ -3434,6 +3240,16 @@ impl DesugarCtxChirho {
 
     /// Desugar a right-hand side.
     fn desugar_rhs_chirho(&mut self, rhs_chirho: &RhsChirho) -> CoreExprChirho {
+        self.desugar_rhs_or_fall_chirho(rhs_chirho, None)
+    }
+
+    /// A right-hand side whose guards, when all fail, continue with
+    /// `fallthrough_chirho` (the next row) instead of failing outright.
+    fn desugar_rhs_or_fall_chirho(
+        &mut self,
+        rhs_chirho: &RhsChirho,
+        fallthrough_chirho: Option<&CoreExprChirho>,
+    ) -> CoreExprChirho {
         match rhs_chirho {
             RhsChirho::UnguardedChirho(expr_chirho) => self.desugar_expr_chirho(expr_chirho),
             RhsChirho::GuardedChirho(guards_chirho) => {
@@ -3441,7 +3257,7 @@ impl DesugarCtxChirho {
                 //   | g1 = e1        → case g1 of True -> e1; _ -> case g2 of ...
                 //   | g2 = e2
                 //   | otherwise = e3 → e3
-                self.desugar_guards_chirho(guards_chirho)
+                self.desugar_guards_chirho(guards_chirho, fallthrough_chirho)
             }
         }
     }
@@ -5286,9 +5102,14 @@ impl DesugarCtxChirho {
     fn desugar_guards_chirho(
         &mut self,
         guards_chirho: &[haskelujah_ast_chirho::expr_chirho::GuardedExprChirho],
+        fallthrough_chirho: Option<&CoreExprChirho>,
     ) -> CoreExprChirho {
         if guards_chirho.is_empty() {
-            // No guards: produce a runtime error (pattern match failure)
+            // Every guard failed: the next row, when there is one.
+            if let Some(fallthrough_chirho) = fallthrough_chirho {
+                return fallthrough_chirho.clone();
+            }
+            // No row to fall to: a runtime error (pattern match failure)
             let error_id_chirho = self.fresh_id_chirho("error");
             let msg_chirho = CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
                 "Non-exhaustive guards".to_string(),
@@ -5313,7 +5134,7 @@ impl DesugarCtxChirho {
 
         let cond_core_chirho = self.desugar_expr_chirho(&guard_chirho.guard_chirho);
         let body_core_chirho = self.desugar_expr_chirho(&guard_chirho.body_chirho);
-        let rest_core_chirho = self.desugar_guards_chirho(&guards_chirho[1..]);
+        let rest_core_chirho = self.desugar_guards_chirho(&guards_chirho[1..], fallthrough_chirho);
 
         let wild_chirho =
             self.fresh_binder_chirho("wild", TyChirho::bool_chirho(), SpanChirho::DUMMY_CHIRHO);
@@ -5842,6 +5663,27 @@ fn is_float_core_chirho(expr_chirho: &CoreExprChirho) -> bool {
 mod tests_chirho {
     use super::*;
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+
+    /// The alternatives a case was written with: a trailing default that only
+    /// raises the pattern-match failure is the row compiler's "no row matched",
+    /// not a source alternative.
+    fn explicit_alts_chirho(alts_chirho: &[CoreAltChirho]) -> &[CoreAltChirho] {
+        match alts_chirho.last() {
+            Some(CoreAltChirho {
+                con_chirho: AltConChirho::DefaultChirho,
+                rhs_chirho: CoreExprChirho::AppChirho { arg_chirho, .. },
+                ..
+            }) if matches!(
+                arg_chirho.as_ref(),
+                CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(reason_chirho))
+                    if reason_chirho.starts_with("Non-exhaustive")
+            ) =>
+            {
+                &alts_chirho[..alts_chirho.len() - 1]
+            }
+            _ => alts_chirho,
+        }
+    }
 
     fn dummy_name_chirho(text_chirho: &str) -> NameChirho {
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -6560,6 +6402,7 @@ mod tests_chirho {
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
 
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
+            let alts_chirho = explicit_alts_chirho(alts_chirho);
             assert_eq!(alts_chirho.len(), 2);
             // Just a → binders should have 1 binder named "a"
             assert_eq!(alts_chirho[0].binders_chirho.len(), 1);
@@ -6607,6 +6450,7 @@ mod tests_chirho {
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
 
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
+            let alts_chirho = explicit_alts_chirho(alts_chirho);
             assert_eq!(alts_chirho.len(), 1);
             assert_eq!(alts_chirho[0].binders_chirho.len(), 2);
             assert_eq!(alts_chirho[0].binders_chirho[0].name_chirho, "x");
@@ -6646,6 +6490,7 @@ mod tests_chirho {
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
 
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
+            let alts_chirho = explicit_alts_chirho(alts_chirho);
             assert_eq!(alts_chirho.len(), 1);
             assert!(matches!(
                 alts_chirho[0].con_chirho,
@@ -6685,6 +6530,7 @@ mod tests_chirho {
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
 
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
+            let alts_chirho = explicit_alts_chirho(alts_chirho);
             assert_eq!(alts_chirho.len(), 1);
             assert!(matches!(
                 alts_chirho[0].con_chirho,
@@ -6734,6 +6580,7 @@ mod tests_chirho {
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
 
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
+            let alts_chirho = explicit_alts_chirho(alts_chirho);
             assert_eq!(alts_chirho.len(), 1);
             assert!(matches!(
                 alts_chirho[0].con_chirho,
@@ -6780,10 +6627,10 @@ mod tests_chirho {
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
 
         if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
+            let alts_chirho = explicit_alts_chirho(alts_chirho);
             assert_eq!(alts_chirho.len(), 2);
-            // Just _ → 1 binder (wildcard → "_wild")
+            // Just _ → the one field still has a binder, matched against nothing
             assert_eq!(alts_chirho[0].binders_chirho.len(), 1);
-            assert_eq!(alts_chirho[0].binders_chirho[0].name_chirho, "_wild");
             // _ → default, no binders
             assert_eq!(alts_chirho[1].binders_chirho.len(), 0);
         } else {
@@ -7093,18 +6940,25 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let core_chirho = ctx_chirho.desugar_expr_chirho(&expr_chirho);
-        // Lazy pattern → default alt (irrefutable match)
-        assert!(matches!(core_chirho, CoreExprChirho::CaseChirho { .. }));
-        if let CoreExprChirho::CaseChirho { alts_chirho, .. } = &core_chirho {
-            assert_eq!(alts_chirho.len(), 1);
-            assert!(matches!(
-                alts_chirho[0].con_chirho,
-                AltConChirho::DefaultChirho
-            ));
-            // Lazy pattern should still extract binders from the inner pattern
-            assert_eq!(alts_chirho[0].binders_chirho.len(), 1);
-            assert_eq!(alts_chirho[0].binders_chirho[0].name_chirho, "a");
-        }
+        // A lazy pattern scrutinises NOTHING where it is matched: the result is
+        // the binding of `a`, not a case on `x`. (The old desugaring made this a
+        // default alternative whose binder `a` stood for the whole scrutinee, so
+        // `case Just 7 of ~(Just n) -> n` printed `Just 7`.)
+        let CoreExprChirho::LetChirho { binds_chirho, .. } = &core_chirho else {
+            panic!("a lazy alternative must not scrutinise at the match: {core_chirho:?}");
+        };
+        // `a` is bound through a selector that matches `Just` when demanded.
+        let (_, selector_chirho) = binds_chirho
+            .iter()
+            .find(|(binder_chirho, _)| binder_chirho.name_chirho == "a")
+            .expect("the lazy pattern binds a");
+        let CoreExprChirho::CaseChirho { alts_chirho, .. } = selector_chirho else {
+            panic!("a is selected by a match: {selector_chirho:?}");
+        };
+        assert!(matches!(
+            &alts_chirho[0].con_chirho,
+            AltConChirho::DataConChirho(con_chirho) if con_chirho == "Just"
+        ));
     }
 
     #[test]

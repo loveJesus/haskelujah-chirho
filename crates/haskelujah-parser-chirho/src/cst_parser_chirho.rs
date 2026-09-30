@@ -3317,8 +3317,14 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::CaseAltChirho);
 
-        // Parse the pattern
-        if self.can_start_apat_chirho() {
+        // Parse the pattern. An alternative always begins with one, so a
+        // leading `!` (a bang pattern) or `-` (a negative literal) starts it
+        // here too; `can_start_apat_chirho` cannot say so for every caller,
+        // because after a function name `x ! y = ...` defines an operator.
+        // Leaving the `!` out made `!_ -> e` an alternative `_ -> e` that
+        // forced nothing.
+        // workflow: language-features-chirho/pattern-matching-chirho
+        if self.can_start_apat_chirho() || self.at_prefix_pattern_operator_chirho() {
             self.parse_pat_chirho();
             self.eat_trivia_chirho();
         }
@@ -5145,6 +5151,13 @@ impl<'src> ParserChirho<'src> {
         )
     }
 
+    /// A `!` or `-` where a pattern must begin: a bang pattern or a negative
+    /// literal.
+    fn at_prefix_pattern_operator_chirho(&self) -> bool {
+        self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
+            && matches!(self.current_text_chirho(), "!" | "-")
+    }
+
     fn can_start_fun_arg_pat_chirho(&self) -> bool {
         self.can_start_fun_arg_pat_idx_chirho(self.pos_chirho)
     }
@@ -5962,6 +5975,27 @@ mod tests_chirho {
             kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
             "strict constructor case alt should retain the bang subpattern: {:?}",
             kinds_chirho
+        );
+    }
+
+    #[test]
+    fn parse_case_alternative_keeps_a_leading_bang_or_minus_chirho() {
+        // An alternative begins with its pattern even when that pattern starts
+        // with `!` or `-`; losing the `!` made `!_ -> e` force nothing.
+        let root_chirho = parse_chirho(
+            "module MChirho where\n{-# LANGUAGE BangPatterns #-}\nfChirho x = case x of { !_ -> 5 }\n",
+        );
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::BangPatChirho),
+            "the alternative keeps its bang: {kinds_chirho:?}"
+        );
+        let root_chirho =
+            parse_chirho("module MChirho where\nfChirho x = case x of { -1 -> 5; _ -> 6 }\n");
+        let kinds_chirho = collect_node_kinds_chirho(&root_chirho);
+        assert!(
+            kinds_chirho.contains(&SyntaxKindChirho::NegPatChirho),
+            "the alternative keeps its negative literal: {kinds_chirho:?}"
         );
     }
 
