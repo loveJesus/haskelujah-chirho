@@ -182,21 +182,28 @@ impl DesugarCtxChirho {
             } => {
                 let view_chirho = self.desugar_expr_chirho(expr_chirho);
                 let viewed_chirho = self.row_binder_chirho("$view");
+                let viewed_id_chirho = viewed_chirho.id_chirho;
+                let applied_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(view_chirho),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(scrutinee_chirho)),
+                };
                 let matched_chirho = self.match_row_chirho(
                     inner_chirho,
-                    viewed_chirho.id_chirho,
+                    viewed_id_chirho,
                     failure_chirho,
                     success_chirho,
                 );
+                // `f (view -> n) = n`: the whole result IS the application, so
+                // return it rather than a let-bound thunk of it. A returned
+                // view thunk once surfaced as a heap pointer at run time
+                // (27863c54), and the direct application is never worse.
+                if matches!(matched_chirho, CoreExprChirho::VarChirho(id_chirho) if id_chirho == viewed_id_chirho)
+                {
+                    return applied_chirho;
+                }
                 CoreExprChirho::LetChirho {
                     rec_chirho: false,
-                    binds_chirho: vec![(
-                        viewed_chirho,
-                        CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(view_chirho),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(scrutinee_chirho)),
-                        },
-                    )],
+                    binds_chirho: vec![(viewed_chirho, applied_chirho)],
                     body_chirho: Box::new(matched_chirho),
                 }
             }

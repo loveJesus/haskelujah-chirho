@@ -23,7 +23,7 @@
 //!   both fall through) is bound once with `let`, never duplicated.
 //! workflow: language-features-chirho/pattern-matching-chirho
 
-use haskelujah_ast_chirho::expr_chirho::{LocalBindChirho, RhsChirho};
+use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, RhsChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 
 use super::DesugarCtxChirho;
@@ -33,8 +33,15 @@ use crate::simplify_chirho::{UsageChirho, count_usage_chirho, subst_var_chirho};
 /// One row: its patterns, one per scrutinee, and what it yields.
 pub(super) struct MatchRowChirho<'a> {
     pub(super) pats_chirho: Vec<&'a PatChirho>,
-    pub(super) rhs_chirho: &'a RhsChirho,
+    pub(super) body_chirho: RowBodyChirho<'a>,
     pub(super) where_binds_chirho: &'a [LocalBindChirho],
+}
+
+/// What a row yields: a right-hand side that may be guarded (an equation or a
+/// case alternative), or a plain expression (a lambda's body).
+pub(super) enum RowBodyChirho<'a> {
+    Rhs(&'a RhsChirho),
+    Expr(&'a ExprChirho),
 }
 
 impl DesugarCtxChirho {
@@ -84,11 +91,14 @@ impl DesugarCtxChirho {
             .collect();
         let matched_chirho =
             self.match_sequence_chirho(&pending_chirho, next_chirho, &mut |ctx_chirho| {
-                ctx_chirho.desugar_rhs_in_where_chirho(
-                    row_chirho.rhs_chirho,
-                    row_chirho.where_binds_chirho,
-                    Some(next_chirho),
-                )
+                match row_chirho.body_chirho {
+                    RowBodyChirho::Rhs(rhs_chirho) => ctx_chirho.desugar_rhs_in_where_chirho(
+                        rhs_chirho,
+                        row_chirho.where_binds_chirho,
+                        Some(next_chirho),
+                    ),
+                    RowBodyChirho::Expr(expr_chirho) => ctx_chirho.desugar_expr_chirho(expr_chirho),
+                }
             });
         self.pop_scope_chirho();
         matched_chirho

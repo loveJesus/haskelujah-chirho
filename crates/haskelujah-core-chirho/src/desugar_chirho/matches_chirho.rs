@@ -5,7 +5,7 @@
 //! guard. Workflow: language-features-chirho/pattern-matching-chirho, and
 //! testing-chirho/execution-oracles-chirho for the shared failure continuations.
 
-use super::match_rows_chirho::MatchRowChirho;
+use super::match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 use super::{CoreExprChirho, CoreLitChirho, DesugarCtxChirho};
 use haskelujah_ast_chirho::expr_chirho::AltChirho;
 
@@ -40,7 +40,7 @@ impl DesugarCtxChirho {
             .iter()
             .map(|alt_chirho| MatchRowChirho {
                 pats_chirho: vec![&alt_chirho.pat_chirho],
-                rhs_chirho: &alt_chirho.rhs_chirho,
+                body_chirho: RowBodyChirho::Rhs(&alt_chirho.rhs_chirho),
                 where_binds_chirho: &alt_chirho.where_binds_chirho,
             })
             .collect();
