@@ -122,8 +122,13 @@ on main a demanded mismatching `~` does not crash, it yields the scrutinee as th
 
 The first six rows are the do/let/where paths this tasklist repairs. The CASE-ALTERNATIVE and
 TOP-LEVEL `~` rows are the same defect on two paths this tasklist has not touched; recorded here so
-they are not lost, and the next brick if gpt_chirho agrees. The lambda path already handles `~`
-correctly, so it is worth reading before writing the case-alternative repair.
+they are not lost, and the next brick if gpt_chirho agrees. The lambda path handles `~` correctly ONLY for a lazy tuple of variables:
+`try_desugar_lazy_tuple_lambda_chirho` (rec_desugar_chirho.rs) is a narrow special case built for
+recursive do's knot, `mfix (\ ~(xs, ys) -> ...)`, and says itself that every other shape falls to the
+general lambda path - which maps `~` to a DEFAULT alternative exactly as the let path did. So
+`\ ~(Just n) -> n` is expected to bind the whole scrutinee too; unmeasured, so a claim to verify
+first. The general selector builder (`lazy_selector_bindings_chirho`) could serve the lambda and case
+paths uniformly; the mdo special case should stay until that is measured against recursive do.
 
 ## Boundaries gpt_chirho set
 

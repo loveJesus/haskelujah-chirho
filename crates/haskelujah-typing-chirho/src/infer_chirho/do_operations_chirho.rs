@@ -35,6 +35,7 @@ use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use super::InferCtxChirho;
+use crate::class_chirho::PredChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
 
@@ -46,7 +47,7 @@ impl InferCtxChirho {
         &mut self,
         selected_chirho: &SelectedOperationChirho,
         monad_chirho: &TyChirho,
-        subst_chirho: &mut SubstChirho,
+        subst_chirho: &SubstChirho,
         span_chirho: SpanChirho,
     ) {
         let name_chirho = &selected_chirho.name_chirho;
@@ -67,10 +68,31 @@ impl InferCtxChirho {
             &subst_chirho.apply_ty_chirho(&expected_chirho),
             span_chirho,
         ) {
+            // OBSERVATIONAL ONLY. The unifier is used to read the predicates'
+            // types and is NEVER composed into the block's substitution.
+            //
+            // The first version composed it, and that was a real regression the
+            // gate caught: GHC's T17594f uses `Main.do` with `(>>=) = ($)`, a
+            // non-Monad operator whose type DOES unify with the monadic shape -
+            // by binding the block's monad variable to `(->) ...`. Composing that
+            // rewrote the block's own types and its typing then failed with an
+            // infinite type. The operator had no predicates to record at all, so
+            // the write bought nothing and broke a program GHC accepts. A capture
+            // that can only read cannot do that to any program.
             Ok(unifier_chirho) => {
-                *subst_chirho = unifier_chirho.compose_chirho(subst_chirho);
-                self.apply_subst_all_chirho(&unifier_chirho);
-                self.capture_occurrence_predicates_chirho(name_chirho, &preds_chirho);
+                let resolved_chirho: Vec<PredChirho> = preds_chirho
+                    .iter()
+                    .map(|pred_chirho| PredChirho {
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: unifier_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|extra_chirho| unifier_chirho.apply_ty_chirho(extra_chirho))
+                            .collect(),
+                    })
+                    .collect();
+                self.capture_occurrence_predicates_chirho(name_chirho, &resolved_chirho);
             }
             // Does not fit the block's shape: no evidence rather than wrong
             // evidence, and no error from here.

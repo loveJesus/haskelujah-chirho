@@ -3623,7 +3623,7 @@ impl InferCtxChirho {
                                 self.capture_selected_operation_chirho(
                                     then_selected_chirho,
                                     &m_chirho,
-                                    &mut subst_chirho,
+                                    &subst_chirho,
                                     *span_chirho,
                                 );
                             }
@@ -3675,7 +3675,7 @@ impl InferCtxChirho {
                                 self.capture_selected_operation_chirho(
                                     selected_chirho,
                                     &m_chirho,
-                                    &mut subst_chirho,
+                                    &subst_chirho,
                                     *span_chirho,
                                 );
                             }
