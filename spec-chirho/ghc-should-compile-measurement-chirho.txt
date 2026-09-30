@@ -1,23 +1,23 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-09-30 UTC, AFTER do-statement operation selection and pattern bindings
-#   that match the WHOLE pattern on demand (one single-row matcher), on top of occurrence
-#   provenance for references and the literal carrier. It supersedes the WITHDRAWN
-#   measurement of b049713a below.
-# code measured: 41eff8f6 (HASKELUJAH/claude_chirho, branch lazy-positions-chirho, pushed
-#   as gh_chirho/lazy-positions-chirho). It carries the do unit, whose own tip b049713a
+# measured: 2026-09-30 UTC, AFTER every match position became rows over one single-row
+#   matcher, on top of pattern bindings that match the WHOLE pattern on demand, do-statement
+#   operation selection, occurrence provenance for references and the literal carrier.
+# code measured: cb1ada98 (HASKELUJAH/claude_chirho, branch match-rows-chirho, pushed as
+#   gh_chirho/match-rows-chirho), stacked on the 41eff8f6 proposal (#25474). It carries
+#   every match position as rows over one matcher, and the do unit, whose own tip b049713a
 #   was measured, proposed and then WITHDRAWN (room #25463, #25467), and the repair on
 #   top of it.
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/full-match-corpus-chirho/haskelujah-full-match-chirho
+#   tmp-chirho/match-rows-corpus-chirho/haskelujah-match-rows-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: 81b46d205236c6a54c9576995443b386345296f94e8fa5fefd8358ddda3b046b
+# CLI SHA256: b29b839b3552d4bdf5c492a08449f8acd15e7da43533d0980907a355cf7c5a9f
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT 41eff8f6, unchanged from main (no runner file differs), and the
+#   COMMITTED AT cb1ada98, unchanged from main (no runner file differs), and the
 #   repaired rule, so there is no later tools change to separate from it. Order: TIMEOUT
 #   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
 #   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
@@ -50,7 +50,23 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE LAST MEASUREMENT ON MAIN (e8cd6bf4): 885 -> 885, ZERO movement.
+# CHANGE SINCE THE PROPOSED MEASUREMENT OF 41eff8f6 (#25474): 885 -> 885, ZERO movement, and the
+#   same list file for file. Every MATCH position now goes through rows over the single-row
+#   matcher - case alternatives, equations, lambdas, do binds and comprehension generators -
+#   and the older per-position machinery is deleted. That repairs, in execution and invisibly
+#   to this axis: literals below a constructor never tested, records bound by listed position,
+#   `[x, y]` alternatives and nested lambda patterns crashing, `~` binding the whole scrutinee,
+#   guards never falling through to the next row, `\case` dropping guarded alternatives, and
+#   every alternative forcing its scrutinee (`case undefined of _ -> 5` failed). The parser now
+#   also starts an alternative's pattern at a leading `!` or `-`, and moved no verdict. Gates
+#   on cb1ada98: driver library 1817/0, integration 116/0, unit suites green (parser 360), zero
+#   warnings; replay 288/288; execution 28/35 with the same seven failures; 80 of 82 probes
+#   match GHC 9.14.1, the two misses being a pattern guard's fallthrough and the
+#   `whole@(a, b)` binding parse. Receipts: tmp-chirho/match-rows-corpus-chirho/ and
+#   tmp-chirho/match-rows-chirho/.
+#
+# MEASUREMENT OF 41eff8f6 (2026-09-30), PROPOSED AS a9548989 IN #25474, CHANGE SINCE MAIN
+#   (e8cd6bf4): 885 -> 885, ZERO movement.
 #   The failure list is identical file for file, its SHA256 below is unchanged, and each
 #   of the two passes reproduces it independently.
 #   What changed is aimed at execution and designed not to move a typecheck verdict,
@@ -185,7 +201,7 @@
 #   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
 #   depending only on which declaration came first.
 # REPLAY: all 53 failures here, with the other axis's 235 rejections, were re-run one at
-#   a time on the same frozen CLI 81b46d20, keeping stdout, stderr, exit code and source
+#   a time on the same frozen CLI b29b839b, keeping stdout, stderr, exit code and source
 #   SHA256 per file. All 288 are exit 1 carrying `error[E`, and zero carry a panic
 #   header, timeout or abnormal exit; none rests on the bare `panic` substring. Every
 #   rejection is a diagnostic, not a crash.
