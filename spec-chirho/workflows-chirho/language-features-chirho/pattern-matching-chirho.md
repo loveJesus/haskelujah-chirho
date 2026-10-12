@@ -26,6 +26,13 @@ scoping over the ones after it and the body; any failing qualifier goes on to th
 after the last arm to the next row. Arms and rows share one bottom-up join, so a fall-through is
 placed once: let-bound when it is used more than once, never copied.
 
+Every local `let` - a `let` expression, a guard's `let`, a do block's `let` and a list
+comprehension's `let` - goes through ONE helper, `desugar_let_around_chirho`: every name is in
+scope before any right-hand side is desugared (a local function recurses, a binding refers
+forward), and a pattern binding is lazy through one match of the whole pattern. The do block
+and the comprehension used to carry their own copies, which bound a function's name only after
+its right-hand side, and (the comprehension's) dropped every pattern binding.
+
 A guard's `let` ends where its bindings do, even on one line (`| let y = x * 2, y > 10 = y`):
 the layout pass closes an implicit block only by indentation, so the parser applies the
 Report's parse-error(t) rule itself (`cst_parser_chirho/guard_let_chirho.rs`), closing the
@@ -35,7 +42,7 @@ layout pass's later virtual `}` there (with the virtual `;` it placed for that b
 ```mermaid
 flowchart TD
     SRC["source binding\np = e, !p = e, ~p <- m"] --> PARSE["cst_parser_chirho.rs\nparse_value_decl_chirho\n(a leading ! stays a BangPat)"]
-    PARSE --> AST["PatBindChirho\n(let, where, do-let, top level)\nor BindChirho with a ~ pattern"]
+    PARSE --> AST["PatBindChirho\n(let, where, do-let, comprehension let,\nguard let, top level)\nor BindChirho with a ~ pattern"]
     AST --> PREBIND["prebind_pattern_bindings_chirho\nevery variable bound in the group's scope\nbefore the body and siblings are desugared"]
     PREBIND --> BODY["body and function bindings desugared\nreferences resolve to the pre-bound binders"]
     BODY --> BIND["desugar_pattern_bindings_chirho\n(right-hand sides last first, as before)"]

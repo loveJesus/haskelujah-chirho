@@ -119,11 +119,10 @@ impl DesugarCtxChirho {
                 );
                 Self::with_scrutinee_chirho(binding_chirho, matched_chirho)
             }
-            StmtChirho::LetChirho { binds_chirho, .. } => {
-                self.desugar_let_around_chirho(binds_chirho, &mut |ctx_chirho| {
+            StmtChirho::LetChirho { binds_chirho, .. } => self
+                .desugar_let_around_chirho(binds_chirho, |ctx_chirho| {
                     ctx_chirho.desugar_quals_chirho(rest_chirho, body_chirho, next_chirho)
-                })
-            }
+                }),
         }
     }
 }

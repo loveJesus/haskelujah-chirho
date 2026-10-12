@@ -180,6 +180,19 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       236/767, twice each, byte-identical, both lists identical to 6f's; replay 289/289;
       execution 28/35, the same seven failures. Both artifacts describe 49ad05fb.
 
+- [ ] 6h. Every local `let` through one helper. Found by probing, identical on the previous tip
+      and confirmed in main's own source: a recursive or forward-referring function in a do
+      block's `let` crashed on a missing binding (the do-let desugared a function's right-hand
+      side BEFORE binding its name; even `let go :: Int -> Int; go 0 = 0; go n = ...` in `do`),
+      and a comprehension's `let` kept only function bindings, so `let (a, b) = p` crashed and
+      its functions could not recurse either. Branch `local-lets-chirho`, stacked on 6g: the do
+      `let` and both comprehension `let` paths call `desugar_let_around_chirho` (now taking an
+      `FnOnce` body, the honest contract), deleting three divergent copies (desugar_chirho.rs
+      5,577 to 5,396 lines). Probes H01-H13 and Q01-Q04 against GHC 9.14.1: all match except
+      Q05 (a multi-way `if` pattern guard) and Q06, which now fails for GHC's reason but does not
+      stream GHC's partial `[1` first. Controls in eval_letrec_chirho.rs; three mutations, each
+      dropping one re-routed `let`, each caught by its own control.
+
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 
 A row whose guards all fail must fall through to the NEXT row. Ours raises "Non-exhaustive
