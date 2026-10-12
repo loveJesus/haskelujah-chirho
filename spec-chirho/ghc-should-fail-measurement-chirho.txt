@@ -1,21 +1,23 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
-# measured: 2026-09-30 UTC, AFTER every match position became rows over one single-row
-#   matcher, on top of pattern bindings that match the WHOLE pattern on demand, do-statement
-#   operation selection, occurrence provenance for references and the literal carrier. The companion artifact states what changed, both regressions caught
-#   inside the unit, and what is not yet covered.
-# code measured: 6a97e07a (HASKELUJAH/claude_chirho, branch match-rows-chirho, pushed as
-#   gh_chirho/match-rows-chirho), stacked on the 41eff8f6 proposal (#25474)
+# measured: 2026-10-12 UTC, AFTER a guard arm came to carry its qualifiers (a failing pattern
+#   guard falls through to the next arm and row), on top of every match position as rows
+#   over one single-row matcher, pattern bindings that match the WHOLE pattern on demand,
+#   do-statement operation selection, occurrence provenance for references and the literal
+#   carrier. The companion artifact states what changed and what is not yet covered.
+# code measured: a1c70656 (HASKELUJAH/claude_chirho, branch pattern-guards-chirho, pushed as
+#   gh_chirho/pattern-guards-chirho), stacked on the 51cc17c6 proposal (#25478/#25480),
+#   itself on the 41eff8f6 proposal (#25474)
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/x5-corpus-chirho/haskelujah-x5-chirho
+#   tmp-chirho/pattern-guards-corpus-chirho/haskelujah-6f-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: d6c896eb1f6405e7ee6e00380fd6f1b38c79f18fec8d12adec793d50d399afbf
+# CLI SHA256: a2e6e44291cfbb2076ae368b7d6bb1a0e8bba72fbd3f713e29fac1401ab10d57
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT 6a97e07a, unchanged from main, the repaired rule, with no later tools
+#   COMMITTED AT a1c70656, unchanged from main, the repaired rule, with no later tools
 #   change to separate from it. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC
 #   (a real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0
 #   and no `error[E`). A panic header has an optional ALL-DIGIT thread id and counts at
@@ -27,17 +29,17 @@
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
 #   (no subdirectories); per-file source SHA256s retained with the receipts
 #
-# RESULT: CORRECTLY-REJECTED=235 WRONGLY-ACCEPTED=532 TOTAL=767
+# RESULT: CORRECTLY-REJECTED=236 WRONGLY-ACCEPTED=531 TOTAL=767
 # STABILITY: DETERMINISTIC — two complete passes, zero timeouts, zero nonzero-exit
 #   accepts; the two passes are byte-identical to each other
-# QUOTE-AS: 235 of 767 = 30.6% — ~30% truncated, ~31% nearest; NO single label
+# QUOTE-AS: 236 of 767 = 30.8% — ~30% truncated, ~31% nearest; NO single label
 #   is published until L.J.'s policy decision (see below). Do not quote a third
 #   significant figure under either reading.
 #
 # QUOTE BOTH AXES TOGETHER. The companion artifact is ~94% (885 of 938).
 # THE CARRY RULE IS EXHAUSTED ON THE REJECT AXIS. Earlier artifacts carried the
 # existing approximate label forward with current counts, which stayed honest while
-# ~29% remained a valid reading of the count. 235 of 767 is 30.6%, which is ~30%
+# ~29% remained a valid reading of the count. 236 of 767 is 30.8%, which is ~30%
 # truncated and ~31% nearest, so no carry of ~29% is a rounding of it under either
 # policy. This artifact therefore publishes the FRACTION with both readings and no
 # single label: that decides nothing and states nothing false. L.J.'s uniform
@@ -45,9 +47,20 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE THE PROPOSED MEASUREMENT OF 41eff8f6 (#25474): 235 -> 235, ZERO movement, and the
-#   same list file for file. Every match position now goes through rows over one matcher; the
-#   companion artifact states what that repairs in execution, invisibly to this axis.
+# CHANGE SINCE THE PROPOSED MEASUREMENT OF 6a97e07a (#25478/#25480): 235 -> 236, +1 gained,
+#   zero lost; every other file has the same verdict. The one gained is T20768_fail.hs,
+#   `bar = \cases | 'c' -> "foo"`: a boolean guard is now checked as an `if` condition is
+#   (it was unified with Bool leniently and a mismatch was dropped), and GHC's FIRST error in
+#   its committed stderr is this one, GHC-83865, a `Char` guard where `Bool` is expected.
+#   Two differences from GHC's rendering, stated rather than claimed away: our anchor is the
+#   guard arm (7:14, its `|`), GHC's is the expression (7:16); and our message reads
+#   "expected `Char`, found `Bool`", the reverse orientation, exactly as an `if` condition's
+#   mismatch already reads on main. GHC's other two errors in that file are not claimed.
+#
+# MEASUREMENT OF 6a97e07a (2026-09-30), PROPOSED IN #25478/#25480, CHANGE SINCE THE PROPOSED
+#   MEASUREMENT OF 41eff8f6 (#25474): 235 -> 235, ZERO movement, and the same list file for
+#   file. Every match position went through rows over one matcher; the companion artifact
+#   states what that repaired in execution, invisibly to this axis.
 #
 # MEASUREMENT OF 41eff8f6 (2026-09-30), PROPOSED AS a9548989 IN #25474, CHANGE SINCE MAIN
 #   (e8cd6bf4): 235 -> 235, ZERO movement.
@@ -96,18 +109,18 @@
 #     `op` than GHC does. No line parity is claimed for those three.
 #   Corrections from gpt_chirho (room #24271), each verified against the replay.
 #   The count is verdict presence, not 235 independently matching GHC reasons.
-# REPLAY OF EVERY REJECTION: all 288 saved REJECT rows (53 accept-axis, 235
-#   reject-axis) were re-run one at a time on the same frozen CLI d6c896eb, with stdout,
+# REPLAY OF EVERY REJECTION: all 289 saved REJECT rows (53 accept-axis, 236
+#   reject-axis) were re-run one at a time on the same frozen CLI a2e6e442, with stdout,
 #   stderr, exit code and source SHA-256 kept per file. Classified timeout and abnormal
 #   exit first, then a real Rust panic header, and only then `error[E` with exit 1: all
-#   288 are credited rejections, none a timeout, an abnormal exit or a panic. No
+#   289 are credited rejections, none a timeout, an abnormal exit or a panic. No
 #   rejection in either axis rests on the old detector's bare `panic` substring.
-# WRONG-ACCEPT-LIST SHA256: a89ded083f454a80dc04d581f5de02ac5ebb2f9b71b5af8104115c6a0d0c98a5
+# WRONG-ACCEPT-LIST SHA256: 8b53fb4148e8f9f46fb308b6365d11a4d8c8d4a1ec2645dcaf5f98d0ff02068d
 #   DEFINITION: the SHA256 of the bare filenames listed at the end of this file, one per
 #   line, EACH NEWLINE-TERMINATED, sorted C-COLLATED (LC_ALL=C — every uppercase initial
 #   before every lowercase one). The collation is part of the definition: a case-folding
 #   locale sorts this IDENTICAL list to
-#   11ec56cc53413c5caa77238f0d49ce161170ae92eca1da080755f59ac8efa5d4
+#   555161386cd7d7b4b6c74151276c0a8ba854ce1a6137bdbf888c8546d3f9acdb
 #   instead (claude2_chirho reported the same prefix independently), so a
 #   measurer who did not know the collation would read an unchanged result as movement.
 #   The runner has since been repaired to sort C-collated (corpus-runner-chirho/
@@ -212,7 +225,7 @@
 # repair to those rules was mutation-checked: reverting it fails the control that was
 # added for it.
 #
-# ---- the 532 files we WRONGLY ACCEPT (GHC rejects these) ----
+# ---- the 531 files we WRONGLY ACCEPT (GHC rejects these) ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -453,7 +466,6 @@ T20588c_aux.hs
 T20666.hs
 T20666a.hs
 T20666b.hs
-T20768_fail.hs
 T20873d.hs
 T21130.hs
 T21158.hs

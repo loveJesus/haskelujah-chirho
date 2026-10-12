@@ -154,11 +154,14 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       forces its source (the laziness control), the checker's arm scope leaking (the two
       scope controls), a lenient boolean guard (the `Bool` control), a top-level pattern
       binding typed by its first body (the top-level control).
-- [ ] 6f-5. Gates: unit suites, driver library, integration, execution set, the announced
-      two-pass corpus pair with replay; then the proposal. So far, all on the formatted tree
-      and frozen CLI a2e6e442: unit suites ast 13, parser 361, th 15, typing 354, core 129,
-      naming 136; driver library 1826/0; integration 117/0; zero compiler warnings, and no
-      clippy lint on any added line.
+- [x] 6f-5. Gates, all on the formatted tree a1c70656 and its frozen CLI a2e6e442: unit suites
+      ast 13, parser 361, th 15, typing 354, core 129, naming 136; driver library 1826/0;
+      integration 117/0; zero compiler warnings, and no clippy lint on any added line. The
+      announced corpus pair (room #26955): 885/938 and 236/767, twice each, byte-identical;
+      the accept list is unchanged and the reject axis gained exactly one file, T20768_fail
+      (`\cases | 'c' -> ...`, GHC's first error, now that a boolean guard is checked as an
+      `if` condition is); replay 289/289 diagnostics; execution 28/35, the same seven
+      failures. Both measurement artifacts describe a1c70656.
 - [ ] 6g. A guard's `let` closes where its bindings end (the Report's parse-error(t) rule):
       `| let y = x * 2, y > 10 = y` on one line. Probe set `probes-let-chirho/` (T01-T10),
       measured on GHC.
