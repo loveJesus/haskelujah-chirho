@@ -162,7 +162,7 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       (`\cases | 'c' -> ...`, GHC's first error, now that a boolean guard is checked as an
       `if` condition is); replay 289/289 diagnostics; execution 28/35, the same seven
       failures. Both measurement artifacts describe a1c70656.
-- [ ] 6g. A guard's `let` closes where its bindings end (the Report's parse-error(t) rule):
+- [x] 6g. A guard's `let` closes where its bindings end (the Report's parse-error(t) rule):
       `| let y = x * 2, y > 10 = y` on one line. Branch `let-guards-chirho`, stacked on the 6f
       tip f0b7ed4c, its own proposal. The parser closes the block at the `,` or the arm's
       `=`/`->` and moves the layout pass's later virtual `}` there, dropping the virtual `;` it
@@ -174,7 +174,11 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       `Left ("a b")`). Five parser controls and one eval control; three mutations, each caught
       by its own controls: an equation's `let` running on (4 parser + eval), a case
       alternative's (its parser control + eval), the close keeping the semicolons (the
-      aligned-line control + eval). Gates and corpus pair pending.
+      aligned-line control + eval). Gates on 49ad05fb and its frozen CLI 7619a077: unit suites
+      green (parser 366), driver library 1827/0, integration 117/0, zero compiler warnings,
+      no clippy lint on an added line; the announced corpus pair (room #26959): 885/938 and
+      236/767, twice each, byte-identical, both lists identical to 6f's; replay 289/289;
+      execution 28/35, the same seven failures. Both artifacts describe 49ad05fb.
 
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 
