@@ -22,6 +22,10 @@ use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
+mod guard_let_chirho;
+#[cfg(test)]
+mod guard_let_tests_chirho;
+
 use crate::layout_chirho::apply_layout_chirho;
 use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
 use crate::pragma_chirho::classify_contextual_keywords_chirho;
@@ -2075,7 +2079,7 @@ impl<'src> ParserChirho<'src> {
                         .start_node_chirho(SyntaxKindChirho::LetStmtChirho);
                     self.bump_chirho(); // let
                     self.eat_trivia_chirho();
-                    self.parse_layout_block_chirho();
+                    self.parse_guard_let_binds_chirho(RawTokenKindChirho::EqualsChirho);
                     self.builder_chirho.finish_node_chirho();
                     self.eat_trivia_chirho();
                 } else if self.scan_for_guard_bind_arrow_chirho() {
@@ -3403,7 +3407,7 @@ impl<'src> ParserChirho<'src> {
                     .start_node_chirho(SyntaxKindChirho::LetStmtChirho);
                 self.bump_chirho(); // let
                 self.eat_trivia_chirho();
-                self.parse_layout_block_chirho();
+                self.parse_guard_let_binds_chirho(RawTokenKindChirho::RightArrowChirho);
                 self.builder_chirho.finish_node_chirho();
                 self.eat_trivia_chirho();
             } else if self.scan_for_case_guard_bind_arrow_chirho() {

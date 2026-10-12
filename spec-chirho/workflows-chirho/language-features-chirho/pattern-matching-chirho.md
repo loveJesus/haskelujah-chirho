@@ -26,6 +26,12 @@ scoping over the ones after it and the body; any failing qualifier goes on to th
 after the last arm to the next row. Arms and rows share one bottom-up join, so a fall-through is
 placed once: let-bound when it is used more than once, never copied.
 
+A guard's `let` ends where its bindings do, even on one line (`| let y = x * 2, y > 10 = y`):
+the layout pass closes an implicit block only by indentation, so the parser applies the
+Report's parse-error(t) rule itself (`cst_parser_chirho/guard_let_chirho.rs`), closing the
+block at the `,` before the next qualifier or the `=`/`->` before the body, and moving the
+layout pass's later virtual `}` there (with the virtual `;` it placed for that block).
+
 ```mermaid
 flowchart TD
     SRC["source binding\np = e, !p = e, ~p <- m"] --> PARSE["cst_parser_chirho.rs\nparse_value_decl_chirho\n(a leading ! stays a BangPat)"]
@@ -82,10 +88,5 @@ fails exactly its own control).
 
 Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_match-chirho.md`:
 
-- a `let` guard followed by another qualifier ON THE SAME LINE
-  (`| let y = x * 2, y > 10 = y`): the layout pass closes an implicit block only by
-  indentation, so the `let` block swallows `, y > 10 = y` as a second binding (it defines
-  `>`). The multi-line form, explicit braces, and a `let` guard that is the arm's last
-  qualifier all work;
 - a pattern guard in a multi-way `if` (`if | Just x <- m -> x`), which has its own lowering and
   is rejected.

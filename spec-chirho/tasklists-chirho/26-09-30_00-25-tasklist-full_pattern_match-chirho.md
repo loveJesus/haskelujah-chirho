@@ -163,8 +163,18 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       `if` condition is); replay 289/289 diagnostics; execution 28/35, the same seven
       failures. Both measurement artifacts describe a1c70656.
 - [ ] 6g. A guard's `let` closes where its bindings end (the Report's parse-error(t) rule):
-      `| let y = x * 2, y > 10 = y` on one line. Probe set `probes-let-chirho/` (T01-T10),
-      measured on GHC.
+      `| let y = x * 2, y > 10 = y` on one line. Branch `let-guards-chirho`, stacked on the 6f
+      tip f0b7ed4c, its own proposal. The parser closes the block at the `,` or the arm's
+      `=`/`->` and moves the layout pass's later virtual `}` there, dropping the virtual `;` it
+      placed for that block (`cst_parser_chirho/guard_let_chirho.rs`, a child module, so the
+      6,400-line parser file does not grow). Probe set `probes-let-chirho/` (T01-T10): all ten
+      match GHC 9.14.1, including T06, a line aligned with the closed block that continues
+      the body. P04 and P05 now match; P19's guards are right and its remaining difference is
+      a Show defect identical on the previous tip (`mapM_ print [Left "a b"]` prints
+      `Left ("a b")`). Five parser controls and one eval control; three mutations, each caught
+      by its own controls: an equation's `let` running on (4 parser + eval), a case
+      alternative's (its parser control + eval), the close keeping the semicolons (the
+      aligned-line control + eval). Gates and corpus pair pending.
 
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 

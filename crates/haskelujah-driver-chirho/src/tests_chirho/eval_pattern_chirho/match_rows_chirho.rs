@@ -453,3 +453,34 @@ fn a_boolean_guard_must_be_a_bool_chirho() {
     );
     assert!(failure_chirho.contains("type mismatch"), "{failure_chirho}");
 }
+
+#[test]
+fn a_one_line_let_guard_ends_at_its_comma_chirho() {
+    // T01, T02 (a case alternative), T06 (a line aligned with the closed
+    // block continues the body) and T08: the previous tip looped on all four,
+    // because the `let` block ran on over the next qualifier.
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> Int\nfChirho x\n  | let y = x * 2, y > 10 = y\n  | otherwise = 0\nmain :: IO ()\nmain = print (fChirho 3, fChirho 7)"
+        ),
+        "(0,14)\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "main :: IO ()\nmain = mapM_ (\\n -> print (case n of\n  k | let d = k * 3, d > 10 -> d\n  _ -> 0)) [2, 5 :: Int]"
+        ),
+        "0\n15\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> Int\nfChirho x\n  | let y = x * 2, y > 10 = y\n        + 1\n  | otherwise = 0\nmain :: IO ()\nmain = print (fChirho 3, fChirho 7)"
+        ),
+        "(0,15)\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Maybe Int -> Int\nfChirho mb\n  | Just v <- mb, let w = v * 10, w > 30, let u = w + 1 = u\nfChirho _ = 0\nmain :: IO ()\nmain = print (fChirho (Just 5), fChirho (Just 2), fChirho Nothing)"
+        ),
+        "(51,0,0)\n"
+    );
+}
