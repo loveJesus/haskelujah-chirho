@@ -198,7 +198,7 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       replay 289/289; execution 28/35, the same seven failures; 147 of 152 probes match GHC.
       Both artifacts describe 4100d02f.
 
-- [ ] 6i. A multi-way `if` gets real guard arms. Its arms were `cond -> e` only, so a pattern
+- [x] 6i. A multi-way `if` gets real guard arms. Its arms were `cond -> e` only, so a pattern
       guard, a `let` or a second qualifier was rejected (Q05, P20, M02, M03, M07, M10). Branch
       `multiway-if-chirho`, stacked on 6h: `ExprChirho::MultiWayIfChirho { arms_chirho }`
       rather than `case () of _ | arms`, because a guarded right-hand side's arms unify their
@@ -208,7 +208,12 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       to `infer_chirho/guards_chirho.rs` (one arm routine; lenient arms for a right-hand side,
       strict for a multi-way if); Template Haskell's `MultiIfE` converts instead of becoming
       `__TH_UNSUPPORTED__`. M01-M10 and TcMultiWayIfFail match GHC 9.14.1 (two errors, GHC's
-      two). Four controls; three mutations, each caught by its own control.
+      two). Four controls; three mutations, each caught by its own control. Gates on 0f70ee23
+      and its frozen CLI c57e0645: unit suites green, driver library 1835/0, integration
+      117/0, zero compiler warnings, no clippy lint on an added line; the announced corpus pair
+      (room #26963): 885/938 and 236/767, twice each, byte-identical, both lists identical to
+      6h's; replay 289/289; execution 28/35, the same seven failures; 160 of 163 probes match
+      GHC. Both artifacts describe 0f70ee23. The last unit stacked before review.
 
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 
