@@ -9,6 +9,7 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+mod guards_chirho;
 mod lazy_patterns_chirho;
 mod match_rows_chirho;
 mod matches_chirho;
@@ -1988,6 +1989,134 @@ impl DesugarCtxChirho {
         core_binds_chirho
     }
 
+    /// `let binds in <body>`, the body built by `body_chirho` once every binding
+    /// is in scope: a `let` expression, and a `let` qualifier of a guard. The
+    /// bindings' right-hand sides come first, as in the source.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    pub(super) fn desugar_let_around_chirho(
+        &mut self,
+        binds_chirho: &[LocalBindChirho],
+        body_chirho: &mut row_match_chirho::MatchSuccessChirho<'_>,
+    ) -> CoreExprChirho {
+        self.push_scope_chirho();
+
+        // Separate function bindings (which become Core let) from
+        // pattern bindings (which become case expressions wrapping
+        // the body).
+        let mut fun_bind_indices_chirho: Vec<usize> = Vec::new();
+        let mut pat_bind_indices_chirho: Vec<usize> = Vec::new();
+        for (idx_chirho, bind_chirho) in binds_chirho.iter().enumerate() {
+            match bind_chirho {
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho { .. } => {
+                    fun_bind_indices_chirho.push(idx_chirho);
+                }
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                    pat_chirho,
+                    ..
+                } => {
+                    // Simple variable patterns can be handled as
+                    // regular let bindings (equivalent to 0-arg
+                    // function binding).
+                    if matches!(pat_chirho, PatChirho::VarChirho(_)) {
+                        fun_bind_indices_chirho.push(idx_chirho);
+                    } else {
+                        pat_bind_indices_chirho.push(idx_chirho);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Pre-bind every variable of every pattern binding, so the body
+        // and the other bindings resolve them.
+        // workflow: language-features-chirho/pattern-matching-chirho
+        let prebound_chirho =
+            self.prebind_pattern_bindings_chirho(binds_chirho, &pat_bind_indices_chirho);
+
+        // Pass 1: Pre-bind function binding names.
+        let mut pre_binders_chirho: Vec<(usize, BinderChirho)> = Vec::new();
+        for &idx_chirho in &fun_bind_indices_chirho {
+            match &binds_chirho[idx_chirho] {
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                    name_chirho,
+                    span_chirho,
+                    ..
+                } => {
+                    let binder_chirho = self.fresh_binder_chirho(
+                        name_chirho.text_chirho(),
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                            self.next_id_chirho,
+                        )),
+                        *span_chirho,
+                    );
+                    self.bind_in_scope_chirho(name_chirho.text_chirho(), binder_chirho.id_chirho);
+                    pre_binders_chirho.push((idx_chirho, binder_chirho));
+                }
+                // Simple var PatBindChirho treated as fun bind
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                    pat_chirho: PatChirho::VarChirho(name_chirho),
+                    span_chirho,
+                    ..
+                } => {
+                    let binder_chirho = self.fresh_binder_chirho(
+                        name_chirho.text_chirho(),
+                        TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                            self.next_id_chirho,
+                        )),
+                        *span_chirho,
+                    );
+                    self.bind_in_scope_chirho(name_chirho.text_chirho(), binder_chirho.id_chirho);
+                    pre_binders_chirho.push((idx_chirho, binder_chirho));
+                }
+                _ => {}
+            }
+        }
+
+        // Pass 2: Desugar function-binding RHSes.
+        let mut core_binds_chirho: Vec<(BinderChirho, CoreExprChirho)> = Vec::new();
+        for (idx_chirho, binder_chirho) in pre_binders_chirho {
+            let rhs_chirho = match &binds_chirho[idx_chirho] {
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
+                    matches_chirho,
+                    span_chirho,
+                    ..
+                } => self.desugar_matches_chirho(matches_chirho, *span_chirho),
+                haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
+                    rhs_chirho,
+                    ..
+                } => self.desugar_rhs_chirho(rhs_chirho),
+                _ => continue,
+            };
+            core_binds_chirho.push((binder_chirho, rhs_chirho));
+        }
+
+        // `let p = rhs in body` is LAZY: each variable of `p` is bound
+        // through one shared match of the WHOLE pattern, performed when
+        // any of them is demanded. A banged binding forces that match
+        // before the body.
+        let body_core_chirho = body_chirho(self);
+        let witnesses_chirho = self.desugar_pattern_bindings_chirho(
+            binds_chirho,
+            &pat_bind_indices_chirho,
+            &prebound_chirho,
+            &mut core_binds_chirho,
+        );
+        let result_body_chirho = self.force_witnesses_chirho(&witnesses_chirho, body_core_chirho);
+
+        let result_chirho = if core_binds_chirho.is_empty() {
+            result_body_chirho
+        } else {
+            let rec_chirho = Self::is_recursive_binds_chirho(&core_binds_chirho);
+            CoreExprChirho::LetChirho {
+                rec_chirho,
+                binds_chirho: core_binds_chirho,
+                body_chirho: Box::new(result_body_chirho),
+            }
+        };
+        self.pop_scope_chirho();
+        result_chirho
+    }
+
     /// Desugar a right-hand side.
     fn desugar_rhs_chirho(&mut self, rhs_chirho: &RhsChirho) -> CoreExprChirho {
         self.desugar_rhs_or_fall_chirho(rhs_chirho, None)
@@ -2002,11 +2131,9 @@ impl DesugarCtxChirho {
     ) -> CoreExprChirho {
         match rhs_chirho {
             RhsChirho::UnguardedChirho(expr_chirho) => self.desugar_expr_chirho(expr_chirho),
+            // Arms in order, each its qualifiers then its body; when every arm
+            // fails, the fall-through (`desugar_chirho/guards_chirho.rs`).
             RhsChirho::GuardedChirho(guards_chirho) => {
-                // Desugar guards into nested if-then-else:
-                //   | g1 = e1        → case g1 of True -> e1; _ -> case g2 of ...
-                //   | g2 = e2
-                //   | otherwise = e3 → e3
                 self.desugar_guards_chirho(guards_chirho, fallthrough_chirho)
             }
         }
@@ -2249,138 +2376,9 @@ impl DesugarCtxChirho {
                 binds_chirho,
                 body_chirho,
                 ..
-            } => {
-                self.push_scope_chirho();
-
-                // Separate function bindings (which become Core let) from
-                // pattern bindings (which become case expressions wrapping
-                // the body).
-                let mut fun_bind_indices_chirho: Vec<usize> = Vec::new();
-                let mut pat_bind_indices_chirho: Vec<usize> = Vec::new();
-                for (idx_chirho, bind_chirho) in binds_chirho.iter().enumerate() {
-                    match bind_chirho {
-                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                            ..
-                        } => {
-                            fun_bind_indices_chirho.push(idx_chirho);
-                        }
-                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
-                            pat_chirho,
-                            ..
-                        } => {
-                            // Simple variable patterns can be handled as
-                            // regular let bindings (equivalent to 0-arg
-                            // function binding).
-                            if matches!(pat_chirho, PatChirho::VarChirho(_)) {
-                                fun_bind_indices_chirho.push(idx_chirho);
-                            } else {
-                                pat_bind_indices_chirho.push(idx_chirho);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                // Pre-bind every variable of every pattern binding, so the body
-                // and the other bindings resolve them.
-                // workflow: language-features-chirho/pattern-matching-chirho
-                let prebound_chirho =
-                    self.prebind_pattern_bindings_chirho(binds_chirho, &pat_bind_indices_chirho);
-
-                // Pass 1: Pre-bind function binding names.
-                let mut pre_binders_chirho: Vec<(usize, BinderChirho)> = Vec::new();
-                for &idx_chirho in &fun_bind_indices_chirho {
-                    match &binds_chirho[idx_chirho] {
-                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                            name_chirho,
-                            span_chirho,
-                            ..
-                        } => {
-                            let binder_chirho = self.fresh_binder_chirho(
-                                name_chirho.text_chirho(),
-                                TyChirho::VarChirho(
-                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                        self.next_id_chirho,
-                                    ),
-                                ),
-                                *span_chirho,
-                            );
-                            self.bind_in_scope_chirho(
-                                name_chirho.text_chirho(),
-                                binder_chirho.id_chirho,
-                            );
-                            pre_binders_chirho.push((idx_chirho, binder_chirho));
-                        }
-                        // Simple var PatBindChirho treated as fun bind
-                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
-                            pat_chirho: PatChirho::VarChirho(name_chirho),
-                            span_chirho,
-                            ..
-                        } => {
-                            let binder_chirho = self.fresh_binder_chirho(
-                                name_chirho.text_chirho(),
-                                TyChirho::VarChirho(
-                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                        self.next_id_chirho,
-                                    ),
-                                ),
-                                *span_chirho,
-                            );
-                            self.bind_in_scope_chirho(
-                                name_chirho.text_chirho(),
-                                binder_chirho.id_chirho,
-                            );
-                            pre_binders_chirho.push((idx_chirho, binder_chirho));
-                        }
-                        _ => {}
-                    }
-                }
-
-                // Pass 2: Desugar function-binding RHSes.
-                let mut core_binds_chirho: Vec<(BinderChirho, CoreExprChirho)> = Vec::new();
-                for (idx_chirho, binder_chirho) in pre_binders_chirho {
-                    let rhs_chirho = match &binds_chirho[idx_chirho] {
-                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                            matches_chirho,
-                            span_chirho,
-                            ..
-                        } => self.desugar_matches_chirho(matches_chirho, *span_chirho),
-                        haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
-                            rhs_chirho,
-                            ..
-                        } => self.desugar_rhs_chirho(rhs_chirho),
-                        _ => continue,
-                    };
-                    core_binds_chirho.push((binder_chirho, rhs_chirho));
-                }
-
-                // `let p = rhs in body` is LAZY: each variable of `p` is bound
-                // through one shared match of the WHOLE pattern, performed when
-                // any of them is demanded. A banged binding forces that match
-                // before the body.
-                let body_core_chirho = self.desugar_expr_chirho(body_chirho);
-                let witnesses_chirho = self.desugar_pattern_bindings_chirho(
-                    binds_chirho,
-                    &pat_bind_indices_chirho,
-                    &prebound_chirho,
-                    &mut core_binds_chirho,
-                );
-                let result_body_chirho =
-                    self.force_witnesses_chirho(&witnesses_chirho, body_core_chirho);
-
-                let result_chirho = if core_binds_chirho.is_empty() {
-                    result_body_chirho
-                } else {
-                    let rec_chirho = Self::is_recursive_binds_chirho(&core_binds_chirho);
-                    CoreExprChirho::LetChirho {
-                        rec_chirho,
-                        binds_chirho: core_binds_chirho,
-                        body_chirho: Box::new(result_body_chirho),
-                    }
-                };
-                self.pop_scope_chirho();
-                result_chirho
-            }
+            } => self.desugar_let_around_chirho(binds_chirho, &mut |ctx_chirho| {
+                ctx_chirho.desugar_expr_chirho(body_chirho)
+            }),
 
             ExprChirho::CaseChirho {
                 scrutinee_chirho,
@@ -3787,78 +3785,6 @@ impl DesugarCtxChirho {
         }
     }
 
-    /// Desugar guarded RHS into nested case on Bool.
-    ///
-    /// ```haskell
-    /// | g1 = e1
-    /// | g2 = e2
-    /// | otherwise = e3
-    /// ```text
-    /// becomes:
-    /// ```text
-    /// case g1 of { True -> e1; _ -> case g2 of { True -> e2; _ -> e3 } }
-    /// ```
-    fn desugar_guards_chirho(
-        &mut self,
-        guards_chirho: &[haskelujah_ast_chirho::expr_chirho::GuardedExprChirho],
-        fallthrough_chirho: Option<&CoreExprChirho>,
-    ) -> CoreExprChirho {
-        if guards_chirho.is_empty() {
-            // Every guard failed: the next row, when there is one.
-            if let Some(fallthrough_chirho) = fallthrough_chirho {
-                return fallthrough_chirho.clone();
-            }
-            // No row to fall to: a runtime error (pattern match failure)
-            let error_id_chirho = self.fresh_id_chirho("error");
-            let msg_chirho = CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                "Non-exhaustive guards".to_string(),
-            ));
-            return CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(error_id_chirho)),
-                arg_chirho: Box::new(msg_chirho),
-            };
-        }
-
-        let guard_chirho = &guards_chirho[0];
-
-        // `otherwise` is Prelude's `otherwise = True`; treat it as unconditional
-        let is_otherwise_chirho = matches!(
-            &guard_chirho.guard_chirho,
-            haskelujah_ast_chirho::expr_chirho::ExprChirho::VarChirho(n_chirho)
-                if n_chirho.text_chirho() == "otherwise"
-        );
-        if is_otherwise_chirho {
-            return self.desugar_expr_chirho(&guard_chirho.body_chirho);
-        }
-
-        let cond_core_chirho = self.desugar_expr_chirho(&guard_chirho.guard_chirho);
-        let body_core_chirho = self.desugar_expr_chirho(&guard_chirho.body_chirho);
-        let rest_core_chirho = self.desugar_guards_chirho(&guards_chirho[1..], fallthrough_chirho);
-
-        let wild_chirho =
-            self.fresh_binder_chirho("wild", TyChirho::bool_chirho(), SpanChirho::DUMMY_CHIRHO);
-
-        CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(cond_core_chirho),
-            bind_chirho: wild_chirho,
-            result_ty_chirho: TyChirho::VarChirho(
-                haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
-            ),
-            alts_chirho: vec![
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: body_core_chirho,
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DefaultChirho,
-                    binders_chirho: vec![],
-                    rhs_chirho: rest_core_chirho,
-                },
-            ],
-        }
-    }
-
     /// Desugar do-notation statements into Core.
     fn desugar_do_chirho(
         &mut self,
@@ -4618,24 +4544,16 @@ mod tests_chirho {
 
         let mut ctx_chirho = DesugarCtxChirho::new_chirho();
         let rhs_chirho = RhsChirho::GuardedChirho(vec![
-            GuardedExprChirho {
-                guard_chirho: ExprChirho::ConChirho(dummy_name_chirho("True")),
-                body_chirho: ExprChirho::LitChirho(LitChirho::IntChirho(
-                    1,
-                    SpanChirho::DUMMY_CHIRHO,
-                    None,
-                )),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            },
-            GuardedExprChirho {
-                guard_chirho: ExprChirho::ConChirho(dummy_name_chirho("True")),
-                body_chirho: ExprChirho::LitChirho(LitChirho::IntChirho(
-                    2,
-                    SpanChirho::DUMMY_CHIRHO,
-                    None,
-                )),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            },
+            GuardedExprChirho::boolean_chirho(
+                ExprChirho::ConChirho(dummy_name_chirho("True")),
+                ExprChirho::LitChirho(LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None)),
+                SpanChirho::DUMMY_CHIRHO,
+            ),
+            GuardedExprChirho::boolean_chirho(
+                ExprChirho::ConChirho(dummy_name_chirho("True")),
+                ExprChirho::LitChirho(LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO, None)),
+                SpanChirho::DUMMY_CHIRHO,
+            ),
         ]);
         let core_chirho = ctx_chirho.desugar_rhs_chirho(&rhs_chirho);
         // Should be nested case: case True of { True -> 1; _ -> case True of { True -> 2; _ -> error } }

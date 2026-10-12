@@ -7,6 +7,7 @@
 
 use super::match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 use super::{CoreExprChirho, CoreLitChirho, DesugarCtxChirho};
+use crate::expr_chirho::{BinderChirho, CoreIdChirho};
 use haskelujah_ast_chirho::expr_chirho::AltChirho;
 
 impl DesugarCtxChirho {
@@ -20,22 +21,8 @@ impl DesugarCtxChirho {
         if alts_chirho.is_empty() {
             return self.case_failure_chirho("Non-exhaustive case alternatives");
         }
-        // Every row refers to the scrutinee by name. A plain variable already
-        // is one; anything else is bound once, lazily - which is exactly what
-        // the STG lowering does for a non-variable scrutinee anyway, and which
-        // keeps `case undefined of _ -> e` from forcing, as in Haskell. A method
-        // occurrence is bound too, so the dictionary pass still rewrites it once.
-        let (scrutinee_id_chirho, binding_chirho) = match scrut_chirho {
-            CoreExprChirho::VarChirho(id_chirho)
-                if !self.method_occurrences_chirho.contains_key(&id_chirho) =>
-            {
-                (id_chirho, None)
-            }
-            other_chirho => {
-                let binder_chirho = self.row_binder_chirho("$scrut");
-                (binder_chirho.id_chirho, Some((binder_chirho, other_chirho)))
-            }
-        };
+        let (scrutinee_id_chirho, binding_chirho) =
+            self.scrutinee_variable_chirho(scrut_chirho, "$scrut");
         let rows_chirho: Vec<MatchRowChirho<'_>> = alts_chirho
             .iter()
             .map(|alt_chirho| MatchRowChirho {
@@ -47,6 +34,39 @@ impl DesugarCtxChirho {
         let failure_chirho = self.case_failure_chirho("Non-exhaustive patterns in case");
         let matched_chirho =
             self.compile_rows_chirho(&[scrutinee_id_chirho], &rows_chirho, failure_chirho);
+        Self::with_scrutinee_chirho(binding_chirho, matched_chirho)
+    }
+
+    /// The variable a match reads its scrutinee through. A plain variable
+    /// already is one; anything else is bound once, lazily, as `name_chirho` -
+    /// which is exactly what the STG lowering does for a non-variable scrutinee
+    /// anyway, and which keeps `case undefined of _ -> e` from forcing, as in
+    /// Haskell. A method occurrence is bound too, so the dictionary pass still
+    /// rewrites it once. A case expression and a pattern guard both match
+    /// through here.
+    pub(super) fn scrutinee_variable_chirho(
+        &mut self,
+        scrut_chirho: CoreExprChirho,
+        name_chirho: &str,
+    ) -> (CoreIdChirho, Option<(BinderChirho, CoreExprChirho)>) {
+        match scrut_chirho {
+            CoreExprChirho::VarChirho(id_chirho)
+                if !self.method_occurrences_chirho.contains_key(&id_chirho) =>
+            {
+                (id_chirho, None)
+            }
+            other_chirho => {
+                let binder_chirho = self.row_binder_chirho(name_chirho);
+                (binder_chirho.id_chirho, Some((binder_chirho, other_chirho)))
+            }
+        }
+    }
+
+    /// `matched_chirho` under the scrutinee's binding, when it needed one.
+    pub(super) fn with_scrutinee_chirho(
+        binding_chirho: Option<(BinderChirho, CoreExprChirho)>,
+        matched_chirho: CoreExprChirho,
+    ) -> CoreExprChirho {
         match binding_chirho {
             Some(binding_chirho) => CoreExprChirho::LetChirho {
                 rec_chirho: false,

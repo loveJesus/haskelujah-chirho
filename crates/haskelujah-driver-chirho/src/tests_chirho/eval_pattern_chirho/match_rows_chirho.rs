@@ -296,3 +296,160 @@ fn a_generator_pattern_filters_the_elements_it_does_not_match_chirho() {
         "[1,4]\n"
     );
 }
+
+// Pattern guards (brick 6f): an arm's qualifiers stay qualifiers, so a failing
+// pattern guard goes on to the next arm and then the next row. Each expectation
+// is GHC 9.14.1's output (probe set tmp-chirho/pattern-guards-chirho/).
+
+#[test]
+fn a_failing_pattern_guard_falls_through_to_the_next_row_chirho() {
+    // G4 (an equation), P02 (a case alternative), P03 (`\case`), P14 (string
+    // literal patterns): the previous tip raised "Non-exhaustive guards".
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Maybe Int -> Int\nfChirho (Just x) | Just y <- lookup x [(5, 50)] = y\nfChirho _ = 0\nmain :: IO ()\nmain = print (fChirho (Just 5), fChirho (Just 6))"
+        ),
+        "(50,0)\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "main :: IO ()\nmain = mapM_ (\\m -> print (case m of\n  Just x | Just y <- lookup x [(5, 50 :: Int)] -> y\n  _ -> 0)) [Just 5, Just 6, Nothing]"
+        ),
+        "50\n0\n0\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "main :: IO ()\nmain = mapM_ (print . (\\case { Just x | Just y <- lookup x [(5, 50 :: Int)] -> y; _ -> (0 :: Int) })) [Just 5, Just 6, Nothing :: Maybe Int]"
+        ),
+        "50\n0\n0\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: String -> Int\nfChirho s\n  | \"yes\" <- s = 1\n  | \"no\" <- s = 0\nfChirho _ = -1\nmain :: IO ()\nmain = print (map fChirho [\"yes\", \"no\", \"maybe\"])"
+        ),
+        "[1,0,-1]\n"
+    );
+}
+
+#[test]
+fn qualifiers_run_in_order_and_scope_over_what_follows_chirho() {
+    // P01 and P18: a pattern guard's variables reach the boolean guard after
+    // it and the body. L01: a `let` between them. P13: a later binding shadows.
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Maybe Int -> Int\nfChirho m\n  | Just x <- m, x > 0 = x\n  | otherwise = -1\nmain :: IO ()\nmain = print (fChirho (Just 5), fChirho (Just (-3)), fChirho Nothing)"
+        ),
+        "(5,-1,-1)\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: [Int] -> Int\nfChirho xs\n  | (a : b : _) <- xs, a < b = b - a\n  | [a] <- xs = a\nfChirho _ = 0\nmain :: IO ()\nmain = print (map fChirho [[1, 5], [5, 1], [7], []])"
+        ),
+        "[4,0,7,0]\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Maybe Int -> Int\nfChirho m\n  | Just y <- m\n  , let z = y + 1\n  , z > 5\n  = z\nfChirho _ = 0\nmain :: IO ()\nmain = print (fChirho (Just 9), fChirho (Just 2), fChirho Nothing)"
+        ),
+        "(10,0,0)\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> Int\nfChirho x\n  | Just x <- Just (x + 1) = x * 10\nmain :: IO ()\nmain = print (fChirho 1)"
+        ),
+        "20\n"
+    );
+}
+
+#[test]
+fn a_pattern_guard_matches_lazily_unless_banged_chirho() {
+    // P08: a variable pattern binds its source unforced. P16: `~` matches
+    // anything. P15: `!` forces the source.
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> Int\nfChirho x\n  | y <- (undefined :: Int), x > 0 = 1\n  | otherwise = 2\nmain :: IO ()\nmain = print (fChirho 5, fChirho (-5))"
+        ),
+        "(1,2)\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> Int\nfChirho x\n  | ~(Just y) <- (Nothing :: Maybe Int) = 1\n  | otherwise = 2\nmain :: IO ()\nmain = print (fChirho 5)"
+        ),
+        "1\n"
+    );
+    let failure_chirho = fails_chirho(
+        "fChirho :: Int -> Int\nfChirho x\n  | !y <- (undefined :: Int) = 1\n  | otherwise = 2\nmain :: IO ()\nmain = print (fChirho 5)",
+    );
+    assert!(failure_chirho.contains("undefined"), "{failure_chirho}");
+}
+
+#[test]
+fn a_guarded_alternative_with_where_falls_through_chirho() {
+    // P17: both arms of the first alternative can fail; its `where` reaches both.
+    assert_eq!(
+        prints_chirho(
+            "main :: IO ()\nmain = mapM_ (\\m -> print (case m of\n  Just x\n    | Just y <- lookup x tbl -> y + bonus\n    | x > 100 -> bonus\n    where bonus = 1\n          tbl = [(5, 50)]\n  _ -> 0)) [Just 5, Just 200, Just 7, Nothing :: Maybe Int]"
+        ),
+        "51\n1\n0\n0\n"
+    );
+}
+
+#[test]
+fn a_pattern_guard_in_a_top_level_pattern_binding_chirho() {
+    // S02 and S03: the whole guarded right-hand side of a top-level PATTERN
+    // binding is typed, not its first arm's body alone. P11: a variable binding.
+    let pair_chirho = "(aChirho, bChirho)\n  | Just n <- lookup (KEY :: Int) [(1, 10 :: Int)] = (n, n + 1)\n  | otherwise = (0, 0)\nmain :: IO ()\nmain = print (aChirho + bChirho)";
+    assert_eq!(prints_chirho(&pair_chirho.replace("KEY", "1")), "21\n");
+    assert_eq!(prints_chirho(&pair_chirho.replace("KEY", "2")), "0\n");
+    assert_eq!(
+        prints_chirho(
+            "xChirho :: Char\nxChirho\n  | Just v <- lookup (1 :: Int) [(1, 'a')] = v\n  | otherwise = 'z'\nmain :: IO ()\nmain = print xChirho"
+        ),
+        "'a'\n"
+    );
+}
+
+#[test]
+fn a_guard_binding_shadows_only_in_its_own_arm_chirho() {
+    // S01: the previous tip REJECTED this. Its lowering placed the next arm
+    // inside the pattern guard's scope, so `x + 1` saw the shadowing `Bool`.
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> Maybe Bool -> Int\nfChirho x m\n  | Just x <- m, x = 1\n  | otherwise = x + 1\nmain :: IO ()\nmain = print (fChirho 5 Nothing, fChirho 5 (Just True), fChirho 5 (Just False))"
+        ),
+        "(6,1,6)\n"
+    );
+}
+
+#[test]
+fn every_arm_failing_with_no_row_left_fails_chirho() {
+    // P10: GHC fails with a pattern-match failure and prints nothing.
+    let failure_chirho = fails_chirho(
+        "fChirho :: Maybe Int -> Int\nfChirho (Just x)\n  | Just y <- lookup x [] = y\nmain :: IO ()\nmain = print (fChirho (Just 1))",
+    );
+    assert!(
+        failure_chirho.contains("Non-exhaustive"),
+        "{failure_chirho}"
+    );
+}
+
+#[test]
+fn a_guard_binding_is_scoped_to_its_own_arm_chirho() {
+    // R05: GHC rejects it; `x` is bound by the first arm's pattern guard only.
+    let failure_chirho = fails_chirho(
+        "fChirho :: Maybe Int -> Int\nfChirho m\n  | Just x <- m = x\n  | otherwise = x\nmain :: IO ()\nmain = print (fChirho (Just 1))",
+    );
+    assert!(
+        failure_chirho.contains("unbound variable: `x`"),
+        "{failure_chirho}"
+    );
+}
+
+#[test]
+fn a_boolean_guard_must_be_a_bool_chirho() {
+    // R02: GHC rejects it; the previous tip accepted it and printed 0.
+    let failure_chirho = fails_chirho(
+        "fChirho :: Int -> Int\nfChirho x | 'c' = 1\nfChirho _ = 0\nmain :: IO ()\nmain = print (fChirho 1)",
+    );
+    assert!(failure_chirho.contains("type mismatch"), "{failure_chirho}");
+}

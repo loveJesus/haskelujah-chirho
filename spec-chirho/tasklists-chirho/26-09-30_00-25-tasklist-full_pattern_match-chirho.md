@@ -92,7 +92,10 @@ Probes, the runner and three compilers' raw outputs: `tmp-chirho/lazy-positions-
       equations, lambdas and do binds (d0099ae4), controls (dc6f5bab), 6e list-comprehension
       generators (cb1ada98). The whole old per-position machinery is deleted.
 - [ ] 6f. Pattern guards fall through (G4): guards must carry their qualifiers in the AST, a
-      parser, typing and desugar change, and its own unit.
+      parser, typing and desugar change, and its own unit. Branch `pattern-guards-chirho`,
+      stacked on 51cc17c6, started 2026-10-12 under L.J.'s "continue to push forward dev"
+      (the design went to gpt_chirho in #25480 and is still unanswered; it is built for his
+      review, not landed). Sub-bricks in "Brick 6f" below.
 - [x] 7. `let whole@(a, b) = e` (X5): the parser read it as a function binding with a visible
       type argument. A tight `x@p` whose pattern is followed by `=` or `|` is now an as-pattern
       binding (6a97e07a); a spaced `f @t = ...` keeps the function path. Measured on 6a97e07a,
@@ -101,6 +104,64 @@ Probes, the runner and three compilers' raw outputs: `tmp-chirho/lazy-positions-
       match GHC 9.14.1.
 
 Bricks 5 and 6 may be a separate proposal. That sequencing is gpt_chirho's call.
+
+## Brick 6f: guards carry their qualifiers (decided at its first brick)
+
+GHC's own model: a guarded right-hand side is a list of arms, each a LIST of qualifiers
+(boolean guards, pattern guards `p <- e`, and `let`) and a body. The arm succeeds when every
+qualifier does, in order, each scoping over the ones after it and the body; ANY failing
+qualifier goes on to the next arm, and after the last arm to the next row.
+
+- AST: `GuardedExprChirho { quals_chirho: Vec<StmtChirho>, body_chirho, span_chirho }` replaces
+  the single `guard_chirho` expression. A qualifier selects no operation (not a do statement).
+- Parser: both guard sites (equations and pattern bindings through `lower_guarded_rhs_chirho`,
+  case alternatives through their own loop) build these arms directly. The lowering that
+  turned a pattern or `let` guard into ONE unguarded `if`/`case` expression, with the
+  fall-through copied and reminted once per failing qualifier, is deleted: it is exactly why
+  fall-through could not be expressed.
+- Checker: one helper types an arm's qualifiers in a scope of the arm's own (boolean → `Bool`;
+  pattern → bound against its source's type exactly as a case alternative binds against its
+  scrutinee, including the GADT refinement fallback; `let` → local bindings), then the body.
+  The case alternative's pattern step becomes one shared helper instead of two copies.
+- Desugarer: guards move to `desugar_chirho/guards_chirho.rs`. Each arm is compiled in source
+  order against a placeholder for the next arm; its qualifiers chain through
+  `match_row_chirho` (a pattern guard is a one-pattern row against its source); the arms are
+  joined bottom-up by the SAME join the rows use (an arm that cannot fail drops the rest; a
+  continuation used once is inlined; used more than once, let-bound). After the last arm comes
+  the row's fall-through, or the guard failure when there is no next row.
+- Walkers (occurrences, linearity, exhaustiveness, recursive-do references, placeholder paths,
+  Template Haskell conversion) visit qualifiers as statements. TH's `PatG` becomes a real
+  pattern guard; today its pattern is DROPPED and its expression used as a boolean.
+
+- [x] 6f-1. AST, parser, walkers and TH: guards carry qualifiers; the expression lowering is
+      deleted. 6f-1 to 6f-3 are one commit: without the checker and desugarer halves, a
+      pattern guard would have no meaning at all.
+- [x] 6f-2. Checker: qualifier scoping, shared pattern step; the top-level pattern binding
+      types its WHOLE guarded right-hand side (today it types only the first arm's body).
+      Boolean guards are now checked as an `if` condition is: `| 'c' = 1` was ACCEPTED (R02).
+- [x] 6f-3. Desugarer: `guards_chirho.rs`, qualifier chains, the shared join.
+- [x] 6f-4. Probes against GHC 9.14.1, frozen CLI a2e6e442 (`tmp-chirho/pattern-guards-chirho/`):
+      26 guard probes, 13 differed on the previous tip, 4 differ now (P04, P05, P19: a
+      single-line `let` guard followed by another qualifier loops IDENTICALLY on both, a
+      layout defect, brick 6g; P20: a pattern guard in a multi-way `if`, rejected on both).
+      Rejects: 7 of 8 as GHC (R02 newly rejected; R06, a top-level pattern binding whose
+      arms are `Char` and `Bool`, is still accepted on both because guarded-arm results are
+      unified leniently for GADTs). S01 was WRONGLY REJECTED by the previous tip: the old
+      lowering placed the next arm inside the pattern guard's scope, so `x + 1` saw the
+      shadowing `Bool`; it now prints GHC's `(6,1,6)`. Nine controls beside the match-rows
+      controls (23 there); six mutations, each caught by its own controls and restored by
+      `cmp`: a pattern guard that cannot fall through (3 controls), a pattern guard that
+      forces its source (the laziness control), the checker's arm scope leaking (the two
+      scope controls), a lenient boolean guard (the `Bool` control), a top-level pattern
+      binding typed by its first body (the top-level control).
+- [ ] 6f-5. Gates: unit suites, driver library, integration, execution set, the announced
+      two-pass corpus pair with replay; then the proposal. So far, all on the formatted tree
+      and frozen CLI a2e6e442: unit suites ast 13, parser 361, th 15, typing 354, core 129,
+      naming 136; driver library 1826/0; integration 117/0; zero compiler warnings, and no
+      clippy lint on any added line.
+- [ ] 6g. A guard's `let` closes where its bindings end (the Report's parse-error(t) rule):
+      `| let y = x * 2, y > 10 = y` on one line. Probe set `probes-let-chirho/` (T01-T10),
+      measured on GHC.
 
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 

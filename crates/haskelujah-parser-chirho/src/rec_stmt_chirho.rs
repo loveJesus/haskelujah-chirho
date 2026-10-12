@@ -248,7 +248,9 @@ fn collect_rhs_references_chirho(rhs_chirho: &RhsChirho, names_chirho: &mut Vec<
         }
         RhsChirho::GuardedChirho(guards_chirho) => {
             for guard_chirho in guards_chirho {
-                collect_expr_references_chirho(&guard_chirho.guard_chirho, names_chirho);
+                for qual_chirho in &guard_chirho.quals_chirho {
+                    collect_stmt_references_chirho(qual_chirho, names_chirho);
+                }
                 collect_expr_references_chirho(&guard_chirho.body_chirho, names_chirho);
             }
         }

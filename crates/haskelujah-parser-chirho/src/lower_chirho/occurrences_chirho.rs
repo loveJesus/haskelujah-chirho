@@ -2,15 +2,15 @@
 
 //! Lowering is the first producer of occurrences. Each expression reference it
 //! builds (a variable, an operator in an infix chain or a section, and the
-//! references it generates itself, such as a guard's `error` fallback or the
-//! `mfix` of a recursive do) takes a fresh origin here, at construction. Nothing
-//! downstream mints or re-enumerates: typing and desugaring read the origin the
-//! node carries.
+//! references it generates itself, such as the `mfix` of a recursive do) takes
+//! a fresh origin here, at construction. Nothing downstream mints or
+//! re-enumerates: typing and desugaring read the origin the node carries.
+//! Lowering places no code twice: a guard's qualifiers stay qualifiers, and
+//! the desugarer joins its fall-through once.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
-use haskelujah_ast_chirho::occurrences_chirho::remint_expr_chirho;
 use haskelujah_ast_chirho::provenance_chirho::{OriginIdChirho, OriginSupplyChirho};
 
 use super::LowerCtxChirho;
@@ -29,18 +29,6 @@ impl LowerCtxChirho {
     /// A variable expression that is a new reference occurrence.
     pub(super) fn reference_expr_chirho(&self, name_chirho: NameChirho) -> ExprChirho {
         ExprChirho::VarChirho(self.reference_name_chirho(name_chirho))
-    }
-
-    /// A copy of `expr_chirho` placed as NEW code, as a guard's fall-through is
-    /// placed once per failing qualifier. The copy's occurrences take fresh
-    /// origins; the original keeps its own.
-    pub(super) fn duplicate_as_new_code_chirho(&self, expr_chirho: &ExprChirho) -> ExprChirho {
-        let mut copy_chirho = expr_chirho.clone();
-        remint_expr_chirho(
-            &mut copy_chirho,
-            &mut self.origin_supply_chirho.borrow_mut(),
-        );
-        copy_chirho
     }
 
     /// Hand the supply to the lowered module, which carries it on to the later

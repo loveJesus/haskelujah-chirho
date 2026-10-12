@@ -368,7 +368,9 @@ impl<'a> ExhaustCheckerChirho<'a> {
             RhsChirho::UnguardedChirho(expr_chirho) => self.check_expr_chirho(expr_chirho),
             RhsChirho::GuardedChirho(guards_chirho) => {
                 for g_chirho in guards_chirho {
-                    self.check_expr_chirho(&g_chirho.guard_chirho);
+                    for qual_chirho in &g_chirho.quals_chirho {
+                        self.check_stmt_chirho(qual_chirho);
+                    }
                     self.check_expr_chirho(&g_chirho.body_chirho);
                 }
             }

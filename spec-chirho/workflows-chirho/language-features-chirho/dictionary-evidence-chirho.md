@@ -152,7 +152,6 @@ producer borrows it through the module, so one sequence runs across all of them.
 ```mermaid
 flowchart TD
     lower_chirho[Lowering: stamps each reference and operator AT CONSTRUCTION] --> supply_chirho[(module origin supply)]
-    dup_chirho[Lowering duplicates a guard fall-through] -->|remint the copy| supply_chirho
     splice_chirho[Splice expansion: each CONVERTED declaration] -->|remint before push; passthrough keeps its origins| supply_chirho
     derive_chirho[Early deriving: the fresh instances] -->|remint before extend| supply_chirho
     gnd_chirho[Late GND, gpt_chirho's seam: its generated declarations] -->|remint before extend| supply_chirho

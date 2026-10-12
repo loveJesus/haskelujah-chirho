@@ -66,12 +66,7 @@ impl DesugarCtxChirho {
                 (next_chirho, body_chirho)
             })
             .collect();
-        compiled_chirho.into_iter().rev().fold(
-            failure_chirho,
-            |rest_chirho, (next_chirho, row_chirho)| {
-                join_row_chirho(row_chirho, next_chirho, rest_chirho)
-            },
-        )
+        join_alternatives_chirho(compiled_chirho, failure_chirho)
     }
 
     /// One row: its patterns in order, then its `where` bindings over its
@@ -103,6 +98,21 @@ impl DesugarCtxChirho {
         self.pop_scope_chirho();
         matched_chirho
     }
+}
+
+/// Alternatives compiled in source order, each against its own placeholder
+/// for "the next one", joined bottom-up and ending in `failure_chirho`. The
+/// rows of a match use it, and so do the guard arms of one row.
+pub(super) fn join_alternatives_chirho(
+    compiled_chirho: Vec<(BinderChirho, CoreExprChirho)>,
+    failure_chirho: CoreExprChirho,
+) -> CoreExprChirho {
+    compiled_chirho.into_iter().rev().fold(
+        failure_chirho,
+        |rest_chirho, (next_chirho, alt_chirho)| {
+            join_row_chirho(alt_chirho, next_chirho, rest_chirho)
+        },
+    )
 }
 
 /// Put `rest_chirho` where `row_chirho` falls through to `next_chirho`.

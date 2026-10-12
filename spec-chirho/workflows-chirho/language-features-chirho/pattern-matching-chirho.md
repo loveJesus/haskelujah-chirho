@@ -19,6 +19,13 @@ list-comprehension generators. A row is its patterns matched left to right, its 
 bindings over its guards, and every failure (a pattern or the last guard) continuing with the
 next row. The older per-position machinery is deleted.
 
+A row's guards are ARMS (`guards_chirho.rs`), each a list of qualifiers kept as qualifiers from
+the parser on (`GuardedExprChirho::quals_chirho`): a boolean guard, a pattern guard `p <- e`
+(a one-pattern row against `e`, through the same matcher) and a `let`. They run in order, each
+scoping over the ones after it and the body; any failing qualifier goes on to the next arm, and
+after the last arm to the next row. Arms and rows share one bottom-up join, so a fall-through is
+placed once: let-bound when it is used more than once, never copied.
+
 ```mermaid
 flowchart TD
     SRC["source binding\np = e, !p = e, ~p <- m"] --> PARSE["cst_parser_chirho.rs\nparse_value_decl_chirho\n(a leading ! stays a BangPat)"]
@@ -36,8 +43,18 @@ flowchart TD
     MATCHSRC["case alts, equations, lambdas,\ndo binds, comprehension generators"] --> ROWS["compile_rows_chirho\nrows in source order, joined bottom-up:\nunreachable rows dropped, single-use\ncontinuation inlined or merged into one switch,\nshared continuation let-bound"]
     ROWS --> ROWONE["compile_row_chirho\nmatch_sequence over the scrutinees,\nthen where bindings over guards"]
     ROWONE --> ROW
-    ROWONE -->|"last guard fails"| NEXT["next row"]
+    ROWONE --> GUARDS["desugar_guards_chirho\narms in source order, each against\na placeholder for the next arm"]
+    GUARDS --> QUALS["desugar_quals_chirho\nboolean: case on True\npattern guard: match_row against its source\nlet: desugar_let_around_chirho"]
+    QUALS --> ROW
+    QUALS -->|"a qualifier fails"| NEXTARM["next arm"]
+    GUARDS -->|"every arm fails"| NEXT["next row\n(or the guard failure)"]
+    GUARDS --> JOIN["join_alternatives_chirho\nthe join the rows use"]
 ```
+
+The checker types an arm the same way (`infer_guard_quals_chirho`): its qualifiers in a scope
+of the arm's own, a boolean guard checked as an `if` condition is, and a pattern guard bound
+against its source's type as a case alternative is against its scrutinee
+(`bind_pat_against_chirho`, GADT refinement included).
 
 ## The rules it implements
 
@@ -65,8 +82,10 @@ fails exactly its own control).
 
 Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_match-chirho.md`:
 
-- a PATTERN GUARD (`| Just y <- e`) does not fall through to the next row: lowering turns a
-  guarded right-hand side containing one into a single unguarded expression, so the AST has no
-  qualifiers for the rows to continue from;
-- an as-pattern at the head of a binding (`whole@(a, b) = e`), which the parser reads as a
-  function binding with a visible type argument.
+- a `let` guard followed by another qualifier ON THE SAME LINE
+  (`| let y = x * 2, y > 10 = y`): the layout pass closes an implicit block only by
+  indentation, so the `let` block swallows `, y > 10 = y` as a second binding (it defines
+  `>`). The multi-line form, explicit braces, and a `let` guard that is the arm's last
+  qualifier all work;
+- a pattern guard in a multi-way `if` (`if | Just x <- m -> x`), which has its own lowering and
+  is rejected.

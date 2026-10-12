@@ -280,15 +280,36 @@ pub enum RhsChirho {
     GuardedChirho(Vec<GuardedExprChirho>),
 }
 
-/// A guarded expression (`| guard = expr`).
+/// A guarded arm (`| qual, ..., qual = expr`).
+///
+/// Its qualifiers run in source order, each scoping over the ones after it and
+/// the body: a boolean guard must hold, a pattern guard (`pat <- expr`) must
+/// match, and a `let` binds. The arm yields its body when every qualifier
+/// succeeds; when any fails, the next arm is tried, and after the last arm the
+/// next row (Haskell 2010 §3.13, GHC's guarded right-hand side).
 #[derive(Debug, Clone, PartialEq)]
 pub struct GuardedExprChirho {
-    /// The boolean guard expression.
-    pub guard_chirho: ExprChirho,
-    /// The body to evaluate when the guard succeeds.
+    /// The qualifiers, in source order. None selects a monadic operation.
+    pub quals_chirho: Vec<StmtChirho>,
+    /// The body to evaluate when every qualifier succeeds.
     pub body_chirho: ExprChirho,
     /// Span covering the whole guarded RHS arm.
     pub span_chirho: SpanChirho,
+}
+
+impl GuardedExprChirho {
+    /// An arm guarded by one boolean expression.
+    pub fn boolean_chirho(
+        guard_chirho: ExprChirho,
+        body_chirho: ExprChirho,
+        span_chirho: SpanChirho,
+    ) -> Self {
+        Self {
+            quals_chirho: vec![StmtChirho::expr_stmt_chirho(guard_chirho)],
+            body_chirho,
+            span_chirho,
+        }
+    }
 }
 
 /// A statement in a do block or list comprehension.

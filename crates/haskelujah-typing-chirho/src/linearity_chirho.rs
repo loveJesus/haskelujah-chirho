@@ -106,25 +106,7 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
         }
         ExprChirho::DoChirho { stmts_chirho, .. } => {
             for stmt_chirho in stmts_chirho {
-                match stmt_chirho {
-                    StmtChirho::ExprChirho {
-                        expr_chirho: e_chirho,
-                        ..
-                    } => {
-                        walk_expr_chirho(e_chirho, counts_chirho);
-                    }
-                    StmtChirho::BindChirho {
-                        expr_chirho: e_chirho,
-                        ..
-                    } => {
-                        walk_expr_chirho(e_chirho, counts_chirho);
-                    }
-                    StmtChirho::LetChirho { binds_chirho, .. } => {
-                        for bind_chirho in binds_chirho {
-                            walk_local_bind_chirho(bind_chirho, counts_chirho);
-                        }
-                    }
-                }
+                walk_stmt_chirho(stmt_chirho, counts_chirho);
             }
         }
         ExprChirho::InfixChirho {
@@ -170,21 +152,25 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
                 .iter()
                 .chain(parallel_quals_chirho.iter().flatten())
             {
-                match stmt_chirho {
-                    StmtChirho::ExprChirho { expr_chirho, .. }
-                    | StmtChirho::BindChirho { expr_chirho, .. } => {
-                        walk_expr_chirho(expr_chirho, counts_chirho);
-                    }
-                    StmtChirho::LetChirho { binds_chirho, .. } => {
-                        for bind_chirho in binds_chirho {
-                            walk_local_bind_chirho(bind_chirho, counts_chirho);
-                        }
-                    }
-                }
+                walk_stmt_chirho(stmt_chirho, counts_chirho);
             }
         }
         // Literals, constructors, wildcards — no variable usage
         _ => {}
+    }
+}
+
+/// A do statement, a comprehension qualifier, or a guard qualifier.
+fn walk_stmt_chirho(stmt_chirho: &StmtChirho, counts_chirho: &mut HashMap<String, usize>) {
+    match stmt_chirho {
+        StmtChirho::ExprChirho { expr_chirho, .. } | StmtChirho::BindChirho { expr_chirho, .. } => {
+            walk_expr_chirho(expr_chirho, counts_chirho);
+        }
+        StmtChirho::LetChirho { binds_chirho, .. } => {
+            for bind_chirho in binds_chirho {
+                walk_local_bind_chirho(bind_chirho, counts_chirho);
+            }
+        }
     }
 }
 
@@ -215,7 +201,9 @@ fn walk_rhs_chirho(
         }
         haskelujah_ast_chirho::expr_chirho::RhsChirho::GuardedChirho(guards_chirho) => {
             for ge_chirho in guards_chirho {
-                walk_expr_chirho(&ge_chirho.guard_chirho, counts_chirho);
+                for qual_chirho in &ge_chirho.quals_chirho {
+                    walk_stmt_chirho(qual_chirho, counts_chirho);
+                }
                 walk_expr_chirho(&ge_chirho.body_chirho, counts_chirho);
             }
         }

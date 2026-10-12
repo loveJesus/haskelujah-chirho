@@ -244,12 +244,12 @@ fn visit_rhs_chirho(rhs_chirho: &mut RhsChirho, walk_chirho: &mut WalkChirho<'_>
         RhsChirho::UnguardedChirho(expr_chirho) => visit_expr_walk_chirho(expr_chirho, walk_chirho),
         RhsChirho::GuardedChirho(guarded_chirho) => {
             for GuardedExprChirho {
-                guard_chirho,
+                quals_chirho,
                 body_chirho,
                 ..
             } in guarded_chirho
             {
-                visit_expr_walk_chirho(guard_chirho, walk_chirho);
+                visit_stmts_chirho(quals_chirho, walk_chirho);
                 visit_expr_walk_chirho(body_chirho, walk_chirho);
             }
         }

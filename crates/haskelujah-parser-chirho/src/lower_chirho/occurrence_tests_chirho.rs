@@ -2,8 +2,8 @@
 
 //! Lowering stamps every occurrence it builds with an origin of its own, and
 //! nothing else. Controls: each reference and operator carries a distinct
-//! origin; a guard fall-through that lowering places twice is distinct in each
-//! place; the knot of a recursive do stamps the references it introduces; the
+//! origin; a guard's fall-through is placed once, not once per qualifier;
+//! the knot of a recursive do stamps the references it introduces; the
 //! module's supply continues past everything lowering minted; binders, types
 //! and other names carry no origin.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
@@ -131,10 +131,10 @@ fn references_and_operators_each_take_their_own_origin_chirho() {
 }
 
 #[test]
-fn a_fall_through_placed_twice_is_two_occurrences_chirho() {
-    // The first guard has two qualifiers, so lowering places the remaining
-    // guards once per failing qualifier. Each copy is checked on its own and
-    // must be identified on its own.
+fn a_fall_through_is_placed_once_chirho() {
+    // The first guard has two qualifiers that can each fail. They stay
+    // qualifiers, so the remaining guard is code in ONE place, with one
+    // origin per occurrence, and no copy is minted for either failure.
     let mut module_chirho = lower_chirho(
         "module Main where\n\
          pickChirho m | Just x <- m, x > 0 = x\n\
@@ -142,11 +142,16 @@ fn a_fall_through_placed_twice_is_two_occurrences_chirho() {
     );
     let stamped_chirho = assert_origins_exactly_at_occurrences_chirho(&mut module_chirho);
     let texts_chirho = texts_chirho(&stamped_chirho);
-    let otherwise_uses_chirho = texts_chirho
-        .iter()
-        .filter(|text_chirho| **text_chirho == "otherwise")
-        .count();
-    assert!(otherwise_uses_chirho >= 2, "{texts_chirho:?}");
+    for once_chirho in ["otherwise", "negate", "m", ">"] {
+        assert_eq!(
+            texts_chirho
+                .iter()
+                .filter(|text_chirho| **text_chirho == once_chirho)
+                .count(),
+            1,
+            "`{once_chirho}` in {texts_chirho:?}"
+        );
+    }
 }
 
 #[test]
