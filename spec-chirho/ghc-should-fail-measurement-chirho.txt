@@ -1,25 +1,27 @@
 # GHC typecheck/should_fail — timed measurement artifact (John 3:16)
 # measured: 2026-10-12 UTC, AFTER a guard arm came to carry its qualifiers (a failing pattern
-#   guard falls through to the next arm and row) and a guard's `let` came to close at its
-#   comma, on top of every match position as rows
+#   guard falls through to the next arm and row), a guard's `let` came to close at its
+#   comma, and every local `let` came to bind its names first through one helper, on top of
+#   every match position as rows
 #   over one single-row matcher, pattern bindings that match the WHOLE pattern on demand,
 #   do-statement operation selection, occurrence provenance for references and the literal
 #   carrier. The companion artifact states what changed and what is not yet covered.
-# code measured: 49ad05fb (HASKELUJAH/claude_chirho, branch let-guards-chirho, pushed as
-#   gh_chirho/let-guards-chirho), stacked on the f0b7ed4c proposal (#26958), itself on the
+# code measured: 4100d02f (HASKELUJAH/claude_chirho, branch local-lets-chirho, pushed as
+#   gh_chirho/local-lets-chirho), stacked on the 0659f642 proposal (#26960), on the
+#   f0b7ed4c proposal (#26958), itself on the
 #   51cc17c6 proposal (#25478/#25480),
 #   itself on the 41eff8f6 proposal (#25474)
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/let-guards-corpus-chirho/haskelujah-6g-chirho
+#   tmp-chirho/local-lets-corpus-chirho/haskelujah-6h-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: 7619a077ffc331a7d4f04b97e28b4e45805d5ba3903b41e0427d757b2fac8b4e
+# CLI SHA256: a70b8eeabfb63fce47cab8051bf111f53b2f6ed71ced0efb9268aa6de6b6415f
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT 49ad05fb, unchanged from main, the repaired rule, with no later tools
+#   COMMITTED AT 4100d02f, unchanged from main, the repaired rule, with no later tools
 #   change to separate from it. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC
 #   (a real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0
 #   and no `error[E`). A panic header has an optional ALL-DIGIT thread id and counts at
@@ -49,7 +51,12 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE THE PROPOSED MEASUREMENT OF a1c70656 (#26958): 236 -> 236, ZERO movement, and
+# CHANGE SINCE THE PROPOSED MEASUREMENT OF 49ad05fb (#26960): 236 -> 236, ZERO movement, and
+#   the same list file for file. Every local `let` now binds its names first, through one
+#   helper (the companion artifact says what that repairs); no verdict on this axis moved.
+#
+# MEASUREMENT OF 49ad05fb (2026-10-12), PROPOSED IN #26960, CHANGE SINCE THE PROPOSED
+#   MEASUREMENT OF a1c70656 (#26958): 236 -> 236, ZERO movement, and
 #   the same list file for file. A guard's `let` now closes at its comma (the companion
 #   artifact says how); no verdict on this axis moved.
 #
@@ -117,7 +124,7 @@
 #   Corrections from gpt_chirho (room #24271), each verified against the replay.
 #   The count is verdict presence, not 235 independently matching GHC reasons.
 # REPLAY OF EVERY REJECTION: all 289 saved REJECT rows (53 accept-axis, 236
-#   reject-axis) were re-run one at a time on the same frozen CLI 7619a077, with stdout,
+#   reject-axis) were re-run one at a time on the same frozen CLI a70b8eea, with stdout,
 #   stderr, exit code and source SHA-256 kept per file. Classified timeout and abnormal
 #   exit first, then a real Rust panic header, and only then `error[E` with exit 1: all
 #   289 are credited rejections, none a timeout, an abnormal exit or a panic. No

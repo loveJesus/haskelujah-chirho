@@ -1,27 +1,29 @@
 # GHC should_compile — timed measurement artifact (John 3:16)
 # measured: 2026-10-12 UTC, AFTER a guard arm came to carry its qualifiers (a failing pattern
-#   guard falls through to the next arm and row) and a guard's `let` came to close at its
-#   comma, on top of every match position as rows
+#   guard falls through to the next arm and row), a guard's `let` came to close at its
+#   comma, and every local `let` came to bind its names first through one helper, on top of
+#   every match position as rows
 #   over one single-row matcher, pattern bindings that match the WHOLE pattern on demand,
 #   do-statement operation selection, occurrence provenance for references and the literal
 #   carrier.
-# code measured: 49ad05fb (HASKELUJAH/claude_chirho, branch let-guards-chirho, pushed as
-#   gh_chirho/let-guards-chirho), stacked on the f0b7ed4c proposal (#26958), itself on the
+# code measured: 4100d02f (HASKELUJAH/claude_chirho, branch local-lets-chirho, pushed as
+#   gh_chirho/local-lets-chirho), stacked on the 0659f642 proposal (#26960), on the
+#   f0b7ed4c proposal (#26958), itself on the
 #   51cc17c6 proposal (#25478/#25480),
 #   itself on the 41eff8f6 proposal (#25474). It carries the do unit, whose own tip
 #   b049713a was measured, proposed and then WITHDRAWN (room #25463, #25467), and the
 #   repair on top of it.
 # build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
 #   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/let-guards-corpus-chirho/haskelujah-6g-chirho
+#   tmp-chirho/local-lets-corpus-chirho/haskelujah-6h-chirho
 #   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: 7619a077ffc331a7d4f04b97e28b4e45805d5ba3903b41e0427d757b2fac8b4e
+# CLI SHA256: a70b8eeabfb63fce47cab8051bf111f53b2f6ed71ced0efb9268aa6de6b6415f
 #   digest asserted unchanged before and after all four corpus passes, and again before
 #   and after the execution set
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT 49ad05fb, unchanged from main (no runner file differs), and the
+#   COMMITTED AT 4100d02f, unchanged from main (no runner file differs), and the
 #   repaired rule, so there is no later tools change to separate from it. Order: TIMEOUT
 #   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
 #   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
@@ -54,7 +56,18 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CHANGE SINCE THE PROPOSED MEASUREMENT OF a1c70656 (#26958): 885 -> 885, ZERO movement, and
+# CHANGE SINCE THE PROPOSED MEASUREMENT OF 49ad05fb (#26960): 885 -> 885, ZERO movement, and
+#   the same list file for file. A do block's `let` and a list comprehension's `let` now go
+#   through the one helper a `let` expression uses: a recursive or forward-referring
+#   function in a do-block `let` crashed on a missing binding, and a comprehension `let`
+#   dropped every pattern binding; invisible to this axis. Gates on 4100d02f: driver library
+#   1831/0, integration 117/0, unit suites green, zero compiler warnings and no clippy lint
+#   on an added line; replay 289/289; execution 28/35 with the same seven failures; 147 of
+#   152 probes match GHC 9.14.1, the five misses all pre-existing. Receipts:
+#   tmp-chirho/local-lets-corpus-chirho/ and tmp-chirho/pattern-guards-chirho/.
+#
+# MEASUREMENT OF 49ad05fb (2026-10-12), PROPOSED IN #26960, CHANGE SINCE THE PROPOSED
+#   MEASUREMENT OF a1c70656 (#26958): 885 -> 885, ZERO movement, and
 #   the same list file for file. A guard's `let` now ends where its bindings do, even on one
 #   line (`| let y = x * 2, y > 10 = y` looped: the layout pass closes an implicit block only
 #   by indentation, so the block ran on over the next qualifier). The parser applies the
@@ -240,7 +253,7 @@
 #   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
 #   depending only on which declaration came first.
 # REPLAY: all 53 failures here, with the other axis's 236 rejections, were re-run one at
-#   a time on the same frozen CLI 7619a077, keeping stdout, stderr, exit code and source
+#   a time on the same frozen CLI a70b8eea, keeping stdout, stderr, exit code and source
 #   SHA256 per file. All 289 are exit 1 carrying `error[E`, and zero carry a panic
 #   header, timeout or abnormal exit; none rests on the bare `panic` substring. Every
 #   rejection is a diagnostic, not a crash.

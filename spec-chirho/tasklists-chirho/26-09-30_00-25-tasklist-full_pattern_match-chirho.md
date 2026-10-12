@@ -180,7 +180,7 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       236/767, twice each, byte-identical, both lists identical to 6f's; replay 289/289;
       execution 28/35, the same seven failures. Both artifacts describe 49ad05fb.
 
-- [ ] 6h. Every local `let` through one helper. Found by probing, identical on the previous tip
+- [x] 6h. Every local `let` through one helper. Found by probing, identical on the previous tip
       and confirmed in main's own source: a recursive or forward-referring function in a do
       block's `let` crashed on a missing binding (the do-let desugared a function's right-hand
       side BEFORE binding its name; even `let go :: Int -> Int; go 0 = 0; go n = ...` in `do`),
@@ -191,7 +191,12 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       5,577 to 5,396 lines). Probes H01-H13 and Q01-Q04 against GHC 9.14.1: all match except
       Q05 (a multi-way `if` pattern guard) and Q06, which now fails for GHC's reason but does not
       stream GHC's partial `[1` first. Controls in eval_letrec_chirho.rs; three mutations, each
-      dropping one re-routed `let`, each caught by its own control.
+      dropping one re-routed `let`, each caught by its own control. Gates on 4100d02f and its
+      frozen CLI a70b8eea: unit suites green, driver library 1831/0, integration 117/0, zero
+      compiler warnings, no clippy lint on an added line; the announced corpus pair (room
+      #26961): 885/938 and 236/767, twice each, byte-identical, both lists identical to 6g's;
+      replay 289/289; execution 28/35, the same seven failures; 147 of 152 probes match GHC.
+      Both artifacts describe 4100d02f.
 
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 
