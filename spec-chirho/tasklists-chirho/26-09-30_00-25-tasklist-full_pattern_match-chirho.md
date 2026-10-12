@@ -198,6 +198,18 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       replay 289/289; execution 28/35, the same seven failures; 147 of 152 probes match GHC.
       Both artifacts describe 4100d02f.
 
+- [ ] 6i. A multi-way `if` gets real guard arms. Its arms were `cond -> e` only, so a pattern
+      guard, a `let` or a second qualifier was rejected (Q05, P20, M02, M03, M07, M10). Branch
+      `multiway-if-chirho`, stacked on 6h: `ExprChirho::MultiWayIfChirho { arms_chirho }`
+      rather than `case () of _ | arms`, because a guarded right-hand side's arms unify their
+      results leniently and TcMultiWayIfFail, rejected today through the strict if-chain,
+      would have become a wrong accept. The arm lookahead no longer stops at a top-level `,`
+      and reads a qualifier's `let` as the parser ends it. The checker's guard typing moved
+      to `infer_chirho/guards_chirho.rs` (one arm routine; lenient arms for a right-hand side,
+      strict for a multi-way if); Template Haskell's `MultiIfE` converts instead of becoming
+      `__TH_UNSUPPORTED__`. M01-M10 and TcMultiWayIfFail match GHC 9.14.1 (two errors, GHC's
+      two). Four controls; three mutations, each caught by its own control.
+
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 
 A row whose guards all fail must fall through to the NEXT row. Ours raises "Non-exhaustive

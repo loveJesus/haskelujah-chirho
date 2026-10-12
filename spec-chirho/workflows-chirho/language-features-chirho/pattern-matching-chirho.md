@@ -64,7 +64,12 @@ flowchart TD
     GUARDS --> JOIN["join_alternatives_chirho\nthe join the rows use"]
 ```
 
-The checker types an arm the same way (`infer_guard_quals_chirho`): its qualifiers in a scope
+A multi-way `if` is the same arms with nowhere to fall to: its parser reads each arm's
+qualifiers as a case alternative's (the arm lookahead reads a qualifier's `let` as the parser
+ends it), and the desugarer gives `desugar_guards_chirho` the failure "Non-exhaustive guards in
+multi-way if".
+
+The checker types an arm the same way (`infer_chirho/guards_chirho.rs`): its qualifiers in a scope
 of the arm's own, a boolean guard checked as an `if` condition is, and a pattern guard bound
 against its source's type as a case alternative is against its scrutinee
 (`bind_pat_against_chirho`, GADT refinement included).
@@ -95,5 +100,6 @@ fails exactly its own control).
 
 Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_match-chirho.md`:
 
-- a pattern guard in a multi-way `if` (`if | Just x <- m -> x`), which has its own lowering and
-  is rejected.
+- nothing in the guard family that the probes found: a multi-way `if`
+  (`ExprChirho::MultiWayIfChirho`) now carries the same guard arms, typed with its arms'
+  results agreeing as an `if`'s branches do and desugared with GHC's own failure text.

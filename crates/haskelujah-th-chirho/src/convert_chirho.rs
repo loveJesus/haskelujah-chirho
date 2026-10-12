@@ -285,6 +285,13 @@ pub fn th_exp_to_ast_chirho(exp_chirho: &ThExpChirho) -> ExprChirho {
                 .collect(),
             span_chirho: TH_SPAN_CHIRHO,
         },
+        ThExpChirho::MultiIfEChirho(arms_chirho) => ExprChirho::MultiWayIfChirho {
+            arms_chirho: arms_chirho
+                .iter()
+                .map(|(g_chirho, e_chirho)| th_guard_arm_chirho(g_chirho, e_chirho))
+                .collect(),
+            span_chirho: TH_SPAN_CHIRHO,
+        },
         ThExpChirho::CondEChirho(cond_chirho, then_chirho, else_chirho) => ExprChirho::IfChirho {
             cond_chirho: Box::new(th_exp_to_ast_chirho(cond_chirho)),
             then_chirho: Box::new(th_exp_to_ast_chirho(then_chirho)),
@@ -406,29 +413,33 @@ fn th_body_to_rhs_chirho(body_chirho: &ThBodyChirho) -> RhsChirho {
         ThBodyChirho::GuardedBChirho(guards_chirho) => RhsChirho::GuardedChirho(
             guards_chirho
                 .iter()
-                .map(|(g_chirho, e_chirho)| {
-                    // `PatG` is a pattern guard: its pattern must match, not be
-                    // dropped with its source read as a boolean.
-                    let qual_chirho = match g_chirho {
-                        ThGuardChirho::NormalGChirho(ge_chirho) => {
-                            StmtChirho::expr_stmt_chirho(th_exp_to_ast_chirho(ge_chirho))
-                        }
-                        ThGuardChirho::PatGChirho(gp_chirho, ge_chirho) => {
-                            StmtChirho::bind_stmt_chirho(
-                                th_pat_to_ast_chirho(gp_chirho),
-                                th_exp_to_ast_chirho(ge_chirho),
-                                TH_SPAN_CHIRHO,
-                            )
-                        }
-                    };
-                    haskelujah_ast_chirho::expr_chirho::GuardedExprChirho {
-                        quals_chirho: vec![qual_chirho],
-                        body_chirho: th_exp_to_ast_chirho(e_chirho),
-                        span_chirho: TH_SPAN_CHIRHO,
-                    }
-                })
+                .map(|(g_chirho, e_chirho)| th_guard_arm_chirho(g_chirho, e_chirho))
                 .collect(),
         ),
+    }
+}
+
+/// One guarded arm, a body's or a multi-way if's.
+fn th_guard_arm_chirho(
+    guard_chirho: &ThGuardChirho,
+    body_chirho: &ThExpChirho,
+) -> haskelujah_ast_chirho::expr_chirho::GuardedExprChirho {
+    // `PatG` is a pattern guard: its pattern must match, not be dropped with its
+    // source read as a boolean.
+    let qual_chirho = match guard_chirho {
+        ThGuardChirho::NormalGChirho(ge_chirho) => {
+            StmtChirho::expr_stmt_chirho(th_exp_to_ast_chirho(ge_chirho))
+        }
+        ThGuardChirho::PatGChirho(gp_chirho, ge_chirho) => StmtChirho::bind_stmt_chirho(
+            th_pat_to_ast_chirho(gp_chirho),
+            th_exp_to_ast_chirho(ge_chirho),
+            TH_SPAN_CHIRHO,
+        ),
+    };
+    haskelujah_ast_chirho::expr_chirho::GuardedExprChirho {
+        quals_chirho: vec![qual_chirho],
+        body_chirho: th_exp_to_ast_chirho(body_chirho),
+        span_chirho: TH_SPAN_CHIRHO,
     }
 }
 

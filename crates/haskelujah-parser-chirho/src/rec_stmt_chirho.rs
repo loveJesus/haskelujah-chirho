@@ -11,7 +11,9 @@
 
 use std::collections::HashMap;
 
-use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, RhsChirho, StmtChirho};
+use haskelujah_ast_chirho::expr_chirho::{
+    ExprChirho, GuardedExprChirho, LocalBindChirho, RhsChirho, StmtChirho,
+};
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
 use haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho;
@@ -247,13 +249,21 @@ fn collect_rhs_references_chirho(rhs_chirho: &RhsChirho, names_chirho: &mut Vec<
             collect_expr_references_chirho(expr_chirho, names_chirho);
         }
         RhsChirho::GuardedChirho(guards_chirho) => {
-            for guard_chirho in guards_chirho {
-                for qual_chirho in &guard_chirho.quals_chirho {
-                    collect_stmt_references_chirho(qual_chirho, names_chirho);
-                }
-                collect_expr_references_chirho(&guard_chirho.body_chirho, names_chirho);
-            }
+            collect_guarded_arm_references_chirho(guards_chirho, names_chirho);
         }
+    }
+}
+
+/// Guarded arms, a right-hand side's or a multi-way if's.
+fn collect_guarded_arm_references_chirho(
+    arms_chirho: &[GuardedExprChirho],
+    names_chirho: &mut Vec<String>,
+) {
+    for guard_chirho in arms_chirho {
+        for qual_chirho in &guard_chirho.quals_chirho {
+            collect_stmt_references_chirho(qual_chirho, names_chirho);
+        }
+        collect_expr_references_chirho(&guard_chirho.body_chirho, names_chirho);
     }
 }
 
@@ -315,6 +325,9 @@ fn collect_expr_references_chirho(expr_chirho: &ExprChirho, names_chirho: &mut V
             collect_expr_references_chirho(cond_chirho, names_chirho);
             collect_expr_references_chirho(then_chirho, names_chirho);
             collect_expr_references_chirho(else_chirho, names_chirho);
+        }
+        ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+            collect_guarded_arm_references_chirho(arms_chirho, names_chirho);
         }
         ExprChirho::CaseChirho {
             scrutinee_chirho,

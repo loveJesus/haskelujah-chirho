@@ -1513,6 +1513,7 @@ impl LowerCtxChirho {
     /// Structure:
     ///   | guard_expr = body_expr
     ///   | pat <- expr, guard_expr = body_expr
+    ///   | quals -> body_expr            (a multi-way if's arm)
     fn lower_guard_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -1532,7 +1533,11 @@ impl LowerCtxChirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho {
                         saw_pipe_chirho = true;
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::EqualsChirho {
+                    } else if matches!(
+                        tok_chirho.kind_chirho(),
+                        // `=` in an equation, `->` in a multi-way if's arm.
+                        TokenKindChirho::EqualsChirho | TokenKindChirho::RightArrowChirho
+                    ) {
                         if !current_qual_parts_chirho.is_empty() {
                             if let Some(qual_chirho) = self
                                 .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
@@ -5583,77 +5588,29 @@ impl LowerCtxChirho {
                     span_chirho,
                 }
             }
-            // MultiWayIf: if | g1 -> e1 | g2 -> e2  →  nested IfChirho
+            // MultiWayIf: if | quals -> e | quals -> e, each arm a guard node
+            // whose qualifiers stay qualifiers.
+            // workflow: language-features-chirho/pattern-matching-chirho
             SyntaxKindChirho::MultiWayIfExprChirho => {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                // Collect (guard, result) pairs from tokens/nodes after `if`
-                let mut guards_chirho: Vec<(ExprChirho, ExprChirho)> = Vec::new();
-                let mut expr_buf_chirho: Vec<ExprChirho> = Vec::new();
-                for child_chirho in &children_chirho {
-                    match child_chirho.element_chirho {
-                        GreenElementChirho::TokenChirho(tok_chirho) => {
-                            let kind_chirho = tok_chirho.kind_chirho();
-                            if kind_chirho == TokenKindChirho::PipeChirho {
-                                // Flush previous pair if we have 2 exprs
-                                if expr_buf_chirho.len() >= 2 {
-                                    let result_chirho = expr_buf_chirho.pop().unwrap();
-                                    let guard_chirho = expr_buf_chirho.pop().unwrap();
-                                    guards_chirho.push((guard_chirho, result_chirho));
-                                }
-                                expr_buf_chirho.clear();
-                            }
-                            // skip if, ->, whitespace, etc.
+                let arms_chirho: Vec<GuardedExprChirho> = children_chirho
+                    .iter()
+                    .filter_map(|child_chirho| match child_chirho.element_chirho {
+                        GreenElementChirho::NodeChirho(n_chirho)
+                            if n_chirho.kind_chirho() == SyntaxKindChirho::GuardChirho =>
+                        {
+                            self.lower_guard_chirho(n_chirho, child_chirho.start_chirho)
                         }
-                        GreenElementChirho::NodeChirho(n_chirho) => {
-                            if is_expr_kind_chirho(n_chirho.kind_chirho()) {
-                                expr_buf_chirho.push(
-                                    self.lower_expr_chirho(n_chirho, child_chirho.start_chirho),
-                                );
-                            }
-                        }
-                    }
-                }
-                // Flush last pair
-                if expr_buf_chirho.len() >= 2 {
-                    let result_chirho = expr_buf_chirho.pop().unwrap();
-                    let guard_chirho = expr_buf_chirho.pop().unwrap();
-                    guards_chirho.push((guard_chirho, result_chirho));
-                }
-
-                // Build nested if-then-else from end
-                if guards_chirho.is_empty() {
+                        _ => None,
+                    })
+                    .collect();
+                if arms_chirho.is_empty() {
                     self.placeholder_expr_chirho()
                 } else {
-                    // Start with the last guard pair; use error as else for non-exhaustive
-                    let (last_guard_chirho, last_result_chirho) = guards_chirho.pop().unwrap();
-                    let mut acc_chirho = ExprChirho::IfChirho {
-                        cond_chirho: Box::new(last_guard_chirho),
-                        then_chirho: Box::new(last_result_chirho),
-                        else_chirho: Box::new(ExprChirho::AppChirho {
-                            fun_chirho: Box::new(self.reference_expr_chirho(
-                                NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                                    "error",
-                                    span_chirho,
-                                )),
-                            )),
-                            arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::StringChirho(
-                                "Non-exhaustive guards in multi-way if".into(),
-                                span_chirho,
-                                Some(self.fresh_origin_chirho()),
-                            ))),
-                            span_chirho,
-                        }),
+                    ExprChirho::MultiWayIfChirho {
+                        arms_chirho,
                         span_chirho,
-                    };
-                    for (guard_chirho, result_chirho) in guards_chirho.into_iter().rev() {
-                        acc_chirho = ExprChirho::IfChirho {
-                            cond_chirho: Box::new(guard_chirho),
-                            then_chirho: Box::new(result_chirho),
-                            else_chirho: Box::new(acc_chirho),
-                            span_chirho,
-                        };
                     }
-                    acc_chirho
                 }
             }
             SyntaxKindChirho::CaseExprChirho => {
@@ -9488,25 +9445,37 @@ mod tests_chirho {
                 );
             }
             RhsChirho::GuardedChirho(guards_chirho) => {
-                for (guard_idx_chirho, guard_chirho) in guards_chirho.iter().enumerate() {
-                    for (qual_idx_chirho, qual_chirho) in
-                        guard_chirho.quals_chirho.iter().enumerate()
-                    {
-                        collect_placeholder_expr_paths_in_stmt_chirho(
-                            qual_chirho,
-                            &format!(
-                                "{path_prefix_chirho}.guard[{guard_idx_chirho}].qual[{qual_idx_chirho}]"
-                            ),
-                            paths_chirho,
-                        );
-                    }
-                    collect_placeholder_expr_paths_in_expr_chirho(
-                        &guard_chirho.body_chirho,
-                        &format!("{path_prefix_chirho}.body[{guard_idx_chirho}]"),
-                        paths_chirho,
-                    );
-                }
+                collect_placeholder_expr_paths_in_arms_chirho(
+                    guards_chirho,
+                    path_prefix_chirho,
+                    paths_chirho,
+                );
             }
+        }
+    }
+
+    /// Guarded arms, a right-hand side's or a multi-way if's:
+    /// `{prefix}.guard[i].qual[j]` and `{prefix}.body[i]`.
+    fn collect_placeholder_expr_paths_in_arms_chirho(
+        arms_chirho: &[GuardedExprChirho],
+        path_prefix_chirho: &str,
+        paths_chirho: &mut Vec<String>,
+    ) {
+        for (guard_idx_chirho, guard_chirho) in arms_chirho.iter().enumerate() {
+            for (qual_idx_chirho, qual_chirho) in guard_chirho.quals_chirho.iter().enumerate() {
+                collect_placeholder_expr_paths_in_stmt_chirho(
+                    qual_chirho,
+                    &format!(
+                        "{path_prefix_chirho}.guard[{guard_idx_chirho}].qual[{qual_idx_chirho}]"
+                    ),
+                    paths_chirho,
+                );
+            }
+            collect_placeholder_expr_paths_in_expr_chirho(
+                &guard_chirho.body_chirho,
+                &format!("{path_prefix_chirho}.body[{guard_idx_chirho}]"),
+                paths_chirho,
+            );
         }
     }
 
@@ -9685,6 +9654,13 @@ mod tests_chirho {
                 collect_placeholder_expr_paths_in_expr_chirho(
                     else_chirho,
                     &format!("{path_prefix_chirho}.else"),
+                    paths_chirho,
+                );
+            }
+            ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+                collect_placeholder_expr_paths_in_arms_chirho(
+                    arms_chirho,
+                    &format!("{path_prefix_chirho}.multiway"),
                     paths_chirho,
                 );
             }

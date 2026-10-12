@@ -2340,6 +2340,14 @@ impl DesugarCtxChirho {
                 body_chirho: Box::new(self.desugar_expr_chirho(body_chirho)),
             },
 
+            // A multi-way if is guarded arms with nowhere to fall to.
+            // workflow: language-features-chirho/pattern-matching-chirho
+            ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+                let failure_chirho =
+                    self.case_failure_chirho("Non-exhaustive guards in multi-way if");
+                self.desugar_guards_chirho(arms_chirho, Some(&failure_chirho))
+            }
+
             ExprChirho::IfChirho {
                 cond_chirho,
                 then_chirho,

@@ -18,7 +18,7 @@ use haskelujah_span_chirho::SourceMapChirho;
 /// Run a module and return what it printed, or why it failed.
 fn run_chirho(body_chirho: &str) -> Result<String, String> {
     let source_chirho = format!(
-        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{{-# LANGUAGE BangPatterns, LambdaCase #-}}\nmodule Main where\n{body_chirho}\n"
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{{-# LANGUAGE BangPatterns, LambdaCase, MultiWayIf #-}}\nmodule Main where\n{body_chirho}\n"
     );
     eval_source_with_machine_chirho(
         &source_chirho,
@@ -483,4 +483,72 @@ fn a_one_line_let_guard_ends_at_its_comma_chirho() {
         ),
         "(51,0,0)\n"
     );
+}
+
+// Multi-way if (brick 6i): its arms are guard arms, qualifiers and all. The
+// previous tip parsed each arm as `cond -> e` only, so a pattern guard, a `let`
+// or a second qualifier was rejected. Expectations are GHC 9.14.1's (M01-M10).
+
+#[test]
+fn a_multiway_if_arm_has_qualifiers_chirho() {
+    // M02 (a pattern guard), M07 (two qualifiers), M03 (a one-line `let`),
+    // M10 (all three, falling to later arms).
+    assert_eq!(
+        prints_chirho(
+            "main :: IO ()\nmain = mapM_ (\\m -> print (if | Just x <- m, x > 0 -> x | otherwise -> (0 :: Int))) [Just 3, Just (-1), Nothing]"
+        ),
+        "3\n0\n0\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> String\nfChirho x = if | x > 0, even x -> \"pos even\" | x > 0 -> \"pos odd\" | otherwise -> \"non-pos\"\nmain :: IO ()\nmain = mapM_ (putStrLn . fChirho) [4, 3, 0]"
+        ),
+        "pos even\npos odd\nnon-pos\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> Int\nfChirho x = if | let y = x * 2, y > 10 -> y | otherwise -> 0\nmain :: IO ()\nmain = print (fChirho 3, fChirho 7)"
+        ),
+        "(0,14)\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Maybe (Int, Int) -> Int\nfChirho m = if | Just (a, b) <- m, let s = a + b, s > 10 -> s\n               | Just (a, _) <- m -> a\n               | otherwise -> 0\nmain :: IO ()\nmain = print (map fChirho [Just (6, 7), Just (1, 2), Nothing])"
+        ),
+        "[13,1,0]\n"
+    );
+}
+
+#[test]
+fn a_multiway_if_inside_an_outer_guard_leaves_it_alone_chirho() {
+    // M05: the outer `| otherwise = ...` reaches `=` first, so it is the
+    // equation's guard and not another arm.
+    assert_eq!(
+        prints_chirho(
+            "fChirho :: Int -> String\nfChirho x\n  | x > 0 = if | x > 10 -> \"big\" | otherwise -> \"small\"\n  | otherwise = \"neg\"\nmain :: IO ()\nmain = mapM_ (putStrLn . fChirho) [20, 5, -1]"
+        ),
+        "big\nsmall\nneg\n"
+    );
+}
+
+#[test]
+fn a_multiway_if_with_no_arm_left_fails_chirho() {
+    // M04: GHC fails and prints nothing.
+    let failure_chirho = fails_chirho(
+        "fChirho :: Int -> Int\nfChirho x = if | x > 100 -> 1 | x < -100 -> 2\nmain :: IO ()\nmain = print (fChirho 5)",
+    );
+    assert!(
+        failure_chirho.contains("Non-exhaustive guards in multi-way if"),
+        "{failure_chirho}"
+    );
+}
+
+#[test]
+fn multiway_if_arms_must_agree_chirho() {
+    // TcMultiWayIfFail's shape: GHC rejects both later arms. Unlike a guarded
+    // right-hand side's, a multi-way if's arms are an `if`'s branches.
+    let failure_chirho = fails_chirho(
+        "xChirho :: Int\nxChirho = if | True -> 1 :: Int\n             | False -> \"2\"\n             | otherwise -> [3 :: Int]\nmain :: IO ()\nmain = print xChirho",
+    );
+    assert!(failure_chirho.contains("type mismatch"), "{failure_chirho}");
 }

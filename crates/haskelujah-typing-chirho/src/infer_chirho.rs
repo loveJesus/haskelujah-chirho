@@ -37,6 +37,7 @@ mod ast_conversion_tests_chirho;
 mod do_operations_chirho;
 mod equalities_chirho;
 mod evidence_chirho;
+mod guards_chirho;
 mod instance_obligations_chirho;
 mod records_chirho;
 mod rigid_chirho;
@@ -3332,6 +3333,10 @@ impl InferCtxChirho {
                 )
             }
 
+            ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+                self.infer_multiway_if_chirho(arms_chirho, None)
+            }
+
             ExprChirho::IfChirho {
                 cond_chirho,
                 then_chirho,
@@ -4703,136 +4708,7 @@ impl InferCtxChirho {
         match rhs_chirho {
             RhsChirho::UnguardedChirho(expr_chirho) => self.infer_expr_chirho(expr_chirho),
             RhsChirho::GuardedChirho(guarded_chirho) => {
-                let mut subst_chirho = SubstChirho::empty_chirho();
-                let mut result_ty_chirho: Option<TyChirho> = None;
-                for guard_expr_chirho in guarded_chirho {
-                    // The arm's own scope: what its qualifiers bind is visible
-                    // to the later qualifiers and the body, and nowhere else.
-                    self.env_chirho.push_scope_chirho();
-                    self.infer_guard_quals_chirho(
-                        &guard_expr_chirho.quals_chirho,
-                        guard_expr_chirho.span_chirho,
-                        &mut subst_chirho,
-                    );
-
-                    let (body_subst_chirho, body_ty_chirho) =
-                        self.infer_expr_chirho(&guard_expr_chirho.body_chirho);
-                    subst_chirho = body_subst_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&body_subst_chirho);
-                    let body_ty_sub_chirho = subst_chirho.apply_ty_chirho(&body_ty_chirho);
-                    if let Some(existing_ty_chirho) = &result_ty_chirho {
-                        if let Ok(result_subst_chirho) = self.unify_normalized_chirho(
-                            &subst_chirho.apply_ty_chirho(existing_ty_chirho),
-                            &body_ty_sub_chirho,
-                            guard_expr_chirho.span_chirho,
-                        ) {
-                            subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&result_subst_chirho);
-                        }
-                    } else {
-                        result_ty_chirho = Some(body_ty_sub_chirho);
-                    }
-                    self.env_chirho.pop_scope_chirho();
-                }
-                let final_ty_chirho = result_ty_chirho
-                    .map(|ty_chirho| subst_chirho.apply_ty_chirho(&ty_chirho))
-                    .unwrap_or_else(|| self.fresh_var_chirho());
-                (subst_chirho, final_ty_chirho)
-            }
-        }
-    }
-
-    /// A guarded arm's qualifiers, in order, in the CURRENT scope (the caller
-    /// opens the arm's own): a boolean guard is a `Bool`, checked as an `if`
-    /// condition is; a pattern guard binds its pattern against its source's
-    /// type exactly as a case alternative binds against its scrutinee; a `let`
-    /// binds locally. Each one's bindings reach the qualifiers after it and the
-    /// body.
-    /// workflow: language-features-chirho/pattern-matching-chirho
-    fn infer_guard_quals_chirho(
-        &mut self,
-        quals_chirho: &[StmtChirho],
-        span_chirho: SpanChirho,
-        subst_chirho: &mut SubstChirho,
-    ) {
-        for qual_chirho in quals_chirho {
-            match qual_chirho {
-                StmtChirho::ExprChirho { expr_chirho, .. } => {
-                    let (guard_subst_chirho, guard_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                    *subst_chirho = guard_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&guard_subst_chirho);
-                    let guard_ty_sub_chirho = subst_chirho.apply_ty_chirho(&guard_ty_chirho);
-                    match self.unify_normalized_chirho(
-                        &guard_ty_sub_chirho,
-                        &TyChirho::bool_chirho(),
-                        span_chirho,
-                    ) {
-                        Ok(bool_subst_chirho) => {
-                            *subst_chirho = bool_subst_chirho.compose_chirho(subst_chirho);
-                            self.apply_subst_all_chirho(&bool_subst_chirho);
-                            self.report_deferred_numeric_bool_predicates_chirho();
-                        }
-                        Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
-                    }
-                }
-                StmtChirho::BindChirho {
-                    pat_chirho,
-                    expr_chirho,
-                    ..
-                } => {
-                    let (source_subst_chirho, source_ty_chirho) =
-                        self.infer_expr_chirho(expr_chirho);
-                    *subst_chirho = source_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&source_subst_chirho);
-                    self.bind_pat_against_chirho(
-                        pat_chirho,
-                        &source_ty_chirho,
-                        span_chirho,
-                        subst_chirho,
-                    );
-                }
-                StmtChirho::LetChirho { binds_chirho, .. } => {
-                    self.infer_local_binds_chirho(binds_chirho, subst_chirho);
-                }
-            }
-        }
-    }
-
-    /// Bind `pat_chirho` against the type of what it matches, in the current
-    /// scope: a case alternative against its scrutinee, a pattern guard against
-    /// its source. The pattern's type is unified with the scrutinee's; when they
-    /// differ, a GADT pattern may refine the scrutinee instead.
-    /// workflow: language-features-chirho/pattern-matching-chirho
-    fn bind_pat_against_chirho(
-        &mut self,
-        pat_chirho: &PatChirho,
-        scrut_ty_chirho: &TyChirho,
-        span_chirho: SpanChirho,
-        subst_chirho: &mut SubstChirho,
-    ) {
-        let pat_ty_chirho = self.fresh_var_chirho();
-        let pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &pat_ty_chirho);
-        *subst_chirho = pat_subst_chirho.compose_chirho(subst_chirho);
-        self.apply_subst_all_chirho(&pat_subst_chirho);
-
-        let pat_ty_sub_chirho = subst_chirho.apply_ty_chirho(&pat_ty_chirho);
-        let scrut_ty_sub_chirho = subst_chirho.apply_ty_chirho(scrut_ty_chirho);
-        match self.unify_normalized_chirho(&pat_ty_sub_chirho, &scrut_ty_sub_chirho, span_chirho) {
-            Ok(unify_subst_chirho) => {
-                *subst_chirho = unify_subst_chirho.compose_chirho(subst_chirho);
-                self.apply_subst_all_chirho(&unify_subst_chirho);
-            }
-            Err(err_chirho) => {
-                if let Some(unify_subst_chirho) = self.refine_scrutinee_by_pattern_chirho(
-                    pat_chirho,
-                    &pat_ty_sub_chirho,
-                    &scrut_ty_sub_chirho,
-                ) {
-                    *subst_chirho = unify_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&unify_subst_chirho);
-                } else {
-                    self.report_unify_error_chirho(&err_chirho);
-                }
+                self.infer_guard_arms_chirho(guarded_chirho)
             }
         }
     }
@@ -5704,6 +5580,13 @@ impl InferCtxChirho {
                 }
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(&normalized_expected_chirho);
                 (subst_chirho, final_ty_chirho)
+            }
+            // As for `if`: polymorphic arm results need bidirectional checking.
+            // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+            ExprChirho::MultiWayIfChirho { arms_chirho, .. }
+                if Self::contains_polymorphic_component_chirho(expected_ty_chirho) =>
+            {
+                self.infer_multiway_if_chirho(arms_chirho, Some(expected_ty_chirho))
             }
             ExprChirho::IfChirho {
                 cond_chirho,
@@ -7685,6 +7568,9 @@ fn collect_expr_refs_chirho(
             collect_expr_refs_chirho(then_chirho, refs_chirho);
             collect_expr_refs_chirho(else_chirho, refs_chirho);
         }
+        ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+            collect_guarded_arm_refs_chirho(arms_chirho, refs_chirho);
+        }
         ExprChirho::CaseChirho {
             scrutinee_chirho,
             alts_chirho,
@@ -7839,13 +7725,21 @@ fn collect_rhs_refs_chirho(
             collect_expr_refs_chirho(expr_chirho, refs_chirho)
         }
         RhsChirho::GuardedChirho(arms_chirho) => {
-            for ge_chirho in arms_chirho {
-                for qual_chirho in &ge_chirho.quals_chirho {
-                    collect_stmt_refs_chirho(qual_chirho, refs_chirho);
-                }
-                collect_expr_refs_chirho(&ge_chirho.body_chirho, refs_chirho);
-            }
+            collect_guarded_arm_refs_chirho(arms_chirho, refs_chirho)
         }
+    }
+}
+
+/// Guarded arms, a right-hand side's or a multi-way if's.
+fn collect_guarded_arm_refs_chirho(
+    arms_chirho: &[haskelujah_ast_chirho::expr_chirho::GuardedExprChirho],
+    refs_chirho: &mut std::collections::HashSet<String>,
+) {
+    for ge_chirho in arms_chirho {
+        for qual_chirho in &ge_chirho.quals_chirho {
+            collect_stmt_refs_chirho(qual_chirho, refs_chirho);
+        }
+        collect_expr_refs_chirho(&ge_chirho.body_chirho, refs_chirho);
     }
 }
 

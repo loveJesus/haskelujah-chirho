@@ -2226,38 +2226,72 @@ impl<'src> ParserChirho<'src> {
     // Where blocks
     // -----------------------------------------------------------------------
 
-    /// Lookahead: after the current `|` token, scan for `->` before `=`,
-    /// `,`, or another `|` at the top level.  Returns `true` when the `|`
-    /// looks like a MultiWayIf alternative (`| cond -> result`), `false`
-    /// when it looks like an outer guard (`| guard = rhs` or `| guard, ...`).
+    /// Lookahead: after the current `|` token, scan for `->` before `=` or
+    /// another `|` at the top level. Returns `true` when the `|` looks like a
+    /// MultiWayIf arm (`| quals -> result`), `false` when it looks like an
+    /// outer guard (`| guard = rhs`). A top-level `,` separates qualifiers in
+    /// either, so it decides nothing; an outer guard still reaches its `=`.
     fn scan_multiway_if_alt_has_arrow_chirho(&self) -> bool {
         let mut i_chirho = self.pos_chirho + 1; // skip the current `|`
         let mut paren_depth_chirho = 0u32;
         let mut bracket_depth_chirho = 0u32;
         let mut brace_depth_chirho = 0u32;
+        // A qualifier's `let` ends at its `,` or the arm's `->`, as the parser
+        // ends it (guard_let_chirho.rs). Until then its bindings' `=` is not an
+        // outer guard's, a comma inside one of its bindings' own guards is that
+        // binding's, and the layout pass's later close of a block ended early is
+        // owed, not a scope boundary.
+        let mut let_depth_chirho = 0u32;
+        let mut binding_guard_chirho = false;
+        let mut owed_closes_chirho = 0u32;
+        let mut previous_kind_chirho = None;
 
         while i_chirho < self.tokens_chirho.len() {
             let kind_chirho = self.tokens_chirho[i_chirho].kind_chirho;
+            let top_chirho =
+                paren_depth_chirho == 0 && bracket_depth_chirho == 0 && brace_depth_chirho == 0;
             match kind_chirho {
-                RawTokenKindChirho::RightArrowChirho
-                    if paren_depth_chirho == 0
-                        && bracket_depth_chirho == 0
-                        && brace_depth_chirho == 0 =>
+                RawTokenKindChirho::VirtualLeftBraceChirho
+                    if top_chirho
+                        && previous_kind_chirho == Some(RawTokenKindChirho::LetChirho) =>
                 {
+                    let_depth_chirho += 1;
+                }
+                RawTokenKindChirho::VirtualRightBraceChirho
+                    if top_chirho && (let_depth_chirho > 0 || owed_closes_chirho > 0) =>
+                {
+                    if let_depth_chirho > 0 {
+                        // Closed by indentation: the multi-line form.
+                        let_depth_chirho -= 1;
+                        binding_guard_chirho = false;
+                    } else {
+                        owed_closes_chirho -= 1;
+                    }
+                }
+                RawTokenKindChirho::PipeChirho if top_chirho && let_depth_chirho > 0 => {
+                    binding_guard_chirho = true;
+                }
+                RawTokenKindChirho::EqualsChirho if top_chirho && let_depth_chirho > 0 => {
+                    binding_guard_chirho = false;
+                }
+                RawTokenKindChirho::CommaChirho
+                    if top_chirho && let_depth_chirho > 0 && !binding_guard_chirho =>
+                {
+                    let_depth_chirho -= 1;
+                    owed_closes_chirho += 1;
+                }
+                RawTokenKindChirho::VirtualSemicolonChirho
+                    if top_chirho && let_depth_chirho > 0 =>
+                {
+                    // The `let`'s next binding.
+                }
+                RawTokenKindChirho::RightArrowChirho if top_chirho => {
                     return true;
                 }
-                RawTokenKindChirho::EqualsChirho | RawTokenKindChirho::CommaChirho
-                    if paren_depth_chirho == 0
-                        && bracket_depth_chirho == 0
-                        && brace_depth_chirho == 0 =>
-                {
+                RawTokenKindChirho::EqualsChirho if top_chirho => {
                     return false;
                 }
-                RawTokenKindChirho::PipeChirho
-                    if paren_depth_chirho == 0
-                        && bracket_depth_chirho == 0
-                        && brace_depth_chirho == 0 =>
-                {
+                RawTokenKindChirho::PipeChirho if top_chirho => {
                     // Another top-level `|` before any `->` or `=`;
                     // ambiguous, but assume this one is also a MultiWayIf alt.
                     return true;
@@ -2281,16 +2315,15 @@ impl<'src> ParserChirho<'src> {
                     }
                     brace_depth_chirho -= 1;
                 }
-                RawTokenKindChirho::VirtualSemicolonChirho
-                    if paren_depth_chirho == 0
-                        && bracket_depth_chirho == 0
-                        && brace_depth_chirho == 0 =>
-                {
+                RawTokenKindChirho::VirtualSemicolonChirho if top_chirho => {
                     // Layout semicolons at top level indicate we've left the
                     // MultiWayIf context.
                     return false;
                 }
                 _ => {}
+            }
+            if !kind_chirho.is_trivia_chirho() {
+                previous_kind_chirho = Some(kind_chirho);
             }
             i_chirho += 1;
         }
@@ -3204,32 +3237,33 @@ impl<'src> ParserChirho<'src> {
                 .start_node_chirho(SyntaxKindChirho::MultiWayIfExprChirho);
             self.bump_chirho(); // if
             self.eat_trivia_chirho();
-            // Parse guards: | cond -> expr
+            // Arms: `| quals -> expr`, each a guard node as an equation's
+            // guards are, its qualifiers parsed as a case alternative's.
             // Only consume `|` if lookahead confirms it is followed by
-            // `expr ->` (a MultiWayIf alt).  A `|` followed by `expr =`
-            // or `expr ,` belongs to an outer guard equation.
+            // `quals ->` (a MultiWayIf arm). A `|` whose qualifiers reach
+            // `=` first belongs to an outer guard equation.
+            // workflow: language-features-chirho/pattern-matching-chirho
             while self.at_chirho(RawTokenKindChirho::PipeChirho)
                 && self.scan_multiway_if_alt_has_arrow_chirho()
             {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::GuardChirho);
                 self.bump_chirho(); // |
                 self.eat_trivia_chirho();
-                // Parse guard condition
-                self.parse_expr_chirho();
-                self.eat_trivia_chirho();
-                // Expect -> ; if missing, this `|` is not a MultiWayIf alt
+                self.parse_guard_expr_case_chirho();
+                // Expect -> ; if missing, this `|` is not a MultiWayIf arm
                 // (it may be an outer guard pipe that was consumed by mistake).
-                if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
+                let is_arm_chirho = self.at_chirho(RawTokenKindChirho::RightArrowChirho);
+                if is_arm_chirho {
                     self.bump_chirho();
                     self.eat_trivia_chirho();
-                } else {
-                    // Not a MultiWayIf alt — stop consuming.  The parser
-                    // already bumped the `|` and parsed the condition expr,
-                    // so we leave them in the tree as-is and break.
+                    self.parse_expr_chirho();
+                    self.eat_trivia_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
+                if !is_arm_chirho {
                     break;
                 }
-                // Parse result expression
-                self.parse_expr_chirho();
-                self.eat_trivia_chirho();
             }
             self.builder_chirho.finish_node_chirho();
             return;

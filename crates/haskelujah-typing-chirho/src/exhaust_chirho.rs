@@ -367,13 +367,21 @@ impl<'a> ExhaustCheckerChirho<'a> {
         match rhs_chirho {
             RhsChirho::UnguardedChirho(expr_chirho) => self.check_expr_chirho(expr_chirho),
             RhsChirho::GuardedChirho(guards_chirho) => {
-                for g_chirho in guards_chirho {
-                    for qual_chirho in &g_chirho.quals_chirho {
-                        self.check_stmt_chirho(qual_chirho);
-                    }
-                    self.check_expr_chirho(&g_chirho.body_chirho);
-                }
+                self.check_guarded_arms_chirho(guards_chirho)
             }
+        }
+    }
+
+    /// Guarded arms, a right-hand side's or a multi-way if's.
+    fn check_guarded_arms_chirho(
+        &mut self,
+        arms_chirho: &[haskelujah_ast_chirho::expr_chirho::GuardedExprChirho],
+    ) {
+        for g_chirho in arms_chirho {
+            for qual_chirho in &g_chirho.quals_chirho {
+                self.check_stmt_chirho(qual_chirho);
+            }
+            self.check_expr_chirho(&g_chirho.body_chirho);
         }
     }
 
@@ -438,6 +446,9 @@ impl<'a> ExhaustCheckerChirho<'a> {
                 self.check_expr_chirho(cond_chirho);
                 self.check_expr_chirho(then_chirho);
                 self.check_expr_chirho(else_chirho);
+            }
+            ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+                self.check_guarded_arms_chirho(arms_chirho);
             }
             ExprChirho::DoChirho { stmts_chirho, .. } => {
                 for stmt_chirho in stmts_chirho {

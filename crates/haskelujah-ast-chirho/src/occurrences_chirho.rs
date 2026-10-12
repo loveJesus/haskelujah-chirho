@@ -243,16 +243,25 @@ fn visit_rhs_chirho(rhs_chirho: &mut RhsChirho, walk_chirho: &mut WalkChirho<'_>
     match rhs_chirho {
         RhsChirho::UnguardedChirho(expr_chirho) => visit_expr_walk_chirho(expr_chirho, walk_chirho),
         RhsChirho::GuardedChirho(guarded_chirho) => {
-            for GuardedExprChirho {
-                quals_chirho,
-                body_chirho,
-                ..
-            } in guarded_chirho
-            {
-                visit_stmts_chirho(quals_chirho, walk_chirho);
-                visit_expr_walk_chirho(body_chirho, walk_chirho);
-            }
+            visit_guarded_arms_chirho(guarded_chirho, walk_chirho);
         }
+    }
+}
+
+/// Guarded arms, a right-hand side's or a multi-way if's: each arm's
+/// qualifiers, then its body.
+fn visit_guarded_arms_chirho(
+    arms_chirho: &mut [GuardedExprChirho],
+    walk_chirho: &mut WalkChirho<'_>,
+) {
+    for GuardedExprChirho {
+        quals_chirho,
+        body_chirho,
+        ..
+    } in arms_chirho
+    {
+        visit_stmts_chirho(quals_chirho, walk_chirho);
+        visit_expr_walk_chirho(body_chirho, walk_chirho);
     }
 }
 
@@ -400,6 +409,9 @@ pub fn visit_expr_walk_chirho(expr_chirho: &mut ExprChirho, walk_chirho: &mut Wa
             visit_expr_walk_chirho(cond_chirho, walk_chirho);
             visit_expr_walk_chirho(then_chirho, walk_chirho);
             visit_expr_walk_chirho(else_chirho, walk_chirho);
+        }
+        ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+            visit_guarded_arms_chirho(arms_chirho, walk_chirho);
         }
         ExprChirho::CaseChirho {
             scrutinee_chirho,

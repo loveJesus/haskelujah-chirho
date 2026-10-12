@@ -74,6 +74,9 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
             walk_expr_chirho(then_chirho, counts_chirho);
             walk_expr_chirho(else_chirho, counts_chirho);
         }
+        ExprChirho::MultiWayIfChirho { arms_chirho, .. } => {
+            walk_guarded_arms_chirho(arms_chirho, counts_chirho);
+        }
         ExprChirho::CaseChirho {
             scrutinee_chirho,
             alts_chirho,
@@ -200,13 +203,21 @@ fn walk_rhs_chirho(
             walk_expr_chirho(e_chirho, counts_chirho);
         }
         haskelujah_ast_chirho::expr_chirho::RhsChirho::GuardedChirho(guards_chirho) => {
-            for ge_chirho in guards_chirho {
-                for qual_chirho in &ge_chirho.quals_chirho {
-                    walk_stmt_chirho(qual_chirho, counts_chirho);
-                }
-                walk_expr_chirho(&ge_chirho.body_chirho, counts_chirho);
-            }
+            walk_guarded_arms_chirho(guards_chirho, counts_chirho);
         }
+    }
+}
+
+/// Guarded arms, a right-hand side's or a multi-way if's.
+fn walk_guarded_arms_chirho(
+    arms_chirho: &[haskelujah_ast_chirho::expr_chirho::GuardedExprChirho],
+    counts_chirho: &mut HashMap<String, usize>,
+) {
+    for ge_chirho in arms_chirho {
+        for qual_chirho in &ge_chirho.quals_chirho {
+            walk_stmt_chirho(qual_chirho, counts_chirho);
+        }
+        walk_expr_chirho(&ge_chirho.body_chirho, counts_chirho);
     }
 }
 

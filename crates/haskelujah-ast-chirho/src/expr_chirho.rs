@@ -94,6 +94,16 @@ pub enum ExprChirho {
         /// Span covering the whole conditional expression.
         span_chirho: SpanChirho,
     },
+    /// Multi-way if (`if | quals -> e | quals -> e`, MultiWayIf): guarded arms
+    /// exactly as a guarded right-hand side has them, tried in order. Their
+    /// results are one type, as an `if`'s branches are; when every arm fails,
+    /// "Non-exhaustive guards in multi-way if".
+    MultiWayIfChirho {
+        /// The arms, in source order.
+        arms_chirho: Vec<GuardedExprChirho>,
+        /// Span covering the whole expression.
+        span_chirho: SpanChirho,
+    },
     /// Case expression (`case e of { alts }`).
     CaseChirho {
         /// Expression being scrutinized.
@@ -433,6 +443,7 @@ impl ExprChirho {
             | Self::TypeLamChirho { span_chirho, .. }
             | Self::LetChirho { span_chirho, .. }
             | Self::IfChirho { span_chirho, .. }
+            | Self::MultiWayIfChirho { span_chirho, .. }
             | Self::CaseChirho { span_chirho, .. }
             | Self::DoChirho { span_chirho, .. }
             | Self::TupleChirho { span_chirho, .. }
