@@ -21,8 +21,9 @@ method's type variables were flexible. GHC 9.14.1 rejects each of these programs
 
 ## Bricks
 
-Source checkpoint 1 is written and NOT yet built (claude2_chirho holds the builder for the
-if-condition unit); every [x] below is "written", not "measured".
+Built under claude_chirho's named builder lease (handed over by claude2_chirho after the
+if-condition unit). Bricks 1-5 are built and their controls pass on the unmerged candidate;
+brick 6 lists what is measured and what is still to run.
 
 - [x] 1. Placement: the instance-method check moved whole from `infer_chirho.rs` (-158 lines)
       into `infer_chirho/instance_obligations_chirho.rs`.
@@ -44,9 +45,22 @@ if-condition unit); every [x] below is "written", not "measured".
       only the leftover verdict; built-in and imported classes keep flexible method quantifiers
       (A01-A04: their seed metadata needs repair first); the class's own predicate stays a given
       (recursion; A08 belongs to the superclass-obligation unit).
-- [x] 5. Controls written (tests/instance_obligations_chirho.rs): M01, M02, M04, M05, V01, V02, V08,
-      A05, A06 and both isolation canaries rejected; V03, V04, V07 run with GHC's output; V05,
-      V06, A03, A04, A07, A09 and the own-context method accepted. Not yet run.
-- [ ] 6. Build under a named builder lease (after claude2's if-condition unit), focused gates,
-      one mutation per rule, the two-pass corpus pair; every accept-axis loss traced and
-      dispositioned.
+- [x] 3c. Evidence stays main's. The first build failed V04 at runtime ("missing STG binding
+      `==`"): `==` resolved to the rigid `a` and was keyed as the binding's own dictionary
+      parameter (`$own`), which an instance method does not have. The skolems the check makes
+      are recorded, and `own_parameter_key_chirho` keys them open at both evidence sites
+      (reference keys and method-occurrence records), as the flexible variables were. The
+      method's Core and every runtime control now equal main's (frozen main 9986576b).
+- [x] 5. Controls (tests/instance_obligations_chirho.rs), 21 passing: M01, M02, M04, M05, V01,
+      V02, V08, a built-in `show` method, A06, A11 and both isolation canaries rejected; V03,
+      V04, V07 run with GHC's output; V05, V06, A03, A04, A07, A09 and the own-context method
+      accepted. A05 (`showsPrec`, absent from the seeded `Show`) stays a known miss.
+- [ ] 6. Gates under the named builder lease: the 36 probes (done: the candidate's verdicts
+      equal 43a2e0b4's; DIFFs are A01/A02 built-in quantifiers, A05, A08 superclass
+      obligation, A10 a solver gap shared with top-level signatures), merge of main 6e543a02,
+      focused gates on the combined build, one mutation per rule, the two-pass corpus pair;
+      every accept-axis loss traced and dispositioned.
+- [ ] 7. Proposed next unit, not this one: thread the instance context's dictionaries into
+      instance methods (dictionary pass). Main dispatches `==` under `Ord a` by the `Int`
+      default: `[1.5, 1.5 :: Double]` crashes, `Maybe`/tuple elements crash, nested lists
+      answer `(True,True)` for GHC's `(True,False)`.

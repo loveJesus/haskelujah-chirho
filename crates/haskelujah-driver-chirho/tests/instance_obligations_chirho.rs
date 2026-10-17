@@ -416,14 +416,15 @@ fn instances_the_checker_cannot_fully_judge_stay_accepted_chirho() {
 }
 
 #[test]
-fn a_method_judged_after_subsumption_and_its_givens_improvement_chirho() {
-    // agy_chirho A05: `showsPrec`'s third argument goes past `ShowS`, so `x`'s
-    // type meets the rigid `a` only in subsumption; the wanted `Show a` must
-    // see that (GHC-39999).
+fn a_built_in_class_method_and_a_given_dependency_are_judged_chirho() {
+    // A built-in class's seeded method (`show`) is judged like a local one:
+    // `show x` needs `Show a`, which nothing gives (GHC-39999). Its sibling
+    // `showsPrec` is NOT checked at all, before or after this unit: the seeded
+    // `Show` class lists only `show` (agy_chirho A05 stays a known miss).
     rejected_with_chirho(
-        "A05ShowsPrecArity3WantedChirho.hs",
-        "module A05ShowsPrecArity3WantedChirho where\ndata Box a = Box a\ninstance Show (Box a) where\n  showsPrec _ (Box x) s = show x ++ s\n",
-        "Show",
+        "BuiltInShowMethodChirho.hs",
+        "module Main where\ndata Box a = Box a\ninstance Show (Box a) where\n  show (Box x) = show x\nmain :: IO ()\nmain = putStrLn \"ok\"\n",
+        "could not deduce `Show",
     );
     // agy_chirho A06: the given `Extract c NoShow` improves the wanted's `e`
     // to `NoShow` through the dependency `c -> e`, and `Show NoShow` has no
