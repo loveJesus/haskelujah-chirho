@@ -95,7 +95,19 @@ builder; every [x] in brick 8 is "written", not "measured".
         the waiting-family program stays a plain negative. m10: the quantified-premise
         control never reached the verdict (a wanted over an applied rigid head is not judged);
         replaced by `instance (forall x. Show x) => CChirho [a]` with `show y`.
-  - [ ] Remeasure after those two changes, then the landing request.
+  - [x] Remeasure of b7a0cd0d (main 152d904b merged; CLI 3ca4fc54): focused suites green
+        (instance 28/28, rigid 14/14, integration 35/35, evidence 10/10, typing 354/354, parser
+        370/370 with the known overflow skipped, comprehension controls 43/43); clippy 0
+        warnings on changed lines; probes 31 match with the same five DIFFs; 24 runtime
+        controls equal main; corpus pair byte-identical, accept 885/938 with main's exact
+        membership, reject 240/767 (+4 for GHC's reason, 0 lost), replay 293/293, execution
+        28/35. Mutations: 12 of 12 kill-expected caught (m01-m03, m05, m07, m09-m15); m04, m08
+        redundant by trace; m06 retired with its code. m05 is caught through the leftover
+        drop (a withheld method's `Show a` would reach the module's final check); the two
+        isolation canaries do not distinguish isolation itself, because their wanteds are
+        judged at generalization before the method check runs, so isolation stays a
+        defensive rule without a distinguishing control.
+  - [ ] Landing decision: gpt_chirho.
   - Mutation accounting, by trace (gpt_chirho #27214): m04 (judgement after the scope) is
     REDUNDANT, not a lost rule: `with_given_preds_chirho`'s post-step discharges, under the
     live givens and rewrites, every wanted a given serves (`givens_discharge_wanted_chirho`),
