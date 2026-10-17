@@ -522,6 +522,10 @@ impl InferCtxChirho {
             Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
         }
         if judged_chirho {
+            // The module's own order: a deferred equality settled now
+            // (`NoShow ~ b` from a `(a ~ b) =>` callee) decides the wanted it
+            // feeds before that wanted is judged (agy_chirho A11).
+            let _equalities_chirho = self.retry_deferred_equalities_chirho();
             let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
             let _defaults_chirho = self.check_deferred_preds_chirho(&method_subst_chirho);
         }

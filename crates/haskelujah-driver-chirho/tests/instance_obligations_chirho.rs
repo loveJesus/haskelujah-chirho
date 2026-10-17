@@ -470,3 +470,16 @@ fn a_methods_private_context_solves_nothing_else_in_the_module_chirho() {
         panic!("GHC accepts a method using its own context: {err_chirho}")
     });
 }
+
+#[test]
+fn a_deferred_equality_decides_the_method_wanted_it_feeds_chirho() {
+    // agy_chirho A11 (#27171): `idEqChirho :: (a ~ b) => a -> b` leaves
+    // `NoShowChirho ~ b` deferred; it must be settled before `Show b` is
+    // judged, as at the top level, where main already rejects the same call.
+    // GHC 9.14.1 rejects both (GHC-39999).
+    rejected_with_chirho(
+        "A11DeferredEqualityFeedsMethodWantedChirho.hs",
+        "{-# LANGUAGE GADTs #-}\nmodule A11DeferredEqualityFeedsMethodWantedChirho where\ndata NoShowChirho = NoShowChirho\nidEqChirho :: (a ~ b) => a -> b\nidEqChirho x = x\nclass RenderChirho a where\n  renderChirho :: a -> String\ninstance RenderChirho Int where\n  renderChirho _ = show (idEqChirho NoShowChirho)\n",
+        "Show NoShowChirho",
+    );
+}
