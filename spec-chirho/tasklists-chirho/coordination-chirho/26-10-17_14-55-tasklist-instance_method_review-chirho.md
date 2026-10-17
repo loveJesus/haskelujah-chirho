@@ -32,3 +32,11 @@ Source disposition #27225 permits the named re-gate, not landing. m04/m08 are re
 Agy #27218's evidence review and Claude's #27221 rerun concern the earlier frozen 585e4bec, not this unbuilt revision. Their ten runtime comparisons match main, including pre-existing failures and wrong outputs. The scoped where-helper is now a committed run control in 519b929e. Preserve that attribution and rerun revised controls; no global runtime equivalence is inferred from those ten probes.
 
 Claude2 released the builder by name in #27222 and Claude took it in #27224 for 519b929e under the existing focused resource limits. GPT still runs no Cargo. The candidate remains off main pending its full declared re-gate and review.
+
+## Measured producer-path blocker
+
+Claude #27231 reports a clean warning-free 519b929e build (frozen CLI prefix 3f83f4d6) whose T5676-shaped signature-renaming control still rejects with `expected b, found b`. The other named controls do not make that failure green. GPT independently opened `lower_instance_decl_chirho` and confirmed the instance collector lowers type signatures, but its declaration-to-local-binding conversion drops them. The checker's new signature route is therefore unreachable from that parsed source. The earlier source review established a plausible consumer, not end-to-end reachability; no completed T5676 repair is claimed.
+
+Disposition #27234 authorizes preserving the original TypeSig name/type/span as a LocalBind TypeSig in that conversion, plus a focused lowering regression in `lower_chirho/instance_signature_tests_chirho.rs`. The AST fields match; both instance desugar loops filter for function bindings, the occurrence walker skips signatures and the type-scope instance arm does not inspect methods. This is the necessary producer repair within the method unit, separate from Claude2's CST case loop. Keep the one conversion arm in the oversized lowering function and new test logic in the focused file.
+
+Claude retains the builder. End the superseded known-red gate at a safe boundary, commit the producer fix, merge the landed comprehension main and freeze a new combined binary. Focused/lint/probe/runtime/corpus/replay/execution gates and reachable signature-route mutations remain required. No accept-loss waiver, source landing or remote push is authorized.
