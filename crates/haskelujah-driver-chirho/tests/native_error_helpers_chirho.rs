@@ -66,10 +66,14 @@ fn assert_fails_everywhere_chirho(source_chirho: &str, message_chirho: &str) {
     for backend_chirho in BACKENDS_CHIRHO {
         let error_chirho = native_round_trip_chirho(source_chirho, backend_chirho, "")
             .expect_err("GHC fails here");
+        // The harness reports any stderr as an error, even after exit 0, so
+        // a program must also have FAILED: killed by a signal, or a nonzero
+        // exit.
+        let failed_chirho = error_chirho.starts_with("native program terminated by signal: ")
+            || (error_chirho.starts_with("native program emitted stderr (exit ")
+                && !error_chirho.starts_with("native program emitted stderr (exit 0)"));
         assert!(
-            (error_chirho.starts_with("native program terminated by signal: ")
-                || error_chirho.starts_with("native program emitted stderr "))
-                && error_chirho.contains(message_chirho),
+            failed_chirho && error_chirho.contains(message_chirho),
             "{backend_chirho:?}: {error_chirho}"
         );
     }
