@@ -103,6 +103,10 @@ path and are tested on their own:
   telescope from the strip. The overlap pragma's meaning is not implemented: it is dropped
   like a comment, and the declaration is kept. The LANGUAGE, INLINE and SPECIALIZE readers
   walk a node's raw children, not its semantic tokens, so they still see their pragmas.
+  Those readers inspect immediate root children only: metadata pragmas after an implicit nested
+  declaration body can belong to that nested CST node and remain unextracted under both trivia
+  rules. The reader canary places metadata at module level; nested pragma ownership is a
+  separate measured limitation.
 
 Two consumers had been living on the mis-scoped forall and changed with it. The naming phase
 walks a declaration header's inline result kind (`data P5 :: forall a . k -> Type`) with the
