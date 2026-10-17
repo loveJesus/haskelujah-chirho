@@ -18,12 +18,15 @@ impl DictPassCtxChirho {
     /// the dictionary by the head AS TYPED (`[[Char]]`, `[Char]`), so the exact
     /// row name missed and the slot became a missing-method stub (agy_chirho
     /// #27325). A row qualifies when its written key, spelled out, IS the typed
-    /// key, so only a typed key holding `[Char]` can have one; two qualifying
-    /// rows would be duplicate instances, and the lowest id keeps the choice
-    /// independent of map order. Still missed: another synonym
-    /// (`type NameChirho = [Char]`, invisible to the desugarer), an
-    /// application head (written `Maybe Int`, typed `(Maybe Int)`), and a
-    /// later argument of a multi-parameter head (`Int_String` is one word).
+    /// key, so only a typed key holding `[Char]` can have one. The slot takes
+    /// it after the exact typed row and a generic head's confirmed written row
+    /// (`resolve_or_missing_method_id_chirho`), and only when it is the ONE
+    /// qualifying row: two (`(String, [Char])` beside `([Char], String)`)
+    /// are ambiguous and refuse, never a lowest-id choice (gpt_chirho #27399).
+    /// Still missed: another synonym (`type NameChirho = [Char]`, invisible to
+    /// the desugarer), an application head (written `Maybe Int`, typed
+    /// `(Maybe Int)`), and a later argument of a multi-parameter head
+    /// (`Int_String` is one word).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn written_method_row_chirho(
         &self,
@@ -35,14 +38,17 @@ impl DictPassCtxChirho {
             return None;
         }
         let row_prefix_chirho = format!("$prim_{class_name_chirho}_{method_name_chirho}_");
-        self.body_backed_names_chirho
-            .iter()
-            .filter_map(|(row_name_chirho, row_id_chirho)| {
-                let written_key_chirho = row_name_chirho.strip_prefix(&row_prefix_chirho)?;
-                (Self::string_spelled_out_chirho(written_key_chirho) == type_key_chirho)
-                    .then_some(*row_id_chirho)
-            })
-            .min()
+        let mut qualifying_chirho =
+            self.body_backed_names_chirho
+                .iter()
+                .filter_map(|(row_name_chirho, row_id_chirho)| {
+                    let written_key_chirho = row_name_chirho.strip_prefix(&row_prefix_chirho)?;
+                    (written_key_chirho != type_key_chirho
+                        && Self::string_spelled_out_chirho(written_key_chirho) == type_key_chirho)
+                        .then_some(*row_id_chirho)
+                });
+        let only_chirho = qualifying_chirho.next()?;
+        qualifying_chirho.next().is_none().then_some(only_chirho)
     }
 
     /// Each whole-word `String` in a key spelled `[Char]`: `[String]` →
@@ -71,3 +77,7 @@ impl DictPassCtxChirho {
         spelled_chirho
     }
 }
+
+#[cfg(test)]
+#[path = "string_spellings_tests_chirho.rs"]
+mod tests_chirho;

@@ -86,10 +86,13 @@ flowchart TD
   by the head as written (`$prim_C_m_[String]`, `$prim_C_m_String`), the dictionary by the head
   as typed (`[[Char]]`, `[Char]`), so a head written with `String` got a missing-method stub
   in its slot. `written_method_row_chirho` (`dict_chirho/instance_chirho/string_spellings_chirho.rs`,
-  the rule's one home) fills the slot with the source row whose written key, spelled out, is
-  the typed key (agy_chirho #27325). Still a stub: another synonym, an application head
-  (written `Maybe Int`, typed `(Maybe Int)`), a head with a type variable (written
-  `T b`, typed `(T t0)`) and a later argument of a multi-parameter head.
+  the rule's one home) fills the slot with the ONE source row whose written key, spelled
+  out, is the typed key (agy_chirho #27325). The slot tries the exact typed row first, then a
+  generic head's confirmed written row (Generic instance heads, below), then this row; two
+  such rows are ambiguous and refuse, never a lowest-id pick (gpt_chirho #27399). Still a
+  stub: another synonym, an application head (written `Maybe Int`, typed `(Maybe Int)`) and
+  a later argument of a multi-parameter head. A head with type variables (written `T b`,
+  typed `(T t0)`) is the generic-head rule's.
   A whole key the checker proved is never replaced by the
   argument-shape guess, which reads the element off the syntax and collapses `[[Int]]` to
   `[Int]`. And a call receives a dictionary for EVERY predicate: where none can be built,
