@@ -549,3 +549,158 @@ valueChirho = requiredChirho [Int, Bool]
 "#,
     );
 }
+
+#[test]
+fn constructor_sections_keep_both_argument_positions_chirho() {
+    for (file_chirho, source_chirho, expected_chirho) in [
+        (
+            "ordinary_constructor_sections_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data TreeChirho = LeafChirho Int | TreeChirho :*: TreeChirho
+infixl 6 :*:
+scoreChirho :: TreeChirho -> Int
+scoreChirho (LeafChirho nChirho) = nChirho
+scoreChirho (leftChirho :*: rightChirho) = 10 * scoreChirho leftChirho + scoreChirho rightChirho
+leftChirho :: TreeChirho -> TreeChirho
+leftChirho = (LeafChirho 1 :*:)
+rightChirho :: TreeChirho -> TreeChirho
+rightChirho = (:*: LeafChirho 3)
+main :: IO ()
+main = print (scoreChirho (leftChirho (LeafChirho 2)), scoreChirho (rightChirho (LeafChirho 2)))
+"#,
+            "(12,23)\n",
+        ),
+        (
+            "gadt_constructor_sections_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, GADTs, KindSignatures, TypeOperators #-}
+module Main where
+import Data.Kind (Type)
+data HListChirho :: [Type] -> Type where
+  HNilChirho :: HListChirho '[]
+  (:::) :: tChirho -> HListChirho tsChirho -> HListChirho (tChirho ': tsChirho)
+infixr 5 :::
+headChirho :: HListChirho '[Int] -> Int
+headChirho (xChirho ::: _) = xChirho
+main :: IO ()
+main = print (headChirho ((5 :::) HNilChirho), headChirho ((::: HNilChirho) 5))
+"#,
+            "(5,5)\n",
+        ),
+    ] {
+        assert_output_chirho(file_chirho, source_chirho, expected_chirho);
+    }
+}
+
+#[test]
+fn strict_constructor_operators_force_their_fields_chirho() {
+    for (file_chirho, source_chirho) in [
+        (
+            "strict_infix_left_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data StrictChirho = !Int :! !Int
+main = putStrLn (((error "strict-field-chirho" :: Int) :! 1) `seq` "built")
+"#,
+        ),
+        (
+            "strict_infix_right_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data StrictChirho = !Int :! !Int
+main = putStrLn ((1 :! (error "strict-field-chirho" :: Int)) `seq` "built")
+"#,
+        ),
+        (
+            "strict_left_section_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data StrictChirho = !Int :! !Int
+main = putStrLn (((((error "strict-field-chirho" :: Int) :!) 1)) `seq` "built")
+"#,
+        ),
+        (
+            "strict_right_section_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data StrictChirho = !Int :! !Int
+main = putStrLn (((:! (error "strict-field-chirho" :: Int)) 1) `seq` "built")
+"#,
+        ),
+        (
+            "strict_prefix_control_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data StrictChirho = StrictChirho !Int !Int
+main = putStrLn ((StrictChirho (error "strict-field-chirho") 1) `seq` "built")
+"#,
+        ),
+        (
+            "strict_partial_saturated_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data ThreeChirho = ThreeChirho !Int !Int !Int
+main = putStrLn ((((error "strict-field-chirho" :: Int) `ThreeChirho` 2) 3) `seq` "built")
+"#,
+        ),
+    ] {
+        let result_chirho = haskelujah_driver::eval_source_with_machine_chirho(
+            source_chirho,
+            &mut haskelujah_span_chirho::SourceMapChirho::new_chirho(),
+            file_chirho,
+            None,
+        );
+        match result_chirho {
+            Ok(_) => panic!("{file_chirho}: demanding a strict field must force its error"),
+            Err(error_chirho) => assert!(
+                error_chirho.to_string().contains("strict-field-chirho"),
+                "{file_chirho}: {error_chirho}"
+            ),
+        }
+    }
+}
+
+#[test]
+fn constructor_operators_keep_laziness_and_partial_arity_chirho() {
+    for (file_chirho, source_chirho, expected_chirho) in [
+        (
+            "lazy_infix_fields_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data LazyChirho = Int :? Int
+main = putStrLn (((error "must-not-force-chirho" :: Int) :? 1) `seq` "built")
+"#,
+            "built\n",
+        ),
+        (
+            "unused_strict_infix_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data StrictChirho = !Int :! !Int
+main = let ignoredChirho = (error "must-not-force-chirho" :: Int) :! 1 in putStrLn "unused"
+"#,
+            "unused\n",
+        ),
+        (
+            "unused_strict_section_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data StrictChirho = !Int :! !Int
+main = putStrLn (((error "must-not-force-chirho" :: Int) :!) `seq` "section")
+"#,
+            "section\n",
+        ),
+        (
+            "strict_partial_unsaturated_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data ThreeChirho = ThreeChirho !Int !Int !Int
+main = putStrLn (((error "must-not-force-chirho" :: Int) `ThreeChirho` 2) `seq` "partial")
+"#,
+            "partial\n",
+        ),
+    ] {
+        assert_output_chirho(file_chirho, source_chirho, expected_chirho);
+    }
+}

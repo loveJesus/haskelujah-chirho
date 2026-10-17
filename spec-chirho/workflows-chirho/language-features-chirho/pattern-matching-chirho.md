@@ -236,9 +236,11 @@ C2/C3 and the inaccessible-child negatives must reject for their actual type
 mismatch. T16502b and T17024 are both GHC-valid acceptance controls. Final corpus
 and mutation outcomes belong to the tasklist and frozen receipts, not this DAG.
 
-Constructor operators Chirho: the ordinary and fixity-rebuilt Core infix paths
+Constructor operators Chirho: the ordinary and operator-section Core infix paths
 produce constructor applications for colon-led operators, retaining their actual
 names, and for registered named constructors used with backticks. C1 and the
 ordinary left-associative tree execute to their GHC values; imported `:|` and `:+`
 also pass their exact runtime controls. GADT arity metadata and native execution
 are not established by those interpreter measurements.
+
+Constructor operator applications and operator-section bodies use the same enforce_strict_fields_chirho path as prefix constructor application. It forces declared strict fields only at full constructor arity, preserving lazy fields, uncalled sections and partial applications. Exact interpreter controls cover each behavior; native execution remains a separate gate. Faithful derived instance heads also require a shared typed/written method identity and compatible call-site selection. A typecheck recovery alone cannot establish runtime compatibility when a previously working Eq call no longer finds its binding.

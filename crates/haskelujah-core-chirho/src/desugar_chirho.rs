@@ -1023,10 +1023,10 @@ impl DesugarCtxChirho {
         }
         // Colon-led operators are constructors, including GADTs absent from the arity table.
         if op_name_chirho.starts_with(':') || self.con_arities_chirho.contains_key(op_name_chirho) {
-            return CoreExprChirho::ConAppChirho {
-                con_name_chirho: op_name_chirho.to_string(),
-                args_chirho: vec![left_chirho, right_chirho],
-            };
+            return self.enforce_strict_fields_chirho(
+                op_name_chirho.to_string(),
+                vec![left_chirho, right_chirho],
+            );
         }
         // Fallback: operator as variable reference
         let op_id_chirho = self.resolve_var_chirho(op_name_chirho);
@@ -2647,10 +2647,10 @@ impl DesugarCtxChirho {
                 if op_name_chirho.starts_with(':')
                     || self.con_arities_chirho.contains_key(op_name_chirho)
                 {
-                    return CoreExprChirho::ConAppChirho {
-                        con_name_chirho: op_name_chirho.to_string(),
-                        args_chirho: vec![left_core_chirho, right_core_chirho],
-                    };
+                    return self.enforce_strict_fields_chirho(
+                        op_name_chirho.to_string(),
+                        vec![left_core_chirho, right_core_chirho],
+                    );
                 }
 
                 // (&&) short-circuit: a && b → case a of { True → b; False → False }
