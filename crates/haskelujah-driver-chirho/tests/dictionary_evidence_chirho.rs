@@ -8,6 +8,9 @@
 use haskelujah_driver::eval_source_with_machine_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+// A test crate root's `mod` resolves beside the root file, so the submodule
+// in this target's own directory is named by path.
+#[path = "dictionary_evidence_chirho/ground_keys_chirho.rs"]
 mod ground_keys_chirho;
 
 fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
