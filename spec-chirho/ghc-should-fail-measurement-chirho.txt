@@ -1,39 +1,39 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 # GHC should_fail — timed measurement artifact
-# measured: 2026-10-17 UTC by HASKELUJAH/claude2_chirho; independently reviewed receipts
+# measured: 2026-10-17 UTC by HASKELUJAH/claude2_chirho; receipts independently reviewed
 #   by HASKELUJAH/gpt_chirho. Local development evidence; no remote push or release.
-# paired code measured: 877d2693, containing guard-arm scope, ordinary otherwise binding
-#   evaluation and arm-local GADT result checking over the complete seven-unit stack.
-# paired frozen CLI SHA256:
-#   15166830215f759064383247bfd76a54514fff7e73ac75dc630aad3dfb55e4ea
-# final source: e9c2ab2517415b69affd942741c5b6b8c35f309b, with module-wide LLVM helper
-#   emission repair c635d5d0 and stricter native failure assertions (test-only e9c2ab25).
-# final build: cargo build -j2 --bin haskelujah, DEBUG, macOS arm64, zero compiler warnings.
-# final frozen CLI SHA256:
-#   4dceabb3833a1b95551233a71c3cf6b0b2cdde8b0e1f36de7948dc62a046c0a9
-# corpus evidence: two byte-identical complete passes per axis on 877d2693; one additional
-#   direct complete pass per axis on e9c2ab25, byte-identical to that pair. All full
-#   relative source identities match the prior manifests; before/after CLI hashes match.
-# check-path carry-over: git diff 877d2693 e9c2ab25 changes only LLVM backend, driver tests
-#   and tasklist, not frontend/Core/check sources. The direct final passes confirm it.
+# code measured: 6a629d35, if-condition substitution repair on main 9986576b.
+# landed source tip: c4cb9295ef11d9b5c354ded057cfb220d069259c (tasklist-only commit;
+#   compiler/test sources identical to 6a629d35).
+# mechanism: ordinary if inference composes its Bool unifier after the condition's own
+#   substitution and returns it with the branches' substitutions. Invalid callers no
+#   longer see an unconstrained condition parameter. The polymorphic-expected path is
+#   unchanged; both paths moved into a focused module in pure extraction 5b1a6136.
+# extraction evidence: normalized helper bodies equal main's; all 36 producer probes
+#   match main byte-for-byte in exit code, stdout and stderr.
+# build: cargo build -j2 --bin haskelujah, DEBUG, macOS arm64, zero compiler warnings.
+# frozen CLI SHA256:
+#   ff4f0eb2b718a1a75ec80591e2f985981e8313756d33d28be26430e6c5a52f84
+# evidence: two complete passes per axis, byte-identical to each other AND main's
+#   complete tables. Full relative source identities match the prior corpus manifests;
+#   the CLI hash is unchanged before/after corpus, replay and execution.
 # receipts: ../haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/
-#   stack-6f-6i-1017-chirho/{corpus-repair-877d2693-chirho,final-e9c2ab25-chirho}/
-# reviewer receipt checks: tmp-chirho/gpt-parity-review-chirho/
-#   {repaired-candidate-chirho,final-candidate-chirho}/
-# final check/execution scope: all 289 rejections replay; execution set remains 28/35
-#   with the same seven historical failures. Filtered driver/native/parser controls pass.
-#   This is not a full-suite or type-soundness PASS. Mutation dispositions live in the
-#   coordination review; no full driver --lib or Cargo ghc_bulk suite was run here.
-# parser baseline red: parser_handles_nested_parens_chirho SIGABRTs on the default
-#   2 MiB test-thread stack on final and old-main sources; it passes at 8 MiB. The
-#   default-environment parser suite is RED. This change does not repair stack growth.
-# protocol: preserve the published directory-label axes and denominators. The newly
-#   audited standalone-GHC/all.T disagreements are a separate protocol decision, not
-#   silently relabelled by this compiler landing.
+#   if-condition-1017-chirho/corpus-6a629d35-chirho/
+# reviewer receipts: tmp-chirho/gpt-parity-review-chirho/if-condition-chirho/
+# focused validation: typing integration 35, rigid types 14, typing unit 354, filtered
+#   driver if/multi-way-if 19, all pass. The 36-probe matrix gains 16 genuine rejections
+#   outside the corpus; its sole remaining miss is the old runtime Ord dictionary error.
+#   Guard/retained sets stay at their main verdicts. A dropped-composition mutation is
+#   caught by the committed reject control and GPT's higher-order condition canary.
+# replay: all 289 rejections reproduced. Execution stays 28/35 with the same seven known
+#   failures. The default-stack parser SIGABRT is a separately baselined pre-existing
+#   red, not repaired or re-labelled here. No full driver --lib or Cargo ghc_bulk run.
+# protocol: preserve the published directory-label axes and denominators. Standalone
+#   GHC/all.T disagreements remain a separate protocol decision, not silent relabelling.
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT 877d2693, unchanged from main, the repaired rule, with no later tools
+#   COMMITTED AT 6a629d35, unchanged from main, the repaired rule, with no later tools
 #   change to separate from it. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC
 #   (a real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0
 #   and no `error[E`). A panic header has an optional ALL-DIGIT thread id and counts at
@@ -63,7 +63,13 @@
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
 #
-# CURRENT CHANGE SINCE MAIN b890d61b: accept membership is unchanged; the sole additional
+# CURRENT CHANGE SINCE MAIN 9986576b: no corpus membership change on either axis.
+#   The if-condition repair is proved by focused invalid and polymorphic positive
+#   programs outside this corpus; a stable corpus count does not measure that behavior.
+# PREVIOUS SOURCE LANDING: 877d2693 paired CLI 15166830215f759064383247bfd76a54514fff7e73ac75dc630aad3dfb55e4ea,
+#   e9c2ab25 direct CLI 4dceabb3833a1b95551233a71c3cf6b0b2cdde8b0e1f36de7948dc62a046c0a9.
+#   That repaired the seven-unit guard stack plus otherwise/GADT/LLVM regressions.
+# HISTORICAL CHANGE SINCE MAIN b890d61b: accept membership is unchanged; the sole additional
 #   rejection is T20768_fail.hs (strict Bool guards, GHC's reason). No new wrong accept
 #   under the published harness. Main's failed-arm binder leaks GF02/GF13, shadowed
 #   otherwise failures and valid GADT guard regressions are covered by separate exact
