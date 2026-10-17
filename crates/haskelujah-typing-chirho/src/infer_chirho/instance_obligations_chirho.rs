@@ -448,11 +448,31 @@ impl InferCtxChirho {
         vars_chirho.extend(method_vars_chirho);
         let mut preds_chirho = instance_chirho.context_chirho.clone();
         preds_chirho.extend(method_preds_chirho);
+        let rigid_vars_chirho = vars_chirho.clone();
         let (rigid_ty_chirho, givens_chirho) = self.skolemize_scheme_parts_chirho(&SchemeChirho {
             vars_chirho,
             preds_chirho,
             ty_chirho: method_ty_chirho,
         });
+        // The skolems this check just made (not ones reused from an enclosing
+        // signature) are open to evidence, as the flexible variables they
+        // replace were (`own_parameter_key_chirho`): keyed as the binding's own
+        // dictionary parameters they would send `==` under `Ord a` to a
+        // dictionary the instance method does not have ("missing STG binding").
+        for var_chirho in &rigid_vars_chirho {
+            if skolem_bindings_snapshot_chirho
+                .lookup_chirho(var_chirho)
+                .is_some()
+            {
+                continue;
+            }
+            if let Some(TyChirho::ForallVarChirho(skolem_chirho)) =
+                self.skolem_bindings_chirho.lookup_chirho(var_chirho)
+            {
+                self.instance_method_skolems_chirho
+                    .insert(skolem_chirho.clone());
+            }
+        }
         let judged_chirho = instance_chirho.context_complete_chirho
             && self.givens_reach_their_superclasses_chirho(&givens_chirho);
 

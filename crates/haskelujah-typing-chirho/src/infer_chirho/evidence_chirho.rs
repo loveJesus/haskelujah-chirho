@@ -262,6 +262,22 @@ impl InferCtxChirho {
         )
     }
 
+    /// The own-parameter key of a rigid variable, or `None` for a skolem an
+    /// instance method's check made: it proves the method against its type and
+    /// is no binding's own dictionary parameter, so evidence treats it as the
+    /// open variable it replaced. Keyed as `$own`, `==` under
+    /// `instance Ord a => C [a]` named a dictionary the method does not have
+    /// ("missing STG binding `==`").
+    /// workflow: language-features-chirho/instance-obligations-chirho
+    pub(super) fn own_parameter_key_chirho(
+        &self,
+        class_name_chirho: &str,
+        skolem_chirho: &str,
+    ) -> Option<String> {
+        (!self.instance_method_skolems_chirho.contains(skolem_chirho))
+            .then(|| self.own_key_for_skolem_chirho(class_name_chirho, skolem_chirho))
+    }
+
     /// The key a local binding's quantified variable is specialized at: the
     /// dictionary pass gives a `let`/`where` binding no dictionary parameter,
     /// so an occurrence at that variable is served by the one concrete type
@@ -323,7 +339,7 @@ impl InferCtxChirho {
     ) -> Option<String> {
         match ty_chirho {
             TyChirho::ForallVarChirho(skolem_chirho) => {
-                Some(self.own_key_for_skolem_chirho(class_name_chirho, skolem_chirho))
+                self.own_parameter_key_chirho(class_name_chirho, skolem_chirho)
             }
             TyChirho::VarChirho(var_chirho) => {
                 if let Some(hint_chirho) = self.occurrence_default_hints_chirho.get(var_chirho) {

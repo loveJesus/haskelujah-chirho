@@ -247,6 +247,11 @@ pub struct InferCtxChirho {
     /// scoped type variable of an enclosing signature reappears in an inner
     /// signature or annotation, so both name the same rigid constant.
     skolem_bindings_chirho: SubstChirho,
+    /// Skolems made while checking an instance method. They prove the method
+    /// against its type; they are not the enclosing binding's own dictionary
+    /// parameters, so evidence keys them as open, as the flexible variables
+    /// they replaced were (`own_parameter_key_chirho`).
+    instance_method_skolems_chirho: HashSet<String>,
     /// Whether ScopedTypeVariables is in effect for the module: an explicit
     /// `forall` (or an instance head) then scopes its binders over the body.
     scoped_type_variables_chirho: bool,
@@ -655,6 +660,7 @@ impl InferCtxChirho {
             scoped_tyvars_chirho: HashMap::new(),
             next_skolem_chirho: 0,
             skolem_bindings_chirho: SubstChirho::empty_chirho(),
+            instance_method_skolems_chirho: HashSet::new(),
             scoped_type_variables_chirho: true,
             relaxed_poly_rec_chirho: true,
             do_last_expected_chirho: None,
@@ -7124,14 +7130,18 @@ impl InferCtxChirho {
                     // (`x + 1` inside `f :: Num a => a -> a`) has no instance to
                     // name: its evidence is the binding's own dictionary parameter.
                     // Defaulting it to `Int` here dispatched `f 2.5` to the Int row.
+                    // An instance method's skolem is no such parameter and keys
+                    // as the open variable it replaced, below.
                     // workflow: language-features-chirho/dictionary-evidence-chirho
-                    if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho {
+                    if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho
+                        && let Some(key_chirho) =
+                            self.own_parameter_key_chirho(class_chirho, skolem_chirho)
+                    {
                         return Some(MethodOccurrenceRecordChirho {
                             name_chirho: name_chirho.clone(),
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
-                            ty_key_chirho: self
-                                .own_key_for_skolem_chirho(class_chirho, skolem_chirho),
+                            ty_key_chirho: key_chirho,
                             span_chirho: *span_chirho,
                             origin_chirho: *origin_chirho,
                         });

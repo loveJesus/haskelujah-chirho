@@ -27,7 +27,8 @@ flowchart TD
     head_chirho --> ctx_chirho[instance_context_givens_chirho: convert_written_context_chirho, equalities as ~]
     ctx_chirho --> parts_chirho[instantiate_instance_method_expected_parts_chirho: class vars := head, method quantifiers kept for a class declared here]
     parts_chirho --> skolem_chirho[skolemize_scheme_parts_chirho: head vars and kept quantifiers rigid, contexts as givens]
-    skolem_chirho --> aside_chirho[the module's pending wanteds and deferred equalities set aside]
+    skolem_chirho --> open_chirho[new skolems recorded in instance_method_skolems_chirho: own_parameter_key_chirho keys them open, so evidence is main's]
+    open_chirho --> aside_chirho[the module's pending wanteds and deferred equalities set aside]
     aside_chirho --> live_chirho[with_given_preds_chirho: the givens live for the whole check, its post-step included]
     live_chirho --> body_chirho[check_method_body_chirho: infer, subsume, apply the subsumption to the wanteds]
     body_chirho --> judged_chirho{context complete and every given reaches its superclasses}
@@ -62,6 +63,15 @@ in the code:
   back only after it closes, because `with_given_preds_chirho` discharges and retries whatever is
   pending under the givens still installed. A method's unsettled equalities rejoin the module's
   list and are retried and reported at its end, as they always were (gpt_chirho #27163).
+- **Evidence.** The skolems serve the check only. A method's own-parameter key (`$own`) names a
+  dictionary that an instance method does not have, so `own_parameter_key_chirho` keys the skolems
+  as the open variables they replaced. Dictionary evidence and runtime dispatch are therefore
+  main's, and so is main's defect: a superclass of the instance context used inside a method
+  (`==` under `instance Ord a => C [a]`) dispatches by the class default (`Int`), so `Double`,
+  `Maybe` and tuple elements crash and nested lists answer wrongly. Threading the instance
+  context's dictionaries into the method belongs to the dictionary pass, its own unit.
+- **Shared solver gaps** stay shared: `op (Just x)` under only `instance C (Maybe Int)` is
+  accepted in a method and in a top-level signature alike (agy_chirho A10, GHC-39999).
 
 ## Invariants
 
