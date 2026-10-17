@@ -22,8 +22,13 @@ flowchart TD
     landing_chirho --> verify_chirho[Verify resulting refs artifacts and release leases]
     verify_chirho --> lanes_chirho[Assign next verified structural root causes]
     counts_chirho --> lanes_chirho
+    verify_chirho --> followup_chirho[Later independent counterexample]
+    followup_chirho --> correction_chirho[Reproduce and correct the recorded claim]
+    correction_chirho --> next_candidate_chirho[Freeze external effects and review the next owner repair]
 ```
 
 A baseline run measures a reproduction count. A prospective fix count remains an estimate until a candidate is tested against that baseline. Membership lists, reasons and behavior matter more than totals. A frozen executable retains its source commit and before/after hashes; a pre-existing receipt is attributed rather than presented as a fresh execution. Independent review includes stack prerequisites and withdrawn-intermediate regressions, not just the tip's newest feature.
 
 Source work stays in owner worktrees under `haskelujah-workspaces-chirho`. The canonical checkout is reserved for the explicitly leased landing and coordinated bookkeeping. Unrelated dirty work is preserved; progress DB ownership must be handed over explicitly. Remote push and release are separately scoped effects.
+
+A later counterexample narrows or withdraws the earlier disposition. Preserve earlier passing observations at their actual scope, record the new failing input, and decide between rollback and forward repair explicitly. A known crash becoming a silent wrong result is a material failure even when the program was already unsupported; a successful exit alone is not a behavior gate.
