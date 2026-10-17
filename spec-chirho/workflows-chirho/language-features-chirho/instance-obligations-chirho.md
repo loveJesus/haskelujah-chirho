@@ -27,12 +27,13 @@ flowchart TD
     head_chirho --> ctx_chirho[instance_context_givens_chirho: convert_written_context_chirho, equalities as ~]
     ctx_chirho --> parts_chirho[instantiate_instance_method_expected_parts_chirho: class vars := head, method quantifiers kept for a class declared here]
     parts_chirho --> skolem_chirho[skolemize_scheme_parts_chirho: head vars and kept quantifiers rigid, contexts as givens]
-    skolem_chirho --> live_chirho[with_given_preds_chirho: the givens live for the whole check]
+    skolem_chirho --> aside_chirho[the module's pending wanteds and deferred equalities set aside]
+    aside_chirho --> live_chirho[with_given_preds_chirho: the givens live for the whole check, its post-step included]
     live_chirho --> body_chirho[check_method_body_chirho: infer, subsume, apply the subsumption to the wanteds]
     body_chirho --> judged_chirho{context complete and every given reaches its superclasses}
-    judged_chirho -- yes --> judge_chirho[judge_method_wanteds_chirho: discharge and improve by the givens, then check_deferred_preds_chirho]
+    judged_chirho -- yes --> judge_chirho[discharge and improve by the givens, then check_deferred_preds_chirho]
     judged_chirho -- no --> withheld_chirho[leftover verdict withheld; every other check ran]
-    judge_chirho --> restore_chirho[restore env, class env, scoped tyvars, skolem bindings, pending wanteds]
+    judge_chirho --> restore_chirho[after the scope: the method's unsettled equalities rejoin the module list; module wanteds, env, class env, scoped tyvars, skolem bindings restored]
     withheld_chirho --> restore_chirho
 ```
 
@@ -56,6 +57,11 @@ in the code:
   method's.
 - **Defaulting.** Local literals still default when the wanteds are judged; the defaulting
   substitution itself is discarded, a check-only choice that leaves evidence unchanged.
+- **Isolation.** A method's context is evidence for that method only. The module's pending
+  wanteds and deferred equalities are set aside before the method's given scope opens and come
+  back only after it closes, because `with_given_preds_chirho` discharges and retries whatever is
+  pending under the givens still installed. A method's unsettled equalities rejoin the module's
+  list and are retried and reported at its end, as they always were (gpt_chirho #27163).
 
 ## Invariants
 

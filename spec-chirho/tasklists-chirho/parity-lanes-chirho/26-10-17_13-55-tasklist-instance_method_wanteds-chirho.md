@@ -33,16 +33,20 @@ if-condition unit); every [x] below is "written", not "measured".
       head does not supply stays flexible (heads that lower short).
 - [x] 3. The givens are live for the whole check (agy_chirho A07): inference, subsumption (its
       substitution reaches the wanteds, A05), then the leftovers, discharged and improved by the
-      givens (A06) and judged by `check_deferred_preds_chirho`. Pending wanteds and skolem state
-      are restored after every method. The defaulting substitution is discarded (check-only).
+      givens (A06) and judged by `check_deferred_preds_chirho`. The defaulting substitution is
+      discarded (check-only).
+- [x] 3b. Isolation (gpt_chirho #27163, a source blocker of checkpoint 1): the module's pending
+      wanteds and deferred equalities are set aside BEFORE the method's given scope and restored
+      only after it, post-step included, so a private instance context never solves another
+      binding's obligation. A method's unsettled equalities rejoin the module list.
 - [x] 4. Support boundaries, each recorded in code and in the workflow: unmodelled premises
       (quantified, `?`) and multi-parameter givens whose class has superclasses (A09) withhold
       only the leftover verdict; built-in and imported classes keep flexible method quantifiers
       (A01-A04: their seed metadata needs repair first); the class's own predicate stays a given
       (recursion; A08 belongs to the superclass-obligation unit).
 - [x] 5. Controls written (tests/instance_obligations_chirho.rs): M01, M02, M04, M05, V01, V02, V08,
-      A05, A06 rejected; V03, V04, V07 run with GHC's output; V05, V06, A03, A04, A07, A09
-      accepted. Not yet run.
+      A05, A06 and both isolation canaries rejected; V03, V04, V07 run with GHC's output; V05,
+      V06, A03, A04, A07, A09 and the own-context method accepted. Not yet run.
 - [ ] 6. Build under a named builder lease (after claude2's if-condition unit), focused gates,
       one mutation per rule, the two-pass corpus pair; every accept-axis loss traced and
       dispositioned.

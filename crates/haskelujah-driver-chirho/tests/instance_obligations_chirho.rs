@@ -434,3 +434,39 @@ fn a_method_judged_after_subsumption_and_its_givens_improvement_chirho() {
         "Show NoShow",
     );
 }
+
+/// A private instance context beside an unrelated binding: the binding's own
+/// wanted must never be solved by it.
+const PRIVATE_CONTEXT_CHIRHO: &str = "{-# LANGUAGE FlexibleContexts, UndecidableInstances #-}\nmodule Main where\ndata TChirho = TChirho\nclass CChirho aChirho where\n  mChirho :: aChirho -> String\ninstance Show TChirho => CChirho TChirho where\n";
+
+#[test]
+fn a_methods_private_context_solves_nothing_else_in_the_module_chirho() {
+    // gpt_chirho's isolation canaries (#27163/#27164), rejected by GHC 9.14.1
+    // and by main: the instance context `Show TChirho` is evidence for its own
+    // methods only, not for a top-level binding beside it.
+    rejected_with_chirho(
+        "IsolationValueChirho.hs",
+        &format!(
+            "{PRIVATE_CONTEXT_CHIRHO}  mChirho _ = \"ok\"\nbadChirho = show TChirho\nmain :: IO ()\nmain = putStrLn badChirho\n"
+        ),
+        "no instance for `Show TChirho`",
+    );
+    rejected_with_chirho(
+        "IsolationFunctionChirho.hs",
+        &format!(
+            "{PRIVATE_CONTEXT_CHIRHO}  mChirho _ = \"ok\"\nbadChirho :: TChirho -> String\nbadChirho valueChirho = show valueChirho\nmain :: IO ()\nmain = putStrLn \"ok\"\n"
+        ),
+        "no instance for `Show TChirho`",
+    );
+    // The reciprocal positive: inside its own method, the context is
+    // evidence, and GHC accepts the instance.
+    check_chirho(
+        "IsolationOwnMethodChirho.hs",
+        &format!(
+            "{PRIVATE_CONTEXT_CHIRHO}  mChirho x = show x\nmain :: IO ()\nmain = putStrLn \"ok\"\n"
+        ),
+    )
+    .unwrap_or_else(|err_chirho| {
+        panic!("GHC accepts a method using its own context: {err_chirho}")
+    });
+}

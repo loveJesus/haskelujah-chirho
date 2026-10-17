@@ -406,6 +406,13 @@ impl InferCtxChirho {
     /// it is compared (agy_chirho A07). Everything the check touches is
     /// restored afterwards, so neither the module's other pending wanteds nor
     /// this method's rigid variables leak into the next.
+    ///
+    /// The module's pending wanteds and deferred equalities are set aside
+    /// BEFORE the given scope opens and restored only after it has closed,
+    /// its post-step included: that step discharges and retries whatever is
+    /// pending under the givens still installed, and this method's private
+    /// context (`instance Show T => C T`) must never solve an obligation of
+    /// the rest of the module (gpt_chirho #27163).
     fn check_instance_method_chirho(
         &mut self,
         instance_chirho: &InstanceUnderCheckChirho,
@@ -417,7 +424,8 @@ impl InferCtxChirho {
         let class_env_snapshot_chirho = self.class_env_chirho.clone();
         let scoped_tyvars_snapshot_chirho = self.scoped_tyvars_chirho.clone();
         let skolem_bindings_snapshot_chirho = self.skolem_bindings_chirho.clone();
-        let deferred_checkpoint_chirho = self.deferred_preds_chirho.len();
+        let module_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
+        let module_equalities_chirho = std::mem::take(&mut self.deferred_equalities_chirho);
         if self.scoped_type_variables_chirho {
             self.scoped_tyvars_chirho
                 .extend(instance_chirho.var_map_chirho.clone());
@@ -453,10 +461,23 @@ impl InferCtxChirho {
                 matches_chirho,
                 span_chirho,
                 &rigid_ty_chirho,
-                deferred_checkpoint_chirho,
                 judged_chirho,
             )
         });
+
+        // What the method leaves behind. Its wanteds were judged inside the
+        // scope, or withheld at a support boundary, and belong to no other
+        // binding: they go, as the old truncate sent them. Its deferred
+        // equalities that the givens could not settle return to the module's
+        // list, where they always went, to be retried and reported at the
+        // module's end as before, never dropped.
+        let method_equalities_chirho = std::mem::replace(
+            &mut self.deferred_equalities_chirho,
+            module_equalities_chirho,
+        );
+        self.deferred_equalities_chirho
+            .extend(method_equalities_chirho);
+        self.deferred_preds_chirho = module_preds_chirho;
 
         self.env_chirho = env_snapshot_chirho;
         self.class_env_chirho = class_env_snapshot_chirho;
@@ -465,15 +486,21 @@ impl InferCtxChirho {
     }
 
     /// The method body against its rigid expected type, under the givens the
-    /// caller has installed: inference, then subsumption, whose substitution
-    /// the leftover wanteds see (agy_chirho A05), then, when `judged_chirho`,
-    /// the judgement of those leftovers.
+    /// caller has installed and with only this method's obligations pending:
+    /// inference, then subsumption, whose substitution the leftover wanteds
+    /// see (agy_chirho A05), then, when `judged_chirho`, the judgement of
+    /// those leftovers by the module's final check, the rules a top-level
+    /// binding gets. The givens first discharge and improve what they can,
+    /// functional dependencies included, as a signature's givens do
+    /// (agy_chirho A06). Local literal defaulting still decides whether a
+    /// wanted holds, but the defaulting substitution the check returns is
+    /// discarded, so nothing downstream changes by it: a bounded, check-only
+    /// choice, not a claim about runtime evidence.
     fn check_method_body_chirho(
         &mut self,
         matches_chirho: &[MatchArmChirho],
         span_chirho: SpanChirho,
         rigid_ty_chirho: &TyChirho,
-        deferred_checkpoint_chirho: usize,
         judged_chirho: bool,
     ) {
         let expected_ty_chirho = self.normalize_ty_chirho(rigid_ty_chirho);
@@ -494,11 +521,9 @@ impl InferCtxChirho {
             Ok(subsumed_chirho) => self.apply_subst_all_chirho(&subsumed_chirho),
             Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
         }
-        let wanteds_chirho = self
-            .deferred_preds_chirho
-            .split_off(deferred_checkpoint_chirho);
         if judged_chirho {
-            self.judge_method_wanteds_chirho(wanteds_chirho, &method_subst_chirho);
+            let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
+            let _defaults_chirho = self.check_deferred_preds_chirho(&method_subst_chirho);
         }
     }
 
@@ -519,30 +544,6 @@ impl InferCtxChirho {
                     .superclasses_chirho(&given_chirho.class_name_chirho)
                     .is_empty()
         })
-    }
-
-    /// The wanteds a method body left unsolved, judged by the module's final
-    /// check, the rules a top-level binding gets, while the method's givens
-    /// are live: a concrete wanted with no instance, or one over a rigid
-    /// variable that the givens cannot provide, is reported. The givens first
-    /// discharge and improve what they can, functional dependencies included,
-    /// as a signature's givens do (agy_chirho A06). The module's other pending
-    /// wanteds are set aside and restored. Local literal defaulting still
-    /// decides whether a wanted holds, but the defaulting substitution the
-    /// check returns is discarded, so nothing downstream changes by it: a
-    /// bounded, check-only choice, not a claim about runtime evidence.
-    fn judge_method_wanteds_chirho(
-        &mut self,
-        wanteds_chirho: Vec<(PredChirho, SpanChirho)>,
-        method_subst_chirho: &SubstChirho,
-    ) {
-        if wanteds_chirho.is_empty() {
-            return;
-        }
-        let pending_chirho = std::mem::replace(&mut self.deferred_preds_chirho, wanteds_chirho);
-        let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
-        let _defaults_chirho = self.check_deferred_preds_chirho(method_subst_chirho);
-        self.deferred_preds_chirho = pending_chirho;
     }
 
     /// A class method's type at one instance: the class's variables become the
