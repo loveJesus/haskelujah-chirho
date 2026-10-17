@@ -75,14 +75,33 @@ builder; every [x] in brick 8 is "written", not "measured".
         a missing `Show`, the renaming signature and its missing-`Show b` negative, the
         non-renaming canary, A07 in its `show` form and an equality-given wanted (check-only:
         both run wrong on main too), a quantified premise (m10), a waiting family equality (m06).
-  - [ ] Build, the controls, a mutation per new rule, the m06/m10 mutants on the new controls,
-        merge of current main, the corpus pair with no accept membership lost.
+  - [x] Re-gate of 519b929e (#27224): T5676's renaming control FAILED, a measured failure.
+        Lowering dropped instance signatures (lower_instance_decl_chirho kept only equations),
+        so the renaming path was unreachable; my checkpoint's T5676 claim was an unbuilt
+        expectation. Accept pass 1 there: T13142 and T14010 accepted, T5676 the one loss.
+  - [x] Producer fix (#27234): the lowering keeps a signature beside its equations
+        (cb7117c9, lowering tests in lower_chirho/instance_signature_tests_chirho.rs); main
+        c4e192cc merged (6a8bbc9d).
+  - [x] Final combined re-gate of 6a8bbc9d (CLI 97144e30): focused suites green (instance
+        28/28, rigid 14/14, integration 35/35, evidence 10/10, typing 354/354, parser 370/370
+        with the known overflow skipped, comprehension controls 43/43); clippy 0 warnings on
+        changed lines (149 baseline); probes and 24 runtime controls as before; corpus pair
+        byte-identical, accept 885/938 with main's exact membership, reject 240/767 (+4 for
+        GHC's reason: tcfail046, tcfail065, tcfail067, tcfail169; T15799/T15801 back to main),
+        replay 293/293, execution 28/35. Mutations: 11 caught; m04, m08 redundant; m06 and
+        m10 survived.
+  - [x] m06 by trace: `infer_matches_chirho` already discharges and retries waiting
+        equalities at each equation's end, so the in-scope retry was redundant; removed, and
+        the waiting-family program stays a plain negative. m10: the quantified-premise
+        control never reached the verdict (a wanted over an applied rigid head is not judged);
+        replaced by `instance (forall x. Show x) => CChirho [a]` with `show y`.
+  - [ ] Remeasure after those two changes, then the landing request.
   - Mutation accounting, by trace (gpt_chirho #27214): m04 (judgement after the scope) is
     REDUNDANT, not a lost rule: `with_given_preds_chirho`'s post-step discharges, under the
     live givens and rewrites, every wanted a given serves (`givens_discharge_wanted_chirho`),
     and what survives it is judged alike inside or outside. m08 (built-in quantifiers rigid) is
-    REDUNDANT with the source-name filter (no reachable named foreign scheme). Six rules are
-    independently killed; m06 and m10 await their mutants on the new controls.
+    REDUNDANT with the source-name filter (no reachable named foreign scheme). m06's code is
+    removed as redundant (above). The final count is in the remeasure.
 - [ ] 7. Proposed next unit, not this one: thread the instance context's dictionaries into
       instance methods (dictionary pass). Main dispatches `==` under `Ord a` by the `Int`
       default: `[1.5, 1.5 :: Double]` crashes, `Maybe`/tuple elements crash, nested lists

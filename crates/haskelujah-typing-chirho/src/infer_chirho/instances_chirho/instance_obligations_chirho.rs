@@ -643,10 +643,10 @@ impl InferCtxChirho {
             Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
         }
         if judged_chirho {
-            // The module's own order: a stuck family equality settled now
-            // (`WrapChirho t ~ Maybe y`, once `t` is known) decides the wanted
-            // it feeds before that wanted is judged.
-            let _equalities_chirho = self.retry_deferred_equalities_chirho();
+            // A waiting family equality settled by the body (`WrapChirho t ~
+            // Maybe y`, once `t` is known) was already retried at its
+            // equation's end (`infer_matches_chirho`), so the wanted it feeds
+            // is judged at its settled type.
             let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
             self.judge_ground_leftovers_chirho(&method_subst_chirho);
             let _defaults_chirho = self.check_deferred_preds_chirho(&method_subst_chirho);

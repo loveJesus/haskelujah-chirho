@@ -402,9 +402,8 @@ fn instances_the_checker_cannot_fully_judge_stay_accepted_chirho() {
     // A09: a superclass reached through a multi-parameter given, which the
     // checker cannot reach yet, so the leftover verdict is withheld. A
     // quantified premise is not modelled, so the context is incomplete and the
-    // verdict is withheld too: judged, `show x` would need `Show (f Int)`,
-    // which only that premise gives. It type-checks but does not RUN yet, on
-    // main either ("missing STG binding `mChirho`").
+    // verdict is withheld too: judged, `show y` would be "could not deduce
+    // `Show a`", which only the premise `forall x. Show x` gives.
     for (file_name_chirho, source_chirho) in [
         (
             "A03ValidFoldableFoldmapChirho.hs",
@@ -416,7 +415,7 @@ fn instances_the_checker_cannot_fully_judge_stay_accepted_chirho() {
         ),
         (
             "QuantifiedPremiseChirho.hs",
-            "{-# LANGUAGE QuantifiedConstraints, UndecidableInstances #-}\nmodule Main where\nnewtype WrapChirho f = WrapChirho (f Int)\nclass CChirho a where\n  mChirho :: a -> String\ninstance (forall b. Show b => Show (f b)) => CChirho (WrapChirho f) where\n  mChirho (WrapChirho x) = show x\nmain :: IO ()\nmain = putStrLn (mChirho (WrapChirho (Just 3)))\n",
+            "{-# LANGUAGE QuantifiedConstraints, UndecidableInstances #-}\nmodule Main where\nclass CChirho a where\n  mChirho :: a -> String\ninstance (forall x. Show x) => CChirho [a] where\n  mChirho (y:_) = show y\n  mChirho [] = \"\"\nmain :: IO ()\nmain = putStrLn \"ok\"\n",
         ),
         (
             "A09ValidMptcSuperclassGivenChirho.hs",
@@ -503,10 +502,10 @@ fn a_deferred_equality_decides_the_method_wanted_it_feeds_chirho() {
 #[test]
 fn a_waiting_family_equality_decides_the_wanted_it_feeds_chirho() {
     // `pickChirho z :: WrapChirho t` meets `Maybe y` while `t` is unknown, so
-    // that equality waits; `z + n` then fixes `t := Int`, the retry reduces
-    // `WrapChirho Int` to `Maybe NoShowChirho`, and the wanted `Show y` is
-    // judged as `Show NoShowChirho`. GHC 9.14.1 rejects it (GHC-39999); main
-    // accepted it.
+    // that equality waits; `z + n` then fixes `t := Int`, the equation's own
+    // end-of-scope retry reduces `WrapChirho Int` to `Maybe NoShowChirho`, and
+    // the wanted `Show y` is judged as `Show NoShowChirho`. GHC 9.14.1 rejects
+    // it (GHC-39999); main accepted it.
     rejected_with_chirho(
         "WaitingFamilyFeedsWantedChirho.hs",
         "{-# LANGUAGE TypeFamilies #-}\nmodule Main where\ndata NoShowChirho = NoShowChirho\ntype family WrapChirho a\ntype instance WrapChirho Int = Maybe NoShowChirho\npickChirho :: a -> WrapChirho a\npickChirho = undefined\nclass RenderChirho a where\n  renderChirho :: a -> String\ninstance RenderChirho Int where\n  renderChirho n = (\\z -> case pickChirho z of { Just y -> show y ++ show (z + n); Nothing -> \"\" }) 0\nmain :: IO ()\nmain = putStrLn (renderChirho (1 :: Int))\n",

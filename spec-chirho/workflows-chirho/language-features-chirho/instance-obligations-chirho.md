@@ -38,7 +38,7 @@ flowchart TD
     family_chirho -- yes --> main_chirho
     family_chirho -- no --> body_chirho[check_method_body_chirho: infer, subsume, apply the subsumption to the wanteds]
     body_chirho --> judged_chirho{context complete and every given reaches its superclasses}
-    judged_chirho -- yes --> judge_chirho[retry waiting equalities; discharge and improve by the givens; ground leftovers get the top level's verdict; the rest check_deferred_preds_chirho]
+    judged_chirho -- yes --> judge_chirho[discharge and improve by the givens; ground leftovers get the top level's verdict; the rest check_deferred_preds_chirho]
     judged_chirho -- no --> withheld_chirho[leftover verdict withheld; every other check ran]
     judge_chirho --> restore_chirho[after the scope: the method's unsettled equalities rejoin the module list; module wanteds, env, class env, scoped tyvars, skolem bindings restored]
     withheld_chirho --> restore_chirho
