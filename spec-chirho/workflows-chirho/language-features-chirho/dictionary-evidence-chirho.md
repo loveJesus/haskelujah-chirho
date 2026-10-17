@@ -239,7 +239,11 @@ flowchart TD
   superclass keys already dangle across instances, since variables are freshened per instance),
   and instances with a context, which have no dictionary at all yet (the conditional-instance
   unit). Cross-module overlap and same-name controls run only once a multi-module frozen build can
-  exercise them.
+  exercise them. A user-class method used directly mints no occurrence evidence, so its use
+  site never consults the alias; a constrained call or a standard method's occurrence does.
+  G4 counts only instances that reach the class environment: a context-free instance whose
+  head carries an overlap pragma is lost before typing today, and while it is, its generic
+  rival must not be aliased (see the tasklist's blocker).
 
 ## Current boundary
 

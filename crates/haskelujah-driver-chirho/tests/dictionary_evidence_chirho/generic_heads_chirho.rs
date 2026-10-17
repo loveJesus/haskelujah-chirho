@@ -5,8 +5,11 @@
 //! variables, with no competing head for that constructor, is found under the
 //! constructor its use sites carry, through an alias private to the pass, and
 //! filled from its rows as written (claude2_chirho #27335; gpt_chirho #27342,
-//! #27349, #27365 and #27368, contract G1-G6).
-//! Every expected output is GHC 9.14.1's.
+//! #27349, #27365 and #27368, contract G1-G6). Every control goes through a use
+//! site that consults the alias: a standard method's direct occurrence (`==`
+//! carries the outer head) or a constrained call (reference evidence); a
+//! user-class method used directly mints no occurrence evidence and never
+//! reaches it. Every expected output is GHC 9.14.1's.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use haskelujah_driver::eval_source_with_machine_chirho;
@@ -17,6 +20,8 @@ use super::run_chirho;
 const SINGLETON_CHIRHO: &str = "{-# LANGUAGE DataKinds, GADTs, KindSignatures, StandaloneDeriving #-}\nmodule Main where\nimport Data.Kind (Type)\n";
 
 const TAG_CLASS_CHIRHO: &str = "{-# LANGUAGE FlexibleInstances #-}\nmodule Main where\nclass TagChirho a where\n  tagChirho :: a -> String\nuseTagChirho :: TagChirho a => a -> String\nuseTagChirho x = tagChirho x\n";
+
+const EQ_HEADS_CHIRHO: &str = "{-# LANGUAGE FlexibleInstances #-}\nmodule Main where\n";
 
 /// GHC's exact output, or a failure: an ineligible head may stay unsupported,
 /// but it must never answer with another instance's method.
@@ -85,20 +90,19 @@ fn a_derived_singleton_eq_reaches_its_dictionary_and_its_row_chirho() {
 }
 
 #[test]
-fn a_written_generic_head_serves_each_constructor_chirho() {
-    // A hand-written context-free head over two distinct variables, by a
-    // direct use and through a constrained reference, and two generic heads
-    // that must each keep their own constructor. All fail on main 3ca4fc54,
-    // 29be1b7f and 3ece4a33 with "missing STG binding `tagChirho`".
+fn a_written_generic_head_serves_constrained_calls_chirho() {
+    // A hand-written context-free head over two distinct variables, and two
+    // generic heads that must each keep their own constructor, reached through
+    // a constrained call. On 3ece4a33 each printed empty lines, exit 0.
     for (file_name_chirho, program_chirho, expected_chirho) in [
         (
-            "TwoVariableHeadChirho.hs",
-            "data PairBoxChirho a b = PairBoxChirho\ninstance TagChirho (PairBoxChirho a b) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = do\n  putStrLn (tagChirho (PairBoxChirho :: PairBoxChirho Int Bool))\n  putStrLn (useTagChirho (PairBoxChirho :: PairBoxChirho Char ()))\n",
+            "TwoVariableHeadByReferenceChirho.hs",
+            "data PairBoxChirho a b = PairBoxChirho\ninstance TagChirho (PairBoxChirho a b) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = do\n  putStrLn (useTagChirho (PairBoxChirho :: PairBoxChirho Int Bool))\n  putStrLn (useTagChirho (PairBoxChirho :: PairBoxChirho Char ()))\n",
             "generic\ngeneric\n",
         ),
         (
-            "TwoConstructorsChirho.hs",
-            "data OneChirho a = OneChirho\ndata TwoChirho a = TwoChirho\ninstance TagChirho (OneChirho a) where\n  tagChirho _ = \"one\"\ninstance TagChirho (TwoChirho a) where\n  tagChirho _ = \"two\"\nmain :: IO ()\nmain = do\n  putStrLn (tagChirho (OneChirho :: OneChirho Int))\n  putStrLn (useTagChirho (TwoChirho :: TwoChirho Bool))\n",
+            "TwoConstructorsByReferenceChirho.hs",
+            "data OneChirho a = OneChirho\ndata TwoChirho a = TwoChirho\ninstance TagChirho (OneChirho a) where\n  tagChirho _ = \"one\"\ninstance TagChirho (TwoChirho a) where\n  tagChirho _ = \"two\"\nmain :: IO ()\nmain = do\n  putStrLn (useTagChirho (OneChirho :: OneChirho Int))\n  putStrLn (useTagChirho (TwoChirho :: TwoChirho Bool))\n",
             "one\ntwo\n",
         ),
     ] {
@@ -114,40 +118,56 @@ fn a_written_generic_head_serves_each_constructor_chirho() {
 }
 
 #[test]
+fn two_generic_eq_heads_keep_their_own_constructors_chirho() {
+    // A wildcard over constructors would cross these. On 3ece4a33 the first
+    // `==` was a missing binding.
+    assert_eq!(
+        run_chirho(
+            "EqTwoConstructorsChirho.hs",
+            &format!(
+                "{EQ_HEADS_CHIRHO}data OneChirho a = OneChirho\ndata TwoChirho a = TwoChirho\ninstance Eq (OneChirho a) where\n  _ == _ = True\ninstance Eq (TwoChirho a) where\n  _ == _ = False\nmain :: IO ()\nmain = print (OneChirho == (OneChirho :: OneChirho Int), TwoChirho == (TwoChirho :: TwoChirho Bool))\n"
+            )
+        ),
+        "(True,False)\n"
+    );
+}
+
+#[test]
 fn an_ineligible_head_never_answers_for_another_chirho() {
     // A repeated variable, a competing specialized or contextual head, and a
     // head that needs a context are not generic: each may stay unsupported,
-    // but none may answer with the wrong instance's method.
+    // but none may answer with the wrong instance's method. `==` reaches the
+    // alias directly. All fail loudly on 3ece4a33.
     for (file_name_chirho, program_chirho, ghc_chirho) in [
         (
-            "RepeatedVariableChirho.hs",
-            "data PairBoxChirho a b = PairBoxChirho\ninstance TagChirho (PairBoxChirho a a) where\n  tagChirho _ = \"repeated\"\nmain :: IO ()\nmain = putStrLn (tagChirho (PairBoxChirho :: PairBoxChirho Int Int))\n",
-            "repeated\n",
+            "EqRepeatedVariableChirho.hs",
+            "data PairBoxChirho a b = PairBoxChirho\ninstance Eq (PairBoxChirho a a) where\n  _ == _ = True\nmain :: IO ()\nmain = print (PairBoxChirho == (PairBoxChirho :: PairBoxChirho Int Int))\n",
+            "True\n",
         ),
         (
-            "SpecializedCompetitorAtItsTypeChirho.hs",
-            "data BoxChirho a = BoxChirho\ninstance {-# OVERLAPPING #-} TagChirho (BoxChirho Int) where\n  tagChirho _ = \"specialized\"\ninstance TagChirho (BoxChirho a) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = putStrLn (tagChirho (BoxChirho :: BoxChirho Int))\n",
-            "specialized\n",
+            "EqSpecializedAtItsTypeChirho.hs",
+            "data BoxChirho a = BoxChirho\ninstance {-# OVERLAPPING #-} Eq (BoxChirho Int) where\n  _ == _ = False\ninstance Eq (BoxChirho a) where\n  _ == _ = True\nmain :: IO ()\nmain = print (BoxChirho == (BoxChirho :: BoxChirho Int))\n",
+            "False\n",
         ),
         (
-            "SpecializedCompetitorElsewhereChirho.hs",
-            "data BoxChirho a = BoxChirho\ninstance {-# OVERLAPPING #-} TagChirho (BoxChirho Int) where\n  tagChirho _ = \"specialized\"\ninstance TagChirho (BoxChirho a) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = putStrLn (tagChirho (BoxChirho :: BoxChirho Bool))\n",
-            "generic\n",
+            "EqSpecializedElsewhereChirho.hs",
+            "data BoxChirho a = BoxChirho\ninstance {-# OVERLAPPING #-} Eq (BoxChirho Int) where\n  _ == _ = False\ninstance Eq (BoxChirho a) where\n  _ == _ = True\nmain :: IO ()\nmain = print (BoxChirho == (BoxChirho :: BoxChirho Bool))\n",
+            "True\n",
         ),
         (
-            "ContextualCompetitorChirho.hs",
-            "data BoxChirho a = BoxChirho\ninstance {-# OVERLAPPING #-} Show a => TagChirho (BoxChirho [a]) where\n  tagChirho _ = \"contextual\"\ninstance TagChirho (BoxChirho a) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = putStrLn (tagChirho (BoxChirho :: BoxChirho [Int]))\n",
-            "contextual\n",
+            "EqContextualCompetitorChirho.hs",
+            "data BoxChirho a = BoxChirho\ninstance {-# OVERLAPPING #-} Show a => Eq (BoxChirho [a]) where\n  _ == _ = False\ninstance Eq (BoxChirho a) where\n  _ == _ = True\nmain :: IO ()\nmain = print (BoxChirho == (BoxChirho :: BoxChirho [Int]))\n",
+            "False\n",
         ),
         (
-            "ContextRequiringRowChirho.hs",
-            "data CellChirho a = CellChirho a\ninstance Show a => TagChirho (CellChirho a) where\n  tagChirho (CellChirho x) = show x\nmain :: IO ()\nmain = putStrLn (tagChirho (CellChirho (2.5 :: Double)))\n",
-            "2.5\n",
+            "EqContextRequiringRowChirho.hs",
+            "data CellChirho a = CellChirho a\ninstance Show a => Eq (CellChirho a) where\n  CellChirho x == CellChirho y = show x == show y\nmain :: IO ()\nmain = print (CellChirho (2.5 :: Double) == CellChirho 2.5)\n",
+            "True\n",
         ),
     ] {
         assert_ghc_or_failure_chirho(
             file_name_chirho,
-            &format!("{TAG_CLASS_CHIRHO}{program_chirho}"),
+            &format!("{EQ_HEADS_CHIRHO}{program_chirho}"),
             ghc_chirho,
         );
     }
@@ -156,16 +176,16 @@ fn an_ineligible_head_never_answers_for_another_chirho() {
 #[test]
 fn a_repeated_variable_head_never_serves_a_mismatched_use_chirho() {
     // GHC rejects this use (GHC-39999: no instance for
-    // `TagChirho (PairBoxChirho Int Bool)`). Our checker accepts it, so it is
-    // the dictionary pass that must not answer: a repeated variable is not a
+    // `Eq (PairBoxChirho Int Bool)`). Our checker accepts it, so it is the
+    // dictionary pass that must not answer: a repeated variable is not a
     // bijection, so the head is never found under its constructor.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let outcome_chirho = eval_source_with_machine_chirho(
         &format!(
-            "{TAG_CLASS_CHIRHO}data PairBoxChirho a b = PairBoxChirho\ninstance TagChirho (PairBoxChirho a a) where\n  tagChirho _ = \"repeated\"\nmain :: IO ()\nmain = putStrLn (tagChirho (PairBoxChirho :: PairBoxChirho Int Bool))\n"
+            "{EQ_HEADS_CHIRHO}data PairBoxChirho a b = PairBoxChirho\ninstance Eq (PairBoxChirho a a) where\n  _ == _ = True\nmain :: IO ()\nmain = print (PairBoxChirho == (PairBoxChirho :: PairBoxChirho Int Bool))\n"
         ),
         &mut source_map_chirho,
-        "RepeatedVariableMismatchChirho.hs",
+        "EqRepeatedVariableMismatchChirho.hs",
         None,
     );
     if let Ok((_value_chirho, machine_chirho)) = outcome_chirho {
@@ -185,5 +205,19 @@ fn a_two_parameter_class_is_never_keyed_by_one_head_chirho() {
         "TwoParameterClassChirho.hs",
         "{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}\nmodule Main where\nclass PairTagChirho a b where\n  pairTagChirho :: a -> b -> String\ndata BoxChirho a = BoxChirho\ninstance PairTagChirho (BoxChirho a) Int where\n  pairTagChirho _ _ = \"box-int\"\nmain :: IO ()\nmain = putStrLn (pairTagChirho (BoxChirho :: BoxChirho Char) (3 :: Int))\n",
         "box-int\n",
+    );
+}
+
+#[test]
+fn a_user_method_used_directly_stays_outside_this_seam_chirho() {
+    // A user-class method used directly mints no occurrence evidence, so the
+    // use site never consults the alias: a missing binding on 3ece4a33 and
+    // here alike. The boundary may close; it must never answer wrongly.
+    assert_ghc_or_failure_chirho(
+        "DirectUserMethodChirho.hs",
+        &format!(
+            "{TAG_CLASS_CHIRHO}data PairBoxChirho a b = PairBoxChirho\ninstance TagChirho (PairBoxChirho a b) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = putStrLn (tagChirho (PairBoxChirho :: PairBoxChirho Int Bool))\n"
+        ),
+        "generic\n",
     );
 }
