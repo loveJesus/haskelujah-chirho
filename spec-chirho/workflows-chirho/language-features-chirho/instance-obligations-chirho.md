@@ -19,6 +19,44 @@ flowchart TD
     seed_chirho[seed_standard_chirho: GHC's numeric hierarchy] --> env_chirho
 ```
 
+## Instance methods: checked as signature-bound bindings
+
+```mermaid
+flowchart TD
+    inst_chirho[check_instance_methods_against_class_chirho] --> head_chirho[head types and the written context, ONE var map]
+    head_chirho --> ctx_chirho[instance_context_givens_chirho: convert_written_context_chirho, equalities as ~]
+    ctx_chirho --> parts_chirho[instantiate_instance_method_expected_parts_chirho: class vars := head, method quantifiers kept for a class declared here]
+    parts_chirho --> skolem_chirho[skolemize_scheme_parts_chirho: head vars and kept quantifiers rigid, contexts as givens]
+    skolem_chirho --> live_chirho[with_given_preds_chirho: the givens live for the whole check]
+    live_chirho --> body_chirho[check_method_body_chirho: infer, subsume, apply the subsumption to the wanteds]
+    body_chirho --> judged_chirho{context complete and every given reaches its superclasses}
+    judged_chirho -- yes --> judge_chirho[judge_method_wanteds_chirho: discharge and improve by the givens, then check_deferred_preds_chirho]
+    judged_chirho -- no --> withheld_chirho[leftover verdict withheld; every other check ran]
+    judge_chirho --> restore_chirho[restore env, class env, scoped tyvars, skolem bindings, pending wanteds]
+    withheld_chirho --> restore_chirho
+```
+
+A method body used to have its leftover wanteds DISCARDED, the instance context was never a
+given, and the instance's variables were flexible: `show x` with no `Show T`, `==` under a
+`Show a` context, or a method fixing the instance's `a` to `Int` were all accepted. Now a method
+gets exactly the judgement a top-level binding with a signature gets. Boundaries, each recorded
+in the code:
+
+- **Unmodelled premises.** A quantified or variable-headed (`?`) context makes the givens
+  incomplete: only the leftover-wanted verdict is withheld.
+- **Superclasses through a multi-parameter given.** Superclasses are recorded by name, not with
+  their arguments, so `Convert a b` under `class Show a => Convert a b` cannot give `Show a` (the
+  top-level form is rejected on main too, though GHC accepts it). The verdict is withheld; the
+  repair is superclass argument substitution, its own solver unit.
+- **Built-in and imported classes.** Their seeded method schemes have fixed, nameless variables
+  and some lack their contexts (`foldMap`, `traverse`), so their method quantifiers stay
+  flexible. Making them rigid needs that seed metadata repaired first.
+- **The class's own predicate** at the instance stays a given, so recursion resolves as before.
+  A superclass reached through it is the declaration's superclass obligation (below), not the
+  method's.
+- **Defaulting.** Local literals still default when the wanteds are judged; the defaulting
+  substitution itself is discarded, a check-only choice that leaves evidence unchanged.
+
 ## Invariants
 
 - **Alpha-equality of heads** (`ClassEnvChirho::instance_heads_alpha_equal_chirho`) matches all head
@@ -66,6 +104,10 @@ two facts measured 2026-09-18:
    one; ten valid files were falsely rejected in the diagnostic pass. gpt's branch lowers contexts
    as types (`lower_chirho/contexts_chirho.rs`). Constraint synonyms in contexts (T10335) must be
    expanded as well.
+   RESOLVED since: the scanner is deleted (no `parse_simple_constraint_segment_chirho` remains in
+   the parser), contexts lower through `lower_chirho/contexts_chirho.rs`, and
+   `convert_written_context_chirho` keeps every argument and expands constraint synonyms. The
+   instance-method check above relies on that. Completeness (1) still stands.
 
 ## Boundaries
 
