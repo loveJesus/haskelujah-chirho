@@ -177,3 +177,6 @@ mod known_type_patterns_chirho;
 
 #[path = "rigid_tyvars_chirho/declaration_patterns_chirho.rs"]
 mod declaration_patterns_chirho;
+
+#[path = "rigid_tyvars_chirho/record_field_patterns_chirho.rs"]
+mod record_field_patterns_chirho;

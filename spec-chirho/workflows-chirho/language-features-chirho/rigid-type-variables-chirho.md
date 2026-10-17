@@ -96,7 +96,18 @@ flowchart TD
     braces_chirho --> positional_chirho[no declared field set: C {} has the constructor's result type (constructor_result_type_chirho peels the arrows); a named field on a local positional constructor → E0206]
     positional_chirho --> arity_chirho[Desugar fills every argument with the thunk; arities come from the checker's environment through DesugarInputsChirho, imported constructors included]
     update_chirho[Checker RecordUpdateChirho arm: no constructor of a LOCAL type declares the field → E0206] --> unknown_chirho[imported or unknown head: permissive path kept]
+    pattern_chirho[Record pattern selects an exact local constructor] --> schema_chirho[Original declared field table, before type-spine truncation]
+    schema_chirho --> membership_chirho[Shared report_record_field_membership_chirho]
+    arm_chirho --> membership_chirho
+    membership_chirho --> undeclared_chirho
 ```
+
+Record patterns share the selected constructor's field-membership rule: a field of an
+outer or sibling constructor is not a field of this constructor (tcfail083, GHC-53822).
+The pattern check requires an exact local constructor name and its declared field table;
+an imported qualified name is not judged using a same-bare-name local table. Unknown or
+incomplete field metadata retains the existing fallback. Patterns may omit strict fields:
+the construction-only omitted-field check is not applied to matching.
 
 Invariants: a local type's constructor list is complete (`data_constructors_chirho`), so the
 undeclared-field verdict is exact there and silent elsewhere; a missing lazy field costs

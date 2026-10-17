@@ -114,6 +114,7 @@ impl InferCtxChirho {
                 has_wildcard_chirho,
                 span_chirho: pat_span_chirho,
             } => {
+                self.report_record_pattern_fields_chirho(con_chirho, fields_chirho);
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut field_type_map_chirho = HashMap::new();
                 if let Some((field_names_chirho, field_tys_chirho, result_ty_chirho)) =

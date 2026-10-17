@@ -206,18 +206,13 @@ impl InferCtxChirho {
         has_wildcard_chirho: bool,
         span_chirho: SpanChirho,
     ) {
-        for field_chirho in fields_chirho {
-            let given_chirho =
-                strip_name_qualifier_chirho(&field_chirho.name_chirho.full_name_chirho())
-                    .to_string();
-            if !ordered_field_names_chirho.contains(&given_chirho) {
-                self.report_field_not_declared_by_constructor_chirho(
-                    con_name_chirho,
-                    &given_chirho,
-                    field_chirho.span_chirho,
-                );
-            }
-        }
+        self.report_record_field_membership_chirho(
+            con_name_chirho,
+            ordered_field_names_chirho,
+            fields_chirho
+                .iter()
+                .map(|field_chirho| (&field_chirho.name_chirho, field_chirho.span_chirho)),
+        );
         if has_wildcard_chirho {
             return;
         }
@@ -240,6 +235,55 @@ impl InferCtxChirho {
                         ),
                         span_chirho,
                     ));
+            }
+        }
+    }
+
+    /// A pattern selects one constructor, so a sibling constructor's field is
+    /// not available. Judge only an exact local constructor with its original
+    /// declared field table; imported or incomplete tables cannot prove absence.
+    /// Unlike construction, a pattern may omit strict fields.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
+    pub(super) fn report_record_pattern_fields_chirho(
+        &mut self,
+        con_chirho: &NameChirho,
+        fields_chirho: &[haskelujah_ast_chirho::pat_chirho::PatFieldChirho],
+    ) {
+        let con_name_chirho = con_chirho.full_name_chirho();
+        if !self.is_local_constructor_chirho(&con_name_chirho) {
+            return;
+        }
+        let Some(declared_fields_chirho) =
+            self.con_field_names_chirho.get(&con_name_chirho).cloned()
+        else {
+            return;
+        };
+        self.report_record_field_membership_chirho(
+            &con_name_chirho,
+            &declared_fields_chirho,
+            fields_chirho
+                .iter()
+                .map(|field_chirho| (&field_chirho.name_chirho, field_chirho.span_chirho)),
+        );
+    }
+
+    /// Shared field-set rule for record construction and matching. Callers
+    /// establish that their declared field list is complete before using it.
+    fn report_record_field_membership_chirho<'field_chirho>(
+        &mut self,
+        con_name_chirho: &str,
+        declared_fields_chirho: &[String],
+        fields_chirho: impl IntoIterator<Item = (&'field_chirho NameChirho, SpanChirho)>,
+    ) {
+        for (field_name_chirho, span_chirho) in fields_chirho {
+            let field_key_chirho =
+                strip_name_qualifier_chirho(&field_name_chirho.full_name_chirho()).to_string();
+            if !declared_fields_chirho.contains(&field_key_chirho) {
+                self.report_field_not_declared_by_constructor_chirho(
+                    con_name_chirho,
+                    &field_key_chirho,
+                    span_chirho,
+                );
             }
         }
     }
