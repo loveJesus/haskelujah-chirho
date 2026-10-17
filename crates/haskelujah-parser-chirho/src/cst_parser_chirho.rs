@@ -22,9 +22,9 @@ use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
-mod guard_let_chirho;
 #[cfg(test)]
 mod guard_let_tests_chirho;
+mod let_qualifier_chirho;
 
 use crate::layout_chirho::apply_layout_chirho;
 use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
@@ -2237,7 +2237,7 @@ impl<'src> ParserChirho<'src> {
         let mut bracket_depth_chirho = 0u32;
         let mut brace_depth_chirho = 0u32;
         // A qualifier's `let` ends at its `,` or the arm's `->`, as the parser
-        // ends it (guard_let_chirho.rs). Until then its bindings' `=` is not an
+        // ends it (let_qualifier_chirho.rs). Until then its bindings' `=` is not an
         // outer guard's, a comma inside one of its bindings' own guards is that
         // binding's, and the layout pass's later close of a block ended early is
         // owed, not a scope boundary.
