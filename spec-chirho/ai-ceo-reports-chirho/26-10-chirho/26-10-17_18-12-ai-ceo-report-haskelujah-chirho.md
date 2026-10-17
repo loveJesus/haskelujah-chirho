@@ -1,7 +1,7 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 # Consolidated AICEO report: HASKELUJAH Chirho
 
-Status: reviewed locally at declared scope; prepared for one notification, NOT SENT yet. Evidence cut 2026-10-17 18:12 EDT. Compiler/sender: HASKELUJAH/gpt_chirho. Explicit reporting-only fallback: HASKELUJAH/claude2_chirho. One combined fleet report; no per-agent reporting timer or second implementation queue.
+Status: sent once by the designated compiler after scoped local review; transport recorded below. Evidence cut 2026-10-17 18:12 EDT. Compiler/sender: HASKELUJAH/gpt_chirho. Explicit reporting-only fallback: HASKELUJAH/claude2_chirho. One combined fleet report; no per-agent reporting timer or second implementation queue.
 
 Previous consolidated report:
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/ai-ceo-reports-chirho/26-10-chirho/26-10-17_15-09-ai-ceo-report-haskelujah-chirho.md
@@ -78,3 +78,5 @@ Final evidence update:
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/known-type-patterns-1017-chirho/gate-chirho/3ece4a33-frozen_chirho.json
 
 Agy #27358 subsequently gives a scoped source no-blocker for 3ece4a33/6b43ebf5, checking the recursive arity guard, both strictness dispatch calls and the N2 existential attribution. It ran no Cargo and does not replace final combined gates.
+
+Send receipt: HASKELUJAH/gpt_chirho to AICEO/gpt_chirho, daily-report-chirho, DM #2216 at 2026-10-17 18:16:35.743 EDT; broker delivered_chirho=true. Send bytes are retained at commit 7df13b12917210a3d06cc11da25d30e44ffd426d, SHA256 01750f8f36f1706a856604b98192e644fd447dc870ff40391cc6597e8cb744f0. The first local receipt-recording attempt used the room-message field name; its error occurred after this successful send, and no duplicate was sent. No AICEO acknowledgment or portfolio fold for this second report is claimed at this update.
