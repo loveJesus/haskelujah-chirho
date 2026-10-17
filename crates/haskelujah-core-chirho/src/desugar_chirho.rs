@@ -1021,10 +1021,10 @@ impl DesugarCtxChirho {
                 args_chirho: vec![left_chirho, right_chirho],
             };
         }
-        // (:) cons constructor: left : right → ConApp(":", [left, right])
-        if op_name_chirho == ":" {
+        // Constructor operators retain their constructor identity after fixity rebuilding.
+        if op_name_chirho == ":" || self.con_arities_chirho.contains_key(op_name_chirho) {
             return CoreExprChirho::ConAppChirho {
-                con_name_chirho: ":".to_string(),
+                con_name_chirho: op_name_chirho.to_string(),
                 args_chirho: vec![left_chirho, right_chirho],
             };
         }
@@ -2643,10 +2643,10 @@ impl DesugarCtxChirho {
                     };
                 }
 
-                // (:) is the list cons constructor: x : xs → ConApp(":", [x, xs])
-                if op_name_chirho == ":" {
+                // Known constructor operators construct data, including user-defined infix constructors.
+                if op_name_chirho == ":" || self.con_arities_chirho.contains_key(op_name_chirho) {
                     return CoreExprChirho::ConAppChirho {
-                        con_name_chirho: ":".to_string(),
+                        con_name_chirho: op_name_chirho.to_string(),
                         args_chirho: vec![left_core_chirho, right_core_chirho],
                     };
                 }
