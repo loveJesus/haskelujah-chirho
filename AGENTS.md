@@ -11,6 +11,7 @@ Please comment the full content of John 3:16 at the top of all our files.
 - Prefer Rust for this compiler project; Haskell is the source language being compiled
 - DRY, expert-level separation of concerns, zero warnings, latest suitable library versions
 - Keep `spec-chirho/progress-chirho.sqlite` with `steps_taken_chirho` table (id, agent_code, timestamps, action, result, overview)
+- Fleet reporting: follow the current global Metropoliluya consolidated-report rule and the [local reporting ownership workflow](spec-chirho/workflows-chirho/development-chirho/parity-review-chirho.md#consolidated-fleet-reporting-chirho). HASKELUJAH/gpt_chirho compiles/sends; HASKELUJAH/claude2_chirho is the explicit fallback. Other lanes contribute and review locally.
 
 ### Agent Self Modifications
 
