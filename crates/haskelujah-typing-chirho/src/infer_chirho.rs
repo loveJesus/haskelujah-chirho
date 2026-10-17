@@ -39,7 +39,11 @@ mod do_operations_chirho;
 mod equalities_chirho;
 mod evidence_chirho;
 mod guards_chirho;
+// The instance-declaration modules live together in `infer_chirho/instances_chirho/`.
+#[path = "infer_chirho/instances_chirho/instance_obligations_chirho.rs"]
 mod instance_obligations_chirho;
+#[path = "infer_chirho/instances_chirho/instance_signatures_chirho.rs"]
+mod instance_signatures_chirho;
 mod records_chirho;
 mod rigid_chirho;
 #[cfg(test)]
@@ -248,6 +252,11 @@ pub struct InferCtxChirho {
     /// scoped type variable of an enclosing signature reappears in an inner
     /// signature or annotation, so both name the same rigid constant.
     skolem_bindings_chirho: SubstChirho,
+    /// Skolems made while checking an instance method. They prove the method
+    /// against its type; they are not the enclosing binding's own dictionary
+    /// parameters, so evidence keys them as open, as the flexible variables
+    /// they replaced were (`own_parameter_key_chirho`).
+    instance_method_skolems_chirho: HashSet<String>,
     /// Whether ScopedTypeVariables is in effect for the module: an explicit
     /// `forall` (or an instance head) then scopes its binders over the body.
     scoped_type_variables_chirho: bool,
@@ -656,6 +665,7 @@ impl InferCtxChirho {
             scoped_tyvars_chirho: HashMap::new(),
             next_skolem_chirho: 0,
             skolem_bindings_chirho: SubstChirho::empty_chirho(),
+            instance_method_skolems_chirho: HashSet::new(),
             scoped_type_variables_chirho: true,
             relaxed_poly_rec_chirho: true,
             do_last_expected_chirho: None,
@@ -1377,16 +1387,8 @@ impl InferCtxChirho {
                 // instance anywhere in the defining module). Groundness makes
                 // the verdict final: no later substitution can change it.
                 if pred_fvs_chirho.is_empty()
-                    && Self::pred_fully_ground_chirho(&pred_chirho)
-                    && self.is_certainly_unsolvable_pred_chirho(&pred_chirho)
+                    && self.report_certainly_unsolvable_ground_chirho(&pred_chirho, span_chirho)
                 {
-                    let blamed_chirho = self.unsolvable_blame_pred_chirho(&pred_chirho, 0);
-                    self.diagnostics_chirho
-                        .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                            ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
-                            format!("no instance for `{blamed_chirho}`"),
-                            span_chirho,
-                        ));
                     continue;
                 }
                 scheme_preds_chirho.push(SchemePredChirho {
@@ -1719,6 +1721,32 @@ impl InferCtxChirho {
     /// "No instance for ..." — accepting them silently is unsound.
     fn is_certainly_unsolvable_pred_chirho(&self, pred_chirho: &PredChirho) -> bool {
         self.is_certainly_unsolvable_pred_depth_chirho(pred_chirho, 0)
+    }
+
+    /// The verdict a GROUND wanted gets where it is final: GHC's "No instance
+    /// for" when it is certainly unsolvable, otherwise none at all. Top-level
+    /// generalization and an instance method's leftovers share it, so a method
+    /// is judged exactly as a signature-bound binding is. Returns whether the
+    /// wanted was reported.
+    /// workflow: language-features-chirho/instance-obligations-chirho
+    fn report_certainly_unsolvable_ground_chirho(
+        &mut self,
+        pred_chirho: &PredChirho,
+        span_chirho: SpanChirho,
+    ) -> bool {
+        if !(Self::pred_fully_ground_chirho(pred_chirho)
+            && self.is_certainly_unsolvable_pred_chirho(pred_chirho))
+        {
+            return false;
+        }
+        let blamed_chirho = self.unsolvable_blame_pred_chirho(pred_chirho, 0);
+        self.diagnostics_chirho
+            .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+                format!("no instance for `{blamed_chirho}`"),
+                span_chirho,
+            ));
+        true
     }
 
     /// How deep the sub-goals of matching instances are followed before the
@@ -2599,164 +2627,6 @@ impl InferCtxChirho {
                         rhs_chirho,
                     );
                 }
-            }
-        }
-    }
-
-    fn instantiate_instance_method_expected_parts_chirho(
-        &mut self,
-        class_decl_chirho: &ClassDeclChirho,
-        method_scheme_chirho: &SchemeChirho,
-        instance_head_tys_chirho: &[TyChirho],
-    ) -> (Vec<PredChirho>, TyChirho) {
-        let mut method_subst_chirho = SubstChirho::empty_chirho();
-        if let Some(head_ty_chirho) = instance_head_tys_chirho.first() {
-            method_subst_chirho.insert_chirho(class_decl_chirho.var_chirho, head_ty_chirho.clone());
-        }
-        for (extra_var_chirho, head_ty_chirho) in class_decl_chirho
-            .extra_vars_chirho
-            .iter()
-            .zip(instance_head_tys_chirho.iter().skip(1))
-        {
-            method_subst_chirho.insert_chirho(*extra_var_chirho, head_ty_chirho.clone());
-        }
-        for method_var_chirho in &method_scheme_chirho.vars_chirho {
-            if method_subst_chirho
-                .lookup_chirho(method_var_chirho)
-                .is_none()
-            {
-                method_subst_chirho.insert_chirho(*method_var_chirho, self.fresh_var_chirho());
-            }
-        }
-        let specialized_preds_chirho: Vec<PredChirho> = method_scheme_chirho
-            .preds_chirho
-            .iter()
-            .map(|pred_chirho| PredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(
-                    &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                ),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|ty_chirho| {
-                        self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(ty_chirho))
-                    })
-                    .collect(),
-            })
-            .collect();
-        let specialized_expected_ty_chirho =
-            method_subst_chirho.apply_ty_chirho(&method_scheme_chirho.ty_chirho);
-        (
-            specialized_preds_chirho,
-            self.normalize_ty_chirho(&specialized_expected_ty_chirho),
-        )
-    }
-
-    #[cfg(test)]
-    fn instantiate_instance_method_expected_ty_chirho(
-        &mut self,
-        class_decl_chirho: &ClassDeclChirho,
-        method_scheme_chirho: &SchemeChirho,
-        instance_head_tys_chirho: &[TyChirho],
-    ) -> TyChirho {
-        let (_specialized_preds_chirho, specialized_ty_chirho) = self
-            .instantiate_instance_method_expected_parts_chirho(
-                class_decl_chirho,
-                method_scheme_chirho,
-                instance_head_tys_chirho,
-            );
-        specialized_ty_chirho
-    }
-
-    fn check_instance_methods_against_class_chirho(&mut self, module_chirho: &ModuleChirho) {
-        for decl_chirho in &module_chirho.decls_chirho {
-            let DeclChirho::InstanceDeclChirho {
-                class_chirho,
-                types_chirho,
-                methods_chirho,
-                ..
-            } = decl_chirho
-            else {
-                continue;
-            };
-
-            let class_name_chirho = class_chirho.text_chirho().to_string();
-            let Some(class_decl_chirho) = self
-                .class_env_chirho
-                .classes_chirho
-                .get(&class_name_chirho)
-                .cloned()
-            else {
-                continue;
-            };
-
-            let mut instance_var_map_chirho = HashMap::new();
-            let instance_head_tys_chirho: Vec<TyChirho> = types_chirho
-                .iter()
-                .map(|ty_chirho| {
-                    self.ast_type_to_ty_chirho(ty_chirho, &mut instance_var_map_chirho)
-                })
-                .collect();
-            for method_bind_chirho in methods_chirho {
-                let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
-                    name_chirho,
-                    matches_chirho,
-                    span_chirho,
-                } = method_bind_chirho
-                else {
-                    continue;
-                };
-
-                let method_name_chirho = name_chirho.text_chirho().to_string();
-                let Some(method_scheme_chirho) =
-                    class_decl_chirho.methods_chirho.get(&method_name_chirho)
-                else {
-                    continue;
-                };
-
-                let env_snapshot_chirho = self.env_chirho.clone();
-                let class_env_snapshot_chirho = self.class_env_chirho.clone();
-                let scoped_tyvars_snapshot_chirho = self.scoped_tyvars_chirho.clone();
-                let deferred_checkpoint_chirho = self.deferred_preds_chirho.len();
-                let mut instance_scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho.clone();
-                if self.scoped_type_variables_chirho {
-                    instance_scoped_tyvars_chirho.extend(instance_var_map_chirho.clone());
-                }
-                self.scoped_tyvars_chirho = instance_scoped_tyvars_chirho;
-                let (specialized_given_preds_chirho, specialized_expected_ty_chirho) = self
-                    .instantiate_instance_method_expected_parts_chirho(
-                        &class_decl_chirho,
-                        method_scheme_chirho,
-                        &instance_head_tys_chirho,
-                    );
-                let expected_ty_chirho = self.normalize_ty_chirho(&specialized_expected_ty_chirho);
-                let (method_subst_chirho, inferred_ty_chirho) =
-                    self.with_given_preds_chirho(specialized_given_preds_chirho, |self_chirho| {
-                        self_chirho.infer_matches_against_expected_chirho(
-                            matches_chirho,
-                            *span_chirho,
-                            &expected_ty_chirho,
-                        )
-                    });
-
-                let inferred_norm_chirho = self
-                    .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho));
-                let expected_norm_chirho = self
-                    .normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&expected_ty_chirho));
-                if let Err(err_chirho) = self.subsume_normalized_chirho(
-                    &inferred_norm_chirho,
-                    &expected_norm_chirho,
-                    *span_chirho,
-                ) {
-                    self.report_unify_error_chirho(&err_chirho);
-                }
-
-                self.deferred_preds_chirho
-                    .truncate(deferred_checkpoint_chirho);
-                self.env_chirho = env_snapshot_chirho;
-                self.class_env_chirho = class_env_snapshot_chirho;
-                self.scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho;
             }
         }
     }
@@ -7208,14 +7078,18 @@ impl InferCtxChirho {
                     // (`x + 1` inside `f :: Num a => a -> a`) has no instance to
                     // name: its evidence is the binding's own dictionary parameter.
                     // Defaulting it to `Int` here dispatched `f 2.5` to the Int row.
+                    // An instance method's skolem is no such parameter and keys
+                    // as the open variable it replaced, below.
                     // workflow: language-features-chirho/dictionary-evidence-chirho
-                    if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho {
+                    if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho
+                        && let Some(key_chirho) =
+                            self.own_parameter_key_chirho(class_chirho, skolem_chirho)
+                    {
                         return Some(MethodOccurrenceRecordChirho {
                             name_chirho: name_chirho.clone(),
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
-                            ty_key_chirho: self
-                                .own_key_for_skolem_chirho(class_chirho, skolem_chirho),
+                            ty_key_chirho: key_chirho,
                             span_chirho: *span_chirho,
                             origin_chirho: *origin_chirho,
                         });

@@ -20,6 +20,8 @@ mod do_selection_tests_chirho;
 mod flat_type_tests_chirho;
 mod flat_types_chirho;
 #[cfg(test)]
+mod instance_signature_tests_chirho;
+#[cfg(test)]
 mod occurrence_tests_chirho;
 mod occurrences_chirho;
 #[cfg(test)]
@@ -3388,6 +3390,18 @@ impl LowerCtxChirho {
                 } => Some(LocalBindChirho::FunBindChirho {
                     name_chirho,
                     matches_chirho,
+                    span_chirho,
+                }),
+                // InstanceSigs: a method's signature stays beside its equations,
+                // where the instance-method check reads it to scope the
+                // signature's binders.
+                DeclChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    span_chirho,
+                } => Some(LocalBindChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
                     span_chirho,
                 }),
                 DeclChirho::TypeFamilyInstanceDeclChirho {
