@@ -35,11 +35,14 @@ pub(super) struct GenericHeadChirho {
 
 impl DictPassCtxChirho {
     /// The instance's generic head: `generic_spine_chirho` (G1-G4, G6), then
-    /// G5, the written head confirmed. Every method of the class has a source
-    /// row under the exact constructor spelling or under ONE written spelling
+    /// G5, the slots confirmed. Every method of the class has a source row
+    /// that `resolve_or_missing_method_id_chirho` will take: the exact row for
+    /// the typed key `type_key_chirho`, or the row under ONE written spelling
     /// `T x1 .. xn` of distinct variable tokens, which correspond to the typed
-    /// variables by position, a bijection. A missing row would make a stub
-    /// reachable and a second spelling is ambiguous; either refuses.
+    /// variables by position, a bijection. Coverage and lookup read the same
+    /// spellings in the same order (agy_chirho #27369, gpt_chirho #27370), so a
+    /// bare `T` row covers nothing. A missing row would make a stub reachable
+    /// and a second spelling is ambiguous; either refuses.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn generic_head_chirho(
         &self,
@@ -47,6 +50,7 @@ impl DictPassCtxChirho {
         class_name_chirho: &str,
         inst_chirho: &InstDeclChirho,
         layout_chirho: &DictLayoutChirho,
+        type_key_chirho: &str,
     ) -> Option<GenericHeadChirho> {
         let (constructor_chirho, arity_chirho) =
             generic_spine_chirho(class_env_chirho, class_name_chirho, inst_chirho)?;
@@ -55,7 +59,7 @@ impl DictPassCtxChirho {
             let row_prefix_chirho = format!("$prim_{class_name_chirho}_{method_name_chirho}_");
             let mut covered_chirho = self
                 .body_backed_names_chirho
-                .contains_key(&format!("{row_prefix_chirho}{constructor_chirho}"));
+                .contains_key(&format!("{row_prefix_chirho}{type_key_chirho}"));
             for row_name_chirho in self.body_backed_names_chirho.keys() {
                 let Some(spelling_chirho) = row_name_chirho.strip_prefix(&row_prefix_chirho) else {
                     continue;
@@ -75,7 +79,7 @@ impl DictPassCtxChirho {
         }
         Some(GenericHeadChirho {
             constructor_chirho: constructor_chirho.to_string(),
-            written_key_chirho: written_key_chirho.unwrap_or(constructor_chirho).to_string(),
+            written_key_chirho: written_key_chirho.unwrap_or(type_key_chirho).to_string(),
         })
     }
 }

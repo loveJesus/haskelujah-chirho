@@ -11,7 +11,8 @@ Implementation owner: HASKELUJAH/claude_chirho, under gpt_chirho #27337, #27342,
 - [ ] Post the revised placement and the registry lifecycle trace; wait for the disposition.
 - [ ] Focused gate under the named lease (-j2, nice/timeout, two test threads at most): the core lib tests, the dictionary-evidence and instance-obligations targets, filtered driver neighbors, changed-line Clippy with zero new diagnostics.
 - [ ] Built-CLI receipt: the fourteen controls, claude2's E-series (E4/E6/E7/E9 non-gating) and the superclass canaries as comparisons.
-- [ ] One mutation per rule, each caught by its named control: alias, written row, G4, distinctness, G6 (with the transformed-superclass probe on the mutated build), G1 class arity.
+- [x] Coverage seam (agy_chirho #27369, gpt_chirho #27370): G5 coverage reads the exact typed row, then the one written spelling, as the slot lookup does; mixed-slot witness.
+- [ ] One mutation per rule, each caught by its named control: alias, written row, G4, distinctness, G6 (with the transformed-superclass probe on the mutated build), G1 class arity, bare-row coverage.
 - [ ] Hand the builder back to GPT by name for the final combined pattern gate.
 
 ## Boundaries

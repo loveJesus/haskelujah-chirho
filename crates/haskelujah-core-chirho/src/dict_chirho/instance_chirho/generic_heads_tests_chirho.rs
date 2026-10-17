@@ -10,7 +10,11 @@ use std::collections::HashMap;
 use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
-use super::{distinct_variable_spine_chirho, generic_spine_chirho, written_spine_chirho};
+use super::{
+    DictLayoutChirho, DictPassCtxChirho, distinct_variable_spine_chirho, generic_spine_chirho,
+    written_spine_chirho,
+};
+use crate::expr_chirho::CoreIdChirho;
 
 fn con_chirho(name_chirho: &str) -> TyChirho {
     TyChirho::ConChirho(name_chirho.to_string())
@@ -216,4 +220,95 @@ fn the_class_environment_admits_only_an_uncontested_one_parameter_head_chirho() 
         )),
         None
     );
+}
+
+/// A pass whose source holds exactly these rows.
+fn pass_with_rows_chirho(rows_chirho: &[(&str, u32)]) -> DictPassCtxChirho {
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
+    for (row_name_chirho, id_chirho) in rows_chirho {
+        pass_chirho
+            .body_backed_names_chirho
+            .insert(row_name_chirho.to_string(), CoreIdChirho(*id_chirho));
+    }
+    pass_chirho
+}
+
+#[test]
+fn slot_coverage_reads_the_rows_the_slot_lookup_takes_chirho() {
+    // agy_chirho #27369, gpt_chirho #27370: G5 counts a method as covered only
+    // by a row `resolve_or_missing_method_id_chirho` takes, the exact row for
+    // the typed key first, then the one written spelling.
+    let env_chirho = class_env_chirho(
+        &[],
+        Vec::new(),
+        vec![(app_chirho(con_chirho("BoxChirho"), var_chirho(0)), vec![])],
+    );
+    let inst_chirho = &env_chirho.instances_chirho["TagChirho"][0];
+    let typed_key_chirho = format!("{}", inst_chirho.head_ty_chirho);
+    let layout_chirho = DictLayoutChirho {
+        class_name_chirho: "TagChirho".to_string(),
+        super_slots_chirho: Vec::new(),
+        method_slots_chirho: vec![
+            ("firstChirho".to_string(), 0),
+            ("secondChirho".to_string(), 1),
+        ],
+        field_count_chirho: 2,
+    };
+    let first_typed_chirho = format!("$prim_TagChirho_firstChirho_{typed_key_chirho}");
+    // A bare `T` row covers nothing, so the first method has no row the slot
+    // would take.
+    let bare_chirho = pass_with_rows_chirho(&[
+        ("$prim_TagChirho_firstChirho_BoxChirho", 1),
+        ("$prim_TagChirho_secondChirho_BoxChirho a", 2),
+    ]);
+    assert!(
+        bare_chirho
+            .generic_head_chirho(
+                &env_chirho,
+                "TagChirho",
+                inst_chirho,
+                &layout_chirho,
+                &typed_key_chirho
+            )
+            .is_none()
+    );
+    // The exact typed row for one method and the written row for the other:
+    // both slots resolve, and where both spellings exist the exact row wins.
+    for rows_chirho in [
+        vec![
+            (first_typed_chirho.as_str(), 3),
+            ("$prim_TagChirho_secondChirho_BoxChirho a", 2),
+        ],
+        vec![
+            (first_typed_chirho.as_str(), 3),
+            ("$prim_TagChirho_firstChirho_BoxChirho a", 4),
+            ("$prim_TagChirho_secondChirho_BoxChirho a", 2),
+        ],
+    ] {
+        let mut pass_chirho = pass_with_rows_chirho(&rows_chirho);
+        let head_chirho = pass_chirho
+            .generic_head_chirho(
+                &env_chirho,
+                "TagChirho",
+                inst_chirho,
+                &layout_chirho,
+                &typed_key_chirho,
+            )
+            .expect("a generic head whose every slot has a row the lookup takes");
+        assert_eq!(head_chirho.written_key_chirho, "BoxChirho a");
+        let resolved_chirho: Vec<CoreIdChirho> = ["firstChirho", "secondChirho"]
+            .iter()
+            .map(|method_chirho| {
+                pass_chirho.resolve_or_missing_method_id_chirho(
+                    &env_chirho,
+                    "TagChirho",
+                    method_chirho,
+                    &typed_key_chirho,
+                    &format!("$prim_TagChirho_{method_chirho}_{typed_key_chirho}"),
+                    Some(head_chirho.written_key_chirho.as_str()),
+                )
+            })
+            .collect();
+        assert_eq!(resolved_chirho, vec![CoreIdChirho(3), CoreIdChirho(2)]);
+    }
 }

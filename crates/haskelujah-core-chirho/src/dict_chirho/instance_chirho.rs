@@ -698,6 +698,7 @@ impl DictPassCtxChirho {
                     class_name_chirho,
                     inst_chirho,
                     &layout_chirho,
+                    &type_key_chirho,
                 ) {
                     generic_head_by_key_chirho.insert(
                         (class_name_chirho.clone(), type_key_chirho.clone()),
