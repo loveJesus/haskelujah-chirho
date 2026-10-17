@@ -132,6 +132,11 @@ pattern synonyms, supported family reduction and imported constructors. The elev
 sources check on GHC and frozen current main; ten also match exact runtime output.
 Imported infix constructor bindings and malformed constructor arity recovery remain
 measured residuals. These baseline controls do not establish candidate behavior.
+An additional empty-record pattern on a GADT with a rank-N field must retain its
+constructor-result refinement. GHC accepts that positive while current main
+rejects it; the candidate's result still needs measurement. Written pattern
+signatures, nested-family GADT givens and equality-context constructor registration
+remain separately named baseline gaps.
 
 ## The rules it implements
 

@@ -2,8 +2,9 @@
 
 //! Positive controls from Claude2 review #27228: equality givens, refinements
 //! reaching later patterns, pattern synonyms and imported constructors. These
-//! 11 exact sources were measured on GHC 9.14.1 and frozen current main
-//! dda4b202 before being embedded. The candidate remains unbuilt. Imported
+//! eleven contextual sources and the separate rank-N empty-record witness
+//! were measured on GHC 9.14.1 and frozen current main dda4b202 before being
+//! embedded. The candidate remains unbuilt. Imported
 //! infix constructors are check-only because their runtime bindings are a
 //! pre-existing defect; constructor arity recovery remains outside this unit.
 //! workflow: language-features-chirho/pattern-matching-chirho
@@ -221,4 +222,24 @@ fn contextual_patterns_keep_their_runtime_values_chirho() {
             assert_output_chirho(file_name_chirho, source_chirho, expected_chirho);
         }
     }
+}
+
+/// Empty record syntax still matches the constructor result and keeps its
+/// refinement; its higher-rank field is neither opened nor demanded here.
+/// GHC accepts this exact source; current main rejects it. Candidate unbuilt.
+#[test]
+fn an_empty_gadt_pattern_keeps_result_refinement_with_rank_n_fields_chirho() {
+    assert_accepted_chirho(
+        "b2_01_record_wildcard_gadt_rankn_pos_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, RankNTypes #-}
+module MChirho where
+
+data GChirho aChirho where
+  MkGChirho :: Int -> (forall bChirho. bChirho -> aChirho) -> GChirho Int
+
+fChirho :: GChirho aChirho -> aChirho -> Int
+fChirho (MkGChirho {}) xChirho = xChirho
+"#,
+    );
 }
