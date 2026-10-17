@@ -123,3 +123,5 @@ The first repair builds without compiler warnings as a dirty-source checkpoint (
 - [ ] Recheck all embedded source bytes on GHC and the final frozen candidate; focused suites and changed-line lint.
 - [ ] Repeat the full paired corpus gate with no accept loss, each new rejection traced, replay and execution.
 - [ ] Measure meaningful mutations, retain redundant/invalid cases honestly, then obtain peer disposition and make the local landing decision.
+
+The first complete focused attempt at be4b6ce7 stops at typing 353/354: a required-type-argument producer and three manually constructed test witnesses still used quoted cons. The producer now uses the same promoted-list helper, preserving its previous freshening order, while the independent expected type witnesses use the canonical cons name. The full typing suite returns to 354/354. A new source-level RequiredTypeArguments list control is independently accepted by GHC 9.14.1 before embedding. The previous be4b6ce7 gate remains a failed receipt; the combined final gate will use the follow-up source tip and new frozen binary.

@@ -532,3 +532,20 @@ main = print (scoreChirho (LeafChirho 1 :*: LeafChirho 2 :*: LeafChirho 3))
         "123\n",
     );
 }
+
+#[test]
+fn required_type_arguments_keep_promoted_list_identity_chirho() {
+    assert_accepted_chirho(
+        "required_promoted_list_argument_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RequiredTypeArguments, DataKinds, KindSignatures #-}
+module RequiredListChirho where
+import Data.Kind (Type)
+data ProxyChirho (xsChirho :: [Type]) = ProxyChirho
+requiredChirho :: forall xsChirho -> ProxyChirho xsChirho
+requiredChirho _ = ProxyChirho
+valueChirho :: ProxyChirho '[Int, Bool]
+valueChirho = requiredChirho [Int, Bool]
+"#,
+    );
+}

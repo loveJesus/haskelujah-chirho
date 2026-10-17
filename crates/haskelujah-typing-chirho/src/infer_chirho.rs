@@ -2792,19 +2792,16 @@ impl InferCtxChirho {
             ExprChirho::ListChirho {
                 elements_chirho, ..
             } => {
-                let mut result_chirho = TyChirho::ConChirho("'[]".to_string());
-                for element_chirho in elements_chirho.iter().rev() {
-                    let element_ty_chirho =
-                        self.expr_to_required_type_arg_chirho(element_chirho)?;
-                    result_chirho = TyChirho::AppChirho(
-                        Box::new(TyChirho::AppChirho(
-                            Box::new(TyChirho::ConChirho("':".to_string())),
-                            Box::new(element_ty_chirho),
-                        )),
-                        Box::new(result_chirho),
-                    );
-                }
-                Some(result_chirho)
+                // Preserve the old reverse freshening order; the shared
+                // builder receives source order and folds from the right.
+                let converted_chirho = elements_chirho
+                    .iter()
+                    .rev()
+                    .map(|element_chirho| self.expr_to_required_type_arg_chirho(element_chirho))
+                    .collect::<Option<Vec<_>>>()?;
+                Some(TyChirho::promoted_list_chirho(
+                    converted_chirho.into_iter().rev(),
+                ))
             }
             ExprChirho::TupleChirho {
                 elements_chirho, ..
@@ -8638,12 +8635,12 @@ mod tests_chirho {
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&ty_chirho);
         let expected_list_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("':".to_string())),
+                Box::new(TyChirho::ConChirho(":".to_string())),
                 Box::new(TyChirho::ConChirho("Num".to_string())),
             )),
             Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::AppChirho(
-                    Box::new(TyChirho::ConChirho("':".to_string())),
+                    Box::new(TyChirho::ConChirho(":".to_string())),
                     Box::new(TyChirho::ConChirho("Show".to_string())),
                 )),
                 Box::new(TyChirho::ConChirho("'[]".to_string())),
@@ -8929,7 +8926,7 @@ mod tests_chirho {
         };
         let promoted_ty_list_ty_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("':".to_string())),
+                Box::new(TyChirho::ConChirho(":".to_string())),
                 Box::new(TyChirho::ConChirho("Ty".to_string())),
             )),
             Box::new(TyChirho::ConChirho("'[]".to_string())),

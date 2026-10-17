@@ -196,8 +196,8 @@ flowchart TD
 
 Flat declaration heads and contexts preserve promoted-list atoms through one
 balanced-group lowering routine. Ordinary list constructor `[]` remains distinct
-from promoted nil `'[]`. Both ordinary AST conversion and type-synonym RHS
-conversion construct promoted lists with the same cons spelling as parsed `a ': as`.
+from promoted nil `'[]`. Ordinary AST conversion, type-synonym RHS conversion and required type arguments
+construct promoted lists with the same cons spelling as parsed `a ': as`.
 This normalization precedes any decision that GADT indices are contradictory.
 
 Standalone deriving retains the written applied instance head and its context;
