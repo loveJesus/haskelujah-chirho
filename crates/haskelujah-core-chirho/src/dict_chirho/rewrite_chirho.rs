@@ -23,6 +23,7 @@ use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, SchemePredChirho};
 use std::cell::RefCell;
 use std::collections::HashSet;
 
+mod constrained_references_chirho;
 mod return_chirho;
 
 impl DictPassCtxChirho {
@@ -1104,76 +1105,6 @@ impl DictPassCtxChirho {
             .unwrap_or(id_chirho)
     }
 
-    /// The dictionary a constrained reference's predicate is served by, from
-    /// the checker's evidence for that position: an instance dictionary for a
-    /// proven key, the enclosing binding's own parameter for
-    /// `OWN_DICTIONARY_KEY_CHIRHO`, and nothing when nothing was proved.
-    /// workflow: language-features-chirho/dictionary-evidence-chirho
-    fn evidence_dict_for_class_chirho(
-        &self,
-        class_name_chirho: &str,
-        ty_key_chirho: Option<&str>,
-        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
-        evidence_classes_chirho: &HashSet<String>,
-        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
-    ) -> Option<CoreIdChirho> {
-        let key_chirho = ty_key_chirho?;
-        if haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho(key_chirho) {
-            return Self::own_dict_chirho(
-                class_name_chirho,
-                key_chirho,
-                dict_vars_chirho,
-                evidence_classes_chirho,
-            );
-        }
-        let mut candidate_keys_chirho = vec![key_chirho.to_string()];
-        if Self::should_normalize_instance_head_for_class_chirho(class_name_chirho) {
-            let normalized_chirho = Self::normalize_instance_head_key_chirho(key_chirho);
-            if normalized_chirho != key_chirho {
-                candidate_keys_chirho.push(normalized_chirho);
-            }
-        }
-        candidate_keys_chirho
-            .into_iter()
-            .find_map(|candidate_chirho| {
-                let lookup_chirho = (class_name_chirho.to_string(), candidate_chirho);
-                local_instance_dicts_chirho
-                    .get(&lookup_chirho)
-                    .or_else(|| self.instance_dicts_chirho.get(&lookup_chirho))
-                    .copied()
-            })
-    }
-
-    /// The binding's own dictionary parameter an own-parameter key names: the
-    /// parameter of that predicate index when the key carries one, else the
-    /// binding's parameter for the class (superclass extractions included).
-    fn own_dict_chirho(
-        class_name_chirho: &str,
-        key_chirho: &str,
-        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
-        evidence_classes_chirho: &HashSet<String>,
-    ) -> Option<CoreIdChirho> {
-        dict_vars_chirho.get(key_chirho).copied().or_else(|| {
-            Self::fallback_dict_for_class_chirho(
-                class_name_chirho,
-                dict_vars_chirho,
-                evidence_classes_chirho,
-            )
-        })
-    }
-
-    /// Take the evidence for the next predicate of `class_name` from a
-    /// reference's evidence list (scheme order), if the checker recorded one.
-    fn take_reference_evidence_chirho(
-        evidence_chirho: &mut Vec<(String, Option<String>)>,
-        class_name_chirho: &str,
-    ) -> Option<Option<String>> {
-        let position_chirho = evidence_chirho
-            .iter()
-            .position(|(class_chirho, _key_chirho)| class_chirho == class_name_chirho)?;
-        Some(evidence_chirho.remove(position_chirho).1)
-    }
-
     fn collect_dict_param_app_chirho<'a>(
         &self,
         expr_chirho: &'a CoreExprChirho,
@@ -2004,32 +1935,6 @@ impl DictPassCtxChirho {
         Some(result_chirho)
     }
 
-    fn fallback_dict_for_class_chirho(
-        class_name_chirho: &str,
-        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
-        evidence_classes_chirho: &HashSet<String>,
-    ) -> Option<CoreIdChirho> {
-        if evidence_classes_chirho.contains(class_name_chirho) {
-            dict_vars_chirho.get(class_name_chirho).copied()
-        } else {
-            None
-        }
-    }
-
-    /// Normalize a value-shaped type key (`Maybe Int`, `Either e a`, `[Char]`)
-    /// to the instance head key (`Maybe`, `Either`, `[]`) used to name the
-    /// generated per-type instance bodies. Non-higher-kinded keys pass through.
-    fn normalize_instance_head_key_chirho(value_key_chirho: &str) -> String {
-        let trimmed_chirho = value_key_chirho.trim();
-        if trimmed_chirho.starts_with('[') {
-            return "[]".to_string();
-        }
-        match trimmed_chirho.split_whitespace().next() {
-            Some(head_chirho) => head_chirho.to_string(),
-            None => trimmed_chirho.to_string(),
-        }
-    }
-
     fn annotated_monad_head_key_chirho(&self, ty_chirho: &TyChirho) -> Option<String> {
         self.body_backed_monad_head_key_for_ty_chirho(ty_chirho, false)
     }
@@ -2118,20 +2023,6 @@ impl DictPassCtxChirho {
             "$prim_Applicative_pure_{context_key_chirho}"
         ))?;
         Some(CoreExprChirho::VarChirho(inst_id_chirho))
-    }
-
-    fn should_normalize_instance_head_for_class_chirho(class_name_chirho: &str) -> bool {
-        matches!(
-            class_name_chirho,
-            "Functor"
-                | "Applicative"
-                | "Monad"
-                | "Foldable"
-                | "Traversable"
-                | "Alternative"
-                | "MonadPlus"
-                | "MonadFix"
-        )
     }
 
     fn rebuild_preserved_method_app_chirho(
@@ -3300,41 +3191,14 @@ impl DictPassCtxChirho {
                     .dict_param_bindings_chirho
                     .get(&self.canonical_id_chirho(*id_chirho))
                 {
-                    let mut reference_evidence_chirho = self
-                        .reference_evidence_chirho
-                        .get(id_chirho)
-                        .cloned()
-                        .unwrap_or_default();
-                    let mut result_chirho =
-                        CoreExprChirho::VarChirho(self.canonical_id_chirho(*id_chirho));
-                    for class_name_chirho in classes_chirho {
-                        let evidence_dict_chirho = Self::take_reference_evidence_chirho(
-                            &mut reference_evidence_chirho,
-                            class_name_chirho,
-                        )
-                        .and_then(|key_chirho| {
-                            self.evidence_dict_for_class_chirho(
-                                class_name_chirho,
-                                key_chirho.as_deref(),
-                                dict_vars_chirho,
-                                evidence_classes_chirho,
-                                local_instance_dicts_chirho,
-                            )
-                        });
-                        if let Some(dict_id_chirho) = evidence_dict_chirho.or_else(|| {
-                            Self::fallback_dict_for_class_chirho(
-                                class_name_chirho,
-                                dict_vars_chirho,
-                                evidence_classes_chirho,
-                            )
-                        }) {
-                            result_chirho = CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(result_chirho),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
-                            };
-                        }
-                    }
-                    return result_chirho;
+                    return self.apply_reference_dicts_chirho(
+                        *id_chirho,
+                        classes_chirho,
+                        None,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_instance_dicts_chirho,
+                    );
                 }
                 // Rewrite a standalone method reference (not applied to args).
                 // This uses the default dict from dict_vars_chirho.
@@ -3694,67 +3558,20 @@ impl DictPassCtxChirho {
                 if let Some((written_id_chirho, classes_chirho, args_chirho)) =
                     self.collect_dict_param_app_chirho(expr_chirho)
                 {
-                    let fn_id_chirho = self.canonical_id_chirho(written_id_chirho);
-                    // The checker's evidence for this reference, one record per
-                    // predicate, consulted before the argument-shape guess.
-                    // workflow: language-features-chirho/dictionary-evidence-chirho
-                    let mut reference_evidence_chirho = self
-                        .reference_evidence_chirho
-                        .get(&written_id_chirho)
-                        .cloned()
-                        .unwrap_or_default();
                     // Infer the type key from the actual arguments
                     let type_key_chirho = self.infer_dict_param_call_type_key_chirho(
                         &args_chirho,
                         local_type_keys_chirho,
                     );
-
-                    // Build dict args: for each required class, select the
-                    // type-appropriate dict if we can infer the type
-                    let mut result_chirho = CoreExprChirho::VarChirho(fn_id_chirho);
-                    let classes_chirho = classes_chirho.to_vec();
-                    for class_name_chirho in &classes_chirho {
-                        let evidence_dict_chirho = Self::take_reference_evidence_chirho(
-                            &mut reference_evidence_chirho,
-                            class_name_chirho,
-                        )
-                        .and_then(|key_chirho| {
-                            self.evidence_dict_for_class_chirho(
-                                class_name_chirho,
-                                key_chirho.as_deref(),
-                                dict_vars_chirho,
-                                evidence_classes_chirho,
-                                local_instance_dicts_chirho,
-                            )
-                        });
-                        let dict_id_chirho = evidence_dict_chirho.or_else(|| {
-                            if let Some(ref tk_chirho) = type_key_chirho {
-                                // Try type-specific dict
-                                self.instance_dicts_chirho
-                                    .get(&(class_name_chirho.clone(), tk_chirho.clone()))
-                                    .copied()
-                                    .or_else(|| {
-                                        Self::fallback_dict_for_class_chirho(
-                                            class_name_chirho,
-                                            dict_vars_chirho,
-                                            evidence_classes_chirho,
-                                        )
-                                    })
-                            } else {
-                                Self::fallback_dict_for_class_chirho(
-                                    class_name_chirho,
-                                    dict_vars_chirho,
-                                    evidence_classes_chirho,
-                                )
-                            }
-                        });
-                        if let Some(dict_id_chirho) = dict_id_chirho {
-                            result_chirho = CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(result_chirho),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
-                            };
-                        }
-                    }
+                    // The checker's evidence first, then the argument-shape key.
+                    let mut result_chirho = self.apply_reference_dicts_chirho(
+                        written_id_chirho,
+                        classes_chirho,
+                        type_key_chirho.as_deref(),
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_instance_dicts_chirho,
+                    );
 
                     // Rebuild the application chain with rewritten args
                     for a_chirho in &args_chirho {
