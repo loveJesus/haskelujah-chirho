@@ -83,6 +83,49 @@ scope, while its refinements hold: against the expected type when the equation o
 one, and an arm that cannot meet it is handed to the caller, which judges it as it judges an
 unguarded body. The controls are `eval_pattern_chirho/gadt_guard_chirho.rs`.
 
+## Known-type pattern checking
+
+The source candidate in `infer_chirho/pattern_bindings_chirho.rs` checks constructor
+results before their fields. It is unbuilt at this checkpoint; validation and any
+measured gains remain pending the named builder lease. Prefix and infix patterns
+share `bind_constructor_pattern_chirho`. It opens outer constructor foralls while
+preserving higher-rank field foralls, then checks fields left-to-right under the
+result's ordinary substitution and local GADT givens. Records use the same order,
+including the growing substitution between named fields and a result-type check
+for positional `C {}` patterns. A descendant GADT never makes its ordinary parent
+a refining constructor.
+
+`unify_constructor_result_chirho` first tries ordinary normalized unification. Only
+this constructor's own GADT result can refine indices, and only within the same
+known outer constructor; a bare rigid type cannot become an arbitrary data type.
+A failed shape match reports its error, including tuple/list and fixed character
+or non-overloaded string patterns. The existing skolem refinement helper already
+returns ordinary residual substitutions and propagates unification failure; that
+behavior is preserved. Case alternatives and pattern guards call the known-type
+binder directly; they no longer unify a fresh whole-pattern type and promote its
+sibling constraints into givens. Their existing lexical scopes own refinements.
+
+```mermaid
+flowchart TD
+    known_source_chirho[Equation lambda case guard or binding expected type] --> known_pattern_chirho[bind_pat_chirho with known scrutinee]
+    known_pattern_chirho --> known_constructor_chirho[Prefix infix or record own constructor result]
+    known_constructor_chirho --> known_outer_chirho[Ordinary unification or GADT index refinement within same outer type]
+    known_outer_chirho --> known_fields_chirho[Fields left to right under givens and growing substitution]
+    known_fields_chirho --> known_pattern_chirho
+    known_pattern_chirho --> known_shape_chirho[Tuple list character or plain string must meet its type]
+    known_constructor_chirho --> known_opaque_chirho[Imported placeholder keeps explicit metadata boundary]
+    known_fields_chirho --> known_scope_chirho[Existing caller scope expires local refinements]
+```
+
+Controls are in `tests/rigid_tyvars_chirho/known_type_patterns_chirho.rs`, included
+by the existing rigid-variable integration target: explicit constructor foralls,
+higher-rank fields, partial/nested GADTs, generic versus specialized siblings,
+source order, records, infix constructors, empty record patterns and all three
+known-type match positions. GHC 9.14.1 measured all source verdicts; five runtime
+controls also matched the frozen main CLI before the candidate build. Numeric,
+fractional and OverloadedStrings pattern obligations, incomplete imported metadata
+and full existential-escape checking remain explicit boundaries.
+
 ## The rules it implements
 
 - A pattern binding is LAZY: nothing is forced where it is bound, so an unused variable never
@@ -112,9 +155,9 @@ Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_ma
 - nothing in the guard family that the probes found: a multi-way `if`
   (`ExprChirho::MultiWayIfChirho`) now carries the same guard arms, typed with its arms'
   results agreeing as an `if`'s branches do and desugared with GHC's own failure text.
-- Pre-existing and open, each wrong on main as well: a pattern containing a GADT constructor
-  refines by unifying the WHOLE pattern, so a sibling component's equality is taken as given
-  (`(Refl, True) <- (eq, v)` with `v :: a` is accepted; GHC cannot deduce `a ~ Bool`), in case
-  alternatives and pattern guards alike. An equation's constructor pattern against a concrete
-  type is accepted (`f :: Int -> Int; f (Just y) = y`). A guarded right-hand side with no
-  expected type (a pattern binding) still drops a later arm that disagrees with the first.
+- The known-type pattern candidate above addresses whole-pattern refinement and concrete
+  constructor/tuple/list mismatch leniency; its behavior and corpus effect are not yet measured.
+- A guarded right-hand side with no expected type (a pattern binding) still drops a later arm
+  that disagrees with the first. Existential escape and GADT equality escaping through a later
+  case alternative were pre-existing misses in the independent guard review; no closure of
+  those separate obligations is claimed here.

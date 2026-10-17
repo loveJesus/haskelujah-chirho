@@ -36,9 +36,24 @@ impl InferCtxChirho {
                 // Wildcards don't bind anything
                 SubstChirho::empty_chirho()
             }
-            PatChirho::LitChirho { .. } => {
-                // Literal patterns don't introduce bindings
-                SubstChirho::empty_chirho()
+            PatChirho::LitChirho(lit_chirho) => {
+                // Characters and ordinary strings have fixed pattern types.
+                // Numeric and overloaded-string obligations stay on their
+                // existing path; they must not be fixed to Int or String.
+                let fixed_chirho = matches!(lit_chirho, LitChirho::CharChirho(..))
+                    || matches!(lit_chirho, LitChirho::StringChirho(..))
+                        && !self.overloaded_strings_chirho;
+                if fixed_chirho {
+                    self.unify_constructor_result_chirho(
+                        false,
+                        &infer_lit_chirho(lit_chirho),
+                        ty_chirho,
+                        lit_chirho.span_chirho(),
+                    )
+                    .unwrap_or_else(SubstChirho::empty_chirho)
+                } else {
+                    SubstChirho::empty_chirho()
+                }
             }
             PatChirho::AsChirho {
                 name_chirho,
@@ -52,7 +67,8 @@ impl InferCtxChirho {
                 self.bind_pat_chirho(inner_chirho, ty_chirho)
             }
             PatChirho::TupleChirho {
-                elements_chirho, ..
+                elements_chirho,
+                span_chirho,
             } => {
                 // Each element gets a fresh type variable
                 let elem_tys_chirho: Vec<TyChirho> = elements_chirho
@@ -60,17 +76,15 @@ impl InferCtxChirho {
                     .map(|_| self.fresh_var_chirho())
                     .collect();
                 let tuple_ty_chirho = TyChirho::TupleChirho(elem_tys_chirho.clone());
-                let mut subst_chirho = match self.unify_normalized_chirho(
-                    &tuple_ty_chirho,
-                    ty_chirho,
-                    SpanChirho::DUMMY_CHIRHO,
-                ) {
-                    Ok(su_chirho) => {
-                        self.apply_subst_all_chirho(&su_chirho);
-                        su_chirho
-                    }
-                    Err(_) => SubstChirho::empty_chirho(),
-                };
+                let mut subst_chirho = self
+                    .unify_constructor_result_chirho(
+                        false,
+                        &tuple_ty_chirho,
+                        ty_chirho,
+                        *span_chirho,
+                    )
+                    .unwrap_or_else(SubstChirho::empty_chirho);
+                self.apply_subst_all_chirho(&subst_chirho);
                 for (elem_pat_chirho, elem_ty_chirho) in
                     elements_chirho.iter().zip(elem_tys_chirho.iter())
                 {
@@ -84,80 +98,15 @@ impl InferCtxChirho {
             PatChirho::ConChirho {
                 con_chirho,
                 args_chirho,
-                span_chirho: pat_span_chirho,
+                span_chirho,
             } => {
-                // Try to look up the constructor's type scheme to get
-                // proper argument types (enables GADT field types and
-                // higher-rank field extraction).
-                let con_text_chirho = con_chirho.text_chirho();
-                let con_full_name_chirho = con_chirho.full_name_chirho();
-                let scheme_opt_chirho = self
-                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
-                        &con_full_name_chirho,
-                        con_text_chirho,
-                    );
-                let mut used_con_types_chirho = false;
-                let mut subst_chirho = SubstChirho::empty_chirho();
-                if let Some(scheme_chirho) = scheme_opt_chirho {
-                    if !is_placeholder_import_scheme_chirho(&scheme_chirho) {
-                        let refining_chirho =
-                            constructor_result_refines_chirho(&scheme_chirho.ty_chirho)
-                                || args_chirho.iter().any(|arg_chirho| {
-                                    self.pattern_contains_refining_constructor_chirho(arg_chirho)
-                                });
-                        let con_ty_chirho =
-                            self.instantiate_chirho(&scheme_chirho, SpanChirho::DUMMY_CHIRHO);
-                        let mut remaining_chirho = con_ty_chirho;
-                        let mut ok_chirho = true;
-                        for arg_chirho in args_chirho {
-                            match remaining_chirho {
-                                TyChirho::FunChirho(arg_ty_chirho, res_ty_chirho, _) => {
-                                    let s_chirho = self.bind_pat_chirho(arg_chirho, &arg_ty_chirho);
-                                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                                    self.apply_subst_all_chirho(&s_chirho);
-                                    remaining_chirho = *res_ty_chirho;
-                                }
-                                _ => {
-                                    ok_chirho = false;
-                                    let fresh_chirho = self.fresh_var_chirho();
-                                    let s_chirho = self.bind_pat_chirho(arg_chirho, &fresh_chirho);
-                                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                                    self.apply_subst_all_chirho(&s_chirho);
-                                }
-                            }
-                        }
-                        if ok_chirho {
-                            // Unify remaining (result type) with scrutinee type;
-                            // a GADT constructor may instead refine a rigid
-                            // scrutinee variable for this pattern's scope.
-                            // The argument patterns may have solved variables
-                            // shared with the result (`Just Refl`), so unify the
-                            // substituted result, not the stale one.
-                            let remaining_sub_chirho =
-                                subst_chirho.apply_ty_chirho(&remaining_chirho);
-                            let scrutinee_sub_chirho = subst_chirho.apply_ty_chirho(ty_chirho);
-                            if let Some(su_chirho) = self.unify_constructor_result_chirho(
-                                refining_chirho,
-                                &remaining_sub_chirho,
-                                &scrutinee_sub_chirho,
-                                *pat_span_chirho,
-                            ) {
-                                subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                                self.apply_subst_all_chirho(&su_chirho);
-                            }
-                        }
-                        used_con_types_chirho = true;
-                    }
-                }
-                if !used_con_types_chirho {
-                    for arg_chirho in args_chirho {
-                        let fresh_chirho = self.fresh_var_chirho();
-                        let s_chirho = self.bind_pat_chirho(arg_chirho, &fresh_chirho);
-                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&s_chirho);
-                    }
-                }
-                subst_chirho
+                let args_chirho: Vec<&PatChirho> = args_chirho.iter().collect();
+                self.bind_constructor_pattern_chirho(
+                    con_chirho,
+                    &args_chirho,
+                    ty_chirho,
+                    *span_chirho,
+                )
             }
             PatChirho::RecordChirho {
                 con_chirho,
@@ -170,12 +119,7 @@ impl InferCtxChirho {
                 if let Some((field_names_chirho, field_tys_chirho, result_ty_chirho)) =
                     self.lookup_record_constructor_field_bundle_chirho(con_chirho)
                 {
-                    let refining_chirho = self.constructor_name_refines_chirho(con_chirho)
-                        || fields_chirho.iter().any(|field_chirho| {
-                            self.pattern_contains_refining_constructor_chirho(
-                                &field_chirho.pattern_chirho,
-                            )
-                        });
+                    let refining_chirho = self.constructor_name_refines_chirho(con_chirho);
                     let result_subst_opt_chirho = self.unify_constructor_result_chirho(
                         refining_chirho,
                         &result_ty_chirho,
@@ -195,6 +139,26 @@ impl InferCtxChirho {
                             subst_chirho.apply_ty_chirho(&field_ty_chirho),
                         );
                     }
+                } else if let Some(scheme_chirho) = self
+                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                        &con_chirho.full_name_chirho(),
+                        con_chirho.text_chirho(),
+                    )
+                    .filter(|scheme_chirho| !is_placeholder_import_scheme_chirho(scheme_chirho))
+                {
+                    // Positional C {} still constrains the scrutinee even
+                    // though there is no declared record-field bundle.
+                    let con_ty_chirho = self.instantiate_chirho(&scheme_chirho, *pat_span_chirho);
+                    let result_ty_chirho = self.constructor_result_type_chirho(con_ty_chirho);
+                    if let Some(result_subst_chirho) = self.unify_constructor_result_chirho(
+                        constructor_result_refines_chirho(&scheme_chirho.ty_chirho),
+                        &result_ty_chirho,
+                        ty_chirho,
+                        *pat_span_chirho,
+                    ) {
+                        self.apply_subst_all_chirho(&result_subst_chirho);
+                        subst_chirho = result_subst_chirho;
+                    }
                 }
                 for field_chirho in fields_chirho {
                     let field_name_key_chirho = record_field_key_chirho(&field_chirho.name_chirho);
@@ -202,6 +166,7 @@ impl InferCtxChirho {
                         .get(&field_name_key_chirho)
                         .cloned()
                         .unwrap_or_else(|| self.fresh_var_chirho());
+                    let field_ty_chirho = subst_chirho.apply_ty_chirho(&field_ty_chirho);
                     let s_chirho =
                         self.bind_pat_chirho(&field_chirho.pattern_chirho, &field_ty_chirho);
                     subst_chirho = s_chirho.compose_chirho(&subst_chirho);
@@ -225,7 +190,9 @@ impl InferCtxChirho {
                                     .unwrap_or_else(|| self.fresh_var_chirho());
                                 self.env_chirho.bind_chirho(
                                     field_name_chirho.clone(),
-                                    SchemeChirho::mono_chirho(fresh_chirho),
+                                    SchemeChirho::mono_chirho(
+                                        subst_chirho.apply_ty_chirho(&fresh_chirho),
+                                    ),
                                 );
                             }
                         }
@@ -237,93 +204,27 @@ impl InferCtxChirho {
                 left_chirho,
                 op_chirho,
                 right_chirho,
-                span_chirho: pat_span_chirho,
-            } => {
-                let op_text_chirho = op_chirho.text_chirho();
-                let op_full_name_chirho = op_chirho.full_name_chirho();
-                let scheme_opt_chirho = self
-                    .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
-                        &op_full_name_chirho,
-                        op_text_chirho,
-                    );
-
-                let mut used_con_types_chirho = false;
-                let mut subst_chirho = SubstChirho::empty_chirho();
-                if let Some(scheme_chirho) = scheme_opt_chirho {
-                    if !scheme_chirho.vars_chirho.is_empty() {
-                        let refining_chirho =
-                            constructor_result_refines_chirho(&scheme_chirho.ty_chirho)
-                                || self.pattern_contains_refining_constructor_chirho(left_chirho)
-                                || self.pattern_contains_refining_constructor_chirho(right_chirho);
-                        let con_ty_chirho =
-                            self.instantiate_chirho(&scheme_chirho, SpanChirho::DUMMY_CHIRHO);
-                        let mut remaining_chirho = con_ty_chirho;
-                        let mut ok_chirho = true;
-                        for arg_pat_chirho in [left_chirho.as_ref(), right_chirho.as_ref()] {
-                            match remaining_chirho {
-                                TyChirho::FunChirho(arg_ty_chirho, res_ty_chirho, _) => {
-                                    let s_chirho =
-                                        self.bind_pat_chirho(arg_pat_chirho, &arg_ty_chirho);
-                                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                                    self.apply_subst_all_chirho(&s_chirho);
-                                    remaining_chirho = *res_ty_chirho;
-                                }
-                                _ => {
-                                    ok_chirho = false;
-                                    let fresh_chirho = self.fresh_var_chirho();
-                                    let s_chirho =
-                                        self.bind_pat_chirho(arg_pat_chirho, &fresh_chirho);
-                                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                                    self.apply_subst_all_chirho(&s_chirho);
-                                }
-                            }
-                        }
-                        if ok_chirho {
-                            // The argument patterns may have solved variables
-                            // shared with the result (`Just Refl`), so unify the
-                            // substituted result, not the stale one.
-                            let remaining_sub_chirho =
-                                subst_chirho.apply_ty_chirho(&remaining_chirho);
-                            let scrutinee_sub_chirho = subst_chirho.apply_ty_chirho(ty_chirho);
-                            if let Some(su_chirho) = self.unify_constructor_result_chirho(
-                                refining_chirho,
-                                &remaining_sub_chirho,
-                                &scrutinee_sub_chirho,
-                                *pat_span_chirho,
-                            ) {
-                                subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                                self.apply_subst_all_chirho(&su_chirho);
-                            }
-                        }
-                        used_con_types_chirho = true;
-                    }
-                }
-                if !used_con_types_chirho {
-                    let left_ty_chirho = self.fresh_var_chirho();
-                    let right_ty_chirho = self.fresh_var_chirho();
-                    let left_s_chirho = self.bind_pat_chirho(left_chirho, &left_ty_chirho);
-                    self.apply_subst_all_chirho(&left_s_chirho);
-                    let right_s_chirho = self.bind_pat_chirho(right_chirho, &right_ty_chirho);
-                    self.apply_subst_all_chirho(&right_s_chirho);
-                    subst_chirho = right_s_chirho.compose_chirho(&left_s_chirho);
-                }
-                subst_chirho
-            }
+                span_chirho,
+            } => self.bind_constructor_pattern_chirho(
+                op_chirho,
+                &[left_chirho.as_ref(), right_chirho.as_ref()],
+                ty_chirho,
+                *span_chirho,
+            ),
             PatChirho::ListChirho {
-                elements_chirho, ..
+                elements_chirho,
+                span_chirho,
             } => {
                 let elem_ty_chirho = self.fresh_var_chirho();
-                let mut subst_chirho = match self.unify_normalized_chirho(
-                    &TyChirho::ListChirho(Box::new(elem_ty_chirho.clone())),
-                    ty_chirho,
-                    SpanChirho::DUMMY_CHIRHO,
-                ) {
-                    Ok(su_chirho) => {
-                        self.apply_subst_all_chirho(&su_chirho);
-                        su_chirho
-                    }
-                    Err(_) => SubstChirho::empty_chirho(),
-                };
+                let mut subst_chirho = self
+                    .unify_constructor_result_chirho(
+                        false,
+                        &TyChirho::ListChirho(Box::new(elem_ty_chirho.clone())),
+                        ty_chirho,
+                        *span_chirho,
+                    )
+                    .unwrap_or_else(SubstChirho::empty_chirho);
+                self.apply_subst_all_chirho(&subst_chirho);
                 for elem_pat_chirho in elements_chirho {
                     let elem_ty_sub_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
                     let s_chirho = self.bind_pat_chirho(elem_pat_chirho, &elem_ty_sub_chirho);
@@ -388,5 +289,68 @@ impl InferCtxChirho {
                 self.bind_pat_chirho(inner_pat_chirho, ty_chirho)
             }
         }
+    }
+
+    /// Match the constructor's own result before checking its fields. Only
+    /// that result may introduce GADT givens; child patterns see those givens
+    /// and the growing ordinary substitution, in source order.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    fn bind_constructor_pattern_chirho(
+        &mut self,
+        con_chirho: &NameChirho,
+        args_chirho: &[&PatChirho],
+        scrutinee_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> SubstChirho {
+        let scheme_chirho = self
+            .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                &con_chirho.full_name_chirho(),
+                con_chirho.text_chirho(),
+            )
+            .filter(|scheme_chirho| !is_placeholder_import_scheme_chirho(scheme_chirho));
+        let mut field_tys_chirho = Vec::with_capacity(args_chirho.len());
+        let mut subst_chirho = SubstChirho::empty_chirho();
+        if let Some(scheme_chirho) = scheme_chirho {
+            let instantiated_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
+            let mut remaining_chirho = self.open_constructor_forall_chirho(instantiated_chirho);
+            let mut complete_chirho = true;
+            for _arg_chirho in args_chirho {
+                remaining_chirho = self.open_constructor_forall_chirho(remaining_chirho);
+                match remaining_chirho {
+                    TyChirho::FunChirho(field_ty_chirho, result_ty_chirho, _) => {
+                        // Do not open a forall inside this higher-rank field.
+                        field_tys_chirho.push(*field_ty_chirho);
+                        remaining_chirho = *result_ty_chirho;
+                    }
+                    other_chirho => {
+                        complete_chirho = false;
+                        field_tys_chirho.push(self.fresh_var_chirho());
+                        remaining_chirho = other_chirho;
+                    }
+                }
+            }
+            if complete_chirho {
+                let result_chirho = self.open_constructor_forall_chirho(remaining_chirho);
+                if let Some(result_subst_chirho) = self.unify_constructor_result_chirho(
+                    constructor_result_refines_chirho(&scheme_chirho.ty_chirho),
+                    &result_chirho,
+                    scrutinee_chirho,
+                    span_chirho,
+                ) {
+                    self.apply_subst_all_chirho(&result_subst_chirho);
+                    subst_chirho = result_subst_chirho;
+                }
+            }
+        } else {
+            // Imported placeholders do not supply trusted constructor shape.
+            field_tys_chirho.extend(args_chirho.iter().map(|_| self.fresh_var_chirho()));
+        }
+        for (arg_chirho, field_ty_chirho) in args_chirho.iter().zip(field_tys_chirho) {
+            let expected_chirho = subst_chirho.apply_ty_chirho(&field_ty_chirho);
+            let field_subst_chirho = self.bind_pat_chirho(arg_chirho, &expected_chirho);
+            self.apply_subst_all_chirho(&field_subst_chirho);
+            subst_chirho = field_subst_chirho.compose_chirho(&subst_chirho);
+        }
+        subst_chirho
     }
 }

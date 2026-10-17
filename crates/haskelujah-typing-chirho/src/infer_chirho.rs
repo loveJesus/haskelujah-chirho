@@ -3305,7 +3305,6 @@ impl InferCtxChirho {
                     self.bind_pat_against_chirho(
                         &alt_chirho.pat_chirho,
                         &scrut_ty_chirho,
-                        *span_chirho,
                         &mut subst_chirho,
                     );
 
@@ -5055,7 +5054,7 @@ impl InferCtxChirho {
             ExprChirho::CaseChirho {
                 scrutinee_chirho,
                 alts_chirho,
-                span_chirho: case_span_chirho,
+                ..
             } if Self::contains_polymorphic_component_chirho(expected_ty_chirho)
                 || contains_skolem_chirho(expected_ty_chirho) =>
             {
@@ -5076,7 +5075,6 @@ impl InferCtxChirho {
                     self.bind_pat_against_chirho(
                         &alt_chirho.pat_chirho,
                         &scrut_ty_chirho,
-                        *case_span_chirho,
                         &mut subst_chirho,
                     );
 

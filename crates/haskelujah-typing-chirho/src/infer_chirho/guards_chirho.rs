@@ -205,12 +205,7 @@ impl InferCtxChirho {
                         self.infer_expr_chirho(expr_chirho);
                     *subst_chirho = source_subst_chirho.compose_chirho(subst_chirho);
                     self.apply_subst_all_chirho(&source_subst_chirho);
-                    self.bind_pat_against_chirho(
-                        pat_chirho,
-                        &source_ty_chirho,
-                        span_chirho,
-                        subst_chirho,
-                    );
+                    self.bind_pat_against_chirho(pat_chirho, &source_ty_chirho, subst_chirho);
                 }
                 StmtChirho::LetChirho { binds_chirho, .. } => {
                     self.infer_local_binds_chirho(binds_chirho, subst_chirho);
@@ -219,42 +214,19 @@ impl InferCtxChirho {
         }
     }
 
-    /// Bind `pat_chirho` against the type of what it matches, in the current
-    /// scope: a case alternative against its scrutinee, a pattern guard against
-    /// its source. The pattern's type is unified with the scrutinee's; when they
-    /// differ, a GADT pattern may refine the scrutinee instead.
+    /// Bind a case or guard pattern against its known source type. Constructor
+    /// nodes introduce only their own result refinements; no whole-pattern
+    /// unifier can promote a sibling's wanted mismatch into a given.
     /// workflow: language-features-chirho/pattern-matching-chirho
     pub(super) fn bind_pat_against_chirho(
         &mut self,
         pat_chirho: &PatChirho,
         scrut_ty_chirho: &TyChirho,
-        span_chirho: SpanChirho,
         subst_chirho: &mut SubstChirho,
     ) {
-        let pat_ty_chirho = self.fresh_var_chirho();
-        let pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &pat_ty_chirho);
+        let expected_chirho = subst_chirho.apply_ty_chirho(scrut_ty_chirho);
+        let pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &expected_chirho);
         *subst_chirho = pat_subst_chirho.compose_chirho(subst_chirho);
         self.apply_subst_all_chirho(&pat_subst_chirho);
-
-        let pat_ty_sub_chirho = subst_chirho.apply_ty_chirho(&pat_ty_chirho);
-        let scrut_ty_sub_chirho = subst_chirho.apply_ty_chirho(scrut_ty_chirho);
-        match self.unify_normalized_chirho(&pat_ty_sub_chirho, &scrut_ty_sub_chirho, span_chirho) {
-            Ok(unify_subst_chirho) => {
-                *subst_chirho = unify_subst_chirho.compose_chirho(subst_chirho);
-                self.apply_subst_all_chirho(&unify_subst_chirho);
-            }
-            Err(err_chirho) => {
-                if let Some(unify_subst_chirho) = self.refine_scrutinee_by_pattern_chirho(
-                    pat_chirho,
-                    &pat_ty_sub_chirho,
-                    &scrut_ty_sub_chirho,
-                ) {
-                    *subst_chirho = unify_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&unify_subst_chirho);
-                } else {
-                    self.report_unify_error_chirho(&err_chirho);
-                }
-            }
-        }
     }
 }

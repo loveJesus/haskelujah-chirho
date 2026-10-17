@@ -74,14 +74,11 @@ impl InferCtxChirho {
         )
     }
 
-    /// Unify a constructor pattern's result type with the scrutinee type.
-    /// When plain unification fails and the constructor is GADT-style (its
-    /// declared result refines the type parameters), try a *refinement*
-    /// instead: rigid variables in the scrutinee are locally equated with what
-    /// the constructor demands, recorded in the innermost scope. Returns the
-    /// substitution to compose, or `None` when neither succeeds (callers keep
-    /// their existing lenient path).
-    /// workflow: language-features-chirho/rigid-type-variables-chirho
+    /// Meet a constructor result or structural pattern shape with the known
+    /// scrutinee. A GADT can refine indices only inside the same outer type
+    /// constructor, never turn a bare rigid type into its own data type.
+    /// Residual ordinary substitutions are returned unchanged for children.
+    /// workflow: language-features-chirho/pattern-matching-chirho
     pub(super) fn unify_constructor_result_chirho(
         &mut self,
         refining_chirho: bool,
@@ -95,94 +92,21 @@ impl InferCtxChirho {
                 Err(err_chirho) => err_chirho,
             };
         if refining_chirho {
-            return self.refine_skolems_by_unification_chirho(con_result_chirho, scrutinee_chirho);
+            let result_norm_chirho = self.normalize_ty_chirho(con_result_chirho);
+            let scrutinee_norm_chirho = self.normalize_ty_chirho(scrutinee_chirho);
+            let result_head_chirho = Self::ty_outer_head_name_chirho(&result_norm_chirho);
+            let scrutinee_head_chirho = Self::ty_outer_head_name_chirho(&scrutinee_norm_chirho);
+            if result_head_chirho.is_some() && result_head_chirho == scrutinee_head_chirho {
+                if let Some(subst_chirho) = self.refine_skolems_by_unification_chirho(
+                    &result_norm_chirho,
+                    &scrutinee_norm_chirho,
+                ) {
+                    return Some(subst_chirho);
+                }
+            }
         }
-        // A rigid variable can never be matched by a concrete constructor
-        // pattern (`f :: a -> Int; f (Just x) = 1`): the constructor's result
-        // is a known type and `a` may not become it.
-        let scrutinee_norm_chirho = self.normalize_ty_chirho(scrutinee_chirho);
-        if matches!(&scrutinee_norm_chirho, TyChirho::ForallVarChirho(name_chirho)
-            if crate::skolem_chirho::is_skolem_name_chirho(name_chirho))
-        {
-            self.report_unify_error_chirho(&unify_err_chirho);
-        }
+        self.report_unify_error_chirho(&unify_err_chirho);
         None
-    }
-
-    /// A case alternative binds its pattern to a fresh type and only then
-    /// meets the scrutinee; when that meeting fails, a pattern containing a
-    /// GADT-style constructor (`Just Refl`, `IntE n`) may refine the
-    /// scrutinee's rigid variables for the alternative.
-    pub(super) fn refine_scrutinee_by_pattern_chirho(
-        &mut self,
-        pat_chirho: &PatChirho,
-        pat_ty_chirho: &TyChirho,
-        scrutinee_chirho: &TyChirho,
-    ) -> Option<SubstChirho> {
-        if !self.pattern_contains_refining_constructor_chirho(pat_chirho) {
-            return None;
-        }
-        self.refine_skolems_by_unification_chirho(pat_ty_chirho, scrutinee_chirho)
-    }
-
-    /// Whether a pattern mentions, at any depth, a constructor whose declared
-    /// result type refines its type parameters (see
-    /// `constructor_result_refines_chirho`).
-    pub(super) fn pattern_contains_refining_constructor_chirho(
-        &self,
-        pat_chirho: &PatChirho,
-    ) -> bool {
-        match pat_chirho {
-            PatChirho::ConChirho {
-                con_chirho,
-                args_chirho,
-                ..
-            } => {
-                self.constructor_name_refines_chirho(con_chirho)
-                    || args_chirho.iter().any(|arg_chirho| {
-                        self.pattern_contains_refining_constructor_chirho(arg_chirho)
-                    })
-            }
-            PatChirho::RecordChirho {
-                con_chirho,
-                fields_chirho,
-                ..
-            } => {
-                self.constructor_name_refines_chirho(con_chirho)
-                    || fields_chirho.iter().any(|field_chirho| {
-                        self.pattern_contains_refining_constructor_chirho(
-                            &field_chirho.pattern_chirho,
-                        )
-                    })
-            }
-            PatChirho::InfixConChirho {
-                left_chirho,
-                op_chirho,
-                right_chirho,
-                ..
-            } => {
-                self.constructor_name_refines_chirho(op_chirho)
-                    || self.pattern_contains_refining_constructor_chirho(left_chirho)
-                    || self.pattern_contains_refining_constructor_chirho(right_chirho)
-            }
-            PatChirho::ParenChirho { inner_chirho, .. }
-            | PatChirho::BangChirho { inner_chirho, .. }
-            | PatChirho::LazyChirho { inner_chirho, .. } => {
-                self.pattern_contains_refining_constructor_chirho(inner_chirho)
-            }
-            PatChirho::AsChirho { pattern_chirho, .. } => {
-                self.pattern_contains_refining_constructor_chirho(pattern_chirho)
-            }
-            PatChirho::TupleChirho {
-                elements_chirho, ..
-            }
-            | PatChirho::ListChirho {
-                elements_chirho, ..
-            } => elements_chirho
-                .iter()
-                .any(|elem_chirho| self.pattern_contains_refining_constructor_chirho(elem_chirho)),
-            _ => false,
-        }
     }
 
     pub(super) fn constructor_name_refines_chirho(&self, con_chirho: &NameChirho) -> bool {

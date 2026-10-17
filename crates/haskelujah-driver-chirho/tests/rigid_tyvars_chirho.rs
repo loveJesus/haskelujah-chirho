@@ -154,3 +154,6 @@ fn polymorphic_recursion_with_signature_accepted_chirho() {
         "module PolyRecChirho where\ndata Nested a = Flat a | Nest (Nested [a])\ndepth :: Nested a -> Int\ndepth (Flat _) = 0\ndepth (Nest n) = 1 + depth n\n",
     );
 }
+
+#[path = "rigid_tyvars_chirho/known_type_patterns_chirho.rs"]
+mod known_type_patterns_chirho;
