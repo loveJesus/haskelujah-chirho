@@ -14,13 +14,13 @@ Placement: align the existing shared lowerer trivia predicate with the lexer. In
 - [x] Review source checkpoint and AST controls, plus raw pragma extraction and scoped peer review.
 - [x] Integrate the parser commit with 11ffb89d in the isolated GPT worktree; build exact combined source and freeze binary.
 - [x] Run focused parser/identity controls: specialized competitor never answers wrongly, OnlyPragmaInstance reaches the AST, context/forall and raw pragma controls retain behavior.
-- [x] Hand builder to Claude for the corrected sixteen controls and seven valid identity mutations; results remain pending and must classify invalid/redundant cases honestly.
+- [x] Hand builder to Claude for the corrected sixteen controls and seven valid identity mutations; verify results while retaining earlier invalid cases.
 - [ ] Complete final combined corpus pair, replay, execution and pattern/native/package gates. Any accepted-member loss blocks and must be traced.
 - [ ] Record results, scope audit and explicit landing decision; update DB and tasklists with actual evidence. No push/release.
 
 ## Resume state
 
-Combined off-main source ca4976dc (compiler c32f071a, frozen SHA 38054c2a) passes the initial parser/dictionary controls. Main 492aa6d8 contains bookkeeping only. Claude holds the builder under #27384/#27386 for the corrected identity re-gate; GPT owns main/DB and receives the builder next. Final combined corpus/replay/execution/mutations/native/package checks remain pending, followed by case and ground. Claude2 is tracing the existing exposed-output boundary read-only; no new implementation assignment.
+Identity re-gate #27389 is green at scope on ca4976dc (compiler c32f071a), with seven valid mutation catches and an identical restored baseline. GPT takes the builder by name #27390. Its first complete accept pass preserves main membership; the first reject pass loses tcfail083, and the runner stops before repeats/replay/execution. Fresh GHC and frozen intermediate comparisons trace the loss to the record-pattern producer exposing missing selected-constructor field ownership, present since 49b71e7b. GPT repair source 4cfb9584 is under focused validation. All compiler source remains held off main. NonEmpty stays design-only pending a resolved-binding identity route; case and ground wait for a named handoff.
 
 ## Independent frozen reproduction
 
@@ -39,3 +39,7 @@ The first raw-reader control failed with missing INLINE under both trivia rules.
 GPT #27384 hands the builder to Claude by name; Claude #27386 takes it on identity-combined-chirho at exact ca4976dc for the corrected sixteen controls and seven valid mutations. All earlier BUILD-FAILED mutants remain invalid. GPT retains main/DB and receives the builder next for the final combined corpus/replay/execution/pattern mutations/native/package gate. Case then ground remain queued.
 
 GPT #27387 requests a bounded read-only scope trace of the two previously exposed output paths (derived infix Show and NonEmpty.toList) before the final landing decision. No new implementation unit is assigned; their former loud-to-wrong-success exposure remains explicit.
+
+## Combined corpus stop and ownership repair
+
+The ca4976dc paired runner completes only its first pass per axis: accepted membership equals main, but tcfail083 is newly accepted. No repeat pass, replay or execution result is claimed. The failed receipt and six-binary trace are retained in GPT gate-chirho/corpus-ca4976dc-chirho/. GHC reports Bar lacks baz; main's old parser instead reports an empty unbound variable. Repaired-record candidates from 49b71e7b onward accept it. GPT source 4cfb9584 shares the existing E0206 membership diagnostic between record construction and matching, bounded to an exact local constructor and its original declared field table, and adds five GHC-measured sources. This prerequisite's corrected pragma/identity controls remain green at scope; the final combined gate remains open.
