@@ -388,9 +388,12 @@ fn instances_the_checker_cannot_fully_judge_stay_accepted_chirho() {
     // agy_chirho's accept traps (#27156), each accepted by GHC 9.14.1 and by
     // main. A03/A04: built-in classes whose seeded method schemes lack their
     // contexts (`Monoid m`, `Applicative f`); their quantifiers stay flexible.
-    // A07: an equality given rewrites the rigid variable during subsumption.
     // A09: a superclass reached through a multi-parameter given, which the
-    // checker cannot reach yet, so the leftover verdict is withheld.
+    // checker cannot reach yet, so the leftover verdict is withheld. A
+    // quantified premise is not modelled, so the context is incomplete and the
+    // verdict is withheld too: judged, `show x` would need `Show (f Int)`,
+    // which only that premise gives. It type-checks but does not RUN yet, on
+    // main either ("missing STG binding `mChirho`").
     for (file_name_chirho, source_chirho) in [
         (
             "A03ValidFoldableFoldmapChirho.hs",
@@ -401,8 +404,8 @@ fn instances_the_checker_cannot_fully_judge_stay_accepted_chirho() {
             "module A04ValidTraversableTraverseChirho where\ndata Box a = Box a\ninstance Functor Box where\n  fmap f (Box x) = Box (f x)\ninstance Foldable Box where\n  foldMap f (Box x) = f x\n  foldr f z (Box x) = f x z\ninstance Traversable Box where\n  traverse f (Box x) = fmap Box (f x)\n",
         ),
         (
-            "A07ValidGivenEqualityInExpectedTyChirho.hs",
-            "{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts #-}\nmodule A07ValidGivenEqualityInExpectedTyChirho where\ndata Box a = Box a\ninstance (a ~ Int) => Show (Box a) where\n  showsPrec _ (Box x) s = show (x :: Int) ++ s\n",
+            "QuantifiedPremiseChirho.hs",
+            "{-# LANGUAGE QuantifiedConstraints, UndecidableInstances #-}\nmodule Main where\nnewtype WrapChirho f = WrapChirho (f Int)\nclass CChirho a where\n  mChirho :: a -> String\ninstance (forall b. Show b => Show (f b)) => CChirho (WrapChirho f) where\n  mChirho (WrapChirho x) = show x\nmain :: IO ()\nmain = putStrLn (mChirho (WrapChirho (Just 3)))\n",
         ),
         (
             "A09ValidMptcSuperclassGivenChirho.hs",
@@ -474,13 +477,148 @@ fn a_methods_private_context_solves_nothing_else_in_the_module_chirho() {
 
 #[test]
 fn a_deferred_equality_decides_the_method_wanted_it_feeds_chirho() {
-    // agy_chirho A11 (#27171): `idEqChirho :: (a ~ b) => a -> b` leaves
-    // `NoShowChirho ~ b` deferred; it must be settled before `Show b` is
-    // judged, as at the top level, where main already rejects the same call.
-    // GHC 9.14.1 rejects both (GHC-39999).
+    // agy_chirho A11 (#27171): `idEqChirho :: (a ~ b) => a -> b` leaves the
+    // wanted `NoShowChirho ~ b`, settled before `Show b` is judged, as at the
+    // top level, where main already rejects the same call. GHC 9.14.1 rejects
+    // both (GHC-39999). A plain negative: it does not depend on the retry of
+    // waiting family equalities (removing that retry leaves it rejected).
     rejected_with_chirho(
         "A11DeferredEqualityFeedsMethodWantedChirho.hs",
         "{-# LANGUAGE GADTs #-}\nmodule A11DeferredEqualityFeedsMethodWantedChirho where\ndata NoShowChirho = NoShowChirho\nidEqChirho :: (a ~ b) => a -> b\nidEqChirho x = x\nclass RenderChirho a where\n  renderChirho :: a -> String\ninstance RenderChirho Int where\n  renderChirho _ = show (idEqChirho NoShowChirho)\n",
         "Show NoShowChirho",
     );
+}
+
+#[test]
+fn a_waiting_family_equality_decides_the_wanted_it_feeds_chirho() {
+    // `pickChirho z :: WrapChirho t` meets `Maybe y` while `t` is unknown, so
+    // that equality waits; `z + n` then fixes `t := Int`, the retry reduces
+    // `WrapChirho Int` to `Maybe NoShowChirho`, and the wanted `Show y` is
+    // judged as `Show NoShowChirho`. GHC 9.14.1 rejects it (GHC-39999); main
+    // accepted it.
+    rejected_with_chirho(
+        "WaitingFamilyFeedsWantedChirho.hs",
+        "{-# LANGUAGE TypeFamilies #-}\nmodule Main where\ndata NoShowChirho = NoShowChirho\ntype family WrapChirho a\ntype instance WrapChirho Int = Maybe NoShowChirho\npickChirho :: a -> WrapChirho a\npickChirho = undefined\nclass RenderChirho a where\n  renderChirho :: a -> String\ninstance RenderChirho Int where\n  renderChirho n = (\\z -> case pickChirho z of { Just y -> show y ++ show (z + n); Nothing -> \"\" }) 0\nmain :: IO ()\nmain = putStrLn (renderChirho (1 :: Int))\n",
+        "no instance for `Show NoShowChirho`",
+    );
+}
+
+#[test]
+fn a_ground_wanted_gets_the_verdict_the_top_level_gives_it_chirho() {
+    // T13142's shape. The seeded `Storable` instances are partial (no `Char`),
+    // so `Storable Char` is not certainly unsolvable, and a signature-bound
+    // top-level binding gets no verdict on it; a method used to be stricter.
+    // GHC 9.14.1 accepts both. The same verdict still rejects M01's
+    // `Show TChirho` in a method (above).
+    const STORABLE_CHIRHO: &str = "{-# LANGUAGE ScopedTypeVariables #-}\nmodule Main where\nimport Foreign.Storable (Storable, sizeOf)\ndata SizeChirho a = ConstSizeChirho Int\nsizeStorableChirho :: forall a. Storable a => String -> SizeChirho a\nsizeStorableChirho _ = ConstSizeChirho (sizeOf (undefined :: a))\n";
+    for (file_name_chirho, rest_chirho) in [
+        (
+            "StorableTopChirho.hs",
+            "charTopChirho :: SizeChirho Char\ncharTopChirho = sizeStorableChirho \"x\"\n",
+        ),
+        (
+            "StorableMethodChirho.hs",
+            "class StoreChirho a where\n  sizeChirho :: SizeChirho a\ninstance StoreChirho Char where\n  sizeChirho = sizeStorableChirho \"x\"\n",
+        ),
+    ] {
+        let source_chirho =
+            format!("{STORABLE_CHIRHO}{rest_chirho}main :: IO ()\nmain = putStrLn \"ok\"\n");
+        check_chirho(file_name_chirho, &source_chirho).unwrap_or_else(|err_chirho| {
+            panic!("{file_name_chirho}: GHC accepts this: {err_chirho}")
+        });
+    }
+}
+
+#[test]
+fn a_family_the_checker_cannot_reduce_keeps_mains_check_chirho() {
+    // T14010's shape: `(~>)` is chosen by kind, which this checker does not
+    // track, so `(~>) a a` stays unreduced under the givens and the method
+    // takes main's route (flexible, no leftover verdict). GHC 9.14.1 accepts.
+    check_chirho(
+        "KindIndexedFamilyMethodChirho.hs",
+        "{-# LANGUAGE PolyKinds, DataKinds, TypeFamilies, RankNTypes, TypeOperators #-}\nmodule Main where\nimport Data.Kind (Type)\ntype family (~>) :: c -> c -> Type\ntype instance (~>) = (->)\nclass CategoryChirho cat where\n  idChirho :: forall (a :: cat). a ~> a\ninstance CategoryChirho Type where\n  idChirho = \\x -> x\nmain :: IO ()\nmain = putStrLn \"ok\"\n",
+    )
+    .unwrap_or_else(|err_chirho| panic!("GHC accepts this: {err_chirho}"));
+}
+
+#[test]
+fn a_family_that_reduces_is_checked_like_any_type_chirho() {
+    // `ElemChirho [Int]` reduces to `Int`, so the method keeps the rigid check
+    // and its unrelated `show NoShowChirho` is judged. GHC 9.14.1 rejects it
+    // (GHC-39999); main accepted it.
+    rejected_with_chirho(
+        "ReducibleFamilyMethodChirho.hs",
+        "{-# LANGUAGE TypeFamilies #-}\nmodule Main where\ndata NoShowChirho = NoShowChirho\ntype family ElemChirho c\ntype instance ElemChirho [e] = e\nclass ContainerChirho f where\n  describeChirho :: f -> ElemChirho f -> String\ninstance ContainerChirho [Int] where\n  describeChirho _ y = show y ++ show NoShowChirho\nmain :: IO ()\nmain = putStrLn \"ok\"\n",
+        "no instance for `Show NoShowChirho`",
+    );
+}
+
+const INSTANCE_SIGS_CHIRHO: &str =
+    "{-# LANGUAGE ScopedTypeVariables, InstanceSigs #-}\nmodule Main where\n";
+
+#[test]
+fn an_instance_signature_that_renames_the_type_scopes_its_binders_chirho() {
+    // T5676's shape: the signature's `forall b.` is the method's own `b`, so
+    // `xs :: [b]` in the where clause meets the same rigid variable. GHC 9.14.1
+    // prints 3; this type-checks but does not RUN yet, on main either
+    // ("missing STG binding `fooChirho`").
+    check_chirho(
+        "RenamingInstanceSignatureChirho.hs",
+        &format!(
+            "{INSTANCE_SIGS_CHIRHO}data TChirho a = TChirho a\nclass CChirho a where\n  fooChirho :: b -> a -> (a, [b])\ninstance CChirho a => CChirho (TChirho a) where\n  fooChirho :: forall b. b -> TChirho a -> (TChirho a, [b])\n  fooChirho x (TChirho y) = (TChirho y, xs)\n    where\n      xs :: [b]\n      xs = [x, x, x]\ninstance CChirho Int where\n  fooChirho x n = (n, [x])\nmain :: IO ()\nmain = print (length (snd (fooChirho 'c' (TChirho (1 :: Int)))))\n"
+        ),
+    )
+    .unwrap_or_else(|err_chirho| panic!("GHC accepts this: {err_chirho}"));
+    // A renaming keeps the rigid check: `show x` needs `Show b`, which nothing
+    // gives. GHC 9.14.1 rejects it (GHC-39999); main accepted it.
+    rejected_with_chirho(
+        "RenamingSignatureMissingShowChirho.hs",
+        &format!(
+            "{INSTANCE_SIGS_CHIRHO}class CChirho a where\n  fooChirho :: b -> a -> String\ninstance CChirho Int where\n  fooChirho :: forall b. b -> Int -> String\n  fooChirho x _ = show x\nmain :: IO ()\nmain = putStrLn \"ok\"\n"
+        ),
+        "could not deduce `Show b`",
+    );
+}
+
+#[test]
+fn a_signature_that_is_not_a_renaming_keeps_mains_check_chirho() {
+    // CANARY of a declared boundary, not support. This signature drops the
+    // method's `Show b`, so it is no renaming and the method takes main's
+    // route, where the class's `Show b` is still given. GHC 9.14.1 checks the
+    // body against the signature and REJECTS it (GHC-39999). Full InstanceSigs
+    // checking is its own unit; when it lands, this becomes a rejection.
+    check_chirho(
+        "NonRenamingInstanceSignatureChirho.hs",
+        &format!(
+            "{INSTANCE_SIGS_CHIRHO}class CChirho a where\n  mChirho :: Show b => b -> a -> String\ninstance CChirho Int where\n  mChirho :: forall b. b -> Int -> String\n  mChirho x _ = show x\nmain :: IO ()\nmain = putStrLn \"ok\"\n"
+        ),
+    )
+    .unwrap_or_else(|err_chirho| {
+        panic!("the declared boundary keeps main's verdict here: {err_chirho}")
+    });
+}
+
+#[test]
+fn a_live_equality_given_decides_types_and_wanteds_chirho() {
+    // The context's equality `a ~ Int` is live for the whole check. A07
+    // (agy_chirho), in the `show` form the seeded `Show` class has (its
+    // `showsPrec` form was never checked): the given rewrites the rigid `a`
+    // where `x` is annotated. Then a WANTED needs it: `show (x + 1)` asks for
+    // `Show a` and `Num a`, which hold only as `Int`. GHC 9.14.1 accepts both.
+    // Neither RUNS as GHC's does yet, on main either: the first prints
+    // `BoxChirho 7` for GHC's `7`, the second fails ("missing STG binding").
+    for (file_name_chirho, source_chirho) in [
+        (
+            "A07GivenEqualityShowChirho.hs",
+            "{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts #-}\nmodule Main where\ndata BoxChirho a = BoxChirho a\ninstance (a ~ Int) => Show (BoxChirho a) where\n  show (BoxChirho x) = show (x :: Int)\nmain :: IO ()\nmain = print (BoxChirho (7 :: Int))\n",
+        ),
+        (
+            "EqualityGivenWantedChirho.hs",
+            "{-# LANGUAGE GADTs #-}\nmodule Main where\nclass CChirho a where\n  mChirho :: a -> String\ninstance (a ~ Int) => CChirho [a] where\n  mChirho (x:_) = show (x + 1)\n  mChirho [] = \"\"\nmain :: IO ()\nmain = putStrLn (mChirho [41 :: Int])\n",
+        ),
+    ] {
+        check_chirho(file_name_chirho, source_chirho).unwrap_or_else(|err_chirho| {
+            panic!("{file_name_chirho}: GHC accepts this: {err_chirho}")
+        });
+    }
 }

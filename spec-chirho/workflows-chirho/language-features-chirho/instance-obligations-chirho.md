@@ -23,20 +23,31 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    inst_chirho[check_instance_methods_against_class_chirho] --> head_chirho[head types and the written context, ONE var map]
+    inst_chirho[check_instance_methods_against_class_chirho] --> head_chirho[head types and the written context, ONE var map; instance signatures collected]
     head_chirho --> ctx_chirho[instance_context_givens_chirho: convert_written_context_chirho, equalities as ~]
-    ctx_chirho --> parts_chirho[instantiate_instance_method_expected_parts_chirho: class vars := head, method quantifiers kept for a class declared here]
-    parts_chirho --> skolem_chirho[skolemize_scheme_parts_chirho: head vars and kept quantifiers rigid, contexts as givens]
-    skolem_chirho --> open_chirho[new skolems recorded in instance_method_skolems_chirho: own_parameter_key_chirho keys them open, so evidence is main's]
-    open_chirho --> aside_chirho[the module's pending wanteds and deferred equalities set aside]
-    aside_chirho --> live_chirho[with_given_preds_chirho: the givens live for the whole check, its post-step included]
-    live_chirho --> body_chirho[check_method_body_chirho: infer, subsume, apply the subsumption to the wanteds]
+    ctx_chirho --> aside_chirho[check_instance_method_chirho: snapshots; the module's pending wanteds and deferred equalities set aside]
+    aside_chirho --> parts_chirho[instantiate_instance_method_expected_parts_chirho: class vars := head, method quantifiers kept for a class declared here]
+    parts_chirho --> sig_chirho{an instance signature for the method?}
+    sig_chirho -- no --> skolem_chirho
+    sig_chirho -- yes --> renaming_chirho{scope_renaming_signature_chirho: a pure renaming of type and constraints?}
+    renaming_chirho -- yes, its forall binders scope as the method's own --> skolem_chirho[skolemize_scheme_parts_chirho: head vars and kept quantifiers rigid, contexts as givens]
+    renaming_chirho -- no --> main_chirho[check_method_as_main_chirho: main's check, flexible, no leftover verdict]
+    skolem_chirho --> open_chirho[new skolems in instance_method_skolems_chirho: own_parameter_key_chirho keys them open, so evidence is main's]
+    open_chirho --> live_chirho[with_given_preds_chirho: the givens live for the whole check, its post-step included]
+    live_chirho --> family_chirho{a family application still standing in the normalized type?}
+    family_chirho -- yes --> main_chirho
+    family_chirho -- no --> body_chirho[check_method_body_chirho: infer, subsume, apply the subsumption to the wanteds]
     body_chirho --> judged_chirho{context complete and every given reaches its superclasses}
-    judged_chirho -- yes --> judge_chirho[discharge and improve by the givens, then check_deferred_preds_chirho]
+    judged_chirho -- yes --> judge_chirho[retry waiting equalities; discharge and improve by the givens; ground leftovers get the top level's verdict; the rest check_deferred_preds_chirho]
     judged_chirho -- no --> withheld_chirho[leftover verdict withheld; every other check ran]
     judge_chirho --> restore_chirho[after the scope: the method's unsettled equalities rejoin the module list; module wanteds, env, class env, scoped tyvars, skolem bindings restored]
     withheld_chirho --> restore_chirho
+    main_chirho --> restore_chirho
 ```
+
+Code: `crates/haskelujah-typing-chirho/src/infer_chirho/instances_chirho/`, two modules kept as
+`infer_chirho` children through `#[path]`: `instance_obligations_chirho.rs` (duplicates, the method
+routes) and `instance_signatures_chirho.rs` (the pure-renaming correspondence).
 
 A method body used to have its leftover wanteds DISCARDED, the instance context was never a
 given, and the instance's variables were flexible: `show x` with no `Show T`, `==` under a
@@ -51,8 +62,12 @@ in the code:
   top-level form is rejected on main too, though GHC accepts it). The verdict is withheld; the
   repair is superclass argument substitution, its own solver unit.
 - **Built-in and imported classes.** Their seeded method schemes have fixed, nameless variables
-  and some lack their contexts (`foldMap`, `traverse`), so their method quantifiers stay
-  flexible. Making them rigid needs that seed metadata repaired first.
+  and some lack their contexts (`foldMap`, `traverse`), so their method quantifiers are
+  freshened and stay flexible. Making them rigid needs that seed metadata repaired first. The
+  source-name filter of `skolemize_scheme_parts_chirho` would keep them flexible anyway: only AST
+  conversion in the module under check fills `tyvar_source_names_chirho`, and an upstream module's
+  classes arrive as an already-built class environment. Freshening is the defence that remains:
+  a variable number from another numbering, kept, could coincide with a named variable here.
 - **The class's own predicate** at the instance stays a given, so recursion resolves as before.
   A superclass reached through it is the declaration's superclass obligation (below), not the
   method's.
@@ -63,13 +78,33 @@ in the code:
   back only after it closes, because `with_given_preds_chirho` discharges and retries whatever is
   pending under the givens still installed. A method's unsettled equalities rejoin the module's
   list and are retried and reported at its end, as they always were (gpt_chirho #27163).
+- **Ground leftovers** get exactly the verdict a signature-bound top-level binding's get at
+  generalization (`report_certainly_unsolvable_ground_chirho`, shared): reported when certainly
+  unsolvable, otherwise no verdict. `Storable Char` (our seeded Storable instances are partial) is
+  accepted in a method as at the top (T13142); `Show T` with no instance is still rejected (M01).
+- **Unresolved families.** Under the live givens the method's type is specialized and normalized.
+  A family application still standing there is one this checker cannot decide (kind-indexed
+  instances need kinds it does not track: T14010's `type instance (~>) = (->)`), so the method
+  takes main's route. A family that reduces is checked like any other type. Residual: an
+  irreducible family over a rigid variable, which GHC compares rigidly, is not judged here.
+- **Instance signatures** (InstanceSigs). A signature that is a pure renaming of the method's type
+  and constraints scopes its `forall` binders over the body as the method's own quantifiers
+  (T5676); the correspondence is structural and never unifies. Any other signature takes main's
+  route: checking a body against a signature that may be more general is full InstanceSigs
+  support, its own unit. The canary `a_signature_that_is_not_a_renaming_keeps_mains_check_chirho`
+  shows that boundary (GHC rejects it, we accept).
+- **Main's route** (`check_method_as_main_chirho`) is main's check, isolated like the rigid one:
+  flexible variables, the method's own context as givens, inference and subsumption, no leftover
+  verdict.
 - **Evidence.** The skolems serve the check only. A method's own-parameter key (`$own`) names a
   dictionary that an instance method does not have, so `own_parameter_key_chirho` keys the skolems
   as the open variables they replaced. Dictionary evidence and runtime dispatch are therefore
   main's, and so is main's defect: a superclass of the instance context used inside a method
   (`==` under `instance Ord a => C [a]`) dispatches by the class default (`Int`), so `Double`,
   `Maybe` and tuple elements crash and nested lists answer wrongly. Threading the instance
-  context's dictionaries into the method belongs to the dictionary pass, its own unit.
+  context's dictionaries into the method belongs to the dictionary pass, its own unit. Instances
+  with an instance signature, an equality context or a quantified context type-check but do not
+  run as GHC's do, on main either ("missing STG binding", or `BoxChirho 7` for GHC's `7`).
 - **Shared solver gaps** stay shared: `op (Just x)` under only `instance C (Maybe Int)` is
   accepted in a method and in a top-level signature alike (agy_chirho A10, GHC-39999).
 

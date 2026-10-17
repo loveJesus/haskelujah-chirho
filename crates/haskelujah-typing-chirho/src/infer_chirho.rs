@@ -42,6 +42,8 @@ mod guards_chirho;
 // The instance-declaration modules live together in `infer_chirho/instances_chirho/`.
 #[path = "infer_chirho/instances_chirho/instance_obligations_chirho.rs"]
 mod instance_obligations_chirho;
+#[path = "infer_chirho/instances_chirho/instance_signatures_chirho.rs"]
+mod instance_signatures_chirho;
 mod records_chirho;
 mod rigid_chirho;
 #[cfg(test)]
@@ -1385,16 +1387,8 @@ impl InferCtxChirho {
                 // instance anywhere in the defining module). Groundness makes
                 // the verdict final: no later substitution can change it.
                 if pred_fvs_chirho.is_empty()
-                    && Self::pred_fully_ground_chirho(&pred_chirho)
-                    && self.is_certainly_unsolvable_pred_chirho(&pred_chirho)
+                    && self.report_certainly_unsolvable_ground_chirho(&pred_chirho, span_chirho)
                 {
-                    let blamed_chirho = self.unsolvable_blame_pred_chirho(&pred_chirho, 0);
-                    self.diagnostics_chirho
-                        .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                            ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
-                            format!("no instance for `{blamed_chirho}`"),
-                            span_chirho,
-                        ));
                     continue;
                 }
                 scheme_preds_chirho.push(SchemePredChirho {
@@ -1727,6 +1721,32 @@ impl InferCtxChirho {
     /// "No instance for ..." — accepting them silently is unsound.
     fn is_certainly_unsolvable_pred_chirho(&self, pred_chirho: &PredChirho) -> bool {
         self.is_certainly_unsolvable_pred_depth_chirho(pred_chirho, 0)
+    }
+
+    /// The verdict a GROUND wanted gets where it is final: GHC's "No instance
+    /// for" when it is certainly unsolvable, otherwise none at all. Top-level
+    /// generalization and an instance method's leftovers share it, so a method
+    /// is judged exactly as a signature-bound binding is. Returns whether the
+    /// wanted was reported.
+    /// workflow: language-features-chirho/instance-obligations-chirho
+    fn report_certainly_unsolvable_ground_chirho(
+        &mut self,
+        pred_chirho: &PredChirho,
+        span_chirho: SpanChirho,
+    ) -> bool {
+        if !(Self::pred_fully_ground_chirho(pred_chirho)
+            && self.is_certainly_unsolvable_pred_chirho(pred_chirho))
+        {
+            return false;
+        }
+        let blamed_chirho = self.unsolvable_blame_pred_chirho(pred_chirho, 0);
+        self.diagnostics_chirho
+            .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+                format!("no instance for `{blamed_chirho}`"),
+                span_chirho,
+            ));
+        true
     }
 
     /// How deep the sub-goals of matching instances are followed before the

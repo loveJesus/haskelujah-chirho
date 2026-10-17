@@ -21,12 +21,14 @@ method's type variables were flexible. GHC 9.14.1 rejects each of these programs
 
 ## Bricks
 
-Built under claude_chirho's named builder lease (handed over by claude2_chirho after the
-if-condition unit). Bricks 1-5 are built and their controls pass on the unmerged candidate;
-brick 6 lists what is measured and what is still to run.
+Checkpoint d98c722a was built and gated under claude_chirho's named builder lease (#27204):
+NOT eligible to land (three accept-axis losses, four surviving mutations). Brick 8 is the
+revision gpt_chirho authorized in #27205, written as source while claude2_chirho holds the
+builder; every [x] in brick 8 is "written", not "measured".
 
 - [x] 1. Placement: the instance-method check moved whole from `infer_chirho.rs` (-158 lines)
-      into `infer_chirho/instance_obligations_chirho.rs`.
+      into `infer_chirho/instance_obligations_chirho.rs`, since grouped with the InstanceSigs
+      module under `infer_chirho/instances_chirho/` (`#[path]`, same module names; #27214).
 - [x] 2. The method's type at the instance is a signature: instance-head variables, and for a
       class declared in this module the method's own quantifiers, become rigid through
       `skolemize_scheme_parts_chirho`; the instance context (`convert_written_context_chirho`,
@@ -54,12 +56,33 @@ brick 6 lists what is measured and what is still to run.
 - [x] 5. Controls (tests/instance_obligations_chirho.rs), 21 passing: M01, M02, M04, M05, V01,
       V02, V08, a built-in `show` method, A06, A11 and both isolation canaries rejected; V03,
       V04, V07 run with GHC's output; V05, V06, A03, A04, A07, A09 and the own-context method
-      accepted. A05 (`showsPrec`, absent from the seeded `Show`) stays a known miss.
-- [ ] 6. Gates under the named builder lease: the 36 probes (done: the candidate's verdicts
-      equal 43a2e0b4's; DIFFs are A01/A02 built-in quantifiers, A05, A08 superclass
-      obligation, A10 a solver gap shared with top-level signatures), merge of main 6e543a02,
-      focused gates on the combined build, one mutation per rule, the two-pass corpus pair;
-      every accept-axis loss traced and dispositioned.
+      accepted. A05 (`showsPrec`, absent from the seeded `Show`) stays a known miss. CORRECTION:
+      A07's control used `showsPrec` too, so the check never ran on it; brick 8 replaces it.
+- [x] 6. Gates on d98c722a (main bb699370 merged; compiler 585e4bec, CLI bfc5c55d): focused
+      suites green; 36 probes equal 43a2e0b4's (DIFFs A01/A02, A05, A08, A10, the last shared
+      with top-level signatures); corpus pair stable, reject +6 (4 for GHC's reason, T15799 and
+      T15801 accidental), accept -3 (T13142, T14010, T5676); mutations 6 of 10 killed.
+- [ ] 8. Revision (#27205), source written, unbuilt:
+  - [x] T13142: ground leftovers get the top level's verdict through one helper shared with
+        generalization (`report_certainly_unsolvable_ground_chirho`); non-ground ones are still
+        judged under the live givens.
+  - [x] T14010: a family application still standing in the type normalized under the live
+        givens sends the method to main's route (`check_method_as_main_chirho`); a reducible
+        family keeps the rigid check.
+  - [x] T5676: an instance signature that is a pure renaming scopes its `forall` binders as the
+        method's own quantifiers (`instance_signatures_chirho.rs`); any other takes main's route.
+  - [x] Controls: the Storable top/method pair, the kind-indexed family, a reducible family with
+        a missing `Show`, the renaming signature and its missing-`Show b` negative, the
+        non-renaming canary, A07 in its `show` form and an equality-given wanted (check-only:
+        both run wrong on main too), a quantified premise (m10), a waiting family equality (m06).
+  - [ ] Build, the controls, a mutation per new rule, the m06/m10 mutants on the new controls,
+        merge of current main, the corpus pair with no accept membership lost.
+  - Mutation accounting, by trace (gpt_chirho #27214): m04 (judgement after the scope) is
+    REDUNDANT, not a lost rule: `with_given_preds_chirho`'s post-step discharges, under the
+    live givens and rewrites, every wanted a given serves (`givens_discharge_wanted_chirho`),
+    and what survives it is judged alike inside or outside. m08 (built-in quantifiers rigid) is
+    REDUNDANT with the source-name filter (no reachable named foreign scheme). Six rules are
+    independently killed; m06 and m10 await their mutants on the new controls.
 - [ ] 7. Proposed next unit, not this one: thread the instance context's dictionaries into
       instance methods (dictionary pass). Main dispatches `==` under `Ord a` by the `Int`
       default: `[1.5, 1.5 :: Double]` crashes, `Maybe`/tuple elements crash, nested lists

@@ -264,6 +264,19 @@ impl InferCtxChirho {
     }
 }
 
+/// How one instance method is checked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MethodRouteChirho {
+    /// As a signature-bound binding: rigid variables, the contexts as givens,
+    /// the leftovers judged.
+    RigidChirho,
+    /// As main checked it, flexible and with no leftover verdict, at a declared
+    /// support boundary: the method's type keeps a family application this
+    /// checker cannot reduce, or its instance signature is not a pure renaming
+    /// of that type.
+    MainChirho,
+}
+
 /// One instance declaration while its methods are checked: the class, the head
 /// as written, its type variables, and its written context as givens over
 /// those variables.
@@ -301,6 +314,11 @@ impl InferCtxChirho {
     /// and through its context resolves as it always did. A superclass reached
     /// through that given is the instance declaration's superclass obligation,
     /// which is its own unit (gpt_chirho #27158, agy_chirho A08).
+    ///
+    /// Two declared support boundaries keep main's check for a method
+    /// (`MethodRouteChirho::MainChirho`): a family application in its type that
+    /// this checker cannot reduce, and an instance signature that is not a pure
+    /// renaming of its type (`instance_signatures_chirho`).
     /// workflow: language-features-chirho/instance-obligations-chirho
     pub(super) fn check_instance_methods_against_class_chirho(
         &mut self,
@@ -348,6 +366,18 @@ impl InferCtxChirho {
                 context_complete_chirho,
                 local_class_chirho: local_classes_chirho.contains(class_chirho.text_chirho()),
             };
+            // InstanceSigs: a method's own signature in the instance body.
+            let signatures_chirho: HashMap<&str, &TypeChirho> = methods_chirho
+                .iter()
+                .filter_map(|bind_chirho| match bind_chirho {
+                    haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho {
+                        name_chirho,
+                        ty_chirho,
+                        ..
+                    } => Some((name_chirho.text_chirho(), ty_chirho)),
+                    _ => None,
+                })
+                .collect();
             for method_bind_chirho in methods_chirho {
                 let haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho {
                     name_chirho,
@@ -367,6 +397,7 @@ impl InferCtxChirho {
                 self.check_instance_method_chirho(
                     &instance_chirho,
                     method_scheme_chirho,
+                    signatures_chirho.get(name_chirho.text_chirho()).copied(),
                     matches_chirho,
                     *span_chirho,
                 );
@@ -400,23 +431,23 @@ impl InferCtxChirho {
         (preds_chirho, !unmodelled_chirho && !variable_headed_chirho)
     }
 
-    /// One method, checked against its type at this instance. The givens are
-    /// live for the WHOLE check, inference, subsumption and the leftover
-    /// wanteds alike, so an equality given rewrites a rigid variable wherever
-    /// it is compared (agy_chirho A07). Everything the check touches is
+    /// One method, checked against its type at this instance, on the route its
+    /// shape allows (`MethodRouteChirho`). Everything the check touches is
     /// restored afterwards, so neither the module's other pending wanteds nor
-    /// this method's rigid variables leak into the next.
+    /// this method's rigid variables or scoped binders leak into the next.
     ///
     /// The module's pending wanteds and deferred equalities are set aside
-    /// BEFORE the given scope opens and restored only after it has closed,
+    /// BEFORE any given scope opens and restored only after it has closed,
     /// its post-step included: that step discharges and retries whatever is
     /// pending under the givens still installed, and this method's private
     /// context (`instance Show T => C T`) must never solve an obligation of
-    /// the rest of the module (gpt_chirho #27163).
+    /// the rest of the module (gpt_chirho #27163). Main's route is isolated
+    /// the same way.
     fn check_instance_method_chirho(
         &mut self,
         instance_chirho: &InstanceUnderCheckChirho,
         method_scheme_chirho: &SchemeChirho,
+        signature_chirho: Option<&TypeChirho>,
         matches_chirho: &[MatchArmChirho],
         span_chirho: SpanChirho,
     ) {
@@ -426,11 +457,75 @@ impl InferCtxChirho {
         let skolem_bindings_snapshot_chirho = self.skolem_bindings_chirho.clone();
         let module_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
         let module_equalities_chirho = std::mem::take(&mut self.deferred_equalities_chirho);
+        self.scope_instance_variables_chirho(instance_chirho);
+
+        let route_chirho = self.check_method_rigidly_chirho(
+            instance_chirho,
+            method_scheme_chirho,
+            signature_chirho,
+            matches_chirho,
+            span_chirho,
+            &skolem_bindings_snapshot_chirho,
+        );
+        if route_chirho == MethodRouteChirho::MainChirho {
+            // The rigid check stopped before the body; nothing it set up
+            // (signature binders, skolems) reaches main's check.
+            self.scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho.clone();
+            self.skolem_bindings_chirho = skolem_bindings_snapshot_chirho.clone();
+            self.scope_instance_variables_chirho(instance_chirho);
+            self.check_method_as_main_chirho(
+                instance_chirho,
+                method_scheme_chirho,
+                matches_chirho,
+                span_chirho,
+            );
+        }
+
+        // What the method leaves behind. Its wanteds were judged inside the
+        // scope, or withheld at a support boundary, and belong to no other
+        // binding: they go, as the old truncate sent them. Its deferred
+        // equalities that the givens could not settle return to the module's
+        // list, where they always went, to be retried and reported at the
+        // module's end as before, never dropped.
+        let method_equalities_chirho = std::mem::replace(
+            &mut self.deferred_equalities_chirho,
+            module_equalities_chirho,
+        );
+        self.deferred_equalities_chirho
+            .extend(method_equalities_chirho);
+        self.deferred_preds_chirho = module_preds_chirho;
+
+        self.env_chirho = env_snapshot_chirho;
+        self.class_env_chirho = class_env_snapshot_chirho;
+        self.scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho;
+        self.skolem_bindings_chirho = skolem_bindings_snapshot_chirho;
+    }
+
+    /// ScopedTypeVariables: the instance head's variables scope over every
+    /// method body.
+    fn scope_instance_variables_chirho(&mut self, instance_chirho: &InstanceUnderCheckChirho) {
         if self.scoped_type_variables_chirho {
             self.scoped_tyvars_chirho
                 .extend(instance_chirho.var_map_chirho.clone());
         }
+    }
 
+    /// The method as a signature-bound binding: its type at the instance with
+    /// the instance's variables (and, for a class declared here, the method's
+    /// own quantifiers) rigid, and the instance context plus the method's
+    /// context as givens, live for the WHOLE check, inference, subsumption and
+    /// the leftover wanteds alike, so an equality given rewrites a rigid
+    /// variable wherever it is compared (agy_chirho A07). Returns `MainChirho`
+    /// at a support boundary, always before the body is looked at.
+    fn check_method_rigidly_chirho(
+        &mut self,
+        instance_chirho: &InstanceUnderCheckChirho,
+        method_scheme_chirho: &SchemeChirho,
+        signature_chirho: Option<&TypeChirho>,
+        matches_chirho: &[MatchArmChirho],
+        span_chirho: SpanChirho,
+        skolem_bindings_snapshot_chirho: &SubstChirho,
+    ) -> MethodRouteChirho {
         // The method's type at this instance, made rigid as a signature is:
         // the body may use the instance's variables and the method's own
         // quantifiers, but can neither choose nor default them.
@@ -441,6 +536,18 @@ impl InferCtxChirho {
                 &instance_chirho.head_tys_chirho,
                 instance_chirho.local_class_chirho,
             );
+        if let Some(signature_chirho) = signature_chirho
+            && !self.scope_renaming_signature_chirho(
+                &instance_chirho.class_decl_chirho.name_chirho,
+                &instance_chirho.head_tys_chirho,
+                signature_chirho,
+                &method_preds_chirho,
+                &method_ty_chirho,
+                &method_vars_chirho,
+            )
+        {
+            return MethodRouteChirho::MainChirho;
+        }
         // A fixed order, so the skolems are numbered deterministically.
         let mut vars_chirho: Vec<TyVarChirho> =
             instance_chirho.var_map_chirho.values().copied().collect();
@@ -483,36 +590,27 @@ impl InferCtxChirho {
                 &rigid_ty_chirho,
                 judged_chirho,
             )
-        });
-
-        // What the method leaves behind. Its wanteds were judged inside the
-        // scope, or withheld at a support boundary, and belong to no other
-        // binding: they go, as the old truncate sent them. Its deferred
-        // equalities that the givens could not settle return to the module's
-        // list, where they always went, to be retried and reported at the
-        // module's end as before, never dropped.
-        let method_equalities_chirho = std::mem::replace(
-            &mut self.deferred_equalities_chirho,
-            module_equalities_chirho,
-        );
-        self.deferred_equalities_chirho
-            .extend(method_equalities_chirho);
-        self.deferred_preds_chirho = module_preds_chirho;
-
-        self.env_chirho = env_snapshot_chirho;
-        self.class_env_chirho = class_env_snapshot_chirho;
-        self.scoped_tyvars_chirho = scoped_tyvars_snapshot_chirho;
-        self.skolem_bindings_chirho = skolem_bindings_snapshot_chirho;
+        })
     }
 
     /// The method body against its rigid expected type, under the givens the
-    /// caller has installed and with only this method's obligations pending:
-    /// inference, then subsumption, whose substitution the leftover wanteds
-    /// see (agy_chirho A05), then, when `judged_chirho`, the judgement of
-    /// those leftovers by the module's final check, the rules a top-level
-    /// binding gets. The givens first discharge and improve what they can,
-    /// functional dependencies included, as a signature's givens do
-    /// (agy_chirho A06). Local literal defaulting still decides whether a
+    /// caller has installed and with only this method's obligations pending.
+    ///
+    /// Under those givens the type is specialized and normalized: families
+    /// reduced, given equalities applied. A family application that still
+    /// stands is one this checker cannot decide (a kind-indexed instance needs
+    /// kinds it does not track: T14010's `type instance (~>) = (->)`), and a
+    /// rigid comparison would report a reduction it cannot perform, so the
+    /// method takes main's route; a family that reduces is checked like any
+    /// other type (gpt_chirho #27205).
+    ///
+    /// Otherwise: inference, then subsumption, whose substitution the leftover
+    /// wanteds see (agy_chirho A05), then, when `judged_chirho`, the judgement
+    /// of those leftovers, the rules a signature-bound top-level binding gets.
+    /// The givens first discharge and improve what they can, functional
+    /// dependencies included (agy_chirho A06); a ground leftover gets the top
+    /// level's verdict (`judge_ground_leftovers_chirho`); the rest are judged
+    /// under the givens. Local literal defaulting still decides whether a
     /// wanted holds, but the defaulting substitution the check returns is
     /// discarded, so nothing downstream changes by it: a bounded, check-only
     /// choice, not a claim about runtime evidence.
@@ -522,8 +620,11 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
         rigid_ty_chirho: &TyChirho,
         judged_chirho: bool,
-    ) {
+    ) -> MethodRouteChirho {
         let expected_ty_chirho = self.normalize_ty_chirho(rigid_ty_chirho);
+        if self.ty_mentions_family_chirho(&expected_ty_chirho) {
+            return MethodRouteChirho::MainChirho;
+        }
         let (method_subst_chirho, inferred_ty_chirho) = self.infer_matches_against_expected_chirho(
             matches_chirho,
             span_chirho,
@@ -542,12 +643,94 @@ impl InferCtxChirho {
             Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
         }
         if judged_chirho {
-            // The module's own order: a deferred equality settled now
-            // (`NoShow ~ b` from a `(a ~ b) =>` callee) decides the wanted it
-            // feeds before that wanted is judged (agy_chirho A11).
+            // The module's own order: a stuck family equality settled now
+            // (`WrapChirho t ~ Maybe y`, once `t` is known) decides the wanted
+            // it feeds before that wanted is judged.
             let _equalities_chirho = self.retry_deferred_equalities_chirho();
             let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
+            self.judge_ground_leftovers_chirho(&method_subst_chirho);
             let _defaults_chirho = self.check_deferred_preds_chirho(&method_subst_chirho);
+        }
+        MethodRouteChirho::RigidChirho
+    }
+
+    /// A method's GROUND leftovers get the verdict a signature-bound top-level
+    /// binding's get at generalization (`report_certainly_unsolvable_ground_chirho`):
+    /// a certainly unsolvable one is reported, any other has no verdict and
+    /// goes. Only leftovers over rigid or open variables stay for the judgement
+    /// under the givens. Without this a method was stricter than the top level:
+    /// `Storable Char`, whose seeded instances are partial, was rejected in a
+    /// method and accepted at the top (T13142).
+    fn judge_ground_leftovers_chirho(&mut self, method_subst_chirho: &SubstChirho) {
+        for (pred_chirho, span_chirho) in std::mem::take(&mut self.deferred_preds_chirho) {
+            let resolved_chirho = PredChirho {
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: self.normalize_ty_chirho(
+                    &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                ),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|ty_chirho| {
+                        self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(ty_chirho))
+                    })
+                    .collect(),
+            };
+            if Self::pred_fully_ground_chirho(&resolved_chirho) {
+                self.report_certainly_unsolvable_ground_chirho(&resolved_chirho, span_chirho);
+            } else {
+                self.deferred_preds_chirho.push((pred_chirho, span_chirho));
+            }
+        }
+    }
+
+    /// Main's check of a method, kept for the declared support boundaries
+    /// (`MethodRouteChirho::MainChirho`): its type at the instance with
+    /// FLEXIBLE variables, the method's own context as givens, inference
+    /// against that type and subsumption. The leftovers get no verdict; the
+    /// caller drops them, as main's truncate did.
+    fn check_method_as_main_chirho(
+        &mut self,
+        instance_chirho: &InstanceUnderCheckChirho,
+        method_scheme_chirho: &SchemeChirho,
+        matches_chirho: &[MatchArmChirho],
+        span_chirho: SpanChirho,
+    ) {
+        let (method_preds_chirho, method_ty_chirho, _quantifiers_chirho) = self
+            .instantiate_instance_method_expected_parts_chirho(
+                &instance_chirho.class_decl_chirho,
+                method_scheme_chirho,
+                &instance_chirho.head_tys_chirho,
+                false,
+            );
+        let givens_chirho: Vec<PredChirho> = method_preds_chirho
+            .into_iter()
+            .map(|pred_chirho| {
+                let mut given_chirho =
+                    PredChirho::new_chirho(&pred_chirho.class_name_chirho, pred_chirho.ty_chirho);
+                given_chirho.extra_tys_chirho = pred_chirho.extra_tys_chirho;
+                given_chirho
+            })
+            .collect();
+        let expected_ty_chirho = self.normalize_ty_chirho(&method_ty_chirho);
+        let (method_subst_chirho, inferred_ty_chirho) =
+            self.with_given_preds_chirho(givens_chirho, |self_chirho| {
+                self_chirho.infer_matches_against_expected_chirho(
+                    matches_chirho,
+                    span_chirho,
+                    &expected_ty_chirho,
+                )
+            });
+        let inferred_norm_chirho =
+            self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho));
+        let expected_norm_chirho =
+            self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&expected_ty_chirho));
+        if let Err(err_chirho) = self.subsume_normalized_chirho(
+            &inferred_norm_chirho,
+            &expected_norm_chirho,
+            span_chirho,
+        ) {
+            self.report_unify_error_chirho(&err_chirho);
         }
     }
 
