@@ -39,6 +39,8 @@ mod do_operations_chirho;
 mod equalities_chirho;
 mod evidence_chirho;
 mod guards_chirho;
+// The instance-declaration modules live together in `infer_chirho/instances_chirho/`.
+#[path = "infer_chirho/instances_chirho/instance_obligations_chirho.rs"]
 mod instance_obligations_chirho;
 mod records_chirho;
 mod rigid_chirho;
