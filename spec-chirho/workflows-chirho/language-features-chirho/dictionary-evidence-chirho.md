@@ -81,7 +81,16 @@ flowchart TD
   `String`, the spelling `Show`'s own rows use; so every lookup tries the key, then the key
   with each whole-word `String` spelled `[Char]` (`registry_spellings_chirho`, token-aware:
   `ByteString` and `Data.String` are untouched), then for dictionary lookups the head `[]`
-  of a whole list key and the head of a higher-kinded class key, as before. A whole key the checker proved is never replaced by the
+  of a whole list key and the head of a higher-kinded class key, as before. A ground
+  dictionary's METHOD SLOT crosses the same gap: the desugarer names an instance's method rows
+  by the head as written (`$prim_C_m_[String]`, `$prim_C_m_String`), the dictionary by the head
+  as typed (`[[Char]]`, `[Char]`), so a head written with `String` got a missing-method stub
+  in its slot. `written_method_row_chirho` (`dict_chirho/instance_chirho/string_spellings_chirho.rs`,
+  the rule's one home) fills the slot with the source row whose written key, spelled out, is
+  the typed key (agy_chirho #27325). Still a stub: another synonym, an application head
+  (written `Maybe Int`, typed `(Maybe Int)`), a head with a type variable (written
+  `T b`, typed `(T t0)`) and a later argument of a multi-parameter head.
+  A whole key the checker proved is never replaced by the
   argument-shape guess, which reads the element off the syntax and collapses `[[Int]]` to
   `[Int]`. And a call receives a dictionary for EVERY predicate: where none can be built,
   `missing_dictionary_chirho` (`dict_chirho/rewrite_chirho/constrained_references_chirho.rs`)

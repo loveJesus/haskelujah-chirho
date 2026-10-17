@@ -270,7 +270,8 @@ fn a_nested_string_meets_its_instance_under_either_spelling_chirho() {
     // written `[String]`), while the evidence spells the nested string
     // `[String]`. Through a constrained reference and as a direct method use,
     // either spelling must meet; a user type whose name merely contains
-    // `String` keeps its own key. Each printed an empty line or failed.
+    // `String` keeps its own key. Each printed an empty line or failed. The
+    // written `[String]` row also needs its dictionary's method slot, below.
     for (file_name_chirho, declarations_chirho, expected_chirho) in [
         (
             "NestedCharsByReferenceChirho.hs",
@@ -299,6 +300,38 @@ fn a_nested_string_meets_its_instance_under_either_spelling_chirho() {
                 &format!("{TAG_CLASS_CHIRHO}{declarations_chirho}")
             ),
             expected_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn a_head_written_string_fills_its_dictionary_slot_chirho() {
+    // agy_chirho #27325: the desugarer names an instance's method rows by the
+    // head as written (`$prim_TagChirho_tagChirho_String`), the dictionary by
+    // the head as typed (`$fTagChirho[Char]`), so its slot was a
+    // missing-method stub. A constrained reference, and a direct use at
+    // `[Char]`, which reaches the method through the dictionary's selector,
+    // must both run the written method. On main 3ca4fc54 the reference
+    // printed an empty line (exit 0) and the direct use was a missing binding.
+    for (file_name_chirho, main_chirho) in [
+        (
+            "WrittenStringChirho.hs",
+            "main = putStrLn (useTagChirho valueChirho)\n",
+        ),
+        (
+            "WrittenStringByOccurrenceChirho.hs",
+            "main = putStrLn (tagChirho valueChirho)\n",
+        ),
+    ] {
+        assert_eq!(
+            run_chirho(
+                file_name_chirho,
+                &format!(
+                    "{TAG_CLASS_CHIRHO}instance TagChirho String where\n  tagChirho _ = \"string\"\nvalueChirho :: [Char]\nvalueChirho = \"abc\"\nmain :: IO ()\n{main_chirho}"
+                )
+            ),
+            "string\n",
             "{file_name_chirho}"
         );
     }
