@@ -467,6 +467,61 @@ impl InferCtxChirho {
 /// The instance-head key of a concrete literal type; `None` for anything still
 /// carrying a unification variable, and for a rigid variable (that literal is
 /// dispatched through the enclosing binding's dictionary parameter).
+/// A type's full key when every part of it is ground, as `Show`'s dictionaries
+/// are named: `[Char]` for a top-level `String` (`String` once nested inside
+/// another key), `[Int]`, `(Int,Bool)`, `Maybe Int` (`(Maybe Int)` nested).
+/// `None` for any variable, rigid variable, function type or polytype.
+/// Moved unchanged from `finalize_occurrence_records_chirho`, which keys `Show`
+/// occurrences by it.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(super) fn concrete_show_key_chirho(
+    ty_chirho: &TyChirho,
+    nested_chirho: bool,
+) -> Option<String> {
+    match ty_chirho {
+        TyChirho::VarChirho(_)
+        | TyChirho::ForallVarChirho(_)
+        | TyChirho::FunChirho(_, _, _)
+        | TyChirho::ForallChirho { .. }
+        | TyChirho::RequiredForallChirho { .. } => None,
+        TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {
+            Some(if nested_chirho { "String" } else { "[Char]" }.to_string())
+        }
+        TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
+        TyChirho::ListChirho(inner_chirho) => {
+            if matches!(
+                inner_chirho.as_ref(),
+                TyChirho::ConChirho(name_chirho) if name_chirho == "Char"
+            ) {
+                return Some(if nested_chirho { "String" } else { "[Char]" }.to_string());
+            }
+            Some(format!(
+                "[{}]",
+                concrete_show_key_chirho(inner_chirho, true)?
+            ))
+        }
+        TyChirho::TupleChirho(items_chirho) => {
+            let item_keys_chirho = items_chirho
+                .iter()
+                .map(|item_chirho| concrete_show_key_chirho(item_chirho, true))
+                .collect::<Option<Vec<_>>>()?;
+            Some(format!("({})", item_keys_chirho.join(",")))
+        }
+        TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+            let key_chirho = format!(
+                "{} {}",
+                concrete_show_key_chirho(fun_chirho, false)?,
+                concrete_show_key_chirho(arg_chirho, true)?
+            );
+            Some(if nested_chirho {
+                format!("({key_chirho})")
+            } else {
+                key_chirho
+            })
+        }
+    }
+}
+
 fn literal_head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
     match ty_chirho {
         TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),

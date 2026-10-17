@@ -6964,51 +6964,6 @@ impl InferCtxChirho {
         &self,
         final_subst_chirho: &SubstChirho,
     ) -> Vec<MethodOccurrenceRecordChirho> {
-        fn concrete_show_key_chirho(ty_chirho: &TyChirho, nested_chirho: bool) -> Option<String> {
-            match ty_chirho {
-                TyChirho::VarChirho(_)
-                | TyChirho::ForallVarChirho(_)
-                | TyChirho::FunChirho(_, _, _)
-                | TyChirho::ForallChirho { .. }
-                | TyChirho::RequiredForallChirho { .. } => None,
-                TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {
-                    Some(if nested_chirho { "String" } else { "[Char]" }.to_string())
-                }
-                TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
-                TyChirho::ListChirho(inner_chirho) => {
-                    if matches!(
-                        inner_chirho.as_ref(),
-                        TyChirho::ConChirho(name_chirho) if name_chirho == "Char"
-                    ) {
-                        return Some(if nested_chirho { "String" } else { "[Char]" }.to_string());
-                    }
-                    Some(format!(
-                        "[{}]",
-                        concrete_show_key_chirho(inner_chirho, true)?
-                    ))
-                }
-                TyChirho::TupleChirho(items_chirho) => {
-                    let item_keys_chirho = items_chirho
-                        .iter()
-                        .map(|item_chirho| concrete_show_key_chirho(item_chirho, true))
-                        .collect::<Option<Vec<_>>>()?;
-                    Some(format!("({})", item_keys_chirho.join(",")))
-                }
-                TyChirho::AppChirho(fun_chirho, arg_chirho) => {
-                    let key_chirho = format!(
-                        "{} {}",
-                        concrete_show_key_chirho(fun_chirho, false)?,
-                        concrete_show_key_chirho(arg_chirho, true)?
-                    );
-                    Some(if nested_chirho {
-                        format!("({key_chirho})")
-                    } else {
-                        key_chirho
-                    })
-                }
-            }
-        }
-
         fn head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
             match ty_chirho {
                 TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
@@ -7096,7 +7051,7 @@ impl InferCtxChirho {
                     }
                     let resolved_show_key_chirho = (class_chirho == "Show"
                         && !resolved_chirho.contains_var_chirho())
-                    .then(|| concrete_show_key_chirho(&resolved_chirho, false))
+                    .then(|| evidence_chirho::concrete_show_key_chirho(&resolved_chirho, false))
                     .flatten();
                     let key_chirho = resolved_show_key_chirho
                         .or_else(|| head_key_chirho(&resolved_chirho))
