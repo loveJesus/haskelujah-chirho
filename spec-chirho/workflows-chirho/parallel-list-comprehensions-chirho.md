@@ -27,6 +27,11 @@ flowchart TD
 - The result expression can use the bindings exported by every branch.
 - A single `|` retains ordinary sequential and Cartesian comprehension semantics.
 - Multiple top-level `|` branches advance lockstep and truncate to the shortest branch.
-- Inline `let` qualifier layout ends before the following comma, pipe, or closing bracket.
+- A `let` qualifier's layout block ends at the following comma, pipe, or closing bracket, even
+  on one line (the Report's parse-error(t) rule, `cst_parser_chirho/let_qualifier_chirho.rs`,
+  shared with guards): the parser moves the block's virtual close there and drops the block's
+  separators after it, so the statement or declaration after the comprehension stays in its
+  enclosing do block, `where` or module. Before 2026-10-17 the close stayed after the `]`, where
+  it closed the enclosing block instead and the next statement was lost or misread.
 - Parallel lowering reuses ordinary comprehension, tuple-pattern lambda, `zip`, and `map`
   machinery rather than adding a backend-specific execution path.

@@ -35,9 +35,10 @@ its right-hand side, and (the comprehension's) dropped every pattern binding.
 
 A guard's `let` ends where its bindings do, even on one line (`| let y = x * 2, y > 10 = y`):
 the layout pass closes an implicit block only by indentation, so the parser applies the
-Report's parse-error(t) rule itself (`cst_parser_chirho/guard_let_chirho.rs`), closing the
-block at the `,` before the next qualifier or the `=`/`->` before the body, and moving the
-layout pass's later virtual `}` there (with the virtual `;` it placed for that block).
+Report's parse-error(t) rule itself (`cst_parser_chirho/let_qualifier_chirho.rs`, shared with a
+list comprehension's `let`), closing the block at the `,` before the next qualifier or the
+`=`/`->` before the body, and moving the layout pass's later virtual `}` there (with the
+virtual `;` it placed for that block).
 
 ```mermaid
 flowchart TD

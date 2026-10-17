@@ -36,6 +36,17 @@ impl ParserChirho<'_> {
         self.parse_qualifier_let_binds_chirho(&[RawTokenKindChirho::CommaChirho, arm_end_chirho]);
     }
 
+    /// The `let` of a list comprehension: it ends at the `,` before the next
+    /// qualifier, the `|` of a parallel branch, or the closing `]`.
+    /// workflow: parallel-list-comprehensions-chirho
+    pub(super) fn parse_comprehension_let_binds_chirho(&mut self) {
+        self.parse_qualifier_let_binds_chirho(&[
+            RawTokenKindChirho::CommaChirho,
+            RawTokenKindChirho::PipeChirho,
+            RawTokenKindChirho::RightBracketChirho,
+        ]);
+    }
+
     /// The bindings of a qualifier's `let`, just after the keyword, up to the
     /// first token in `ends_chirho` met between bindings.
     fn parse_qualifier_let_binds_chirho(&mut self, ends_chirho: &[RawTokenKindChirho]) {
