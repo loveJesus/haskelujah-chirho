@@ -187,6 +187,42 @@ flowchart TD
 - Keying by origin gives GENERATED references evidence they never had: the checker used to skip
   a placeholder span at capture. That is a behaviour change, measured, not a neutral re-keying.
 
+## Generic instance heads (2026-10-17)
+
+```mermaid
+flowchart TD
+    inst_chirho[ground instance, no context] --> g3_chirho{G1-G3: one-parameter class, typed head T v1..vn, at least one argument, distinct variables}
+    g3_chirho -- no --> typed_chirho[typed key, as before: the display of the head]
+    g3_chirho -- yes --> g4_chirho{G4: the only instance of the class with head T or a variable head}
+    g4_chirho -- no --> typed_chirho
+    g4_chirho -- yes --> g5_chirho{G5: every method has a row under T, or under ONE written spelling T x1..xn of distinct variables}
+    g5_chirho -- no --> typed_chirho
+    g5_chirho -- yes --> generic_chirho["$fC + T, registry (C, T): the key a use site that kept only the head carries"]
+    generic_chirho --> slot_chirho["each slot: exact $prim_C_m_T, then $prim_C_m_ + written spelling, then the Monoid fallback and the stub, as before"]
+    use_chirho[use site, evidence key T] --> selector_chirho[try_rewrite_method_var_chirho: no exact row, so the keyed selector finds the dictionary]
+    generic_chirho --> selector_chirho
+```
+
+- Three spellings of one instance used to part (claude2_chirho #27335). The checker types the head
+  `SBoolChirho b` as `(SBoolChirho t0)`. The desugarer names the method rows by the head as written
+  (`$prim_Eq_==_SBoolChirho b`). A use site keeps only the outer head (`SBoolChirho`). The
+  dictionary `$fEq(SBoolChirho t0)` was keyed by something no use site carries and held a
+  missing-method stub, so the instance never ran: `==` fell to the raw method. A head that is a
+  constructor applied to distinct variables, with no competing head for that constructor, is the
+  only instance any `T x1 .. xn` can mean, so its constructor is its identity
+  (`generic_head_chirho`, `dict_chirho/instance_chirho/generic_heads_chirho.rs`). Both halves are
+  needed: the constructor key makes the use site's existing keyed-selector fallback find the
+  dictionary, and the written row fills its slot.
+- Boundaries (gpt_chirho #27342, #27349). A row that needs a context never becomes an unconditional
+  dictionary (G2, the eligibility filter as before). A specialized, contextual or catch-all head
+  for the same constructor leaves the generic one on its typed key (G4): a use site that kept only
+  the head never guesses among them. The desugarer's key drops parentheses, so only an
+  all-variable written argument list is accepted, as a position-wise bijection with the typed
+  variables. A second spelling is ambiguous and refuses; a method without a row would make a stub
+  reachable and refuses. Still unsupported: full-key use sites (a ground `T Int` key never falls
+  to `T`), multi-parameter heads, lists and tuples, written synonyms, and instances with a
+  context, which have no dictionary at all yet (the conditional-instance unit).
+
 ## Current boundary
 
 - An infix or section use of a class METHOD mints its own occurrence id and carries its

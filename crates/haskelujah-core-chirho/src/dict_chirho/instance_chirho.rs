@@ -662,6 +662,10 @@ impl DictPassCtxChirho {
 
         // Collect eligible (class, instance, type_key, layout) tuples.
         let mut eligible_chirho: Vec<(String, String, DictLayoutChirho)> = Vec::new();
+        // A generic head (`generic_heads_chirho.rs`) is keyed by its
+        // constructor, the key its use sites carry, and fills its slots from
+        // the rows as written: (class, constructor) → written key.
+        let mut written_keys_chirho: HashMap<(String, String), String> = HashMap::new();
 
         for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
             let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
@@ -684,6 +688,24 @@ impl DictPassCtxChirho {
                         .map(|t_chirho| format!("{}", t_chirho))
                         .collect();
                     format!("{}_{}", inst_chirho.head_ty_chirho, extra_chirho.join("_"))
+                };
+                let type_key_chirho = match self.generic_head_chirho(
+                    class_env_chirho,
+                    class_name_chirho,
+                    inst_chirho,
+                    &layout_chirho,
+                ) {
+                    Some(generic_head_chirho) => {
+                        written_keys_chirho.insert(
+                            (
+                                class_name_chirho.clone(),
+                                generic_head_chirho.constructor_chirho.clone(),
+                            ),
+                            generic_head_chirho.written_key_chirho,
+                        );
+                        generic_head_chirho.constructor_chirho
+                    }
+                    None => type_key_chirho,
                 };
                 eligible_chirho.push((
                     class_name_chirho.clone(),
@@ -758,6 +780,9 @@ impl DictPassCtxChirho {
             }
 
             // Method implementation arguments (primitives)
+            let written_key_chirho = written_keys_chirho
+                .get(&(class_name_chirho.clone(), type_key_chirho.clone()))
+                .map(String::as_str);
             for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
                 let prim_name_chirho = format!(
                     "$prim_{}_{}_{}",
@@ -769,6 +794,7 @@ impl DictPassCtxChirho {
                     method_name_chirho,
                     &type_key_chirho,
                     &prim_name_chirho,
+                    written_key_chirho,
                 );
                 field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
             }
@@ -799,9 +825,21 @@ impl DictPassCtxChirho {
         method_name_chirho: &str,
         type_key_chirho: &str,
         prim_name_chirho: &str,
+        written_key_chirho: Option<&str>,
     ) -> CoreIdChirho {
         if let Some(prim_id_chirho) = self.lookup_body_backed_name_id_chirho(prim_name_chirho) {
             return prim_id_chirho;
+        }
+
+        // A generic head's row under the spelling it was written in.
+        if let Some(written_key_chirho) = written_key_chirho {
+            let written_row_chirho =
+                format!("$prim_{class_name_chirho}_{method_name_chirho}_{written_key_chirho}");
+            if let Some(prim_id_chirho) =
+                self.lookup_body_backed_name_id_chirho(&written_row_chirho)
+            {
+                return prim_id_chirho;
+            }
         }
 
         if class_name_chirho == "Monoid" && method_name_chirho == "mappend" {
@@ -966,6 +1004,7 @@ impl DictPassCtxChirho {
                     method_name_chirho,
                     &underlying_key_chirho,
                     &underlying_prim_chirho,
+                    None,
                 );
                 let alias_binder_chirho = self.fresh_binder_chirho(
                     &newtype_prim_chirho,
@@ -1034,3 +1073,4 @@ impl DictPassCtxChirho {
 }
 
 mod conditional_chirho;
+mod generic_heads_chirho;
