@@ -232,6 +232,15 @@ qualifier goes on to the next arm, and after the last arm to the next row.
   - [x] Controls: `eval_pattern_chirho/otherwise_binding_chirho.rs`,
         `eval_pattern_chirho/gadt_guard_chirho.rs`, and GF02/GF13 in `match_rows_chirho.rs`,
         each expectation measured on GHC 9.14.1.
+  - [x] EXPOSED by the `otherwise` repair (#27114, #27116): the LLVM backend compiled each
+        lifted closure with its own registry of emitted names, so a program able to fail in
+        a function and in its `where` closure defined `haskelujah_error` twice and did not
+        link. Latent on every build back to old main (claude2's D8/D9); the repair exposed
+        it in llvm_round_trip_comprehensive_demo_chirho, whose `otherwise` arms now keep
+        their failure path. The closure now takes the module's registry and hands it back
+        (codegen_chirho.rs). Controls: `tests/native_error_helpers_chirho.rs`, every program
+        through the interpreter, LLVM and Cranelift: D8, D9, a capturing closure, sibling
+        and nested closures, and four error paths each failing with its own message.
   - [ ] claude2_chirho builds the exact candidate, runs these controls and the full matrix,
         and one mutation per unit; then the gates and the corpus pair.
   - Open and pre-existing, NOT repaired here (wrong on main too): whole-pattern GADT

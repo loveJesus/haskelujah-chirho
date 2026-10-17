@@ -947,6 +947,13 @@ impl LlvmCodegenChirho {
         let params_str_chirho = params_vec_chirho.join(", ");
 
         let mut inner_codegen_chirho = LlvmCodegenChirho::new_chirho();
+        // Module-level definitions belong to the MODULE, not to one function:
+        // the lifted function takes the module's registry of emitted names and
+        // hands it back below. A builtin helper such as `error`'s, needed by a
+        // closure and by its enclosing function or a sibling, is then defined
+        // once; with a registry of its own each context defined it again and
+        // the module failed to link ("invalid redefinition").
+        inner_codegen_chirho.emitted_names_chirho = std::mem::take(&mut self.emitted_names_chirho);
         inner_codegen_chirho.next_string_chirho = self.next_string_chirho;
         inner_codegen_chirho.next_lifted_function_chirho = self.next_lifted_function_chirho;
         inner_codegen_chirho.string_globals_chirho = self.string_globals_chirho.clone();
@@ -1057,6 +1064,7 @@ impl LlvmCodegenChirho {
         }
         writeln!(inner_codegen_chirho.output_chirho, "}}").unwrap();
 
+        self.emitted_names_chirho = std::mem::take(&mut inner_codegen_chirho.emitted_names_chirho);
         self.next_string_chirho = inner_codegen_chirho.next_string_chirho;
         self.unsupported_primitives_chirho
             .extend(inner_codegen_chirho.unsupported_primitives_chirho);
