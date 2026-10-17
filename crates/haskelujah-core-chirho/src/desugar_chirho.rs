@@ -1021,8 +1021,8 @@ impl DesugarCtxChirho {
                 args_chirho: vec![left_chirho, right_chirho],
             };
         }
-        // Constructor operators retain their constructor identity after fixity rebuilding.
-        if op_name_chirho == ":" || self.con_arities_chirho.contains_key(op_name_chirho) {
+        // Colon-led operators are constructors, including GADTs absent from the arity table.
+        if op_name_chirho.starts_with(':') || self.con_arities_chirho.contains_key(op_name_chirho) {
             return CoreExprChirho::ConAppChirho {
                 con_name_chirho: op_name_chirho.to_string(),
                 args_chirho: vec![left_chirho, right_chirho],
@@ -2643,8 +2643,10 @@ impl DesugarCtxChirho {
                     };
                 }
 
-                // Known constructor operators construct data, including user-defined infix constructors.
-                if op_name_chirho == ":" || self.con_arities_chirho.contains_key(op_name_chirho) {
+                // Constructor operators build data; registered names also cover backtick constructors.
+                if op_name_chirho.starts_with(':')
+                    || self.con_arities_chirho.contains_key(op_name_chirho)
+                {
                     return CoreExprChirho::ConAppChirho {
                         con_name_chirho: op_name_chirho.to_string(),
                         args_chirho: vec![left_core_chirho, right_core_chirho],
