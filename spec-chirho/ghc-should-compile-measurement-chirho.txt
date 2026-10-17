@@ -1,31 +1,39 @@
-# GHC should_compile — timed measurement artifact (John 3:16)
-# measured: 2026-10-12 UTC, AFTER a guard arm came to carry its qualifiers (a failing pattern
-#   guard falls through to the next arm and row), a guard's `let` came to close at its
-#   comma, every local `let` came to bind its names first through one helper, and a
-#   multi-way if's arms became guard arms, on top of
-#   every match position as rows
-#   over one single-row matcher, pattern bindings that match the WHOLE pattern on demand,
-#   do-statement operation selection, occurrence provenance for references and the literal
-#   carrier.
-# code measured: 0f70ee23 (HASKELUJAH/claude_chirho, branch multiway-if-chirho, pushed as
-#   gh_chirho/multiway-if-chirho), stacked on the 9fbef97a proposal (#26962), on the
-#   0659f642 proposal (#26960), on the
-#   f0b7ed4c proposal (#26958), itself on the
-#   51cc17c6 proposal (#25478/#25480),
-#   itself on the 41eff8f6 proposal (#25474). It carries the do unit, whose own tip
-#   b049713a was measured, proposed and then WITHDRAWN (room #25463, #25467), and the
-#   repair on top of it.
-# build: explicit `cargo build -p haskelujah`, DEBUG profile (as every earlier artifact),
-#   macOS arm64; measured binary: frozen copy at
-#   tmp-chirho/multiway-if-corpus-chirho/haskelujah-6i-chirho
-#   LOCATOR: relative to the REPOSITORY ROOT of the worktree that measured it.
-# CLI SHA256: c57e064588404d77d7195429aa76a65762048d8065ce6edff40adb54048d0641
-#   digest asserted unchanged before and after all four corpus passes, and again before
-#   and after the execution set
+# For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+# GHC should_compile — timed measurement artifact
+# measured: 2026-10-17 UTC by HASKELUJAH/claude2_chirho; independently reviewed receipts
+#   by HASKELUJAH/gpt_chirho. Local development evidence; no remote push or release.
+# paired code measured: 877d2693, containing guard-arm scope, ordinary otherwise binding
+#   evaluation and arm-local GADT result checking over the complete seven-unit stack.
+# paired frozen CLI SHA256:
+#   15166830215f759064383247bfd76a54514fff7e73ac75dc630aad3dfb55e4ea
+# final source: e9c2ab2517415b69affd942741c5b6b8c35f309b, with module-wide LLVM helper
+#   emission repair c635d5d0 and stricter native failure assertions (test-only e9c2ab25).
+# final build: cargo build -j2 --bin haskelujah, DEBUG, macOS arm64, zero compiler warnings.
+# final frozen CLI SHA256:
+#   4dceabb3833a1b95551233a71c3cf6b0b2cdde8b0e1f36de7948dc62a046c0a9
+# corpus evidence: two byte-identical complete passes per axis on 877d2693; one additional
+#   direct complete pass per axis on e9c2ab25, byte-identical to that pair. All full
+#   relative source identities match the prior manifests; before/after CLI hashes match.
+# check-path carry-over: git diff 877d2693 e9c2ab25 changes only LLVM backend, driver tests
+#   and tasklist, not frontend/Core/check sources. The direct final passes confirm it.
+# receipts: ../haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/
+#   stack-6f-6i-1017-chirho/{corpus-repair-877d2693-chirho,final-e9c2ab25-chirho}/
+# reviewer receipt checks: tmp-chirho/gpt-parity-review-chirho/
+#   {repaired-candidate-chirho,final-candidate-chirho}/
+# final check/execution scope: all 289 rejections replay; execution set remains 28/35
+#   with the same seven historical failures. Filtered driver/native/parser controls pass.
+#   This is not a full-suite or type-soundness PASS. Mutation dispositions live in the
+#   coordination review; no full driver --lib or Cargo ghc_bulk suite was run here.
+# parser baseline red: parser_handles_nested_parens_chirho SIGABRTs on the default
+#   2 MiB test-thread stack on final and old-main sources; it passes at 8 MiB. The
+#   default-environment parser suite is RED. This change does not repair stack growth.
+# protocol: preserve the published directory-label axes and denominators. The newly
+#   audited standalone-GHC/all.T disagreements are a separate protocol decision, not
+#   silently relabelled by this compiler landing.
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
 #   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT 0f70ee23, unchanged from main (no runner file differs), and the
+#   COMMITTED AT 877d2693, unchanged from main (no runner file differs), and the
 #   repaired rule, so there is no later tools change to separate from it. Order: TIMEOUT
 #   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
 #   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
@@ -57,6 +65,15 @@
 # truncation-versus-nearest decision now governs one axis and one choice, 30 or 31.
 # The accept label is ~94% under either policy and is unaffected.
 # No policy choice or public-site deployment.
+#
+# CURRENT CHANGE SINCE MAIN b890d61b: accept membership is unchanged; the sole additional
+#   rejection is T20768_fail.hs (strict Bool guards, GHC's reason). No new wrong accept
+#   under the published harness. Main's failed-arm binder leaks GF02/GF13, shadowed
+#   otherwise failures and valid GADT guard regressions are covered by separate exact
+#   execution/check controls because unchanged corpus membership cannot prove them.
+# HISTORICAL STACK EVIDENCE follows: the previous header measured 0f70ee23 (2026-10-12),
+#   frozen CLI c57e064588404d77d7195429aa76a65762048d8065ce6edff40adb54048d0641.
+#   Historical gates below apply to their named sources, not to the final repair.
 #
 # CHANGE SINCE THE PROPOSED MEASUREMENT OF 4100d02f (#26962): 885 -> 885, ZERO movement, and
 #   the same list file for file. A multi-way if is now ExprChirho::MultiWayIfChirho, the same
