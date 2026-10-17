@@ -174,3 +174,55 @@ fn a_comprehension_let_binds_patterns_and_recursion_chirho() {
         "[1,2]\n"
     );
 }
+
+/// A comprehension's `let` closes at the comprehension's own delimiter, so
+/// what follows the comprehension belongs to the enclosing block again. Every
+/// output is GHC 9.14.1's (claude2_chirho's controls CL01, CL02, CL05, CL08,
+/// CL11, CL13, CL14). Before the repair the next statement or declaration was
+/// lost: CL05 even exited 0 without printing "next".
+#[test]
+fn what_follows_a_comprehension_let_belongs_to_its_block_chirho() {
+    for (file_name_chirho, source_chirho, expected_chirho) in [
+        (
+            "ComprehensionLetDoChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = do\n  print [y | x <- [1, 2 :: Int], let y = x + 1]\n  print (7 :: Int)\n",
+            "[2,3]\n7\n",
+        ),
+        (
+            "ComprehensionLetTopChirho.hs",
+            "module Main where\nysChirho :: [Int]\nysChirho = [y | x <- [1, 2 :: Int], let y = x + 1]\nzsChirho :: [Int]\nzsChirho = map negate ysChirho\nmain :: IO ()\nmain = print (ysChirho, zsChirho)\n",
+            "([2,3],[-2,-3])\n",
+        ),
+        (
+            "ComprehensionLetFilterChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = do\n  print [z | x <- [1 .. 6 :: Int], let y = x + 1, let z = y * 2, z > 6]\n  putStrLn \"next\"\n",
+            "[8,10,12,14]\nnext\n",
+        ),
+        (
+            "ComprehensionLetParallelChirho.hs",
+            "{-# LANGUAGE ParallelListComp #-}\nmodule Main where\nmain :: IO ()\nmain = do\n  print [y + z | x <- [1, 2 :: Int], let y = x * 10 | z <- [3, 4]]\n  putStrLn \"next\"\n",
+            "[13,24]\nnext\n",
+        ),
+        (
+            "ComprehensionLetWhereChirho.hs",
+            "module Main where\nfChirho :: [Int]\nfChirho = zs\n  where ys = [y | x <- [1, 2 :: Int], let y = x + 1]\n        zs = ys ++ ys\nmain :: IO ()\nmain = print fChirho\n",
+            "[2,3,2,3]\n",
+        ),
+        (
+            "ComprehensionLetGuardsChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = do\n  print [f x | x <- [1, 5, 50 :: Int], let f n | n > 0, n < 10 = 'a' | otherwise = 'b']\n  putStrLn \"next\"\n",
+            "\"aab\"\nnext\n",
+        ),
+        (
+            "ComprehensionLetAlternativeChirho.hs",
+            "module Main where\ngChirho :: Maybe [Int] -> [Int]\ngChirho m = case m of\n  Just xs -> [y | x <- xs, let y = x + 1]\n  Nothing -> []\nmain :: IO ()\nmain = print (gChirho (Just [1, 2]), gChirho Nothing)\n",
+            "([2,3],[])\n",
+        ),
+    ] {
+        assert_eq!(
+            eval_output_chirho(source_chirho, file_name_chirho),
+            expected_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}

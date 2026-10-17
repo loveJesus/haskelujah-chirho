@@ -22,9 +22,11 @@ use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
-mod guard_let_chirho;
+#[cfg(test)]
+mod comprehension_let_tests_chirho;
 #[cfg(test)]
 mod guard_let_tests_chirho;
+mod let_qualifier_chirho;
 
 use crate::layout_chirho::apply_layout_chirho;
 use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
@@ -2237,7 +2239,7 @@ impl<'src> ParserChirho<'src> {
         let mut bracket_depth_chirho = 0u32;
         let mut brace_depth_chirho = 0u32;
         // A qualifier's `let` ends at its `,` or the arm's `->`, as the parser
-        // ends it (guard_let_chirho.rs). Until then its bindings' `=` is not an
+        // ends it (let_qualifier_chirho.rs). Until then its bindings' `=` is not an
         // outer guard's, a comma inside one of its bindings' own guards is that
         // binding's, and the layout pass's later close of a block ended early is
         // owed, not a scope boundary.
@@ -4116,7 +4118,7 @@ impl<'src> ParserChirho<'src> {
                             .start_node_chirho(SyntaxKindChirho::LetStmtChirho);
                         self.bump_chirho(); // let
                         self.eat_trivia_chirho();
-                        self.parse_list_comp_let_binds_chirho();
+                        self.parse_comprehension_let_binds_chirho();
                         self.builder_chirho.finish_node_chirho();
                         self.eat_trivia_chirho();
                     } else if self.scan_for_list_comp_bind_arrow_chirho() {
@@ -4199,53 +4201,6 @@ impl<'src> ParserChirho<'src> {
                         | RawTokenKindChirho::RightBracketChirho
                 )
             })
-    }
-
-    /// Parse declarations in a list-comprehension `let` qualifier without
-    /// allowing the layout block to consume the following qualifier comma.
-    ///
-    /// workflow: parallel-list-comprehensions-chirho
-    fn parse_list_comp_let_binds_chirho(&mut self) {
-        let has_brace_chirho = self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
-            || self.at_chirho(RawTokenKindChirho::LeftBraceChirho);
-        if has_brace_chirho {
-            self.bump_chirho();
-            self.eat_trivia_chirho();
-        }
-
-        loop {
-            if self.at_eof_chirho()
-                || self.at_chirho(RawTokenKindChirho::CommaChirho)
-                || self.at_chirho(RawTokenKindChirho::PipeChirho)
-                || self.at_chirho(RawTokenKindChirho::RightBracketChirho)
-                || self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
-                || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-            {
-                break;
-            }
-
-            let before_chirho = self.pos_chirho;
-            self.parse_decl_chirho();
-            self.eat_trivia_chirho();
-            if self.pos_chirho == before_chirho {
-                break;
-            }
-            if self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
-                || self.at_chirho(RawTokenKindChirho::SemicolonChirho)
-            {
-                self.bump_chirho();
-                self.eat_trivia_chirho();
-                continue;
-            }
-            break;
-        }
-
-        if has_brace_chirho
-            && (self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
-                || self.at_chirho(RawTokenKindChirho::RightBraceChirho))
-        {
-            self.bump_chirho();
-        }
     }
 
     /// Parse record expression fields: { field = expr, ... }
