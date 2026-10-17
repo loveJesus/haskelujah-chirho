@@ -653,3 +653,71 @@ main = print (fChirho (BoxChirho ReflChirho True), fChirho (BoxChirho ReflChirho
         assert_output_chirho(file_name_chirho, source_chirho, expected_chirho);
     }
 }
+
+#[test]
+fn record_atoms_keep_their_match_and_binding_behavior_chirho() {
+    assert_output_chirho(
+        "record_character_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data RChirho aChirho = RChirho { fieldChirho :: aChirho }
+selectChirho :: RChirho Char -> Int
+selectChirho RChirho { fieldChirho = 'x' } = 1
+selectChirho _ = 2
+main :: IO ()
+main = print (selectChirho (RChirho 'y'), selectChirho (RChirho 'x'))
+"#,
+        "(2,1)\n",
+    );
+    assert_output_chirho(
+        "record_constructor_atom_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data RChirho aChirho = RChirho { fieldChirho :: aChirho }
+selectChirho :: RChirho (Maybe Char) -> Int
+selectChirho RChirho { fieldChirho = Just 'x' } = 1
+selectChirho _ = 2
+main :: IO ()
+main = print (selectChirho (RChirho (Just 'y')), selectChirho (RChirho (Just 'x')))
+"#,
+        "(2,1)\n",
+    );
+    assert_output_chirho(
+        "record_wildcard_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data RChirho = RChirho { fieldChirho :: Char }
+readChirho :: RChirho -> Char
+readChirho RChirho { fieldChirho = _ } = fieldChirho (RChirho 'z')
+main :: IO ()
+main = print (readChirho (RChirho 'x'))
+"#,
+        "'z'\n",
+    );
+    assert_output_chirho(
+        "record_compound_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data RChirho aChirho = RChirho { fieldChirho :: aChirho }
+selectChirho :: RChirho (Maybe (Bool, Char)) -> Int
+selectChirho RChirho { fieldChirho = Just (True, 'x') } = 1
+selectChirho _ = 2
+main :: IO ()
+main = print (selectChirho (RChirho (Just (True, 'y'))), selectChirho (RChirho (Just (True, 'x'))))
+"#,
+        "(2,1)\n",
+    );
+    assert_output_chirho(
+        "record_nonfinal_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+data RChirho = RChirho { tagChirho :: Int, nameChirho :: Char }
+selectChirho :: RChirho -> String
+selectChirho RChirho { tagChirho = 1, nameChirho = valueChirho } = "one " ++ [valueChirho]
+selectChirho _ = "other"
+main :: IO ()
+main = print (selectChirho (RChirho 5 'y'), selectChirho (RChirho 1 'x'))
+"#,
+        "(\"other\",\"one x\")\n",
+    );
+}

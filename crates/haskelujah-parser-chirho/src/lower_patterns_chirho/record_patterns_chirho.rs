@@ -7,6 +7,7 @@ use super::*;
 use haskelujah_ast_chirho::pat_chirho::PatFieldChirho;
 
 impl LowerCtxChirho {
+    /// workflow: language-features-chirho/pattern-matching-chirho
     pub(super) fn lower_record_pat_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -15,7 +16,8 @@ impl LowerCtxChirho {
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         // Con { f1 = p1, f2 = p2 }
-        // CST children are all flat tokens: ConId { VarId = VarId , VarId = VarId }
+        // Field names and puns are tokens; assigned patterns are ordinary
+        // pattern nodes produced by parse_record_pat_fields_chirho.
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut con_name_chirho = None;
         let mut fields_chirho = Vec::new();
@@ -47,7 +49,10 @@ impl LowerCtxChirho {
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         pending_field_con_name_chirho =
                             Some(self.name_from_token_chirho(tok_chirho, s_chirho));
-                    } else if kind_chirho == TokenKindChirho::VarIdChirho {
+                    } else if matches!(
+                        kind_chirho,
+                        TokenKindChirho::VarIdChirho | TokenKindChirho::QualifiedVarIdChirho
+                    ) {
                         if saw_equals_chirho && current_field_name_chirho.is_some() {
                             let s_chirho = self
                                 .span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -176,3 +181,7 @@ impl LowerCtxChirho {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "record_pattern_tests_chirho.rs"]
+mod record_pattern_tests_chirho;

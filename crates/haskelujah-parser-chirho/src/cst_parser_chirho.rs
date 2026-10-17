@@ -4830,33 +4830,62 @@ impl<'src> ParserChirho<'src> {
         self.builder_chirho.finish_node_chirho();
     }
 
-    /// Parse record pattern fields: { field = pat, ... }
+    /// Record assignments use the ordinary pattern grammar, so their literals,
+    /// constructors and nested delimiters survive into AST lowering.
+    /// workflow: language-features-chirho/pattern-matching-chirho
     fn parse_record_pat_fields_chirho(&mut self) {
         self.bump_chirho(); // {
         self.eat_trivia_chirho();
-
         while !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
             && !self.at_eof_chirho()
             && !self.at_decl_boundary_chirho()
         {
             let before_chirho = self.pos_chirho;
-            while !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
-                && !self.at_eof_chirho()
-                && !self.at_decl_boundary_chirho()
-            {
+            if self.at_chirho(RawTokenKindChirho::DotDotChirho) {
                 self.bump_chirho();
+            } else if matches!(
+                self.current_kind_chirho(),
+                Some(RawTokenKindChirho::VarIdChirho | RawTokenKindChirho::QualifiedIdChirho)
+            ) {
+                self.bump_chirho(); // field name; without = it is a pun
                 self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    self.parse_pat_chirho();
+                }
+            } else {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
             }
+            self.eat_trivia_chirho();
             if self.at_chirho(RawTokenKindChirho::CommaChirho) {
                 self.bump_chirho();
                 self.eat_trivia_chirho();
+            } else if !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                && !self.at_eof_chirho()
+                && !self.at_decl_boundary_chirho()
+            {
+                // A completed field must meet its separator. Do not silently
+                // turn the remaining expression tokens into a field pun.
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                while !self.at_chirho(RawTokenKindChirho::CommaChirho)
+                    && !self.at_chirho(RawTokenKindChirho::RightBraceChirho)
+                    && !self.at_eof_chirho()
+                    && !self.at_decl_boundary_chirho()
+                {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                }
+                self.builder_chirho.finish_node_chirho();
             }
             if self.pos_chirho == before_chirho {
                 break;
             }
         }
-
         if self.at_chirho(RawTokenKindChirho::RightBraceChirho) {
             self.bump_chirho();
         }

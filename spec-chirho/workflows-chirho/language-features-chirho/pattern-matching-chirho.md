@@ -173,3 +173,20 @@ Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_ma
   that disagrees with the first. Existential escape and GADT equality escaping through a later
   case alternative were pre-existing misses in the independent guard review; no closure of
   those separate obligations is claimed here.
+
+
+## Record-pattern producer Chirho
+
+Assigned record fields enter parse_record_pat_fields_chirho's ordinary pattern parser. Literals, wildcards, constructor applications and nested tuple/record delimiters therefore reach lower_record_pat_chirho as pattern nodes, where the common literal decoder preserves values, spans and origins. Field puns and RecordWildCards retain their field-name/token route. After an assignment, leftover expression tokens create a syntax error rather than disappearing into a field pun. Known-type checking then uses the same constructor-result and sibling-substitution rules as other patterns.
+
+```mermaid
+flowchart TD
+    record_field_chirho[Record field name] --> assigned_field_chirho{Equals follows?}
+    assigned_field_chirho -- yes --> parse_field_pattern_chirho[Ordinary pattern grammar owns nested delimiters]
+    assigned_field_chirho -- no --> punned_field_chirho[Punned field retains its own binding]
+    parse_field_pattern_chirho --> field_separator_chirho{Comma or record close?}
+    field_separator_chirho -- no --> record_syntax_error_chirho[Syntax error preserves malformed source]
+    field_separator_chirho -- yes --> lower_field_pattern_chirho[Common pattern-node lowering and literal decoder]
+    lower_field_pattern_chirho --> known_record_fields_chirho[Known result first then fields under growing substitution]
+    punned_field_chirho --> known_record_fields_chirho
+```
