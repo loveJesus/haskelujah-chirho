@@ -130,7 +130,7 @@ fn nested_pattern_delimiters_belong_to_the_field_pattern_chirho() {
 }
 
 #[test]
-fn expression_tokens_cannot_silently_become_a_record_pattern_chirho() {
+fn expression_tokens_after_a_field_equals_make_an_error_node_chirho() {
     let source_chirho =
         "module MChirho where\nfChirho RChirho { fieldChirho = (toEnum 120) } = ()\n";
     let cst_chirho = crate::cst_parser_chirho::parse_to_cst_chirho(
