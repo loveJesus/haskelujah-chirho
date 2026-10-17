@@ -1,12 +1,16 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! The guards of a generic instance head: the typed spine (G3) and the
-//! written spelling (G5). Each refusal here is a shape where keying the
-//! dictionary by its constructor could answer for the wrong instance.
+//! The guards of a generic instance head: the class environment (G1-G4, G6),
+//! the typed spine (G3) and the written spelling (G5). Each refusal here is a
+//! shape where finding the dictionary under its constructor could answer for
+//! the wrong instance.
 
+use std::collections::HashMap;
+
+use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
-use super::{distinct_variable_spine_chirho, written_spine_chirho};
+use super::{distinct_variable_spine_chirho, generic_spine_chirho, written_spine_chirho};
 
 fn con_chirho(name_chirho: &str) -> TyChirho {
     TyChirho::ConChirho(name_chirho.to_string())
@@ -91,4 +95,125 @@ fn a_written_spine_is_the_constructor_then_distinct_variables_chirho() {
     // Stray spacing never counts as a variable.
     assert!(!written_spine_chirho("T  a", "T", 1));
     assert!(!written_spine_chirho("T  a", "T", 2));
+}
+
+/// A class `TagChirho` with the given superclasses and extra parameters, and
+/// one instance per (head, supplied extra heads).
+fn class_env_chirho(
+    supers_chirho: &[&str],
+    extra_vars_chirho: Vec<TyVarChirho>,
+    heads_chirho: Vec<(TyChirho, Vec<TyChirho>)>,
+) -> ClassEnvChirho {
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.classes_chirho.insert(
+        "TagChirho".to_string(),
+        ClassDeclChirho {
+            name_chirho: "TagChirho".to_string(),
+            supers_chirho: supers_chirho
+                .iter()
+                .map(|name_chirho| name_chirho.to_string())
+                .collect(),
+            var_chirho: TyVarChirho(100),
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho,
+            fundeps_chirho: Vec::new(),
+            defaults_chirho: HashMap::new(),
+        },
+    );
+    env_chirho.instances_chirho.insert(
+        "TagChirho".to_string(),
+        heads_chirho
+            .into_iter()
+            .map(|(head_chirho, extra_chirho)| InstDeclChirho {
+                class_name_chirho: "TagChirho".to_string(),
+                head_ty_chirho: head_chirho,
+                extra_head_tys_chirho: extra_chirho,
+                context_chirho: Vec::new(),
+            })
+            .collect(),
+    );
+    env_chirho
+}
+
+/// `generic_spine_chirho` for the class's first instance.
+fn first_spine_chirho(env_chirho: &ClassEnvChirho) -> Option<(String, usize)> {
+    let first_chirho = &env_chirho.instances_chirho["TagChirho"][0];
+    generic_spine_chirho(env_chirho, "TagChirho", first_chirho)
+        .map(|(constructor_chirho, arity_chirho)| (constructor_chirho.to_string(), arity_chirho))
+}
+
+#[test]
+fn the_class_environment_admits_only_an_uncontested_one_parameter_head_chirho() {
+    let box_chirho = || app_chirho(con_chirho("BoxChirho"), var_chirho(0));
+    let generic_chirho = Some(("BoxChirho".to_string(), 1));
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &[],
+            Vec::new(),
+            vec![(box_chirho(), vec![])]
+        )),
+        generic_chirho
+    );
+    // Another constructor does not compete.
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &[],
+            Vec::new(),
+            vec![
+                (box_chirho(), vec![]),
+                (app_chirho(con_chirho("OtherChirho"), var_chirho(1)), vec![]),
+            ],
+        )),
+        generic_chirho
+    );
+    // G1: a class declared with two parameters, even where the instance
+    // supplies no second head, and an instance that supplies one.
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &[],
+            vec![TyVarChirho(101)],
+            vec![(box_chirho(), vec![])],
+        )),
+        None
+    );
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &[],
+            Vec::new(),
+            vec![(box_chirho(), vec![con_chirho("Int")])],
+        )),
+        None
+    );
+    // G6: a superclass slot would be named by the instance's own key.
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &["EqChirho"],
+            Vec::new(),
+            vec![(box_chirho(), vec![])],
+        )),
+        None
+    );
+    // G4: a specialized head for the same constructor, or a variable head.
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &[],
+            Vec::new(),
+            vec![
+                (box_chirho(), vec![]),
+                (
+                    app_chirho(con_chirho("BoxChirho"), con_chirho("Int")),
+                    vec![]
+                ),
+            ],
+        )),
+        None
+    );
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &[],
+            Vec::new(),
+            vec![(box_chirho(), vec![]), (var_chirho(1), vec![])],
+        )),
+        None
+    );
 }

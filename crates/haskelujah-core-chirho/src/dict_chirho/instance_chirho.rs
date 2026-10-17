@@ -662,10 +662,14 @@ impl DictPassCtxChirho {
 
         // Collect eligible (class, instance, type_key, layout) tuples.
         let mut eligible_chirho: Vec<(String, String, DictLayoutChirho)> = Vec::new();
-        // A generic head (`generic_heads_chirho.rs`) is keyed by its
-        // constructor, the key its use sites carry, and fills its slots from
-        // the rows as written: (class, constructor) → written key.
-        let mut written_keys_chirho: HashMap<(String, String), String> = HashMap::new();
+        // A generic head (`generic_heads_chirho.rs`) keeps its typed key and
+        // name, fills its slots from the rows as written, and is found under
+        // its constructor through an alias private to this pass:
+        // (class, typed key) → generic head.
+        let mut generic_head_by_key_chirho: HashMap<
+            (String, String),
+            generic_heads_chirho::GenericHeadChirho,
+        > = HashMap::new();
 
         for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
             let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
@@ -689,24 +693,17 @@ impl DictPassCtxChirho {
                         .collect();
                     format!("{}_{}", inst_chirho.head_ty_chirho, extra_chirho.join("_"))
                 };
-                let type_key_chirho = match self.generic_head_chirho(
+                if let Some(generic_head_chirho) = self.generic_head_chirho(
                     class_env_chirho,
                     class_name_chirho,
                     inst_chirho,
                     &layout_chirho,
                 ) {
-                    Some(generic_head_chirho) => {
-                        written_keys_chirho.insert(
-                            (
-                                class_name_chirho.clone(),
-                                generic_head_chirho.constructor_chirho.clone(),
-                            ),
-                            generic_head_chirho.written_key_chirho,
-                        );
-                        generic_head_chirho.constructor_chirho
-                    }
-                    None => type_key_chirho,
-                };
+                    generic_head_by_key_chirho.insert(
+                        (class_name_chirho.clone(), type_key_chirho.clone()),
+                        generic_head_chirho,
+                    );
+                }
                 eligible_chirho.push((
                     class_name_chirho.clone(),
                     type_key_chirho,
@@ -780,9 +777,10 @@ impl DictPassCtxChirho {
             }
 
             // Method implementation arguments (primitives)
-            let written_key_chirho = written_keys_chirho
-                .get(&(class_name_chirho.clone(), type_key_chirho.clone()))
-                .map(String::as_str);
+            let generic_head_chirho = generic_head_by_key_chirho
+                .get(&(class_name_chirho.clone(), type_key_chirho.clone()));
+            let written_key_chirho =
+                generic_head_chirho.map(|head_chirho| head_chirho.written_key_chirho.as_str());
             for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
                 let prim_name_chirho = format!(
                     "$prim_{}_{}_{}",
@@ -813,6 +811,18 @@ impl DictPassCtxChirho {
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
 
+            // The constructor a use site carries finds the same dictionary.
+            // The alias is never a binder name and nothing exports this
+            // registry, so a consumer module decides over its own instances;
+            // it never displaces a key registered before or after it.
+            if let Some(alias_head_chirho) = generic_head_chirho {
+                self.instance_dicts_chirho
+                    .entry((
+                        class_name_chirho.clone(),
+                        alias_head_chirho.constructor_chirho.clone(),
+                    ))
+                    .or_insert(dict_id_chirho);
+            }
             self.instance_dicts_chirho
                 .insert((class_name_chirho, type_key_chirho), dict_id_chirho);
         }

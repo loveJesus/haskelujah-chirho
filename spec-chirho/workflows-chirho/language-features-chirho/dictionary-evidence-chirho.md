@@ -191,37 +191,54 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    inst_chirho[ground instance, no context] --> g3_chirho{G1-G3: one-parameter class, typed head T v1..vn, at least one argument, distinct variables}
-    g3_chirho -- no --> typed_chirho[typed key, as before: the display of the head]
-    g3_chirho -- yes --> g4_chirho{G4: the only instance of the class with head T or a variable head}
+    inst_chirho[ground instance, no context] --> g1_chirho{G1, G2, G6: a class declared with one parameter and no superclass, one supplied head, no context}
+    g1_chirho -- no --> typed_chirho[as before: typed key and name only]
+    g1_chirho -- yes --> g3_chirho{G3: typed head T v1..vn, at least one argument, distinct variables}
+    g3_chirho -- no --> typed_chirho
+    g3_chirho -- yes --> g4_chirho{G4: the only instance this module sees with head T or a variable head}
     g4_chirho -- no --> typed_chirho
     g4_chirho -- yes --> g5_chirho{G5: every method has a row under T, or under ONE written spelling T x1..xn of distinct variables}
     g5_chirho -- no --> typed_chirho
-    g5_chirho -- yes --> generic_chirho["$fC + T, registry (C, T): the key a use site that kept only the head carries"]
-    generic_chirho --> slot_chirho["each slot: exact $prim_C_m_T, then $prim_C_m_ + written spelling, then the Monoid fallback and the stub, as before"]
-    use_chirho[use site, evidence key T] --> selector_chirho[try_rewrite_method_var_chirho: no exact row, so the keyed selector finds the dictionary]
-    generic_chirho --> selector_chirho
+    g5_chirho -- yes --> dict_chirho["dictionary keeps its typed name and key, $fC(T t0)"]
+    dict_chirho --> slot_chirho["each slot: exact row for the typed key, then $prim_C_m_ + written spelling, then the Monoid fallback and the stub, as before"]
+    dict_chirho --> alias_chirho["alias (C, T) in this pass's private registry, never over an existing key, never exported"]
+    use_chirho[use site, evidence key T] --> selector_chirho[try_rewrite_method_var_chirho: no exact row, so the keyed selector finds the alias]
+    alias_chirho --> selector_chirho
 ```
 
 - Three spellings of one instance used to part (claude2_chirho #27335). The checker types the head
   `SBoolChirho b` as `(SBoolChirho t0)`. The desugarer names the method rows by the head as written
   (`$prim_Eq_==_SBoolChirho b`). A use site keeps only the outer head (`SBoolChirho`). The
-  dictionary `$fEq(SBoolChirho t0)` was keyed by something no use site carries and held a
-  missing-method stub, so the instance never ran: `==` fell to the raw method. A head that is a
-  constructor applied to distinct variables, with no competing head for that constructor, is the
-  only instance any `T x1 .. xn` can mean, so its constructor is its identity
-  (`generic_head_chirho`, `dict_chirho/instance_chirho/generic_heads_chirho.rs`). Both halves are
-  needed: the constructor key makes the use site's existing keyed-selector fallback find the
-  dictionary, and the written row fills its slot.
-- Boundaries (gpt_chirho #27342, #27349). A row that needs a context never becomes an unconditional
-  dictionary (G2, the eligibility filter as before). A specialized, contextual or catch-all head
-  for the same constructor leaves the generic one on its typed key (G4): a use site that kept only
-  the head never guesses among them. The desugarer's key drops parentheses, so only an
-  all-variable written argument list is accepted, as a position-wise bijection with the typed
-  variables. A second spelling is ambiguous and refuses; a method without a row would make a stub
-  reachable and refuses. Still unsupported: full-key use sites (a ground `T Int` key never falls
-  to `T`), multi-parameter heads, lists and tuples, written synonyms, and instances with a
-  context, which have no dictionary at all yet (the conditional-instance unit).
+  dictionary `$fEq(SBoolChirho t0)` was registered under a key no use site carries and held a
+  missing-method stub, so the instance never ran: `==` fell to the raw method. In a class declared
+  with one parameter and no superclass, a head that is a constructor applied to distinct
+  variables, with no competing head for that constructor among the instances this module sees,
+  is the only instance any `T x1 .. xn` can mean here (`generic_head_chirho`,
+  `dict_chirho/instance_chirho/generic_heads_chirho.rs`). Both halves are needed: the alias lets
+  the use site's existing keyed-selector fallback find the dictionary, and the written row fills
+  its slot.
+- The alias is private (gpt_chirho #27368). `instance_dicts_chirho` is a field of the pass's
+  context, created empty by every `dict_pass_module_*` entry and run once per Core module; nothing
+  outside `dict_chirho` reads it. The dictionary keeps its typed binder name, so no new name is
+  discoverable downstream. A consumer module recomputes G1-G6 over its own class environment, where
+  a downstream OVERLAPPING instance or a same-named type from another module competes (G4). The
+  alias is entered with `or_insert`, and a later exact `insert` replaces it, so an exact
+  registration always wins.
+- Boundaries (gpt_chirho #27342, #27349, #27365, #27366). A row that needs a context never becomes
+  an unconditional dictionary (G2, the eligibility filter as before). A specialized, contextual or
+  catch-all head for the same constructor leaves the generic one unaliased (G4): a use site that
+  kept only the head never guesses among them. A class with a superclass is refused (G6): its
+  superclass slot is named by the instance's own key, and the class records superclass names
+  without their arguments, so `class S [a] => C a` would reach `S`'s instance for `T` where GHC
+  uses `S [T ..]`. The desugarer's key drops parentheses, so only an all-variable written argument
+  list is accepted, as a position-wise bijection with the typed variables. A second spelling is
+  ambiguous and refuses; a method without a row would make a stub reachable and refuses. Still
+  unsupported: full-key use sites (a ground `T Int` key never falls to `T`), multi-parameter heads,
+  lists and tuples, written synonyms, classes with superclasses (claude2_chirho #27367: typed
+  superclass keys already dangle across instances, since variables are freshened per instance),
+  and instances with a context, which have no dictionary at all yet (the conditional-instance
+  unit). Cross-module overlap and same-name controls run only once a multi-module frozen build can
+  exercise them.
 
 ## Current boundary
 

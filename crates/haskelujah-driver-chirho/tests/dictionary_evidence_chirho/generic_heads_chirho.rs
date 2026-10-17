@@ -2,9 +2,10 @@
 
 //! Generic instance heads (`dict_chirho/instance_chirho/generic_heads_chirho.rs`).
 //! A context-free instance whose head is a constructor applied to distinct
-//! variables, with no competing head for that constructor, is keyed by the
-//! constructor its use sites carry and filled from its rows as written
-//! (claude2_chirho #27335; gpt_chirho #27342 and #27349, contract G1-G5).
+//! variables, with no competing head for that constructor, is found under the
+//! constructor its use sites carry, through an alias private to the pass, and
+//! filled from its rows as written (claude2_chirho #27335; gpt_chirho #27342,
+//! #27349, #27365 and #27368, contract G1-G6).
 //! Every expected output is GHC 9.14.1's.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
@@ -39,7 +40,7 @@ fn a_derived_singleton_eq_reaches_its_dictionary_and_its_row_chirho() {
     // claude2_chirho #27335: `deriving instance Eq (SBoolChirho b)`. The row
     // is written `$prim_Eq_==_SBoolChirho b`, the head is typed
     // `(SBoolChirho t0)`, and the use site carries `SBoolChirho`. Both halves
-    // gate. Without the constructor key, the use site finds no dictionary and
+    // gate. Without the constructor alias, the use site finds no dictionary and
     // runs the raw `==` ("missing STG binding"). Without the written row, the
     // slot is a stub ("missing method"). All five fail on 29be1b7f and on
     // 3ece4a33. On main 3ca4fc54 the two with a binder header fail too. The
@@ -157,7 +158,7 @@ fn a_repeated_variable_head_never_serves_a_mismatched_use_chirho() {
     // GHC rejects this use (GHC-39999: no instance for
     // `TagChirho (PairBoxChirho Int Bool)`). Our checker accepts it, so it is
     // the dictionary pass that must not answer: a repeated variable is not a
-    // bijection, so the head is never keyed by its constructor.
+    // bijection, so the head is never found under its constructor.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let outcome_chirho = eval_source_with_machine_chirho(
         &format!(
@@ -173,4 +174,16 @@ fn a_repeated_variable_head_never_serves_a_mismatched_use_chirho() {
             machine_chirho.io_output_chirho
         );
     }
+}
+
+#[test]
+fn a_two_parameter_class_is_never_keyed_by_one_head_chirho() {
+    // G1 (gpt_chirho #27365): a generic first argument does not make a
+    // two-parameter instance generic. GHC prints "box-int"; main 3ca4fc54 and
+    // 3ece4a33 fail with a missing binding.
+    assert_ghc_or_failure_chirho(
+        "TwoParameterClassChirho.hs",
+        "{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}\nmodule Main where\nclass PairTagChirho a b where\n  pairTagChirho :: a -> b -> String\ndata BoxChirho a = BoxChirho\ninstance PairTagChirho (BoxChirho a) Int where\n  pairTagChirho _ _ = \"box-int\"\nmain :: IO ()\nmain = putStrLn (pairTagChirho (BoxChirho :: BoxChirho Char) (3 :: Int))\n",
+        "box-int\n",
+    );
 }
