@@ -1200,13 +1200,15 @@ impl DictPassCtxChirho {
                 // Literal wrappers take the selector form (see
                 // `occurrence_head_replacement_chirho`).
                 if !matches!(method_name_chirho.as_str(), "fromInteger" | "fromString") {
-                    let prim_name_chirho = format!(
-                        "$prim_{evidence_class_chirho}_{method_name_chirho}_{evidence_key_chirho}"
-                    );
-                    if let Some(prim_id_chirho) =
-                        self.find_global_id_by_name_chirho(&prim_name_chirho)
-                    {
-                        return CoreExprChirho::VarChirho(prim_id_chirho);
+                    for key_spelling_chirho in Self::key_spellings_chirho(evidence_key_chirho) {
+                        let prim_name_chirho = format!(
+                            "$prim_{evidence_class_chirho}_{method_name_chirho}_{key_spelling_chirho}"
+                        );
+                        if let Some(prim_id_chirho) =
+                            self.find_global_id_by_name_chirho(&prim_name_chirho)
+                        {
+                            return CoreExprChirho::VarChirho(prim_id_chirho);
+                        }
                     }
                 }
             }
@@ -1242,14 +1244,8 @@ impl DictPassCtxChirho {
                 // while generated dictionaries are keyed by the type head
                 // (`Either`, `Maybe`, `[]`).
                 if let Some(type_key_chirho) = type_key_override_chirho {
-                    let mut candidate_keys_chirho = vec![type_key_chirho.to_string()];
-                    if Self::should_normalize_instance_head_for_class_chirho(&class_name_chirho) {
-                        let normalized_chirho =
-                            Self::normalize_instance_head_key_chirho(type_key_chirho);
-                        if normalized_chirho != type_key_chirho {
-                            candidate_keys_chirho.push(normalized_chirho);
-                        }
-                    }
+                    let candidate_keys_chirho =
+                        Self::registry_spellings_chirho(&class_name_chirho, type_key_chirho);
                     for candidate_key_chirho in candidate_keys_chirho {
                         if let Some(dict_id_chirho) = local_instance_dicts_chirho
                             .get(&(class_name_chirho.clone(), candidate_key_chirho.clone()))

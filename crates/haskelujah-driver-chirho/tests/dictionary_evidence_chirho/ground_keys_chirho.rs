@@ -229,3 +229,91 @@ fn a_filled_slot_nobody_forces_stays_silent_chirho() {
         );
     }
 }
+
+#[test]
+fn local_bindings_keep_the_whole_list_key_chirho() {
+    // agy_chirho #27318 A1/A2: a local `let` or `where` binding specialized at
+    // one ground list type was keyed `[]` by its local specialization. A1 and
+    // the `where` form printed nothing, exit 0; A2's local `==` was a missing
+    // binding.
+    for (file_name_chirho, source_chirho, expected_chirho) in [
+        (
+            "LocalLetListChirho.hs",
+            "module Main where\nsameChirho :: Ord a => [a] -> Bool\nsameChirho (x : y : _) = x == y\nsameChirho _ = False\nnestedIntsChirho :: [[Int]]\nnestedIntsChirho = [[1, 2], [1, 3]]\nwordsChirho :: [String]\nwordsChirho = [\"aa\", \"aa\"]\nmain :: IO ()\nmain = do\n  let fIntChirho = sameChirho\n  let fStrChirho xs = sameChirho xs\n  print (fIntChirho nestedIntsChirho, fStrChirho wordsChirho)\n",
+            "(False,True)\n",
+        ),
+        (
+            "LocalWhereListChirho.hs",
+            "module Main where\nsameChirho :: Ord a => [a] -> Bool\nsameChirho (x : y : _) = x == y\nsameChirho _ = False\nnestedIntsChirho :: [[Int]]\nnestedIntsChirho = [[1, 2], [1, 3]]\nwhereCallChirho :: Bool\nwhereCallChirho = helperChirho nestedIntsChirho\n  where\n    helperChirho = sameChirho\nmain :: IO ()\nmain = print whereCallChirho\n",
+            "False\n",
+        ),
+        (
+            "LocalOccurrenceListChirho.hs",
+            "module Main where\nxsChirho :: [Int]\nxsChirho = [1, 2]\nysChirho :: [Int]\nysChirho = [1, 3]\nmain :: IO ()\nmain = do\n  let eqListChirho a b = a == b\n  print (eqListChirho xsChirho ysChirho)\n",
+            "False\n",
+        ),
+    ] {
+        assert_eq!(
+            run_chirho(file_name_chirho, source_chirho),
+            expected_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}
+
+const TAG_CLASS_CHIRHO: &str = "{-# LANGUAGE FlexibleInstances #-}\nmodule Main where\nclass TagChirho a where\n  tagChirho :: a -> String\nuseTagChirho :: TagChirho a => a -> String\nuseTagChirho x = tagChirho x\n";
+
+#[test]
+fn a_nested_string_meets_its_instance_under_either_spelling_chirho() {
+    // agy_chirho #27318 A3: an instance head registers as it displays
+    // (`instance TagChirho [[Char]]` is `$fTagChirho[[Char]]`, and so is one
+    // written `[String]`), while the evidence spells the nested string
+    // `[String]`. Through a constrained reference and as a direct method use,
+    // either spelling must meet; a user type whose name merely contains
+    // `String` keeps its own key. Each printed an empty line or failed.
+    for (file_name_chirho, declarations_chirho, expected_chirho) in [
+        (
+            "NestedCharsByReferenceChirho.hs",
+            "instance TagChirho [[Char]] where\n  tagChirho _ = \"nested-chars\"\nwordsChirho :: [String]\nwordsChirho = [\"hi\", \"there\"]\nmain :: IO ()\nmain = putStrLn (useTagChirho wordsChirho)\n",
+            "nested-chars\n",
+        ),
+        (
+            "NestedCharsByOccurrenceChirho.hs",
+            "instance TagChirho [[Char]] where\n  tagChirho _ = \"nested-chars\"\nwordsChirho :: [String]\nwordsChirho = [\"hi\", \"there\"]\nmain :: IO ()\nmain = putStrLn (tagChirho wordsChirho)\n",
+            "nested-chars\n",
+        ),
+        (
+            "WrittenStringListChirho.hs",
+            "instance TagChirho [String] where\n  tagChirho _ = \"string-list\"\ncharsChirho :: [[Char]]\ncharsChirho = [\"hi\"]\nmain :: IO ()\nmain = putStrLn (useTagChirho charsChirho)\n",
+            "string-list\n",
+        ),
+        (
+            "StringInATypeNameChirho.hs",
+            "data StringBoxChirho = StringBoxChirho\ninstance TagChirho [StringBoxChirho] where\n  tagChirho _ = \"boxes\"\nboxesChirho :: [StringBoxChirho]\nboxesChirho = [StringBoxChirho]\nmain :: IO ()\nmain = putStrLn (useTagChirho boxesChirho)\n",
+            "boxes\n",
+        ),
+    ] {
+        assert_eq!(
+            run_chirho(
+                file_name_chirho,
+                &format!("{TAG_CLASS_CHIRHO}{declarations_chirho}")
+            ),
+            expected_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn unforced_missing_dictionaries_in_every_lazy_position_chirho() {
+    // agy_chirho #27318 A4: the missing `Ord [[Int]]` dictionary in an unused
+    // `let`, an unused higher-order `map`, under `const`, and at an empty list.
+    // It printed "const-ok" and stopped, exit 0.
+    assert_eq!(
+        run_chirho(
+            "LazyPositionsChirho.hs",
+            "module Main where\nsameChirho :: Ord a => [a] -> Bool\nsameChirho (x : y : _) = x == y\nsameChirho _ = False\ntripleChirho :: [[[Int]]]\ntripleChirho = [[[1]], [[2]]]\nemptyTripleChirho :: [[[Int]]]\nemptyTripleChirho = []\nmain :: IO ()\nmain = do\n  let unusedChirho = sameChirho tripleChirho\n  let unusedHigherOrderChirho = map sameChirho [tripleChirho]\n  putStrLn (const \"const-ok\" (sameChirho tripleChirho))\n  print (sameChirho emptyTripleChirho)\n",
+        ),
+        "const-ok\nFalse\n"
+    );
+}

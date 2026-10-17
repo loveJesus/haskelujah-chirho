@@ -316,7 +316,7 @@ impl InferCtxChirho {
                         final_subst_chirho,
                         depth_chirho + 1,
                     )?,
-                _ => literal_head_key_chirho(&resolved_chirho)?,
+                _ => ground_or_head_key_chirho(&resolved_chirho)?,
             };
             match &key_chirho {
                 None => key_chirho = Some(this_key_chirho),
@@ -352,7 +352,7 @@ impl InferCtxChirho {
                     None
                 }
             }
-            _ => ground_list_key_chirho(ty_chirho).or_else(|| literal_head_key_chirho(ty_chirho)),
+            _ => ground_or_head_key_chirho(ty_chirho),
         }
     }
 
@@ -433,7 +433,7 @@ impl InferCtxChirho {
                 TyChirho::VarChirho(var_chirho) => {
                     self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
                 }
-                _ => literal_head_key_chirho(&resolved_chirho),
+                _ => ground_or_head_key_chirho(&resolved_chirho),
             };
             let Some(key_chirho) = key_chirho else {
                 continue;
@@ -537,6 +537,16 @@ pub(super) fn ground_list_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
         }
         _ => None,
     }
+}
+
+/// The registry key of a resolved type: its whole spelling for a ground list
+/// (`ground_list_key_chirho`), otherwise its head. Reference keys, local
+/// specializations and literal evidence all take it, so no evidence channel
+/// keys a ground list by the head `[]`, which names no list dictionary: a local
+/// `let f = sameChirho` used at `[[Int]]`, or a local `==` at `[Int]`, did.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+fn ground_or_head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
+    ground_list_key_chirho(ty_chirho).or_else(|| literal_head_key_chirho(ty_chirho))
 }
 
 fn literal_head_key_chirho(ty_chirho: &TyChirho) -> Option<String> {

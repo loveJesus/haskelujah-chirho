@@ -189,6 +189,68 @@ impl DictPassCtxChirho {
         }
     }
 
+    /// The spellings one evidence key can have in the registry, exact first:
+    /// the key, then the same key with each whole-word `String` spelled `[Char]`
+    /// (`string_spelled_out_chirho`), since an instance head is registered as it
+    /// displays (`instance TagChirho [[Char]]` is `$fTagChirho[[Char]]`) while
+    /// the evidence spells a nested `String` as `String` (`[String]`), the
+    /// spelling `Show`'s own rows use. For an exact method row
+    /// (`$prim_C_m_<key>`), where the head key never stood.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn key_spellings_chirho(key_chirho: &str) -> Vec<String> {
+        let spelled_chirho = Self::string_spelled_out_chirho(key_chirho);
+        if spelled_chirho == key_chirho {
+            vec![key_chirho.to_string()]
+        } else {
+            vec![key_chirho.to_string(), spelled_chirho]
+        }
+    }
+
+    /// `key_spellings_chirho`, then the head key: for a higher-kinded class
+    /// (`Maybe Int` → `Maybe`), as before, and for a whole list key (`[Int]` →
+    /// `[]`), the key a list carried before. For dictionary lookups.
+    pub(super) fn registry_spellings_chirho(
+        class_name_chirho: &str,
+        key_chirho: &str,
+    ) -> Vec<String> {
+        let mut spellings_chirho = Self::key_spellings_chirho(key_chirho);
+        if Self::should_normalize_instance_head_for_class_chirho(class_name_chirho)
+            || Self::is_whole_list_key_chirho(key_chirho)
+        {
+            let normalized_chirho = Self::normalize_instance_head_key_chirho(key_chirho);
+            if !spellings_chirho.contains(&normalized_chirho) {
+                spellings_chirho.push(normalized_chirho);
+            }
+        }
+        spellings_chirho
+    }
+
+    /// Each whole-word `String` in a key spelled `[Char]`: `[String]` →
+    /// `[[Char]]`, `Maybe String` → `Maybe [Char]`. A word is a maximal run of
+    /// identifier characters (letters, digits, `_`, `'`, `.`), so `ByteString`
+    /// or `StringBoxChirho` is never touched.
+    fn string_spelled_out_chirho(key_chirho: &str) -> String {
+        let mut spelled_chirho = String::with_capacity(key_chirho.len() + 8);
+        let mut word_chirho = String::new();
+        let identifier_char_chirho =
+            |ch_chirho: char| ch_chirho.is_alphanumeric() || matches!(ch_chirho, '_' | '\'' | '.');
+        for ch_chirho in key_chirho.chars().chain(std::iter::once(' ')) {
+            if identifier_char_chirho(ch_chirho) {
+                word_chirho.push(ch_chirho);
+                continue;
+            }
+            if word_chirho == "String" {
+                spelled_chirho.push_str("[Char]");
+            } else {
+                spelled_chirho.push_str(&word_chirho);
+            }
+            word_chirho.clear();
+            spelled_chirho.push(ch_chirho);
+        }
+        spelled_chirho.pop();
+        spelled_chirho
+    }
+
     /// A whole list key the checker proved (`[Int]`, `[[Int]]`, `[Char]`),
     /// as opposed to the head key `[]` of a list over a variable.
     fn is_whole_list_key_chirho(key_chirho: &str) -> bool {
@@ -217,18 +279,7 @@ impl DictPassCtxChirho {
                 evidence_classes_chirho,
             );
         }
-        let mut candidate_keys_chirho = vec![key_chirho.to_string()];
-        // A whole list key (`[Int]`) keeps the head `[]` as its fallback, the
-        // key a list reference carried before.
-        if Self::should_normalize_instance_head_for_class_chirho(class_name_chirho)
-            || Self::is_whole_list_key_chirho(key_chirho)
-        {
-            let normalized_chirho = Self::normalize_instance_head_key_chirho(key_chirho);
-            if normalized_chirho != key_chirho {
-                candidate_keys_chirho.push(normalized_chirho);
-            }
-        }
-        candidate_keys_chirho
+        Self::registry_spellings_chirho(class_name_chirho, key_chirho)
             .into_iter()
             .find_map(|candidate_chirho| {
                 let lookup_chirho = (class_name_chirho.to_string(), candidate_chirho);

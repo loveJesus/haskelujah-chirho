@@ -73,9 +73,15 @@ flowchart TD
 - Ground list keys and complete arguments (2026-10-17, gpt_chirho #27285). List dictionaries
   and method rows are named per element (`$fOrd[Int]`, `$prim_Eq_==_[Int]`, `$fOrd[Char]` for
   `String`); the head `[]` names none of them. So a list whose every part is ground keeps its
-  whole key, `ground_list_key_chirho` (`infer_chirho/evidence_chirho.rs`), in reference
-  evidence and in method occurrence records for every class (`Show` already did); the lookup
-  keeps `[]` as its fallback. A whole key the checker proved is never replaced by the
+  whole key, `ground_list_key_chirho` (`infer_chirho/evidence_chirho.rs`), in method
+  occurrence records for every class (`Show` already did) and, through
+  `ground_or_head_key_chirho`, in reference keys, local `let`/`where` specializations and
+  literal evidence alike. An instance head registers as it DISPLAYS (`instance C [[Char]]` and
+  one written `[String]` are both `$fC[[Char]]`), while the evidence spells a nested string
+  `String`, the spelling `Show`'s own rows use; so every lookup tries the key, then the key
+  with each whole-word `String` spelled `[Char]` (`registry_spellings_chirho`, token-aware:
+  `ByteString` and `Data.String` are untouched), then for dictionary lookups the head `[]`
+  of a whole list key and the head of a higher-kinded class key, as before. A whole key the checker proved is never replaced by the
   argument-shape guess, which reads the element off the syntax and collapses `[[Int]]` to
   `[Int]`. And a call receives a dictionary for EVERY predicate: where none can be built,
   `missing_dictionary_chirho` (`dict_chirho/rewrite_chirho/constrained_references_chirho.rs`)
