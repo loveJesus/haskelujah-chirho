@@ -57,7 +57,7 @@ flowchart TD
     ROWS --> ROWONE["compile_row_chirho\nmatch_sequence over the scrutinees,\nthen where bindings over guards"]
     ROWONE --> ROW
     ROWONE --> GUARDS["desugar_guards_chirho\narms in source order, each against\na placeholder for the next arm"]
-    GUARDS --> QUALS["desugar_quals_chirho\nboolean: case on True\npattern guard: match_row against its source\nlet: desugar_let_around_chirho"]
+    GUARDS --> QUALS["desugar_quals_chirho\nboolean, otherwise included: case on True\npattern guard: match_row against its source\nlet: desugar_let_around_chirho"]
     QUALS --> ROW
     QUALS -->|"a qualifier fails"| NEXTARM["next arm"]
     GUARDS -->|"every arm fails"| NEXT["next row\n(or the guard failure)"]
@@ -69,10 +69,18 @@ qualifiers as a case alternative's (the arm lookahead reads a qualifier's `let` 
 ends it), and the desugarer gives `desugar_guards_chirho` the failure "Non-exhaustive guards in
 multi-way if".
 
+`otherwise` is an ordinary boolean guard: the name denotes whatever binding scope gives it (a
+parameter, `where`, `let`, pattern guard or top-level definition may rebind it), and the
+Prelude's is `True` in the Core prelude. Recognising it by its spelling took the wrong arm
+under every such shadow; the controls are `eval_pattern_chirho/otherwise_binding_chirho.rs`.
+
 The checker types an arm the same way (`infer_chirho/guards_chirho.rs`): its qualifiers in a scope
 of the arm's own, a boolean guard checked as an `if` condition is, and a pattern guard bound
 against its source's type as a case alternative is against its scrutinee
-(`bind_pat_against_chirho`, GADT refinement included).
+(`bind_pat_against_chirho`, GADT refinement included). Each arm's result is decided INSIDE that
+scope, while its refinements hold: against the expected type when the equation or alternative has
+one, and an arm that cannot meet it is handed to the caller, which judges it as it judges an
+unguarded body. The controls are `eval_pattern_chirho/gadt_guard_chirho.rs`.
 
 ## The rules it implements
 
@@ -103,3 +111,9 @@ Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_ma
 - nothing in the guard family that the probes found: a multi-way `if`
   (`ExprChirho::MultiWayIfChirho`) now carries the same guard arms, typed with its arms'
   results agreeing as an `if`'s branches do and desugared with GHC's own failure text.
+- Pre-existing and open, each wrong on main as well: a pattern containing a GADT constructor
+  refines by unifying the WHOLE pattern, so a sibling component's equality is taken as given
+  (`(Refl, True) <- (eq, v)` with `v :: a` is accepted; GHC cannot deduce `a ~ Bool`), in case
+  alternatives and pattern guards alike. An equation's constructor pattern against a concrete
+  type is accepted (`f :: Int -> Int; f (Just y) = y`). A guarded right-hand side with no
+  expected type (a pattern binding) still drops a later arm that disagrees with the first.

@@ -3,7 +3,9 @@
 
 // Pattern matching, case expressions, guards tests
 
+mod gadt_guard_chirho;
 mod match_rows_chirho;
+mod otherwise_binding_chirho;
 
 #[allow(unused_imports)]
 use crate::{

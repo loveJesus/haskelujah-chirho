@@ -12,9 +12,16 @@
 //! the guard failure.
 //!
 //! The arms are compiled in source order, each against a placeholder for the
-//! next, and joined bottom-up by the join the rows use: an arm that cannot fail
-//! (`otherwise`) drops the arms after it, a continuation used once is inlined,
-//! and one used more than once is let-bound, never copied.
+//! next, and joined bottom-up by the join the rows use: an arm that never
+//! reaches its placeholder (only `let`s and irrefutable pattern guards) drops
+//! the arms after it, a continuation used once is inlined, and one used more
+//! than once is let-bound, never copied.
+//!
+//! `otherwise` is an ordinary boolean guard, evaluated like any other. Which
+//! binding a name denotes is decided by scope, never by its spelling: a
+//! parameter, a `where` or `let`, a pattern guard or a top-level definition may
+//! rebind `otherwise`, and `let otherwise = False` then falls through. The
+//! Prelude's `otherwise` is `True` in the Core prelude, so its arm is taken.
 //! workflow: language-features-chirho/pattern-matching-chirho
 
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, GuardedExprChirho, StmtChirho};
@@ -70,10 +77,8 @@ impl DesugarCtxChirho {
             return self.desugar_expr_chirho(body_chirho);
         };
         match qual_chirho {
-            // `otherwise` is Prelude's `True`: it cannot fail.
-            StmtChirho::ExprChirho { expr_chirho, .. } if is_otherwise_chirho(expr_chirho) => {
-                self.desugar_quals_chirho(rest_chirho, body_chirho, next_chirho)
-            }
+            // A boolean guard, `otherwise` included: evaluated, never
+            // recognised by name.
             StmtChirho::ExprChirho { expr_chirho, .. } => {
                 let cond_chirho = self.desugar_expr_chirho(expr_chirho);
                 let holds_chirho = self.desugar_quals_chirho(rest_chirho, body_chirho, next_chirho);
@@ -125,8 +130,4 @@ impl DesugarCtxChirho {
                 }),
         }
     }
-}
-
-fn is_otherwise_chirho(expr_chirho: &ExprChirho) -> bool {
-    matches!(expr_chirho, ExprChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "otherwise")
 }

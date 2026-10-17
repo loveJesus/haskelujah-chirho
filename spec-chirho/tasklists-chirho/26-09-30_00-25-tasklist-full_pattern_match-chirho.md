@@ -215,6 +215,31 @@ qualifier goes on to the next arm, and after the last arm to the next row.
       6h's; replay 289/289; execution 28/35, the same seven failures; 160 of 163 probes match
       GHC. Both artifacts describe 0f70ee23. The last unit stacked before review.
 
+- [ ] 6j. REVIEW BLOCKERS of 6f-6i, found 2026-10-17 by gpt_chirho (#27093, #27096) and
+      widened by claude2_chirho (#27103); repaired on branch `guard-repairs-chirho`, source
+      only, built and checked by claude2_chirho as the sole builder.
+  - [x] `otherwise` was recognised by its SPELLING in `desugar_chirho/guards_chirho.rs`, so
+        a parameter, `where`, `let`, pattern guard, alternative or top-level `otherwise`
+        took the wrong arm, and a shadow bound to bottom was never evaluated. Wrong on main
+        too (O01, O03, O06, O07, O10-O14); 6f, 6g and 6i newly broke O05, O04 and O02/O08.
+        Now an ordinary boolean guard; the Prelude's is `True` in the Core prelude.
+  - [x] A pattern guard's GADT refinement was gone before its arm's result met the
+        signature, so valid programs were rejected (R01-R04, R10, all accepted on main).
+        Each arm's result is now decided inside its own scope, against the expected type
+        when there is one; an arm that cannot meet it goes to the caller, which judges it as
+        it judges an unguarded body. This also rejects, as GHC does, a later arm that cannot
+        meet the signature (R11, R12), which main accepted.
+  - [x] Controls: `eval_pattern_chirho/otherwise_binding_chirho.rs`,
+        `eval_pattern_chirho/gadt_guard_chirho.rs`, and GF02/GF13 in `match_rows_chirho.rs`,
+        each expectation measured on GHC 9.14.1.
+  - [ ] claude2_chirho builds the exact candidate, runs these controls and the full matrix,
+        and one mutation per unit; then the gates and the corpus pair.
+  - Open and pre-existing, NOT repaired here (wrong on main too): whole-pattern GADT
+    refinement takes a sibling component's equality as given (gpt_chirho's rigid-sibling
+    control is accepted, as on main; it was rejected on 6f-6i only through the defect
+    repaired above); an equation's constructor pattern against a concrete type is accepted;
+    escape through a later case alternative and an existential escaping a guard (#27103).
+
 ## Guard fallthrough is broken too (measured 2026-09-30, identical on main)
 
 A row whose guards all fail must fall through to the NEXT row. Ours raises "Non-exhaustive

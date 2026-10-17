@@ -15,10 +15,14 @@
 use crate::eval_source_with_machine_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
-/// Run a module and return what it printed, or why it failed.
-fn run_chirho(body_chirho: &str) -> Result<String, String> {
+/// The LANGUAGE pragmas every program here runs under.
+pub(super) const PRAGMAS_CHIRHO: &str = "BangPatterns, LambdaCase, MultiWayIf";
+
+/// Run a module under `pragmas_chirho` and return what it printed, or why it
+/// failed.
+fn run_chirho(pragmas_chirho: &str, body_chirho: &str) -> Result<String, String> {
     let source_chirho = format!(
-        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{{-# LANGUAGE BangPatterns, LambdaCase, MultiWayIf #-}}\nmodule Main where\n{body_chirho}\n"
+        "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{{-# LANGUAGE {pragmas_chirho} #-}}\nmodule Main where\n{body_chirho}\n"
     );
     eval_source_with_machine_chirho(
         &source_chirho,
@@ -31,11 +35,22 @@ fn run_chirho(body_chirho: &str) -> Result<String, String> {
 }
 
 fn prints_chirho(body_chirho: &str) -> String {
-    run_chirho(body_chirho).unwrap_or_else(|failure_chirho| panic!("failed: {failure_chirho}"))
+    prints_under_chirho(PRAGMAS_CHIRHO, body_chirho)
 }
 
 fn fails_chirho(body_chirho: &str) -> String {
-    let failure_chirho = match run_chirho(body_chirho) {
+    fails_under_chirho(PRAGMAS_CHIRHO, body_chirho)
+}
+
+/// What a program printed; a failure fails the test.
+pub(super) fn prints_under_chirho(pragmas_chirho: &str, body_chirho: &str) -> String {
+    run_chirho(pragmas_chirho, body_chirho)
+        .unwrap_or_else(|failure_chirho| panic!("failed: {failure_chirho}"))
+}
+
+/// Why a program failed, where GHC fails too; printing fails the test.
+pub(super) fn fails_under_chirho(pragmas_chirho: &str, body_chirho: &str) -> String {
+    let failure_chirho = match run_chirho(pragmas_chirho, body_chirho) {
         Ok(printed_chirho) => panic!("GHC fails here; this printed {printed_chirho:?}"),
         Err(failure_chirho) => failure_chirho,
     };
@@ -418,6 +433,25 @@ fn a_guard_binding_shadows_only_in_its_own_arm_chirho() {
             "fChirho :: Int -> Maybe Bool -> Int\nfChirho x m\n  | Just x <- m, x = 1\n  | otherwise = x + 1\nmain :: IO ()\nmain = print (fChirho 5 Nothing, fChirho 5 (Just True), fChirho 5 (Just False))"
         ),
         "(6,1,6)\n"
+    );
+}
+
+#[test]
+fn a_failed_arms_binder_is_gone_in_the_next_arm_chirho() {
+    // GF02 and GF13 (claude2_chirho, 2026-10-17): main before the match rows
+    // crashed on both, and the match-row prefix printed the first arm's
+    // binder in the next arm, -100 and 7. GHC prints these.
+    assert_eq!(
+        prints_chirho(
+            "tblChirho :: [(Int, Int)]\ntblChirho = [(1, 10), (10, 100)]\nhopChirho :: Int -> Int\nhopChirho x | Just x <- lookup x tblChirho, Just y <- lookup x tblChirho = y\n            | otherwise = negate x\nmain :: IO ()\nmain = mapM_ (print . hopChirho) [1, 10, 5]"
+        ),
+        "100\n-10\n-5\n"
+    );
+    assert_eq!(
+        prints_chirho(
+            "yChirho :: Int\nyChirho = 5\nfChirho :: Maybe Int -> Int\nfChirho m | Just yChirho <- m, yChirho > 100 = yChirho\n          | otherwise = yChirho\nmain :: IO ()\nmain = print (fChirho (Just 7), fChirho (Just 200), fChirho Nothing)"
+        ),
+        "(5,200,5)\n"
     );
 }
 

@@ -4725,7 +4725,9 @@ impl InferCtxChirho {
                 expected_ty_chirho,
                 span_chirho,
             ),
-            RhsChirho::GuardedChirho(_) => self.infer_rhs_chirho(rhs_chirho),
+            RhsChirho::GuardedChirho(guarded_chirho) => {
+                self.infer_guard_arms_against_expected_chirho(guarded_chirho, expected_ty_chirho)
+            }
         }
     }
 
@@ -5671,9 +5673,10 @@ impl InferCtxChirho {
                     subst_chirho = alt_subst_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&alt_subst_chirho);
 
-                    // Guarded alternatives currently use ordinary RHS
-                    // inference. Retain the existing lenient result merge so
-                    // GADT-refined alternatives do not gain false diagnostics.
+                    // A guarded alternative's arms meet the expected type
+                    // inside their own scopes. Retain the existing lenient
+                    // result merge so GADT-refined alternatives do not gain
+                    // false diagnostics.
                     let alt_ty_sub_chirho = subst_chirho.apply_ty_chirho(&alt_ty_chirho);
                     let expected_alt_final_chirho =
                         subst_chirho.apply_ty_chirho(expected_ty_chirho);

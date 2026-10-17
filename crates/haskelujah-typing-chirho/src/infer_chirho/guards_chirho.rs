@@ -8,12 +8,20 @@
 //! against its source's type as a case alternative binds against its scrutinee;
 //! a `let` binds locally.
 //!
-//! The arms' results differ in one deliberate way. A multi-way if's arms are an
-//! `if`'s branches, so a mismatch between them is an error (TcMultiWayIfFail).
-//! A guarded right-hand side keeps the leniency it has always had - a mismatch
-//! between arms is dropped and left to the signature check - because the case
-//! alternative path relies on it for GADT refinement; changing that is its own
-//! measured unit.
+//! Every arm's result is decided INSIDE the arm's scope, while the GADT
+//! refinements its pattern guards proved still hold: `| Refl <- eq = value`
+//! with `eq :: Equal a Bool` gives `value :: a` the type `Bool` there and
+//! nowhere else. A result read after the arm's scope closed would have lost
+//! the refinement, and a valid program would be rejected against its signature.
+//!
+//! Who judges an arm's result differs in one deliberate way. A multi-way if's
+//! arms are an `if`'s branches, so a mismatch between them is an error here
+//! (TcMultiWayIfFail). A guarded right-hand side with an expected type (an
+//! equation's result, a case alternative's) hands an arm that cannot meet it
+//! to its caller, which judges it as it judges an unguarded body. With no
+//! expected type (a pattern binding, an ordinary case alternative) a later arm
+//! that disagrees with the first is dropped and left to the signature check,
+//! the leniency it has always had; changing that is its own measured unit.
 //! workflow: language-features-chirho/pattern-matching-chirho
 
 use haskelujah_ast_chirho::expr_chirho::{GuardedExprChirho, StmtChirho};
@@ -25,36 +33,71 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
 
 impl InferCtxChirho {
-    /// A guarded right-hand side's arms: the first arm's result is the
-    /// right-hand side's type, and a later arm that disagrees is not reported.
+    /// A guarded right-hand side's arms with no expected type (a pattern
+    /// binding, an ordinary case alternative): the first arm decides the type,
+    /// and a later arm that disagrees is not reported.
     /// workflow: language-features-chirho/pattern-matching-chirho
     pub(super) fn infer_guard_arms_chirho(
         &mut self,
         arms_chirho: &[GuardedExprChirho],
     ) -> (SubstChirho, TyChirho) {
+        let result_ty_chirho = self.fresh_var_chirho();
+        let (subst_chirho, _unmet_chirho) =
+            self.infer_guard_arms_meeting_chirho(arms_chirho, &result_ty_chirho);
+        let final_ty_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
+        (subst_chirho, final_ty_chirho)
+    }
+
+    /// The same arms where the enclosing equation or alternative expects
+    /// `expected_chirho`. Every arm meets it inside its own scope. When an arm
+    /// cannot, that arm's type is the result, so the caller judges the arm as
+    /// it judges an unguarded body: an equation reports it, and a case
+    /// alternative keeps its lenient merge. Nothing is reported here.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    pub(super) fn infer_guard_arms_against_expected_chirho(
+        &mut self,
+        arms_chirho: &[GuardedExprChirho],
+        expected_chirho: &TyChirho,
+    ) -> (SubstChirho, TyChirho) {
+        let (subst_chirho, unmet_chirho) =
+            self.infer_guard_arms_meeting_chirho(arms_chirho, expected_chirho);
+        let final_ty_chirho =
+            subst_chirho.apply_ty_chirho(unmet_chirho.as_ref().unwrap_or(expected_chirho));
+        (subst_chirho, final_ty_chirho)
+    }
+
+    /// Each arm's body meets `result_ty_chirho` inside the arm's own scope.
+    /// Returns the substitution and, for the first arm that could not meet
+    /// it, that arm's type as the arm saw it, refinements applied, so a
+    /// mismatch is stated in the refined type, as GHC states it.
+    fn infer_guard_arms_meeting_chirho(
+        &mut self,
+        arms_chirho: &[GuardedExprChirho],
+        result_ty_chirho: &TyChirho,
+    ) -> (SubstChirho, Option<TyChirho>) {
         let mut subst_chirho = SubstChirho::empty_chirho();
-        let mut result_ty_chirho: Option<TyChirho> = None;
+        let mut unmet_chirho: Option<TyChirho> = None;
         for arm_chirho in arms_chirho {
             self.env_chirho.push_scope_chirho();
             let body_ty_chirho = self.infer_guard_arm_chirho(arm_chirho, None, &mut subst_chirho);
-            if let Some(existing_ty_chirho) = &result_ty_chirho {
-                if let Ok(result_subst_chirho) = self.unify_normalized_chirho(
-                    &subst_chirho.apply_ty_chirho(existing_ty_chirho),
-                    &body_ty_chirho,
-                    arm_chirho.span_chirho,
-                ) {
+            match self.unify_normalized_chirho(
+                &subst_chirho.apply_ty_chirho(result_ty_chirho),
+                &body_ty_chirho,
+                arm_chirho.span_chirho,
+            ) {
+                Ok(result_subst_chirho) => {
                     subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&result_subst_chirho);
                 }
-            } else {
-                result_ty_chirho = Some(body_ty_chirho);
+                Err(_) => {
+                    if unmet_chirho.is_none() {
+                        unmet_chirho = Some(self.normalize_ty_chirho(&body_ty_chirho));
+                    }
+                }
             }
             self.env_chirho.pop_scope_chirho();
         }
-        let final_ty_chirho = result_ty_chirho
-            .map(|ty_chirho| subst_chirho.apply_ty_chirho(&ty_chirho))
-            .unwrap_or_else(|| self.fresh_var_chirho());
-        (subst_chirho, final_ty_chirho)
+        (subst_chirho, unmet_chirho)
     }
 
     /// A multi-way if: every arm's result is the expression's type, checked
