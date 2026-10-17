@@ -6854,27 +6854,19 @@ fn ast_type_to_syn_rhs_chirho(ty_chirho: &TypeChirho, params_chirho: &[String]) 
             }
         }
         TypeChirho::PromotedConChirho { name_chirho, .. } => {
-            TyChirho::ConChirho(format!("'{}", name_chirho.text_chirho()))
+            TyChirho::ConChirho(if name_chirho.text_chirho() == ":" {
+                ":".to_string()
+            } else {
+                format!("'{}", name_chirho.text_chirho())
+            })
         }
         TypeChirho::PromotedListChirho {
             elements_chirho, ..
-        } => {
-            let nil_chirho = TyChirho::ConChirho("'[]".to_string());
+        } => TyChirho::promoted_list_chirho(
             elements_chirho
                 .iter()
-                .rev()
-                .fold(nil_chirho, |acc_chirho, elem_chirho| {
-                    let elem_ty_chirho = ast_type_to_syn_rhs_chirho(elem_chirho, params_chirho);
-                    let cons_chirho = TyChirho::ConChirho("':".to_string());
-                    TyChirho::AppChirho(
-                        Box::new(TyChirho::AppChirho(
-                            Box::new(cons_chirho),
-                            Box::new(elem_ty_chirho),
-                        )),
-                        Box::new(acc_chirho),
-                    )
-                })
-        }
+                .map(|element_chirho| ast_type_to_syn_rhs_chirho(element_chirho, params_chirho)),
+        ),
         // PartialTypeSignatures: wildcard in a type synonym RHS is a fresh
         // anonymous variable (synthesised as "_wildcard_chirho").
         TypeChirho::WildcardChirho { .. } => TyChirho::ConChirho("_wildcard_chirho".to_string()),

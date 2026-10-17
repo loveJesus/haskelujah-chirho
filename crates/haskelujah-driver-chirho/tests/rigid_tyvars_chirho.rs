@@ -174,3 +174,6 @@ fn polymorphic_recursion_with_signature_accepted_chirho() {
 mod known_type_contexts_chirho;
 #[path = "rigid_tyvars_chirho/known_type_patterns_chirho.rs"]
 mod known_type_patterns_chirho;
+
+#[path = "rigid_tyvars_chirho/declaration_patterns_chirho.rs"]
+mod declaration_patterns_chirho;

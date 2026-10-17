@@ -259,3 +259,54 @@ fn a_kind_annotation_is_not_an_argument_chirho() {
         ("Either (a :: Type) (b :: Type)", "((Either var(a)) var(b))"),
     ]);
 }
+
+#[test]
+fn promoted_lists_survive_flat_heads_and_contexts_chirho() {
+    let source_chirho = "{-# LANGUAGE DataKinds, FlexibleContexts #-}\nmodule PromotedHeadsChirho where\ninstance CChirho '[Int, Bool] => DChirho (Proxy '[ '[], '[Int] ]) where\n  valueChirho = valueChirho\n";
+    let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
+    let cst_chirho = parse_to_cst_chirho(source_chirho, file_chirho);
+    let module_chirho = lower_module_chirho(&cst_chirho, file_chirho);
+    let (context_chirho, head_chirho) = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|decl_chirho| {
+            if let DeclChirho::InstanceDeclChirho {
+                context_chirho,
+                types_chirho,
+                ..
+            } = decl_chirho
+            {
+                Some((context_chirho, &types_chirho[0]))
+            } else {
+                None
+            }
+        })
+        .expect("instance survives");
+    let haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho { args_chirho, .. } =
+        &context_chirho[0]
+    else {
+        panic!("class context");
+    };
+    assert!(
+        matches!(&args_chirho[0], TypeChirho::PromotedListChirho { elements_chirho, .. } if elements_chirho.len() == 2)
+    );
+    let TypeChirho::ParenChirho { inner_chirho, .. } = head_chirho else {
+        panic!("parenthesized head");
+    };
+    let TypeChirho::AppChirho { arg_chirho, .. } = inner_chirho.as_ref() else {
+        panic!("Proxy application");
+    };
+    let TypeChirho::PromotedListChirho {
+        elements_chirho, ..
+    } = arg_chirho.as_ref()
+    else {
+        panic!("promoted outer list");
+    };
+    assert_eq!(elements_chirho.len(), 2);
+    assert!(
+        matches!(&elements_chirho[0], TypeChirho::PromotedListChirho { elements_chirho, .. } if elements_chirho.is_empty())
+    );
+    assert!(
+        matches!(&elements_chirho[1], TypeChirho::PromotedListChirho { elements_chirho, .. } if elements_chirho.len() == 1)
+    );
+}

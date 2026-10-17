@@ -394,6 +394,48 @@ impl LowerCtxChirho {
                     let s_chirho =
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                     match tok_chirho.kind_chirho() {
+                        TokenKindChirho::TickChirho => {
+                            // Contexts use flat children, but promotion has the
+                            // same meaning as in declaration heads/signatures.
+                            let mut tokens_chirho = Vec::new();
+                            let mut depth_chirho = 0usize;
+                            for promoted_child_chirho in &children_chirho[i_chirho..] {
+                                let GreenElementChirho::TokenChirho(promoted_token_chirho) =
+                                    promoted_child_chirho.element_chirho
+                                else {
+                                    break;
+                                };
+                                tokens_chirho.push((
+                                    promoted_token_chirho,
+                                    self.span_chirho(
+                                        promoted_child_chirho.start_chirho,
+                                        promoted_child_chirho.end_chirho,
+                                    ),
+                                ));
+                                match promoted_token_chirho.kind_chirho() {
+                                    TokenKindChirho::LeftBracketChirho => depth_chirho += 1,
+                                    TokenKindChirho::RightBracketChirho => {
+                                        depth_chirho = depth_chirho.saturating_sub(1);
+                                        if depth_chirho == 0 {
+                                            break;
+                                        }
+                                    }
+                                    _ if tokens_chirho.len() == 2 && depth_chirho == 0 => break,
+                                    _ => {}
+                                }
+                            }
+                            if let Some((ty_chirho, consumed_chirho)) = self
+                                .lower_promoted_list_atom_chirho(
+                                    &tokens_chirho,
+                                    0,
+                                    fallback_span_chirho,
+                                )
+                            {
+                                atoms_chirho.push(ty_chirho);
+                                i_chirho += consumed_chirho;
+                                continue;
+                            }
+                        }
                         TokenKindChirho::VarIdChirho => {
                             atoms_chirho.push(TypeChirho::VarChirho(
                                 self.name_from_token_chirho(tok_chirho, s_chirho),

@@ -96,18 +96,97 @@ impl InferCtxChirho {
             let scrutinee_norm_chirho = self.normalize_ty_chirho(scrutinee_chirho);
             let result_head_chirho = Self::ty_outer_head_name_chirho(&result_norm_chirho);
             let scrutinee_head_chirho = Self::ty_outer_head_name_chirho(&scrutinee_norm_chirho);
-            if result_head_chirho.is_some()
-                && result_head_chirho == scrutinee_head_chirho
-                && let Some(subst_chirho) = self.refine_skolems_by_unification_chirho(
+            if result_head_chirho.is_some() && result_head_chirho == scrutinee_head_chirho {
+                let (_, result_args_chirho) = collect_app_spine_chirho(&result_norm_chirho);
+                let (_, scrutinee_args_chirho) = collect_app_spine_chirho(&scrutinee_norm_chirho);
+                if result_args_chirho.len() == scrutinee_args_chirho.len()
+                    && !self.ty_mentions_family_chirho(&result_norm_chirho)
+                    && !self.ty_mentions_family_chirho(&scrutinee_norm_chirho)
+                {
+                    return Some(self.refine_constructor_indices_chirho(
+                        &result_norm_chirho,
+                        &scrutinee_norm_chirho,
+                        span_chirho,
+                    ));
+                }
+                // A stuck family is not injective. Keep its existing whole
+                // equality route rather than deriving equalities of arguments.
+                if let Some(subst_chirho) = self.refine_skolems_by_unification_chirho(
                     &result_norm_chirho,
                     &scrutinee_norm_chirho,
-                )
-            {
-                return Some(subst_chirho);
+                ) {
+                    return Some(subst_chirho);
+                }
             }
         }
         self.report_unify_error_chirho(&unify_err_chirho);
         None
+    }
+
+    /// GADT result indices are givens even when a component is contradictory
+    /// (an inaccessible arm). Keep independent consistent equations so fields
+    /// retain their declared types, then let normal field/body checking run.
+    /// Family-containing results never enter this generative decomposition.
+    fn refine_constructor_indices_chirho(
+        &mut self,
+        left_chirho: &TyChirho,
+        right_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> SubstChirho {
+        let left_norm_chirho = self.normalize_ty_chirho(left_chirho);
+        let right_norm_chirho = self.normalize_ty_chirho(right_chirho);
+        let pairs_chirho: Option<Vec<(&TyChirho, &TyChirho)>> =
+            match (&left_norm_chirho, &right_norm_chirho) {
+                (
+                    TyChirho::AppChirho(left_fun_chirho, left_arg_chirho),
+                    TyChirho::AppChirho(right_fun_chirho, right_arg_chirho),
+                ) if Self::ty_outer_head_name_chirho(&left_norm_chirho).is_some()
+                    && Self::ty_outer_head_name_chirho(&left_norm_chirho)
+                        == Self::ty_outer_head_name_chirho(&right_norm_chirho) =>
+                {
+                    Some(vec![
+                        (left_fun_chirho, right_fun_chirho),
+                        (left_arg_chirho, right_arg_chirho),
+                    ])
+                }
+                (
+                    TyChirho::TupleChirho(left_elems_chirho),
+                    TyChirho::TupleChirho(right_elems_chirho),
+                ) if left_elems_chirho.len() == right_elems_chirho.len() => {
+                    Some(left_elems_chirho.iter().zip(right_elems_chirho).collect())
+                }
+                (
+                    TyChirho::ListChirho(left_inner_chirho),
+                    TyChirho::ListChirho(right_inner_chirho),
+                ) => Some(vec![(left_inner_chirho, right_inner_chirho)]),
+                (
+                    TyChirho::FunChirho(left_arg_chirho, left_result_chirho, left_mult_chirho),
+                    TyChirho::FunChirho(right_arg_chirho, right_result_chirho, right_mult_chirho),
+                ) if left_mult_chirho == right_mult_chirho => Some(vec![
+                    (left_arg_chirho, right_arg_chirho),
+                    (left_result_chirho, right_result_chirho),
+                ]),
+                _ => None,
+            };
+        if let Some(pairs_chirho) = pairs_chirho {
+            let mut combined_chirho = SubstChirho::empty_chirho();
+            for (left_part_chirho, right_part_chirho) in pairs_chirho {
+                let part_subst_chirho = self.refine_constructor_indices_chirho(
+                    &combined_chirho.apply_ty_chirho(left_part_chirho),
+                    &combined_chirho.apply_ty_chirho(right_part_chirho),
+                    span_chirho,
+                );
+                self.apply_subst_all_chirho(&part_subst_chirho);
+                combined_chirho = part_subst_chirho.compose_chirho(&combined_chirho);
+            }
+            return combined_chirho;
+        }
+        self.unify_normalized_chirho(&left_norm_chirho, &right_norm_chirho, span_chirho)
+            .ok()
+            .or_else(|| {
+                self.refine_skolems_by_unification_chirho(&left_norm_chirho, &right_norm_chirho)
+            })
+            .unwrap_or_else(SubstChirho::empty_chirho)
     }
 
     pub(super) fn constructor_name_refines_chirho(&self, con_chirho: &NameChirho) -> bool {

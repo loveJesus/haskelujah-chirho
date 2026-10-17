@@ -244,3 +244,124 @@ fn target_name_chirho(ty_chirho: &TypeChirho) -> Option<&str> {
         _ => None,
     }
 }
+
+/// Ordinary arguments missing from a kind-signature header still belong in
+/// an inline derived instance. Invisible foralls scope names, not arguments.
+/// workflow: language-features-chirho/pattern-matching-chirho
+pub(super) fn visible_instance_binders_chirho(
+    binders_chirho: &[TyVarChirho],
+    kind_sig_chirho: Option<&haskelujah_ast_chirho::decl_chirho::DataKindSigChirho>,
+    span_chirho: SpanChirho,
+) -> Vec<TyVarChirho> {
+    let mut visible_chirho = TyVarChirho::visible_binders_chirho(binders_chirho).into_owned();
+    let Some(kind_sig_chirho) = kind_sig_chirho else {
+        return visible_chirho;
+    };
+    let (tail_chirho, consumed_chirho) = if let Some(tail_chirho) = kind_sig_chirho.result_chirho()
+    {
+        (tail_chirho, 0)
+    } else if let Some(whole_chirho) = kind_sig_chirho.standalone_chirho() {
+        (whole_chirho, visible_chirho.len())
+    } else {
+        return visible_chirho;
+    };
+    let remaining_chirho = visible_kind_arity_chirho(tail_chirho).saturating_sub(consumed_chirho);
+    let mut used_chirho: std::collections::HashSet<String> = binders_chirho
+        .iter()
+        .map(|binder_chirho| binder_chirho.name_chirho.text_chirho().to_string())
+        .collect();
+    collect_kind_names_chirho(tail_chirho, &mut used_chirho);
+    let mut index_chirho = 0usize;
+    for _ in 0..remaining_chirho {
+        let fresh_chirho = loop {
+            let candidate_chirho = format!("derived_arg_{index_chirho}_chirho");
+            index_chirho += 1;
+            if used_chirho.insert(candidate_chirho.clone()) {
+                break candidate_chirho;
+            }
+        };
+        visible_chirho.push(TyVarChirho::plain_chirho(NameChirho::RawChirho(
+            RawNameChirho::unqualified_chirho(fresh_chirho, span_chirho),
+        )));
+    }
+    visible_chirho
+}
+
+fn visible_kind_arity_chirho(kind_chirho: &TypeChirho) -> usize {
+    match kind_chirho {
+        TypeChirho::FunChirho { result_chirho, .. } => 1 + visible_kind_arity_chirho(result_chirho),
+        TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => vars_chirho.len() + visible_kind_arity_chirho(body_chirho),
+        TypeChirho::ForallChirho { body_chirho, .. }
+        | TypeChirho::QualChirho { body_chirho, .. } => visible_kind_arity_chirho(body_chirho),
+        TypeChirho::ParenChirho { inner_chirho, .. } => visible_kind_arity_chirho(inner_chirho),
+        _ => 0,
+    }
+}
+
+fn collect_kind_names_chirho(
+    ty_chirho: &TypeChirho,
+    names_chirho: &mut std::collections::HashSet<String>,
+) {
+    match ty_chirho {
+        TypeChirho::VarChirho(name_chirho) => {
+            names_chirho.insert(name_chirho.text_chirho().to_string());
+        }
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => {
+            collect_kind_names_chirho(fun_chirho, names_chirho);
+            collect_kind_names_chirho(arg_chirho, names_chirho);
+        }
+        TypeChirho::FunChirho {
+            arg_chirho,
+            result_chirho,
+            ..
+        } => {
+            collect_kind_names_chirho(arg_chirho, names_chirho);
+            collect_kind_names_chirho(result_chirho, names_chirho);
+        }
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            names_chirho.extend(
+                vars_chirho
+                    .iter()
+                    .map(|name_chirho| name_chirho.text_chirho().to_string()),
+            );
+            collect_kind_names_chirho(body_chirho, names_chirho);
+        }
+        TypeChirho::QualChirho { body_chirho, .. } => {
+            collect_kind_names_chirho(body_chirho, names_chirho)
+        }
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
+            collect_kind_names_chirho(inner_chirho, names_chirho)
+        }
+        TypeChirho::ListChirho { element_chirho, .. } => {
+            collect_kind_names_chirho(element_chirho, names_chirho)
+        }
+        TypeChirho::TupleChirho {
+            elements_chirho, ..
+        }
+        | TypeChirho::PromotedListChirho {
+            elements_chirho, ..
+        } => {
+            for element_chirho in elements_chirho {
+                collect_kind_names_chirho(element_chirho, names_chirho);
+            }
+        }
+        _ => {}
+    }
+}

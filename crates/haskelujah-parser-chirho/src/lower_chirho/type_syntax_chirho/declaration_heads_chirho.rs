@@ -6,6 +6,54 @@
 use super::*;
 
 impl LowerCtxChirho {
+    /// Keep the quote and the list's element boundaries in flat declaration
+    /// heads, including a promoted list nested in another argument.
+    /// workflow: language-features-chirho/flat-type-syntax-chirho
+    pub(super) fn lower_promoted_list_atom_chirho(
+        &self,
+        tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
+        index_chirho: usize,
+        fallback_span_chirho: SpanChirho,
+    ) -> Option<(TypeChirho, usize)> {
+        if tokens_chirho.get(index_chirho)?.0.kind_chirho() != TokenKindChirho::TickChirho
+            || tokens_chirho.get(index_chirho + 1)?.0.kind_chirho()
+                != TokenKindChirho::LeftBracketChirho
+        {
+            return None;
+        }
+        let end_chirho = Self::find_matching_token_index_chirho(
+            tokens_chirho,
+            index_chirho + 1,
+            TokenKindChirho::LeftBracketChirho,
+            TokenKindChirho::RightBracketChirho,
+        )?;
+        let span_chirho = tokens_chirho[index_chirho]
+            .1
+            .merge_chirho(tokens_chirho[end_chirho].1)
+            .unwrap_or(fallback_span_chirho);
+        let inner_chirho = &tokens_chirho[index_chirho + 2..end_chirho];
+        let elements_chirho = if inner_chirho.is_empty() {
+            Vec::new()
+        } else {
+            // The existing flat grammar splits only top-level commas. A
+            // parenthesized tuple stays wrapped, so '[ (Int, Bool) ] has one
+            // element while '[Int, Bool] has two.
+            match self.lower_type_from_token_slice_chirho(inner_chirho, span_chirho) {
+                TypeChirho::TupleChirho {
+                    elements_chirho, ..
+                } => elements_chirho,
+                element_chirho => vec![element_chirho],
+            }
+        };
+        Some((
+            TypeChirho::PromotedListChirho {
+                elements_chirho,
+                span_chirho,
+            },
+            end_chirho + 1,
+        ))
+    }
+
     pub(super) fn lower_instance_head_types_chirho(
         &self,
         head_tokens_chirho: &[(&GreenTokenChirho, SpanChirho)],
@@ -26,6 +74,18 @@ impl LowerCtxChirho {
         let mut types_chirho = Vec::new();
         while idx_chirho < head_tokens_chirho.len() {
             match head_tokens_chirho[idx_chirho].0.kind_chirho() {
+                TokenKindChirho::TickChirho => {
+                    if let Some((ty_chirho, next_chirho)) = self.lower_promoted_list_atom_chirho(
+                        head_tokens_chirho,
+                        idx_chirho,
+                        span_chirho,
+                    ) {
+                        types_chirho.push(ty_chirho);
+                        idx_chirho = next_chirho;
+                    } else {
+                        idx_chirho += 1;
+                    }
+                }
                 TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                     let (tok_chirho, tok_span_chirho) = head_tokens_chirho[idx_chirho];
                     types_chirho.push(TypeChirho::ConChirho(
@@ -256,6 +316,16 @@ impl LowerCtxChirho {
         let mut idx_chirho = 0usize;
         while idx_chirho < tokens_chirho.len() {
             match tokens_chirho[idx_chirho].0.kind_chirho() {
+                TokenKindChirho::TickChirho => {
+                    if let Some((ty_chirho, next_chirho)) =
+                        self.lower_promoted_list_atom_chirho(tokens_chirho, idx_chirho, span_chirho)
+                    {
+                        atom_tys_chirho.push(ty_chirho);
+                        idx_chirho = next_chirho;
+                    } else {
+                        idx_chirho += 1;
+                    }
+                }
                 TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                     let (tok_chirho, tok_span_chirho) = tokens_chirho[idx_chirho];
                     atom_tys_chirho.push(TypeChirho::ConChirho(

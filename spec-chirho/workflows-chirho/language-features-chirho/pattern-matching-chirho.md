@@ -86,8 +86,9 @@ unguarded body. The controls are `eval_pattern_chirho/gadt_guard_chirho.rs`.
 ## Known-type pattern checking
 
 The source candidate in `infer_chirho/pattern_bindings_chirho.rs` checks constructor
-results before their fields. It is unbuilt at this checkpoint; validation and any
-measured gains remain pending the named builder lease. Prefix and infix patterns
+results before their fields. Its combined validation found two accept losses at
+49b71e7b; the gate remains stopped until the producer repair restores membership
+and passes the complete combined gate. Prefix and infix patterns
 share `bind_constructor_pattern_chirho`. It opens outer constructor foralls while
 preserving higher-rank field foralls, then checks fields left-to-right under the
 result's ordinary substitution and local GADT givens. Records use the same order,
@@ -130,8 +131,8 @@ and full existential-escape checking remain explicit boundaries.
 positive context controls: equality givens, refinements reaching later patterns,
 pattern synonyms, supported family reduction and imported constructors. The eleven
 sources check on GHC and frozen current main; ten also match exact runtime output.
-Imported infix constructor bindings and malformed constructor arity recovery remain
-measured residuals. These baseline controls do not establish candidate behavior.
+Imported infix constructor values now use the constructor-operator repair below;
+malformed constructor arity recovery remains a measured residual. Baseline measurements and later candidate gates remain distinct in the tasklist.
 An additional empty-record pattern on a GADT with a rank-N field must retain its
 constructor-result refinement. GHC accepts that positive while current main
 rejects it; the candidate's result still needs measurement. Written pattern
@@ -190,3 +191,54 @@ flowchart TD
     lower_field_pattern_chirho --> known_record_fields_chirho[Known result first then fields under growing substitution]
     punned_field_chirho --> known_record_fields_chirho
 ```
+
+## Faithful declaration heads and inaccessible indices Chirho
+
+Flat declaration heads and contexts preserve promoted-list atoms through one
+balanced-group lowering routine. Ordinary list constructor `[]` remains distinct
+from promoted nil `'[]`. Both ordinary AST conversion and type-synonym RHS
+conversion construct promoted lists with the same cons spelling as parsed `a ': as`.
+This normalization precedes any decision that GADT indices are contradictory.
+
+Standalone deriving retains the written applied instance head and its context;
+stock generators supply method bodies. Inline deriving includes visible arguments
+implied by a result-kind arrow, even when the declaration has no visible header
+binders. Invisible forall binders contribute scope but do not become ordinary
+arguments. These producers live in parser `lower_chirho/type_syntax_chirho/` and
+typing `deriving_chirho/declaration_heads_chirho.rs`.
+
+Within the same known GADT head and arity, a contradictory generative index means
+an inaccessible arm. Independent consistent components still constrain constructor
+fields, even when the contradiction occurs first. Child and body checking then
+runs normally, so an impossible Bool field cannot match a Char. Bare-skolem and
+outer constructor mismatches keep ordinary errors. Family-containing results keep
+the existing whole-equality route; no injectivity is assumed. Using an inconsistent
+given to justify an otherwise mismatched body remains an explicit solver boundary.
+Written deriving heads/contexts now survive generation, but the class solver still
+wrongly accepts the retained missing-context and out-of-specialization call probes;
+producer fidelity does not close dictionary selection or instance solving.
+
+```mermaid
+flowchart TD
+    written_head_chirho[Written signature head context or deriving declaration] --> faithful_head_chirho[Preserve application promotion and actual context]
+    faithful_head_chirho --> canonical_index_chirho[Canonical promoted cons and distinct promoted nil]
+    canonical_index_chirho --> same_gadt_chirho{Same known GADT head and arity?}
+    same_gadt_chirho -- no --> ordinary_shape_chirho[Ordinary match or shape error]
+    same_gadt_chirho -- yes --> family_index_chirho{Contains a type family?}
+    family_index_chirho -- yes --> whole_equality_chirho[Existing whole equality boundary]
+    family_index_chirho -- no --> component_indices_chirho[Retain consistent components across an inaccessible index]
+    component_indices_chirho --> ordinary_children_chirho[Check every child and body against its type]
+```
+
+The focused controls are in `tests/rigid_tyvars_chirho/declaration_patterns_chirho.rs`,
+with a parser head/context witness in `flat_type_tests_chirho.rs`. C1 must run to 5;
+C2/C3 and the inaccessible-child negatives must reject for their actual type
+mismatch. T16502b and T17024 are both GHC-valid acceptance controls. Final corpus
+and mutation outcomes belong to the tasklist and frozen receipts, not this DAG.
+
+Constructor operators Chirho: the ordinary and fixity-rebuilt Core infix paths
+produce constructor applications for colon-led operators, retaining their actual
+names, and for registered named constructors used with backticks. C1 and the
+ordinary left-associative tree execute to their GHC values; imported `:|` and `:+`
+also pass their exact runtime controls. GADT arity metadata and native execution
+are not established by those interpreter measurements.

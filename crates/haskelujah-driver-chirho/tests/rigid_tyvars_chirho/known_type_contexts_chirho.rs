@@ -1,12 +1,10 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Positive controls from Claude2 review #27228: equality givens, refinements
-//! reaching later patterns, pattern synonyms and imported constructors. These
-//! eleven contextual sources and the separate rank-N empty-record witness
-//! were measured on GHC 9.14.1 and frozen current main dda4b202 before being
-//! embedded. The candidate remains unbuilt. Imported
-//! infix constructors are check-only because their runtime bindings are a
-//! pre-existing defect; constructor arity recovery remains outside this unit.
+//! Context controls from Claude2 review #27228: equality givens, refinements
+//! reaching later patterns, pattern synonyms and imported constructors. GHC
+//! receipts predate embedding. The imported infix constructor control now runs
+//! through the shared constructor-operator repair as well. Candidate/corpus
+//! outcomes and remaining arity boundaries are recorded in the tasklist.
 //! workflow: language-features-chirho/pattern-matching-chirho
 
 use super::{assert_accepted_chirho, assert_output_chirho};
@@ -158,7 +156,7 @@ main = do
   print (f1Chirho (1 :| [2]), f2Chirho (1.5 :+ 2), f3Chirho (Sum 4))
   print (f4Chirho (First (Just 'x')), f5Chirho (Identity True), f6Chirho (Down 9), f7Chirho (ExitFailure 3))
 "#,
-        None,
+        Some("(1,1.5,4)\n(Just 'x',True,9,3)\n"),
     ),
     (
         "kr09c_newtype_and_enum_imported_constructors_chirho.hs",

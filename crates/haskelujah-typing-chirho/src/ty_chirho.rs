@@ -90,6 +90,26 @@ pub enum TyChirho {
 }
 
 impl TyChirho {
+    /// Canonical promoted list: nil stays distinct from the list type `[]`,
+    /// while cons has the same spelling as a parsed type-level infix `:`.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    pub(crate) fn promoted_list_chirho(
+        elements_chirho: impl DoubleEndedIterator<Item = Self>,
+    ) -> Self {
+        elements_chirho.rev().fold(
+            Self::ConChirho("'[]".to_string()),
+            |tail_chirho, head_chirho| {
+                Self::AppChirho(
+                    Box::new(Self::AppChirho(
+                        Box::new(Self::ConChirho(":".to_string())),
+                        Box::new(head_chirho),
+                    )),
+                    Box::new(tail_chirho),
+                )
+            },
+        )
+    }
+
     /// Convenience: the `Int` type.
     pub fn int_chirho() -> Self {
         Self::ConChirho("Int".to_string())
