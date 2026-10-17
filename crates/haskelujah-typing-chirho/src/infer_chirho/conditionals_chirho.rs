@@ -18,7 +18,8 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
 
 impl InferCtxChirho {
-    /// `if` by ordinary inference.
+    /// `if` by ordinary inference. The returned substitution carries what the
+    /// condition proved (its type is Bool) as well as the branches' unifiers.
     /// workflow: language-features-chirho/conditionals-chirho
     pub(super) fn infer_if_chirho(
         &mut self,
@@ -27,23 +28,34 @@ impl InferCtxChirho {
         else_chirho: &ExprChirho,
         span_chirho: SpanChirho,
     ) -> (SubstChirho, TyChirho) {
-        let (s1_chirho, cond_ty_chirho) = self.infer_expr_chirho(cond_chirho);
-        self.apply_subst_all_chirho(&s1_chirho);
+        let (cond_subst_chirho, cond_ty_chirho) = self.infer_expr_chirho(cond_chirho);
+        self.apply_subst_all_chirho(&cond_subst_chirho);
 
-        // Condition must be Bool
-        match self.unify_normalized_chirho(&cond_ty_chirho, &TyChirho::bool_chirho(), span_chirho) {
-            Ok(sc_chirho) => {
-                self.apply_subst_all_chirho(&sc_chirho);
+        // The condition is a Bool, and what that proves is part of the result.
+        // In `g v = if v then 1 else 0` it makes `v` a Bool for the whole of
+        // g's type. Applied to the environment only, this unifier never reached
+        // the substitution returned to the caller: `g` generalised to
+        // `a -> Int`, and `g 'x'` was accepted where GHC reports that it
+        // cannot match Bool with Char.
+        let s1_chirho = match self.unify_normalized_chirho(
+            &cond_ty_chirho,
+            &TyChirho::bool_chirho(),
+            span_chirho,
+        ) {
+            Ok(bool_subst_chirho) => {
+                self.apply_subst_all_chirho(&bool_subst_chirho);
                 // After unifying condition with Bool, eagerly check if
                 // any deferred numeric predicate now targets Bool (e.g.
                 // `if 42 then ...` → Num Bool). Generalization would
                 // absorb this ground predicate silently; catch it here.
                 self.report_deferred_numeric_bool_predicates_chirho();
+                bool_subst_chirho.compose_chirho(&cond_subst_chirho)
             }
             Err(err_chirho) => {
                 self.report_unify_error_chirho(&err_chirho);
+                cond_subst_chirho
             }
-        }
+        };
 
         let (s2_chirho, then_ty_chirho) = self.infer_expr_chirho(then_chirho);
         self.apply_subst_all_chirho(&s2_chirho);
