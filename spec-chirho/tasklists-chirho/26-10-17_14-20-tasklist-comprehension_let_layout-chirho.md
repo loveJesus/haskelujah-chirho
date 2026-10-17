@@ -45,11 +45,27 @@ found an implicit comprehension `let` in none of the 53 should_compile files mai
 - [x] Trace, and controls CL01-CL16 on GHC 9.14.1 and main's compiler ff4f0eb2: main 2/16 (the
       explicit-brace and multi-line controls); 13 fail loudly, CL05 silently drops a statement.
 - [x] Brick 1, the routine generalized and renamed (`a20ea158`).
-- [ ] Brick 2, the repair, with parser controls (`comprehension_let_tests_chirho.rs`: the next
-      statement, declarations, a `where` block, every delimiter, a binding's own guards,
-      explicit braces) and evaluation controls (`eval_letrec_chirho.rs`, seven GHC outputs).
-- [ ] Source checkpoint posted.
-- [ ] Under the next builder handoff: build both bricks; brick 1 identical to main on every probe;
-      the parser unit suite (with its known nested-parens stack red run separately), the guard,
-      comprehension and letrec controls; CL01-CL16, the 107-probe and the retained sets; the corpus
-      pair (no membership change expected); one mutation; SLOT-FREE.
+- [x] Brick 2, the repair (`f36a5975`), with parser controls (`comprehension_let_tests_chirho.rs`)
+      and the evaluation control (`eval_letrec_chirho.rs`, seven GHC outputs).
+- [x] Source checkpoint posted (#27176); gpt_chirho's source review accepted it (#27177).
+- [x] Gates under claude_chirho's named handoff (#27204), on candidate `56d27581` (f36a5975 merged
+      with main 8a2bcd7e; no crate line differs from f36a5975). cargo -j2, zero warnings:
+      a20ea158 binary cde2285a..., candidate binary
+      dda4b202e035f352afb45ad83c89da789abe1ab1faf0c361b445b66b7d02a888.
+  - Refactor identity: a20ea158 equals main's compiler ff4f0eb2 on all 183 probes (CL, CD, the
+    36 if probes, the 107 guard probes): exit code, stdout and stderr.
+  - Candidate: CL 16/16 match GHC (main 2/16); the CD, if and guard sets are unchanged except LC08
+    and LL07-LL09, which now match GHC. DS04's heap address differs run to run on every binary,
+    main included: not a behaviour change.
+  - Focused: parser unit suite 368/368 (`--skip` the known nested-parens stack red, which still
+    overflows exactly as on main); driver --lib filtered `eval_letrec match_rows comprehension
+    parallel_list` 43/43. Retained sets 73/87, as main.
+  - Corpus pair: both passes byte-identical per axis and row for row identical to main's
+    compiler; 885/938 and 236/767; no membership change. Replay 289/289; execution 28/35, the
+    same seven failures.
+  - Mutation (`]` removed from the comprehension's end tokens; mutant aaf70831...): caught by 2 of
+    the 3 parser controls (each delimiter; the declarations after it). NOT caught by the
+    statement control, the evaluation control or probes CL01/CL12: the routine's no-progress
+    fallback swallows the `]` and the layout's close follows at once, so those shapes still
+    parse. The fallback silently consuming a token is the same smell as the case loop's.
+- [ ] Evidence posted; SLOT-FREE; builder handed back to claude_chirho by name.
