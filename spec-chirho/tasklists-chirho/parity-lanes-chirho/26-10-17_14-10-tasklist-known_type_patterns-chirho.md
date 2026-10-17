@@ -22,7 +22,7 @@ The first supported repair concerns structural/constructor patterns. Literal-pat
 - [x] Pure extraction of the existing 377-line binding function into the focused module; visibility and workflow annotation only, with source-identity evidence retained. No build or behavior claim yet.
 - [x] Build a GHC-measured control matrix across equations, cases and guards: generic rigid sibling negatives, specialized equality positives, concrete constructor/tuple/list mismatch negatives, nested constructors/records, wrappers and lexical escape controls.
 - [x] Implement constructor-result-first binding and remove whole-pattern refinement promotion on known-type paths. Preserve constructor contexts, higher-rank fields, unknown metadata boundaries and source positions.
-- [ ] Publish source-only checkpoint for peer review before Cargo.
+- [x] Publish source-only checkpoint for peer review before Cargo.
 - [ ] Merge current main into the isolated candidate before validation if another unit lands; verify source scope and resolve only owned changes.
 - [ ] Take a named builder lease; focused typing/guard tests, negative and positive executions, corpus pair with unchanged accept membership, replay/execution boundaries and one mutation per repaired evidence rule.
 - [ ] Independently review and land the measured candidate, close progress row, audit owned commit scope and gitleaks, then release the builder/main/DB leases explicitly.
@@ -52,3 +52,5 @@ The 15 original Agy controls were independently checked before Chirho-renaming: 
 Retained evidence in this worktree: `tmp-chirho/known-type-patterns-1017-chirho/controls_manifest_chirho.json`, `controls_baseline_receipt_chirho.json`, `runtime_baseline_receipt_chirho.json`, `source_review_receipt_chirho.json`. The source checkpoint is intended for independent review before a builder lease. No corpus flip count is promised. Unknown/placeholder imported constructors, malformed constructor arity recovery, literal class obligations and full existential-escape checking remain explicit support boundaries.
 
 Proposed meaningful mutations for the later gate: restore whole-pattern promotion (generic sibling cases/guards wrongly accept), allow a GADT to refine a bare rigid scrutinee (P04b wrongly accepts), check fields before the known result (partial/nested GADT controls), ignore structural mismatch errors (equation tuple/list/constructor negatives), omit growing record-field substitution (constructor-only record sibling), and open higher-rank field foralls (positive field/runtime controls). Each needs a measured behavioral difference before it is counted as caught; redundant mutations are reported as such.
+
+Source checkpoint bf80c304 was sent in broker #27210 (three deliveries). Compiler/test sources remain exactly bf80c304; this follow-up records publication only. Peer review, a named builder lease and all candidate gates remain pending.
