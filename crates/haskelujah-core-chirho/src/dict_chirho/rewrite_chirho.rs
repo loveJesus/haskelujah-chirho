@@ -1382,34 +1382,14 @@ impl DictPassCtxChirho {
                 local_instance_dicts_chirho,
             ));
         }
-        let fn_id_chirho = self.canonical_id_chirho(written_id_chirho);
-
-        let mut result_chirho = CoreExprChirho::VarChirho(fn_id_chirho);
-        let mut inserted_dict_chirho = false;
-        let classes_chirho = classes_chirho.to_vec();
-        for class_name_chirho in &classes_chirho {
-            let dict_id_chirho = self
-                .instance_dicts_chirho
-                .get(&(class_name_chirho.clone(), type_key_chirho.to_string()))
-                .copied()
-                .or_else(|| {
-                    Self::fallback_dict_for_class_chirho(
-                        class_name_chirho,
-                        dict_vars_chirho,
-                        evidence_classes_chirho,
-                    )
-                });
-            if let Some(dict_id_chirho) = dict_id_chirho {
-                inserted_dict_chirho = true;
-                result_chirho = CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(result_chirho),
-                    arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
-                };
-            }
-        }
-        if !inserted_dict_chirho {
-            return None;
-        }
+        // Every predicate slot, or none at all (the general path decides).
+        let mut result_chirho = self.typed_reference_dicts_chirho(
+            written_id_chirho,
+            classes_chirho,
+            type_key_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+        )?;
 
         for a_chirho in &args_chirho {
             let rewritten_arg_chirho = self

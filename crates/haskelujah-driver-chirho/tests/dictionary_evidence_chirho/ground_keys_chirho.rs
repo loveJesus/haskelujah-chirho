@@ -160,3 +160,72 @@ fn a_method_at_a_list_without_a_dictionary_still_fails_loudly_chirho() {
         Err(err_chirho) => assert!(!err_chirho.is_empty()),
     }
 }
+
+/// `halfChirho` used infix (no reference evidence) inside a call keyed `Int`.
+fn partial_hit_program_chirho(
+    context_chirho: &str,
+    body_chirho: &str,
+    main_chirho: &str,
+) -> String {
+    format!(
+        "module Main where\nhalfChirho :: ({context_chirho}) => a -> a -> String\nhalfChirho x y = {body_chirho}\nouterChirho :: Show b => Int -> b -> String\nouterChirho n x = show n ++ \"|\" ++ show x\nmain :: IO ()\n{main_chirho}\n"
+    )
+}
+
+#[test]
+fn a_partial_dictionary_hit_fills_every_slot_chirho() {
+    // The typed-argument site found `Show` at the surrounding `Int` key and no
+    // `Fractional`, and returned a spine with one dictionary: the term
+    // arguments slid into the slots and GHC's `5|"1.5"` printed as
+    // `5|$PAP halfChirho …`, exit 0, in BOTH predicate orders. Every slot is
+    // now filled: the missing one fails by name when forced, or the run prints
+    // GHC's answer once that support exists.
+    for (file_name_chirho, context_chirho) in [
+        ("FirstServedChirho.hs", "Show a, Fractional a"),
+        ("FirstMissingChirho.hs", "Fractional a, Show a"),
+    ] {
+        match run_result_chirho(
+            file_name_chirho,
+            &partial_hit_program_chirho(
+                context_chirho,
+                "show (x / y)",
+                "main = putStrLn (outerChirho 5 (3.0 `halfChirho` (2.0 :: Double)))",
+            ),
+        ) {
+            Ok(output_chirho) => assert_eq!(output_chirho, "5|\"1.5\"\n", "{file_name_chirho}"),
+            Err(err_chirho) => assert!(
+                err_chirho.contains("no instance dictionary for `Fractional"),
+                "{file_name_chirho}: the error must name the missing slot: {err_chirho}"
+            ),
+        }
+    }
+}
+
+#[test]
+fn a_filled_slot_nobody_forces_stays_silent_chirho() {
+    // Laziness: a callee that never touches either dictionary, and a call that
+    // is never forced, run exactly as in GHC.
+    for (file_name_chirho, body_chirho, main_chirho, expected_chirho) in [
+        (
+            "SlotsNeverForcedChirho.hs",
+            "\"label\"",
+            "main = putStrLn (outerChirho 5 (3.0 `halfChirho` (2.0 :: Double)))",
+            "5|\"label\"\n",
+        ),
+        (
+            "PartialCallUnusedChirho.hs",
+            "show (x / y)",
+            "main = let unusedChirho = outerChirho 5 (3.0 `halfChirho` (2.0 :: Double)) in putStrLn \"ok\"",
+            "ok\n",
+        ),
+    ] {
+        assert_eq!(
+            run_chirho(
+                file_name_chirho,
+                &partial_hit_program_chirho("Show a, Fractional a", body_chirho, main_chirho),
+            ),
+            expected_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}

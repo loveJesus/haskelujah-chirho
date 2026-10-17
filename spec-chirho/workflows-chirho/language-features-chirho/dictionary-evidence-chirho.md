@@ -82,7 +82,13 @@ flowchart TD
   passes an explicit error naming the obligation (`no instance dictionary for `Ord [[Int]]`,
   required by `sameChirho``). As any non-atomic argument it is lowered to a thunk
   (`stg_lower_chirho.rs`), so it fails only if forced. Before, the argument was left out and
-  the next term argument took its place: programs printed nothing more and exited 0.
+  the next term argument took its place: programs printed nothing more and exited 0. The
+  evidence-LESS typed-argument site (an infix use mints no reference occurrence) obeys the
+  same rule through `typed_reference_dicts_chirho`: every slot or none (none → the general
+  path decides), never a partial spine; `3.0 `halfChirho` 2.0` with `(Show a, Fractional a)`
+  under an `Int` key printed `$PAP halfChirho …` for GHC's `"1.5"` (gpt_chirho #27303). Its
+  key comes from the surrounding call, so a dictionary it serves can be at the wrong type;
+  reference evidence for infix uses is the separate cure.
 - A reference occurrence is seen through by every dictionary-parameter lookup
   (`canonical_id_chirho`), and the spine pre-pass leaves an evidenced reference in place so the
   call-site path can read its records; one it finds no evidence for is restored to its

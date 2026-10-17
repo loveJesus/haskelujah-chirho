@@ -4,8 +4,8 @@
 //! scheme has predicates receives one dictionary per predicate, chosen from the
 //! checker's evidence for that reference before any argument-shape guess.
 //! These helpers moved here from `rewrite_chirho.rs`, which keeps only the
-//! dispatch that calls them (gpt_chirho #27285). Two rules hold here: a call
-//! receives a dictionary argument for EVERY predicate, an explicit lazy error
+//! dispatch that calls them (gpt_chirho #27285, #27303). Two rules hold here: a
+//! call, evidenced or not, receives a dictionary argument for EVERY predicate, an explicit lazy error
 //! where none can be built, never a gap its next term argument would fill; and
 //! a whole ground list key the checker proved is never replaced by a guess read
 //! off the argument's syntax.
@@ -93,6 +93,63 @@ impl DictPassCtxChirho {
             };
         }
         result_chirho
+    }
+
+    /// A constrained call reached with no evidence for its reference, only the
+    /// surrounding call's type key (`try_rewrite_typed_dict_param_arg_chirho`;
+    /// an infix use mints no reference occurrence): each predicate's dictionary
+    /// at that key, else the enclosing binding's own. `None` when NONE is
+    /// served, so the general evidence-first path decides; otherwise EVERY slot
+    /// is filled, a missing one with `missing_dictionary_chirho`. A partial
+    /// spine let the term arguments slide into the dictionary slots: `3.0
+    /// `halfChirho` 2.0` with `(Show a, Fractional a)` under an `Int` key printed
+    /// `$PAP halfChirho …` where GHC prints `"1.5"`, in either predicate order.
+    /// The key comes from the surrounding call, so a served dictionary can be
+    /// at the wrong type; giving infix uses reference evidence is the cure.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn typed_reference_dicts_chirho(
+        &self,
+        written_id_chirho: CoreIdChirho,
+        classes_chirho: &[String],
+        type_key_chirho: &str,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+    ) -> Option<CoreExprChirho> {
+        let slots_chirho: Vec<Option<CoreIdChirho>> = classes_chirho
+            .iter()
+            .map(|class_name_chirho| {
+                self.instance_dicts_chirho
+                    .get(&(class_name_chirho.clone(), type_key_chirho.to_string()))
+                    .copied()
+                    .or_else(|| {
+                        Self::fallback_dict_for_class_chirho(
+                            class_name_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                        )
+                    })
+            })
+            .collect();
+        if slots_chirho.iter().all(Option::is_none) {
+            return None;
+        }
+        let mut result_chirho =
+            CoreExprChirho::VarChirho(self.canonical_id_chirho(written_id_chirho));
+        for (class_name_chirho, slot_chirho) in classes_chirho.iter().zip(slots_chirho) {
+            let dict_arg_chirho = match slot_chirho {
+                Some(dict_id_chirho) => CoreExprChirho::VarChirho(dict_id_chirho),
+                None => self.missing_dictionary_chirho(
+                    class_name_chirho,
+                    Some(type_key_chirho),
+                    written_id_chirho,
+                ),
+            };
+            result_chirho = CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(result_chirho),
+                arg_chirho: Box::new(dict_arg_chirho),
+            };
+        }
+        Some(result_chirho)
     }
 
     /// The argument for a predicate that no dictionary serves: an explicit
