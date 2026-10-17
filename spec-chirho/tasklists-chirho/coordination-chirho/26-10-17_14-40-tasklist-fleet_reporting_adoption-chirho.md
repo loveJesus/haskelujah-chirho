@@ -17,3 +17,10 @@ Primary compiler/sender is HASKELUJAH/gpt_chirho; explicit fallback is HASKELUJA
 Local notice #27188 was delivered to the three peers. It requests no individual acknowledgment or AICEO notification. The next substantive combined report records this adoption and the reporter pair, uses existing lane evidence, and identifies actual contributor review, disagreement or unavailability. Delivery of the local notice is not proof of individual adoption or a running schedule. The latest report found in this canonical checkout is September 9; no claim was made about AICEO's latest intake.
 
 This unit creates no consolidated report and sends nothing to AICEO merely to acknowledge DM #2199. The only external coordination action was the local project-room notice. Validation covers the local links/owners, bounded document sizes, exact ledger delta, staged paths, diff hygiene and secret scan. No compiler tests or builds apply to this documentation-only change.
+
+## Next substantive combined report
+
+- [x] Draft one timestamped normal report from the current landed evidence and all four active lane packets, preserving producer attribution and held candidates.
+- [x] Collect local review outcomes; incorporate Claude #27212/#27213 and explicitly name Claude2/Agy reviews not received by the 15:15 EDT cut, without inferring consensus or offline/refusal state.
+- [x] Verify references/quotes, ledger delta, owned scope and staged secret scan; save the complete report and progress row through the designated writer before the single send.
+- [ ] Send AICEO one path-plus-delta notification and retain transport state separately from any acknowledgment/fold.
