@@ -356,6 +356,17 @@ fn a_method_may_use_what_its_contexts_and_instances_give_chirho() {
         ),
         "(True,False)\n"
     );
+    // agy_chirho E03 (#27218): a `where` helper's signature names the instance's
+    // scoped `a`, so its `show` meets the method's rigid `a` too. That skolem
+    // is no binding's own dictionary parameter either: evidence keeps main's
+    // route, and both lines print as GHC prints them.
+    assert_eq!(
+        run_chirho(
+            "ScopedWhereHelperChirho.hs",
+            "{-# LANGUAGE ScopedTypeVariables #-}\nmodule Main where\nclass RenderListChirho a where\n  renderListChirho :: a -> String\ninstance Show a => RenderListChirho [a] where\n  renderListChirho (x:_) = helperChirho x\n    where\n      helperChirho :: a -> String\n      helperChirho y = show (y :: a)\n  renderListChirho [] = \"empty\"\nmain :: IO ()\nmain = do\n  putStrLn (renderListChirho [42 :: Int])\n  putStrLn (renderListChirho [True])\n",
+        ),
+        "42\nTrue\n"
+    );
     // V07: the method's own context `Show b`.
     assert_eq!(
         run_chirho(
