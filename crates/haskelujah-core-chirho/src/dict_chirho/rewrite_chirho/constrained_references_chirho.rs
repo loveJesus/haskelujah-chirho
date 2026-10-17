@@ -225,32 +225,6 @@ impl DictPassCtxChirho {
         spellings_chirho
     }
 
-    /// Each whole-word `String` in a key spelled `[Char]`: `[String]` →
-    /// `[[Char]]`, `Maybe String` → `Maybe [Char]`. A word is a maximal run of
-    /// identifier characters (letters, digits, `_`, `'`, `.`), so `ByteString`
-    /// or `StringBoxChirho` is never touched.
-    fn string_spelled_out_chirho(key_chirho: &str) -> String {
-        let mut spelled_chirho = String::with_capacity(key_chirho.len() + 8);
-        let mut word_chirho = String::new();
-        let identifier_char_chirho =
-            |ch_chirho: char| ch_chirho.is_alphanumeric() || matches!(ch_chirho, '_' | '\'' | '.');
-        for ch_chirho in key_chirho.chars().chain(std::iter::once(' ')) {
-            if identifier_char_chirho(ch_chirho) {
-                word_chirho.push(ch_chirho);
-                continue;
-            }
-            if word_chirho == "String" {
-                spelled_chirho.push_str("[Char]");
-            } else {
-                spelled_chirho.push_str(&word_chirho);
-            }
-            word_chirho.clear();
-            spelled_chirho.push(ch_chirho);
-        }
-        spelled_chirho.pop();
-        spelled_chirho
-    }
-
     /// A whole list key the checker proved (`[Int]`, `[[Int]]`, `[Char]`),
     /// as opposed to the head key `[]` of a list over a variable.
     fn is_whole_list_key_chirho(key_chirho: &str) -> bool {
