@@ -155,6 +155,108 @@ fn if_expression_infers_chirho() {
     );
 }
 
+/// A program GHC rejects because an `if` condition's variable is a Bool that a
+/// caller uses at another type. Our rejection must be that type mismatch.
+fn assert_if_condition_mismatch_chirho(file_name_chirho: &str, source_chirho: &str) {
+    let errors_chirho = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+    )
+    .map(|_| ())
+    .expect_err(file_name_chirho);
+    let text_chirho = format!("{errors_chirho}");
+    assert!(
+        text_chirho.contains("type mismatch") && text_chirho.contains("Bool"),
+        "{file_name_chirho}: rejected, but not as Bool against the caller's type: {text_chirho}"
+    );
+}
+
+/// An `if` condition is a Bool for the whole of the enclosing definition's
+/// type, wherever the condition's variable came from. GHC 9.14.1 rejects every
+/// program here with GHC-83865, "Couldn't match expected type 'Bool'" against
+/// the caller's Char, Int or (); before the repair each one was accepted.
+#[test]
+fn an_if_condition_makes_its_variables_bool_chirho() {
+    for (file_name_chirho, source_chirho) in [
+        (
+            "IfParameterChirho.hs",
+            "module Main where\ngChirho v = if v then (1 :: Int) else 0\nmain :: IO ()\nmain = print (gChirho 'x')\n",
+        ),
+        (
+            "IfConditionInBranchesChirho.hs",
+            "module Main where\ngChirho v = if v then v else v\nmain :: IO ()\nmain = print (gChirho 'x')\n",
+        ),
+        (
+            "IfFirstOfTwoChirho.hs",
+            "module Main where\ngChirho v w = if v then w else w\nmain :: IO ()\nmain = print (gChirho 'x' ())\n",
+        ),
+        (
+            "IfInLambdaChirho.hs",
+            "module Main where\ngChirho = \\v -> if v then \"y\" else \"n\"\nmain :: IO ()\nmain = putStrLn (gChirho (3 :: Int))\n",
+        ),
+        (
+            "IfInWhereChirho.hs",
+            "module Main where\nfChirho x = hChirho x\n  where hChirho v = if v then (1 :: Int) else 0\nmain :: IO ()\nmain = print (fChirho 'c')\n",
+        ),
+        (
+            "IfThroughIdChirho.hs",
+            "module Main where\ngChirho v = if id v then (1 :: Int) else 0\nmain :: IO ()\nmain = print (gChirho 'c')\n",
+        ),
+        (
+            "IfInAlternativeChirho.hs",
+            "module Main where\ngChirho m = case m of\n  Just v -> if v then (1 :: Int) else 0\n  Nothing -> 0\nmain :: IO ()\nmain = print (gChirho (Just 'x'))\n",
+        ),
+        (
+            "IfInStatementChirho.hs",
+            "module Main where\nactChirho v = if v then putStrLn \"a\" else pure ()\nmain :: IO ()\nmain = actChirho ()\n",
+        ),
+    ] {
+        assert_if_condition_mismatch_chirho(file_name_chirho, source_chirho);
+    }
+}
+
+/// The condition binds only its own variables. Each program here is accepted
+/// by GHC 9.14.1 and must stay polymorphic in everything the condition does
+/// not touch: branches used at two types, let-generalised and recursive
+/// definitions, a rank-N signature (the expected-type path), and a where
+/// helper whose result comes from its enclosing function.
+#[test]
+fn an_if_condition_leaves_everything_else_polymorphic_chirho() {
+    for (file_name_chirho, source_chirho) in [
+        (
+            "IfPickTwoTypesChirho.hs",
+            "module Main where\npickChirho b x y = if b then x else y\nmain :: IO ()\nmain = print (pickChirho False \"a\" \"b\", pickChirho True 1 (2 :: Int))\n",
+        ),
+        (
+            "IfHigherOrderChirho.hs",
+            "module Main where\ntwiceChirho f b x = if b then f (f x) else x\nmain :: IO ()\nmain = print (twiceChirho (+ 1) True (1 :: Int), twiceChirho not False True)\n",
+        ),
+        (
+            "IfLetPolymorphicChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = let pickChirho b x y = if b then x else y in print (pickChirho True 'a' 'b', pickChirho False 1 (2 :: Int))\n",
+        ),
+        (
+            "IfLetInConditionChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = let idfChirho x = x in print (if idfChirho True then idfChirho 'a' else 'b')\n",
+        ),
+        (
+            "IfRecursiveChirho.hs",
+            "module Main where\ncountChirho v n = if n == (0 :: Int) then v else countChirho v (n - 1)\nmain :: IO ()\nmain = print (countChirho 'z' 3, countChirho True 2)\n",
+        ),
+        (
+            "IfRankNChirho.hs",
+            "{-# LANGUAGE RankNTypes #-}\nmodule Main where\napplyChirho :: Bool -> (forall a. a -> a) -> (Int, Char)\napplyChirho b f = if b then (f 1, f 'a') else (f 2, f 'b')\nmain :: IO ()\nmain = print (applyChirho True id, applyChirho False id)\n",
+        ),
+        (
+            "IfWhereResultChirho.hs",
+            "module Main where\nfChirho x b = hChirho b\n  where hChirho v = if v then x else x\nmain :: IO ()\nmain = print (fChirho 'q' True, fChirho (3 :: Int) False)\n",
+        ),
+    ] {
+        assert_compile_success_chirho(file_name_chirho, source_chirho);
+    }
+}
+
 #[test]
 fn list_literal_infers_chirho() {
     assert_compile_success_chirho(
