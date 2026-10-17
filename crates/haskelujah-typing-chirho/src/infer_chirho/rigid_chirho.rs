@@ -127,6 +127,8 @@ impl InferCtxChirho {
     /// (an inaccessible arm). Keep independent consistent equations so fields
     /// retain their declared types, then let normal field/body checking run.
     /// Family-containing results never enter this generative decomposition.
+    /// Applied and partial constructor spines of different arity supply no
+    /// argument equalities, including when nested inside another index.
     fn refine_constructor_indices_chirho(
         &mut self,
         left_chirho: &TyChirho,
@@ -142,7 +144,9 @@ impl InferCtxChirho {
                     TyChirho::AppChirho(right_fun_chirho, right_arg_chirho),
                 ) if Self::ty_outer_head_name_chirho(&left_norm_chirho).is_some()
                     && Self::ty_outer_head_name_chirho(&left_norm_chirho)
-                        == Self::ty_outer_head_name_chirho(&right_norm_chirho) =>
+                        == Self::ty_outer_head_name_chirho(&right_norm_chirho)
+                    && collect_app_spine_chirho(&left_norm_chirho).1.len()
+                        == collect_app_spine_chirho(&right_norm_chirho).1.len() =>
                 {
                     Some(vec![
                         (left_fun_chirho, right_fun_chirho),

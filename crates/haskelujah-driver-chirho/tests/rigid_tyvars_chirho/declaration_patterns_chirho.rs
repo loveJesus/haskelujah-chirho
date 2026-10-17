@@ -704,3 +704,88 @@ main = putStrLn (((error "must-not-force-chirho" :: Int) `ThreeChirho` 2) `seq` 
         assert_output_chirho(file_chirho, source_chirho, expected_chirho);
     }
 }
+
+#[test]
+fn constructor_index_applications_keep_argument_positions_chirho() {
+    assert_rejected_with_chirho(
+        "spine_rigid_mismatch_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, PolyKinds, RankNTypes #-}
+module Main where
+import Data.Kind (Type)
+data PChirho aChirho bChirho = MkPChirho aChirho bChirho
+data GChirho :: forall kChirho. kChirho -> Type where
+  MkGChirho :: Bool -> GChirho (PChirho Int Bool)
+badChirho :: GChirho (PChirho aChirho) -> aChirho
+badChirho (MkGChirho xChirho) = xChirho
+main :: IO ()
+main = pure ()
+"#,
+        "Bool",
+    );
+    assert_accepted_chirho(
+        "spine_consistent_component_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, PolyKinds, RankNTypes #-}
+module Main where
+import Data.Kind (Type)
+data PChirho aChirho bChirho = MkPChirho aChirho bChirho
+data GChirho :: forall kChirho. kChirho -> Type where
+  MkGChirho :: Int -> GChirho (PChirho Int Bool)
+goodChirho :: GChirho (PChirho aChirho Char) -> aChirho
+goodChirho (MkGChirho xChirho) = xChirho
+main :: IO ()
+main = pure ()
+"#,
+    );
+    assert_rejected_with_chirho(
+        "spine_wrapped_rigid_mismatch_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, PolyKinds, RankNTypes #-}
+module Main where
+import Data.Kind (Type)
+data PChirho aChirho bChirho = MkPChirho aChirho bChirho
+data QChirho :: forall kChirho. kChirho -> Type where
+  MkQChirho :: QChirho xChirho
+data GChirho :: forall kChirho. kChirho -> Type where
+  MkGChirho :: Bool -> GChirho (QChirho (PChirho Int Bool))
+badChirho :: GChirho (QChirho (PChirho aChirho)) -> aChirho
+badChirho (MkGChirho xChirho) = xChirho
+main :: IO ()
+main = pure ()
+"#,
+        "Bool",
+    );
+    assert_accepted_chirho(
+        "spine_wrapped_consistent_component_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, PolyKinds, RankNTypes #-}
+module Main where
+import Data.Kind (Type)
+data PChirho aChirho bChirho = MkPChirho aChirho bChirho
+data QChirho :: forall kChirho. kChirho -> Type where
+  MkQChirho :: QChirho xChirho
+data GChirho :: forall kChirho. kChirho -> Type where
+  MkGChirho :: Int -> GChirho (QChirho (PChirho Int Bool))
+goodChirho :: GChirho (QChirho (PChirho aChirho Char)) -> aChirho
+goodChirho (MkGChirho xChirho) = xChirho
+main :: IO ()
+main = pure ()
+"#,
+    );
+    assert_accepted_chirho(
+        "spine_inaccessible_constant_chirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, PolyKinds, RankNTypes #-}
+module Main where
+import Data.Kind (Type)
+data PChirho aChirho bChirho = MkPChirho aChirho bChirho
+data GChirho :: forall kChirho. kChirho -> Type where
+  MkGChirho :: Bool -> GChirho (PChirho Int Bool)
+badChirho :: GChirho (PChirho aChirho) -> Int
+badChirho (MkGChirho xChirho) = 5
+main :: IO ()
+main = pure ()
+"#,
+    );
+}

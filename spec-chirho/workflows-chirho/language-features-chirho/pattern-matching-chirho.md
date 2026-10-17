@@ -244,3 +244,5 @@ also pass their exact runtime controls. GADT arity metadata and native execution
 are not established by those interpreter measurements.
 
 Constructor operator applications and operator-section bodies use the same enforce_strict_fields_chirho path as prefix constructor application. It forces declared strict fields only at full constructor arity, preserving lazy fields, uncalled sections and partial applications. Exact interpreter controls cover each behavior; native execution remains a separate gate. Faithful derived instance heads also require a shared typed/written method identity and compatible call-site selection. A typecheck recovery alone cannot establish runtime compatibility when a previously working Eq call no longer finds its binding.
+
+Generative GADT index decomposition compares the complete constructor-spine arity at every recursive application, including a nested poly-kinded wrapper. An equality between a fully applied type and a partial application supplies no component equations; valid independent same-arity components are still retained. Existential variables that were instantiated flexibly remain a separate checking boundary.
