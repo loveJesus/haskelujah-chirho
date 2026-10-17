@@ -56,12 +56,12 @@ flowchart TD
     recursive_ref_chirho[Unsigned recursive reference: span and matching monomorphic assumption] --> pending_ref_chirho[RecursiveReferencesChirho retains source identity through substitutions]
     pending_ref_chirho --> finish_ref_chirho[finish_recursive_references_chirho: SCC generalization supplies predicates for those same type variables]
     finish_ref_chirho --> finalize_ref_chirho
-    capture_ref_chirho --> finalize_ref_chirho[finalize_reference_evidence_chirho: concrete head → key; rigid or generalized variable → OWN_DICTIONARY_KEY_CHIRHO; open → nothing]
+    capture_ref_chirho --> finalize_ref_chirho[finalize_reference_evidence_chirho: a ground list → its whole key, ground_list_key_chirho; any other concrete type → its head; rigid or generalized variable → OWN_DICTIONARY_KEY_CHIRHO; open → nothing]
     method_chirho[Method occurrence at a rigid variable] --> own_chirho[finalize_occurrence_records_chirho: OWN_DICTIONARY_KEY_CHIRHO instead of the Int default]
     desugar_ref_chirho[Desugar: reference to a name whose scheme carries predicates → reference_occurrence_chirho mints an occurrence id, canonical = the binding]
     finalize_ref_chirho --> join_ref_chirho[Driver: reference_evidence by occurrence id, span-first]
     desugar_ref_chirho --> join_ref_chirho
-    join_ref_chirho --> callsite_chirho[Pass: dictionary-parameter call site and bare reference — evidence_dict_for_class_chirho per predicate: instance dictionary for a key, the binding's own parameter for OWN, today's guess for nothing]
+    join_ref_chirho --> callsite_chirho[Pass: dictionary-parameter call site and bare reference — apply_reference_dicts_chirho per predicate: instance dictionary for a key, the binding's own parameter for OWN, today's guess for nothing; a proven whole list key never yields to the guess; no dictionary → missing_dictionary_chirho, an explicit lazy error]
     own_chirho --> selector_chirho[Pass: try_rewrite_method_var_chirho — $sel_C_m applied to the binding's own dictionary parameter]
 ```
 
@@ -70,6 +70,19 @@ flowchart TD
   dictionary binder by predicate index as well as by class, so two predicates of one class are
   two parameters. The class-only form (`$own`) remains for superclass extractions and for
   generalized variables, where the pass's class-keyed parameter is the right one.
+- Ground list keys and complete arguments (2026-10-17, gpt_chirho #27285). List dictionaries
+  and method rows are named per element (`$fOrd[Int]`, `$prim_Eq_==_[Int]`, `$fOrd[Char]` for
+  `String`); the head `[]` names none of them. So a list whose every part is ground keeps its
+  whole key, `ground_list_key_chirho` (`infer_chirho/evidence_chirho.rs`), in reference
+  evidence and in method occurrence records for every class (`Show` already did); the lookup
+  keeps `[]` as its fallback. A whole key the checker proved is never replaced by the
+  argument-shape guess, which reads the element off the syntax and collapses `[[Int]]` to
+  `[Int]`. And a call receives a dictionary for EVERY predicate: where none can be built,
+  `missing_dictionary_chirho` (`dict_chirho/rewrite_chirho/constrained_references_chirho.rs`)
+  passes an explicit error naming the obligation (`no instance dictionary for `Ord [[Int]]`,
+  required by `sameChirho``). As any non-atomic argument it is lowered to a thunk
+  (`stg_lower_chirho.rs`), so it fails only if forced. Before, the argument was left out and
+  the next term argument took its place: programs printed nothing more and exited 0.
 - A reference occurrence is seen through by every dictionary-parameter lookup
   (`canonical_id_chirho`), and the spine pre-pass leaves an evidenced reference in place so the
   call-site path can read its records; one it finds no evidence for is restored to its

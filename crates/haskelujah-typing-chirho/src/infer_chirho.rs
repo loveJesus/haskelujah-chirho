@@ -7054,6 +7054,7 @@ impl InferCtxChirho {
                     .then(|| evidence_chirho::concrete_show_key_chirho(&resolved_chirho, false))
                     .flatten();
                     let key_chirho = resolved_show_key_chirho
+                        .or_else(|| evidence_chirho::ground_list_key_chirho(&resolved_chirho))
                         .or_else(|| head_key_chirho(&resolved_chirho))
                         .or(hinted_key_chirho)
                         .or_else(|| default_occurrence_key_chirho(class_chirho))?;

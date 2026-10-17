@@ -8,6 +8,8 @@
 use haskelujah_driver::eval_source_with_machine_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+mod ground_keys_chirho;
+
 fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     match eval_source_with_machine_chirho(

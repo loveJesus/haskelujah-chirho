@@ -352,7 +352,7 @@ impl InferCtxChirho {
                     None
                 }
             }
-            _ => literal_head_key_chirho(ty_chirho),
+            _ => ground_list_key_chirho(ty_chirho).or_else(|| literal_head_key_chirho(ty_chirho)),
         }
     }
 
@@ -519,6 +519,23 @@ pub(super) fn concrete_show_key_chirho(
                 key_chirho
             })
         }
+    }
+}
+
+/// The key of a type the dictionary registry names by its WHOLE spelling: a
+/// list whose every part is ground keeps it (`[Int]`, `[[Int]]`, `[Char]` for
+/// a top-level `String`), because list dictionaries and method rows are named
+/// per element (`$fOrd[Int]`, `$prim_Eq_==_[Int]`) and the head `[]` names none
+/// of them. Every other type, and any list over a variable, gets `None` here
+/// and keeps its head key.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(super) fn ground_list_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
+    match ty_chirho {
+        TyChirho::ListChirho(_) => concrete_show_key_chirho(ty_chirho, false),
+        TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {
+            concrete_show_key_chirho(ty_chirho, false)
+        }
+        _ => None,
     }
 }
 
