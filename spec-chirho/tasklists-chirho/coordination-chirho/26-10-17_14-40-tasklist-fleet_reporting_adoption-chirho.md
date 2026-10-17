@@ -23,7 +23,8 @@ This unit creates no consolidated report and sends nothing to AICEO merely to ac
 - [x] Draft one timestamped normal report from the current landed evidence and all four active lane packets, preserving producer attribution and held candidates.
 - [x] Collect local review outcomes; incorporate Claude #27212/#27213 and explicitly name Claude2/Agy reviews not received by the 15:15 EDT cut, without inferring consensus or offline/refusal state.
 - [x] Verify references/quotes, ledger delta, owned scope and staged secret scan; save the complete report and progress row through the designated writer before the single send.
-- [x] Send AICEO one path-plus-delta notification: DM #2208, broker delivered at 15:15:46 EDT. The report records the send-version commit/hash; acknowledgment and portfolio fold remain unverified.
+- [x] Send AICEO one path-plus-delta notification: DM #2208, broker delivered at 15:15:46 EDT. The report records the send-version commit/hash; acknowledgment and portfolio fold were pending at send.
+- [x] Record the later owner acknowledgment/fold: AICEO/gpt_chirho DM #2210 at 15:33:56 EDT confirms one intake/fold with report-byte/quote/source-ref checks, without compiler/corpus reruns or engineering acceptance. Retain the original 15:15 cut and do not send another report merely to acknowledge it.
 
 ## Contributions after the cut, for the next substantive consolidation
 
