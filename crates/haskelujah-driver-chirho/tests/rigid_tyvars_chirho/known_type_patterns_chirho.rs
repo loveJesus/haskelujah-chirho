@@ -6,7 +6,7 @@
 //! the source checkpoint; no source-only pass or corpus gain is claimed.
 //! workflow: language-features-chirho/pattern-matching-chirho
 
-use super::{assert_accepted_chirho, assert_rejected_with_chirho};
+use super::{assert_accepted_chirho, assert_output_chirho, assert_rejected_with_chirho};
 
 #[test]
 fn adversarial_chirho() {
@@ -650,17 +650,6 @@ main = print (fChirho (BoxChirho ReflChirho True), fChirho (BoxChirho ReflChirho
             "(7,0)\n",
         ),
     ] {
-        let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
-        let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
-            source_chirho,
-            &mut source_map_chirho,
-            file_name_chirho,
-            None,
-        )
-        .unwrap_or_else(|error_chirho| panic!("{file_name_chirho}: {error_chirho}"));
-        assert_eq!(
-            machine_chirho.io_output_chirho, expected_chirho,
-            "{file_name_chirho}"
-        );
+        assert_output_chirho(file_name_chirho, source_chirho, expected_chirho);
     }
 }

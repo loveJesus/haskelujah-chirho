@@ -126,6 +126,13 @@ controls also matched the frozen main CLI before the candidate build. Numeric,
 fractional and OverloadedStrings pattern obligations, incomplete imported metadata
 and full existential-escape checking remain explicit boundaries.
 
+`tests/rigid_tyvars_chirho/known_type_contexts_chirho.rs` adds the source review's
+positive context controls: equality givens, refinements reaching later patterns,
+pattern synonyms, supported family reduction and imported constructors. The eleven
+sources check on GHC and frozen current main; ten also match exact runtime output.
+Imported infix constructor bindings and malformed constructor arity recovery remain
+measured residuals. These baseline controls do not establish candidate behavior.
+
 ## The rules it implements
 
 - A pattern binding is LAZY: nothing is forced where it is bound, so an unused variable never

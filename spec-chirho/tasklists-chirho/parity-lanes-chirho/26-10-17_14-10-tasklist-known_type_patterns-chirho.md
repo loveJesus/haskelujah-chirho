@@ -23,7 +23,7 @@ The first supported repair concerns structural/constructor patterns. Literal-pat
 - [x] Build a GHC-measured control matrix across equations, cases and guards: generic rigid sibling negatives, specialized equality positives, concrete constructor/tuple/list mismatch negatives, nested constructors/records, wrappers and lexical escape controls.
 - [x] Implement constructor-result-first binding and remove whole-pattern refinement promotion on known-type paths. Preserve constructor contexts, higher-rank fields, unknown metadata boundaries and source positions.
 - [x] Publish source-only checkpoint for peer review before Cargo.
-- [ ] Merge current main into the isolated candidate before validation if another unit lands; verify source scope and resolve only owned changes.
+- [x] Merge current main c4e192cc into the isolated candidate at 74822ffc, preserving the landed comprehension parser repair; no conflicts or worktree DB writes.
 - [ ] Take a named builder lease; focused typing/guard tests, negative and positive executions, corpus pair with unchanged accept membership, replay/execution boundaries and one mutation per repaired evidence rule.
 - [ ] Independently review and land the measured candidate, close progress row, audit owned commit scope and gitleaks, then release the builder/main/DB leases explicitly.
 
@@ -54,3 +54,13 @@ Retained evidence in this worktree: `tmp-chirho/known-type-patterns-1017-chirho/
 Proposed meaningful mutations for the later gate: restore whole-pattern promotion (generic sibling cases/guards wrongly accept), allow a GADT to refine a bare rigid scrutinee (P04b wrongly accepts), check fields before the known result (partial/nested GADT controls), ignore structural mismatch errors (equation tuple/list/constructor negatives), omit growing record-field substitution (constructor-only record sibling), and open higher-rank field foralls (positive field/runtime controls). Each needs a measured behavioral difference before it is counted as caught; redundant mutations are reported as such.
 
 Source checkpoint bf80c304 was sent in broker #27210 (three deliveries). Compiler/test sources remain exactly bf80c304; this follow-up records publication only. Peer review, a named builder lease and all candidate gates remain pending.
+
+## Source review and contextual positive controls
+
+Claude2 #27228 found no source blocker within the requested four areas: result-first constructor binding, same-known-outer-type refinement, direct known-type case/guard entry and preserved higher-rank fields. This is a scoped source verdict; candidate behavior remains unmeasured. Agy's separate source review remains pending.
+
+GPT independently measured Chirho-renamed copies of all 13 review sources on GHC 9.14.1 and frozen current-main dda4b202 (source f36a5975, main c4e192cc), retaining original/copy hashes and every command/output. The 50 commands comprise check pairs for all sources and runtime pairs except the malformed-arity source. Eleven positive sources become two focused tests in `tests/rigid_tyvars_chirho/known_type_contexts_chirho.rs`: equality givens for tuple/constructor patterns, refinement reaching later tuple/character/string arguments and case siblings, signed/unsigned pattern synonyms, family reduction and imported constructors. All eleven check on both baselines, and ten have identical successful GHC/main stdout. The full imported-constructor source is check-only.
+
+Imported infix `:|` and `:+` runtime bindings fail on current main, independently reproduced with the full and reduced imported-constructor sources; neither is a candidate regression or a successful runtime control. KR11's over-applied `Just` is rejected by GHC and accepted by current main. Constructor arity recovery remains the existing explicit boundary, with no new test that pins its wrong acceptance. These residual sources and raw receipts stay in `tmp-chirho/known-type-patterns-1017-chirho/review-contexts-chirho/`.
+
+The existing five runtime controls and ten new runtime positives share one output assertion in the integration-test parent. There are now 54 distinct embedded sources across the two child modules; they were measured on their stated frozen baselines, not on this unbuilt candidate. The only additions after bf80c304 are these test controls/helpers and main's already-landed parser source. Rustfmt is parsing/style verification only. Cargo remains withheld until the named return from Claude's revised instance-method gate; no source landing or push.

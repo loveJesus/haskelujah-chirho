@@ -23,6 +23,21 @@ fn assert_accepted_chirho(file_name_chirho: &str, source_chirho: &str) {
     }
 }
 
+fn assert_output_chirho(file_name_chirho: &str, source_chirho: &str, expected_chirho: &str) {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        file_name_chirho,
+        None,
+    )
+    .unwrap_or_else(|error_chirho| panic!("{file_name_chirho}: {error_chirho}"));
+    assert_eq!(
+        machine_chirho.io_output_chirho, expected_chirho,
+        "{file_name_chirho}"
+    );
+}
+
 fn assert_rejected_with_chirho(file_name_chirho: &str, source_chirho: &str, needle_chirho: &str) {
     match check_chirho(file_name_chirho, source_chirho) {
         Ok(()) => panic!("{file_name_chirho}: GHC rejects this program, we accepted it"),
@@ -155,5 +170,7 @@ fn polymorphic_recursion_with_signature_accepted_chirho() {
     );
 }
 
+#[path = "rigid_tyvars_chirho/known_type_contexts_chirho.rs"]
+mod known_type_contexts_chirho;
 #[path = "rigid_tyvars_chirho/known_type_patterns_chirho.rs"]
 mod known_type_patterns_chirho;
