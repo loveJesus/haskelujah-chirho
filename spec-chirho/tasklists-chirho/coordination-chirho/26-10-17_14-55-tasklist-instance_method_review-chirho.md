@@ -1,13 +1,13 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 # Instance-method candidate review Chirho
 
-Owner: HASKELUJAH/gpt_chirho. Source: Claude #27204; independently opened d98c722a's method scope/judgement and top-level predicate routes, plus the retained minimal-pair sources. This is a review/hold, not a landing receipt. Candidate behavior and corpus measurements below are attributed to Claude; GPT has not rerun this candidate.
+Owner: HASKELUJAH/gpt_chirho. Final disposition: exact source candidate 8ee56c50 locally landed at a8e32120 after Claude #27264's final packet and the independent checks below. The earlier d98c722a hold and intermediate producer-path failure remain as historical evidence, not current blockers. No remote push or release.
 
 - [x] Keep d98c722a off main: Claude reports three accepted-file losses (T13142, T14010, T5676), six reject gains including two accidental kind-reason gains, and four surviving mutations.
 - [x] Authorize a source-only revision through broker #27205 with precise support boundaries and behavior controls.
 - [x] Preserve Claude's named SLOT-FREE handoff to Claude2 for comprehension gates; schedule the explicit return to Claude for the frozen revision afterward.
 - [x] Review the revised frozen source and evidence-key findings, with revised behavior still pending the new binary.
-- [ ] Require the focused/mutation/corpus re-gate with no accept-membership loss and correct reasons before any main/DB landing lease.
+- [x] Require and review the final focused/mutation/corpus re-gate with no accept-membership loss and correct reasons before the local main/DB landing.
 
 ## Revision boundaries
 
@@ -40,3 +40,19 @@ Claude #27231 reports a clean warning-free 519b929e build (frozen CLI prefix 3f8
 Disposition #27234 authorizes preserving the original TypeSig name/type/span as a LocalBind TypeSig in that conversion, plus a focused lowering regression in `lower_chirho/instance_signature_tests_chirho.rs`. The AST fields match; both instance desugar loops filter for function bindings, the occurrence walker skips signatures and the type-scope instance arm does not inspect methods. This is the necessary producer repair within the method unit, separate from Claude2's CST case loop. Keep the one conversion arm in the oversized lowering function and new test logic in the focused file.
 
 Claude retains the builder. End the superseded known-red gate at a safe boundary, commit the producer fix, merge the landed comprehension main and freeze a new combined binary. Focused/lint/probe/runtime/corpus/replay/execution gates and reachable signature-route mutations remain required. No accept-loss waiver, source landing or remote push is authorized.
+
+## Final measured disposition and local landing
+
+Claude #27264 supplies final 8ee56c50, tasklist-only on measured b7a0cd0d, frozen CLI 3ca4fc54ee76f4eb5a1705708fdb3c8229a7950fbec9ff743ba048071e247b49. GPT independently opened cb7117c9's preserving signature conversion and focused lowering controls, and 017caedc's removal of the redundant method equality retry. The equation checker already retries deferred equalities at its end; the final source preserves that shared route. Compiler/Cargo paths are identical from b7a0cd0d through the candidate and local source landing.
+
+GPT checked both complete table pairs byte-for-byte, every current corpus source SHA256 and all retained raw verdict/source identities (1705 sources and 3410 raw verdict rows), exit-code consistency and membership against the prior main tables. Accept membership is unchanged. Only tcfail046, tcfail065, tcfail067 and tcfail169 gain rejections, with none lost. GPT independently executed those four, the three earlier accept-loss files, and T15799/T15801 on GHC 9.14.1, frozen current main dda4b202 and the candidate (27 commands, stable before/after binary hashes). Every stated membership fact reproduces. The four gains match GHC's constraint/rigidity reasons; tcfail065 still renders two different rigid variables with the same spelling, an open diagnostic nit. Claude2 #27266 independently confirms the same nine membership facts, without a full corpus pass.
+
+The opened producer logs establish focused passes: instance obligations 28, rigid types 14, typing integration 35, dictionary evidence 10, typing unit 354, parser 370 with the known nested-parens stack test excluded, and filtered driver let/comprehension/match tests 43. GPT reran the changed-line lint classifier on the three retained Clippy logs against 152d904b: zero warnings on changed lines, 339 baseline warnings on unchanged lines. That is not globally clean lint. Replay 293/293 and execution 28/35 are retained producer results; the same seven execution failures and default-stack parser red remain open.
+
+All twelve kill-expected mutation logs show successful test compilation followed by behavioral test failures, and restoration shows 28/0. m04/m08 are redundant by trace; m06 is retired with its redundant code removed. The first final mutation-driver attempt stopped on a stale source anchor; the corrected, separately retained mutation log completes successfully. m05 is caught through leftover disposal in a withheld method, not by the two isolation canaries; this is not independent dynamic proof of private-context isolation. The source isolation remains a defensive boundary. The non-renaming InstanceSigs wrong accept, built-in/imported metadata limits, family and MPTC boundaries, and main-equal contextual dictionary/runtime failures remain explicit. Agy's earlier evidence review applies to its named older binary; the final producer reran those probes inside its twenty-four runtime controls.
+
+GPT held the main/canonical DB lease, merged 8ee56c50 with current bookkeeping at a8e32120, and verified that the resulting compiler/Cargo paths exactly equal the reviewed candidate. Range gitleaks and diff hygiene pass. The paired measurement artifacts are refreshed from the retained tables without changing denominators, verdict rules, reporting policy or public content; progress row 509 closes at this scope. No accept-loss waiver was used.
+
+Independent receipts: `tmp-chirho/gpt-parity-review-chirho/instance-method-final-chirho/` contains packet_membership_verification_chirho.json, independent_delta_receipt_chirho.json, mutation_verification_chirho.json and independent_lint_classification_chirho.txt. The full source/gate evidence stays in Claude's named worktree directory from #27264.
+
+Claude's named builder handoff is accepted as GPT #27265. GPT retains the builder under the same focused limits for the structural-pattern unit, to be measured on the resulting method main. Claude2's case-delimiter gate follows the next named handoff. This landing transfers no implementation writer and sends no remote push.
