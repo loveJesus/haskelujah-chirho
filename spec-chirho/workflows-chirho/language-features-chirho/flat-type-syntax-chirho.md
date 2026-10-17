@@ -57,7 +57,8 @@ Nothing in the AST recorded the loss, so no later phase could guard against it.
 
 ```mermaid
 flowchart TD
-    A[class / instance / deriving instance tokens] --> B[split at the declaration's own =>, parenthesis depth 0]
+    A0[class / instance / deriving instance node] --> A[semantic tokens: comments, whitespace, layout and PRAGMAS are trivia]
+    A --> B[split at the declaration's own =>, parenthesis depth 0]
     B --> C{instance or deriving: leading forall telescope?}
     C -->|yes| D[strip_instance_forall_chirho: binders are not context and not head]
     C -->|no| E[tokens before =>]
@@ -90,6 +91,18 @@ path and are tested on their own:
   read the annotation as one more argument (`n Nat`). The record-field caller
   also swallowed every `::` after the first, so the annotation never reached the
   grammar; only the first `::` separates field names from the field type.
+
+- **A pragma is trivia here, as in the lexer.** The lexer counts `{-# ... #-}` as trivia and
+  the CST parser skips it, but the lowerer's own trivia set (`is_trivia_token_kind_chirho`)
+  left pragmas out. In `instance {-# OVERLAPPING #-} Eq (T Int)` the pragma became the first
+  head token, and the head takes its class only from a first constructor token, so the class
+  fell back to a placeholder and the instance belonged to no class. An Eq instance alone
+  reported E0204; beside `Eq (T a)` it vanished silently, which let the generic-head identity
+  answer for it (claude_chirho #27375, claude2_chirho #27376). Standalone deriving shares the
+  head parser and lost its class the same way. A leading pragma also hid a `forall`
+  telescope from the strip. The overlap pragma's meaning is not implemented: it is dropped
+  like a comment, and the declaration is kept. The LANGUAGE, INLINE and SPECIALIZE readers
+  walk a node's raw children, not its semantic tokens, so they still see their pragmas.
 
 Two consumers had been living on the mis-scoped forall and changed with it. The naming phase
 walks a declaration header's inline result kind (`data P5 :: forall a . k -> Type`) with the
