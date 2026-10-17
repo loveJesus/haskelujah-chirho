@@ -177,7 +177,7 @@ Tracked in `spec-chirho/tasklists-chirho/26-09-30_00-25-tasklist-full_pattern_ma
 
 ## Record-pattern producer Chirho
 
-Assigned record fields enter parse_record_pat_fields_chirho's ordinary pattern parser. Literals, wildcards, constructor applications and nested tuple/record delimiters therefore reach lower_record_pat_chirho as pattern nodes, where the common literal decoder preserves values, spans and origins. Field puns and RecordWildCards retain their field-name/token route. After an assignment, leftover expression tokens create a syntax error rather than disappearing into a field pun. Known-type checking then uses the same constructor-result and sibling-substitution rules as other patterns.
+Assigned record fields enter parse_record_pat_fields_chirho's ordinary pattern parser. Literals, wildcards, constructor applications and nested tuple/record delimiters therefore reach lower_record_pat_chirho as pattern nodes, where the common literal decoder preserves values, spans and origins. Field puns and RecordWildCards retain their field-name/token route. After an assignment, leftover expression tokens create a CST error node. The frontend currently still accepts a partial AST in this malformed-expression case; surfacing parser error nodes is an explicit separate diagnostics gap. Known-type checking uses the same constructor-result and sibling-substitution rules as other patterns.
 
 ```mermaid
 flowchart TD

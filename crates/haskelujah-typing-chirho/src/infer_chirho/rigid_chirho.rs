@@ -96,13 +96,14 @@ impl InferCtxChirho {
             let scrutinee_norm_chirho = self.normalize_ty_chirho(scrutinee_chirho);
             let result_head_chirho = Self::ty_outer_head_name_chirho(&result_norm_chirho);
             let scrutinee_head_chirho = Self::ty_outer_head_name_chirho(&scrutinee_norm_chirho);
-            if result_head_chirho.is_some() && result_head_chirho == scrutinee_head_chirho {
-                if let Some(subst_chirho) = self.refine_skolems_by_unification_chirho(
+            if result_head_chirho.is_some()
+                && result_head_chirho == scrutinee_head_chirho
+                && let Some(subst_chirho) = self.refine_skolems_by_unification_chirho(
                     &result_norm_chirho,
                     &scrutinee_norm_chirho,
-                ) {
-                    return Some(subst_chirho);
-                }
+                )
+            {
+                return Some(subst_chirho);
             }
         }
         self.report_unify_error_chirho(&unify_err_chirho);

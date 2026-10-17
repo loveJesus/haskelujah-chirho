@@ -165,11 +165,11 @@ impl LowerCtxChirho {
         // Detect `..` wildcard token (RecordWildCards)
         let mut has_wildcard_chirho = false;
         for child_chirho in &children_chirho {
-            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
-                if tok_chirho.kind_chirho() == TokenKindChirho::DotDotChirho {
-                    has_wildcard_chirho = true;
-                    break;
-                }
+            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho
+                && tok_chirho.kind_chirho() == TokenKindChirho::DotDotChirho
+            {
+                has_wildcard_chirho = true;
+                break;
             }
         }
 
