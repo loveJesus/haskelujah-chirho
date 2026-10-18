@@ -504,7 +504,6 @@ fn to_enum_rows_guard_exactly_the_table_bounds_chirho() {
             .map(|guard_chirho| (guard_chirho.op_chirho, guard_chirho.bound_chirho))
             .collect();
         let expected_chirho: Vec<(&str, i64)> = match integral_chirho.out_of_range_chirho {
-            OutOfRangeChirho::UncheckedChirho => Vec::new(),
             OutOfRangeChirho::NegativeChirho => vec![("<#", 0)],
             OutOfRangeChirho::BoundsChirho {
                 lower_chirho,

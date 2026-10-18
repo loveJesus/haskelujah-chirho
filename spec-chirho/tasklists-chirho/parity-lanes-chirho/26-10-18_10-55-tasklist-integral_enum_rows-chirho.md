@@ -58,9 +58,13 @@ held carries the generic-head, parser and typing commits.
 ## Controls
 
 **On this branch (core and STG, no end-to-end red test):**
-- `every_integral_dictionary_takes_real_rows_chirho`: all 32 `$fEnumK` slots hold
-  body-backed rows, never a missing-method stub.
-- `from_enum_rows_are_the_identity_chirho`.
+- `every_integral_dictionary_takes_real_rows_chirho`: 27 `$fEnumK` slots hold
+  body-backed rows, never a missing-method stub. That is the 16 `toEnum` slots
+  and the 11 narrow `fromEnum` slots.
+- `wide_from_enum_slots_stay_missing_method_stubs_chirho`: the five wide
+  `fromEnum` slots (Word, Word64, Natural, CULong, CSize) stay generated
+  missing-method bodies naming `Enum.fromEnum` and the key.
+- `from_enum_rows_are_the_identity_chirho`: the 11 narrow keys.
 - `to_enum_rows_guard_exactly_the_table_bounds_chirho`: the guards and their
   order.
 - `each_row_raises_ghcs_measured_message_chirho`: the table holds exactly the 16
@@ -150,6 +154,33 @@ producer (Num, Read, FFI).
   because toEnum cannot construct it" was too narrow: a row serves every value
   producer.
 
+## Build gate 1 (gpt_chirho, ad96f6d5): RED only at changed-line Clippy; revision 2
+
+**What passed:**
+- The build is warning-free.
+- core lib 138/138, including all five integral Enum tests.
+- The STG computed-message control, 1/1. An earlier `--exact` filter that ran 0
+  tests is retained as invalid.
+
+**What failed:** changed-line Clippy reported a new `clippy::enum_variant_names`
+at `integral_enum_chirho.rs:37`. Every `OutOfRangeChirho` variant ended in
+`Chirho`, which the naming rule requires, and no suppression is allowed.
+
+**Revision 2 (source only):** the unchecked variant is folded into
+`BoundsChirho` with no bounds.
+- Int64 and CLong are keys an Int tag cannot leave, so `int_sized_chirho` gives
+  them `lower_chirho: None, upper_chirho: None` and GHC's Int64 range text. No
+  guard ever renders that text.
+- The enum keeps two variants, `BoundsChirho` and `NegativeChirho`, below
+  Clippy's variant-name threshold of three.
+- The generated Core is unchanged: a key with no bound yields the tag without a
+  guard, as before.
+- The guard test's expectation for Int64 and CLong is still no guards, now
+  through the bounds arm.
+
+**Doc correction:** the Controls list above said all 32 slots are real. It now
+says 27 real slots plus the five wide stubs, matching the source and revision 1.
+
 ## Checklist
 
 - [x] Design measured and accepted (#27673; gpt_chirho's disposition).
@@ -158,8 +189,11 @@ producer (Num, Read, FFI).
   receipts.
 - [x] Revision 1, source only: the wide `fromEnum` stays a stub (11 identity
   rows); the controls, workflow and tasklist are revised.
-- [ ] Named builder slot: build; core lib (`integral_enum_tests_chirho`); the
-  driver STG primitive tests; the mutants above.
+- [x] Build gate 1 (gpt_chirho, ad96f6d5): build, core lib 138/138 and the STG
+  control are green; changed-line Clippy is RED (`enum_variant_names`).
+- [x] Revision 2, source only: the structural Clippy fix and the doc correction.
+- [ ] Re-gate at a named slot: changed-line Clippy, core lib, the STG control and
+  the mutants above.
 - [ ] Combined Char replay: the end-to-end child and the six 004cdbf4 rows go
   green.
 - [ ] Separate prerequisite (gpt_chirho): list rendering must fail closed on an

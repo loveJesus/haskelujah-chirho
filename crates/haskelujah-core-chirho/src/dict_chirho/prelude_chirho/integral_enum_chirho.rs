@@ -35,10 +35,9 @@ mod integral_enum_tests_chirho;
 /// What GHC 9.14.1's `toEnum` does with a tag outside a key's range.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum OutOfRangeChirho {
-    /// Every Int tag is in range (`Int64`, `CLong`).
-    UncheckedChirho,
     /// `Enum.toEnum{<shown>}: tag (<n>) is outside of enumeration's range
-    /// <range>`. Only the bounds an Int tag can pass are checked.
+    /// <range>`. Only the bounds an Int tag can pass are checked. `Int64` and
+    /// `CLong` have none, so every tag is in range.
     BoundsChirho {
         shown_chirho: &'static str,
         lower_chirho: Option<i64>,
@@ -79,11 +78,20 @@ const fn bounded_chirho(
     }
 }
 
-/// A key that is Int itself (`Int64`, `CLong`): every tag and value fits.
-const fn int_sized_chirho(key_chirho: &'static str) -> IntegralKeyChirho {
+/// A key that is Int itself (`Int64`, `CLong`): every tag and value fits, so
+/// no bound is checked.
+const fn int_sized_chirho(
+    key_chirho: &'static str,
+    shown_chirho: &'static str,
+) -> IntegralKeyChirho {
     IntegralKeyChirho {
         key_chirho,
-        out_of_range_chirho: OutOfRangeChirho::UncheckedChirho,
+        out_of_range_chirho: OutOfRangeChirho::BoundsChirho {
+            shown_chirho,
+            lower_chirho: None,
+            upper_chirho: None,
+            range_chirho: "(-9223372036854775808,9223372036854775807)",
+        },
         identity_from_enum_chirho: true,
     }
 }
@@ -117,7 +125,7 @@ const INTEGRAL_KEYS_CHIRHO: &[IntegralKeyChirho] = &[
         2_147_483_647,
         "(-2147483648,2147483647)",
     ),
-    int_sized_chirho("Int64"),
+    int_sized_chirho("Int64", "Int64"),
     non_negative_chirho("Word", "Word"),
     bounded_chirho("Word8", "Word8", 0, 255, "(0,255)"),
     bounded_chirho("Word16", "Word16", 0, 65_535, "(0,65535)"),
@@ -136,7 +144,7 @@ const INTEGRAL_KEYS_CHIRHO: &[IntegralKeyChirho] = &[
         2_147_483_647,
         "(-2147483648,2147483647)",
     ),
-    int_sized_chirho("CLong"),
+    int_sized_chirho("CLong", "Int64"),
     bounded_chirho("CUInt", "Word32", 0, 4_294_967_295, "(0,4294967295)"),
     non_negative_chirho("CULong", "Word64"),
     non_negative_chirho("CSize", "Word64"),
@@ -258,7 +266,6 @@ impl DictPassCtxChirho {
     ) -> CoreExprChirho {
         let in_range_chirho = CoreExprChirho::VarChirho(tag_chirho);
         match out_of_range_chirho {
-            OutOfRangeChirho::UncheckedChirho => in_range_chirho,
             OutOfRangeChirho::NegativeChirho => {
                 let negative_chirho = fail_with_chirho(CoreExprChirho::LitChirho(
                     CoreLitChirho::StringChirho("toEnum: unexpected negative Int".to_string()),
