@@ -169,7 +169,13 @@ The lldb caller attribution is an incomplete diagnostic and is not cited.
 
 | Mutant | Change | Must fail |
 |---|---|---|
-| MU11 | restore the recursive walk | the `rigid_tyvars_chirho` binary aborts with a stack overflow on C1, C2, C5 and T16414 (prediction, not run) |
+| MU11 | the walk answers true when it comes back to its start class (`super_chirho == sub_chirho` counts as the target) | rejected controls: C5 accepted. Only a program with a cycle reaches it (prediction, not run) |
+
+Restoring the recursive walk is not a mutant. The test binary would abort with
+a stack overflow, which is INVALID/ABNORMAL and never a kill (gpt_chirho's
+review). That overflow is recorded only as baseline differential evidence. On
+the frozen CLIs, held overflows on C1 and C2, and 3ff084c1 and f9974cc4
+overflow on C1, C2, C5 and T16414.
 
 ## Checklist
 
