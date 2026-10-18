@@ -1566,18 +1566,28 @@ impl InferCtxChirho {
 
     /// Check if `potential_super_chirho` is a (transitive) superclass of
     /// `sub_chirho`. For example, `Eq` is a superclass of `Ord` and also
-    /// of `Num` (since Num has Eq in its superclass list).
+    /// of `Num` (since Num has Eq in its superclass list). Each class is
+    /// visited once, so a superclass cycle, legal under
+    /// UndecidableSuperClasses (T16414's `All` and `All2`), ends the walk.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho
     fn is_transitive_superclass_chirho(
         &self,
         potential_super_chirho: &str,
         sub_chirho: &str,
     ) -> bool {
-        let supers_chirho = self.class_env_chirho.superclasses_chirho(sub_chirho);
-        for s_chirho in &supers_chirho {
-            if s_chirho == potential_super_chirho
-                || self.is_transitive_superclass_chirho(potential_super_chirho, s_chirho)
+        let mut visited_chirho = HashSet::from([sub_chirho.to_string()]);
+        let mut pending_chirho = vec![sub_chirho.to_string()];
+        while let Some(class_name_chirho) = pending_chirho.pop() {
+            for super_chirho in self
+                .class_env_chirho
+                .superclasses_chirho(&class_name_chirho)
             {
-                return true;
+                if super_chirho == potential_super_chirho {
+                    return true;
+                }
+                if visited_chirho.insert(super_chirho.clone()) {
+                    pending_chirho.push(super_chirho);
+                }
             }
         }
         false

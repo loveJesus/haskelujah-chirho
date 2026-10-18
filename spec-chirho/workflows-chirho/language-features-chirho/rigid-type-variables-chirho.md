@@ -76,6 +76,10 @@ flowchart TD
 - "Could not deduce" is reported only when no instance could ever apply
   (`rigid_pred_certainly_undeducible_chirho`): fully visible class, simple argument shapes, and
   a bare rigid argument matched only by a variable-headed instance.
+- Given entailment through superclasses uses `is_transitive_superclass_chirho`, a walk shared
+  with context reduction and the fundep subclass guard. It visits each class once, so a
+  superclass cycle that UndecidableSuperClasses allows ends it (T16414; controls in
+  `rigid_tyvars_chirho/superclass_cycles_chirho.rs`).
 
 ## Record construction and update by field set (2026-09-07)
 

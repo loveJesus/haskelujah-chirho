@@ -71,7 +71,7 @@ Accepted by GHC and by held:
 
 Rejected by GHC, accepted by held, and rejected by 3ff084c1 (revision 3):
 - H04, the nullary determinant: it must stay a certain mismatch.
-- R11, the family determinant solved later: the candidate MU6 witness.
+- R11, the family determinant solved later: a natural control only. MU6 survived it on f9974cc4.
 
 Kept as boundaries, not tests:
 - S01 and S02: the conservative superclass refusal keeps them accepted, while GHC rejects them.
@@ -111,7 +111,7 @@ R02n and R02u (GHC rejects, held accepts) stay accepted as named boundaries.
 | MU3 | the scope test treats Nested as TopLevel | accepted controls (R08 refuted) |
 | MU4 | drop `is_extended_by_another_class_chirho` | accepted controls (S00 refuted) |
 | MU5 | match each determining position independently (ignore `merge_chirho`) | rejected controls (F16 withheld) |
-| MU6 | `normalized_pred_args_chirho` clones instead of normalizing | SURVIVED on 3ff084c1: R06's synonym is expanded upstream. Candidate witness R11 (by source, accepted under MU6), not yet run |
+| MU6 | `normalized_pred_args_chirho` clones instead of normalizing | SURVIVED on 3ff084c1 and on f9974cc4, R11 included (#27512). No measured discriminator; kept as the single defensive normalization point |
 
 ## Built gate 2 on 3ff084c1 (gpt_chirho #27485, #27486, #27489)
 
@@ -137,6 +137,40 @@ control yet. Only the descent through an applied constructor (H05) does.
 | MU9 | an applied-variable pattern is uncertain whatever the target | rejected controls (H04 withheld) |
 | MU10 | the walk does not descend (top-level pairs only) | accepted controls (H05) |
 
+## Re-gate of revision 3 and the corpus blocker T16414
+
+gpt_chirho replayed revision 3 as f9974cc4 (the same tree as cd3010e0). It
+builds, and the focused suites are green. Nine of the ten mutants are caught;
+MU6 survived, R11 included. The corpus pair stopped on should_fail/T16414.hs:
+- f9974cc4 and 3ff084c1 overflow their stack on it;
+- held ba1e5c29 accepts it;
+- GHC rejects it for overlapping `AllZip2` instances, outside this unit.
+
+**Cause.** The subclass guard asked the recursive `is_transitive_superclass_chirho`
+about every known class, and that walk never ends on T16414's unrelated
+`All -> All2 -> All` cycle. gpt_chirho's shared-call audit found the same
+latent recursion at two older callers, context reduction and given entailment.
+Held itself overflows on C1 and C2.
+
+**Repair** (source only, #27666, a scoped source no-blocker). One function body
+becomes a worklist that visits each class once. The target is compared on every
+edge before the visited check, so existing answers stay the same, and a cycle
+back to the start still answers true.
+
+**Controls** (`rigid_tyvars_chirho/superclass_cycles_chirho.rs`):
+- C1, C2 and C4 are accepted;
+- C5 is rejected with `no instance for`;
+- T16414 is accepted, the held route.
+
+C3 is a boundary. Every embedded program was measured on GHC 9.14.1 and on
+held, 3ff084c1 and f9974cc4 exactly as built; 5/5 are byte-identical.
+Receipt: `tmp-chirho/superclass-cycle-1018-chirho/out-chirho/receipt_chirho.json`.
+The lldb caller attribution is an incomplete diagnostic and is not cited.
+
+| Mutant | Change | Must fail |
+|---|---|---|
+| MU11 | restore the recursive walk | the `rigid_tyvars_chirho` binary aborts with a stack overflow on C1, C2, C5 and T16414 (prediction, not run) |
+
 ## Checklist
 
 - [x] Trace, route, revision and source GO (#27449, #27454, #27457).
@@ -152,8 +186,13 @@ control yet. Only the descent through an applied constructor (H05) does.
   the MU3 follow-up caught, MU6 survived; corpus STOP on tc126.
 - [x] Revision 3, source only: `needs_syntax_split_chirho`, with controls H01-H05,
   tc126 and R11, each measured on GHC 9.14.1, held and 3ff084c1 as embedded.
-- [ ] Re-gate revision 3 at a named slot: focused suites, MU6, MU8-MU10 (MU6
-  with R11), then the full corpus pair, reporting tc231's bucket delta.
+- [x] Re-gate revision 3 (gpt_chirho, f9974cc4): focused suites green, 9/10
+  mutants caught, MU6 survived with R11. The corpus pair stopped on T16414.
+- [x] T16414, source only: the shared superclass walk is cycle-safe, with
+  controls C1, C2, C4, C5 and T16414 (byte-identical 5/5).
+- [ ] Re-gate at a named slot: typing lib, driver `rigid_tyvars_chirho` (with
+  `superclass_cycles_chirho`), MU11, then the full corpus pair, reporting
+  tc231's bucket delta.
 - [ ] Changed-line Clippy (typing, the driver test target), gitleaks.
 - [ ] Combined case stack (case + this unit + Char.toEnum): T18398 rejected for
   the checker reason, and the corpus pair repeated.

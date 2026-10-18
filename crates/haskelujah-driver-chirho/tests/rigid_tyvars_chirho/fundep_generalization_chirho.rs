@@ -298,7 +298,7 @@ const ACCEPTED_CHIRHO: &[(&str, &[&str])] = &[
 const ACCEPTED_SOURCES_CHIRHO: &[(&str, &str)] = &[("Tc126Chirho", TC126_CHIRHO)];
 
 /// How one program misses its GHC verdict, if it does.
-fn miss_chirho(
+pub(super) fn miss_chirho(
     expect_rejected_chirho: bool,
     module_chirho: &str,
     source_chirho: &str,

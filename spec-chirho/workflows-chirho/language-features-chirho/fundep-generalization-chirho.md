@@ -65,6 +65,19 @@ flowchart TD
   (`let g p = meth p Ex b in g q` under `C q Ex b =>`) is valid, and it stays
   accepted (gpt_chirho's built gate, #27472).
 
+- The subclass guard asks `is_transitive_superclass_chirho` about every known
+  class. Context reduction and given entailment share that walk. It visits
+  each class once, so a superclass cycle that UndecidableSuperClasses allows
+  ends it, as in T16414's unrelated `All -> All2 -> All`.
+  - Before this change the walk was recursive and never ended on such a cycle:
+    3ff084c1 and f9974cc4 overflowed their stack on T16414, and held
+    overflowed on C1 (context reduction) and C2 (given entailment).
+  - Controls, in `rigid_tyvars_chirho/superclass_cycles_chirho.rs`:
+    - C1, C2 and C4 (a superclass reached through the cycle) are accepted;
+    - C5 (F12's shape beside the cycle) is still refuted;
+    - T16414 is accepted, as on held. GHC rejects T16414 for overlapping
+      instances, which is outside this unit.
+
 ## Boundaries kept
 
 - R02n (the same body with no given) and R02u (the same given, with `g`
@@ -96,21 +109,29 @@ flowchart TD
   and N03p (`main` BEFORE `f`) is rejected. Neither the module name nor `main`
   matters. Reading every argument there is a broader repair of the existing
   partition, so it is not part of this unit.
-- Normalization (MU6 survived on 3ff084c1): R06's synonym is already expanded
-  by `ast_type_to_ty_chirho`, which expands synonyms and reduces families when
-  it converts the annotation, and `unify_normalized_chirho` normalizes both
-  sides of every unification. At the module end, phase 1 of
-  `check_deferred_preds_chirho` normalizes every argument after the final
-  substitution, so the report's own normalization only re-reads what fundep
-  improvement and defaulting add later. Deferred wanteds are substituted
-  without normalizing (`apply_subst_all_chirho`). The helper's normalization
-  therefore matters at closure and placement when a family that was stuck at
-  unification reduces after a later solve and drops a variable. R11
-  (`KeyChirho [e] = ExChirho`, the list fixed by `xs ++ []`) is that case:
-  rejected by GHC and by the rule, accepted by held, and by source reading
-  accepted under MU6. The MU6 run is still owed.
+- Normalization: MU6 (`normalized_pred_args_chirho` clones instead of
+  normalizing) survived on 3ff084c1 and on f9974cc4.
+  - Normalization happens upstream:
+    - `ast_type_to_ty_chirho` expands synonyms and reduces families when it
+      converts an annotation, so R06's synonym is already expanded;
+    - `unify_normalized_chirho` normalizes both sides of every unification;
+    - at the module end, phase 1 of `check_deferred_preds_chirho` normalizes
+      every argument after the final substitution.
+  - Deferred wanteds are substituted without normalizing
+    (`apply_subst_all_chirho`).
+  - R11 (`KeyChirho [e] = ExChirho`, the list fixed by `xs ++ []`) was predicted
+    from source to need the helper, but under MU6 it stayed rejected
+    (gpt_chirho #27512). A second trace located no other route.
+  - The helper stays the rule's single defensive normalization point, with no
+    measured discriminator. R11 stays only as a natural control that GHC
+    rejects.
+- C3 (`AllChirho a =>` using `FooChirho a`): GHC rejects it with `Could not
+  deduce`. Held overflows on C3 and accepts its acyclic analog A3, because held
+  does not report that could-not-deduce. The cycle-safe walk is predicted (not
+  run) to accept C3 the same way.
 
-Controls live in `crates/haskelujah-driver-chirho/tests/rigid_tyvars_chirho/fundep_generalization_chirho.rs`.
+Controls live in `crates/haskelujah-driver-chirho/tests/rigid_tyvars_chirho/fundep_generalization_chirho.rs`
+and, for superclass cycles, `superclass_cycles_chirho.rs` beside it.
 Every embedded program was measured against GHC 9.14.1 exactly as the test
 builds it. tc126 is the corpus file itself. tc231 (GHC-39999, `No instance for
 Zork s (Z [Char]) b0`) is a correct new rejection that sits in the corpus's

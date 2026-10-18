@@ -183,3 +183,6 @@ mod record_field_patterns_chirho;
 
 #[path = "rigid_tyvars_chirho/fundep_generalization_chirho.rs"]
 mod fundep_generalization_chirho;
+
+#[path = "rigid_tyvars_chirho/superclass_cycles_chirho.rs"]
+mod superclass_cycles_chirho;
