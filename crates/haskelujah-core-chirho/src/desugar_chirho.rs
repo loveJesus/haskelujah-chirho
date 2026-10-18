@@ -983,6 +983,8 @@ impl DesugarCtxChirho {
     /// known built-in operators so they work without dict-pass
     /// bindings. `left_chirho` is the first arg, `right_chirho` is
     /// the second arg (already in correct application order).
+    /// An `==` section with its operator's origin is the exception: it
+    /// takes the variable path below, as an infix `==` does.
     fn build_section_body_chirho(
         &mut self,
         op_name_chirho: &str,
@@ -995,7 +997,14 @@ impl DesugarCtxChirho {
             "+" => Some("+#"),
             "-" => Some("-#"),
             "*" => Some("*#"),
-            "==" => Some("==#"),
+            // The checker typed this operator as an occurrence of Eq's `==` at
+            // the section's type; with its origin the fallback below mints that
+            // occurrence, and the pass dispatches it by the checker's evidence.
+            // The Int primop compared `(== [1])`'s lists as empty string
+            // prefixes and a newtype's raw Int under its own `==` (R1,
+            // gpt_chirho #27508). A section without an origin keeps the primop.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            "==" if op_origin_chirho.is_none() => Some("==#"),
             "/=" => Some("/=#"),
             "<" => Some("<#"),
             "<=" => Some("<=#"),

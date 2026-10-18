@@ -236,8 +236,29 @@ flowchart TD
   answer through it); every other class keeps its path, unmeasured.
 - Not on this route: `/=` desugars to `not (==)` with no provenance, so it carries no evidence
   and `[[1]] /= [[2 :: Int]]` still prints `False` (GHC `True`), the Eq method set's repair.
-  Sections, and infix `<`, `<=`, `>`, `>=`, lower to Int primops before any occurrence exists
-  (R1, a separate unit).
+  Sections other than an `==` section with an origin (R1, below), and infix `<`, `<=`, `>`,
+  `>=`, lower to Int primops before any occurrence exists.
+
+## Equality sections (R1, 2026-10-17)
+
+`build_section_body_chirho` lowered an `==` section straight to the Int primop `==#`, so the
+dictionary pass never saw it: `map (== [1]) [[1], [2 :: Int]]` compared the lists as empty
+string prefixes and printed `[True,True]` (GHC `[True,False]`), and a newtype with its own `Eq`
+was compared as its raw `Int` (`[False,False]` for GHC's `[True,False]`). An `==` section whose
+operator carries an origin now takes the builder's existing variable path: the opted-in
+occurrence of `==`, the operator's origin recorded, and the application built as an infix `==`
+builds it. The checker already types a section's operator through its variable path, so the
+occurrence is dispatched by the checker's evidence: a method row (`$prim_Eq_==_[Int]`, a user
+instance's row), a dictionary, or R2's named failure for a proven nested list (gpt_chirho
+#27506, #27508).
+
+- A section without an origin keeps `==#`. Every parsed section has one (the lowerer names
+  its operator through `reference_name_chirho`), so the guard serves only producers without
+  that metadata, and no parsed program can tell it apart.
+- Only `==`. The engine's `Ord` dictionary holds `compare` alone: a variable `<` has no
+  binding (`(<) 1 (2 :: Int)` fails with `missing STG binding <`), so the ordering operators
+  keep their primops until an Ord method model gives them `compare`-backed defaults. `/=`
+  waits for Eq's method set; `+`, `-`, `*` sections keep theirs, unmeasured.
 
 ## Occurrence provenance (in progress, 2026-09-22)
 
@@ -345,9 +366,14 @@ flowchart TD
 ## Current boundary
 
 - An infix or section use of a class METHOD mints its own occurrence id and carries its
-  operator's provenance, like a prefix use. An infix or section use of a constrained
-  function that is not a method still resolves through the shared canonical id: only a prefix
-  reference mints a reference occurrence for per-predicate reference evidence.
+  operator's provenance, like a prefix use, unless the desugarer lowers that operator to a
+  primop first. Those carry no occurrence and no evidence: infix `<`, `<=`, `>`, `>=`, `div`,
+  `mod`; every section of `+`, `-`, `*`, `/=`, `<`, `<=`, `>`, `>=`, `^`, `**`, and an `==`
+  section without an origin; a saturated prefix `div`, `mod`, `quot` or `rem` call. Infix
+  `/=` becomes `not (==)` with no provenance. An infix or
+  section use of a constrained function that is not a method still resolves through the
+  shared canonical id: only a prefix reference mints a reference occurrence for per-predicate
+  reference evidence.
 - Class methods never mint reference occurrences (the method paths key on canonical ids);
   own-parameter evidence therefore reaches the standard method list only, and a user class
   method at a rigid variable is still dispatched by the pass's inferred parameter keys.
