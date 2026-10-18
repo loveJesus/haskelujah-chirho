@@ -2,10 +2,18 @@
 
 //! `toEnum` and `fromEnum` at the integer-represented builtin Enum keys: the
 //! sized `Int` and `Word` types, `Word`, `Natural` and the C integer wrappers.
-//! A value of each key is its integer at run time, so `fromEnum` is the
-//! identity. `toEnum` checks its tag against the key's range and, outside it,
-//! fails with GHC 9.14.1's message. Before these rows, every such instance
-//! dictionary was filled with missing-method stubs.
+//! Before these rows, every such instance dictionary was filled with
+//! missing-method stubs.
+//!
+//! `toEnum` checks its tag against the key's range and, outside it, fails with
+//! GHC 9.14.1's message. A value of each key is an i64 at run time, so
+//! `fromEnum` is the identity for the eleven keys whose every value fits Int.
+//!
+//! The five wide keys keep their missing-method `fromEnum`, which fails loudly:
+//! `Word`, `Word64`, `CULong`, `CSize` and `Natural`. GHC fails their values
+//! above Int's bounds, and an i64 cannot hold such a value: integer literals
+//! parse to i64, and an out-of-range one becomes 0. An identity would therefore
+//! answer wrongly as soon as any producer builds such a value.
 //!
 //! The C wrappers follow the measured aarch64-darwin model, the default target:
 //! - `CChar` is `Int8`, `CInt` is `Int32` and `CLong` is `Int64`;
@@ -45,9 +53,13 @@ enum OutOfRangeChirho {
 struct IntegralKeyChirho {
     key_chirho: &'static str,
     out_of_range_chirho: OutOfRangeChirho,
+    /// Every value of the key fits Int, so `fromEnum` is the identity. A wide
+    /// key keeps the missing-method `fromEnum` until a value above i64 can be
+    /// represented and checked against Int's bounds.
+    identity_from_enum_chirho: bool,
 }
 
-/// A key with both bounds inside Int's range.
+/// A key with both bounds inside Int's range, so every value fits Int.
 const fn bounded_chirho(
     key_chirho: &'static str,
     shown_chirho: &'static str,
@@ -63,10 +75,21 @@ const fn bounded_chirho(
             upper_chirho: Some(upper_chirho),
             range_chirho,
         },
+        identity_from_enum_chirho: true,
     }
 }
 
-/// An unsigned 64-bit key: only a negative tag is out of range.
+/// A key that is Int itself (`Int64`, `CLong`): every tag and value fits.
+const fn int_sized_chirho(key_chirho: &'static str) -> IntegralKeyChirho {
+    IntegralKeyChirho {
+        key_chirho,
+        out_of_range_chirho: OutOfRangeChirho::UncheckedChirho,
+        identity_from_enum_chirho: true,
+    }
+}
+
+/// An unsigned 64-bit key: only a negative tag is out of range, and its values
+/// can pass Int's upper bound, so it is a wide key.
 const fn non_negative_chirho(
     key_chirho: &'static str,
     shown_chirho: &'static str,
@@ -79,6 +102,7 @@ const fn non_negative_chirho(
             upper_chirho: None,
             range_chirho: "(0,18446744073709551615)",
         },
+        identity_from_enum_chirho: false,
     }
 }
 
@@ -93,10 +117,7 @@ const INTEGRAL_KEYS_CHIRHO: &[IntegralKeyChirho] = &[
         2_147_483_647,
         "(-2147483648,2147483647)",
     ),
-    IntegralKeyChirho {
-        key_chirho: "Int64",
-        out_of_range_chirho: OutOfRangeChirho::UncheckedChirho,
-    },
+    int_sized_chirho("Int64"),
     non_negative_chirho("Word", "Word"),
     bounded_chirho("Word8", "Word8", 0, 255, "(0,255)"),
     bounded_chirho("Word16", "Word16", 0, 65_535, "(0,65535)"),
@@ -105,6 +126,7 @@ const INTEGRAL_KEYS_CHIRHO: &[IntegralKeyChirho] = &[
     IntegralKeyChirho {
         key_chirho: "Natural",
         out_of_range_chirho: OutOfRangeChirho::NegativeChirho,
+        identity_from_enum_chirho: false,
     },
     bounded_chirho("CChar", "Int8", -128, 127, "(-128,127)"),
     bounded_chirho(
@@ -114,10 +136,7 @@ const INTEGRAL_KEYS_CHIRHO: &[IntegralKeyChirho] = &[
         2_147_483_647,
         "(-2147483648,2147483647)",
     ),
-    IntegralKeyChirho {
-        key_chirho: "CLong",
-        out_of_range_chirho: OutOfRangeChirho::UncheckedChirho,
-    },
+    int_sized_chirho("CLong"),
     bounded_chirho("CUInt", "Word32", 0, 4_294_967_295, "(0,4294967295)"),
     non_negative_chirho("CULong", "Word64"),
     non_negative_chirho("CSize", "Word64"),
@@ -164,9 +183,10 @@ fn bad_tag_chirho(
 }
 
 impl DictPassCtxChirho {
-    /// `$prim_Enum_toEnum_<Key>` and `$prim_Enum_fromEnum_<Key>` for every
-    /// integer-represented key. They are generated before the instance
-    /// dictionaries, which then take them instead of missing-method stubs.
+    /// `$prim_Enum_toEnum_<Key>` for every integer-represented key, and
+    /// `$prim_Enum_fromEnum_<Key>` for each key whose values fit Int. They are
+    /// generated before the instance dictionaries, which then take them instead
+    /// of missing-method stubs.
     pub(super) fn generate_integral_enum_rows_chirho(&mut self, int_ty_chirho: &TyChirho) {
         for integral_chirho in INTEGRAL_KEYS_CHIRHO {
             let key_ty_chirho = TyChirho::ConChirho(integral_chirho.key_chirho.to_string());
@@ -186,6 +206,11 @@ impl DictPassCtxChirho {
                 checked_chirho,
             );
 
+            // A wide key gets no row: its dictionary keeps the missing-method
+            // `fromEnum`, loud rather than wrong for a value past Int.
+            if !integral_chirho.identity_from_enum_chirho {
+                continue;
+            }
             let from_name_chirho = format!("$prim_Enum_fromEnum_{}", integral_chirho.key_chirho);
             let from_id_chirho = self.resolve_or_fresh_id_chirho(&from_name_chirho);
             let value_chirho = self.fresh_binder_chirho("x", key_ty_chirho.clone());

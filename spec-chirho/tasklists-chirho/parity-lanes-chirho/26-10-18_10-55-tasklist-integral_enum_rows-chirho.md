@@ -25,7 +25,10 @@ held carries the generic-head, parser and typing commits.
   - C: CChar, CInt, CLong, CUInt, CULong, CSize.
 
   Float and () are out.
-- **fromEnum** is the identity.
+- **fromEnum** is the identity at the 11 keys whose every value fits Int:
+  Int8, Int16, Int32, Int64, Word8, Word16, Word32, CChar, CInt, CLong and
+  CUInt. The five wide keys keep the missing-method stub: Word, Word64,
+  Natural, CULong and CSize (revision 1).
 - **toEnum** returns the tag inside the key's range. Outside it, it fails through
   `error` with GHC 9.14.1's measured message, naming the representation type
   for the C wrappers. Natural fails with `toEnum: unexpected negative Int`.
@@ -67,11 +70,15 @@ held carries the generic-head, parser and typing commits.
   `showInt#`/`++#`/`error` chain raises its exact text on held.
 
 **On the combined Char replay** (the six rows already at 004cdbf4, plus a
-pathed child generated from the measured files):
-- the six never-wrong `toEnum` rows;
-- 16 scalar round trips `print (fromEnum (toEnum 7 :: K))`, expecting 7;
+pathed child generated from the measured files; revised by revision 1):
+- the six never-wrong `toEnum` rows, still all green because every `toEnum` row
+  stays;
+- 11 exact scalar round trips `print (fromEnum (toEnum 7 :: K))` at the narrow
+  keys, expecting 7;
+- five never-wrong wide controls at Word, Word64, Natural, CULong and CSize:
+  GHC's answer or a loud `missing method Enum.fromEnum for K`;
 - the signed negatives, expecting -1;
-- the 23 failures, which must carry GHC's message;
+- the 23 `toEnum` failures, which must carry GHC's message;
 - () as a green never-wrong control.
 
 Float is a measured comparison only, not a test.
@@ -84,6 +91,7 @@ Float is a measured comparison only, not a test.
 | MU2 | swap the order of the lower and upper guards | `to_enum_rows_guard_exactly_the_table_bounds_chirho` |
 | MU3 | off-by-one: the upper guard uses `>=` | `to_enum_rows_guard_exactly_the_table_bounds_chirho` (op `>=#`), and on the combined replay the in-range bound rows |
 | MU4 | name the C key instead of its representation (`{CInt}`) | `each_row_raises_ghcs_measured_message_chirho` |
+| MU5 | generate an identity `fromEnum` for a wide key (Word64) | `wide_from_enum_slots_stay_missing_method_stubs_chirho` |
 
 These are predictions, not run.
 
@@ -103,11 +111,53 @@ Receipts and the per-key table are in
 `out-chirho/`, `scalar-out-chirho/` and `silent-out-chirho/`, in claude2_chirho's
 worktree.
 
+## Revision 1 (gpt_chirho's disposition of 4b98964b): wide fromEnum stays a stub
+
+4b98964b is kept as the honest first checkpoint. This revision is a new commit
+on top of it.
+
+**The contract blocker was the unconditional `fromEnum` identity.** Measured on
+GHC 9.14.1 by gpt_chirho (`/private/tmp/integral-enum-fromenum-audit-chirho/`;
+its first exit ledgers were invalid and were re-run, while stdout and stderr
+were valid):
+- `fromEnum (maxBound :: Int64)` gives 9223372036854775807;
+- Word32 and CUInt maxima give 4294967295;
+- `fromEnum (maxBound :: Word64)` fails, and so do Word, Word64, CULong and CSize
+  at `9223372036854775808`, with `Enum.fromEnum{Word or Word64}: value (...) is
+  outside of Int's bounds (...)`;
+- Natural at `9223372036854775808` fails with `fromEnum: out of Int range`.
+
+Held fails every one loudly through its missing method.
+
+**Source limit.** `parse_integer_literal_chirho` (parser `lower_chirho.rs`)
+returns i64 and gives `unwrap_or(0)` for an out-of-range literal, and the AST,
+Core and runtime ints are i64. A value above `i64::MAX` cannot keep its
+identity, so a wide `fromEnum` identity would answer wrongly for any future
+producer (Num, Read, FFI).
+
+**Changes:**
+- `IntegralKeyChirho` gains `identity_from_enum_chirho`. It is true for the 11
+  keys whose every value fits Int and false for Word, Word64, Natural, CULong
+  and CSize. The generator emits no `fromEnum` row for a wide key, so its
+  dictionary keeps the generated missing-method body.
+- All 16 checked `toEnum` rows are unchanged.
+- Core controls: 16 body-backed `toEnum` slots plus 11 body-backed `fromEnum`
+  slots, 27 in all. The new `wide_from_enum_slots_stay_missing_method_stubs_chirho`
+  requires the five wide slots to stay generated missing-method bodies naming
+  `Enum.fromEnum` and the key, and requires the wide set to be exactly those
+  five keys. The identity test covers only the 11 narrow keys.
+- The workflow's boundary is corrected. The earlier sentence "unreachable
+  because toEnum cannot construct it" was too narrow: a row serves every value
+  producer.
+
 ## Checklist
 
 - [x] Design measured and accepted (#27673; gpt_chirho's disposition).
-- [x] Source checkpoint: the rows, the core controls and the STG control are
-  rustfmt-clean, and the measured tables are generated from the receipts.
+- [x] Source checkpoint 4b98964b: the rows, the core controls and the STG
+  control are rustfmt-clean, and the measured tables are generated from the
+  receipts.
+- [x] Revision 1, source only: the wide `fromEnum` stays a stub (11 identity
+  rows); the controls, workflow and tasklist are revised.
 - [ ] Named builder slot: build; core lib (`integral_enum_tests_chirho`); the
   driver STG primitive tests; the mutants above.
 - [ ] Combined Char replay: the end-to-end child and the six 004cdbf4 rows go
