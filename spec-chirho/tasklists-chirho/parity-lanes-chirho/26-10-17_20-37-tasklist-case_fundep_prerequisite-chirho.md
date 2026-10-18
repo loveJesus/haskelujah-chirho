@@ -2,7 +2,7 @@
 
 # Case delimiter gate and fundep generalization prerequisite Chirho
 
-Owner: GPT owns this canonical integration record and main/DB. Claude2 owns the typing implementation; GPT takes the builder #27470 after Claude releases #27469, for the independent unit-519 gate. Initial replay eb366a62 is red on R02; reviewed source revision 805c249b is now replayed as 3ff084c1 in the isolated GPT worktree, with its pre-Cargo checkpoint #27475. Ground, case and Char are excluded. No compiler landing is authorized here. Progress unit 519.
+Owner: GPT owns this canonical integration record and main/DB. Claude2 owns the typing implementation; GPT takes the builder #27470 after Claude releases #27469, for the independent unit-519 gate. Initial replay eb366a62 is red on R02; reviewed source revision cd3010e0 is now replayed as f9974cc4 in the isolated GPT worktree, with its pre-Cargo checkpoint #27504; earlier 3ff084c1 and its red corpus remain preserved. Ground, case and Char are excluded. No compiler landing is authorized here. Progress unit 519.
 
 ## Measured stop
 
@@ -44,7 +44,7 @@ Keep new typing mechanisms in a focused module with its physical home and direct
 - [x] Measure controls for an applicable given, a matching instance, a polymorphic determinant, a reverse/non-leading determinant, multiple determinants and a no-fundep class; measure local and explicit-signature boundaries instead of assuming their outcomes.
 - [x] Publish bounded repair semantics and physical module placement; keep unrelated solver limitations explicit.
 - [x] Measure the shifted-superclass given control and its no-given negatives; state the conservative refusal at the source checkpoint.
-- [ ] Validate the accepted superclass positive on the built candidate and retain the two no-given wrong accepts as explicit boundaries.
+- [x] Validate the accepted superclass positive on the built candidate and retain the two no-given wrong accepts as explicit boundaries.
 - [ ] Implement and validate the declared prerequisite under a later named builder slot, with a meaningful mutant and restored baseline.
 - [ ] Repeat the combined case corpus pair with T18398/P1-P3 rejected for the checker reason, no accepted-member or old-rejection loss, diagnostic replay and common execution checked.
 - [ ] Record the explicit local landing disposition at the actual final source; no push/release or score publication.
@@ -183,3 +183,17 @@ tc231 is GHC REJECT with GHC-39999, No instance for Zork s (Z [Char]) b0, while 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/accept-losses-3ff084c1-chirho/receipt_chirho.json
 
 The author receives source-only trace/revision scope and no Cargo. GPT retains the single builder and the unmodified source checkpoint, all initial red receipts and every mutation survivor. No compiler landing or release follows.
+
+## tc126 revision 3 and independent re-gate, 22:25 update
+
+Claude2 #27498 publishes cd3010e0, a conservative uncertain-match pair walk for an instance's applied variable against list, tuple or arrow syntax. It only withholds the new refutation, without changing match_ty or the solver. GPT reads the helper against match_ty's actual recursive shapes and the whole test diff, then replays it with -x as f9974cc45d837cdd584c9e6efa2cb157ec22bfe1. Crates/Cargo bytes match the owner tip. Pre-Cargo notice #27504 retains the sole GPT builder. Build/freeze succeeds without warnings; SHA256 c05cecbb74e07b39d5d1d33c6d531853bb761b0514d09dca7d786268ddf8b168. Focused tests are running, not yet accepted.
+
+The future paired corpus explicitly permits only the exact source-hashed tc231 oracle correction as an expected accepted-axis loss. Its actual membership delta and GHC rejection remain visible. This does not permit a valid-input loss, move/edit the bucket, change the published measurements or authorize a landing. tc126 must return to acceptance.
+
+Owner traces attribute N01m/N03m to the next top-level generalization's existing first-argument-only predicate partition, rather than main/module naming. R03b is changed from wrong empty output to a loud missing method; it is not an unchanged runtime claim. Agy #27505 independently reads the two synonym witnesses and shows why upstream conversion normalizes them; its family-reduction witness remains a prediction. R11 in the new exact test source is the proposed natural MU6 witness. The actual mutation still must fail its own named control; the old survivor and caught-elsewhere receipts are preserved.
+
+## Revision 3 focused and exact oracle result, 22:30 update
+
+All six focused suites pass at f9974cc4: rigid_tyvars 43, typing lib 354, dictionary_evidence 17, instance_obligations 28, typing_integration 35 and filtered driver neighbors 258 (1589 filtered). No full-driver, ghc_bulk or default-stack claim follows. Fresh GHC 9.14.1/held/frozen-repair checks cover eighty-two source-hashed inputs, including all thirty-seven exact programs rebuilt from the committed tests and tc231. All embedded required verdicts match; no prior held/GHC check or measured runtime agreement is lost. tc126 and H01/H02/H03/H05 accept again; H04 and R11 reject for no instance, as GHC does. tc231 remains the explicit GHC-39999 corrected rejection. Frozen hashes are unchanged. Ten rule mutations are now running against a fresh baseline; no new catch is claimed yet.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/fundep-receipt-f9974cc4-chirho/summary_chirho.json

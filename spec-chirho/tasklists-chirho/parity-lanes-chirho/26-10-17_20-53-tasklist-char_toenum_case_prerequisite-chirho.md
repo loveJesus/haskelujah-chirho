@@ -2,7 +2,7 @@
 
 # Char.toEnum prerequisite for case construction Chirho
 
-Progress unit 520. Existing source writer: HASKELUJAH/claude2_chirho under #27304. GPT owns canonical main/DB, integration disposition and source review. Agy completes the bounded read-only representation/backend audit in #27458 and corrects its evidence scope in #27465; no implementation ownership transfer. GPT takes the only builder #27470 for the independent fundep gate after Claude releases #27469. This Char unit has no Cargo reservation.
+Progress unit 520. Existing source writer: HASKELUJAH/claude2_chirho under #27304. GPT owns canonical main/DB, integration disposition and source review. Agy completes the bounded read-only representation/backend audit in #27458 and corrects its evidence scope in #27465; no implementation ownership transfer. GPT retains the only builder after the independent fundep corpus stop and starts the separate Char gate in #27491. No peer Cargo or implementation ownership transfer occurs.
 
 ## Exposed behavior and inspected source
 
@@ -85,3 +85,25 @@ GPT #27480 opens the exact invariant, runtime comparison/classification/case con
 No build lease is transferred. GPT holds the independent fundep gate. The later Char gate must distinguish actual native LLVM/Cranelift artifacts from fallback wrappers, measure operand forcing/user chr/range errors, preserve output before a forced failure, and retain Wasm as unmeasured until executed.
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/receipts-chirho/char-source-ce86fa14-review-chirho.json
+
+## Independent Char gate source and freezes, 22:17 update
+
+After stopping the fundep candidate on valid tc126, GPT preserves branch gpt-fundep-gate-chirho at 3ff084c1 and uses the same sole builder for independent Char while its author traces that regression. Branch gpt-char-gate-chirho replays only the reviewed Char unit on 0f256e43: 9cdbe8c3 to 417100ea, 3b07b8e5 to b9e88550, ec6ba118 to fa35d306 and ce86fa14 to 387eecae. Complete crates/Cargo bytes equal owner ce86fa14. #27491 publishes both exact build sources before Cargo. FD/case/ground/NonEmpty are excluded.
+
+Both build-gated freezes succeed without compiler warnings under -j2, nice/timeout and recorded RUST_MIN_STACK=16777216. Pure move 417100ea has SHA256 cb2aea31182010d19fe09ba86e870d852cec85f35d23f1ad0116d25ee249b06b. Repair 387eecae has SHA256 47beae25d5aaf6d7090b9da81cb31fdf5e75019be3a54b0ad75745652c69b55b. The independent pure move agrees with the saved held outputs on all 601 source-verified inputs only after @digits/$io_execution_digits masks; 581 agree raw, with zero unresolved differences or timeouts and unchanged frozen hashes. No default-stack or global warning-free claim follows.
+
+GPT extracts all fifteen programs from the actual Rust child and verifies their bytes against the owner's measured control files. Fresh GHC/held/repair CLI comparisons are running, including all seventeen representation probes. GeneralCategory and surrogate String Show retain their explicit boundary treatment. The output-before-forced-error input must preserve its earlier stdout prefix as well as fail loudly; an error message alone does not prove that behavior. Focused runtime/RTS/core/driver suites, native artifacts, mutants, lint and paired corpus/replay/execution remain open.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/char-gate-1017-chirho/receipts-chirho/source-chirho.json
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/char-gate-1017-chirho/identity-move-417100ea-chirho/summary_chirho.json
+
+## Independent Char behavior gate stopped red, 22:24 update
+
+The fresh GHC 9.14.1/held/repair run completes all fifteen embedded inputs and seventeen representation probes at exact source 387eecae. It records twenty-one required failures and two declared boundaries, with source and frozen binary hashes unchanged. Only four of the fifteen embedded controls pass: round trips, unforced invalid, mixed append and chr negative. Most toEnum-at-Char calls still return integers: Q2 prints only the opening quote, surrogate Show prints 55296, and forced invalid values print integers with exit zero. The new checked chr (-1) path does raise GHC's message. No broad focused, native, mutation, lint or corpus gates follow this red stop.
+
+The Q2 Core dump contains the new guarded $prim_Enum_toEnum_Char as well as a global toEnum :: Int -> Int identity. The executable call uses an Enum selector and numeric dictionary id, whose binding has not yet been traced. This proves the required behavior is not reached; it does not identify the selected dictionary solely from its id. #27503 requests Claude2's bounded source-only predicate/key, occurrence/join and dictionary-slot trace before new edits. No Char build lease transfers. GPT preserves gpt-char-gate-chirho at 387eecae and resumes the independent fundep gate.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/char-gate-1017-chirho/cli-controls-387eecae-chirho/summary_chirho.json
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/char-gate-1017-chirho/toenum-route-chirho/Q2-core-chirho.stderr
