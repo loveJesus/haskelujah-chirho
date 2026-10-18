@@ -23,7 +23,7 @@ flowchart TD
     result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join]
     prov_chirho --> join_chirho
     spans_chirho --> join_chirho
-    join_chirho --> pass_chirho[Dictionary pass occurrence_head_replacement_chirho: prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
+    join_chirho --> pass_chirho[Dictionary pass at every occurrence entry, occurrence_head_replacement_chirho and try_rewrite_method_var_chirho: prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
     pass_chirho --> stg_chirho[STG: the literal's fromInteger has its dictionary]
 ```
 
@@ -259,6 +259,38 @@ instance's row), a dictionary, or R2's named failure for a proven nested list (g
   binding (`(<) 1 (2 :: Int)` fails with `missing STG binding <`), so the ordering operators
   keep their primops until an Ord method model gives them `compare`-backed defaults. `/=`
   waits for Eq's method set; `+`, `-`, `*` sections keep theirs, unmeasured.
+
+## R2 at every occurrence entry (R2b, 2026-10-18)
+
+R1's gate (r1r2-5827b4bf-chirho) went RED on its own nested section: `map (== [[1]]) [[[1]],
+[[2 :: Int]]]` failed with `missing STG binding ==`. R2 lived only in
+`occurrence_head_replacement_chirho`, which the argument-spine path calls. A call to a
+non-method function with a lambda or method argument (`map`, `filter`, `any`, `zipWith`, a
+user's `applyChirho`) goes through `try_rewrite_typed_higher_order_args_chirho` instead. It
+guesses a key from the call's other arguments, and `rewrite_expr_with_type_key_chirho` hands
+every variable, method occurrences included, to `try_rewrite_method_var_chirho`. That function
+tried the occurrence's method rows, then replaced the guess with the proof, found no
+dictionary, and returned the bare occurrence: `\x -> x == [[1]]` under `map` crashed the same
+way on ground. Inside an `Eq a =>` binding it reached the class-only fallback, and the
+enclosing dictionary answered: `pickChirho 'c' [[1]]` printed `True` where GHC prints `False`.
+
+```mermaid
+flowchart TD
+    spine_r2b_chirho[argument-spine path: occurrence_head_replacement_chirho, exact method row first] --> shared_r2b_chirho[proven_list_occurrence_chirho]
+    typed_r2b_chirho[typed entries: try_rewrite_method_var_chirho, spelled method rows first] --> shared_r2b_chirho
+    shared_r2b_chirho -->|Eq or Ord at a whole list key| dispatch_r2b_chirho[proven_list_dispatch_chirho: the proven key, else an agreeing candidate, else the named lazy failure]
+    shared_r2b_chirho -->|otherwise| rest_r2b_chirho[each entry's existing path]
+```
+
+- The spine path offers the call's own key, read lazily. A typed entry offers the key its
+  caller read or guessed, before the proof replaces it. Either serves only when it agrees with
+  the proof, and neither path reaches the class-only fallback for such an occurrence.
+- Typed entries are the arguments of typed higher-order calls, dictionary-parameter calls,
+  method applications and `fail`, and a method under a type application.
+- Predicted, unmeasured until built: nested rows name `Eq [[Int]]` or `Ord [[Int]]` instead of
+  crashing, and the enclosing dictionary no longer answers. A defaulted row such as
+  `map (\x -> x == [1]) [[1], [2]]` names `Eq [Integer]`. The guessed key is the element of the
+  cons case's collapsed `[Int]`, that is `Int`, which does not agree with `[Integer]`.
 
 ## Occurrence provenance (in progress, 2026-09-22)
 

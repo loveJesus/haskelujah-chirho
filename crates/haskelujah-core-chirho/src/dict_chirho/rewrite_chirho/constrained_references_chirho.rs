@@ -11,7 +11,8 @@
 //! off the argument's syntax. The head replacement of a method occurrence moved
 //! here too, since an `Eq` or `Ord` occurrence at such a key shares those
 //! lookups: an argument-shape key may serve it only when it agrees with the
-//! proof (`proven_list_dispatch_chirho`).
+//! proof (`proven_list_dispatch_chirho`), at every entry that dispatches a
+//! method occurrence (`proven_list_occurrence_chirho`).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::{HashMap, HashSet};
@@ -290,7 +291,7 @@ impl DictPassCtxChirho {
     /// Evidence-threading P1/P2b: if `head_id` is a method OCCURRENCE id, return
     /// the replacement head expression — the evidence-dispatched `$prim` row when
     /// one exists; for an `Eq` or `Ord` method at a proven whole list key, the
-    /// dispatch of `proven_list_dispatch_chirho`; else the existing keyed
+    /// dispatch of `proven_list_occurrence_chirho`; else the existing keyed
     /// selector/instance dispatch driven by the PROVEN type key, else the
     /// canonical shared id (today's path). `syntactic_key_chirho` reads the
     /// call's argument-shape key, and only a proven list key asks for it.
@@ -334,19 +335,12 @@ impl DictPassCtxChirho {
             // A proven list key that names no row never comes back as the
             // canonical id, whose recursion re-keyed the call off the syntax.
             // workflow: language-features-chirho/dictionary-evidence-chirho
-            if let Some(selector_id_chirho) = self.proven_list_selector_chirho(
-                *canonical_id_chirho,
-                class_name_chirho,
-                ty_key_chirho,
+            if let Some(dispatched_chirho) = self.proven_list_occurrence_chirho(
+                head_id_chirho,
+                syntactic_key_chirho,
+                local_instance_dicts_chirho,
             ) {
-                return Some(self.proven_list_dispatch_chirho(
-                    head_id_chirho,
-                    selector_id_chirho,
-                    class_name_chirho,
-                    ty_key_chirho,
-                    syntactic_key_chirho,
-                    local_instance_dicts_chirho,
-                ));
+                return Some(dispatched_chirho);
             }
             // Keyed fallback: reuse the existing selector/instance dispatch with
             // the proven key so selector-backed instances (Eq/Num Int, ...) work.
@@ -359,6 +353,41 @@ impl DictPassCtxChirho {
             ));
         }
         Some(CoreExprChirho::VarChirho(*canonical_id_chirho))
+    }
+
+    /// R2 for one method occurrence, the route every entry shares: when the
+    /// checker proved an `Eq` or `Ord` occurrence at a whole list key, the
+    /// dispatch of `proven_list_dispatch_chirho`, else `None`. Each caller
+    /// tries its method rows first. The argument-spine path offers the call's
+    /// own key, read lazily; `try_rewrite_method_var_chirho` offers the key its
+    /// caller read or guessed, which is how occurrences inside typed
+    /// higher-order arguments arrive (R2b, gpt_chirho #27663). Either key
+    /// serves only when it agrees with the proof.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn proven_list_occurrence_chirho(
+        &self,
+        occurrence_id_chirho: CoreIdChirho,
+        candidate_key_chirho: &dyn Fn() -> Option<String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let (_method_name_chirho, canonical_id_chirho) = self
+            .method_occurrence_canon_chirho
+            .get(&occurrence_id_chirho)?;
+        let (class_name_chirho, proven_key_chirho) =
+            self.occurrence_evidence_chirho.get(&occurrence_id_chirho)?;
+        let selector_id_chirho = self.proven_list_selector_chirho(
+            *canonical_id_chirho,
+            class_name_chirho,
+            proven_key_chirho,
+        )?;
+        Some(self.proven_list_dispatch_chirho(
+            occurrence_id_chirho,
+            selector_id_chirho,
+            class_name_chirho,
+            proven_key_chirho,
+            candidate_key_chirho,
+            local_instance_dicts_chirho,
+        ))
     }
 
     /// The selector an occurrence dispatches through when R2 governs it: an

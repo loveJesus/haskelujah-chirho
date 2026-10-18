@@ -1213,6 +1213,21 @@ impl DictPassCtxChirho {
                 }
             }
         }
+        // R2 at every entry (R2b): an `Eq` or `Ord` occurrence the checker
+        // proved at a whole list key, with no method row, takes the proven-list
+        // dispatch here too. The caller's own key, before the proof replaces it
+        // below, is offered only for agreement with the proof. Occurrences in
+        // typed higher-order arguments arrive here and never through
+        // `occurrence_head_replacement_chirho`: `map (== [[1]]) ..` came back a
+        // bare `==`, and inside `Eq a =>` the enclosing dictionary answered.
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if let Some(dispatched_chirho) = self.proven_list_occurrence_chirho(
+            id_chirho,
+            &|| type_key_override_chirho.map(str::to_string),
+            local_instance_dicts_chirho,
+        ) {
+            return dispatched_chirho;
+        }
         let type_key_override_chirho = evidence_chirho
             .map(|(_class_chirho, key_chirho)| key_chirho.as_str())
             .or(type_key_override_chirho);
