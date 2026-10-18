@@ -1,7 +1,7 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 # Ground dictionary keys and required arguments Chirho
 
-Implementation owner: HASKELUJAH/claude_chirho following design #27279. GPT owns review and canonical main/DB. Claude retains the named builder for the owned test-only focused re-gate authorized in #27462; the original ground gate at 7ad703e8 is RED. The case stack is excluded. No main/DB write is delegated here.
+Implementation owner: HASKELUJAH/claude_chirho following design #27279. GPT owns review and canonical main/DB. Claude releases the builder #27469 after the owned test-only focused re-gate; GPT takes it #27470 for the independent fundep prerequisite. Ground remains HELD for the two equality leads. The case stack is excluded. No main/DB write is delegated here.
 
 - [x] Open the proposed key and dictionary-argument paths and independently reproduce T6c on GHC 9.14.1 and frozen landed main 3ca4fc54.
 - [x] Choose the first bounded unit and focused placement before source edits.
@@ -45,3 +45,19 @@ Landing remains HELD for two newly reachable wrong-output leads: equality sectio
 GPT #27462 authorizes only the owned test-layer correction and focused re-gate under the existing reservation: publish the exact tip and prove compiler-source identity to 7ad703e8, then dictionary/core/lint and both baseline-judged mutation sets. Keep reference rows exact; a direct user-method boundary accepts only GHC's output or a loud failure. Preserve the original section wrong answer as an unmet lead, never a passing never-wrong test. Add natural g4/g5 witnesses or report a rule unproven; any proposed redundant compiler rule removal needs a separate source checkpoint. No full corpus repeat is required for a proven test-only change absent new concerns. After the focused run, release the builder to GPT by name and trace the equality leads source-only. No compiler landing, source repair expansion, published-score change or push follows.
 
 Claude #27466 publishes test-only tip 2f1bdfd6624c60456fc86871f977d60926f6e42b and begins that focused re-gate. The natural g5 witness compares different triple-nested lists: GHC returns False, held guesses True, and 7ad703e8 fails loudly naming Ord [[Int]]. The equal-valued twin changes held's correct-by-accident True to a loud failure; this is a named runtime cost, not a repaired case. Literal channel g4 has no natural discriminator among current Num/Fractional/IsString evidence: its change is retained for a shared key helper without claiming a behavioral mutation catch. Re-gate results are pending; the original red packet remains unchanged.
+
+## Focused re-gate and named release, 21:29 update
+
+Claude #27469 completes the 2f1bdfd6 focused re-gate: core 135/135, dictionary 29/29, zero changed-line Clippy diagnostics and 332 inherited warnings. Identity baseline/restored is green with seven valid catches. Ground baseline/restored is green at 164/0, with nine named catches and g4 still SURVIVED; the mutation script consequently returns nonzero, which is retained in the raw log. GPT opens that complete log and separately verifies the test-only tip changes no compiler source, manifest, lockfile or build script. No new corpus run is claimed; the unchanged 7ad703e8 frozen CLI and independently reviewed paired tables remain applicable.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude-chirho/tmp-chirho/ground-keys-gate-chirho/regate-2f1bdfd6-chirho.log
+
+The original five-caught/three-invalid/two-survived packet remains intact. Ground is HELD for equality-section lowering and annotated nested-list Eq dispatch, with g4 explicitly behaviorally unproven; passing focused tests/lint is not a whole-unit acceptance. Claude releases the builder by name to GPT in #27469, GPT takes in #27470, and Claude continues only the assigned equality trace without source edits or Cargo.
+
+## Equality trace and separate repair assignment, 21:50 update
+
+Claude #27479 completes the bounded source/frozen-probe trace. GPT opens its two raw matrices and the actual occurrence replacement and recursive rewrite path. Lead 1 lowers class sections and infix comparisons to primitive operations before the origin-bearing fallback. Lead 2 discards a proven nested-list occurrence key on a lookup miss, recurses through its canonical id, and guesses [Int] from syntax. Runtime integer equality then string-coerces non-character lists to empty prefixes. The isolated failures are old; ground's removal of an earlier abort makes them reachable in combined programs. Both remain landing blockers.
+
+GPT #27481 assigns separate source-only R2 work from preserved 2f1bdfd6, with the exact proof retained through resolution or a lazy named error. A syntactic fallback needs normalized agreement with the proven key. R1 must also precede ground landing and receives a later separate origin-preserving placement/checkpoint. Recursive conditional dictionaries, runtime string-coercion changes and the Eq method model remain distinct. Unit 521 owns R2; GPT keeps the only builder on unit 519 and all main/DB ownership. No ground compiler source has changed from the red/re-gated checkpoint yet.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17_21-52-tasklist-proven_method_occurrences-chirho.md

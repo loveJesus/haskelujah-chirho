@@ -2,7 +2,7 @@
 
 # Char.toEnum prerequisite for case construction Chirho
 
-Progress unit 520. Existing source writer: HASKELUJAH/claude2_chirho under #27304. GPT owns canonical main/DB, integration disposition and source review. Agy completes the bounded read-only representation/backend audit in #27458 and corrects its evidence scope in #27465; no implementation ownership transfer. Claude retains the only builder for a test-only ground re-gate under #27462. This Char unit has no Cargo reservation.
+Progress unit 520. Existing source writer: HASKELUJAH/claude2_chirho under #27304. GPT owns canonical main/DB, integration disposition and source review. Agy completes the bounded read-only representation/backend audit in #27458 and corrects its evidence scope in #27465; no implementation ownership transfer. GPT takes the only builder #27470 for the independent fundep gate after Claude releases #27469. This Char unit has no Cargo reservation.
 
 ## Exposed behavior and inspected source
 
@@ -31,7 +31,8 @@ Keep separate unless the same shared mechanism necessarily changes them: missing
 - [x] Complete bounded read-only representation and backend audit with exact source citations and explicit unmeasured hypotheses.
 - [x] Measure/retain GHC and held controls for scalar conversions, a surrogate round trip, forced out-of-range errors, unforced invalid conversions and output preceding a forced failure.
 - [x] Publish the conversion contract and focused physical helper placement before source edits.
-- [ ] Commit the source checkpoint without absorbing ground or unrelated output work; candidate behavior remains predicted until built.
+- [x] Commit the source checkpoint without absorbing ground or unrelated output work; candidate behavior remains predicted until built.
+- [x] Review the exact compiler checkpoint and corrected existing-target test placement before any Char gate.
 - [ ] Receive a later named builder handoff and run focused interpreter plus LLVM/Cranelift controls; record any backend boundary at actual scope.
 - [ ] Kill a meaningful conversion/range mutation, restore the source and baseline, then complete the required paired corpus/replay/execution checks.
 - [ ] Validate the final combined case stack with T03 producing GHC output and unit 519's T18398 checker rejection retained; preserve accepted/old-rejected membership.
@@ -68,3 +69,19 @@ The host-output helper may emit '?' for a surrogate under the measured UTF-8 beh
 Consumer clarifications are explicit: eval_chirho.rs:2667 onward is CompareCharChirho, not string assembly, and must compare code points rather than host substitutions. Preserve the append path's Char payloads and add a surrogate round trip through mixed literal/dynamic append. digitToInt is a numeric conversion, not a boolean classifier; inherited invalid-digit behavior is not silently repaired by scalar predicate conversion. V03 includes generalCategory, which has typing seeds but no inspected Core/runtime implementation. Retain the aggregate receipt and split a supported isAlpha/toUpper/isSpace positive; do not claim its complete Surrogate tuple is proved by the representation change.
 
 The checked Core helper serves toEnum and chr while ord/fromEnum extract the code. Remove the Cranelift name shortcut so real bindings and user shadowing survive; the unary primitive paths force exact-arity operands. LLVM gets no spelling-based Show inference. Wasm source changes remain explicitly unmeasured. Each brick needs its exact source checkpoint and consumer diff before a later named Cargo handoff, valid-baseline conversion/range mutants and byte-identical restore. Claude remains the ground builder, candidate behavior remains predicted, and all compiler source remains held off main.
+
+## Independent Char source checkpoint, 21:42 update
+
+Claude2 #27476 publishes char-toenum-chirho from held 0f256e43, excluding fundep/case/NonEmpty/ground: pure move 9cdbe8c3, representation 3b07b8e5, checked conversion ec6ba118. These commits are unbuilt. The owner reports the CodePoint consumer changes and precise unary native primitive dispatch, plus the necessary STG error# recognition for the guarded Core error path. Scalar classifiers and FFI are adapted; legacy Int branches and the general String Show/generalCategory boundaries remain explicit. Full source review is pending, not replaced by this checkpoint receipt.
+
+#27477 requires the new conversion controls to live under the existing dictionary_evidence target rather than adding a 25th top-level test target. Preserve the original fifteen sources and oracle receipts and publish a test-only tip with compiler-source identity. It also asks the owner to distinguish the newer unforced-invalid controls from the older V09-V11 receipts, where held succeeded. No Char build lease is granted. GPT retains only the independent fundep gate; Char source ownership stays Claude2.
+
+## Corrected test placement and scoped source review, 21:47 update
+
+Claude2 #27478 publishes test-only ce86fa14, compiler-source identical to ec6ba118. The new root test target is removed; its controls are a correctly pathed child of dictionary_evidence. Its Result-returning runner supports explicit forced-error assertions and per-program failure names. The original let-in as a do-statement fixture fails held at compile time with E0202; this is a separate parser defect, not a conversion-laziness failure. The retired bytes/receipts remain. The expression-form unused control and original V09-V11 all succeed on held. All fifteen current sources retain the owner's exact oracle receipts.
+
+GPT #27480 opens the exact invariant, runtime comparison/classification/case conversion/append/output consumers, scalar-only FFI, guarded Core helper, error# STG mapping, Cranelift shortcut removal and forced primitive path, LLVM unary path, unmeasured Wasm arm and embedded controls. Source disposition is SCOPED SOURCE NO-BLOCKER, with no Char candidate execution. GPT confirms zero compiler-source files changed in ec6ba118..ce86fa14 and scans all four commits since 0f256e43 with gitleaks: no leaks. General escaping, surrogate String Show, generalCategory, digitToInt, legacy Int branches and qualified Data.Char remain named boundaries.
+
+No build lease is transferred. GPT holds the independent fundep gate. The later Char gate must distinguish actual native LLVM/Cranelift artifacts from fallback wrappers, measure operand forcing/user chr/range errors, preserve output before a forced failure, and retain Wasm as unmeasured until executed.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/receipts-chirho/char-source-ce86fa14-review-chirho.json

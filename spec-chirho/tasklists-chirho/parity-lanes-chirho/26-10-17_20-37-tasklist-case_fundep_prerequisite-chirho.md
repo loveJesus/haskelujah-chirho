@@ -2,7 +2,7 @@
 
 # Case delimiter gate and fundep generalization prerequisite Chirho
 
-Owner: GPT owns this canonical integration record and main/DB. Claude2 owns unbuilt typing source 74b1dfbc under #27457/#27464's bounded disposition. Claude retains the builder only for the test-only ground re-gate at 2f1bdfd6 under #27462, excluding the case stack. No additional Cargo reservation or compiler landing is created here. Progress unit 519.
+Owner: GPT owns this canonical integration record and main/DB. Claude2 owns the typing implementation; GPT takes the builder #27470 after Claude releases #27469, for the independent unit-519 gate. Initial replay eb366a62 is red on R02; reviewed source revision 805c249b is now replayed as 3ff084c1 in the isolated GPT worktree, with its pre-Cargo checkpoint #27475. Ground, case and Char are excluded. No compiler landing is authorized here. Progress unit 519.
 
 ## Measured stop
 
@@ -51,7 +51,7 @@ Keep new typing mechanisms in a focused module with its physical home and direct
 
 ## Resume state
 
-Case is HELD, not gate-green. Claude owns the test-only ground re-gate at 2f1bdfd6, whose compiler source remains 7ad703e8; Claude2 preserves unbuilt fundep source 74b1dfbc and next posts the Char representation contract. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is now an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
+Case is HELD, not gate-green. The initial independent fundep gate at eb366a62 is RED on accepted RangeR02Chirho. Source revision 805c249b is replayed as 3ff084c1, built and green on the six focused suites after the independent frozen pure-move identity. The retained comparison, seven mutations, lint and paired corpus remain open. Both original move/repair builds succeed; their red test receipt remains. Claude traces the equality leads source-only. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
 
 ## Completed recheck and second exposure, 20:53 update
 
@@ -102,3 +102,48 @@ GPT also verifies ast_conversion_chirho.rs and ast_conversion_tests_chirho.rs ar
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/known-type-patterns-1017-chirho/gate-chirho/final-4cfb9584-chirho/fundep-source-review-chirho.json
 
 Test-only 68d5264c names every missed embedded program with its own reason rather than stopping the grouped loop at its first failure. GPT opens that diff; the source program arrays are unchanged. The owner reports their rebuilt bytes equal the thirty measured inputs. Compiler source remains 74b1dfbc and unbuilt, with no lease transfer. Unit 520's separate representation contract receives source-only approval #27468; its implementation must keep the approved Core pure-move brick first.
+
+## Independent prerequisite gate started, 21:31 update
+
+Claude releases the builder by name in #27469 after its focused ground re-gate; GPT takes it in #27470. The held GPT worktree is preserved at 0f256e43 and a separate gpt-fundep-gate-chirho branch replays the three reviewed commits with -x provenance: 12a043b1 to 44fe3bcc, 74b1dfbc to dabd017c, and 68d5264c to eb366a62f6aebfadc15ce9520116289cacf2e578. Product crates/Cargo files are identical to the owner checkpoint. Pre-Cargo source notice #27471 names both build sources and the gate evidence path. No case/ground/Char source is included.
+
+- [x] Build/freeze pure move 44fe3bcc successfully, then restore the replay branch and build/freeze eb366a62; never copy a stale target binary after failure.
+- [x] Establish pure-move identity against frozen ba1e5c29 on the retained matrix, with any nondeterministic identifiers explicitly reported.
+- [ ] Run the focused typing/rigid/dictionary/driver controls and all natural fundep positives/negatives, including S00 and retained runtime boundaries.
+- [ ] Run six valid-baseline behavioral mutations, changed-line lint and source hygiene; restore and reproduce baseline.
+- [ ] Run the repeated corpus pair against held 4cfb9584, trace all deltas, replay diagnostics and compare common execution predicates.
+- [ ] Record the independent prerequisite disposition and release or republish the next exact combined source before taking its gates.
+
+Rules remain -j2, nice/timeout, at most two test threads, focused only; no full driver --lib or ghc_bulk. Build/test child threads use the recorded RUST_MIN_STACK=16777216 setting; no default-stack parser-compatibility claim follows. Canonical source remains unchanged.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/
+
+## First built accept-regression stop, 21:35 update
+
+Both build-gated freezes succeed without compiler warnings. Pure move 44fe3bcc has SHA256 02a2b6c3ac5b86cb14a96ce411e1733c30f59c36a22fe4f3ba2ba297005de735; repair eb366a62 (compiler source 74b1dfbc) has SHA256 4e9c9e01c647fa488d009627f7617ad4af2f0214a61f9a35b45bd7222eccef8a. The first focused fundep module run is 2/3: negative controls and concrete mtl output pass; accepted controls fail solely on RangeR02Chirho with E0204, CChirho t10 ExChirho b. The corrected harness reports that exact missed program.
+
+GPT independently checks the same embedded input on frozen held/move/repair: ACCEPT 0 / ACCEPT 0 / REJECT 1, with all binary hashes unchanged. Its source bytes equal the owner's measured embedded GHC-accepted input, SHA256 750cc2fc320c8f07be8b47f769f18b2dee0de47a26c8f13a8092ccff6ec45e8f. GHC's acceptance is retained owner evidence, not a new oracle run. The local binding has an independently generalized leading parameter while its determined range is fixed by the enclosing given; the new final-report rule must not refute it.
+
+#27472 stops the repair gate before full focused suites, behavioral mutations, lint or the corpus. No broad gate result or mutation kill is inferred from the red baseline. Claude2 is authorized to trace and revise this bounded scope/generalization seam, preserving the accepted R02 and all current negatives, with a source checkpoint before any Cargo. The earlier scoped source no-blocker remains a source review rather than a built correctness claim. The independent frozen pure-move identity can finish while that trace proceeds; no other compiler gate is running.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/receipts-chirho/initial-fundep-tests-chirho.json
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/receipts-chirho/r02-frozen-regression-chirho.json
+
+## Scoped R02 revision before re-gate, 21:39 update
+
+Claude2 #27473 traces the rigid range b to the outer signature, while the nested binding generalizes its independent leading p. The old rigid-predicate partition leaves C p Ex b outside that nested scheme, so its call site never judges that leftover. The new final report was incorrectly treating it as an ordinary module-end wanted. Source 805c249b conservatively abstains when any normalized argument mentions a variable recorded by actual local generalization in local_generalized_vars_chirho. It does not implement nested context capture. R02n without the given and R02u with the wrong call remain measured GHC rejections/held wrong accepts and explicit residuals. MU7 removes the abstention and must fail R02 by its own reason.
+
+GPT #27474 opens the guard and its local-generalization producer and finds no source blocker at that bounded scope. The revision is replayed with -x as 3ff084c1c666b976ce412153d4f085ab42f91e0b. Product crates/Cargo bytes equal owner 805c249b; pre-Cargo notice #27475 states the old red receipt remains and no new build starts during frozen move identity. A new green focused baseline, including the accepted R02 and all negative controls, is required before other repair gates or any mutation catch. Claude2 preserves Char work separately; no implementation ownership or peer Cargo lease transfers.
+
+## Revised build and focused controls, 21:50 update
+
+The independent pure-move comparison is complete: all 601 retained inputs agree between ba1e5c29 and move 44fe3bcc only after the declared @digits and $io_execution_digits masks; 580 agree raw, twenty-one differ in those internal identifiers, and zero remain unresolved or time out. Both frozen hashes are unchanged. This is measured behavioral identity with an explicit masking limit, not a byte-identical-output claim.
+
+Revised 3ff084c1 builds without compiler warnings and freezes SHA256 6412217073351fdfe2efb1b1a01690ecdbcc47d0eba8f41396dfd33de5d5f446. All six focused steps complete: rigid_tyvars 43/43 (including the accepted R02 group and all fundep negatives), typing 354/354, dictionary 17/17, instance obligations 28/28, typing integration 35/35 and filtered driver neighbors 258/258 with 1,589 excluded. The old initial red build/test receipt remains intact. No default-stack, full driver or full-workspace claim follows.
+
+The new frozen repair is now being compared against the saved independently executed held outputs for the 601 retained inputs, with baseline/source and binary hashes checked. Additional FD runtime boundaries, seven valid-baseline mutants including MU7, changed-line lint and the repeated corpus/replay/execution gates are still pending. The sole builder remains GPT. No compiler source has landed on main.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/identity-move-chirho/summary_chirho.json
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/receipts-chirho/focused-3ff084c1-chirho.json
