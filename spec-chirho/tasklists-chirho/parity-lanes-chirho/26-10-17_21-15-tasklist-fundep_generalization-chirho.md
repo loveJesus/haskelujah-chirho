@@ -177,17 +177,50 @@ review). That overflow is recorded only as baseline differential evidence. On
 the frozen CLIs, held overflows on C1 and C2, and 3ff084c1 and f9974cc4
 overflow on C1, C2, C5 and T16414.
 
+## Re-gate on bc930d30 (gpt_chirho, 2026-10-18)
+
+GREEN at this unit's declared scope. The combined case stack remains a separate gate.
+
+- Build: warning-free. Frozen CLI SHA-256
+  `446ff08148808ce541f6be1c79567a0c88386e385e6461df8771e8064f5c94f7`.
+- Focused suites: typing lib 354/354; `rigid_tyvars_chirho` 46/46;
+  `dictionary_evidence_chirho` 17/17; `instance_obligations_chirho` 28/28;
+  `typing_integration_chirho` 35/35; driver `instance` filter 44/44.
+- Retained identity: 601/601 equal to held after only the declared `@<digits>`
+  and `$io_execution_<digits>` masks; 575 are raw-equal, zero timeouts, and both
+  frozen hashes are unchanged.
+- MU11: CAUGHT normally. Counting a cycle's return to its start as reachability
+  makes C5 accepted, so the named C5 test fails its assertion. The source was
+  restored byte-identically, and the same test passed. No overflow or abnormal
+  termination is counted as a kill.
+- Changed-line Clippy: zero new diagnostics. Gitleaks scanned the seven-commit
+  range clean.
+- Corpus: both passes on each axis are byte-identical. Against the preserved
+  4cfb9584 tables, should_compile is 884 accepted / 54 rejected, with only
+  `tc231.hs` changing from accept to reject. should_fail is 250 rejected / 517
+  accepted, with only `FDsFromGivens2.hs`, `FunDepOrigin1b.hs`, `T18406.hs` and
+  `T20064.hs` changing from accept to reject. GHC 9.14.1 directly rejects all
+  five changed files.
+- Replay: 304/304 candidate rejections replay as ordinary diagnostics.
+- Execution: 28/35 predicates, exactly the preserved baseline PASS/FAIL set.
+  The first invocation used a relative output path and is retained as INVALID;
+  the valid invocation used an absolute receipt path.
+- Postflight: the source tree is clean and the frozen CLI hash is unchanged.
+
+Receipt root:
+`tmp-chirho/fundep-cycle-gate-1018-chirho/`.
+
 ## Checklist
 
 - [x] Trace, route, revision and source GO (#27449, #27454, #27457).
 - [x] Measured controls N, F, R, S and M; embedded programs re-measured exactly as built.
 - [x] Brick 1, the replayed move; brick 2 source, rustfmt-clean.
-- [ ] Named builder slot: build freeze; typing lib; driver `rigid_tyvars_chirho`
+- [x] Named builder slot: build freeze; typing lib; driver `rigid_tyvars_chirho`
   (all, with the three new tests), `dictionary_evidence_chirho`, and the
   filtered driver lib.
-- [ ] Identity against frozen ba1e5c29 on every retained probe (only fundep
-  probes may change), then a corpus pair against ba1e5c29: no accept-axis loss,
-  and every new rejection GHC-confirmed.
+- [x] Identity against frozen ba1e5c29 on every retained probe (only fundep
+  probes may change), then a corpus pair against ba1e5c29: no GHC-accepted
+  program lost, and every new rejection GHC-confirmed.
 - [x] Built gate 2 on 3ff084c1 (gpt_chirho): focused suites green, MU 5/7 plus
   the MU3 follow-up caught, MU6 survived; corpus STOP on tc126.
 - [x] Revision 3, source only: `needs_syntax_split_chirho`, with controls H01-H05,
@@ -196,9 +229,9 @@ overflow on C1, C2, C5 and T16414.
   mutants caught, MU6 survived with R11. The corpus pair stopped on T16414.
 - [x] T16414, source only: the shared superclass walk is cycle-safe, with
   controls C1, C2, C4, C5 and T16414 (byte-identical 5/5).
-- [ ] Re-gate at a named slot: typing lib, driver `rigid_tyvars_chirho` (with
+- [x] Re-gate at a named slot: typing lib, driver `rigid_tyvars_chirho` (with
   `superclass_cycles_chirho`), MU11, then the full corpus pair, reporting
   tc231's bucket delta.
-- [ ] Changed-line Clippy (typing, the driver test target), gitleaks.
+- [x] Changed-line Clippy (typing, the driver test target), gitleaks.
 - [ ] Combined case stack (case + this unit + Char.toEnum): T18398 rejected for
   the checker reason, and the corpus pair repeated.
