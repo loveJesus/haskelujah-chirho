@@ -23,7 +23,7 @@ flowchart TD
     result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join]
     prov_chirho --> join_chirho
     spans_chirho --> join_chirho
-    join_chirho --> pass_chirho[Dictionary pass occurrence_head_replacement_chirho: prim row or keyed selector from the record]
+    join_chirho --> pass_chirho[Dictionary pass occurrence_head_replacement_chirho: prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
     pass_chirho --> stg_chirho[STG: the literal's fromInteger has its dictionary]
 ```
 
@@ -113,7 +113,8 @@ flowchart TD
     so `map (== [1]) [[1],[2]]` prints [True,True] where GHC prints [True,False]. It does so on
     4cfb9584 too. The lambda form `\x -> x == [1]` runs through the whole key.
   - `[[1]] == [[2 :: Int]]` with annotated literals prints True (GHC False), on 4cfb9584 too.
-    The signed form stays loud, which is fail-closed.
+    The signed form stays loud, which is fail-closed. Settled by R2 (Proven list keys at
+    method occurrences, below): it now fails by name.
   - Both are pre-existing, but a program that used to abort earlier now reaches them, so the
     unit stays held until their leads are settled.
   - A user-class method used DIRECTLY (`tagChirho x`) mints no occurrence evidence and never
@@ -197,6 +198,46 @@ flowchart TD
   when every mint site carries its own occurrence provenance, which a span alone cannot supply:
   one do or deriving node can create several references sharing a span, so the identity must be
   shared with the node that created them.
+
+## Proven list keys at method occurrences (R2, 2026-10-17)
+
+An `Eq` or `Ord` method occurrence whose evidence is a whole ground list key (`[[Int]]`,
+`[Integer]`) that names no method row went through the keyed fallback, and when that found no
+dictionary it came back from `occurrence_head_replacement_chirho` as the canonical id. The
+rebuilt call recursed with no evidence, the method-application path keyed it off its first
+argument, and the cons case of `infer_type_key_chirho` reads an unknown element as `[Int]`:
+`[[1]] == [[2 :: Int]]` ran `$fEq[Int]`, whose `==#` compares the inner lists as empty string
+prefixes, and printed `True`. Inside `sameChirho :: Eq a => ...`, the keyed fallback's
+class-only fallback lent the enclosing `Eq a` dictionary instead, also `True`. Measured alike
+on 4cfb9584 and 7ad703e8 (claude_chirho #27479, #27487; gpt_chirho #27481, #27488).
+
+```mermaid
+flowchart TD
+    occ_r2_chirho[Eq or Ord occurrence: evidence a whole list key, no prim row] --> sel_r2_chirho[proven_list_selector_chirho: the canonical name selects through the evidence class]
+    sel_r2_chirho --> reg_r2_chirho{registry_dict_chirho at the proven key}
+    reg_r2_chirho -->|found| app_r2_chirho[selector applied to that dictionary]
+    reg_r2_chirho -->|none| syn_r2_chirho{argument-shape key agrees: key_agrees_with_proof_chirho over engine_spelled_key_chirho}
+    syn_r2_chirho -->|agrees, registered| app_r2_chirho
+    syn_r2_chirho -->|disagrees or unregistered| err_r2_chirho[selector applied to missing_dictionary_chirho: lazy, names the class and key]
+```
+
+- Agreement compares engine spellings: whole-word `String` as `[Char]`, `Integer` as `Int`.
+  The defaulted `[1] == [2]` is proven `[Integer]` and is still served by `$fEq[Int]`; `[Int]`
+  never stands in for `[[Integer]]`.
+- After a proven miss, never the canonical id and never the class-only fallback. The error is
+  a thunk, so a comparison that is never forced (an unused `let`, an empty `map`, the right
+  side of a short-circuited `&&`) never fails.
+- Measured cost: `[Just 1] == [Just (2 :: Int)]` printed GHC's `False` only because the
+  runtime's legacy operand unboxing (`force_to_prim_chirho`) reached the field of the one-field
+  `Just` under `$fEq[Int]`'s `==#`; it now fails, naming `Eq [(Maybe Int)]`, the key's spelling.
+  `[Just 1] == [Nothing]` was loud already.
+- Scope: `Eq` and `Ord` (`PROVEN_LIST_CLASSES_CHIRHO`). `Show` keeps its documented
+  dictionary path for shapes without a generated row (`show [Just RedChirho]` prints GHC's
+  answer through it); every other class keeps its path, unmeasured.
+- Not on this route: `/=` desugars to `not (==)` with no provenance, so it carries no evidence
+  and `[[1]] /= [[2 :: Int]]` still prints `False` (GHC `True`), the Eq method set's repair.
+  Sections, and infix `<`, `<=`, `>`, `>=`, lower to Int primops before any occurrence exists
+  (R1, a separate unit).
 
 ## Occurrence provenance (in progress, 2026-09-22)
 

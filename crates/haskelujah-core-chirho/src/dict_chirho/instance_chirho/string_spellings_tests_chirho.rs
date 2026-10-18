@@ -2,7 +2,8 @@
 
 //! The `String`-written row of a ground dictionary's slot: taken only when it
 //! is the one row under another spelling of the typed key, after the exact
-//! typed row (agy_chirho #27325, gpt_chirho #27399).
+//! typed row (agy_chirho #27325, gpt_chirho #27399). And the engine spelling a
+//! proven key and an argument-shape key are compared under.
 
 use std::collections::HashMap;
 
@@ -95,5 +96,23 @@ fn the_exact_typed_row_wins_over_a_string_spelling_chirho() {
     assert_eq!(
         resolve_chirho(&[("$prim_TagChirho_tagChirho_[String]", 1)]),
         CoreIdChirho(1)
+    );
+}
+
+#[test]
+fn the_engine_spelling_respells_whole_words_only_chirho() {
+    let spelled_chirho = DictPassCtxChirho::engine_spelled_key_chirho;
+    // The defaulted `Integer` meets the rows' `Int`, at any depth.
+    assert_eq!(spelled_chirho("[Integer]"), "[Int]");
+    assert_eq!(spelled_chirho("[[Integer]]"), "[[Int]]");
+    assert_eq!(spelled_chirho("Maybe Integer"), "Maybe Int");
+    assert_eq!(spelled_chirho("[String]"), "[[Char]]");
+    // A type whose name merely contains either word is another type.
+    assert_eq!(spelled_chirho("[IntegerBoxChirho]"), "[IntegerBoxChirho]");
+    assert_eq!(spelled_chirho("[StringBoxChirho]"), "[StringBoxChirho]");
+    // The registry's `String` spelling leaves `Integer` alone.
+    assert_eq!(
+        DictPassCtxChirho::string_spelled_out_chirho("[Integer]"),
+        "[Integer]"
     );
 }

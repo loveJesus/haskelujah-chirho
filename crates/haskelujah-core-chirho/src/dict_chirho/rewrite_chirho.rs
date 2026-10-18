@@ -3094,6 +3094,8 @@ impl DictPassCtxChirho {
                     dict_vars_chirho,
                     evidence_classes_chirho,
                     local_instance_dicts_chirho,
+                    // A bare reference has no argument to read a key off.
+                    &|| None,
                 ) {
                     return self.rewrite_method_refs_with_locals_chirho(
                         &replacement_chirho,
@@ -3169,11 +3171,23 @@ impl DictPassCtxChirho {
                                 return rewritten_print_chirho;
                             }
                         }
+                        // The argument-shape key a proven list key may agree
+                        // with, read as the method-application path reads it:
+                        // the first argument with a key, in source order.
+                        let syntactic_key_chirho = || {
+                            spine_args_chirho.iter().rev().find_map(|spine_arg_chirho| {
+                                self.infer_type_key_for_rewrite_chirho(
+                                    spine_arg_chirho,
+                                    local_type_keys_chirho,
+                                )
+                            })
+                        };
                         if let Some(new_head_chirho) = self.occurrence_head_replacement_chirho(
                             *head_id_chirho,
                             dict_vars_chirho,
                             evidence_classes_chirho,
                             local_instance_dicts_chirho,
+                            &syntactic_key_chirho,
                         ) {
                             let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
                                 new_head_chirho,

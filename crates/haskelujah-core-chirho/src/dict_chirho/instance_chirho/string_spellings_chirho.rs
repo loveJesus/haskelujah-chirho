@@ -4,7 +4,9 @@
 //! instance by its head as typed, the synonym expanded (`instance TagChirho
 //! [String]` is `$fTagChirho[[Char]]`), while evidence keys spell a nested
 //! string `String`, as `Show`'s own rows do. Every lookup that crosses between
-//! the two spellings uses the one rule here.
+//! the two spellings uses the one rule here, and so does the comparison of a
+//! proven key with an argument-shape key (`engine_spelled_key_chirho`, which
+//! also spells the defaulted `Integer` as the rows' `Int`).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::DictPassCtxChirho;
@@ -52,10 +54,36 @@ impl DictPassCtxChirho {
     }
 
     /// Each whole-word `String` in a key spelled `[Char]`: `[String]` →
-    /// `[[Char]]`, `Maybe String` → `Maybe [Char]`. A word is a maximal run of
-    /// identifier characters (letters, digits, `_`, `'`, `.`), so `ByteString`
-    /// or `StringBoxChirho` is never touched.
+    /// `[[Char]]`, `Maybe String` → `Maybe [Char]`.
     pub(in crate::dict_chirho) fn string_spelled_out_chirho(key_chirho: &str) -> String {
+        Self::words_respelled_chirho(key_chirho, |word_chirho| {
+            (word_chirho == "String").then_some("[Char]")
+        })
+    }
+
+    /// A key as the engine's rows spell it: each whole-word `String` as
+    /// `[Char]` (`string_spelled_out_chirho`) and each whole-word `Integer` as
+    /// `Int`, because the body-backed rows are keyed `Int` where the checker
+    /// defaults an ambiguous numeric to `Integer` (the driver's join maps a
+    /// whole `Integer` key the same way). `[Integer]` → `[Int]`, `[String]` →
+    /// `[[Char]]`. Only a comparison of keys uses it, never a row's name.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn engine_spelled_key_chirho(key_chirho: &str) -> String {
+        Self::words_respelled_chirho(key_chirho, |word_chirho| match word_chirho {
+            "String" => Some("[Char]"),
+            "Integer" => Some("Int"),
+            _ => None,
+        })
+    }
+
+    /// `key_chirho` with each whole word `respell_chirho` maps replaced. A word
+    /// is a maximal run of identifier characters (letters, digits, `_`, `'`,
+    /// `.`), so `ByteString`, `StringBoxChirho` or `IntegerBoxChirho` is never
+    /// touched.
+    fn words_respelled_chirho(
+        key_chirho: &str,
+        respell_chirho: impl Fn(&str) -> Option<&'static str>,
+    ) -> String {
         let mut spelled_chirho = String::with_capacity(key_chirho.len() + 8);
         let mut word_chirho = String::new();
         let identifier_char_chirho =
@@ -65,10 +93,9 @@ impl DictPassCtxChirho {
                 word_chirho.push(ch_chirho);
                 continue;
             }
-            if word_chirho == "String" {
-                spelled_chirho.push_str("[Char]");
-            } else {
-                spelled_chirho.push_str(&word_chirho);
+            match respell_chirho(word_chirho.as_str()) {
+                Some(respelled_chirho) => spelled_chirho.push_str(respelled_chirho),
+                None => spelled_chirho.push_str(&word_chirho),
             }
             word_chirho.clear();
             spelled_chirho.push(ch_chirho);

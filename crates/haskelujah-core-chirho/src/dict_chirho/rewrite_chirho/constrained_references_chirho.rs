@@ -8,12 +8,23 @@
 //! call, evidenced or not, receives a dictionary argument for EVERY predicate, an explicit lazy error
 //! where none can be built, never a gap its next term argument would fill; and
 //! a whole ground list key the checker proved is never replaced by a guess read
-//! off the argument's syntax.
+//! off the argument's syntax. The head replacement of a method occurrence moved
+//! here too, since an `Eq` or `Ord` occurrence at such a key shares those
+//! lookups: an argument-shape key may serve it only when it agrees with the
+//! proof (`proven_list_dispatch_chirho`).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::{HashMap, HashSet};
 
 use super::{CoreExprChirho, CoreIdChirho, CoreLitChirho, DictPassCtxChirho};
+
+/// The classes whose method occurrences `proven_list_dispatch_chirho` governs
+/// (gpt_chirho #27488): their list dictionaries are ground specializations per
+/// element type (`$fEq[Int]`, `$fOrd[Double]`), so a key read off the syntax
+/// names another element type's dictionary. `Show` keeps its documented
+/// dictionary path for shapes without a generated row (`show [Just RedChirho]`
+/// prints GHC's answer through it); every other class keeps its path, unmeasured.
+const PROVEN_LIST_CLASSES_CHIRHO: [&str; 2] = ["Eq", "Ord"];
 
 impl DictPassCtxChirho {
     /// The head of a call to a constrained binding, with one dictionary argument
@@ -253,6 +264,18 @@ impl DictPassCtxChirho {
                 evidence_classes_chirho,
             );
         }
+        self.registry_dict_chirho(class_name_chirho, key_chirho, local_instance_dicts_chirho)
+    }
+
+    /// The dictionary the registry holds for `key_chirho` under any of its
+    /// spellings (`registry_spellings_chirho`), the enclosing binding's local
+    /// dictionaries first.
+    fn registry_dict_chirho(
+        &self,
+        class_name_chirho: &str,
+        key_chirho: &str,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreIdChirho> {
         Self::registry_spellings_chirho(class_name_chirho, key_chirho)
             .into_iter()
             .find_map(|candidate_chirho| {
@@ -266,14 +289,18 @@ impl DictPassCtxChirho {
 
     /// Evidence-threading P1/P2b: if `head_id` is a method OCCURRENCE id, return
     /// the replacement head expression — the evidence-dispatched `$prim` row when
-    /// one exists, else the existing keyed selector/instance dispatch driven by
-    /// the PROVEN type key, else the canonical shared id (today's path).
+    /// one exists; for an `Eq` or `Ord` method at a proven whole list key, the
+    /// dispatch of `proven_list_dispatch_chirho`; else the existing keyed
+    /// selector/instance dispatch driven by the PROVEN type key, else the
+    /// canonical shared id (today's path). `syntactic_key_chirho` reads the
+    /// call's argument-shape key, and only a proven list key asks for it.
     pub(super) fn occurrence_head_replacement_chirho(
         &self,
         head_id_chirho: CoreIdChirho,
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
         evidence_classes_chirho: &HashSet<String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+        syntactic_key_chirho: &dyn Fn() -> Option<String>,
     ) -> Option<CoreExprChirho> {
         let (method_name_chirho, canonical_id_chirho) =
             self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
@@ -304,6 +331,23 @@ impl DictPassCtxChirho {
                     return Some(CoreExprChirho::VarChirho(prim_id_chirho));
                 }
             }
+            // A proven list key that names no row never comes back as the
+            // canonical id, whose recursion re-keyed the call off the syntax.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if let Some(selector_id_chirho) = self.proven_list_selector_chirho(
+                *canonical_id_chirho,
+                class_name_chirho,
+                ty_key_chirho,
+            ) {
+                return Some(self.proven_list_dispatch_chirho(
+                    head_id_chirho,
+                    selector_id_chirho,
+                    class_name_chirho,
+                    ty_key_chirho,
+                    syntactic_key_chirho,
+                    local_instance_dicts_chirho,
+                ));
+            }
             // Keyed fallback: reuse the existing selector/instance dispatch with
             // the proven key so selector-backed instances (Eq/Num Int, ...) work.
             return Some(self.try_rewrite_method_var_chirho(
@@ -315,6 +359,90 @@ impl DictPassCtxChirho {
             ));
         }
         Some(CoreExprChirho::VarChirho(*canonical_id_chirho))
+    }
+
+    /// The selector an occurrence dispatches through when R2 governs it: an
+    /// `Eq` or `Ord` method (`PROVEN_LIST_CLASSES_CHIRHO`) at a whole list key,
+    /// whose canonical name selects through that same class.
+    fn proven_list_selector_chirho(
+        &self,
+        canonical_id_chirho: CoreIdChirho,
+        class_name_chirho: &str,
+        key_chirho: &str,
+    ) -> Option<CoreIdChirho> {
+        if !PROVEN_LIST_CLASSES_CHIRHO.contains(&class_name_chirho)
+            || !Self::is_whole_list_key_chirho(key_chirho)
+        {
+            return None;
+        }
+        let name_chirho = self.names_chirho.get(&canonical_id_chirho)?;
+        let (selector_class_chirho, selector_id_chirho) =
+            self.class_method_selector_for_name_chirho(name_chirho)?;
+        (selector_class_chirho == class_name_chirho).then_some(selector_id_chirho)
+    }
+
+    /// The head of an `Eq` or `Ord` method occurrence at a whole list key the
+    /// checker proved, once that key names no method row (R2, gpt_chirho
+    /// #27481, #27488): the selector applied to the dictionary the registry
+    /// holds for the proven key; else to the one for the call's argument-shape
+    /// key, only when that key agrees with the proof
+    /// (`key_agrees_with_proof_chirho`); else to `missing_dictionary_chirho`,
+    /// which names the obligation and fails only if the comparison is forced.
+    /// The canonical id this used to return recursed with no evidence and was
+    /// keyed off its first argument: `[[1]] == [[2 :: Int]]` took `[Int]` and
+    /// printed `True`, and inside `sameChirho :: Eq a => ..` the enclosing
+    /// `Eq a` dictionary answered for `Eq [[Int]]`. Neither may serve now.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn proven_list_dispatch_chirho(
+        &self,
+        occurrence_id_chirho: CoreIdChirho,
+        selector_id_chirho: CoreIdChirho,
+        class_name_chirho: &str,
+        proven_key_chirho: &str,
+        syntactic_key_chirho: &dyn Fn() -> Option<String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> CoreExprChirho {
+        let dict_arg_chirho = self
+            .registry_dict_chirho(
+                class_name_chirho,
+                proven_key_chirho,
+                local_instance_dicts_chirho,
+            )
+            .or_else(|| {
+                syntactic_key_chirho()
+                    .filter(|syntactic_chirho| {
+                        Self::key_agrees_with_proof_chirho(proven_key_chirho, syntactic_chirho)
+                    })
+                    .and_then(|syntactic_chirho| {
+                        self.registry_dict_chirho(
+                            class_name_chirho,
+                            &syntactic_chirho,
+                            local_instance_dicts_chirho,
+                        )
+                    })
+            })
+            .map(CoreExprChirho::VarChirho)
+            .unwrap_or_else(|| {
+                self.missing_dictionary_chirho(
+                    class_name_chirho,
+                    Some(proven_key_chirho),
+                    occurrence_id_chirho,
+                )
+            });
+        CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_id_chirho)),
+            arg_chirho: Box::new(dict_arg_chirho),
+        }
+    }
+
+    /// Whether an argument-shape key may stand in for a proven one: the same
+    /// key once both are spelled as the engine's rows are
+    /// (`engine_spelled_key_chirho`). `[Int]` agrees with a proven `[Integer]`
+    /// (the defaulted `[1] == [2]`) and `[[Char]]` with `[String]`; `[Int]`
+    /// never agrees with `[[Integer]]`, whose nesting the syntax collapsed.
+    fn key_agrees_with_proof_chirho(proven_key_chirho: &str, syntactic_key_chirho: &str) -> bool {
+        Self::engine_spelled_key_chirho(proven_key_chirho)
+            == Self::engine_spelled_key_chirho(syntactic_key_chirho)
     }
 
     /// The binding's own dictionary parameter an own-parameter key names: the
