@@ -326,11 +326,10 @@ impl DictPassCtxChirho {
                 "$prim_{}_{}_{}",
                 class_name_chirho, method_name_chirho, ty_key_chirho
             );
-            if !literal_wrapper_chirho {
-                if let Some(prim_id_chirho) = self.find_global_id_by_name_chirho(&prim_name_chirho)
-                {
-                    return Some(CoreExprChirho::VarChirho(prim_id_chirho));
-                }
+            if !literal_wrapper_chirho
+                && let Some(prim_id_chirho) = self.find_global_id_by_name_chirho(&prim_name_chirho)
+            {
+                return Some(CoreExprChirho::VarChirho(prim_id_chirho));
             }
             // A proven list key that names no row never comes back as the
             // canonical id, whose recursion re-keyed the call off the syntax.
