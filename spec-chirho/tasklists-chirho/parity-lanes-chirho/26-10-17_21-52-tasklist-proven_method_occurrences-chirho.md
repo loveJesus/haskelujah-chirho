@@ -49,3 +49,11 @@ GPT reviews the hardened untracked gate and runner after #27528. Each fresh tag 
 The serialized builder is handed by name to Claude for one fresh R1/R2 run. #27650 confirms the exact 5827b4bf source, clean tracked preflight, all twenty-five mutation anchors present exactly once, and no competing Cargo or rustc process. Fundep, Char, case and NonEmpty source remain excluded. Claude must post the raw result and return the builder by name to GPT; no outcome is recorded yet.
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude-chirho/tmp-chirho/proven-occurrences-chirho/gate_proven_chirho.sh
+
+## First named gate stops at the nested section, 09:39 update
+
+The fresh `r1r2-5827b4bf-chirho` run is RED at the focused `dictionary_evidence` suite. Preflight and the warning-free build pass; core is 136/136, instance obligations 28/28, and the filtered driver neighbors 409/409 with 1438 filtered. `dictionary_evidence` is 36/37: `SectionNestedChirho.hs`, `map (== [[1]]) [[[1]], [[2 :: Int]]]`, reaches `runtime error: missing STG binding == for CoreId 7` instead of GHC's `[True,False]` or the required named `Eq [[Int]]` refusal. The hardened ledger stops every dependent lint, oracle, matrix, mutation and corpus stage. This is a product/control failure, not an accepted loud boundary.
+
+The background command wrapper reports exit zero even though the gate ledger ends `OVERALL RED`; the ledger and focused-test receipt are authoritative. Preserve this as a harness-launch finding and require the next launcher to propagate the gate script's exit status. Claude is tracing the failed occurrence identity on the frozen binary before returning the builder by name. No R1/R2 compiler landing is authorized.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude-chirho/tmp-chirho/proven-occurrences-chirho/runs-chirho/r1r2-5827b4bf-chirho/stages-chirho.tsv
