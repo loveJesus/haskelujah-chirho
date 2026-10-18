@@ -10,6 +10,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
+#[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
+mod equality_sections_chirho;
 #[path = "dictionary_evidence_chirho/ground_keys_chirho.rs"]
 mod ground_keys_chirho;
 #[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
@@ -41,6 +43,26 @@ fn run_result_chirho(file_name_chirho: &str, source_chirho: &str) -> Result<Stri
     )
     .map(|(_value_chirho, machine_chirho)| machine_chirho.io_output_chirho)
     .map_err(|err_chirho| err_chirho.to_string())
+}
+
+/// GHC's exact output, or a failure that names the obligation: never another
+/// dictionary's answer.
+fn assert_ghc_or_named_chirho(
+    file_name_chirho: &str,
+    source_chirho: &str,
+    ghc_chirho: &str,
+    obligation_chirho: &str,
+) {
+    match run_result_chirho(file_name_chirho, source_chirho) {
+        Ok(output_chirho) => assert_eq!(
+            output_chirho, ghc_chirho,
+            "{file_name_chirho}: neither GHC's output nor a named failure"
+        ),
+        Err(err_chirho) => assert!(
+            err_chirho.contains(&format!("no instance dictionary for `{obligation_chirho}`")),
+            "{file_name_chirho}: the failure must name `{obligation_chirho}`: {err_chirho}"
+        ),
+    }
 }
 
 #[test]

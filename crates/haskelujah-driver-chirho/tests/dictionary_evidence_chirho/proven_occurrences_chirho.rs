@@ -10,27 +10,7 @@
 //! output is GHC 9.14.1's.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{run_chirho, run_result_chirho};
-
-/// GHC's exact output, or a failure that names the obligation: never another
-/// dictionary's answer.
-fn assert_ghc_or_named_chirho(
-    file_name_chirho: &str,
-    source_chirho: &str,
-    ghc_chirho: &str,
-    obligation_chirho: &str,
-) {
-    match run_result_chirho(file_name_chirho, source_chirho) {
-        Ok(output_chirho) => assert_eq!(
-            output_chirho, ghc_chirho,
-            "{file_name_chirho}: neither GHC's output nor a named failure"
-        ),
-        Err(err_chirho) => assert!(
-            err_chirho.contains(&format!("no instance dictionary for `{obligation_chirho}`")),
-            "{file_name_chirho}: the failure must name `{obligation_chirho}`: {err_chirho}"
-        ),
-    }
-}
+use super::{assert_ghc_or_named_chirho, run_chirho};
 
 #[test]
 fn a_nested_list_comparison_answers_as_ghc_or_names_its_dictionary_chirho() {
