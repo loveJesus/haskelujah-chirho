@@ -107,6 +107,25 @@ flowchart TD
   under an `Int` key printed `$PAP halfChirho …` for GHC's `"1.5"` (gpt_chirho #27303). Its
   key comes from the surrounding call, so a dictionary it serves can be at the wrong type;
   reference evidence for infix uses is the separate cure.
+- Ground keys, measured boundaries (ground gate on 7ad703e8, gpt_chirho #27462). Unmet and
+  left open:
+  - The equality SECTION `(== [1])` lowers to the Int primop `==#` with no dictionary at all,
+    so `map (== [1]) [[1],[2]]` prints [True,True] where GHC prints [True,False]. It does so on
+    4cfb9584 too. The lambda form `\x -> x == [1]` runs through the whole key.
+  - `[[1]] == [[2 :: Int]]` with annotated literals prints True (GHC False), on 4cfb9584 too.
+    The signed form stays loud, which is fail-closed.
+  - Both are pre-existing, but a program that used to abort earlier now reaches them, so the
+    unit stays held until their leads are settled.
+  - A user-class method used DIRECTLY (`tagChirho x`) mints no occurrence evidence and never
+    reaches a dictionary. It stays loud; only a constrained call or a standard method's
+    occurrence reaches the keys.
+  - The literal channel's whole key has no observable effect today. Literal evidence is
+    recorded for Num, Fractional and IsString only, so only an OverloadedStrings literal at
+    `[Char]` is list-typed, and that literal runs alike under the whole key and under 4cfb9584's
+    head key. The rule is kept for one shared key function, and no behavior is claimed for it.
+  - The proven-key guard trades an accidental right answer for a loud failure:
+    `sameChirho [[[1]], [[1 :: Int]]]` printed True on 4cfb9584 (correct by accident) and now
+    fails, naming `Ord [[Int]]`. Its unequal twin printed a wrong True there.
 - A reference occurrence is seen through by every dictionary-parameter lookup
   (`canonical_id_chirho`), and the spine pre-pass leaves an evidenced reference in place so the
   call-site path can read its records; one it finds no evidence for is restored to its

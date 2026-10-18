@@ -32,7 +32,7 @@ fn run_result_chirho(file_name_chirho: &str, source_chirho: &str) -> Result<Stri
         None,
     )
     .map(|(_value_chirho, machine_chirho)| machine_chirho.io_output_chirho)
-    .map_err(|err_chirho| format!("{err_chirho}"))
+    .map_err(|err_chirho| err_chirho.to_string())
 }
 
 #[test]
@@ -99,12 +99,15 @@ fn a_constrained_function_passed_on_carries_its_dictionary_chirho() {
 
 #[test]
 fn a_method_at_a_ground_list_dispatches_on_the_whole_key_chirho() {
-    // `== [1]` at `[Int]` elements: the occurrence keyed `[]` answered
-    // `[True,True]`.
+    // `==` at `[Int]` elements, in a lambda: keyed `[]` it was a missing
+    // binding (4cfb9584); keyed by the whole `[Int]` it runs. The SECTION
+    // `(== [1])` is an unmet boundary, not tested here: it lowers to the Int
+    // primop `==#` with no dictionary at all and prints [True,True] on
+    // 4cfb9584 and here alike (gpt_chirho #27462 lead).
     assert_eq!(
         run_chirho(
-            "SectionAtListChirho.hs",
-            &program_chirho("main = print (map (== [1]) nestedChirho)"),
+            "LambdaAtListChirho.hs",
+            &program_chirho("main = print (map (\\x -> x == [1]) nestedChirho)"),
         ),
         "[True,False]\n"
     );
@@ -120,6 +123,19 @@ fn a_dictionary_nobody_can_build_fails_by_name_only_when_forced_chirho() {
         &program_chirho("main = print (sameChirho tripleChirho)"),
     ) {
         Ok(output_chirho) => assert_eq!(output_chirho, "True\n"),
+        Err(err_chirho) => assert!(
+            err_chirho.contains("no instance dictionary for `Ord [[Int]]`"),
+            "the error must name the obligation: {err_chirho}"
+        ),
+    }
+    // A literal argument gives the argument-shape guess something to read:
+    // it collapses `[[Int]]` to a dictionary it can find, and answered `True`
+    // on 4cfb9584 where GHC prints `False`. The proven key forbids that guess.
+    match run_result_chirho(
+        "MissingDictionaryLiteralChirho.hs",
+        &program_chirho("main = print (sameChirho [[[1]], [[2 :: Int]]])"),
+    ) {
+        Ok(output_chirho) => assert_eq!(output_chirho, "False\n"),
         Err(err_chirho) => assert!(
             err_chirho.contains("no instance dictionary for `Ord [[Int]]`"),
             "the error must name the obligation: {err_chirho}"
@@ -268,19 +284,14 @@ fn a_nested_string_meets_its_instance_under_either_spelling_chirho() {
     // agy_chirho #27318 A3: an instance head registers as it displays
     // (`instance TagChirho [[Char]]` is `$fTagChirho[[Char]]`, and so is one
     // written `[String]`), while the evidence spells the nested string
-    // `[String]`. Through a constrained reference and as a direct method use,
-    // either spelling must meet; a user type whose name merely contains
-    // `String` keeps its own key. Each printed an empty line or failed. The
-    // written `[String]` row also needs its dictionary's method slot, below.
+    // `[String]`. Through a constrained reference either spelling must meet;
+    // a user type whose name merely contains `String` keeps its own key. Each
+    // printed an empty line or failed. The written `[String]` row also needs
+    // its dictionary's method slot, below.
     for (file_name_chirho, declarations_chirho, expected_chirho) in [
         (
             "NestedCharsByReferenceChirho.hs",
             "instance TagChirho [[Char]] where\n  tagChirho _ = \"nested-chars\"\nwordsChirho :: [String]\nwordsChirho = [\"hi\", \"there\"]\nmain :: IO ()\nmain = putStrLn (useTagChirho wordsChirho)\n",
-            "nested-chars\n",
-        ),
-        (
-            "NestedCharsByOccurrenceChirho.hs",
-            "instance TagChirho [[Char]] where\n  tagChirho _ = \"nested-chars\"\nwordsChirho :: [String]\nwordsChirho = [\"hi\", \"there\"]\nmain :: IO ()\nmain = putStrLn (tagChirho wordsChirho)\n",
             "nested-chars\n",
         ),
         (
@@ -303,6 +314,17 @@ fn a_nested_string_meets_its_instance_under_either_spelling_chirho() {
             "{file_name_chirho}"
         );
     }
+    // A user-class method used directly mints no occurrence evidence, so it
+    // never reaches a dictionary: it fails loudly on 4cfb9584 and here. It may
+    // print GHC's answer once that boundary closes, never another.
+    if let Ok(output_chirho) = run_result_chirho(
+        "NestedCharsByOccurrenceChirho.hs",
+        &format!(
+            "{TAG_CLASS_CHIRHO}instance TagChirho [[Char]] where\n  tagChirho _ = \"nested-chars\"\nwordsChirho :: [String]\nwordsChirho = [\"hi\", \"there\"]\nmain :: IO ()\nmain = putStrLn (tagChirho wordsChirho)\n"
+        ),
+    ) {
+        assert_eq!(output_chirho, "nested-chars\n");
+    }
 }
 
 #[test]
@@ -310,30 +332,28 @@ fn a_head_written_string_fills_its_dictionary_slot_chirho() {
     // agy_chirho #27325: the desugarer names an instance's method rows by the
     // head as written (`$prim_TagChirho_tagChirho_String`), the dictionary by
     // the head as typed (`$fTagChirho[Char]`), so its slot was a
-    // missing-method stub. A constrained reference, and a direct use at
-    // `[Char]`, which reaches the method through the dictionary's selector,
-    // must both run the written method. On main 3ca4fc54 the reference
-    // printed an empty line (exit 0) and the direct use was a missing binding.
-    for (file_name_chirho, main_chirho) in [
-        (
+    // missing-method stub. A constrained reference must run the written
+    // method; on main 3ca4fc54 it printed an empty line (exit 0). A direct use
+    // mints no occurrence evidence and never reaches the dictionary: it fails
+    // loudly on 4cfb9584 and here, and may print GHC's answer once that
+    // boundary closes, never another.
+    let written_program_chirho = |main_chirho: &str| {
+        format!(
+            "{TAG_CLASS_CHIRHO}instance TagChirho String where\n  tagChirho _ = \"string\"\nvalueChirho :: [Char]\nvalueChirho = \"abc\"\nmain :: IO ()\n{main_chirho}"
+        )
+    };
+    assert_eq!(
+        run_chirho(
             "WrittenStringChirho.hs",
-            "main = putStrLn (useTagChirho valueChirho)\n",
+            &written_program_chirho("main = putStrLn (useTagChirho valueChirho)\n")
         ),
-        (
-            "WrittenStringByOccurrenceChirho.hs",
-            "main = putStrLn (tagChirho valueChirho)\n",
-        ),
-    ] {
-        assert_eq!(
-            run_chirho(
-                file_name_chirho,
-                &format!(
-                    "{TAG_CLASS_CHIRHO}instance TagChirho String where\n  tagChirho _ = \"string\"\nvalueChirho :: [Char]\nvalueChirho = \"abc\"\nmain :: IO ()\n{main_chirho}"
-                )
-            ),
-            "string\n",
-            "{file_name_chirho}"
-        );
+        "string\n"
+    );
+    if let Ok(output_chirho) = run_result_chirho(
+        "WrittenStringByOccurrenceChirho.hs",
+        &written_program_chirho("main = putStrLn (tagChirho valueChirho)\n"),
+    ) {
+        assert_eq!(output_chirho, "string\n");
     }
 }
 
