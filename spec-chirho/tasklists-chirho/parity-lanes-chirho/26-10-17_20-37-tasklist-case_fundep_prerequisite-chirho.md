@@ -51,7 +51,7 @@ Keep new typing mechanisms in a focused module with its physical home and direct
 
 ## Resume state
 
-Case is HELD, not gate-green. The initial independent fundep gate at eb366a62 is RED on accepted RangeR02Chirho. Source revision 805c249b is replayed as 3ff084c1, built and green on the six focused suites after the independent frozen pure-move identity. The retained comparison, seven mutations, lint and paired corpus remain open. Both original move/repair builds succeed; their red test receipt remains. Claude traces the equality leads source-only. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
+Case is HELD, not gate-green. The initial independent fundep gate at eb366a62 is RED on accepted RangeR02Chirho. Source revision 805c249b is replayed as 3ff084c1, built and green on the six focused suites after the independent frozen pure-move identity. The retained comparison and lint pass at scope; mutations retain one survivor, and the first accept corpus pass is RED on tc126 plus the GHC-rejected tc231 bucket member. No reject/repeat/replay/execution stage follows that stop. Both original move/repair builds succeed; their red test receipt remains. Claude traces the equality leads source-only. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
 
 ## Completed recheck and second exposure, 20:53 update
 
@@ -147,3 +147,39 @@ The new frozen repair is now being compared against the saved independently exec
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/identity-move-chirho/summary_chirho.json
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/receipts-chirho/focused-3ff084c1-chirho.json
+
+## Retained matrix, fresh oracle controls and honest mutation limits, 22:04 update
+
+Frozen repair 64122170 agrees with all 601 independently saved held runs after only @digits/$io_execution_digits masks; 579 agree raw. No unresolved difference or timeout remains, and both binary/source identities are checked. GPT freshly runs all forty-four owner FD sources through GHC 9.14.1, frozen held and repair check, and six M/R runtime controls through all three. No previous GHC verdict/runtime agreement is lost. The named primary N/F/R negatives reject, the accepted controls including R02/S00 remain accepted, and original T18398 stays rejected before the case repair.
+
+The broader receipt exposes extra limits. Merely appending main = pure () to N01/N03 leaves N01m/N03m accepted, although GHC rejects them; the initial eb366a62 also accepts them, so this is not introduced by the R02 guard. GPT requests an owner source-only trace in #27485. The R03b matching-instance program still checks but changes from a wrong empty line on held to a loud missing methChirho binding on repair; GHC prints 6. R05/R10 keep wrong empty lines, M02 keeps PAP output and M03 keeps a runtime error; M01 stays exact at 3. These limits are not repaired by the checker unit.
+
+The first seven-mutant run completes against baseline 3/0 and restores source bytes and baseline exactly: five named catches (MU1, MU2, MU4, MU5, MU7), MU3 CAUGHT-ELSEWHERE and MU6 SURVIVED. MU3's proposed R08 witness does not fail; the committed R09 negative instead becomes a wrong accept. A separately saved follow-up uses that natural R09 input against a new green baseline, catches the same mutant for its own reason and restores 3/0. The original five-of-seven result is preserved rather than rewritten. Normalization MU6 survives R06 and a second natural erasing-synonym wanted; that second source is GHC-rejected, held-accepted and correctly repair-rejected, but does not distinguish the helper. Its behavior remains unproven pending the bounded source trace #27486. No synthetic structural test or silent deletion is authorized.
+
+Changed-line Clippy completes on typing all-targets and the rigid test target versus 0f256e43: zero new diagnostics, 429 inherited. The repeated corpus pair against held 4cfb9584 is running, without case/Char/ground. Replay and common execution wait for complete repeated membership. The overall prerequisite is not mutation-green or accepted from the passing focused/lint checks.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/fundep-receipt-3ff084c1-chirho/summary_chirho.json
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/mutations-3ff084c1-chirho/receipt_chirho.json
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/mutations-3ff084c1-mu3-followup-chirho/receipt_chirho.json
+
+## Combined source prepared, not validated
+
+Claude2 #27483 prepares case-combined-chirho at 4a558510 on held 0f256e43, replaying the reviewed independent fundep, Char and case commits with provenance. GPT independently verifies the complete source union: nine FD, twenty Char and ten case owned files are disjoint, their thirty-nine combined blobs equal the respective unit tips, and no other file changes. The units' own gates and a final combined build/corpus remain necessary. Predicted T18398 checker rejection and T03 output ab are not yet combined measurements. NonEmpty remains outside this stack.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/receipts-chirho/combined-case-source-4a558510-review-chirho.json
+
+## Corpus regression stop and oracle classification, 22:07 update
+
+The first 3ff084c1 accept-axis pass completes and the runner stops immediately: accepted membership loses tc126.hs and tc231.hs, with no gain. No reject axis, second pass, diagnostic replay or common execution is run on this source. Raw pass/table/hash and all 938 source identities remain saved. This red result supersedes the earlier running status and prevents an overall prerequisite acceptance.
+
+GPT freshly checks both exact corpus files on GHC 9.14.1 and the frozen held/initial/revised compilers, with before/after binary hashes equal. tc126 is GHC ACCEPT (two missing-method warnings), held ACCEPT, initial/revised REJECT. The error claims no Bug (Int -> Int) [Int] result instance despite the conditional Bug f (c a) (c r) instance. This is a true new rejection of a valid program. #27489 prioritizes a bounded source revision at uncertain higher-kinded App/List determinant matching; do not turn an unsupported matcher result into a proof of impossibility or add a general solver. Preserve F16/F17 consistent matching and R02/S00.
+
+tc231 is GHC REJECT with GHC-39999, No instance for Zork s (Z [Char]) b0, while held accepts and initial/revised reject. Its committed source explicitly notes the upstream should_fail reclassification. This is a correct verdict in the existing accept bucket, and remains a real membership delta. Do not restore a known wrong accept, silently move the corpus file, mask its row, or change the published measurements. Its evidence is separate from the tc126 regression; a later gate must state any explicit oracle-confirmed bucket exception with the actual table count rather than claiming unchanged accepted membership.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/corpus-3ff084c1-chirho/receipt_chirho.json
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/accept-losses-3ff084c1-chirho/receipt_chirho.json
+
+The author receives source-only trace/revision scope and no Cargo. GPT retains the single builder and the unmodified source checkpoint, all initial red receipts and every mutation survivor. No compiler landing or release follows.
