@@ -18,6 +18,8 @@ mod ground_keys_chirho;
 mod higher_order_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
 mod proven_occurrences_chirho;
+#[path = "dictionary_evidence_chirho/string_lists_chirho.rs"]
+mod string_lists_chirho;
 
 fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
