@@ -5,6 +5,7 @@
 
 #![allow(unused_imports)]
 mod demand_chirho;
+mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
 use std::collections::HashMap;
@@ -7838,6 +7839,10 @@ impl DictPassCtxChirho {
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
+
+        // ── Enum at the integer-represented builtin keys: checked toEnum, identity fromEnum ──
+        // workflow: language-features-chirho/integral-enum-rows-chirho
+        self.generate_integral_enum_rows_chirho(&int_ty_chirho);
 
         // ── Bounded Int: minBound = MIN, maxBound = MAX ──
         {
