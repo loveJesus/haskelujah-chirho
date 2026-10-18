@@ -9,7 +9,7 @@
 //! itself stays in the corpus, so only reductions of it are embedded here.
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
-use super::{assert_accepted_chirho, assert_output_chirho, assert_rejected_with_chirho};
+use super::{assert_output_chirho, check_chirho};
 
 const HEADER_CHIRHO: &str = "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleContexts, FlexibleInstances, ExistentialQuantification, GADTSyntax #-}";
 
@@ -246,25 +246,47 @@ const ACCEPTED_CHIRHO: &[(&str, &[&str])] = &[
     ),
 ];
 
+/// Every program that misses its GHC verdict, by name and with the reason,
+/// so a failing run (a mutant included) shows exactly which programs it
+/// reached rather than only the first.
+fn misses_chirho(expect_rejected_chirho: bool, programs_chirho: &[(&str, &[&str])]) -> Vec<String> {
+    programs_chirho
+        .iter()
+        .filter_map(|(module_chirho, declarations_chirho)| {
+            let verdict_chirho = check_chirho(
+                &format!("{module_chirho}.hs"),
+                &program_chirho(module_chirho, declarations_chirho),
+            );
+            match (expect_rejected_chirho, verdict_chirho) {
+                (true, Ok(())) => Some(format!("{module_chirho}: accepted")),
+                (true, Err(err_chirho)) if !err_chirho.contains("no instance for") => Some(
+                    format!("{module_chirho}: rejected for another reason: {err_chirho}"),
+                ),
+                (false, Err(err_chirho)) => {
+                    Some(format!("{module_chirho}: rejected: {err_chirho}"))
+                }
+                _ => None,
+            }
+        })
+        .collect()
+}
+
 #[test]
 fn a_variable_only_a_fundep_fixes_is_not_quantified_away_chirho() {
-    for (module_chirho, declarations_chirho) in REJECTED_CHIRHO {
-        assert_rejected_with_chirho(
-            &format!("{module_chirho}.hs"),
-            &program_chirho(module_chirho, declarations_chirho),
-            "no instance for",
-        );
-    }
+    let missed_chirho = misses_chirho(true, REJECTED_CHIRHO);
+    assert!(
+        missed_chirho.is_empty(),
+        "GHC rejects each of these with `No instance for`: {missed_chirho:#?}"
+    );
 }
 
 #[test]
 fn valid_fundep_programs_stay_accepted_chirho() {
-    for (module_chirho, declarations_chirho) in ACCEPTED_CHIRHO {
-        assert_accepted_chirho(
-            &format!("{module_chirho}.hs"),
-            &program_chirho(module_chirho, declarations_chirho),
-        );
-    }
+    let missed_chirho = misses_chirho(false, ACCEPTED_CHIRHO);
+    assert!(
+        missed_chirho.is_empty(),
+        "GHC accepts each of these: {missed_chirho:#?}"
+    );
 }
 
 #[test]
