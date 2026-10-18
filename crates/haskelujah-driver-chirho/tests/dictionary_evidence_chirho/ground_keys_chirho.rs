@@ -11,28 +11,12 @@
 //! output is GHC 9.14.1's.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use haskelujah_driver::eval_source_with_machine_chirho;
-use haskelujah_span_chirho::SourceMapChirho;
-
-use super::run_chirho;
+use super::{run_chirho, run_result_chirho};
 
 const SAME_CHIRHO: &str = "module Main where\nsameChirho :: Ord a => [a] -> Bool\nsameChirho (x:y:_) = x == y\nsameChirho _ = False\ndoublesChirho :: [Double]\ndoublesChirho = [1.5, 2.5]\nnestedChirho :: [[Int]]\nnestedChirho = [[1], [2]]\nwordsChirho :: [String]\nwordsChirho = [\"ab\", \"ab\"]\ntripleChirho :: [[[Int]]]\ntripleChirho = [[[1]], [[1]]]\nemptyTripleChirho :: [[[Int]]]\nemptyTripleChirho = []\nmain :: IO ()\n";
 
 fn program_chirho(main_chirho: &str) -> String {
     format!("{SAME_CHIRHO}{main_chirho}\n")
-}
-
-/// The run's output, or the error that stopped it.
-fn run_result_chirho(file_name_chirho: &str, source_chirho: &str) -> Result<String, String> {
-    let mut source_map_chirho = SourceMapChirho::new_chirho();
-    eval_source_with_machine_chirho(
-        source_chirho,
-        &mut source_map_chirho,
-        file_name_chirho,
-        None,
-    )
-    .map(|(_value_chirho, machine_chirho)| machine_chirho.io_output_chirho)
-    .map_err(|err_chirho| err_chirho.to_string())
 }
 
 #[test]

@@ -12,6 +12,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 // in this target's own directory is named by path.
 #[path = "dictionary_evidence_chirho/ground_keys_chirho.rs"]
 mod ground_keys_chirho;
+#[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
+mod proven_occurrences_chirho;
 
 fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -26,6 +28,19 @@ fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
             panic!("{file_name_chirho}: GHC runs this program; we failed: {err_chirho}")
         }
     }
+}
+
+/// The run's output, or the error that stopped it.
+fn run_result_chirho(file_name_chirho: &str, source_chirho: &str) -> Result<String, String> {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    eval_source_with_machine_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        file_name_chirho,
+        None,
+    )
+    .map(|(_value_chirho, machine_chirho)| machine_chirho.io_output_chirho)
+    .map_err(|err_chirho| err_chirho.to_string())
 }
 
 #[test]
