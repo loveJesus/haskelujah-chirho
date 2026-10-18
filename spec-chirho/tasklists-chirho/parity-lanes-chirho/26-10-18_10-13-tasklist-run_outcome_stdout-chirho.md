@@ -21,7 +21,11 @@ GHC's top handler flushes stdout before it reports an uncaught exception. The ST
 
 ## Gate
 
-- [ ] Under a named slot: a warning-free build, the driver tests and the existing IO and eval suites green, then a frozen CLI.
-- [ ] CLI rows against GHC 9.14.1: print then error keeps `1` with exit 1; a partial line; an error with no output; an unchanged success row.
-- [ ] Mutations: the CLI prints only on success; the runner clears a failed run's output. Each must turn its own control red.
+- [x] Under a named slot: a warning-free build, the driver tests and the existing IO and eval suites green, then a frozen CLI.
+- [x] CLI rows against GHC 9.14.1: print then error keeps `1` with exit 1; a partial line; an error with no output; an unchanged success row.
+- [x] Mutations: the CLI prints only on success; the runner clears a failed run's output. Each must turn its own control red.
 - [ ] Cross-unit rows: SectionChirho and SectionExposureChirho in the R1/R2 gate, V12 in the Char gate.
+
+## Measured, gate o1-4f0b9ae9-chirho (2026-10-18)
+
+All twenty ledger stages GREEN on tip 4f0b9ae9 over base 00bdb218; the frozen candidate CLI is 3e28b6d3 and the frozen base CLI 65d3ceee. Build: rc 0, no warnings. Focused, at -j2 and two test threads: the driver tests filtered to eval_io, eval_prelude, eval_list, stg_lower and recursive_do passed 260; io_actions passed 9; dictionary_evidence passed 10; both O1 tests ran and passed. Rows: the candidate met all four against runghc, with stdout, stderr and exit kept apart. The frozen R1/R2 CLI 0014812f, whose output-path files equal the base's, printed nothing on the two rows with output before the failure. Mutations: each was caught by its own control (the driver test's `""` against `"1\n"`, the row's empty stdout), with baseline and restored runs green and the tree restored byte for byte. Clippy found no warning on a changed line; 385 earlier warnings remain on unchanged lines in 55 files. Gitleaks found no leaks in three commits. Paired corpus against the freshly built base: accept (938 programs) and reject (767) verdicts are identical to the base's, 293 replayed rejections are identical, and execution keeps the same predicate verdicts (28 of 35 on both). Receipts are under tmp-chirho/run-outcome-chirho/runs-chirho/o1-4f0b9ae9-chirho/ in the claude worktree.
