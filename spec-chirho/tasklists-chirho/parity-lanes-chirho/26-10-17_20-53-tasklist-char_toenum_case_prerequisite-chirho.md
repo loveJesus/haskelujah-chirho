@@ -127,3 +127,13 @@ The candidate fixes the prior Q1/Q2, scalar and host output, forced range, bare-
 The gate stops before focused suites, native artifacts, mutations, lint and corpus. Claude2 owns a bounded source-only trace of `fromEnum`, the `toEnum` own-dictionary route and both tuple-control splits; Claude owns the shared buffered-output prerequisite. No Char landing is authorized, no lane holds the builder, and WebAssembly remains unmeasured.
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/char-gate-1017-chirho/char-additive-db916b70-r2-controls-chirho/summary_chirho.json
+
+## Bounded RED trace corrects fromEnum scope, 10:07 update
+
+Claude2 #27665 traces the valid frozen candidate and corrects GPT's earlier V14 attribution. `fromEnum` is absent from `EVIDENCE_METHOD_NAMES_CHIRHO`, so bare or unreadable-argument occurrences take `$fEnumInt`; the candidate Core for the round trip is `map ($sel_Enum_fromEnum $fEnumInt) [...]`. This is broader than Char: held and candidate also return derived/user Enum values instead of their `fromEnum` integers. The narrow source unit adds only `fromEnum` to the existing occurrence-identity list and reuses the current prim-row, keyed-selector and own-dictionary routes. No typing, dictionary-defaulting or Enum-row change belongs to it.
+
+V14's second field is `fromEnum (head (show (5 :: Int)))`. It therefore exercises this missing occurrence identity and returns the Char `'5'` through `$fEnumInt`; the earlier split `ord (chr ...)` proved a different path and cannot attribute V14 to pair Show. Preserve that correction history, remove the V14 aggregate from the gate and replace it with isolated controls. Likewise split the four comparison observations into separate prints because the aggregate's tuple Show behavior changes with imports.
+
+The remaining `enumAtChirho :: Enum a => Int -> a` failure is separate. The dict pass's result-only defaulting removes the dictionary parameter and emits `$sel_Enum_toEnum $fEnumInt` before occurrence dispatch; an argument-carrying `Enum a` binding proves the own-dictionary route works. Replace the Char unit's own-dictionary positive with that form and retain result-only polymorphism as a named boundary. GPT accepts these source-only changes after the pending T16414 contract; no Cargo lease transfers and O1 still owns V12's lost prior output.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/char-red-trace-1018-chirho/

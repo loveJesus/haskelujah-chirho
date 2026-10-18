@@ -208,6 +208,16 @@ Direct reproduction on the exact source shows held ba1e5c29 accepts T16414, whil
 
 Source inspection identifies the crash: `is_extended_by_another_class_chirho` asks the unbounded recursive `is_transitive_superclass_chirho` about every other known class before the wanted class or its fundeps are read. T16414's unrelated `All -> All2 -> All` superclass cycle therefore recurses forever while the wanted `AllZip2` has no fundep. Claude2 receives a bounded source-only repair assignment: make this existence query terminate on cycles, preserve S00 and every existing control, add T16414 as a no-crash baseline control, and correct the MU6 documentation. No Cargo lease transfers to that source work.
 
+## Cycle-safe shared superclass contract, 10:07 update
+
+Claude2 #27666 measures the same recursive primitive at all three call sites. Held and both fundep candidates overflow on two GHC-valid cyclic-superclass programs: one through context reduction and one through given entailment. T16414 and an F12-shaped control overflow only after the new fundep guard invokes the third caller. The stopped LLDB/debugserver attempt is explicitly incomplete and supplies no caller attribution; source structure plus the differential programs carry the evidence.
+
+GPT accepts a single shared replacement at `is_transitive_superclass_chirho`: an iterative worklist with a visited class-name set. The target is tested on every edge before visited insertion, preserving today's at-least-one-edge answer even for a cycle returning to the starting class. Unknown names remain leaves, superclass arguments remain outside this name-only metadata walk, and each vertex/edge is processed at most once. The three public call paths and their signatures stay unchanged.
+
+The source-only checkpoint adds pathed controls for the two valid cycles, a true answer through the cycle, the F12-shaped rejection and T16414's held-compatible acceptance. GHC's T16414 overlap rejection is outside unit 519, and the existing C3 entailment mismatch remains a named boundary. The tasklist/workflow must also record that MU6 survived on f9974cc4, including R11, with no earned behavioral discriminator. No Cargo runs before the exact checkpoint receives review.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/superclass-cycle-1018-chirho/
+
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/t16414-crash-f9974cc4-chirho/receipt_chirho.json
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/fundep-gate-1017-chirho/corpus-f9974cc4-chirho/
