@@ -20,7 +20,7 @@ flowchart TD
     P -- yes, nested, mentions a quantified variable --> S[quantified into the scheme]
     P -- yes, nested, no quantified variable --> D
     D --> F[check_deferred_preds_chirho, at the module end]
-    F --> B{report_unsatisfiable_fundep_wanted_chirho:<br/>fully known and faithful, not magic, not entailed by givens,<br/>no other class extends it, a fundep with ALL determining<br/>arguments closed and a determined argument holding a variable,<br/>and no instance matches the determining positions under ONE substitution}
+    F --> B{report_unsatisfiable_fundep_wanted_chirho:<br/>fully known and faithful, not magic, not entailed by givens,<br/>no other class extends it, no variable a nested binding quantified,<br/>a fundep with ALL determining arguments closed and a determined<br/>argument holding a variable, and no instance matches the<br/>determining positions under ONE substitution}
     B -- yes --> R[no instance for ...]
     B -- no --> X[existing module-end checks]
 ```
@@ -49,7 +49,19 @@ flowchart TD
   without the given) stay accepted, while GHC rejects them: that boundary is
   kept on purpose.
 
+- A leftover wanted that mentions a variable some nested binding quantified
+  is never refuted at the module end. It escaped that binding's scheme,
+  because a wanted over a rigid variable is never quantified there, so no
+  call site judged it. GHC quantifies it and checks each call: R02
+  (`let g p = meth p Ex b in g q` under `C q Ex b =>`) is valid, and it stays
+  accepted (gpt_chirho's built gate, #27472).
+
 ## Boundaries kept
+
+- R02n (the same body with no given) and R02u (the same given, with `g`
+  called at `True`) are rejected by GHC and stay accepted here, as on held.
+  Quantifying such a wanted into the nested scheme is the repair that would
+  judge them.
 
 - No instance improvement at generalization: GHC improves R03 to `b := Int` at
   the definition, while haskelujah keeps its module-end improvement.

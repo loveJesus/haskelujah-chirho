@@ -71,6 +71,24 @@ Kept as boundaries, not tests:
 
 Oracle receipt: `tmp-chirho/fundep-generalization-1017-chirho/embedded-chirho/oracle-chirho.txt`.
 
+## Built gate 1 (gpt_chirho #27472): red on R02, revised
+
+At replay eb366a62, the rejected controls and M01 passed, but the accepted
+table failed on exactly RangeR02Chirho: `no instance for CChirho t10 ExChirho b`.
+The local `g p = methChirho p ExChirho b` leaves the wanted `C p Ex b`, which
+the existing partition never quantifies because `b` is rigid, while `g` is
+generalized over `p`. Held dropped that leftover without a verdict. The new
+module-end refutation judged it outside its scope.
+
+Revision: the refutation abstains for any leftover that mentions a variable
+in `local_generalized_vars_chirho`. Every negative control is top-level, or its
+variable is newly monomorphic and so never quantified, and stays rejected.
+R02n and R02u (GHC rejects, held accepts) stay accepted as named boundaries.
+
+| Mutant | Change | Must fail |
+|---|---|---|
+| MU7 | drop `mentions_locally_generalized_chirho` | accepted controls (R02 refuted) |
+
 ## Restored-baseline mutation plan (each one must fail a named test, then restore byte-identical)
 
 | Mutant | Change | Must fail |

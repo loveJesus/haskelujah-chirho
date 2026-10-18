@@ -15,11 +15,13 @@
 //! What generalization declines stays deferred. At the module end, a
 //! leftover wanted can never be solved when one of its fundeps has ground
 //! determining arguments that no instance matches, while a determined
-//! argument still holds a variable. That is GHC's "No instance for". A class
-//! that another class extends is never refuted here. A given of the
-//! subclass could supply it by superclass projection with its arguments
-//! permuted, and given entailment compares argument vectors position by
-//! position.
+//! argument still holds a variable. That is GHC's "No instance for". Two
+//! kinds of leftover are never refuted here. A class that another class
+//! extends could be supplied by a given of the subclass through superclass
+//! projection with its arguments permuted, and given entailment compares
+//! argument vectors position by position. A wanted over a variable that a
+//! nested binding quantified escaped that binding's scheme, so the binding's
+//! call sites never judged it.
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
 use std::collections::HashSet;
@@ -255,6 +257,7 @@ impl InferCtxChirho {
                 .contains(class_name_chirho)
             || self.pred_entailed_by_givens_chirho(pred_chirho, givens_chirho)
             || self.is_extended_by_another_class_chirho(class_name_chirho)
+            || self.mentions_locally_generalized_chirho(args_chirho)
         {
             return false;
         }
@@ -279,6 +282,18 @@ impl InferCtxChirho {
                     args_chirho,
                 )
             })
+    }
+
+    /// Whether the wanted mentions a variable that a nested binding quantified.
+    /// Such a wanted escaped that binding's scheme: a constraint over a rigid
+    /// variable is never quantified there, so no scope judged it at the
+    /// binding's call sites (GHC quantifies it and checks each call; R02 is
+    /// valid that way). The refutation abstains and today's route stands.
+    fn mentions_locally_generalized_chirho(&self, args_chirho: &[TyChirho]) -> bool {
+        args_chirho
+            .iter()
+            .flat_map(TyChirho::free_vars_chirho)
+            .any(|var_chirho| self.local_generalized_vars_chirho.contains(&var_chirho))
     }
 
     /// Whether some other known class has this one among its superclasses.
