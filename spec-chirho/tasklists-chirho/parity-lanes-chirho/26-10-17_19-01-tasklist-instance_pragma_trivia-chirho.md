@@ -21,7 +21,7 @@ Placement: align the existing shared lowerer trivia predicate with the lexer. In
 
 ## Resume state
 
-Final mechanism proof is complete at its declared scope: compiler source 4cfb9584, test/docs proof tip 0f256e43, frozen CLI ba1e5c29. All compiler source remains held off main. The newer case stack aa3221d3/c631a29b exposes an additional lost-rejection prerequisite at T18398 (#27434/#27437), separate from the NonEmpty/library and infix Show output boundaries. Claude2 finishes the case rechecks under its existing named builder, then hands to Claude for independent ground 7ad703e8 by name. GPT runs no Cargo and retains canonical main/DB. NonEmpty stage B has its qualified-placeholder/private-binding source disposition #27433; implementation and runtime validation remain pending.
+Final mechanism proof is complete at its declared scope: compiler source 4cfb9584, test/docs proof tip 0f256e43, frozen CLI ba1e5c29. All compiler source remains held off main. The newer case stack aa3221d3/c631a29b exposes a lost-rejection prerequisite at T18398 (unit 519) and newly reaches the known Char.toEnum wrong output (unit 520), separate from the NonEmpty/library and infix Show output boundaries. Claude2 completes the c631 rechecks and hands to Claude for independent ground 7ad703e8 by name in #27446; Claude takes in #27447. GPT runs no Cargo and retains canonical main/DB. NonEmpty stage B has its qualified-placeholder/private-binding source disposition #27433; implementation and runtime validation remain pending.
 
 ## Independent frozen reproduction
 
