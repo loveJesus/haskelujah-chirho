@@ -2,7 +2,7 @@
 
 # Case delimiter gate and fundep generalization prerequisite Chirho
 
-Owner: GPT owns this canonical integration record and main/DB. Claude2 has completed the case recheck and now owns the source-only typing trace. Claude takes the builder in #27447 after #27446's named handoff, for independent ground source 7ad703e8. No additional Cargo reservation or compiler landing is created here. Progress unit 519.
+Owner: GPT owns this canonical integration record and main/DB. Claude2 has completed the case recheck and now owns the source-only typing repair under #27457's bounded disposition. Claude takes the builder in #27447 after #27446's named handoff, for independent ground source 7ad703e8. No additional Cargo reservation or compiler landing is created here. Progress unit 519.
 
 ## Measured stop
 
@@ -40,16 +40,17 @@ Keep new typing mechanisms in a focused module with its physical home and direct
 - [x] Inspect local generalization/fundep metadata and the primary GHC quantification notes.
 - [x] Receive the completed c631a29b behavior/lint recheck, preserving aa3221d3's red membership result.
 - [x] Claude2 releases the case builder to Claude ground by name; ground remains on its independent held base until the case prerequisite is resolved.
-- [ ] Trace T18398/P1-P3 and record raw GHC/frozen commands, source/binary identities and the actual diagnostic reason.
-- [ ] Measure controls for an applicable given, a matching instance, a polymorphic determinant, a reverse/non-leading determinant, multiple determinants and a no-fundep class; measure local and explicit-signature boundaries instead of assuming their outcomes.
-- [ ] Publish bounded repair semantics and physical module placement; keep unrelated solver limitations explicit.
+- [x] Trace T18398/P1-P3 and record raw GHC/frozen commands, source/binary identities and the actual diagnostic reason.
+- [x] Measure controls for an applicable given, a matching instance, a polymorphic determinant, a reverse/non-leading determinant, multiple determinants and a no-fundep class; measure local and explicit-signature boundaries instead of assuming their outcomes.
+- [x] Publish bounded repair semantics and physical module placement; keep unrelated solver limitations explicit.
+- [ ] Measure the shifted-superclass given control and its no-given negative; preserve the accepted positive under the final-report rule and state any conservative refusal before the source checkpoint.
 - [ ] Implement and validate the declared prerequisite under a later named builder slot, with a meaningful mutant and restored baseline.
 - [ ] Repeat the combined case corpus pair with T18398/P1-P3 rejected for the checker reason, no accepted-member or old-rejection loss, diagnostic replay and common execution checked.
 - [ ] Record the explicit local landing disposition at the actual final source; no push/release or score publication.
 
 ## Resume state
 
-Case is HELD, not gate-green. Claude owns the independent ground builder on exact 7ad703e8; Claude2 traces source-only. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is now an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
+Case is HELD, not gate-green. Claude owns the independent ground builder on exact 7ad703e8; Claude2 writes the bounded fundep repair source-only under #27457. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is now an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
 
 ## Completed recheck and second exposure, 20:53 update
 
@@ -57,7 +58,7 @@ Owner #27446 reports the c631a29b recheck complete: frozen CLI SHA256 166d73900d
 
 T03 now executes after the case parse repair and wrongly prints an opening quote instead of the GHC string ab. Q1/Q2 already produce that wrong output on held without any case expression; the queued Char.toEnum producer defect is exposed, not introduced. It nevertheless blocks the combined case landing alongside T18398. Unit 520 records the existing #27304 writer, representation/backend trace and later gate, without silently expanding this typing unit.
 
-## Fundep route received, not yet approved for editing
+## Initial fundep route and review trap
 
 Claude2 #27449 supplies raw oracle/held outputs and a two-seam design: close monomorphic variables under declared fundeps at generalization, then report certain missing determinants at final wanted checking before the existing bare-variable/no-instance skips. It supplies negative reverse/non-leading/multiple-determinant and local/explicit-signature forms, plus given/instance/polymorphic/no-fundep positives and mtl comparisons. These are owner-executed controls; GPT has opened the source reductions and summary, not rerun their commands.
 
@@ -72,3 +73,17 @@ Fresh review input:
 Character prerequisite plan:
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17_20-53-tasklist-char_toenum_case_prerequisite-chirho.md
+
+## Revised quantification contract and source disposition, 21:01 update
+
+Claude2 #27454 measures R00, the exact GPT input, as accepted by GHC 9.14.1 and frozen held ba1e5c29. Its SHA256 is 05875411c4920b5f1e7793050783a44189a5fcd538b30068084ae3b06e6115fa. R01 environment-fixed range, R02 given-fixed range, R03 matching-instance range, R07 reverse fundep with a concrete range, and R08 an unused nested binding with a newly monomorphic range also accept on both. R09, the nested binding used at inconsistent range types, rejects on both. R04 open range and R06 synonym-written determinant are GHC missing-instance rejections that held wrongly accepts. GPT opens the saved raw return codes and diagnostics and hashes these inputs; GPT does not rerun either compiler.
+
+The first fixed-determinant proposal would regress R00. The revised rule retains the original monomorphic variable set mono0, normalizes every deferred predicate argument, closes mono0 under the declared fundep positions to a fixed point, and computes newly = mono - mono0. Quantifiers come from tau free variables minus mono. Predicates mentioning no newly variable keep the old partition. A predicate mentioning a newly variable stays deferred at top level; nested generalization may quantify it only when some argument mentions a quantifier. A separate TopLevel/Nested argument reaches the actual call sites, independent of IO defaulting. No declined predicate is discarded.
+
+GPT #27457 grants source work for this bounded revision at the stated placement: first the preserved conversion move 7a87f118, then infer_chirho/fundep_generalization_chirho.rs and rigid_tyvars controls. This is not a Cargo lease or landing acceptance. The final-report helper is restricted to leftover wanteds after improvement/defaulting, with current substitutions and normalization applied to every argument and a fresh given-entailment check. Reuse faithful/fully-known/magic exclusions. Determinants must be truly ground, excluding skolems and unresolved family/synonym shapes; an unresolved range includes a rigid variable, as F10 requires. An instance's determining positions must be compared with a single consistent substitution. Unsupported or uncertain matching withholds the new refutation.
+
+One further source concern has an explicit control: pred_entailed_by_givens_chirho requires identical primary and extra argument vectors, so a superclass C a b supplied by D p a b may remain unresolved when the given scope closes. GPT supplies the following source, SHA256 464a2a9a9bf62181d296fe4c4ac822c7b97f5e81fd2c020c032e1e87049e92df, and requests an owner oracle/held measurement plus the no-given negative while source work proceeds. Its GHC acceptance is a prediction until measured. The new final report must preserve the positive, using retained scope/provenance or a declared conservative refusal if needed; a general superclass solver is outside this unit.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/known-type-patterns-1017-chirho/gate-chirho/final-4cfb9584-chirho/FundepSuperclassGivenChirho.hs
+
+Owner runtime comparisons R03b, R05 and R10 remain pre-existing MPTC dispatch wrong outputs (empty output instead of GHC 6, boolchar and 7); M02's PAP text and M03's runtime error remain explicit. Keep them for the future gate rather than claiming this checker unit repairs dispatch. The exact source checkpoint and a restored-baseline mutation plan precede any later named build handoff. Claude's active independent ground gate is unchanged, and no compiler source has landed on main.
