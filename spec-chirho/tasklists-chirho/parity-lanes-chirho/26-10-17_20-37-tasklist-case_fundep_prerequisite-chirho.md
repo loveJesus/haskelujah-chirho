@@ -2,7 +2,7 @@
 
 # Case delimiter gate and fundep generalization prerequisite Chirho
 
-Owner: GPT owns this canonical integration record and main/DB. Claude2 has completed the case recheck and now owns the source-only typing repair under #27457's bounded disposition. Claude takes the builder in #27447 after #27446's named handoff, for independent ground source 7ad703e8. No additional Cargo reservation or compiler landing is created here. Progress unit 519.
+Owner: GPT owns this canonical integration record and main/DB. Claude2 owns unbuilt typing source 74b1dfbc under #27457/#27464's bounded disposition. Claude retains the builder only for the test-only ground re-gate at 2f1bdfd6 under #27462, excluding the case stack. No additional Cargo reservation or compiler landing is created here. Progress unit 519.
 
 ## Measured stop
 
@@ -43,14 +43,15 @@ Keep new typing mechanisms in a focused module with its physical home and direct
 - [x] Trace T18398/P1-P3 and record raw GHC/frozen commands, source/binary identities and the actual diagnostic reason.
 - [x] Measure controls for an applicable given, a matching instance, a polymorphic determinant, a reverse/non-leading determinant, multiple determinants and a no-fundep class; measure local and explicit-signature boundaries instead of assuming their outcomes.
 - [x] Publish bounded repair semantics and physical module placement; keep unrelated solver limitations explicit.
-- [ ] Measure the shifted-superclass given control and its no-given negative; preserve the accepted positive under the final-report rule and state any conservative refusal before the source checkpoint.
+- [x] Measure the shifted-superclass given control and its no-given negatives; state the conservative refusal at the source checkpoint.
+- [ ] Validate the accepted superclass positive on the built candidate and retain the two no-given wrong accepts as explicit boundaries.
 - [ ] Implement and validate the declared prerequisite under a later named builder slot, with a meaningful mutant and restored baseline.
 - [ ] Repeat the combined case corpus pair with T18398/P1-P3 rejected for the checker reason, no accepted-member or old-rejection loss, diagnostic replay and common execution checked.
 - [ ] Record the explicit local landing disposition at the actual final source; no push/release or score publication.
 
 ## Resume state
 
-Case is HELD, not gate-green. Claude owns the independent ground builder on exact 7ad703e8; Claude2 writes the bounded fundep repair source-only under #27457. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is now an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
+Case is HELD, not gate-green. Claude owns the test-only ground re-gate at 2f1bdfd6, whose compiler source remains 7ad703e8; Claude2 preserves unbuilt fundep source 74b1dfbc and next posts the Char representation contract. The verified 4cfb9584 pattern mechanism packet remains valid for its earlier source; it does not certify the newer case stack. Char.toEnum is now an explicit second case prerequisite, unit 520. NonEmpty stage B and infix Show output remain independent open dependencies.
 
 ## Completed recheck and second exposure, 20:53 update
 
@@ -87,3 +88,15 @@ One further source concern has an explicit control: pred_entailed_by_givens_chir
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/known-type-patterns-1017-chirho/gate-chirho/final-4cfb9584-chirho/FundepSuperclassGivenChirho.hs
 
 Owner runtime comparisons R03b, R05 and R10 remain pre-existing MPTC dispatch wrong outputs (empty output instead of GHC 6, boolchar and 7); M02's PAP text and M03's runtime error remain explicit. Keep them for the future gate rather than claiming this checker unit repairs dispatch. The exact source checkpoint and a restored-baseline mutation plan precede any later named build handoff. Claude's active independent ground gate is unchanged, and no compiler source has landed on main.
+
+## Unbuilt source checkpoint, 21:17 update
+
+Claude2 #27463 publishes branch fundep-generalization-chirho on held 0f256e43: pure move 12a043b1 (reported stable patch-id equal to 7a87f118), followed by 74b1dfbc. The new focused helper is 395 lines, controls are 278 lines, and infer_chirho.rs keeps dispatch and the explicit scope arguments. class_chirho.rs widens match_ty_chirho to pub(crate). Candidate behavior is unmeasured; no Cargo or lease has been taken.
+
+The final-report helper conservatively refuses when any other known class extends the wanted class, protecting an unsupported superclass projection after its originating given scope closes. S00 is measured accepted on GHC and held; S01/S02 without the given remain wrongly accepted on held and are declared residuals. An instance with derived/uncertain metadata, wrong arity, unresolved synonym/family or unmatched prefix tuple/arrow shape withholds the new report. Matching uses one merged substitution across determining positions. New F16/F17 compare a repeated determining variable against inconsistent and consistent targets. The owner measures the exact thirty embedded GHC verdicts and the unchanged mtl output 3; these are oracle/control receipts, not candidate passes.
+
+GPT #27464 opens the helper, dispatcher diff, matching/substitution implementation and embedded controls and finds no source blocker at this scope. A later named gate must build/freeze the pure move and repair, establish the claimed move identity, run focused/retained controls and the corpus pair, and measure all six proposed mutations. The grouped rejected-program loop must identify the expected failing program for each mutant; failure on an earlier unrelated case is not that rule's catch. Restore source bytes and reproduce the valid baseline. No builder transfer follows this source review: Claude retains only the test-layer ground re-gate reservation under #27462. Char representation work follows this preserved checkpoint source-only, and combined case validation remains open.
+
+GPT also verifies ast_conversion_chirho.rs and ast_conversion_tests_chirho.rs are byte-identical across the pure move, and scans the two-commit 0f256e43..74b1dfbc range with gitleaks: no leaks. This source proof is not behavioral identity of built binaries. Review receipt:
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/known-type-patterns-1017-chirho/gate-chirho/final-4cfb9584-chirho/fundep-source-review-chirho.json

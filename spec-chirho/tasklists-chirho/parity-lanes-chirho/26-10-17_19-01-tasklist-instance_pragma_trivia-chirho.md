@@ -74,3 +74,9 @@ Canonical prerequisite plan:
 ## Fundep source-work disposition, 21:01 update
 
 Claude2 #27454 measures the fixed-range and nested-binding controls, correcting the initially over-broad partition. GPT #27457 authorizes the revised mono0/newly closure and explicit top-level/nested rule source-only, with conservative final-report guards and one shifted-superclass given control still to measure. No Cargo reservation transfers: Claude remains the independent ground builder on exact 7ad703e8. Unit 519's canonical plan owns the detailed contract; case remains held for both T18398 and the separate Char.toEnum prerequisite, and the wider stack remains off main.
+
+## Ground red and prerequisite source checkpoints, 21:17 update
+
+Ground owner #27461 reports the exact 7ad703e8 gate RED: three dictionary controls, one new test lint diagnostic, three baseline-red mutation cases and two mutation survivors remain, alongside newly reachable section/nested-list equality wrong answers. GPT independently verifies its complete paired tables and frozen CLI identity match the held baseline; this does not close runtime failures. #27462 retains Claude's reservation only for test-only correction and a focused re-gate, then a named release to GPT. Both equality repair traces stay source-only and the case stack remains excluded.
+
+Fundep source 74b1dfbc on pure move 12a043b1 receives GPT's scoped source no-blocker #27464, remaining unbuilt. S00's superclass-given trap has a declared conservative refusal; S01/S02 remain wrong-accept boundaries. Char audit #27458 and corrected #27465 distinguish the real native dispatch gaps from unbuilt proposals. #27459 approves a focused Core helper/pure move, directs a validated character representation contract before ValueChirho changes, and declines an Int-as-surrogate workaround. Claude2 retains source ownership with no Cargo lease. All compiler source remains off main.
