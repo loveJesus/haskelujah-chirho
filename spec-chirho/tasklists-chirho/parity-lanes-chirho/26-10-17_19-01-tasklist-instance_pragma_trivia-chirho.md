@@ -21,7 +21,7 @@ Placement: align the existing shared lowerer trivia predicate with the lexer. In
 
 ## Resume state
 
-Final mechanism proof is complete at its declared scope: compiler source 4cfb9584, test/docs proof tip 0f256e43, frozen CLI ba1e5c29. All compiler source remains held off main for the NonEmpty/library and infix Show output boundaries. GPT hands the builder to Claude2 by name in #27430; Claude2 takes it in #27431 for case source aa3221d3 on the held 0f256e43 stack, then hands to Claude for ground by name. GPT runs no Cargo and retains canonical main/DB. NonEmpty source-only checkpoint c9283dac preserves its pure move and stage-B tasklist; its typing/evidence design seam remains unresolved.
+Final mechanism proof is complete at its declared scope: compiler source 4cfb9584, test/docs proof tip 0f256e43, frozen CLI ba1e5c29. All compiler source remains held off main. The newer case stack aa3221d3/c631a29b exposes an additional lost-rejection prerequisite at T18398 (#27434/#27437), separate from the NonEmpty/library and infix Show output boundaries. Claude2 finishes the case rechecks under its existing named builder, then hands to Claude for independent ground 7ad703e8 by name. GPT runs no Cargo and retains canonical main/DB. NonEmpty stage B has its qualified-placeholder/private-binding source disposition #27433; implementation and runtime validation remain pending.
 
 ## Independent frozen reproduction
 
@@ -60,3 +60,13 @@ The 380-row matrix has 345 GHC matches, zero required-control failures and no lo
 LLVM/Cranelift controls pass 18/18; selected package controls 3/3, native error helpers 3/3 and the existing LLVM demo 1/1 pass. Typing units 354/354 and record-field controls 16/16 pass. Scoped Clippy reports zero changed-line diagnostics and 439 inherited diagnostics; the test-only follow-up has zero new diagnostics. No global warning-free, full-workspace or WebAssembly claim follows. The known default-stack parser abort and the seven common execution failures remain open.
 
 Proof tip 0f256e43 changes only tests/docs relative to compiler source 4cfb9584. Product source directories are identical; gitleaks for 4cfb9584..0f256e43 is clean. The frozen CLI SHA256 is ba1e5c2955e5c3e401c97004a1e11bea66de9de043e88df6765ec982ea517ea9. Published measurement artifacts are unchanged. #27430 releases GPT's builder; #27431 publishes the case source and takes the builder before Cargo under -j2, nice/timeout, at most two test threads and focused suites only.
+
+## Newer case-stack stop, 20:38 update
+
+Claude2 #27434 reports T18398 is newly accepted after the case parser closes the tuple comma correctly. GPT independently compares both complete saved pass tables with the 4cfb9584 baseline: accepted membership stays identical, and the sole lost rejection T18398 repeats in both reject passes. The pre-case rejection was accidental; this does not waive the rejection-retention gate. Parenthesized, explicit-brace and single-lambda reductions show the same checker gap already exists on the earlier compiler, according to the owner's GHC/frozen comparisons. These newer case results do not invalidate or broaden the earlier 4cfb9584 proof packet.
+
+#27437 holds case, assigns Claude2 a source-only fundep/generalization trace after its named ground handoff, and preserves the original red receipt. Unit 519 owns the bounded prerequisite and integration disposition; no typing edit or extra build lease is granted by the trace. The c631a29b opener-enum representation change removes one new Clippy warning without suppression and is being rechecked by its owner. Ground can gate on its independent 7ad703e8/4cfb9584 base while case stays out. No compiler source is landed.
+
+Canonical prerequisite plan:
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17_20-37-tasklist-case_fundep_prerequisite-chirho.md
