@@ -1363,13 +1363,48 @@ pub fn lower_module_to_stg_chirho(
     }
 }
 
-/// Lower a Core module and create a ready-to-run machine.
-/// Optionally specify which binding to evaluate (by name); defaults to "main".
-pub fn lower_and_run_chirho(
+/// The step budget of a run that names none; algorithmic tests raise it
+/// through `lower_and_run_with_step_limit_chirho`.
+const DEFAULT_STEP_LIMIT_CHIRHO: u64 = 100_000;
+
+/// How one run of a lowered program ended, with the machine it ran on. What
+/// the program wrote to stdout stays in the machine's `io_output_chirho`
+/// whether the entry returned or failed, so a runtime failure need not lose
+/// the output before it: GHC's top handler flushes stdout before it reports
+/// an uncaught exception.
+/// workflow: testing-chirho/execution-oracles-chirho
+pub struct RunOutcomeChirho {
+    /// The entry's value, or the runtime failure that stopped it.
+    pub result_chirho: Result<ValueChirho, String>,
+    /// The machine the program ran on, its captured output included.
+    pub machine_chirho: MachineChirho,
+}
+
+impl RunOutcomeChirho {
+    /// The value and machine of a run that returned, else its failure: the
+    /// shape every runner has always returned.
+    pub fn into_result_chirho(self) -> Result<(ValueChirho, MachineChirho), String> {
+        let RunOutcomeChirho {
+            result_chirho,
+            machine_chirho,
+        } = self;
+        result_chirho.map(|value_chirho| (value_chirho, machine_chirho))
+    }
+}
+
+/// Lower a Core module and run its entry binding (by name; defaults to
+/// "main") on a fresh machine with `step_limit_chirho` steps and
+/// `input_lines_chirho` queued on stdin: the one body behind every runner.
+/// `Err` is a program that never started; a runtime failure is the outcome's,
+/// with the machine it stopped on.
+/// workflow: testing-chirho/execution-oracles-chirho
+fn run_lowered_chirho(
     module_chirho: &CoreModuleChirho,
     entry_name_chirho: Option<&str>,
     newtype_cons_chirho: HashSet<String>,
-) -> Result<(ValueChirho, MachineChirho), String> {
+    step_limit_chirho: u64,
+    input_lines_chirho: &[&str],
+) -> Result<RunOutcomeChirho, String> {
     let actions_chirho = haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(
         module_chirho,
         entry_name_chirho.unwrap_or("main"),
@@ -1404,7 +1439,14 @@ pub fn lower_and_run_chirho(
     let mut machine_chirho = MachineChirho::new_chirho(program_chirho.code_table_chirho);
     machine_chirho.heap_chirho = program_chirho.initial_heap_chirho;
     machine_chirho.con_tags_chirho = program_chirho.con_tags_chirho;
-    machine_chirho.step_limit_chirho = 100_000;
+    machine_chirho.step_limit_chirho = step_limit_chirho;
+
+    // Pre-load stdin input
+    for line_chirho in input_lines_chirho {
+        machine_chirho
+            .io_input_chirho
+            .push_back(line_chirho.to_string());
+    }
 
     // Emit an Enter instruction for the entry point
     let entry_code_chirho = machine_chirho.code_table_chirho.len() as u32;
@@ -1412,15 +1454,48 @@ pub fn lower_and_run_chirho(
         .code_table_chirho
         .push(CodeChirho::EnterChirho(entry_addr_chirho));
 
+    // A runtime failure keeps the machine, and with it the output before it.
     let result_chirho = machine_chirho
         .run_chirho(entry_code_chirho)
-        .map_err(|e_chirho| format!("runtime error: {}", e_chirho))?;
+        .map_err(|e_chirho| format!("runtime error: {}", e_chirho));
 
     // The STG machine preserves lazy IO payloads. Force only the final observable
     // interpreter result to WHNF and unbox primitive wrappers for the driver API.
-    let unboxed_chirho = machine_chirho.force_to_prim_chirho(result_chirho);
+    let result_chirho =
+        result_chirho.map(|value_chirho| machine_chirho.force_to_prim_chirho(value_chirho));
 
-    Ok((unboxed_chirho, machine_chirho))
+    Ok(RunOutcomeChirho {
+        result_chirho,
+        machine_chirho,
+    })
+}
+
+/// Lower a Core module and create a ready-to-run machine.
+/// Optionally specify which binding to evaluate (by name); defaults to "main".
+pub fn lower_and_run_chirho(
+    module_chirho: &CoreModuleChirho,
+    entry_name_chirho: Option<&str>,
+    newtype_cons_chirho: HashSet<String>,
+) -> Result<(ValueChirho, MachineChirho), String> {
+    lower_and_run_outcome_chirho(module_chirho, entry_name_chirho, newtype_cons_chirho)?
+        .into_result_chirho()
+}
+
+/// `lower_and_run_chirho`, keeping the machine when the run fails at runtime:
+/// what the program wrote before the failure, for `haskelujah run` to emit.
+/// workflow: testing-chirho/execution-oracles-chirho
+pub fn lower_and_run_outcome_chirho(
+    module_chirho: &CoreModuleChirho,
+    entry_name_chirho: Option<&str>,
+    newtype_cons_chirho: HashSet<String>,
+) -> Result<RunOutcomeChirho, String> {
+    run_lowered_chirho(
+        module_chirho,
+        entry_name_chirho,
+        newtype_cons_chirho,
+        DEFAULT_STEP_LIMIT_CHIRHO,
+        &[],
+    )
 }
 
 /// Lower a Core module and run with pre-loaded stdin input lines.
@@ -1430,59 +1505,14 @@ pub fn lower_and_run_with_input_chirho(
     newtype_cons_chirho: HashSet<String>,
     input_lines_chirho: &[&str],
 ) -> Result<(ValueChirho, MachineChirho), String> {
-    let actions_chirho = haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(
+    run_lowered_chirho(
         module_chirho,
-        entry_name_chirho.unwrap_or("main"),
-    );
-    let module_chirho = &actions_chirho;
-    let program_chirho = lower_module_to_stg_chirho(module_chirho, newtype_cons_chirho);
-    let target_name_chirho = entry_name_chirho.unwrap_or("main");
-
-    let entry_binding_chirho = module_chirho
-        .bindings_chirho
-        .iter()
-        .find(|b_chirho| b_chirho.binder_chirho.name_chirho == target_name_chirho);
-
-    let entry_id_chirho = match entry_binding_chirho {
-        Some(b_chirho) => b_chirho.binder_chirho.id_chirho,
-        None => {
-            return Err(format!(
-                "no binding named '{}' in module '{}'",
-                target_name_chirho, module_chirho.name_chirho
-            ));
-        }
-    };
-
-    let entry_addr_chirho = program_chirho
-        .top_level_env_chirho
-        .get(&entry_id_chirho)
-        .copied()
-        .ok_or_else(|| format!("binding '{}' not found in STG env", target_name_chirho))?;
-
-    let mut machine_chirho = MachineChirho::new_chirho(program_chirho.code_table_chirho);
-    machine_chirho.heap_chirho = program_chirho.initial_heap_chirho;
-    machine_chirho.con_tags_chirho = program_chirho.con_tags_chirho;
-    machine_chirho.step_limit_chirho = 100_000;
-
-    // Pre-load stdin input
-    for line_chirho in input_lines_chirho {
-        machine_chirho
-            .io_input_chirho
-            .push_back(line_chirho.to_string());
-    }
-
-    let entry_code_chirho = machine_chirho.code_table_chirho.len() as u32;
-    machine_chirho
-        .code_table_chirho
-        .push(CodeChirho::EnterChirho(entry_addr_chirho));
-
-    let result_chirho = machine_chirho
-        .run_chirho(entry_code_chirho)
-        .map_err(|e_chirho| format!("runtime error: {}", e_chirho))?;
-
-    let unboxed_chirho = machine_chirho.force_to_prim_chirho(result_chirho);
-
-    Ok((unboxed_chirho, machine_chirho))
+        entry_name_chirho,
+        newtype_cons_chirho,
+        DEFAULT_STEP_LIMIT_CHIRHO,
+        input_lines_chirho,
+    )?
+    .into_result_chirho()
 }
 
 /// Lower a Core module and run with a custom step limit.
@@ -1493,52 +1523,14 @@ pub fn lower_and_run_with_step_limit_chirho(
     newtype_cons_chirho: HashSet<String>,
     step_limit_chirho: u64,
 ) -> Result<(ValueChirho, MachineChirho), String> {
-    let actions_chirho = haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(
+    run_lowered_chirho(
         module_chirho,
-        entry_name_chirho.unwrap_or("main"),
-    );
-    let module_chirho = &actions_chirho;
-    let program_chirho = lower_module_to_stg_chirho(module_chirho, newtype_cons_chirho);
-    let target_name_chirho = entry_name_chirho.unwrap_or("main");
-
-    let entry_binding_chirho = module_chirho
-        .bindings_chirho
-        .iter()
-        .find(|b_chirho| b_chirho.binder_chirho.name_chirho == target_name_chirho);
-
-    let entry_id_chirho = match entry_binding_chirho {
-        Some(b_chirho) => b_chirho.binder_chirho.id_chirho,
-        None => {
-            return Err(format!(
-                "no binding named '{}' in module '{}'",
-                target_name_chirho, module_chirho.name_chirho
-            ));
-        }
-    };
-
-    let entry_addr_chirho = program_chirho
-        .top_level_env_chirho
-        .get(&entry_id_chirho)
-        .copied()
-        .ok_or_else(|| format!("binding '{}' not found in STG env", target_name_chirho))?;
-
-    let mut machine_chirho = MachineChirho::new_chirho(program_chirho.code_table_chirho);
-    machine_chirho.heap_chirho = program_chirho.initial_heap_chirho;
-    machine_chirho.con_tags_chirho = program_chirho.con_tags_chirho;
-    machine_chirho.step_limit_chirho = step_limit_chirho;
-
-    let entry_code_chirho = machine_chirho.code_table_chirho.len() as u32;
-    machine_chirho
-        .code_table_chirho
-        .push(CodeChirho::EnterChirho(entry_addr_chirho));
-
-    let result_chirho = machine_chirho
-        .run_chirho(entry_code_chirho)
-        .map_err(|e_chirho| format!("runtime error: {}", e_chirho))?;
-
-    let unboxed_chirho = machine_chirho.force_to_prim_chirho(result_chirho);
-
-    Ok((unboxed_chirho, machine_chirho))
+        entry_name_chirho,
+        newtype_cons_chirho,
+        step_limit_chirho,
+        &[],
+    )?
+    .into_result_chirho()
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────

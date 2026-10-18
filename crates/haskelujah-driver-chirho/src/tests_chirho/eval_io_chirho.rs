@@ -718,3 +718,74 @@ main = do
             .unwrap_or_else(|e_chirho| panic!("STM multiple TVars: {}", e_chirho));
     assert_eq!(machine_chirho.io_output_chirho, "42\n");
 }
+
+/// A run that fails at runtime keeps what it wrote before the failure, as
+/// GHC's top handler flushes stdout before it reports an uncaught exception;
+/// the compatibility wrapper still reports only the failure, as before (O1).
+/// workflow: testing-chirho/execution-oracles-chirho
+#[test]
+fn a_failed_run_keeps_the_output_before_its_failure_chirho() {
+    use crate::{eval_source_outcome_chirho, eval_source_with_machine_chirho};
+    // GHC 9.14.1 prints "1" on stdout, then reports `boom` and exits 1.
+    let src_chirho =
+        "module Main where\nmain :: IO ()\nmain = do\n  print (1 :: Int)\n  error \"boom\"\n";
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let outcome_chirho =
+        eval_source_outcome_chirho(src_chirho, &mut sm_chirho, "KeptOutputChirho.hs", None)
+            .unwrap_or_else(|e_chirho| panic!("the program compiles and starts: {}", e_chirho));
+    assert_eq!(outcome_chirho.machine_chirho.io_output_chirho, "1\n");
+    match &outcome_chirho.result_chirho {
+        Ok(_) => panic!("`error \"boom\"` must fail the run"),
+        Err(e_chirho) => assert!(
+            e_chirho.contains("boom"),
+            "the failure names boom: {}",
+            e_chirho
+        ),
+    }
+    let mut wrapper_sm_chirho = SourceMapChirho::new_chirho();
+    match eval_source_with_machine_chirho(
+        src_chirho,
+        &mut wrapper_sm_chirho,
+        "KeptOutputChirho.hs",
+        None,
+    ) {
+        Ok(_) => panic!("the wrapper reports the failure"),
+        Err(e_chirho) => assert!(
+            e_chirho.starts_with("runtime error: ") && e_chirho.contains("boom"),
+            "the wrapper's message is unchanged: {}",
+            e_chirho
+        ),
+    }
+}
+
+/// A run that returns, and a program that never starts, report as they did
+/// before the outcome kept the machine (O1).
+/// workflow: testing-chirho/execution-oracles-chirho
+#[test]
+fn a_returned_run_and_a_compile_error_report_as_before_chirho() {
+    use crate::eval_source_outcome_chirho;
+    let mut sm_chirho = SourceMapChirho::new_chirho();
+    let outcome_chirho = eval_source_outcome_chirho(
+        "module Main where\nmain :: IO ()\nmain = print (1 :: Int)\n",
+        &mut sm_chirho,
+        "ReturnedChirho.hs",
+        None,
+    )
+    .unwrap_or_else(|e_chirho| panic!("the program runs: {}", e_chirho));
+    assert!(outcome_chirho.result_chirho.is_ok(), "the run returns");
+    assert_eq!(outcome_chirho.machine_chirho.io_output_chirho, "1\n");
+    let mut broken_sm_chirho = SourceMapChirho::new_chirho();
+    match eval_source_outcome_chirho(
+        "module Main where\nmain :: IO ()\nmain = putStrLn True\n",
+        &mut broken_sm_chirho,
+        "NeverStartedChirho.hs",
+        None,
+    ) {
+        Ok(_) => panic!("a type error never runs"),
+        Err(e_chirho) => assert!(
+            e_chirho.starts_with("compilation error"),
+            "a compile error is still reported as one: {}",
+            e_chirho
+        ),
+    }
+}

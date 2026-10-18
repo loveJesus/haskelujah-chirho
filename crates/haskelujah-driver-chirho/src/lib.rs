@@ -3421,11 +3421,30 @@ pub fn eval_source_with_machine_chirho(
     ),
     String,
 > {
+    eval_source_outcome_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        entry_name_chirho,
+    )?
+    .into_result_chirho()
+}
+
+/// `eval_source_with_machine_chirho`, keeping the machine when the run fails
+/// at runtime, so `haskelujah run` can emit what the program wrote before the
+/// failure. `Err` is a program that never ran: a compile error, or no entry.
+/// workflow: testing-chirho/execution-oracles-chirho
+pub fn eval_source_outcome_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    entry_name_chirho: Option<&str>,
+) -> Result<stg_lower_chirho::RunOutcomeChirho, String> {
     let compile_result_chirho =
         compile_source_chirho(source_chirho, source_map_chirho, file_name_chirho)
             .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
 
-    stg_lower_chirho::lower_and_run_chirho(
+    stg_lower_chirho::lower_and_run_outcome_chirho(
         &compile_result_chirho.core_chirho,
         entry_name_chirho,
         compile_result_chirho.newtype_cons_chirho,
