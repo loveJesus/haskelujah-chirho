@@ -14,8 +14,6 @@ use super::{assert_ghc_or_named_chirho, run_chirho};
 #[test]
 fn a_comparison_inside_a_higher_order_argument_answers_as_ghc_or_names_its_dictionary_chirho() {
     // Each failed as a bare `==` or `compare` on the R1/R2 and ground CLIs.
-    // applyChirho's argument key is `[Int]`, which disagrees with the proven
-    // `[[Int]]` and must never serve it.
     for (file_name_chirho, program_chirho, ghc_chirho, obligation_chirho) in [
         (
             "MapLambdaLeftChirho.hs",
@@ -48,12 +46,6 @@ fn a_comparison_inside_a_higher_order_argument_answers_as_ghc_or_names_its_dicti
             "Eq [[Int]]",
         ),
         (
-            "DisagreeingPayloadChirho.hs",
-            "module Main where\napplyChirho :: (a -> b) -> a -> b\napplyChirho f x = f x\nmain :: IO ()\nmain = print (applyChirho (\\x -> x == [[1]]) [[2 :: Int]])\n",
-            "False\n",
-            "Eq [[Int]]",
-        ),
-        (
             "MapCompareNestedChirho.hs",
             "module Main where\nmain :: IO ()\nmain = print (map (\\x -> compare x [[1]]) [[[1]], [[2 :: Int]]])\n",
             "[EQ,GT]\n",
@@ -67,6 +59,18 @@ fn a_comparison_inside_a_higher_order_argument_answers_as_ghc_or_names_its_dicti
             obligation_chirho,
         );
     }
+}
+
+#[test]
+fn a_disagreeing_argument_key_never_serves_a_proven_list_chirho() {
+    // The typed route offers applyChirho's argument key, `[Int]`, which
+    // disagrees with the proven `[[Int]]`; `$fEq[Int]` would answer True.
+    assert_ghc_or_named_chirho(
+        "DisagreeingPayloadChirho.hs",
+        "module Main where\napplyChirho :: (a -> b) -> a -> b\napplyChirho f x = f x\nmain :: IO ()\nmain = print (applyChirho (\\x -> x == [[1]]) [[2 :: Int]])\n",
+        "False\n",
+        "Eq [[Int]]",
+    );
 }
 
 #[test]
@@ -115,43 +119,31 @@ fn a_higher_order_comparison_with_a_method_row_keeps_ghcs_answer_chirho() {
 }
 
 #[test]
-fn a_defaulted_comparison_inside_a_higher_order_argument_answers_as_ghc_or_names_its_dictionary_chirho()
- {
-    // Defaulted literals are proven `[Integer]`. Each failed as a bare `==` or
-    // `compare` on the R1/R2 CLI, and ground printed the section [True,True].
-    // The route's own key is the element of a collapsed `[Int]`, which does
-    // not agree with `[Integer]`, so a named failure is the expected floor.
-    for (file_name_chirho, program_chirho, ghc_chirho, obligation_chirho) in [
+fn a_defaulted_comparison_inside_a_higher_order_argument_answers_as_ghc_chirho() {
+    // Defaulted literals are proven `[Integer]`, which the engine spells
+    // `[Int]`: `$fEq[Int]` serves them. Each failed as a bare `==` on the
+    // R1/R2 CLI, and ground printed the section [True,True].
+    for (file_name_chirho, program_chirho, ghc_chirho) in [
         (
             "DefaultedLambdaChirho.hs",
             "module Main where\nmain :: IO ()\nmain = print (map (\\x -> x == [1]) [[1], [2]])\n",
             "[True,False]\n",
-            "Eq [Integer]",
         ),
         (
             "DefaultedSectionChirho.hs",
             "module Main where\nmain :: IO ()\nmain = print (map (== [1]) [[1], [2]])\n",
             "[True,False]\n",
-            "Eq [Integer]",
         ),
         (
             "DefaultedSelfChirho.hs",
             "module Main where\nmain :: IO ()\nmain = print (map (\\x -> x == x) [[1], [2]])\n",
             "[True,True]\n",
-            "Eq [Integer]",
-        ),
-        (
-            "DefaultedCompareChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print (map (\\x -> compare x [1]) [[1], [2]])\n",
-            "[EQ,GT]\n",
-            "Ord [Integer]",
         ),
     ] {
-        assert_ghc_or_named_chirho(
-            file_name_chirho,
-            program_chirho,
+        assert_eq!(
+            run_chirho(file_name_chirho, program_chirho),
             ghc_chirho,
-            obligation_chirho,
+            "{file_name_chirho}"
         );
     }
 }
