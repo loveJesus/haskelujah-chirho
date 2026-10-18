@@ -264,6 +264,59 @@ impl DictPassCtxChirho {
             })
     }
 
+    /// Evidence-threading P1/P2b: if `head_id` is a method OCCURRENCE id, return
+    /// the replacement head expression — the evidence-dispatched `$prim` row when
+    /// one exists, else the existing keyed selector/instance dispatch driven by
+    /// the PROVEN type key, else the canonical shared id (today's path).
+    pub(super) fn occurrence_head_replacement_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let (method_name_chirho, canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
+        // A constrained reference with evidence keeps its occurrence id: the
+        // dictionary-parameter call-site path reads the evidence off it and
+        // canonicalizes the head itself.
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if self.reference_evidence_chirho.contains_key(&head_id_chirho) {
+            return None;
+        }
+        if let Some((class_name_chirho, ty_key_chirho)) =
+            self.occurrence_evidence_chirho.get(&head_id_chirho)
+        {
+            // A literal's wrapper takes the selector form: the simplifier
+            // reduces `$sel_Num_fromInteger dict lit` to the literal, which
+            // every backend already handles; the prim row is an interpreter
+            // shape (Cranelift returned garbage for `Box 42` through it).
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            let literal_wrapper_chirho =
+                matches!(method_name_chirho.as_str(), "fromInteger" | "fromString");
+            let prim_name_chirho = format!(
+                "$prim_{}_{}_{}",
+                class_name_chirho, method_name_chirho, ty_key_chirho
+            );
+            if !literal_wrapper_chirho {
+                if let Some(prim_id_chirho) = self.find_global_id_by_name_chirho(&prim_name_chirho)
+                {
+                    return Some(CoreExprChirho::VarChirho(prim_id_chirho));
+                }
+            }
+            // Keyed fallback: reuse the existing selector/instance dispatch with
+            // the proven key so selector-backed instances (Eq/Num Int, ...) work.
+            return Some(self.try_rewrite_method_var_chirho(
+                *canonical_id_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+                Some(ty_key_chirho),
+            ));
+        }
+        Some(CoreExprChirho::VarChirho(*canonical_id_chirho))
+    }
+
     /// The binding's own dictionary parameter an own-parameter key names: the
     /// parameter of that predicate index when the key carries one, else the
     /// binding's parameter for the class (superclass extractions included).
