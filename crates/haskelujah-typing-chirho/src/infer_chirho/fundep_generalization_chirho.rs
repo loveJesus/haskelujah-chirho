@@ -15,13 +15,16 @@
 //! What generalization declines stays deferred. At the module end, a
 //! leftover wanted can never be solved when one of its fundeps has ground
 //! determining arguments that no instance matches, while a determined
-//! argument still holds a variable. That is GHC's "No instance for". Two
-//! kinds of leftover are never refuted here. A class that another class
-//! extends could be supplied by a given of the subclass through superclass
-//! projection with its arguments permuted, and given entailment compares
-//! argument vectors position by position. A wanted over a variable that a
-//! nested binding quantified escaped that binding's scheme, so the binding's
-//! call sites never judged it.
+//! argument still holds a variable. That is GHC's "No instance for". An
+//! instance whose match is uncertain counts as matching. That includes an
+//! applied variable such as `c a` against list, tuple or arrow syntax,
+//! which matching cannot split (tc126). Two kinds of leftover are never
+//! refuted here. A class that another class extends could be supplied by a
+//! given of the subclass through superclass projection with its arguments
+//! permuted, and given entailment compares argument vectors position by
+//! position. A wanted over a variable that a nested binding quantified
+//! escaped that binding's scheme, so the binding's call sites never judged
+//! it.
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
 use std::collections::HashSet;
@@ -65,6 +68,69 @@ fn is_prefix_tuple_or_arrow_chirho(name_chirho: &str) -> bool {
     name_chirho == "->"
         || name_chirho == "(->)"
         || (name_chirho.starts_with("(,") && name_chirho.ends_with(')'))
+}
+
+/// The prefix list constructor, as in `[] Int`.
+fn is_list_constructor_chirho(ty_chirho: &TyChirho) -> bool {
+    matches!(ty_chirho, TyChirho::ConChirho(name_chirho) if name_chirho == "[]")
+}
+
+/// Whether a type applies a variable, as `c a` and `c a b` do.
+fn is_variable_application_chirho(ty_chirho: &TyChirho) -> bool {
+    match ty_chirho {
+        TyChirho::AppChirho(fun_chirho, _arg_chirho) => {
+            matches!(fun_chirho.as_ref(), TyChirho::VarChirho(_))
+                || is_variable_application_chirho(fun_chirho)
+        }
+        _ => false,
+    }
+}
+
+/// Whether matching an instance pattern against a determinant would have to
+/// split list, tuple or arrow syntax to bind an applied variable: `c a`
+/// matches `[Int]` by binding `c` to `[]` (tc126's `Bug f (c a) (c r)`).
+/// Matching splits none of them, so such a position is uncertain. The walk
+/// follows the shapes matching itself descends through.
+fn needs_syntax_split_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho) -> bool {
+    match (pattern_chirho, target_chirho) {
+        (
+            TyChirho::AppChirho(..),
+            TyChirho::ListChirho(_) | TyChirho::TupleChirho(_) | TyChirho::FunChirho(..),
+        ) if is_variable_application_chirho(pattern_chirho) => true,
+        (
+            TyChirho::AppChirho(pattern_left_chirho, pattern_right_chirho),
+            TyChirho::AppChirho(target_left_chirho, target_right_chirho),
+        )
+        | (
+            TyChirho::FunChirho(pattern_left_chirho, pattern_right_chirho, _),
+            TyChirho::FunChirho(target_left_chirho, target_right_chirho, _),
+        ) => {
+            needs_syntax_split_chirho(pattern_left_chirho, target_left_chirho)
+                || needs_syntax_split_chirho(pattern_right_chirho, target_right_chirho)
+        }
+        (TyChirho::ListChirho(pattern_elem_chirho), TyChirho::ListChirho(target_elem_chirho)) => {
+            needs_syntax_split_chirho(pattern_elem_chirho, target_elem_chirho)
+        }
+        (
+            TyChirho::ListChirho(pattern_elem_chirho),
+            TyChirho::AppChirho(list_chirho, target_elem_chirho),
+        )
+        | (
+            TyChirho::AppChirho(list_chirho, pattern_elem_chirho),
+            TyChirho::ListChirho(target_elem_chirho),
+        ) if is_list_constructor_chirho(list_chirho) => {
+            needs_syntax_split_chirho(pattern_elem_chirho, target_elem_chirho)
+        }
+        (
+            TyChirho::TupleChirho(pattern_elems_chirho),
+            TyChirho::TupleChirho(target_elems_chirho),
+        ) => pattern_elems_chirho.iter().zip(target_elems_chirho).any(
+            |(pattern_elem_chirho, target_elem_chirho)| {
+                needs_syntax_split_chirho(pattern_elem_chirho, target_elem_chirho)
+            },
+        ),
+        _ => false,
+    }
 }
 
 /// Whether a type still holds a variable: a unification variable, a rigid
@@ -369,12 +435,14 @@ impl InferCtxChirho {
             let mut matched_chirho = SubstChirho::empty_chirho();
             from_chirho.iter().all(|&index_chirho| {
                 let pattern_chirho = &instance_args_chirho[index_chirho];
+                let target_chirho = &args_chirho[index_chirho];
                 if !self.is_matchable_instance_type_chirho(pattern_chirho)
-                    || !self.is_matchable_instance_type_chirho(&args_chirho[index_chirho])
+                    || !self.is_matchable_instance_type_chirho(target_chirho)
+                    || needs_syntax_split_chirho(pattern_chirho, target_chirho)
                 {
                     return true;
                 }
-                match_ty_chirho(pattern_chirho, &args_chirho[index_chirho])
+                match_ty_chirho(pattern_chirho, target_chirho)
                     .is_some_and(|step_chirho| matched_chirho.merge_chirho(&step_chirho))
             })
         })

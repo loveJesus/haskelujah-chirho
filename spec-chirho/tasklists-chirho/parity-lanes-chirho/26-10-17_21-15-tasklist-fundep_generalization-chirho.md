@@ -49,7 +49,9 @@ until a named builder slot.
     substitution. A derived instance of the class, an arity mismatch, a
     synonym or family in a head, and a prefix tuple or arrow constructor (which
     `match_ty_chirho` does not equate with the sugared form) all count as
-    uncertain, so the refutation is withheld.
+    uncertain, so the refutation is withheld. So does an applied variable in an
+    instance head where matching meets list, tuple or arrow syntax
+    (`needs_syntax_split_chirho`, revision 3 for tc126).
 
 ## Controls (each embedded program re-measured on GHC 9.14.1 exactly as built)
 
@@ -64,10 +66,21 @@ Accepted by GHC and by held:
 - R00, R01, R02, R03, R07, R08
 - S00
 - M01 runs and prints 3.
+- Revision 3: H01, H02, H03, H05, and tc126 (whole, from the corpus). The
+  frozen 3ff084c1 CLI rejects each of these five.
+
+Rejected by GHC, accepted by held, and rejected by 3ff084c1 (revision 3):
+- H04, the nullary determinant: it must stay a certain mismatch.
+- R11, the family determinant solved later: the candidate MU6 witness.
 
 Kept as boundaries, not tests:
 - S01 and S02: the conservative superclass refusal keeps them accepted, while GHC rejects them.
-- R03b, R05, R10, M02 and M03: pre-existing wrong MPTC output, re-measured at the gate.
+- R05, R10, M02 and M03: pre-existing wrong MPTC output, unchanged at the gate.
+- R03b: CHANGED from held's empty line (rc 0) to a loud `missing STG binding
+  methChirho` (rc 1); GHC prints 6. R11b fails the same way.
+- N01m and N03m (and N03g, N03h): a later top-level binding absorbs the leftover
+  through the existing first-argument partition. N03p, with `main` first, is
+  rejected. See the workflow's boundaries.
 
 Oracle receipt: `tmp-chirho/fundep-generalization-1017-chirho/embedded-chirho/oracle-chirho.txt`.
 
@@ -98,7 +111,31 @@ R02n and R02u (GHC rejects, held accepts) stay accepted as named boundaries.
 | MU3 | the scope test treats Nested as TopLevel | accepted controls (R08 refuted) |
 | MU4 | drop `is_extended_by_another_class_chirho` | accepted controls (S00 refuted) |
 | MU5 | match each determining position independently (ignore `merge_chirho`) | rejected controls (F16 withheld) |
-| MU6 | `normalized_pred_args_chirho` clones instead of normalizing | rejected controls (R06 withheld) |
+| MU6 | `normalized_pred_args_chirho` clones instead of normalizing | SURVIVED on 3ff084c1: R06's synonym is expanded upstream. Candidate witness R11 (by source, accepted under MU6), not yet run |
+
+## Built gate 2 on 3ff084c1 (gpt_chirho #27485, #27486, #27489)
+
+- Green: the six focused suites; all 601 retained inputs equal to held after
+  the two declared masks; all 44 FD probes with no lost GHC agreement.
+- Mutation: MU1, MU2, MU4, MU5 and MU7 caught. MU3 was caught elsewhere: R08
+  stays accepted, R09 becomes wrongly accepted, and the follow-up was caught.
+  MU6 survived. Changed-line Clippy: 0 new.
+- Corpus, accept axis: STOP.
+  - tc126 is a real regression: GHC and held accept it, the rule rejected it.
+  - tc231 is a correct new rejection (GHC-39999) in the accept bucket.
+  - No reject axis, repeat, replay or execution has run yet.
+
+Revision 3 (source only, for tc126) adds `needs_syntax_split_chirho`. It mirrors the
+shapes `match_ty_chirho` descends through, and marks a position uncertain where
+an applied variable of the pattern meets list, tuple or arrow syntax. The
+descent through lists, tuples, arrows and the prefix `[]` has no natural
+control yet. Only the descent through an applied constructor (H05) does.
+
+| Mutant | Change | Must fail |
+|---|---|---|
+| MU8 | drop `needs_syntax_split_chirho` from the instance test | accepted controls (H01-H03, H05, tc126) |
+| MU9 | an applied-variable pattern is uncertain whatever the target | rejected controls (H04 withheld) |
+| MU10 | the walk does not descend (top-level pairs only) | accepted controls (H05) |
 
 ## Checklist
 
@@ -111,7 +148,12 @@ R02n and R02u (GHC rejects, held accepts) stay accepted as named boundaries.
 - [ ] Identity against frozen ba1e5c29 on every retained probe (only fundep
   probes may change), then a corpus pair against ba1e5c29: no accept-axis loss,
   and every new rejection GHC-confirmed.
-- [ ] Mutations MU1-MU6, with restores proven byte-identical.
+- [x] Built gate 2 on 3ff084c1 (gpt_chirho): focused suites green, MU 5/7 plus
+  the MU3 follow-up caught, MU6 survived; corpus STOP on tc126.
+- [x] Revision 3, source only: `needs_syntax_split_chirho`, with controls H01-H05,
+  tc126 and R11, each measured on GHC 9.14.1, held and 3ff084c1 as embedded.
+- [ ] Re-gate revision 3 at a named slot: focused suites, MU6, MU8-MU10 (MU6
+  with R11), then the full corpus pair, reporting tc231's bucket delta.
 - [ ] Changed-line Clippy (typing, the driver test target), gitleaks.
 - [ ] Combined case stack (case + this unit + Char.toEnum): T18398 rejected for
   the checker reason, and the corpus pair repeated.

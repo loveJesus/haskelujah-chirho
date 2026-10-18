@@ -20,7 +20,7 @@ flowchart TD
     P -- yes, nested, mentions a quantified variable --> S[quantified into the scheme]
     P -- yes, nested, no quantified variable --> D
     D --> F[check_deferred_preds_chirho, at the module end]
-    F --> B{report_unsatisfiable_fundep_wanted_chirho:<br/>fully known and faithful, not magic, not entailed by givens,<br/>no other class extends it, no variable a nested binding quantified,<br/>a fundep with ALL determining arguments closed and a determined<br/>argument holding a variable, and no instance matches the<br/>determining positions under ONE substitution}
+    F --> B{report_unsatisfiable_fundep_wanted_chirho:<br/>fully known and faithful, not magic, not entailed by givens,<br/>no other class extends it, no variable a nested binding quantified,<br/>a fundep with ALL determining arguments closed and a determined<br/>argument holding a variable, and no instance matches the<br/>determining positions under ONE substitution<br/>(an uncertain position counts as a match)}
     B -- yes --> R[no instance for ...]
     B -- no --> X[existing module-end checks]
 ```
@@ -42,6 +42,15 @@ flowchart TD
   - a determined argument that holds a variable, flexible or rigid (F10);
   - no instance whose determining positions match under one substitution
     (F16 is rejected and F17 accepted, against `instance C3 x x Int`).
+- A position matching cannot read with certainty counts as a match. That
+  includes an applied variable in an instance head against list, tuple or
+  arrow syntax (`needs_syntax_split_chirho`): `instance Shape (c a) (c a)`
+  binds `c` to `[]`, `(,) Int` or `(->) Bool`, but `match_ty_chirho` never
+  splits that syntax. Accepted: GHC's tc126 (read whole from the corpus), and
+  H01-H03 (list, tuple and arrow) with H05 (`Maybe (c a)` against
+  `Maybe [Int]`). Before this revision gpt_chirho's corpus gate rejected each of
+  them (#27489). H04 (`Shape ExChirho r`, a nullary determinant) is still a
+  certain mismatch and stays rejected.
 - A class that another class extends is never refuted at the module end. A
   given of the subclass could supply it by superclass projection with its
   arguments permuted, which `pred_entailed_by_givens_chirho` does not model:
@@ -65,9 +74,44 @@ flowchart TD
 
 - No instance improvement at generalization: GHC improves R03 to `b := Int` at
   the definition, while haskelujah keeps its module-end improvement.
-- The existing MPTC runtime dispatch defect (R03b, R05 and R10 print an empty
-  line where GHC prints) is separate from this rule.
+- MPTC runtime (gpt_chirho's frozen gate on 3ff084c1, #27485):
+  - R05 and R10 keep held's empty line where GHC prints;
+  - M02 keeps its PAP, M03 its runtime error, and M01 prints 3 exactly;
+  - R03b CHANGED. Held printed an empty line (rc 0). The rule now fails it
+    loudly (rc 1), `missing STG binding methChirho`, where GHC prints 6. The
+    wanted `C p Ex b` is no longer quantified into `fChirho`'s scheme, so
+    `fChirho` takes no dictionary. The module end improves `b := Int` and
+    checks the instance, but gives no evidence to the method occurrence
+    inside `fChirho`. GHC improves before generalizing and solves it from the
+    instance. R11b (`KeyChirho [e]` with `instance C Ex Int`) fails the same
+    way.
+- A later top-level binding absorbs a leftover wanted (N01m and N03m: GHC
+  rejects, and they are accepted here as on held). The existing partition reads
+  only the FIRST argument's variables (`pred_chirho.ty_chirho`), so `C Ex t`,
+  whose first argument is closed, counts as "all quantified" at the NEXT
+  top-level generalization. It joins that binding's inferred scheme, and when
+  the binding has a signature (`main :: IO ()`), the signature's scheme
+  replaces the inferred one and the wanted is dropped. Measured on the frozen
+  CLIs: N03g (`g :: ()` after `f`) and N03h (`g = ()` after `f`) are accepted,
+  and N03p (`main` BEFORE `f`) is rejected. Neither the module name nor `main`
+  matters. Reading every argument there is a broader repair of the existing
+  partition, so it is not part of this unit.
+- Normalization (MU6 survived on 3ff084c1): R06's synonym is already expanded
+  by `ast_type_to_ty_chirho`, which expands synonyms and reduces families when
+  it converts the annotation, and `unify_normalized_chirho` normalizes both
+  sides of every unification. At the module end, phase 1 of
+  `check_deferred_preds_chirho` normalizes every argument after the final
+  substitution, so the report's own normalization only re-reads what fundep
+  improvement and defaulting add later. Deferred wanteds are substituted
+  without normalizing (`apply_subst_all_chirho`). The helper's normalization
+  therefore matters at closure and placement when a family that was stuck at
+  unification reduces after a later solve and drops a variable. R11
+  (`KeyChirho [e] = ExChirho`, the list fixed by `xs ++ []`) is that case:
+  rejected by GHC and by the rule, accepted by held, and by source reading
+  accepted under MU6. The MU6 run is still owed.
 
 Controls live in `crates/haskelujah-driver-chirho/tests/rigid_tyvars_chirho/fundep_generalization_chirho.rs`.
 Every embedded program was measured against GHC 9.14.1 exactly as the test
-builds it.
+builds it. tc126 is the corpus file itself. tc231 (GHC-39999, `No instance for
+Zork s (Z [Char]) b0`) is a correct new rejection that sits in the corpus's
+accept bucket. It stays there as an actual membership delta.
