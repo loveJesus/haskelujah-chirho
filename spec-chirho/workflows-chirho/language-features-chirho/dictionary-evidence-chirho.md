@@ -216,14 +216,19 @@ flowchart TD
     occ_r2_chirho[Eq or Ord occurrence: evidence a whole list key, no prim row] --> sel_r2_chirho[proven_list_selector_chirho: the canonical name selects through the evidence class]
     sel_r2_chirho --> reg_r2_chirho{registry_dict_chirho at the proven key}
     reg_r2_chirho -->|found| app_r2_chirho[selector applied to that dictionary]
-    reg_r2_chirho -->|none| syn_r2_chirho{argument-shape key agrees: key_agrees_with_proof_chirho over engine_spelled_key_chirho}
+    reg_r2_chirho -->|none| eng_r2_chirho{registry_dict_chirho at the proven key in engine_spelled_key_chirho, when it differs}
+    eng_r2_chirho -->|found| app_r2_chirho
+    eng_r2_chirho -->|none| syn_r2_chirho{argument-shape key agrees: key_agrees_with_proof_chirho over engine_spelled_key_chirho}
     syn_r2_chirho -->|agrees, registered| app_r2_chirho
     syn_r2_chirho -->|disagrees or unregistered| err_r2_chirho[selector applied to missing_dictionary_chirho: lazy, names the class and key]
 ```
 
 - Agreement compares engine spellings: whole-word `String` as `[Char]`, `Integer` as `Int`.
   The defaulted `[1] == [2]` is proven `[Integer]` and is still served by `$fEq[Int]`; `[Int]`
-  never stands in for `[[Integer]]`.
+  never stands in for `[[Integer]]`. Since R2b the proof's own engine spelling is tried right
+  after the exact key, so `$fEq[Int]` serves `[Integer]` before any argument key is read; an
+  agreeing argument key can only name the same dictionary, so agreement now guards against
+  disagreeing keys and serves nothing the proof does not.
 - After a proven miss, never the canonical id and never the class-only fallback. The error is
   a thunk, so a comparison that is never forced (an unused `let`, an empty `map`, the right
   side of a short-circuited `&&`) never fails.
@@ -278,7 +283,7 @@ enclosing dictionary answered: `pickChirho 'c' [[1]]` printed `True` where GHC p
 flowchart TD
     spine_r2b_chirho[argument-spine path: occurrence_head_replacement_chirho, exact method row first] --> shared_r2b_chirho[proven_list_occurrence_chirho]
     typed_r2b_chirho[typed entries: try_rewrite_method_var_chirho, spelled method rows first] --> shared_r2b_chirho
-    shared_r2b_chirho -->|Eq or Ord at a whole list key| dispatch_r2b_chirho[proven_list_dispatch_chirho: the proven key, else an agreeing candidate, else the named lazy failure]
+    shared_r2b_chirho -->|Eq or Ord at a whole list key| dispatch_r2b_chirho[proven_list_dispatch_chirho: the proven key, else the proven key in the engine's spelling, else an agreeing candidate, else the named lazy failure]
     shared_r2b_chirho -->|otherwise| rest_r2b_chirho[each entry's existing path]
 ```
 
@@ -287,10 +292,17 @@ flowchart TD
   the proof, and neither path reaches the class-only fallback for such an occurrence.
 - Typed entries are the arguments of typed higher-order calls, dictionary-parameter calls,
   method applications and `fail`, and a method under a type application.
+- A typed entry's guessed key rarely agrees: for `map (\x -> x == [1]) [[1], [2]]` it is the
+  element of the cons case's collapsed `[Int]`, that is `Int`, against the proof `[Integer]`.
+  The proof's own engine spelling (`[Int]`, then `$fEq[Int]`) serves such defaulted rows
+  instead (gpt_chirho R2b disposition, option b), from the proof alone.
 - Predicted, unmeasured until built: nested rows name `Eq [[Int]]` or `Ord [[Int]]` instead of
-  crashing, and the enclosing dictionary no longer answers. A defaulted row such as
-  `map (\x -> x == [1]) [[1], [2]]` names `Eq [Integer]`. The guessed key is the element of the
-  cons case's collapsed `[Int]`, that is `Int`, which does not agree with `[Integer]`.
+  crashing, the enclosing dictionary no longer answers, and the defaulted `==` rows print
+  GHC's answer.
+- Ord boundary, measured on the frozen R1/R2 CLI: the `Ord [Int]` list dictionary has no
+  `compare` (`compare [1] [2]` fails with `missing method Ord.compare for [Int]`), and
+  `compare` at `[Int]` crashes (`no matching alternative for tag 0`). A defaulted `compare` in
+  a typed argument reaches that dictionary too; it waits for the Ord method model.
 
 ## Occurrence provenance (in progress, 2026-09-22)
 

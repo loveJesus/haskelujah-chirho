@@ -413,9 +413,11 @@ impl DictPassCtxChirho {
     /// The head of an `Eq` or `Ord` method occurrence at a whole list key the
     /// checker proved, once that key names no method row (R2, gpt_chirho
     /// #27481, #27488): the selector applied to the dictionary the registry
-    /// holds for the proven key; else to the one for the call's argument-shape
-    /// key, only when that key agrees with the proof
-    /// (`key_agrees_with_proof_chirho`); else to `missing_dictionary_chirho`,
+    /// holds for the proven key; else to the one for the proven key in the
+    /// engine's spelling (`engine_spelled_key_chirho`: a defaulted `[Integer]`
+    /// is the engine's `[Int]`), derived from the proof alone (R2b); else to the
+    /// one for the call's argument-shape key, only when that key agrees with
+    /// the proof (`key_agrees_with_proof_chirho`); else to `missing_dictionary_chirho`,
     /// which names the obligation and fails only if the comparison is forced.
     /// The canonical id this used to return recursed with no evidence and was
     /// keyed off its first argument: `[[1]] == [[2 :: Int]]` took `[Int]` and
@@ -437,6 +439,20 @@ impl DictPassCtxChirho {
                 proven_key_chirho,
                 local_instance_dicts_chirho,
             )
+            .or_else(|| {
+                // The proof respelled, before any caller's key: a typed
+                // higher-order argument's own key is the element of a collapsed
+                // `[Int]`, which never agrees with a defaulted `[Integer]`.
+                let engine_key_chirho = Self::engine_spelled_key_chirho(proven_key_chirho);
+                if engine_key_chirho == proven_key_chirho {
+                    return None;
+                }
+                self.registry_dict_chirho(
+                    class_name_chirho,
+                    &engine_key_chirho,
+                    local_instance_dicts_chirho,
+                )
+            })
             .or_else(|| {
                 syntactic_key_chirho()
                     .filter(|syntactic_chirho| {
