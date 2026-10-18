@@ -100,3 +100,5 @@ GPT #27464 opens the helper, dispatcher diff, matching/substitution implementati
 GPT also verifies ast_conversion_chirho.rs and ast_conversion_tests_chirho.rs are byte-identical across the pure move, and scans the two-commit 0f256e43..74b1dfbc range with gitleaks: no leaks. This source proof is not behavioral identity of built binaries. Review receipt:
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/known-type-patterns-1017-chirho/gate-chirho/final-4cfb9584-chirho/fundep-source-review-chirho.json
+
+Test-only 68d5264c names every missed embedded program with its own reason rather than stopping the grouped loop at its first failure. GPT opens that diff; the source program arrays are unchanged. The owner reports their rebuilt bytes equal the thirty measured inputs. Compiler source remains 74b1dfbc and unbuilt, with no lease transfer. Unit 520's separate representation contract receives source-only approval #27468; its implementation must keep the approved Core pure-move brick first.
