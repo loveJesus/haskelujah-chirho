@@ -15,12 +15,13 @@ Placement: align the existing shared lowerer trivia predicate with the lexer. In
 - [x] Integrate the parser commit with 11ffb89d in the isolated GPT worktree; build exact combined source and freeze binary.
 - [x] Run focused parser/identity controls: specialized competitor never answers wrongly, OnlyPragmaInstance reaches the AST, context/forall and raw pragma controls retain behavior.
 - [x] Hand builder to Claude for the corrected sixteen controls and seven valid identity mutations; verify results while retaining earlier invalid cases.
-- [ ] Complete final combined corpus pair, replay, execution and pattern/native/package gates. Any accepted-member loss blocks and must be traced.
-- [ ] Record results, scope audit and explicit landing decision; update DB and tasklists with actual evidence. No push/release.
+- [x] Complete final combined corpus pair, replay, execution and pattern/native/package gates. Any accepted-member loss blocks and must be traced.
+- [x] Record the final mechanism packet, retained failures and named builder handoff in the canonical records.
+- [ ] Resolve the newly reachable library/output boundaries and record an explicit compiler-stack landing decision. No push/release.
 
 ## Resume state
 
-Identity re-gate #27389 is green at scope on ca4976dc (compiler c32f071a), with seven valid mutation catches and an identical restored baseline. GPT takes the builder by name #27390. Its first complete accept pass preserves main membership; the first reject pass loses tcfail083, and the runner stops before repeats/replay/execution. Fresh GHC and frozen intermediate comparisons trace the loss to the record-pattern producer exposing missing selected-constructor field ownership, present since 49b71e7b. GPT repair source 4cfb9584 is under focused validation. All compiler source remains held off main. NonEmpty stays design-only pending a resolved-binding identity route; case and ground wait for a named handoff.
+Final mechanism proof is complete at its declared scope: compiler source 4cfb9584, test/docs proof tip 0f256e43, frozen CLI ba1e5c29. All compiler source remains held off main for the NonEmpty/library and infix Show output boundaries. GPT hands the builder to Claude2 by name in #27430; Claude2 takes it in #27431 for case source aa3221d3 on the held 0f256e43 stack, then hands to Claude for ground by name. GPT runs no Cargo and retains canonical main/DB. NonEmpty source-only checkpoint c9283dac preserves its pure move and stage-B tasklist; its typing/evidence design seam remains unresolved.
 
 ## Independent frozen reproduction
 
@@ -47,3 +48,15 @@ The ca4976dc paired runner completes only its first pass per axis: accepted memb
 ## Repeated ownership-repaired corpus, 19:50 cut
 
 4cfb9584 (frozen ba1e5c29) completes two byte-identical passes per axis, all 1705 source identities unchanged. Acceptance membership equals main; six GHC-confirmed new rejections, none lost. tcfail083 now receives the selected-field E0206 diagnosis. All 299 rejections replay as diagnostics; common execution remains 28/35 with precisely the same seven failed predicates. Agy #27398 is source-only no-blocker for the local complete-schema wrapper. Final matrix, pattern/constructor mutations, native/package and lint gates remain active or pending. Ground integrated source 7ad703e8 is unbuilt, while NonEmpty unit 517 is source-only. No compiler stack landing or published measurement update.
+
+## Final mechanism gate and named handoff, 20:13 update
+
+The packet index is retained at the following absolute path. This update follows the 19:50 report cut; it is GPT-measured evidence, not a new peer rerun or portfolio acceptance.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/known-type-patterns-1017-chirho/gate-chirho/final-4cfb9584-chirho/final-summary-chirho.json
+
+The 380-row matrix has 345 GHC matches, zero required-control failures and no lost GHC agreement. The original thirteen-rule mutation run catches twelve and retains one survivor, residual_substitution_dropped_chirho. A natural higher-kinded GADT follow-up distinguishes that remaining rule: opening the index f a learns both f ~ Maybe and the ordinary payload substitution t := a. Dropping the latter wrongly accepts the payload as Bool. The exact committed test fails on the actual mutant; the restored full rigid target passes 40/40. Earlier P01/P08 did not reach a non-empty residual; their survival and the original as-executed harness remain retained. The current harness recipe is updated and preflighted, not claimed to be a new full thirteen-mutant run. Agy #27421 independently traces the residual route and verifies the frozen verdicts.
+
+LLVM/Cranelift controls pass 18/18; selected package controls 3/3, native error helpers 3/3 and the existing LLVM demo 1/1 pass. Typing units 354/354 and record-field controls 16/16 pass. Scoped Clippy reports zero changed-line diagnostics and 439 inherited diagnostics; the test-only follow-up has zero new diagnostics. No global warning-free, full-workspace or WebAssembly claim follows. The known default-stack parser abort and the seven common execution failures remain open.
+
+Proof tip 0f256e43 changes only tests/docs relative to compiler source 4cfb9584. Product source directories are identical; gitleaks for 4cfb9584..0f256e43 is clean. The frozen CLI SHA256 is ba1e5c2955e5c3e401c97004a1e11bea66de9de043e88df6765ec982ea517ea9. Published measurement artifacts are unchanged. #27430 releases GPT's builder; #27431 publishes the case source and takes the builder before Cargo under -j2, nice/timeout, at most two test threads and focused suites only.
