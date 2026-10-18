@@ -107,3 +107,11 @@ The Q2 Core dump contains the new guarded $prim_Enum_toEnum_Char as well as a gl
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/char-gate-1017-chirho/cli-controls-387eecae-chirho/summary_chirho.json
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-chirho/tmp-chirho/char-gate-1017-chirho/toenum-route-chirho/Q2-core-chirho.stderr
+
+## Additive toEnum occurrence identity source, 22:49 update
+
+Claude2's source trace and GPT's independent inspection show that typing already captures the per-use `Enum` predicate and result key. The identity is lost because `toEnum` is absent from `EVIDENCE_METHOD_NAMES_CHIRHO`: desugaring reuses one free-variable id, the occurrence join has no method candidate, and the dictionary pass guesses `Int` from the argument. Bare `map toEnum` uses expose the same loss.
+
+Exact additive source 15809940b2b5ee5402e776f36573b71b7a1aa0e6 appends only `toEnum` to that existing driver allowlist, preserving the Char implementation commits and earlier red receipts. Ten measured controls cover saturated and bare Char uses, a derived and user Enum, the enclosing `Enum a` dictionary, Int and valid Bool, round trip, and local/top-level shadowing. The shared Result runner becomes sibling-visible rather than duplicated. GPT reads the complete source diff and finds no scoped source blocker; gitleaks is clean over the additive range. The candidate is unbuilt.
+
+`toEnum 2 :: Bool` remains a wrong-success boundary because the Bool row itself lacks a range check; Enum Ordering remains absent. The later named gate must rerun all thirty-two original controls plus the ten dispatch controls and produce real LLVM/Cranelift artifacts. WebAssembly stays unmeasured. The Char builder is queued after the independent R1/R2 handback; no concurrent Cargo lease exists.
