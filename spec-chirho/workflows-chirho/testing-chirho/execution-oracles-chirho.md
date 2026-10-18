@@ -165,3 +165,31 @@ per-command. The unused globally rewritten MIN_VERSION header is gone. Concurren
 tests require each worker's distinct macro result, real local/support includes,
 and cleanup on a named CPP error. The legacy in-memory preprocessing fallback
 policy is unchanged; this ownership repair does not claim to redesign it.
+
+## A failed run keeps its stdout (O1, 2026-10-18)
+
+```mermaid
+flowchart TD
+    run_chirho[haskelujah run file.hs] --> outcome_chirho[eval_source_outcome_chirho]
+    outcome_chirho -->|compile error or no entry binding| never_chirho[stderr: runtime error, exit 1]
+    outcome_chirho --> lowered_chirho[run_lowered_chirho: the one body behind every runner]
+    lowered_chirho --> machine_chirho{machine run}
+    machine_chirho -->|returned| returned_chirho[stdout: io_output_chirho, exit 0]
+    machine_chirho -->|runtime failure| kept_chirho[stdout: io_output_chirho written so far, flushed]
+    kept_chirho --> failed_chirho[stderr: runtime error, exit 1]
+    lowered_chirho --> wrappers_chirho[lower_and_run_chirho, _with_input, _with_step_limit: into_result_chirho, unchanged messages]
+```
+
+GHC's top handler flushes stdout before it reports an uncaught exception, so
+`print 1 >> error "boom"` prints `1` and then fails. The STG machine buffers a
+program's stdout in `io_output_chirho`, and every runner used to drop the
+machine with its buffer on a runtime failure: no failing run could show the
+lines before its failure, whatever the program printed. `RunOutcomeChirho`
+keeps the machine beside the run's result. `haskelujah run` prints the kept
+output, flushes, and only then reports the failure. The three runners share one
+body and keep their signatures and messages as compatibility wrappers.
+
+Boundaries this does not cross: the REPL still prints output only for a run
+that returned, and retries any failure as `print (...)`; `hPutStrLn stderr`,
+`hFlush` and `exitWith` fail as missing STG bindings; the doubled
+`runtime error: runtime error:` prefix is unchanged.

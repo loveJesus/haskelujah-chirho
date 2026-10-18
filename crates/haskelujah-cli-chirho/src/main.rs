@@ -14,8 +14,8 @@ use haskelujah_backend_cranelift_chirho::{
 use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use haskelujah_driver_chirho::{
-    check_source_path_with_source_map_chirho, compile_source_chirho,
-    eval_source_with_machine_chirho, render_diagnostics_chirho, render_summary_chirho,
+    check_source_path_with_source_map_chirho, compile_source_chirho, eval_source_outcome_chirho,
+    render_diagnostics_chirho, render_summary_chirho,
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
@@ -264,14 +264,16 @@ fn run_command_chirho(
     // linking successfully.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
-    match eval_source_with_machine_chirho(
+    match eval_source_outcome_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
         file_name_chirho,
         None,
     ) {
-        Ok((_value_chirho, machine_chirho)) => {
-            if flags_chirho.dump_stg_chirho {
+        Ok(outcome_chirho) => {
+            let machine_chirho = &outcome_chirho.machine_chirho;
+            // As before, only a run that returned dumps its STG table.
+            if flags_chirho.dump_stg_chirho && outcome_chirho.result_chirho.is_ok() {
                 eprintln!(
                     "=== STG Code Table ({} entries) ===",
                     machine_chirho.code_table_chirho.len()
@@ -281,10 +283,21 @@ fn run_command_chirho(
                     eprintln!("  [{idx_chirho}] {code_chirho:?}");
                 }
             }
+            // A runtime failure keeps what the program wrote before it: GHC's
+            // top handler flushes stdout before it reports an uncaught exception.
+            // workflow: testing-chirho/execution-oracles-chirho
             if !machine_chirho.io_output_chirho.is_empty() {
                 print!("{}", machine_chirho.io_output_chirho);
             }
-            ExitCode::SUCCESS
+            match &outcome_chirho.result_chirho {
+                Ok(_value_chirho) => ExitCode::SUCCESS,
+                Err(error_msg_chirho) => {
+                    // The output first, so a terminal shows it before the error.
+                    let _ = std::io::Write::flush(&mut std::io::stdout());
+                    eprintln!("runtime error: {error_msg_chirho}");
+                    ExitCode::from(1)
+                }
+            }
         }
         Err(error_msg_chirho) => {
             eprintln!("runtime error: {error_msg_chirho}");
