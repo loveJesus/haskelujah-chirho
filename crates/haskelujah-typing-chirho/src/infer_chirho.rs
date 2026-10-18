@@ -31,8 +31,11 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
 
+// The AST-to-type conversion modules live together in `infer_chirho/conversion_chirho/`.
+#[path = "infer_chirho/conversion_chirho/ast_conversion_chirho.rs"]
 mod ast_conversion_chirho;
 #[cfg(test)]
+#[path = "infer_chirho/conversion_chirho/ast_conversion_tests_chirho.rs"]
 mod ast_conversion_tests_chirho;
 mod builtins_chirho;
 mod conditionals_chirho;
