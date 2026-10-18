@@ -304,6 +304,33 @@ flowchart TD
   `compare` at `[Int]` crashes (`no matching alternative for tag 0`). A defaulted `compare` in
   a typed argument reaches that dictionary too; it waits for the Ord method model.
 
+## A generated `Eq [String]` (A4, 2026-10-18)
+
+The combined O1 + R2b gate (combined-d7081c8c-chirho) went RED on one matrix row:
+`map (== ["a"]) [["a"], ["b"]]` was GHC-exact on ground and named `Eq [String]` after R1 and
+R2b. No dictionary existed. `generate_conditional_ground_dicts_chirho` specialized
+`Eq a => Eq [a]` only for `Int`, `Char`, `Bool` and `Double` elements. Ground's answer was
+accidental: its section ran `==#` on the whole `[String]` values, which compares only their
+first strings, and it was wrong on every measured variant whose first strings agree.
+
+```mermaid
+flowchart TD
+    inst_a4_chirho["Eq a => Eq [a]"] --> gen_a4_chirho[generate_conditional_ground_dicts_chirho]
+    gen_a4_chirho -->|Int, Char, Bool, Double elements| ground_a4_chirho["$fEq[Int], $fEq[Bool], $fEq[Double]"]
+    gen_a4_chirho -->|Eq only: String elements| str_a4_chirho["$eqList_[Char] compares each String with ==#: $prim_Eq_==_[[Char]], $fEq[[Char]]"]
+    str_a4_chirho --> r2_a4_chirho["R2 at a proven [String] key finds it under the spelling [[Char]]"]
+```
+
+- Each String element compares with the generator's `==#`. The runtime forces both operands
+  and compares them whole as strings (`EqIntChirho` sits in the string-compare set beside
+  `EqStrChirho`), measured exact on two strings. A mutant switching the comparator to
+  `eqStr#` is observationally equivalent, so it was refuted and not added as a control.
+- R2 is unchanged. Its exact-key lookup at `[String]` already walks the spelling `[[Char]]`,
+  and the typed entries' spelled method rows find `$prim_Eq_==_[[Char]]`.
+- Bounded: `Eq` only, and String elements only. A list of String lists still names
+  `Eq [[String]]`, `Ord [String]` still names its obligation, and the general nested
+  specialization (`Eq [[Int]]` and beyond) remains R3's.
+
 ## Occurrence provenance (in progress, 2026-09-22)
 
 The identity a span cannot supply is minted by the PRODUCER of each occurrence and carried on the

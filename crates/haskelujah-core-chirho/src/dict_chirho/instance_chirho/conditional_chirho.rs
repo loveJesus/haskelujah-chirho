@@ -66,7 +66,22 @@ impl DictPassCtxChirho {
                 None => continue,
             };
 
-            for elem_type_chirho in &known_element_types_chirho {
+            // `Eq` also covers string elements: `Eq [String]` compares each
+            // string with the generator's `==#`, measured exact on two strings.
+            // Without it a proven `[String]` key named no dictionary, and the
+            // old `==#` section, applied to whole `[String]` values, compared
+            // only their first strings.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            let eq_only_element_types_chirho: &[&str] = if class_name_chirho.as_str() == "Eq" {
+                &["[Char]"]
+            } else {
+                &[]
+            };
+
+            for elem_type_chirho in known_element_types_chirho
+                .iter()
+                .chain(eq_only_element_types_chirho)
+            {
                 let list_type_key_chirho = format!("[{}]", elem_type_chirho);
 
                 // Skip if we already have a ground dict for this list type
