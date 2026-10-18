@@ -86,9 +86,11 @@ unguarded body. The controls are `eval_pattern_chirho/gadt_guard_chirho.rs`.
 ## Known-type pattern checking
 
 The source candidate in `infer_chirho/pattern_bindings_chirho.rs` checks constructor
-results before their fields. Its combined validation found two accept losses at
-49b71e7b; the gate remains stopped until the producer repair restores membership
-and passes the complete combined gate. Prefix and infix patterns
+results before their fields. Validation first exposed producer losses at 49b71e7b,
+then selected-field ownership at ca4976dc; both stopped receipts are retained.
+The repaired 4cfb9584 passes the repeated membership and declared pattern gates.
+Its local landing remains held for separately named rendering/library boundaries.
+Prefix and infix patterns
 share `bind_constructor_pattern_chirho`. It opens outer constructor foralls while
 preserving higher-rank field foralls, then checks fields left-to-right under the
 result's ordinary substitution and local GADT givens. Records use the same order,
@@ -106,12 +108,23 @@ behavior is preserved. Case alternatives and pattern guards call the known-type
 binder directly; they no longer unify a fresh whole-pattern type and promote its
 sibling constraints into givens. Their existing lexical scopes own refinements.
 
+A higher-kinded variable-headed index cannot use the generative same-head
+decomposition. Matching `Wrap (Maybe t)` against `Wrap (f a)` opens the rigid
+variables for one unification, recording the scoped `f ~ Maybe` refinement and
+returning the ordinary `t := a` binding to the child pattern. Keeping only the
+refinement would let that payload be returned as `Bool` despite the rigid `a`.
+The contextual controls contain both this rejection and the valid payload-as-`a`
+program; the residual-drop mutant is caught by this route, while the simpler
+P01/P08 controls do not distinguish that return value.
+
 ```mermaid
 flowchart TD
     known_source_chirho[Equation lambda case guard or binding expected type] --> known_pattern_chirho[bind_pat_chirho with known scrutinee]
     known_pattern_chirho --> known_constructor_chirho[Prefix infix or record own constructor result]
     known_constructor_chirho --> known_outer_chirho[Ordinary unification or GADT index refinement within same outer type]
     known_outer_chirho --> known_fields_chirho[Fields left to right under givens and growing substitution]
+    known_outer_chirho --> known_residual_chirho[Opened higher-kinded index keeps ordinary bindings as well as scoped refinements]
+    known_residual_chirho --> known_fields_chirho
     known_fields_chirho --> known_pattern_chirho
     known_pattern_chirho --> known_shape_chirho[Tuple list character or plain string must meet its type]
     known_constructor_chirho --> known_opaque_chirho[Imported placeholder keeps explicit metadata boundary]

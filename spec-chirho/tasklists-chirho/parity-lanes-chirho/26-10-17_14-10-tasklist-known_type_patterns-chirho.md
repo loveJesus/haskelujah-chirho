@@ -24,7 +24,7 @@ The first supported repair concerns structural/constructor patterns. Literal-pat
 - [x] Implement constructor-result-first binding and remove whole-pattern refinement promotion on known-type paths. Preserve constructor contexts, higher-rank fields, unknown metadata boundaries and source positions.
 - [x] Publish source-only checkpoint for peer review before Cargo.
 - [x] Merge current main c4e192cc into the isolated candidate at 74822ffc, preserving the landed comprehension parser repair; no conflicts or worktree DB writes.
-- [ ] Take a named builder lease; focused typing/guard tests, negative and positive executions, corpus pair with unchanged accept membership, replay/execution boundaries and one mutation per repaired evidence rule.
+- [x] Take a named builder lease; focused typing/guard tests, negative and positive executions, corpus pair with unchanged accept membership, replay/execution boundaries and one mutation per repaired evidence rule. See the final measured gate below; separate output dependencies still hold the source landing.
 - [ ] Independently review and land the measured candidate, close progress row, audit owned commit scope and gitleaks, then release the builder/main/DB leases explicitly.
 
 ## Existing evidence
@@ -148,9 +148,23 @@ Fresh GHC/main/49b71e7b/29be1b7f/3ece4a33/combined receipts locate the loss: the
 
 Placement before edits (#27394): records_chirho.rs shares its existing E0206 field-span diagnostic and membership loop between expressions and patterns. The pattern wrapper requires the constructor's full name to be known local and takes the original declared field-name table, never the truncated argument-type bundle. Imported/unknown/incomplete schemas retain their existing boundary. Pattern matching does not inherit construction's omitted-strict-field rule. A new focused child under the existing rigid_tyvars integration target covers nested/sibling invalid ownership and valid record forms. No corpus-file exception or diagnostic relaxation.
 
-- [ ] Build the ownership repair; fresh GHC controls, complete rigid/record targets and typing neighbors.
-- [ ] Kill removal of the ownership check with its named negative control.
-- [ ] Rerun the complete paired corpus on a new frozen source/binary; retain the stopped ca4976dc pass.
-- [ ] Complete the remaining combined matrix, mutation, native and package gates before a landing decision.
+- [x] Build the ownership repair; fresh GHC controls, complete rigid/record targets and typing neighbors.
+- [x] Kill removal of the ownership check with its named negative control.
+- [x] Rerun the complete paired corpus on a new frozen source/binary; retain the stopped ca4976dc pass.
+- [x] Complete the remaining combined matrix, mutation, native and package gates before a landing decision. The source remains held for the separately named output dependencies.
 
 The five new embedded sources have fresh GHC 9.14.1 and frozen pre-repair 38054c2a receipts: the three ownership negatives are GHC-53822 and wrongly accepted before the repair; both positives check on both, and GHC runs them with the recorded outputs. New source remains unbuilt at checkpoint. The nested/punned/wildcard positive also proves that matching may omit a strict field. Evidence: gate-chirho/field-ownership-chirho/baseline-receipt-chirho.json.
+
+## Final measured pattern gate on compiler 4cfb9584
+
+Frozen CLI ba1e5c2955e5c3e401c97004a1e11bea66de9de043e88df6765ec982ea517ea9 completes both passes per axis byte-identically; all 1705 corpus source hashes equal the frozen main manifests. Accepted membership equals main and no old rejection is lost. Six GHC-confirmed additional rejections are T7368a, T9318, tcfail004, tcfail005, tcfail012 and tcfail182. T7368a's impossible Bad-vs-f pattern is diagnosed as a kind mismatch by GHC and a type mismatch here; the other five report the corresponding structural/type mismatch. The tcfail083 loss is repaired with the selected-constructor field diagnostic. The stopped ca4976dc run remains retained.
+
+All 299 rejection rows replay as diagnostics, exit 1; the common execution set remains 28/35 with exactly main's seven failed predicates. The final comparison matrix has 380 rows (70 static, 31 runtime, 246 retained, 33 declaration), 345 matches with GHC, no required-control failure and no lost agreement relative to main. GHC references are explicitly fresh or retained-peer as recorded per row, with every source and all three frozen binaries unchanged after the run. No row has an out-of-band exit code. Later strictness, identity and ownership controls retain their own receipts; this matrix is not every test.
+
+Original thirteen-rule mutation run: twelve CAUGHT, residual-substitution omission SURVIVED P01/P08; all source bytes restore and 25 baseline probes pass again. That survivor is retained honestly. P01 uses ordinary successful unification, while P08's generative leaves separate its ordinary substitution from a pure skolem refinement. A natural higher-kinded index supplies the distinguishing input: MkWrap :: t -> Wrap (Maybe t), matched at Wrap (f a), learns f ~ Maybe plus t := a in one opened unification. GHC and baseline reject returning that payload as Bool; mutant 047550db accepts it. The payload-as-a positive prints 7 on all three. The focused follow-up kills this actual rule; Agy #27421 independently traces the route and verifies the frozen verdicts. The two exact fresh-oracle sources are added to the existing contextual integration child. Its actual mutant test fails with the expected accepted-invalid-program message, and the restored full rigid target is 40/40. All thirteen intended rules therefore have measured distinguishing inputs across the original run and this follow-up, not a rewritten all-green first run.
+
+Nine constructor/strictness/laziness controls compile and run on each LLVM and Cranelift backend: 18/18 match their GHC output/error expectations, with no compile warning. Package controls 3/3, native_error_helpers 3/3 and the existing LLVM demo control 1/1 pass. Typing unit 354/354 and record_fields 16/16 remain green. Final Clippy on typing/core/parser all targets and the touched driver integration targets has zero changed-line diagnostics versus placement baseline 39aa0d7f; 439 inherited diagnostics remain, so this is not a global clean claim. The known default-stack parser overflow and seven common execution failures are unresolved.
+
+Evidence: gate-chirho/corpus-4cfb9584-chirho/, final-4cfb9584-chirho/, matrix-4cfb9584-chirho/, mutations-4cfb9584-chirho/, native-4cfb9584-chirho/, lint-4cfb9584-chirho/, and field-ownership-chirho/residual-controls-chirho/. The final follow-up changes test/docs only; compiler source and the frozen corpus/native binary remain exactly 4cfb9584. No broad gate is repeated merely for this test-only change.
+
+The local source landing remains HELD, distinct from this completed pattern-mechanism gate. Newly constructible operator values still expose infix Show formatting and the NonEmpty library path; the latter is now bounded unit 517 with real baseline preservation traps. GPT will release the builder by name to Claude2 for the case gate on this held stack, followed by Claude's integrated ground unit. No main compiler write, published measurement update, push or release follows from this packet.

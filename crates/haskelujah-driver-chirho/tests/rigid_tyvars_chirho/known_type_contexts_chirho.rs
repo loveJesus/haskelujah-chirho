@@ -7,7 +7,7 @@
 //! outcomes and remaining arity boundaries are recorded in the tasklist.
 //! workflow: language-features-chirho/pattern-matching-chirho
 
-use super::{assert_accepted_chirho, assert_output_chirho};
+use super::{assert_accepted_chirho, assert_output_chirho, assert_rejected_with_chirho};
 
 const CONTROLS_CHIRHO: &[(&str, &str, Option<&str>)] = &[
     (
@@ -224,7 +224,8 @@ fn contextual_patterns_keep_their_runtime_values_chirho() {
 
 /// Empty record syntax still matches the constructor result and keeps its
 /// refinement; its higher-rank field is neither opened nor demanded here.
-/// GHC accepts this exact source; current main rejects it. Candidate unbuilt.
+/// GHC accepts this exact source; its comparison against the original main
+/// and the repaired route is retained in the pattern gate.
 #[test]
 fn an_empty_gadt_pattern_keeps_result_refinement_with_rank_n_fields_chirho() {
     assert_accepted_chirho(
@@ -239,5 +240,39 @@ data GChirho aChirho where
 fChirho :: GChirho aChirho -> aChirho -> Int
 fChirho (MkGChirho {}) xChirho = xChirho
 "#,
+    );
+}
+
+/// A higher-kinded index keeps the payload tied to its outer rigid argument:
+/// `Wrap (Maybe t)` against `Wrap (f a)` learns both f ~ Maybe and t ~ a.
+#[test]
+fn a_higher_kinded_gadt_index_keeps_its_field_type_chirho() {
+    assert_rejected_with_chirho(
+        "HigherKindResultNegativeChirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. - John 3:16 (KJV)
+{-# LANGUAGE GADTs, KindSignatures, ExplicitForAll #-}
+module Main where
+import Data.Kind (Type)
+data WrapChirho indexChirho where
+  MkWrapChirho :: tChirho -> WrapChirho (Maybe tChirho)
+badChirho :: forall (fChirho :: Type -> Type) aChirho. WrapChirho (fChirho aChirho) -> Bool
+badChirho (MkWrapChirho xChirho) = xChirho
+main = return ()
+"#,
+        "type mismatch",
+    );
+    assert_output_chirho(
+        "HigherKindResultPositiveChirho.hs",
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. - John 3:16 (KJV)
+{-# LANGUAGE GADTs, KindSignatures, ExplicitForAll #-}
+module Main where
+import Data.Kind (Type)
+data WrapChirho indexChirho where
+  MkWrapChirho :: tChirho -> WrapChirho (Maybe tChirho)
+unwrapChirho :: forall (fChirho :: Type -> Type) aChirho. WrapChirho (fChirho aChirho) -> aChirho
+unwrapChirho (MkWrapChirho xChirho) = xChirho
+main = print (unwrapChirho (MkWrapChirho (7 :: Int)))
+"#,
+        "7\n",
     );
 }
