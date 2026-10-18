@@ -3486,7 +3486,7 @@ fn match_consistently_chirho(
     }
 }
 
-fn match_ty_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho) -> Option<SubstChirho> {
+pub(crate) fn match_ty_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho) -> Option<SubstChirho> {
     match (pattern_chirho, target_chirho) {
         (TyChirho::VarChirho(v_chirho), _) => Some(SubstChirho::singleton_chirho(
             *v_chirho,

@@ -42,6 +42,7 @@ mod conditionals_chirho;
 mod do_operations_chirho;
 mod equalities_chirho;
 mod evidence_chirho;
+mod fundep_generalization_chirho;
 mod guards_chirho;
 // The instance-declaration modules live together in `infer_chirho/instances_chirho/`.
 #[path = "infer_chirho/instances_chirho/instance_obligations_chirho.rs"]
@@ -62,6 +63,7 @@ pub use evidence_chirho::{
     LiteralEvidenceChirho, OWN_DICTIONARY_KEY_CHIRHO, ReferenceEvidenceChirho,
     is_own_dictionary_key_chirho, own_dictionary_key_chirho,
 };
+use fundep_generalization_chirho::{FundepGeneralizationChirho, GeneralizationScopeChirho};
 
 /// Error code range for type inference diagnostics.
 const TYPE_MISMATCH_CODE_CHIRHO: u16 = 200;
@@ -1342,17 +1344,26 @@ impl InferCtxChirho {
     /// Deferred predicates are assumed to already have substitutions applied
     /// (via `apply_subst_all_chirho` during inference).
     pub fn generalize_chirho(&mut self, ty_chirho: &TyChirho) -> SchemeChirho {
-        self.generalize_with_io_defaulting_chirho(ty_chirho, true)
+        self.generalize_with_io_defaulting_chirho(
+            ty_chirho,
+            true,
+            GeneralizationScopeChirho::TopLevelChirho,
+        )
     }
 
     fn generalize_local_chirho(&mut self, ty_chirho: &TyChirho) -> SchemeChirho {
-        self.generalize_with_io_defaulting_chirho(ty_chirho, false)
+        self.generalize_with_io_defaulting_chirho(
+            ty_chirho,
+            false,
+            GeneralizationScopeChirho::NestedChirho,
+        )
     }
 
     fn generalize_with_io_defaulting_chirho(
         &mut self,
         ty_chirho: &TyChirho,
         allow_io_defaulting_chirho: bool,
+        scope_chirho: GeneralizationScopeChirho,
     ) -> SchemeChirho {
         let mut env_fvs_chirho = self.env_chirho.free_vars_chirho();
         for pred_chirho in &self.given_preds_chirho {
@@ -1361,11 +1372,20 @@ impl InferCtxChirho {
                 env_fvs_chirho.extend(extra_ty_chirho.free_vars_chirho());
             }
         }
+        // workflow: language-features-chirho/fundep-generalization-chirho
+        let newly_mono_chirho = self.fundep_newly_mono_vars_chirho(&env_fvs_chirho);
         let ty_fvs_chirho = ty_chirho.free_vars_chirho();
         let vars_chirho: Vec<TyVarChirho> = ty_fvs_chirho
             .into_iter()
-            .filter(|v_chirho| !env_fvs_chirho.contains(v_chirho))
+            .filter(|v_chirho| {
+                !env_fvs_chirho.contains(v_chirho) && !newly_mono_chirho.contains(v_chirho)
+            })
             .collect();
+        let fundeps_chirho = FundepGeneralizationChirho {
+            newly_mono_chirho,
+            quantified_chirho: &vars_chirho,
+            scope_chirho,
+        };
 
         // Partition deferred predicates: those whose type vars are all being
         // generalized go into the scheme; the rest stay deferred.
@@ -1373,7 +1393,15 @@ impl InferCtxChirho {
         let mut remaining_chirho = Vec::new();
         let drained_preds_chirho: Vec<(PredChirho, SpanChirho)> =
             self.deferred_preds_chirho.drain(..).collect();
-        for (pred_chirho, span_chirho) in drained_preds_chirho {
+        for wanted_chirho in drained_preds_chirho {
+            let Some((pred_chirho, span_chirho)) = self.place_fundep_wanted_chirho(
+                wanted_chirho,
+                &fundeps_chirho,
+                &mut scheme_preds_chirho,
+                &mut remaining_chirho,
+            ) else {
+                continue;
+            };
             let pred_fvs_chirho = pred_chirho.ty_chirho.free_vars_chirho();
             // A predicate over a rigid signature variable belongs to the
             // enclosing signature's context: it is discharged by those givens
@@ -6058,8 +6086,11 @@ impl InferCtxChirho {
                 let argument_less_chirho = fun_matches_refs_chirho[*fi_chirho]
                     .first()
                     .is_none_or(|arm_chirho| arm_chirho.pats_chirho.is_empty());
-                let inferred_scheme_chirho = self
-                    .generalize_with_io_defaulting_chirho(&final_ty_chirho, argument_less_chirho);
+                let inferred_scheme_chirho = self.generalize_with_io_defaulting_chirho(
+                    &final_ty_chirho,
+                    argument_less_chirho,
+                    GeneralizationScopeChirho::TopLevelChirho,
+                );
                 let mut binding_scheme_chirho = inferred_scheme_chirho.clone();
 
                 // Phase 3c: Check against type signature if one exists
@@ -6509,6 +6540,16 @@ impl InferCtxChirho {
                     .map(|t_chirho| default_subst_chirho.apply_ty_chirho(t_chirho))
                     .collect(),
             };
+
+            // workflow: language-features-chirho/fundep-generalization-chirho
+            if self.report_unsatisfiable_fundep_wanted_chirho(
+                &defaulted_pred_chirho,
+                final_subst_chirho,
+                &resolved_given_preds_chirho,
+                span_chirho,
+            ) {
+                continue;
+            }
 
             // If still a bare type variable after defaulting, skip (truly ambiguous
             // but no concrete check is possible).

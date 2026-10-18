@@ -180,3 +180,6 @@ mod declaration_patterns_chirho;
 
 #[path = "rigid_tyvars_chirho/record_field_patterns_chirho.rs"]
 mod record_field_patterns_chirho;
+
+#[path = "rigid_tyvars_chirho/fundep_generalization_chirho.rs"]
+mod fundep_generalization_chirho;
