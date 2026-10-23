@@ -497,18 +497,31 @@ flowchart TD
   - `compare LT GT` and `let x = LT in compare x GT` crashed with no matching alternative for tag 0
     at the Int row.
   - `sortBy compare [GT, LT, EQ]` printed `[GT,LT,EQ]`.
-  - `LT == GT`, `succ LT` and `maximum [LT, GT, EQ]` crashed in Int primops.
-  - `x :: Int; x = LT` and `GT + (1 :: Int)` were accepted.
-- **Now:** each of those programs answers as GHC 9.14.1 does. GHC's two rejections are
-  rejections here too, each a type mismatch naming `Ordering`. A single annotation was the
-  old workaround, and it still gives the same answer.
+  - `LT == GT` and `GT /= EQ` crashed in Int primops.
+  - `x :: Int; x = LT` was accepted and printed `LT`. `GT + (1 :: Int)` was accepted, then
+    crashed in the Int addition primop.
+- **Now:** the comparisons, the sort and the equalities answer as GHC 9.14.1 does. GHC's two
+  rejections are rejections here too: `check` fails with a type mismatch naming `Ordering`. A
+  single annotation was the old workaround, and it still gives the same answer.
+- **Seven corrections, six run verdicts.** Seven behaviors are corrected (R1, R2, R5, R9, T12,
+  T01 and T04 in the tests), but a run-level verdict moves for only six. `GT + (1 :: Int)` (T04)
+  already failed its run on the base, because the accepted program crashed. Its correction is
+  in the `check` stream, from accepted to the mismatch, which the committed rejection test and
+  the gate's placement stage prove.
 - **Unchanged:**
   - a module that defines its own `LT`, `EQ` and `GT` (under
     `import Prelude hiding (Ordering(..))`) keeps them;
   - a qualified `P.LT` resolves as before;
   - computed Orderings and user enums are untouched.
-- **Tests:** `tests/dictionary_evidence_chirho/ordering_literals_chirho.rs`.
-- **Bounded, still open:**
+- **Tests:** `tests/dictionary_evidence_chirho/ordering_literals_chirho.rs`. It also keeps
+  `succ LT` (T10) and `maximum [LT, GT, EQ]` (T11) with GHC's answers in an unasserted table,
+  so the oracle still runs them. No committed test pins their current behavior.
+- **Bounded, still open, each its own unit:**
+  - `succ LT` (T10) used to crash in the Int addition primop. It is now rejected at `check`,
+    naming the missing `Enum Ordering` instance (E0204). The class environment seeds Ordering's
+    Eq, Ord, Show, Semigroup, Monoid and NFData, but not Enum, Bounded or Read.
+  - `maximum [LT, GT, EQ]` (T11) still crashes in the Int `<=` primop, before and after the
+    seed. It is the Ord method-model boundary recorded under `Ord [T]` above.
   - any other constructor the seed lacks still becomes a fresh variable, so an imported `:|` is
     accepted at Int;
   - Eq and Ord still default to Int without Num;
