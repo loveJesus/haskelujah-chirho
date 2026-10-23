@@ -2221,7 +2221,7 @@ impl MachineChirho {
                 // showMaybe# val → "Nothing" | "Just <inner>"
                 if let Some(val_chirho) = args_chirho.first() {
                     return Ok(ValueChirho::StringChirho(
-                        self.show_value_as_string_chirho(val_chirho),
+                        self.show_value_as_string_chirho(val_chirho)?,
                     ));
                 }
                 return Ok(ValueChirho::StringChirho("Nothing".to_string()));
@@ -2230,7 +2230,7 @@ impl MachineChirho {
                 // showTuple2# val → "(a,b)"
                 if let Some(val_chirho) = args_chirho.first() {
                     return Ok(ValueChirho::StringChirho(
-                        self.show_value_as_string_chirho(val_chirho),
+                        self.show_value_as_string_chirho(val_chirho)?,
                     ));
                 }
                 return Ok(ValueChirho::StringChirho("(,)".to_string()));
@@ -2239,7 +2239,7 @@ impl MachineChirho {
                 // showEither# val → "Left <inner>" | "Right <inner>"
                 if let Some(val_chirho) = args_chirho.first() {
                     return Ok(ValueChirho::StringChirho(
-                        self.show_value_as_string_chirho(val_chirho),
+                        self.show_value_as_string_chirho(val_chirho)?,
                     ));
                 }
                 return Ok(ValueChirho::StringChirho("?".to_string()));
@@ -2248,7 +2248,7 @@ impl MachineChirho {
                 // showOrdering# val → "LT" | "EQ" | "GT"
                 if let Some(val_chirho) = args_chirho.first() {
                     return Ok(ValueChirho::StringChirho(
-                        self.show_value_as_string_chirho(val_chirho),
+                        self.show_value_as_string_chirho(val_chirho)?,
                     ));
                 }
                 return Ok(ValueChirho::StringChirho("?".to_string()));
@@ -2327,7 +2327,7 @@ impl MachineChirho {
             PrimOpKindChirho::PrintChirho => {
                 // print x = putStrLn (show x)
                 if let Some(val_chirho) = args_chirho.first() {
-                    let shown_chirho = self.show_value_as_string_chirho(val_chirho);
+                    let shown_chirho = self.show_value_as_string_chirho(val_chirho)?;
                     self.io_output_chirho.push_str(&shown_chirho);
                     self.io_output_chirho.push('\n');
                 }
@@ -3905,7 +3905,7 @@ impl MachineChirho {
                         _ => false,
                     };
                 if needs_fallback_chirho {
-                    let s_chirho = self.show_value_as_string_chirho(val_chirho);
+                    let s_chirho = self.show_value_as_string_chirho(val_chirho)?;
                     return Ok(ValueChirho::StringChirho(s_chirho));
                 }
             }
@@ -4058,8 +4058,14 @@ impl MachineChirho {
     /// Used by showList#, showMaybe#, showTuple2# primops.
     /// Does NOT use resolve_heap_value_chirho first — preserves constructor
     /// structure so we can display "Just 42" instead of just "42".
-    fn show_value_as_string_chirho(&mut self, val_chirho: &ValueChirho) -> String {
-        match val_chirho {
+    /// A value whose forcing fails fails the whole rendering with that error,
+    /// so an element is never shown as `?` and a list is never cut short.
+    /// workflow: stg-forcing-core-chirho
+    fn show_value_as_string_chirho(
+        &mut self,
+        val_chirho: &ValueChirho,
+    ) -> Result<String, EvalErrorChirho> {
+        Ok(match val_chirho {
             ValueChirho::IntChirho(n_chirho) => n_chirho.to_string(),
             ValueChirho::FloatChirho(f_chirho) => format!("{}", f_chirho),
             ValueChirho::CharChirho(c_chirho) => format!("'{}'", c_chirho),
@@ -4076,14 +4082,14 @@ impl MachineChirho {
                 if pairs_clone_chirho.is_empty() {
                     "fromList []".to_string()
                 } else {
-                    let entries_chirho: Vec<String> = pairs_clone_chirho
+                    let entries_chirho = pairs_clone_chirho
                         .into_iter()
-                        .map(|(k_chirho, v_chirho)| {
-                            let k_str_chirho = self.show_value_as_string_chirho(&k_chirho);
-                            let v_str_chirho = self.show_value_as_string_chirho(&v_chirho);
-                            format!("({},{})", k_str_chirho, v_str_chirho)
+                        .map(|(k_chirho, v_chirho)| -> Result<String, EvalErrorChirho> {
+                            let k_str_chirho = self.show_value_as_string_chirho(&k_chirho)?;
+                            let v_str_chirho = self.show_value_as_string_chirho(&v_chirho)?;
+                            Ok(format!("({},{})", k_str_chirho, v_str_chirho))
                         })
-                        .collect();
+                        .collect::<Result<Vec<String>, EvalErrorChirho>>()?;
                     format!("fromList [{}]", entries_chirho.join(","))
                 }
             }
@@ -4092,19 +4098,16 @@ impl MachineChirho {
                 if elems_clone_chirho.is_empty() {
                     "fromList []".to_string()
                 } else {
-                    let items_chirho: Vec<String> = elems_clone_chirho
+                    let items_chirho = elems_clone_chirho
                         .iter()
                         .map(|e_chirho| self.show_value_as_string_chirho(e_chirho))
-                        .collect();
+                        .collect::<Result<Vec<String>, EvalErrorChirho>>()?;
                     format!("fromList [{}]", items_chirho.join(","))
                 }
             }
             ValueChirho::HeapPtrChirho(addr_chirho) => {
-                // Force thunks first
-                let forced_addr_chirho = match self.force_addr_to_whnf_chirho(*addr_chirho) {
-                    Ok(a_chirho) => a_chirho,
-                    Err(_) => return "?".to_string(),
-                };
+                // Force thunks first; a failed force fails the rendering
+                let forced_addr_chirho = self.force_addr_to_whnf_chirho(*addr_chirho)?;
                 let closure_chirho = self.heap_chirho.read_chirho(forced_addr_chirho).clone();
                 let name_chirho = &closure_chirho.info_chirho.name_chirho;
                 match name_chirho.as_str() {
@@ -4120,7 +4123,8 @@ impl MachineChirho {
                     "Nothing" => "Nothing".to_string(),
                     "Just" => {
                         if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
-                            let inner_str_chirho = self.show_value_as_string_chirho(inner_chirho);
+                            let inner_str_chirho =
+                                self.show_value_as_string_chirho(inner_chirho)?;
                             // Wrap in parens if inner contains spaces (compound value)
                             if inner_str_chirho.contains(' ') {
                                 format!("Just ({})", inner_str_chirho)
@@ -4133,7 +4137,8 @@ impl MachineChirho {
                     }
                     "Left" => {
                         if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
-                            let inner_str_chirho = self.show_value_as_string_chirho(inner_chirho);
+                            let inner_str_chirho =
+                                self.show_value_as_string_chirho(inner_chirho)?;
                             if inner_str_chirho.contains(' ') {
                                 format!("Left ({})", inner_str_chirho)
                             } else {
@@ -4145,7 +4150,8 @@ impl MachineChirho {
                     }
                     "Right" => {
                         if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
-                            let inner_str_chirho = self.show_value_as_string_chirho(inner_chirho);
+                            let inner_str_chirho =
+                                self.show_value_as_string_chirho(inner_chirho)?;
                             if inner_str_chirho.contains(' ') {
                                 format!("Right ({})", inner_str_chirho)
                             } else {
@@ -4165,11 +4171,11 @@ impl MachineChirho {
                             || name_chirho == "(,,,)"
                             || name_chirho == "(,,,,)" =>
                     {
-                        let parts_chirho: Vec<String> = closure_chirho
+                        let parts_chirho = closure_chirho
                             .payload_chirho
                             .iter()
                             .map(|v_chirho| self.show_value_as_string_chirho(v_chirho))
-                            .collect();
+                            .collect::<Result<Vec<String>, EvalErrorChirho>>()?;
                         format!("({})", parts_chirho.join(","))
                     }
                     "[]" => "[]".to_string(),
@@ -4198,13 +4204,9 @@ impl MachineChirho {
                                 match &cl_chirho.payload_chirho[1] {
                                     ValueChirho::HeapPtrChirho(t_chirho) => {
                                         // Force thunks in the tail to ensure
-                                        // lazy list spines are fully evaluated.
-                                        match self.force_addr_to_whnf_chirho(*t_chirho) {
-                                            Ok(resolved_chirho) => {
-                                                cur_chirho = resolved_chirho;
-                                            }
-                                            Err(_) => break,
-                                        }
+                                        // lazy list spines are fully evaluated;
+                                        // a failed tail fails the rendering.
+                                        cur_chirho = self.force_addr_to_whnf_chirho(*t_chirho)?;
                                     }
                                     _ => break,
                                 }
@@ -4226,10 +4228,10 @@ impl MachineChirho {
                                 .collect();
                             format!("\"{}\"", s_chirho)
                         } else {
-                            let elements_chirho: Vec<String> = raw_values_chirho
+                            let elements_chirho = raw_values_chirho
                                 .iter()
                                 .map(|v_chirho| self.show_value_as_string_chirho(v_chirho))
-                                .collect();
+                                .collect::<Result<Vec<String>, EvalErrorChirho>>()?;
                             format!("[{}]", elements_chirho.join(","))
                         }
                     }
@@ -4238,29 +4240,29 @@ impl MachineChirho {
                         if closure_chirho.payload_chirho.is_empty() {
                             name_chirho.clone()
                         } else {
-                            let fields_chirho: Vec<String> = closure_chirho
+                            let fields_chirho = closure_chirho
                                 .payload_chirho
                                 .iter()
-                                .map(|f_chirho| {
-                                    let s_chirho = self.show_value_as_string_chirho(f_chirho);
+                                .map(|f_chirho| -> Result<String, EvalErrorChirho> {
+                                    let s_chirho = self.show_value_as_string_chirho(f_chirho)?;
                                     // Wrap compound values in parens
                                     if s_chirho.contains(' ')
                                         && !s_chirho.starts_with('(')
                                         && !s_chirho.starts_with('[')
                                         && !s_chirho.starts_with('"')
                                     {
-                                        format!("({})", s_chirho)
+                                        Ok(format!("({})", s_chirho))
                                     } else {
-                                        s_chirho
+                                        Ok(s_chirho)
                                     }
                                 })
-                                .collect();
+                                .collect::<Result<Vec<String>, EvalErrorChirho>>()?;
                             format!("{} {}", name_chirho, fields_chirho.join(" "))
                         }
                     }
                 }
             }
-        }
+        })
     }
 
     /// Look up the tag for a constructor name, falling back to a default.
@@ -4276,6 +4278,9 @@ impl MachineChirho {
     /// Force a heap address to WHNF by entering it if it's a thunk.
     /// Saves and restores machine state (stack, arg_regs) so it can be
     /// called from within primop handlers without disrupting evaluation.
+    /// The state comes back whether the nested run returns or fails, so a
+    /// failure travels the caller's own continuation and catch frames.
+    /// workflow: stg-forcing-core-chirho
     fn force_addr_to_whnf_chirho(
         &mut self,
         addr_chirho: HeapAddrChirho,
@@ -4295,9 +4300,11 @@ impl MachineChirho {
                 let entry_chirho = self.code_table_chirho.len() as u32;
                 self.code_table_chirho
                     .push(CodeChirho::EnterChirho(resolved_chirho));
-                let _result_chirho = self.run_chirho(entry_chirho)?;
+                let result_chirho = self.run_chirho(entry_chirho);
+                // Restore machine state before reporting either outcome
                 self.stack_chirho = saved_stack_chirho;
                 self.arg_regs_chirho = saved_regs_chirho;
+                result_chirho?;
                 Ok(self.heap_chirho.follow_ind_chirho(addr_chirho))
             }
             InfoTagChirho::IndChirho => {

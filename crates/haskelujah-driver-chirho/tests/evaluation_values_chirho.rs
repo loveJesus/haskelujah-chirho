@@ -3,6 +3,9 @@
 use haskelujah_runtime_chirho::ValueChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+#[path = "evaluation_values_chirho/element_failures_chirho.rs"]
+mod element_failures_chirho;
+
 #[test]
 fn numeric_application_returns_its_value_chirho() {
     let source_chirho = "module Main where\nf_chirho x_chirho = x_chirho + 1\nmain = f_chirho 0\n";
