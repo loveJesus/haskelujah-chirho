@@ -8836,6 +8836,12 @@ fn is_pat_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
     )
 }
 
+/// The tokens a declaration's meaning ignores. Pragmas are trivia here as in
+/// the lexer, so `instance {-# OVERLAPPING #-} Eq (T Int)` keeps `Eq` as its
+/// first head token, the class, instead of losing the class to the pragma. The
+/// LANGUAGE, INLINE and SPECIALIZE readers walk a node's raw children, so they
+/// still see their pragmas.
+/// workflow: language-features-chirho/flat-type-syntax-chirho
 fn is_trivia_token_kind_chirho(kind_chirho: TokenKindChirho) -> bool {
     matches!(
         kind_chirho,
@@ -8843,6 +8849,7 @@ fn is_trivia_token_kind_chirho(kind_chirho: TokenKindChirho) -> bool {
             | TokenKindChirho::LineCommentTriviaChirho
             | TokenKindChirho::BlockCommentTriviaChirho
             | TokenKindChirho::DocCommentTriviaChirho
+            | TokenKindChirho::PragmaChirho
             | TokenKindChirho::VirtualLeftBraceChirho
             | TokenKindChirho::VirtualRightBraceChirho
             | TokenKindChirho::VirtualSemicolonChirho
