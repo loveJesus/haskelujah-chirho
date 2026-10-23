@@ -55,6 +55,21 @@ and that receipt stays as it is. D03 passed. A recursive conditional instance pr
   - a recursive `TreeChirho a` instance: missing STG on all three CLIs;
   - a bare self occurrence `goChirho = describeChirho`: `1:[2,3]` on all three.
 
+## U2: context-free list heads (gpt_chirho #28111)
+
+- [x] `instance_chirho/generic_heads_chirho.rs` gains a list arm:
+  - the typed head `[v]` is `[]` over one variable, with the written spelling `[v]`;
+  - G1, G2, G4 and G6 are unchanged, so a competing list or variable head means no alias;
+  - for the list head alone, a slot without a row is a method the instance genuinely omits,
+    and takes the generated stub.
+  - Unit tests are in `generic_heads_tests_chirho.rs`.
+- [x] Controls in `generic_heads_chirho.rs`, measured as GHC / main / Ord / opt-in:
+  - defined `[a]` under map: `[99]` / `[[1]]` / `[[1]]` / missing STG;
+  - defined `[a]` direct: `99` / missing STG on all three;
+  - competing `[a]` and `[Int]`: `(20,10)` / missing STG on all three, kept fail-closed.
+- [x] The direct user-method boundary there closed with the opt-in: `generic` / missing STG /
+  missing STG / `generic`. It is renamed and now pinned exact.
+
 ## Combined gate
 
 A fresh tag, launched through `run_gate_ord_chirho.zsh` (no pipe), only under a builder lease
@@ -81,8 +96,9 @@ handed by name.
 
 ## Predicted, unmeasured until the combined gate
 
-- D03 and the three missing-method controls fail by name; the context-free head's key spelling
-  is not pinned.
+- D03 and the three missing-method controls fail by name. The context-free head reaches its
+  stub through U2's `[]` alias, and its key spelling is not pinned.
+- U1-rev and U2 rows print the GHC answers measured in trace 3.
 - The defined list method answers `[99]`, two types answer `([99],[2])`, the element method
   inside an instance answers `[1005]`, the constrained binding answers `(3,31)`, and the
   self-qualified program answers `([99],5)`.

@@ -312,3 +312,116 @@ fn slot_coverage_reads_the_rows_the_slot_lookup_takes_chirho() {
         assert_eq!(resolved_chirho, vec![CoreIdChirho(3), CoreIdChirho(2)]);
     }
 }
+
+fn list_chirho(element_chirho: TyChirho) -> TyChirho {
+    TyChirho::ListChirho(Box::new(element_chirho))
+}
+
+#[test]
+fn a_list_over_one_variable_is_the_list_constructor_chirho() {
+    // gpt_chirho #28111: the typed head `[v]` and its one written spelling.
+    assert_eq!(
+        distinct_variable_spine_chirho(&list_chirho(var_chirho(0))),
+        Some(("[]", 1))
+    );
+    assert_eq!(
+        distinct_variable_spine_chirho(&list_chirho(con_chirho("Int"))),
+        None
+    );
+    assert!(written_spine_chirho("[a]", "[]", 1));
+    assert!(written_spine_chirho("[a']", "[]", 1));
+    // A specialized element, the unknown `_`, two tokens, the bare list, a
+    // nested list, an unbracketed variable.
+    for spelling_chirho in ["[Int]", "[_]", "[a b]", "[]", "[[a]]", "a"] {
+        assert!(
+            !written_spine_chirho(spelling_chirho, "[]", 1),
+            "{spelling_chirho}"
+        );
+    }
+    assert!(!written_spine_chirho("[a]", "[]", 2));
+    assert!(!written_spine_chirho("[a]", "T", 1));
+}
+
+#[test]
+fn a_list_head_is_generic_only_without_a_competing_head_chirho() {
+    let alone_chirho = first_spine_chirho(&class_env_chirho(
+        &[],
+        Vec::new(),
+        vec![(list_chirho(var_chirho(0)), vec![])],
+    ));
+    assert_eq!(alone_chirho, Some(("[]".to_string(), 1)));
+    // Another constructor does not compete.
+    assert_eq!(
+        first_spine_chirho(&class_env_chirho(
+            &[],
+            Vec::new(),
+            vec![
+                (list_chirho(var_chirho(0)), vec![]),
+                (con_chirho("Int"), vec![])
+            ],
+        )),
+        Some(("[]".to_string(), 1))
+    );
+    // G4: a specialized list head or a variable head competes.
+    for competitor_chirho in [list_chirho(con_chirho("Int")), var_chirho(1)] {
+        assert_eq!(
+            first_spine_chirho(&class_env_chirho(
+                &[],
+                Vec::new(),
+                vec![
+                    (list_chirho(var_chirho(0)), vec![]),
+                    (competitor_chirho, vec![])
+                ],
+            )),
+            None
+        );
+    }
+}
+
+#[test]
+fn only_the_list_head_may_omit_a_method_chirho() {
+    // The list head's rows have one written spelling, so a slot without one is
+    // a method the instance omits; every other head keeps G5 whole.
+    let layout_chirho = DictLayoutChirho {
+        class_name_chirho: "TagChirho".to_string(),
+        super_slots_chirho: Vec::new(),
+        method_slots_chirho: vec![
+            ("firstChirho".to_string(), 0),
+            ("secondChirho".to_string(), 1),
+        ],
+        field_count_chirho: 2,
+    };
+    let list_env_chirho =
+        class_env_chirho(&[], Vec::new(), vec![(list_chirho(var_chirho(0)), vec![])]);
+    let list_inst_chirho = &list_env_chirho.instances_chirho["TagChirho"][0];
+    let list_key_chirho = format!("{}", list_inst_chirho.head_ty_chirho);
+    let head_chirho = pass_with_rows_chirho(&[("$prim_TagChirho_firstChirho_[a]", 1)])
+        .generic_head_chirho(
+            &list_env_chirho,
+            "TagChirho",
+            list_inst_chirho,
+            &layout_chirho,
+            &list_key_chirho,
+        )
+        .expect("a list head whose omitted method takes the stub");
+    assert_eq!(head_chirho.constructor_chirho, "[]");
+    assert_eq!(head_chirho.written_key_chirho, "[a]");
+    let box_env_chirho = class_env_chirho(
+        &[],
+        Vec::new(),
+        vec![(app_chirho(con_chirho("BoxChirho"), var_chirho(0)), vec![])],
+    );
+    let box_inst_chirho = &box_env_chirho.instances_chirho["TagChirho"][0];
+    let box_key_chirho = format!("{}", box_inst_chirho.head_ty_chirho);
+    assert!(
+        pass_with_rows_chirho(&[("$prim_TagChirho_firstChirho_BoxChirho a", 1)])
+            .generic_head_chirho(
+                &box_env_chirho,
+                "TagChirho",
+                box_inst_chirho,
+                &layout_chirho,
+                &box_key_chirho,
+            )
+            .is_none()
+    );
+}

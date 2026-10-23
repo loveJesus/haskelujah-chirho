@@ -42,8 +42,13 @@ impl DictPassCtxChirho {
     /// variables by position, a bijection. Coverage and lookup read the same
     /// spellings in the same order (agy_chirho #27369, gpt_chirho #27370), so a
     /// bare `T` row covers nothing. A missing row would make a stub reachable
-    /// and a second spelling is ambiguous; either refuses.
+    /// and a second spelling is ambiguous; either refuses. The list head `[v]`
+    /// is the one exception to the missing row: its rows have one written
+    /// spelling, so a slot no row covers is a method the instance genuinely
+    /// omits, and its generated stub fails by name when forced, as GHC's
+    /// NoMethodError does (gpt_chirho #28111).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
+    /// workflow: language-features-chirho/own-class-method-occurrences-chirho
     pub(super) fn generic_head_chirho(
         &self,
         class_env_chirho: &ClassEnvChirho,
@@ -73,7 +78,7 @@ impl DictPassCtxChirho {
                 written_key_chirho = Some(spelling_chirho);
                 covered_chirho = true;
             }
-            if !covered_chirho {
+            if !covered_chirho && constructor_chirho != "[]" {
                 return None;
             }
         }
@@ -127,8 +132,13 @@ fn generic_spine_chirho<'a>(
 }
 
 /// `T v1 .. vn` with n >= 1, `T` a constructor and the `vi` pairwise distinct
-/// type variables: the constructor and n. Anything else is not generic.
+/// type variables: the constructor and n. A list over one variable, `[v]`, is
+/// the list constructor `[]` applied to it (gpt_chirho #28111). Anything else
+/// is not generic.
 fn distinct_variable_spine_chirho(head_chirho: &TyChirho) -> Option<(&str, usize)> {
+    if let TyChirho::ListChirho(element_chirho) = head_chirho {
+        return matches!(element_chirho.as_ref(), TyChirho::VarChirho(_)).then_some(("[]", 1));
+    }
     let mut variables_chirho = Vec::new();
     let mut spine_chirho = head_chirho;
     while let TyChirho::AppChirho(function_chirho, argument_chirho) = spine_chirho {
@@ -167,12 +177,20 @@ fn head_constructor_chirho(head_chirho: &TyChirho) -> Option<&str> {
 /// A written key that spells the generic head: `T x1 .. xn`, the constructor
 /// then exactly n pairwise distinct variable tokens. The desugarer's key drops
 /// parentheses, so only an all-variable argument list is unambiguous: `T (U a)`
-/// is written `T U a`, and its uppercase token refuses it.
+/// is written `T U a`, and its uppercase token refuses it. The list head is
+/// written `[v]`, one variable token in brackets, and nothing else spells it.
 fn written_spine_chirho(
     spelling_chirho: &str,
     constructor_chirho: &str,
     arity_chirho: usize,
 ) -> bool {
+    if constructor_chirho == "[]" {
+        return arity_chirho == 1
+            && spelling_chirho
+                .strip_prefix('[')
+                .and_then(|inner_chirho| inner_chirho.strip_suffix(']'))
+                .is_some_and(is_variable_token_chirho);
+    }
     let mut tokens_chirho = spelling_chirho.split(' ');
     if tokens_chirho.next() != Some(constructor_chirho) {
         return false;

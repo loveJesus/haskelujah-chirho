@@ -7,10 +7,13 @@
 //! filled from its rows as written (claude2_chirho #27335; gpt_chirho #27342,
 //! #27349, #27365 and #27368, contract G1-G6). Every control goes through a use
 //! site that consults the alias: a standard method's direct occurrence (`==`
-//! carries the outer head) or a constrained call (reference evidence); a
-//! user-class method used directly mints no occurrence evidence and never
-//! reaches it. Every expected output is GHC 9.14.1's.
+//! carries the outer head), a constrained call (reference evidence), or a
+//! method of the program's own class, whose occurrence carries its proof since
+//! the own-class opt-in (gpt_chirho #28091). A list over one variable is a
+//! generic head too, unless another list or variable head competes (gpt_chirho
+//! #28111). Every expected output is GHC 9.14.1's.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
+//! workflow: language-features-chirho/own-class-method-occurrences-chirho
 
 use haskelujah_driver::eval_source_with_machine_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
@@ -36,6 +39,25 @@ fn assert_ghc_or_failure_chirho(file_name_chirho: &str, source_chirho: &str, ghc
         assert_eq!(
             machine_chirho.io_output_chirho, ghc_chirho,
             "{file_name_chirho}: neither GHC's output nor a failure"
+        );
+    }
+}
+
+const NEEDS_LIST_CHIRHO: &str = "{-# LANGUAGE FlexibleInstances #-}\nmodule Main where\nclass NeedsChirho a where\n  neededChirho :: a -> Int\ninstance NeedsChirho Int where\n  neededChirho x = x\n";
+
+/// GHC answers `ghc_chirho`, but competing heads keep the alias away until an
+/// exact selection among them is proven: the run must fail, never answer.
+fn assert_fails_closed_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    if let Ok((_value_chirho, machine_chirho)) = eval_source_with_machine_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        file_name_chirho,
+        None,
+    ) {
+        panic!(
+            "{file_name_chirho}: competing heads stay fail-closed; an alias answered {:?} (GHC: {ghc_chirho:?})",
+            machine_chirho.io_output_chirho
         );
     }
 }
@@ -209,15 +231,57 @@ fn a_two_parameter_class_is_never_keyed_by_one_head_chirho() {
 }
 
 #[test]
-fn a_user_method_used_directly_stays_outside_this_seam_chirho() {
-    // A user-class method used directly mints no occurrence evidence, so the
-    // use site never consults the alias: a missing binding on 3ece4a33 and
-    // here alike. The boundary may close; it must never answer wrongly.
-    assert_ghc_or_failure_chirho(
-        "DirectUserMethodChirho.hs",
-        &format!(
-            "{TAG_CLASS_CHIRHO}data PairBoxChirho a b = PairBoxChirho\ninstance TagChirho (PairBoxChirho a b) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = putStrLn (tagChirho (PairBoxChirho :: PairBoxChirho Int Bool))\n"
+fn a_user_method_used_directly_reaches_the_generic_alias_chirho() {
+    // The own-class opt-in closed this boundary: the direct use now mints an
+    // occurrence proved at `PairBoxChirho`, the key the alias carries. Main
+    // 926ccd4b and the Ord replay fail with a missing binding; 03a337d4 prints
+    // GHC's answer.
+    assert_eq!(
+        run_chirho(
+            "DirectUserMethodChirho.hs",
+            &format!(
+                "{TAG_CLASS_CHIRHO}data PairBoxChirho a b = PairBoxChirho\ninstance TagChirho (PairBoxChirho a b) where\n  tagChirho _ = \"generic\"\nmain :: IO ()\nmain = putStrLn (tagChirho (PairBoxChirho :: PairBoxChirho Int Bool))\n"
+            ),
         ),
-        "generic\n",
+        "generic\n"
+    );
+}
+
+#[test]
+fn a_context_free_list_head_is_found_under_the_list_constructor_chirho() {
+    // gpt_chirho #28111. A proof or argument key `[Int]` or `[Bool]` reaches
+    // `[]`, the alias of `instance NeedsChirho [a]`. Main printed `[[1]]` under
+    // map (Int's method on each list) and failed with a missing binding for the
+    // direct call; the opt-in failed with a missing binding for both.
+    for (file_name_chirho, program_chirho, ghc_chirho) in [
+        (
+            "ContextFreeListDefinedChirho.hs",
+            "instance NeedsChirho [a] where\n  neededChirho _ = 99\nmain :: IO ()\nmain = print (map neededChirho [[1 :: Int]])\n",
+            "[99]\n",
+        ),
+        (
+            "ContextFreeListDirectChirho.hs",
+            "instance NeedsChirho [a] where\n  neededChirho _ = 99\nmain :: IO ()\nmain = print (neededChirho [True])\n",
+            "99\n",
+        ),
+    ] {
+        let source_chirho = format!("{NEEDS_LIST_CHIRHO}{program_chirho}");
+        assert_eq!(
+            run_chirho(file_name_chirho, &source_chirho),
+            ghc_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn competing_context_free_list_heads_stay_fail_closed_chirho() {
+    // G4: `[a]` and `[Int]` both head the list constructor, so neither is
+    // aliased and `[Bool]` finds no dictionary. Main, the Ord replay and the
+    // opt-in all fail loudly; an alias would answer without an exact selection.
+    assert_fails_closed_chirho(
+        "ContextFreeListCompetingChirho.hs",
+        "{-# LANGUAGE FlexibleInstances #-}\n{-# LANGUAGE OverlappingInstances #-}\nmodule Main where\nclass NeedsChirho a where\n  neededChirho :: a -> Int\ninstance NeedsChirho [a] where\n  neededChirho _ = 10\ninstance NeedsChirho [Int] where\n  neededChirho _ = 20\nmain :: IO ()\nmain = print (neededChirho [1 :: Int], neededChirho [True])\n",
+        "(20,10)\n",
     );
 }

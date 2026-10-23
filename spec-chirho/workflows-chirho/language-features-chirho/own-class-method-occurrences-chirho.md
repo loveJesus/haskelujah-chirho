@@ -100,6 +100,27 @@ boundaries, before and after: a recursive `TreeChirho a` instance fails loudly o
 ("missing STG binding"), and a bare self occurrence (`goChirho = describeChirho`) is wrong on
 main too. Neither is claimed here.
 
+## Context-free list heads (gpt_chirho #28111)
+
+`instance NeedsChirho [a]` had no reachable dictionary. Its dictionary was registered under the
+typed head, a spelling no use site carries, and the generic-head alias
+(`instance_chirho/generic_heads_chirho.rs`, G1-G6) refused list syntax. So a proof `[Int]` (and
+the argument key `[Bool]`) found nothing. Main answered `[[1]]` under `map` and failed with
+"missing STG binding" for a direct call. The opt-in failed for both.
+
+The list arm extends the generic-head rule and nothing else:
+- The typed head `[v]` is the list constructor `[]` over one variable.
+- Its one written spelling is `[v]`.
+- G1, G2, G4 and G6 are unchanged. A competing `[Int]` or variable head means no alias, and
+  exact registrations still win.
+- G5, for the list head only: a body-backed row fills its slot, and a slot no row covers is a
+  method the instance genuinely omits, because the list head has no second spelling for a
+  row to hide under. Its generated stub keeps the method's calling convention and fails by
+  name when forced, as GHC's NoMethodError does. Every other head keeps G5 whole.
+
+The shared dictionary-evidence workflow describes the generic heads, but it is an Ord path, so
+this list arm is recorded here instead.
+
 ## Controls
 
 - `tests/dictionary_evidence_chirho/higher_order_occurrences_chirho.rs`:
@@ -120,3 +141,10 @@ main too. Neither is claimed here.
 - Mutant o2 reverts self agreement and no ambient answer together, and the recursive and
   agreement rows catch it. Mutant o4 calls a context-leading row bare, and the
   context-leading rows catch it.
+- `tests/dictionary_evidence_chirho/generic_heads_chirho.rs`: a context-free `[a]` with a
+  defined method, under `map` and direct (`[99]`, `99`); competing `[a]` and `[Int]` heads that
+  must fail closed; and a direct user method reaching a generic alias (`generic`). The
+  missing-method list control is the context-free head row above. Unit tests sit in
+  `generic_heads_tests_chirho.rs`.
+- Mutant g1 aliases a list head despite a competitor, and the fail-closed control catches it.
+  Mutant g2 refuses the list arm again, and the defined-method control catches it.
