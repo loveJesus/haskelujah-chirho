@@ -97,7 +97,8 @@ Float is a measured comparison only, not a test.
 | MU4 | name the C key instead of its representation (`{CInt}`) | `each_row_raises_ghcs_measured_message_chirho` |
 | MU5 | generate an identity `fromEnum` for a wide key (Word64) | `wide_from_enum_slots_stay_missing_method_stubs_chirho` |
 
-These are predictions, not run.
+These were predictions until build gate 2, which ran all five: each failed its
+named control (see below).
 
 ## Measurements
 
@@ -181,6 +182,67 @@ at `integral_enum_chirho.rs:37`. Every `OutOfRangeChirho` variant ended in
 **Doc correction:** the Controls list above said all 32 slots are real. It now
 says 27 real slots plus the five wide stubs, matching the source and revision 1.
 
+## Build gate 2 (claude2_chirho, 6f2bc8c4): GREEN at unit scope
+
+Run on 2026-10-22 in the named builder slot that gpt_chirho handed over, and
+posted as #28043. Cargo ran with `-j2` under `nice` and `timeout`, and tests
+used two threads. Gate 1's receipt in gpt_chirho's
+integral-enum worktree is untouched: its 9-file SHA-256 manifest is the same
+before and after.
+
+- **Build:** `cargo build -j2 --bin haskelujah`, rc 0, with no warning or error
+  line. The frozen CLI is
+  `2d25202253a2327ee5521f86608697a95bab55d7a8cdb51f8a3b8d6c4accfded`.
+- **Core lib:** 138/138. All five integral Enum tests passed, each listed by its
+  full name.
+- **STG control:** run with `--exact` and its full path, it printed `running 1
+  test` and `1 passed; 1847 filtered out`.
+- **Changed-line Clippy against 0f256e43:** core and driver with
+  `--all-targets`, so both touched test modules were linted. No diagnostic falls
+  on a changed line. The three diagnostics in touched files sit on unchanged
+  `prelude_chirho.rs` lines that gate 1 also reported. Gate 1's
+  `enum_variant_names` is gone.
+- **gitleaks** over `0f256e43..6f2bc8c4`: 3 commits, no leaks.
+- **Mutants:** five valid kills. One command ran the baseline (5/5 on the exact
+  source), every mutant and the restored source. Each mutant recompiled core,
+  ended with rc 101 and no timeout, and failed its named control on an `assert`
+  line:
+  - MU1: `every_integral_dictionary_takes_real_rows_chirho`;
+  - MU2 and MU3: `to_enum_rows_guard_exactly_the_table_bounds_chirho`;
+  - MU4: `each_row_raises_ghcs_measured_message_chirho`;
+  - MU5: `wide_from_enum_slots_stay_missing_method_stubs_chirho`.
+
+  Every restore was byte-exact by SHA-256 with a clean `git diff`, and the
+  restored source passed 5/5.
+- **Corpus pair** on the frozen CLI: two passes per axis, byte-identical to each
+  other and to held's passes (CLI ba1e5c29, 0f256e43's compiler).
+  should_compile is 885 ACCEPT and 53 REJECT; should_fail is 521 ACCEPT and 246
+  REJECT. All 1705 sources match held's, and every raw output matches once the
+  worktree root is masked.
+- **Replay:** all 299 rejections are ordinary diagnostics.
+- **Execution pair:** `execution_chirho.sh` on held and on the candidate, over
+  14 programs and 7 rejection predicates, against runghc 9.14.1. Both score
+  28/35 with the same seven known failures, which is unit 519's preserved
+  verdict set. The three outputs that still differ after masking are inside
+  those failures: a heap id, an LLVM value number, and a pointer that changes on
+  every run.
+- **Postflight:** HEAD, the tree and both frozen CLIs are unchanged, and no
+  builder process is left.
+
+**Declared deviation.** The corpus passes used a copy of the committed
+`axis_pass_chirho.sh` with two workers instead of four, to stay within the
+lease's two-thread limit. The worker, the verdict rule, the sort and the
+TIMEOUT re-run are the committed files.
+
+**Scope.** `haskelujah check` runs only the front end, so for this unit the
+corpus pair is an identity control. The execution pair is the stage that
+reaches the new rows. End-to-end evidence dispatch still waits for the 523+520
+combined gate: the combined child and the six 004cdbf4 rows run only on the
+combined Char replay.
+
+Receipts are in `tmp-chirho/integral-enum-gate2-1022-chirho/` in claude2_chirho's
+worktree.
+
 ## Checklist
 
 - [x] Design measured and accepted (#27673; gpt_chirho's disposition).
@@ -192,8 +254,8 @@ says 27 real slots plus the five wide stubs, matching the source and revision 1.
 - [x] Build gate 1 (gpt_chirho, ad96f6d5): build, core lib 138/138 and the STG
   control are green; changed-line Clippy is RED (`enum_variant_names`).
 - [x] Revision 2, source only: the structural Clippy fix and the doc correction.
-- [ ] Re-gate at a named slot: changed-line Clippy, core lib, the STG control and
-  the mutants above.
+- [x] Re-gate at a named slot: changed-line Clippy, core lib, the STG control and
+  the mutants above (build gate 2, 6f2bc8c4, GREEN at unit scope; #28043).
 - [ ] Combined Char replay: the end-to-end child and the six 004cdbf4 rows go
   green.
 - [ ] Separate prerequisite (gpt_chirho): list rendering must fail closed on an
