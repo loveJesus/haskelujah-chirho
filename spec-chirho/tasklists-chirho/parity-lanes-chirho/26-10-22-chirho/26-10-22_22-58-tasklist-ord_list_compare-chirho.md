@@ -22,19 +22,24 @@ The trace measured 33 probes on GHC 9.14.1 and the frozen ground and combined CL
 
 ## Gate
 
-- [ ] Build, then focused suites: core lib, dictionary_evidence, and the two cd95568b missing-method tests by name.
-- [ ] Changed-line Clippy since 54067f26, and gitleaks.
-- [ ] Oracles over list_orders and string_lists. A derived runner reads the GHC-REJECTS marker.
-- [ ] Matrix: the 33 trace probes plus the controls.
-- [ ] Mutations:
+The source branch was never gated on 54067f26 (gpt_chirho #28072). After unit 524 and gpt's date shard, `replay_ord_chirho.sh` replayed the five commits onto main 28924e51 as `ord-list-compare-main-chirho` (#28085): 9010717e→40b58ace, f93ca45f→b073cab2, bccda58f→81dca451, 183a2b55→2c80223a, 4372b6d8→dea2a0b7. All 11 replay proofs were GREEN (union sha256 5190493d1fa4949a).
+
+The base is CLI 926ccd4b (claude2_chirho's receipt-2, sha256 4b6fa999) with R2 22e94efd's lists. The first gate on the replay, ord-main-dea2a0b7-chirho, went RED at focused on D03, and that receipt stays as it is. The cause lay outside Ord; [the own-class unit](../26-10-23-chirho/26-10-23_02-50-tasklist-own_class_method_occurrences-chirho.md) on dea2a0b7 repairs it. The landing gate on both, combined-29db427b-chirho (frozen CLI 54f8d6ec), was GREEN in every stage:
+
+- [x] Build, then focused suites: core lib, dictionary_evidence, and the two cd95568b missing-method tests by name.
+- [x] Changed-line Clippy since 28924e51, and gitleaks.
+- [x] Oracles over list_orders and string_lists. A derived runner reads the GHC-REJECTS marker.
+- [x] Matrix: the 33 trace probes plus the controls, all 24 requirements met. Two rows stay wrong exactly as on the base: Chars built with `toEnum` (claude2's lane) and RC5's Orderings.
+- [x] Mutations:
   - c1: the EQ arm stops recursing.
   - c2: nil against cons answers GT.
   - c3: the Ord arm is dropped.
   - c4: `[Char]` is dropped from Ord.
   - d1: Bool's order is reversed.
   - a1: the stub's leading dictionaries are restored.
-- [ ] An Ordering `--dump-core` diff of `$prim_Ord_compare_Ordering`, with ids normalized, between ea03667e and the tip.
-- [ ] Corpus paired against 54067f26's lists, run with the derived `-P 2` runner.
+  - s1: `[Char]` is dropped from Eq.
+- [x] An Ordering `--dump-core` diff of `$prim_Ord_compare_Ordering`, with ids normalized, between the base CLI and the tip: identical.
+- [x] Corpus paired against the base lists, run with the derived `-P 2` runner: membership, replay and execution as on the base.
 
 ## Outside this unit
 

@@ -72,37 +72,48 @@ and that receipt stays as it is. D03 passed. A recursive conditional instance pr
 
 ## Combined gate
 
-A fresh tag, launched through `run_gate_ord_chirho.zsh` (no pipe), only under a builder lease
-handed by name.
+Every run takes a fresh tag and is launched through `run_gate_ord_chirho.zsh` (no pipe), only
+under a builder lease handed by name. Each RED receipt stays as it is:
+- combined-03a337d4-chirho went RED at focused. U1-rev and U2 above repair it.
+- combined-b0ace8e1-chirho (frozen CLI 4934941c) went RED at focused on one core unit
+  assertion that still expected a list spine to be refused. The test-only commit d31a034f makes
+  it state U2's list head.
+- combined-d31a034f-chirho went RED at changed-line Clippy on one collapsible `if` whose line
+  U1-rev touched. 29db427b collapses it into a let chain, with no change in behavior.
 
-- [ ] Preflight: the tip differs from base source 926ccd4b only in the Ord stack's paths, this
+combined-29db427b-chirho, on tip 29db427b (frozen CLI 54f8d6ec), was GREEN in every stage:
+
+- [x] Preflight: the tip differs from base source 926ccd4b only in the Ord stack's paths, this
   unit's paths and spec-chirho/.
-- [ ] Build: warning-free, CLI frozen.
-- [ ] Focused: Ord's suites and named tests, plus this unit's integration and unit tests by
-  name, and compile_chirho's LLVM and Cranelift recursive custom-list round trips. D03 is the
-  landing control.
-- [ ] Changed-line Clippy since 28924e51, and gitleaks over 28924e51..tip.
-- [ ] Oracle over list_orders, string_lists and higher_order_occurrences. The extractor now reads
-  rustfmt's split `const` (it raised KeyError on `NEEDS_CHIRHO`); Ord's files extract identically.
-- [ ] Matrix: the Ord matrix unchanged.
-- [ ] Mutations, each caught by its own control:
+- [x] Build: warning-free, CLI frozen.
+- [x] Focused: Ord's suites and named tests, plus this unit's integration and unit tests by
+  name, and compile_chirho's LLVM and Cranelift recursive custom-list round trips. D03, the
+  landing control, now fails by name where GHC fails.
+- [x] Changed-line Clippy since 28924e51, and gitleaks over 28924e51..29db427b.
+- [x] Oracle over list_orders, string_lists, higher_order_occurrences and generic_heads, with
+  every program as GHC expects. The extractor now reads rustfmt's split `const` (it raised
+  KeyError on `NEEDS_CHIRHO`); Ord's files extract identically.
+- [x] Matrix: all 24 of the Ord matrix's requirements met.
+- [x] Mutations, each caught by its own control:
   - Ord's seven;
   - o1, the opt-in dropped;
   - o2, self agreement and no ambient answer reverted together;
   - o4, a context-leading row called bare;
   - the list-head set, g1 and g2.
-- [ ] Ordering-core.
-- [ ] Corpus at -P 2 against the R2 lists: membership, replay and execution.
+- [x] Ordering-core: identical.
+- [x] Corpus at -P 2 against the R2 lists: membership, replay and execution as on the base.
 
-## Predicted, unmeasured until the combined gate
+## Predictions, measured in combined-29db427b-chirho
 
-- D03 and the three missing-method controls fail by name. The context-free head reaches its
-  stub through U2's `[]` alias, and its key spelling is not pinned.
-- U1-rev and U2 rows print the GHC answers measured in trace 3.
-- The defined list method answers `[99]`, two types answer `([99],[2])`, the element method
+- [x] D03 and the three missing-method controls fail by name. The context-free head reaches its
+  stub through U2's `[]` alias: under g2 it answers `[[1]]` again. Its key spelling is not
+  pinned.
+- [x] U1-rev and U2 rows print the GHC answers measured in trace 3. The competing `[a]` and
+  `[Int]` heads stay fail-closed, as planned.
+- [x] The defined list method answers `[99]`, two types answer `([99],[2])`, the element method
   inside an instance answers `[1005]`, the constrained binding answers `(3,31)`, and the
   self-qualified program answers `([99],5)`.
-- The direct call keeps `99`, and cd95568b's two missing-method tests stay green.
+- [x] The direct call keeps `99`, and cd95568b's two missing-method tests stay green.
 
 ## Outside this unit
 
