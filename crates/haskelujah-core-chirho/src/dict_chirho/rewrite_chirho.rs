@@ -1321,13 +1321,14 @@ impl DictPassCtxChirho {
                 // Fall back only to dictionaries backed by real local evidence.
                 // Ambient seeded defaults are not proof for an unresolved method
                 // use and used to pick arbitrary semantics.
-                if evidence_classes_chirho.contains(&class_name_chirho) && !foreign_proof_chirho {
-                    if let Some(dict_id_chirho) = dict_vars_chirho.get(&class_name_chirho) {
-                        return CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                        };
-                    }
+                if evidence_classes_chirho.contains(&class_name_chirho)
+                    && !foreign_proof_chirho
+                    && let Some(dict_id_chirho) = dict_vars_chirho.get(&class_name_chirho)
+                {
+                    return CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                    };
                 }
             }
         }
