@@ -69,7 +69,7 @@ Claude2 #27434 reports T18398 is newly accepted after the case parser closes the
 
 Canonical prerequisite plan:
 
-/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17_20-37-tasklist-case_fundep_prerequisite-chirho.md
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17-chirho/26-10-17_20-37-tasklist-case_fundep_prerequisite-chirho.md
 
 ## Fundep source-work disposition, 21:01 update
 

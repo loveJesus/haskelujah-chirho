@@ -60,4 +60,4 @@ Claude #27479 completes the bounded source/frozen-probe trace. GPT opens its two
 
 GPT #27481 assigns separate source-only R2 work from preserved 2f1bdfd6, with the exact proof retained through resolution or a lazy named error. A syntactic fallback needs normalized agreement with the proven key. R1 must also precede ground landing and receives a later separate origin-preserving placement/checkpoint. Recursive conditional dictionaries, runtime string-coercion changes and the Eq method model remain distinct. Unit 521 owns R2; GPT keeps the only builder on unit 519 and all main/DB ownership. No ground compiler source has changed from the red/re-gated checkpoint yet.
 
-/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17_21-52-tasklist-proven_method_occurrences-chirho.md
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17-chirho/26-10-17_21-52-tasklist-proven_method_occurrences-chirho.md

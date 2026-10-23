@@ -73,7 +73,7 @@ Fresh review input:
 
 Character prerequisite plan:
 
-/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17_20-53-tasklist-char_toenum_case_prerequisite-chirho.md
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-17-chirho/26-10-17_20-53-tasklist-char_toenum_case_prerequisite-chirho.md
 
 ## Revised quantification contract and source disposition, 21:01 update
 
