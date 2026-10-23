@@ -16,10 +16,24 @@ Owner: HASKELUJAH/gpt_chirho. The builder stays serialized here until the curren
 - [x] Reuse ordinary instance lowering's existing `lower_instance_head_types_chirho` for standalone deriving. A context test now pins the applied head as one AST type; no wider known-type pattern or inference change is absorbed.
 - [x] Run rustfmt and review the additive parser revision against current main, `c32f071a`, exact 54067f26, and both preserved RED checkpoints.
 - [x] Preserve the first full `70d907ac` integration receipt as RED at changed-line Clippy after every build, focused suite and named control passed. Remove the two needless `&class_text_chirho` borrows in the owned standalone-deriving helper without changing behavior.
-- [ ] Rebuild under the held builder and rerun parser, typing, `dictionary_evidence_chirho`, and the focused integration union.
-- [ ] Require `BinderHeaderChirho.hs` to print `True`; require `EqSpecializedAtItsTypeChirho.hs` to print GHC's `False` or fail loudly, never print the generic `True`.
-- [ ] Re-run changed-line Clippy, gitleaks, oracles, matrix, O1 rows, all mutation sets, corrected two-worker corpus pair, replay, execution, and postflight.
-- [ ] Land only after the complete current-main integration gate is GREEN. Do not absorb known-type pattern inference, record ownership, NonEmpty, Char, case, Ord, or unit 524.
+- [x] Rebuild under the held builder and rerun parser, typing, `dictionary_evidence_chirho`, and the focused integration union.
+- [x] Require `BinderHeaderChirho.hs` to print `True`; require `EqSpecializedAtItsTypeChirho.hs` to print GHC's `False` or fail loudly, never print the generic `True`.
+- [x] Re-run changed-line Clippy, gitleaks, oracles, matrix, O1 rows, all mutation sets, corrected two-worker corpus pair, replay, execution, and postflight.
+- [x] Land only after the complete current-main integration gate is GREEN. Do not absorb known-type pattern inference, record ownership, NonEmpty, Char, case, Ord, or unit 524.
+
+## Current-main integration gate
+
+Exact compiler source `22e94efd043ea201287e882a202c517dd9b68c5e` is GREEN in `r2-main-integration-22e94efd-gate2-chirho`.
+
+- Warning-free current-main and candidate builds; core 141/141, typing 354/354, dictionary evidence 44/44, instance obligations 28/28, rigid type variables 14/14, IO actions 9/9, filtered driver 474/474 and the integral computed-error control passed.
+- All 11 named R1, R2b, A4 and O1 controls ran and passed. The five standalone-deriving probes printed GHC's outputs, and their Core keeps the written applied dictionary and row keys.
+- Changed-line Clippy found zero warnings; gitleaks scanned 30 commits with no leaks.
+- The four source oracles rebuilt 55 programs, all GHC-exact. The matrix measured `EXACT=34`, `LOUD=56`, `REJECTED=4`, `WRONG=3`; the three wrong rows are the retained `/=` and ordering boundaries. O1 met 4/4 rows.
+- Mutation baselines were valid and byte-restored: typed entries 3/3 caught, String lists 1/1, proven occurrences 5/6 with declared `p3`, ground keys 9/10 with declared `g4`, identity 7/7, sections 1/2 with declared `q2`.
+- Both two-worker corpus passes were deterministic and byte-identical between current main and the candidate: should-compile 885 accepted and 53 rejected; should-fail 240 rejected and 527 accepted. All 293 rejections replayed identically, no current-main execution PASS became FAIL, and postflight preserved both heads, tracked trees and frozen binaries.
+- The full parser binary's nested-parentheses property still aborts with a stack overflow on both current main and the candidate. That run is INVALID/ABNORMAL and not a gate pass; the 366 deterministic parser tests, including the applied-head control, pass. The inherited parser-depth defect remains a separate repair.
+
+The first `22e94efd` receipt is preserved as a gate-tooling failure: the fresh oracle source directories were absent, so extraction raised `FileNotFoundError` before any oracle program ran. The corrected gate creates each directory and the complete fresh rerun above is GREEN.
 
 ## Dependency direction
 
