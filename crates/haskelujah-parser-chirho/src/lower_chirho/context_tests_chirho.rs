@@ -268,6 +268,7 @@ fn an_instance_forall_binds_variables_and_is_not_a_quantified_given_chirho() {
         lower_declaration_chirho("deriving instance forall a. Show a => Show (BoxChirho a)");
     assert_eq!(deriving_chirho.context_chirho, "Show var(a)");
     assert_eq!(deriving_chirho.class_chirho, "Show");
+    assert_eq!(deriving_chirho.head_chirho, ["(BoxChirho var(a))"]);
 }
 
 #[test]

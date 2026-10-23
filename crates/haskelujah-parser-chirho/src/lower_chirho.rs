@@ -4498,28 +4498,12 @@ impl LowerCtxChirho {
             vec![]
         };
 
-        let mut class_chirho = None;
-        let mut types_chirho = Vec::new();
-
-        for (tok_chirho, s_chirho) in head_tokens_chirho {
-            match tok_chirho.kind_chirho() {
-                TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
-                    if class_chirho.is_none() {
-                        class_chirho = Some(self.name_from_token_chirho(tok_chirho, *s_chirho));
-                    } else {
-                        types_chirho.push(TypeChirho::ConChirho(
-                            self.name_from_token_chirho(tok_chirho, *s_chirho),
-                        ));
-                    }
-                }
-                TokenKindChirho::VarIdChirho => {
-                    types_chirho.push(TypeChirho::VarChirho(
-                        self.name_from_token_chirho(tok_chirho, *s_chirho),
-                    ));
-                }
-                _ => {}
-            }
-        }
+        // Preserve an applied head as one type, as ordinary instance lowering
+        // already does. Splitting `(SBoolChirho b)` into two entries changes
+        // the written method-row key and leaves the derived dictionary empty.
+        // workflow: language-features-chirho/flat-type-syntax-chirho
+        let (class_chirho, types_chirho) =
+            self.lower_instance_head_types_chirho(head_tokens_chirho, span_chirho);
 
         DeclChirho::StandaloneDerivingDeclChirho {
             context_chirho,
