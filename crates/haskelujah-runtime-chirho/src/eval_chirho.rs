@@ -3884,30 +3884,28 @@ impl MachineChirho {
                 | PrimOpKindChirho::ShowBoolChirho
                 | PrimOpKindChirho::ShowCharChirho
         );
-        if is_show_primop_chirho {
-            if let Some(val_chirho) = args_chirho.first() {
-                let needs_fallback_chirho = matches!(val_chirho, ValueChirho::HeapPtrChirho(_))
-                    || match (op_chirho, val_chirho) {
-                        // ShowStrChirho applied to non-String: use universal show
-                        (PrimOpKindChirho::ShowStrChirho, ValueChirho::StringChirho(_)) => false,
-                        (PrimOpKindChirho::ShowStrChirho, _) => true,
-                        // ShowIntChirho applied to non-Int: use universal show
-                        (PrimOpKindChirho::ShowIntChirho, ValueChirho::IntChirho(_)) => false,
-                        (PrimOpKindChirho::ShowIntChirho, _) => true,
-                        // ShowBoolChirho applied to non-Bool/Int: use universal show
-                        (PrimOpKindChirho::ShowBoolChirho, ValueChirho::BoolChirho(_)) => false,
-                        (PrimOpKindChirho::ShowBoolChirho, ValueChirho::IntChirho(_)) => false,
-                        (PrimOpKindChirho::ShowBoolChirho, _) => true,
-                        // ShowCharChirho applied to non-Char: use universal show
-                        (PrimOpKindChirho::ShowCharChirho, ValueChirho::CharChirho(_)) => false,
-                        (PrimOpKindChirho::ShowCharChirho, _) => true,
-                        // ShowFloatChirho: only the prim handles decimal formatting correctly
-                        _ => false,
-                    };
-                if needs_fallback_chirho {
-                    let s_chirho = self.show_value_as_string_chirho(val_chirho)?;
-                    return Ok(ValueChirho::StringChirho(s_chirho));
-                }
+        if is_show_primop_chirho && let Some(val_chirho) = args_chirho.first() {
+            let needs_fallback_chirho = matches!(val_chirho, ValueChirho::HeapPtrChirho(_))
+                || match (op_chirho, val_chirho) {
+                    // ShowStrChirho applied to non-String: use universal show
+                    (PrimOpKindChirho::ShowStrChirho, ValueChirho::StringChirho(_)) => false,
+                    (PrimOpKindChirho::ShowStrChirho, _) => true,
+                    // ShowIntChirho applied to non-Int: use universal show
+                    (PrimOpKindChirho::ShowIntChirho, ValueChirho::IntChirho(_)) => false,
+                    (PrimOpKindChirho::ShowIntChirho, _) => true,
+                    // ShowBoolChirho applied to non-Bool/Int: use universal show
+                    (PrimOpKindChirho::ShowBoolChirho, ValueChirho::BoolChirho(_)) => false,
+                    (PrimOpKindChirho::ShowBoolChirho, ValueChirho::IntChirho(_)) => false,
+                    (PrimOpKindChirho::ShowBoolChirho, _) => true,
+                    // ShowCharChirho applied to non-Char: use universal show
+                    (PrimOpKindChirho::ShowCharChirho, ValueChirho::CharChirho(_)) => false,
+                    (PrimOpKindChirho::ShowCharChirho, _) => true,
+                    // ShowFloatChirho: only the prim handles decimal formatting correctly
+                    _ => false,
+                };
+            if needs_fallback_chirho {
+                let s_chirho = self.show_value_as_string_chirho(val_chirho)?;
+                return Ok(ValueChirho::StringChirho(s_chirho));
             }
         }
 
