@@ -59,14 +59,15 @@ fn a_typed_spine_is_a_constructor_over_distinct_variables_chirho() {
         distinct_variable_spine_chirho(&con_chirho("MonoChirho")),
         None
     );
-    // A variable head, and a list, are outside this rule.
+    // A variable head is outside this rule. A list over one variable is the
+    // list constructor `[]` over it (U2, gpt_chirho #28111).
     assert_eq!(
         distinct_variable_spine_chirho(&app_chirho(var_chirho(1), var_chirho(0))),
         None
     );
     assert_eq!(
         distinct_variable_spine_chirho(&TyChirho::ListChirho(Box::new(var_chirho(0)))),
-        None
+        Some(("[]", 1))
     );
 }
 
