@@ -9,7 +9,7 @@ and where per-type dispatch happens. Functions on this DAG carry a
 flowchart TD
     SRC["Haskell source\ndo-block / operator use"] --> DESUGAR["desugar_chirho.rs\ndesugar_expr_chirho (ops ~3886-3900)\ndesugar_do_chirho (~4913)"]
     DESUGAR -->|"do stmts → >>= / >> chains (WI-002)\noperators → Var apps (WI-001)"| CORE["Core IR"]
-    CORE --> DICTPASS["dict_chirho/rewrite_chirho.rs\nrewrite_method_refs_with_locals_chirho"]
+    CORE --> DICTPASS["dict_chirho/rewrite_chirho/method_refs_chirho.rs\nrewrite_method_refs_with_locals_chirho"]
     DICTPASS --> ANNOTATED["Explicit result annotation selects only its own return/pure head"]
     ANNOTATED -->|"resolved key and body"| PRIM
     ANNOTATED -->|"no explicit head selection"| OWN["Own dictionary evidence before monad-context guesses"]

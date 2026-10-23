@@ -9,8 +9,12 @@ The branch `dict-module-split-chirho` starts from exact main d1b817bb. Its crate
 
 ## Source
 
-- [ ] C2: mod.rs's inline tests move verbatim, de-indented 4 spaces, to `dict_chirho/dict_pass_tests_chirho.rs`. The declaration `#[cfg(test)] #[path = "dict_pass_tests_chirho.rs"] mod tests_chirho;` keeps every test name.
-- [ ] C3: rewrite_chirho.rs keeps the pass entries and the shared recognizers, and seven private children take the rest:
+- [x] C2 (007f476b): mod.rs's inline tests move to `dict_chirho/dict_pass_tests_chirho.rs` (mod.rs goes from 1613 to 895 lines). The declaration `#[cfg(test)] #[path = "dict_pass_tests_chirho.rs"] mod tests_chirho;` keeps every test name.
+- [x] Amendment B (gpt_chirho #28145), the only formatter rule for C2:
+  - The tests file is byte-for-byte rustfmt 1.8.0-stable (254b59607d 2026-01-19), edition 2024, default config, applied to the four-line header plus an exact four-space de-indent of base mod.rs lines 895-1612.
+  - The proof rebuilds that input, runs the pinned rustfmt and requires the exact bytes.
+  - It also requires 4 reflow hunks, 722 -> 715 lines and 4161 -> 4158 tokens: exactly 3 trailing commas removed, at base lines 1009, 1016 and 1440. Comments and the 15 test names are identical.
+- [x] C3 (ca7575c6): rewrite_chirho.rs (4730 -> 734 lines) keeps the pass entries and the shared recognizers, and seven private children take the rest:
   - `type_keys_chirho.rs`, the RC5 seam, with `infer_type_key_chirho` from mod.rs;
   - `numeric_defaults_chirho.rs`;
   - `method_args_chirho.rs`;
@@ -18,13 +22,18 @@ The branch `dict-module-split-chirho` starts from exact main d1b817bb. Its crate
   - `head_dispatch_chirho.rs`;
   - `method_refs_chirho.rs`;
   - `dict_params_chirho.rs`.
-- [ ] C3's only shape changes:
+- [x] C3's only shape changes:
   - exactly 36 `pub(super)` qualifiers, each on a method with a measured cross-file caller;
   - exact imports per file;
   - the module-wide `#![allow(unused_imports)]` removed.
-  Method bodies are byte-identical.
-- [ ] C4: the one path node in `monadic-dispatch-chirho.md`, and this tasklist's ticks.
-- [ ] The mechanical proof, `prove_split_chirho.py`, after C2 and after C3. Then rustfmt, `diff --check` and gitleaks, all without Cargo.
+  Method bodies are byte-identical, and mod.rs goes from 895 to 515 lines.
+- [x] Amendment B2 (gpt_chirho #28148), the only formatter rule for C3:
+  - The proof rebuilds the pre-format C3 from exact C2 in a fresh temp dir and proves the original contract there. Each committed file must equal the pinned rustfmt's output for its pre-format file.
+  - The delta must be exactly four signature hunks, where `pub(super)` pushes a one-line signature past 100 columns: `concrete_binder_type_key_chirho` (type_keys), `first_value_lambda_binder_id_chirho` and `first_value_lambda_param_expects_list_chirho` (call_keys), and `has_direct_return_or_pure_head_chirho` (head_dispatch).
+  - Those hunks add +4 `,` tokens before `)`, with line growth 690 -> 693, 417 -> 421 and 625 -> 628 (+10).
+  - Every other split file is a rustfmt no-op, and every method body is unchanged.
+- [x] C4: the one path node in `monadic-dispatch-chirho.md`, and this tasklist's ticks.
+- [x] The mechanical proof, `prove_split_chirho.py`, GREEN after C2 (11/11) and after C3 (32/32), with receipts in tmp-chirho/dict-split-chirho/. rustfmt, `diff --check` and gitleaks are clean, all without Cargo.
 
 ## Gate
 
