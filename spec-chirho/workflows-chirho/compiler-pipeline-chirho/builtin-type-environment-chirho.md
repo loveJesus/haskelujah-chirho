@@ -7,7 +7,7 @@ Type inference for every module starts from a seeded builtin environment. The mo
 flowchart TD
     ctx_chirho[InferCtxChirho::new_chirho] --> hub_chirho[builtins_chirho::seed_builtins_chirho]
     schemes_chirho[builtin_value_schemes_chirho] --> hub_chirho
-    hub_chirho --> constructors_chirho[constructors_chirho: True, False, Nothing, Just]
+    hub_chirho --> constructors_chirho[constructors_chirho: True, False, LT, EQ, GT, Nothing, Just]
     constructors_chirho --> core_chirho[core_chirho: part_01-04]
     core_chirho --> effects_chirho[effects_chirho: part_05-08]
     effects_chirho --> classes_chirho[classes_chirho: part_09-11]
@@ -34,7 +34,7 @@ flowchart TD
 
 ## Seed order
 
-- The hub calls `constructors_chirho`, then the core, effects, classes and surface groups, and each group calls its parts in ascending order. Every part is a contiguous slice of the former single `seed_builtins_chirho`, so the bind sequence is that function's.
+- The hub calls `constructors_chirho`, then the core, effects, classes and surface groups, and each group calls its parts in ascending order. Every part is a contiguous slice of the former single `seed_builtins_chirho`, so the bind sequence is that function's, plus `LT`, `EQ` and `GT` right after `True` and `False` (RC5).
 - Order matters. `TyEnvChirho::bind_chirho` inserts into the innermost scope, so a later bind of the same name replaces an earlier one. Moving binds between parts, or reordering parts, can change a builtin's scheme.
 - The builders in `transformer_types_chirho.rs` are pure type constructors. They bind nothing.
 - Add a builtin to the part whose topic fits it, and a data constructor to `constructors_chirho.rs`. Keep every file under 1000 lines.
@@ -49,5 +49,5 @@ flowchart TD
 
 - When an `ExprChirho::ConChirho` finds no scheme, it gets a fresh type variable and no diagnostic. Class predicates on that variable stay unresolved through `check_deferred_preds_chirho`.
 - `finalize_occurrence_records_chirho` then keys the occurrence through `default_occurrence_key_chirho`. For Eq and Ord that is `Int` even with no Num constraint.
-- So a constructor missing from the seed dispatches at `Int`. Today the seed does not bind `LT`, `EQ` or `GT`, so bare Ordering literals dispatch at `Int` (RC5). RC5 will seed them as `Ordering` in `constructors_chirho.rs`.
+- So a constructor missing from the seed dispatches at `Int`. Bare `LT`, `EQ` and `GT` did, until `constructors_chirho.rs` seeded them as `Ordering` (RC5; see Builtin constructor seeds in language-features-chirho/dictionary-evidence-chirho.md).
 - Rejecting unbound constructors, and Eq/Ord defaulting without Num, are separate debts.

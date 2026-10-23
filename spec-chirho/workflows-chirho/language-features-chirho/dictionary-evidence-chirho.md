@@ -367,8 +367,8 @@ flowchart TD
   `[True,False]`. Ordering's row is the table it always had.
 - Bounded: element types only. `compare [[1]] [[2]]` still names `Ord [[Int]]` through R2.
   At non-scalar types, `<`, `<=`, `max`, `sort` and `maximum` stay loud: they are scalar
-  primops until an Ord method model. `compare LT GT` still dispatches at Int, and
-  `Ord (Maybe a)` has no dictionary.
+  primops until an Ord method model. `Ord (Maybe a)` has no dictionary. `compare LT GT`
+  dispatched at Int until LT, EQ and GT were seeded (Builtin constructor seeds, below).
 
 ## Occurrence provenance (in progress, 2026-09-22)
 
@@ -472,6 +472,47 @@ flowchart TD
   G4 counts only instances that reach the class environment: a context-free instance whose
   head carries an overlap pragma is lost before typing today, and while it is, its generic
   rival must not be aliased (see the tasklist's blocker).
+
+## Builtin constructor seeds (2026-10-23)
+
+RC5, from gpt_chirho #28162 and #28187.
+
+**The cause.** Typing seeded `True` and `False` but never `LT`, `EQ` or `GT`.
+- A bare Ordering literal was therefore a fresh type variable.
+- Its Eq and Ord occurrences defaulted to Int evidence (`default_occurrence_key_chirho`).
+- The dictionary pass then served the Int row it was given.
+
+**The fix.** `builtins_chirho/constructors_chirho.rs` now binds the three as mono `Ordering`
+beside `True` and `False`.
+
+```mermaid
+flowchart TD
+    seed_bs_chirho["constructors_chirho: LT, EQ, GT :: Ordering"] --> lookup_bs_chirho[an ExprChirho::ConChirho finds a scheme]
+    lookup_bs_chirho --> occ_bs_chirho["compare LT GT: Ord resolved at Ordering before finalization"]
+    occ_bs_chirho --> row_bs_chirho["$prim_Ord_compare_Ordering and $fEqOrdering rows"]
+    module_bs_chirho["a module's own LT, EQ, GT"] -->|collect_module_shadowed_names_chirho removes the seed| own_bs_chirho[the module's own type]
+```
+
+- **Before:**
+  - `compare LT GT` and `let x = LT in compare x GT` crashed with no matching alternative for tag 0
+    at the Int row.
+  - `sortBy compare [GT, LT, EQ]` printed `[GT,LT,EQ]`.
+  - `LT == GT`, `succ LT` and `maximum [LT, GT, EQ]` crashed in Int primops.
+  - `x :: Int; x = LT` and `GT + (1 :: Int)` were accepted.
+- **Now:** each of those programs answers as GHC 9.14.1 does. GHC's two rejections are
+  rejections here too, each a type mismatch naming `Ordering`. A single annotation was the
+  old workaround, and it still gives the same answer.
+- **Unchanged:**
+  - a module that defines its own `LT`, `EQ` and `GT` (under
+    `import Prelude hiding (Ordering(..))`) keeps them;
+  - a qualified `P.LT` resolves as before;
+  - computed Orderings and user enums are untouched.
+- **Tests:** `tests/dictionary_evidence_chirho/ordering_literals_chirho.rs`.
+- **Bounded, still open:**
+  - any other constructor the seed lacks still becomes a fresh variable, so an imported `:|` is
+    accepted at Int;
+  - Eq and Ord still default to Int without Num;
+  - a user `data Ordering` under `Prelude hiding` still fails Show (T15).
 
 ## Current boundary
 

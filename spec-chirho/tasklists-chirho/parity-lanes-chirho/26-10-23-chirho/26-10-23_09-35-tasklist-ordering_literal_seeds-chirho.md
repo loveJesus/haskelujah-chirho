@@ -13,7 +13,7 @@ The branch `ordering-literal-seeds-chirho` starts from exact main bd690d83e289b4
 
 ## Source
 
-- [ ] C2, one commit:
+- [x] C2 (eedeb478), one commit:
   - seed LT/EQ/GT as `Ordering` in constructors_chirho.rs;
   - add tests/dictionary_evidence_chirho/ordering_literals_chirho.rs and its harness `mod` lines.
   - Rows fixed to GHC's answer: R1, R2, R5, R9, T10, T11 and T12.
@@ -22,14 +22,21 @@ The branch `ordering-literal-seeds-chirho` starts from exact main bd690d83e289b4
     - exact: T05-T09, T13, T14, T16, R3, R4, R6, R7 and R8;
     - T17: the module's own constructors named LT/EQ/GT still override the seed;
     - still rejected: T02, T03, N01, N02 and N03.
-- [ ] C3, docs:
+- [x] C3, docs:
   - a "Builtin constructor seeds" section in language-features-chirho/dictionary-evidence-chirho.md, which the seed's code comment points to;
   - the RC5 sentences in that doc and in compiler-pipeline-chirho/builtin-type-environment-chirho.md, now stale, rewritten in the present tense;
   - this tasklist's ticks.
-- [ ] Checks without Cargo:
+- [x] Checks without Cargo:
   - rustfmt, `diff --check` and gitleaks;
   - GHC 9.14.1 receipts for every program in the new test file;
   - path and directory limits.
+  - Results:
+    - All 3 Rust files are pinned-rustfmt no-ops, and `diff --check` is clean.
+    - gitleaks finds nothing in the unit's commits.
+    - GHC 9.14.1: all 28 extracted programs behave as recorded. The 21 accepted programs print their output with rc 0, and the 7 rejected ones fail with GHC-83865.
+    - On the base CLI 2ddfca25, exactly the 9 targeted rows fail their new assertions, and the 19 controls already hold.
+    - Limits: dictionary_evidence_chirho/ goes from 8 to 9 entries, and the new unit is 225 lines.
+    - The driver's tests/ directory is already at 24 entries. That is older debt; this unit adds nothing there.
 
 ## Gate
 
