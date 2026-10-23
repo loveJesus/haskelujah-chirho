@@ -79,15 +79,10 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                 type_vars_chirho,
                 constructors_chirho,
                 deriving_chirho,
-                kind_sig_chirho,
                 span_chirho,
                 ..
             } => {
-                let visible_vars_chirho = declaration_heads_chirho::visible_instance_binders_chirho(
-                    type_vars_chirho,
-                    kind_sig_chirho.as_ref(),
-                    *span_chirho,
-                );
+                let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
                 let type_vars_chirho = visible_vars_chirho.as_ref();
                 for class_chirho in deriving_chirho {
                     match class_chirho.text_chirho() {
@@ -227,16 +222,11 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                 type_vars_chirho,
                 constructor_chirho,
                 deriving_chirho,
-                kind_sig_chirho,
                 span_chirho,
                 ..
             } => {
                 let cons_chirho = vec![constructor_chirho.clone()];
-                let visible_vars_chirho = declaration_heads_chirho::visible_instance_binders_chirho(
-                    type_vars_chirho,
-                    kind_sig_chirho.as_ref(),
-                    *span_chirho,
-                );
+                let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
                 let type_vars_chirho = visible_vars_chirho.as_ref();
                 for class_chirho in deriving_chirho {
                     match class_chirho.text_chirho() {

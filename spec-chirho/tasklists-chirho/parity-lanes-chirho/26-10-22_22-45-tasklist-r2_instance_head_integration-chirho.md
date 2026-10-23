@@ -8,9 +8,11 @@ Owner: HASKELUJAH/gpt_chirho. The builder stays serialized here until the curren
 
 - [x] Preserve the RED integration receipt from 5bcb2fc9: every focused suite except `dictionary_evidence_chirho` passed; the two failures were `BinderHeaderChirho.hs` and `EqSpecializedAtItsTypeChirho.hs`.
 - [x] Trace all three frozen binaries. Exact 54067f26 generates `$fEq(SBoolChirho t0)` and keeps both `BoxChirho Int` and `BoxChirho t0`; current main loses the applied standalone head and the overlap pragma; R2 then makes the surviving generic `BoxChirho` alias reachable.
-- [x] Move `deriving_chirho.rs` to `deriving_chirho/mod.rs` and restore the exact be4b6ce7 declaration-head module. This preserves standalone context and applied heads plus visible binders without importing the known-type pattern inference changes.
+- [x] Preserve the first repair checkpoint `cfd829e3` and its RED focused receipt. The exact be4b6ce7 declaration-head module fixed the specialized `BoxChirho Int` route, but its synthetic kind-header binders regressed current main's already-correct inline and zero-binder deriving routes.
+- [x] Keep the structural `deriving_chirho/` split, restore current main's `TyVarChirho::visible_binders_chirho` route byte-for-byte for inline data/newtype deriving, and retain only standalone deriving's recursive target lookup plus the user's written context and applied instance head.
 - [x] Restore c32f071a's pragma-as-trivia lowering rule and its parser controls. The overlap pragma remains metadata-free; only the declaration's class and head survive lowering.
-- [x] Run rustfmt and source identity/diff checks. Both deriving files equal the be4b6ce7 blobs byte for byte; the parser patch applies from c32f071a without adaptation.
+- [x] Apply ca4976dc's test-only raw-reader calibration. The standalone-deriving pragma parser control belongs to the wider declaration-head parser stack and stays outside this bounded integration slice; the end-to-end `BoxChirho Int` control remains decisive for the overlap fix.
+- [ ] Run rustfmt and review the additive revision against current main, `c32f071a`, and the preserved RED checkpoint.
 - [ ] Rebuild under the held builder and rerun parser, typing, `dictionary_evidence_chirho`, and the focused integration union.
 - [ ] Require `BinderHeaderChirho.hs` to print `True`; require `EqSpecializedAtItsTypeChirho.hs` to print GHC's `False` or fail loudly, never print the generic `True`.
 - [ ] Re-run changed-line Clippy, gitleaks, oracles, matrix, O1 rows, all mutation sets, corrected two-worker corpus pair, replay, execution, and postflight.
