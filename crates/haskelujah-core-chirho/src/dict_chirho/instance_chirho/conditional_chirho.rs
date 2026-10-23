@@ -14,7 +14,7 @@ use haskelujah_typing_chirho::ty_chirho::TyChirho;
 impl DictPassCtxChirho {
     /// A superclass reference may reserve this name before its body is built.
     /// Reuse that identity; a fresh ID would leave the earlier reference unbound.
-    fn conditional_dict_binder_chirho(
+    pub(super) fn conditional_dict_binder_chirho(
         &mut self,
         name_chirho: &str,
         ty_chirho: TyChirho,
@@ -66,21 +66,21 @@ impl DictPassCtxChirho {
                 None => continue,
             };
 
-            // `Eq` also covers string elements: `Eq [String]` compares each
-            // string with the generator's `==#`, measured exact on two strings.
-            // Without it a proven `[String]` key named no dictionary, and the
+            // `Eq` and `Ord` also cover string elements. `Eq [String]` compares
+            // each string with the generator's `==#`, measured exact on two
+            // strings; `Ord [String]` compares them with the `compareStr#` row.
+            // Without them a proven `[String]` key named no dictionary, and the
             // old `==#` section, applied to whole `[String]` values, compared
             // only their first strings.
             // workflow: language-features-chirho/dictionary-evidence-chirho
-            let eq_only_element_types_chirho: &[&str] = if class_name_chirho.as_str() == "Eq" {
-                &["[Char]"]
-            } else {
-                &[]
+            let string_element_types_chirho: &[&str] = match class_name_chirho.as_str() {
+                "Eq" | "Ord" => &["[Char]"],
+                _ => &[],
             };
 
             for elem_type_chirho in known_element_types_chirho
                 .iter()
-                .chain(eq_only_element_types_chirho)
+                .chain(string_element_types_chirho)
             {
                 let list_type_key_chirho = format!("[{}]", elem_type_chirho);
 
@@ -134,6 +134,24 @@ impl DictPassCtxChirho {
                 layout_chirho,
             ),
             "Show" => self.generate_show_list_dict_chirho(list_type_key_chirho, layout_chirho),
+            "Ord" => {
+                // A real `Ord [T]` when the element's compare row has a body;
+                // the generic path names the method otherwise.
+                if !self.generate_ord_list_dict_chirho(
+                    elem_type_chirho,
+                    list_type_key_chirho,
+                    layout_chirho,
+                ) {
+                    self.generate_generic_list_dict_chirho(
+                        class_env_chirho,
+                        class_name_chirho,
+                        elem_type_chirho,
+                        list_type_key_chirho,
+                        layout_chirho,
+                        context_classes_chirho,
+                    );
+                }
+            }
             _ => {
                 // Generic handler for user-defined classes with conditional
                 // list instances.  Look up the user's $prim_ method bindings

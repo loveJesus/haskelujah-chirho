@@ -6,7 +6,9 @@
 //! `[String]` key now has the dictionary R2 looks for. Before it, a String-list
 //! section named `Eq [String]`; ground's `==#` section, applied to the whole
 //! `[String]` values, compared only their first strings and was wrong whenever
-//! those agreed. Every expected output is GHC 9.14.1's.
+//! those agreed. `Ord [[Char]]` is generated the same way, comparing each
+//! string with the `compareStr#` row (gpt_chirho disposition on #28041).
+//! Every expected output is GHC 9.14.1's.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{assert_ghc_or_named_chirho, run_chirho};
@@ -51,6 +53,13 @@ fn a_string_list_comparison_answers_as_ghc_chirho() {
             "module Main where\nmain :: IO ()\nmain = print (length (filter (== [\"a\"]) [[\"a\"], [\"b\"], [\"a\"]]))\n",
             "2\n",
         ),
+        (
+            // The generated `Ord [[Char]]` (gpt_chirho disposition on #28041):
+            // ground crashed here and the combined CLI named `Ord [String]`.
+            "StringListOrdChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (compare [\"a\"] [\"b\"])\n",
+            "LT\n",
+        ),
     ] {
         assert_eq!(
             run_chirho(file_name_chirho, program_chirho),
@@ -61,29 +70,13 @@ fn a_string_list_comparison_answers_as_ghc_chirho() {
 }
 
 #[test]
-fn a_deeper_string_list_or_a_string_list_order_still_names_its_dictionary_chirho() {
-    // Only `Eq [[Char]]` is generated: a list of String lists and `Ord` over
-    // String lists keep naming the obligation (ground printed [True,True] for
-    // the first and crashed on the second).
-    for (file_name_chirho, program_chirho, ghc_chirho, obligation_chirho) in [
-        (
-            "NestedStringListChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print (map (== [[\"a\"]]) [[[\"a\"]], [[\"b\"]]])\n",
-            "[True,False]\n",
-            "Eq [[String]]",
-        ),
-        (
-            "StringListOrdChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print (compare [\"a\"] [\"b\"])\n",
-            "LT\n",
-            "Ord [String]",
-        ),
-    ] {
-        assert_ghc_or_named_chirho(
-            file_name_chirho,
-            program_chirho,
-            ghc_chirho,
-            obligation_chirho,
-        );
-    }
+fn a_deeper_string_list_still_names_its_dictionary_chirho() {
+    // String elements are generated, not lists of them: a list of String lists
+    // keeps naming the obligation (ground printed [True,True]).
+    assert_ghc_or_named_chirho(
+        "NestedStringListChirho.hs",
+        "module Main where\nmain :: IO ()\nmain = print (map (== [[\"a\"]]) [[[\"a\"]], [[\"b\"]]])\n",
+        "[True,False]\n",
+        "Eq [[String]]",
+    );
 }

@@ -327,9 +327,44 @@ flowchart TD
   `eqStr#` is observationally equivalent, so it was refuted and not added as a control.
 - R2 is unchanged. Its exact-key lookup at `[String]` already walks the spelling `[[Char]]`,
   and the typed entries' spelled method rows find `$prim_Eq_==_[[Char]]`.
-- Bounded: `Eq` only, and String elements only. A list of String lists still names
-  `Eq [[String]]`, `Ord [String]` still names its obligation, and the general nested
-  specialization (`Eq [[Int]]` and beyond) remains R3's.
+- Bounded: String elements only. A list of String lists still names `Eq [[String]]`, and the
+  general nested specialization (`Eq [[Int]]` and beyond) remains R3's. `Ord [String]` is
+  generated too since the Ord list unit below.
+
+## A generated `Ord [T]` (2026-10-22)
+
+gpt_chirho's disposition on #28041. Thirty-three probes on GHC 9.14.1 and two frozen CLIs found
+`compare` at list types silently wrong or crashing, from two causes in the conditional
+generator. The builtin `Ord a => Ord [a]` carries no method bodies, so every `Ord [T]` slot was a
+missing-method stub. That stub, named for the ground key, also took one leading dictionary per
+context class.
+
+```mermaid
+flowchart TD
+    inst_ol_chirho["Ord a => Ord [a]"] --> gen_ol_chirho[generate_conditional_ground_dicts_chirho]
+    gen_ol_chirho -->|Int, Bool, Double, String elements| ord_ol_chirho[generate_ord_list_dict_chirho]
+    ord_ol_chirho -->|the element row is real, not a stub| row_ol_chirho["$prim_Ord_compare_[T] = $compareListBy $prim_Ord_compare_T"]
+    row_ol_chirho --> dict_ol_chirho["$fOrd[T] = $Dict_Ord $fEq[T] row"]
+    shared_ol_chirho["$compareListBy cmp xs ys: built once, no default alternative"] --> row_ol_chirho
+    ord_ol_chirho -->|no real element row, or a method besides compare| stub_ol_chirho["generic path: $prim_Ord_compare_[T] fails by name"]
+```
+
+- One recursive `$compareListBy` serves every element type. It compares element by element
+  with the given row, recurses on `EQ`, orders `[]` before `(:)`, and forces only what the
+  answer needs (`compare (1 : undefined) [2]` is `LT`). With no default alternative, an element
+  result that is not an `Ordering` fails instead of picking a branch.
+- A row named for a key keeps its method's calling convention. The generic path's
+  missing-method stub no longer takes leading dictionaries, so a caller that finds
+  `$prim_<C>_<m>_[T]` by name gets the named failure, never a partial application that a
+  default branch swallows. `map neededChirho [[1]]` used to print `[[1]]`.
+- Measured before: `sortBy compare [[2],[1]]` printed `[[2],[1]]` and
+  `maximumBy compare [[1],[3],[2]]` printed `[1]`. `compare [1] [2]` and its siblings crashed
+  (`no matching alternative for tag 0`), and a constrained `compare` named the missing method.
+- Bounded: element types only. `compare [[1]] [[2]]` still names `Ord [[Int]]` through R2.
+  Bool elements compare with the Bool row, which is `compare#` on constructors and fails
+  loudly. At non-scalar types, `<`, `<=`, `max`, `sort` and `maximum` stay loud: they are
+  scalar primops until an Ord method model. `compare LT GT` still dispatches at Int, and
+  `Ord (Maybe a)` has no dictionary.
 
 ## Occurrence provenance (in progress, 2026-09-22)
 
