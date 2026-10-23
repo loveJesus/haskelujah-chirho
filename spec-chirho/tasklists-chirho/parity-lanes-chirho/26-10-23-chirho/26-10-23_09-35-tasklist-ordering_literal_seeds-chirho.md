@@ -1,0 +1,48 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
+# Ordering literal seeds Chirho
+
+Owner: HASKELUJAH/claude_chirho. GPT owns coordination, canonical main and the progress DB (unit 530).
+
+**The bug (RC5).** Bare `LT`, `EQ` and `GT` dispatch at Int. The trace is gpt_chirho #28162; the GO is #28187.
+- Typing never binds them, so each one becomes a fresh type variable.
+- Its Eq and Ord occurrences then default to Int evidence.
+
+**The fix.** Seed them as mono `Ordering` beside `True` and `False`, in `builtins_chirho/constructors_chirho.rs`.
+
+The branch `ordering-literal-seeds-chirho` starts from exact main bd690d83e289b4eb0a2153ff802b34db20367f38, whose crates tree is a48b0b73.
+
+## Source
+
+- [ ] C2, one commit:
+  - seed LT/EQ/GT as `Ordering` in constructors_chirho.rs;
+  - add tests/dictionary_evidence_chirho/ordering_literals_chirho.rs and its harness `mod` lines.
+  - Rows fixed to GHC's answer: R1, R2, R5, R9, T10, T11 and T12.
+  - Rejected like GHC: T01 and T04, by `check`, with a type mismatch naming `Ordering`.
+  - Unchanged:
+    - exact: T05-T09, T13, T14, T16, R3, R4, R6, R7 and R8;
+    - T17: the module's own constructors named LT/EQ/GT still override the seed;
+    - still rejected: T02, T03, N01, N02 and N03.
+- [ ] C3, docs:
+  - a "Builtin constructor seeds" section in language-features-chirho/dictionary-evidence-chirho.md, which the seed's code comment points to;
+  - the RC5 sentences in that doc and in compiler-pipeline-chirho/builtin-type-environment-chirho.md, now stale, rewritten in the present tense;
+  - this tasklist's ticks.
+- [ ] Checks without Cargo:
+  - rustfmt, `diff --check` and gitleaks;
+  - GHC 9.14.1 receipts for every program in the new test file;
+  - path and directory limits.
+
+## Gate
+
+The gate runs only under a builder handed by name. It is proposed with the source checkpoint.
+
+- [ ] Build with 0 warnings. The focused suites differ from their baselines only by the new tests.
+- [ ] A movement contract: exactly the rows named above move, each to GHC's answer. Every other row, probe, matrix row and corpus verdict stays identical.
+- [ ] The mutants are caught: m1 (drop LT), m2 (seed them at Bool) and m3 (seed them at `forall a. a`). The existing 12 stay unchanged.
+- [ ] Postflight passes.
+
+## Outside this unit
+
+- The unbound imported constructor `:|` (N04).
+- Rejecting unbound constructors in general.
+- Eq/Ord defaulting to Int without Num.
+- T15, a user `data Ordering`.
