@@ -15,6 +15,7 @@ Owner: HASKELUJAH/gpt_chirho. The builder stays serialized here until the curren
 - [x] Preserve the second RED focused receipt from `b0317963`. Its Core proves the remaining mismatch: standalone lowering split `(SBoolChirho b)` into separate entries, naming the body row `SBoolChirho_b`, while exact 54067f26 keeps the written application `SBoolChirho b` that generic-head dispatch recognizes.
 - [x] Reuse ordinary instance lowering's existing `lower_instance_head_types_chirho` for standalone deriving. A context test now pins the applied head as one AST type; no wider known-type pattern or inference change is absorbed.
 - [x] Run rustfmt and review the additive parser revision against current main, `c32f071a`, exact 54067f26, and both preserved RED checkpoints.
+- [x] Preserve the first full `70d907ac` integration receipt as RED at changed-line Clippy after every build, focused suite and named control passed. Remove the two needless `&class_text_chirho` borrows in the owned standalone-deriving helper without changing behavior.
 - [ ] Rebuild under the held builder and rerun parser, typing, `dictionary_evidence_chirho`, and the focused integration union.
 - [ ] Require `BinderHeaderChirho.hs` to print `True`; require `EqSpecializedAtItsTypeChirho.hs` to print GHC's `False` or fail loudly, never print the generic `True`.
 - [ ] Re-run changed-line Clippy, gitleaks, oracles, matrix, O1 rows, all mutation sets, corrected two-worker corpus pair, replay, execution, and postflight.

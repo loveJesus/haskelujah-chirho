@@ -79,7 +79,7 @@ fn derive_standalone_for_type_chirho(
             } if name_chirho.text_chirho() == target_chirho => {
                 let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
                 derive_class_for_data_chirho(
-                    &class_text_chirho,
+                    class_text_chirho,
                     name_chirho,
                     visible_vars_chirho.as_ref(),
                     constructors_chirho,
@@ -98,7 +98,7 @@ fn derive_standalone_for_type_chirho(
                 let cons_chirho = vec![constructor_chirho.clone()];
                 let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
                 derive_class_for_data_chirho(
-                    &class_text_chirho,
+                    class_text_chirho,
                     name_chirho,
                     visible_vars_chirho.as_ref(),
                     &cons_chirho,
