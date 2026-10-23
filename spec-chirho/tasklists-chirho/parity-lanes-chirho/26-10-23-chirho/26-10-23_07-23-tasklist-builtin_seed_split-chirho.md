@@ -9,13 +9,16 @@ The branch `builtin-seed-split-chirho` starts from exact main 1ac3fd2e36864b6578
 
 ## Source
 
-- [ ] C2: the builtins hierarchy and the parent's two lines, together in one structural commit.
+- [x] C2 (aa911b3c): the builtins hierarchy and the parent's two lines, together in one structural commit. The parent goes from 27,710 to 14,534 lines; there are 21 new files, the largest 974 lines.
   - Hub `builtins_chirho/mod.rs`; `constructors_chirho.rs` (True/False/Nothing/Just); `transformer_types_chirho.rs` (the four hoisted builders).
   - Groups `core_chirho/`, `effects_chirho/`, `classes_chirho/` and `surface_chirho/`, holding part_01 to part_14. Each part is a contiguous original slice.
-- [ ] Binding order: the env mutation sequence is byte-for-byte the original's. Module constructors still override the seed.
-- [ ] Rule B3, the only formatter rule: `transformer_types_chirho.rs` equals pinned rustfmt applied to its pre-format file, and each builder's parameters and body are token-identical to its closure's. Every other file is a rustfmt no-op.
-- [ ] The mechanical proof, `prove_seed_split_chirho.py`, then rustfmt, `diff --check` and gitleaks, all without Cargo.
-- [ ] C3, docs:
+- [x] Binding order: the env mutation sequence is byte-for-byte the original's. Module constructors still override the seed.
+  - Proven structurally: 15 sections are verbatim slices in call order, and 935 bound names keep their order. The gate's T17 row checks the override's behavior.
+- [x] Rule B3, the only formatter rule: `transformer_types_chirho.rs` equals pinned rustfmt applied to its pre-format file, and each builder's parameters and body are token-identical to its closure's. Every other file is a rustfmt no-op.
+  - The measured delta is three trailing commas, one closing each signature rustfmt wrapped: mk_state_t, mk_reader_t and mk_maybe_t.
+- [x] The mechanical proof, `prove_seed_split_chirho.py`, then rustfmt, `diff --check` and gitleaks, all without Cargo.
+  - The proof is GREEN, 18/18 on aa911b3c. All 22 touched Rust files are pinned-rustfmt no-ops, `diff --check` is clean, and gitleaks finds nothing in this unit's commits.
+- [x] C3, docs:
   - `spec-chirho/workflows-chirho/compiler-pipeline-chirho/builtin-type-environment-chirho.md`, a Mermaid DAG running seed → module-shadow removal and rebinding → occurrence typing and defaulting. The hub's comment points to it.
   - This tasklist's ticks.
 
