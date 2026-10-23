@@ -9,7 +9,7 @@ The branch `builtin-seed-split-chirho` starts from exact main 1ac3fd2e36864b6578
 
 ## Source
 
-- [x] C2 (aa911b3c): the builtins hierarchy and the parent's two lines, together in one structural commit. The parent goes from 27,710 to 14,534 lines; there are 21 new files, the largest 974 lines.
+- [x] C2 (aa911b3c): the builtins hierarchy and the parent's two declarations plus their blank separator, together in one structural commit. The parent loses 13,179 lines and gains those 3, going from 27,710 to 14,534 lines; there are 21 new files, the largest 974 lines.
   - Hub `builtins_chirho/mod.rs`; `constructors_chirho.rs` (True/False/Nothing/Just); `transformer_types_chirho.rs` (the four hoisted builders).
   - Groups `core_chirho/`, `effects_chirho/`, `classes_chirho/` and `surface_chirho/`, holding part_01 to part_14. Each part is a contiguous original slice.
 - [x] Binding order: the env mutation sequence is byte-for-byte the original's. Module constructors still override the seed.
