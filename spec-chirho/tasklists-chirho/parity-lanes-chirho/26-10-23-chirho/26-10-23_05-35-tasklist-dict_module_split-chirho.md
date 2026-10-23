@@ -39,15 +39,30 @@ The branch `dict-module-split-chirho` starts from exact main d1b817bb. Its crate
 
 The gate runs only under a builder lease handed by name, against combined-29db427b-chirho:
 
-- [ ] Build without warnings, which proves the exact imports.
-- [ ] Focused suites with identical counts and test names.
-- [ ] Move-aware Clippy, with an identical warning multiset.
-- [ ] Oracle and matrix verdicts identical, row for row.
-- [ ] The RC5/V06 probes identical to 54f8d6ec.
-- [ ] The 12 mutants caught with identical failures.
-- [ ] Ordering-core identical.
-- [ ] Corpus at -P 2 identical: fixed none, lost none.
-- [ ] Postflight.
+- [x] Build without warnings, which proves the exact imports.
+- [x] Focused suites with identical counts and test names.
+- [x] Move-aware Clippy, with an identical warning multiset.
+- [x] Oracle and matrix verdicts identical, row for row.
+- [x] The RC5/V06 probes identical to 54f8d6ec.
+- [x] The 12 mutants caught with identical failures.
+- [x] Ordering-core identical.
+- [x] Corpus at -P 2 identical: fixed none, lost none.
+- [x] Postflight.
+
+### Measured: dict-split-0879c0db-chirho
+
+The builder was handed by name in #28156 and returned in #28158. The tag is GREEN on exact tip 0879c0db, with 23 GREEN ledger rows and 0 RED.
+
+- Frozen CLI: c0931c7499c55139665ef49be1ba34f70be761ed449a8c7b41604ed17bc48f7d. Receipt digest: 2429ea5c95c340d1713068627d031c536f603ed0b95ab66af50052896c32fbc4. Launcher: 4fe61db1efc2beeab1436a7c24d816c3e77600eb51ef68bc5317a424b6b1863e.
+- Preflight: the 12 contract paths, both proofs rerun (c2 11/11, c3 32/32), and all 16 tools and 6 prior receipts at their pins.
+- Build: 0 warnings with the module-wide allow removed.
+- Focused: 148, 56, 28, 9 and 479 passed (1374 filtered out), with the receipt's exact counts and test-name sets.
+- Clippy: the same 395 warnings as the receipt, matched through the move, and none on scaffolding. gitleaks scanned 4 commits and found no leaks.
+- Oracle (4 files), matrix (24 requirements met) and probes: every row identical to the receipt on both CLIs. The probes follow rule #28152.
+- Mutations: 7/7, 3/3 and 2/2 caught, with baselines, verdicts and new_failures identical to the receipt. The restore was exact: all 8 mutated files hash to their tip blobs.
+- Ordering-core: both rc 0, both print LT, and `$prim_Ord_compare_Ordering` is IDENTICAL (16 lines).
+- Corpus at -P 2: byte-identical passes. Membership, replay and execution are identical, with 28/35 passing, fixed none and lost none.
+- Postflight: the frozen CLI, the gate script, all 16 tools, every prior receipt, the trace, the probes and the base CLI are unchanged. No cargo, rustc, clippy or CLI process was alive.
 
 ## Outside this unit
 
