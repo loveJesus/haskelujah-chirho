@@ -105,7 +105,8 @@ return GHC's exact stdout. These rows are unchanged: G2 (`[2.5]`), Z1-Z3 (`lengt
 `take 1` and `head` of a list with an unforced error), and C5-C7 (a direct `error`,
 a scalar `print` error, and no error under `catch`).
 
-**Contract, predicted by source and not run:** every row passes after (a)+(b).
+**Contract:** every row passes after (a)+(b). Gate 2 ran all three controls `ok`, and MU-0
+showed tests 1 and 2 failing on main's runtime blob.
 
 ## Why C1 and C2 are not controls
 
@@ -140,8 +141,10 @@ These are not in 524. Each is its own unit, closed with measured controls.
 - **Blackholes are unmeasured.** A thunk whose forced evaluation failed may stay
   blackholed, so forcing it again is untested.
 - **IORef over-strictness (C3)** is separate.
+- **The native Sections program's first line** varies from run to run where GHC prints
+  `[0,1,2]`. It is pre-existing and was declared at gate 2.
 
-## Mutants (predictions, not run)
+## Mutants (predicted before the gate; gate 2 ran them)
 
 | Mutant | Change | Must fail |
 |---|---|---|
@@ -189,6 +192,70 @@ Gate 1's receipt stays immutable: 30 files, read-only, in
 claude2_chirho's worktree. Gate 2 writes a fresh receipt directory, and its
 preflight and postflight hash gate 1's receipt as a kept receipt.
 
+## Gate 2 (claude2_chirho, 926ccd4b): GREEN at unit scope, with a declared native boundary
+
+The builder was named in #28081. The candidate 926ccd4b is three commits on main:
+- the replay 06fdafdd;
+- the collapse 810edc1d;
+- the gate 1 record.
+
+The base side is the same frozen landed-main CLI, f8f0b960.
+
+- **Stage 1 GREEN:**
+  - the exact three commits on exact main, with no merge;
+  - a clean tracked tree;
+  - 108 kept receipt files hashed, gate 1's receipt among them;
+  - the base CLI's hash.
+
+  The build compiled 7 crates with 0 warning or error lines. The frozen 926ccd4b CLI is
+  4b6fa999.
+- **Stage 2 GREEN:**
+  - runtime lib 54/54;
+  - `evaluation_values_chirho` 6/6, with the three controls `ok` by name;
+  - `io_actions_chirho` 9/9;
+  - driver lib 1850/1850, in 2244 s;
+  - Clippy rc 0, with 0 changed-line hits. The collapse removed the guard's
+    `collapsible_if`. Twelve diagnostics remain in the changed files, none on a changed
+    line.
+- **Stage 3 GREEN.** Every mutant terminated, failed at a contract check, and was restored
+  byte for byte. The baseline and the restored run passed 3/3.
+
+  | Mutant | Caught by |
+  |---|---|
+  | MU-0 (main's runtime blob) | test 1 at C4, which returned after writing `before\n`; test 2 at C8, which wrote nothing |
+  | MU-a | test 2 at C8, whose run failed instead of reaching the handler |
+  | MU-b1 | test 1 at C4, which wrote `before\n[1.5,?]\nafter\n` |
+  | MU-b2 | test 1 at G10, which wrote `[1.5]\n` |
+  | MU-b3 | test 1 at C4, which wrote `before\n\nafter\n` |
+
+  The predictions named G1 for MU-b1 and MU-b3. C4 is the table's first row, so it fails
+  first.
+- **Stage 4 RED under its strict rule.** All 35 predicate verdicts were identical (28 PASS,
+  7 FAIL) and equal to unit 523's. But one kept file differed after the path mask:
+  `native-run-SectionsChirho.stdout`, in its first line only.
+- **Supplement** (gpt_chirho, #28082). Gate 2's receipt stays as it was, RED at stage 4, and
+  read-only. A fresh supplement judged stage 4 narrowly, then ran stage 5:
+  - **Verdicts and files:** all 35 verdicts are identical. Of the other 185 kept files per
+    side, 171 are equal, 14 are equal under the path mask, and none differ.
+  - **The excepted file:** on both sides it has rc 0, empty stderr, an ASCII-decimal first
+    line (4309506753 and 4303084225), and the identical suffix `[5,10]\n[3,4]\nhi!\n`.
+  - **Reruns:** each unchanged native binary ran three times and printed three different
+    first lines, each run with rc 0, empty stderr and that suffix.
+  - **Stage 5 GREEN:**
+    - gitleaks scanned 3 of 3 commits, with no leaks;
+    - HEAD, the history, the source branch, the status, both frozen CLIs and the named
+      source hash are as recorded;
+    - the 108 kept files, gate 1's 30 and gate 2's 450 are unchanged;
+    - no builder or native process is running.
+
+**Declared boundary, pre-existing.** Where GHC prints `[0,1,2]`, the native build of the
+Sections program prints a different large decimal on each run.
+- It is a FAIL on both sides, in unit 519's preserved set and in unit 523's gate, whose
+  reruns showed the same variation.
+- Both native executables keep their 3,204 symbols, and none of them comes from the STG
+  runtime crate, so unit 524 does not reach that program.
+- It belongs to a native-backend unit of its own.
+
 ## Measurements
 
 - **Programs:** H1, C9 and G10 are new. They were measured on GHC 9.14.1 and on four
@@ -206,7 +273,8 @@ preflight and postflight hash gate 1's receipt as a kept receipt.
 - [x] Replay onto main 27aec2e8 as 06fdafdd, with the union proven (#28075).
 - [x] Gate 1 at a named slot (#28069): it stopped RED at changed-line Clippy.
   Change (c) is the fix.
-- [ ] Gate 2 at a named slot, on a fresh receipt:
+- [x] Gate 2 at a named slot (#28081), on a fresh receipt. It is GREEN at unit scope,
+  with the declared native Sections boundary and the supplement (#28082). It covered:
   - warning-free build;
   - runtime lib, and driver `evaluation_values_chirho` with the three controls by
     name;
