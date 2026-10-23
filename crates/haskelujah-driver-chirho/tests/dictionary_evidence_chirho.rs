@@ -18,6 +18,8 @@ mod ground_keys_chirho;
 mod higher_order_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/list_orders_chirho.rs"]
 mod list_orders_chirho;
+#[path = "dictionary_evidence_chirho/ordering_literals_chirho.rs"]
+mod ordering_literals_chirho;
 #[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
 mod proven_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/string_lists_chirho.rs"]
