@@ -111,7 +111,6 @@ impl DictPassCtxChirho {
                     ("Ord", "compare", "Char") => "compareChar#",
                     ("Ord", "compare", "Double") => "compareFloat#",
                     ("Ord", "compare", "[Char]") => "compareStr#",
-                    ("Ord", "compare", "Bool") => "compare#",
                     ("Ord", "compare", _) => "compare#",
                     ("Num", "+", "Double") => "+.#",
                     ("Num", "+", _) => "+#",
@@ -231,10 +230,19 @@ impl DictPassCtxChirho {
                 continue;
             }
 
-            // Special case: Ord Ordering → case dispatch on constructor tag ordering
-            if class_chirho == "Ord" && method_chirho == "compare" && type_key_chirho == "Ordering"
+            // Special case: Ord at a builtin enumeration (Bool, Ordering) → case
+            // dispatch by constructor order. Their values are constructors,
+            // which `compare#` cannot order: `compare False True` crashed and
+            // `sortBy compare [True, False]` kept [True,False].
+            if class_chirho == "Ord"
+                && method_chirho == "compare"
+                && let Some(constructors_chirho) =
+                    constructor_orders_chirho::constructor_order_chirho(type_key_chirho)
             {
-                self.generate_compare_ordering_binding_chirho(&prim_name_chirho);
+                self.generate_constructor_order_compare_chirho(
+                    &prim_name_chirho,
+                    constructors_chirho,
+                );
                 continue;
             }
 

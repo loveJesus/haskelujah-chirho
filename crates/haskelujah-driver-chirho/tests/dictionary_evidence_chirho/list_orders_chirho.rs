@@ -1,7 +1,8 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! How rows from the conditional list generator answer (gpt_chirho disposition
-//! on #28041). A row named for a list key keeps its method's own calling
+//! How generated order rows answer: the conditional list generator's rows and
+//! the constructor-order rows of Bool and Ordering (gpt_chirho disposition on
+//! #28041). A row named for a list key keeps its method's own calling
 //! convention, so a caller that finds it by name gets either the method's
 //! answer or a failure naming the method, never a partial application.
 //! Each program's GHC 9.14.1 behavior is recorded beside it.
@@ -65,6 +66,43 @@ fn a_list_order_answers_as_ghc_chirho() {
             "StringListSortByCompareChirho.hs",
             "module Main where\nimport Data.List (sortBy)\nmain :: IO ()\nmain = print (sortBy compare [[\"b\"], [\"a\"]])\n",
             "[[\"a\"],[\"b\"]]\n",
+        ),
+    ] {
+        assert_eq!(
+            run_chirho(file_name_chirho, program_chirho),
+            ghc_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn a_bool_order_answers_as_ghc_and_ordering_keeps_its_answer_chirho() {
+    // Bool's compare row was `compare#`, an Int primop, on constructors: it
+    // returned the integer 0, which crashed `print` (tag 0) and sent sortBy's
+    // default branch the wrong way ([True,False]). Bool now compares by
+    // constructor order through the generator Ordering always used, and
+    // Ordering's own row, reached through a compare result, keeps its answer.
+    for (file_name_chirho, program_chirho, ghc_chirho) in [
+        (
+            "BoolCompareChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (compare False True, compare True False)\n",
+            "(LT,GT)\n",
+        ),
+        (
+            "BoolSortByCompareChirho.hs",
+            "module Main where\nimport Data.List (sortBy)\nmain :: IO ()\nmain = print (sortBy compare [True, False])\n",
+            "[False,True]\n",
+        ),
+        (
+            "BoolListCompareChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (compare [False] [True])\n",
+            "LT\n",
+        ),
+        (
+            "OrderingResultCompareChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (compare (compare 1 2) (compare 2 (1 :: Int)))\n",
+            "LT\n",
         ),
     ] {
         assert_eq!(

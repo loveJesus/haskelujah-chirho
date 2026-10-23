@@ -8,115 +8,110 @@ use crate::expr_chirho::{
 };
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
+/// Builtin types whose `compare` is their constructors' declaration order. Their
+/// values are constructors, which the Int primop `compare#` cannot order.
+const CONSTRUCTOR_ORDERS_CHIRHO: &[(&str, &[&str])] = &[
+    ("Bool", &["False", "True"]),
+    ("Ordering", &["LT", "EQ", "GT"]),
+];
+
+/// The constructors, in order, of a builtin type compared by constructor order.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(super) fn constructor_order_chirho(type_key_chirho: &str) -> Option<&'static [&'static str]> {
+    CONSTRUCTOR_ORDERS_CHIRHO
+        .iter()
+        .find(|(key_chirho, _)| *key_chirho == type_key_chirho)
+        .map(|(_, constructors_chirho)| *constructors_chirho)
+}
+
 impl DictPassCtxChirho {
-    /// Generate `$prim_Ord_compare_Ordering = \x y -> ...` using nested case dispatch.
-    /// LT < EQ < GT, so: LT vs LT -> EQ, LT vs _ -> LT, EQ vs LT -> GT, EQ vs EQ -> EQ, EQ vs GT -> LT, GT vs GT -> EQ, GT vs _ -> GT
-    pub(super) fn generate_compare_ordering_binding_chirho(&mut self, prim_name_chirho: &str) {
+    /// Generate `$prim_Ord_compare_<T> = \x y -> ...` for at least two fieldless
+    /// constructors given in declaration order. The outer case names every
+    /// constructor of `x`. Against `y`, the first constructor answers EQ for
+    /// itself and LT otherwise, the last answers EQ for itself and GT otherwise,
+    /// and each one between names every constructor. For Ordering this is the
+    /// table LT < EQ < GT has always had: LT vs LT -> EQ, LT vs _ -> LT,
+    /// EQ vs LT -> GT, EQ vs EQ -> EQ, EQ vs GT -> LT, GT vs GT -> EQ, GT vs _ -> GT.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_constructor_order_compare_chirho(
+        &mut self,
+        prim_name_chirho: &str,
+        constructors_chirho: &[&str],
+    ) {
+        debug_assert!(constructors_chirho.len() >= 2);
         let ord_ty_chirho = TyChirho::int_chirho(); // placeholder
 
         let x_chirho = self.fresh_binder_chirho("x", ord_ty_chirho.clone());
         let y_chirho = self.fresh_binder_chirho("y", ord_ty_chirho.clone());
         let scr_x_chirho = self.fresh_binder_chirho("_sx", ord_ty_chirho.clone());
-        let scr_y1_chirho = self.fresh_binder_chirho("_sy1", ord_ty_chirho.clone());
-        let scr_y2_chirho = self.fresh_binder_chirho("_sy2", ord_ty_chirho.clone());
-        let scr_y3_chirho = self.fresh_binder_chirho("_sy3", ord_ty_chirho.clone());
+        let scr_ys_chirho: Vec<_> = (1..=constructors_chirho.len())
+            .map(|index_chirho| {
+                self.fresh_binder_chirho(&format!("_sy{index_chirho}"), ord_ty_chirho.clone())
+            })
+            .collect();
 
-        let lt_chirho = CoreExprChirho::ConAppChirho {
-            con_name_chirho: "LT".to_string(),
+        let ordering_chirho = |name_chirho: &str| CoreExprChirho::ConAppChirho {
+            con_name_chirho: name_chirho.to_string(),
             args_chirho: vec![],
         };
-        let eq_chirho = CoreExprChirho::ConAppChirho {
-            con_name_chirho: "EQ".to_string(),
-            args_chirho: vec![],
+        let data_con_chirho =
+            |name_chirho: &str| AltConChirho::DataConChirho(name_chirho.to_string());
+        let alt_chirho = |con_chirho: AltConChirho, rhs_chirho: CoreExprChirho| CoreAltChirho {
+            con_chirho,
+            binders_chirho: vec![],
+            rhs_chirho,
         };
-        let gt_chirho = CoreExprChirho::ConAppChirho {
-            con_name_chirho: "GT".to_string(),
-            args_chirho: vec![],
-        };
+        let last_chirho = constructors_chirho.len() - 1;
 
-        // case x of LT -> case y of { LT -> EQ; _ -> LT }
-        let inner_lt_chirho = CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(y_chirho.id_chirho)),
-            bind_chirho: scr_y1_chirho,
-            result_ty_chirho: ord_ty_chirho.clone(),
-            alts_chirho: vec![
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("LT".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: eq_chirho.clone(),
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DefaultChirho,
-                    binders_chirho: vec![],
-                    rhs_chirho: lt_chirho.clone(),
-                },
-            ],
-        };
-
-        // case x of EQ -> case y of { LT -> GT; EQ -> EQ; GT -> LT }
-        let inner_eq_chirho = CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(y_chirho.id_chirho)),
-            bind_chirho: scr_y2_chirho,
-            result_ty_chirho: ord_ty_chirho.clone(),
-            alts_chirho: vec![
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("LT".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: gt_chirho.clone(),
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: eq_chirho.clone(),
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("GT".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: lt_chirho.clone(),
-                },
-            ],
-        };
-
-        // case x of GT -> case y of { GT -> EQ; _ -> GT }
-        let inner_gt_chirho = CoreExprChirho::CaseChirho {
-            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(y_chirho.id_chirho)),
-            bind_chirho: scr_y3_chirho,
-            result_ty_chirho: ord_ty_chirho.clone(),
-            alts_chirho: vec![
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("GT".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: eq_chirho.clone(),
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DefaultChirho,
-                    binders_chirho: vec![],
-                    rhs_chirho: gt_chirho.clone(),
-                },
-            ],
-        };
+        let outer_alts_chirho: Vec<CoreAltChirho> = constructors_chirho
+            .iter()
+            .zip(scr_ys_chirho)
+            .enumerate()
+            .map(|(index_chirho, (constructor_chirho, scr_y_chirho))| {
+                let inner_alts_chirho = if index_chirho == 0 {
+                    vec![
+                        alt_chirho(data_con_chirho(constructor_chirho), ordering_chirho("EQ")),
+                        alt_chirho(AltConChirho::DefaultChirho, ordering_chirho("LT")),
+                    ]
+                } else if index_chirho == last_chirho {
+                    vec![
+                        alt_chirho(data_con_chirho(constructor_chirho), ordering_chirho("EQ")),
+                        alt_chirho(AltConChirho::DefaultChirho, ordering_chirho("GT")),
+                    ]
+                } else {
+                    constructors_chirho
+                        .iter()
+                        .enumerate()
+                        .map(|(other_chirho, other_name_chirho)| {
+                            let answer_chirho = match other_chirho.cmp(&index_chirho) {
+                                std::cmp::Ordering::Less => "GT",
+                                std::cmp::Ordering::Equal => "EQ",
+                                std::cmp::Ordering::Greater => "LT",
+                            };
+                            alt_chirho(
+                                data_con_chirho(other_name_chirho),
+                                ordering_chirho(answer_chirho),
+                            )
+                        })
+                        .collect()
+                };
+                alt_chirho(
+                    data_con_chirho(constructor_chirho),
+                    CoreExprChirho::CaseChirho {
+                        scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(y_chirho.id_chirho)),
+                        bind_chirho: scr_y_chirho,
+                        result_ty_chirho: ord_ty_chirho.clone(),
+                        alts_chirho: inner_alts_chirho,
+                    },
+                )
+            })
+            .collect();
 
         let body_chirho = CoreExprChirho::CaseChirho {
             scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
             bind_chirho: scr_x_chirho,
             result_ty_chirho: ord_ty_chirho.clone(),
-            alts_chirho: vec![
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("LT".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: inner_lt_chirho,
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("EQ".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: inner_eq_chirho,
-                },
-                CoreAltChirho {
-                    con_chirho: AltConChirho::DataConChirho("GT".to_string()),
-                    binders_chirho: vec![],
-                    rhs_chirho: inner_gt_chirho,
-                },
-            ],
+            alts_chirho: outer_alts_chirho,
         };
 
         let rhs_chirho = CoreExprChirho::LamChirho {

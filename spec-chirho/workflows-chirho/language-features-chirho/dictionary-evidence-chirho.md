@@ -360,10 +360,14 @@ flowchart TD
 - Measured before: `sortBy compare [[2],[1]]` printed `[[2],[1]]` and
   `maximumBy compare [[1],[3],[2]]` printed `[1]`. `compare [1] [2]` and its siblings crashed
   (`no matching alternative for tag 0`), and a constrained `compare` named the missing method.
+- Bool and Ordering compare by constructor order through one generator,
+  `generate_constructor_order_compare_chirho` (`instance_chirho/constructor_orders_chirho.rs`).
+  Bool's row used to be `compare#`, an Int primop, applied to constructors. It returned the
+  integer 0, so `compare False True` crashed and `sortBy compare [True, False]` kept
+  `[True,False]`. Ordering's row is the table it always had.
 - Bounded: element types only. `compare [[1]] [[2]]` still names `Ord [[Int]]` through R2.
-  Bool elements compare with the Bool row, which is `compare#` on constructors and fails
-  loudly. At non-scalar types, `<`, `<=`, `max`, `sort` and `maximum` stay loud: they are
-  scalar primops until an Ord method model. `compare LT GT` still dispatches at Int, and
+  At non-scalar types, `<`, `<=`, `max`, `sort` and `maximum` stay loud: they are scalar
+  primops until an Ord method model. `compare LT GT` still dispatches at Int, and
   `Ord (Maybe a)` has no dictionary.
 
 ## Occurrence provenance (in progress, 2026-09-22)
