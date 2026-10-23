@@ -315,6 +315,16 @@ impl DictPassCtxChirho {
         if let Some((class_name_chirho, ty_key_chirho)) =
             self.occurrence_evidence_chirho.get(&head_id_chirho)
         {
+            // A recursive call proved only by its head keeps the enclosing
+            // instance's own dictionary, the one its argument's key names.
+            // workflow: language-features-chirho/own-class-method-occurrences-chirho
+            if let Some(self_dict_head_chirho) = self.agreeing_self_dictionary_chirho(
+                head_id_chirho,
+                syntactic_key_chirho,
+                local_instance_dicts_chirho,
+            ) {
+                return Some(self_dict_head_chirho);
+            }
             // A literal's wrapper takes the selector form: the simplifier
             // reduces `$sel_Num_fromInteger dict lit` to the literal, which
             // every backend already handles; the prim row is an interpreter
@@ -327,9 +337,9 @@ impl DictPassCtxChirho {
                 class_name_chirho, method_name_chirho, ty_key_chirho
             );
             if !literal_wrapper_chirho
-                && let Some(prim_id_chirho) = self.find_global_id_by_name_chirho(&prim_name_chirho)
+                && let Some(prim_chirho) = self.proof_row_chirho(&prim_name_chirho)
             {
-                return Some(CoreExprChirho::VarChirho(prim_id_chirho));
+                return Some(prim_chirho);
             }
             // A proven list key that names no row never comes back as the
             // canonical id, whose recursion re-keyed the call off the syntax.
@@ -343,10 +353,20 @@ impl DictPassCtxChirho {
             }
             // Keyed fallback: reuse the existing selector/instance dispatch with
             // the proven key so selector-backed instances (Eq/Num Int, ...) work.
+            // Only the binding's own key may reach the context dictionary; any
+            // other proof that names nothing comes back as the canonical id, and
+            // the caller's recursion takes its own route.
+            // workflow: language-features-chirho/own-class-method-occurrences-chirho
+            let no_context_chirho = HashSet::new();
+            let keyed_classes_chirho = if Self::proof_admits_context_chirho(ty_key_chirho) {
+                evidence_classes_chirho
+            } else {
+                &no_context_chirho
+            };
             return Some(self.try_rewrite_method_var_chirho(
                 *canonical_id_chirho,
                 dict_vars_chirho,
-                evidence_classes_chirho,
+                keyed_classes_chirho,
                 local_instance_dicts_chirho,
                 Some(ty_key_chirho),
             ));

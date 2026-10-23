@@ -24,6 +24,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 
 mod constrained_references_chirho;
+mod occurrence_rows_chirho;
 mod return_chirho;
 
 impl DictPassCtxChirho {
@@ -170,40 +171,26 @@ impl DictPassCtxChirho {
         None
     }
 
+    /// The context classes a module `$prim` row takes dictionaries for, by the
+    /// one rule that also marks it context-leading (`occurrence_rows_chirho`).
+    /// workflow: language-features-chirho/own-class-method-occurrences-chirho
     fn conditional_context_classes_for_prim_binding_chirho(
         &self,
         class_env_chirho: &ClassEnvChirho,
         class_name_chirho: &str,
         parsed_type_key_chirho: &str,
     ) -> Option<Vec<String>> {
-        let instances_chirho = class_env_chirho.instances_chirho.get(class_name_chirho)?;
-        for inst_chirho in instances_chirho {
-            if inst_chirho.context_chirho.is_empty() {
-                continue;
-            }
-            let head_type_key_chirho = format!("{}", inst_chirho.head_ty_chirho);
-            let matches_chirho = if head_type_key_chirho == parsed_type_key_chirho {
-                true
-            } else {
-                matches!(
-                    &inst_chirho.head_ty_chirho,
-                    TyChirho::ListChirho(elem_ty_chirho)
-                        if matches!(elem_ty_chirho.as_ref(), TyChirho::VarChirho(_))
-                            && parsed_type_key_chirho.starts_with('[')
-                            && parsed_type_key_chirho.ends_with(']')
-                )
-            };
-            if matches_chirho {
-                return Some(
-                    inst_chirho
-                        .context_chirho
-                        .iter()
-                        .map(|pred_chirho| pred_chirho.class_name_chirho.clone())
-                        .collect(),
-                );
-            }
-        }
-        None
+        Self::conditional_context_preds_chirho(
+            class_env_chirho,
+            class_name_chirho,
+            parsed_type_key_chirho,
+        )
+        .map(|context_chirho| {
+            context_chirho
+                .into_iter()
+                .map(|pred_chirho| pred_chirho.class_name_chirho)
+                .collect()
+        })
     }
 
     fn extend_alt_type_keys_chirho(
@@ -1193,7 +1180,22 @@ impl DictPassCtxChirho {
         // it has one, else the keyed selector path below with the proven key.
         // workflow: language-features-chirho/dictionary-evidence-chirho
         let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho);
+        // A proof that is not the binding's own dictionary is never answered by
+        // the ambient context dictionary below; unresolved, it takes its
+        // canonical method's route with the caller's key.
+        // workflow: language-features-chirho/own-class-method-occurrences-chirho
+        let foreign_proof_chirho = evidence_chirho.is_some_and(|(_class_chirho, key_chirho)| {
+            !Self::proof_admits_context_chirho(key_chirho)
+        });
+        let caller_key_chirho = type_key_override_chirho;
         if let Some((evidence_class_chirho, evidence_key_chirho)) = evidence_chirho {
+            if let Some(self_dict_head_chirho) = self.agreeing_self_dictionary_chirho(
+                id_chirho,
+                &|| caller_key_chirho.map(str::to_string),
+                local_instance_dicts_chirho,
+            ) {
+                return self_dict_head_chirho;
+            }
             if let Some((method_name_chirho, _canonical_chirho)) =
                 self.method_occurrence_canon_chirho.get(&id_chirho)
             {
@@ -1204,10 +1206,8 @@ impl DictPassCtxChirho {
                         let prim_name_chirho = format!(
                             "$prim_{evidence_class_chirho}_{method_name_chirho}_{key_spelling_chirho}"
                         );
-                        if let Some(prim_id_chirho) =
-                            self.find_global_id_by_name_chirho(&prim_name_chirho)
-                        {
-                            return CoreExprChirho::VarChirho(prim_id_chirho);
+                        if let Some(prim_chirho) = self.proof_row_chirho(&prim_name_chirho) {
+                            return prim_chirho;
                         }
                     }
                 }
@@ -1321,7 +1321,7 @@ impl DictPassCtxChirho {
                 // Fall back only to dictionaries backed by real local evidence.
                 // Ambient seeded defaults are not proof for an unresolved method
                 // use and used to pick arbitrary semantics.
-                if evidence_classes_chirho.contains(&class_name_chirho) {
+                if evidence_classes_chirho.contains(&class_name_chirho) && !foreign_proof_chirho {
                     if let Some(dict_id_chirho) = dict_vars_chirho.get(&class_name_chirho) {
                         return CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
@@ -1330,6 +1330,18 @@ impl DictPassCtxChirho {
                     }
                 }
             }
+        }
+        if foreign_proof_chirho
+            && let Some((_method_name_chirho, canonical_id_chirho)) =
+                self.method_occurrence_canon_chirho.get(&id_chirho)
+        {
+            return self.try_rewrite_method_var_chirho(
+                *canonical_id_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+                caller_key_chirho,
+            );
         }
         CoreExprChirho::VarChirho(id_chirho)
     }
@@ -4314,6 +4326,10 @@ impl DictPassCtxChirho {
 
         // Build layouts from the class environment
         self.build_layouts_chirho(class_env_chirho);
+
+        // Context-leading rows, before any binding is rewritten.
+        // workflow: language-features-chirho/own-class-method-occurrences-chirho
+        self.record_context_leading_rows_chirho(module_chirho, class_env_chirho);
 
         // Generate method selectors
         self.generate_selectors_chirho();

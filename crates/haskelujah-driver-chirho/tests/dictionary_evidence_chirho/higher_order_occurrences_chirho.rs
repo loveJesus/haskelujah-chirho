@@ -12,12 +12,18 @@
 //! A method of a class the program declares gets the same per-occurrence
 //! proof (gpt_chirho #28091). Every use of it shared one id, so under `map`
 //! the dictionary pass guessed `NeedsChirho Int` from the nested literal.
+//! A proof never borrows the enclosing context dictionary, and a row whose
+//! instance has a context is called with that context (gpt_chirho #28111).
 //! workflow: language-features-chirho/own-class-method-occurrences-chirho
 
 use super::{assert_ghc_or_named_chirho, run_chirho, run_result_chirho};
 
 const NEEDS_CHIRHO: &str =
     "module Main where\nclass NeedsChirho a where\n  neededChirho :: a -> Int\n";
+
+const DESCRIBABLE_CHIRHO: &str = "module Main where\nclass DescribableChirho a where\n  describeChirho :: a -> String\ninstance DescribableChirho Int where\n  describeChirho x = show x\n";
+
+const MARK_CHIRHO: &str = "{-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances #-}\nmodule Main where\ndata FooChirho = FooChirho\nclass MarkChirho a where\n  markChirho :: a -> Int\n";
 
 /// GHC 9.14.1 stops these with "No instance nor default method for class
 /// operation neededChirho"; the run must fail too, and name the method.
@@ -275,6 +281,79 @@ fn a_binder_named_like_the_programs_method_is_that_binder_chirho() {
         ),
     ] {
         let source_chirho = format!("{NEEDS_CHIRHO}{program_chirho}");
+        assert_eq!(
+            run_chirho(file_name_chirho, &source_chirho),
+            ghc_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn a_recursive_call_of_the_programs_method_keeps_its_instances_own_dictionary_chirho() {
+    // The checker proves `describeChirho xs` only as `[]`. The Ord-plus-opt-in
+    // CLI found no dictionary under that key and served the element's context
+    // dictionary: 1:[2,3], on the interpreter and as a pointer on LLVM and
+    // Cranelift (compile_chirho's recursive custom-list round trips). Main
+    // prints GHC's answer through the self dictionary its argument's key names.
+    for (file_name_chirho, program_chirho, ghc_chirho) in [
+        (
+            "RecursiveConditionalOccurrenceChirho.hs",
+            "instance DescribableChirho a => DescribableChirho [a] where\n  describeChirho [] = \"[]\"\n  describeChirho (x:xs) = describeChirho x ++ \":\" ++ describeChirho xs\nmain :: IO ()\nmain = putStrLn (describeChirho [1,2,3 :: Int])\n",
+            "1:2:3:[]\n",
+        ),
+        (
+            "RecursiveWhereOccurrenceChirho.hs",
+            "instance DescribableChirho a => DescribableChirho [a] where\n  describeChirho [] = \"[]\"\n  describeChirho (x:xs) = describeChirho x ++ \":\" ++ restChirho\n    where\n      restChirho = describeChirho xs\nmain :: IO ()\nmain = putStrLn (describeChirho [1,2,3 :: Int])\n",
+            "1:2:3:[]\n",
+        ),
+    ] {
+        let source_chirho = format!("{DESCRIBABLE_CHIRHO}{program_chirho}");
+        assert_eq!(
+            run_chirho(file_name_chirho, &source_chirho),
+            ghc_chirho,
+            "{file_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn an_occurrence_at_another_list_type_never_borrows_the_self_dictionary_chirho() {
+    // Inside the `[a]` instance, `tagChirho [True]` is proved at `[Bool]`: its
+    // own dictionary answers `b`, where the self dictionary (here `[Int]`)
+    // would answer `i`. The opt-in CLI printed 1:[2]b; main prints GHC's.
+    assert_eq!(
+        run_chirho(
+            "AgreementGroundInBodyChirho.hs",
+            "module Main where\nclass DescribableChirho a where\n  describeChirho :: a -> String\n  tagChirho :: a -> String\ninstance DescribableChirho Int where\n  describeChirho x = show x\n  tagChirho _ = \"i\"\ninstance DescribableChirho Bool where\n  describeChirho b = if b then \"T\" else \"F\"\n  tagChirho _ = \"b\"\ninstance DescribableChirho a => DescribableChirho [a] where\n  describeChirho [] = \"[]\"\n  describeChirho (x:xs) = describeChirho x ++ \":\" ++ describeChirho xs ++ tagChirho [True]\n  tagChirho [] = \"l\"\n  tagChirho (y:_) = tagChirho y\nmain :: IO ()\nmain = putStrLn (describeChirho [1,2 :: Int])\n",
+        ),
+        "1:2:[]bb\n"
+    );
+}
+
+#[test]
+fn a_row_whose_instance_has_a_context_is_called_with_that_context_chirho() {
+    // `$prim_MarkChirho_markChirho_FooChirho` takes `$dShow` first. Called bare,
+    // FooChirho bound as that dictionary and the run printed a `$PAP` with exit
+    // 0; main failed loudly ("missing STG binding `markChirho`").
+    for (file_name_chirho, program_chirho, ghc_chirho) in [
+        (
+            "ContextualGroundOccurrenceChirho.hs",
+            "instance Show Int => MarkChirho FooChirho where\n  markChirho _ = 7\nmain :: IO ()\nmain = print (markChirho FooChirho)\n",
+            "7\n",
+        ),
+        (
+            "ContextualGroundUnderMapChirho.hs",
+            "instance Show Int => MarkChirho FooChirho where\n  markChirho _ = 7\nmain :: IO ()\nmain = print (map markChirho [FooChirho, FooChirho])\n",
+            "[7,7]\n",
+        ),
+        (
+            "ContextualGroundTwoChirho.hs",
+            "instance (Show Int, Num Int) => MarkChirho FooChirho where\n  markChirho _ = length (show (40 + 2 :: Int))\nmain :: IO ()\nmain = print (markChirho FooChirho)\n",
+            "2\n",
+        ),
+    ] {
+        let source_chirho = format!("{MARK_CHIRHO}{program_chirho}");
         assert_eq!(
             run_chirho(file_name_chirho, &source_chirho),
             ghc_chirho,

@@ -115,6 +115,12 @@ pub struct DictPassCtxChirho {
     /// (class, key) per predicate in scheme order; a `None` key is "nothing
     /// proved for this position". See `evidence_dict_for_class_chirho`.
     reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    /// Module `$prim` rows whose instance has a context → that context, in
+    /// order: those rows take the context's dictionaries before the method's
+    /// arguments. Recorded before any binding is rewritten.
+    /// workflow: language-features-chirho/own-class-method-occurrences-chirho
+    context_leading_rows_chirho:
+        HashMap<CoreIdChirho, Vec<haskelujah_typing_chirho::class_chirho::PredChirho>>,
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
@@ -165,6 +171,7 @@ impl DictPassCtxChirho {
             method_occurrence_canon_chirho: HashMap::new(),
             occurrence_evidence_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
+            context_leading_rows_chirho: HashMap::new(),
             super_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),

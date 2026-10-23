@@ -26,8 +26,10 @@ flowchart TD
     capture_chirho["Checker: capture_occurrence_predicates_chirho for every constrained reference"] --> records_chirho["finalize_occurrence_records_chirho: NeedsChirho at [Int] for the map use"]
     site_chirho --> join_chirho["join_occurrence_evidence_chirho: by provenance, then by span; a record counts only if its class declares the name"]
     records_chirho --> join_chirho
-    join_chirho --> pass_chirho["try_rewrite_method_var_chirho: the row named $prim_C_m_key, else the keyed selector with that key's dictionary"]
-    join_chirho --> restore_chirho["No proof: the occurrence is restored to its canonical id, today's path"]
+    join_chirho --> self_chirho["Head-only proof whose caller key names a local self dictionary: the class selector applied to it"]
+    self_chirho --> row_chirho["Else the row named $prim_C_m_key: as it is, or with its instance's ground context dictionaries applied first"]
+    row_chirho --> keyed_chirho["Else the keyed selector with that key's dictionary; a foreign proof never reaches the context dictionary"]
+    keyed_chirho --> restore_chirho["Unresolved, or no proof: the canonical id and the caller's own route"]
 ```
 
 ## Rule (gpt_chirho #28091)
@@ -67,6 +69,37 @@ dictionary. On main alone this unit would turn cd95568b's direct missing-method 
 partial application. The unit therefore sits on the exact Ord replay dea2a0b7 (gpt_chirho
 #28096), and the combined gate is its only landing authority.
 
+## Where a proof lands (gpt_chirho #28111)
+
+The first combined gate (combined-03a337d4-chirho) measured two regressions this unit made. Both
+come from proofs the old route never had. The rules live in
+`dict_chirho/rewrite_chirho/occurrence_rows_chirho.rs`, and both dispatch entries call them
+(`occurrence_head_replacement_chirho`, `try_rewrite_method_var_chirho`).
+
+- Self agreement. Inside `instance DescribableChirho a => DescribableChirho [a]`, the checker
+  proves `describeChirho xs` only as `[]`, a list over a variable. The instance's self
+  dictionary is registered under `[a]`. The proof is served by that dictionary when the
+  caller's key (`[a]`, read off `xs`) has the proof as its head and names a dictionary this
+  binding holds. Never a global `[]` alias: a `[b]` or ground occurrence in the same body is
+  not a local dictionary here.
+- No ambient answer. A proof that is not the binding's own dictionary key is never served by
+  the context dictionary. Before, it was, and Int's method ran on the tail: `1:[2,3]` on the
+  interpreter, a pointer on LLVM and Cranelift. Unresolved, the occurrence returns to its
+  canonical method and the caller's own route.
+- Context-leading rows. A `$prim` row whose instance has a context takes those dictionaries
+  first (`\$dShow -> \_ -> 7`). The rows are recorded from the class environment before any
+  binding is rewritten, by the same rule that gives them their parameters. A proof is served
+  by such a row only with every context dictionary applied (each predicate one-parameter,
+  ground and registered); otherwise the keyed route decides. The rows the pass generates for
+  ground keys (`$prim_C_m_[Int]`) take no dictionary.
+
+Self agreement and no ambient answer serve the same recursive calls: the restored route finds
+the self dictionary through the same `[a]` key. Each masks the other in every behavioral
+control, so one terminating mutant reverts both together (gpt_chirho #28112). Measured
+boundaries, before and after: a recursive `TreeChirho a` instance fails loudly on main too
+("missing STG binding"), and a bare self occurrence (`goChirho = describeChirho`) is wrong on
+main too. Neither is claimed here.
+
 ## Controls
 
 - `tests/dictionary_evidence_chirho/higher_order_occurrences_chirho.rs`:
@@ -77,5 +110,13 @@ partial application. The unit therefore sits on the exact Ord replay dea2a0b7 (g
     a context-free `[a]` head;
   - four lexical shadows: lambda, let, where and case binders.
 - `src/tests_chirho/evidence_chirho/occurrence_names_chirho.rs`: the name set's boundaries.
+- Recursive calls on the interpreter (`1:2:3:[]`, direct and through a `where`), plus the
+  LLVM and Cranelift recursive custom-list round trips in `compile_chirho.rs`. An occurrence
+  at `[Bool]` inside the `[a]` instance (`1:2:[]bb`). Context-leading rows: one predicate,
+  under `map`, and two predicates (`7`, `[7,7]`, `2`).
+- `occurrence_rows_tests_chirho.rs`: agreement, context-leading rows and their record.
 - Mutant o1 drops only the opt-in (`.chain(own_methods_chirho.take(0))`). The higher-order
   controls must catch it.
+- Mutant o2 reverts self agreement and no ambient answer together, and the recursive and
+  agreement rows catch it. Mutant o4 calls a context-leading row bare, and the
+  context-leading rows catch it.
