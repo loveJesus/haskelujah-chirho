@@ -6,6 +6,7 @@
 
 mod do_operation_records_chirho;
 mod occurrence_join_chirho;
+mod occurrence_names_chirho;
 mod occurrence_producers_chirho;
 mod occurrence_provenance_join_chirho;
 mod occurrence_records_chirho;

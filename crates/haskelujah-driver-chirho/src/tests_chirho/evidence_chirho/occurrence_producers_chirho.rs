@@ -14,7 +14,8 @@ use haskelujah_ast_chirho::occurrences_chirho::visit_decl_chirho;
 use haskelujah_ast_chirho::provenance_chirho::OriginIdChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
-fn lower_chirho(source_chirho: &str) -> ModuleChirho {
+/// The module lowering hands the desugarer; the name-selection tests read it too.
+pub(super) fn lower_chirho(source_chirho: &str) -> ModuleChirho {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let file_id_chirho = source_map_chirho.add_file_chirho("ProducersChirho.hs", source_chirho);
     let green_chirho = haskelujah_parser_chirho::cst_parser_chirho::ParserChirho::new_chirho(

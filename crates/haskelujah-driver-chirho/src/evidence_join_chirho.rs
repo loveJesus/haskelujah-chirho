@@ -5,17 +5,94 @@
 //! producer minted, which both phases read from the same AST node. What has no
 //! provenance yet is identified by its source span; a placeholder span is not an
 //! identity, and a genuine span claimed by more than one occurrence is refused
-//! rather than guessed at.
+//! rather than guessed at. Which references get an occurrence id at all is
+//! chosen here too, so the join and its population are read together.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
+//! workflow: language-features-chirho/own-class-method-occurrences-chirho
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
 };
 use haskelujah_core_chirho::CoreIdChirho;
 
 use crate::InferResultChirho;
+
+/// Evidence-threading P2b: standard single-param class methods and constrained
+/// Prelude functions whose free references get per-occurrence ids so typing
+/// evidence can drive dispatch.
+/// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
+/// Monad-chain operators (>>=, >>, return, pure, fail) are deliberately
+/// EXCLUDED — they have dedicated dispatch machinery and INV-001 protection.
+const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
+    "==",
+    "/=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "compare",
+    "max",
+    "min",
+    "+",
+    "-",
+    "*",
+    "negate",
+    "abs",
+    "signum",
+    "fromInteger",
+    "div",
+    "mod",
+    "quot",
+    "rem",
+    "show",
+    "print",
+    "mfix",
+    "read",
+];
+
+/// The monad-chain operators the standard set leaves out (INV-001). No rule
+/// here opts them in, not even for a class this module declares itself.
+const INV_001_NAMES_CHIRHO: [&str; 5] = [">>=", ">>", "return", "pure", "fail"];
+
+/// The names whose every free reference the desugarer gives an occurrence id of
+/// its own, so the checker's proof for that one use reaches the dictionary pass:
+/// the standard set, and each method of a single-parameter class the compiling
+/// module declares. Sharing one id for every use, a user method had its
+/// dictionary guessed from sibling arguments: `map neededChirho [[1 :: Int]]`
+/// ran `NeedsChirho Int`'s method on each list.
+///
+/// Boundaries, each keeping its shared id: a seeded standard class's methods
+/// outside the standard set (`fmap`, `<>`, `toList`), a class imported from
+/// another module (its rows live in that module's Core), a multi-parameter
+/// class, and the INV-001 names. Shadows stay the desugarer's: a lexical,
+/// top-level or field binding is found in scope before any occurrence is
+/// minted, and an occurrence the join proves nothing for is restored to its
+/// canonical id.
+/// workflow: language-features-chirho/own-class-method-occurrences-chirho
+pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> HashSet<String> {
+    let own_methods_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .flat_map(|decl_chirho| match decl_chirho {
+            DeclChirho::ClassDeclChirho {
+                type_vars_chirho,
+                methods_chirho,
+                ..
+            } if type_vars_chirho.len() == 1 => methods_chirho.as_slice(),
+            _ => &[],
+        })
+        .map(|method_chirho| method_chirho.name_chirho.text_chirho().to_string());
+    EVIDENCE_METHOD_NAMES_CHIRHO
+        .iter()
+        .map(|name_chirho| name_chirho.to_string())
+        .chain(own_methods_chirho)
+        .filter(|name_chirho| !INV_001_NAMES_CHIRHO.contains(&name_chirho.as_str()))
+        .collect()
+}
 
 /// Join the checker's occurrence records to the desugarer's occurrence ids.
 ///

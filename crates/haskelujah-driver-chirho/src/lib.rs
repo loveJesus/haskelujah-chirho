@@ -2703,39 +2703,6 @@ pub fn compile_source_with_search_path_chirho(
     )
 }
 
-/// Evidence-threading P2b: standard single-param class methods and constrained
-/// Prelude functions whose free references get per-occurrence ids so typing
-/// evidence can drive dispatch.
-/// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
-/// Monad-chain operators (>>=, >>, return, pure, fail) are deliberately
-/// EXCLUDED — they have dedicated dispatch machinery and INV-001 protection.
-const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
-    "==",
-    "/=",
-    "<",
-    "<=",
-    ">",
-    ">=",
-    "compare",
-    "max",
-    "min",
-    "+",
-    "-",
-    "*",
-    "negate",
-    "abs",
-    "signum",
-    "fromInteger",
-    "div",
-    "mod",
-    "quot",
-    "rem",
-    "show",
-    "print",
-    "mfix",
-    "read",
-];
-
 mod evidence_join_chirho;
 pub(crate) use evidence_join_chirho::join_occurrence_evidence_chirho;
 
@@ -2749,14 +2716,16 @@ fn compile_backend_chirho(
     extra_dict_param_names_chirho: std::collections::HashSet<String>,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
-    // per-occurrence ids for the standard method-name set).
+    // per-occurrence ids for the method-occurrence names).
     // Dictionary evidence: every name whose scheme carries class predicates
     // gets an occurrence id per reference, so the checker's per-reference
     // evidence can reach the dictionary pass.
     // workflow: language-features-chirho/dictionary-evidence-chirho
-    // Class methods are not references to constrained functions: the pass
-    // dispatches them through selectors keyed on their canonical ids, so they
-    // keep the method-occurrence mechanism and are not minted here.
+    // Class methods are not references to constrained functions and are not
+    // minted here: the method-occurrence names (the standard set and this
+    // module's own single-parameter class methods) get their ids from the
+    // method-occurrence mechanism, and every other method keeps its canonical id.
+    // workflow: language-features-chirho/own-class-method-occurrences-chirho
     let class_method_names_chirho: std::collections::HashSet<&String> = infer_result_chirho
         .class_env_chirho
         .classes_chirho
@@ -2793,10 +2762,9 @@ fn compile_backend_chirho(
     let desugar_output_chirho = haskelujah_core_chirho::desugar_module_with_inputs_chirho(
         &module_chirho,
         haskelujah_core_chirho::DesugarInputsChirho {
-            method_names_chirho: EVIDENCE_METHOD_NAMES_CHIRHO
-                .iter()
-                .map(|name_chirho| name_chirho.to_string())
-                .collect(),
+            method_names_chirho: evidence_join_chirho::method_occurrence_names_chirho(
+                &module_chirho,
+            ),
             constrained_names_chirho,
             constructor_arities_chirho,
         },
