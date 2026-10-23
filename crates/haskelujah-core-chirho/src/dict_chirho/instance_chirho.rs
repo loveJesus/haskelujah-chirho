@@ -743,10 +743,13 @@ impl DictPassCtxChirho {
             method_name_chirho,
             type_key_chirho,
             prim_name_chirho,
-            0,
         )
     }
 
+    /// A row that fails by name, with its method's own calling convention, as
+    /// every row named for a key has: whoever finds `$prim_<C>_<m>_<key>` by
+    /// name passes the method's arguments and nothing else.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn generate_missing_method_binding_chirho(
         &mut self,
         class_env_chirho: &ClassEnvChirho,
@@ -754,7 +757,6 @@ impl DictPassCtxChirho {
         method_name_chirho: &str,
         type_key_chirho: &str,
         prim_name_chirho: &str,
-        leading_dict_arity_chirho: usize,
     ) -> CoreIdChirho {
         let method_scheme_chirho = class_env_chirho
             .classes_chirho
@@ -788,26 +790,9 @@ impl DictPassCtxChirho {
             };
         }
 
-        for dict_idx_chirho in (0..leading_dict_arity_chirho).rev() {
-            let dict_binder_chirho = self.fresh_binder_chirho(
-                &format!("missing_dict_{dict_idx_chirho}"),
-                TyChirho::ConChirho("$Dict_Missing".to_string()),
-            );
-            rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: dict_binder_chirho,
-                body_chirho: Box::new(rhs_chirho),
-            };
-        }
-
-        let mut binder_ty_chirho = method_scheme_chirho
+        let binder_ty_chirho = method_scheme_chirho
             .map(|scheme_chirho| scheme_chirho.ty_chirho.clone())
             .unwrap_or_else(|| TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)));
-        for _ in 0..leading_dict_arity_chirho {
-            binder_ty_chirho = TyChirho::fun_chirho(
-                TyChirho::ConChirho("$Dict_Missing".to_string()),
-                binder_ty_chirho,
-            );
-        }
         let binder_chirho = self.fresh_binder_chirho(prim_name_chirho, binder_ty_chirho);
         let binder_id_chirho = binder_chirho.id_chirho;
 

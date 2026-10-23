@@ -215,6 +215,13 @@ impl DictPassCtxChirho {
                 }
             }
             if !found_chirho {
+                // The stub is named for the ground key, so it takes no element
+                // dictionaries: a caller that finds it by name passes only the
+                // method's arguments. With a leading dictionary parameter the
+                // first argument bound as the dictionary, and the partial
+                // application that came back was taken silently by a `case`
+                // with a default branch (`map neededChirho [[1]]` printed [[1]]).
+                // workflow: language-features-chirho/dictionary-evidence-chirho
                 let prim_name_chirho = format!(
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, list_type_key_chirho
@@ -225,23 +232,8 @@ impl DictPassCtxChirho {
                     method_name_chirho,
                     list_type_key_chirho,
                     &prim_name_chirho,
-                    context_classes_chirho.len(),
                 );
-                let mut method_expr_chirho = CoreExprChirho::VarChirho(prim_id_chirho);
-                for context_class_chirho in context_classes_chirho {
-                    if let Some(context_dict_id_chirho) = self
-                        .instance_dicts_chirho
-                        .get(&(context_class_chirho.clone(), elem_type_chirho.to_string()))
-                    {
-                        method_expr_chirho = CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(method_expr_chirho),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(
-                                *context_dict_id_chirho,
-                            )),
-                        };
-                    }
-                }
-                field_args_chirho.push(method_expr_chirho);
+                field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
             }
         }
 

@@ -16,6 +16,8 @@ mod equality_sections_chirho;
 mod ground_keys_chirho;
 #[path = "dictionary_evidence_chirho/higher_order_occurrences_chirho.rs"]
 mod higher_order_occurrences_chirho;
+#[path = "dictionary_evidence_chirho/list_orders_chirho.rs"]
+mod list_orders_chirho;
 #[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
 mod proven_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/string_lists_chirho.rs"]
