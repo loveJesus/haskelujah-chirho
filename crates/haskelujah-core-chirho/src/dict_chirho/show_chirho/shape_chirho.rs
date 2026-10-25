@@ -5,6 +5,9 @@
 
 use crate::expr_chirho::CoreIdChirho;
 
+/// How deep a Show key may nest: in the parser, and in the derived support check (row 533).
+pub(super) const SHOW_SHAPE_DEPTH_LIMIT_CHIRHO: usize = 64;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ShowShapeChirho {
     ScalarChirho(String),
@@ -44,7 +47,7 @@ impl ShowShapeChirho {
         resolve_chirho: &impl Fn(&str) -> Option<CoreIdChirho>,
         derived_chirho: &impl Fn(&str) -> Option<String>,
     ) -> Option<Self> {
-        if depth_chirho >= 64 {
+        if depth_chirho >= SHOW_SHAPE_DEPTH_LIMIT_CHIRHO {
             return None;
         }
         let descend_chirho = |part_chirho: &str, precedence_chirho| {

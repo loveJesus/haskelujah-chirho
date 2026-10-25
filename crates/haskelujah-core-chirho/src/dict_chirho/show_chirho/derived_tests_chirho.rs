@@ -8,13 +8,64 @@
 use super::*;
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
 
-fn context_chirho(types_chirho: Vec<(&str, DerivedShowChirho)>) -> DictPassCtxChirho {
+fn context_chirho(types_chirho: Vec<(impl Into<String>, DerivedShowChirho)>) -> DictPassCtxChirho {
     let mut context_chirho = DictPassCtxChirho::new_chirho(1, HashMap::new(), HashMap::new());
     context_chirho.derived_shows_chirho = types_chirho
         .into_iter()
-        .map(|(name_chirho, metadata_chirho)| (name_chirho.to_string(), metadata_chirho))
+        .map(|(name_chirho, metadata_chirho)| (name_chirho.into(), metadata_chirho))
         .collect();
     context_chirho
+}
+
+/// Monomorphic types `{prefix}0Chirho` to `{prefix}{levels - 1}Chirho`, each with one prefix
+/// constructor whose fields are the numbered types `fields(level)` lists.
+fn numbered_types_chirho(
+    prefix_chirho: &str,
+    levels_chirho: usize,
+    fields_chirho: impl Fn(usize) -> Vec<usize>,
+) -> DictPassCtxChirho {
+    context_chirho(
+        (0..levels_chirho)
+            .map(|level_chirho| {
+                let name_chirho = format!("{prefix_chirho}{level_chirho}Chirho");
+                let field_types_chirho = fields_chirho(level_chirho)
+                    .into_iter()
+                    .map(|field_chirho| {
+                        type_chirho(&format!("{prefix_chirho}{field_chirho}Chirho"))
+                    })
+                    .collect();
+                let metadata_chirho = monomorphic_chirho(vec![constructor_chirho(
+                    &name_chirho,
+                    ShowConFormChirho::PrefixChirho,
+                    field_types_chirho,
+                )]);
+                (name_chirho, metadata_chirho)
+            })
+            .collect(),
+    )
+}
+
+/// Every per-check structure is empty once an outermost check returns.
+fn assert_check_finished_chirho(context_chirho: &DictPassCtxChirho) {
+    assert!(
+        context_chirho
+            .derived_show_visiting_chirho
+            .borrow()
+            .is_empty()
+    );
+    assert!(
+        context_chirho
+            .derived_show_assumed_chirho
+            .borrow()
+            .is_empty()
+    );
+    assert!(
+        context_chirho
+            .derived_show_provisional_chirho
+            .borrow()
+            .is_empty()
+    );
+    assert!(!context_chirho.derived_show_bounded_chirho.get());
 }
 
 fn monomorphic_chirho(constructors_chirho: Vec<DerivedShowConChirho>) -> DerivedShowChirho {
@@ -442,18 +493,7 @@ fn a_mutual_recursion_with_a_missing_renderer_stays_unrenderable_chirho() {
     ]);
     assert_eq!(context_chirho.derived_show_key_chirho("AChirho"), None);
     assert_eq!(context_chirho.derived_show_key_chirho("BChirho"), None);
-    assert!(
-        context_chirho
-            .derived_show_visiting_chirho
-            .borrow()
-            .is_empty()
-    );
-    assert!(
-        context_chirho
-            .derived_show_assumed_chirho
-            .borrow()
-            .is_empty()
-    );
+    assert_check_finished_chirho(&context_chirho);
 }
 
 #[test]
@@ -488,18 +528,7 @@ fn a_renderable_mutual_recursion_is_admitted_from_either_side_chirho() {
         context_chirho.derived_show_key_chirho("BChirho"),
         Some("BChirho".to_string())
     );
-    assert!(
-        context_chirho
-            .derived_show_visiting_chirho
-            .borrow()
-            .is_empty()
-    );
-    assert!(
-        context_chirho
-            .derived_show_assumed_chirho
-            .borrow()
-            .is_empty()
-    );
+    assert_check_finished_chirho(&context_chirho);
 }
 
 #[test]
@@ -507,34 +536,13 @@ fn a_wide_type_graph_is_checked_once_per_key_chirho() {
     // T0Chirho has two fields of T1Chirho, T1Chirho two of T2Chirho, and so on: checked
     // afresh at every field, the work would double at each of the 40 levels.
     let levels_chirho = 40;
-    let mut types_chirho = Vec::new();
-    for level_chirho in 0..levels_chirho {
-        let name_chirho = format!("T{level_chirho}Chirho");
-        let next_chirho = type_chirho(&format!("T{}Chirho", level_chirho + 1));
-        types_chirho.push((
-            name_chirho.clone(),
-            monomorphic_chirho(vec![constructor_chirho(
-                &name_chirho,
-                ShowConFormChirho::PrefixChirho,
-                vec![next_chirho.clone(), next_chirho],
-            )]),
-        ));
-    }
-    let last_chirho = format!("T{levels_chirho}Chirho");
-    types_chirho.push((
-        last_chirho.clone(),
-        monomorphic_chirho(vec![constructor_chirho(
-            &last_chirho,
-            ShowConFormChirho::PrefixChirho,
-            vec![],
-        )]),
-    ));
-    let context_chirho = context_chirho(
-        types_chirho
-            .iter()
-            .map(|(name_chirho, metadata_chirho)| (name_chirho.as_str(), metadata_chirho.clone()))
-            .collect(),
-    );
+    let context_chirho = numbered_types_chirho("T", levels_chirho + 1, |level_chirho| {
+        if level_chirho < levels_chirho {
+            vec![level_chirho + 1; 2]
+        } else {
+            vec![]
+        }
+    });
     assert_eq!(
         context_chirho.derived_show_key_chirho("T0Chirho"),
         Some("T0Chirho".to_string())
@@ -543,4 +551,134 @@ fn a_wide_type_graph_is_checked_once_per_key_chirho() {
         context_chirho.derived_show_known_chirho.borrow().len(),
         levels_chirho + 1
     );
+}
+
+#[test]
+fn a_cycle_with_fan_out_is_final_after_one_outermost_check_chirho() {
+    // C0Chirho has two fields of C1Chirho, and so on, and C39Chirho two of C0Chirho: every
+    // key after the first rests on C0Chirho's own check. Each is explored once, and all 40
+    // are final when that check renders.
+    let levels_chirho = 40;
+    let context_chirho = numbered_types_chirho("C", levels_chirho, |level_chirho| {
+        vec![(level_chirho + 1) % levels_chirho; 2]
+    });
+    assert_eq!(
+        context_chirho.derived_show_key_chirho("C0Chirho"),
+        Some("C0Chirho".to_string())
+    );
+    let known_chirho = context_chirho.derived_show_known_chirho.borrow();
+    assert_eq!(known_chirho.len(), levels_chirho);
+    assert!(known_chirho.values().all(|answer_chirho| matches!(
+        answer_chirho,
+        DerivedShowKnownChirho::RendersChirho { .. }
+    )));
+    assert_check_finished_chirho(&context_chirho);
+}
+
+#[test]
+fn the_depth_bound_fails_a_deep_root_without_poisoning_a_shallow_suffix_chirho() {
+    // L0Chirho has a field of L1Chirho, and so on to L69Chirho, which has none: a chain
+    // deeper than the bound. L0Chirho fails closed whichever is checked first, and
+    // L10Chirho, 60 deep, renders either way.
+    let levels_chirho = 70;
+    let chain_chirho = || {
+        numbered_types_chirho("L", levels_chirho, |level_chirho| {
+            if level_chirho + 1 < levels_chirho {
+                vec![level_chirho + 1]
+            } else {
+                vec![]
+            }
+        })
+    };
+    let suffix_chirho = Some("L10Chirho".to_string());
+    let root_first_chirho = chain_chirho();
+    assert_eq!(root_first_chirho.derived_show_key_chirho("L0Chirho"), None);
+    assert_check_finished_chirho(&root_first_chirho);
+    assert_eq!(
+        root_first_chirho.derived_show_key_chirho("L10Chirho"),
+        suffix_chirho
+    );
+    assert_check_finished_chirho(&root_first_chirho);
+    let suffix_first_chirho = chain_chirho();
+    assert_eq!(
+        suffix_first_chirho.derived_show_key_chirho("L10Chirho"),
+        suffix_chirho
+    );
+    assert_eq!(
+        suffix_first_chirho.derived_show_key_chirho("L0Chirho"),
+        None
+    );
+    assert_check_finished_chirho(&suffix_first_chirho);
+}
+
+#[test]
+fn a_nested_datatype_fails_closed_within_the_depth_and_key_bounds_chirho() {
+    // data NChirho a = NestChirho (NChirho [a]) | FlatChirho a: NChirho Int needs
+    // NChirho [Int], which needs NChirho [[Int]], each a new key, so the depth bound ends
+    // the check, and no answer resting on it is kept.
+    let element_chirho = || ShowFieldTypeChirho::VarChirho("aChirho".to_string());
+    let applied_chirho = |head_chirho: &str, argument_chirho: ShowFieldTypeChirho| {
+        ShowFieldTypeChirho::AppChirho(
+            Box::new(type_chirho(head_chirho)),
+            Box::new(argument_chirho),
+        )
+    };
+    let nested_chirho = context_chirho(vec![(
+        "NChirho",
+        DerivedShowChirho {
+            type_vars_chirho: vec!["aChirho".to_string()],
+            constructors_chirho: vec![
+                constructor_chirho(
+                    "NestChirho",
+                    ShowConFormChirho::PrefixChirho,
+                    vec![applied_chirho(
+                        "NChirho",
+                        ShowFieldTypeChirho::ListChirho(Box::new(element_chirho())),
+                    )],
+                ),
+                constructor_chirho(
+                    "FlatChirho",
+                    ShowConFormChirho::PrefixChirho,
+                    vec![element_chirho()],
+                ),
+            ],
+        },
+    )]);
+    assert_eq!(nested_chirho.derived_show_key_chirho("NChirho Int"), None);
+    assert!(nested_chirho.derived_show_known_chirho.borrow().is_empty());
+    assert_check_finished_chirho(&nested_chirho);
+    // data SChirho a = NilChirho | ConsChirho a (SChirho (a, a)): the key doubles at every
+    // level, so the key bound ends the check first, and each key keeps that stable answer.
+    let growing_chirho = context_chirho(vec![(
+        "SChirho",
+        DerivedShowChirho {
+            type_vars_chirho: vec!["aChirho".to_string()],
+            constructors_chirho: vec![
+                constructor_chirho("NilChirho", ShowConFormChirho::PrefixChirho, vec![]),
+                constructor_chirho(
+                    "ConsChirho",
+                    ShowConFormChirho::PrefixChirho,
+                    vec![
+                        element_chirho(),
+                        applied_chirho(
+                            "SChirho",
+                            ShowFieldTypeChirho::TupleChirho(vec![
+                                element_chirho(),
+                                element_chirho(),
+                            ]),
+                        ),
+                    ],
+                ),
+            ],
+        },
+    )]);
+    assert_eq!(growing_chirho.derived_show_key_chirho("SChirho Int"), None);
+    let known_chirho = growing_chirho.derived_show_known_chirho.borrow();
+    assert!(!known_chirho.is_empty() && known_chirho.len() < SHOW_SHAPE_DEPTH_LIMIT_CHIRHO);
+    assert!(
+        known_chirho
+            .values()
+            .all(|answer_chirho| *answer_chirho == DerivedShowKnownChirho::FailsChirho)
+    );
+    assert_check_finished_chirho(&growing_chirho);
 }

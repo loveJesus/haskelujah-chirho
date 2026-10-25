@@ -37,7 +37,7 @@ mod print_evidence_tests_chirho;
 pub mod rewrite_chirho;
 mod show_chirho;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
 use haskelujah_span_chirho::SpanChirho;
@@ -73,6 +73,15 @@ pub struct DictPassResultChirho {
     pub names_chirho: HashMap<CoreIdChirho, String>,
     /// Dictionary layouts for each class.
     pub layouts_chirho: HashMap<String, DictLayoutChirho>,
+}
+
+/// A final derived-Show answer (row 533). `Renders` holds at the deepest nesting it was
+/// found at and any shallower one; deeper, the key is checked again against the depth
+/// bound. A semantic failure holds at every depth.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DerivedShowKnownChirho {
+    RendersChirho { deepest_chirho: usize },
+    FailsChirho,
 }
 
 /// The dictionary-passing transform context.
@@ -158,9 +167,15 @@ pub struct DictPassCtxChirho {
     /// Keys assumed renderable while their own check was under way, since the
     /// outermost check began.
     derived_show_assumed_chirho: RefCell<Vec<String>>,
-    /// Final renderability per derived-Show key. A provisional `true` inside a
-    /// recursive cycle is not kept.
-    derived_show_known_chirho: RefCell<HashMap<String, bool>>,
+    /// Final answers per derived-Show key.
+    derived_show_known_chirho: RefCell<HashMap<String, DerivedShowKnownChirho>>,
+    /// Keys that rendered, during the current outermost check, on an assumption about a
+    /// key still under way, with the deepest nesting at which they did. They become final
+    /// when that check renders and are dropped when it does not.
+    derived_show_provisional_chirho: RefCell<HashMap<String, usize>>,
+    /// Whether the current outermost check has met the depth bound: a `false` found after
+    /// that may rest on the bound rather than on the type, so it is not kept.
+    derived_show_bounded_chirho: Cell<bool>,
     /// Derived-Show key → its generated `$prim_Show_showsPrec_<key>` helper.
     derived_show_helpers_chirho: HashMap<String, CoreIdChirho>,
 }
@@ -196,6 +211,8 @@ impl DictPassCtxChirho {
             derived_show_visiting_chirho: RefCell::new(Vec::new()),
             derived_show_assumed_chirho: RefCell::new(Vec::new()),
             derived_show_known_chirho: RefCell::new(HashMap::new()),
+            derived_show_provisional_chirho: RefCell::new(HashMap::new()),
+            derived_show_bounded_chirho: Cell::new(false),
             derived_show_helpers_chirho: HashMap::new(),
         }
     }

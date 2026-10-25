@@ -14,16 +14,22 @@ use haskelujah_typing_chirho::deriving_chirho::{
     DerivedShowConChirho, ShowConFormChirho, ShowFieldTypeChirho,
 };
 
-use super::shape_chirho::split_outer_chirho;
+use super::shape_chirho::{SHOW_SHAPE_DEPTH_LIMIT_CHIRHO, split_outer_chirho};
 use super::{
     AltConChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho,
     DictPassCtxChirho, InlineAnnotationChirho, TyChirho, join_string_parts_chirho,
-    string_lit_chirho,
+    parenthesize_chirho, string_lit_chirho,
 };
+use crate::dict_chirho::DerivedShowKnownChirho;
 use crate::expr_chirho::CoreIdChirho;
 
 /// The precedence of a prefix or record constructor application.
 const APPLICATION_PRECEDENCE_CHIRHO: u8 = 10;
+
+/// The longest key the derived support check admits. `data S a = Nil | Cons a (S (a, a))`
+/// doubles its key at every level, so length must be bounded as well as depth. The limit
+/// depends only on the key, so failing it is a stable answer.
+const DERIVED_SHOW_KEY_LIMIT_CHIRHO: usize = 512;
 
 fn apply_chirho(
     function_chirho: CoreExprChirho,
@@ -126,6 +132,24 @@ fn constructor_field_keys_chirho(
         .collect()
 }
 
+/// Keep the deepest nesting at which `key` has rendered.
+fn record_renders_chirho(
+    known_chirho: &mut HashMap<String, DerivedShowKnownChirho>,
+    key_chirho: String,
+    depth_chirho: usize,
+) {
+    let deepest_chirho = match known_chirho.get(&key_chirho) {
+        Some(DerivedShowKnownChirho::RendersChirho { deepest_chirho }) => {
+            (*deepest_chirho).max(depth_chirho)
+        }
+        _ => depth_chirho,
+    };
+    known_chirho.insert(
+        key_chirho,
+        DerivedShowKnownChirho::RendersChirho { deepest_chirho },
+    );
+}
+
 impl DictPassCtxChirho {
     /// The type name, and its parameters' arguments, behind a concrete key whose head
     /// derives Show.
@@ -157,32 +181,49 @@ impl DictPassCtxChirho {
     /// existing route. A key whose check is under way counts as rendering, so a recursive
     /// type is admitted exactly when everything else in it renders.
     ///
-    /// Final answers are kept. A `false` is always final, since an assumption only ever
-    /// answers `true`. A `true` that rested on an assumption about a key still being checked
-    /// further out is provisional and is not kept, so a key inside a recursive cycle can be
-    /// checked again after the outer key is final. Acyclic fan-out is checked once per key.
+    /// The check is bounded. A key longer than `DERIVED_SHOW_KEY_LIMIT_CHIRHO` fails, and so
+    /// does a check nested `SHOW_SHAPE_DEPTH_LIMIT_CHIRHO` deep: a non-regular datatype such
+    /// as `data N a = Nest (N [a]) | Flat a` meets a new key at every level.
+    ///
+    /// A semantic `false` is final at every depth, since an assumption only ever answers
+    /// `true`. A `false` found after the outermost check has met the depth bound may rest on
+    /// that bound, so it is not kept. A `true` holds at the depth it was found at and any
+    /// shallower one. A `true` that rested on a key still being checked further out is
+    /// provisional: it answers later visits within the same outermost check, becomes final
+    /// when that check renders, and is dropped when it does not. A key is explored at most
+    /// once per outermost check at each depth.
     pub(super) fn derived_show_key_chirho(&self, key_chirho: &str) -> Option<String> {
         let key_chirho = key_chirho.trim();
+        if key_chirho.len() > DERIVED_SHOW_KEY_LIMIT_CHIRHO {
+            return None;
+        }
         let (type_name_chirho, arguments_chirho) =
             self.derived_show_arguments_chirho(key_chirho)?;
+        let depth_chirho = self.derived_show_visiting_chirho.borrow().len();
         let known_chirho = self
             .derived_show_known_chirho
             .borrow()
             .get(key_chirho)
             .copied();
-        if let Some(renders_chirho) = known_chirho {
-            return renders_chirho.then(|| key_chirho.to_string());
+        match known_chirho {
+            Some(DerivedShowKnownChirho::FailsChirho) => return None,
+            Some(DerivedShowKnownChirho::RendersChirho { deepest_chirho })
+                if depth_chirho <= deepest_chirho =>
+            {
+                return Some(key_chirho.to_string());
+            }
+            _ => {}
         }
-        if self
-            .derived_show_visiting_chirho
-            .borrow()
-            .iter()
-            .any(|visiting_chirho| visiting_chirho == key_chirho)
+        if let Some(assumed_chirho) = self.derived_show_assumption_chirho(key_chirho, depth_chirho)
         {
             self.derived_show_assumed_chirho
                 .borrow_mut()
-                .push(key_chirho.to_string());
+                .push(assumed_chirho);
             return Some(key_chirho.to_string());
+        }
+        if depth_chirho >= SHOW_SHAPE_DEPTH_LIMIT_CHIRHO {
+            self.derived_show_bounded_chirho.set(true);
+            return None;
         }
         let assumed_from_chirho = self.derived_show_assumed_chirho.borrow().len();
         self.derived_show_visiting_chirho
@@ -207,21 +248,75 @@ impl DictPassCtxChirho {
                 )
             });
         self.derived_show_visiting_chirho.borrow_mut().pop();
-        let final_chirho = !renders_chirho || {
+        let final_chirho = renders_chirho && {
             let visiting_chirho = self.derived_show_visiting_chirho.borrow();
             self.derived_show_assumed_chirho.borrow()[assumed_from_chirho..]
                 .iter()
                 .all(|assumed_chirho| !visiting_chirho.contains(assumed_chirho))
         };
         if final_chirho {
+            record_renders_chirho(
+                &mut self.derived_show_known_chirho.borrow_mut(),
+                key_chirho.to_string(),
+                depth_chirho,
+            );
+        } else if renders_chirho {
+            let mut provisional_chirho = self.derived_show_provisional_chirho.borrow_mut();
+            let deepest_chirho = provisional_chirho
+                .entry(key_chirho.to_string())
+                .or_insert(depth_chirho);
+            *deepest_chirho = (*deepest_chirho).max(depth_chirho);
+        } else if !self.derived_show_bounded_chirho.get() {
             self.derived_show_known_chirho
                 .borrow_mut()
-                .insert(key_chirho.to_string(), renders_chirho);
+                .insert(key_chirho.to_string(), DerivedShowKnownChirho::FailsChirho);
         }
         if self.derived_show_visiting_chirho.borrow().is_empty() {
-            self.derived_show_assumed_chirho.borrow_mut().clear();
+            self.finish_derived_show_check_chirho(renders_chirho);
         }
         renders_chirho.then(|| key_chirho.to_string())
+    }
+
+    /// The key whose being under way lets `key` answer `true` unchecked: `key` itself when
+    /// it is being checked further out, and the outermost key when `key` already rendered
+    /// provisionally, at this depth or deeper, within the same outermost check.
+    fn derived_show_assumption_chirho(
+        &self,
+        key_chirho: &str,
+        depth_chirho: usize,
+    ) -> Option<String> {
+        let visiting_chirho = self.derived_show_visiting_chirho.borrow();
+        if visiting_chirho
+            .iter()
+            .any(|under_way_chirho| under_way_chirho == key_chirho)
+        {
+            return Some(key_chirho.to_string());
+        }
+        let provisional_chirho = self
+            .derived_show_provisional_chirho
+            .borrow()
+            .get(key_chirho)
+            .is_some_and(|deepest_chirho| depth_chirho <= *deepest_chirho);
+        if provisional_chirho {
+            visiting_chirho.first().cloned()
+        } else {
+            None
+        }
+    }
+
+    /// End an outermost check: forget its assumptions and its depth-bound mark, and make
+    /// its provisional answers final when it rendered.
+    fn finish_derived_show_check_chirho(&self, renders_chirho: bool) {
+        self.derived_show_assumed_chirho.borrow_mut().clear();
+        self.derived_show_bounded_chirho.set(false);
+        let provisional_chirho =
+            std::mem::take(&mut *self.derived_show_provisional_chirho.borrow_mut());
+        if renders_chirho {
+            let mut known_chirho = self.derived_show_known_chirho.borrow_mut();
+            for (key_chirho, deepest_chirho) in provisional_chirho {
+                record_renders_chirho(&mut known_chirho, key_chirho, deepest_chirho);
+            }
+        }
     }
 
     /// A derived-Show value at a precedence: a call to its key's helper.
@@ -341,11 +436,7 @@ impl DictPassCtxChirho {
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("True".to_string()),
                         binders_chirho: vec![],
-                        rhs_chirho: join_string_parts_chirho(vec![
-                            string_lit_chirho("("),
-                            wrapped_chirho,
-                            string_lit_chirho(")"),
-                        ]),
+                        rhs_chirho: parenthesize_chirho(wrapped_chirho, true),
                     },
                     CoreAltChirho {
                         con_chirho: AltConChirho::DataConChirho("False".to_string()),
