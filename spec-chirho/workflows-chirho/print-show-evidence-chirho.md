@@ -78,6 +78,12 @@ flowchart TD
 - **Fail-closed:** a key with any field no shape renders (an unknown type, a hand-written
   show-only instance at 11, a function) keeps its existing route; nothing defaults to Int or to
   the runtime space heuristic. A recursive type is admitted when everything else in it renders.
+  Final answers are memoized, so acyclic fan-out is checked once per key. A provisional `true`
+  inside a recursive cycle is not kept and is checked again.
+- **Dictionary route:** a monomorphic type's instance dictionary uses its public row, so
+  polymorphic code reaches the same rendering (C04). That placement refined the trace, which had
+  listed C04 outside the claim. A type with parameters reached through a dictionary keeps the
+  plain derived `show`.
 - **Code:**
   - `crates/haskelujah-typing-chirho/src/deriving_chirho/show_chirho.rs` (the instance and the metadata);
   - `crates/haskelujah-core-chirho/src/dict_chirho/show_chirho/derived_chirho.rs` (the renderer);

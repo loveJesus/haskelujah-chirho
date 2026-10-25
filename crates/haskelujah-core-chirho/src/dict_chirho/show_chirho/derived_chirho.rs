@@ -157,9 +157,10 @@ impl DictPassCtxChirho {
     /// existing route. A key whose check is under way counts as rendering, so a recursive
     /// type is admitted exactly when everything else in it renders.
     ///
-    /// Each key is checked once. A `false` is final, since an assumption only ever answers
-    /// `true`; a `true` is kept unless it rested on an assumption about a key whose own
-    /// check is still under way further out.
+    /// Final answers are kept. A `false` is always final, since an assumption only ever
+    /// answers `true`. A `true` that rested on an assumption about a key still being checked
+    /// further out is provisional and is not kept, so a key inside a recursive cycle can be
+    /// checked again after the outer key is final. Acyclic fan-out is checked once per key.
     pub(super) fn derived_show_key_chirho(&self, key_chirho: &str) -> Option<String> {
         let key_chirho = key_chirho.trim();
         let (type_name_chirho, arguments_chirho) =

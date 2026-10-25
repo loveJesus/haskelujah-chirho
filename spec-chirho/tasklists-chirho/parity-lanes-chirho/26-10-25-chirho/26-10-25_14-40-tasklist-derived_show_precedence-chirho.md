@@ -31,20 +31,25 @@ The branch `derived-show-precedence-chirho` starts from exact main 6ea3de750d6e6
   - **Driver:** lib.rs builds the metadata beside newtype_info and passes it to `dict_pass_module_full_with_evidence_chirho`, the single dictionary-pass call, which every path reaches.
   - **Core:**
     - The `DerivedChirho` shape (shape_chirho.rs) is admitted at any precedence by `derived_show_key_chirho` when every field of every constructor parses at its precedence.
-    - Recursion counts as rendering. Each key is checked once: a `false` is final, and a `true` is kept unless it rests on a key still being checked further out.
+    - Recursion counts as rendering, and final answers are kept:
+      - a `false` is always final, since an assumption only ever answers `true`;
+      - a `true` that rested on a key still being checked further out is provisional and is not kept, so a key inside a recursive cycle can be checked again after the outer key is final;
+      - acyclic fan-out is checked once per key. (C2's commit message says each key is checked once; C4 corrects that.)
     - derived_chirho.rs (473 lines) generates `$prim_Show_showsPrec_<key> d x`, one recursive helper per concrete key.
     - `rewrite_derived_show_rows_chirho` points each renderable monomorphic type's public row `$prim_Show_show_<T>` at the helper at 0. That covers evidenced print, `show` occurrences and the instance dictionary.
     - The Show class layout, selectors and runtime are unchanged.
   - **Tests:**
     - tests/dictionary_evidence_chirho/derived_show_chirho.rs: 3 tests covering the 8 movers, C04 and the 10 derived holds.
-    - show_chirho/derived_tests_chirho.rs: 7 Core tests:
+    - show_chirho/derived_tests_chirho.rs: 7 Core tests in C2, 9 after C4:
       - infix thresholds and operands at p + 1;
       - prefix fields at 11 and record fields at 0;
       - fail-closed;
       - parameter substitution;
       - the NonEmpty seam at infixr 5, with no negative-number parentheses at 6;
       - the public row;
-      - a 40-level fan-out graph checked once per key.
+      - a 40-level acyclic fan-out graph, checked once per key;
+      - (C4) a mutual recursion with a missing renderer (AChirho needs BChirho, which needs AChirho and an unshowable FooChirho): both stay unrenderable, and the recursion state clears;
+      - (C4) a renderable mutual recursion, admitted from either side, with the state cleared. The self-recursive positive is the infix test's EChirho.
     - deriving_chirho/show_tests_chirho.rs: 4 metadata tests.
 - [x] Checks without Cargo:
   - every touched Rust file is a pinned-rustfmt no-op, and `diff --check` and gitleaks are clean;
@@ -53,12 +58,18 @@ The branch `derived-show-precedence-chirho` starts from exact main 6ea3de750d6e6
   - Receipts: tmp-chirho/derived-show-chirho/oracle-unit-main-r2-chirho/. The earlier oracle-unit-main-chirho/ is an invalid partial run: extraction failed before any program ran.
 - [x] Docs (C3): a Derived Show section in print-show-evidence-chirho.md, and these ticks.
 
-C04 also moves: a monomorphic derived type reached through a dictionary now answers as GHC does. The instance dictionary's `show` is the public row that gpt_chirho #28295 asked to keep. A type with parameters reached through a dictionary stays outside this unit.
+- [x] C4, source only, after gpt_chirho's source review (#28303):
+  - The comments and this tasklist state the memo's exact behavior.
+  - Two mutual-recursion tests are added, making 16 new tests in all.
+  - C04 is the ninth claimed mover. A monomorphic derived type reached through a dictionary answers as GHC does, because the instance dictionary's `show` is the public row #28295 asked to keep.
+  - The trace (tmp-chirho/derived-show-chirho/TRACE-chirho.md) is kept as measured. It listed C04 outside the claim; the public-row placement refined that diagnosis.
+  - The boundary is now a derived type with parameters reached through a dictionary.
 
 ## Gate
 
 Proposed with the source checkpoint; it runs only under a builder handed by name.
-- [ ] The 8 main movers become GHC-exact: S01, S03, S04, S06, S11, S18, C05, D03. C04 moves with them.
+- [ ] The 9 movers become GHC-exact: S01, S03, S04, S06, S11, S18, C05, D03, and the monomorphic C04.
+- [ ] A parameterized derived type reached through a dictionary is measured as a calibration probe. If it moves, the gate stops RED for review.
 - [ ] The 14 measured exact rows and every other non-boundary trace row hold.
 - [ ] The native backends still print derived values: the LLVM and Cranelift derived-enum and field-constructor round trips now run the helper.
 - [ ] Mutants on prefix, record and infix precedence and on fixity are caught.
@@ -68,7 +79,7 @@ Proposed with the source checkpoint; it runs only under a builder handed by name
 
 - The runtime Show precedence methods, meaning showsPrec, shows and showParen as functions plus the class defaults (B rows and S13).
 - C01, a hand-written show-only instance at nested precedence.
-- C04 for polymorphic derived types.
+- A derived type with parameters reached through a dictionary. The monomorphic C04 is inside the unit.
 - S09, newtype erasure.
 - Standalone deriving.
 - Hand-written instances.

@@ -158,7 +158,8 @@ pub struct DictPassCtxChirho {
     /// Keys assumed renderable while their own check was under way, since the
     /// outermost check began.
     derived_show_assumed_chirho: RefCell<Vec<String>>,
-    /// Final renderability per derived-Show key, so each key is checked once.
+    /// Final renderability per derived-Show key. A provisional `true` inside a
+    /// recursive cycle is not kept.
     derived_show_known_chirho: RefCell<HashMap<String, bool>>,
     /// Derived-Show key → its generated `$prim_Show_showsPrec_<key>` helper.
     derived_show_helpers_chirho: HashMap<String, CoreIdChirho>,

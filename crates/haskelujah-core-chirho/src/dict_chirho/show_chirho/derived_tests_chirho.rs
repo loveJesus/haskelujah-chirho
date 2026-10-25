@@ -419,6 +419,90 @@ fn a_monomorphic_public_row_becomes_its_helper_at_zero_chirho() {
 }
 
 #[test]
+fn a_mutual_recursion_with_a_missing_renderer_stays_unrenderable_chirho() {
+    // data AChirho = AChirho BChirho; data BChirho = BChirho AChirho FooChirho, where
+    // FooChirho has no Show: the assumption that closes the cycle must not hide it.
+    let context_chirho = context_chirho(vec![
+        (
+            "AChirho",
+            monomorphic_chirho(vec![constructor_chirho(
+                "AChirho",
+                ShowConFormChirho::PrefixChirho,
+                vec![type_chirho("BChirho")],
+            )]),
+        ),
+        (
+            "BChirho",
+            monomorphic_chirho(vec![constructor_chirho(
+                "BChirho",
+                ShowConFormChirho::PrefixChirho,
+                vec![type_chirho("AChirho"), type_chirho("FooChirho")],
+            )]),
+        ),
+    ]);
+    assert_eq!(context_chirho.derived_show_key_chirho("AChirho"), None);
+    assert_eq!(context_chirho.derived_show_key_chirho("BChirho"), None);
+    assert!(
+        context_chirho
+            .derived_show_visiting_chirho
+            .borrow()
+            .is_empty()
+    );
+    assert!(
+        context_chirho
+            .derived_show_assumed_chirho
+            .borrow()
+            .is_empty()
+    );
+}
+
+#[test]
+fn a_renderable_mutual_recursion_is_admitted_from_either_side_chirho() {
+    // data AChirho = AChirho BChirho | NilChirho; data BChirho = BChirho AChirho Int
+    let context_chirho = context_chirho(vec![
+        (
+            "AChirho",
+            monomorphic_chirho(vec![
+                constructor_chirho(
+                    "AChirho",
+                    ShowConFormChirho::PrefixChirho,
+                    vec![type_chirho("BChirho")],
+                ),
+                constructor_chirho("NilChirho", ShowConFormChirho::PrefixChirho, vec![]),
+            ]),
+        ),
+        (
+            "BChirho",
+            monomorphic_chirho(vec![constructor_chirho(
+                "BChirho",
+                ShowConFormChirho::PrefixChirho,
+                vec![type_chirho("AChirho"), type_chirho("Int")],
+            )]),
+        ),
+    ]);
+    assert_eq!(
+        context_chirho.derived_show_key_chirho("AChirho"),
+        Some("AChirho".to_string())
+    );
+    assert_eq!(
+        context_chirho.derived_show_key_chirho("BChirho"),
+        Some("BChirho".to_string())
+    );
+    assert!(
+        context_chirho
+            .derived_show_visiting_chirho
+            .borrow()
+            .is_empty()
+    );
+    assert!(
+        context_chirho
+            .derived_show_assumed_chirho
+            .borrow()
+            .is_empty()
+    );
+}
+
+#[test]
 fn a_wide_type_graph_is_checked_once_per_key_chirho() {
     // T0Chirho has two fields of T1Chirho, T1Chirho two of T2Chirho, and so on: checked
     // afresh at every field, the work would double at each of the 40 levels.
