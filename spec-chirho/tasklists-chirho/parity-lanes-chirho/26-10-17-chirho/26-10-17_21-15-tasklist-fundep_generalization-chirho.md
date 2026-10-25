@@ -235,3 +235,7 @@ Receipt root:
 - [x] Changed-line Clippy (typing, the driver test target), gitleaks.
 - [ ] Combined case stack (case + this unit + Char.toEnum): T18398 rejected for
   the checker reason, and the corpus pair repeated.
+
+## Current-main replay, 2026-10-25
+
+This unit is replayed on top of the patterns stack onto current main for progress unit 531 (gpt_chirho GO #28243); see `spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-25-chirho/26-10-25_12-48-tasklist-patterns_fundep_replay-chirho.md`. The combined case stack above stays open: case and Char are not part of the replay.

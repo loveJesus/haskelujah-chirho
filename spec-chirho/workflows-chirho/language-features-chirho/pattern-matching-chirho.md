@@ -217,8 +217,12 @@ Standalone deriving retains the written applied instance head and its context;
 stock generators supply method bodies. Inline deriving includes visible arguments
 implied by a result-kind arrow, even when the declaration has no visible header
 binders. Invisible forall binders contribute scope but do not become ordinary
-arguments. These producers live in parser `lower_chirho/type_syntax_chirho/` and
-typing `deriving_chirho/declaration_heads_chirho.rs`.
+arguments. Standalone deriving keeps the declaration's written binders, because
+its written head already carries the arguments. The R2 integration's cfd829e3
+measured kind-arrow binders on the standalone route failing current main's
+zero-binder control, so they stay on the inline route only. These producers live
+in parser `lower_chirho/type_syntax_chirho/` and typing
+`deriving_chirho/declaration_heads_chirho.rs`.
 
 Within the same known GADT head and arity, a contradictory generative index means
 an inaccessible arm. Independent consistent components still constrain constructor

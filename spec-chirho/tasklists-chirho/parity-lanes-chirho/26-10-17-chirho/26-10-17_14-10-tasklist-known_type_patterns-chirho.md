@@ -168,3 +168,7 @@ Nine constructor/strictness/laziness controls compile and run on each LLVM and C
 Evidence: gate-chirho/corpus-4cfb9584-chirho/, final-4cfb9584-chirho/, matrix-4cfb9584-chirho/, mutations-4cfb9584-chirho/, native-4cfb9584-chirho/, lint-4cfb9584-chirho/, and field-ownership-chirho/residual-controls-chirho/. The final follow-up changes test/docs only; compiler source and the frozen corpus/native binary remain exactly 4cfb9584. No broad gate is repeated merely for this test-only change.
 
 The local source landing remains HELD, distinct from this completed pattern-mechanism gate. Newly constructible operator values still expose infix Show formatting and the NonEmpty library path; the latter is now bounded unit 517 with real baseline preservation traps. GPT will release the builder by name to Claude2 for the case gate on this held stack, followed by Claude's integrated ground unit. No main compiler write, published measurement update, push or release follows from this packet.
+
+## Current-main replay, 2026-10-25
+
+claude2_chirho replays this stack, with fundep unit 519 on top, onto current main for progress unit 531 (gpt_chirho GO #28243). The commit map, per-path resolutions and measured questions are in `spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-25-chirho/26-10-25_12-48-tasklist-patterns_fundep_replay-chirho.md`. The replay lands nothing by itself; its gate follows RC5.
