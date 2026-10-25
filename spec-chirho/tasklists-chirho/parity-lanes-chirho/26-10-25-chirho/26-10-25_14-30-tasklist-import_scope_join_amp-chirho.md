@@ -49,4 +49,58 @@ Every program is GHC 9.14.1-measured and embedded in `tests/typing_integration_c
 - [x] Post the exact source checkpoint and the proposed gate, and take the builder only by name (#28297, #28307; handed by name in #28308).
 - [x] Gate `g532-import-scope-e60cfd07-lcc-chirho` went RED at focused `typing_integration`, 2026-10-25 15:18 EDT. The exporter inventory named `Control.Lens.Type`: 16 lens aliases exported `&` and had no key. Its run (0af84475) and launcher (c47d0271) receipts are kept byte-for-byte as immutable sets (#28310, #28311).
 - [x] Bind `&` under all 18 current exporters (4463d8b7), and name the lens aliases as preservation. Mutant m6 restores the e60cfd07 two-key list, and m7 drops one synthetic key; the inventory must name the exporter each time.
-- [ ] Gate: build, focused, lint, the controls, a corpus pair moving exactly T12406 and T12589, replay, execution, postflight.
+- [x] Gate `g532-import-scope-5284fd33-chirho`: GREEN through build, focused, lint, the oracle, the mutants, and a corpus pair moving exactly T12406 and T12589, with replay, execution and postflight (#28316, accepted in #28317). The gate record follows.
+
+## Gate record
+
+### RED: `g532-import-scope-e60cfd07-lcc-chirho`, tip e60cfd07
+
+- The builder was handed by name in #28308.
+- Build was GREEN, with frozen CLI 562972cff75a6acb0b7e4cae9251108f42cda639afe8e630c7c903f939bd6ef8, and six focused suites were GREEN.
+- `typing_integration` went RED with rc 101, 39 passed and 1 failed. The exporter inventory reported "`Control.Lens.Type` exports `&`, so its key keeps the preserved scheme". Lint, the oracle, the mutants and the corpus did not run.
+- Cause: the builtin lens interface pushes one export set, which spells the operator `"(&)"`, under 17 Control.Lens names, but only Data.Function and Control.Lens had keys. The three source enumerations had searched for `"&"`.
+- Both receipts are kept byte-for-byte as immutable C-locale sets: run 0af844757834929dacd0daf059671db7b14b716b724fe06d6e7400bfb1138ff8 and launcher c47d02717f709a9ee39ac814f4ad4d816cadc21312e4d3ee616f9bcd8e331ae7.
+
+### GREEN: `g532-import-scope-5284fd33-chirho`, tip 5284fd33
+
+- The builder was handed by name in #28314. All six stages exited 0: build 15:39:56, focused 15:45:36, lint 15:45:43, oracle 15:46:22, mutants 15:47:34 and corpus 16:02:51 EDT.
+- Hashes:
+  - ledger: 0ce9eb6ca5642cb8edfbb53c8cd1eacb9b6352b818f701d561890eb44f61963d, 16 rows and all GREEN;
+  - frozen CLI: aa7b290271f6a87b4b18780bfe99a4683255cb8bb3edca1e74be514d74a746d4;
+  - C-locale run: e1ca05f256ca437498157ffdb676116eb9ea869f1de85c04d572b8eb8d288d13;
+  - C-locale launcher: 2409adf38f95b533ad216e271d826343247032c1675c7fe02756e98250826ddc.
+- Preflight covered the 9-commit chain and the 5 unit paths from 6ea3de75. GHC re-derived all 25 receipts, the judge selftest passed 31, and the 13 tools, the 8 immutable receipt sets, the base CLI and the 3 kept refs were all at their pins. The build had rc 0 and no warnings.
+- Focused, each as its contract requires:
+
+  | suite | passed |
+  |---|---|
+  | core-lib | 148 |
+  | dictionary_evidence | 61 |
+  | instance_obligations | 28 |
+  | io_actions | 9 |
+  | driver-filtered | 479 (1374 filtered) |
+  | typing-lib | 354 |
+  | typing_integration | 40 (the base's 35 and the 5 new tests) |
+
+- Lint went through the diff map: driver short 375/375 and long 87/87, typing short 56/56 and long 0/0, with nothing on an inserted or changed line. Gitleaks scanned 9 commits and found no leaks.
+- Oracle:
+  - the 8 unbound uses, and J22 and A21, move from accepted to rejected for their named reasons;
+  - J20, J21 and A20 hold;
+  - Q01 and Q02 stay accepted and identically loud, which is the declared boundary;
+  - the 7 imports stay accepted and identically loud at run;
+  - the 3 shadowing runs print GHC's answer on both.
+- Mutants:
+  - m1 to m7 each terminated, and each was caught by its named control with the inventory among its new failures;
+  - m6 named `Control.Lens.Type` and m7 named `Control.Lens.Tuple`;
+  - the tree was restored to the baseline, with caught 7 of 7, and part_12 and the unit test file at their tip blobs.
+- Corpus:
+  - both passes byte-identical, fan-out 2, the frozen CLI unchanged across the run, and inputs identical to RC5's;
+  - should_compile unchanged at 885/938;
+  - should_fail moves exactly T12406 and T12589 from ACCEPT to REJECT, at 242/767 rejected against RC5's 240;
+  - the replay gains exactly their 2 ordinary rejections, for 295 lines;
+  - execution verdicts unchanged at 28/35.
+- Postflight:
+  - the frozen CLI is unchanged, and the tree is clean at 5284fd33 with part_12 at its tip blob;
+  - the gate script and the 13 tools are at their pins, and all 8 immutable receipt sets and the base CLI are unchanged;
+  - the 3 kept refs are in place, and no cargo, rustc, Clippy or CLI process was alive.
+- Nothing was written to main or to the progress DB. The two committed GHC measurement artifacts are untouched; gpt_chirho updates both axes together after the fast-forward (#28317).
