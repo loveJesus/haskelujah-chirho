@@ -62,7 +62,7 @@ flowchart TD
     data_ds_chirho["data T = ... deriving Show"] --> meta_ds_chirho["derived_show_metadata_chirho: constructor order, form, labels, field types, precedence"]
     fixity_ds_chirho["infixl/infixr/infix p op (default infixl 9)"] --> meta_ds_chirho
     meta_ds_chirho --> driver_ds_chirho[driver passes it to dict_pass_module_full_with_evidence_chirho]
-    driver_ds_chirho --> parse_ds_chirho{"parse_show_shape_at_chirho: every field of every constructor renders at its precedence?"}
+    driver_ds_chirho --> parse_ds_chirho{"parse_show_shape_at_chirho: every field of every constructor renders at its precedence, within the depth and key bounds?"}
     parse_ds_chirho -->|no| route_ds_chirho[existing route, unchanged]
     parse_ds_chirho -->|yes| helper_ds_chirho["$prim_Show_showsPrec_key d x: one recursive helper per concrete key"]
     helper_ds_chirho --> shapes_ds_chirho["Maybe, Either, tuple and list shapes, and other derived types, call it at their precedence"]
@@ -78,8 +78,19 @@ flowchart TD
 - **Fail-closed:** a key with any field no shape renders (an unknown type, a hand-written
   show-only instance at 11, a function) keeps its existing route; nothing defaults to Int or to
   the runtime space heuristic. A recursive type is admitted when everything else in it renders.
-  Final answers are memoized, so acyclic fan-out is checked once per key. A provisional `true`
-  inside a recursive cycle is not kept and is checked again.
+- **Bounded (C5, gpt_chirho #28328):** the support check fails closed past the parser's own
+  nesting bound (64) and for a key over 512 bytes. A non-regular datatype such as
+  `data N a = Nest (N [a]) | Flat a`, or `data Seq a = Nil | Cons a (Seq (a, a))`, meets a new key
+  at every level, so it keeps its existing route instead of recursing without end, even as a field
+  of a type that is never printed.
+  - A semantic `false` is final at every depth. A `false` found after the outermost check met the
+    depth bound may rest on the bound, so it is not kept.
+  - A `true` records the deepest nesting at which it held and answers only there or shallower. A
+    chain deeper than the bound therefore fails at its root in any call order, while a shallow
+    suffix renders.
+  - A `true` that rested on a key still being checked further out is provisional. It answers later
+    visits within the same outermost check, becomes final when that check renders, and is dropped
+    when it does not. A cycle with fan-out is explored once per key, not 2^n times.
 - **Dictionary route:** a monomorphic type's instance dictionary uses its public row, so
   polymorphic code reaches the same rendering (C04). That placement refined the trace, which had
   listed C04 outside the claim. A type with parameters reached through a dictionary keeps the
@@ -90,7 +101,8 @@ flowchart TD
   - the `DerivedChirho` shape in `show_chirho/shape_chirho.rs`.
 - **Tests:**
   - end to end, `tests/dictionary_evidence_chirho/derived_show_chirho.rs`;
-  - infix structure, in `show_chirho/derived_tests_chirho.rs`;
+  - infix structure and the bounded memo (nested datatypes, the depth bound in either call order,
+    a fan-out cycle), in `show_chirho/derived_tests_chirho.rs`;
   - metadata, in `deriving_chirho/show_tests_chirho.rs`.
 - **Seam:** unit 517 can describe NonEmpty `:|` as infixr 5 through the same metadata, without
   touching the renderer.

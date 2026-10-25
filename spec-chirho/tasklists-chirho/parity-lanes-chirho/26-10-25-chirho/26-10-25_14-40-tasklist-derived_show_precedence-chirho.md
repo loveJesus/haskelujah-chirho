@@ -31,7 +31,7 @@ The branch `derived-show-precedence-chirho` starts from exact main 6ea3de750d6e6
   - **Driver:** lib.rs builds the metadata beside newtype_info and passes it to `dict_pass_module_full_with_evidence_chirho`, the single dictionary-pass call, which every path reaches.
   - **Core:**
     - The `DerivedChirho` shape (shape_chirho.rs) is admitted at any precedence by `derived_show_key_chirho` when every field of every constructor parses at its precedence.
-    - Recursion counts as rendering, and final answers are kept:
+    - Recursion counts as rendering, and final answers are kept (C5 replaces this memo; see below):
       - a `false` is always final, since an assumption only ever answers `true`;
       - a `true` that rested on a key still being checked further out is provisional and is not kept, so a key inside a recursive cycle can be checked again after the outer key is final;
       - acyclic fan-out is checked once per key. (C2's commit message says each key is checked once; C4 corrects that.)
@@ -64,15 +64,38 @@ The branch `derived-show-precedence-chirho` starts from exact main 6ea3de750d6e6
   - C04 is the ninth claimed mover. A monomorphic derived type reached through a dictionary answers as GHC does, because the instance dictionary's `show` is the public row #28295 asked to keep.
   - The trace (tmp-chirho/derived-show-chirho/TRACE-chirho.md) is kept as measured. It listed C04 outside the claim; the public-row placement refined that diagnosis.
   - The boundary is now a derived type with parameters reached through a dictionary.
+- [x] Replay onto main 9a820c64 after row 532 landed (#28320). C1-C4 became 89a7f150, 214d14f6, 27d4cf39 and 66d76d6f. The union proof is GREEN 14/14 (tmp-chirho/derived-show-chirho/replay-9a820c64-chirho/).
+- [x] C5 (286a57b3), source only. A read-only desk-check of the never-compiled unit found two defects in the support check, and gpt_chirho gave GO in #28328:
+  - **D1, a compiler crash on valid Haskell.** A non-regular datatype such as `data N a = Nest (N [a]) | Flat a` met a new key at every level. The parser's depth guard restarted on every call, so the check recursed until the stack overflowed. This happened even for a monomorphic type that only holds such a field. Main compiles these programs.
+  - **D2, compile time.** A provisional `true` was never reused within its outermost check, so a cycle with fan-out was checked 2^n times.
+  - **The fix.**
+    - The check fails closed past the shared depth bound (64) and for a key over 512 bytes.
+    - A `false` that depends on the depth bound is not kept.
+    - A `true` carries the deepest nesting at which it held.
+    - Provisional trues are reused within the outermost check and promoted only when it renders.
+    - The parenthesized branch reuses parenthesize_chirho.
+  - **Three Core tests:**
+    - a nested datatype in both shapes;
+    - the depth boundary in either call order, the depth-limit mutant's control;
+    - a 40-type fan-out cycle, the promotion mutant's control.
+  - That makes 19 new tests in all: core 12, typing 4, driver 3.
+- [x] C6: these ticks, and the workflow's bounded semantics.
 
 ## Gate
 
-Proposed with the source checkpoint; it runs only under a builder handed by name.
+The shape is gpt_chirho #28303, amended by #28328. It runs only under a builder handed by name, on the final tip over main 9a820c64, with the base built in the gate at exact 9a820c64.
 - [ ] The 9 movers become GHC-exact: S01, S03, S04, S06, S11, S18, C05, D03, and the monomorphic C04.
 - [ ] A parameterized derived type reached through a dictionary is measured as a calibration probe. If it moves, the gate stops RED for review.
 - [ ] The 14 measured exact rows and every other non-boundary trace row hold.
+- [ ] Bounded failure, end to end. Each of these terminates within the gate's timeout and stays on the base route:
+  - `N` at a concrete type;
+  - the growing `Seq` family;
+  - an unprinted monomorphic `M` that holds `N Int`.
+
+  A stack overflow, signal, timeout, panic or missing result is RED.
 - [ ] The native backends still print derived values: the LLVM and Cranelift derived-enum and field-constructor round trips now run the helper.
-- [ ] Mutants on prefix, record and infix precedence and on fixity are caught.
+- [ ] typing_integration is identical to the base. Row 532's GREEN receipts and counts are pinned guards.
+- [ ] Mutants are caught on prefix, record and infix precedence, on fixity, on the depth bound (M9) and on provisional promotion (M10).
 - [ ] The corpus does not move.
 
 ## Outside this unit
