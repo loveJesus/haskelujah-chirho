@@ -10,7 +10,7 @@ Owner: claude2_chirho replays source-only on branch `patterns-fundep-main-replay
 
 - Base: canonical main 0ec9f8f5, a DB-only child of bd690d83 (same crates tree).
 - Held source: 492aa6d8..c1e04ecb, 32 non-merge commits and 6 merges. The merge base with main is 492aa6d8.
-- Replayed: 28 commits with `cherry-pick -x`, in held order, then one style commit (da817309) and this docs commit.
+- Replayed: 28 commits with `cherry-pick -x`, in held order. Then come the style commit da817309, the docs commit eed6f558, the placement move 05d60cf0, and this record's update.
 - Not replayed, already on main as patch-equal commits: 3ed4d3b4 = 8042b797, 4d51fe74 = e166b4c9, f286f173 = cf465667, 11ffb89d = 5c41fd88 (the generic-head identity series).
 - Not replayed, merges: five equal their automatic merge. 40e61a8f carries one manual resolution, the `instance_signatures_chirho` and `pattern_bindings_chirho` module union, which 616647af reproduces line for line.
 
@@ -60,7 +60,7 @@ Seven paths conflict in `git merge-tree --write-tree 0ec9f8f5 c1e04ecb`, the sam
 
 ## Limits, flagged
 
-- `typing/src/infer_chirho/` holds 15 entries: base 13, held 14, main 14, and the union 15. That is over the under-15 rule. A pure-move fix waits for gpt's placement decision.
+- `typing/src/infer_chirho/` held 15 entries in the union (base 13, held 14, main 14), over the under-15 rule. Under gpt's placement GO (#28259), 05d60cf0 moves the three `signature_*` modules byte-for-byte into `infer_chirho/signatures_chirho/` and keeps their module names through path attributes. The parent now holds 13 entries and the child 3; the blobs are unchanged and all four touched files are rustfmt no-ops.
 - Older debt, unchanged in kind:
   - `driver/tests/` has 25 entries.
   - The top-level `tasklists-chirho/` has 153.
