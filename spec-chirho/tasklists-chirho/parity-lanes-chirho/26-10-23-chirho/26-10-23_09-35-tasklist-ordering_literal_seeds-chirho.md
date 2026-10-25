@@ -11,6 +11,10 @@ Owner: HASKELUJAH/claude_chirho. GPT owns coordination, canonical main and the p
 
 The branch `ordering-literal-seeds-chirho` starts from exact main bd690d83e289b4eb0a2153ff802b34db20367f38, whose crates tree is a48b0b73.
 
+After gate run 1, C1-C4 were replayed onto main 0ec9f8f5 (gpt_chirho #28249). That main is a DB-only child of bd690d83, opening row 531.
+- The replay is `ordering-literal-seeds-replay-chirho`: C1 27635b4b, C2 a260cc5e, C3 4a7625d7, C4 4d443803.
+- It differs from 655b590a only by main's DB commit. Its patch-ids, trees and messages are identical (replay proof 22/22).
+
 ## Source
 
 - [x] C2 (eedeb478), one commit:
@@ -38,7 +42,7 @@ The branch `ordering-literal-seeds-chirho` starts from exact main bd690d83e289b4
     - Limits: dictionary_evidence_chirho/ goes from 8 to 9 entries, and the new unit is 225 lines.
     - The driver's tests/ directory is already at 24 entries. That is older debt; this unit adds nothing there.
     - These checks ran only the base CLI. What the candidate would do was a prediction until gate run 1, which showed T10 and T11 still wrong.
-- [x] C4, source only, after gate run 1 (gpt_chirho #28197 and #28198):
+- [x] C4 (655b590a, replayed as 4d443803), source only, after gate run 1 (gpt_chirho #28197 and #28198):
   - The bare-literal test asserts only R1, R2, R5, R9 and T12. Its 5 test names stay.
   - T10 and T11 stay in the file with GHC's answers, in an unasserted local table, so the oracle still extracts all 28 programs. No committed test pins their wrong behavior.
   - The seed section in dictionary-evidence-chirho.md now separates them:
@@ -57,14 +61,34 @@ The gate runs only under a builder handed by name. It is proposed with the sourc
   - Diagnosis 884141af: `succ LT` is rejected naming the missing `Enum Ordering` instance, and `maximum [LT, GT, EQ]` crashes in the Int `<=` primop.
   - The run, its launcher 87a95826, the ledger and the diagnosis are preserved byte for byte.
 - [x] Measured without Cargo, using the base CLI 2ddfca25 and db3d7bfa on the 28 programs: the candidate answers 26 of 28 as GHC does. Its two misses are T10 and T11.
-- [ ] Build with 0 warnings. The focused suites differ from their baselines only by the new tests.
-- [ ] A movement contract. Every other row, probe, matrix row and corpus verdict stays identical. The rows that move:
+- [x] Run 2, `rc5-ordering-4d443803-chirho` on the replayed C4 (4d443803), 2026-10-25 13:15-14:13: GREEN, all 11 stages and the postflight.
+  - Ledger f814ed31 (27 lines, none RED), launcher 835e4440, frozen CLI 77586815.
+  - That CLI is not byte-identical to run 1's db3d7bfa, though C4 changed no compiler source. Its candidate streams match the db3d7bfa prediction on every measured row, apart from T11's heap numbers.
+- [x] Build with 0 warnings. The focused suites differ from their baselines only by the new tests.
+  - dictionary_evidence has 61: r2's 56 plus the 5 new tests.
+  - core-lib (148), instance_obligations (28), io_actions (9), the filtered driver suite (479) and typing-lib (354) equal r2.
+- [x] A movement contract. Every other row, probe, matrix row and corpus verdict stays identical. The rows that move:
   - six run verdicts move to GHC's: R1, R2, R5, R9, T12 and T01;
   - T04's `check` moves to the mismatch;
   - T10 moves from a run crash to the named missing instance at `check`;
   - T11 holds.
-- [ ] The mutants are caught: m1 (drop LT), m2 (seed them at Bool) and m3 (seed them at `forall a. a`). The existing 12 stay unchanged.
-- [ ] Postflight passes.
+  - Measured:
+    - the oracle candidate answers 26 of 28 as GHC does;
+    - the matrix moves exactly D02, E02 and OrderingCompareRows to EXACT, with 24 requirements met;
+    - the corpus equals r2's (28/35, none fixed, none lost);
+    - lint matches r2 in both diagnostic forms, and gitleaks finds nothing in the 4 commits.
+- [x] The mutants are caught: m1 (drop LT), m2 (seed them at Bool) and m3 (seed them at `forall a. a`). The existing 12 stay unchanged.
+  - m1 and m3 fail the bare-literal test and the Int rejection test.
+  - m2 fails both of those and the annotated test.
+  - The existing sets catch 7, 3 and 2, as in r2. Their only new failures are among the 5 new tests.
+- [x] Postflight passes: the frozen CLI, the tree, the 17 tools and the 21 immutable receipt sets are unchanged, and no compiler or CLI process is alive.
+
+**Directory digests.** Run from gate-chirho/, a digest is `find <dir> -type f -exec shasum -a 256 {} + | LC_ALL=C sort | shasum -a 256`.
+- Run 2's directory (24,667 files) is 57d3c449b1c16354c81d88e2aab45a4caaefac10e771505cec4f28e336d7967a.
+- When files share contents, the sort locale orders them by path. That changes the digest:
+  - the bd883e3f reported in #28280 is run 2's digest under en_US.UTF-8;
+  - the gate's own pins were taken in that locale, so run 1's directory is f40fd8ed there and 409fc34e under `LC_ALL=C`.
+- Future digest helpers pin `LC_ALL=C` (gpt_chirho #28282).
 
 ## Outside this unit
 
@@ -72,3 +96,5 @@ The gate runs only under a builder handed by name. It is proposed with the sourc
 - Rejecting unbound constructors in general.
 - Eq/Ord defaulting to Int without Num.
 - T15, a user `data Ordering`.
+- `Enum`, `Bounded` and `Read` for `Ordering` (T10).
+- The Ord method model behind `maximum`, `minimum` and `<=` at non-scalar types (T11).
