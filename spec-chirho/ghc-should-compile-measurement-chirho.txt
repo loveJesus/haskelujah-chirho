@@ -1,46 +1,46 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 # GHC should_compile — timed measurement artifact
-# measured: 2026-10-17 UTC by HASKELUJAH/claude_chirho; retained receipts and source
+# measured: 2026-10-25 UTC by HASKELUJAH/claude2_chirho; retained receipts and source
 #   independently reviewed by HASKELUJAH/gpt_chirho. Local development evidence.
-# code measured: b7a0cd0d, instance-method wanted checks including the landed if and
-#   comprehension-let repairs. Source candidate 8ee56c50 is tasklist-only on that build.
-# local source landing: a8e321206fe000bedfeeb8b046f04e40f32ab576; compiler and Cargo
-#   paths are byte-identical to 8ee56c50. No remote push or release.
-# mechanism: instance head variables and supported local method quantifiers are rigid;
-#   written instance/method contexts are givens, and leftover wanteds get the same
-#   supported verdict as top-level signature bindings. Pending module obligations are
-#   isolated; unresolved families, incomplete contexts and non-renaming InstanceSigs
-#   retain their declared boundaries. Instance lowering now preserves written signatures.
+# code measured: 5284fd33a8dcdbcfe4d162d1602cda9c44789937, unit 532's import-scoped
+#   `join` and `&` keys. The post-gate tasklist commit 000d5c45 changes no crate byte.
+# local source landing: 000d5c4571b9c7bf4857872c439b593f3df6a316 on main_chirho. This
+#   paired measurement publication changes specs only. No remote push or release.
+# mechanism: bare `join` and `&` no longer enter every module. Their preserved schemes
+#   sit under the builtin interfaces that export them, and driver Phase 3.9 exposes a key
+#   only through an import. Qualified imports now receive the real key instead of the
+#   accept-anything placeholder. Synthetic Lens aliases preserve their prior approximation;
+#   they are inventory evidence, not individual GHC-export claims.
 # build: cargo build -j2 --bin haskelujah, DEBUG, macOS arm64, zero compiler warnings.
 # frozen CLI SHA256:
-#   3ca4fc54ee76f4eb5a1705708fdb3c8229a7950fbec9ff743ba048071e247b49
-# evidence: two complete passes per axis are byte-identical. GPT verified all 1705
-#   current source hashes and all 3410 retained raw verdict/source identities, table
-#   membership against main ff4f0eb2, exit-code consistency and stable binary identity.
-# receipts: ../haskelujah-workspaces-chirho/haskelujah-claude-chirho/tmp-chirho/
-#   instance-method-wanteds-chirho/corpus-b7a0cd0d-chirho/
-# reviewer receipts: tmp-chirho/gpt-parity-review-chirho/instance-method-final-chirho/
-# independent execution: GPT ran nine delta/restoration files on GHC 9.14.1, current
-#   frozen main dda4b202 and this CLI (27 commands); all stated membership facts reproduce.
-# focused producer gates: instance obligations 28, rigid types 14, typing integration 35,
-#   dictionary evidence 10, typing unit 354, parser 370 (known nested-parens stack test
-#   excluded), filtered driver comprehension/let/match tests 43; all pass at this scope.
-# lint: zero warnings on changed lines; 339 baseline warnings on unchanged lines remain.
-# mutations: 12 meaningful mutants build and fail behavioral controls; restoration is
-#   28/0. Two rules are redundant by trace; the redundant equality retry was removed.
-#   The isolation mutant is caught through leftover disposal, not by the two isolation
-#   canaries. No independent proof of private-context separation is inferred from it.
-# runtime: producer's 24 controls equal frozen main, including its known wrong outputs
-#   and crashes. Replay 293/293 REJECT; execution 28/35 retains the same seven failures.
-#   Default-stack parser SIGABRT, runtime dictionary dispatch, incomplete built-in method
-#   metadata and non-renaming InstanceSigs remain open. No full driver --lib or ghc_bulk.
+#   aa7b290271f6a87b4b18780bfe99a4683255cb8bb3edca1e74be514d74a746d4
+# evidence: two complete passes per axis are byte-identical at fan-out 2, with the frozen
+#   binary unchanged before and after. The canonical C-locale run digest is
+#   e1ca05f256ca437498157ffdb676116eb9ea869f1de85c04d572b8eb8d288d13.
+#   The launcher digest is 2409adf38f95b533ad216e271d826343247032c1675c7fe02756e98250826ddc.
+# receipts: ../haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/
+#   join-amp-scope-1025-chirho/gate-chirho/runs-chirho/
+#   g532-import-scope-5284fd33-chirho/
+# independent review: GPT reproduced the 16-row all-GREEN ledger, ledger SHA-256
+#   0ce9eb6ca5642cb8edfbb53c8cd1eacb9b6352b818f701d561890eb44f61963d,
+#   frozen binary hash, C-locale run and launcher digests, membership counts and lists.
+# focused producer gates: core 148, dictionary evidence 61, instance obligations 28,
+#   IO actions 9, filtered driver 479 (1374 filtered), typing unit 354 and typing
+#   integration 40; all pass at this scope.
+# lint: driver warnings 375 short/87 long and typing-rooted warnings 56 short/0 long
+#   match the base through the diff map; no error or diagnostic lies on changed code.
+# mutations: m1-m7 terminate and are caught by their named controls, with the dynamic
+#   exporter inventory among every mutant's new failures; restoration is byte-exact.
+# oracle/runtime: 25 GHC-measured scope programs satisfy the movement contract. Imported
+#   `join` and `&` still lack runtime bindings, and unimported fully qualified forms remain
+#   overaccepted; both are explicit boundaries. Execution stays 28/35.
 # protocol: published directory-label axes and denominators are preserved; standalone
 #   GHC/all.T disagreements remain a separate protocol decision, never relabelled here.
 # method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
 #   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
-#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, AS
-#   COMMITTED AT b7a0cd0d, unchanged from main (no runner file differs), and the
-#   repaired rule, so there is no later tools change to separate from it. Order: TIMEOUT
+#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh. The runner
+#   and its accept/reject input lists are byte-identical to the preceding RC5 measurement.
+#   Order: TIMEOUT
 #   (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC (a real Rust panic
 #   header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0 and no `error[E`).
 #   A panic header is `thread '<name>' panicked at ...` with an optional ALL-DIGIT thread
@@ -60,25 +60,20 @@
 # STABILITY: DETERMINISTIC — two complete byte-identical passes, no exit-code anomalies.
 # QUOTE-AS: ~94% (885 of 938) — do not quote a third significant figure
 #
-# QUOTE BOTH AXES TOGETHER: ~94% (885 of 938), and 240 of 767 = 31.3%, without a single
-#   reject label until L.J.'s reporting-policy decision. Both rounding readings of the
-#   current reject count are ~31%; this arithmetic does not choose a uniform policy or
-#   relabel earlier artifacts. No public-site change or deployment.
+# QUOTE BOTH AXES TOGETHER: ~94% (885 of 938), and 242 of 767 = 31.6%, without a single
+#   reject label until L.J.'s reporting-policy decision. The reject count reads ~31% by
+#   truncation or ~32% by nearest-integer rounding; this arithmetic does not choose a
+#   uniform policy or relabel earlier artifacts. No public-site change or deployment.
 #
-# CURRENT CHANGE SINCE MAIN 152d904b (compiler ff4f0eb2 plus the verdict-neutral
-#   comprehension repair): accept membership unchanged; reject +4, zero lost.
-#   tcfail046: missing Eq for expanded Process; tcfail065: distinct rigid variables;
-#   tcfail067: missing Ord a under Num a; tcfail169: missing Show under recursion.
-#   Each matches GHC's reason. tcfail065 renders both variables as x (diagnostic nit).
-#   T13142, T14010 and T5676 stay accepted; T15799/T15801 remain accepted as on main,
-#   not accidental kind-reason gains. No corpus-name exceptions were added.
-# PREVIOUS SOURCE LANDINGS: if repair 6a629d35, frozen ff4f0eb2; comprehension repair
-#   f36a5975, frozen dda4b202, landed c4e192cc. Both paired axes had unchanged membership.
-#   The earlier guard/otherwise/GADT/LLVM repair e9c2ab25 (4dceabb3) retained acceptance
-#   and added T20768_fail's GHC-reason rejection. Prior full receipts remain in Git and
-#   their named worktree evidence directories; historical gates below retain their scope.
+# CURRENT CHANGE SINCE THE 2026-10-17 PUBLISHED MEASUREMENT: should_compile membership
+#   is identical at 885/938. On should_fail, only T12406 and T12589 move from ACCEPT to
+#   ordinary REJECT for the unimported `join` and `&`, as GHC rejects them. No corpus-name
+#   exception was added; replay gains exactly those two rejections and execution is unchanged.
+# PREVIOUS PUBLISHED MEASUREMENT: code b7a0cd0d, source landing a8e32120, frozen CLI
+#   3ca4fc54ee76f4eb5a1705708fdb3c8229a7950fbec9ff743ba048071e247b49,
+#   with 885/938 should_compile and 240/767 should_fail. Its full receipts remain retained.
 #
-# HISTORICAL STACK EVIDENCE follows: the previous header measured 0f70ee23 (2026-10-12),
+# HISTORICAL STACK EVIDENCE follows: an earlier header measured 0f70ee23 (2026-10-12),
 #   frozen CLI c57e064588404d77d7195429aa76a65762048d8065ce6edff40adb54048d0641.
 #   Historical gates below apply to their named sources, not to the final repair.
 #
