@@ -959,7 +959,11 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // Data.Function: (&) :: a -> (a -> b) -> b
-    // Bound under the modules that export it, so it is in scope only through their imports.
+    // Bound under every module that exports it, so it is in scope only through their imports.
+    // Data.Function and Control.Lens carry the function's known scheme. The builtin lens
+    // interface also exports `(&)` under sixteen more Control.Lens.* names; their keys
+    // preserve the scheme those imports reached through the old bare seed, an interface
+    // approximation rather than each module's measured export.
     // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
     {
         let a_chirho = TyVarChirho(7280);
@@ -978,7 +982,26 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
                 TyChirho::VarChirho(b_chirho),
             ),
         };
-        for module_chirho in ["Data.Function", "Control.Lens"] {
+        for module_chirho in [
+            "Data.Function",
+            "Control.Lens",
+            "Control.Lens.Type",
+            "Control.Lens.Lens",
+            "Control.Lens.Getter",
+            "Control.Lens.Setter",
+            "Control.Lens.Fold",
+            "Control.Lens.Traversal",
+            "Control.Lens.Prism",
+            "Control.Lens.Iso",
+            "Control.Lens.Review",
+            "Control.Lens.At",
+            "Control.Lens.Each",
+            "Control.Lens.Indexed",
+            "Control.Lens.TH",
+            "Control.Lens.Combinators",
+            "Control.Lens.Operators",
+            "Control.Lens.Tuple",
+        ] {
             env_chirho.bind_chirho(format!("{module_chirho}.&"), amp_chirho.clone());
         }
     }
