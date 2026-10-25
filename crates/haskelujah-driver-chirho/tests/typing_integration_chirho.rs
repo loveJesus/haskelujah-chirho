@@ -4,6 +4,11 @@
 use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
+// A test crate root's `mod` resolves beside the root file, so the submodule
+// in this target's own directory is named by path.
+#[path = "typing_integration_chirho/import_scope_chirho.rs"]
+mod import_scope_chirho;
+
 // Independently executed under GHC 9.14.1: 42 / 7 / 11 / True.
 // The infix and context orders differ from normalized body traversal; the
 // explicit forall and prefix form are controls that must retain their order.

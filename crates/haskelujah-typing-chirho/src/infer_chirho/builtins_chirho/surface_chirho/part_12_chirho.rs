@@ -1,7 +1,8 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 //! Builtin type seeds, part 12 of 14: original lines 18235-19192 of
-//! `seed_builtins_chirho`, in order (50 named binds).
+//! `seed_builtins_chirho`, in order (50 named binds). Since unit 532, `join` and `&` bind
+//! once under each module that exports them instead of under their bare names.
 
 use crate::env_chirho::TyEnvChirho;
 use crate::infer_chirho::mk_type_rep_ty_chirho;
@@ -720,33 +721,45 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // join :: Monad m => m (m a) -> m a
+    // Bound under every module that exports it and reached only through an import, so a
+    // module that imports none of them reports `join` unbound, as GHC does (GHC-88464).
+    // The semigroupoids modules keep the scheme their imports reached through the old bare
+    // seed. workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
     {
         let m_chirho = TyVarChirho(7250);
         let a_chirho = TyVarChirho(7251);
-        env_chirho.bind_chirho(
-            "join".to_string(),
-            SchemeChirho {
-                vars_chirho: vec![m_chirho, a_chirho],
-                preds_chirho: vec![SchemePredChirho {
-                    class_name_chirho: "Monad".to_string(),
-                    ty_chirho: TyChirho::VarChirho(m_chirho),
-                    extra_tys_chirho: vec![],
-                }],
-                ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::AppChirho(
-                        Box::new(TyChirho::VarChirho(m_chirho)),
-                        Box::new(TyChirho::AppChirho(
-                            Box::new(TyChirho::VarChirho(m_chirho)),
-                            Box::new(TyChirho::VarChirho(a_chirho)),
-                        )),
-                    ),
-                    TyChirho::AppChirho(
+        let join_chirho = SchemeChirho {
+            vars_chirho: vec![m_chirho, a_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(m_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(m_chirho)),
+                    Box::new(TyChirho::AppChirho(
                         Box::new(TyChirho::VarChirho(m_chirho)),
                         Box::new(TyChirho::VarChirho(a_chirho)),
-                    ),
+                    )),
                 ),
-            },
-        );
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::VarChirho(m_chirho)),
+                    Box::new(TyChirho::VarChirho(a_chirho)),
+                ),
+            ),
+        };
+        for module_chirho in [
+            "Control.Monad",
+            "GHC.Base",
+            "Data.Functor.Apply",
+            "Data.Functor.Bind",
+            "Data.Functor.Bind.Class",
+            "Data.Functor.Alt",
+            "Data.Functor.Plus",
+        ] {
+            env_chirho.bind_chirho(format!("{module_chirho}.join"), join_chirho.clone());
+        }
     }
 
     // guard :: Alternative f => Bool -> f ()
@@ -945,25 +958,27 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     // Data.Function: (&) :: a -> (a -> b) -> b
+    // Bound under the modules that export it, so it is in scope only through their imports.
+    // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
     {
         let a_chirho = TyVarChirho(7280);
         let b_chirho = TyVarChirho(7281);
-        env_chirho.bind_chirho(
-            "&".to_string(),
-            SchemeChirho {
-                vars_chirho: vec![a_chirho, b_chirho],
-                preds_chirho: vec![],
-                ty_chirho: TyChirho::fun_n_chirho(
-                    vec![
+        let amp_chirho = SchemeChirho {
+            vars_chirho: vec![a_chirho, b_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(a_chirho),
+                    TyChirho::fun_chirho(
                         TyChirho::VarChirho(a_chirho),
-                        TyChirho::fun_chirho(
-                            TyChirho::VarChirho(a_chirho),
-                            TyChirho::VarChirho(b_chirho),
-                        ),
-                    ],
-                    TyChirho::VarChirho(b_chirho),
-                ),
-            },
-        );
+                        TyChirho::VarChirho(b_chirho),
+                    ),
+                ],
+                TyChirho::VarChirho(b_chirho),
+            ),
+        };
+        for module_chirho in ["Data.Function", "Control.Lens"] {
+            env_chirho.bind_chirho(format!("{module_chirho}.&"), amp_chirho.clone());
+        }
     }
 }
