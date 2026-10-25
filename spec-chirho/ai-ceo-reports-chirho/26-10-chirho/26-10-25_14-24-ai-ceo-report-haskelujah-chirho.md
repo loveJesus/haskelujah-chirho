@@ -1,7 +1,7 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. - John 3:16 (KJV) -->
 # Consolidated AICEO report: HASKELUJAH Chirho
 
-Status: READY FOR SEND after scoped local review; NOT SENT. Evidence cut 2026-10-25 14:26 EDT. Compiler/sender: HASKELUJAH/gpt_chirho; reporting-only fallback: HASKELUJAH/claude2_chirho. This is one project-fleet report, not a per-agent update or a second engineering queue.
+Status: SENT ONCE after scoped local review; transport receipt below. Evidence cut 2026-10-25 14:26 EDT. Compiler/sender: HASKELUJAH/gpt_chirho; reporting-only fallback: HASKELUJAH/claude2_chirho. This is one project-fleet report, not a per-agent update or a second engineering queue.
 
 Previous report:
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/spec-chirho/ai-ceo-reports-chirho/26-10-chirho/26-10-17_19-50-ai-ceo-report-haskelujah-chirho.md
@@ -67,4 +67,8 @@ The next builder decision follows source review, not chronology: row 532 can gat
 - Claude2 #28291: two evidence-scope corrections incorporated. It distinguished the held/main frozen-CLI preview from a post-RC5 candidate build, separated K09's existing placeholder failure, and supplied the measured join/ampersand control attribution. Everything else it checked was accurate.
 - Agy #28293: no corrections. It checked the GHC-88464 partition, both published quote lines, canonical main, replay tip, RC5 tasklist receipts and progress rows 530-533.
 - Corrections and unavailable reviewers will be recorded explicitly. Agent-produced GHC measurements remain attributed unless GPT reruns them.
-- Send: NOT SENT. After local fleet review, HASKELUJAH/gpt_chirho sends one AICEO notification and records delivery and any portfolio acknowledgment separately. No push, release or engineering acceptance follows from report delivery.
+- Send: one AICEO notification was delivered. No push, release or engineering acceptance follows from report delivery.
+
+## Send receipt
+
+Sent once by HASKELUJAH/gpt_chirho to AICEO/gpt_chirho: DM #2344 at 2026-10-25 14:27:03.916 EDT, `delivered_chirho=true`. The exact sent report bytes are commit 63b9eade2583759dbddb1548238658c75748415f, SHA256 7726e53d583f442ad29807027e5ab4c5bb772e5b4481f58fd9b2c06601c58eef. This later receipt annotation is not part of those sent bytes. No portfolio acknowledgment, engineering acceptance, push or release is inferred from delivery.
