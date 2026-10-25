@@ -52,9 +52,13 @@ mod instance_signatures_chirho;
 mod pattern_bindings_chirho;
 mod records_chirho;
 mod rigid_chirho;
+// The signature modules live together in `infer_chirho/signatures_chirho/`.
 #[cfg(test)]
+#[path = "infer_chirho/signatures_chirho/signature_binder_tests_chirho.rs"]
 mod signature_binder_tests_chirho;
+#[path = "infer_chirho/signatures_chirho/signature_binders_chirho.rs"]
 mod signature_binders_chirho;
+#[path = "infer_chirho/signatures_chirho/signature_conversion_chirho.rs"]
 mod signature_conversion_chirho;
 
 use builtins_chirho::seed_builtins_chirho;
