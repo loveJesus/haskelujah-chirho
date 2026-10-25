@@ -17,6 +17,7 @@ flowchart TD
     surface_chirho --> seeded_chirho[(Seeded TyEnvChirho)]
 
     seeded_chirho -- via builtin_value_schemes_chirho --> driver_chirho[Driver merges into imported value types with or_insert: an import wins]
+    driver_chirho --> imports_chirho[Phase 3.9: each imported name takes its Module.name scheme first]
     seeded_chirho -- via InferCtxChirho::new_chirho --> shadow_chirho[infer_module_chirho: collect_module_shadowed_names_chirho, then remove_chirho]
     shadow_chirho --> rebind_chirho[Phases 0b-2: foreign imports, classes, instances, data and newtype constructors bind]
     rebind_chirho --> groups_chirho[Phase 3: SCC binding groups]
@@ -44,6 +45,19 @@ flowchart TD
 - `collect_module_shadowed_names_chirho` gathers the module's top-level function, signature and pattern-bound names, its data and newtype constructors, and its record field names. `infer_module_chirho` removes all of them from the seeded environment before Phase 0, then the module's own declarations bind them.
 - Class methods are not removed. Phase 1a binds them over the seed.
 - The driver's copy goes the other way. It merges `builtin_value_schemes_chirho()` into the module's imported value types with `or_insert`, so an imported scheme wins over a builtin of the same name.
+
+## Module-scoped builtins
+
+- `join` and `&` are bound under `<Module>.<name>`, never under their bare names (unit 532). `join` binds under `Control.Monad`, `GHC.Base` and the five semigroupoids modules, and `&` under `Data.Function` and `Control.Lens`: every builtin interface that exports them.
+- For each value an import exposes, driver Phase 3.9 looks up `<Module>.<name>` first:
+  - an open or selective import binds the bare name to that scheme;
+  - a qualified import binds `<qualifier>.<name>`;
+  - hiding the name, or leaving it out of an import list, binds nothing.
+- A module that imports none of them reports the name unbound, as GHC does (GHC-88464).
+- Boundaries:
+  - `InferCtxChirho::new_chirho` still seeds every canonical key, so an unimported fully qualified `Control.Monad.join` still checks where GHC reports GHC-76037.
+  - `guard` and the other non-Prelude bare seeds keep the old route.
+  - Neither `join` nor `&` has a runtime implementation yet.
 
 ## Unbound constructors
 

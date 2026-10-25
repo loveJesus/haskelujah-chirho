@@ -40,7 +40,7 @@ Every program is GHC 9.14.1-measured and embedded in `tests/typing_integration_c
 
 - [x] Trace the seed, Phase 3.9 and every interface that exports either name (agy #28275, claude #28273, claude2 #28278).
 - [x] Measure the 20 controls and the four corpus files on GHC 9.14.1 and frozen main 2ddfca25.
-- [ ] Write the controls and the module-qualified seed; rustfmt, diff-check, gitleaks, and GHC receipts from the committed file.
-- [ ] Remeasure the before-state on the post-RC5 base CLI.
+- [x] Write the controls and the module-qualified seed; rustfmt, diff-check, gitleaks, and GHC receipts from the committed file (GREEN 20/20).
+- [x] Remeasure the before-state on the post-RC5 base CLI 77586815: 12 GHC-rejected programs accepted, the 11 others as GHC.
 - [ ] Post the exact source checkpoint and the proposed gate; take a builder only by name.
 - [ ] Gate: build, focused, lint, the controls, a corpus pair moving exactly T12406 and T12589, replay, execution, postflight.
