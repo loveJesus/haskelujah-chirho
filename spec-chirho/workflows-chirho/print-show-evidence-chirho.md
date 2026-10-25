@@ -41,12 +41,55 @@ flowchart TD
 - Bootstrap lists and evidenced lists share one recursive worker generator. Each
   shape's element renderer is emitted once, with an explicit separator parameter.
 - A user instance leaf needs an actual body, not just a name-table entry. Its show
-  method can serve list/tuple elements at precedence zero. A show-only implementation
-  is not assumed to implement showsPrec 11: that unsupported argument stays on the
-  dictionary path. General derived/user showsPrec behavior is not claimed complete.
+  method can serve list/tuple elements at precedence zero. A hand-written show-only
+  implementation is not assumed to implement showsPrec 11: that argument stays on the
+  dictionary path. Derived Show is rendered from its constructor metadata instead
+  (below); hand-written showsPrec behavior is not claimed.
 - The dictionary pass rewrites only when the exact generated `Show` binding exists.
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.
 - The RTS records allocation kind out of band before interpreting thunk headers; constructor
   payload bits cannot masquerade as thunk state.
 - String append owns borrowed input bytes before any allocation that can trigger collection.
+
+## Derived Show (row 533, 2026-10-25)
+
+gpt_chirho #28285, #28295. The derived instance supplies `show`, the class's only method. Its
+precedence comes from constructor metadata, rendered in Core with GHC's derived rules:
+
+```mermaid
+flowchart TD
+    data_ds_chirho["data T = ... deriving Show"] --> meta_ds_chirho["derived_show_metadata_chirho: constructor order, form, labels, field types, precedence"]
+    fixity_ds_chirho["infixl/infixr/infix p op (default infixl 9)"] --> meta_ds_chirho
+    meta_ds_chirho --> driver_ds_chirho[driver passes it to dict_pass_module_full_with_evidence_chirho]
+    driver_ds_chirho --> parse_ds_chirho{"parse_show_shape_at_chirho: every field of every constructor renders at its precedence?"}
+    parse_ds_chirho -->|no| route_ds_chirho[existing route, unchanged]
+    parse_ds_chirho -->|yes| helper_ds_chirho["$prim_Show_showsPrec_key d x: one recursive helper per concrete key"]
+    helper_ds_chirho --> shapes_ds_chirho["Maybe, Either, tuple and list shapes, and other derived types, call it at their precedence"]
+    helper_ds_chirho --> row_ds_chirho["a monomorphic type's public row $prim_Show_show_T becomes the helper at 0"]
+    row_ds_chirho --> uses_ds_chirho[evidenced print, show occurrences and the instance dictionary]
+```
+
+- **Rules:**
+  - prefix `C a1 a2` is parenthesized above 10, with fields at 11, and a bare `C` has no fields;
+  - a record `C {l = a}` is parenthesized above 10, with fields at 0 and labels in declaration order;
+  - a binary symbolic constructor `a1 op a2` is parenthesized above its precedence p, with both
+    operands at p + 1 whatever the associativity.
+- **Fail-closed:** a key with any field no shape renders (an unknown type, a hand-written
+  show-only instance at 11, a function) keeps its existing route; nothing defaults to Int or to
+  the runtime space heuristic. A recursive type is admitted when everything else in it renders.
+- **Code:**
+  - `crates/haskelujah-typing-chirho/src/deriving_chirho/show_chirho.rs` (the instance and the metadata);
+  - `crates/haskelujah-core-chirho/src/dict_chirho/show_chirho/derived_chirho.rs` (the renderer);
+  - the `DerivedChirho` shape in `show_chirho/shape_chirho.rs`.
+- **Tests:**
+  - end to end, `tests/dictionary_evidence_chirho/derived_show_chirho.rs`;
+  - infix structure, in `show_chirho/derived_tests_chirho.rs`;
+  - metadata, in `deriving_chirho/show_tests_chirho.rs`.
+- **Seam:** unit 517 can describe NonEmpty `:|` as infixr 5 through the same metadata, without
+  touching the renderer.
+- **Not claimed:**
+  - the runtime precedence methods (`showsPrec`, `shows`, `showParen` as functions) and the class defaults;
+  - a hand-written show-only instance at nested precedence (C01);
+  - a type with parameters reached through a dictionary;
+  - newtypes (S09), standalone deriving, and GADT, prefix-symbolic and backtick constructor declarations.
