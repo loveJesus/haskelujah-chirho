@@ -52,6 +52,7 @@ flowchart TD
   - `join` carries its own scheme under `Control.Monad` and `GHC.Base`.
   - The five semigroupoids modules keep the scheme their imports reached before.
   - `&` carries its own scheme under `Data.Function` and `Control.Lens`.
+  - The builtin lens interface pushes one export set under 16 more `Control.Lens.*` names. Their `&` keys keep the scheme those imports reached before, which preserves an interface approximation and is not a per-module GHC claim. The keys numbered 18 for `&` at unit 532, but the control derives the set from the interfaces rather than counting it.
 - For each value an import exposes, driver Phase 3.9 looks up `<Module>.<name>` first:
   - an open or selective import binds the bare name to that scheme;
   - a qualified import binds `<qualifier>.<name>`;
@@ -60,6 +61,7 @@ flowchart TD
 - Boundaries:
   - `InferCtxChirho::new_chirho` still seeds every canonical key, so an unimported fully qualified `Control.Monad.join` still checks where GHC reports GHC-76037.
   - The semigroupoids modules' preserved scheme is Monad's `join`, not their `Bind` method's own. That approximation predates this unit.
+  - Which `Control.Lens.*` modules really export `(&)` was not measured. Their preserved keys carry no GHC-exact claim, and no oracle row covers them.
   - `guard` and the other non-Prelude bare seeds keep the old route.
   - Neither `join` nor `&` has a runtime implementation yet.
 
