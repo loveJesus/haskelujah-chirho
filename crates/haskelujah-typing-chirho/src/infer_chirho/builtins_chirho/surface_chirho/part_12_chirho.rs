@@ -724,7 +724,8 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
     // Bound under every module that exports it and reached only through an import, so a
     // module that imports none of them reports `join` unbound, as GHC does (GHC-88464).
     // The semigroupoids modules keep the scheme their imports reached through the old bare
-    // seed. workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+    // seed, a preserved approximation of their Bind method rather than its own scheme.
+    // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
     {
         let m_chirho = TyVarChirho(7250);
         let a_chirho = TyVarChirho(7251);

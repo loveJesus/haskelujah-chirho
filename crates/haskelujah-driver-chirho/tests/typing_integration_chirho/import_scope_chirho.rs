@@ -50,31 +50,37 @@ fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
 
 #[test]
 fn join_and_amp_are_seeded_only_under_the_modules_that_export_them_chirho() {
-    // Semigroupoids' `join` is its Bind method; those modules keep the Monad scheme they
-    // reached through the old bare seed, which is preserved here and not claimed exact.
+    // The named modules carry the function's own scheme. Every builtin interface that
+    // exports the name keeps the scheme its import reached through the old bare seed:
+    // semigroupoids' `join` is its Bind method, so that group holds a preserved
+    // approximation, not an exact scheme. The exporters are read from the interfaces, so a
+    // later re-export needs its own key, not an edit to a list here.
     let schemes_chirho = builtin_value_schemes_chirho();
     let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
-    for (name_chirho, reference_chirho, exporters_expected_chirho) in [
-        (
-            "join",
-            "Control.Monad",
-            &[
-                "Control.Monad",
-                "Data.Functor.Alt",
-                "Data.Functor.Apply",
-                "Data.Functor.Bind",
-                "Data.Functor.Bind.Class",
-                "Data.Functor.Plus",
-                "GHC.Base",
-            ][..],
-        ),
-        ("&", "Data.Function", &["Control.Lens", "Data.Function"][..]),
+    for (name_chirho, exact_modules_chirho) in [
+        ("join", ["Control.Monad", "GHC.Base"]),
+        ("&", ["Data.Function", "Control.Lens"]),
     ] {
         assert!(
             !schemes_chirho.contains_key(name_chirho),
             "`{name_chirho}` must not be seeded into every module"
         );
-        let mut exporters_chirho: Vec<&str> = ifaces_chirho
+        let scheme_of_chirho =
+            |module_chirho: &str| schemes_chirho.get(&format!("{module_chirho}.{name_chirho}"));
+        let exact_chirho = scheme_of_chirho(exact_modules_chirho[0]).unwrap_or_else(|| {
+            panic!(
+                "`{}.{name_chirho}` carries its scheme",
+                exact_modules_chirho[0]
+            )
+        });
+        for module_chirho in exact_modules_chirho {
+            assert_eq!(
+                scheme_of_chirho(module_chirho),
+                Some(exact_chirho),
+                "`{module_chirho}.{name_chirho}` carries the function's own scheme"
+            );
+        }
+        let exporters_chirho: Vec<&str> = ifaces_chirho
             .iter()
             .filter(|iface_chirho| {
                 iface_chirho
@@ -84,20 +90,15 @@ fn join_and_amp_are_seeded_only_under_the_modules_that_export_them_chirho() {
             })
             .map(|iface_chirho| iface_chirho.name_chirho.as_str())
             .collect();
-        exporters_chirho.sort_unstable();
-        exporters_chirho.dedup();
-        assert_eq!(
-            exporters_chirho, exporters_expected_chirho,
-            "the builtin interfaces that export `{name_chirho}`"
+        assert!(
+            !exporters_chirho.is_empty(),
+            "some builtin interface exports `{name_chirho}`"
         );
-        let reference_scheme_chirho = schemes_chirho
-            .get(&format!("{reference_chirho}.{name_chirho}"))
-            .unwrap_or_else(|| panic!("`{reference_chirho}.{name_chirho}` keeps its scheme"));
         for module_chirho in exporters_chirho {
             assert_eq!(
-                schemes_chirho.get(&format!("{module_chirho}.{name_chirho}")),
-                Some(reference_scheme_chirho),
-                "`{module_chirho}.{name_chirho}` keeps the scheme its import reached before"
+                scheme_of_chirho(module_chirho),
+                Some(exact_chirho),
+                "`{module_chirho}` exports `{name_chirho}`, so its key keeps the preserved scheme"
             );
         }
     }
