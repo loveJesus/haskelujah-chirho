@@ -4,8 +4,10 @@
 //! agy_chirho #28275). The builtin seed gave both bare names to every module, so a program
 //! that imports neither Control.Monad nor Data.Function checked where GHC 9.14.1 reports
 //! GHC-88464 (T12406, T12589). Each scheme now sits under the modules that export the name,
-//! and Phase 3.9 hands it to their imports. Each program's GHC 9.14.1 behavior is recorded
-//! beside it; a program GHC rejects is written before its file name.
+//! and Phase 3.9 hands it to their imports. A qualified import, which found no module key
+//! before and typed the name as an accept-anything placeholder, now gets the exact scheme
+//! too. Each program's GHC 9.14.1 behavior is recorded beside it; a program GHC rejects is
+//! written before its file name.
 //! workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
 
 use haskelujah_driver::{compile_source_chirho, eval_source_with_machine_chirho};
@@ -14,18 +16,19 @@ use haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho;
 
 use super::assert_compile_success_chirho;
 
-/// GHC rejects the program because `name` is not in scope, so the checker must reject it
-/// for that reason.
-fn rejected_as_unbound_chirho(source_chirho: &str, file_name_chirho: &str, name_chirho: &str) {
+/// GHC rejects the program, so the checker must too, with a message naming every reason.
+fn rejected_like_ghc_chirho(source_chirho: &str, file_name_chirho: &str, reasons_chirho: &[&str]) {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     match compile_source_chirho(source_chirho, &mut source_map_chirho, file_name_chirho) {
         Ok(_) => panic!("{file_name_chirho}: GHC rejects this program; we accepted it"),
         Err(err_chirho) => {
             let message_chirho = err_chirho.to_string();
-            assert!(
-                message_chirho.contains("unbound variable") && message_chirho.contains(name_chirho),
-                "{file_name_chirho}: rejected, but not as an unbound `{name_chirho}`: {message_chirho}"
-            );
+            for reason_chirho in reasons_chirho {
+                assert!(
+                    message_chirho.contains(reason_chirho),
+                    "{file_name_chirho}: rejected, but not for `{reason_chirho}`: {message_chirho}"
+                );
+            }
         }
     }
 }
@@ -146,7 +149,48 @@ fn join_and_amp_without_their_import_are_rejected_like_ghc_chirho() {
             "&",
         ),
     ] {
-        rejected_as_unbound_chirho(program_chirho, file_name_chirho, name_chirho);
+        rejected_like_ghc_chirho(
+            program_chirho,
+            file_name_chirho,
+            &["unbound variable", name_chirho],
+        );
+    }
+}
+
+#[test]
+fn misused_imports_of_join_and_amp_are_type_errors_like_ghc_chirho() {
+    // GHC 9.14.1 rejects each with GHC-83865. The unqualified imports already reached the
+    // exact scheme through the bare fallback, so the first three were rejected before this
+    // unit too. A qualified import found no `Control.Monad.join` or `Data.Function.&` key and
+    // typed the name as a placeholder that accepts anything, so the last two were accepted.
+    for (program_chirho, file_name_chirho, reason_chirho) in [
+        (
+            "module Main where\nimport Control.Monad (join)\nmain :: IO ()\nmain = print (join (5 :: Int))\n",
+            "J20JoinMisusedAtIntChirho.hs",
+            "type mismatch",
+        ),
+        (
+            "module Main where\nimport GHC.Base (join)\nmain :: IO ()\nmain = print (join (5 :: Int))\n",
+            "J21JoinGhcBaseMisusedChirho.hs",
+            "type mismatch",
+        ),
+        (
+            "module Main where\nimport Data.Function ((&))\nmain :: IO ()\nmain = print ((5 :: Int) & True)\n",
+            "A20AmpMisusedWithBoolChirho.hs",
+            "type mismatch",
+        ),
+        (
+            "module Main where\nimport qualified Control.Monad as CM\nmain :: IO ()\nmain = print (CM.join (5 :: Int))\n",
+            "J22JoinQualifiedMisusedChirho.hs",
+            "type mismatch",
+        ),
+        (
+            "module Main where\nimport qualified Data.Function as DF\nmain :: IO ()\nmain = print ((5 :: Int) DF.& True)\n",
+            "A21AmpQualifiedMisusedChirho.hs",
+            "type mismatch",
+        ),
+    ] {
+        rejected_like_ghc_chirho(program_chirho, file_name_chirho, &[reason_chirho]);
     }
 }
 
