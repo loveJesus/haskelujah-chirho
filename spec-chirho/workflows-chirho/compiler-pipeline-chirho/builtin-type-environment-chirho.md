@@ -48,7 +48,10 @@ flowchart TD
 
 ## Module-scoped builtins
 
-- `join` and `&` are bound under `<Module>.<name>`, never under their bare names (unit 532). `join` binds under `Control.Monad`, `GHC.Base` and the five semigroupoids modules, and `&` under `Data.Function` and `Control.Lens`: every builtin interface that exports them.
+- `join` and `&` are bound under `<Module>.<name>`, never under their bare names (unit 532). Together these keys cover every builtin interface that exports the names, and a control reads that set from the interfaces.
+  - `join` carries its own scheme under `Control.Monad` and `GHC.Base`.
+  - The five semigroupoids modules keep the scheme their imports reached before.
+  - `&` carries its own scheme under `Data.Function` and `Control.Lens`.
 - For each value an import exposes, driver Phase 3.9 looks up `<Module>.<name>` first:
   - an open or selective import binds the bare name to that scheme;
   - a qualified import binds `<qualifier>.<name>`;
@@ -56,6 +59,7 @@ flowchart TD
 - A module that imports none of them reports the name unbound, as GHC does (GHC-88464).
 - Boundaries:
   - `InferCtxChirho::new_chirho` still seeds every canonical key, so an unimported fully qualified `Control.Monad.join` still checks where GHC reports GHC-76037.
+  - The semigroupoids modules' preserved scheme is Monad's `join`, not their `Bind` method's own. That approximation predates this unit.
   - `guard` and the other non-Prelude bare seeds keep the old route.
   - Neither `join` nor `&` has a runtime implementation yet.
 

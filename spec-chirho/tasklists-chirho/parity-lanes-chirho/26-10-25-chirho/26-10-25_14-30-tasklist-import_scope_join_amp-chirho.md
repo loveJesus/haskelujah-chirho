@@ -4,12 +4,12 @@
 
 L.J.'s 2026-10-25 direction is GHC test passing. Agy's #28250 ranking and #28275 trace found that the builtin seed gives `join` and `&` bare names in every module, so a program that never imports `Control.Monad` or `Data.Function` still checks. GHC 9.14.1 reports GHC-88464 for T12406 and T12589. Claude checked the same facts independently (#28273).
 
-Owner: claude2_chirho writes source-only on `import-scope-join-amp-chirho`, from exact main 9944ed4c (gpt_chirho #28284, progress unit 532). gpt_chirho owns the builder, main and the DB. No Cargo runs before the reviewed source checkpoint.
+Owner: claude2_chirho writes source-only (gpt_chirho #28284, progress unit 532). The reviewed checkpoint 7d478b30 on `import-scope-join-amp-chirho` came from exact main 9944ed4c. Its replay onto main 6ea3de75, on `import-scope-join-amp-main-chirho`, has a byte-identical unit diff (#28298). gpt_chirho owns the builder, main and the DB. No Cargo runs before the reviewed source checkpoint.
 
 ## Contract
 
 - `surface_chirho/part_12_chirho.rs` no longer binds bare `join` or `&`.
-- It binds each scheme, unchanged, under a module-qualified key for every builtin interface that exports the name:
+- It binds each scheme, unchanged, under a module-qualified key for every builtin interface that exports the name. `Control.Monad`, `GHC.Base`, `Data.Function` and `Control.Lens` carry the function's own scheme. The semigroupoids group keeps the approximation its imports reached before.
   - `join` for `Control.Monad`, `GHC.Base` and the five semigroupoids modules (`Data.Functor.Apply`, `Data.Functor.Bind`, `Data.Functor.Bind.Class`, `Data.Functor.Alt`, `Data.Functor.Plus`);
   - `&` for `Data.Function` and `Control.Lens`.
 - Driver Phase 3.9 already gives an import the module-qualified scheme first, for open imports, import lists, hiding, qualified imports and aliases. Every import therefore keeps the scheme it reaches today, and a module that imports neither name no longer sees it.
@@ -19,7 +19,7 @@ Owner: claude2_chirho writes source-only on `import-scope-join-amp-chirho`, from
 
 At check time, T12406 and T12589 are rejected for the unbound name, as GHC rejects them. No other corpus row moves.
 
-A second, measured movement outside the corpus: a qualified import (`CM.join`, `DF.&`) found no module key before, so it typed the name as an accept-anything placeholder. It now gets the exact scheme. The misuses J22 and A21 therefore move from accepted to rejected, as GHC rejects them (GHC-83865), while their unqualified twins were already rejected.
+The claim also includes a type-precision movement outside the corpus, as required evidence (#28298). A qualified import (`CM.join`, `DF.&`) found no module key before, so it typed the name as an accept-anything placeholder. The real module keys replace that placeholder with the imported function's scheme. The misuses J22 and A21 therefore move from accepted to rejected, as GHC rejects them (GHC-83865). Their unqualified twins were already rejected.
 
 ## Boundaries, named and not claimed
 
@@ -36,7 +36,7 @@ Every program is GHC 9.14.1-measured and embedded in `tests/typing_integration_c
 - Accepted at check, the 7 imports: `Control.Monad` open, explicit and qualified; `GHC.Base (join)`; `Data.Function` open, explicit and qualified.
 - Accepted and run with GHC's answer: a local `let join`, a top-level `join`, and a top-level `(&)`.
 - Rejected as a type mismatch, the 5 misused imports: `join` at Int through `Control.Monad`, `GHC.Base` and a qualified `CM`; `&` with a Bool through `Data.Function` and a qualified `DF`. These are the discriminators for "imports keep the exact scheme", which a placeholder would accept.
-- Inventory: no bare key, and every builtin exporter of each name has a key whose scheme equals the reference module's.
+- Inventory: there is no bare key, and the four named modules carry the function's own scheme. Every builtin interface that exports a name has a key holding the preserved scheme. That set is read from the interfaces, not frozen as a list, so it detects drift.
 - Recorded and unasserted: the unimported fully qualified forms, Q01 and Q02.
 
 ## Checklist
