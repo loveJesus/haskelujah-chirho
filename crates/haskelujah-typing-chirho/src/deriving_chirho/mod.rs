@@ -8,7 +8,7 @@
 //!
 //! - `Eq` — structural equality via `(==)`
 //! - `Ord` — structural ordering via `compare`
-//! - `Show` — structural pretty-printing via `show`
+//! - `Show` — `show`, rendered at GHC's precedence from constructor metadata (`show_chirho.rs`)
 //! - `Enum` — `toEnum`/`fromEnum` for enumeration types (nullary constructors only)
 //! - `Bounded` — `minBound`/`maxBound` for enumeration types
 //! - `Read` — `readsPrec` for structural parsing from strings
@@ -41,6 +41,13 @@
 //! before type inference runs, so they go through the normal pipeline.
 
 mod declaration_heads_chirho;
+mod show_chirho;
+
+use show_chirho::derive_show_chirho;
+pub use show_chirho::{
+    DerivedShowChirho, DerivedShowConChirho, ShowConFormChirho, ShowFieldTypeChirho,
+    derived_show_metadata_chirho,
+};
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::expr_chirho::{
@@ -1013,97 +1020,6 @@ fn derive_ord_chirho(
         class_chirho: var_name_chirho("Ord"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
         methods_chirho: vec![compare_method_chirho],
-        assoc_tf_instances_chirho: vec![],
-        span_chirho: gen_span_chirho(),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Derive Show
-// ---------------------------------------------------------------------------
-
-/// Generate `instance Show T where show = ...`
-fn derive_show_chirho(
-    type_name_chirho: &NameChirho,
-    type_vars_chirho: &[TyVarChirho],
-    constructors_chirho: &[ConDeclChirho],
-    _span_chirho: SpanChirho,
-) -> DeclChirho {
-    let mut matches_chirho: Vec<MatchArmChirho> = Vec::new();
-
-    for con_chirho in constructors_chirho {
-        let name_chirho = con_name_chirho(con_chirho);
-        let field_count_chirho = con_field_count_chirho(con_chirho);
-        let a_vars_chirho = field_vars_chirho("a", field_count_chirho);
-        let pat_chirho = con_pat_chirho(name_chirho, &a_vars_chirho);
-
-        // Build: "ConName" ++ " " ++ show a1 ++ " " ++ show a2 ++ ...
-        let body_chirho = if field_count_chirho == 0 {
-            ExprChirho::LitChirho(LitChirho::StringChirho(
-                name_chirho.to_string(),
-                gen_span_chirho(),
-                None,
-            ))
-        } else {
-            // Start with "ConName"
-            let mut result_chirho = ExprChirho::LitChirho(LitChirho::StringChirho(
-                name_chirho.to_string(),
-                gen_span_chirho(),
-                None,
-            ));
-
-            for var_name_str_chirho in &a_vars_chirho {
-                // Append " "
-                result_chirho = infix_chirho(
-                    result_chirho,
-                    "++",
-                    ExprChirho::LitChirho(LitChirho::StringChirho(
-                        " ".to_string(),
-                        gen_span_chirho(),
-                        None,
-                    )),
-                );
-                // Append show ai
-                let show_field_chirho = app_chirho(
-                    var_expr_chirho("show"),
-                    var_expr_chirho(var_name_str_chirho),
-                );
-                result_chirho = infix_chirho(result_chirho, "++", show_field_chirho);
-            }
-
-            result_chirho
-        };
-
-        matches_chirho.push(MatchArmChirho {
-            pats_chirho: vec![pat_chirho],
-            rhs_chirho: RhsChirho::UnguardedChirho(body_chirho),
-            where_binds_chirho: vec![],
-            span_chirho: gen_span_chirho(),
-        });
-    }
-
-    let show_method_chirho = LocalBindChirho::FunBindChirho {
-        name_chirho: var_name_chirho("show"),
-        matches_chirho,
-        span_chirho: gen_span_chirho(),
-    };
-
-    let context_chirho: Vec<_> = type_vars_chirho
-        .iter()
-        .map(
-            |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
-                class_chirho: var_name_chirho("Show"),
-                args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
-                span_chirho: gen_span_chirho(),
-            },
-        )
-        .collect();
-
-    DeclChirho::InstanceDeclChirho {
-        context_chirho,
-        class_chirho: var_name_chirho("Show"),
-        types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
-        methods_chirho: vec![show_method_chirho],
         assoc_tf_instances_chirho: vec![],
         span_chirho: gen_span_chirho(),
     }

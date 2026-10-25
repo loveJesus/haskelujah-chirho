@@ -2836,6 +2836,10 @@ fn compile_backend_chirho(
             }
         }
     }
+    // Constructor metadata for every type that derives Show (row 533).
+    // workflow: print-show-evidence-chirho
+    let derived_shows_chirho =
+        haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_chirho(&module_chirho);
     let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_with_evidence_chirho(
         &desugar_output_chirho.module_chirho,
         desugar_output_chirho.names_chirho,
@@ -2847,6 +2851,7 @@ fn compile_backend_chirho(
         desugar_output_chirho.method_occurrences_chirho,
         occurrence_evidence_chirho,
         reference_evidence_chirho,
+        derived_shows_chirho,
     );
     let core_chirho = dict_result_chirho.module_chirho;
 

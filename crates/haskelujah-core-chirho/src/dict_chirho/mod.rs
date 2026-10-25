@@ -42,6 +42,7 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
+use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho};
 
@@ -149,6 +150,18 @@ pub struct DictPassCtxChirho {
     /// context they keep their name and fall back to ReturnIOChirho (INV-001).
     /// workflow: monadic-dispatch-chirho
     monad_context_stack_chirho: RefCell<Vec<String>>,
+    /// Types whose deriving clause names Show → their constructor metadata (row 533).
+    /// workflow: print-show-evidence-chirho
+    derived_shows_chirho: HashMap<String, DerivedShowChirho>,
+    /// Derived-Show keys whose renderability is being checked, for recursive types.
+    derived_show_visiting_chirho: RefCell<Vec<String>>,
+    /// Keys assumed renderable while their own check was under way, since the
+    /// outermost check began.
+    derived_show_assumed_chirho: RefCell<Vec<String>>,
+    /// Final renderability per derived-Show key, so each key is checked once.
+    derived_show_known_chirho: RefCell<HashMap<String, bool>>,
+    /// Derived-Show key → its generated `$prim_Show_showsPrec_<key>` helper.
+    derived_show_helpers_chirho: HashMap<String, CoreIdChirho>,
 }
 
 impl DictPassCtxChirho {
@@ -178,6 +191,11 @@ impl DictPassCtxChirho {
             class_param_count_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),
             monad_context_stack_chirho: RefCell::new(Vec::new()),
+            derived_shows_chirho: HashMap::new(),
+            derived_show_visiting_chirho: RefCell::new(Vec::new()),
+            derived_show_assumed_chirho: RefCell::new(Vec::new()),
+            derived_show_known_chirho: RefCell::new(HashMap::new()),
+            derived_show_helpers_chirho: HashMap::new(),
         }
     }
 
@@ -409,7 +427,8 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
 }
 
 /// Dictionary-evidence entry: like the method-occurrence entry, also threading
-/// the checker's per-reference evidence for constrained references.
+/// the checker's per-reference evidence for constrained references, and the
+/// constructor metadata of every type that derives Show (row 533).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[allow(clippy::too_many_arguments)]
 pub fn dict_pass_module_full_with_evidence_chirho(
@@ -423,6 +442,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
     reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    derived_shows_chirho: HashMap<String, DerivedShowChirho>,
 ) -> DictPassResultChirho {
     let max_id_chirho = find_max_id_chirho(module_chirho);
     let mut ctx_chirho =
@@ -432,6 +452,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
     ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
     ctx_chirho.reference_evidence_chirho = reference_evidence_chirho;
+    ctx_chirho.derived_shows_chirho = derived_shows_chirho;
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)

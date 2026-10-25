@@ -12,6 +12,7 @@ use crate::expr_chirho::{
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 use std::collections::BTreeSet;
 
+mod derived_chirho;
 mod lists_chirho;
 mod shape_chirho;
 use shape_chirho::ShowShapeChirho;
@@ -115,6 +116,9 @@ impl DictPassCtxChirho {
             },
             ShowShapeChirho::ListChirho(element_chirho) => {
                 self.show_list_expr_chirho(element_chirho, value_chirho)
+            }
+            ShowShapeChirho::DerivedChirho(key_chirho) => {
+                self.show_derived_expr_chirho(key_chirho, value_chirho, precedence_chirho)
             }
             ShowShapeChirho::MaybeChirho(inner_chirho) => {
                 let field_chirho =
@@ -275,9 +279,25 @@ impl DictPassCtxChirho {
     }
 
     fn parse_show_shape_chirho(&self, key_chirho: &str) -> Option<ShowShapeChirho> {
-        ShowShapeChirho::parse_chirho(key_chirho, &|key_chirho| {
-            self.lookup_dispatch_body_name_id_chirho(&format!("$prim_Show_show_{key_chirho}"))
-        })
+        self.parse_show_shape_at_chirho(key_chirho, 0)
+    }
+
+    /// Parse a key that will be rendered at `precedence`. A hand-written row is admitted
+    /// only at precedence 0; a type that derives Show is admitted at any precedence when
+    /// every field of every constructor renders.
+    fn parse_show_shape_at_chirho(
+        &self,
+        key_chirho: &str,
+        precedence_chirho: u8,
+    ) -> Option<ShowShapeChirho> {
+        ShowShapeChirho::parse_at_chirho(
+            key_chirho,
+            precedence_chirho,
+            &|key_chirho| {
+                self.lookup_dispatch_body_name_id_chirho(&format!("$prim_Show_show_{key_chirho}"))
+            },
+            &|key_chirho| self.derived_show_key_chirho(key_chirho),
+        )
     }
 
     pub(super) fn generate_show_key_binding_chirho(&mut self, name_chirho: &str, key_chirho: &str) {

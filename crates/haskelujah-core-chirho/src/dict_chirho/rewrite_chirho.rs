@@ -645,6 +645,11 @@ impl DictPassCtxChirho {
             }
         }
 
+        // A renderable monomorphic derived-Show type's public row becomes its
+        // precedence helper at 0, before the generated helpers are prepended.
+        // workflow: print-show-evidence-chirho
+        self.rewrite_derived_show_rows_chirho(&mut bindings_chirho);
+
         // Prepend generated dictionary bindings
         let mut all_bindings_chirho = self.generated_bindings_chirho.clone();
         all_bindings_chirho.extend(bindings_chirho);

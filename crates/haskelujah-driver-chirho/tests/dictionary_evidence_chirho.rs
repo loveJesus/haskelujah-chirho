@@ -10,6 +10,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
+#[path = "dictionary_evidence_chirho/derived_show_chirho.rs"]
+mod derived_show_chirho;
 #[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
 mod equality_sections_chirho;
 #[path = "dictionary_evidence_chirho/ground_keys_chirho.rs"]

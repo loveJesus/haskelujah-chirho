@@ -14,14 +14,27 @@ pub(super) enum ShowShapeChirho {
     ListChirho(Box<Self>),
     /// An actual show implementation, admitted only at precedence zero.
     BackedChirho(CoreIdChirho),
+    /// A type that derives Show, rendered at any precedence by its key's helper (row 533).
+    DerivedChirho(String),
 }
 
 impl ShowShapeChirho {
-    pub(super) fn parse_chirho(
+    /// Parse a key rendered at `precedence`: 0 for a whole value, 11 for a prefix
+    /// constructor's field, p + 1 for an infix operand. `derived` names the canonical key
+    /// when its head derives Show and every field renders.
+    pub(super) fn parse_at_chirho(
         key_chirho: &str,
+        precedence_chirho: u8,
         resolve_chirho: &impl Fn(&str) -> Option<CoreIdChirho>,
+        derived_chirho: &impl Fn(&str) -> Option<String>,
     ) -> Option<Self> {
-        Self::parse_at_depth_chirho(key_chirho.trim(), 0, 0, resolve_chirho)
+        Self::parse_at_depth_chirho(
+            key_chirho.trim(),
+            0,
+            precedence_chirho,
+            resolve_chirho,
+            derived_chirho,
+        )
     }
 
     fn parse_at_depth_chirho(
@@ -29,6 +42,7 @@ impl ShowShapeChirho {
         depth_chirho: usize,
         precedence_chirho: u8,
         resolve_chirho: &impl Fn(&str) -> Option<CoreIdChirho>,
+        derived_chirho: &impl Fn(&str) -> Option<String>,
     ) -> Option<Self> {
         if depth_chirho >= 64 {
             return None;
@@ -39,6 +53,7 @@ impl ShowShapeChirho {
                 depth_chirho + 1,
                 precedence_chirho,
                 resolve_chirho,
+                derived_chirho,
             )
         };
         if matches!(
@@ -83,9 +98,13 @@ impl ShowShapeChirho {
                 Box::new(descend_chirho(right_chirho, 11)?),
             ));
         }
-        // A show-only row is not evidence for showsPrec 11. In particular,
-        // deriving currently supplies show, not the full precedence method.
-        // Leave those unsupported constructor arguments on the dictionary path.
+        // A type that derives Show renders from its constructor metadata at any
+        // precedence, through its own helper (row 533).
+        if let Some(derived_key_chirho) = derived_chirho(key_chirho) {
+            return Some(Self::DerivedChirho(derived_key_chirho));
+        }
+        // A hand-written show-only row is not evidence for showsPrec 11: leave
+        // those constructor arguments on the dictionary path.
         (precedence_chirho == 0)
             .then(|| resolve_chirho(key_chirho))
             .flatten()
@@ -93,7 +112,7 @@ impl ShowShapeChirho {
     }
 }
 
-fn split_outer_chirho(source_chirho: &str, separator_chirho: char) -> Option<Vec<&str>> {
+pub(super) fn split_outer_chirho(source_chirho: &str, separator_chirho: char) -> Option<Vec<&str>> {
     let mut closing_chirho = Vec::new();
     let mut parts_chirho = Vec::new();
     let mut start_chirho = 0;
