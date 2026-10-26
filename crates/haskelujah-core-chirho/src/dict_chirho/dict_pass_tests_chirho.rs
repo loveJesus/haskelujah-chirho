@@ -595,6 +595,71 @@ fn transform_module_adds_selectors_and_wraps_chirho() {
     assert!(result_chirho.layouts_chirho.contains_key("Num"));
 }
 
+#[test]
+fn a_concrete_top_level_value_supplies_its_type_key_chirho() {
+    let mut type_env_chirho = TyEnvChirho::new_chirho();
+    type_env_chirho.bind_chirho(
+        "xChirho".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::ConChirho("Double".to_string())),
+    );
+    type_env_chirho.bind_chirho(
+        "main".to_string(),
+        SchemeChirho::mono_chirho(TyChirho::ConChirho("Double".to_string())),
+    );
+
+    let x_id_chirho = CoreIdChirho(1);
+    let main_id_chirho = CoreIdChirho(0);
+    let mut names_chirho = HashMap::new();
+    names_chirho.insert(x_id_chirho, "xChirho".to_string());
+    names_chirho.insert(main_id_chirho, "main".to_string());
+    let module_chirho = CoreModuleChirho {
+        name_chirho: "TopLevelDoubleChirho".to_string(),
+        bindings_chirho: vec![
+            CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("xChirho", x_id_chirho.0),
+                rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(1.5)),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            },
+            CoreBindingChirho {
+                binder_chirho: dummy_binder_chirho("main", main_id_chirho.0),
+                rhs_chirho: CoreExprChirho::PrimOpChirho {
+                    name_chirho: "negate#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(x_id_chirho)],
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            },
+        ],
+        names_chirho: names_chirho.clone(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: Vec::new(),
+    };
+
+    let result_chirho = dict_pass_module_chirho(
+        &module_chirho,
+        names_chirho,
+        &type_env_chirho,
+        &ClassEnvChirho::new_chirho(),
+    );
+    let main_chirho = result_chirho
+        .module_chirho
+        .bindings_chirho
+        .iter()
+        .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "main")
+        .expect("main binding should exist");
+    assert!(
+        matches!(
+            &main_chirho.rhs_chirho,
+            CoreExprChirho::PrimOpChirho { name_chirho, args_chirho }
+                if name_chirho == "negateFloat#"
+                    && args_chirho == &[CoreExprChirho::VarChirho(x_id_chirho)]
+        ),
+        "the concrete top-level Double must retarget negate#: {:?}",
+        main_chirho.rhs_chirho
+    );
+}
+
 /// Evidence-threading P1 helpers: a module whose `main` applies a method
 /// OCCURRENCE id (50) of `==` to two Int literals; canonical shared id 60;
 /// a body-backed `$prim_Eq_==_Int` row exists as id 100.

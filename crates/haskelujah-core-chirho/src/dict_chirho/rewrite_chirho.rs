@@ -431,8 +431,8 @@ impl DictPassCtxChirho {
 
         // Transform each binding
         let mut bindings_chirho = Vec::new();
-        let module_call_arg_type_keys_chirho =
-            self.collect_module_call_arg_type_keys_chirho(module_chirho);
+        let module_type_keys_chirho =
+            self.collect_module_type_keys_chirho(module_chirho, type_env_chirho);
 
         for binding_chirho in &module_chirho.bindings_chirho {
             let name_chirho = &binding_chirho.binder_chirho.name_chirho;
@@ -442,7 +442,7 @@ impl DictPassCtxChirho {
                 let transformed_chirho = self.add_dict_params_with_local_type_keys_chirho(
                     binding_chirho,
                     scheme_chirho,
-                    &module_call_arg_type_keys_chirho,
+                    &module_type_keys_chirho,
                 );
                 bindings_chirho.push(transformed_chirho);
             } else {

@@ -34,6 +34,32 @@ fn double_ordering_answers_as_ghc_everywhere_chirho() {
     );
 }
 
+/// Row 571: the type environment knows a top-level value is `Double` even when
+/// its Core binder still carries an inference variable. References to that value
+/// now carry the module-level key into row 547's `negate#` retarget. Typed
+/// parameters and locals, a negative binding, named `negate`, and Int are holds.
+const TOP_LEVEL_DOUBLE_NEGATION_CHIRHO: &str = "module Main where\nxChirho :: Double\nxChirho = 1.5\ncomputedChirho :: Double\ncomputedChirho = 3 / 2\nalreadyNegatedChirho :: Double\nalreadyNegatedChirho = -1.5\nparameterNegatedChirho :: Double -> Double\nparameterNegatedChirho valueChirho = -valueChirho\nlocalNegatedChirho :: Double\nlocalNegatedChirho = let valueChirho = 1.5 in -valueChirho\nintegerChirho :: Int\nintegerChirho = 3\nmain :: IO ()\nmain = do\n  print (-xChirho)\n  print (-xChirho + 1)\n  print (parameterNegatedChirho xChirho)\n  print localNegatedChirho\n  print alreadyNegatedChirho\n  print (-computedChirho)\n  print (negate xChirho)\n  print (-integerChirho)\n";
+
+/// GHC 9.14.1's output for [`TOP_LEVEL_DOUBLE_NEGATION_CHIRHO`].
+const TOP_LEVEL_DOUBLE_NEGATION_GHC_CHIRHO: &str = "-1.5\n-0.5\n-1.5\n-1.5\n-1.5\n-1.5\n-1.5\n-3\n";
+
+#[test]
+fn a_negated_top_level_double_answers_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho(
+            "TopLevelDoubleNegationChirho.hs",
+            TOP_LEVEL_DOUBLE_NEGATION_CHIRHO,
+        ),
+        TOP_LEVEL_DOUBLE_NEGATION_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho(
+        "TopLevelDoubleNegationChirho.hs",
+        TOP_LEVEL_DOUBLE_NEGATION_CHIRHO,
+        TOP_LEVEL_DOUBLE_NEGATION_GHC_CHIRHO,
+    );
+}
+
 /// Row 553: under `map (+ 0)` the list's elements are rewritten at the exact key Double,
 /// and that type-keyed rebuild kept the desugarer's Int `negate#`. Both native backends
 /// printed `[-0.75,1.0]` and the interpreter stopped at `NegIntChirho`. The rebuild now

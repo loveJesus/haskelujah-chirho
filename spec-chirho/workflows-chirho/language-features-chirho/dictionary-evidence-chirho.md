@@ -68,6 +68,7 @@ flowchart TD
 - The desugarer's blind Int primops take the float primop at a Double operand (row 547).
   - Infix and section `<`, `<=`, `>` and `>=` become `<#`, `<=#`, `>#` and `>=#` before any type is known. So does a prefix minus on an operand that is not a float literal, which becomes `negate#`.
   - `rewrite_method_refs_with_locals_chirho` gives such a primop its float counterpart when an operand keys as Double: binder types, type applications and literal records. The rule is `rewrite_chirho/double_primops_chirho.rs`.
+  - A concrete monomorphic top-level value also carries its type-environment key into every binding rewrite (row 571). Core can leave that binder at an inference variable even after the checker has fixed `x :: Double`; without the module key, `-x` kept `negate#`, failed in the interpreter and doubled the native IEEE bits as an integer. `collect_module_type_keys_chirho` admits only unconstrained, unquantified, zero-argument schemes with a concrete key. Functions and polymorphic or constrained values keep their existing routes.
   - The counterparts are `<.#`, `<=.#`, `>.#`, `>=.#` (ordered, so a NaN gives False) and `negateFloat#`.
   - `negate#` keys as its operand in `type_keys_chirho.rs`, so `(-1) / 2 :: Double` keys `/` at Double instead of Int.
   - `rewrite_expr_with_type_key_chirho` (`method_args_chirho.rs`) rebuilds primops while rewriting arguments at a key. When that key is exactly Double, it takes the same counterpart (row 553). Elements under `map (+ 0) ([-3 / 2, 1] :: [Double])` used to keep `negate#`, which was silently `-0.75` natively.
@@ -78,7 +79,7 @@ flowchart TD
     - Residual: a section under `iterate` has no keyed operand at either site and stays `*#`.
   - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
   - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
-  - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs`.
+  - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs`, including a top-level literal and a computed Double binding beside typed-parameter, typed-local, named-`negate` and Int holds.
 - Other keys reach their ordering through a body-backed `compare` (row 551, the first Ord brick).
   - When an operand of the desugarer's `<#`, `<=#`, `>#` or `>=#` keys as anything but Int, Char, Bool or Double, `rewrite_chirho/compare_route_chirho.rs` looks up `$prim_Ord_compare_<key>` with `lookup_dispatch_body_name_id_chirho`. That lookup accepts a body-backed row and never a missing-method stub.
   - If found, the primop becomes `test (compare a b)`, with one of the Ordering tests generated in `prelude_chirho/ordering_tests_chirho.rs`.

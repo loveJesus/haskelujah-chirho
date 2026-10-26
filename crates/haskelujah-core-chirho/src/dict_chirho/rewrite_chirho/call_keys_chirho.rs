@@ -4,6 +4,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
+
 use super::DictPassCtxChirho;
 use crate::expr_chirho::{AltConChirho, CoreExprChirho, CoreIdChirho, CoreModuleChirho};
 
@@ -417,5 +419,40 @@ impl DictPassCtxChirho {
         }
 
         inferred_param_keys_chirho
+    }
+
+    /// Concrete monomorphic module values carry the same reliable type key as
+    /// typed local binders. This lets later references reuse that evidence even
+    /// when Core's top-level binder still has an inference variable.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn collect_module_type_keys_chirho(
+        &self,
+        module_chirho: &CoreModuleChirho,
+        type_env_chirho: &TyEnvChirho,
+    ) -> HashMap<CoreIdChirho, String> {
+        let mut module_type_keys_chirho =
+            self.collect_module_call_arg_type_keys_chirho(module_chirho);
+
+        for binding_chirho in &module_chirho.bindings_chirho {
+            let Some(scheme_chirho) =
+                type_env_chirho.lookup_chirho(&binding_chirho.binder_chirho.name_chirho)
+            else {
+                continue;
+            };
+            if !scheme_chirho.vars_chirho.is_empty()
+                || !scheme_chirho.preds_chirho.is_empty()
+                || scheme_chirho.spine_arity_chirho() != 0
+            {
+                continue;
+            }
+            if let Some(type_key_chirho) =
+                Self::concrete_local_type_key_chirho(format!("{}", scheme_chirho.ty_chirho))
+            {
+                module_type_keys_chirho
+                    .insert(binding_chirho.binder_chirho.id_chirho, type_key_chirho);
+            }
+        }
+
+        module_type_keys_chirho
     }
 }
