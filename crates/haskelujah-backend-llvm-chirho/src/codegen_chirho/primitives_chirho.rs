@@ -147,6 +147,13 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             tmp_chirho
+        } else if args_chirho.len() == 1 && matches!(name_chirho, "chr#" | "ord#") {
+            // Native Char values are their scalar code points. The Core rows
+            // establish which conversion is being performed; native lowering
+            // preserves the represented word after forcing it.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+            self.emit_force_thunk_chirho(&operand_chirho)
         } else if args_chirho.len() == 1
             && matches!(
                 name_chirho,

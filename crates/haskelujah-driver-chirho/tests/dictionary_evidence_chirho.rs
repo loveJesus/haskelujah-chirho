@@ -19,6 +19,8 @@ mod compare_route_chirho;
 mod derived_show_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs"]
 mod double_primops_chirho;
+#[path = "dictionary_evidence_chirho/enum_occurrences_chirho.rs"]
+mod enum_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
 mod equality_sections_chirho;
 #[path = "dictionary_evidence_chirho/fractional_literals_chirho.rs"]

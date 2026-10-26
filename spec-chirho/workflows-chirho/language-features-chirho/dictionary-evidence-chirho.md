@@ -223,6 +223,12 @@ flowchart TD
   when every mint site carries its own occurrence provenance, which a span alone cannot supply:
   one do or deriving node can create several references sharing a span, so the identity must be
   shared with the node that created them.
+- `toEnum` and `fromEnum` are in the standard occurrence population. `toEnum :: Enum a => Int -> a`
+  cannot be keyed from its Int argument because the class variable is its result. Bare `fromEnum`
+  references and arguments whose type is opaque to the dictionary pass have the same need: the
+  checker's occurrence proof selects the concrete Enum row. A result-only polymorphic wrapper
+  such as `enumAt :: Enum a => Int -> a` is still defaulted before this dispatch and remains a
+  separate boundary.
 
 ## Proven list keys at method occurrences (R2, 2026-10-17)
 
@@ -566,3 +572,9 @@ flowchart TD
 - Class methods never mint reference occurrences (the method paths key on canonical ids);
   own-parameter evidence therefore reaches the standard method list only, and a user class
   method at a rigid variable is still dispatched by the pass's inferred parameter keys.
+- Row 520 covers `toEnum` and `fromEnum` occurrence dispatch for valid scalar `Char` values and
+  the corresponding native `chr#`/`ord#` word representation. The current `char`-backed runtime
+  cannot represent GHC's surrogate `Char` values, and its `chr#` invalid-range behavior is not
+  GHC-exact. `Enum Char` also has no body-backed `succ` or `pred` row, while range syntax still
+  uses the Int-specialized sequence functions. Those are explicit follow-up units, not inferred
+  from this row's occurrence evidence.

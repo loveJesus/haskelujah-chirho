@@ -2319,6 +2319,13 @@ pub fn lower_primop_chirho(
                 .call(classifier_chirho, &[value_chirho]);
             builder_chirho.inst_results(call_chirho)[0]
         }
+        // Native Char values are their scalar code points. The Core rows
+        // establish which conversion is being performed; native lowering
+        // preserves the represented word after forcing it.
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        "chr#" | "ord#" if args_chirho.len() == 1 => {
+            ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false)
+        }
         "error" | "error#" => {
             let message_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             ctx_chirho

@@ -583,6 +583,10 @@ fn emit_expr_chirho(
                     _ => 0x7C,       // fallback: i64.add
                 };
                 buf_chirho.push(opcode_chirho);
+            } else if args_chirho.len() == 1 && matches!(name_chirho.as_str(), "chr#" | "ord#") {
+                // A native Char is its scalar code point. Source-only here;
+                // Row 520 measures the interpreter, LLVM and Cranelift.
+                emit_expr_chirho(buf_chirho, &args_chirho[0], ctx_chirho);
             } else if args_chirho.len() == 1 && name_chirho == "negate#" {
                 // 0 - x
                 buf_chirho.push(0x42); // i64.const

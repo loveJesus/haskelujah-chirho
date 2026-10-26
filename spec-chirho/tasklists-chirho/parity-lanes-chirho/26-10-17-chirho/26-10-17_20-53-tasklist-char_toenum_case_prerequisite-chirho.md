@@ -137,3 +137,34 @@ V14's second field is `fromEnum (head (show (5 :: Int)))`. It therefore exercise
 The remaining `enumAtChirho :: Enum a => Int -> a` failure is separate. The dict pass's result-only defaulting removes the dictionary parameter and emits `$sel_Enum_toEnum $fEnumInt` before occurrence dispatch; an argument-carrying `Enum a` binding proves the own-dictionary route works. Replace the Char unit's own-dictionary positive with that form and retain result-only polymorphism as a named boundary. GPT accepts these source-only changes after the pending T16414 contract; no Cargo lease transfers and O1 still owns V12's lost prior output.
 
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/char-red-trace-1018-chirho/
+
+## 2026-10-26 continuation on current main
+
+- [x] Resume the already-open progress row 520 under its existing owner instead of opening a duplicate Char Enum row.
+- [x] Preserve `gpt-char-gate-chirho` at `db916b70` and its historical RED receipts; use a fresh worktree from current `main_chirho`.
+- [x] Reconfirm the ruled boundary: this row owns `toEnum` and `fromEnum` occurrence identity. `succ`, `pred` and enum ranges remain separate unless current source proves they share the same bounded mechanism.
+- [x] Measure current GHC 9.14.1 and all three Haskelujah engines on direct, bare, derived, user-instance and constrained-wrapper conversions, plus the adjacent `succ`/`pred`/range probes.
+- [x] Apply only the still-missing occurrence hooks and current controls; do not replay stale source wholesale.
+- [x] Run a warm focused gate within the 2-5 minute bar, including a mutation/reach check and changed-line Clippy.
+- [ ] Record the current gate, land the bounded row on exact main, and close progress row 520 only if the measured contract is GREEN.
+
+Current main reproduced the historical dispatch defect: direct `toEnum 66 :: Char` printed `66`,
+bare `map toEnum` did not produce the two Chars, and the combined probe stopped at a derived Enum
+conversion. Adding the two occurrence names repaired derived and user-defined instances, while
+the selected Char row still returned its Int argument. That row now calls `chr#`; LLVM and
+Cranelift lower `chr#` and `ord#` as the forced scalar word, matching the interpreter's valid
+scalar representation. Four GHC-measured controls now pass on all three engines: direct and bare
+Char conversions, derived and user instances, an argument-carrying constrained wrapper, and
+shadowing. The result-only `enumAt :: Enum a => Int -> a` defaulting boundary stays pinned.
+
+`succ 'a'` independently fails with `missing method Enum.succ for Char` on current main, before a
+range can run. The present runtime's surrogate and invalid-code-point semantics are also not
+GHC-exact. They remain separate from this narrow occurrence-dispatch repair.
+
+The valid warm gate is GREEN in about 78 seconds after the RTS archive prerequisite was built:
+the four new all-engine controls pass, dictionary evidence is 92/92, the driver evidence/occurrence/
+enum library slice is 59/59, and the core plus LLVM, Cranelift and Wasm libraries are 262/262.
+Clippy completed over all targets of the five changed crates; its existing warnings do not touch a
+changed line. Rustfmt and diff-check are clean. Removing the occurrence hooks makes the derived/user
+control fail, and restoring the old identity Char row makes the witness control print `98` instead
+of GHC's `'b'`; each edited file was restored before the valid gate.

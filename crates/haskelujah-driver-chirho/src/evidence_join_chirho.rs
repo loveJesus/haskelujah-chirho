@@ -54,6 +54,12 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     "product",
     "mfix",
     "read",
+    // `toEnum :: Enum a => Int -> a` carries its class variable only in the
+    // result, so guessing from the argument always chooses Int. `fromEnum`
+    // likewise needs its proven instance for bare uses and opaque arguments.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    "toEnum",
+    "fromEnum",
 ];
 
 /// The monad-chain operators the standard set leaves out (INV-001). No rule

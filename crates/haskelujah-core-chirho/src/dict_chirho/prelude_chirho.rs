@@ -7717,7 +7717,7 @@ impl DictPassCtxChirho {
         }
 
         // ── Enum Char: toEnum = chr-like, fromEnum = ord-like ──
-        // For Char, toEnum and fromEnum are identity on the underlying Int representation
+        // workflow: language-features-chirho/dictionary-evidence-chirho
         {
             let char_ty_chirho = TyChirho::ConChirho("Char".to_string());
             let prim_name_chirho = "$prim_Enum_toEnum_Char";
@@ -7725,7 +7725,10 @@ impl DictPassCtxChirho {
             let x_chirho = self.fresh_binder_chirho("x", int_ty_chirho.clone());
             let rhs_chirho = CoreExprChirho::LamChirho {
                 binder_chirho: x_chirho.clone(),
-                body_chirho: Box::new(CoreExprChirho::VarChirho(x_chirho.id_chirho)),
+                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
+                    name_chirho: "chr#".to_string(),
+                    args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
+                }),
             };
             self.generated_bindings_chirho.push(CoreBindingChirho {
                 binder_chirho: BinderChirho {
