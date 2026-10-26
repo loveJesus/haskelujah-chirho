@@ -28,8 +28,8 @@ these named native boundaries.
 - [x] Choose explicit native operation names backed by one shared RTS semantic implementation.
 - [x] Add focused native controls and interpreter holds.
 - [x] Run the warm backend, runtime, and driver proof under the 2–5 minute bar.
-- [x] Verify zero changed-line Clippy findings, rustfmt, and diff-check. Run gitleaks on the commit before landing.
-- [ ] Land and close progress row 562.
+- [x] Verify zero changed-line Clippy findings, rustfmt, diff-check, and gitleaks.
+- [x] Land and close progress row 562.
 
 ## Focused proof
 
@@ -38,3 +38,5 @@ these named native boundaries.
 - Cranelift library: 42 passed.
 - Fractional-literal integration: 7 passed, including both native backends and the interpreter hold.
 - Clippy reported no warning on a changed line; the workspace's existing warnings remain visible.
+- After row 554 landed, the source commit replayed cleanly onto `00dce20b`; the same focused proof
+  passed again, and gitleaks found no leak in the final one-commit range.
