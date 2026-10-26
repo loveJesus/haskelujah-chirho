@@ -30,6 +30,11 @@ mod instance_signature_tests_chirho;
 #[cfg(test)]
 mod occurrence_tests_chirho;
 mod occurrences_chirho;
+#[path = "lower_chirho/expr_syntax_chirho/prefix_minus_chirho.rs"]
+mod prefix_minus_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/expr_syntax_chirho/prefix_minus_tests_chirho.rs"]
+mod prefix_minus_tests_chirho;
 #[cfg(test)]
 #[path = "lower_chirho/type_syntax_chirho/type_operator_tests_chirho.rs"]
 mod type_operator_tests_chirho;
@@ -8337,6 +8342,7 @@ impl LowerCtxChirho {
         }
     }
 
+    /// workflow: compiler-pipeline-chirho/operator-fixity-chirho
     fn resolve_infix_precedence_chirho(
         &self,
         exprs_chirho: Vec<ExprChirho>,
@@ -8351,6 +8357,7 @@ impl LowerCtxChirho {
                 Some(self.fresh_origin_chirho()),
             ));
         }
+        let (exprs_chirho, ops_chirho) = self.absorb_prefix_minus_chirho(exprs_chirho, ops_chirho);
         if ops_chirho.is_empty() || exprs_chirho.len() <= 1 {
             return exprs_chirho.into_iter().next().unwrap();
         }
