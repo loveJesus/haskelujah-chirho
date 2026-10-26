@@ -95,6 +95,11 @@ flowchart TD
   polymorphic code reaches the same rendering (C04). That placement refined the trace, which had
   listed C04 outside the claim. A type with parameters reached through a dictionary keeps the
   plain derived `show`.
+- **Parameters (row 531 re-advance):** the metadata takes the derived instance's own binders
+  (`visible_instance_binders_chirho`), so a kind-signature tail counts as a parameter, as it does
+  in the instance head. `data E :: Type -> Type deriving Show` describes `E x`, not a monomorphic
+  `E`. Only an empty declaration reaches this case, since GHC rejects ordinary constructors after
+  a result kind.
 - **Code:**
   - `crates/haskelujah-typing-chirho/src/deriving_chirho/show_chirho.rs` (the instance and the metadata);
   - `crates/haskelujah-core-chirho/src/dict_chirho/show_chirho/derived_chirho.rs` (the renderer);

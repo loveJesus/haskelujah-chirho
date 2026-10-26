@@ -18,8 +18,9 @@ use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use super::{
-    app_chirho, con_field_count_chirho, con_name_chirho, con_pat_chirho, field_vars_chirho,
-    gen_span_chirho, infix_chirho, instance_type_chirho, var_expr_chirho, var_name_chirho,
+    app_chirho, con_field_count_chirho, con_name_chirho, con_pat_chirho, declaration_heads_chirho,
+    field_vars_chirho, gen_span_chirho, infix_chirho, instance_type_chirho, var_expr_chirho,
+    var_name_chirho,
 };
 
 /// Haskell's fixity for an operator with no fixity declaration: `infixl 9`.
@@ -82,6 +83,8 @@ pub fn derived_show_metadata_chirho(
             type_vars_chirho,
             constructors_chirho,
             deriving_chirho,
+            kind_sig_chirho,
+            span_chirho,
             ..
         } = decl_chirho
         else {
@@ -102,10 +105,17 @@ pub fn derived_show_metadata_chirho(
         else {
             continue;
         };
-        let type_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho)
-            .iter()
-            .map(|type_var_chirho| type_var_chirho.name_chirho.text_chirho().to_string())
-            .collect();
+        // The derived instance's own binders: a kind-signature tail is a parameter here
+        // exactly as in the instance head (`data E :: Type -> Type` has one).
+        // workflow: print-show-evidence-chirho
+        let type_vars_chirho = declaration_heads_chirho::visible_instance_binders_chirho(
+            type_vars_chirho,
+            kind_sig_chirho.as_ref(),
+            *span_chirho,
+        )
+        .iter()
+        .map(|type_var_chirho| type_var_chirho.name_chirho.text_chirho().to_string())
+        .collect();
         metadata_chirho.insert(
             name_chirho.text_chirho().to_string(),
             DerivedShowChirho {

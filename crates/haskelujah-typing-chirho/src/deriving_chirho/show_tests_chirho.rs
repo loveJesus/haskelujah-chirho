@@ -4,7 +4,9 @@
 //! that are left out so their Show keeps its existing route.
 
 use super::*;
-use haskelujah_ast_chirho::decl_chirho::{FieldDeclChirho, FixityChirho, StrictnessChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    DataKindSigChirho, FieldDeclChirho, FixityChirho, StrictnessChirho,
+};
 
 fn module_chirho(decls_chirho: Vec<DeclChirho>) -> ModuleChirho {
     ModuleChirho {
@@ -218,4 +220,75 @@ fn types_not_deriving_show_or_with_a_gadt_constructor_are_left_out_chirho() {
     let mut names_chirho: Vec<&String> = metadata_chirho.keys().collect();
     names_chirho.sort();
     assert_eq!(names_chirho, vec!["KeptChirho"]);
+}
+
+/// An instance head `T a1 .. an`, as `T` and the names `a1 .. an`.
+fn head_parts_chirho(ty_chirho: &TypeChirho) -> (String, Vec<String>) {
+    match ty_chirho {
+        TypeChirho::ConChirho(name_chirho) => (name_chirho.text_chirho().to_string(), vec![]),
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => {
+            let TypeChirho::VarChirho(var_chirho) = arg_chirho.as_ref() else {
+                panic!("an instance head argument that is not a variable: {arg_chirho:?}");
+            };
+            let (name_chirho, mut vars_chirho) = head_parts_chirho(fun_chirho);
+            vars_chirho.push(var_chirho.text_chirho().to_string());
+            (name_chirho, vars_chirho)
+        }
+        other_chirho => panic!("an unexpected instance head: {other_chirho:?}"),
+    }
+}
+
+#[test]
+fn a_kind_signature_tail_gives_the_metadata_the_instance_heads_parameters_chirho() {
+    // `data E :: Type -> Type deriving Show` and `data H a :: Type -> Type deriving Show`:
+    // GHC derives `Show (E x)` and `Show (H a x)`, so the metadata must see one and two.
+    let wide_declaration_chirho =
+        |name_chirho: &str, binders_chirho: &[&str]| DeclChirho::DataDeclChirho {
+            name_chirho: var_name_chirho(name_chirho),
+            type_vars_chirho: binders_chirho
+                .iter()
+                .map(|binder_chirho| TyVarChirho::plain_chirho(var_name_chirho(binder_chirho)))
+                .collect(),
+            constructors_chirho: vec![],
+            deriving_chirho: vec![var_name_chirho("Show")],
+            kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::FunChirho {
+                arg_chirho: Box::new(con_type_chirho("Type")),
+                result_chirho: Box::new(con_type_chirho("Type")),
+                mult_chirho: None,
+                span_chirho: gen_span_chirho(),
+            })),
+            span_chirho: gen_span_chirho(),
+        };
+    let wide_module_chirho = module_chirho(vec![
+        wide_declaration_chirho("EmptyWideChirho", &[]),
+        wide_declaration_chirho("HalfWideChirho", &["aChirho"]),
+    ]);
+    let metadata_chirho = derived_show_metadata_chirho(&wide_module_chirho);
+    let heads_chirho: HashMap<String, Vec<String>> =
+        crate::deriving_chirho::derive_instances_chirho(&wide_module_chirho)
+            .instances_chirho
+            .iter()
+            .filter_map(|instance_chirho| match instance_chirho {
+                DeclChirho::InstanceDeclChirho {
+                    class_chirho,
+                    types_chirho,
+                    ..
+                } if class_chirho.text_chirho() == "Show" => {
+                    Some(head_parts_chirho(&types_chirho[0]))
+                }
+                _ => None,
+            })
+            .collect();
+    for (type_name_chirho, arity_chirho) in [("EmptyWideChirho", 1), ("HalfWideChirho", 2)] {
+        let head_vars_chirho = &heads_chirho[type_name_chirho];
+        assert_eq!(head_vars_chirho.len(), arity_chirho, "{type_name_chirho}");
+        assert_eq!(
+            &metadata_chirho[type_name_chirho].type_vars_chirho, head_vars_chirho,
+            "{type_name_chirho}"
+        );
+    }
 }
