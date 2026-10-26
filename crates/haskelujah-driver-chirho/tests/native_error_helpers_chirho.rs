@@ -410,6 +410,30 @@ fn a_nul_character_fails_named_natively_chirho() {
     }
 }
 
+// ── Row 561: literal escapes decode as GHC lexes them ────────────────────
+
+/// Escaped quotes, `\&`, a decimal escape before digits, the longest ASCII name, caret controls
+/// and a gap, in character and string literals. Decoding happens before any engine runs, and
+/// `putStrLn` shows the bytes. Before row 561: `'\''` decoded to U+FFFD, `\&` stayed, `\012` was NUL
+/// and "12", and `\SO1` and `\^A` stayed as written. GHC 9.14.1's output is the expected text.
+const LITERAL_ESCAPES_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = do
+  putStrLn ['\'', '"', '\\', '\^A', '\^[', '\x41', '\o101', '\65']
+  putStrLn "a\&b\&|\1234\&5|\SO\&H"
+  putStrLn "\012x\01\65|\SO1\SOH2|\DELx"
+  putStrLn "\^A\^Z\^_\^\\^]x"
+  putStrLn "it\'s \"q\" ab\   \cd"
+"#;
+
+#[test]
+fn literal_escapes_decode_as_ghc_lexes_them_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        LITERAL_ESCAPES_CHIRHO,
+        "'\"\\\u{1}\u{1b}AAA\nab|\u{4d2}5|\u{e}H\n\u{c}x\u{1}A|\u{e}1\u{1}2|\u{7f}x\n\u{1}\u{1a}\u{1f}\u{1c}\u{1d}x\nit's \"q\" abcd\n",
+    );
+}
+
 // ── R1: an unbound reference fails named, and only when demanded ──────────
 
 #[test]

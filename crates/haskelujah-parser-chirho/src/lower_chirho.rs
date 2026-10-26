@@ -58,7 +58,9 @@ use haskelujah_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, FieldAssignChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho,
     RhsChirho, StmtChirho,
 };
-use haskelujah_ast_chirho::lit_chirho::{LitChirho, parse_haskell_char_body_chirho};
+use haskelujah_ast_chirho::lit_chirho::{
+    LitChirho, parse_haskell_char_body_chirho, unescape_string_body_chirho,
+};
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
     InlinePragmaChirho, ModuleChirho,
@@ -6796,7 +6798,11 @@ impl LowerCtxChirho {
                     }
                     TokenKindChirho::CharLiteralChirho => {
                         let text_chirho = tok_chirho.text_chirho().trim_end_matches('#');
-                        let inner_chirho = text_chirho.trim_matches('\'');
+                        // Exactly one quote at each end: `'\''` keeps its escaped quote.
+                        let inner_chirho = text_chirho
+                            .strip_prefix('\'')
+                            .and_then(|body_chirho| body_chirho.strip_suffix('\''))
+                            .unwrap_or(text_chirho);
                         let ch_chirho =
                             parse_haskell_char_body_chirho(inner_chirho).unwrap_or('\u{FFFD}');
                         return LitChirho::CharChirho(
@@ -6812,7 +6818,7 @@ impl LowerCtxChirho {
                             .strip_prefix('"')
                             .and_then(|s_chirho| s_chirho.strip_suffix('"'))
                             .unwrap_or(text_chirho);
-                        let inner_chirho = unescape_string_chirho(raw_chirho);
+                        let inner_chirho = unescape_string_body_chirho(raw_chirho);
                         return LitChirho::StringChirho(
                             inner_chirho,
                             span_chirho,
@@ -8453,170 +8459,6 @@ impl LowerCtxChirho {
             }
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// Escape sequence processing
-// ---------------------------------------------------------------------------
-
-/// Collect decimal digits from an iterator and convert to a char.
-fn collect_decimal_escape_chirho(
-    first_digit_chirho: char,
-    chars_chirho: &mut std::str::Chars<'_>,
-) -> char {
-    let mut num_chirho = String::new();
-    num_chirho.push(first_digit_chirho);
-    // Peek at subsequent digits — Haskell allows up to 7 decimal digits
-    // but we consume greedily as long as digits continue
-    while let Some(&next_chirho) = chars_chirho.as_str().as_bytes().first() {
-        if next_chirho.is_ascii_digit() {
-            num_chirho.push(next_chirho as char);
-            chars_chirho.next();
-        } else {
-            break;
-        }
-    }
-    num_chirho
-        .parse::<u32>()
-        .ok()
-        .and_then(char::from_u32)
-        .unwrap_or('\u{FFFD}')
-}
-
-/// Collect octal digits from an iterator and convert to a char.
-fn collect_octal_escape_chirho(chars_chirho: &mut std::str::Chars<'_>) -> char {
-    let mut num_chirho = String::new();
-    while let Some(&next_chirho) = chars_chirho.as_str().as_bytes().first() {
-        if (b'0'..=b'7').contains(&next_chirho) {
-            num_chirho.push(next_chirho as char);
-            chars_chirho.next();
-        } else {
-            break;
-        }
-    }
-    u32::from_str_radix(&num_chirho, 8)
-        .ok()
-        .and_then(char::from_u32)
-        .unwrap_or('\u{FFFD}')
-}
-
-/// Collect hexadecimal digits from an iterator and convert to a char.
-fn collect_hex_escape_chirho(chars_chirho: &mut std::str::Chars<'_>) -> char {
-    let mut num_chirho = String::new();
-    while let Some(&next_chirho) = chars_chirho.as_str().as_bytes().first() {
-        if (next_chirho as char).is_ascii_hexdigit() {
-            num_chirho.push(next_chirho as char);
-            chars_chirho.next();
-        } else {
-            break;
-        }
-    }
-    u32::from_str_radix(&num_chirho, 16)
-        .ok()
-        .and_then(char::from_u32)
-        .unwrap_or('\u{FFFD}')
-}
-
-fn named_ascii_escape_chirho(name_chirho: &str) -> Option<char> {
-    match name_chirho {
-        "NUL" => Some('\0'),
-        "SOH" => Some('\u{0001}'),
-        "STX" => Some('\u{0002}'),
-        "ETX" => Some('\u{0003}'),
-        "EOT" => Some('\u{0004}'),
-        "ENQ" => Some('\u{0005}'),
-        "ACK" => Some('\u{0006}'),
-        "BEL" => Some('\u{0007}'),
-        "BS" => Some('\u{0008}'),
-        "HT" => Some('\t'),
-        "LF" => Some('\n'),
-        "VT" => Some('\u{000B}'),
-        "FF" => Some('\u{000C}'),
-        "CR" => Some('\r'),
-        "SO" => Some('\u{000E}'),
-        "SI" => Some('\u{000F}'),
-        "DLE" => Some('\u{0010}'),
-        "DC1" => Some('\u{0011}'),
-        "DC2" => Some('\u{0012}'),
-        "DC3" => Some('\u{0013}'),
-        "DC4" => Some('\u{0014}'),
-        "NAK" => Some('\u{0015}'),
-        "SYN" => Some('\u{0016}'),
-        "ETB" => Some('\u{0017}'),
-        "CAN" => Some('\u{0018}'),
-        "EM" => Some('\u{0019}'),
-        "SUB" => Some('\u{001A}'),
-        "ESC" => Some('\u{001B}'),
-        "FS" => Some('\u{001C}'),
-        "GS" => Some('\u{001D}'),
-        "RS" => Some('\u{001E}'),
-        "US" => Some('\u{001F}'),
-        "SP" => Some(' '),
-        "DEL" => Some('\u{007F}'),
-        _ => None,
-    }
-}
-
-/// Process Haskell escape sequences in a string literal.
-/// Handles \n, \t, \r, \\, \", \', \0, \a, \b, \f, \v,
-/// decimal (\65), octal (\o101), hex (\x41), and string gaps.
-fn unescape_string_chirho(s_chirho: &str) -> String {
-    let mut result_chirho = String::with_capacity(s_chirho.len());
-    let mut chars_chirho = s_chirho.chars();
-    while let Some(c_chirho) = chars_chirho.next() {
-        if c_chirho == '\\' {
-            match chars_chirho.next() {
-                Some('n') => result_chirho.push('\n'),
-                Some('t') => result_chirho.push('\t'),
-                Some('r') => result_chirho.push('\r'),
-                Some('\\') => result_chirho.push('\\'),
-                Some('"') => result_chirho.push('"'),
-                Some('\'') => result_chirho.push('\''),
-                Some('0') => result_chirho.push('\0'),
-                Some('a') => result_chirho.push('\x07'),
-                Some('b') => result_chirho.push('\x08'),
-                Some('f') => result_chirho.push('\x0C'),
-                Some('v') => result_chirho.push('\x0B'),
-                Some('o') => result_chirho.push(collect_octal_escape_chirho(&mut chars_chirho)),
-                Some('x') => result_chirho.push(collect_hex_escape_chirho(&mut chars_chirho)),
-                Some(d_chirho) if d_chirho.is_ascii_digit() && d_chirho != '0' => {
-                    result_chirho.push(collect_decimal_escape_chirho(d_chirho, &mut chars_chirho));
-                }
-                Some(c_chirho) if c_chirho.is_ascii_uppercase() => {
-                    let mut name_chirho = String::from(c_chirho);
-                    while let Some(next_chirho) = chars_chirho.clone().next() {
-                        if next_chirho.is_ascii_uppercase() || next_chirho.is_ascii_digit() {
-                            name_chirho.push(chars_chirho.next().unwrap());
-                        } else {
-                            break;
-                        }
-                    }
-                    if let Some(ch_chirho) = named_ascii_escape_chirho(&name_chirho) {
-                        result_chirho.push(ch_chirho);
-                    } else {
-                        result_chirho.push('\\');
-                        result_chirho.push_str(&name_chirho);
-                    }
-                }
-                Some(ws_chirho) if ws_chirho.is_ascii_whitespace() => {
-                    // String gap: \<whitespace>\  — skip all whitespace until next backslash
-                    for gap_c_chirho in chars_chirho.by_ref() {
-                        if gap_c_chirho == '\\' {
-                            break;
-                        }
-                    }
-                }
-                Some(other_chirho) => {
-                    result_chirho.push('\\');
-                    result_chirho.push(other_chirho);
-                }
-                None => result_chirho.push('\\'),
-            }
-        } else {
-            result_chirho.push(c_chirho);
-        }
-    }
-    result_chirho
 }
 
 // ---------------------------------------------------------------------------

@@ -9,6 +9,11 @@ use haskelujah_span_chirho::SpanChirho;
 
 use crate::provenance_chirho::{OccurrenceRoleChirho, OriginIdChirho};
 
+mod escape_chirho;
+#[cfg(test)]
+mod escape_tests_chirho;
+pub use escape_chirho::{decode_escape_chirho, unescape_string_body_chirho};
+
 /// A literal value in source code: its value, its span, and, once a producer
 /// has stamped it, its origin. A literal is an occurrence: an overloaded
 /// literal is a use of `fromInteger`, `fromRational` or `fromString`, and a
@@ -131,46 +136,6 @@ impl fmt::Debug for LitChirho {
     }
 }
 
-fn named_ascii_escape_chirho(name_chirho: &str) -> Option<char> {
-    match name_chirho {
-        "NUL" => Some('\0'),
-        "SOH" => Some('\u{0001}'),
-        "STX" => Some('\u{0002}'),
-        "ETX" => Some('\u{0003}'),
-        "EOT" => Some('\u{0004}'),
-        "ENQ" => Some('\u{0005}'),
-        "ACK" => Some('\u{0006}'),
-        "BEL" => Some('\u{0007}'),
-        "BS" => Some('\u{0008}'),
-        "HT" => Some('\t'),
-        "LF" => Some('\n'),
-        "VT" => Some('\u{000B}'),
-        "FF" => Some('\u{000C}'),
-        "CR" => Some('\r'),
-        "SO" => Some('\u{000E}'),
-        "SI" => Some('\u{000F}'),
-        "DLE" => Some('\u{0010}'),
-        "DC1" => Some('\u{0011}'),
-        "DC2" => Some('\u{0012}'),
-        "DC3" => Some('\u{0013}'),
-        "DC4" => Some('\u{0014}'),
-        "NAK" => Some('\u{0015}'),
-        "SYN" => Some('\u{0016}'),
-        "ETB" => Some('\u{0017}'),
-        "CAN" => Some('\u{0018}'),
-        "EM" => Some('\u{0019}'),
-        "SUB" => Some('\u{001A}'),
-        "ESC" => Some('\u{001B}'),
-        "FS" => Some('\u{001C}'),
-        "GS" => Some('\u{001D}'),
-        "RS" => Some('\u{001E}'),
-        "US" => Some('\u{001F}'),
-        "SP" => Some(' '),
-        "DEL" => Some('\u{007F}'),
-        _ => None,
-    }
-}
-
 /// Parse the body of a Haskell character literal, excluding its quote marks.
 ///
 /// workflow: language-features-chirho/type-level-character-families-chirho
@@ -178,31 +143,10 @@ pub fn parse_haskell_char_body_chirho(body_chirho: &str) -> Option<char> {
     let Some(rest_chirho) = body_chirho.strip_prefix('\\') else {
         return body_chirho.chars().next();
     };
-
-    match rest_chirho.chars().next()? {
-        'n' => Some('\n'),
-        't' => Some('\t'),
-        'r' => Some('\r'),
-        '\\' => Some('\\'),
-        '\'' => Some('\''),
-        '"' => Some('"'),
-        '0' if rest_chirho.len() == 1 => Some('\0'),
-        'a' => Some('\x07'),
-        'b' => Some('\x08'),
-        'f' => Some('\x0C'),
-        'v' => Some('\x0B'),
-        'o' => u32::from_str_radix(&rest_chirho[1..], 8)
-            .ok()
-            .and_then(char::from_u32),
-        'x' => u32::from_str_radix(&rest_chirho[1..], 16)
-            .ok()
-            .and_then(char::from_u32),
-        digit_chirho if digit_chirho.is_ascii_digit() => {
-            rest_chirho.parse::<u32>().ok().and_then(char::from_u32)
-        }
-        upper_chirho if upper_chirho.is_ascii_uppercase() => named_ascii_escape_chirho(rest_chirho),
-        _ => body_chirho.chars().nth(1),
-    }
+    // One escape, through the grammar string literals share (row 561), and nothing after it.
+    let mut chars_chirho = rest_chirho.chars();
+    let value_chirho = decode_escape_chirho(&mut chars_chirho)?;
+    chars_chirho.as_str().is_empty().then_some(value_chirho)
 }
 
 /// Render a character-literal body in a stable Haskell-compatible form.
