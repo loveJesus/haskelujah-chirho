@@ -96,6 +96,17 @@ Each advance is `git rebase --onto <new main> <old main>` of the same 32 commits
    - Ordering (#28411): row 535 (P1) lands first. This advance stays source-only: no build, freeze or builder request.
      - After row 535 lands, the stack advances onto that exact main and these proofs repeat.
      - Then comes the freeze and the unit 517 re-derivation.
+3. Row 535 (2026-10-26, #28446): onto adedc966, giving 639359d9 (tree 18d3472f) on `patterns-fundep-535-replay-chirho`, then the binder adaptation 17510b31 and the record commit 31832765 (tree 2b131234).
+   - Main's crates tree is now 0a9f3727, row 535's gated source tree. Row 535's 18 commits change 17 paths: the Cranelift and LLVM backends, the RTS failure route, a driver test helper, a workflow doc, a tasklist and the DB. None of them is one of the replay's paths, and no directory gains files from both sides.
+   - All 34 commits over 3c29010c, the binder and record commits included, keep their `patch-id --stable`, full messages and authors.
+   - The 32nd commit's tree equals `git merge-tree --write-tree adedc966 de92912a`, and 31832765's tree equals `git merge-tree --write-tree adedc966 863669a2`. Per-commit dry replays of both ranges with merge-tree and commit-tree meet the same trees with no conflict.
+   - Blob-level union over 9944ed4c: main's 45 paths carry main's blobs, the replay's 47 carry de92912a's, and the one shared path, typing `deriving_chirho/mod.rs`, is still `git merge-file`'s clean three-way merge.
+   - The binder commit's diff is byte-equal to the prepared patch (sha256 155f74a1), its three blobs equal the drafts, and their pre-images are the same blobs on adedc966. The 32nd commit plus the patch gives the binder commit's tree.
+   - Hygiene over adedc966..31832765:
+     - rustfmt 1.8.0 is a stdin no-op on 33/33 changed Rust files;
+     - `git diff --check` is clean;
+     - gitleaks 8.30.1 scans 34 commits and finds no leaks.
+   - Row 535 moves main's native SectionsChirho run from a printed pointer to R2's named failure, with the execution corpus at 30/35. Question 6 compares against that main.
 
 ## Measured questions for the post-RC5 gate
 
@@ -128,7 +139,7 @@ Each advance is `git rebase --onto <new main> <old main>` of the same 32 commits
 - [x] Post the source checkpoint for gpt's review.
 - [x] After RC5 lands, advance onto that main and prove the RC5 union (de92912a).
 - [x] After rows 532–534 land, advance onto 3c29010c with the approved binder adaptation and prove the raw union (2122dbda).
-- [ ] After row 535 lands, advance onto that exact main and repeat the union proof (#28411).
-- [ ] Build the gate tooling for the measured questions. Request the builder by name only after row 535 lands.
+- [x] After row 535 lands, advance onto that exact main and repeat the union proof (#28411, #28446).
+- [ ] Build the gate tooling for the measured questions. Request the builder by name before any freeze or gate (#28446).
 - [ ] Freeze the re-advanced replay as the unit 517 baseline.
 - [ ] Gate, then a docs-only gate record; main and the DB stay gpt_chirho's.
