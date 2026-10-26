@@ -51,8 +51,9 @@ fn naming_messages_chirho(source_chirho: &str) -> Vec<String> {
         .collect()
 }
 
-/// GHC 9.14.1 rejects each with GHC-76037, naming exactly these references: the import lists
-/// behind their qualifiers do not supply them.
+/// GHC 9.14.1 rejects each, naming exactly these references, which the import lists behind
+/// their qualifiers do not supply: GHC-76037 for a name outside the lists, and GHC-01928 for a
+/// constructor whose same-named type alone is listed.
 const REJECTED_CHIRHO: &[(&str, &str, &[&str])] = &[
     (
         // GHC: Not in scope: ‘NE.toList’.
@@ -120,6 +121,15 @@ const REJECTED_CHIRHO: &[(&str, &str, &[&str])] = &[
          main :: IO ()\n\
          main = print (Data.List.nub (sort [2, 1, 2 :: Int]))\n",
         &["variable not in scope: `Data.List.nub`"],
+    ),
+    (
+        // A bare type item brings the type, not the constructor that shares its spelling.
+        // GHC: GHC-01928, a data constructor out of scope, for `P.Proxy`.
+        "BareTypeItemChirho.hs",
+        "module BareTypeItemChirho where\n\
+         import qualified Data.Proxy as P (Proxy)\n\
+         x = P.Proxy\n",
+        &["data constructor not in scope: `P.Proxy`"],
     ),
 ];
 

@@ -418,6 +418,52 @@ fn a_source_derived_type_closes_on_its_complete_members_chirho() {
 }
 
 #[test]
+fn a_bare_type_item_supplies_no_constructor_of_the_same_name_chirho() {
+    // `data T = T`, listed as the bare type `T`: GHC 9.14.1 reports `Bare.T` in
+    // an expression as GHC-01928, a data constructor out of scope. Only
+    // `T(..)` (complete, from source) brings the constructor.
+    let same_name_chirho = build_iface_chirho(&module_chirho(
+        "SameNameChirho",
+        vec![],
+        vec![DeclChirho::DataDeclChirho {
+            name_chirho: name_chirho("T"),
+            type_vars_chirho: vec![],
+            constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                name_chirho: name_chirho("T"),
+                fields_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+    ));
+    let bare_type_chirho = ImportItemChirho::TyConChirho {
+        name_chirho: name_chirho("T"),
+        members_chirho: ExportMembersChirho::NoneChirho,
+    };
+    let messages_chirho = messages_chirho(
+        vec![
+            import_chirho(
+                "SameNameChirho",
+                true,
+                Some("Bare"),
+                listing_chirho(vec![bare_type_chirho]),
+            ),
+            import_chirho(
+                "SameNameChirho",
+                true,
+                Some("Full"),
+                listing_chirho(vec![all_of_chirho("T")]),
+            ),
+        ],
+        bindings_chirho(vec![con_chirho("Bare", "T"), con_chirho("Full", "T")]),
+        vec![same_name_chirho],
+    );
+    assert_eq!(messages_chirho, ["data constructor not in scope: `Bare.T`"]);
+}
+
+#[test]
 fn the_module_name_still_qualifies_its_own_top_level_values_chirho() {
     // Even where an import list also binds the module's own name: the module's
     // own `value0Chirho` stays in scope, the listed `head` is supplied, and

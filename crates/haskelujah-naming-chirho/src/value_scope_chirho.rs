@@ -153,10 +153,9 @@ fn explicit_list_supply_chirho(
                 name_chirho,
                 members_chirho,
             } => {
-                // A bare capitalized item may be written for a data constructor
-                // or pattern (`data P`, whose keyword lowering drops), so its
-                // name is also admitted as a value spelling.
-                names_chirho.insert(canonical_value_name_chirho(name_chirho.text_chirho()));
+                // The type or class name itself supplies no value: `import M (T)`
+                // brings the type, never a constructor that shares its spelling
+                // (GHC 9.14.1, GHC-01928). Only members supply values.
                 match members_chirho {
                     ExportMembersChirho::NoneChirho => {}
                     ExportMembersChirho::SomeChirho(member_names_chirho) => {
