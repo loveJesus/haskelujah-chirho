@@ -148,3 +148,40 @@ this list arm is recorded here instead.
   `generic_heads_tests_chirho.rs`.
 - Mutant g1 aliases a list head despite a competitor, and the fail-closed control catches it.
   Mutant g2 refuses the list arm again, and the defined-method control catches it.
+
+## Constrained builtin aliases and `Data.Map.toList` pairs (row 534, 2026-10-25)
+
+gpt_chirho #28360, #28371. Qualified `Data.Map.fromList` and `Data.Map.toList` exposed two
+orthogonal hops:
+
+1. **Constrained builtin alias canonicalization (`constrained_references_chirho.rs:312-315`).**
+   `seed_builtin_import_aliases_chirho` binds `M.fromList` to `CoreId("mapFromList")`. Because
+   `M.fromList :: Ord k => [(k, v)] -> Map k v` is in `constrained_names_chirho`,
+   `reference_occurrence_chirho` mints a per-use occurrence id named `"M.fromList"` with canonical
+   id `CoreId("mapFromList")` and records `Ord` in `reference_evidence_chirho`. Deferring
+   canonicalization in `occurrence_head_replacement_chirho` whenever `reference_evidence_chirho`
+   was non-empty left `"M.fromList"` on the spine when `canonical_id_chirho` had no entry in
+   `dict_param_bindings_chirho`, so `collect_method_app_chirho` stripped `"M."` and rewrote it to
+   `$sel_IsList_fromList $fIsList[tN]` (list identity). `occurrence_head_replacement_chirho` now
+   defers to the dictionary-parameter call-site path only when
+   `dict_param_bindings_chirho.contains_key(canonical_id_chirho)` holds; otherwise it restores
+   `*canonical_id_chirho` (`CoreId("mapFromList")`).
+2. **Runtime pair constructor tag (`eval_chirho.rs:4700-4705`).**
+   `MachineChirho::build_pair_list_chirho` allocated 2-tuples under `"(,)"` (`tag = 0`) instead of
+   Core/STG's `"$tuple2"` (`tag = 2` when `[]` and `:` precede `"$tuple2"` in `con_tag_map_chirho`),
+   so both `$prim_Show_show_[(k, v)]` and `fst` failed with `no matching alternative for tag 0`.
+   `build_pair_list_chirho` now looks up and constructs `"$tuple2"`.
+
+- **Controls (`tests/evaluation_values_chirho/data_map_tolist_chirho.rs` and `occurrence_rows_tests_chirho.rs`):**
+  - 7 movers to GHC-exact: `D01` (`[(1,'a'),(2,'b')]`), `M01` (`[(1,10),(2,20)]`), `M02`
+    (`M.insert` + `M.singleton`, isolating Hop B), `M03` (annotated `M.Map Int Char`), `M04`
+    (`String` values), `M05` (`M.size (M.fromList ...)` -> `2`, isolating Hop A), and `M06`
+    (let-bound `map fst (M.toList (M.fromList ...))` -> `[1,2]`).
+  - 2 holds: `M07` (`GHC.Exts.toList [1, 2, 3 :: Int]` -> `[1,2,3]`) and `M08`
+    (`M.size (M.insert 2 "b" (M.fromList [(1, "a")]))` -> `2`, matching `eval_import_data_map_chirho`).
+  - 3 measured boundaries outside this unit: `D02` (`import Data.Map (fromList, toList)`,
+    unqualified explicit import, `STAYS-WRONG` `[(2,'b'),(1,'a')]`), and `T07`/`Q01` (local
+    `toList` binder `CoreId` collision in `resolve_or_fresh_id_chirho`, `STAYS-LOUD`).
+  - Mutant M1 drops the `dict_param_bindings_chirho.contains_key(canonical_id_chirho)` guard in
+    `occurrence_head_replacement_chirho`; Mutant M2 reverts `"$tuple2"` to `"(,)"` in
+    `build_pair_list_chirho`.

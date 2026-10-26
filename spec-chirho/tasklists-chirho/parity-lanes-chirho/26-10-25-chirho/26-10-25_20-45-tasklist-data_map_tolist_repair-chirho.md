@@ -79,7 +79,11 @@ Owner: `HASKELUJAH/agy_chirho` (source-only branch `data-map-tolist-repair-chirh
 
 ## Source checklist
 
-- [x] C1: this tasklist and bounded placement plan.
-- [ ] C2: Hop A (`constrained_references_chirho.rs`), Hop B (`eval_chirho.rs`), Core unit test (`occurrence_rows_tests_chirho.rs`), and end-to-end integration tests (`dictionary_evidence_chirho.rs` + `evaluation_values_chirho/data_map_tolist_chirho.rs`).
-- [ ] Checks without Cargo: `rustfmt --check`, `git diff --check`, `gitleaks`, and GHC 9.14.1 + frozen `main_chirho` (`b19f30b8`, `e7b6c69d`) receipts on all 12 extracted programs.
-- [ ] C3: workflow documentation in `own-class-method-occurrences-chirho.md` and tasklist checkpoint hashes.
+- [x] C1 (`b47e9c13`): this tasklist and bounded placement plan.
+- [x] C2 (`436fa6b2`): Hop A (`constrained_references_chirho.rs`), Hop B (`eval_chirho.rs`), Core unit test (`occurrence_rows_tests_chirho.rs`), and end-to-end integration tests (`dictionary_evidence_chirho.rs` + `evaluation_values_chirho/data_map_tolist_chirho.rs`).
+- [x] Checks without Cargo:
+  - every touched Rust file is a pinned-rustfmt no-op (`rustfmt --check --edition 2024`), and `git diff --check` and `gitleaks` are clean;
+  - `data_map_tolist_chirho.rs` is 108 lines, `dictionary_evidence_chirho.rs` is 270 lines, `occurrence_rows_tests_chirho.rs` is 346 lines, and `tests/evaluation_values_chirho/` holds 2 entries;
+  - GHC 9.14.1 confirms all 12 extracted programs (`GREEN: 12/12 as recorded`). Frozen `main_chirho` CLI `b19f30b844e6d9249975b15e02e9054e6ab7fd089917233ca23a8a37a31dec98` (identical `crates/` tree to `e7b6c69d`) measures `WRONG` on 6 movers (`D01`, `M01`, `M03`, `M04`, `M05`, `M06`), `LOUD` on 1 mover (`M02`, `no matching alternative for tag 0 at @2135`), `EXACT` on the 2 holds (`M07`, `M08`), `WRONG` on boundary `D02` (`[(2,'b'),(1,'a')]`), and `LOUD` on boundaries `T07` and `Q01`;
+  - Receipts: `tmp-chirho/data-map-534-chirho/oracle-unit-main-chirho/` (C-locale directory digest `7d0f00647ff4eecc6d39c3f6357851ede747aa108a0617e016c1da0d414a47cc`, `receipts-chirho.tsv` sha256 `3086b87d86d1b1e538db2ff7f404aaf379193762f01ad9ed7446f9724e3a6705`, unit sha256 `fd1ee989038cd1ec72546160ac06952d02963146897778b54023aaebfa334d3d`).
+- [x] C3: workflow documentation in `own-class-method-occurrences-chirho.md` and tasklist checkpoint hashes.
