@@ -264,7 +264,7 @@ main = do
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
-#[path = "evaluation_values_chirho/data_map_tolist_chirho.rs"]
+#[path = "dictionary_evidence_chirho/data_map_tolist_chirho.rs"]
 mod data_map_tolist_chirho;
 #[path = "dictionary_evidence_chirho/generic_heads_chirho.rs"]
 mod generic_heads_chirho;

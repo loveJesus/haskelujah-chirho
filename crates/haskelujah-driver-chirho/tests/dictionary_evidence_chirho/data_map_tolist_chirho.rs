@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Qualified `Data.Map` `fromList` and `toList` repair (row 534, gpt_chirho #28360 and #28371).
+//! Qualified `Data.Map` `fromList` and `toList` repair (row 534, gpt_chirho #28360, #28371, #28378).
 //! Hop A preserves the `mapFromList` builtin alias in `occurrence_head_replacement_chirho` when
 //! the canonical target has no dictionary parameters, instead of leaving `M.fromList` on the
 //! spine for `IsList.fromList`. Hop B makes `build_pair_list_chirho` allocate `"$tuple2"` pairs
@@ -10,7 +10,32 @@
 use super::run_chirho;
 
 #[test]
+fn qualified_data_map_from_list_size_answers_as_ghc_chirho() {
+    // Hop A only (M05): 1-argument `M.size (M.fromList ...)` without `M.toList` or pair `Show`.
+    assert_eq!(
+        run_chirho(
+            "M05_map_size_fromlist_chirho.hs",
+            "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.size (M.fromList [(2, \"b\"), (1, \"a\") :: (Int, String)]))\n",
+        ),
+        "2\n"
+    );
+}
+
+#[test]
+fn qualified_data_map_to_list_insert_answers_as_ghc_chirho() {
+    // Hop B only (M02): `M.toList (M.insert ... (M.singleton ...))` without `M.fromList`.
+    assert_eq!(
+        run_chirho(
+            "M02_map_tolist_insert_chirho.hs",
+            "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.toList (M.insert (2 :: Int) \"b\" (M.singleton 1 \"a\")))\n",
+        ),
+        "[(1,\"a\"),(2,\"b\")]\n"
+    );
+}
+
+#[test]
 fn qualified_data_map_from_list_and_to_list_answer_as_ghc_chirho() {
+    // Combined movers (D01, M01, M03, M04, M06): require both Hop A (`M.fromList`) and Hop B (`M.toList`).
     for (file_name_chirho, program_chirho, ghc_chirho) in [
         (
             "D01_qualified_data_map_tolist_chirho.hs",
@@ -23,11 +48,6 @@ fn qualified_data_map_from_list_and_to_list_answer_as_ghc_chirho() {
             "[(1,10),(2,20)]\n",
         ),
         (
-            "M02_map_tolist_insert_chirho.hs",
-            "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.toList (M.insert (2 :: Int) \"b\" (M.singleton 1 \"a\")))\n",
-            "[(1,\"a\"),(2,\"b\")]\n",
-        ),
-        (
             "M03_map_tolist_char_annotated_map_chirho.hs",
             "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.toList (M.fromList [(2, 'b'), (1, 'a')] :: M.Map Int Char))\n",
             "[(1,'a'),(2,'b')]\n",
@@ -36,11 +56,6 @@ fn qualified_data_map_from_list_and_to_list_answer_as_ghc_chirho() {
             "M04_map_tolist_string_values_chirho.hs",
             "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.toList (M.fromList [(2 :: Int, \"b\"), (1, \"a\")]))\n",
             "[(1,\"a\"),(2,\"b\")]\n",
-        ),
-        (
-            "M05_map_size_fromlist_chirho.hs",
-            "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.size (M.fromList [(2, \"b\"), (1, \"a\") :: (Int, String)]))\n",
-            "2\n",
         ),
         (
             "M06_map_tolist_fst_projection_chirho.hs",
@@ -76,7 +91,7 @@ fn list_to_list_and_insert_from_list_holds_answer_as_ghc_chirho() {
             "{file_name_chirho}"
         );
     }
-    // Open boundaries outside row 534 (#28371):
+    // Open boundaries outside row 534 (#28371, #28378):
     // - D02 is an unqualified explicit import `import Data.Map (fromList, toList)` (classified
     //   STAYS-WRONG from measurement: `[(2,'b'),(1,'a')]`, since `seed_builtin_import_aliases_chirho`
     //   binds only qualified `M.fromList` / `M.toList`).
