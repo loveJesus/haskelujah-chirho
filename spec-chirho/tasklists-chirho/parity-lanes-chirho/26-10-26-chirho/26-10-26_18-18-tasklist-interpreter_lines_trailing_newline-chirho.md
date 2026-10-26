@@ -21,8 +21,8 @@ or prefix-minus lowering owned by rows 557, 560, 561, and 555.
 - [x] Repair the one primitive without changing String representation.
 - [x] Add focused regression and boundary controls.
 - [x] Run the runtime and focused driver gates under three minutes.
-- [ ] Verify rustfmt, diff-check, changed-line Clippy, and gitleaks.
-- [ ] Land and close progress row 563.
+- [x] Verify rustfmt, diff-check, changed-line Clippy, and gitleaks.
+- [x] Land and close progress row 563.
 
 ## Gate record
 
@@ -32,3 +32,5 @@ or prefix-minus lowering owned by rows 557, 560, 561, and 555.
 - Focused Clippy completed in 8.72 seconds. It reported no warning on a changed line; the existing
   workspace warnings remain outside this unit.
 - `cargo fmt --all -- --check` and `git diff --check` are clean.
+- Gitleaks scanned source commit `f936ffa9` and found no leaks.
+- Source commit `f936ffa9` fast-forwarded onto exact base `539379d4`.
