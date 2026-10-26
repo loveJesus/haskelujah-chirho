@@ -17,8 +17,8 @@ use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::{
-    build_iface_chirho, build_iface_with_imports_chirho, builtin_module_ifaces_chirho,
-    merge_module_ifaces_chirho,
+    ModuleIfaceChirho, build_iface_chirho, build_iface_with_imports_chirho,
+    builtin_module_ifaces_chirho, merge_module_ifaces_chirho,
 };
 use crate::resolve_chirho::resolve_module_with_imports_chirho;
 
@@ -617,9 +617,10 @@ fn a_reexported_type_is_not_marked_by_the_reexporting_module_chirho() {
 }
 
 // Row 536: the builtin NonEmpty entry is base's declaration exactly, so it is
-// marked; a partial builtin entry is not; and merging keeps every mark.
+// marked; a partial builtin entry is not; and merging in a copy of the module
+// that marks another type keeps both marks.
 #[test]
-fn the_builtin_non_empty_entry_is_complete_and_merging_keeps_marks_chirho() {
+fn the_builtin_non_empty_entry_is_complete_and_a_disjoint_merge_keeps_it_chirho() {
     let builtin_ifaces_chirho = builtin_module_ifaces_chirho();
     let non_empty_chirho = builtin_ifaces_chirho
         .iter()
@@ -659,8 +660,8 @@ fn the_builtin_non_empty_entry_is_complete_and_merging_keeps_marks_chirho() {
             .contains("Semigroup")
     }));
 
-    // Two interfaces of one module merge with a union of members, so a mark
-    // from either side survives.
+    // A copy of the module that marks only a type the builtin entry lacks:
+    // marks merge per type, so both survive.
     let source_chirho = build_iface_chirho(&module_chirho(
         "Data.List.NonEmpty",
         None,
@@ -675,4 +676,95 @@ fn the_builtin_non_empty_entry_is_complete_and_merging_keeps_marks_chirho() {
     let marks_chirho = &merged_chirho[0].exports_chirho.complete_member_types_chirho;
     assert!(marks_chirho.contains("NonEmpty"));
     assert!(marks_chirho.contains("ExtraChirho"));
+}
+
+/// A copy of module `MergedChirho` declaring `data T = T` for each name. With
+/// pattern synonyms enabled it exports every one of them unmarked.
+fn merged_copy_chirho(
+    type_texts_chirho: &[&str],
+    enables_pattern_synonyms_chirho: bool,
+) -> ModuleIfaceChirho {
+    let mut copy_chirho = module_chirho(
+        "MergedChirho",
+        None,
+        vec![],
+        type_texts_chirho
+            .iter()
+            .map(|type_text_chirho| {
+                plain_data_chirho(
+                    type_text_chirho,
+                    vec![ordinary_constructor_chirho(type_text_chirho)],
+                )
+            })
+            .collect(),
+    );
+    if enables_pattern_synonyms_chirho {
+        copy_chirho
+            .extensions_chirho
+            .push("PatternSynonyms".to_string());
+    }
+    build_iface_chirho(&copy_chirho)
+}
+
+/// The sorted marks of the one interface these copies merge into.
+fn merged_marks_chirho(copies_chirho: Vec<ModuleIfaceChirho>) -> Vec<String> {
+    let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+    assert_eq!(merged_chirho.len(), 1);
+    let mut marks_chirho: Vec<String> = merged_chirho[0]
+        .exports_chirho
+        .complete_member_types_chirho
+        .iter()
+        .cloned()
+        .collect();
+    marks_chirho.sort();
+    marks_chirho
+}
+
+// Row 536: copies of one module merge their marks per type. Disjoint marked
+// types all survive, and a type every copy marks stays marked. A copy that
+// exports the type unmarked may export a member no entry lists (a bundled
+// pattern synonym), so it clears the mark in any order, while the marked
+// copy's other types keep theirs.
+#[test]
+fn copies_of_one_module_merge_their_marks_per_type_chirho() {
+    let unmarked_chirho = merged_copy_chirho(&["SharedChirho"], true);
+    assert!(
+        unmarked_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("SharedChirho")
+    );
+    assert!(
+        unmarked_chirho
+            .exports_chirho
+            .complete_member_types_chirho
+            .is_empty()
+    );
+    let marked_chirho = merged_copy_chirho(&["SharedChirho", "OwnChirho"], false);
+
+    assert_eq!(
+        merged_marks_chirho(vec![
+            merged_copy_chirho(&["LeftChirho"], false),
+            merged_copy_chirho(&["RightChirho"], false),
+        ]),
+        ["LeftChirho", "RightChirho"]
+    );
+    assert_eq!(
+        merged_marks_chirho(vec![
+            merged_copy_chirho(&["SharedChirho"], false),
+            marked_chirho.clone(),
+        ]),
+        ["OwnChirho", "SharedChirho"]
+    );
+    for copies_chirho in [
+        vec![marked_chirho.clone(), unmarked_chirho.clone()],
+        vec![unmarked_chirho.clone(), marked_chirho.clone()],
+        vec![
+            marked_chirho.clone(),
+            unmarked_chirho.clone(),
+            marked_chirho.clone(),
+        ],
+    ] {
+        assert_eq!(merged_marks_chirho(copies_chirho), ["OwnChirho"]);
+    }
 }

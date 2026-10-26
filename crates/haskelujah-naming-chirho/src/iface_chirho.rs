@@ -18,8 +18,9 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::type_exports_chirho::{
     canonical_type_name_chirho, canonical_value_name_chirho, collect_all_definitions_chirho,
     locally_complete_type_names_chirho, merge_all_associated_type_exports_chirho,
-    merge_associated_type_exports_chirho, normalize_builtin_type_exports_chirho,
-    remove_associated_type_exports_chirho, selected_associated_type_names_chirho,
+    merge_associated_type_exports_chirho, merged_complete_member_types_chirho,
+    normalize_builtin_type_exports_chirho, remove_associated_type_exports_chirho,
+    selected_associated_type_names_chirho,
 };
 
 // ---------------------------------------------------------------------------
@@ -60,7 +61,8 @@ pub struct IfaceExportsChirho {
     /// method that `T(..)` brings. Only these let a `T(..)` item close a
     /// qualified import list. A source module marks the types it declares; a
     /// builtin interface marks a type only when its entry matches GHC's
-    /// declaration. Losing a mark only leaves a qualifier open.
+    /// declaration. Copies of one module merge their marks per type. Losing
+    /// a mark only leaves a qualifier open.
     /// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
     pub complete_member_types_chirho: HashSet<String>,
 }
@@ -16313,7 +16315,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
 }
 
 /// Merge module interfaces that share the same module name, preserving the
-/// union of exported values and type members across all copies.
+/// union of exported values and type members across all copies. A type's
+/// completeness mark survives only where every copy exporting it marks it.
 pub fn merge_module_ifaces_chirho(
     modules_chirho: Vec<ModuleIfaceChirho>,
 ) -> Vec<ModuleIfaceChirho> {
@@ -16324,6 +16327,13 @@ pub fn merge_module_ifaces_chirho(
     for module_chirho in modules_chirho {
         if let Some(&idx_chirho) = index_chirho.get(&module_chirho.name_chirho) {
             let existing_chirho = &mut deduped_chirho[idx_chirho];
+            // Marks merge per type, read before this copy's types join the
+            // entry. workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+            existing_chirho.exports_chirho.complete_member_types_chirho =
+                merged_complete_member_types_chirho(
+                    &existing_chirho.exports_chirho,
+                    &module_chirho.exports_chirho,
+                );
             for (name_chirho, value_chirho) in module_chirho.exports_chirho.values_chirho {
                 existing_chirho
                     .exports_chirho
@@ -16376,12 +16386,6 @@ pub fn merge_module_ifaces_chirho(
                     }
                 }
             }
-            // Members merge as a union, so a list complete on either side is
-            // still complete. workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
-            existing_chirho
-                .exports_chirho
-                .complete_member_types_chirho
-                .extend(module_chirho.exports_chirho.complete_member_types_chirho);
         } else {
             index_chirho.insert(module_chirho.name_chirho.clone(), deduped_chirho.len());
             deduped_chirho.push(module_chirho);

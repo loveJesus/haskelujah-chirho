@@ -684,6 +684,35 @@ fn is_gadt_constructor_chirho(constructor_chirho: &ConDeclChirho) -> bool {
     matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. })
 }
 
+/// The completeness marks of two interfaces of one module, merged per type.
+///
+/// A type both sides export stays marked only when both mark it: the
+/// unmarked side may export a member no entry lists, such as a bundled
+/// pattern synonym. A type only one side exports keeps that side's mark, so
+/// disjoint marked types still union. Read both sides before their types
+/// merge, since a side's own types say what it exports.
+/// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+pub(crate) fn merged_complete_member_types_chirho(
+    existing_chirho: &IfaceExportsChirho,
+    incoming_chirho: &IfaceExportsChirho,
+) -> HashSet<String> {
+    let exported_unmarked_chirho = |exports_chirho: &IfaceExportsChirho, type_name_chirho: &str| {
+        exports_chirho.types_chirho.contains_key(type_name_chirho)
+            && !exports_chirho
+                .complete_member_types_chirho
+                .contains(type_name_chirho)
+    };
+    existing_chirho
+        .complete_member_types_chirho
+        .union(&incoming_chirho.complete_member_types_chirho)
+        .filter(|type_name_chirho| {
+            !exported_unmarked_chirho(existing_chirho, type_name_chirho)
+                && !exported_unmarked_chirho(incoming_chirho, type_name_chirho)
+        })
+        .cloned()
+        .collect()
+}
+
 fn insert_type_export_chirho(
     exports_chirho: &mut IfaceExportsChirho,
     name_chirho: &str,
