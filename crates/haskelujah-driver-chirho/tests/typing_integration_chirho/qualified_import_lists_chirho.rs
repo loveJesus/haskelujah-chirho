@@ -131,6 +131,16 @@ const REJECTED_CHIRHO: &[(&str, &str, &[&str])] = &[
          x = P.Proxy\n",
         &["data constructor not in scope: `P.Proxy`"],
     ),
+    (
+        // A `data` item supplies only its own value, so the list stays closed: `P.Proxy` is
+        // supplied and `P.asProxyTypeOf` is not. GHC: Not in scope: ‘P.asProxyTypeOf’.
+        "DataItemUnlistedChirho.hs",
+        "{-# LANGUAGE ExplicitNamespaces #-}\n\
+         module DataItemUnlistedChirho where\n\
+         import qualified Data.Proxy as P (data Proxy)\n\
+         x = (P.Proxy, P.asProxyTypeOf)\n",
+        &["variable not in scope: `P.asProxyTypeOf`"],
+    ),
 ];
 
 /// GHC 9.14.1 accepts each; the recorded value is what it printed. Each keeps its qualifier's
@@ -265,6 +275,15 @@ const ADMITTED_CHIRHO: &[(&str, &str)] = &[
          import qualified Data.Sequence as Seq (pattern Empty, fromList)\n\
          main :: IO ()\n\
          main = print (length (Seq.fromList [1, 2 :: Int]), null Seq.Empty)\n",
+    ),
+    (
+        // A `data` item imports the constructor, never the type, and supplies it. GHC: 2.
+        "DataItemChirho.hs",
+        "{-# LANGUAGE ExplicitNamespaces #-}\n\
+         module Main where\n\
+         import qualified Data.Proxy as P (data Proxy)\n\
+         main :: IO ()\n\
+         main = print (length [P.Proxy, P.Proxy])\n",
     ),
 ];
 
