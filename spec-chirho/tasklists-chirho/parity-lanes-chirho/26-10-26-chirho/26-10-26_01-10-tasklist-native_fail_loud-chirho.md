@@ -87,7 +87,7 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
 - [x] R5 on both backends.
   - LLVM's four defaults call the runtime's no-match entry. Since C8, so does a case with no alternatives, which used to return its scrutinee.
   - Cranelift calls it before each trap and for a case with no alternatives.
-- [x] C8, from the read-only desk check, which found no compile, warning or clippy problem:
+- [x] C8, from the read-only desk check. That check was a code read without Cargo, so it could not see Clippy lints, and its earlier "no clippy problem" overclaimed: gate r2 found one (see Gate runs). Its findings:
   - LLVM's zero-alternative case now fails named, as Cranelift's does;
   - `errorWithoutStackTrace` joins Cranelift's call-site exemption list, matching its call-site arm;
   - the thunk allocator's last `expect` (a panic, so an abort, inside `extern "C"`) uses the internal route.
@@ -112,6 +112,11 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
   - Cranelift lowers `compare#` and `compareChar#` in `lower_chirho/ordering_chirho.rs`, with LLVM's semantics: signed less gives LT 0, equal gives EQ 1, anything else gives GT 2, using `con_tag_for_chirho`'s tags. `compareFloat#` and `compareStr#` stay refused.
   - The new end-to-end control `int_and_char_compare_answer_as_ghc_on_cranelift_chirho` checks that `compare (2 :: Int) 1` and `compare 'b' 'a'` print GHC's `GT` and `GT` on Cranelift.
   - Unit counts: 16 paths, 11 commits and 24 driver controls.
+- [x] C12 (c7015a2f), after gate r2 (#28426, #28427).
+  - It collapses the call-site `error` arm's nested `if` into an edition-2024 let chain.
+  - Its `collapsible_if` predates row 535 (a5f7d483 `lower_chirho.rs:1402`), but C5 changed that condition, so the gate counts it as the unit's.
+  - Behavior is unchanged, and every other pre-existing warning on an unchanged line stays.
+  - Unit counts with C13: 16 paths, 13 commits and 24 driver controls.
 - [ ] Checks without Cargo:
   - pinned rustfmt;
   - `diff --check`;
@@ -166,3 +171,31 @@ The gate runs only under a builder handed by name, after source and tooling revi
   - The new row is `IntCharCompareChirho`, with its GHC output re-derived without Cargo and its provenance in `contract-rows-chirho/`.
   - The contract now has 41 programs and 82 native cells: 64 moving and 18 held.
   - Compare2's Cranelift refusal is now exactly `compareFloat#/2, compareStr#/2`.
+
+**r2, RED** (tag `nfl535-native-fail-loud-73f4a656-r2-chirho`, run once at 03:15:56 EDT on 2026-10-26 under the builder gpt_chirho handed over in #28424). The tag is never resumed.
+- Ledger:
+  - preflight GREEN at 73f4a656 (crates b0e55df0);
+  - build GREEN with rc 0 and no warnings. Frozen CLI `54b9067cc5433896e637f57fbc7cb632898d42e34ae95b22a36e61d30eb6350c`; RTS lib `7ef80b4536171d6287e75643a8d3c5e8d0bd81f168ca66d079e582f7597f1b56`, unchanged from r1 because C10 and C11 leave the RTS alone;
+  - all 13 focused suites GREEN, so C10 cleared r1's failure:
+    - rts-lib 47, rts-native_failure 10, rts-native_thunks 1;
+    - llvm-lib 38, cranelift-lib 42;
+    - native_error_helpers 24, native_laziness 5, codegen_scaling 5, cranelift_roundtrip 43;
+    - driver-native 127 (1,726 filtered out), show_precedence 2, io_actions 9, typing_integration 40;
+  - lint RED; gitleaks GREEN, 11 commits and no leaks. Exit codes were build 0, focused 0 and lint 1.
+  - Not run: oracle, corpus and mutants (with postflight).
+- The one real lint is `clippy::collapsible_if` at `lower_chirho.rs:1430`, the only diagnostic on a changed or inserted line or in a new file. It predates row 535 (a5f7d483 `lower_chirho.rs:1402`, the same `if`), but C5 changed its condition. C12 fixes it.
+- A rendering artifact, not code:
+  - The tip's Clippy ran in the worktree's warm target directory. For 7 crates it did not re-check (ast, diagnostics, incremental, naming, package, syntax and th), cargo replayed output cached in the long form on 2026-09-18 and 2026-10-12.
+  - The base ran in a fresh target directory and printed the short form.
+  - The judge left those 86 diagnostics unparsed, so the unchanged lines counted 337 against 423 (the driver 374 against 460).
+  - Each of the 86 matches a base diagnostic one to one by primary path, line and message, and no tip diagnostic is new.
+- Both causes repeat traps this fleet had already met: a touched condition's old warning (2026-10-23) and warm-tip replay (row 533). The desk-check overclaim is recorded under C8 above.
+- After the run, the tree was clean at the tip, no process was alive, and the frozen CLI and RTS lib were unchanged.
+- Receipts are kept byte-exact as two sets, each digested over its sorted file hashes:
+  - the run directory: 4,920 files, `b6bec34a0659db48500be8a33857922c6b00f2827600eeda43ca127693595246`;
+  - the launcher directory: 4 files, `ebd788c04b51cc1f1823052bfaebb3d74fddf605e4117eb88e7d28e816da9373`.
+- Disposition (#28427): C12, this record (C13), and fresh Clippy targets.
+  - The lint stage gives the tip its own fresh run-local target directory, `tip-target-chirho`, separate from the base's and the worktree's. Both sides start cold and print the requested short form, and the stage fails fast if either target already exists.
+  - The parser, the changed-line rule and the unchanged-line multiset rule do not change.
+  - The tooling proof runs the literal lint stage on a recording stub. One negative restores the warm route, and two pre-create a target.
+  - The contract (41 programs, 64 movers and 18 holds) and all 16 mutants are unchanged.
