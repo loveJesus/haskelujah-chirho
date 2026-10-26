@@ -7,6 +7,7 @@ use super::*;
 use haskelujah_ast_chirho::decl_chirho::{
     DataKindSigChirho, FieldDeclChirho, FixityChirho, StrictnessChirho,
 };
+use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
 fn module_chirho(decls_chirho: Vec<DeclChirho>) -> ModuleChirho {
     ModuleChirho {
@@ -290,5 +291,63 @@ fn a_kind_signature_tail_gives_the_metadata_the_instance_heads_parameters_chirho
             &metadata_chirho[type_name_chirho].type_vars_chirho, head_vars_chirho,
             "{type_name_chirho}"
         );
+    }
+}
+
+/// `import qualified Data.List.NonEmpty as NE`.
+fn non_empty_import_chirho() -> ImportDeclChirho {
+    ImportDeclChirho {
+        module_chirho: var_name_chirho("Data.List.NonEmpty"),
+        qualified_chirho: true,
+        alias_chirho: Some(var_name_chirho("NE")),
+        spec_chirho: None,
+        span_chirho: gen_span_chirho(),
+    }
+}
+
+// Unit 517: the seam row 533 left. A module importing Data.List.NonEmpty gets base's
+// `infixr 5 :|` metadata, field for field what the dictionary pass's seam test renders.
+#[test]
+fn an_import_of_data_list_non_empty_supplies_base_metadata_chirho() {
+    let mut importing_chirho = module_chirho(vec![]);
+    importing_chirho.imports_chirho = vec![non_empty_import_chirho()];
+    let element_chirho = ShowFieldTypeChirho::VarChirho("a".to_string());
+    assert_eq!(
+        derived_show_metadata_chirho(&importing_chirho).get("NonEmpty"),
+        Some(&DerivedShowChirho {
+            type_vars_chirho: vec!["a".to_string()],
+            constructors_chirho: vec![DerivedShowConChirho {
+                name_chirho: ":|".to_string(),
+                form_chirho: ShowConFormChirho::InfixChirho(5),
+                fields_chirho: vec![
+                    element_chirho.clone(),
+                    ShowFieldTypeChirho::ListChirho(Box::new(element_chirho)),
+                ],
+            }],
+        })
+    );
+}
+
+#[test]
+fn no_import_or_a_local_non_empty_gets_no_base_metadata_chirho() {
+    // Without the import, the name means nothing.
+    assert!(!derived_show_metadata_chirho(&module_chirho(vec![])).contains_key("NonEmpty"));
+
+    // A module's own `NonEmpty` is that type, whether or not it derives Show.
+    for classes_chirho in [&[][..], &["Show"][..]] {
+        let mut local_chirho = module_chirho(vec![data_chirho(
+            "NonEmpty",
+            vec![ordinary_chirho("NonEmptyChirho", vec![])],
+            classes_chirho,
+        )]);
+        local_chirho.imports_chirho = vec![non_empty_import_chirho()];
+        let metadata_chirho = derived_show_metadata_chirho(&local_chirho);
+        match classes_chirho {
+            [] => assert!(!metadata_chirho.contains_key("NonEmpty")),
+            _ => assert_eq!(
+                forms_chirho(&metadata_chirho["NonEmpty"]),
+                vec![("NonEmptyChirho", &ShowConFormChirho::PrefixChirho)]
+            ),
+        }
     }
 }

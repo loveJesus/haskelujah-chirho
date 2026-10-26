@@ -26,6 +26,10 @@ use super::{
 /// Haskell's fixity for an operator with no fixity declaration: `infixl 9`.
 const DEFAULT_PRECEDENCE_CHIRHO: u8 = 9;
 
+/// The module that declares `NonEmpty`, and the type's name.
+const NON_EMPTY_MODULE_CHIRHO: &str = "Data.List.NonEmpty";
+const NON_EMPTY_TYPE_CHIRHO: &str = "NonEmpty";
+
 /// How derived Show renders one constructor, following GHC's derived `showsPrec`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShowConFormChirho {
@@ -124,7 +128,54 @@ pub fn derived_show_metadata_chirho(
             },
         );
     }
+    // `NonEmpty` has no declaration in the module, but base derives its Show. A module
+    // that imports Data.List.NonEmpty and names no type `NonEmpty` itself can only mean
+    // that one, so it gets base's metadata: the seam row 533 left for unit 517.
+    // workflow: print-show-evidence-chirho
+    if imports_builtin_non_empty_chirho(module_chirho) {
+        metadata_chirho.insert(
+            NON_EMPTY_TYPE_CHIRHO.to_string(),
+            non_empty_show_metadata_chirho(),
+        );
+    }
     metadata_chirho
+}
+
+/// base's `data NonEmpty a = a :| [a]` with `infixr 5 :|`: the head renders at 6, the tail
+/// list at 6, and the whole is parenthesized above precedence 5.
+fn non_empty_show_metadata_chirho() -> DerivedShowChirho {
+    let element_chirho = ShowFieldTypeChirho::VarChirho("a".to_string());
+    DerivedShowChirho {
+        type_vars_chirho: vec!["a".to_string()],
+        constructors_chirho: vec![DerivedShowConChirho {
+            name_chirho: ":|".to_string(),
+            form_chirho: ShowConFormChirho::InfixChirho(5),
+            fields_chirho: vec![
+                element_chirho.clone(),
+                ShowFieldTypeChirho::ListChirho(Box::new(element_chirho)),
+            ],
+        }],
+    }
+}
+
+/// Whether the module imports Data.List.NonEmpty and declares no type, class or family
+/// named `NonEmpty` of its own.
+fn imports_builtin_non_empty_chirho(module_chirho: &ModuleChirho) -> bool {
+    let imports_chirho = module_chirho.imports_chirho.iter().any(|import_chirho| {
+        import_chirho.module_chirho.full_name_chirho() == NON_EMPTY_MODULE_CHIRHO
+    });
+    let declares_chirho = module_chirho.decls_chirho.iter().any(|decl_chirho| {
+        matches!(
+            decl_chirho,
+            DeclChirho::DataDeclChirho { name_chirho, .. }
+                | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
+                | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+                | DeclChirho::TypeFamilyDeclChirho { name_chirho, .. }
+                | DeclChirho::ClassDeclChirho { name_chirho, .. }
+                if name_chirho.text_chirho() == NON_EMPTY_TYPE_CHIRHO
+        )
+    });
+    imports_chirho && !declares_chirho
 }
 
 /// Operator → declared precedence, from the module's fixity declarations.
