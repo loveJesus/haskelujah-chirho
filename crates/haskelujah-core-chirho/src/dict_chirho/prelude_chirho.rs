@@ -9,6 +9,7 @@ mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
 mod non_empty_chirho;
+pub(super) mod ordering_extrema_chirho;
 pub(super) mod ordering_tests_chirho;
 mod print_via_show_chirho;
 mod report_folds_chirho;
@@ -3506,6 +3507,9 @@ impl DictPassCtxChirho {
 
         // ── The Ordering tests the compare route reads (row 551) ──
         self.generate_ordering_tests_prelude_chirho();
+
+        // ── The compare-backed extrema evidenced occurrences read (row 565) ──
+        self.generate_ordering_extrema_prelude_chirho();
 
         // ── Additional list functions: nub, nubBy, group, groupBy, tails, inits ──
         self.generate_list_extra_prelude_chirho();

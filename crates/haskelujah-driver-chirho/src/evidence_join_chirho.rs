@@ -52,6 +52,8 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     "print",
     "sum",
     "product",
+    "maximum",
+    "minimum",
     "mfix",
     "read",
     // `toEnum :: Enum a => Int -> a` carries its class variable only in the

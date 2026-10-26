@@ -224,10 +224,11 @@ impl DictPassCtxChirho {
                                 local_instance_dicts_chirho,
                             );
                         }
-                        // An evidenced `sum` or `product` at the head of an application
-                        // takes its proof as an argument does (row 552).
+                        // An evidenced `sum` or `product` (row 552), or `max`, `min`,
+                        // `maximum` or `minimum` (row 565), at the head of an application
+                        // takes its proof as an argument does.
                         if let Some(aggregate_chirho) =
-                            self.evidenced_aggregate_chirho(*head_id_chirho)
+                            self.evidenced_applied_head_chirho(*head_id_chirho)
                         {
                             let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
                                 aggregate_chirho,

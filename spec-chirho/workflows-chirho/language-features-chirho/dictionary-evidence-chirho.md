@@ -69,8 +69,21 @@ flowchart TD
   - When an operand of the desugarer's `<#`, `<=#`, `>#` or `>=#` keys as anything but Int, Char, Bool or Double, `rewrite_chirho/compare_route_chirho.rs` looks up `$prim_Ord_compare_<key>` with `lookup_dispatch_body_name_id_chirho`. That lookup accepts a body-backed row and never a missing-method stub.
   - If found, the primop becomes `test (compare a b)`, with one of the Ordering tests generated in `prelude_chirho/ordering_tests_chirho.rs`.
   - That serves Strings, lists, derived types and Ordering.
-  - A key without such a row keeps the primop: `Maybe`, tuples. `max`, `min` and prefix `(<)` are later bricks.
+  - A key without such a row keeps the primop: `Maybe`, tuples. Prefix `(<)` is a later brick.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/compare_route_chirho.rs`.
+- `max`, `min`, `maximum` and `minimum` read the same rows (row 565, the Ord aggregate brick).
+  - Their generic bindings are Int-shaped, over `<=#` and `>=#`. `maximum` and `minimum` join `max` and `min` in the driver's per-occurrence evidence names, since their schemes are `Ord a => [a] -> a`.
+  - An evidenced occurrence at key K becomes `helper $prim_Ord_compare_K`, in `rewrite_chirho/evidenced_aggregates_chirho.rs`. This holds whether the occurrence is applied, first-class or partially applied.
+  - The helpers are generated in `prelude_chirho/ordering_extrema_chirho.rs`.
+    - `$ord_max_by_chirho cmp x y` keeps `x` on GT and `y` otherwise, which is GHC's default `max` through `<=`.
+    - `$ord_min_by_chirho` mirrors it.
+    - `$ord_maximum_by_chirho` and `$ord_minimum_by_chirho` fold the picks, as the Int-shaped bindings do.
+  - Int, Char and Bool keep their exact Int-shaped bindings. Double routes too, because `compare x y /= GT` matches IEEE `x <= y`, NaN included.
+  - Residuals keep today's path:
+    - keys without a compare row (`Maybe`, tuples);
+    - a polymorphic `Ord a =>` wrapper, whose evidence is a dictionary;
+    - the empty list, which fails in `head` rather than with `Prelude.maximum: empty list`.
+  - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/extrema_chirho.rs`.
 
 ## Reference evidence (bricks 3 and 4)
 

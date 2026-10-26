@@ -23,6 +23,8 @@ mod double_primops_chirho;
 mod enum_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
 mod equality_sections_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/extrema_chirho.rs"]
+mod extrema_chirho;
 #[path = "dictionary_evidence_chirho/fractional_literals_chirho.rs"]
 mod fractional_literals_chirho;
 #[path = "dictionary_evidence_chirho/ground_keys_chirho.rs"]

@@ -5,7 +5,8 @@
 //! Strings, lists, derived values and Orderings as heap values or C strings: the
 //! interpreter refused them (`LtIntChirho: expected Int#`). Where the operand's key has a
 //! body-backed `$prim_Ord_compare_<key>` row, the pass now reads one `compare a b`. Keys
-//! without such a row (`Maybe`, tuples), `max`, `min` and prefix `(<)` stay as they were.
+//! without such a row (`Maybe`, tuples) and prefix `(<)` stay as they were; `max` and
+//! `min` read the same rows since row 565.
 //! Each program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
@@ -36,8 +37,9 @@ fn ordering_operators_answer_as_ghc_through_compare_everywhere_chirho() {
     );
 }
 
-/// The interpreter still fails on keys without a body-backed compare row, on `max` and on
-/// prefix `(<)`; GHC answers False, False, b and False. Each is a later Ord brick.
+/// The interpreter still fails on keys without a body-backed compare row and on prefix
+/// `(<)`; GHC answers False, False and False. Each is a later Ord brick. (`max` moved with
+/// row 565; see `extrema_chirho.rs`.)
 #[test]
 fn orderings_outside_the_compare_route_still_fail_in_the_interpreter_chirho() {
     for (file_name_chirho, program_chirho) in [
@@ -48,10 +50,6 @@ fn orderings_outside_the_compare_route_still_fail_in_the_interpreter_chirho() {
         (
             "TupleLessChirho.hs",
             "module Main where\nmain :: IO ()\nmain = print ((1 :: Int, 3 :: Int) < (1, 2))\n",
-        ),
-        (
-            "MaxStringChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = putStrLn (max \"a\" \"b\")\n",
         ),
         (
             "PrefixLessChirho.hs",

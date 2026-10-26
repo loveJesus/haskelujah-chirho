@@ -65,6 +65,11 @@ flowchart TD
     generated missing-method body), the Int-shaped generic binding stays.
   - Over `[Double]`, that generic binding added the Doubles' bits as integers natively, giving
     NaN or 0.0.
+- `max`, `min`, `maximum` and `minimum` take their solved `Ord` proof the same way (row 565).
+  - Their compare-backed helpers are described in
+    [dictionary evidence](language-features-chirho/dictionary-evidence-chirho.md).
+  - `evidenced_applied_head_chirho` serves both families at the head of an application.
+    `evidenced_value_chirho` serves them first-class, after `print`.
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.
 - `ShowFloatChirho` gives non-finite `Double` values GHC's exact spellings: `NaN`, `Infinity`,
