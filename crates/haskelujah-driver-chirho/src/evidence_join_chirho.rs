@@ -50,6 +50,8 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     "rem",
     "show",
     "print",
+    "sum",
+    "product",
     "mfix",
     "read",
 ];

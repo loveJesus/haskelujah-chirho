@@ -118,9 +118,7 @@ impl DictPassCtxChirho {
             CoreExprChirho::VarChirho(id_chirho) => {
                 // A first-class `print` keeps its solved Show proof, never the
                 // generic Int-only binding (row 550).
-                if let Some(print_function_chirho) =
-                    self.evidenced_print_function_chirho(*id_chirho)
-                {
+                if let Some(print_function_chirho) = self.evidenced_value_chirho(*id_chirho) {
                     return print_function_chirho;
                 }
                 // Evidence-threading P1 (design-evidence-threading-chirho.md):
@@ -202,7 +200,7 @@ impl DictPassCtxChirho {
                         // (row 550).
                         if spine_args_chirho.iter().any(|spine_arg_chirho| {
                             matches!(spine_arg_chirho, CoreExprChirho::VarChirho(arg_id_chirho)
-                                if self.evidenced_print_show_chirho(*arg_id_chirho).is_some())
+                                if self.evidenced_value_chirho(*arg_id_chirho).is_some())
                         }) {
                             let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
                                 CoreExprChirho::VarChirho(*head_id_chirho),
@@ -210,10 +208,30 @@ impl DictPassCtxChirho {
                                     fun_chirho: Box::new(fun_acc_chirho),
                                     arg_chirho: Box::new(match spine_arg_chirho {
                                         CoreExprChirho::VarChirho(arg_id_chirho) => self
-                                            .evidenced_print_function_chirho(*arg_id_chirho)
+                                            .evidenced_value_chirho(*arg_id_chirho)
                                             .unwrap_or_else(|| (*spine_arg_chirho).clone()),
                                         _ => (*spine_arg_chirho).clone(),
                                     }),
+                                },
+                            );
+                            return self.rewrite_method_refs_with_locals_chirho(
+                                &rebuilt_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            );
+                        }
+                        // An evidenced `sum` or `product` at the head of an application
+                        // takes its proof as an argument does (row 552).
+                        if let Some(aggregate_chirho) =
+                            self.evidenced_aggregate_chirho(*head_id_chirho)
+                        {
+                            let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
+                                aggregate_chirho,
+                                |fun_acc_chirho, spine_arg_chirho| CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(fun_acc_chirho),
+                                    arg_chirho: Box::new((*spine_arg_chirho).clone()),
                                 },
                             );
                             return self.rewrite_method_refs_with_locals_chirho(

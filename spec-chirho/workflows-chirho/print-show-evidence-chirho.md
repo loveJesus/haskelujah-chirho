@@ -55,6 +55,13 @@ flowchart TD
   - Before this, the generic Int-only `print` printed every element with `showInt#`. Natively,
     that showed a Double's bits, a Bool as 1 or 0, a Char as its code point, and a String or a
     derived value as a heap word.
+- `sum` and `product` take their solved `Num` proof the same way (row 552).
+  - An evidenced occurrence, applied or first-class, becomes
+    `foldl $prim_Num_+_K ($prim_Num_fromInteger_K 0)`, or `*_K` from 1 for `product`.
+  - Without evidence, or when a row has no actual body (a dangling name-table entry or a
+    generated missing-method body), the Int-shaped generic binding stays.
+  - Over `[Double]`, that generic binding added the Doubles' bits as integers natively, giving
+    NaN or 0.0.
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.
 - `ShowFloatChirho` gives non-finite `Double` values GHC's exact spellings: `NaN`, `Infinity`,

@@ -21,6 +21,7 @@ mod compare_route_chirho;
 mod constrained_references_chirho;
 mod dict_params_chirho;
 mod double_primops_chirho;
+mod evidenced_aggregates_chirho;
 mod head_dispatch_chirho;
 mod method_args_chirho;
 mod method_refs_chirho;
@@ -675,7 +676,7 @@ impl DictPassCtxChirho {
         // the generic Int-only binding: `mapM_ print xs` reaches here unrewritten
         // (row 550).
         if let CoreExprChirho::VarChirho(id_chirho) = expr_chirho
-            && let Some(print_function_chirho) = self.evidenced_print_function_chirho(*id_chirho)
+            && let Some(print_function_chirho) = self.evidenced_value_chirho(*id_chirho)
         {
             *expr_chirho = print_function_chirho;
             return;

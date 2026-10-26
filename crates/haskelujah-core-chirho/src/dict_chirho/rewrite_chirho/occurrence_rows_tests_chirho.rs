@@ -343,3 +343,64 @@ fn a_builtin_alias_without_dict_params_canonicalizes_despite_reference_evidence_
         None
     );
 }
+
+/// A pass holding one `sum` occurrence (id 2, canonical id 1) proved `Num Double`, whose
+/// rows and `foldl` (ids 3, 4, 5) exist only as name-table entries, applied to `xs` (id 6).
+fn aggregate_pass_chirho() -> DictPassCtxChirho {
+    let names_chirho = HashMap::from([
+        (CoreIdChirho(1), "sum".to_string()),
+        (CoreIdChirho(2), "sum".to_string()),
+        (CoreIdChirho(3), "$prim_Num_+_Double".to_string()),
+        (CoreIdChirho(4), "$prim_Num_fromInteger_Double".to_string()),
+        (CoreIdChirho(5), "foldl".to_string()),
+        (CoreIdChirho(6), "xs".to_string()),
+    ]);
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+    pass_chirho
+        .method_occurrence_canon_chirho
+        .insert(CoreIdChirho(2), ("sum".to_string(), CoreIdChirho(1)));
+    pass_chirho
+        .occurrence_evidence_chirho
+        .insert(CoreIdChirho(2), ("Num".to_string(), "Double".to_string()));
+    pass_chirho
+}
+
+/// Row 552: a proven `sum` lands on `foldl $prim_Num_+_K ($prim_Num_fromInteger_K 0)` only
+/// when those rows have actual bodies. Dangling name-table entries keep the canonical route.
+#[test]
+fn a_proven_sum_folds_only_over_body_backed_rows_chirho() {
+    let applied_chirho = app_chirho(var_expr_chirho(2), var_expr_chirho(6));
+    let mut pass_chirho = aggregate_pass_chirho();
+    let unchanged_chirho = pass_chirho.rewrite_method_refs_chirho(&applied_chirho, &HashMap::new());
+    assert!(
+        matches!(&unchanged_chirho, CoreExprChirho::AppChirho { fun_chirho, arg_chirho }
+            if matches!(fun_chirho.as_ref(), CoreExprChirho::VarChirho(CoreIdChirho(1 | 2)))
+                && matches!(arg_chirho.as_ref(), CoreExprChirho::VarChirho(CoreIdChirho(6)))),
+        "dangling names must keep the canonical sum route, got {unchanged_chirho:?}"
+    );
+
+    for (id_chirho, name_chirho) in [
+        (3, "$prim_Num_+_Double"),
+        (4, "$prim_Num_fromInteger_Double"),
+        (5, "foldl"),
+    ] {
+        pass_chirho
+            .generated_bindings_chirho
+            .push(binding_chirho(id_chirho, name_chirho));
+    }
+    let folded_chirho = pass_chirho.rewrite_method_refs_chirho(&applied_chirho, &HashMap::new());
+    let expected_chirho = app_chirho(
+        app_chirho(
+            app_chirho(var_expr_chirho(5), var_expr_chirho(3)),
+            app_chirho(
+                var_expr_chirho(4),
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+            ),
+        ),
+        var_expr_chirho(6),
+    );
+    assert_eq!(
+        folded_chirho, expected_chirho,
+        "body-backed rows give the Double fold"
+    );
+}

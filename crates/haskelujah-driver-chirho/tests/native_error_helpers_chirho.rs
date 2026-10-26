@@ -291,6 +291,22 @@ fn negative_infinity_is_spelled_as_ghc_spells_it_everywhere_chirho() {
     );
 }
 
+// ── Row 552: sum and product take their element type's own Num rows ──────
+
+/// GHC 9.14.1: `3.75`, `-0.5`, `3.0`, `0.0`, `1.0`, `[1.5,2.25]`, `[3.0,1.0]`, `6`, `24`,
+/// `3.75`, `3.0`. The Int-shaped generic bindings added a Double's bits as integers
+/// natively (NaN, 0.0) and failed on `AddIntChirho` in the interpreter. Int sums and the
+/// explicit folds are the unchanged boundaries.
+const AGGREGATES_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (sum ([1.5, 2.25] :: [Double]))\n  print (sum ([0.5, -1.0] :: [Double]))\n  print (product ([1.5, 2.0] :: [Double]))\n  print (sum ([] :: [Double]))\n  print (product ([] :: [Double]))\n  print (map sum ([[1.5], [2.0, 0.25]] :: [[Double]]))\n  print (map product ([[1.5, 2.0], []] :: [[Double]]))\n  print (sum [1, 2, 3 :: Int])\n  print (product [2, 3, 4 :: Int])\n  print (foldr (+) 0 ([1.5, 2.25] :: [Double]))\n  print (foldl (*) 1 ([1.5, 2.0] :: [Double]))\n";
+
+#[test]
+fn sums_and_products_answer_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        AGGREGATES_CHIRHO,
+        "3.75\n-0.5\n3.0\n0.0\n1.0\n[1.5,2.25]\n[3.0,1.0]\n6\n24\n3.75\n3.0\n",
+    );
+}
+
 // ── R1: an unbound reference fails named, and only when demanded ──────────
 
 #[test]
