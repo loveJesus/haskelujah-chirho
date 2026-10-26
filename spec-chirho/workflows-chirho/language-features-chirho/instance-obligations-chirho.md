@@ -133,6 +133,10 @@ in the code:
   superclasses (a `Num a` given does not entail `Eq a`/`Show a`; a Num dictionary has no
   superclass slots) and `Integral` has `Real` and `Enum`, so `==` under `Integral a` comes
   through `Real => Ord => Eq`. `dict_chirho/layout_chirho.rs` derives slots from these lists.
+- **The interpreter's `Ord Double` answer is GHC's total rule**, not Rust's partial-order
+  fallback: `eval_chirho/float_ordering_chirho.rs` gives `LT` when less, `EQ` when equal and
+  `GT` otherwise. A NaN on either side therefore gives `GT`, while `-0.0` and `0.0` give `EQ`.
+  Native lowering is a separate backend route.
 
 ## Superclass obligations — written, measured, NOT enabled
 

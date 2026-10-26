@@ -19,6 +19,7 @@
 //! extended with PAP handling and primitive operations.
 
 mod code_roots_chirho;
+mod float_ordering_chirho;
 mod primitive_operands_chirho;
 mod returns_chirho;
 
@@ -2686,9 +2687,7 @@ impl MachineChirho {
                     _ => return Ok(ValueChirho::IntChirho(0)),
                 };
                 let ordering_chirho = self.make_ordering_chirho(
-                    a_chirho
-                        .partial_cmp(&b_chirho)
-                        .unwrap_or(std::cmp::Ordering::Equal),
+                    float_ordering_chirho::compare_float_as_ghc_chirho(a_chirho, b_chirho),
                 );
                 return Ok(ordering_chirho);
             }

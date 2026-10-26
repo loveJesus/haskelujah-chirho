@@ -27,6 +27,22 @@ fn output_chirho(name_chirho: &str, source_chirho: &str) -> String {
 }
 
 #[test]
+fn double_compare_follows_ghc_for_nan_and_negative_zero_chirho() {
+    let source_chirho = r#"module Main where
+main :: IO ()
+main = do
+  print (compare (0.0 / 0.0 :: Double) 1.0)
+  print (compare (1.0 :: Double) (0.0 / 0.0))
+  print (compare (0.0 / 0.0 :: Double) (0.0 / 0.0))
+  print (compare (-0.0 :: Double) 0.0)
+"#;
+    assert_eq!(
+        output_chirho("FloatOrderingChirho.hs", source_chirho),
+        "GT\nGT\nGT\nEQ\n"
+    );
+}
+
+#[test]
 fn a_num_instance_needs_no_eq_or_show_instance_chirho() {
     // Arithmetic goes through helpers: an inner use of the class's own method
     // at another type inside an instance body is a separate, filed defect.
