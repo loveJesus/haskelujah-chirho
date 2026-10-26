@@ -1,15 +1,20 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Import items lowering cannot represent (row 536).
+//! Import items lowering cannot represent (row 536), and the `data` namespace.
 //!
-//! A nameless namespace wildcard (`data ..`, `type ..`) and a `pattern P` item
-//! have no faithful AST item. Lowering keeps each as `UnrepresentedChirho`,
-//! instead of dropping the wildcard or reading `pattern` as a variable, so an
-//! explicit list holding one is read as incomplete. A variable that is really
-//! named `pattern` stays a variable. The wildcards come from a later GHC
-//! testsuite (T25901, copied into ghc-tests-chirho): GHC 9.14.1 itself rejects
-//! them as a parse error (GHC-58481, measured), but lowering accepts them, so
-//! they must not close a list either.
+//! A nameless namespace wildcard (`data ..`, `type ..`), a `pattern P` item and
+//! a `data` item with a member list have no faithful AST item. Lowering keeps
+//! each as `UnrepresentedChirho`, instead of dropping the wildcard, reading
+//! `pattern` as a variable or folding the list into a name, so an explicit list
+//! holding one is read as incomplete. A variable that is really named
+//! `pattern` stays a variable. The wildcards come from a later GHC testsuite
+//! (T25901, copied into ghc-tests-chirho): GHC 9.14.1 itself rejects them as a
+//! parse error (GHC-58481, measured), but lowering accepts them, so they must
+//! not close a list either.
+//!
+//! A named `data x` item is a value item whatever the spelling of `x`
+//! (gpt_chirho #28517): GHC 9.14.1 imports the constructor for `data Proxy`,
+//! never the type of the same name. A named `type T` stays a bare type item.
 //! workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
 
 use haskelujah_ast_chirho::module_chirho::{
@@ -89,6 +94,68 @@ fn a_pattern_item_is_unrepresented_but_a_variable_named_pattern_is_not_chirho() 
         &lowered_chirho[2],
         ImportItemChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "pattern"
     ));
+}
+
+#[test]
+fn a_named_data_item_is_a_value_item_and_a_type_item_stays_a_type_chirho() {
+    // The driver's GHC-measured `data Proxy` control: one value item, EXPLICIT.
+    let proxy_chirho =
+        only_import_chirho("module M where\nimport qualified Data.Proxy as P (data Proxy)\n");
+    assert!(matches!(
+        proxy_chirho.list_mode_chirho(),
+        ImportListModeChirho::ExplicitChirho([
+            ImportItemChirho::VarChirho(name_chirho)
+        ]) if name_chirho.text_chirho() == "Proxy"
+    ));
+
+    let import_chirho = only_import_chirho(
+        "module M where\nimport Lib (data Proxy, type Proxy, data f, data (:+))\n",
+    );
+    let lowered_chirho = items_chirho(&import_chirho);
+    assert_eq!(lowered_chirho.len(), 4, "{lowered_chirho:?}");
+    for (index_chirho, value_text_chirho) in [(0, "Proxy"), (2, "f"), (3, ":+")] {
+        assert!(
+            matches!(
+                &lowered_chirho[index_chirho],
+                ImportItemChirho::VarChirho(name_chirho)
+                    if name_chirho.text_chirho() == value_text_chirho
+            ),
+            "{value_text_chirho}: {lowered_chirho:?}"
+        );
+    }
+    assert!(matches!(
+        &lowered_chirho[1],
+        ImportItemChirho::TyConChirho {
+            name_chirho,
+            members_chirho: ExportMembersChirho::NoneChirho,
+        } if name_chirho.text_chirho() == "Proxy"
+    ));
+    assert!(matches!(
+        import_chirho.list_mode_chirho(),
+        ImportListModeChirho::ExplicitChirho(_)
+    ));
+}
+
+#[test]
+fn a_data_item_with_a_member_list_is_unrepresented_chirho() {
+    for source_chirho in [
+        "module M where\nimport Lib (data T(..))\n",
+        "module M where\nimport Lib (data T(MkT))\n",
+    ] {
+        let import_chirho = only_import_chirho(source_chirho);
+        assert!(
+            matches!(
+                items_chirho(&import_chirho),
+                [ImportItemChirho::UnrepresentedChirho(_)]
+            ),
+            "{source_chirho:?} lowered to {:?}",
+            items_chirho(&import_chirho)
+        );
+        assert_eq!(
+            import_chirho.list_mode_chirho(),
+            ImportListModeChirho::UnrestrictedChirho
+        );
+    }
 }
 
 #[test]

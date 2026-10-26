@@ -779,6 +779,11 @@ impl LowerCtxChirho {
         let mut has_dotdot_chirho = false;
         let mut members_chirho: Vec<NameChirho> = Vec::new();
         let mut in_parens_chirho = false;
+        // `data` ahead of the name puts the item in the value namespace.
+        let mut data_namespace_chirho = false;
+        // A paren after the name opens a member list; one before it wraps an
+        // operator name, as in `(+)` or `data (:+)`.
+        let mut member_list_chirho = false;
 
         let mut offset_chirho = base_chirho;
         for elem_chirho in node_chirho.children_chirho() {
@@ -839,12 +844,18 @@ impl LowerCtxChirho {
                     TokenKindChirho::LeftParenChirho => {
                         has_parens_chirho = true;
                         in_parens_chirho = true;
+                        member_list_chirho |= first_name_chirho.is_some();
                     }
                     TokenKindChirho::RightParenChirho => {
                         in_parens_chirho = false;
                     }
                     TokenKindChirho::DotDotChirho => {
                         has_dotdot_chirho = true;
+                    }
+                    TokenKindChirho::DataKeywordChirho
+                        if first_name_chirho.is_none() && !in_parens_chirho =>
+                    {
+                        data_namespace_chirho = true;
                     }
                     _ => {}
                 },
@@ -863,6 +874,17 @@ impl LowerCtxChirho {
             // `type ..`, names nothing lowering can represent.
             return ImportItemChirho::UnrepresentedChirho(item_span_chirho);
         };
+        if data_namespace_chirho {
+            // `data x` names the value `x` whatever its spelling: GHC 9.14.1
+            // imports the constructor for `data Proxy`, never the type. A
+            // member list or any other suffix after the name has no faithful
+            // item, so it is not folded into the name.
+            return if name_tokens_chirho == 1 && !member_list_chirho && !has_dotdot_chirho {
+                ImportItemChirho::VarChirho(self.name_from_text_chirho(&text_chirho, span_chirho))
+            } else {
+                ImportItemChirho::UnrepresentedChirho(item_span_chirho)
+            };
+        }
         if !is_con_chirho && text_chirho == "pattern" && name_tokens_chirho > 1 {
             // `pattern P` imports a pattern synonym, not a variable named
             // `pattern`, and lowering has no item for it.

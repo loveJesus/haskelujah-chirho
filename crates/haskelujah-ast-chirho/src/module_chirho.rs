@@ -113,7 +113,8 @@ pub struct ImportSpecChirho {
 /// A single item in an import list.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImportItemChirho {
-    /// Import a variable (`foo`).
+    /// Import a value: a variable or operator (`foo`), or any value named in
+    /// the `data` namespace (`data Proxy`, `data (:+)`).
     VarChirho(NameChirho),
     /// Import a type/class with some or all constructors/methods.
     TyConChirho {
@@ -123,9 +124,10 @@ pub enum ImportItemChirho {
         members_chirho: ExportMembersChirho,
     },
     /// An item lowering cannot represent: a namespace wildcard such as
-    /// `data ..` or `type ..`, or a `pattern P` item. It names nothing, so it
-    /// imports and hides nothing, as when lowering dropped it. It is kept so
-    /// the list it sits in can be read as incomplete.
+    /// `data ..` or `type ..`, a `pattern P` item, or a `data` item with a
+    /// member list or other suffix after its name. It names nothing, so it
+    /// imports and hides nothing. It is kept so the list it sits in can be
+    /// read as incomplete.
     /// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
     UnrepresentedChirho(SpanChirho),
 }
