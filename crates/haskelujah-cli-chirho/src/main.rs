@@ -13,6 +13,7 @@ use haskelujah_backend_cranelift_chirho::{
 };
 use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
+use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
 use haskelujah_driver_chirho::{
     check_source_path_with_source_map_chirho, compile_source_chirho, eval_source_outcome_chirho,
     render_diagnostics_chirho, render_summary_chirho,
@@ -765,7 +766,7 @@ fn link_llvm_file_chirho(
     opt_level_chirho: &str,
     suppress_stderr_chirho: bool,
 ) -> Result<(), String> {
-    let rts_lib_dir_chirho = ensure_rts_staticlib_chirho()?;
+    let rts_snapshot_chirho = ensure_rts_staticlib_chirho()?;
     let output_path_str_chirho = output_path_chirho
         .to_str()
         .ok_or_else(|| format!("non-utf8 output path: {}", output_path_chirho.display()))?;
@@ -787,7 +788,7 @@ fn link_llvm_file_chirho(
     if cfg!(target_os = "macos") {
         clang_command_chirho.arg(LINKER_STACK_SIZE_ARG_CHIRHO);
     }
-    append_rts_link_args_chirho(&mut clang_command_chirho, &rts_lib_dir_chirho);
+    append_rts_link_args_chirho(&mut clang_command_chirho, &rts_snapshot_chirho);
     if suppress_stderr_chirho {
         clang_command_chirho.stderr(Stdio::null());
     }
@@ -829,7 +830,7 @@ fn link_cranelift_object_file_chirho(
             error_chirho
         )
     })?;
-    let rts_lib_dir_chirho = ensure_rts_staticlib_chirho()?;
+    let rts_snapshot_chirho = ensure_rts_staticlib_chirho()?;
     let output_path_str_chirho = output_path_chirho
         .to_str()
         .ok_or_else(|| format!("non-utf8 output path: {}", output_path_chirho.display()))?;
@@ -842,7 +843,7 @@ fn link_cranelift_object_file_chirho(
     if cfg!(target_os = "macos") {
         linker_command_chirho.args(["-Wl,-no_fixup_chains", LINKER_STACK_SIZE_ARG_CHIRHO]);
     }
-    append_rts_link_args_chirho(&mut linker_command_chirho, &rts_lib_dir_chirho);
+    append_rts_link_args_chirho(&mut linker_command_chirho, &rts_snapshot_chirho);
     let linker_status_chirho = linker_command_chirho.status().map_err(|error_chirho| {
         format!(
             "could not run linker: {error_chirho}; object saved to {}",
@@ -861,27 +862,36 @@ fn link_cranelift_object_file_chirho(
     }
 }
 
-fn append_rts_link_args_chirho(clang_command_chirho: &mut Command, rts_lib_dir_chirho: &Path) {
+/// Link the RTS from the snapshot, which must stay alive until the linker has run.
+fn append_rts_link_args_chirho(
+    clang_command_chirho: &mut Command,
+    rts_snapshot_chirho: &RtsSnapshotChirho,
+) {
     clang_command_chirho
         .arg("-L")
-        .arg(rts_lib_dir_chirho)
+        .arg(rts_snapshot_chirho.link_dir_chirho())
         .arg("-lhaskelujah_rts");
 }
 
-fn ensure_rts_staticlib_chirho() -> Result<PathBuf, String> {
+/// Build the RTS if it is stale and take this link's private snapshot of it (row 568).
+/// workflow: testing-chirho/native-fail-loud-chirho
+fn ensure_rts_staticlib_chirho() -> Result<RtsSnapshotChirho, String> {
     let workspace_root_chirho = workspace_root_chirho();
-    let cargo_status_chirho = Command::new("cargo")
-        .current_dir(&workspace_root_chirho)
-        .args(["build", "-p", "haskelujah-rts", "--quiet"])
-        .status()
-        .map_err(|e_chirho| format!("could not build haskelujah-rts: {}", e_chirho))?;
-    if !cargo_status_chirho.success() {
-        return Err(format!(
-            "cargo build -p haskelujah-rts failed with exit code {}",
-            cargo_status_chirho.code().unwrap_or(-1)
-        ));
-    }
-    Ok(workspace_root_chirho.join("target").join("debug"))
+    rts_snapshot_chirho(&workspace_root_chirho.join("target").join("debug"), || {
+        let cargo_status_chirho = Command::new("cargo")
+            .current_dir(&workspace_root_chirho)
+            .args(["build", "-p", "haskelujah-rts", "--quiet"])
+            .status()
+            .map_err(|e_chirho| format!("could not build haskelujah-rts: {}", e_chirho))?;
+        if cargo_status_chirho.success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "cargo build -p haskelujah-rts failed with exit code {}",
+                cargo_status_chirho.code().unwrap_or(-1)
+            ))
+        }
+    })
 }
 
 fn workspace_root_chirho() -> PathBuf {

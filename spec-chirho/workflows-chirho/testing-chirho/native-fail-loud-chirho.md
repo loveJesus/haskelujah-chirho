@@ -46,6 +46,29 @@ flowchart TD
 - Row 562 removes `round#`, `truncate#`, `floor#`, and `ceiling#` from the native refused set. Both backends force the `Double` operand, preserve its complete IEEE bit pattern, and call the same RTS conversions. The RTS applies the named rounding direction and derives the low 64 integer bits from the IEEE exponent and significand. That makes ordinary inputs, exact half ties, NaN, infinities, and finite out-of-range values deterministic without LLVM poison, Cranelift saturation, or the ambient floating-point rounding mode. GHC 9.14.1 gives zero for non-finite inputs and wraps finite integers to the machine `Int`; the native controls pin both. The interpreter's exceptional-input casts remain a separately named saturation residual.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
+## The native link's RTS archive (row 568)
+
+Every native compile first runs `cargo build -p haskelujah-rts`. Even a no-op build replaces `target/debug/libhaskelujah_rts.a`, with a new inode and the same mtime. So parallel compiles from one tree could lose the archive mid-link, failing with `ld: library 'haskelujah_rts' not found` or `file cannot be open()ed, errno=2`. Row 565's gate r2 hit this.
+
+```mermaid
+flowchart LR
+    lock_chirho[Exclusive lock: target/debug/.rts-snapshot-lock-chirho] --> build_chirho[cargo build -p haskelujah-rts]
+    build_chirho --> snapshot_chirho[Hard-link the archive into rts-snapshots-chirho/pid-n]
+    snapshot_chirho --> unlock_chirho[Release the lock]
+    unlock_chirho --> link_chirho[Link with -L snapshot, unlocked]
+    link_chirho --> drop_chirho[Drop removes the snapshot directory]
+```
+
+- **The helper.** `rts_snapshot_chirho` is in `haskelujah-driver-chirho/src/native_link_chirho/rts_snapshot_chirho.rs`.
+  - A later build replaces the shared path but not the snapshot's inode.
+  - Directories older than ten minutes, left by a killed process, are retired under the lock.
+  - A build outside the lock, such as a plain `cargo build`, can still leave the path missing for an instant. The hard link waits up to five seconds for it.
+- **Callers:**
+  - the CLI's LLVM and Cranelift links;
+  - the test harness's native round trips, which build once per process, inside the lock;
+  - the driver's in-crate Cranelift stdin test.
+- **Measured.** A loop replaced the archive as cargo does, but held the gap open 10 ms in every 30. Under it, main lost the archive in 28 of 96 parallel compiles, and the snapshot path in none.
+
 ## Residuals outside the route
 
 - A Cranelift miss for a local that Core binds but lowering did not bind keeps its 0 placeholder, like letrec zero initialization.

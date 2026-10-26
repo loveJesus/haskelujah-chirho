@@ -7,6 +7,11 @@
 //! and backend lowering across execution modes.
 
 mod module_search_chirho;
+#[path = "native_link_chirho/rts_snapshot_chirho.rs"]
+pub mod rts_snapshot_chirho;
+#[cfg(test)]
+#[path = "native_link_chirho/rts_snapshot_tests_chirho.rs"]
+mod rts_snapshot_tests_chirho;
 mod source_chirho;
 pub use source_chirho::typecheck_source_chirho;
 pub mod splice_chirho;

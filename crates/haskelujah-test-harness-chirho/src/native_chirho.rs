@@ -8,6 +8,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use haskelujah_driver_chirho::compile_source_chirho;
+use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
 use crate::process_chirho::{run_bounded_chirho, run_bounded_with_memory_chirho};
@@ -25,47 +26,52 @@ pub enum NativeArtifactChirho {
     CraneliftObjectChirho(Vec<u8>),
 }
 
-fn runtime_library_chirho() -> Result<PathBuf, String> {
-    static LIBRARY_CHIRHO: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    LIBRARY_CHIRHO
-        .get_or_init(|| {
-            let root_chirho = Path::new(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .and_then(Path::parent)
-                .expect("workspace crate");
-            let output_chirho = run_bounded_chirho(
-                Command::new("cargo").current_dir(root_chirho).args([
-                    "build",
-                    "-p",
-                    "haskelujah-rts",
-                    "--quiet",
-                ]),
-                &[],
-                Duration::from_secs(120),
-            )?;
-            if !output_chirho.status.success() {
-                return Err(format!(
-                    "RTS build failed: {}",
-                    String::from_utf8_lossy(&output_chirho.stderr)
-                ));
-            }
-            if !output_chirho.stderr.is_empty() {
-                return Err(format!(
-                    "RTS build diagnostics: {}",
-                    String::from_utf8_lossy(&output_chirho.stderr)
-                ));
-            }
-            let target_chirho = std::env::var_os("CARGO_TARGET_DIR")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| root_chirho.join("target"));
-            let target_chirho = if target_chirho.is_absolute() {
-                target_chirho
-            } else {
-                root_chirho.join(target_chirho)
-            };
-            Ok(target_chirho.join("debug"))
-        })
-        .clone()
+/// This link's private snapshot of the RTS archive (row 568). The freshness build runs
+/// once per process, inside the snapshot's lock.
+/// workflow: testing-chirho/native-fail-loud-chirho
+fn runtime_snapshot_chirho() -> Result<RtsSnapshotChirho, String> {
+    static BUILT_CHIRHO: OnceLock<Result<(), String>> = OnceLock::new();
+    let root_chirho = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace crate");
+    let target_chirho = std::env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| root_chirho.join("target"));
+    let target_chirho = if target_chirho.is_absolute() {
+        target_chirho
+    } else {
+        root_chirho.join(target_chirho)
+    };
+    rts_snapshot_chirho(&target_chirho.join("debug"), || {
+        BUILT_CHIRHO
+            .get_or_init(|| {
+                let output_chirho = run_bounded_chirho(
+                    Command::new("cargo").current_dir(root_chirho).args([
+                        "build",
+                        "-p",
+                        "haskelujah-rts",
+                        "--quiet",
+                    ]),
+                    &[],
+                    Duration::from_secs(120),
+                )?;
+                if !output_chirho.status.success() {
+                    return Err(format!(
+                        "RTS build failed: {}",
+                        String::from_utf8_lossy(&output_chirho.stderr)
+                    ));
+                }
+                if !output_chirho.stderr.is_empty() {
+                    return Err(format!(
+                        "RTS build diagnostics: {}",
+                        String::from_utf8_lossy(&output_chirho.stderr)
+                    ));
+                }
+                Ok(())
+            })
+            .clone()
+    })
 }
 
 pub fn native_round_trip_chirho(
@@ -145,9 +151,11 @@ pub fn native_artifact_round_trip_chirho(
             }
         }
     }
+    // The snapshot stays alive until this function returns, after the link.
+    let runtime_chirho = runtime_snapshot_chirho()?;
     linker_chirho
         .arg("-L")
-        .arg(runtime_library_chirho()?)
+        .arg(runtime_chirho.link_dir_chirho())
         .arg("-lhaskelujah_rts");
     let linked_chirho = run_bounded_chirho(&mut linker_chirho, &[], Duration::from_secs(60))?;
     if !linked_chirho.status.success() {

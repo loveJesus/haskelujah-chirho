@@ -6789,18 +6789,28 @@ fn cranelift_round_trip_chirho(src_chirho: &str) -> Option<i32> {
         .map(|(exit_code_chirho, _stdout_chirho)| exit_code_chirho)
 }
 
-fn ensure_rts_staticlib_for_tests_chirho() -> Option<std::path::PathBuf> {
+/// This link's private snapshot of the RTS archive (row 568), or None when the RTS does
+/// not build.
+fn ensure_rts_staticlib_for_tests_chirho() -> Option<crate::rts_snapshot_chirho::RtsSnapshotChirho>
+{
     let crate_dir_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace_root_chirho = crate_dir_chirho.parent()?.parent()?.to_path_buf();
-    let cargo_status_chirho = std::process::Command::new("cargo")
-        .current_dir(&workspace_root_chirho)
-        .args(["build", "-p", "haskelujah-rts", "--quiet"])
-        .status()
-        .ok()?;
-    if !cargo_status_chirho.success() {
-        return None;
-    }
-    Some(workspace_root_chirho.join("target").join("debug"))
+    crate::rts_snapshot_chirho::rts_snapshot_chirho(
+        &workspace_root_chirho.join("target").join("debug"),
+        || {
+            let cargo_status_chirho = std::process::Command::new("cargo")
+                .current_dir(&workspace_root_chirho)
+                .args(["build", "-p", "haskelujah-rts", "--quiet"])
+                .status()
+                .map_err(|error_chirho| error_chirho.to_string())?;
+            if cargo_status_chirho.success() {
+                Ok(())
+            } else {
+                Err("cargo build -p haskelujah-rts failed".to_string())
+            }
+        },
+    )
+    .ok()
 }
 
 #[test]
@@ -8897,8 +8907,7 @@ main = do
     let obj_path_chirho = tmp_dir_chirho.path().join("main.o");
     let bin_path_chirho = tmp_dir_chirho.path().join("main");
     std::fs::write(&obj_path_chirho, &obj_chirho.object_bytes_chirho).ok();
-    let rts_lib_dir_chirho = ensure_rts_staticlib_for_tests_chirho();
-    let Some(rts_lib_dir_chirho) = rts_lib_dir_chirho else {
+    let Some(rts_snapshot_chirho) = ensure_rts_staticlib_for_tests_chirho() else {
         return;
     };
 
@@ -8914,7 +8923,7 @@ main = do
     }
     link_cmd2_chirho
         .arg("-L")
-        .arg(&rts_lib_dir_chirho)
+        .arg(rts_snapshot_chirho.link_dir_chirho())
         .arg("-lhaskelujah_rts");
     let compile_status_chirho = link_cmd2_chirho.status().ok();
     if compile_status_chirho.map_or(true, |s| !s.success()) {
