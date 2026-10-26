@@ -10,8 +10,8 @@ It closes one gap. Naming built the right qualified table for an explicit import
 ```mermaid
 flowchart TD
     import_decl_chirho[Import declaration] --> lowered_chirho{Every list item lowered faithfully?}
-    lowered_chirho -->|"No: a nameless wildcard, or pattern P"| unrepresented_chirho["UnrepresentedChirho: imports, hides and re-exports nothing"]
-    lowered_chirho -->|Yes| represented_chirho[Variable and type items]
+    lowered_chirho -->|"No: a nameless wildcard, pattern P, or a data item with a member list"| unrepresented_chirho["UnrepresentedChirho: imports, hides and re-exports nothing"]
+    lowered_chirho -->|Yes| represented_chirho["Value and type items; a named data x is a value item"]
     unrepresented_chirho --> classifier_chirho["Syntax classifier: effective qualifier and list mode"]
     represented_chirho --> classifier_chirho
     classifier_chirho --> mode_chirho{List mode}
@@ -52,6 +52,7 @@ flowchart TD
 - **The classifier is syntax only.** `ImportDeclChirho::list_mode_chirho` never answers whether a value is exposed, never reads an interface and never decides `T(..)` completeness. Row 517's core route may reuse its modes and add only its own narrow semantics.
 - **A listed name is supplied even where the builtin interface omits it.** The written list is the authority, and interfaces here are partial.
 - **A bare `T` item supplies no value.** `import M (T)` brings the type or class `T`, never a constructor that shares its spelling: GHC 9.14.1 reports `P.Proxy` under `Data.Proxy as P (Proxy)` as GHC-01928, and GHC's own T25877 expects the same for a source type. Only written members and the members of a complete `T(..)` supply values.
+- **A named `data x` item is a value item.** The `data` keyword puts the name in the value namespace whatever its spelling, so lowering reads `data Proxy`, `data f` and `data (:+)` as value items. GHC 9.14.1 imports the constructor for `data Proxy` and never the type of the same name (gpt_chirho #28515, #28517). The list stays EXPLICIT, so every other value under its qualifier is still checked. A `data` item with a member list has no faithful item and stays unrepresented, and a named `type T` stays a bare type item.
 - **`T(..)` closes only on a member list marked complete.** Losing a mark only leaves a qualifier open.
 - **Marks merge per type.** When copies of one module merge (`merge_module_ifaces_chirho`), a type both copies export stays marked only when both mark it, because the unmarked copy may export a member no entry lists, such as a bundled pattern synonym. A type only one copy exports keeps that copy's mark, so disjoint marked types still union. Over many copies, a type stays marked only where every copy exporting it marks it, in any order.
 - **The walk.** It is the AST's exhaustive occurrence walk, over a copy of the declarations, taken only when some qualifier is closed. The operations a do statement selects are cleared first, because they are not written.
@@ -64,7 +65,6 @@ flowchart TD
 - Bare-seed over-exposure (I8).
 - Shared-alias ambiguity (I3, I3b, M1).
 - Builtin member lists not proven complete.
-- `import M (data P)`: lowering drops the `data` keyword and reads a bare `P`, which supplies no value, so `Q.P` under such a closed list is rejected. GHC 9.14.1's reading of a `data P` item is not measured here; its rejection of `(data ..)` fell on the `..`. No scanned population holds such a reference.
 - Diagnostic bytes: GHC's wording is not matched.
 - Naming errors are skipped in defer mode, as type-scope errors are.
 
@@ -82,8 +82,8 @@ flowchart TD
 
 ## Controls
 
-- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/typing_integration_chirho/qualified_import_lists_chirho.rs`. It holds 8 programs GHC 9.14.1 rejects and 15 it accepts, run through the parser and name resolution, and I2 through the whole driver. Of the 8, 7 are rejected with GHC-76037, and 1 (a bare type item's same-named constructor) with GHC-01928.
+- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/typing_integration_chirho/qualified_import_lists_chirho.rs`. It holds 9 programs GHC 9.14.1 rejects and 16 it accepts, run through the parser and name resolution, and I2 through the whole driver. Of the 9, 8 are rejected with GHC-76037, and 1 (a bare type item's same-named constructor) with GHC-01928. A `data Proxy` item is paired: its constructor is supplied, and an unlisted `P.asProxyTypeOf` beside it is rejected, so the list stays closed.
 - **The classifier's three modes:** in `module_chirho.rs`.
-- **The producer:** in `lower_chirho/import_item_tests_chirho.rs`.
+- **The producer, including the `data` items:** in `lower_chirho/import_item_tests_chirho.rs`.
 - **Completeness, the per-type merge and the inert marker:** in `type_exports_tests_chirho.rs`.
 - **The check itself, including a bare source type that supplies no constructor:** in `value_scope_tests_chirho.rs`.

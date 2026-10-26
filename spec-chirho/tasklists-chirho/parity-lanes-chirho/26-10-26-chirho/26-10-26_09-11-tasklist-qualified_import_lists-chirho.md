@@ -43,8 +43,10 @@ Owner: claude_chirho writes source only, on `qualified-import-lists-chirho` from
   - Row 536 closes only EXPLICIT. Interface lookup and `T(..)` completeness stay in naming.
 - **The marker.** The lowering produces `ImportItemChirho::UnrepresentedChirho` for items it cannot represent:
   - nameless namespace wildcards (`data ..`, `type ..`);
-  - `pattern P`, which was misread as a variable named `pattern`.
-  - It imports nothing, hides nothing and re-exports nothing, as when it was dropped.
+  - `pattern P`, which was misread as a variable named `pattern`;
+  - a `data` item with a member list or other suffix after its name (#28517), which lowering used to read as a type item.
+  - It imports nothing, hides nothing and re-exports nothing. For the wildcards and `pattern P`, that is what they did before.
+- **A named `data x` item is a value item** (#28515, #28517). Lowering reads `data Proxy`, `data f` and `data (:+)` as `VarChirho`, whatever the spelling, since GHC 9.14.1 imports the value-level name and never the same-named type. The imported spelling is the replay's, and the list stays EXPLICIT. A named `type T` stays a bare type item.
   - Every exhaustive consumer handles it: the name extraction, the export merge, the export removal, and the classifier's own "represented" test. None has a wildcard arm, so a new item form fails to compile until it is classified.
 
 ## Boundaries, named and not claimed
@@ -58,7 +60,6 @@ Owner: claude_chirho writes source only, on `qualified-import-lists-chirho` from
 - Two source-derived exceptions, which are left open:
   - a data type with a GADT constructor (its record fields are not lowered);
   - every type of a module that declares or enables pattern synonyms (a bundled `T(.., P)` loses `P`).
-- `import M (data P)`. Lowering drops the `data` keyword and reads a bare `P`, which supplies no value after #28506. GHC 9.14.1's reading of a `data P` item is not measured: its rejection of `(data ..)` fell on the `..`. No scanned population holds a reference through such an item.
 - Diagnostic bytes are this checker's, not GHC's.
 
 ## Controls (predictions until real logs)
@@ -74,6 +75,7 @@ GHC 9.14.1 receipts are measured from the committed sources.
   - two lists under one alias, with `L.head`;
   - `import Data.List (sort)` with `Data.List.nub`.
 - **Negative, GHC-01928 (#28506):** `import qualified Data.Proxy as P (Proxy)` with `P.Proxy`. A bare type item supplies no constructor of the same name.
+- **Negative, GHC-76037 (#28517):** `import qualified Data.Proxy as P (data Proxy)` with `x = (P.Proxy, P.asProxyTypeOf)`. Only `P.asProxyTypeOf` is out of scope: the `data` item supplies `P.Proxy`, and the list stays closed.
 - **Positives:**
   - a listed variable;
   - `NonEmpty(..)` supplying `NE.:|`;
@@ -90,6 +92,7 @@ GHC 9.14.1 receipts are measured from the committed sources.
   - the implicit `Prelude.map`;
   - `Main.foo`;
   - `Seq.Empty` through an unrepresented `pattern Empty` item (this replaced the planned `D.Proxy` through `(data ..)`, see the record below);
+  - `P.Proxy` through a `data Proxy` item (#28517);
   - a source-derived record `X(..)` supplying `X.name`.
 - **Structural:**
   - the classifier's three modes (an explicit list with an unrepresented item is UNRESTRICTED; `hiding` keeps its items);
@@ -97,7 +100,8 @@ GHC 9.14.1 receipts are measured from the committed sources.
   - the consumers importing, hiding and re-exporting nothing for it;
   - completeness marks: local data, newtype and class are marked; GADT, pattern synonyms and re-exports are not; builtin NonEmpty is marked;
   - copies of one module merge marks per type: disjoint marks survive, a type every copy marks stays marked, and an unmarked copy clears the mark in any order (#28506);
-  - a bare `T` of a source `data T = T` supplies no `T`, while `T(..)` does (the shape of GHC's T25877, #28506).
+  - a bare `T` of a source `data T = T` supplies no `T`, while `T(..)` does (the shape of GHC's T25877, #28506);
+  - the producer's `data` items (#28517): `data Proxy`, `data f` and `data (:+)` are value items and `type Proxy` a bare type item, in an EXPLICIT list; `data T(..)` and `data T(MkT)` are unrepresented.
 
 ## Mutants (predicted kill sets, credited only by real logs)
 
@@ -115,8 +119,9 @@ GHC 9.14.1 receipts are measured from the committed sources.
 | M10 | every builtin assumed complete | `Lazy.runRWST` |
 | M11 (proposed) | a bare `T` item supplies the value `T` again | the `P.Proxy` negative and the bare source `T` naming test |
 | M12 (proposed) | marks merge as a union again | the unmarked-copy cases of the per-type merge test |
+| M13 | a constructor-headed `data` item read as a type item again | the `data Proxy` positive, the paired negative's exact messages, and the producer's `data Proxy` test |
 
-M11 and M12 are proposed with the #28506 corrections. They join the gate's mutant set only if gpt_chirho accepts them.
+M11 and M12 are proposed with the #28506 corrections. They join the gate's mutant set only if gpt_chirho accepts them. M13 was ruled in #28517; its partition is credited only from real logs.
 
 ## Candidate gate contract (#28483)
 
@@ -142,6 +147,11 @@ M11 and M12 are proposed with the #28506 corrections. They join the gate's mutan
 - [x] #28506 correction 2: completeness marks merge per type, with merge controls (e6155ce9).
 - [x] #28506 docs: the workflow and this tasklist state both rules and the corrected count.
 - [x] Hygiene re-run with no Cargo: rustfmt as a stdin no-op, `git diff --check` and gitleaks. GHC 9.14.1 ran only on the new committed control (r3).
+- [x] Post the corrected source checkpoint (#28514; both corrections accepted in #28515, with one new blocker).
+- [x] #28515/#28517: a named `data x` item is a value item, and a `data` item with a member list is unrepresented, with producer tests (c6ac9d95).
+- [x] #28517: the GHC-measured `data Proxy` positive and its paired negative (15bc256a), with GHC 9.14.1 receipt r4 from the committed file.
+- [x] #28517 docs: the superseded boundary claim is removed, and the workflow and this tasklist state the rule.
+- [x] Hygiene and reach re-run with no Cargo.
 - [ ] Post the corrected source checkpoint. The candidate gate tooling stays withheld until it is accepted.
 
 ## Source checkpoint record
@@ -251,5 +261,52 @@ The r1 scanner is kept unchanged. r2 reads items as lowering does, and classifie
   - Local package cache: by line inspection, 410 of its 416 changed occurrences are type positions, which the value walk does not visit. One is an import line the lexer misread, and one is a record pattern. The other four are constructor expressions, each supplied by a source-derived `T(..)`.
   - GHC rename and module suites: the only value-position change is T25877's `X.A`. GHC rejects it with GHC-01928, and the corrected rule now does too.
   - One gate-corpus program and four rename-suite programs hold a closed `data X` item. None has a reference through it.
+
+Row 536 remains not independently landable.
+
+## Correction record (#28515, #28517)
+
+gpt_chirho accepted both #28506 corrections in #28515 and found one new blocker. My #28514 had named the `data P` form as an unmeasured boundary; gpt measured it, and it was a real new false rejection.
+
+### The finding
+
+- GHC 9.14.1 accepts `import qualified Data.Proxy as P (data Proxy)` with `value = P.Proxy`, under `ExplicitNamespaces`. With `value :: P.Proxy ()` added, it rejects only the type occurrence, with GHC-76037. So `data Proxy` imports the constructor, never the type.
+- Lowering ignored the keyword and read `data Proxy` as a bare type item. After f95620ac such an item supplies no value, so row 536 newly rejected `P.Proxy`.
+- A trace before writing (#28516) showed why the item could not simply be marked unrepresented, as `pattern P` is:
+  - the import filter matches exports by string in both namespaces, so the old reading did import `Proxy`;
+  - a marker would have imported nothing, a new E0202 path for a constructor from a source module.
+
+### The ruling and the producer (c6ac9d95)
+
+- gpt ruled option B (#28517). The producer recognizes the `data` keyword at the head of an item, before the ordinary classification.
+- A single named `data x` lowers as `VarChirho(x)`: a constructor, a variable or an operator, `data (:+)` included. The imported spelling is the replay's; the namespace is now the value one.
+- A `data` item with a member list or other suffix lowers as `UnrepresentedChirho`, so a list is never read as part of a name. A `data` keyword inside a member list (`T(data ..)`) is untouched.
+- A named `type T` stays `TyConChirho(T, None)`.
+- The AST docs say what `VarChirho` and `UnrepresentedChirho` now hold.
+
+### Controls (15bc256a) and GHC 9.14.1 receipt r4
+
+- **Producer:**
+  - `data Proxy` alone is one value item in an EXPLICIT list;
+  - in `(data Proxy, type Proxy, data f, data (:+))`, the three `data` items are value items and `type Proxy` is a bare type item;
+  - `data T(..)` and `data T(MkT)` are unrepresented and leave the list UNRESTRICTED.
+- **Driver:** `DataItemChirho.hs` is admitted. `DataItemUnlistedChirho.hs` rejects exactly `P.asProxyTypeOf`, beside a supplied `P.Proxy`. The negative proves the list stays closed, which the positive alone could not.
+- **r4** ran only on those two programs, decoded from 15bc256a, with the predictions fixed first. 2 of 2 agree:
+  - `DataItemChirho.hs`: check rc 0, then it built, ran and printed `2`;
+  - `DataItemUnlistedChirho.hs`: check rc 1, exactly GHC-76037, `Not in scope: ‘P.asProxyTypeOf’`, and nothing about `P.Proxy`.
+
+### Hygiene, re-run with no Cargo
+
+- rustfmt 1.8.0 is a stdin no-op on all 12 changed Rust files.
+- `git diff --check b709644c 15bc256a` is clean.
+- gitleaks 8.30.1 scanned 13 commits through 15bc256a and found no leaks (the report is `[]`).
+
+### Reach scan r3 (a prediction)
+
+r3 reads named `data` items as c6ac9d95 does, and classifies every reference under both r2's model and its own.
+
+- **Gate corpus, r3 oracle, execution and repository `.hs` files:** no reference changes. I2's `NE.toList` stays the only predicted rejection.
+- **Embedded test programs:** only the new controls change. Their three `P.Proxy` references are listed under r3 and would have been rejected under r2.
+- **Informational populations** (the package cache, and the GHC rename and module suites): nothing changes.
 
 Row 536 remains not independently landable.
