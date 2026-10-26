@@ -23,6 +23,18 @@ pub(super) fn run_executable_module_result_chirho(
     (code_chirho, stdout_chirho, String::new())
 }
 
+/// The harness's report for a program that must fail: a nonzero exit with
+/// stderr, or a signal. Row 535's routes exit 1 with one stderr line.
+pub(super) fn run_executable_module_failure_chirho(module_chirho: &CoreModuleChirho) -> String {
+    let ir_chirho = compile_core_to_llvm_executable_chirho(module_chirho);
+    native_artifact_round_trip_chirho(
+        NativeArtifactChirho::LlvmIrChirho(ir_chirho),
+        "",
+        Duration::from_secs(15),
+    )
+    .expect_err("the program must fail")
+}
+
 pub(super) fn run_executable_module_chirho(module_chirho: &CoreModuleChirho) -> String {
     let (code_chirho, stdout_chirho, _) = run_executable_module_result_chirho(module_chirho);
     assert_eq!(code_chirho, 0, "executable failed: {stdout_chirho}");

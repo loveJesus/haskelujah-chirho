@@ -16,6 +16,7 @@
 //! The full STG machine with lazy evaluation, thunks, closures, and
 //! info tables will be added incrementally.
 
+mod failures_chirho;
 mod lazy_chirho;
 mod primitives_chirho;
 
@@ -85,6 +86,8 @@ pub struct LlvmCodegenChirho {
     current_tco_param_slots_chirho: HashMap<CoreIdChirho, String>,
     /// Original parameter order for self-tail-call slot rebinding.
     current_tco_param_order_chirho: Vec<CoreIdChirho>,
+    /// Free ids of the current function that nothing binds (row 535's R1).
+    unbound_ids_chirho: HashSet<CoreIdChirho>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -129,6 +132,7 @@ impl LlvmCodegenChirho {
             current_tco_loop_label_chirho: None,
             current_tco_param_slots_chirho: HashMap::new(),
             current_tco_param_order_chirho: Vec::new(),
+            unbound_ids_chirho: HashSet::new(),
         }
     }
 
@@ -390,20 +394,6 @@ impl LlvmCodegenChirho {
         }
     }
 
-    fn remember_local_alias_chirho(
-        &mut self,
-        alias_id_chirho: CoreIdChirho,
-        source_id_chirho: CoreIdChirho,
-    ) {
-        self.local_scope_chirho.insert(alias_id_chirho);
-        if let Some(value_kind_chirho) = self.local_value_kinds_chirho.get(&source_id_chirho) {
-            self.local_value_kinds_chirho
-                .insert(alias_id_chirho, value_kind_chirho.clone());
-        } else {
-            self.local_value_kinds_chirho.remove(&alias_id_chirho);
-        }
-    }
-
     fn bind_local_value_name_chirho(&mut self, binder_chirho: &BinderChirho, value_chirho: &str) {
         self.remember_local_binder_chirho(binder_chirho);
         let alias_tmp_chirho = self.fresh_tmp_chirho();
@@ -416,7 +406,8 @@ impl LlvmCodegenChirho {
             .insert(binder_chirho.id_chirho, alias_tmp_chirho);
     }
 
-    fn should_entry_alias_free_id_chirho(&self, id_chirho: CoreIdChirho) -> bool {
+    /// A free id that no module-level name binds, so it may be unbound.
+    fn may_be_unbound_free_id_chirho(&self, id_chirho: CoreIdChirho) -> bool {
         if self.toplevel_names_chirho.contains_key(&id_chirho)
             || self.lifted_local_names_chirho.contains_key(&id_chirho)
         {
@@ -454,7 +445,7 @@ impl LlvmCodegenChirho {
         match expr_chirho {
             CoreExprChirho::VarChirho(id_chirho) => {
                 if !bound_ids_chirho.contains(id_chirho)
-                    && self.should_entry_alias_free_id_chirho(*id_chirho)
+                    && self.may_be_unbound_free_id_chirho(*id_chirho)
                     && seen_ids_chirho.insert(*id_chirho)
                 {
                     free_ids_chirho.push(*id_chirho);
@@ -607,71 +598,6 @@ impl LlvmCodegenChirho {
                     );
                 }
             }
-        }
-    }
-
-    fn emit_missing_param_aliases_chirho(
-        &mut self,
-        param_binders_chirho: &[&BinderChirho],
-        body_chirho: &CoreExprChirho,
-        capture_ids_chirho: &[CoreIdChirho],
-    ) {
-        let free_ids_chirho = self.collect_free_runtime_var_ids_chirho(body_chirho);
-        let free_id_set_chirho: HashSet<CoreIdChirho> = free_ids_chirho.iter().copied().collect();
-        let param_ids_chirho: HashSet<CoreIdChirho> = param_binders_chirho
-            .iter()
-            .map(|binder_chirho| binder_chirho.id_chirho)
-            .collect();
-
-        let unresolved_ids_chirho: Vec<CoreIdChirho> = free_ids_chirho
-            .iter()
-            .copied()
-            .filter(|id_chirho| {
-                !param_ids_chirho.contains(id_chirho) && !capture_ids_chirho.contains(id_chirho)
-            })
-            .collect();
-        if unresolved_ids_chirho.is_empty() {
-            return;
-        }
-
-        let candidate_param_ids_chirho: Vec<CoreIdChirho> = param_binders_chirho
-            .iter()
-            .filter(|binder_chirho| !is_dictionary_param_name_chirho(&binder_chirho.name_chirho))
-            .map(|binder_chirho| binder_chirho.id_chirho)
-            .filter(|id_chirho| !free_id_set_chirho.contains(id_chirho))
-            .collect();
-        if candidate_param_ids_chirho.is_empty() {
-            return;
-        }
-
-        let alias_pairs_chirho: Vec<(CoreIdChirho, CoreIdChirho)> =
-            if candidate_param_ids_chirho.len() == 1 {
-                unresolved_ids_chirho
-                    .iter()
-                    .copied()
-                    .map(|alias_id_chirho| (alias_id_chirho, candidate_param_ids_chirho[0]))
-                    .collect()
-            } else if unresolved_ids_chirho.len() <= candidate_param_ids_chirho.len() {
-                unresolved_ids_chirho
-                    .iter()
-                    .copied()
-                    .zip(candidate_param_ids_chirho.iter().copied())
-                    .collect()
-            } else {
-                Vec::new()
-            };
-        if alias_pairs_chirho.is_empty() {
-            return;
-        }
-
-        for (alias_id_chirho, source_id_chirho) in alias_pairs_chirho {
-            self.remember_local_alias_chirho(alias_id_chirho, source_id_chirho);
-            writeln!(
-                self.output_chirho,
-                "  %v{} = add i64 0, %v{}",
-                alias_id_chirho.0, source_id_chirho.0
-            )
-            .unwrap();
         }
     }
 
@@ -1038,7 +964,7 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
         }
-        inner_codegen_chirho.emit_missing_param_aliases_chirho(
+        inner_codegen_chirho.note_unbound_ids_chirho(
             &param_binders_chirho,
             body_chirho,
             &captured_ids_chirho,
@@ -1367,18 +1293,14 @@ impl LlvmCodegenChirho {
                 "undefined" | "undefined#" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}() {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
-                    writeln!(def_chirho, "  call void @abort()").unwrap();
-                    writeln!(def_chirho, "  unreachable").unwrap();
+                    failures_chirho::write_undefined_body_chirho(&mut def_chirho);
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
-                "error" | "error#" => {
+                "error" | "error#" | "errorWithoutStackTrace" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}(i64 %v0) {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
-                    writeln!(def_chirho, "  %msg_ptr = inttoptr i64 %v0 to ptr").unwrap();
-                    writeln!(def_chirho, "  call i32 @puts(ptr %msg_ptr)").unwrap();
-                    writeln!(def_chirho, "  call void @abort()").unwrap();
-                    writeln!(def_chirho, "  unreachable").unwrap();
+                    failures_chirho::write_error_body_chirho(&mut def_chirho, "%v0");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1596,6 +1518,9 @@ impl LlvmCodegenChirho {
             "declare void @haskelujah_error_chirho(ptr, i64) noreturn"
         )
         .unwrap();
+        for declaration_chirho in failures_chirho::FAILURE_DECLARATIONS_CHIRHO {
+            writeln!(self.output_chirho, "{declaration_chirho}").unwrap();
+        }
         writeln!(
             self.output_chirho,
             "define internal i64 @raise_error_chirho(ptr %message_chirho) {{"
@@ -1909,7 +1834,7 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
         }
-        self.emit_missing_param_aliases_chirho(&param_binders_chirho, body_chirho, &[]);
+        self.note_unbound_ids_chirho(&param_binders_chirho, body_chirho, &[]);
         self.current_tco_self_id_chirho = Some(binding_chirho.binder_chirho.id_chirho);
         self.current_tco_loop_label_chirho = Some(loop_label_chirho);
         self.current_tco_param_slots_chirho = param_slots_chirho;
@@ -2098,8 +2023,8 @@ impl LlvmCodegenChirho {
                 );
                 true
             }
-            "error" | "error#" => {
-                // error :: String -> a — print message to stderr and abort
+            "error" | "error#" | "errorWithoutStackTrace" => {
+                // error :: String -> a, raised exactly on the runtime's program route
                 let Some(arg_id_chirho) = params_chirho.first() else {
                     return false;
                 };
@@ -2109,29 +2034,22 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
-                let msg_ptr_chirho = format!("%msg_ptr");
-                writeln!(
-                    self.output_chirho,
-                    "  {msg_ptr_chirho} = inttoptr i64 %v{} to ptr",
-                    arg_id_chirho.0
-                )
-                .unwrap();
-                writeln!(self.output_chirho, "  call i32 @puts(ptr {msg_ptr_chirho})").unwrap();
-                writeln!(self.output_chirho, "  call void @abort()").unwrap();
-                writeln!(self.output_chirho, "  unreachable").unwrap();
+                let message_value_chirho = format!("%v{}", arg_id_chirho.0);
+                failures_chirho::write_error_body_chirho(
+                    &mut self.output_chirho,
+                    &message_value_chirho,
+                );
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
             "undefined" | "undefined#" => {
-                // undefined :: a — abort immediately
                 writeln!(
                     self.output_chirho,
                     "define i64 @{fn_name_chirho}({params_str_chirho}) {{"
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
-                writeln!(self.output_chirho, "  call void @abort()").unwrap();
-                writeln!(self.output_chirho, "  unreachable").unwrap();
+                failures_chirho::write_undefined_body_chirho(&mut self.output_chirho);
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2316,12 +2234,12 @@ impl LlvmCodegenChirho {
                             tmp_chirho
                         }
                     } else {
-                        format!("%v{}", id_chirho.0)
+                        self.compile_unresolved_reference_chirho(*id_chirho)
                     }
                 } else {
-                    // Unknown variable — use as local (may be from outer scope
-                    // like case binder, which we've already bound)
-                    format!("%v{}", id_chirho.0)
+                    // Unknown variable: a local bound on another path (such as
+                    // a case binder), or an unbound reference.
+                    self.compile_unresolved_reference_chirho(*id_chirho)
                 }
             }
 
@@ -3403,19 +3321,20 @@ impl LlvmCodegenChirho {
         let arg_value_chirho = self.emit_force_thunk_chirho(arg_value_chirho);
         match show_kind_chirho {
             ShowBuiltinKindChirho::IntChirho => {
-                let fmt_name_chirho = self.intern_string_global_name_chirho("%ld");
-                let buf_tmp_chirho = self.fresh_tmp_chirho();
+                // The runtime refuses a live heap value instead of printing its address.
+                let shown_bits_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 32)"
+                    "  {shown_bits_tmp_chirho} = call i64 @haskelujah_show_int_chirho(i64 {arg_value_chirho})"
                 )
                 .unwrap();
+                let shown_ptr_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  call i32 (ptr, i64, ptr, ...) @snprintf(ptr {buf_tmp_chirho}, i64 32, ptr @{fmt_name_chirho}, i64 {arg_value_chirho})"
+                    "  {shown_ptr_tmp_chirho} = inttoptr i64 {shown_bits_tmp_chirho} to ptr"
                 )
                 .unwrap();
-                buf_tmp_chirho
+                shown_ptr_tmp_chirho
             }
             ShowBuiltinKindChirho::BoolChirho => {
                 let true_name_chirho = self.intern_string_global_name_chirho("True");
@@ -3833,13 +3752,12 @@ impl LlvmCodegenChirho {
             writeln!(self.output_chirho, "  br label %{end_label_chirho}").unwrap();
         }
 
-        // If no default alt was present, emit an unreachable default
+        // If no default alt was present, a miss fails named.
         if !alts_chirho
             .iter()
             .any(|a_chirho| a_chirho.con_chirho == AltConChirho::DefaultChirho)
         {
-            writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
-            writeln!(self.output_chirho, "  unreachable").unwrap();
+            self.emit_no_match_default_chirho(&default_label_chirho);
         }
 
         writeln!(self.output_chirho, "{end_label_chirho}:").unwrap();
@@ -3913,8 +3831,7 @@ impl LlvmCodegenChirho {
             .iter()
             .any(|a_chirho| a_chirho.con_chirho == AltConChirho::DefaultChirho)
         {
-            writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
-            writeln!(self.output_chirho, "  unreachable").unwrap();
+            self.emit_no_match_default_chirho(&default_label_chirho);
         }
 
         if !incoming_values_chirho.is_empty() {
@@ -4019,13 +3936,12 @@ impl LlvmCodegenChirho {
             }
         }
 
-        // If no default, emit unreachable
+        // If no default, a miss fails named.
         if !alts_chirho
             .iter()
             .any(|a_chirho| a_chirho.con_chirho == AltConChirho::DefaultChirho)
         {
-            writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
-            writeln!(self.output_chirho, "  unreachable").unwrap();
+            self.emit_no_match_default_chirho(&default_label_chirho);
         }
 
         writeln!(self.output_chirho, "{end_label_chirho}:").unwrap();
@@ -4137,8 +4053,7 @@ impl LlvmCodegenChirho {
                 TailCompileOutcomeChirho::TerminatedChirho => {}
             }
         } else {
-            writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();
-            writeln!(self.output_chirho, "  unreachable").unwrap();
+            self.emit_no_match_default_chirho(&default_label_chirho);
         }
 
         if !incoming_values_chirho.is_empty() {
@@ -4387,14 +4302,10 @@ fn builtin_runtime_arity_by_name_chirho(name_chirho: &str) -> Option<usize> {
         ">>" | "thenIO#" => Some(2),
         ">>=" | "bindIO#" => Some(2),
         "undefined" | "undefined#" => Some(0),
-        "error" | "error#" => Some(1),
+        "error" | "error#" | "errorWithoutStackTrace" => Some(1),
         "+" | "-" | "*" => Some(2),
         _ => None,
     }
-}
-
-fn is_dictionary_param_name_chirho(name_chirho: &str) -> bool {
-    name_chirho.starts_with("$d") || name_chirho.starts_with("$dict")
 }
 
 /// Flatten nested applications into callee + argument list.
@@ -4647,13 +4558,6 @@ pub fn try_compile_core_to_llvm_executable_chirho(
         // Add a C main() entry point.
         writeln!(ir_chirho).unwrap();
         writeln!(ir_chirho, "; ── RTS entry point ──").unwrap();
-        if !has_builtin_io_chirho {
-            writeln!(
-                ir_chirho,
-                "@.fmt_int = private unnamed_addr constant [5 x i8] c\"%ld\\0A\\00\""
-            )
-            .unwrap();
-        }
         writeln!(ir_chirho).unwrap();
         writeln!(ir_chirho, "define i32 @main() {{").unwrap();
         writeln!(ir_chirho, "entry:").unwrap();
@@ -4675,9 +4579,10 @@ pub fn try_compile_core_to_llvm_executable_chirho(
                 "  %result = call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)"
             )
             .unwrap();
+            // The runtime refuses a live heap value instead of printing its address.
             writeln!(
                 ir_chirho,
-                "  call i32 (ptr, ...) @printf(ptr @.fmt_int, i64 %result)"
+                "  call i64 @haskelujah_print_int_chirho(i64 %result)"
             )
             .unwrap();
             writeln!(ir_chirho, "  %exitcode = trunc i64 %result to i32").unwrap();
@@ -4735,7 +4640,10 @@ mod tests_chirho {
     mod io_chirho;
 
     use super::*;
-    use execution_chirho::{run_executable_module_chirho, run_executable_module_result_chirho};
+    use execution_chirho::{
+        run_executable_module_chirho, run_executable_module_failure_chirho,
+        run_executable_module_result_chirho,
+    };
 
     use haskelujah_core_chirho::CoreBindingChirho;
     use haskelujah_core_chirho::{BinderChirho, CoreIdChirho, InlineAnnotationChirho};
@@ -4754,7 +4662,9 @@ mod tests_chirho {
         CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(v_chirho))
     }
 
-    fn wildcard_first_column_safe_divide_module_chirho() -> CoreModuleChirho {
+    /// `safeDivideChirho _ 0 = 0; safeDivideChirho _ y = div# <CoreId 8> y`, where
+    /// CoreId 8 has no binding (the shape wildcard first columns once desugared to).
+    fn wildcard_first_column_safe_divide_module_chirho(divisor_chirho: i64) -> CoreModuleChirho {
         let safe_divide_binder_chirho = dummy_binder_chirho("safeDivideChirho", 7);
         let first_arg_binder_chirho = dummy_binder_chirho("_arg0", 2);
         let second_arg_binder_chirho = dummy_binder_chirho("_arg1", 3);
@@ -4779,7 +4689,7 @@ mod tests_chirho {
                                     )),
                                     arg_chirho: Box::new(int_lit_chirho(10)),
                                 }),
-                                arg_chirho: Box::new(int_lit_chirho(2)),
+                                arg_chirho: Box::new(int_lit_chirho(divisor_chirho)),
                             },
                         )],
                         body_chirho: Box::new(CoreExprChirho::AppChirho {
@@ -5348,7 +5258,7 @@ mod tests_chirho {
         assert!(
             ir_chirho.contains("call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)")
         );
-        assert!(ir_chirho.contains("@printf"));
+        assert!(ir_chirho.contains("call i64 @haskelujah_print_int_chirho(i64 %result)"));
         assert!(ir_chirho.contains("ret i32 %exitcode"));
     }
 
@@ -5533,18 +5443,23 @@ mod tests_chirho {
     }
 
     #[test]
-    fn compile_wildcard_first_column_function_aliases_unbound_rhs_var_chirho() {
-        let module_chirho = wildcard_first_column_safe_divide_module_chirho();
-
-        assert_eq!(run_executable_module_chirho(&module_chirho).trim(), "5");
+    fn a_demanded_unbound_reference_fails_named_without_reading_a_parameter_chirho() {
+        // It used to alias the unused first parameter (10), so `10 div 2`
+        // printed a wrong 5.
+        let module_chirho = wildcard_first_column_safe_divide_module_chirho(2);
+        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        assert!(!ir_chirho.contains("%v8 = add i64 0, %v"), "{ir_chirho}");
+        assert_eq!(
+            run_executable_module_failure_chirho(&module_chirho),
+            "native program emitted stderr (exit 1): haskelujah: error: missing native binding `CoreId 8`\n\nstdout:\n"
+        );
     }
 
     #[test]
-    fn run_executable_wildcard_first_column_function_prints_division_result_chirho() {
-        let module_chirho = wildcard_first_column_safe_divide_module_chirho();
+    fn an_unbound_reference_on_an_untaken_path_runs_chirho() {
+        let module_chirho = wildcard_first_column_safe_divide_module_chirho(0);
 
-        let stdout_chirho = run_executable_module_chirho(&module_chirho);
-        assert_eq!(stdout_chirho.trim(), "5");
+        assert_eq!(run_executable_module_chirho(&module_chirho).trim(), "0");
     }
 
     #[test]
@@ -5572,7 +5487,7 @@ mod tests_chirho {
     }
 
     #[test]
-    fn compile_executable_show_int_uses_snprintf_chirho() {
+    fn compile_executable_show_int_uses_the_checked_runtime_formatter_chirho() {
         let show_binder_chirho = dummy_binder_chirho("show", 1);
         let arg_binder_chirho = dummy_binder_chirho("arg", 2);
         let module_chirho = CoreModuleChirho {
@@ -5605,10 +5520,10 @@ mod tests_chirho {
         };
 
         let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("declare i32 @snprintf(ptr, i64, ptr, ...)"));
         assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %v2)"));
-        assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 32)"));
-        assert!(ir_chirho.contains("@snprintf(ptr"));
+        // The runtime refuses a live heap value; `%ld` would print its address.
+        assert!(ir_chirho.contains("call i64 @haskelujah_show_int_chirho(i64 "));
+        assert!(!ir_chirho.contains("call i32 (ptr, i64, ptr, ...) @snprintf("));
     }
 
     #[test]
