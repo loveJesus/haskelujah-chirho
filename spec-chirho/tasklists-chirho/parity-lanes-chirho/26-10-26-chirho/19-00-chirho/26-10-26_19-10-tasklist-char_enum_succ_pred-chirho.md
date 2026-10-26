@@ -9,7 +9,7 @@ Base: `ee7d29ac`, immediately after the bounded row 520 occurrence-dispatch land
 - [x] Trace the current `Enum Char` rows and the per-occurrence evidence route before editing source.
 - [x] Implement only the bounded successor/predecessor repair, keeping ranges separate unless the trace proves one mechanism.
 - [x] Add GHC-measured all-engine controls and named boundaries.
-- [ ] Run a warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
+- [x] Run a warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
 - [ ] Rebase onto exact main, rerun the mechanism controls, land, and close progress row 567 only if GREEN.
 
 The present row does not claim Haskell literal decoding, String/Char rendering, native String
@@ -23,6 +23,13 @@ derived uses now reproduce GHC's eight-line output on all three engines. `succ m
 `pred minBound` keep GHC's exact payloads. GHC permits shifts into the surrogate interval, but
 the current Rust `char` interpreter cannot represent those values; all three engines now refuse
 them by the same named boundary instead of silently returning NUL.
+
+The source commit was replayed cleanly over row 565 at `14d6099a`. The post-replay warm gate is
+GREEN: core library 170/170, dictionary evidence 98/98, and the focused driver Enum/evidence/
+occurrence set 59/59. Clippy completed for core and driver with no diagnostic on a changed line.
+The hook-only mutation removed both Char rows and was killed by the success control at the first
+`succ` occurrence; restoring the source byte-for-byte returned the seven Enum occurrence tests
+to 7/7.
 
 The adjacent range measurement is a different mechanism. LLVM and Cranelift already print the
 GHC-exact ordinal lists for `['a'..'e']` and `['e','c'..'a']`; the interpreter prints mixed
