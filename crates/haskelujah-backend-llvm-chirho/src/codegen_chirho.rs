@@ -1582,6 +1582,16 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_write_io_ref_chirho(i64, i64)"
         )
         .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_map_from_list_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_map_size_chirho(i64)"
+        )
+        .unwrap();
         // Fallback: if print's show call isn't elided, provide a default
         // wrapper. LLVM aliases must point at definitions, but the RTS show
         // helpers are external declarations.
@@ -4450,8 +4460,8 @@ fn constructor_tag_chirho(name_chirho: &str) -> i64 {
         "[]" => 0,
         ":" => 1,
         "()" | "$tuple0" => 0,
-        "(,)" => 0,
-        "(,,)" => 0,
+        "(,)" | "(,,)" => 0,
+        _ if name_chirho.starts_with("$tuple") => 0,
         _ => {
             // Hash the name to get a tag (placeholder strategy)
             let mut hash_chirho: i64 = 0;
@@ -5245,6 +5255,8 @@ mod tests_chirho {
         assert_eq!(constructor_tag_chirho("GT"), 2);
         assert_eq!(constructor_tag_chirho("[]"), 0);
         assert_eq!(constructor_tag_chirho(":"), 1);
+        assert_eq!(constructor_tag_chirho("$tuple2"), 0);
+        assert_eq!(constructor_tag_chirho("$tuple3"), 0);
     }
 
     #[test]

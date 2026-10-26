@@ -98,6 +98,15 @@ const FROM_INTEGRAL_CHIRHO: &str =
 const CHAR_CASE_MAPPING_CHIRHO: &str =
     "module Main where\nmain :: IO ()\nmain = putStrLn (map toUpper \"abc\")\n";
 
+/// Saved oracle P05: empty/singleton `fromList` needs no key comparison.
+const MAP_SINGLETON_SIZE_CHIRHO: &str = "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.size (M.fromList [(1 :: Int, \"a\")]))\n";
+
+/// P04 remains refused: two pairs require ordering and `toList` is not lowered.
+const MAP_TO_LIST_BOUNDARY_CHIRHO: &str = "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.toList (M.fromList [(2 :: Int, \"b\"), (1, \"a\")]))\n";
+
+/// Two-pair `fromList` reaches the explicit comparator-evidence boundary.
+const MAP_ORDERING_BOUNDARY_CHIRHO: &str = "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.size (M.fromList [(2 :: Int, \"b\"), (1, \"a\")]))\n";
+
 fn with_main_chirho(module_chirho: &str, main_chirho: &str) -> String {
     format!("{module_chirho}main :: IO ()\nmain = {main_chirho}\n")
 }
@@ -360,6 +369,36 @@ fn compare_edges_answer_as_ghc_everywhere_chirho() {
 #[test]
 fn char_case_mapping_answers_as_ghc_everywhere_chirho() {
     assert_prints_everywhere_chirho(CHAR_CASE_MAPPING_CHIRHO, "ABC\n");
+}
+
+#[test]
+fn singleton_map_size_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(MAP_SINGLETON_SIZE_CHIRHO, "1\n");
+}
+
+#[test]
+fn ordered_map_to_list_stays_refused_natively_chirho() {
+    for backend_chirho in BACKENDS_CHIRHO {
+        let error_chirho =
+            native_round_trip_chirho(MAP_TO_LIST_BOUNDARY_CHIRHO, backend_chirho, "")
+                .expect_err("native ordering is unavailable without comparator evidence");
+        assert!(
+            error_chirho.contains("does not support primitive(s): mapToList#/1"),
+            "{backend_chirho:?}: {error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn multi_pair_map_size_fails_named_natively_chirho() {
+    for backend_chirho in BACKENDS_CHIRHO {
+        assert_eq!(
+            native_round_trip_chirho(MAP_ORDERING_BOUNDARY_CHIRHO, backend_chirho, "")
+                .expect_err("native ordering is unavailable without comparator evidence"),
+            "native program emitted stderr (exit 1): haskelujah: internal error: mapFromList# native maps currently require at most one pair\n\nstdout:\n",
+            "{backend_chirho:?}"
+        );
+    }
 }
 
 // ── R5: no matching alternative fails named ───────────────────────────────

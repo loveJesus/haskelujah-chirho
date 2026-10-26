@@ -356,6 +356,7 @@ mod failure_chirho;
 #[cfg(test)]
 mod gc_tests_chirho;
 mod native_io_refs_chirho;
+mod native_maps_chirho;
 mod native_thunks_chirho;
 pub use failure_chirho::{
     haskelujah_error_chirho, haskelujah_no_match_chirho, haskelujah_unbound_thunk_chirho,
@@ -365,6 +366,7 @@ use failure_chirho::{internal_failure_chirho, refuse_boxed_integer_chirho};
 pub use native_io_refs_chirho::{
     haskelujah_new_io_ref_chirho, haskelujah_read_io_ref_chirho, haskelujah_write_io_ref_chirho,
 };
+pub use native_maps_chirho::{haskelujah_map_from_list_chirho, haskelujah_map_size_chirho};
 pub use native_thunks_chirho::{
     haskelujah_alloc_thunk_chirho, haskelujah_enter_thunk_chirho, haskelujah_update_thunk_chirho,
 };

@@ -147,13 +147,20 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             tmp_chirho
-        } else if args_chirho.len() == 1 && matches!(name_chirho, "newIORef#" | "readIORef#") {
+        } else if args_chirho.len() == 1
+            && matches!(
+                name_chirho,
+                "newIORef#" | "readIORef#" | "mapFromList#" | "mapSize#"
+            )
+        {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
             let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
-            let runtime_name_chirho = if name_chirho == "newIORef#" {
-                "haskelujah_new_io_ref_chirho"
-            } else {
-                "haskelujah_read_io_ref_chirho"
+            let runtime_name_chirho = match name_chirho {
+                "newIORef#" => "haskelujah_new_io_ref_chirho",
+                "readIORef#" => "haskelujah_read_io_ref_chirho",
+                "mapFromList#" => "haskelujah_map_from_list_chirho",
+                "mapSize#" => "haskelujah_map_size_chirho",
+                _ => unreachable!("the primitive set above is exhaustive"),
             };
             let result_chirho = self.fresh_tmp_chirho();
             writeln!(

@@ -21,6 +21,8 @@ pub(crate) struct RuntimeCallsChirho {
     new_io_ref_chirho: FuncRef,
     read_io_ref_chirho: FuncRef,
     write_io_ref_chirho: FuncRef,
+    map_from_list_chirho: FuncRef,
+    map_size_chirho: FuncRef,
     char_to_upper_chirho: FuncRef,
 }
 
@@ -114,6 +116,20 @@ impl RuntimeCallsChirho {
                 2,
                 true,
             )?,
+            map_from_list_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_map_from_list_chirho",
+                1,
+                true,
+            )?,
+            map_size_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_map_size_chirho",
+                1,
+                true,
+            )?,
             char_to_upper_chirho: import_chirho(
                 module_chirho,
                 function_chirho,
@@ -168,6 +184,28 @@ impl RuntimeCallsChirho {
         let call_chirho = builder_chirho
             .ins()
             .call(self.write_io_ref_chirho, &[io_ref_chirho, value_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    pub(crate) fn map_from_list_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        list_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.map_from_list_chirho, &[list_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    pub(crate) fn map_size_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        map_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.map_size_chirho, &[map_chirho]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 
