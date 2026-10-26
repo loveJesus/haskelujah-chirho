@@ -464,6 +464,10 @@ fn import_item_names_chirho(
             }
             names_chirho
         }
+        // An item lowering could not represent names nothing, so it imports,
+        // and hides, nothing: exactly what it did when lowering dropped it.
+        // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+        ImportItemChirho::UnrepresentedChirho(_) => Vec::new(),
     }
 }
 

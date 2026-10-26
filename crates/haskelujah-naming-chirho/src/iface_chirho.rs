@@ -298,6 +298,10 @@ fn merge_import_item_into_exports_chirho(
                 );
             }
         }
+        // An item lowering could not represent names nothing to re-export,
+        // as when lowering dropped it.
+        // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+        ImportItemChirho::UnrepresentedChirho(_) => {}
     }
 }
 
@@ -374,6 +378,10 @@ fn remove_import_item_from_exports_chirho(
                 }
             }
         }
+        // An item lowering could not represent names nothing to hide, as when
+        // lowering dropped it.
+        // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+        ImportItemChirho::UnrepresentedChirho(_) => {}
     }
 }
 
