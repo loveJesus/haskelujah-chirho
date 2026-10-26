@@ -155,6 +155,22 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             tmp_chirho
+        } else if args_chirho.len() == 1 && name_chirho == "fromIntegral#" {
+            let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+            let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
+            let converted_chirho = self.fresh_tmp_chirho();
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {converted_chirho} = sitofp i64 {operand_chirho} to double"
+            )
+            .unwrap();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = bitcast double {converted_chirho} to i64"
+            )
+            .unwrap();
+            result_chirho
         } else if args_chirho.len() == 1 && matches!(name_chirho, "negate#" | "negateFloat#") {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
             let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);

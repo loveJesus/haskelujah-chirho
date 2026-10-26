@@ -79,6 +79,10 @@ const INT_CHAR_COMPARE_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = 
 const POWER_CHIRHO: &str =
     "module Main where\nmain :: IO ()\nmain = print (2 ^ (10 :: Int) :: Int)\n";
 
+/// R4, P03: GHC and the interpreter print `3.5`.
+const FROM_INTEGRAL_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (fromIntegral (7 :: Int) / (2 :: Double))\n";
+
 fn with_main_chirho(module_chirho: &str, main_chirho: &str) -> String {
     format!("{module_chirho}main :: IO ()\nmain = {main_chirho}\n")
 }
@@ -346,6 +350,11 @@ fn an_unknown_primitive_is_refused_on_cranelift_chirho() {
 #[test]
 fn integer_power_answers_as_ghc_everywhere_chirho() {
     assert_prints_everywhere_chirho(POWER_CHIRHO, "1024\n");
+}
+
+#[test]
+fn from_integral_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(FROM_INTEGRAL_CHIRHO, "3.5\n");
 }
 
 #[test]

@@ -2575,6 +2575,17 @@ pub fn lower_primop_chirho(
         }
 
         // ── Float arithmetic ───────────────────────────────────────────────
+        "fromIntegral#" => {
+            let integer_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let converted_chirho = builder_chirho
+                .ins()
+                .fcvt_from_sint(cl_types_chirho::F64, integer_chirho);
+            builder_chirho.ins().bitcast(
+                cl_types_chirho::I64,
+                cranelift_codegen::ir::MemFlags::new(),
+                converted_chirho,
+            )
+        }
         "+.#" => {
             let lhs_chirho = ensure_f64_chirho(builder_chirho, lhs_raw_chirho);
             let rhs_chirho = ensure_f64_chirho(builder_chirho, rhs_raw_chirho);
