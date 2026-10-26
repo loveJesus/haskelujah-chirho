@@ -7,7 +7,10 @@
 //! the native backends ordered negative Doubles backwards. Where an operand's
 //! type key is Double, the primop becomes the float one: the ordered comparisons
 //! are GHC's `<##`, `<=##`, `>##` and `>=##` (a NaN on either side gives False),
-//! and negation flips only the sign.
+//! and negation flips only the sign. Sections of `+`, `-` and `*` are blind the same
+//! way (`(+ 0.5)` becomes `\x -> +# x 0.5`), and take `+.#`, `-.#` and `*.#` when
+//! their operand keys as Double (row 554). Sections of `/` already take the
+//! Fractional evidence path, so no `/#` reaches this table.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::HashMap;
@@ -24,6 +27,9 @@ pub(super) fn double_counterpart_chirho(name_chirho: &str) -> Option<&'static st
         ">#" => Some(">.#"),
         ">=#" => Some(">=.#"),
         "negate#" => Some("negateFloat#"),
+        "+#" => Some("+.#"),
+        "-#" => Some("-.#"),
+        "*#" => Some("*.#"),
         _ => None,
     }
 }

@@ -57,6 +57,11 @@ flowchart TD
   - The counterparts are `<.#`, `<=.#`, `>.#`, `>=.#` (ordered, so a NaN gives False) and `negateFloat#`.
   - `negate#` keys as its operand in `type_keys_chirho.rs`, so `(-1) / 2 :: Double` keys `/` at Double instead of Int.
   - `rewrite_expr_with_type_key_chirho` (`method_args_chirho.rs`) rebuilds primops while rewriting arguments at a key. When that key is exactly Double, it takes the same counterpart (row 553). Elements under `map (+ 0) ([-3 / 2, 1] :: [Double])` used to keep `negate#`, which was silently `-0.75` natively.
+  - The same table also maps `+#`, `-#` and `*#` to `+.#`, `-.#` and `*.#` (row 554).
+    - `build_section_body_chirho` makes `(+ e)`, `(e -)` and `(* e)` blind Int primops. At Double the interpreter refused them, and the natives added IEEE bits.
+    - Each rebuild site now gives them the float primop from its existing proof.
+    - `/` sections take the Fractional evidence path, so no `/#` reaches the table.
+    - Residual: a section under `iterate` has no keyed operand at either site and stays `*#`.
   - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
   - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs`.
