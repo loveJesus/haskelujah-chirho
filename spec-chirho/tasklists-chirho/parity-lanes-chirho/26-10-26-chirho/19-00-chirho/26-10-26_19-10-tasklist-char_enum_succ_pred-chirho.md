@@ -10,7 +10,7 @@ Base: `ee7d29ac`, immediately after the bounded row 520 occurrence-dispatch land
 - [x] Implement only the bounded successor/predecessor repair, keeping ranges separate unless the trace proves one mechanism.
 - [x] Add GHC-measured all-engine controls and named boundaries.
 - [x] Run a warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
-- [ ] Rebase onto exact main, rerun the mechanism controls, land, and close progress row 567 only if GREEN.
+- [x] Rebase onto exact main, rerun the mechanism controls, land, and close progress row 567 only if GREEN.
 
 The present row does not claim Haskell literal decoding, String/Char rendering, native String
 representation, result-only `toEnum` defaulting, surrogate code points, invalid `chr` semantics,
@@ -34,3 +34,7 @@ to 7/7.
 The adjacent range measurement is a different mechanism. LLVM and Cranelift already print the
 GHC-exact ordinal lists for `['a'..'e']` and `['e','c'..'a']`; the interpreter prints mixed
 Char/Int lists. Row 567 does not alter range generation.
+
+Landing: the source and gate record fast-forwarded onto exact main `1cfb1db7` as `910097c7` and
+`bb6655a8`. The post-rebase mechanism rerun was 7/7, core was 170/170, and the final hygiene
+checks stayed GREEN before progress row 567 closed.
