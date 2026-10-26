@@ -157,7 +157,16 @@ M11 and M12 came with the #28506 corrections and M13 with the #28517 ruling. gpt
 - [x] Gate r2: RED at lint on one test-only Clippy finding; the builder was returned by name in #28536.
 - [x] C15: the finding's exact fix (64bfd754), as authorized in #28537.
 - [x] C16: the r2 record below.
-- [ ] Re-pin the tooling to the C16 tip, with the r2 run and its launcher log as immutable sets. Rerun rustfmt, `git diff --check`, gitleaks, the real preflight-only path and the zero-Cargo proof. Post the checkpoint with a fresh unused r3 tag; no builder until it is reviewed.
+- [x] Re-pin the tooling to the C16 tip, with the r2 run and its launcher log as immutable sets. Rerun rustfmt, `git diff --check`, gitleaks, the real preflight-only path and the zero-Cargo proof. Post the checkpoint with a fresh unused r3 tag (#28541; accepted in #28542, with the layout moved into `history-chirho/` in #28545).
+- [x] Gate r3: RED at oracle on the frozen CLI's own self-variation; the builder was returned by name in #28552.
+- [x] The CLI-only calibration (#28553): 200 observations and a clean audit; the builder was returned by name in #28558.
+- [x] C17: the r3, calibration and disposition record below (#28559).
+- [ ] Apply #28559 to the tooling:
+  - hold A:T07, B:T07, A:Q01 and B:Q01 as KNOWN-NONDETERMINISTIC-HELD;
+  - make r3's run, its launcher log and the calibration immutable sets;
+  - pin the five principal calibration files and the five sources.
+
+  Re-judge r3's receipt, which must be GREEN 228/1/4/0. Then run the selftest, the real preflight-only path and the zero-Cargo proof. Post with a fresh unused r4 tag; no builder until it is reviewed.
 
 ## Source checkpoint record
 
@@ -359,5 +368,92 @@ All are untracked, under `tmp-chirho/qualified-import-lists-chirho/gate-chirho/`
   - `logs-chirho/clippy-haskelujah-ast.log` (the tip): d19b5e1236d807e0f0a3060c5bd9e3750e329b529a40f8ba16a641c2b975c8e3;
   - `base-clippy-chirho/clippy-haskelujah-ast.log`: cbb0ed3ebc801f6299a373a25e503f4368314ad03e90051ef818c2f968fc5266.
 - #28537 makes the run directory and the launcher log counted C-locale immutable sets of the re-pinned gate.
+
+Row 536 remains not independently landable.
+
+## Gate r3, calibration and disposition (#28547 to #28559)
+
+### The run
+
+- **Tag and window:** `g536-qualified-import-lists-0803da4f-r3-chirho` on tip 0803da4f, launched once at 11:58:48 EDT on 2026-10-26 under the builder handed in #28547. The ledger closed at 12:23:22.
+- **Terminal state: RED (first: oracle).** Corpus, mutants and freeze did not run.
+- **GREEN before the stop:**
+  - preflight: the judge selftest 117/117, with 16 tools and 10 immutable sets at their pins;
+  - build: rc 0 with no warnings. Candidate CLI 3e47fb29326843856b57daba4711f97f7d956ba0b6b3e996432913dbd70ff56e; RTS archive d03876aa, untouched;
+  - the six focused suites, at r2's counts;
+  - lint: nothing on a changed line in any of the 4 packages, so C15 cleared r2's finding;
+  - gitleaks: 16 commits.
+- **Postflight**, run after the stop as the cleanliness audit, was GREEN.
+
+### The oracle finding
+
+- The oracle was RESULT RED, 3 of 15. Of the 233 rows, 228 were IDENTICAL, I2 MOVED in its contracted shape, B:Q01 was held, and 3 were RED.
+- All three REDs were the frozen CLI's own two observations disagreeing outside the one pinned exception (#28528's rule). None was a candidate move.
+  - **A:Q01:** `toList` CoreId 10 against tag 65 @2161, on both CLIs, within B:Q01's exact two-reason shape.
+  - **A:T07 and B:T07:** the frozen CLI succeeded once and failed once ("missing STG binding `toList` for CoreId 19"). The candidate failed twice, byte-identical to the frozen failure.
+- **The gap was in the tooling.** It took self-variation from 531 r3's single pair of observations, which happened to agree on these rows. It did not take over q2's repeat table: A's T07, Q01 and I1 (#28362).
+
+### The calibration (#28553, #28558)
+
+- **What ran:** CLI-only and zero-Cargo, under a diagnostic lease.
+  - The frozen 531 CLI 260780d0 and the r3 candidate 3e47fb29, 20 observations each on the five preserved r3 sources (A:T07, B:T07, A:Q01, B:Q01 and A:I1): 200 in all.
+  - Interpreter mode, through the pinned measure_scope.
+  - The CLI that ran first reversed each repetition, and the rows rotated.
+- **When and how it ended:** 12:33:38 to 12:38:14 EDT, with no stop and a clean audit:
+  - the exit-97 stub cargo was called 0 times;
+  - the binaries, tool, judge and sources stayed at their pins;
+  - the tree stayed at 0803da4f;
+  - the main_chirho ref, the DB and both RTS archives were unchanged;
+  - nothing was left alive.
+- **Observed support, descriptive only** (frozen and candidate counts out of 20):
+  - A:T07: F (rc 1, `3\n[5]\n`, `toList` CoreId 19): 16 and 13. S (rc 0, `3\n[5]\n:| 7 [8]\n`, empty stderr): 4 and 7.
+  - B:T07: F 13 and 12; S 7 and 8.
+  - A:Q01: `toList` CoreId 10: 12 and 9. Tag 65 @N: 8 and 11.
+  - B:Q01: tag 65 @N: 15 and 11. `toList`: 5 and 9.
+  - A:I1: tag 47 @N: 20 and 20. Only the heap address varies, which the heap rule already masks.
+- **Shared support.** Both CLIs showed the same support set on every row, with one check stdout per row. GHC 9.14.1 was deterministic, and no third shape appeared.
+- **S is WRONG, not exact:** GHC prints `3\n[5]\n[7,8]\n`.
+- **No regression.** The candidate succeeded on T07 7/20 (A) and 8/20 (B), so r3's 0/4 was chance. No regression of row 536 is claimed or found.
+
+### The disposition (#28559)
+
+- **The four held keys.** The exact known-nondeterministic key set is A:T07, B:T07, A:Q01 and B:Q01.
+  - All four are KNOWN-NONDETERMINISTIC-HELD on every run, even when their observations agree.
+  - The accounting is fixed: IDENTICAL 228, MOVED 1 (I2), KNOWN-NONDETERMINISTIC-HELD 4, RED 0.
+- **Each observation is checked on its own.** All four CLI observations of each key need check rc 0, codes [], an empty stderr, the source's exact path-normalized stdout, and a run.
+- **The allowed run support:**
+  - T07, one of two:
+    - S: rc 0, `3\n[5]\n:| 7 [8]\n`, an empty stderr. This is WRONG, not an improvement.
+    - F: rc 1, `3\n[5]\n`, and the missing-binding `toList` line under the grammatical CoreId mask only.
+    - GHC is pinned to rc 0 and `3\n[5]\n[7,8]\n`.
+  - Q01: rc 1 with an empty stdout, and either exact tag 65 under the heap mask only, or the missing-binding `toList` line under the grammatical CoreId mask only. GHC is pinned to rc 0 and `(3,[1,2,3])\n`.
+- **RED:** a third shape, a dirty check, a missing run, a changed tag or binding, a changed stdout, rc 2, an abnormal end, or variation outside the four keys.
+- **A:I1** stays IDENTICAL under its heap rule, with no self-variation record.
+- **The pins.** The oracle and freeze pin all four raw observations, their support labels and the rules. The frequencies are provenance only and never enforced.
+
+### Receipts, kept byte for byte
+
+All are untracked, under `tmp-chirho/qualified-import-lists-chirho/gate-chirho/`.
+
+- **r3's run directory** `runs-chirho/g536-qualified-import-lists-0803da4f-r3-chirho`: C-locale digest 409931be2f91f74dcd5efa82c6e22b40d82f4909ac9780e53ef41d793670329e, 3174 files. Within it (sha256):
+  - `stages-chirho.tsv`: 4153f7fc6c6c78393be769cf7d3d88d964d855411b2a27702bd18d6a63667699;
+  - `oracle-chirho.json`: e07ea103311134a0c808031ec7b85139962e422a6cf9d0d3bf68fb80b0329ef2;
+  - `logs-chirho/oracle.compare`: 902dfc31fafc4f979c2b35bfc1c916a1feedcde05c7068c853ea0f0e73afc1ab.
+- **r3's launcher console output**, as the harness captured it: `review-28537-chirho/g536-r3-launcher-chirho.log`.
+  - sha256 5f12a8e854c4acb060f8b59aa27167017f2979cd80343a0a215978ae8e74f606; as a one-file set, digest 2cf3807d10f0b12ade339d8c79ab4d5d34a82d3cd435c40aca3263d95254bef3.
+  - Its last line is the harness's.
+- **The calibration** `calibration-28553-chirho`: 607 files, C-locale digest b02e176b7ba1ca38d6dcd703ce2d3e1cf62ee6f9c3485b830659c2f9fe7e99cd. Its principal files (sha256):
+  - `calibrate_536_chirho.py`: cce851c83459c7f792c3ce4aed42c210b2dfb082a8a8569038cbfa36ccff7688;
+  - `summary-chirho.json`: bb32d1a82303046429305d4631e6c8ea689b5e8a13c4abf50990456460495403;
+  - `observations-chirho.json`: 3f1afb28d708280f66686e1288a8f0579d50b12a1a7de68b915987d64b5fe2f0;
+  - `audit-chirho.json`: d906890182a354dd7675ce8bc351fa0d64db8b3cc1cbb5981c3cd3eb8ee3fbfc;
+  - `calibration-chirho.log`: 7489c59ad8d422c8861c7effbd40f4da6aaa68a1ce44ef11d67c71679a486ded.
+- **The five r3 sources** (sha256):
+  - A:T07 4923b532d71e0002c7ba51b5f89dd3ed08f697d852530f167fa76cbbc8ff1a60;
+  - B:T07 a5a8b50651fbfe6ef0d3f362d55b6c100db6ad96dd5b09632bbdd3724bb142cf;
+  - A:Q01 75ac34152e997ea1a976c94644177b0837490b37ce6e34fac704eca4f5b0ab24;
+  - B:Q01 f565be72b31973e9197ccf7c22cf76a2fae36ea40b1b9cb89d66ddc9b1bf7607;
+  - A:I1 f909511d66e7055b204bd2a838ee223d7f468264f5e73bd509b68d937765f978.
+- #28559 makes r3's run, its launcher log and the calibration counted C-locale immutable sets of the re-pinned gate, and pins the five principal calibration files and the five sources.
 
 Row 536 remains not independently landable.
