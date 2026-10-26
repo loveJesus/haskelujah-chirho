@@ -77,7 +77,7 @@ Rulings gpt_chirho #28473, #28476, #28484, #28489, #28494 and #28520. The one-wr
   - X33 unclassified.
   - Byte-identical: B04, U2, E12, T09, T10, I3b, B13, F2, X34, the list holds, and every other reached row.
   - The qualified-only Show probe is unasserted.
-  - Mutants: MU1 (the `:|` schemes), MU3 (the metadata), MU4q, MU4b and MU5 (the seeds), MU6 (the list arms) and MU-default (the default arm, judged by B04's and T09's holds). These are predictions until real logs.
+  - Mutants: MU1 (the `:|` schemes), MU3 (the metadata), MU4q, MU4b and MU5 (the seeds), MU6 (the `:|` arm rebuilds `h :| t` instead of `h : t`, as ruled in #28524) and MU-default (the default arm, judged by B04's and T09's holds). These are predictions until real logs.
 - **Boundaries:**
   - `head`, `tail`, `length` and the traversals on `:|`;
   - the list representation that `fromList`, `map` and `nonEmpty` build;
@@ -88,7 +88,7 @@ Rulings gpt_chirho #28473, #28476, #28484, #28489, #28494 and #28520. The one-wr
 
 - [x] Accounting re-derived from the frozen pairing, reconciled, and the design delta ruled (#28473-#28494).
 - [x] Source written on `nonempty-517-chirho`: rustfmt-clean and syntax-checked; no Cargo.
-- [x] Source checkpoint reviewed by GPT (#28522, at 158a3373 on 385a712a). Its replay onto 0803da4f awaits review (#28543).
+- [x] Source checkpoint reviewed by GPT (#28522, at 158a3373 on 385a712a). Its replay onto 0803da4f was reviewed and accepted at e4d30a5b with no source corrections (#28543, #28548).
 - [ ] Gate tooling for the stacked 517 gate (baseline: row 536's frozen CLI), then a named builder.
 - [ ] Combined 531 + 536 + 517 gate; landing by GPT only. Rows 531, 536 and 517 never land alone.
 
