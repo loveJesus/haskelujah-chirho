@@ -8,6 +8,8 @@ mod demand_chirho;
 mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
+mod non_empty_chirho;
+pub(crate) use non_empty_chirho::TO_LIST_ROUTE_CHIRHO;
 use std::collections::HashMap;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -24,6 +26,7 @@ impl DictPassCtxChirho {
     pub fn generate_prelude_bindings_chirho(&mut self) {
         self.generate_monad_fix_bindings_chirho();
         self.generate_demand_prelude_chirho();
+        self.generate_to_list_route_chirho();
         let bool_ty_chirho = TyChirho::bool_chirho();
 
         // Helper to generate a Prelude binding with ID matching.

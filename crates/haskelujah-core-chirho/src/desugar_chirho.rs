@@ -9,6 +9,7 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+mod builtin_routes_chirho;
 mod guards_chirho;
 mod lazy_patterns_chirho;
 mod match_rows_chirho;
@@ -1148,6 +1149,9 @@ impl DesugarCtxChirho {
         // Pass -0.25: Seed aliases for built-in qualified imports whose Core
         // bodies use internal Prelude wrapper names.
         self.seed_builtin_import_aliases_chirho(module_chirho);
+        // Unit 517: every `toList` an import of Data.List.NonEmpty or Data.Foldable
+        // exposes reaches the dual-shape route, ahead of the module's own names.
+        self.seed_to_list_routes_chirho(module_chirho);
         // QualifiedDo methods are selected through the source module qualifier,
         // while today's Core linker addresses imported values by bare export
         // name. Snapshot Prelude's methods before local bindings shadow them.
