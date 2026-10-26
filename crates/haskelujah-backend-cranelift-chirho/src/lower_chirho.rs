@@ -41,6 +41,7 @@ use std::collections::{BTreeSet, HashMap};
 
 mod failures_chirho;
 mod lazy_chirho;
+mod ordering_chirho;
 use lazy_chirho::lower_lazy_value_chirho;
 
 pub type PapWrapperKeyChirho = (CoreIdChirho, usize);
@@ -2562,6 +2563,9 @@ pub fn lower_primop_chirho(
             lhs_raw_chirho,
             rhs_raw_chirho,
         ),
+        "compare#" | "compareChar#" => {
+            ordering_chirho::lower_compare_chirho(builder_chirho, lhs_raw_chirho, rhs_raw_chirho)
+        }
 
         // ── Float arithmetic ───────────────────────────────────────────────
         "+.#" => {

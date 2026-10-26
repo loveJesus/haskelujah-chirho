@@ -10,7 +10,9 @@
 //!   on every build back to old main (claude2_chirho's D8 and D9, 2026-10-17).
 //! - **One failure route (row 535).** Each owned route fails the same way on
 //!   both backends: exit 1, no signal, and exactly one stderr line, or a
-//!   compile-time refusal naming the primitive.
+//!   compile-time refusal naming the primitive. Cranelift's refusal reaches
+//!   only primitives it cannot lower, so it lowers `compare` on Int and Char
+//!   as LLVM does; a reachable Prelude `Ord` dictionary compiles those bodies.
 //!
 //! Every expectation was measured on GHC 9.14.1. A definition count alone would
 //! prove nothing that runs. Workflow: testing-chirho/native-fail-loud-chirho.md.
@@ -68,6 +70,10 @@ const NO_MATCH_CHIRHO: &str =
 
 /// R4, P01: IORef has no native implementation. GHC: `2`.
 const IOREF_CHIRHO: &str = "module Main where\nimport Data.IORef\nmain :: IO ()\nmain = do { r <- newIORef (1 :: Int); modifyIORef r (+ 1); v <- readIORef r; print v }\n";
+
+/// `compare` on Int and Char. GHC prints `GT` twice; before row 535, Cranelift
+/// printed `LT` twice (the first two lines of Compare2's measured 15e1b77b run).
+const INT_CHAR_COMPARE_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (compare (2 :: Int) 1)\n  print (compare 'b' 'a')\n";
 
 /// R4, P06: `^#` has no native implementation; Cranelift printed its left operand.
 const POWER_CHIRHO: &str =
@@ -340,6 +346,15 @@ fn an_unknown_primitive_is_refused_on_cranelift_chirho() {
 #[test]
 fn power_is_refused_on_cranelift_chirho() {
     assert_refused_chirho(CRANELIFT_CHIRHO, POWER_CHIRHO, "^#/2");
+}
+
+#[test]
+fn int_and_char_compare_answer_as_ghc_on_cranelift_chirho() {
+    assert_eq!(
+        native_round_trip_chirho(INT_CHAR_COMPARE_CHIRHO, CRANELIFT_CHIRHO, "")
+            .unwrap_or_else(|error_chirho| panic!("Cranelift: {error_chirho}")),
+        (0, "GT\nGT\n".to_string())
+    );
 }
 
 // ── R5: no matching alternative fails named ───────────────────────────────
