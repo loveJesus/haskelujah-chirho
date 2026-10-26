@@ -17,7 +17,7 @@ Row 540 starts from `6f027ffd13953318ae2997ba2de841cd8a37582e`. It owns the nati
 - [x] Add the ordinary P03 cross-backend regression test.
 - [x] Update the native workflow at the changed seam.
 - [x] Run format, the focused P03 test, both backend libraries, changed-package Clippy, and diff check. Gitleaks follows on the committed range.
-- [ ] Land the reviewed tip and close progress row 540 GREEN.
+- [x] Land the reviewed tip and close progress row 540 GREEN.
 
 ## Measured evidence
 
@@ -28,3 +28,4 @@ Row 540 starts from `6f027ffd13953318ae2997ba2de841cd8a37582e`. It owns the nati
 - `git diff --check` is clean. No file or directory is added outside this tasklist, and the only source growth is at the two existing primitive dispatch seams plus the driver control.
 - Gitleaks scanned the committed source range and found no leaks.
 - Receipt correction: the source commit's first tasklist version expanded the abbreviated base incorrectly. Its Git parent was always the exact `6f027ffd13953318ae2997ba2de841cd8a37582e`; this record now names it correctly.
+- Main fast-forwarded to reviewed tip `7f94c648194a48f4b42293a59e8a0a60af106275`, and progress row 540 closed GREEN.
