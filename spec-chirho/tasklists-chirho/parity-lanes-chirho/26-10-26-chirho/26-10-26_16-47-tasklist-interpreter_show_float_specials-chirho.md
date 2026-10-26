@@ -29,7 +29,7 @@ Row 546 owns the interpreter rendering of non-finite `Double` values through
       add both infinities as interpreter controls.
 - [x] Record the runtime rendering decision in the Show workflow.
 - [x] Run a warm focused gate within the 2–5 minute bar.
-- [ ] Rebase onto current `main_chirho`, land, and close progress row 546 GREEN.
+- [x] Rebase onto current `main_chirho`, land, and close progress row 546 GREEN.
 
 ## Source checkpoint
 
@@ -45,3 +45,4 @@ Row 546 owns the interpreter rendering of non-finite `Double` values through
   tests 3/3. The complete focused sequence, including both Clippy invocations, took 21.1
   seconds. Clippy reports no diagnostic in either changed Rust file; its warnings are on
   pre-existing lines elsewhere.
+- Landed by fast-forward on exact main at `ffb8466b`; progress row 546 is GREEN.
