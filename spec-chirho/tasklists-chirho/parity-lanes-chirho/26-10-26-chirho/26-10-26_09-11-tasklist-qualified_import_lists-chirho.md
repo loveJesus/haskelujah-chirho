@@ -85,7 +85,7 @@ GHC 9.14.1 receipts are measured from the committed sources.
   - a listed operator;
   - the implicit `Prelude.map`;
   - `Main.foo`;
-  - `D.Proxy` through an unrepresented `(data ..)`;
+  - `Seq.Empty` through an unrepresented `pattern Empty` item (this replaced the planned `D.Proxy` through `(data ..)`, see the record below);
   - a source-derived record `X(..)` supplying `X.name`.
 - **Structural:**
   - the classifier's three modes (an explicit list with an unrepresented item is UNRESTRICTED; `hiding` keeps its items);
@@ -105,7 +105,7 @@ GHC 9.14.1 receipts are measured from the committed sources.
 | M6 | a data `T(..)` supplies nothing | the `NonEmpty(..)` and `NE (reverse)` positives |
 | M7 | a builtin class `C(..)` closes on its method list | `Semigroup.sconcat`, plus the driver parsec tests |
 | M8 | the interface-filtered table replaces the written list | `NE (reverse)` |
-| M9 | the marker ignored | the `(data ..)` positive |
+| M9 | the marker ignored | the `pattern Empty` positive |
 | M10 | every builtin assumed complete | `Lazy.runRWST` |
 
 ## Candidate gate contract (#28483)
@@ -120,11 +120,70 @@ GHC 9.14.1 receipts are measured from the committed sources.
 ## Checklist
 
 - [x] Write the tasklist on a fresh branch from exact b709644c.
-- [ ] AST: the marker, the item's "represented" test and the syntax classifier, with structural tests. Naming: the exhaustive consumers.
-- [ ] Parser: produce the marker for nameless items and `pattern P`, with producer tests.
-- [ ] Naming: completeness marks (source-derived local types, the builtin NonEmpty, union on merge), with tests.
-- [ ] Naming: the value-scope module and its own test file, hooked after type scope.
-- [ ] Driver: the GHC-measured behavioral controls, with GHC 9.14.1 receipts from the committed sources.
-- [ ] Workflow: `compiler-pipeline-chirho/value-scope-resolution-chirho.md`.
-- [ ] Hygiene with no Cargo: rustfmt as a stdin no-op, `git diff --check` and gitleaks. Record the source-derived reach scan as a prediction.
+- [x] AST: the marker, the item's "represented" test and the syntax classifier, with structural tests. Naming: the exhaustive consumers (b31d36c2).
+- [x] Parser: produce the marker for nameless items and `pattern P`, with producer tests (966ff5b1).
+- [x] Naming: completeness marks (source-derived local types, the builtin NonEmpty, union on merge), with tests (56c23a6b).
+- [x] Naming: the value-scope module and its own test file, hooked after type scope (2a282abd).
+- [x] Driver: the GHC-measured behavioral controls, with GHC 9.14.1 receipts from the committed sources (ce46c757).
+- [x] Workflow: `compiler-pipeline-chirho/value-scope-resolution-chirho.md` (7b204b91).
+- [x] Hygiene with no Cargo: rustfmt as a stdin no-op, `git diff --check` and gitleaks. Record the source-derived reach scan as a prediction.
 - [ ] Post the tracked source checkpoint before any builder request.
+
+## Source checkpoint record
+
+Branch `qualified-import-lists-chirho`, from exact b709644c. No Cargo or haskelujah CLI ran. GHC 9.14.1 ran only on the control programs.
+
+### Hygiene
+
+- rustfmt 1.8.0, on the pinned toolchain 1.93.0, is a stdin no-op on all 12 changed Rust files.
+- `git diff --check b709644c HEAD` is clean.
+- gitleaks 8.30.1 scanned 7 commits through the workflow commit and found no leaks (the report is `[]`).
+
+### Shape
+
+- The typing and core trees are byte-identical to the replay's (c96a8a10, a8f98083). Typing's fallback and desugar are not changed.
+- One path is shared with the replay, `parser/src/lower_chirho.rs`:
+  - this unit's hunks there are the test `mod` line and the import-item lowering;
+  - the replay's own hunks in that file are module declarations and moved code.
+- Every new file is under 1.5k lines, and every touched directory is under 15 entries (`lower_chirho/` is now 14).
+- Three files were already over the size limit and grew minimally:
+  - `iface_chirho.rs`, from 18,704 to 18,735 lines;
+  - `lower_chirho.rs`, from 16,331 to 16,348;
+  - `resolve_chirho.rs`, from 1,809 to 1,830.
+  - The first two need their own split units.
+
+### GHC 9.14.1 receipts
+
+The programs are decoded from the committed file, and each prediction was fixed before GHC ran.
+
+- **r1: 21 of 22 agreed.**
+  - The refuted prediction is a finding: GHC 9.14.1 parses `import qualified Data.Proxy as D (data ..)` as an error (GHC-58481, `parse error on input ‘..’`).
+  - So the namespace wildcard is a form from a later GHC testsuite (T25901, copied into ghc-tests-chirho), not a 9.14 form.
+  - The marker still keeps such a list open, since lowering accepts it.
+  - The control was replaced by a `pattern Empty` item, which GHC 9.14.1 does accept.
+  - Before posting, C3's message was rebuilt (0f40eb85 became 966ff5b1) to say the same. The later commits were replayed unchanged, and the tree differs only by that test's doc note.
+- **r2: 22 of 22 agree.**
+  - 7 programs are rejected with exactly GHC-76037, naming the same references the controls expect.
+  - 15 programs are accepted and print the recorded values.
+
+### Source-derived reach scan
+
+This is a lexical prediction, not a measurement, under the ruled rule.
+
+- **Gate corpus:**
+  - should_compile: 148 programs have a closed qualifier. 2 references go through one, and both are listed.
+  - should_fail: 79 programs have a closed qualifier. 2 references go through one, both listed.
+  - So 0 rows are predicted to move.
+- **r3 oracle:**
+  - A: exactly I2's `NE.toList` is predicted rejected. Its `NE.:|` is supplied by `NonEmpty(..)`.
+  - S, B and C: nothing goes through a closed qualifier.
+- **Execution:** nothing.
+- **Embedded test programs in crates:** the only predicted rejections are this unit's own negatives.
+- **Repository `.hs` files:** nothing.
+- **Informational only, outside the gate:**
+  - The local package cache has 154 references whose acceptance depends on source-derived member lists.
+  - The GHC rename suite's T25901 sub-wildcard rows are scanner artifacts, written in post-9.14 syntax.
+
+### Row 536 is not independently landable
+
+It must keep the frozen 531 pairing intact, and it enters the combined 531+536+517 gate.
