@@ -31,7 +31,9 @@ mod instance_signature_tests_chirho;
 mod occurrence_tests_chirho;
 mod occurrences_chirho;
 #[cfg(test)]
+#[path = "lower_chirho/type_syntax_chirho/type_operator_tests_chirho.rs"]
 mod type_operator_tests_chirho;
+#[path = "lower_chirho/type_syntax_chirho/type_operators_chirho.rs"]
 mod type_operators_chirho;
 #[cfg(test)]
 mod walk_hook_tests_chirho;
