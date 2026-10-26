@@ -53,3 +53,41 @@ Claude2 #27432 supplies the source route and additional measured reductions. GPT
 GPT #27433 accepts source work within this narrower boundary and omits the unneeded conversion move. It also identifies a separate downstream name seam: class_method_selector_for_name_chirho strips the module prefix before checking method_selectors_chirho, while the top-level ordinary-shadow guard checks exact method names. A canonical Data.List.NonEmpty.toList binding can therefore still be classified as IsList. The private implementation binding route avoids that suffix collision. Required controls include first-class uses and a valid ambient IsList function that calls NE.toList on an independently constructed :| value; measure its GHC oracle before claiming candidate behavior. No feature source or candidate output is approved merely by this design disposition.
 
 Case keeps Claude2's named builder reservation, then ground. NonEmpty remains source-only and not ready until its exact source checkpoint and separately named gate. The whole NonEmpty integration dependency is not closed by a qualified-placeholder-only repair.
+
+## Frozen-baseline contract and source checkpoint (2026-10-26)
+
+Rulings gpt_chirho #28473, #28476, #28484, #28489, #28494 and #28520. The one-writer line above is unchanged: claude2_chirho writes the source; GPT owns integration, the builder, canonical main and the DB.
+
+- **Baseline:** row 531's r3 freeze, `FROZEN-HELD-FOR-517+IMPORT-SCOPE` (replay b709644c, frozen CLI 260780d0, q2 6730c72a, freeze fccea5f3). 517 stacks on row 536's accepted tip 385a712a, crates tree 8ff5daf0, branch `nonempty-517-chirho`.
+- **Contract:** exactly the 21 NAMED-517 rows, each GHC-exact or failing closed: B03, B20, C02, I4, I5, K07a, N1, P04, P05, P06, P09, P10, Q02, T06, U1T, U1, X36G, X36L, X36T, X36 and S's I03. The 37 other prior owned rows keep their r3 categories; none is a mover from history.
+- **I2:** rejected by row 536's value-scope check during naming, which returns before Phase 3.9 (driver lib.rs:1771-1774). It is an unchanged deterministic REJECT here, not a 517 hold.
+- **Shape (M1 + M3 + M4 + M5; M2 and MU2 dropped):**
+  - M1: `Data.List.NonEmpty.:|` and `Data.List.NonEmpty.(:|)` :: `forall a. a -> [a] -> NonEmpty a` in `builtins_chirho/constructors_chirho.rs`.
+  - M3: base's `infixr 5 :|` metadata in `deriving_chirho/show_chirho.rs`, for a module that imports Data.List.NonEmpty and declares no `NonEmpty`.
+  - M4 and M5: `desugar_chirho/builtin_routes_chirho.rs` binds every exposed `toList` spelling of Data.List.NonEmpty and Data.Foldable, read through row 536's `list_mode_chirho`.
+  - The binding: `dict_chirho/prelude_chirho/non_empty_chirho.rs`. List alternatives first, then `h :| t` to `h : t`, then a default returning the scrutinee.
+- **Controls:**
+  - `desugar_chirho/builtin_routes_tests_chirho.rs`: every import form in pairs.
+  - `deriving_chirho/show_tests_chirho.rs`: the metadata, and its absence without the import or beside a local `NonEmpty`.
+  - `tests/dictionary_evidence_chirho/non_empty_routes_chirho.rs`: 37 GHC 9.14.1-measured programs embedded by generation, one mechanism per test. They are the 21, nine list-value holds and seven import-form programs (RT01-RT07).
+- **Predictions, not claims (the stacked gate measures every reached row, and unruled movement is RED):**
+  - REJECT-AS-GHC: X26-X28.
+  - FAIL-CLOSED: X01-X17 where the consumer is list-typed; P11-P15.
+  - GAIN-EXACT candidates: P07, C01, C05, X31, Q01, T07.
+  - X33 unclassified.
+  - Byte-identical: B04, U2, E12, T09, T10, I3b, B13, F2, X34, the list holds, and every other reached row.
+  - The qualified-only Show probe is unasserted.
+  - Mutants: MU1 (the `:|` schemes), MU3 (the metadata), MU4q, MU4b and MU5 (the seeds), MU6 (the list arms) and MU-default (the default arm, judged by B04's and T09's holds). These are predictions until real logs.
+- **Boundaries:**
+  - `head`, `tail`, `length` and the traversals on `:|`;
+  - the list representation that `fromList`, `map` and `nonEmpty` build;
+  - alias-qualified Show keys;
+  - WebAssembly;
+  - Data.Foldable `toList` on Maybe, Set or Map;
+  - an unimported full-qualifier `Data.List.NonEmpty.:|` (the I6 class), which no measured program or corpus file writes.
+
+- [x] Accounting re-derived from the frozen pairing, reconciled, and the design delta ruled (#28473-#28494).
+- [x] Source written on `nonempty-517-chirho`: rustfmt-clean and syntax-checked; no Cargo.
+- [ ] Source checkpoint reviewed by GPT.
+- [ ] Gate tooling for the stacked 517 gate (baseline: row 536's frozen CLI), then a named builder.
+- [ ] Combined 531 + 536 + 517 gate; landing by GPT only. Rows 531, 536 and 517 never land alone.
