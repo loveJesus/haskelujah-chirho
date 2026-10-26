@@ -17,7 +17,7 @@ GHC and the interpreter print `ABC`. LLVM currently refuses `toUpper#/1`; Cranel
 - [x] Update the native execution workflow at the changed seam.
 - [x] Run the warm 2-5 minute gate at the behavior's actual scope.
 - [x] Rebase onto released main and preserve the Row 539, 541, and 542 contracts.
-- [ ] Land and close progress row 544 GREEN after the current main/DB hold releases.
+- [x] Land and close progress row 544 GREEN after the current main/DB hold releases.
 
 ## Placement
 
@@ -33,3 +33,8 @@ GHC and the interpreter print `ABC`. LLVM currently refuses `toUpper#/1`; Cranel
 - Format and diff check are clean. Warm changed-package Clippy completed successfully; its diagnostics are pre-existing, with none on a Row 544 inserted or conflict-resolved line. Gitleaks scanned both commits with no leaks.
 - After combined Rows 531, 536, and 517 landed, all three Row 544 commits rebased without conflict onto `80e3b7de`. The shared crates were recompiled against that exact base. The RTS, LLVM, and Cranelift libraries passed 52 + 38 + 42 tests, and all 26 native error-helper controls passed, including P01, P02, P03, P06, and the comparison programs. The warm rerun took 35 seconds.
 - Rustfmt, diff-check, and changed-package Clippy remain clean at the final source tree; Clippy's emitted diagnostics are pre-existing and none intersects a Row 544 hunk. Gitleaks scanned the three rebased commits and found no leaks.
+
+## Landing
+
+- `main_chirho` fast-forwarded from combined-stack close `80e3b7de` to tested Row 544 tip `81e63caa`.
+- Progress row 544 records the exact behavior and focused evidence above. The source landed before this tasklist and progress database close, so the DB commit contains no untested crate change.
