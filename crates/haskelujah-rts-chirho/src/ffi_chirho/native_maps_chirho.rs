@@ -8,25 +8,14 @@
 
 use std::collections::HashSet;
 
-use super::{
-    BOXED_PTR_MASK_CHIRHO, NATIVE_ALLOC_PLAIN_CHIRHO, NativeGcRuntimeChirho,
-    failure_chirho::internal_failure_chirho, haskelujah_enter_thunk_chirho,
-    native_gc_runtime_lock_chirho,
+use super::native_lists_chirho::{
+    CONSTRUCTOR_WORDS_CHIRHO, LIST_CONS_TAG_CHIRHO, NativeListNodeChirho,
+    plain_allocation_address_chirho,
 };
-
-const CONSTRUCTOR_WORDS_CHIRHO: usize = 3;
-const LIST_NIL_TAG_CHIRHO: u64 = 0;
-const LIST_CONS_TAG_CHIRHO: u64 = 1;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum NativeListNodeChirho {
-    NilChirho,
-    ConsChirho {
-        address_chirho: usize,
-        head_chirho: u64,
-        tail_chirho: u64,
-    },
-}
+use super::{
+    BOXED_PTR_MASK_CHIRHO, NativeGcRuntimeChirho, failure_chirho::internal_failure_chirho,
+    haskelujah_enter_thunk_chirho, native_gc_runtime_lock_chirho,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct NativeMapErrorChirho(&'static [u8]);
@@ -44,54 +33,12 @@ impl NativeMapErrorChirho {
     }
 }
 
-fn plain_allocation_address_chirho(
-    runtime_chirho: &NativeGcRuntimeChirho,
-    value_bits_chirho: u64,
-    minimum_words_chirho: usize,
-) -> Option<usize> {
-    if value_bits_chirho & BOXED_PTR_MASK_CHIRHO as u64 == 0 {
-        return None;
-    }
-    let address_chirho =
-        runtime_chirho.registered_heap_address_chirho(value_bits_chirho as usize)?;
-    runtime_chirho
-        .allocations_by_ptr_chirho
-        .get(&address_chirho)
-        .filter(|record_chirho| {
-            record_chirho.kind_chirho == NATIVE_ALLOC_PLAIN_CHIRHO
-                && record_chirho.size_chirho
-                    >= minimum_words_chirho.saturating_mul(std::mem::size_of::<u64>())
-        })
-        .map(|_| address_chirho)
-}
-
 fn list_node_chirho(
     runtime_chirho: &NativeGcRuntimeChirho,
     value_bits_chirho: u64,
 ) -> Result<NativeListNodeChirho, NativeMapErrorChirho> {
-    if value_bits_chirho == 0 {
-        return Ok(NativeListNodeChirho::NilChirho);
-    }
-    let address_chirho = plain_allocation_address_chirho(runtime_chirho, value_bits_chirho, 1)
-        .ok_or(NativeMapErrorChirho::INVALID_LIST_CHIRHO)?;
-    let raw_chirho = address_chirho as *const u64;
-    match unsafe { raw_chirho.read() } {
-        LIST_NIL_TAG_CHIRHO => Ok(NativeListNodeChirho::NilChirho),
-        LIST_CONS_TAG_CHIRHO => {
-            plain_allocation_address_chirho(
-                runtime_chirho,
-                value_bits_chirho,
-                CONSTRUCTOR_WORDS_CHIRHO,
-            )
-            .ok_or(NativeMapErrorChirho::INVALID_LIST_CHIRHO)?;
-            Ok(NativeListNodeChirho::ConsChirho {
-                address_chirho,
-                head_chirho: unsafe { raw_chirho.add(1).read() },
-                tail_chirho: unsafe { raw_chirho.add(2).read() },
-            })
-        }
-        _ => Err(NativeMapErrorChirho::INVALID_LIST_CHIRHO),
-    }
+    super::native_lists_chirho::list_node_chirho(runtime_chirho, value_bits_chirho)
+        .ok_or(NativeMapErrorChirho::INVALID_LIST_CHIRHO)
 }
 
 fn validate_pair_chirho(

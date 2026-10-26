@@ -155,3 +155,49 @@ flowchart TD
   - a hand-written show-only instance at nested precedence (C01);
   - a type with parameters reached through a dictionary;
   - newtypes (S09), standalone deriving, and GADT, prefix-symbolic and backtick constructor declarations.
+
+## Char and String rendering (row 557, 2026-10-26)
+
+gpt_chirho #28974, #29012. Every engine shows a `Char` or a `String` through one renderer in
+the runtime crate, GHC's `showLitChar`. Each engine reads the String exactly or fails named:
+
+```mermaid
+flowchart TD
+    row_st_chirho["the [Char] Show row: showStr# s (was quote ++# s ++# quote)"] --> engine_st_chirho{engine}
+    engine_st_chirho -->|interpreter| interp_st_chirho{"a heap list? (eval_chirho/show_text_chirho.rs)"}
+    interp_st_chirho -->|no| universal_st_chirho[universal show: its Char and String atoms use the same renderer]
+    interp_st_chirho -->|yes| cells_st_chirho{"every cell holds a character; the tail is a cell, [] or a literal?"}
+    cells_st_chirho -->|yes| core_st_chirho["show_string_chirho / show_char_chirho (rts show_text_chirho.rs)"]
+    cells_st_chirho -->|no| interp_fail_st_chirho["primop ShowStrChirho: expected Char"]
+    engine_st_chirho -->|LLVM, Cranelift| native_st_chirho["haskelujah_show_string_chirho"]
+    native_st_chirho --> repr_st_chirho{"a registered list cell?"}
+    repr_st_chirho -->|"no: a NUL-terminated buffer"| utf8_st_chirho{UTF-8?}
+    utf8_st_chirho -->|yes| core_st_chirho
+    repr_st_chirho -->|yes| walk_st_chirho{"each tail a list cell? (native_lists_chirho.rs reads the cells; each holds a code point)"}
+    walk_st_chirho -->|yes| core_st_chirho
+    utf8_st_chirho -->|no| native_fail_st_chirho["show: no exact native reading of this String"]
+    walk_st_chirho -->|no| native_fail_st_chirho
+```
+
+- **Renderer:** a printable ASCII character stands for itself and a backslash doubles; `\a \b \t
+  \n \v \f \r` and the other ASCII control names (`\NUL`, `\SO`, ...); `\DEL`; a decimal escape
+  above DEL. `\&` follows a decimal escape before a digit and `\SO` before an `H`. A String also
+  escapes `"`, a Char `'`. The input is code points, so a surrogate shows as GHC shows it.
+- **Sites:** the interpreter's `showStr#`, `showChar#`, `showList#` elements and universal show;
+  the Core `[Char]` row; LLVM's and Cranelift's `showStr#` and `showChar#` lowerings.
+- **Refused natively (row 560 owns it):** a list ending in a literal tail. The interpreter reads it
+  exactly. A cell above ASCII is read exactly since row 560's unpack carries code points.
+- **Landed together** with row 561's literal decoding and row 560's code points, because each alone
+  changed cells that another fixes.
+- **Boundaries:**
+  - native `++#` still reads a list as `""` (m01, row 560);
+  - an infinite String runs without bound, as `putStrLn` already does natively; GHC streams it.
+- **Code:**
+  - the renderer: `crates/haskelujah-rts-chirho/src/show_text_chirho.rs`;
+  - the native entries: `ffi_chirho/native_show_text_chirho.rs` and `haskelujah_show_char_chirho`;
+  - the interpreter reader: `crates/haskelujah-runtime-chirho/src/eval_chirho/show_text_chirho.rs`;
+  - the Core row: `show_chirho.rs`.
+- **Tests:**
+  - GHC's own table (170 Chars, 24 Strings, code points 0-130): `show_text_tests_chirho.rs`;
+  - both native representations: `show_string_reads_buffers_and_char_lists_exactly_chirho`;
+  - all engines and the named refusals: `tests/native_error_helpers_chirho.rs`.

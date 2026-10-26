@@ -380,7 +380,9 @@ mod failure_chirho;
 #[cfg(test)]
 mod gc_tests_chirho;
 mod native_io_refs_chirho;
+mod native_lists_chirho;
 mod native_maps_chirho;
+mod native_show_text_chirho;
 mod native_thunks_chirho;
 pub use failure_chirho::{
     haskelujah_error_chirho, haskelujah_no_match_chirho, haskelujah_nul_string_literal_chirho,
@@ -395,6 +397,7 @@ pub use native_io_refs_chirho::{
     haskelujah_new_io_ref_chirho, haskelujah_read_io_ref_chirho, haskelujah_write_io_ref_chirho,
 };
 pub use native_maps_chirho::{haskelujah_map_from_list_chirho, haskelujah_map_size_chirho};
+pub use native_show_text_chirho::haskelujah_show_string_chirho;
 pub use native_thunks_chirho::{
     haskelujah_alloc_thunk_chirho, haskelujah_enter_thunk_chirho, haskelujah_update_thunk_chirho,
 };
@@ -470,11 +473,12 @@ pub extern "C" fn haskelujah_show_bool_chirho(value_chirho: i64) -> u64 {
 }
 
 /// Convert a character codepoint to a heap-allocated NUL-terminated Haskell
-/// `show` representation like `'A'`.
+/// `show` representation, spelled as GHC spells it (`'A'`, `'\''`, `'\1234'`)
+/// by the renderer the interpreter shares.
+/// workflow: print-show-evidence-chirho
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_show_char_chirho(value_chirho: i64) -> u64 {
-    let char_chirho = char::from_u32(value_chirho as u32).unwrap_or(char::REPLACEMENT_CHARACTER);
-    let text_chirho = format!("{char_chirho:?}");
+    let text_chirho = crate::show_char_chirho(value_chirho as u32);
     alloc_c_string_chirho(text_chirho.as_bytes())
 }
 
@@ -1122,6 +1126,30 @@ mod tests_chirho {
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();
+    }
+
+    /// Row 557: a literal buffer and a registered `[Char]` list both reach the
+    /// shared renderer exactly; the expected spellings are GHC 9.14.1's.
+    #[test]
+    fn show_string_reads_buffers_and_char_lists_exactly_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        native_gc_runtime_lock_chirho().reset_chirho();
+
+        let shown_chirho = |value_bits_chirho: u64| {
+            let ptr_bits_chirho = haskelujah_show_string_chirho(value_bits_chirho);
+            unsafe { CStr::from_ptr(ptr_bits_chirho as usize as *const std::ffi::c_char) }
+                .to_bytes()
+                .to_vec()
+        };
+        let buffer_chirho = alloc_c_string_chirho("tab\t\u{e9}\"".as_bytes());
+        assert_eq!(shown_chirho(buffer_chirho), br#""tab\t\233\"""#);
+        let list_chirho = haskelujah_unpack_string_chirho(alloc_c_string_chirho(b"a\\b\x015"));
+        assert_eq!(shown_chirho(list_chirho), br#""a\\b\SOH5""#);
+        assert_eq!(shown_chirho(0), br#""""#);
+
+        native_gc_runtime_lock_chirho().reset_chirho();
     }
 
     #[test]

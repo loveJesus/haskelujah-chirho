@@ -3096,30 +3096,18 @@ fn lower_show_ordering_primop_chirho(
         .select(is_lt_chirho, lt_ptr_chirho, eq_or_gt_ptr_chirho)
 }
 
+/// `showStr#` through the shared runtime renderer, which escapes as GHC does
+/// (row 557); quoting with two `++#` calls read a runtime-built list as "".
+/// workflow: print-show-evidence-chirho
 fn lower_show_str_primop_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
     raw_str_chirho: ClValueChirho,
 ) -> ClValueChirho {
     let val_chirho = ensure_i64_chirho(builder_chirho, raw_str_chirho, false);
-    let Some(append_str_ref_chirho) = ctx_chirho.append_str_ref_chirho else {
-        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
-    };
-    let Some(quote_global_chirho) = ctx_chirho.string_globals_chirho.get("\"").copied() else {
-        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
-    };
-    let quote_ptr_chirho = builder_chirho
-        .ins()
-        .global_value(cl_types_chirho::I64, quote_global_chirho);
-    let quoted_prefix_call_chirho = builder_chirho
-        .ins()
-        .call(append_str_ref_chirho, &[quote_ptr_chirho, val_chirho]);
-    let quoted_prefix_ptr_chirho = builder_chirho.inst_results(quoted_prefix_call_chirho)[0];
-    let quoted_full_call_chirho = builder_chirho.ins().call(
-        append_str_ref_chirho,
-        &[quoted_prefix_ptr_chirho, quote_ptr_chirho],
-    );
-    builder_chirho.inst_results(quoted_full_call_chirho)[0]
+    ctx_chirho
+        .runtime_calls_chirho
+        .show_string_chirho(builder_chirho, val_chirho)
 }
 
 fn lower_show_int_list_primop_chirho(

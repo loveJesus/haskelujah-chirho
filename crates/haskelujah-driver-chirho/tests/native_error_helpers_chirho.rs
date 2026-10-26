@@ -434,6 +434,102 @@ fn literal_escapes_decode_as_ghc_lexes_them_everywhere_chirho() {
     );
 }
 
+// ── Row 557: Char and String show as GHC's showLitChar spells them ──────
+
+/// Quotes, backslashes, control names, decimal escapes and both `\&` separators, in
+/// literals and in strings built at run time, which natively were shown as `""`. Raw
+/// strings keep the Haskell escapes readable. GHC 9.14.1's output is
+/// [`SHOW_TEXT_GHC_CHIRHO`].
+const SHOW_TEXT_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = do
+  print "a\"b\\c\td"
+  print ("\1234" ++ "5", "\SO" ++ "H")
+  print "\DEL\1\31\233x"
+  print (show "a\nb")
+  print (head "'")
+  print '\n'
+  print '\\'
+  print '"'
+  print '\1234'
+  print (reverse "c\nba")
+  print ["ab", reverse "dc"]
+  print (Just (reverse "\"x"))
+  print (concat ["\SO", "H"])
+  print (filter (== 'z') "abc")
+"#;
+
+/// GHC 9.14.1's output for [`SHOW_TEXT_CHIRHO`].
+const SHOW_TEXT_GHC_CHIRHO: &str = r#""a\"b\\c\td"
+("\1234\&5","\SO\&H")
+"\DEL\SOH\US\233x"
+"\"a\\nb\""
+'\''
+'\n'
+'\\'
+'"'
+'\1234'
+"ab\nc"
+["ab","cd"]
+Just "x\""
+"\SO\&H"
+""
+"#;
+
+/// A cons onto a literal. GHC 9.14.1 prints `"abc"`. Natively the literal tail has no exact
+/// reading yet (row 560), so the renderer refuses it instead of printing `""` or `"a"`.
+const LITERAL_TAIL_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = print ('a' : "bc")
+"#;
+
+/// A runtime-built String above ASCII. GHC 9.14.1 prints `"x\233"`. Row 560's unpack gives
+/// code points, so every engine reads it exactly (before: a cell per UTF-8 byte).
+const RUNTIME_NON_ASCII_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = print (reverse "\233x")
+"#;
+
+/// GHC 9.14.1 prints `"Hi"`. With row 520's Char `toEnum`, the String the renderer reads is
+/// all characters on every engine (before row 520 the interpreter's cells held Ints).
+const TO_ENUM_STRING_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = print (map toEnum [72, 105] :: String)
+"#;
+
+const UNREAD_STRING_CHIRHO: &str = "show: no exact native reading of this String";
+
+#[test]
+fn chars_and_strings_are_shown_as_ghc_shows_them_everywhere_chirho() {
+    assert_prints_everywhere_chirho(SHOW_TEXT_CHIRHO, SHOW_TEXT_GHC_CHIRHO);
+}
+
+/// The interpreter reads a literal tail exactly; natively it fails named (row 560).
+#[test]
+fn a_literal_tail_fails_named_natively_chirho() {
+    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+        LITERAL_TAIL_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "ShowTextChirho.hs",
+        None,
+    )
+    .expect("the interpreter runs it");
+    assert_eq!(machine_chirho.io_output_chirho, "\"abc\"\n", "interpreter");
+    for backend_chirho in BACKENDS_CHIRHO {
+        assert_fails_named_chirho(backend_chirho, LITERAL_TAIL_CHIRHO, UNREAD_STRING_CHIRHO);
+    }
+}
+
+#[test]
+fn a_runtime_string_above_ascii_shows_as_ghc_shows_it_everywhere_chirho() {
+    assert_prints_everywhere_chirho(RUNTIME_NON_ASCII_CHIRHO, "\"x\\233\"\n");
+}
+
+#[test]
+fn a_string_of_converted_characters_shows_as_ghc_shows_it_everywhere_chirho() {
+    assert_prints_everywhere_chirho(TO_ENUM_STRING_CHIRHO, "\"Hi\"\n");
+}
+
 // ── R1: an unbound reference fails named, and only when demanded ──────────
 
 #[test]

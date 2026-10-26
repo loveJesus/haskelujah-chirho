@@ -9,7 +9,7 @@
 
 use crate::stack_chirho::PrimOpKindChirho;
 use crate::value_chirho::ValueChirho;
-use haskelujah_rts_chirho::show_double_chirho;
+use haskelujah_rts_chirho::{show_char_chirho, show_double_chirho, show_string_chirho};
 
 /// Error type for primitive operation failures.
 #[derive(Debug, Clone, PartialEq)]
@@ -259,11 +259,11 @@ pub fn apply_prim_binop_chirho(
             }),
         },
 
-        // Show string (wraps in quotes)
+        // Show string: GHC's quoting and escapes, by the renderer native code shares
         PrimOpKindChirho::ShowStrChirho => match left_chirho {
-            ValueChirho::StringChirho(s_chirho) => {
-                Ok(ValueChirho::StringChirho(format!("\"{}\"", s_chirho)))
-            }
+            ValueChirho::StringChirho(s_chirho) => Ok(ValueChirho::StringChirho(
+                show_string_chirho(s_chirho.chars().map(u32::from)),
+            )),
             _ => Err(PrimErrorChirho::TypeMismatchChirho {
                 op_chirho,
                 expected_chirho: "String",
@@ -326,11 +326,11 @@ pub fn apply_prim_binop_chirho(
             }),
         },
 
-        // Unary show: convert Char to a quoted String
+        // Unary show: a Char as GHC spells it, by the renderer native code shares
         PrimOpKindChirho::ShowCharChirho => match left_chirho {
-            ValueChirho::CharChirho(v_chirho) => {
-                Ok(ValueChirho::StringChirho(format!("'{v_chirho}'")))
-            }
+            ValueChirho::CharChirho(v_chirho) => Ok(ValueChirho::StringChirho(show_char_chirho(
+                u32::from(*v_chirho),
+            ))),
             _ => Err(PrimErrorChirho::TypeMismatchChirho {
                 op_chirho,
                 expected_chirho: "Char",

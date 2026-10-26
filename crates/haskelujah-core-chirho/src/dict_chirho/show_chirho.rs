@@ -225,14 +225,11 @@ impl DictPassCtxChirho {
         value_chirho: CoreExprChirho,
         precedence_chirho: u8,
     ) -> CoreExprChirho {
-        if matches!(key_chirho, "String" | "[Char]") {
-            return join_string_parts_chirho(vec![
-                string_lit_chirho("\""),
-                value_chirho,
-                string_lit_chirho("\""),
-            ]);
-        }
+        // The engines' shared renderer reads every character, so it escapes as GHC does
+        // (row 557); quoting with `++#` left the text unescaped and, natively, read a
+        // runtime-built list as "".
         let primop_chirho = match key_chirho {
+            "String" | "[Char]" => "showStr#",
             "Int" | "Integer" => "showInt#",
             "Bool" => "showBool#",
             "Char" => "showChar#",

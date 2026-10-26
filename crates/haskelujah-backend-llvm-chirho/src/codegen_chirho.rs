@@ -1570,6 +1570,11 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
+            "declare i64 @haskelujah_show_string_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
             "declare i64 @haskelujah_show_float_chirho(i64)"
         )
         .unwrap();

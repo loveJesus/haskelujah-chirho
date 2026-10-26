@@ -22,8 +22,11 @@ mod code_roots_chirho;
 mod float_ordering_chirho;
 mod primitive_operands_chirho;
 mod returns_chirho;
+mod show_text_chirho;
 
 use std::collections::HashMap;
+
+use haskelujah_rts_chirho::{show_char_chirho, show_string_chirho};
 
 use crate::gc_chirho::{
     GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_stack_chirho,
@@ -2183,9 +2186,11 @@ impl MachineChirho {
                                 let elem_str_chirho = match &resolved_head_chirho {
                                     ValueChirho::IntChirho(n_chirho) => n_chirho.to_string(),
                                     ValueChirho::FloatChirho(f_chirho) => format!("{}", f_chirho),
-                                    ValueChirho::CharChirho(c_chirho) => format!("'{}'", c_chirho),
+                                    ValueChirho::CharChirho(c_chirho) => {
+                                        show_char_chirho(u32::from(*c_chirho))
+                                    }
                                     ValueChirho::StringChirho(s_chirho) => {
-                                        format!("\"{}\"", s_chirho)
+                                        show_string_chirho(s_chirho.chars().map(u32::from))
                                     }
                                     ValueChirho::BoolChirho(b_chirho) => {
                                         if *b_chirho {
@@ -3876,6 +3881,14 @@ impl MachineChirho {
             _ => {}
         }
 
+        // A heap `[Char]` reaching `showStr#` is read whole, literal tail included.
+        if matches!(op_chirho, PrimOpKindChirho::ShowStrChirho)
+            && let Some(value_chirho) = args_chirho.first()
+            && let Some(shown_chirho) = self.show_heap_string_chirho(value_chirho)?
+        {
+            return Ok(ValueChirho::StringChirho(shown_chirho));
+        }
+
         // For Show primops receiving HeapPtrChirho (compound values like
         // nested lists, tuples, etc.): use show_value_as_string_chirho which
         // handles all runtime value types recursively.
@@ -4073,8 +4086,10 @@ impl MachineChirho {
         Ok(match val_chirho {
             ValueChirho::IntChirho(n_chirho) => n_chirho.to_string(),
             ValueChirho::FloatChirho(f_chirho) => format!("{}", f_chirho),
-            ValueChirho::CharChirho(c_chirho) => format!("'{}'", c_chirho),
-            ValueChirho::StringChirho(s_chirho) => format!("\"{}\"", s_chirho),
+            ValueChirho::CharChirho(c_chirho) => show_char_chirho(u32::from(*c_chirho)),
+            ValueChirho::StringChirho(s_chirho) => {
+                show_string_chirho(s_chirho.chars().map(u32::from))
+            }
             ValueChirho::BoolChirho(b_chirho) => {
                 if *b_chirho {
                     "True".to_string()
@@ -4221,17 +4236,13 @@ impl MachineChirho {
                         }
                         // Display all-Char lists as strings
                         if all_char_chirho && !raw_values_chirho.is_empty() {
-                            let s_chirho: String = raw_values_chirho
-                                .iter()
-                                .map(|v_chirho| {
-                                    if let ValueChirho::CharChirho(c_chirho) = v_chirho {
-                                        *c_chirho
-                                    } else {
-                                        '?'
-                                    }
-                                })
-                                .collect();
-                            format!("\"{}\"", s_chirho)
+                            show_string_chirho(raw_values_chirho.iter().map(|v_chirho| {
+                                if let ValueChirho::CharChirho(c_chirho) = v_chirho {
+                                    u32::from(*c_chirho)
+                                } else {
+                                    u32::from('?')
+                                }
+                            }))
                         } else {
                             let elements_chirho = raw_values_chirho
                                 .iter()

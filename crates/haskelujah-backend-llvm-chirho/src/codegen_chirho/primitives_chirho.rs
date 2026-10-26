@@ -251,12 +251,14 @@ impl LlvmCodegenChirho {
         } else if args_chirho.len() == 1
             && matches!(
                 name_chirho,
-                "showInt#" | "showBool#" | "showChar#" | "showFloat#" | "readInt#"
+                "showInt#" | "showBool#" | "showChar#" | "showStr#" | "showFloat#" | "readInt#"
             )
         {
             let rts_fn_chirho = match name_chirho {
                 "showBool#" => "haskelujah_show_bool_chirho",
                 "showChar#" => "haskelujah_show_char_chirho",
+                // The shared renderer (row 557); before it, `showStr#` had no lowering here.
+                "showStr#" => "haskelujah_show_string_chirho",
                 "showFloat#" => "haskelujah_show_float_chirho",
                 "readInt#" => "haskelujah_read_int_chirho",
                 _ => "haskelujah_show_int_chirho",

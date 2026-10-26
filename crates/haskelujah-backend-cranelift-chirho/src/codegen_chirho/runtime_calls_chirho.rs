@@ -30,6 +30,7 @@ pub(crate) struct RuntimeCallsChirho {
     floor_float_to_int_chirho: FuncRef,
     ceiling_float_to_int_chirho: FuncRef,
     nul_string_literal_chirho: FuncRef,
+    show_string_chirho: FuncRef,
 }
 
 fn import_chirho(
@@ -185,6 +186,13 @@ impl RuntimeCallsChirho {
                 0,
                 true,
             )?,
+            show_string_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_show_string_chirho",
+                1,
+                true,
+            )?,
         })
     }
 
@@ -310,6 +318,21 @@ impl RuntimeCallsChirho {
         let call_chirho = builder_chirho
             .ins()
             .call(self.nul_string_literal_chirho, &[]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    /// `showStr#`: GHC's `show` for a `String`, by the renderer the interpreter
+    /// shares. The runtime forces the value and fails named on a representation
+    /// it cannot read exactly.
+    /// workflow: print-show-evidence-chirho
+    pub(crate) fn show_string_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        value_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.show_string_chirho, &[value_chirho]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 

@@ -23,6 +23,9 @@ pub mod gc_chirho;
 pub mod heap_chirho;
 pub mod native_layout_chirho;
 mod show_double_chirho;
+mod show_text_chirho;
+#[cfg(test)]
+mod show_text_tests_chirho;
 pub mod target_chirho;
 pub mod value_chirho;
 
@@ -37,6 +40,7 @@ pub use native_layout_chirho::{
     pack_native_header_chirho, unpack_native_object_kind_chirho,
 };
 pub use show_double_chirho::show_double_chirho;
+pub use show_text_chirho::{show_char_chirho, show_string_chirho};
 pub use value_chirho::{
     ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTableChirho, InfoTagChirho,
     ValueChirho,
