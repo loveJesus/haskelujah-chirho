@@ -28,3 +28,11 @@ The source is disjoint from row 539's LLVM and Cranelift lowering and the combin
 - The complete runtime library passed 56/56 in 0.15 seconds; the complete numeric hierarchy suite passed 6/6 in 4.55 seconds.
 - Warm runtime Clippy completed in 0.21 seconds and the focused driver-test Clippy in 12.10 seconds. They report only pre-existing diagnostics; none is on a changed or inserted line. Format and diff-check are clean.
 - The gate compiles the ordinary negative and boundary controls once. It uses no cold target, machine-wide process refusal, serial source-edit mutant loop, frozen-binary rerun or receipt-tree hash walk.
+
+## Post-rebase gate
+
+- The source commit rebased cleanly onto `1eaad249`, main after Rows 539 and 541 and both progress closes.
+- The runtime library passed 56/56, and the focused numeric-hierarchy control passed with GHC's `GT GT GT EQ` behavior.
+- Row 539's Compare2 control stayed exact through the interpreter, LLVM, and Cranelift. Its 13-line float/string edge control is now promoted from native-only to all three engines and passed there as well.
+- Format and diff check are clean. Warm Clippy completed successfully with only pre-existing diagnostics outside the changed files and lines; gitleaks scanned both Row 542 commits and found no leaks.
+- The branch is ready for a fast-forward landing. The final checklist item remains open until `main_chirho` and progress row 542 are committed together.
