@@ -27,11 +27,24 @@ Char Enum, String representation/rendering, prefix-minus fixity, or the Ord aggr
 - Adding the public schemes makes the typed second operand resolve the result to Int and produces
   body-backed `Show (Int,Int)` evidence on all three engines.
 
+## Gate
+
+- Source commit `5707e0b4` passed the warm focused gate in 49 seconds.
+- `cargo build -p haskelujah` completed without a compiler warning.
+- The typing library passed 362/362 tests; `evaluation_values_chirho` passed 9/9; and
+  `native_error_helpers_chirho` passed 35/35. The former R5 pair is exact on the interpreter,
+  LLVM and Cranelift.
+- Clippy completed for the typing and driver libraries/tests. It reported the repository's existing
+  diagnostics, but none on a changed line. Rustfmt and diff-check were clean; gitleaks found no
+  leak in the one-commit source range.
+- Reach check: removing only the two schemes makes the exact typing assertion fail and returns the
+  interpreter matrix to `no matching alternative`; restoring the source makes both pass.
+
 ## Checklist
 
 - [x] Record the GHC/all-engine matrix and the occurrence-evidence shape.
 - [x] Identify the first wrong permission: missing builtin schemes.
 - [x] Implement the narrow repair with focused controls.
-- [ ] Run the focused gate under three minutes.
-- [ ] Verify rustfmt, diff-check, changed-line Clippy, and gitleaks.
+- [x] Run the focused gate under three minutes.
+- [x] Verify rustfmt, diff-check, changed-line Clippy, and gitleaks.
 - [ ] Land and close progress row 564.
