@@ -61,6 +61,7 @@ precedence comes from constructor metadata, rendered in Core with GHC's derived 
 flowchart TD
     data_ds_chirho["data T = ... deriving Show"] --> meta_ds_chirho["derived_show_metadata_chirho: constructor order, form, labels, field types, precedence"]
     fixity_ds_chirho["infixl/infixr/infix p op (default infixl 9)"] --> meta_ds_chirho
+    nonempty_ds_chirho["import of Data.List.NonEmpty, no local NonEmpty: base's a :| [a], infixr 5"] --> meta_ds_chirho
     meta_ds_chirho --> driver_ds_chirho[driver passes it to dict_pass_module_full_with_evidence_chirho]
     driver_ds_chirho --> parse_ds_chirho{"parse_show_shape_at_chirho: every field of every constructor renders at its precedence, within the depth and key bounds?"}
     parse_ds_chirho -->|no| route_ds_chirho[existing route, unchanged]
@@ -109,8 +110,15 @@ flowchart TD
   - infix structure and the bounded memo (nested datatypes, the depth bound in either call order,
     a fan-out cycle), in `show_chirho/derived_tests_chirho.rs`;
   - metadata, in `deriving_chirho/show_tests_chirho.rs`.
-- **Seam:** unit 517 can describe NonEmpty `:|` as infixr 5 through the same metadata, without
-  touching the renderer.
+  - NonEmpty values (unit 517), in `tests/dictionary_evidence_chirho/non_empty_routes_chirho.rs`.
+- **NonEmpty (unit 517):** `derived_show_metadata_chirho` adds base's `data NonEmpty a = a :| [a]`,
+  `infixr 5`, for a module that imports Data.List.NonEmpty and declares no type, class or family
+  named `NonEmpty`. The renderer is unchanged. A key reaches the entry when `:|` is typed (the
+  builtin constructor seed) and the type is spelled bare `NonEmpty`, which an unqualified import of
+  the type gives. An alias-qualified key such as `NE.NonEmpty Int` keeps its existing route; that
+  boundary is unasserted until measured. A list that `NE.fromList` built but a signature types
+  `NonEmpty` meets the helper's lone `:|` alternative, which has no list arm (rows P11-P15; their
+  outcome is measured at the gate, not claimed here).
 - **Not claimed:**
   - the runtime precedence methods (`showsPrec`, `shows`, `showParen` as functions) and the class defaults;
   - a hand-written show-only instance at nested precedence (C01);

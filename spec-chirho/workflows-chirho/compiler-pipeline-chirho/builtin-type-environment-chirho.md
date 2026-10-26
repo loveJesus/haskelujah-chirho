@@ -7,7 +7,7 @@ Type inference for every module starts from a seeded builtin environment. The mo
 flowchart TD
     ctx_chirho[InferCtxChirho::new_chirho] --> hub_chirho[builtins_chirho::seed_builtins_chirho]
     schemes_chirho[builtin_value_schemes_chirho] --> hub_chirho
-    hub_chirho --> constructors_chirho[constructors_chirho: True, False, LT, EQ, GT, Nothing, Just]
+    hub_chirho --> constructors_chirho["constructors_chirho: True, False, LT, EQ, GT, Nothing, Just, then Data.List.NonEmpty.:| and .(:|)"]
     constructors_chirho --> core_chirho[core_chirho: part_01-04]
     core_chirho --> effects_chirho[effects_chirho: part_05-08]
     effects_chirho --> classes_chirho[classes_chirho: part_09-11]
@@ -71,3 +71,9 @@ flowchart TD
 - `finalize_occurrence_records_chirho` then keys the occurrence through `default_occurrence_key_chirho`. For Eq and Ord that is `Int` even with no Num constraint.
 - So a constructor missing from the seed dispatches at `Int`. Bare `LT`, `EQ` and `GT` did, until `constructors_chirho.rs` seeded them as `Ordering` (RC5; see Builtin constructor seeds in language-features-chirho/dictionary-evidence-chirho.md).
 - Rejecting unbound constructors, and Eq/Ord defaulting without Num, are separate debts.
+
+## NonEmpty's constructor (unit 517)
+
+- `constructors_chirho.rs` seeds `(:|) :: forall a. a -> [a] -> NonEmpty a` under the module-qualified keys `Data.List.NonEmpty.:|` and `Data.List.NonEmpty.(:|)`, the two spellings the interface exports. No bare key is seeded.
+- Phase 3.9 looks the `Module.name` key up first, so every import of Data.List.NonEmpty that exposes the constructor gives it this scheme under its own spelling (`:|`, `NE.:|`, `Data.List.NonEmpty.:|`). A value built with `:|` then has a concrete Show key (`NonEmpty Int` where the type is imported unqualified), and the derived NonEmpty metadata renders it (print-show-evidence-chirho).
+- Boundary: like `Data.List.NonEmpty.reverse`, the module-qualified keys are seeded for every module, so a full-qualifier `Data.List.NonEmpty.:|` with no import binding that qualifier now type-checks (the unimported-qualifier class, outside row 536's INV-I2). No measured program or corpus file writes that form.

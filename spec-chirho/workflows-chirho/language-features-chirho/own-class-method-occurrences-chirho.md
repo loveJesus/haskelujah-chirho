@@ -45,6 +45,8 @@ Each of these keeps its shared id and today's verdict:
 
 - A seeded standard class's methods outside the standard set (`fmap`, `<>`, `toList`,
   `traverse`). Switching about forty seeded classes at once is its own measured brick.
+  `toList` stays outside the evidence set: unit 517 routes the spellings an import of
+  Data.List.NonEmpty or Data.Foldable exposes by scope instead (below).
 - A class imported from another module. Its rows live in that module's Core, and finding them
   from the importing module is unmeasured.
 - A multi-parameter class.
@@ -202,3 +204,45 @@ orthogonal hops:
     test (`M02`) passes. Mutant M2 reverts `"$tuple2"` to `"(,)"` in `build_pair_list_chirho`: it
     fails the Hop B test (`M02`) and the combined test, while the Hop A test (`M05`) and the Core
     unit test pass.
+
+## Routed `toList` imports (unit 517, 2026-10-26)
+
+gpt_chirho #28473-#28520. The bare `toList` every module sees is the IsList identity, so a real
+`x :| xs` came back unchanged and printed as `:| x xs`. Each spelling of `toList` that an import
+of Data.List.NonEmpty or Data.Foldable really exposes now reaches one private dual-shape binding.
+No class, evidence entry or typing scheme changes.
+
+```mermaid
+flowchart TD
+    import_rt_chirho["ImportDeclChirho, as written"] --> mode_rt_chirho["list_mode_chirho (row 536): UNRESTRICTED, HIDING(items) or EXPLICIT(items)"]
+    mode_rt_chirho --> exposes_rt_chirho{"exposes_routed_to_list_chirho: a routed module, and its list lets toList through?"}
+    exposes_rt_chirho -->|no| bare_rt_chirho["today's route: the qualified or bare spelling falls back to the IsList identity"]
+    exposes_rt_chirho -->|yes| seed_rt_chirho["seed_to_list_routes_chirho, desugar Pass -0.25: bind effective qualifier.toList, and the bare toList for an unqualified import"]
+    seed_rt_chirho --> shadow_rt_chirho["Pass 1 rebinds a top-level toList; lexical binders shadow in inner scopes"]
+    shadow_rt_chirho --> route_rt_chirho["$list_or_nonempty_to_list_chirho (generate_to_list_route_chirho): [] and (:) unchanged, h :| t to h : t, any other value unchanged"]
+    route_rt_chirho --> reference_rt_chirho["A constrained reference (NE.toList typed IsList by a merged import) keeps the route: it takes no dictionary parameters, and its dot-free name never matches a method selector"]
+```
+
+- **Exposure, read from the written list:**
+  - an unrestricted import exposes `toList`;
+  - a `hiding` list exposes it unless an item names it, and an unrepresented item names nothing;
+  - an explicit list exposes it only when an item names it.
+- **What names it:** for both modules, the plain item `toList`. For Data.Foldable, also
+  `Foldable(..)` and `Foldable(toList)`. Data.List.NonEmpty's `NonEmpty(..)` never names its
+  top-level `toList`.
+- **Why one binding serves both modules:** `NE.fromList` and `NE.map` still build ordinary lists,
+  while `x :| xs` builds a real `:|`. The list alternatives come first, so every list keeps its
+  answer, and the default keeps every other value exactly as the identity returned it.
+- **Code:**
+  - `crates/haskelujah-core-chirho/src/desugar_chirho/builtin_routes_chirho.rs` (exposure and seeds);
+  - `crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho/non_empty_chirho.rs` (the binding).
+- **Tests:**
+  - every import form, in pairs, in `desugar_chirho/builtin_routes_tests_chirho.rs`;
+  - end to end, one mechanism per test, in `tests/dictionary_evidence_chirho/non_empty_routes_chirho.rs`.
+    Its programs are GHC 9.14.1-measured files embedded by generation.
+- **Boundaries, not claimed:**
+  - NonEmpty's `head`, `tail`, `length`, traversals and other Foldable methods;
+  - the list representation that `fromList`, `map` and `nonEmpty` build;
+  - Data.Foldable's `toList` on Maybe, Set or Map, which keeps the identity's answer;
+  - WebAssembly, where `:|` and `[]` share a tag;
+  - a qualifier that two modules share (GHC's ambiguity), which stays with scope resolution.
