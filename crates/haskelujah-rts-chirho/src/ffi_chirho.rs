@@ -324,6 +324,20 @@ pub extern "C" fn haskelujah_is_heap_ptr_chirho(value_bits_chirho: u64) -> i64 {
     }
 }
 
+/// Native implementation of the interpreter's integer `^#` convention.
+///
+/// Workflow: testing-chirho/native-fail-loud-chirho.md.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_pow_int_chirho(base_chirho: i64, exponent_chirho: i64) -> i64 {
+    if exponent_chirho < 0 {
+        0
+    } else {
+        base_chirho.wrapping_pow(exponent_chirho as u32)
+    }
+}
+
+#[cfg(test)]
+mod arithmetic_tests_chirho;
 mod failure_chirho;
 #[cfg(test)]
 mod gc_tests_chirho;

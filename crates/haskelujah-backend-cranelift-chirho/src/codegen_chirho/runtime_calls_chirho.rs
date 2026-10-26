@@ -1,8 +1,8 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Required failure-path imports. A missing runtime declaration is a compile
-//! error, never a null function pointer or a fabricated result. Each failure
-//! leaves through the runtime's one route: one stderr line and exit 1.
+//! Required runtime imports. A missing runtime declaration is a compile error,
+//! never a null function pointer or a fabricated result. Each failure leaves
+//! through the runtime's one route: one stderr line and exit 1.
 //! Workflow: testing-chirho/native-fail-loud-chirho.md.
 
 use cranelift_codegen::ir::{AbiParam, FuncRef, Function, InstBuilder, Value, types};
@@ -17,6 +17,7 @@ pub(crate) struct RuntimeCallsChirho {
     undefined_chirho: FuncRef,
     uncaught_exception_chirho: FuncRef,
     unbound_thunk_chirho: FuncRef,
+    pow_int_chirho: FuncRef,
 }
 
 fn import_chirho(
@@ -81,7 +82,27 @@ impl RuntimeCallsChirho {
                 2,
                 true,
             )?,
+            pow_int_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_pow_int_chirho",
+                2,
+                true,
+            )?,
         })
+    }
+
+    /// `^#`, sharing the interpreter's wrapping integer-power convention.
+    pub(crate) fn pow_int_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        base_chirho: Value,
+        exponent_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.pow_int_chirho, &[base_chirho, exponent_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
     }
 
     /// The caller demands the message before crossing the C-string boundary.

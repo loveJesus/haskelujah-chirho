@@ -75,7 +75,7 @@ const IOREF_CHIRHO: &str = "module Main where\nimport Data.IORef\nmain :: IO ()\
 /// printed `LT` twice (the first two lines of Compare2's measured 15e1b77b run).
 const INT_CHAR_COMPARE_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (compare (2 :: Int) 1)\n  print (compare 'b' 'a')\n";
 
-/// R4, P06: `^#` has no native implementation; Cranelift printed its left operand.
+/// R4, P06: GHC prints `1024`; both native backends now share the RTS's `^#`.
 const POWER_CHIRHO: &str =
     "module Main where\nmain :: IO ()\nmain = print (2 ^ (10 :: Int) :: Int)\n";
 
@@ -344,8 +344,8 @@ fn an_unknown_primitive_is_refused_on_cranelift_chirho() {
 }
 
 #[test]
-fn power_is_refused_on_cranelift_chirho() {
-    assert_refused_chirho(CRANELIFT_CHIRHO, POWER_CHIRHO, "^#/2");
+fn integer_power_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(POWER_CHIRHO, "1024\n");
 }
 
 #[test]
