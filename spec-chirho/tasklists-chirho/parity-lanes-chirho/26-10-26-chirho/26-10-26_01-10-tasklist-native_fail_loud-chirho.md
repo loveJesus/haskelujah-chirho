@@ -79,7 +79,16 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
   - Cranelift: the plain `error` primitive joins `error#`, `errorWithoutStackTrace` joins the call-site `error` arm, and `throw#` reports `uncaught exception`.
   - `undefined` fails where it is referenced on both backends, as LLVM did before.
 - [x] R2: the runtime's checked formatting (C3), and the LLVM `%ld` sites routed through it (C4): Int `show`, list heads that default to Int, and a pure `main`'s result.
-- [x] R5 on both backends. LLVM's four defaults call the runtime's no-match entry. Cranelift calls it before each trap and for a case with no alternatives.
+- [x] R5 on both backends.
+  - LLVM's four defaults call the runtime's no-match entry. Since C8, so does a case with no alternatives, which used to return its scrutinee.
+  - Cranelift calls it before each trap and for a case with no alternatives.
+- [x] C8, from the read-only desk check, which found no compile, warning or clippy problem:
+  - LLVM's zero-alternative case now fails named, as Cranelift's does;
+  - `errorWithoutStackTrace` joins Cranelift's call-site exemption list, matching its call-site arm;
+  - the thunk allocator's last `expect` (a panic, so an abort, inside `extern "C"`) uses the internal route.
+  - Reported, not changed:
+    - Cranelift's call-site `show` and default-Int paths pass unforced values to the R2 check, so a lazily bound Int reports the R2 line. Forcing there would turn WRONG output EXACT, which is beyond this unit's movement.
+    - `undefined` is strict on both backends.
 - [x] Controls (C6), one per route per backend, with exact stderr, exit 1 and no signal. Written, unbuilt.
   - Placement: they live in `tests/native_error_helpers_chirho.rs`, the existing native error suite, not in a new file. `tests/` already has 25 entries against a cap of 15.
   - Routes and probes:

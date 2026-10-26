@@ -41,7 +41,7 @@ pub unsafe extern "C" fn haskelujah_alloc_thunk_chirho(
     native_gc_runtime_lock_chirho()
         .allocations_by_ptr_chirho
         .get_mut(&(raw_chirho as usize))
-        .expect("new allocation registered")
+        .unwrap_or_else(|| internal_failure_chirho(b"new thunk allocation not registered"))
         .is_native_thunk_chirho = true;
     unsafe {
         raw_chirho.write(UNEVALUATED_CHIRHO);

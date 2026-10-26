@@ -2479,7 +2479,7 @@ impl LlvmCodegenChirho {
                 self.bind_local_value_name_chirho(bind_chirho, &scrut_val_chirho);
 
                 if alts_chirho.is_empty() {
-                    return scrut_val_chirho;
+                    return self.compile_no_alternatives_chirho();
                 }
 
                 // Check if we have literal alts
@@ -2629,7 +2629,9 @@ impl LlvmCodegenChirho {
                 self.bind_local_value_name_chirho(bind_chirho, &scrut_val_chirho);
 
                 if alts_chirho.is_empty() {
-                    return TailCompileOutcomeChirho::ValueChirho(scrut_val_chirho);
+                    return TailCompileOutcomeChirho::ValueChirho(
+                        self.compile_no_alternatives_chirho(),
+                    );
                 }
 
                 let has_lit_alts_chirho = alts_chirho

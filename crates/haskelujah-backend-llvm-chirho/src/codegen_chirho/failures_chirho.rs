@@ -93,6 +93,18 @@ impl LlvmCodegenChirho {
         thunk_chirho
     }
 
+    /// A case with no alternatives: nothing can match its evaluated scrutinee,
+    /// as on Cranelift. Later code lands in a block with no predecessors, and
+    /// the returned constant only lets compilation continue there.
+    pub(super) fn compile_no_alternatives_chirho(&mut self) -> String {
+        let none_label_chirho = self.fresh_label_chirho("case.none");
+        writeln!(self.output_chirho, "  br label %{none_label_chirho}").unwrap();
+        self.emit_no_match_default_chirho(&none_label_chirho);
+        let after_label_chirho = self.fresh_label_chirho("case.none.after");
+        writeln!(self.output_chirho, "{after_label_chirho}:").unwrap();
+        "0".to_string()
+    }
+
     /// The default of a case whose compiled alternatives can all miss.
     pub(super) fn emit_no_match_default_chirho(&mut self, default_label_chirho: &str) {
         writeln!(self.output_chirho, "{default_label_chirho}:").unwrap();

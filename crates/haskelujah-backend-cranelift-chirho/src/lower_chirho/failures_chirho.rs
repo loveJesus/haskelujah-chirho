@@ -20,6 +20,7 @@ use super::LowerCtxChirho;
 const CALL_SITE_PRIMITIVES_CHIRHO: &[&str] = &[
     "error",
     "error#",
+    "errorWithoutStackTrace",
     "return",
     "pure",
     "returnIO#",
