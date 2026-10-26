@@ -50,11 +50,40 @@ It follows row 535 C10 (`a14baa14`): the Ordering is LT when less, EQ when equal
   - Compare2 replaces C10's Cranelift-only Int/Char control. Its program starts with the same two lines and now also covers LLVM and the interpreter.
   - The native half of `assert_prints_everywhere_chirho` is now `assert_prints_natively_chirho`, which the edge control shares.
 - [x] Update the native workflow at the changed seam, with the NaN residual.
-- [ ] Run the warm gate: fmt, the focused suites, changed-package Clippy, diff check, and one candidate CLI pass over row 535's contract.
-- [ ] Record the measured evidence.
+- [x] Run the warm gate: fmt, the focused suites, changed-package Clippy, diff check, and one candidate CLI pass over row 535's contract. r1 went RED on a loaded machine; r2 is GREEN (below).
+- [x] Record the measured evidence.
 
 ## Measured evidence
 
 - **GHC 9.14.1** (`/opt/homebrew/bin/ghc -O0`):
   - Compare2 prints `GT GT LT GT`.
   - The edge program prints `GT GT GT EQ EQ GT LT LT EQ LT GT GT LT`, with rc 0 and an empty stderr.
+- **The candidate CLI.** Both programs are EXACT on LLVM and Cranelift, and Compare2 is EXACT in the interpreter. The interpreter's edge output differs only on its three NaN lines, as at the base.
+- **Gate r1 (`gate-r1-chirho`): RED at the driver's native filter, 126 of 127.**
+  - The one failure was `llvm_round_trip_euler1_tail_recursion_no_stack_overflow_chirho`, a 100-million-step LLVM scale test with a 60 s deadline (about 18 s unloaded), which timed out.
+  - It timed out alone as well, in 62.87 s, at a load average of about 100 on 18 cores.
+  - Every earlier step was GREEN.
+- **Why that failure is not this unit's.**
+  - The LLVM IR text is not reproducible run to run: three compiles of euler1 by one binary gave three different hashes, all 1,497 lines.
+  - Compared modulo `%`/`@` identifier numbering and line order, with every constant and instruction kept, those repeats are equal.
+  - Under the same comparison, base and tip are equal for euler1 (1,498 lines) and for a probe of `compare#`, `compareChar#`, `eqStr#` and Double `+`/`<` (1,306 lines).
+  - The receipts are in `ir-identity-chirho/`.
+- **Gate r2 (`gate-r2-chirho`): GREEN in 450.92 s.** It is r1 with that one scale test skipped, named in the script.
+
+  | Step | Result | Time |
+  |---|---|---|
+  | fmt, diff-check, gitleaks (1 commit, no leaks), build | GREEN | under 3 s together |
+  | RTS, LLVM and Cranelift libraries | 48 + 38 + 42 | 7.65 s |
+  | RTS native failure and thunks | 10 + 1 | 0.20 s |
+  | Driver suites | 130: native_error_helpers 26, cranelift_roundtrip 43, typing_integration 40, io_actions 9, codegen_scaling 5, native_laziness 5, show_precedence 2 | 83.61 s |
+  | Driver native filter | 126 | 35.87 s |
+  | Clippy | 3.72 s; 460 diagnostic locations, none on the 197 changed lines | 3.72 s |
+  | Contract pass | 41 programs | 316.22 s |
+  | Judge | 126/126 PASS, with 68 movers and 14 holds | 0.23 s |
+  | Postflight | clean at the tip | 0.12 s |
+
+  - The judge is row 535's, loaded unchanged, over `contract-539-chirho.tsv`. In it P06 (row 538), P03 (row 540) and Compare2 (row 539) are EXACT on both native backends, and every other cell keeps row 535's expectation.
+  - The CLI hash was `63f73219…` both before and after the contract pass.
+- **Over the bar.** 450 s exceeds the 2–5 minute target.
+  - Almost all of it is the contract pass, which runs its 41 programs sequentially, at a load average between 55 and 100 from the fleet's concurrent gates.
+  - The next run should parallelize it per program.
