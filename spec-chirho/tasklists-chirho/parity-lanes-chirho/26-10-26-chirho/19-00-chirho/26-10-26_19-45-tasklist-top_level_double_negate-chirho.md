@@ -11,7 +11,7 @@ Base: `49ef0320`, whose only change beyond source main `0d516dd3` is the progres
 - [x] Add GHC-measured all-engine controls and kill the module-key omission mutation.
 - [x] Update the relevant workflow documentation.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
-- [ ] Rebase onto exact main, rerun the controls, land, and close only row 571.
+- [x] Rebase onto exact main, rerun the controls, land, and close only row 571.
 
 Scope is the 7b residual recorded after row 555: a negation whose operand is a top-level binding
 with a concrete `Double` signature. Direct Double literals, negation rebuilt under an already
@@ -44,3 +44,7 @@ interpreter, LLVM and Cranelift control. Clippy reported no diagnostic on a chan
 and `git diff --check` were clean. Gitleaks scanned the one source commit and found no leaks. The
 focused tests plus changed-line Clippy and hygiene completed in under one minute after the warm
 build.
+
+The committed tip `2dab52eb` reran the Core mechanism control and the all-engine integration
+control GREEN, then fast-forwarded onto exact main `cf562154`. Progress row 571 closes in the
+following progress-only commit; no other row is changed.
