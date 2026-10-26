@@ -10,9 +10,10 @@
 //!   on every build back to old main (claude2_chirho's D8 and D9, 2026-10-17).
 //! - **One failure route (row 535).** Each owned route fails the same way on
 //!   both backends: exit 1, no signal, and exactly one stderr line, or a
-//!   compile-time refusal naming the primitive. Cranelift's refusal reaches
-//!   only primitives it cannot lower, so it lowers `compare` on Int and Char
-//!   as LLVM does; a reachable Prelude `Ord` dictionary compiles those bodies.
+//!   compile-time refusal naming the primitive. A refusal reaches only
+//!   primitives a backend cannot lower, so both lower `compare` on Int, Char,
+//!   Double and String (rows 535 and 539); a reachable Prelude `Ord`
+//!   dictionary compiles those bodies.
 //!
 //! Every expectation was measured on GHC 9.14.1. A definition count alone would
 //! prove nothing that runs. Workflow: testing-chirho/native-fail-loud-chirho.md.
@@ -71,9 +72,18 @@ const NO_MATCH_CHIRHO: &str =
 /// R4, P01: IORef has no native implementation. GHC: `2`.
 const IOREF_CHIRHO: &str = "module Main where\nimport Data.IORef\nmain :: IO ()\nmain = do { r <- newIORef (1 :: Int); modifyIORef r (+ 1); v <- readIORef r; print v }\n";
 
-/// `compare` on Int and Char. GHC prints `GT` twice; before row 535, Cranelift
-/// printed `LT` twice (the first two lines of Compare2's measured 15e1b77b run).
-const INT_CHAR_COMPARE_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (compare (2 :: Int) 1)\n  print (compare 'b' 'a')\n";
+/// Compare2: `compare` on Int, Char, Double and String. GHC prints
+/// `GT GT LT GT`. Before row 535 Cranelift printed `LT` for the Int and Char
+/// lines; before row 539 both backends refused `compareFloat#` and `compareStr#`.
+const COMPARE2_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (compare (2 :: Int) 1)\n  print (compare 'b' 'a')\n  print (compare (1.5 :: Double) 2.5)\n  print (compare \"b\" \"a\")\n";
+
+/// Row 539's edges. NaN on either side gives `GT`, and `-0.0` equals `0.0`.
+/// Strings order by code point: the empty string, a prefix, a non-ASCII
+/// character and a computed `show`.
+const COMPARE_EDGES_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (compare (0.0 / 0.0 :: Double) 1.0)\n  print (compare (1.0 :: Double) (0.0 / 0.0))\n  print (compare (0.0 / 0.0 :: Double) (0.0 / 0.0))\n  print (compare (-0.0 :: Double) 0.0)\n  print (compare (2.5 :: Double) 2.5)\n  print (compare (3.0 :: Double) (-1.0))\n  print (compare \"abc\" \"abd\")\n  print (compare \"ab\" \"abc\")\n  print (compare \"abc\" \"abc\")\n  print (compare \"\" \"a\")\n  print (compare \"a\" \"\")\n  print (compare \"\\233\" \"z\")\n  print (compare (show (12 :: Int)) \"9\")\n";
+
+/// GHC 9.14.1's output for [`COMPARE_EDGES_CHIRHO`].
+const COMPARE_EDGES_GHC_CHIRHO: &str = "GT\nGT\nGT\nEQ\nEQ\nGT\nLT\nLT\nEQ\nLT\nGT\nGT\nLT\n";
 
 /// R4, P06: GHC prints `1024`; both native backends now share the RTS's `^#`.
 const POWER_CHIRHO: &str =
@@ -99,6 +109,10 @@ fn assert_prints_everywhere_chirho(source_chirho: &str, expected_chirho: &str) {
         machine_chirho.io_output_chirho, expected_chirho,
         "interpreter"
     );
+    assert_prints_natively_chirho(source_chirho, expected_chirho);
+}
+
+fn assert_prints_natively_chirho(source_chirho: &str, expected_chirho: &str) {
     for backend_chirho in BACKENDS_CHIRHO {
         assert_eq!(
             native_round_trip_chirho(source_chirho, backend_chirho, "")
@@ -358,12 +372,15 @@ fn from_integral_answers_as_ghc_everywhere_chirho() {
 }
 
 #[test]
-fn int_and_char_compare_answer_as_ghc_on_cranelift_chirho() {
-    assert_eq!(
-        native_round_trip_chirho(INT_CHAR_COMPARE_CHIRHO, CRANELIFT_CHIRHO, "")
-            .unwrap_or_else(|error_chirho| panic!("Cranelift: {error_chirho}")),
-        (0, "GT\nGT\n".to_string())
-    );
+fn compare_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(COMPARE2_CHIRHO, "GT\nGT\nLT\nGT\n");
+}
+
+/// Native only: the interpreter's `compareFloat#` answers `EQ` when either
+/// side is NaN, where GHC answers `GT` (a residual outside row 539).
+#[test]
+fn compare_edges_answer_as_ghc_natively_chirho() {
+    assert_prints_natively_chirho(COMPARE_EDGES_CHIRHO, COMPARE_EDGES_GHC_CHIRHO);
 }
 
 // ── R5: no matching alternative fails named ───────────────────────────────

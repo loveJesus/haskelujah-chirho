@@ -82,28 +82,11 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 return result_chirho;
             }
-            if matches!(name_chirho, "compare#" | "compareChar#") {
-                let less_chirho = self.fresh_tmp_chirho();
-                let equal_chirho = self.fresh_tmp_chirho();
-                let equal_or_greater_chirho = self.fresh_tmp_chirho();
-                let result_chirho = self.fresh_tmp_chirho();
-                writeln!(
-                    self.output_chirho,
-                    "  {less_chirho} = icmp slt i64 {lhs_chirho}, {rhs_chirho}"
-                )
-                .unwrap();
-                writeln!(
-                    self.output_chirho,
-                    "  {equal_chirho} = icmp eq i64 {lhs_chirho}, {rhs_chirho}"
-                )
-                .unwrap();
-                writeln!(
-                    self.output_chirho,
-                    "  {equal_or_greater_chirho} = select i1 {equal_chirho}, i64 1, i64 2"
-                )
-                .unwrap();
-                writeln!(self.output_chirho, "  {result_chirho} = select i1 {less_chirho}, i64 0, i64 {equal_or_greater_chirho}").unwrap();
-                return result_chirho;
+            if matches!(
+                name_chirho,
+                "compare#" | "compareChar#" | "compareFloat#" | "compareStr#"
+            ) {
+                return self.emit_compare_chirho(name_chirho, &lhs_chirho, &rhs_chirho);
             }
             if matches!(
                 name_chirho,
@@ -247,12 +230,67 @@ impl LlvmCodegenChirho {
         result_chirho
     }
 
-    fn emit_string_equal_chirho(&mut self, left_chirho: &str, right_chirho: &str) -> String {
+    /// `compare` on Int, Char, Double and String, as GHC's `Ord` instances
+    /// define it: less gives `LT` (tag 0), equal gives `EQ` (1), and anything
+    /// else gives `GT` (2). A NaN is neither less nor equal, so it gives `GT`;
+    /// `-0.0` equals `0.0`. Strings order by `strcmp`'s unsigned bytes, which
+    /// for UTF-8 is code-point order.
+    /// Workflow: testing-chirho/native-fail-loud-chirho.md.
+    fn emit_compare_chirho(
+        &mut self,
+        name_chirho: &str,
+        left_chirho: &str,
+        right_chirho: &str,
+    ) -> String {
+        let (less_test_chirho, equal_test_chirho) = match name_chirho {
+            "compareFloat#" => {
+                let left_float_chirho = self.emit_double_chirho(left_chirho);
+                let right_float_chirho = self.emit_double_chirho(right_chirho);
+                let operands_chirho = format!("double {left_float_chirho}, {right_float_chirho}");
+                (
+                    format!("fcmp olt {operands_chirho}"),
+                    format!("fcmp oeq {operands_chirho}"),
+                )
+            }
+            "compareStr#" => {
+                let order_chirho = self.emit_strcmp_chirho(left_chirho, right_chirho);
+                (
+                    format!("icmp slt i32 {order_chirho}, 0"),
+                    format!("icmp eq i32 {order_chirho}, 0"),
+                )
+            }
+            _ => {
+                let operands_chirho = format!("i64 {left_chirho}, {right_chirho}");
+                (
+                    format!("icmp slt {operands_chirho}"),
+                    format!("icmp eq {operands_chirho}"),
+                )
+            }
+        };
+        let less_chirho = self.fresh_tmp_chirho();
+        let equal_chirho = self.fresh_tmp_chirho();
+        let equal_or_greater_chirho = self.fresh_tmp_chirho();
+        let result_chirho = self.fresh_tmp_chirho();
+        writeln!(self.output_chirho, "  {less_chirho} = {less_test_chirho}").unwrap();
+        writeln!(self.output_chirho, "  {equal_chirho} = {equal_test_chirho}").unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {equal_or_greater_chirho} = select i1 {equal_chirho}, i64 1, i64 2"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "  {result_chirho} = select i1 {less_chirho}, i64 0, i64 {equal_or_greater_chirho}"
+        )
+        .unwrap();
+        result_chirho
+    }
+
+    /// `strcmp` of two native strings, as its `i32` order.
+    fn emit_strcmp_chirho(&mut self, left_chirho: &str, right_chirho: &str) -> String {
         let left_ptr_chirho = self.fresh_tmp_chirho();
         let right_ptr_chirho = self.fresh_tmp_chirho();
         let order_chirho = self.fresh_tmp_chirho();
-        let equal_chirho = self.fresh_tmp_chirho();
-        let result_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
             "  {left_ptr_chirho} = inttoptr i64 {left_chirho} to ptr"
@@ -268,6 +306,13 @@ impl LlvmCodegenChirho {
             "  {order_chirho} = call i32 @strcmp(ptr {left_ptr_chirho}, ptr {right_ptr_chirho})"
         )
         .unwrap();
+        order_chirho
+    }
+
+    fn emit_string_equal_chirho(&mut self, left_chirho: &str, right_chirho: &str) -> String {
+        let order_chirho = self.emit_strcmp_chirho(left_chirho, right_chirho);
+        let equal_chirho = self.fresh_tmp_chirho();
+        let result_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
             "  {equal_chirho} = icmp eq i32 {order_chirho}, 0"
@@ -281,26 +326,27 @@ impl LlvmCodegenChirho {
         result_chirho
     }
 
+    /// A native Double's IEEE-754 bits as an LLVM `double`.
+    fn emit_double_chirho(&mut self, value_chirho: &str) -> String {
+        let double_chirho = self.fresh_tmp_chirho();
+        writeln!(
+            self.output_chirho,
+            "  {double_chirho} = bitcast i64 {value_chirho} to double"
+        )
+        .unwrap();
+        double_chirho
+    }
+
     fn emit_float_binary_chirho(
         &mut self,
         name_chirho: &str,
         left_chirho: &str,
         right_chirho: &str,
     ) -> String {
-        let left_float_chirho = self.fresh_tmp_chirho();
-        let right_float_chirho = self.fresh_tmp_chirho();
+        let left_float_chirho = self.emit_double_chirho(left_chirho);
+        let right_float_chirho = self.emit_double_chirho(right_chirho);
         let computed_chirho = self.fresh_tmp_chirho();
         let result_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {left_float_chirho} = bitcast i64 {left_chirho} to double"
-        )
-        .unwrap();
-        writeln!(
-            self.output_chirho,
-            "  {right_float_chirho} = bitcast i64 {right_chirho} to double"
-        )
-        .unwrap();
         let (operation_chirho, comparison_chirho) = match name_chirho {
             "+.#" => ("fadd", false),
             "-.#" => ("fsub", false),

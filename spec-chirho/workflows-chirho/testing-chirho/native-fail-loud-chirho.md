@@ -31,12 +31,21 @@ flowchart TD
 - A refusal fires on any primitive in a compiled body, called or not. A reachable Prelude `Ord` dictionary compiles `compare#` and `compareChar#`, so Cranelift lowers both as LLVM does (`lower_chirho/ordering_chirho.rs`: LT, EQ and GT tags). Row 535's gate r1 was refused without them.
 - Row 538 removes integer `^#` from the refused set. LLVM and Cranelift both call `haskelujah_pow_int_chirho`, the RTS implementation of the interpreter's wrapping integer-power convention. The P06 driver control runs once through the interpreter and both native backends and requires GHC's `1024`.
 - Row 540 removes `fromIntegral#` from the native refused set. LLVM and Cranelift both convert signed `i64` to `double`, then bitcast the result into the backends' uniform `i64` value representation. The saved P03 control requires `3.5` through the interpreter and both native backends.
+- Row 539 removes `compareFloat#` and `compareStr#` from the refused set. Both backends now lower all four compare primitives through one Ordering selection: less gives LT, equal gives EQ, and anything else gives GT.
+  - LLVM does this in `emit_compare_chirho`, and Cranelift in `lower_chirho/ordering_chirho.rs`.
+  - Double uses ordered tests, so a NaN gives GT and -0.0 equals 0.0, as on GHC.
+  - String calls C `strcmp`, through the import `eqStr#` already uses. Its unsigned bytes order UTF-8 by code point.
+  - Without the `strcmp` import, Cranelift refuses `compareStr#`.
+  - Driver controls:
+    - Compare2 requires GHC's `GT GT LT GT` through the interpreter and both native backends.
+    - A GHC-measured edge program covers NaN, -0.0, the empty string, a prefix, non-ASCII and a computed `show`. It runs natively only, because the interpreter's `compareFloat#` answers EQ for NaN.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## Residuals outside the route
 
 - A Cranelift miss for a local that Core binds but lowering did not bind keeps its 0 placeholder, like letrec zero initialization.
 - An effect adapter called as a value, such as `putStrLn#` passed to `mapM_`, keeps Cranelift's call-site behavior.
+- The interpreter's `compareFloat#` answers EQ when either side is NaN (`partial_cmp(..).unwrap_or(Equal)` in `haskelujah-runtime-chirho/src/eval_chirho.rs`), where GHC and both native backends answer GT.
 - Memory faults from upstream type confusion stay outside the route.
   - K01's Cranelift run, a SIGBUS at the base, now fails named with R2's line (measured at gate r3).
   - The likely reason, which is an inference and not an established cause: its `show` path reaches the checked runtime formatter before the old fault.

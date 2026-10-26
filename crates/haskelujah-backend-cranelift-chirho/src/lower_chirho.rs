@@ -2573,6 +2573,17 @@ pub fn lower_primop_chirho(
         "compare#" | "compareChar#" => {
             ordering_chirho::lower_compare_chirho(builder_chirho, lhs_raw_chirho, rhs_raw_chirho)
         }
+        "compareFloat#" => ordering_chirho::lower_compare_float_chirho(
+            builder_chirho,
+            lhs_raw_chirho,
+            rhs_raw_chirho,
+        ),
+        "compareStr#" => ordering_chirho::lower_compare_str_chirho(
+            builder_chirho,
+            ctx_chirho,
+            lhs_raw_chirho,
+            rhs_raw_chirho,
+        ),
 
         // ── Float arithmetic ───────────────────────────────────────────────
         "fromIntegral#" => {
