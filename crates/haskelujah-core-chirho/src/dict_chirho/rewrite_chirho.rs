@@ -670,6 +670,15 @@ impl DictPassCtxChirho {
     /// specialized paths clone subtrees without the occurrence intercepts) is
     /// restored to its canonical shared id so no occ id ever reaches STG.
     fn canonicalize_surviving_occurrences_chirho(&self, expr_chirho: &mut CoreExprChirho) {
+        // A surviving first-class `print` keeps its solved Show proof rather than
+        // the generic Int-only binding: `mapM_ print xs` reaches here unrewritten
+        // (row 550).
+        if let CoreExprChirho::VarChirho(id_chirho) = expr_chirho
+            && let Some(print_function_chirho) = self.evidenced_print_function_chirho(*id_chirho)
+        {
+            *expr_chirho = print_function_chirho;
+            return;
+        }
         match expr_chirho {
             CoreExprChirho::VarChirho(id_chirho) => {
                 if let Some((_name_chirho, canonical_id_chirho)) =

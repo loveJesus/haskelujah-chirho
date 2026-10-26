@@ -256,6 +256,41 @@ fn an_empty_foldl1_fails_named_everywhere_chirho() {
     assert_fails_everywhere_chirho(FOLDL1_EMPTY_CHIRHO, "Prelude.foldl1: empty list");
 }
 
+// ── Row 550: a first-class print keeps its Show proof; GHC's Double spelling ──
+
+/// GHC 9.14.1: each element on its own line, exactly as `show` spells it. Natively, the
+/// generic Int-only `print` used to print a Double's bits, a Bool as 1 or 0, a Char as its
+/// code point and a String or a derived value as a heap word.
+const FIRST_CLASS_PRINT_CHIRHO: &str = "module Main where\ndata ColourChirho = RedChirho | BlueChirho deriving Show\nmain :: IO ()\nmain = do\n  mapM_ print ([7.5, -2.5] :: [Double])\n  mapM_ print [True, False]\n  mapM_ print [\"a\", \"bc\"]\n  mapM_ print ['x', 'y']\n  mapM_ print [1, 2 :: Int]\n  mapM_ print [RedChirho, BlueChirho]\n  sequence_ (map print ([0.5] :: [Double]))\n";
+
+/// GHC 9.14.1's spellings: fixed notation for exponents -1 through 6, scientific outside,
+/// signed zero, the subnormal minimum, the maximum, Infinity and NaN.
+const DOUBLE_SPELLINGS_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = mapM_ print ([7.0, 0.1, 1.0e-2, 1.0e7, 9999999.0, 12345678.9, 1 / 3, -0.0, 1.0e-3, 5.0e-324, 1.7976931348623157e308, 1 / 0, 0 / 0, -2.5] :: [Double])\n";
+
+#[test]
+fn a_first_class_print_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        FIRST_CLASS_PRINT_CHIRHO,
+        "7.5\n-2.5\nTrue\nFalse\n\"a\"\n\"bc\"\n'x'\n'y'\n1\n2\nRedChirho\nBlueChirho\n0.5\n",
+    );
+}
+
+#[test]
+fn doubles_are_spelled_as_ghc_spells_them_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        DOUBLE_SPELLINGS_CHIRHO,
+        "7.0\n0.1\n1.0e-2\n1.0e7\n9999999.0\n1.23456789e7\n0.3333333333333333\n-0.0\n1.0e-3\n5.0e-324\n1.7976931348623157e308\nInfinity\nNaN\n-2.5\n",
+    );
+}
+
+#[test]
+fn negative_infinity_is_spelled_as_ghc_spells_it_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        "module Main where\nmain :: IO ()\nmain = print (negate (1 / 0) :: Double)\n",
+        "-Infinity\n",
+    );
+}
+
 // ── R1: an unbound reference fails named, and only when demanded ──────────
 
 #[test]

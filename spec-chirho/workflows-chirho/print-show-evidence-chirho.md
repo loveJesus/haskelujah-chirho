@@ -20,6 +20,8 @@ flowchart TD
     materialize_chirho -->|yes| generate_chirho[Generate portable Show binding from proven key]
     generate_chirho --> rewrite_chirho
     instance_chirho -->|yes| rewrite_chirho[Rewrite to putStrLn applied to concrete show binding]
+    instance_chirho -->|yes, print passed as a value| first_class_chirho["$print_via_show_chirho applied to the concrete show binding"]
+    first_class_chirho --> core_show_chirho
     rewrite_chirho --> core_show_chirho[Portable Core renderer: case, scalar show primops, string append]
     core_show_chirho --> llvm_chirho[LLVM lowering]
     core_show_chirho --> cranelift_chirho[Cranelift lowering]
@@ -46,12 +48,22 @@ flowchart TD
   dictionary path. Derived Show is rendered from its constructor metadata instead
   (below); hand-written showsPrec behavior is not claimed.
 - The dictionary pass rewrites only when the exact generated `Show` binding exists.
+- A first-class `print`, such as the one in `mapM_ print xs`, consumes the same proof (row 550).
+  - The method-reference walker replaces each evidenced `print` among a spine's arguments with
+    `$print_via_show_chirho $prim_Show_show_<key>` before any special path rebuilds the spine.
+  - The end-of-pass sweep does the same for a surviving occurrence.
+  - Before this, the generic Int-only `print` printed every element with `showInt#`. Natively,
+    that showed a Double's bits, a Bool as 1 or 0, a Char as its code point, and a String or a
+    derived value as a heap word.
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.
 - `ShowFloatChirho` gives non-finite `Double` values GHC's exact spellings: `NaN`, `Infinity`,
   and `-Infinity`. Finite values use fixed notation for normalized decimal exponents -1 through
   6 and scientific notation outside that interval. Scientific mantissas keep a decimal point,
   including `1.0e7` and `1.0e-2`.
+- The interpreter's `ShowFloatChirho` and the native `haskelujah_show_float_chirho` both call the
+  RTS's `show_double_chirho`, one renderer for every engine. Native code used Rust's `{}`, which
+  printed `7` and `inf` (row 550).
 - The RTS records allocation kind out of band before interpreting thunk headers; constructor
   payload bits cannot masquerade as thunk state.
 - String append owns borrowed input bytes before any allocation that can trigger collection.

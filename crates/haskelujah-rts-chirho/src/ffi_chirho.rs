@@ -450,12 +450,13 @@ pub extern "C" fn haskelujah_show_char_chirho(value_chirho: i64) -> u64 {
     alloc_c_string_chirho(text_chirho.as_bytes())
 }
 
-/// Convert an f64 bit-pattern to a heap-allocated NUL-terminated decimal
-/// string for Haskell `show`.
+/// Convert an f64 bit-pattern to a heap-allocated NUL-terminated string for
+/// Haskell `show`, spelled as GHC spells it by the renderer the interpreter shares.
+/// workflow: print-show-evidence-chirho
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_show_float_chirho(bits_chirho: i64) -> u64 {
     let value_chirho = f64::from_bits(bits_chirho as u64);
-    let text_chirho = format!("{value_chirho}");
+    let text_chirho = crate::show_double_chirho(value_chirho);
     alloc_c_string_chirho(text_chirho.as_bytes())
 }
 

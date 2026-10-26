@@ -9,8 +9,10 @@ mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
 mod non_empty_chirho;
+mod print_via_show_chirho;
 mod report_folds_chirho;
 pub(crate) use non_empty_chirho::TO_LIST_ROUTE_CHIRHO;
+pub(crate) use print_via_show_chirho::PRINT_VIA_SHOW_CHIRHO;
 use std::collections::HashMap;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -3524,6 +3526,9 @@ impl DictPassCtxChirho {
 
         // ── IO control flow ──
         self.generate_io_control_prelude_chirho();
+
+        // ── The function an unapplied, evidenced print becomes (row 550) ──
+        self.generate_print_via_show_chirho();
 
         // ── Data.Map (BST-based) ──
         self.generate_map_prelude_chirho();

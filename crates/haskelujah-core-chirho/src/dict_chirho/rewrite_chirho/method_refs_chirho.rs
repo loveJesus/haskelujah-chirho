@@ -5,6 +5,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::prelude_chirho::PRINT_VIA_SHOW_CHIRHO;
 use crate::expr_chirho::{CoreAltChirho, CoreExprChirho, CoreIdChirho};
 
 impl DictPassCtxChirho {
@@ -35,20 +36,10 @@ impl DictPassCtxChirho {
         Some((*head_id_chirho, args_chirho))
     }
 
-    /// Evidence-threading extension for constrained Prelude functions:
-    /// `print x` carries a solved `Show` predicate even though `print` is not
-    /// itself a class method. Consume that proof before generic occurrence
-    /// replacement so native code never has to guess a runtime value's type.
+    /// The `$prim_Show_show_<key>` a `print` occurrence's solved `Show` predicate
+    /// names, or None for any other occurrence.
     /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
-    fn try_rewrite_evidenced_print_chirho(
-        &self,
-        head_id_chirho: CoreIdChirho,
-        arg_chirho: &CoreExprChirho,
-        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
-        evidence_classes_chirho: &HashSet<String>,
-        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
-        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
-    ) -> Option<CoreExprChirho> {
+    fn evidenced_print_show_chirho(&self, head_id_chirho: CoreIdChirho) -> Option<CoreIdChirho> {
         let (reference_name_chirho, _canonical_id_chirho) =
             self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
         if reference_name_chirho
@@ -64,8 +55,39 @@ impl DictPassCtxChirho {
         if class_name_chirho != "Show" {
             return None;
         }
-        let show_prim_name_chirho = format!("$prim_Show_show_{ty_key_chirho}");
-        let show_prim_id_chirho = self.find_global_id_by_name_chirho(&show_prim_name_chirho)?;
+        self.find_global_id_by_name_chirho(&format!("$prim_Show_show_{ty_key_chirho}"))
+    }
+
+    /// An unapplied, evidenced `print`, as in `mapM_ print xs`: the same proof the
+    /// applied form consumes, as `$print_via_show_chirho $prim_Show_show_<key>`.
+    /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
+    pub(super) fn evidenced_print_function_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+    ) -> Option<CoreExprChirho> {
+        let show_prim_id_chirho = self.evidenced_print_show_chirho(id_chirho)?;
+        let helper_id_chirho = self.find_global_id_by_name_chirho(PRINT_VIA_SHOW_CHIRHO)?;
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::VarChirho(show_prim_id_chirho)),
+        })
+    }
+
+    /// Evidence-threading extension for constrained Prelude functions:
+    /// `print x` carries a solved `Show` predicate even though `print` is not
+    /// itself a class method. Consume that proof before generic occurrence
+    /// replacement so native code never has to guess a runtime value's type.
+    /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
+    fn try_rewrite_evidenced_print_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        arg_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let show_prim_id_chirho = self.evidenced_print_show_chirho(head_id_chirho)?;
         let put_str_ln_id_chirho = self.find_global_id_by_name_chirho("putStrLn")?;
         let rewritten_arg_chirho = self.rewrite_method_refs_with_locals_chirho(
             arg_chirho,
@@ -94,6 +116,13 @@ impl DictPassCtxChirho {
     ) -> CoreExprChirho {
         match expr_chirho {
             CoreExprChirho::VarChirho(id_chirho) => {
+                // A first-class `print` keeps its solved Show proof, never the
+                // generic Int-only binding (row 550).
+                if let Some(print_function_chirho) =
+                    self.evidenced_print_function_chirho(*id_chirho)
+                {
+                    return print_function_chirho;
+                }
                 // Evidence-threading P1 (design-evidence-threading-chirho.md):
                 // per-occurrence method ids. Evidence present → dispatch to the
                 // body-backed `$prim_{class}_{method}_{key}` row; no evidence →
@@ -167,6 +196,34 @@ impl DictPassCtxChirho {
                         spine_head_chirho = spine_fun_chirho.as_ref();
                     }
                     if let CoreExprChirho::VarChirho(head_id_chirho) = spine_head_chirho {
+                        // A first-class, evidenced `print` among the arguments, as
+                        // in `mapM_ print xs`, takes its proof before any special
+                        // path rebuilds the spine and restores its canonical id
+                        // (row 550).
+                        if spine_args_chirho.iter().any(|spine_arg_chirho| {
+                            matches!(spine_arg_chirho, CoreExprChirho::VarChirho(arg_id_chirho)
+                                if self.evidenced_print_show_chirho(*arg_id_chirho).is_some())
+                        }) {
+                            let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
+                                CoreExprChirho::VarChirho(*head_id_chirho),
+                                |fun_acc_chirho, spine_arg_chirho| CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(fun_acc_chirho),
+                                    arg_chirho: Box::new(match spine_arg_chirho {
+                                        CoreExprChirho::VarChirho(arg_id_chirho) => self
+                                            .evidenced_print_function_chirho(*arg_id_chirho)
+                                            .unwrap_or_else(|| (*spine_arg_chirho).clone()),
+                                        _ => (*spine_arg_chirho).clone(),
+                                    }),
+                                },
+                            );
+                            return self.rewrite_method_refs_with_locals_chirho(
+                                &rebuilt_chirho,
+                                dict_vars_chirho,
+                                evidence_classes_chirho,
+                                local_type_keys_chirho,
+                                local_instance_dicts_chirho,
+                            );
+                        }
                         if spine_args_chirho.len() == 1 {
                             if let Some(rewritten_print_chirho) = self
                                 .try_rewrite_evidenced_print_chirho(
