@@ -20,7 +20,7 @@ The progress row and landing wait for the combined 531 + 536 + 517 main/DB hold 
 - [x] Change the saved P01 driver control from refusal to exact `2` everywhere.
 - [x] Update the native workflow at the changed seam.
 - [x] Run the warm 2–5 minute gate: format, P01, RTS plus both backend libraries, changed-package Clippy, diff check, and gitleaks.
-- [ ] Rebase onto the released main, land, and close progress row 541 GREEN.
+- [x] Rebase onto the released main, land, and close progress row 541 GREEN.
 
 ## Measured evidence
 
@@ -39,3 +39,8 @@ The progress row and landing wait for the combined 531 + 536 + 517 main/DB hold 
 - Row 539's two comparison controls also passed 2/2 after the overlap resolution.
 - Format, diff check, and changed-library Clippy are GREEN. Clippy emitted only pre-existing diagnostics outside Row 541 and the resolved overlap lines.
 - The branch is ready for a fast-forward landing. The final checklist item remains open until `main_chirho` and progress row 541 are committed together.
+
+## Landing
+
+- `main_chirho` fast-forwarded through `80fef093`, preserving the tested source and post-rebase record without a merge commit.
+- Progress row 541 records the exact focused evidence above. This tasklist and the progress database close the unit together after the source landing.
