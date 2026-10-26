@@ -18,6 +18,9 @@ pub(crate) struct RuntimeCallsChirho {
     uncaught_exception_chirho: FuncRef,
     unbound_thunk_chirho: FuncRef,
     pow_int_chirho: FuncRef,
+    new_io_ref_chirho: FuncRef,
+    read_io_ref_chirho: FuncRef,
+    write_io_ref_chirho: FuncRef,
 }
 
 fn import_chirho(
@@ -89,6 +92,27 @@ impl RuntimeCallsChirho {
                 2,
                 true,
             )?,
+            new_io_ref_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_new_io_ref_chirho",
+                1,
+                true,
+            )?,
+            read_io_ref_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_read_io_ref_chirho",
+                1,
+                true,
+            )?,
+            write_io_ref_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_write_io_ref_chirho",
+                2,
+                true,
+            )?,
         })
     }
 
@@ -102,6 +126,40 @@ impl RuntimeCallsChirho {
         let call_chirho = builder_chirho
             .ins()
             .call(self.pow_int_chirho, &[base_chirho, exponent_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    pub(crate) fn new_io_ref_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        initial_value_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.new_io_ref_chirho, &[initial_value_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    pub(crate) fn read_io_ref_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        io_ref_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.read_io_ref_chirho, &[io_ref_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    pub(crate) fn write_io_ref_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        io_ref_chirho: Value,
+        value_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.write_io_ref_chirho, &[io_ref_chirho, value_chirho]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 

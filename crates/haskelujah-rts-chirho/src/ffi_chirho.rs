@@ -29,12 +29,16 @@ const BOXED_PTR_MASK_CHIRHO: usize = 1;
 
 type NativeEntryFnChirho = unsafe extern "C" fn() -> i64;
 
+const NATIVE_ALLOC_PLAIN_CHIRHO: u8 = 0;
+const NATIVE_ALLOC_THUNK_CHIRHO: u8 = 1;
+const NATIVE_ALLOC_IO_REF_CHIRHO: u8 = 2;
+
 #[derive(Debug)]
 struct NativeAllocRecordChirho {
     size_chirho: usize,
     layout_chirho: Layout,
     marked_chirho: bool,
-    is_native_thunk_chirho: bool,
+    kind_chirho: u8,
 }
 
 #[derive(Debug, Default)]
@@ -98,7 +102,7 @@ impl NativeGcRuntimeChirho {
                 size_chirho: actual_size_chirho,
                 layout_chirho,
                 marked_chirho: false,
-                is_native_thunk_chirho: false,
+                kind_chirho: NATIVE_ALLOC_PLAIN_CHIRHO,
             },
         );
         self.alloc_total_chirho += actual_size_chirho as u64;
@@ -341,12 +345,16 @@ mod arithmetic_tests_chirho;
 mod failure_chirho;
 #[cfg(test)]
 mod gc_tests_chirho;
+mod native_io_refs_chirho;
 mod native_thunks_chirho;
 pub use failure_chirho::{
     haskelujah_error_chirho, haskelujah_no_match_chirho, haskelujah_unbound_thunk_chirho,
     haskelujah_uncaught_exception_chirho, haskelujah_undefined_chirho,
 };
 use failure_chirho::{internal_failure_chirho, refuse_boxed_integer_chirho};
+pub use native_io_refs_chirho::{
+    haskelujah_new_io_ref_chirho, haskelujah_read_io_ref_chirho, haskelujah_write_io_ref_chirho,
+};
 pub use native_thunks_chirho::{
     haskelujah_alloc_thunk_chirho, haskelujah_enter_thunk_chirho, haskelujah_update_thunk_chirho,
 };

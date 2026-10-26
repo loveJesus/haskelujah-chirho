@@ -39,6 +39,7 @@ flowchart TD
   - Driver controls:
     - Compare2 requires GHC's `GT GT LT GT` through the interpreter and both native backends.
     - A GHC-measured edge program covers NaN, -0.0, the empty string, a prefix, non-ASCII and a computed `show`. It runs natively only, because the interpreter's `compareFloat#` answers EQ for NaN.
+- Row 541 removes `newIORef#`, `readIORef#`, and `writeIORef#` from the native refused set. Both backends call the same RTS allocation-kind-checked mutable cell implementation; its initial payload is rooted across allocation and remains visible to native GC traversal. The saved P01 control requires `2` through the interpreter and both native backends.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## Residuals outside the route

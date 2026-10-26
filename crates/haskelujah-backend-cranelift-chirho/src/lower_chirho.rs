@@ -2345,6 +2345,27 @@ pub fn lower_primop_chirho(
         "throw#" => ctx_chirho
             .runtime_calls_chirho
             .uncaught_exception_chirho(builder_chirho),
+        "newIORef#" => {
+            let initial_value_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            ctx_chirho
+                .runtime_calls_chirho
+                .new_io_ref_chirho(builder_chirho, initial_value_chirho)
+        }
+        "readIORef#" => {
+            let io_ref_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            ctx_chirho
+                .runtime_calls_chirho
+                .read_io_ref_chirho(builder_chirho, io_ref_chirho)
+        }
+        "writeIORef#" => {
+            let io_ref_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let value_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
+            ctx_chirho.runtime_calls_chirho.write_io_ref_chirho(
+                builder_chirho,
+                io_ref_chirho,
+                value_chirho,
+            )
+        }
         "+#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);

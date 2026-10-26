@@ -82,6 +82,15 @@ impl LlvmCodegenChirho {
                 .unwrap();
                 return result_chirho;
             }
+            if name_chirho == "writeIORef#" {
+                let result_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {result_chirho} = call i64 @haskelujah_write_io_ref_chirho(i64 {lhs_chirho}, i64 {rhs_chirho})"
+                )
+                .unwrap();
+                return result_chirho;
+            }
             if matches!(
                 name_chirho,
                 "compare#" | "compareChar#" | "compareFloat#" | "compareStr#"
@@ -138,6 +147,21 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             tmp_chirho
+        } else if args_chirho.len() == 1 && matches!(name_chirho, "newIORef#" | "readIORef#") {
+            let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+            let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
+            let runtime_name_chirho = if name_chirho == "newIORef#" {
+                "haskelujah_new_io_ref_chirho"
+            } else {
+                "haskelujah_read_io_ref_chirho"
+            };
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = call i64 @{runtime_name_chirho}(i64 {operand_chirho})"
+            )
+            .unwrap();
+            result_chirho
         } else if args_chirho.len() == 1 && name_chirho == "fromIntegral#" {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
             let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);

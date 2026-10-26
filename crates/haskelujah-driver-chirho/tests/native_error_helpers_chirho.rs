@@ -69,7 +69,7 @@ const MISSING_METHOD_CHIRHO: &str =
 const NO_MATCH_CHIRHO: &str =
     "module Main where\nmain :: IO ()\nmain = print (gcd 12 (18 :: Int), lcm 4 (6 :: Int))\n";
 
-/// R4, P01: IORef has no native implementation. GHC: `2`.
+/// R4, P01: native IORef allocation, mutation, and reading. GHC: `2`.
 const IOREF_CHIRHO: &str = "module Main where\nimport Data.IORef\nmain :: IO ()\nmain = do { r <- newIORef (1 :: Int); modifyIORef r (+ 1); v <- readIORef r; print v }\n";
 
 /// Compare2: `compare` on Int, Char, Double and String. GHC prints
@@ -136,24 +136,6 @@ fn assert_fails_named_chirho(
         format!(
             "native program emitted stderr (exit 1): haskelujah: error: {message_chirho}\n\nstdout:\n"
         ),
-        "{backend_chirho:?}"
-    );
-}
-
-/// A compile-time refusal naming each unsupported primitive, as `name/arity`.
-fn assert_refused_chirho(
-    backend_chirho: NativeBackendChirho,
-    source_chirho: &str,
-    primitives_chirho: &str,
-) {
-    let backend_name_chirho = match backend_chirho {
-        NativeBackendChirho::LlvmChirho => "LLVM",
-        NativeBackendChirho::CraneliftChirho => "Cranelift",
-    };
-    assert_eq!(
-        native_round_trip_chirho(source_chirho, backend_chirho, "")
-            .expect_err("an executable that needs the primitive is refused"),
-        format!("{backend_name_chirho} does not support primitive(s): {primitives_chirho}"),
         "{backend_chirho:?}"
     );
 }
@@ -341,24 +323,11 @@ fn a_missing_method_fails_named_on_cranelift_chirho() {
     );
 }
 
-// ── R4: an unknown primitive is refused at compile time ────────────────────
+// ── R4: formerly unknown primitives lower only with measured semantics ─────
 
 #[test]
-fn an_unknown_primitive_is_refused_on_llvm_chirho() {
-    assert_refused_chirho(
-        LLVM_CHIRHO,
-        IOREF_CHIRHO,
-        "newIORef#/1, readIORef#/1, writeIORef#/2",
-    );
-}
-
-#[test]
-fn an_unknown_primitive_is_refused_on_cranelift_chirho() {
-    assert_refused_chirho(
-        CRANELIFT_CHIRHO,
-        IOREF_CHIRHO,
-        "newIORef#/1, readIORef#/1, writeIORef#/2",
-    );
+fn io_ref_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(IOREF_CHIRHO, "2\n");
 }
 
 #[test]

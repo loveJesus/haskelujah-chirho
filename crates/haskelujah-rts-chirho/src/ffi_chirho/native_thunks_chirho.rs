@@ -5,7 +5,7 @@
 //! the entire path, and roots active evaluations across allocating callbacks.
 
 use super::failure_chirho::{internal_failure_chirho, user_failure_chirho};
-use super::{haskelujah_alloc_chirho, native_gc_runtime_lock_chirho};
+use super::{NATIVE_ALLOC_THUNK_CHIRHO, haskelujah_alloc_chirho, native_gc_runtime_lock_chirho};
 
 const UNEVALUATED_CHIRHO: u64 = 0;
 const BLACKHOLE_CHIRHO: u64 = 1;
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn haskelujah_alloc_thunk_chirho(
         .allocations_by_ptr_chirho
         .get_mut(&(raw_chirho as usize))
         .unwrap_or_else(|| internal_failure_chirho(b"new thunk allocation not registered"))
-        .is_native_thunk_chirho = true;
+        .kind_chirho = NATIVE_ALLOC_THUNK_CHIRHO;
     unsafe {
         raw_chirho.write(UNEVALUATED_CHIRHO);
         raw_chirho.add(1).write(code_ptr_chirho);
@@ -66,7 +66,7 @@ fn thunk_address_chirho(value_chirho: u64) -> Option<*mut u64> {
     runtime_chirho
         .allocations_by_ptr_chirho
         .get(&address_chirho)
-        .filter(|record_chirho| record_chirho.is_native_thunk_chirho)
+        .filter(|record_chirho| record_chirho.kind_chirho == NATIVE_ALLOC_THUNK_CHIRHO)
         .map(|_| address_chirho as *mut u64)
 }
 
