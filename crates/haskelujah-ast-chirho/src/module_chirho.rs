@@ -280,7 +280,7 @@ mod tests_chirho {
             non_empty_import_chirho(Some(items_spec_chirho(false, vec![head_chirho.clone()])));
         assert_eq!(
             explicit_chirho.list_mode_chirho(),
-            ImportListModeChirho::ExplicitChirho(&[head_chirho.clone()])
+            ImportListModeChirho::ExplicitChirho(std::slice::from_ref(&head_chirho))
         );
         // `()` is an explicit list, and every one of its zero items is
         // represented: it supplies nothing.
