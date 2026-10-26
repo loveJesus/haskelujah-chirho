@@ -9,7 +9,7 @@
 //! Each program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_native_chirho, run_chirho};
+use super::{NativeBackendChirho, assert_native_chirho, native_round_trip_chirho, run_chirho};
 
 #[test]
 fn integer_literals_divide_at_double_everywhere_chirho() {
@@ -67,6 +67,37 @@ fn integer_literal_non_finite_values_render_in_the_interpreter_chirho() {
         if expression_chirho == "0 / 0" {
             assert_native_chirho(file_name_chirho, &program_chirho, ghc_chirho);
         }
+    }
+}
+
+/// GHC 9.14.1 resolves exact half ties to the even integer. Rust's plain
+/// `f64::round` instead resolves them away from zero, which made `round#`
+/// silently disagree in the interpreter (row 559).
+#[test]
+fn double_round_uses_ghcs_ties_to_even_rule_in_the_interpreter_chirho() {
+    let program_chirho = "module Main where\nmain :: IO ()\nmain = print (map round ([0.5,1.5,2.5,3.5,-0.5,-1.5,-2.5,-3.5,0.49,0.51,-0.49,-0.51,0.0,-0.0,2.0,-2.0] :: [Double]) :: [Int])\n";
+    assert_eq!(
+        run_chirho("DoubleRoundTiesEvenChirho.hs", program_chirho),
+        "[0,2,2,4,0,-2,-2,-4,0,1,0,-1,0,0,2,-2]\n"
+    );
+}
+
+/// Row 559 is the interpreter wrong-answer repair. Native `round#` remains an
+/// explicit backend boundary rather than acquiring an unreviewed lowering.
+#[test]
+fn native_round_stays_refused_by_primitive_name_chirho() {
+    let program_chirho =
+        "module Main where\nmain :: IO ()\nmain = print (round (0.5 :: Double) :: Int)\n";
+    for (backend_chirho, backend_name_chirho) in [
+        (NativeBackendChirho::LlvmChirho, "LLVM"),
+        (NativeBackendChirho::CraneliftChirho, "Cranelift"),
+    ] {
+        let error_chirho = native_round_trip_chirho(program_chirho, backend_chirho, "")
+            .expect_err("native round must remain an explicit boundary in row 559");
+        assert_eq!(
+            error_chirho,
+            format!("{backend_name_chirho} does not support primitive(s): round#/1")
+        );
     }
 }
 

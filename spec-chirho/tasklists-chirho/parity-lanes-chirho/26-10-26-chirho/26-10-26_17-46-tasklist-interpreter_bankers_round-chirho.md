@@ -20,10 +20,24 @@ unsupported `round#/1` primitive.
 
 ## Checklist
 
-- [ ] Trace the `round` class-method route, generated Core row, and interpreter primitive.
-- [ ] Choose the smallest shared placement after the trace; do not special-case the sweep
+- [x] Trace the `round` class-method route, generated Core row, and interpreter primitive.
+- [x] Choose the smallest shared placement after the trace; do not special-case the sweep
   program or its list context.
-- [ ] Commit GHC-measured positive, negative, tie, and non-tie controls.
-- [ ] Run a warm focused interpreter proof plus the affected dictionary/numeric suites.
-- [ ] Verify zero changed-line Clippy findings, rustfmt, diff-check, and gitleaks.
+- [x] Commit GHC-measured positive, negative, tie, and non-tie controls.
+- [x] Run a warm focused interpreter proof plus the affected dictionary/numeric suites.
+- [x] Verify zero changed-line Clippy findings, rustfmt, diff-check, and gitleaks.
 - [ ] Land and close progress row 559.
+
+## Measured source checkpoint
+
+- The route is already correct: the generated Core is `round# :: Double -> Int`, and STG
+  lowering preserves `PrimOpKindChirho::RoundChirho`.
+- The first wrong operation was the interpreter's use of Rust `f64::round`, which resolves
+  half ties away from zero. `f64::round_ties_even` gives GHC's sixteen measured answers.
+- Restoring only `f64::round` makes the new control fail at every affected half tie, while
+  the non-ties and integral values remain equal.
+- Runtime is 57/57, the existing direct round test passes, and dictionary evidence is 83/83.
+  Both native backends still refuse exactly `round#/1` in the committed boundary control.
+- `eval_chirho.rs` is 5,489 lines: something is wrong with that size. This row changes only
+  the existing four-arm numeric-conversion block; extracting the evaluator families is a
+  separate structural unit rather than an excuse to widen this parity fix.

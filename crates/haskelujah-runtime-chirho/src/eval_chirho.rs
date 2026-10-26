@@ -2392,9 +2392,10 @@ impl MachineChirho {
                 return Ok(ValueChirho::IntChirho(0));
             }
             PrimOpKindChirho::RoundChirho => {
-                // round# x → round Double to nearest Int
+                // round# x → nearest Int, resolving exact half ties to the even integer.
+                // Workflow: compiler-pipeline-chirho/runtime-primitive-evaluation-chirho.md.
                 if let Some(ValueChirho::FloatChirho(f_chirho)) = args_chirho.first() {
-                    return Ok(ValueChirho::IntChirho(f_chirho.round() as i64));
+                    return Ok(ValueChirho::IntChirho(f_chirho.round_ties_even() as i64));
                 }
                 return Ok(ValueChirho::IntChirho(0));
             }
