@@ -62,6 +62,7 @@ The "before" columns are the interpreter at 1b804afa. The native backends were m
 - [x] Record the rule in the dictionary-evidence workflow.
 - [x] Move onto current main_chirho, commit, and run the warm gate.
 - [x] Record the measured gate evidence.
+- [x] Fast-forward the tested tip `af78d63b` onto `main_chirho` and close progress row 543 GREEN.
 
 ## Gate evidence
 
