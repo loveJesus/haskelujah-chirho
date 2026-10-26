@@ -55,4 +55,10 @@ The probes put the greater value first: `"b"`/`"a"`, `[1, 3]`/`[1, 2]`, `GreenCh
 - [x] Add the controls. Their GHC outputs equal the constants as written, and the dictionary-evidence suite is 81/81.
 - [x] Reach check: with only the hook reverted, the route and once controls fail and the boundary control passes. Restored with a fresh mtime and verified to recompile core, all three pass.
 - [x] Record the route in the dictionary-evidence workflow.
-- [ ] Commit, run the warm gate, and record it.
+- [x] Commit (`2835e3d1`), run the warm gate, and record it.
+  - Gate r1 on `cebd8f9b` is GREEN in 207.09 s.
+  - 681/681 focused tests passed, the three row 551 controls included.
+  - Clippy: none of 456 diagnostic locations fell on the 279 changed lines.
+  - The parallel contract pass took 23.58 s.
+  - Row 535's judge gave 126/126, at 73 movers and 9 holds. Its 26 cell changes are exactly the landed rows' moves, so no contract program moved for row 551.
+  - The gate's build step was a no-op. The binaries are current because the reach check's restore recompiled core after the last source edit. The route controls pass only with the hook compiled in.
