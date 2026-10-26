@@ -87,5 +87,9 @@ The scan was validated on the probes first. It reached exactly the 18 programs t
   - the 537 corpus programs hold 62 negations;
   - the 41 contract programs hold 4 negations.
 - [x] Pin `-2 ** 2 :: Double` as the named residual: the interpreter stops at `NegIntChirho`.
-- [ ] Commit, run the warm gate, and record it.
-- [ ] Post the final tip to gpt.
+- [x] Commit, run the warm gate, and record it.
+  - **r1 was GREEN on `c1f9719e` (base `af9dcac6`) in 202.21 s:**
+    - 1094/1094 focused tests, now including the parser library, the golden suites and the GHC-corpus suites;
+    - no Clippy diagnostic on the 311 changed lines;
+    - the judge at 126/126, with 73 movers and 9 holds over the 29 landed changes, so no contract cell moved.
+- [ ] Land on main and close progress row 555.
