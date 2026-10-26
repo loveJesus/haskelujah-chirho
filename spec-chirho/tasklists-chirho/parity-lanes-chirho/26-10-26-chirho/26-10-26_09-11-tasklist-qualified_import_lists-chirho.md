@@ -30,7 +30,9 @@ Owner: claude_chirho writes source only, on `qualified-import-lists-chirho` from
     - a directly listed name, even when the interface omits it;
     - a member written in a listed `T(…, x, …)`;
     - a member of a listed `T(..)` whose member list is proven complete.
+  - **A bare `T` supplies no value**, not even a constructor spelled `T` (GHC-01928, #28506).
   - Only two kinds of member list are proven complete: those from source-derived interfaces, and the builtin `NonEmpty`. Any other `T(..)` keeps Q open.
+  - **Marks merge per type** when copies of one module merge (#28506). A type both copies export stays complete only when both mark it. A type only one copy exports keeps its mark, so disjoint marks still union.
   - **Current module.** If Q is the current module's own name, its own top-level values stay in scope.
   - **Otherwise.** The occurrence is a scope error (E0100, GHC-76037's class). Typing's fallback and desugar are not changed.
 - **The syntax classifier.** It sits beside `ImportDeclChirho` in `haskelujah-ast-chirho`. It answers only from syntax and never says whether a value is exposed.
@@ -56,6 +58,7 @@ Owner: claude_chirho writes source only, on `qualified-import-lists-chirho` from
 - Two source-derived exceptions, which are left open:
   - a data type with a GADT constructor (its record fields are not lowered);
   - every type of a module that declares or enables pattern synonyms (a bundled `T(.., P)` loses `P`).
+- `import M (data P)`. Lowering drops the `data` keyword and reads a bare `P`, which supplies no value after #28506. GHC 9.14.1's reading of a `data P` item is not measured: its rejection of `(data ..)` fell on the `..`. No scanned population holds a reference through such an item.
 - Diagnostic bytes are this checker's, not GHC's.
 
 ## Controls (predictions until real logs)
@@ -70,6 +73,7 @@ GHC 9.14.1 receipts are measured from the committed sources.
   - an unlisted operator, `M.!`;
   - two lists under one alias, with `L.head`;
   - `import Data.List (sort)` with `Data.List.nub`.
+- **Negative, GHC-01928 (#28506):** `import qualified Data.Proxy as P (Proxy)` with `P.Proxy`. A bare type item supplies no constructor of the same name.
 - **Positives:**
   - a listed variable;
   - `NonEmpty(..)` supplying `NE.:|`;
@@ -91,7 +95,9 @@ GHC 9.14.1 receipts are measured from the committed sources.
   - the classifier's three modes (an explicit list with an unrepresented item is UNRESTRICTED; `hiding` keeps its items);
   - the producer's marker;
   - the consumers importing, hiding and re-exporting nothing for it;
-  - completeness marks: local data, newtype and class are marked; GADT, pattern synonyms and re-exports are not; builtin NonEmpty is marked; merging unions the marks.
+  - completeness marks: local data, newtype and class are marked; GADT, pattern synonyms and re-exports are not; builtin NonEmpty is marked;
+  - copies of one module merge marks per type: disjoint marks survive, a type every copy marks stays marked, and an unmarked copy clears the mark in any order (#28506);
+  - a bare `T` of a source `data T = T` supplies no `T`, while `T(..)` does (the shape of GHC's T25877, #28506).
 
 ## Mutants (predicted kill sets, credited only by real logs)
 
@@ -107,6 +113,10 @@ GHC 9.14.1 receipts are measured from the committed sources.
 | M8 | the interface-filtered table replaces the written list | `NE (reverse)` |
 | M9 | the marker ignored | the `pattern Empty` positive |
 | M10 | every builtin assumed complete | `Lazy.runRWST` |
+| M11 (proposed) | a bare `T` item supplies the value `T` again | the `P.Proxy` negative and the bare source `T` naming test |
+| M12 (proposed) | marks merge as a union again | the unmarked-copy cases of the per-type merge test |
+
+M11 and M12 are proposed with the #28506 corrections. They join the gate's mutant set only if gpt_chirho accepts them.
 
 ## Candidate gate contract (#28483)
 
@@ -122,12 +132,17 @@ GHC 9.14.1 receipts are measured from the committed sources.
 - [x] Write the tasklist on a fresh branch from exact b709644c.
 - [x] AST: the marker, the item's "represented" test and the syntax classifier, with structural tests. Naming: the exhaustive consumers (b31d36c2).
 - [x] Parser: produce the marker for nameless items and `pattern P`, with producer tests (966ff5b1).
-- [x] Naming: completeness marks (source-derived local types, the builtin NonEmpty, union on merge), with tests (56c23a6b).
+- [x] Naming: completeness marks (source-derived local types, the builtin NonEmpty, union on merge), with tests (56c23a6b). The union merge was unsound; e6155ce9 replaces it per type.
 - [x] Naming: the value-scope module and its own test file, hooked after type scope (2a282abd).
 - [x] Driver: the GHC-measured behavioral controls, with GHC 9.14.1 receipts from the committed sources (ce46c757).
 - [x] Workflow: `compiler-pipeline-chirho/value-scope-resolution-chirho.md` (7b204b91).
 - [x] Hygiene with no Cargo: rustfmt as a stdin no-op, `git diff --check` and gitleaks. Record the source-derived reach scan as a prediction.
-- [ ] Post the tracked source checkpoint before any builder request.
+- [x] Post the tracked source checkpoint before any builder request (#28504; not accepted in #28506).
+- [x] #28506 correction 1: a bare type item supplies no value, with a source-derived naming negative and the GHC-measured `Data.Proxy` driver negative (f95620ac).
+- [x] #28506 correction 2: completeness marks merge per type, with merge controls (e6155ce9).
+- [x] #28506 docs: the workflow and this tasklist state both rules and the corrected count.
+- [x] Hygiene re-run with no Cargo: rustfmt as a stdin no-op, `git diff --check` and gitleaks. GHC 9.14.1 ran only on the new committed control (r3).
+- [ ] Post the corrected source checkpoint. The candidate gate tooling stays withheld until it is accepted.
 
 ## Source checkpoint record
 
@@ -187,3 +202,54 @@ This is a lexical prediction, not a measurement, under the ruled rule.
 ### Row 536 is not independently landable
 
 It must keep the frozen 531 pairing intact, and it enters the combined 531+536+517 gate.
+
+## Correction record (#28506)
+
+gpt_chirho did not accept the checkpoint (#28504) and found two load-bearing defects. Both are corrected in commits on top of 3e31096d. The eight reviewed commits are unchanged. No Cargo or haskelujah CLI ran.
+
+### The count
+
+The checkpoint post reported +2,040/−23. `git diff --stat b709644c..3e31096d` is 14 paths, +2,099/−23.
+
+### Correction 1: a bare type item supplies no value (f95620ac)
+
+- The value scope admitted a listed `T`'s own name as a value. So `import qualified Data.Proxy as P (Proxy)` supplied `P.Proxy`, which GHC rejects. That insertion is removed: only written members and the members of a complete `T(..)` supply values.
+- Controls:
+  - the naming test `a_bare_type_item_supplies_no_constructor_of_the_same_name_chirho`: for a source `data T = T`, `Bare (T)` leaves `Bare.T` out of scope while `Full (T(..))` supplies `Full.T`;
+  - the driver negative `BareTypeItemChirho.hs`;
+  - `NonEmpty(..)` still supplies `NE.:|`.
+- GHC 9.14.1 receipt r3 ran only on that new committed control, decoded from f95620ac, with the prediction fixed first: check rc 1, exactly GHC-01928, naming `P.Proxy`. 1 of 1 agrees: `Data constructor out of scope: ‘P.Proxy’`, with GHC's note that the type constructor cannot appear in that position.
+- GHC's own rename test T25877 expects GHC-01928 for the source-derived shape (`X (A)` with `X.A`).
+
+### Correction 2: marks merge per type (e6155ce9)
+
+- `merge_module_ifaces_chirho` unioned the marks. A copy exporting a type unmarked, one that may bundle a pattern synonym, left the other copy's mark standing on a list that might be incomplete.
+- Marks now merge per type through `merged_complete_member_types_chirho`, read before a copy's types join the entry.
+- Controls in `type_exports_tests_chirho.rs`:
+  - disjoint marks survive;
+  - a type both copies mark stays marked, beside a type only one copy exports;
+  - an unmarked copy clears the mark in either order and in a three-copy merge, while the marked copy's other type keeps its mark.
+- The single-source driver path merges only the builtin interfaces, plus `Haskelujah.*` stdlib modules when the source imports the stdlib. So the one builtin `Data.List.NonEmpty` block keeps its mark, and I2 still closes.
+
+### Hygiene, re-run with no Cargo
+
+- rustfmt 1.8.0 is a stdin no-op on all 12 changed Rust files.
+- `git diff --check b709644c e6155ce9` is clean.
+- gitleaks 8.30.1 scanned 10 commits through e6155ce9 and found no leaks (the report is `[]`).
+- Sizes after the corrections:
+  - `type_exports_chirho.rs` 818 lines, `type_exports_tests_chirho.rs` 770, `value_scope_chirho.rs` 284, `value_scope_tests_chirho.rs` 521, the driver controls 308;
+  - `iface_chirho.rs` is now 18,739 lines; it still needs its own split unit.
+
+### Reach scan r2 (a prediction)
+
+The r1 scanner is kept unchanged. r2 reads items as lowering does, and classifies every reference under both the r1 model and the corrected one.
+
+- **Gate corpus and r3 oracle:** nothing changes. I2's `NE.toList` stays the only predicted rejection.
+- **Embedded test programs:** only the new `P.Proxy` negative changes.
+- **Execution and repository `.hs` files:** nothing.
+- **Informational only:**
+  - Local package cache: by line inspection, 410 of its 416 changed occurrences are type positions, which the value walk does not visit. One is an import line the lexer misread, and one is a record pattern. The other four are constructor expressions, each supplied by a source-derived `T(..)`.
+  - GHC rename and module suites: the only value-position change is T25877's `X.A`. GHC rejects it with GHC-01928, and the corrected rule now does too.
+  - One gate-corpus program and four rename-suite programs hold a closed `data X` item. None has a reference through it.
+
+Row 536 remains not independently landable.
