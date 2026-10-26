@@ -7,7 +7,7 @@ The progress row and landing wait for the combined 531 + 536 + 517 main/DB hold 
 
 ## Placement and boundary
 
-- The RTS owns IORef allocation, allocation-kind validation, reading, and mutation. A reference is a tagged registered allocation whose sole word is traced by the existing conservative collector.
+- The RTS owns IORef allocation, allocation-kind validation, reading, and mutation. A reference is a tagged registered allocation whose sole word is traced by the existing conservative collector; the cell itself follows the native backends' current process-lifetime root contract for produced heap values.
 - Allocation roots the initial value across a possible collection. Reading and writing accept only allocations created as native IORefs; a constructor, thunk, immediate, or stale pointer fails closed.
 - LLVM and Cranelift only force operands and call the three RTS entries. They do not duplicate mutable-heap rules.
 - The saved P01 program is the end-to-end contract. STRef, TVar, concurrency, weak references, and atomic IORef operations are outside this unit.
@@ -24,8 +24,9 @@ The progress row and landing wait for the combined 531 + 536 + 517 main/DB hold 
 
 ## Measured evidence
 
-- The saved P01 program passed with exact `2\n` through the interpreter, LLVM, and Cranelift. The final warm run took 5.42 seconds.
+- The saved P01 program passed with exact `2\n` through the interpreter, LLVM, and Cranelift. A warm pre-correction run took 5.42 seconds; the corrected run also passed while contending on Cargo's shared package-cache lock.
 - The RTS, LLVM, and Cranelift library suites passed together: 50 + 38 + 42 = 130 tests. The final source-change run took 6.46 seconds.
 - The RTS controls prove integer round-trip mutation, reject ordinary constructor allocations as IORefs, root a heap payload across allocation-triggered collection, and trace it through the live cell.
 - `cargo fmt --all -- --check` is GREEN. Warm changed-package Clippy took 3.87 seconds; its diagnostics are pre-existing and none lands on a changed or inserted line.
 - The source gate compiles once and runs ordinary unit tests. It has no serial source-edit mutants, cold targets, frozen-binary reruns, or broad receipt-tree hashing.
+- Post-checkpoint review found that Cranelift does not install a general root for every direct-call result. The correction roots the IORef cell under the same conservative process-lifetime contract already used for native produced heap values; the two RTS controls and P01 passed again afterward.

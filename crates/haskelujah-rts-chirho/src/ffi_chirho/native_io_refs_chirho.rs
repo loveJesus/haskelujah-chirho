@@ -27,7 +27,11 @@ fn new_io_ref_in_runtime_chirho(
     unsafe {
         raw_chirho.write(initial_value_chirho);
     }
-    raw_chirho as u64 | BOXED_PTR_MASK_CHIRHO as u64
+    let io_ref_bits_chirho = raw_chirho as u64 | BOXED_PTR_MASK_CHIRHO as u64;
+    // Native backends currently retain produced heap values for the process
+    // lifetime. Keep the mutable cell under that same conservative contract.
+    runtime_chirho.gc_root_push_chirho(io_ref_bits_chirho as usize as *mut u8);
+    io_ref_bits_chirho
 }
 
 fn io_ref_address_chirho(
@@ -106,7 +110,6 @@ mod tests_chirho {
 
         let io_ref_chirho = new_io_ref_in_runtime_chirho(&mut runtime_chirho, payload_chirho);
         assert!(runtime_chirho.contains_alloc_chirho(payload_raw_chirho));
-        runtime_chirho.gc_root_push_chirho(io_ref_chirho as usize as *mut u8);
         runtime_chirho.collect_chirho();
         assert!(runtime_chirho.contains_alloc_chirho(payload_raw_chirho));
         assert!(
