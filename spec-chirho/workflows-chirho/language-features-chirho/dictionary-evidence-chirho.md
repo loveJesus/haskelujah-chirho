@@ -55,6 +55,7 @@ flowchart TD
   - Infix and section `<`, `<=`, `>` and `>=` become `<#`, `<=#`, `>#` and `>=#` before any type is known. So does a prefix minus on an operand that is not a float literal, which becomes `negate#`.
   - `rewrite_method_refs_with_locals_chirho` gives such a primop its float counterpart when an operand keys as Double: binder types, type applications and literal records. The rule is `rewrite_chirho/double_primops_chirho.rs`.
   - The counterparts are `<.#`, `<=.#`, `>.#`, `>=.#` (ordered, so a NaN gives False) and `negateFloat#`.
+  - `negate#` keys as its operand in `type_keys_chirho.rs`, so `(-1) / 2 :: Double` keys `/` at Double instead of Int.
   - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
   - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
   - Controls: `tests/dictionary_evidence_chirho/double_primops_chirho.rs`.

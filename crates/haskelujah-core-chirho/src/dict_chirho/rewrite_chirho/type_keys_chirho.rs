@@ -167,13 +167,22 @@ impl DictPassCtxChirho {
                 }
                 None
             }
-            CoreExprChirho::PrimOpChirho { name_chirho, .. } => {
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho,
+            } => {
                 // Infer result type of known primops
                 match name_chirho.as_str() {
                     "enumFromTo#" => Some("[Int]".to_string()),
-                    "+#" | "-#" | "*#" | "div#" | "mod#" | "negate#" | "readInt#" => {
-                        Some("Int".to_string())
-                    }
+                    // The desugarer's blind minus keeps its operand's type, so `(-1) / 2 ::
+                    // Double` keys `/` at Double through the literal's record (row 547).
+                    "negate#" => Some(
+                        args_chirho
+                            .first()
+                            .and_then(|operand_chirho| self.infer_type_key_chirho(operand_chirho))
+                            .unwrap_or_else(|| "Int".to_string()),
+                    ),
+                    "+#" | "-#" | "*#" | "div#" | "mod#" | "readInt#" => Some("Int".to_string()),
                     "chr#" => Some("Char".to_string()),
                     "ord#" => Some("Int".to_string()),
                     "+.#" | "-.#" | "*.#" | "/.#" | "negateFloat#" | "recip#" | "readFloat#" => {
