@@ -151,10 +151,10 @@ this list arm is recorded here instead.
 
 ## Constrained builtin aliases and `Data.Map.toList` pairs (row 534, 2026-10-25)
 
-gpt_chirho #28360, #28371. Qualified `Data.Map.fromList` and `Data.Map.toList` exposed two
+gpt_chirho #28360, #28371, #28378. Qualified `Data.Map.fromList` and `Data.Map.toList` exposed two
 orthogonal hops:
 
-1. **Constrained builtin alias canonicalization (`constrained_references_chirho.rs:312-315`).**
+1. **Constrained builtin alias canonicalization (`constrained_references_chirho.rs:313-318`).**
    `seed_builtin_import_aliases_chirho` binds `M.fromList` to `CoreId("mapFromList")`. Because
    `M.fromList :: Ord k => [(k, v)] -> Map k v` is in `constrained_names_chirho`,
    `reference_occurrence_chirho` mints a per-use occurrence id named `"M.fromList"` with canonical
@@ -166,22 +166,39 @@ orthogonal hops:
    defers to the dictionary-parameter call-site path only when
    `dict_param_bindings_chirho.contains_key(canonical_id_chirho)` holds; otherwise it restores
    `*canonical_id_chirho` (`CoreId("mapFromList")`).
-2. **Runtime pair constructor tag (`eval_chirho.rs:4700-4705`).**
+2. **Runtime pair constructor name and registered tag (`eval_chirho.rs:4700-4705`).**
    `MachineChirho::build_pair_list_chirho` allocated 2-tuples under `"(,)"` (`tag = 0`) instead of
-   Core/STG's `"$tuple2"` (`tag = 2` when `[]` and `:` precede `"$tuple2"` in `con_tag_map_chirho`),
-   so both `$prim_Show_show_[(k, v)]` and `fst` failed with `no matching alternative for tag 0`.
-   `build_pair_list_chirho` now looks up and constructs `"$tuple2"`.
+   Core/STG's `"$tuple2"`, so both `$prim_Show_show_[(k, v)]` and `fst` failed with
+   `no matching alternative for tag 0`. `build_pair_list_chirho` now looks up and constructs
+   `"$tuple2"`, matching the shared constructor name and its registered tag in `con_tag_map_chirho`
+   independent of registration order.
 
-- **Controls (`tests/evaluation_values_chirho/data_map_tolist_chirho.rs` and `occurrence_rows_tests_chirho.rs`):**
-  - 7 movers to GHC-exact: `D01` (`[(1,'a'),(2,'b')]`), `M01` (`[(1,10),(2,20)]`), `M02`
-    (`M.insert` + `M.singleton`, isolating Hop B), `M03` (annotated `M.Map Int Char`), `M04`
-    (`String` values), `M05` (`M.size (M.fromList ...)` -> `2`, isolating Hop A), and `M06`
-    (let-bound `map fst (M.toList (M.fromList ...))` -> `[1,2]`).
-  - 2 holds: `M07` (`GHC.Exts.toList [1, 2, 3 :: Int]` -> `[1,2,3]`) and `M08`
-    (`M.size (M.insert 2 "b" (M.fromList [(1, "a")]))` -> `2`, matching `eval_import_data_map_chirho`).
-  - 3 measured boundaries outside this unit: `D02` (`import Data.Map (fromList, toList)`,
-    unqualified explicit import, `STAYS-WRONG` `[(2,'b'),(1,'a')]`), and `T07`/`Q01` (local
-    `toList` binder `CoreId` collision in `resolve_or_fresh_id_chirho`, `STAYS-LOUD`).
+- **Controls (`tests/dictionary_evidence_chirho/data_map_tolist_chirho.rs` and `occurrence_rows_tests_chirho.rs`):**
+  - 4 separately observable tests in `data_map_tolist_chirho.rs` covering 7 movers and 2 holds:
+    - `qualified_data_map_from_list_size_answers_as_ghc_chirho` (Hop A only: `M05`,
+      `M.size (M.fromList ...)` -> `2`, without `M.toList` or pair `Show`);
+    - `qualified_data_map_to_list_insert_answers_as_ghc_chirho` (Hop B only: `M02`,
+      `M.toList (M.insert ... (M.singleton ...))` -> `[(1,"a"),(2,"b")]`, without `M.fromList`);
+    - `qualified_data_map_from_list_and_to_list_answer_as_ghc_chirho` (combined movers: `D01`
+      `[(1,'a'),(2,'b')]`, `M01` `[(1,10),(2,20)]`, `M03` annotated `M.Map Int Char`, `M04`
+      `String` values, and `M06` let-bound `map fst (M.toList (M.fromList ...))` -> `[1,2]`);
+    - `list_to_list_and_insert_from_list_holds_answer_as_ghc_chirho` (2 holds: `M07`
+      `GHC.Exts.toList [1, 2, 3 :: Int]` -> `[1,2,3]` and `M08`
+      `M.size (M.insert 2 "b" (M.fromList [(1, "a")]))` -> `2`). `M08` and the existing
+      `eval_import_data_map_chirho` already print `2` on base `b19f30b8` (`e7b6c69d`) because
+      3-argument `M.insert 2 "b" (...)` enters `try_rewrite_typed_higher_order_args_chirho`; they
+      are exact holds, not restored movers.
+  - 3 measured boundaries outside this unit (unasserted in `data_map_tolist_chirho.rs` for oracle
+    extraction): `D02` (`import Data.Map (fromList, toList)`, unqualified explicit import,
+    `STAYS-WRONG` `[(2,'b'),(1,'a')]`), and `T07`/`Q01` (local `toList` binder `CoreId` collision
+    in `resolve_or_fresh_id_chirho`, `STAYS-LOUD`).
+  - Native boundary: neither `rts-chirho` nor either native backend implements `Data.Map` primops
+    (`LLVM` rejects `mapToList#/1` at compile time, and `Cranelift` lowers unknown primops to `0`
+    and prints `[]`). Row 534 changes neither and does not claim native `Data.Map` coverage.
   - Mutant M1 drops the `dict_param_bindings_chirho.contains_key(canonical_id_chirho)` guard in
-    `occurrence_head_replacement_chirho`; Mutant M2 reverts `"$tuple2"` to `"(,)"` in
-    `build_pair_list_chirho`.
+    `occurrence_head_replacement_chirho`: it fails the Core unit test
+    (`a_builtin_alias_without_dict_params_canonicalizes_despite_reference_evidence_chirho`), the
+    Hop A test (`M05`), and the combined test (`D01`, `M01`, `M03`, `M04`, `M06`), while the Hop B
+    test (`M02`) passes. Mutant M2 reverts `"$tuple2"` to `"(,)"` in `build_pair_list_chirho`: it
+    fails the Hop B test (`M02`) and the combined test, while the Hop A test (`M05`) and the Core
+    unit test pass.
