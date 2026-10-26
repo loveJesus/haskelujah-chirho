@@ -8,6 +8,7 @@
 //! - M4: Data.List.NonEmpty's `toList`, qualified or bare, reaches the dual-shape route;
 //! - M5: Data.Foldable's `toList` reaches the same route;
 //! - the route's list alternatives keep every list value's answer unchanged.
+//!
 //! workflow: language-features-chirho/own-class-method-occurrences-chirho
 
 use super::run_chirho;

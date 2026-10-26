@@ -789,8 +789,8 @@ impl LowerCtxChirho {
         for elem_chirho in node_chirho.children_chirho() {
             let elem_start_chirho = offset_chirho;
             let elem_end_chirho = offset_chirho + elem_chirho.text_len_chirho();
-            match elem_chirho {
-                GreenElementChirho::TokenChirho(tok_chirho) => match tok_chirho.kind_chirho() {
+            if let GreenElementChirho::TokenChirho(tok_chirho) = elem_chirho {
+                match tok_chirho.kind_chirho() {
                     TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                         name_tokens_chirho += 1;
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
@@ -858,8 +858,7 @@ impl LowerCtxChirho {
                         data_namespace_chirho = true;
                     }
                     _ => {}
-                },
-                _ => {}
+                }
             }
             offset_chirho = elem_end_chirho;
         }
