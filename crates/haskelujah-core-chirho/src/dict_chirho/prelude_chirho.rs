@@ -9,6 +9,7 @@ mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
 mod non_empty_chirho;
+pub(super) mod ordering_tests_chirho;
 mod print_via_show_chirho;
 mod report_folds_chirho;
 pub(crate) use non_empty_chirho::TO_LIST_ROUTE_CHIRHO;
@@ -3502,6 +3503,9 @@ impl DictPassCtxChirho {
 
         // ── The report's scanl1, foldl1 and until, over scanl and foldl (row 548) ──
         self.generate_report_folds_prelude_chirho();
+
+        // ── The Ordering tests the compare route reads (row 551) ──
+        self.generate_ordering_tests_prelude_chirho();
 
         // ── Additional list functions: nub, nubBy, group, groupBy, tails, inits ──
         self.generate_list_extra_prelude_chirho();

@@ -17,6 +17,7 @@ use crate::expr_chirho::{
 };
 
 mod call_keys_chirho;
+mod compare_route_chirho;
 mod constrained_references_chirho;
 mod dict_params_chirho;
 mod double_primops_chirho;

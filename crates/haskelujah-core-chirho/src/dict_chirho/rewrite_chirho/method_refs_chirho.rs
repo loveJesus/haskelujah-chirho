@@ -944,36 +944,43 @@ impl DictPassCtxChirho {
                     "showInt#" => Some("Int"),
                     _ => None,
                 };
-                CoreExprChirho::PrimOpChirho {
+                let rewritten_args_chirho: Vec<CoreExprChirho> = args_chirho
+                    .iter()
+                    .map(|a_chirho| {
+                        show_type_key_chirho
+                            .and_then(|type_key_chirho| {
+                                self.rewrite_expr_with_type_key_chirho(
+                                    a_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                    type_key_chirho,
+                                )
+                            })
+                            .unwrap_or_else(|| {
+                                self.rewrite_method_refs_with_locals_chirho(
+                                    a_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                )
+                            })
+                    })
+                    .collect();
+                self.compare_route_chirho(
+                    name_chirho,
+                    args_chirho,
+                    &rewritten_args_chirho,
+                    local_type_keys_chirho,
+                )
+                .unwrap_or_else(|| CoreExprChirho::PrimOpChirho {
                     name_chirho: self
                         .primop_at_double_chirho(name_chirho, args_chirho, local_type_keys_chirho)
                         .map_or_else(|| name_chirho.clone(), str::to_string),
-                    args_chirho: args_chirho
-                        .iter()
-                        .map(|a_chirho| {
-                            show_type_key_chirho
-                                .and_then(|type_key_chirho| {
-                                    self.rewrite_expr_with_type_key_chirho(
-                                        a_chirho,
-                                        dict_vars_chirho,
-                                        evidence_classes_chirho,
-                                        local_type_keys_chirho,
-                                        local_instance_dicts_chirho,
-                                        type_key_chirho,
-                                    )
-                                })
-                                .unwrap_or_else(|| {
-                                    self.rewrite_method_refs_with_locals_chirho(
-                                        a_chirho,
-                                        dict_vars_chirho,
-                                        evidence_classes_chirho,
-                                        local_type_keys_chirho,
-                                        local_instance_dicts_chirho,
-                                    )
-                                })
-                        })
-                        .collect(),
-                }
+                    args_chirho: rewritten_args_chirho,
+                })
             }
             CoreExprChirho::ConAppChirho {
                 con_name_chirho,

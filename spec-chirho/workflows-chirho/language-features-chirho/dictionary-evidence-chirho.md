@@ -59,6 +59,12 @@ flowchart TD
   - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
   - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
   - Controls: `tests/dictionary_evidence_chirho/double_primops_chirho.rs`.
+- Other keys reach their ordering through a body-backed `compare` (row 551, the first Ord brick).
+  - When an operand of the desugarer's `<#`, `<=#`, `>#` or `>=#` keys as anything but Int, Char, Bool or Double, `rewrite_chirho/compare_route_chirho.rs` looks up `$prim_Ord_compare_<key>` with `lookup_dispatch_body_name_id_chirho`. That lookup accepts a body-backed row and never a missing-method stub.
+  - If found, the primop becomes `test (compare a b)`, with one of the Ordering tests generated in `prelude_chirho/ordering_tests_chirho.rs`.
+  - That serves Strings, lists, derived types and Ordering.
+  - A key without such a row keeps the primop: `Maybe`, tuples. `max`, `min` and prefix `(<)` are later bricks.
+  - Controls: `tests/dictionary_evidence_chirho/compare_route_chirho.rs`.
 
 ## Reference evidence (bricks 3 and 4)
 

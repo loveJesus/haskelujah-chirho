@@ -13,6 +13,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
+#[path = "dictionary_evidence_chirho/compare_route_chirho.rs"]
+mod compare_route_chirho;
 #[path = "dictionary_evidence_chirho/derived_show_chirho.rs"]
 mod derived_show_chirho;
 #[path = "dictionary_evidence_chirho/double_primops_chirho.rs"]
