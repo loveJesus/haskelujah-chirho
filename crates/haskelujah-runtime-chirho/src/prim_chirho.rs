@@ -55,6 +55,33 @@ pub fn apply_prim_binop_chirho(
         PrimOpKindChirho::AddIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::IntChirho(a_chirho.wrapping_add(b_chirho)))
         }),
+        // `enumStepChirho#` is native integer addition, but the interpreter
+        // retains the dynamic representation of its current Enum value. This
+        // lets the shared lazy bounded-range functions serve Int and Char
+        // without leaking raw scalar integers into `[Char]`.
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        PrimOpKindChirho::EnumStepChirho => match (left_chirho, right_chirho) {
+            (ValueChirho::IntChirho(value_chirho), ValueChirho::IntChirho(step_chirho)) => Ok(
+                ValueChirho::IntChirho(value_chirho.wrapping_add(*step_chirho)),
+            ),
+            (ValueChirho::CharChirho(value_chirho), ValueChirho::IntChirho(step_chirho)) => {
+                let scalar_chirho = i64::from(u32::from(*value_chirho)).wrapping_add(*step_chirho);
+                u32::try_from(scalar_chirho)
+                    .ok()
+                    .and_then(char::from_u32)
+                    .map(ValueChirho::CharChirho)
+                    .ok_or_else(|| PrimErrorChirho::TypeMismatchChirho {
+                        op_chirho,
+                        expected_chirho: "a representable Char enumeration result",
+                        got_chirho: scalar_chirho.to_string(),
+                    })
+            }
+            _ => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "an Int or Char and an Int step",
+                got_chirho: format!("({left_chirho}, {right_chirho})"),
+            }),
+        },
         PrimOpKindChirho::SubIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::IntChirho(a_chirho.wrapping_sub(b_chirho)))
         }),
@@ -861,6 +888,28 @@ mod tests_chirho {
             &ValueChirho::IntChirho(4),
         );
         assert_eq!(r_chirho.unwrap(), ValueChirho::IntChirho(7));
+    }
+
+    #[test]
+    fn enum_step_preserves_the_runtime_value_kind_chirho() {
+        assert_eq!(
+            apply_prim_binop_chirho(
+                PrimOpKindChirho::EnumStepChirho,
+                &ValueChirho::IntChirho(3),
+                &ValueChirho::IntChirho(2),
+            )
+            .unwrap(),
+            ValueChirho::IntChirho(5)
+        );
+        assert_eq!(
+            apply_prim_binop_chirho(
+                PrimOpKindChirho::EnumStepChirho,
+                &ValueChirho::CharChirho('c'),
+                &ValueChirho::IntChirho(-2),
+            )
+            .unwrap(),
+            ValueChirho::CharChirho('a')
+        );
     }
 
     #[test]

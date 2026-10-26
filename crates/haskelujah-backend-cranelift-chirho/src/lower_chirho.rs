@@ -2374,7 +2374,7 @@ pub fn lower_primop_chirho(
                 .runtime_calls_chirho
                 .map_size_chirho(builder_chirho, map_chirho)
         }
-        "+#" => {
+        "+#" | "enumStepChirho#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
             builder_chirho.ins().iadd(lhs_chirho, rhs_chirho)

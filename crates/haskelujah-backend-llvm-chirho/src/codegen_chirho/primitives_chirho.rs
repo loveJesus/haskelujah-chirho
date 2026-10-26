@@ -105,7 +105,7 @@ impl LlvmCodegenChirho {
             }
             let tmp_chirho = self.fresh_tmp_chirho();
             let op_chirho = match name_chirho {
-                "+#" => "add",
+                "+#" | "enumStepChirho#" => "add",
                 "-#" => "sub",
                 "*#" => "mul",
                 "div#" | "divInt#" => {

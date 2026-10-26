@@ -164,3 +164,34 @@ fn surrogate_crossings_stay_a_named_runtime_boundary_everywhere_chirho() {
         );
     }
 }
+
+#[test]
+fn bounded_char_sequences_keep_char_values_everywhere_chirho() {
+    let program_chirho = r#"module Main where
+boundedChirho :: Char -> Char -> String
+boundedChirho = enumFromTo
+steppedChirho :: Char -> Char -> Char -> String
+steppedChirho = enumFromThenTo
+main :: IO ()
+main = do
+  print (map fromEnum (['a' .. 'e'] :: [Char]))
+  print (last (['a' .. 'e'] :: [Char]))
+  let lowChirho = 'b'
+      highChirho = 'd'
+  print (map fromEnum ([lowChirho .. highChirho] :: [Char]))
+  print (map fromEnum (['e', 'c' .. 'a'] :: [Char]))
+  print (map fromEnum (['a', 'c' .. 'f'] :: [Char]))
+  print (map fromEnum (['e' .. 'a'] :: [Char]))
+  print (map fromEnum (['a', 'c' .. 'b'] :: [Char]))
+  print (map fromEnum (boundedChirho 'm' 'p'))
+  print (map fromEnum (steppedChirho 'z' 'x' 't'))
+  print ([1 .. 5] :: [Int])
+"#;
+    let ghc_chirho = "[97,98,99,100,101]\n'e'\n[98,99,100]\n[101,99,97]\n[97,99,101]\n[]\n[97]\n[109,110,111,112]\n[122,120,118,116]\n[1,2,3,4,5]\n";
+
+    assert_eq!(
+        run_chirho("CharEnumRangesChirho.hs", program_chirho),
+        ghc_chirho
+    );
+    assert_native_chirho("CharEnumRangesChirho.hs", program_chirho, ghc_chirho);
+}

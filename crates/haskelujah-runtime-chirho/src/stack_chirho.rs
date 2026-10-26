@@ -90,6 +90,8 @@ pub enum PrimOpKindChirho {
     /// Classify a demanded runtime value without treating immediate bits as addresses.
     IsHeapObjectChirho,
     AddIntChirho,
+    /// Add an enumeration step while preserving an Int or Char runtime value.
+    EnumStepChirho,
     SubIntChirho,
     MulIntChirho,
     DivIntChirho,

@@ -36,6 +36,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
     Some(match name_chirho {
         "isHeapObjectChirho#" => PrimOpKindChirho::IsHeapObjectChirho,
         "+#" => PrimOpKindChirho::AddIntChirho,
+        "enumStepChirho#" => PrimOpKindChirho::EnumStepChirho,
         "-#" => PrimOpKindChirho::SubIntChirho,
         "*#" => PrimOpKindChirho::MulIntChirho,
         "div#" => PrimOpKindChirho::DivIntChirho,

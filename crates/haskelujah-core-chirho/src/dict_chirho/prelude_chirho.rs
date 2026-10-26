@@ -17017,7 +17017,7 @@ impl DictPassCtxChirho {
     /// ```text
     /// enumFrom n       = n : enumFrom (n +# 1)
     /// enumFromThen a b = a : enumFromThen b (2*b - a)
-    /// enumFromTo n to  = case n ># to of { True -> []; False -> n : enumFromTo (n+#1) to }
+    /// enumFromTo n to  = case n ># to of { True -> []; False -> n : enumFromTo (enumStepChirho# n 1) to }
     /// enumFromThenTo a b to = let step = b -# a in go a step to
     ///   where go n s to | s >= 0    = if n > to then [] else n : go (n+s) s to
     ///                   | otherwise = if n < to then [] else n : go (n+s) s to
@@ -17154,7 +17154,7 @@ impl DictPassCtxChirho {
             );
 
             let n_plus_1_chirho = prim_bin_chirho(
-                "+#",
+                "enumStepChirho#",
                 CoreExprChirho::VarChirho(n_chirho.id_chirho),
                 CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
             );
@@ -17251,15 +17251,14 @@ impl DictPassCtxChirho {
 
             // a +# step = a +# (b -# a) = b
             let next_a_chirho = CoreExprChirho::VarChirho(b_chirho.id_chirho);
-            // a +# 2*step = 2*b - a
+            // b + step preserves the current Enum representation: Int stays
+            // Int, while Char stays Char in the interpreter. Native values are
+            // scalar words, so every backend lowers this as integer addition.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
             let next_b_chirho = prim_bin_chirho(
-                "-#",
-                prim_bin_chirho(
-                    "*#",
-                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2)),
-                    CoreExprChirho::VarChirho(b_chirho.id_chirho),
-                ),
-                CoreExprChirho::VarChirho(a_chirho.id_chirho),
+                "enumStepChirho#",
+                CoreExprChirho::VarChirho(b_chirho.id_chirho),
+                step_chirho.clone(),
             );
 
             let recurse_chirho = CoreExprChirho::AppChirho {

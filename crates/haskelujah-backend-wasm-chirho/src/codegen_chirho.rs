@@ -566,21 +566,21 @@ fn emit_expr_chirho(
                 emit_expr_chirho(buf_chirho, &args_chirho[0], ctx_chirho);
                 emit_expr_chirho(buf_chirho, &args_chirho[1], ctx_chirho);
                 let opcode_chirho = match name_chirho.as_str() {
-                    "+#" => 0x7C_u8, // i64.add
-                    "-#" => 0x7D,    // i64.sub
-                    "*#" => 0x7E,    // i64.mul
-                    "div#" => 0x7F,  // i64.div_s
-                    "mod#" => 0x81,  // i64.rem_s
-                    "quot#" => 0x7F, // i64.div_s (same as div for integers)
-                    "rem#" => 0x81,  // i64.rem_s
-                    "==#" => 0x51,   // i64.eq
-                    "/=#" => 0x52,   // i64.ne
-                    "<#" => 0x53,    // i64.lt_s
-                    "<=#" => 0x57,   // i64.le_s
-                    ">#" => 0x55,    // i64.gt_s
-                    ">=#" => 0x59,   // i64.ge_s
-                    "^#" => 0x7C,    // fallback (no native wasm pow)
-                    _ => 0x7C,       // fallback: i64.add
+                    "+#" | "enumStepChirho#" => 0x7C_u8, // i64.add
+                    "-#" => 0x7D,                        // i64.sub
+                    "*#" => 0x7E,                        // i64.mul
+                    "div#" => 0x7F,                      // i64.div_s
+                    "mod#" => 0x81,                      // i64.rem_s
+                    "quot#" => 0x7F,                     // i64.div_s (same as div for integers)
+                    "rem#" => 0x81,                      // i64.rem_s
+                    "==#" => 0x51,                       // i64.eq
+                    "/=#" => 0x52,                       // i64.ne
+                    "<#" => 0x53,                        // i64.lt_s
+                    "<=#" => 0x57,                       // i64.le_s
+                    ">#" => 0x55,                        // i64.gt_s
+                    ">=#" => 0x59,                       // i64.ge_s
+                    "^#" => 0x7C,                        // fallback (no native wasm pow)
+                    _ => 0x7C,                           // fallback: i64.add
                 };
                 buf_chirho.push(opcode_chirho);
             } else if args_chirho.len() == 1 && matches!(name_chirho.as_str(), "chr#" | "ord#") {

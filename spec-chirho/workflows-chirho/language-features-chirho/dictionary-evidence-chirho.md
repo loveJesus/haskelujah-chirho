@@ -51,6 +51,20 @@ flowchart TD
   - It used to answer `Int` by name. So a method keyed from its first argument, as `/` is, missed the Fractional row whenever that argument was a literal: `1 / 2 :: Double`, a Double signature, and `7 / 2` under defaulting.
   - The interpreter then failed with `missing STG binding /`, and the native backends with `missing native binding /`.
   - Controls: `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
+- The shared lazy bounded-range bindings preserve the runtime kind of their current Enum value
+  when advancing it (row 569).
+  - `enumFromTo` and `enumFromThenTo` are generated once for the current Int/Char representation.
+    Their recursive advance uses `enumStepChirho#`: an Int plus a step remains Int, while the
+    interpreter turns a Char plus a step back into Char. LLVM, Cranelift and Wasm lower the same
+    primitive as integer addition because native Char values already are scalar words.
+  - Before this, the first element of a bounded Char range was a Char literal and each recursive
+    successor was an Int. `last ['a'..'e']` therefore returned `101`, and consumers saw a mixed
+    list. The new step changes no list or String representation and does not claim the separate
+    native Show-String boundary.
+  - Unbounded ranges still use their existing `+#` step. A non-scalar Char result fails by name in
+    the interpreter; representing GHC surrogate Chars remains a separate boundary.
+  - Controls: `tests/dictionary_evidence_chirho/enum_occurrences_chirho.rs` and the primitive unit
+    test `enum_step_preserves_the_runtime_value_kind_chirho`.
 - The desugarer's blind Int primops take the float primop at a Double operand (row 547).
   - Infix and section `<`, `<=`, `>` and `>=` become `<#`, `<=#`, `>#` and `>=#` before any type is known. So does a prefix minus on an operand that is not a float literal, which becomes `negate#`.
   - `rewrite_method_refs_with_locals_chirho` gives such a primop its float counterpart when an operand keys as Double: binder types, type applications and literal records. The rule is `rewrite_chirho/double_primops_chirho.rs`.
