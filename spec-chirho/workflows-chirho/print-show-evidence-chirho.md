@@ -48,6 +48,9 @@ flowchart TD
 - The dictionary pass rewrites only when the exact generated `Show` binding exists.
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.
+- `ShowFloatChirho` gives non-finite `Double` values GHC's exact spellings: `NaN`, `Infinity`,
+  and `-Infinity`. Finite values retain the existing renderer; selecting GHC's scientific
+  notation for very large or small finite values is a separate boundary.
 - The RTS records allocation kind out of band before interpreting thunk headers; constructor
   payload bits cannot masquerade as thunk state.
 - String append owns borrowed input bytes before any allocation that can trigger collection.

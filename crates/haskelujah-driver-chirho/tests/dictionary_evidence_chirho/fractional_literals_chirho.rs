@@ -66,15 +66,29 @@ fn integer_literals_divide_at_double_everywhere_chirho() {
     }
 }
 
-/// Native only: the interpreter now divides too, but its `show` prints NaN as
-/// `NaN.0` (a residual outside row 543).
 #[test]
-fn integer_literal_nan_divides_natively_chirho() {
-    assert_native_chirho(
-        "D01LitDivChirho.hs",
-        "module Main where\nmain :: IO ()\nmain = print (0 / 0 :: Double)\n",
-        "NaN\n",
-    );
+fn integer_literal_non_finite_values_render_in_the_interpreter_chirho() {
+    for (file_name_chirho, expression_chirho, ghc_chirho) in [
+        ("D01NaNChirho.hs", "0 / 0", "NaN\n"),
+        ("D01InfinityChirho.hs", "1 / 0", "Infinity\n"),
+        (
+            "D01NegativeInfinityChirho.hs",
+            "negate (1 / 0 :: Double)",
+            "-Infinity\n",
+        ),
+    ] {
+        let program_chirho = format!(
+            "module Main where\nmain :: IO ()\nmain = print ({expression_chirho} :: Double)\n"
+        );
+        assert_eq!(
+            run_chirho(file_name_chirho, &program_chirho),
+            ghc_chirho,
+            "{file_name_chirho} interpreter"
+        );
+        if expression_chirho == "0 / 0" {
+            assert_native_chirho(file_name_chirho, &program_chirho, ghc_chirho);
+        }
+    }
 }
 
 /// A literal the checker solved at Int still dispatches at Int.
