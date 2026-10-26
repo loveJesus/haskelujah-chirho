@@ -75,6 +75,19 @@ The branch starts from main_chirho `b4041964`. Main's tip `90ee1434` is crates-i
 - [x] Generate the helpers, add the evidence names, add the rewrite and its applied-head hook.
 - [x] Probes E1-E21 on the candidate: every routed key exact everywhere, holds and residuals unchanged.
 - [x] Controls measured on GHC as written; the dictionary-evidence suite is 91/91.
-- [ ] Reach mutation with only the extremum hook reverted, and a corpus reach measurement.
-- [ ] Commit, rebase onto current main, run the warm gate, and record it.
+- [x] Reach mutation with only the extremum hook reverted (`.or_else(...evidenced_extremum_chirho...)`):
+  - the mover program and T11 fail;
+  - the Int-shaped holds, the residuals and row 551's residual list pass;
+  - the probes go back to `LeIntChirho`;
+  - the restore is byte-identical, core recompiled, and the tree is clean.
+- [x] Corpus reach: 3 `ghc-tests-chirho` programs use the extrema (T079, T267, T268), all at Int. They match GHC before and after.
+- [x] Commit (`e873a791` on `90ee1434`) and run gate r1.
+  - **r1 was RED at the judge, on A01GcdLcmChirho alone.**
+  - That is row 564's move. The program is `print (gcd 12 (18 :: Int), lcm 4 (6 :: Int))`, with no extrema. The interpreter and both natives now print GHC's `(6,12)`, after `c4575ebd`, which landed after this contract copy was made.
+  - The copy now records A01 as EXACT on all three engines.
+  - Main `51fe6e2c` itself, judged against the updated copy, is GREEN at 126/126.
+- [x] Rebase onto `6ba58d57` (rows 558 and 520). No path is shared with either.
+  - No contract program uses Enum conversions.
+  - E22, `(foldr1 max ["b","c","a"], foldl1 min [2.5, 1.5])`, gives ("c",1.5) and is exact everywhere.
+- [ ] Run the warm gate on the rebased tip and record it.
 - [ ] Land on main and close progress row 565.
