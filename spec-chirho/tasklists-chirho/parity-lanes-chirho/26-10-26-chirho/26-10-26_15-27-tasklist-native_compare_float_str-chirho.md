@@ -86,4 +86,8 @@ It follows row 535 C10 (`a14baa14`): the Ordering is LT when less, EQ when equal
   - The CLI hash was `63f73219…` both before and after the contract pass.
 - **Over the bar.** 450 s exceeds the 2–5 minute target.
   - Almost all of it is the contract pass, which runs its 41 programs sequentially, at a load average between 55 and 100 from the fleet's concurrent gates.
-  - The next run should parallelize it per program.
+- **Gate r3 (`gate-r3-chirho`): GREEN in 180.83 s,** on the same tip `1c3da475`, inside the bar. Two changes from r2:
+  - **One nextest run.** The focused set (r2's suites and filter, with the same scale-test skip) runs in a single `cargo nextest` invocation. It ran 395 of 395 in 133.97 s, exactly r2's 48 + 10 + 1 + 38 + 42 + 130 + 126.
+  - **A parallel contract pass, 8 jobs, in 42.51 s.** It uses `run_contract_parallel_chirho.zsh`, whose per-row commands and files are the serial runner's.
+    - Checked on one CLI binary: 531 of 533 result files are byte-identical to r2's serial run. The other two are interpreter failure lines differing only in a heap address (`@2127` vs `@2126`), which the judge normalizes.
+  - The judge gave 126/126 again, with the same 68 movers and 14 holds.
