@@ -66,7 +66,8 @@ const ERROR_WITHOUT_STACK_TRACE_CHIRHO: &str =
 const MISSING_METHOD_CHIRHO: &str =
     "module Main where\nmain :: IO ()\nmain = print (mapM (\\x -> Just (x + 1)) [1, 2 :: Int])\n";
 
-/// R5, A01: no compiled alternative matches. GHC: `(6,12)`.
+/// R5, A01: GHC prints `(6,12)`. Row 564 gave `gcd` and `lcm` their Integral
+/// schemes, so the tuple's Show evidence keeps both payload types.
 const NO_MATCH_CHIRHO: &str =
     "module Main where\nmain :: IO ()\nmain = print (gcd 12 (18 :: Int), lcm 4 (6 :: Int))\n";
 
@@ -484,14 +485,9 @@ fn multi_pair_map_size_fails_named_natively_chirho() {
     }
 }
 
-// ── R5: no matching alternative fails named ───────────────────────────────
+// ── R5: Integral results keep their tuple evidence ────────────────────────
 
 #[test]
-fn no_matching_alternative_fails_named_on_llvm_chirho() {
-    assert_fails_named_chirho(LLVM_CHIRHO, NO_MATCH_CHIRHO, "no matching alternative");
-}
-
-#[test]
-fn no_matching_alternative_fails_named_on_cranelift_chirho() {
-    assert_fails_named_chirho(CRANELIFT_CHIRHO, NO_MATCH_CHIRHO, "no matching alternative");
+fn gcd_and_lcm_pair_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(NO_MATCH_CHIRHO, "(6,12)\n");
 }

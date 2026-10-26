@@ -1,7 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 //! Builtin type seeds, part 08 of 14: original lines 14433-15382 of
-//! `seed_builtins_chirho`, in order (47 named binds).
+//! `seed_builtins_chirho`, in order (49 named binds).
 
 use crate::env_chirho::TyEnvChirho;
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
@@ -956,5 +956,29 @@ pub(super) fn seed_part_08_chirho(env_chirho: &mut TyEnvChirho) {
         };
         env_chirho.bind_chirho("even".to_string(), scheme_chirho.clone());
         env_chirho.bind_chirho("odd".to_string(), scheme_chirho);
+    }
+
+    // gcd, lcm :: forall a. Integral a => a -> a -> a
+    // Their generated Prelude bodies already preserve the operand type. The
+    // schemes keep that proof visible to downstream occurrence evidence too.
+    {
+        let integral_v_chirho = TyVarChirho(2212);
+        let scheme_chirho = SchemeChirho {
+            vars_chirho: vec![integral_v_chirho],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Integral".to_string(),
+                ty_chirho: TyChirho::VarChirho(integral_v_chirho),
+                extra_tys_chirho: vec![],
+            }],
+            ty_chirho: TyChirho::fun_n_chirho(
+                vec![
+                    TyChirho::VarChirho(integral_v_chirho),
+                    TyChirho::VarChirho(integral_v_chirho),
+                ],
+                TyChirho::VarChirho(integral_v_chirho),
+            ),
+        };
+        env_chirho.bind_chirho("gcd".to_string(), scheme_chirho.clone());
+        env_chirho.bind_chirho("lcm".to_string(), scheme_chirho);
     }
 }

@@ -6,6 +6,8 @@ mod part_05_chirho;
 mod part_06_chirho;
 mod part_07_chirho;
 mod part_08_chirho;
+#[cfg(test)]
+mod part_08_tests_chirho;
 
 use crate::env_chirho::TyEnvChirho;
 

@@ -5,6 +5,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 #[path = "evaluation_values_chirho/element_failures_chirho.rs"]
 mod element_failures_chirho;
+#[path = "evaluation_values_chirho/gcd_lcm_chirho.rs"]
+mod gcd_lcm_chirho;
 #[path = "evaluation_values_chirho/lines_chirho.rs"]
 mod lines_chirho;
 

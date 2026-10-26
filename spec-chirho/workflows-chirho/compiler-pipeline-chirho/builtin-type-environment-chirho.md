@@ -65,6 +65,17 @@ flowchart TD
   - `guard` and the other non-Prelude bare seeds keep the old route.
   - Neither `join` nor `&` has a runtime implementation yet.
 
+## Prelude numeric functions with generated bodies
+
+- `gcd` and `lcm` have generated Core bodies and the public type `Integral a => a -> a -> a`.
+  Their builtin schemes must name that same type. A placeholder scheme allowed each argument and
+  the result to float independently, so `print (gcd 12 (18 :: Int), lcm 4 (6 :: Int))` recorded
+  only `Show (,)`; all engines then reached the canonical print route instead of `Show (Int,Int)`.
+- The schemes make the typed operand resolve the result before occurrence evidence is finalized.
+  The dictionary pass therefore receives the concrete tuple key without a print-specific fallback.
+- Controls cover each exact scheme, positive/negative/zero/coprime/first-class results in the
+  interpreter, and the former R5 pair on the interpreter, LLVM and Cranelift (row 564).
+
 ## Unbound constructors
 
 - When an `ExprChirho::ConChirho` finds no scheme, it gets a fresh type variable and no diagnostic. Class predicates on that variable stay unresolved through `check_deferred_preds_chirho`.
