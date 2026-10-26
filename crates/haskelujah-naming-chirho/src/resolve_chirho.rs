@@ -20,9 +20,10 @@ use crate::env_chirho::{NameEnvChirho, NamespaceChirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 use crate::type_exports_chirho::{canonical_type_name_chirho, canonical_value_name_chirho};
 use crate::type_scope_chirho::check_module_type_scope_chirho;
+use crate::value_scope_chirho::check_module_value_scope_chirho;
 
 /// Error codes for name resolution diagnostics.
-const UNDEFINED_VALUE_CODE_CHIRHO: u16 = 100;
+pub(crate) const UNDEFINED_VALUE_CODE_CHIRHO: u16 = 100;
 pub(crate) const UNDEFINED_TYPE_CODE_CHIRHO: u16 = 101;
 const UNKNOWN_MODULE_CODE_CHIRHO: u16 = 102;
 
@@ -240,6 +241,19 @@ pub fn resolve_module_with_imports_chirho(
     // the causal import diagnostic instead of cascading guessed scope errors.
     if !diagnostics_chirho.has_errors_chirho() {
         check_module_type_scope_chirho(
+            module_chirho,
+            &env_chirho,
+            available_modules_chirho,
+            &mut diagnostics_chirho,
+        );
+    }
+
+    // Workflow: spec-chirho/workflows-chirho/compiler-pipeline-chirho/
+    // value-scope-resolution-chirho.md. Qualified value uses are then checked
+    // against the explicit import lists that close their qualifier, so no
+    // later phase can stand a bare binding in for one a list leaves out.
+    if !diagnostics_chirho.has_errors_chirho() {
+        check_module_value_scope_chirho(
             module_chirho,
             &env_chirho,
             available_modules_chirho,

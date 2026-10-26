@@ -20,6 +20,7 @@ pub mod iface_chirho;
 pub mod resolve_chirho;
 mod type_exports_chirho;
 mod type_scope_chirho;
+mod value_scope_chirho;
 
 pub use env_chirho::NameEnvChirho;
 pub use iface_chirho::{
