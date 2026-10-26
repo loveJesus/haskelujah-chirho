@@ -120,7 +120,7 @@ impl RuntimeCallsChirho {
                 module_chirho,
                 function_chirho,
                 "haskelujah_map_from_list_chirho",
-                1,
+                2,
                 true,
             )?,
             map_size_chirho: import_chirho(
@@ -191,10 +191,11 @@ impl RuntimeCallsChirho {
         &self,
         builder_chirho: &mut FunctionBuilder<'_>,
         list_chirho: Value,
+        pair_tag_chirho: Value,
     ) -> Value {
         let call_chirho = builder_chirho
             .ins()
-            .call(self.map_from_list_chirho, &[list_chirho]);
+            .call(self.map_from_list_chirho, &[list_chirho, pair_tag_chirho]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 

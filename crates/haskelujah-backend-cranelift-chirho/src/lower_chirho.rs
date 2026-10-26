@@ -2351,9 +2351,15 @@ pub fn lower_primop_chirho(
         }
         "mapFromList#" => {
             let list_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
-            ctx_chirho
-                .runtime_calls_chirho
-                .map_from_list_chirho(builder_chirho, list_chirho)
+            let pair_tag_chirho = builder_chirho.ins().iconst(
+                cl_types_chirho::I64,
+                i64::from(con_tag_for_chirho("$tuple2")),
+            );
+            ctx_chirho.runtime_calls_chirho.map_from_list_chirho(
+                builder_chirho,
+                list_chirho,
+                pair_tag_chirho,
+            )
         }
         "mapSize#" => {
             let map_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
@@ -3708,7 +3714,6 @@ pub fn con_tag_for_chirho(name_chirho: &str) -> u32 {
         "()" | "$tuple0" => 0,
         // Every tuple type has one constructor, including the Core-internal spelling.
         "(,)" | "(,,)" => 0,
-        _ if name_chirho.starts_with("$tuple") => 0,
         _ => {
             // Stable hash for unknown constructors (fnv-1a style, 32-bit).
             let mut hash_chirho: u32 = 2166136261;
@@ -3743,8 +3748,8 @@ mod tests_chirho {
         assert_eq!(con_tag_for_chirho("GT"), 2);
         assert_eq!(con_tag_for_chirho("[]"), 0);
         assert_eq!(con_tag_for_chirho(":"), 1);
-        assert_eq!(con_tag_for_chirho("$tuple2"), 0);
-        assert_eq!(con_tag_for_chirho("$tuple3"), 0);
+        assert_ne!(con_tag_for_chirho("$tuple2"), 0);
+        assert_ne!(con_tag_for_chirho("$tuple2"), con_tag_for_chirho("$tuple3"));
     }
 
     #[test]

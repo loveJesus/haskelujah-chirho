@@ -17,7 +17,6 @@ use super::{
 const CONSTRUCTOR_WORDS_CHIRHO: usize = 3;
 const LIST_NIL_TAG_CHIRHO: u64 = 0;
 const LIST_CONS_TAG_CHIRHO: u64 = 1;
-const TUPLE_TAG_CHIRHO: u64 = 0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum NativeListNodeChirho {
@@ -98,11 +97,12 @@ fn list_node_chirho(
 fn validate_pair_chirho(
     runtime_chirho: &NativeGcRuntimeChirho,
     pair_bits_chirho: u64,
+    expected_pair_tag_chirho: u64,
 ) -> Result<(), NativeMapErrorChirho> {
     let address_chirho =
         plain_allocation_address_chirho(runtime_chirho, pair_bits_chirho, CONSTRUCTOR_WORDS_CHIRHO)
             .ok_or(NativeMapErrorChirho::INVALID_PAIR_CHIRHO)?;
-    if unsafe { (address_chirho as *const u64).read() } != TUPLE_TAG_CHIRHO {
+    if unsafe { (address_chirho as *const u64).read() } != expected_pair_tag_chirho {
         return Err(NativeMapErrorChirho::INVALID_PAIR_CHIRHO);
     }
     Ok(())
@@ -130,6 +130,7 @@ fn singleton_map_from_parts_chirho(
     runtime_chirho: &mut NativeGcRuntimeChirho,
     pair_bits_chirho: u64,
     tail_bits_chirho: u64,
+    expected_pair_tag_chirho: u64,
 ) -> Result<u64, NativeMapErrorChirho> {
     match list_node_chirho(runtime_chirho, tail_bits_chirho)? {
         NativeListNodeChirho::NilChirho => {}
@@ -137,7 +138,7 @@ fn singleton_map_from_parts_chirho(
             return Err(NativeMapErrorChirho::MULTIPLE_PAIRS_CHIRHO);
         }
     }
-    validate_pair_chirho(runtime_chirho, pair_bits_chirho)?;
+    validate_pair_chirho(runtime_chirho, pair_bits_chirho, expected_pair_tag_chirho)?;
     Ok(allocate_singleton_map_chirho(
         runtime_chirho,
         pair_bits_chirho,
@@ -148,6 +149,7 @@ fn singleton_map_from_parts_chirho(
 fn map_from_list_whnf_in_runtime_chirho(
     runtime_chirho: &mut NativeGcRuntimeChirho,
     list_bits_chirho: u64,
+    expected_pair_tag_chirho: u64,
 ) -> Result<u64, NativeMapErrorChirho> {
     match list_node_chirho(runtime_chirho, list_bits_chirho)? {
         NativeListNodeChirho::NilChirho => Ok(0),
@@ -155,7 +157,12 @@ fn map_from_list_whnf_in_runtime_chirho(
             head_chirho,
             tail_chirho,
             ..
-        } => singleton_map_from_parts_chirho(runtime_chirho, head_chirho, tail_chirho),
+        } => singleton_map_from_parts_chirho(
+            runtime_chirho,
+            head_chirho,
+            tail_chirho,
+            expected_pair_tag_chirho,
+        ),
     }
 }
 
@@ -198,7 +205,10 @@ fn pop_root_chirho() {
 /// `mapFromList#`: preserve the exact empty/singleton list representation.
 /// A second pair remains a named boundary until native code receives `Ord k`.
 #[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_map_from_list_chirho(list_bits_chirho: u64) -> u64 {
+pub extern "C" fn haskelujah_map_from_list_chirho(
+    list_bits_chirho: u64,
+    expected_pair_tag_chirho: u64,
+) -> u64 {
     push_root_chirho(list_bits_chirho);
     let list_whnf_chirho = haskelujah_enter_thunk_chirho(list_bits_chirho);
     let node_chirho = {
@@ -218,6 +228,7 @@ pub extern "C" fn haskelujah_map_from_list_chirho(list_bits_chirho: u64) -> u64 
                 &mut native_gc_runtime_lock_chirho(),
                 pair_whnf_chirho,
                 tail_whnf_chirho,
+                expected_pair_tag_chirho,
             )
         }
         Err(error_chirho) => Err(error_chirho),
@@ -268,6 +279,8 @@ pub extern "C" fn haskelujah_map_size_chirho(map_bits_chirho: u64) -> u64 {
 mod tests_chirho {
     use super::*;
 
+    const TEST_TUPLE_TAG_CHIRHO: u64 = 0x5455_504c;
+
     fn allocate_constructor_chirho(
         runtime_chirho: &mut NativeGcRuntimeChirho,
         tag_chirho: u64,
@@ -284,22 +297,26 @@ mod tests_chirho {
     }
 
     fn pair_chirho(runtime_chirho: &mut NativeGcRuntimeChirho, key_chirho: u64) -> u64 {
-        allocate_constructor_chirho(runtime_chirho, TUPLE_TAG_CHIRHO, key_chirho, 99)
+        allocate_constructor_chirho(runtime_chirho, TEST_TUPLE_TAG_CHIRHO, key_chirho, 99)
     }
 
     #[test]
     fn empty_and_singleton_lists_become_bounded_native_maps_chirho() {
         let mut runtime_chirho = NativeGcRuntimeChirho::default();
         assert_eq!(
-            map_from_list_whnf_in_runtime_chirho(&mut runtime_chirho, 0),
+            map_from_list_whnf_in_runtime_chirho(&mut runtime_chirho, 0, TEST_TUPLE_TAG_CHIRHO,),
             Ok(0)
         );
 
         let pair_chirho = pair_chirho(&mut runtime_chirho, 1);
         let source_chirho =
             allocate_constructor_chirho(&mut runtime_chirho, LIST_CONS_TAG_CHIRHO, pair_chirho, 0);
-        let map_chirho = map_from_list_whnf_in_runtime_chirho(&mut runtime_chirho, source_chirho)
-            .expect("the singleton needs no key comparison");
+        let map_chirho = map_from_list_whnf_in_runtime_chirho(
+            &mut runtime_chirho,
+            source_chirho,
+            TEST_TUPLE_TAG_CHIRHO,
+        )
+        .expect("the singleton needs no key comparison");
         assert_ne!(map_chirho, source_chirho, "the map owns a fresh spine");
         assert_eq!(
             map_size_whnf_in_runtime_chirho(&runtime_chirho, map_chirho),
@@ -334,7 +351,11 @@ mod tests_chirho {
             tail_chirho,
         );
         assert_eq!(
-            map_from_list_whnf_in_runtime_chirho(&mut runtime_chirho, two_chirho),
+            map_from_list_whnf_in_runtime_chirho(
+                &mut runtime_chirho,
+                two_chirho,
+                TEST_TUPLE_TAG_CHIRHO,
+            ),
             Err(NativeMapErrorChirho::MULTIPLE_PAIRS_CHIRHO)
         );
 
@@ -347,7 +368,11 @@ mod tests_chirho {
             0,
         );
         assert_eq!(
-            map_from_list_whnf_in_runtime_chirho(&mut runtime_chirho, malformed_chirho),
+            map_from_list_whnf_in_runtime_chirho(
+                &mut runtime_chirho,
+                malformed_chirho,
+                TEST_TUPLE_TAG_CHIRHO,
+            ),
             Err(NativeMapErrorChirho::INVALID_PAIR_CHIRHO)
         );
     }

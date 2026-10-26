@@ -3,7 +3,7 @@
 //! Primitive lowering preserves operation identity; no unknown operation becomes
 //! addition or zero. Scalar operands cross the WHNF boundary before use.
 
-use super::{CoreExprChirho, LlvmCodegenChirho};
+use super::{CoreExprChirho, LlvmCodegenChirho, constructor_tag_chirho};
 use std::fmt::Write;
 
 impl LlvmCodegenChirho {
@@ -162,10 +162,18 @@ impl LlvmCodegenChirho {
                 "mapSize#" => "haskelujah_map_size_chirho",
                 _ => unreachable!("the primitive set above is exhaustive"),
             };
+            let runtime_args_chirho = if name_chirho == "mapFromList#" {
+                format!(
+                    "i64 {operand_chirho}, i64 {}",
+                    constructor_tag_chirho("$tuple2")
+                )
+            } else {
+                format!("i64 {operand_chirho}")
+            };
             let result_chirho = self.fresh_tmp_chirho();
             writeln!(
                 self.output_chirho,
-                "  {result_chirho} = call i64 @{runtime_name_chirho}(i64 {operand_chirho})"
+                "  {result_chirho} = call i64 @{runtime_name_chirho}({runtime_args_chirho})"
             )
             .unwrap();
             result_chirho
