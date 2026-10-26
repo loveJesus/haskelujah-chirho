@@ -9,6 +9,7 @@ mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
 mod non_empty_chirho;
+mod report_folds_chirho;
 pub(crate) use non_empty_chirho::TO_LIST_ROUTE_CHIRHO;
 use std::collections::HashMap;
 
@@ -3496,6 +3497,9 @@ impl DictPassCtxChirho {
 
         // ── Additional list functions: takeWhile, dropWhile, iterate, lookup, unzip, scanl ──
         self.generate_extra_list_prelude_chirho();
+
+        // ── The report's scanl1, foldl1 and until, over scanl and foldl (row 548) ──
+        self.generate_report_folds_prelude_chirho();
 
         // ── Additional list functions: nub, nubBy, group, groupBy, tails, inits ──
         self.generate_list_extra_prelude_chirho();

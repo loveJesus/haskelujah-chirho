@@ -48,6 +48,8 @@ flowchart TD
 
 - A Cranelift miss for a local that Core binds but lowering did not bind keeps its 0 placeholder, like letrec zero initialization.
 - An effect adapter called as a value, such as `putStrLn#` passed to `mapM_`, keeps Cranelift's call-site behavior.
+- Both native backends print a whole `Double` without its `.0`: `print (7.0 :: Double)` gives `7`, where GHC and the
+  interpreter give `7.0`. This is a formatting gap, not a route failure; row 548 measured it on 2026-10-26.
 - Memory faults from upstream type confusion stay outside the route.
   - K01's Cranelift run, a SIGBUS at the base, now fails named with R2's line (measured at gate r3).
   - The likely reason, which is an inference and not an established cause: its `show` path reaches the checked runtime formatter before the old fault.
@@ -59,3 +61,6 @@ flowchart TD
   - a demanded unbound id fails named, and an untaken one runs;
   - Int `show` and the pure `main` result use the checked formatters.
 - Driver (`haskelujah-driver-chirho/tests/native_error_helpers_chirho.rs`): one test per route per backend, with exact harness text. The shared error-helper programs require exit 1 and their exact line.
+  - The R1 unbound-name fixtures use `realToFrac`, which still needs its Real and Fractional dictionaries. Row 548 bound
+    the first fixture's `scanl1`, with `foldl1` and `until`, in `dict_chirho/prelude_chirho/report_folds_chirho.rs`. Its
+    controls print GHC's answers on all three engines, and an empty `foldl1` fails named as GHC's does.

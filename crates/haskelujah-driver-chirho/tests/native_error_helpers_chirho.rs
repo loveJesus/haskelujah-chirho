@@ -36,15 +36,16 @@ const LIMIT_CHIRHO: &str = "module Main where\nlimitChirho :: Int -> Int -> Int\
 /// Two sibling closures and one nested in the second, each able to fail.
 const CLASSIFY_CHIRHO: &str = "module Main where\nclassifyChirho :: Int -> Int -> Int\nclassifyChirho lim n\n  | n < 0 = left n\n  | otherwise = right n\n  where\n    left m\n      | m < negate lim = error \"left-chirho\"\n      | otherwise = negate m\n    right m\n      | m > lim = deeper m\n      | otherwise = m\n      where\n        deeper e\n          | e > 2 * lim = error \"deeper-chirho\"\n          | otherwise = e - lim\n";
 
-/// R1, U01: an unbound name demanded under `main`'s parameter. GHC: `[1,3,6]`.
+/// R1, U04: an unbound name demanded under `main`'s parameter. GHC: `1.5`. (`scanl1`, the
+/// first fixture, is bound since row 548; `realToFrac` still needs its dictionaries.)
 const UNBOUND_CALL_CHIRHO: &str =
-    "module Main where\nmain :: IO ()\nmain = print (scanl1 (+) [1, 2, 3 :: Int])\n";
+    "module Main where\nmain :: IO ()\nmain = print (realToFrac (1.5 :: Double) :: Double)\n";
 
-/// R1, U05: the same name in a parameterless constant, which has nothing to alias.
-const UNBOUND_CONSTANT_CHIRHO: &str = "module Main where\nxsChirho :: [Int]\nxsChirho = scanl1 (+) [1, 2, 3]\nmain :: IO ()\nmain = print xsChirho\n";
+/// R1: the same name in a parameterless constant, which has nothing to alias. GHC: `1.5`.
+const UNBOUND_CONSTANT_CHIRHO: &str = "module Main where\nxsChirho :: Double\nxsChirho = realToFrac (1.5 :: Double)\nmain :: IO ()\nmain = print xsChirho\n";
 
-/// R1: an unbound name on a path the program never takes. GHC: `[7]`.
-const UNBOUND_UNTAKEN_CHIRHO: &str = "module Main where\npickChirho :: Bool -> [Int]\npickChirho useLiteralChirho = if useLiteralChirho then [7] else scanl1 (+) [1, 2, 3]\nmain :: IO ()\nmain = print (pickChirho True)\n";
+/// R1: an unbound name on a path the program never takes. GHC: `7.5`.
+const UNBOUND_UNTAKEN_CHIRHO: &str = "module Main where\npickChirho :: Bool -> Double\npickChirho useLiteralChirho = if useLiteralChirho then 7.5 else realToFrac (1.5 :: Double)\nmain :: IO ()\nmain = print (pickChirho True)\n";
 
 /// R2, C01: GHC prints `Just custom`; the native integer formatter got a pointer.
 const BOXED_SHOW_CHIRHO: &str = "module Main where\ndata TChirho = TChirho\ninstance Show TChirho where\n  show _ = \"custom\"\nmain :: IO ()\nmain = print (Just TChirho)\n";
@@ -224,6 +225,37 @@ fn each_error_path_fails_with_its_own_message_chirho() {
     );
 }
 
+// ── Row 548: the report's scanl1, foldl1 and until (contract-543 U01-U03, U05) ──
+
+/// GHC 9.14.1: `[1,3,6]`, `[10,7,5]`, `[]`, `9`, `5`, `7`, `128`, `5`. `foldl1 (-)` and
+/// `scanl1 (-)` pin left association; `until` covers an immediately true predicate.
+const REPORT_FOLDS_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (scanl1 (+) [1, 2, 3 :: Int])\n  print (scanl1 (-) [10, 3, 2 :: Int])\n  print (scanl1 (+) ([] :: [Int]))\n  print (foldl1 max [3, 9, 2 :: Int])\n  print (foldl1 (-) [10, 3, 2 :: Int])\n  print (foldl1 (-) [7 :: Int])\n  print (until (> 100) (* 2) (1 :: Int))\n  print (until (> 0) (+ 1) (5 :: Int))\n";
+
+/// U05: `scanl1` in a parameterless constant. GHC: `[1,3,6]`.
+const SCANL1_CONSTANT_CHIRHO: &str = "module Main where\nxsChirho :: [Int]\nxsChirho = scanl1 (+) [1, 2, 3]\nmain :: IO ()\nmain = print xsChirho\n";
+
+/// GHC exits 1, its first stderr line `Prelude.foldl1: empty list`.
+const FOLDL1_EMPTY_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (foldl1 max ([] :: [Int]))\n";
+
+#[test]
+fn report_folds_answer_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        REPORT_FOLDS_CHIRHO,
+        "[1,3,6]\n[10,7,5]\n[]\n9\n5\n7\n128\n5\n",
+    );
+}
+
+#[test]
+fn a_scanl1_constant_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(SCANL1_CONSTANT_CHIRHO, "[1,3,6]\n");
+}
+
+#[test]
+fn an_empty_foldl1_fails_named_everywhere_chirho() {
+    assert_fails_everywhere_chirho(FOLDL1_EMPTY_CHIRHO, "Prelude.foldl1: empty list");
+}
+
 // ── R1: an unbound reference fails named, and only when demanded ──────────
 
 #[test]
@@ -231,7 +263,7 @@ fn an_unbound_call_fails_named_on_llvm_chirho() {
     assert_fails_named_chirho(
         LLVM_CHIRHO,
         UNBOUND_CALL_CHIRHO,
-        "missing native binding `scanl1`",
+        "missing native binding `realToFrac`",
     );
 }
 
@@ -240,7 +272,7 @@ fn an_unbound_call_fails_named_on_cranelift_chirho() {
     assert_fails_named_chirho(
         CRANELIFT_CHIRHO,
         UNBOUND_CALL_CHIRHO,
-        "missing native binding `scanl1`",
+        "missing native binding `realToFrac`",
     );
 }
 
@@ -249,7 +281,7 @@ fn an_unbound_constant_fails_named_on_llvm_chirho() {
     assert_fails_named_chirho(
         LLVM_CHIRHO,
         UNBOUND_CONSTANT_CHIRHO,
-        "missing native binding `scanl1`",
+        "missing native binding `realToFrac`",
     );
 }
 
@@ -258,13 +290,13 @@ fn an_unbound_constant_fails_named_on_cranelift_chirho() {
     assert_fails_named_chirho(
         CRANELIFT_CHIRHO,
         UNBOUND_CONSTANT_CHIRHO,
-        "missing native binding `scanl1`",
+        "missing native binding `realToFrac`",
     );
 }
 
 #[test]
 fn an_unbound_name_on_an_untaken_path_runs_everywhere_chirho() {
-    assert_prints_everywhere_chirho(UNBOUND_UNTAKEN_CHIRHO, "[7]\n");
+    assert_prints_everywhere_chirho(UNBOUND_UNTAKEN_CHIRHO, "7.5\n");
 }
 
 // ── R2: no integer formatter prints a heap address ─────────────────────────
