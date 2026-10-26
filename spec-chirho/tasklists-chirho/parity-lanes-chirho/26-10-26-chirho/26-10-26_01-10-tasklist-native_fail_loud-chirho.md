@@ -26,14 +26,14 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
 - R4: unknown primops are refused at compile time on both backends. Cranelift refuses `^#` explicitly.
 - R5: a compiler-emitted default with no matching alternative fails, named.
 
-**Owned by this unit.** The two native backends, the runtime support library, the CLI's reporting of refusals, and a new driver test file.
+**Owned by this unit.** The two native backends, the runtime support library (with its own tests), and the driver controls, which joined the existing `native_error_helpers_chirho.rs`. The CLI is not modified: its pre-existing Cranelift wrapper (`cranelift compilation failed: …`, cli `main.rs:816`) is measured byte-exact as part of the contract.
 
 **Outside this unit:**
-- native Data.Map, IORef, `fromIntegral`, `compare*` and `^#` implementations (they stay refused, now on both backends);
+- native Data.Map, IORef, `fromIntegral`, `compareFloat#`, `compareStr#` and `^#` implementations (they stay refused, now on both backends). C10 implements `compare#` and `compareChar#` on Cranelift, as LLVM already did;
 - Show dictionaries and exact rendering (the F lane, after 517);
 - unit 517;
-- K01's root cause, and its Cranelift SIGBUS from upstream type confusion;
-- S09;
+- K01's root cause, which is upstream type confusion. Row 535 owns K01's measured native movement from signals to named failures: on Cranelift, SIGBUS became R2's line (gate r3); on LLVM, SIGTRAP became R5's;
+- S09's exact rendering. Row 535 owns S09's measured native movement from a printed pointer to R2's named line, on both backends;
 - DerivedEqOrd's wrong values and RecursiveDo's dominance error;
 - the Cranelift string/list mismatch;
 - letrec zero initialization;
@@ -78,7 +78,9 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
   - LLVM is unchanged. Every executable path (CLI, harness, driver) already returns the refusal as `Err`. The panicking wrapper is test-only, and the IR preview never builds an executable.
   - Cranelift records every primitive that reaches `lower_primop`'s default arm and refuses the executable with the sorted list, in LLVM's wording. `^#`'s left-operand arm is removed, so it reaches that arm.
   - Names whose calls Cranelift implements at the call site are exempt (`putStrLn#`, `returnIO#` and the rest). The IO-action pass gives their adapter bindings bodies of the same primitive, and those bodies never run in place of the call-site lowering.
-  - Desk check: among primitives LLVM lowers, the newly refused ones are only `compare#` and `compareChar#`. No Cranelift round trip or shared native suite reaches a refused family.
+  - Initial prediction, disproved by gate r1: the desk check found that `compare#` and `compareChar#` were the only primitives LLVM lowers that Cranelift would newly refuse, and claimed no Cranelift round trip or shared native suite reaches a refused family.
+    - r1 refused 11 Cranelift round trips for `compare#/2`, reached through Prelude `Ord` dictionary bodies.
+    - C10 is the correction: Cranelift now lowers both, so neither is refused.
 - [x] R3 on both backends, with `errorWithoutStackTrace` (C4, C5).
   - LLVM: `error`, `error#` and `errorWithoutStackTrace` force the message and raise it on the program route. `undefined` calls the runtime.
   - Cranelift: the plain `error` primitive joins `error#`, `errorWithoutStackTrace` joins the call-site `error` arm, and `throw#` reports `uncaught exception`.
@@ -117,25 +119,38 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
   - Its `collapsible_if` predates row 535 (a5f7d483 `lower_chirho.rs:1402`), but C5 changed that condition, so the gate counts it as the unit's.
   - Behavior is unchanged, and every other pre-existing warning on an unchanged line stays.
   - Unit counts with C13: 16 paths, 13 commits and 24 driver controls.
-- [ ] Checks without Cargo:
-  - pinned rustfmt;
-  - `diff --check`;
-  - gitleaks;
-  - file and directory sizes;
-  - a read-only desk-check for compile errors.
+- [x] Checks without Cargo, each done:
+  - pinned rustfmt: the gate's preflight enforces rustfmt 1.8.0, and each changed Rust file is rustfmt-clean;
+  - `diff --check`: clean over the whole range from a5f7d483;
+  - gitleaks: no leaks over every commit of the unit;
+  - file and directory sizes, measured at b5fcc158:
+    - Every new file is small: 45 to 239 lines.
+    - No file newly crosses 1,500 lines. Of the three files that were already over it, two shrank as failure code moved into the new modules: Cranelift `codegen_chirho.rs` (3,755 to 3,690) and LLVM `codegen_chirho.rs` (5,915 to 5,832). Cranelift `lower_chirho.rs` grew by 35 lines, to 3,726. It is pre-existing debt.
+    - The only touched directory over 15 entries is the driver's `tests/`, with 25 entries before and after, because the controls joined an existing file;
+  - a read-only desk check for compile errors: C8. The gate's builds (rc 0, no warnings) and its cold lint supersede it.
 
 ## Gate
 
 The gate runs only under a builder handed by name, after source and tooling review.
 
-- [ ] Every R1-R5 control is GHC-reference-checked and produces its named failure, or its refusal, on both backends.
-- [ ] Holds:
-  - the four wildcard programs stay GHC-exact natively;
-  - the 11 PASS native corpus programs hold;
-  - the native round trips hold: 88 LLVM, 85 Cranelift and the shared native suites.
-- [ ] The execution corpus stays at 30/35. Only SectionsChirho's native detail moves, from a pointer to the named R2 error.
-- [ ] Membership, replay, the run predicates and the reject predicates are byte-identical.
-- [ ] Each mutant is caught by its own control, with exact isolated failure sets. The mutants cover:
+- [x] Every R1-R5 control is GHC-reference-checked and produces its named failure, or its refusal, on both backends. Evidence, from r5:
+  - the oracle's 126 checks over the 41 programs;
+  - native_error_helpers at 24/24.
+  - Through the CLI, Cranelift's refusals carry its pre-existing wrapper.
+- [x] Holds, from r5:
+  - the four wildcard programs stay GHC-exact natively: W01 to W04 are EXACT on both backends;
+  - the 11 PASS native corpus programs hold: 11 native PASS lines, with verdicts identical to row 534 r4;
+  - the native round trips hold, and every one passed:
+    - the driver's 88 `llvm_round_trip` tests and its 1 `roundtrip_llvm_all`;
+    - its 38 `cranelift_round_trip` tests and the 43 `cranelift_roundtrip` tests. Those are 81 Cranelift round trips; the plan's "85" equals cranelift-lib's 42 plus those 43;
+    - the backends' own suites, llvm-lib 38 and cranelift-lib 42;
+    - the shared native suites: native_error_helpers 24, native_laziness 5 and codegen_scaling 5.
+- [x] The execution corpus stays at 30/35. Only SectionsChirho's native detail moves, from a pointer to the named R2 error (r5 corpus GREEN).
+- [x] Membership, replay, the run predicates and the reject predicates are byte-identical. In r5:
+  - accept is 939 lines and reject 768, with 0 differing;
+  - replay is 296 lines, identical;
+  - predicates differ in none.
+- [x] Each mutant is caught by its own control, with exact isolated failure sets: r5 caught 16 of 16, each exactly; M02's set is two tests (#28437). The mutants cover:
   - aliasing and zero, on each backend;
   - pointer formatting;
   - the missing `error` arm;
@@ -255,3 +270,41 @@ The gate runs only under a builder handed by name, after source and tooling revi
   - The judge's selftest judges that measured log against the table (GREEN) and against the old one-failure prediction (RED on M02 alone).
   - C15 is this record: 16 paths and 15 commits, with the crates tree still 0a9f3727. The contract (41 programs, 65 movers and 17 holds) and the other 15 mutant definitions are unchanged.
   - r5 runs the whole gate once more, from build through mutants and postflight.
+
+**r5, GREEN on every stage** (tag `nfl535-native-fail-loud-b5fcc158-r5-chirho`, run once from 04:46:26 to 05:18:53 EDT on 2026-10-26 under the builder gpt_chirho handed over in #28439; accepted in #28442).
+- Gate `gate_nfl_chirho.sh` `ce68de85f025628881816b5cd4b63d7ead34277528ea584a85a2bb8fccf53086`, with:
+  - judge `6c1c349e`, mutator `a7f9a3a6` and contract `45a5092f`;
+  - runner `a416218e` and launcher `55f56250`;
+  - 12 immutable sets.
+- Ledger:
+  - preflight GREEN at b5fcc158 (crates 0a9f3727): 16 paths, 15 commits, 28 judge checks, 16 anchors, 9 tools and 12 immutable sets;
+  - build GREEN with rc 0 and no warnings. Frozen CLI `ccb3908f3d4c416c080b9816becc157c61e79d01f82c8e4481d610c0a01d2845`;
+  - all 13 focused suites GREEN:
+    - rts-lib 47, rts-native_failure 10, rts-native_thunks 1;
+    - llvm-lib 38, cranelift-lib 42;
+    - native_error_helpers 24, native_laziness 5, codegen_scaling 5, cranelift_roundtrip 43;
+    - driver-native 127 (1,726 filtered out), show_precedence 2, io_actions 9, typing_integration 40;
+  - lint GREEN: tip and base each linted cold in a fresh run-local target, with unchanged-line diagnostics equal to the base's, none on a changed line or in a new file, no error and nothing unparsed;
+  - gitleaks GREEN, 15 commits and no leaks;
+  - oracle GREEN: 41 programs and 82 native cells, 65 moving and 17 held, each exactly as the contract says, in 126 checks;
+  - corpus GREEN: accept, reject and replay identical to row 534 r4, and execution verdicts identical at 30/35. SectionsChirho's native run moved from a pointer to the named R2 failure, DerivedEqOrd's native result held, and RecursiveDo still fails LLVM's dominance check;
+  - mutants GREEN: baseline VALID 38/38, caught 16 of 16 with each set exact, restored BASELINE 38/38, and all 8 mutated files at their tip blobs. The counts were M01 4, M02 2, M03 2, M04 2, M05 3, M06 1, M07 1, M08 3, M09 9, and 1 each for M10 through M16;
+  - postflight GREEN: the frozen CLI unchanged, the tree clean at b5fcc158 with the mutated files at their tip blobs, the gate, 9 tools and 12 immutable sets at their pins, and nothing alive.
+  - Exit codes were 0 for build, focused, lint, oracle, corpus and mutants: "ALL REQUESTED STAGES EXITED 0".
+- Receipt hashes (sha256):
+  - ledger `stages-chirho.tsv`: `d9e850350b607d589fe74fc359d67063080dd04040ab3949d9879c10ee81a2ca`;
+  - `exit-codes-chirho.tsv`: `d11ceaab5f78e333d7ce2c2831b5da152f20126bf7d6d95b70c404edf5b16429`;
+  - `lint-clippy.compare`: `5c23603df2e0eaa3b15da27759b55e5d9dd2c25b09c548bf9b5da6899bd69352`;
+  - `oracle.compare`: `94634a06c994dc1587004571a6c9079bc80a47e9aaf00c9f47ec7f1659315918`;
+  - `corpus.compare`: `a27b6b0d38e8be6da0f2fb697b32718411c3bb93809e937438ee4f337eb1d35c`;
+  - `mutations.compare`: `4e0f4f641eb7c406e303f3e8d0f7964914f947b000925fcacd4e75d591b498ef`;
+  - `mutations.log`: `a656e0b324e5274fd8f02905359b2ba5dcb339d95c41b854655a8f40c90e2aa8`;
+  - the 13 focused `.compare` files, digested together: `adb68c9baa9cf85eded711a7bf7a61a4e8bf2fd31b96c866cd5d832283f67bed`.
+- Receipts are kept byte-exact as two sets, each digested over its sorted file hashes (C locale):
+  - the run directory: 21,175 files, `5b81792fcb123023b475b21541f8909c4668fd8a5f902ceff2d7523a1845a85b`;
+  - the launcher directory: 7 files, `d4181383afe8e6a4e2b2b17f7c55534bfbd0285ecbceb5a5dc9f517dc5209732`.
+- Non-claims, so neither is mistaken for omitted evidence:
+  - Dev-profile binaries are not claimed reproducible. r5's frozen CLI `ccb3908f` differs from r3 and r4's `a216bbf8` on the same crates tree 0a9f3727, because r4's mutants stage rebuilt the shared target and r5's build then recompiled 7 crates. Oracle and corpus ran on `ccb3908f`.
+  - The rebuilt RTS archive's hash is not an invariant (#28437). It was `5c2ba764` at r5's build and `d03876aa` after the mutants stage.
+  - The landing invariant is the 8 mutated source files at their tip blobs plus the restored 38/38 baseline, and both hold.
+- C16 is this record and the ticked checklists. It is docs-only on top of the gated tip b5fcc158, and the crates tree stays 0a9f3727.
