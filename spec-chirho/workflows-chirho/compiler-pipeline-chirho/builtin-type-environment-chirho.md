@@ -76,6 +76,21 @@ flowchart TD
 - Controls cover each exact scheme, positive/negative/zero/coprime/first-class results in the
   interpreter, and the former R5 pair on the interpreter, LLVM and Cranelift (row 564).
 
+## Report folds with generated bodies (row 558)
+
+- `foldl1`, `foldr1` and `until` have generated Core bodies (`report_folds_chirho.rs`; row 548 for
+  `foldl1` and `until`, row 558 for `foldr1`). Their builtin schemes name the report's types:
+  `(a -> a -> a) -> [a] -> a` for both folds, as `foldl1'` already had, and
+  `(a -> Bool) -> (a -> a) -> a -> a` for `until`.
+- With no scheme, the step function and the result were unconstrained:
+  - over Double, the occurrence evidence defaulted to Int;
+  - `foldl1 (-) [10, 3, 2 :: Double]` printed a Double's bits as an integer natively, and the
+    interpreter failed on `SubIntChirho`;
+  - `until (> 100) (* 2) (1.5 :: Double)` printed `192` in the interpreter and raw bits natively.
+- `scanl1`, which had its scheme, was exact everywhere and served as the contrast.
+- The control is `report_folds_answer_as_ghc_at_every_type_everywhere_chirho`. Only 3 corpus
+  files name these functions, and none of them moves.
+
 ## Unbound constructors
 
 - When an `ExprChirho::ConChirho` finds no scheme, it gets a fresh type variable and no diagnostic. Class predicates on that variable stay unresolved through `check_deferred_preds_chirho`.

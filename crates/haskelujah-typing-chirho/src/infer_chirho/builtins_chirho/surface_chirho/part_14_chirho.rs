@@ -143,12 +143,14 @@ pub(super) fn seed_part_14_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // foldl1' :: forall a. (a -> a -> a) -> [a] -> a
-    {
-        let a_chirho = TyVarChirho(7507_1);
+    // foldl1', foldl1, foldr1 :: forall a. (a -> a -> a) -> [a] -> a
+    // Row 558 gives foldl1 and foldr1 the scheme foldl1' had. Without it, their step and result
+    // types were unconstrained, so a Double fold took Int's (-) and Int's show.
+    for (name_chirho, var_chirho) in [("foldl1'", 75071), ("foldl1", 75072), ("foldr1", 75073)] {
+        let a_chirho = TyVarChirho(var_chirho);
         let list_a_chirho = TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho)));
         env_chirho.bind_chirho(
-            "foldl1'".to_string(),
+            name_chirho.to_string(),
             SchemeChirho {
                 vars_chirho: vec![a_chirho],
                 preds_chirho: vec![],
@@ -159,6 +161,32 @@ pub(super) fn seed_part_14_chirho(env_chirho: &mut TyEnvChirho) {
                             TyChirho::VarChirho(a_chirho),
                         ),
                         list_a_chirho,
+                    ],
+                    TyChirho::VarChirho(a_chirho),
+                ),
+            },
+        );
+    }
+
+    // until :: forall a. (a -> Bool) -> (a -> a) -> a -> a (row 558; row 548 added its binding)
+    {
+        let a_chirho = TyVarChirho(75074);
+        env_chirho.bind_chirho(
+            "until".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![a_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_n_chirho(
+                    vec![
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(a_chirho),
+                            TyChirho::bool_chirho(),
+                        ),
+                        TyChirho::fun_chirho(
+                            TyChirho::VarChirho(a_chirho),
+                            TyChirho::VarChirho(a_chirho),
+                        ),
+                        TyChirho::VarChirho(a_chirho),
                     ],
                     TyChirho::VarChirho(a_chirho),
                 ),

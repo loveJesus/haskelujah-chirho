@@ -257,6 +257,31 @@ fn an_empty_foldl1_fails_named_everywhere_chirho() {
     assert_fails_everywhere_chirho(FOLDL1_EMPTY_CHIRHO, "Prelude.foldl1: empty list");
 }
 
+// ── Row 558: foldr1, and the report folds' own types ──────────────────────
+
+/// GHC 9.14.1: `9`, `7`, `8`, `[3,5]`, `3`, `5`, `9.0`, `5.0`, `192.0`. `foldr1` had no binding
+/// (a named missing binding everywhere). `foldl1`, `foldr1` and `until` had no type scheme, so
+/// over Double their step and `show` defaulted to Int: the natives printed a Double's bits as an
+/// integer, and the interpreter failed on `SubIntChirho` or printed `192`.
+const REPORT_FOLDS_TYPED_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (foldr1 (-) [10, 3, 2 :: Int])\n  print (foldr1 (-) [7 :: Int])\n  print (sum (map (foldr1 max) [[3, 1, 2], [5 :: Int]]))\n  print (map (foldr1 max) [[3, 1, 2], [5 :: Int]])\n  mapM_ (print . foldr1 max) [[3, 1, 2], [5 :: Int]]\n  print (foldr1 (-) ([10, 3, 2] :: [Double]))\n  print (foldl1 (-) ([10, 3, 2] :: [Double]))\n  print (until (> 100) (* 2) (1.5 :: Double))\n";
+
+/// GHC exits 1, its error payload `Prelude.foldr1: empty list`.
+const FOLDR1_EMPTY_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (foldr1 max ([] :: [Int]))\n";
+
+#[test]
+fn report_folds_answer_as_ghc_at_every_type_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        REPORT_FOLDS_TYPED_CHIRHO,
+        "9\n7\n8\n[3,5]\n3\n5\n9.0\n5.0\n192.0\n",
+    );
+}
+
+#[test]
+fn an_empty_foldr1_fails_named_everywhere_chirho() {
+    assert_fails_everywhere_chirho(FOLDR1_EMPTY_CHIRHO, "Prelude.foldr1: empty list");
+}
+
 // ── Row 550: a first-class print keeps its Show proof; GHC's Double spelling ──
 
 /// GHC 9.14.1: each element on its own line, exactly as `show` spells it. Natively, the
