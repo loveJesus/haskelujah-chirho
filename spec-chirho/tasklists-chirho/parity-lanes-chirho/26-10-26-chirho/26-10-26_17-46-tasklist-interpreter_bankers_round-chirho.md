@@ -26,7 +26,7 @@ unsupported `round#/1` primitive.
 - [x] Commit GHC-measured positive, negative, tie, and non-tie controls.
 - [x] Run a warm focused interpreter proof plus the affected dictionary/numeric suites.
 - [x] Verify zero changed-line Clippy findings, rustfmt, diff-check, and gitleaks.
-- [ ] Land and close progress row 559.
+- [x] Land source tip `b12a7994` and close progress row 559.
 
 ## Measured source checkpoint
 
