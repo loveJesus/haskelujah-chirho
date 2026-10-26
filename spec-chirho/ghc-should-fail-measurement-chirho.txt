@@ -1,72 +1,68 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 # GHC should_fail — timed measurement artifact
-# measured: 2026-10-25 UTC by HASKELUJAH/claude2_chirho; retained receipts and source
-#   independently reviewed by HASKELUJAH/gpt_chirho. Local development evidence.
-# code measured: 5284fd33a8dcdbcfe4d162d1602cda9c44789937, unit 532's import-scoped
-#   `join` and `&` keys. The post-gate tasklist commit 000d5c45 changes no crate byte.
-# local source landing: 000d5c4571b9c7bf4857872c439b593f3df6a316 on main_chirho. This
-#   paired measurement publication changes specs only. No remote push or release.
-# mechanism: bare `join` and `&` no longer enter every module. Their preserved schemes
-#   sit under the builtin interfaces that export them, and driver Phase 3.9 exposes a key
-#   only through an import. Qualified imports now receive the real key instead of the
-#   accept-anything placeholder. Synthetic Lens aliases preserve their prior approximation;
-#   they are inventory evidence, not individual GHC-export claims.
-# build: cargo build -j2 --bin haskelujah, DEBUG, macOS arm64, zero compiler warnings.
+# measured: 2026-10-26 UTC by HASKELUJAH/claude2_chirho, from the combined landing gate's
+#   retained receipts. Local development evidence; independent review is requested.
+# code measured: 1ddf122bedfc9c319dd38c2cc28c1061fbc84c1d, the combined rows 531 + 536 + 517
+#   source tip, crates tree 033962219ff3c8e97e0f1f3224555ccf1783e1a2. Its docs record 63c5e2f2
+#   and progress close 80e3b7de change no crate byte.
+# local source landing: 80e3b7de0dccca051a470c44c5f334f15645fb4d on main_chirho, fast-forwarded
+#   from 66832ade. This paired measurement publication changes specs only. No remote push or
+#   release.
+# mechanism: row 531 replays the measured GHC patterns and functional-dependency stack: known
+#   pattern shapes are checked before constructor fields, and fundep improvement generalizes. It
+#   moves exactly eleven files, each toward GHC 9.14.1's own verdict. Row 536 (qualified import
+#   lists bind their qualifier) and row 517 (NonEmpty binding identity) move no corpus file.
+# build: cargo build -p haskelujah, DEBUG, macOS arm64, warm incremental, zero compiler warnings.
 # frozen CLI SHA256:
-#   aa7b290271f6a87b4b18780bfe99a4683255cb8bb3edca1e74be514d74a746d4
-# evidence: two complete passes per axis are byte-identical at fan-out 2, with the frozen
-#   binary unchanged before and after. The canonical C-locale run digest is
-#   e1ca05f256ca437498157ffdb676116eb9ea869f1de85c04d572b8eb8d288d13.
-#   The launcher digest is 2409adf38f95b533ad216e271d826343247032c1675c7fe02756e98250826ddc.
+#   5bef8b0d686412c330ccdfee26ff855890211d093b36975eecc6eba49a5e8e3d
+# evidence: two complete passes per axis are byte-identical at fan-out 16, with the frozen
+#   binary unchanged before and after. This axis's pass SHA-256 is
+#   338eea5772f9c5ab4015467cc9c7285a0257495be188b557c88ed1d33469125f.
+#   The C-locale run digest of both axes' passes is
+#   ebce5d83affdadf6ed4ef40f1f35ebf2f8f7d16cd7aa75d84bcc98ea0cbee4bb.
 # receipts: ../haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/
-#   join-amp-scope-1025-chirho/gate-chirho/runs-chirho/
-#   g532-import-scope-5284fd33-chirho/
-# independent review: GPT reproduced the 16-row all-GREEN ledger, ledger SHA-256
-#   0ce9eb6ca5642cb8edfbb53c8cd1eacb9b6352b818f701d561890eb44f61963d,
-#   frozen binary hash, C-locale run and launcher digests, membership counts and lists.
-# focused producer gates: core 148, dictionary evidence 61, instance obligations 28,
-#   IO actions 9, filtered driver 479 (1374 filtered), typing unit 354 and typing
-#   integration 40; all pass at this scope.
-# lint: driver warnings 375 short/87 long and typing-rooted warnings 56 short/0 long
-#   match the base through the diff map; no error or diagnostic lies on changed code.
-# mutations: m1-m7 terminate and are caught by their named controls, with the dynamic
-#   exporter inventory among every mutant's new failures; restoration is byte-exact.
-# oracle/runtime: 25 GHC-measured scope programs satisfy the movement contract. Imported
-#   `join` and `&` still lack runtime bindings, and unimported fully qualified forms remain
-#   overaccepted; both are explicit boundaries. Execution stays 28/35.
+#   combined-landing-1026-chirho/runs-chirho/c3-1ddf122b-r3-chirho/ (gate r3 and pass 1) and
+#   combined-landing-1026-chirho/measurement-chirho/ (pass 2).
+# gate: combined gate r3 GREEN in 1149 s. Build 27 s; 3112 focused tests with named skips;
+#   changed-line Clippy 0; q517 judged 233 rows with no regression, the 21 NonEmpty targets
+#   GHC-exact; execution 30/35 on main and on the candidate, with equal verdicts.
+# movers: every moved file matches a fresh GHC 9.14.1 -fno-code verdict, and main's own CLI
+#   (66832ade, rebuilt warm) keeps the old verdict on each, so all eleven moves are the stack's.
 # protocol: published directory-label axes and denominators are preserved; standalone
 #   GHC/all.T disagreements remain a separate protocol decision, never relabelled here.
-# method: haskelujah check <file>, timeout 15s/file, parallelism 4, timeouts re-run
-#   alone at 60s (none occurred). The verdict rule is the COMMITTED one, sourced from
-#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh. The runner
-#   and its accept/reject input lists are byte-identical to the preceding RC5 measurement.
-#   Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0 or 1), then PANIC
-#   (a real Rust panic header), then REJECT (`error[E` AND exit 1), then ACCEPT (exit 0
-#   and no `error[E`). A panic header has an optional ALL-DIGIT thread id and counts at
-#   a line start (a bare \r also ends a line) or glued to output, never on a line that
-#   is diagnostic rendering. The bare substring `panic` is never a verdict. Pure shell,
-#   never interactive `grep`. Verdict files are sorted C-collated by their filename
-#   field. The runner records each file's EXIT CODE beside its verdict, and no accepted
-#   file exited nonzero.
+# method: haskelujah check <file>, timeout 15s/file, parallelism 16, every timeout re-run
+#   alone at 60s before it counts (none remained). The verdict rule is the COMMITTED one,
+#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, byte-identical
+#   to the runner worker's copy. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0
+#   or 1), then PANIC (a real Rust panic header), then REJECT (`error[E` AND exit 1), then
+#   ACCEPT (exit 0 and no `error[E`). Verdict files are sorted C-collated by their filename
+#   field. Every ACCEPT row exited 0 and every REJECT row exited 1.
 # corpus: ghc-tests-chirho/typecheck-chirho/should_fail — 767 .hs files
-#   Full relative identities include nested directories; source SHA256s retained.
+#   Full relative identities include nested directories. The sources list SHA-256,
+#   14adefd337f227e4dec10eed829fb59fe28ae855f34b34b39c543f5c7f69fedf,
+#   equals main's saved receipts'.
 #
-# RESULT: REJECT=242 WRONG_ACCEPT=525 TOTAL=767
+# RESULT: REJECT=252 WRONG_ACCEPT=515 TOTAL=767
 # STABILITY: DETERMINISTIC — two complete byte-identical passes, no exit-code anomalies.
-# QUOTE-AS: 242 of 767 = 31.6% — ~31% truncated, ~32% nearest; NO single label
+# QUOTE-AS: 252 of 767 = 32.9% — ~32% truncated, ~33% nearest; NO single label
 #   is published until L.J.'s policy decision. Do not quote a third significant figure
 #   under either reading.
 #
-# QUOTE BOTH AXES TOGETHER: ~94% (885 of 938), and 242 of 767 = 31.6%, without a single
-#   reject label until L.J.'s reporting-policy decision. The reject count reads ~31% by
-#   truncation or ~32% by nearest-integer rounding; this arithmetic does not choose a
-#   uniform policy or relabel earlier artifacts. No public-site change or deployment.
+# QUOTE BOTH AXES TOGETHER: ~94% (884 of 938), and 252 of 767 = 32.9%, without a single
+#   reject label until L.J.'s reporting-policy decision. The reject count reads ~32% by
+#   truncation or ~33% by nearest-integer rounding; this arithmetic does not choose a
+#   uniform policy or relabel earlier artifacts.
 #
-# CURRENT CHANGE SINCE THE 2026-10-17 PUBLISHED MEASUREMENT: should_compile membership
-#   is identical at 885/938. On should_fail, only T12406 and T12589 move from ACCEPT to
-#   ordinary REJECT for the unimported `join` and `&`, as GHC rejects them. No corpus-name
-#   exception was added; replay gains exactly those two rejections and execution is unchanged.
-# PREVIOUS PUBLISHED MEASUREMENT: code b7a0cd0d, source landing a8e32120, frozen CLI
+# CURRENT CHANGE SINCE THE 2026-10-25 PUBLISHED MEASUREMENT: should_compile loses exactly
+#   tc231.hs, ACCEPT to ordinary REJECT. GHC 9.14.1 rejects it too, so this is a
+#   directory-label versus GHC disagreement, recorded and not relabelled. should_fail gains
+#   exactly ten ordinary rejections, each matching GHC 9.14.1: FDsFromGivens2, FunDepOrigin1b,
+#   T18406, T20064, T7368a, T9318, tcfail004, tcfail005, tcfail012 and tcfail182.
+# PREVIOUS PUBLISHED MEASUREMENT (2026-10-25): code 5284fd33, source landing 000d5c45, frozen
+#   CLI aa7b290271f6a87b4b18780bfe99a4683255cb8bb3edca1e74be514d74a746d4, with 885/938
+#   should_compile and 242/767 should_fail. Against 2026-10-17 it moved only T12406 and
+#   T12589 on should_fail. Its full receipts remain retained.
+# EARLIER PUBLISHED MEASUREMENT: code b7a0cd0d, source landing a8e32120, frozen CLI
 #   3ca4fc54ee76f4eb5a1705708fdb3c8229a7950fbec9ff743ba048071e247b49,
 #   with 885/938 should_compile and 240/767 should_fail. Its full receipts remain retained.
 #
@@ -268,7 +264,7 @@
 # repair to those rules was mutation-checked: reverting it fails the control that was
 # added for it.
 #
-# ---- the 527 files we WRONGLY ACCEPT under the published directory-label protocol ----
+# ---- the 515 files we WRONGLY ACCEPT under the published directory-label protocol ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -298,9 +294,7 @@ ExplicitSpecificity8.hs
 FD2.hs
 FD3.hs
 FDsFromGivens.hs
-FDsFromGivens2.hs
 FailDueToGivenOverlapping.hs
-FunDepOrigin1b.hs
 LazyFieldsDisabled.hs
 LevPolyBounded.hs
 LongWayOverlapping.hs
@@ -464,7 +458,6 @@ T18127a.hs
 T18357.hs
 T18357a.hs
 T18357b.hs
-T18406.hs
 T18455.hs
 T18640a.hs
 T18640b.hs
@@ -492,7 +485,6 @@ T19915.hs
 T19977a.hs
 T19977b.hs
 T20043.hs
-T20064.hs
 T20122.hs
 T20189.hs
 T20241b.hs
@@ -601,7 +593,6 @@ T7210.hs
 T7264.hs
 T7279.hs
 T7368.hs
-T7368a.hs
 T7437.hs
 T7525.hs
 T7545.hs
@@ -624,7 +615,6 @@ T8570b.hs
 T8912.hs
 T9109.hs
 T9201.hs
-T9318.hs
 T9415.hs
 T9497d.hs
 T9634.hs
@@ -672,12 +662,9 @@ mc25.hs
 tc168.hs
 tc168b.hs
 tcfail002.hs
-tcfail004.hs
-tcfail005.hs
 tcfail008.hs
 tcfail009.hs
 tcfail010.hs
-tcfail012.hs
 tcfail013.hs
 tcfail017.hs
 tcfail018.hs
@@ -767,7 +754,6 @@ tcfail174.hs
 tcfail176.hs
 tcfail179.hs
 tcfail181.hs
-tcfail182.hs
 tcfail186.hs
 tcfail188.hs
 tcfail189.hs
