@@ -167,6 +167,17 @@ remain separately named baseline gaps.
 - An outer `~` on a binding changes nothing (a binding is lazy already), which is why a
   top-level `~(Just n) = ...` is an ordinary binding and no longer loops.
 
+## Literal patterns and MagicHash
+
+Character literals and ordinary string literals (without OverloadedStrings) have fixed pattern
+types, `Char` and `String`, and meet the scrutinee through the constructor-result rule; numeric
+literals keep their overloaded path. The parser lowers MagicHash's `'x'#` to the same character
+literal as `'x'`, so a character literal on a `Char#` scrutinee is the unboxed form and keeps the
+unfixed path (`is_unboxed_char_chirho`). GHC 9.14.1 accepts `'x'#` arms on `Char#`, rejects `'a'#`
+against `Addr#` (GHC-83865) and rejects every unboxed string literal pattern such as `"abc"#`
+(GHC-69925); both stay rejected here, because only `Char#` is exempted. text-2.1.4's generated
+CaseMapping module is the real-package control.
+
 ## Controls
 
 `crates/haskelujah-driver-chirho/tests/lazy_patterns_chirho.rs`, each expectation measured on

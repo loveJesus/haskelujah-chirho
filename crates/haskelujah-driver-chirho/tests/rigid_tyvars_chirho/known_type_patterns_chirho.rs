@@ -565,6 +565,52 @@ main = print (fChirho (0.5 :: Double), fChirho (1 :: Double))
 "#,
             true,
         ),
+        // MagicHash literal patterns, measured on GHC 9.14.1 on 2026-10-26: `'x'#` arms on
+        // `Char#` are accepted (text-2.1.4's CaseMapping shape); `'a'#` against `Addr#` is
+        // GHC-83865 and an unboxed string pattern is GHC-69925, both rejected.
+        (
+            "unboxed_char_literal_pattern_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE MagicHash #-}
+module Main where
+import GHC.Exts (Char#)
+upperChirho :: Char# -> Int
+upperChirho '\x00df'# = 1
+upperChirho 'a'# = 2
+upperChirho _ = 0
+main :: IO ()
+main = putStrLn "ok"
+"#,
+            true,
+        ),
+        (
+            "char_literal_against_addr_chirho.hs",
+            r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE MagicHash #-}
+module Main where
+import GHC.Exts (Addr#)
+badChirho :: Addr# -> Int
+badChirho 'a'# = 1
+badChirho _ = 0
+main :: IO ()
+main = putStrLn "ok"
+"#,
+            false,
+        ),
+        (
+            "addr_literal_pattern_chirho.hs",
+            r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE MagicHash #-}
+module Main where
+import GHC.Exts (Addr#)
+tagChirho :: Addr# -> Int
+tagChirho "abc"# = 1
+tagChirho _ = 0
+main :: IO ()
+main = putStrLn "ok"
+"##,
+            false,
+        ),
     ] {
         if accepted_chirho {
             assert_accepted_chirho(file_name_chirho, source_chirho);

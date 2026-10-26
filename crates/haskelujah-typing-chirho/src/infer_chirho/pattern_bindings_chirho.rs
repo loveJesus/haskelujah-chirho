@@ -6,6 +6,14 @@
 use super::*;
 
 impl InferCtxChirho {
+    /// Whether a scrutinee is `Char#`, where a character literal pattern is
+    /// MagicHash's unboxed `'x'#` rather than a boxed `Char`. Only `Char#` is
+    /// exempt: GHC rejects `'a'#` on `Addr#` and every unboxed string pattern.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    fn is_unboxed_char_chirho(&self, ty_chirho: &TyChirho) -> bool {
+        matches!(self.normalize_ty_chirho(ty_chirho), TyChirho::ConChirho(name_chirho) if name_chirho == "Char#")
+    }
+
     /// Bind pattern variables to the given type in the current scope.
     /// workflow: language-features-chirho/pattern-matching-chirho
     pub(super) fn bind_pat_chirho(
@@ -40,7 +48,10 @@ impl InferCtxChirho {
                 // Characters and ordinary strings have fixed pattern types.
                 // Numeric and overloaded-string obligations stay on their
                 // existing path; they must not be fixed to Int or String.
-                let fixed_chirho = matches!(lit_chirho, LitChirho::CharChirho(..))
+                // A character literal on a `Char#` scrutinee is MagicHash's
+                // `'x'#`, which the parser lowers to the same literal.
+                let fixed_chirho = (matches!(lit_chirho, LitChirho::CharChirho(..))
+                    && !self.is_unboxed_char_chirho(ty_chirho))
                     || matches!(lit_chirho, LitChirho::StringChirho(..))
                         && !self.overloaded_strings_chirho;
                 if fixed_chirho {
