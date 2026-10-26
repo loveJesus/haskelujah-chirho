@@ -1,13 +1,19 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! A function and the closures lifted from it share the module's one `error`
-//! helper. The LLVM backend compiled each lifted closure with a registry of
-//! emitted names of its own, so a program that can fail both in a function and
-//! in its `where` closure defined the helper twice and did not link ("invalid
-//! redefinition of function 'haskelujah_error'"), on every build back to old
-//! main (claude2_chirho's D8 and D9, 2026-10-17). Every expectation was measured
-//! on GHC 9.14.1, and each program must give it in the interpreter and on both
-//! native backends: a definition count alone would prove nothing that runs.
+//! How native executables fail. Two families of programs live here.
+//!
+//! - **Shared error helper.** A function and the closures lifted from it share
+//!   the module's one `error` helper. The LLVM backend compiled each lifted
+//!   closure with a registry of emitted names of its own, so a program that can
+//!   fail both in a function and in its `where` closure defined the helper twice
+//!   and did not link ("invalid redefinition of function 'haskelujah_error'"),
+//!   on every build back to old main (claude2_chirho's D8 and D9, 2026-10-17).
+//! - **One failure route (row 535).** Each owned route fails the same way on
+//!   both backends: exit 1, no signal, and exactly one stderr line, or a
+//!   compile-time refusal naming the primitive.
+//!
+//! Every expectation was measured on GHC 9.14.1. A definition count alone would
+//! prove nothing that runs. Workflow: testing-chirho/native-fail-loud-chirho.md.
 
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_test_harness_chirho::native_chirho::{
@@ -18,12 +24,54 @@ const BACKENDS_CHIRHO: [NativeBackendChirho; 2] = [
     NativeBackendChirho::LlvmChirho,
     NativeBackendChirho::CraneliftChirho,
 ];
+const LLVM_CHIRHO: NativeBackendChirho = NativeBackendChirho::LlvmChirho;
+const CRANELIFT_CHIRHO: NativeBackendChirho = NativeBackendChirho::CraneliftChirho;
 
 /// Fails in the function or in its capturing `where` closure.
 const LIMIT_CHIRHO: &str = "module Main where\nlimitChirho :: Int -> Int -> Int\nlimitChirho lim n = if n < 0 then error \"outer-chirho\" else go n\n  where go k = if k > lim then error \"inner-chirho\" else k\n";
 
 /// Two sibling closures and one nested in the second, each able to fail.
 const CLASSIFY_CHIRHO: &str = "module Main where\nclassifyChirho :: Int -> Int -> Int\nclassifyChirho lim n\n  | n < 0 = left n\n  | otherwise = right n\n  where\n    left m\n      | m < negate lim = error \"left-chirho\"\n      | otherwise = negate m\n    right m\n      | m > lim = deeper m\n      | otherwise = m\n      where\n        deeper e\n          | e > 2 * lim = error \"deeper-chirho\"\n          | otherwise = e - lim\n";
+
+/// R1, U01: an unbound name demanded under `main`'s parameter. GHC: `[1,3,6]`.
+const UNBOUND_CALL_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (scanl1 (+) [1, 2, 3 :: Int])\n";
+
+/// R1, U05: the same name in a parameterless constant, which has nothing to alias.
+const UNBOUND_CONSTANT_CHIRHO: &str = "module Main where\nxsChirho :: [Int]\nxsChirho = scanl1 (+) [1, 2, 3]\nmain :: IO ()\nmain = print xsChirho\n";
+
+/// R1: an unbound name on a path the program never takes. GHC: `[7]`.
+const UNBOUND_UNTAKEN_CHIRHO: &str = "module Main where\npickChirho :: Bool -> [Int]\npickChirho useLiteralChirho = if useLiteralChirho then [7] else scanl1 (+) [1, 2, 3]\nmain :: IO ()\nmain = print (pickChirho True)\n";
+
+/// R2, C01: GHC prints `Just custom`; the native integer formatter got a pointer.
+const BOXED_SHOW_CHIRHO: &str = "module Main where\ndata TChirho = TChirho\ninstance Show TChirho where\n  show _ = \"custom\"\nmain :: IO ()\nmain = print (Just TChirho)\n";
+
+/// R3, E01.
+const ERROR_CALL_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = putStrLn (error \"boom\")\n";
+
+/// R3, E03.
+const UNDEFINED_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (undefined :: Int)\n";
+
+/// R3, E05: GHC writes the payload with no call stack.
+const ERROR_WITHOUT_STACK_TRACE_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = putStrLn (errorWithoutStackTrace \"plain\")\n";
+
+/// R3, M01: the dictionary pass's missing-method stub. GHC: `Just [2,3]`.
+const MISSING_METHOD_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (mapM (\\x -> Just (x + 1)) [1, 2 :: Int])\n";
+
+/// R5, A01: no compiled alternative matches. GHC: `(6,12)`.
+const NO_MATCH_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (gcd 12 (18 :: Int), lcm 4 (6 :: Int))\n";
+
+/// R4, P01: IORef has no native implementation. GHC: `2`.
+const IOREF_CHIRHO: &str = "module Main where\nimport Data.IORef\nmain :: IO ()\nmain = do { r <- newIORef (1 :: Int); modifyIORef r (+ 1); v <- readIORef r; print v }\n";
+
+/// R4, P06: `^#` has no native implementation; Cranelift printed its left operand.
+const POWER_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (2 ^ (10 :: Int) :: Int)\n";
 
 fn with_main_chirho(module_chirho: &str, main_chirho: &str) -> String {
     format!("{module_chirho}main :: IO ()\nmain = {main_chirho}\n")
@@ -51,6 +99,41 @@ fn assert_prints_everywhere_chirho(source_chirho: &str, expected_chirho: &str) {
     }
 }
 
+/// The runtime's program route: exit 1 (the harness reports a signal another
+/// way) and exactly one stderr line, after nothing on stdout.
+fn assert_fails_named_chirho(
+    backend_chirho: NativeBackendChirho,
+    source_chirho: &str,
+    message_chirho: &str,
+) {
+    assert_eq!(
+        native_round_trip_chirho(source_chirho, backend_chirho, "")
+            .expect_err("GHC fails here, or the route names a missing native operation"),
+        format!(
+            "native program emitted stderr (exit 1): haskelujah: error: {message_chirho}\n\nstdout:\n"
+        ),
+        "{backend_chirho:?}"
+    );
+}
+
+/// A compile-time refusal naming each unsupported primitive, as `name/arity`.
+fn assert_refused_chirho(
+    backend_chirho: NativeBackendChirho,
+    source_chirho: &str,
+    primitives_chirho: &str,
+) {
+    let backend_name_chirho = match backend_chirho {
+        NativeBackendChirho::LlvmChirho => "LLVM",
+        NativeBackendChirho::CraneliftChirho => "Cranelift",
+    };
+    assert_eq!(
+        native_round_trip_chirho(source_chirho, backend_chirho, "")
+            .expect_err("an executable that needs the primitive is refused"),
+        format!("{backend_name_chirho} does not support primitive(s): {primitives_chirho}"),
+        "{backend_chirho:?}"
+    );
+}
+
 fn assert_fails_everywhere_chirho(source_chirho: &str, message_chirho: &str) {
     let error_chirho = haskelujah_driver::eval_source_with_machine_chirho(
         source_chirho,
@@ -64,18 +147,7 @@ fn assert_fails_everywhere_chirho(source_chirho: &str, message_chirho: &str) {
         "interpreter: {error_chirho}"
     );
     for backend_chirho in BACKENDS_CHIRHO {
-        let error_chirho = native_round_trip_chirho(source_chirho, backend_chirho, "")
-            .expect_err("GHC fails here");
-        // The harness reports any stderr as an error, even after exit 0, so
-        // a program must also have FAILED: killed by a signal, or a nonzero
-        // exit.
-        let failed_chirho = error_chirho.starts_with("native program terminated by signal: ")
-            || (error_chirho.starts_with("native program emitted stderr (exit ")
-                && !error_chirho.starts_with("native program emitted stderr (exit 0)"));
-        assert!(
-            failed_chirho && error_chirho.contains(message_chirho),
-            "{backend_chirho:?}: {error_chirho}"
-        );
+        assert_fails_named_chirho(backend_chirho, source_chirho, message_chirho);
     }
 }
 
@@ -130,4 +202,154 @@ fn each_error_path_fails_with_its_own_message_chirho() {
         &with_main_chirho(CLASSIFY_CHIRHO, "print (classifyChirho 10 50)"),
         "deeper-chirho",
     );
+}
+
+// ── R1: an unbound reference fails named, and only when demanded ──────────
+
+#[test]
+fn an_unbound_call_fails_named_on_llvm_chirho() {
+    assert_fails_named_chirho(
+        LLVM_CHIRHO,
+        UNBOUND_CALL_CHIRHO,
+        "missing native binding `scanl1`",
+    );
+}
+
+#[test]
+fn an_unbound_call_fails_named_on_cranelift_chirho() {
+    assert_fails_named_chirho(
+        CRANELIFT_CHIRHO,
+        UNBOUND_CALL_CHIRHO,
+        "missing native binding `scanl1`",
+    );
+}
+
+#[test]
+fn an_unbound_constant_fails_named_on_llvm_chirho() {
+    assert_fails_named_chirho(
+        LLVM_CHIRHO,
+        UNBOUND_CONSTANT_CHIRHO,
+        "missing native binding `scanl1`",
+    );
+}
+
+#[test]
+fn an_unbound_constant_fails_named_on_cranelift_chirho() {
+    assert_fails_named_chirho(
+        CRANELIFT_CHIRHO,
+        UNBOUND_CONSTANT_CHIRHO,
+        "missing native binding `scanl1`",
+    );
+}
+
+#[test]
+fn an_unbound_name_on_an_untaken_path_runs_everywhere_chirho() {
+    assert_prints_everywhere_chirho(UNBOUND_UNTAKEN_CHIRHO, "[7]\n");
+}
+
+// ── R2: no integer formatter prints a heap address ─────────────────────────
+
+#[test]
+fn a_boxed_value_is_refused_by_integer_formatting_on_llvm_chirho() {
+    assert_fails_named_chirho(
+        LLVM_CHIRHO,
+        BOXED_SHOW_CHIRHO,
+        "show: no native Show instance for a boxed value",
+    );
+}
+
+#[test]
+fn a_boxed_value_is_refused_by_integer_formatting_on_cranelift_chirho() {
+    assert_fails_named_chirho(
+        CRANELIFT_CHIRHO,
+        BOXED_SHOW_CHIRHO,
+        "show: no native Show instance for a boxed value",
+    );
+}
+
+// ── R3: one error route ───────────────────────────────────────────────────
+
+#[test]
+fn error_reports_its_payload_on_llvm_chirho() {
+    assert_fails_named_chirho(LLVM_CHIRHO, ERROR_CALL_CHIRHO, "boom");
+}
+
+#[test]
+fn error_reports_its_payload_on_cranelift_chirho() {
+    assert_fails_named_chirho(CRANELIFT_CHIRHO, ERROR_CALL_CHIRHO, "boom");
+}
+
+#[test]
+fn undefined_fails_named_on_llvm_chirho() {
+    assert_fails_named_chirho(LLVM_CHIRHO, UNDEFINED_CHIRHO, "Prelude.undefined");
+}
+
+#[test]
+fn undefined_fails_named_on_cranelift_chirho() {
+    assert_fails_named_chirho(CRANELIFT_CHIRHO, UNDEFINED_CHIRHO, "Prelude.undefined");
+}
+
+#[test]
+fn error_without_stack_trace_reports_its_payload_on_llvm_chirho() {
+    assert_fails_named_chirho(LLVM_CHIRHO, ERROR_WITHOUT_STACK_TRACE_CHIRHO, "plain");
+}
+
+#[test]
+fn error_without_stack_trace_reports_its_payload_on_cranelift_chirho() {
+    assert_fails_named_chirho(CRANELIFT_CHIRHO, ERROR_WITHOUT_STACK_TRACE_CHIRHO, "plain");
+}
+
+#[test]
+fn a_missing_method_fails_named_on_llvm_chirho() {
+    assert_fails_named_chirho(
+        LLVM_CHIRHO,
+        MISSING_METHOD_CHIRHO,
+        "missing method Traversable.mapM for []",
+    );
+}
+
+#[test]
+fn a_missing_method_fails_named_on_cranelift_chirho() {
+    assert_fails_named_chirho(
+        CRANELIFT_CHIRHO,
+        MISSING_METHOD_CHIRHO,
+        "missing method Traversable.mapM for []",
+    );
+}
+
+// ── R4: an unknown primitive is refused at compile time ────────────────────
+
+#[test]
+fn an_unknown_primitive_is_refused_on_llvm_chirho() {
+    assert_refused_chirho(
+        LLVM_CHIRHO,
+        IOREF_CHIRHO,
+        "newIORef#/1, readIORef#/1, writeIORef#/2",
+    );
+}
+
+#[test]
+fn an_unknown_primitive_is_refused_on_cranelift_chirho() {
+    assert_refused_chirho(
+        CRANELIFT_CHIRHO,
+        IOREF_CHIRHO,
+        "newIORef#/1, readIORef#/1, writeIORef#/2",
+    );
+}
+
+#[test]
+fn power_is_refused_on_cranelift_chirho() {
+    assert_refused_chirho(CRANELIFT_CHIRHO, POWER_CHIRHO, "^#/2");
+}
+
+// ── R5: no matching alternative fails named ───────────────────────────────
+
+#[test]
+fn no_matching_alternative_fails_named_on_llvm_chirho() {
+    assert_fails_named_chirho(LLVM_CHIRHO, NO_MATCH_CHIRHO, "no matching alternative");
+}
+
+#[test]
+fn no_matching_alternative_fails_named_on_cranelift_chirho() {
+    assert_fails_named_chirho(CRANELIFT_CHIRHO, NO_MATCH_CHIRHO, "no matching alternative");
 }

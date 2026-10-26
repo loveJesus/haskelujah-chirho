@@ -80,7 +80,20 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
   - `undefined` fails where it is referenced on both backends, as LLVM did before.
 - [x] R2: the runtime's checked formatting (C3), and the LLVM `%ld` sites routed through it (C4): Int `show`, list heads that default to Int, and a pure `main`'s result.
 - [x] R5 on both backends. LLVM's four defaults call the runtime's no-match entry. Cranelift calls it before each trap and for a case with no alternatives.
-- [ ] Controls: one per route per backend, with exact stderr, exit 1 and no signal. The changed tests are LLVM's two alias unit tests, and `native_error_helpers` tightened to require exit 1.
+- [x] Controls (C6), one per route per backend, with exact stderr, exit 1 and no signal. Written, unbuilt.
+  - Placement: they live in `tests/native_error_helpers_chirho.rs`, the existing native error suite, not in a new file. `tests/` already has 25 entries against a cap of 15.
+  - Routes and probes:
+    - R1: U01 and U05, plus a hold where an unbound name on an untaken path runs.
+    - R2: C01.
+    - R3: E01, E03, E05 and M01.
+    - R4: P01 on both backends and P06 on Cranelift, each with its exact refusal text.
+    - R5: A01.
+  - The RTS cases (C3) and the LLVM unit tests (C4) control the same routes below the driver.
+  - Tests that change on purpose:
+    - LLVM's two alias unit tests (C4);
+    - two more LLVM unit tests found at implementation, which asserted `snprintf` for Int `show` and `printf` for a pure `main` and now assert the checked runtime formatters (C4);
+    - `native_error_helpers`' failure helper, which accepted a signal and now requires exit 1 with the exact line (C6).
+- [x] C7: workflow `spec-chirho/workflows-chirho/testing-chirho/native-fail-loud-chirho.md`, cited by every new module.
 - [ ] Checks without Cargo:
   - pinned rustfmt;
   - `diff --check`;
