@@ -49,4 +49,9 @@ Row 554 was split from the #28942 residual in #28950 and stacks on row 553. Its 
   - the 13-line sections control and the N1 all-engine control fail;
   - the `iterate` residual, the negated-division holds and row 547's ordering control pass;
   - the table was restored byte-identical, with a verified core recompile.
-- [ ] Commit, run the focused gate, and record it.
+- [x] Commit (`9258619d` on `72ac41c0`, after row 553 landed), run the focused gate, and record it.
+  - Gate r1 is GREEN in 191.16 s.
+  - 690/690 focused tests passed.
+  - Clippy: none of 456 diagnostic locations fell on the 52 changed lines.
+  - The parallel contract pass took 23.34 s.
+  - Row 535's judge gave 126/126, at 73 movers and 9 holds. Its 29 changes are exactly the landed set, row 556's B06 included, so no contract program moved for row 554.
