@@ -54,5 +54,10 @@ Parallel CLI compiles of one small program alternate LLVM and Cranelift. The scr
 - [x] Measure the inode replacement and cargo's reported paths. Claimed (#29129); gpt assigned row 568 (#29131).
 - [x] Write the helper and its unit controls (4/4), and move all three link sites to it.
 - [x] Measure the stress: main against the candidate.
-- [ ] Commit, rebase onto current main, run the warm gate, and record it.
+- [x] Commit, rebase onto current main, run the warm gate, and record it.
+  - **r1 was GREEN on `052d1bd0` (base `f8b3476a`) in 244.06 s:**
+    - 790/790 focused tests, now including the test harness and the four snapshot controls;
+    - no Clippy diagnostic on the 358 changed lines;
+    - the judge at 126/126.
+  - The contract's 82 native compiles ran 8 at a time through the snapshot, and no snapshot directory was left after the gate.
 - [ ] Land on main and close progress row 568.
