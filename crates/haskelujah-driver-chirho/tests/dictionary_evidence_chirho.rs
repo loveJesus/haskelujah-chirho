@@ -268,3 +268,5 @@ main = do
 mod data_map_tolist_chirho;
 #[path = "dictionary_evidence_chirho/generic_heads_chirho.rs"]
 mod generic_heads_chirho;
+#[path = "dictionary_evidence_chirho/non_empty_routes_chirho.rs"]
+mod non_empty_routes_chirho;
