@@ -24,6 +24,8 @@ mod flat_type_tests_chirho;
 #[path = "lower_chirho/type_syntax_chirho/flat_types_chirho.rs"]
 mod flat_types_chirho;
 #[cfg(test)]
+mod import_item_tests_chirho;
+#[cfg(test)]
 mod instance_signature_tests_chirho;
 #[cfg(test)]
 mod occurrence_tests_chirho;
@@ -755,14 +757,11 @@ impl LowerCtxChirho {
         let mut items_chirho = Vec::new();
 
         for child_chirho in &children_chirho {
-            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
-                if n_chirho.kind_chirho() == SyntaxKindChirho::ImportSpecChirho {
-                    if let Some(item_chirho) =
-                        self.lower_import_spec_item_chirho(n_chirho, child_chirho.start_chirho)
-                    {
-                        items_chirho.push(item_chirho);
-                    }
-                }
+            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho
+                && n_chirho.kind_chirho() == SyntaxKindChirho::ImportSpecChirho
+            {
+                items_chirho
+                    .push(self.lower_import_spec_item_chirho(n_chirho, child_chirho.start_chirho));
             }
         }
 
@@ -773,8 +772,9 @@ impl LowerCtxChirho {
         &self,
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
-    ) -> Option<ImportItemChirho> {
+    ) -> ImportItemChirho {
         let mut first_name_chirho: Option<(String, SpanChirho, bool)> = None; // (text, span, is_con)
+        let mut name_tokens_chirho = 0usize;
         let mut has_parens_chirho = false;
         let mut has_dotdot_chirho = false;
         let mut members_chirho: Vec<NameChirho> = Vec::new();
@@ -787,6 +787,7 @@ impl LowerCtxChirho {
             match elem_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => match tok_chirho.kind_chirho() {
                     TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
+                        name_tokens_chirho += 1;
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
                         let is_con_chirho = true;
                         if first_name_chirho.is_none() {
@@ -802,6 +803,7 @@ impl LowerCtxChirho {
                         }
                     }
                     TokenKindChirho::VarIdChirho => {
+                        name_tokens_chirho += 1;
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
                         if first_name_chirho.is_none() {
                             first_name_chirho =
@@ -816,6 +818,7 @@ impl LowerCtxChirho {
                     | TokenKindChirho::ConSymChirho
                     | TokenKindChirho::QualifiedVarSymChirho
                     | TokenKindChirho::QualifiedConSymChirho => {
+                        name_tokens_chirho += 1;
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
                         if first_name_chirho.is_none() {
                             first_name_chirho = Some((
@@ -850,7 +853,21 @@ impl LowerCtxChirho {
             offset_chirho = elem_end_chirho;
         }
 
-        let (text_chirho, span_chirho, is_con_chirho) = first_name_chirho?;
+        // An item with no faithful AST item is kept, not dropped or misread,
+        // so a list holding it reads as incomplete.
+        // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+        let item_span_chirho =
+            self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
+        let Some((text_chirho, span_chirho, is_con_chirho)) = first_name_chirho else {
+            // A nameless item, such as the namespace wildcard `data ..` or
+            // `type ..`, names nothing lowering can represent.
+            return ImportItemChirho::UnrepresentedChirho(item_span_chirho);
+        };
+        if !is_con_chirho && text_chirho == "pattern" && name_tokens_chirho > 1 {
+            // `pattern P` imports a pattern synonym, not a variable named
+            // `pattern`, and lowering has no item for it.
+            return ImportItemChirho::UnrepresentedChirho(item_span_chirho);
+        }
         let name_chirho = self.name_from_text_chirho(&text_chirho, span_chirho);
 
         if is_con_chirho && has_parens_chirho {
@@ -862,19 +879,19 @@ impl LowerCtxChirho {
             } else {
                 ExportMembersChirho::SomeChirho(members_chirho)
             };
-            Some(ImportItemChirho::TyConChirho {
+            ImportItemChirho::TyConChirho {
                 name_chirho,
                 members_chirho: members_spec_chirho,
-            })
+            }
         } else if is_con_chirho {
             // Type/class with no parens — just the name, no members
-            Some(ImportItemChirho::TyConChirho {
+            ImportItemChirho::TyConChirho {
                 name_chirho,
                 members_chirho: ExportMembersChirho::NoneChirho,
-            })
+            }
         } else {
             // Variable
-            Some(ImportItemChirho::VarChirho(name_chirho))
+            ImportItemChirho::VarChirho(name_chirho)
         }
     }
 
