@@ -64,11 +64,22 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
   - the unbound thunk is one per name, rooted for the program's lifetime, so a loop that mentions the name allocates once;
   - R2's check sits in `show_int`, `print_int` and the `[Int]` heads. `show_bool_list` formats no integer, so it is not an R2 site;
   - `tests/native_failure_chirho.rs` observes each case from a child process: exit 1, the exact stderr line, and the report after buffered C output on a merged stream.
-- [ ] R1 on both backends.
-- [ ] R4 on both backends, with Cranelift's `^#` refused.
-- [ ] R3 on both backends, with `errorWithoutStackTrace`.
-- [ ] R2: the runtime's checked formatting, and the LLVM `%ld` sites routed through it.
-- [ ] R5 on both backends.
+- [x] R1 on both backends (LLVM C4 c28988f4; Cranelift C5). Written, unbuilt.
+  - LLVM records each function's unbound free ids. A reference to one becomes the runtime's failing thunk for its name, so an untaken path still runs, and a parameterless CAF now compiles.
+  - Cranelift's pre-scan embeds the name of every unbound free id beside the string literals. A reference to one becomes the same thunk.
+  - A Cranelift miss outside that set keeps its 0 placeholder: a bound local that lowering did not bind. That residual is outside this unit, like letrec zero initialization.
+  - The parameter alias and the helpers only it used are gone from both backends.
+- [x] R4 on both backends, with Cranelift's `^#` refused.
+  - LLVM is unchanged. Every executable path (CLI, harness, driver) already returns the refusal as `Err`. The panicking wrapper is test-only, and the IR preview never builds an executable.
+  - Cranelift records every primitive that reaches `lower_primop`'s default arm and refuses the executable with the sorted list, in LLVM's wording. `^#`'s left-operand arm is removed, so it reaches that arm.
+  - Names whose calls Cranelift implements at the call site are exempt (`putStrLn#`, `returnIO#` and the rest). The IO-action pass gives their adapter bindings bodies of the same primitive, and those bodies never run in place of the call-site lowering.
+  - Desk check: among primitives LLVM lowers, the newly refused ones are only `compare#` and `compareChar#`. No Cranelift round trip or shared native suite reaches a refused family.
+- [x] R3 on both backends, with `errorWithoutStackTrace` (C4, C5).
+  - LLVM: `error`, `error#` and `errorWithoutStackTrace` force the message and raise it on the program route. `undefined` calls the runtime.
+  - Cranelift: the plain `error` primitive joins `error#`, `errorWithoutStackTrace` joins the call-site `error` arm, and `throw#` reports `uncaught exception`.
+  - `undefined` fails where it is referenced on both backends, as LLVM did before.
+- [x] R2: the runtime's checked formatting (C3), and the LLVM `%ld` sites routed through it (C4): Int `show`, list heads that default to Int, and a pure `main`'s result.
+- [x] R5 on both backends. LLVM's four defaults call the runtime's no-match entry. Cranelift calls it before each trap and for a case with no alternatives.
 - [ ] Controls: one per route per backend, with exact stderr, exit 1 and no signal. The changed tests are LLVM's two alias unit tests, and `native_error_helpers` tightened to require exit 1.
 - [ ] Checks without Cargo:
   - pinned rustfmt;

@@ -37,8 +37,9 @@ use haskelujah_core_chirho::expr_chirho::{
     AltConChirho, CoreAltChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
 };
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
+mod failures_chirho;
 mod lazy_chirho;
 use lazy_chirho::lower_lazy_value_chirho;
 
@@ -129,6 +130,12 @@ pub struct LowerCtxChirho<'a> {
     pub pack_string_ref_chirho: Option<cranelift_codegen::ir::FuncRef>,
     /// Map of string content → GlobalValue for data section string literals
     pub string_globals_chirho: HashMap<String, cranelift_codegen::ir::GlobalValue>,
+    /// The name each unbound free id reports when demanded; its bytes are
+    /// among the string globals.
+    pub unbound_names_chirho: &'a HashMap<CoreIdChirho, String>,
+    /// Primitives this backend cannot lower, as `name/arity`. An executable
+    /// that compiles any of them is refused.
+    pub unsupported_primitives_chirho: BTreeSet<String>,
     /// Current function Core id, used for self-tail-call elimination.
     pub tco_self_id_chirho: Option<CoreIdChirho>,
     /// Optional loop-header block for self-tail-call elimination.
@@ -256,11 +263,17 @@ pub fn lower_expr_chirho(
                         return builder_chirho.inst_results(call_chirho)[0];
                     }
                 }
-                // Other unresolved named variables — emit 0 as placeholder
-                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+                failures_chirho::lower_unresolved_reference_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    *id_chirho,
+                )
             } else {
-                // Unresolved variable — emit 0 as a safe placeholder.
-                builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
+                failures_chirho::lower_unresolved_reference_chirho(
+                    builder_chirho,
+                    ctx_chirho,
+                    *id_chirho,
+                )
             }
         }
 
@@ -749,7 +762,10 @@ fn lower_case_chirho(
         .bind_chirho(bind_chirho.id_chirho, scrut_i64_chirho);
 
     if alts_chirho.is_empty() {
-        return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
+        // No alternative can match the evaluated scrutinee.
+        return ctx_chirho
+            .runtime_calls_chirho
+            .no_match_value_chirho(builder_chirho);
     }
 
     // ── Merge block collects results from all alts ─────────────────────────
@@ -863,10 +879,13 @@ fn lower_case_chirho(
             lower_expr_chirho(builder_chirho, ctx_chirho, &default_alt_chirho.rhs_chirho);
         ensure_i64_chirho(builder_chirho, val_chirho, false)
     } else {
-        // No default alt — pattern match is exhaustive; emit a trap.
-        // `trap` is itself a block terminator so we must NOT emit another
-        // terminator (jump) after it; just return a dummy value and skip
-        // the jump.
+        // No default alt: a scrutinee no alternative matched fails named.
+        // The runtime exits; `trap` only terminates the block, so we must
+        // NOT emit another terminator (jump) after it; just return a dummy
+        // value and skip the jump.
+        ctx_chirho
+            .runtime_calls_chirho
+            .no_match_chirho(builder_chirho);
         builder_chirho
             .ins()
             .trap(cranelift_codegen::ir::TrapCode::unwrap_user(1));
@@ -922,8 +941,11 @@ fn lower_tail_case_chirho(
         .bind_chirho(bind_chirho.id_chirho, scrut_i64_chirho);
 
     if alts_chirho.is_empty() {
+        // No alternative can match the evaluated scrutinee.
         return TailLowerOutcomeChirho::ValueChirho(
-            builder_chirho.ins().iconst(cl_types_chirho::I64, 0),
+            ctx_chirho
+                .runtime_calls_chirho
+                .no_match_value_chirho(builder_chirho),
         );
     }
 
@@ -1041,6 +1063,11 @@ fn lower_tail_case_chirho(
             TailLowerOutcomeChirho::TerminatedChirho => {}
         }
     } else {
+        // A scrutinee no alternative matched fails named; the trap only
+        // terminates the block.
+        ctx_chirho
+            .runtime_calls_chirho
+            .no_match_chirho(builder_chirho);
         builder_chirho
             .ins()
             .trap(cranelift_codegen::ir::TrapCode::unwrap_user(1));
@@ -1399,8 +1426,10 @@ fn lower_app_chirho(
     if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
         // Check for Prelude IO functions (putStrLn, print, return)
         if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(func_id_chirho) {
-            if matches!(name_chirho.as_str(), "error" | "error#")
-                && !ctx_chirho.func_ref_map_chirho.contains_key(func_id_chirho)
+            if matches!(
+                name_chirho.as_str(),
+                "error" | "error#" | "errorWithoutStackTrace"
+            ) && !ctx_chirho.func_ref_map_chirho.contains_key(func_id_chirho)
             {
                 if let Some(message_chirho) = all_args_chirho.last() {
                     let message_chirho =
@@ -2272,7 +2301,8 @@ fn lower_floor_div_mod_chirho(
 /// Lower a primitive operation to Cranelift instructions.
 ///
 /// Handles integer arithmetic, integer comparisons, float arithmetic,
-/// and float comparisons. Unknown primops return 0.
+/// and float comparisons. An unknown primop is recorded, and an executable
+/// that compiles one is refused.
 pub fn lower_primop_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
@@ -2307,12 +2337,15 @@ pub fn lower_primop_chirho(
                 .call(classifier_chirho, &[value_chirho]);
             builder_chirho.inst_results(call_chirho)[0]
         }
-        "error#" => {
+        "error" | "error#" => {
             let message_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             ctx_chirho
                 .runtime_calls_chirho
                 .error_chirho(builder_chirho, message_chirho)
         }
+        "throw#" => ctx_chirho
+            .runtime_calls_chirho
+            .uncaught_exception_chirho(builder_chirho),
         "+#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);
@@ -2490,11 +2523,6 @@ pub fn lower_primop_chirho(
             } else {
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
             }
-        }
-        "^#" => {
-            // Integer power — simplified: return lhs^rhs via repeated multiply
-            // (not emitted here; return placeholder i64 0 for now).
-            ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false)
         }
 
         // ── Integer comparisons → 0 or 1 in i64 ───────────────────────────
@@ -2793,8 +2821,13 @@ pub fn lower_primop_chirho(
             ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false)
         }
 
-        // ── Unknown primop ─────────────────────────────────────────────────
-        _ => builder_chirho.ins().iconst(cl_types_chirho::I64, 0),
+        // ── Unknown primop, `^#` among them: refused ────────────────────────
+        _ => failures_chirho::refuse_primitive_chirho(
+            builder_chirho,
+            ctx_chirho,
+            name_chirho,
+            args_chirho.len(),
+        ),
     }
 }
 
