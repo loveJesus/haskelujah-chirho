@@ -1035,7 +1035,18 @@ impl LlvmCodegenChirho {
                 args_chirho: _,
             } if matches!(
                 name_chirho.as_str(),
-                "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#"
+                "==#"
+                    | "/=#"
+                    | "<#"
+                    | "<=#"
+                    | ">#"
+                    | ">=#"
+                    | "not#"
+                    | "eqFloat#"
+                    | "<.#"
+                    | "<=.#"
+                    | ">.#"
+                    | ">=.#"
             ) =>
             {
                 Some(ShowBuiltinKindChirho::BoolChirho)

@@ -2680,6 +2680,19 @@ pub fn lower_primop_chirho(
             lhs_raw_chirho,
             rhs_raw_chirho,
         ),
+        // Ordered, as GHC's `<=##` and `>=##`: a NaN on either side gives 0.
+        "<=.#" => fcmp_to_i64_chirho(
+            builder_chirho,
+            cranelift_codegen::ir::condcodes::FloatCC::LessThanOrEqual,
+            lhs_raw_chirho,
+            rhs_raw_chirho,
+        ),
+        ">=.#" => fcmp_to_i64_chirho(
+            builder_chirho,
+            cranelift_codegen::ir::condcodes::FloatCC::GreaterThanOrEqual,
+            lhs_raw_chirho,
+            rhs_raw_chirho,
+        ),
 
         // ── Boolean operations ─────────────────────────────────────────────
         "not#" => {
@@ -2901,7 +2914,7 @@ fn infer_show_int_arg_kind_chirho(expr_chirho: &CoreExprChirho) -> Option<ShowIn
         }
         CoreExprChirho::PrimOpChirho { name_chirho, .. } => match name_chirho.as_str() {
             "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#" | "<.#" | ">.#"
-            | "readBool#" | "showStr#" | "++#" | "eqStr#" => {
+            | "<=.#" | ">=.#" | "readBool#" | "showStr#" | "++#" | "eqStr#" => {
                 Some(if matches!(name_chirho.as_str(), "showStr#" | "++#") {
                     ShowIntArgKindChirho::StringChirho
                 } else {
@@ -3563,6 +3576,8 @@ fn expr_is_bool_literalish_chirho(expr_chirho: &CoreExprChirho) -> bool {
                 | "eqFloat#"
                 | "<.#"
                 | ">.#"
+                | "<=.#"
+                | ">=.#"
                 | "readBool#"
                 | "eqStr#"
         ),

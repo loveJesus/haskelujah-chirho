@@ -9,28 +9,7 @@
 //! Each program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use haskelujah_test_harness_chirho::native_chirho::{
-    NativeBackendChirho, native_round_trip_chirho,
-};
-
-use super::run_chirho;
-
-const BACKENDS_CHIRHO: [NativeBackendChirho; 2] = [
-    NativeBackendChirho::LlvmChirho,
-    NativeBackendChirho::CraneliftChirho,
-];
-
-fn assert_native_chirho(file_name_chirho: &str, program_chirho: &str, ghc_chirho: &str) {
-    for backend_chirho in BACKENDS_CHIRHO {
-        assert_eq!(
-            native_round_trip_chirho(program_chirho, backend_chirho, "").unwrap_or_else(
-                |error_chirho| panic!("{file_name_chirho} {backend_chirho:?}: {error_chirho}")
-            ),
-            (0, ghc_chirho.to_string()),
-            "{file_name_chirho} {backend_chirho:?}"
-        );
-    }
-}
+use super::{assert_native_chirho, run_chirho};
 
 #[test]
 fn integer_literals_divide_at_double_everywhere_chirho() {

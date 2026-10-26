@@ -179,8 +179,8 @@ impl DictPassCtxChirho {
                     "+.#" | "-.#" | "*.#" | "/.#" | "negateFloat#" | "recip#" | "readFloat#" => {
                         Some("Double".to_string())
                     }
-                    "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#"
-                    | "readBool#" => Some("Bool".to_string()),
+                    "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#" | "<.#"
+                    | "<=.#" | ">.#" | ">=.#" | "readBool#" => Some("Bool".to_string()),
                     "compare#" | "compareChar#" | "compareFloat#" | "compareStr#" => {
                         Some("Ordering".to_string())
                     }

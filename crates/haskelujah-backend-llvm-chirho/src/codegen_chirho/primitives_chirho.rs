@@ -99,7 +99,7 @@ impl LlvmCodegenChirho {
             }
             if matches!(
                 name_chirho,
-                "+.#" | "-.#" | "*.#" | "/.#" | "eqFloat#" | "<.#" | ">.#"
+                "+.#" | "-.#" | "*.#" | "/.#" | "eqFloat#" | "<.#" | ">.#" | "<=.#" | ">=.#"
             ) {
                 return self.emit_float_binary_chirho(name_chirho, &lhs_chirho, &rhs_chirho);
             }
@@ -404,6 +404,8 @@ impl LlvmCodegenChirho {
             "eqFloat#" => ("fcmp oeq", true),
             "<.#" => ("fcmp olt", true),
             ">.#" => ("fcmp ogt", true),
+            "<=.#" => ("fcmp ole", true),
+            ">=.#" => ("fcmp oge", true),
             _ => unreachable!(),
         };
         writeln!(self.output_chirho, "  {computed_chirho} = {operation_chirho} double {left_float_chirho}, {right_float_chirho}").unwrap();

@@ -51,6 +51,13 @@ flowchart TD
   - It used to answer `Int` by name. So a method keyed from its first argument, as `/` is, missed the Fractional row whenever that argument was a literal: `1 / 2 :: Double`, a Double signature, and `7 / 2` under defaulting.
   - The interpreter then failed with `missing STG binding /`, and the native backends with `missing native binding /`.
   - Controls: `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
+- The desugarer's blind Int primops take the float primop at a Double operand (row 547).
+  - Infix and section `<`, `<=`, `>` and `>=` become `<#`, `<=#`, `>#` and `>=#` before any type is known. So does a prefix minus on an operand that is not a float literal, which becomes `negate#`.
+  - `rewrite_method_refs_with_locals_chirho` gives such a primop its float counterpart when an operand keys as Double: binder types, type applications and literal records. The rule is `rewrite_chirho/double_primops_chirho.rs`.
+  - The counterparts are `<.#`, `<=.#`, `>.#`, `>=.#` (ordered, so a NaN gives False) and `negateFloat#`.
+  - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
+  - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
+  - Controls: `tests/dictionary_evidence_chirho/double_primops_chirho.rs`.
 
 ## Reference evidence (bricks 3 and 4)
 

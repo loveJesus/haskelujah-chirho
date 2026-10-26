@@ -7,11 +7,16 @@
 
 use haskelujah_driver::eval_source_with_machine_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
+use haskelujah_test_harness_chirho::native_chirho::{
+    NativeBackendChirho, native_round_trip_chirho,
+};
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
 #[path = "dictionary_evidence_chirho/derived_show_chirho.rs"]
 mod derived_show_chirho;
+#[path = "dictionary_evidence_chirho/double_primops_chirho.rs"]
+mod double_primops_chirho;
 #[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
 mod equality_sections_chirho;
 #[path = "dictionary_evidence_chirho/fractional_literals_chirho.rs"]
@@ -41,6 +46,22 @@ fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
         Err(err_chirho) => {
             panic!("{file_name_chirho}: GHC runs this program; we failed: {err_chirho}")
         }
+    }
+}
+
+/// The program exits 0 with GHC's output on both native backends.
+fn assert_native_chirho(file_name_chirho: &str, program_chirho: &str, ghc_chirho: &str) {
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        assert_eq!(
+            native_round_trip_chirho(program_chirho, backend_chirho, "").unwrap_or_else(
+                |error_chirho| panic!("{file_name_chirho} {backend_chirho:?}: {error_chirho}")
+            ),
+            (0, ghc_chirho.to_string()),
+            "{file_name_chirho} {backend_chirho:?}"
+        );
     }
 }
 

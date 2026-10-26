@@ -167,6 +167,13 @@ pub fn apply_prim_binop_chirho(
         PrimOpKindChirho::GtFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::BoolChirho(a_chirho > b_chirho))
         }),
+        // IEEE comparisons, as GHC's `<=##` and `>=##`: a NaN on either side gives False.
+        PrimOpKindChirho::LeFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
+            Ok(ValueChirho::BoolChirho(a_chirho <= b_chirho))
+        }),
+        PrimOpKindChirho::GeFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
+            Ok(ValueChirho::BoolChirho(a_chirho >= b_chirho))
+        }),
 
         // Char operations
         PrimOpKindChirho::EqCharChirho => char_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {

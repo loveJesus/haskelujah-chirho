@@ -19,6 +19,7 @@ use crate::expr_chirho::{
 mod call_keys_chirho;
 mod constrained_references_chirho;
 mod dict_params_chirho;
+mod double_primops_chirho;
 mod head_dispatch_chirho;
 mod method_args_chirho;
 mod method_refs_chirho;

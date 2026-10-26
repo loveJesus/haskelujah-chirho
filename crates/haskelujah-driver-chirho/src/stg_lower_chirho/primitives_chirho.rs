@@ -115,6 +115,8 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
         "compareFloat#" => PrimOpKindChirho::CompareFloatChirho,
         "<.#" => PrimOpKindChirho::LtFloatChirho,
         ">.#" => PrimOpKindChirho::GtFloatChirho,
+        "<=.#" => PrimOpKindChirho::LeFloatChirho,
+        ">=.#" => PrimOpKindChirho::GeFloatChirho,
         // Floating math primops
         "sin#" => PrimOpKindChirho::SinFloatChirho,
         "cos#" => PrimOpKindChirho::CosFloatChirho,

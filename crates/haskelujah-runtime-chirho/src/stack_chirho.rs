@@ -107,6 +107,8 @@ pub enum PrimOpKindChirho {
     DivFloatChirho,
     LtFloatChirho,
     GtFloatChirho,
+    LeFloatChirho,
+    GeFloatChirho,
     EqCharChirho,
     OrdCharChirho,
     PutStrLnChirho,

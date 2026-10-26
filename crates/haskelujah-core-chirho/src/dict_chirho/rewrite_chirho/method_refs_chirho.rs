@@ -888,7 +888,9 @@ impl DictPassCtxChirho {
                     _ => None,
                 };
                 CoreExprChirho::PrimOpChirho {
-                    name_chirho: name_chirho.clone(),
+                    name_chirho: self
+                        .primop_at_double_chirho(name_chirho, args_chirho, local_type_keys_chirho)
+                        .map_or_else(|| name_chirho.clone(), str::to_string),
                     args_chirho: args_chirho
                         .iter()
                         .map(|a_chirho| {
