@@ -25,7 +25,7 @@ Row 538 starts from `ae6ee0f8fecddf7983e7f47f90d60fb9276b9ac6`. It owns the inte
 - [x] Turn P06 into an exact interpreter/LLVM/Cranelift regression test.
 - [x] Update the native workflow at the changed seam.
 - [x] Run the warm focused tests, changed-package lint, and diff check. Gitleaks follows on the committed range.
-- [ ] Record measured timings and evidence, then hand the reviewed tip to `main_chirho` and close row 538 in the progress DB.
+- [x] Record measured timings and evidence, fast-forward `main_chirho` to source commit `aa94a17b`, and close progress row 538 GREEN.
 
 ## Measured evidence
 
@@ -34,3 +34,4 @@ Row 538 starts from `ae6ee0f8fecddf7983e7f47f90d60fb9276b9ac6`. It owns the inte
 - The complete RTS, LLVM-backend, and Cranelift-backend library suites passed together in 5.90 seconds: 48 + 38 + 42 tests.
 - Warm Clippy over the RTS, both native backends, and driver tests exited 0 in 10.30 seconds. The repository's existing warnings remain outside this range; none points at a changed or inserted line.
 - `git diff --check` is clean. The one new Rust file is 15 lines; no file newly crosses 1,500 lines. The already-oversized Cranelift and LLVM lowering files grow only at their primitive dispatch seams.
+- Gitleaks scanned the one-commit source range and found no leaks. `main_chirho` fast-forwarded from `ae6ee0f8` to `aa94a17b`; progress row 538 then closed GREEN with the same measured evidence.
