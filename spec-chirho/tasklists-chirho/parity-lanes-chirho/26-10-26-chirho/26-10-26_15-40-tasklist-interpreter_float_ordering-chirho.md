@@ -18,7 +18,7 @@ The source is disjoint from row 539's LLVM and Cranelift lowering and the combin
 - [x] Extract the GHC-compatible float ordering rule into its own bounded module.
 - [x] Add the pure boundary controls and one end-to-end interpreter control.
 - [x] Run a warm 2-5 minute gate: focused runtime and driver controls, format, changed-package Clippy, diff-check and gitleaks.
-- [ ] Rebase onto released main, land, and close progress row 542 GREEN.
+- [x] Rebase onto released main, land, and close progress row 542 GREEN.
 
 ## Measured evidence
 
@@ -36,3 +36,8 @@ The source is disjoint from row 539's LLVM and Cranelift lowering and the combin
 - Row 539's Compare2 control stayed exact through the interpreter, LLVM, and Cranelift. Its 13-line float/string edge control is now promoted from native-only to all three engines and passed there as well.
 - Format and diff check are clean. Warm Clippy completed successfully with only pre-existing diagnostics outside the changed files and lines; gitleaks scanned both Row 542 commits and found no leaks.
 - The branch is ready for a fast-forward landing. The final checklist item remains open until `main_chirho` and progress row 542 are committed together.
+
+## Landing
+
+- `main_chirho` fast-forwarded through `ecfe1280`, preserving the tested runtime fix, the all-engine edge control, and the post-rebase record without a merge commit.
+- Progress row 542 records the exact focused evidence above. This tasklist and the progress database close the unit together after the source landing.
