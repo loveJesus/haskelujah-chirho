@@ -13,11 +13,11 @@ use haskelujah_test_harness_chirho::native_chirho::{
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
-#[path = "dictionary_evidence_chirho/compare_route_chirho.rs"]
+#[path = "dictionary_evidence_chirho/ordering_chirho/compare_route_chirho.rs"]
 mod compare_route_chirho;
 #[path = "dictionary_evidence_chirho/derived_show_chirho.rs"]
 mod derived_show_chirho;
-#[path = "dictionary_evidence_chirho/double_primops_chirho.rs"]
+#[path = "dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs"]
 mod double_primops_chirho;
 #[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
 mod equality_sections_chirho;
@@ -29,7 +29,7 @@ mod ground_keys_chirho;
 mod higher_order_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/list_orders_chirho.rs"]
 mod list_orders_chirho;
-#[path = "dictionary_evidence_chirho/ordering_literals_chirho.rs"]
+#[path = "dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs"]
 mod ordering_literals_chirho;
 #[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
 mod proven_occurrences_chirho;

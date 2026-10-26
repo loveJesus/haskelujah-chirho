@@ -58,13 +58,13 @@ flowchart TD
   - `negate#` keys as its operand in `type_keys_chirho.rs`, so `(-1) / 2 :: Double` keys `/` at Double instead of Int.
   - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
   - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
-  - Controls: `tests/dictionary_evidence_chirho/double_primops_chirho.rs`.
+  - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs`.
 - Other keys reach their ordering through a body-backed `compare` (row 551, the first Ord brick).
   - When an operand of the desugarer's `<#`, `<=#`, `>#` or `>=#` keys as anything but Int, Char, Bool or Double, `rewrite_chirho/compare_route_chirho.rs` looks up `$prim_Ord_compare_<key>` with `lookup_dispatch_body_name_id_chirho`. That lookup accepts a body-backed row and never a missing-method stub.
   - If found, the primop becomes `test (compare a b)`, with one of the Ordering tests generated in `prelude_chirho/ordering_tests_chirho.rs`.
   - That serves Strings, lists, derived types and Ordering.
   - A key without such a row keeps the primop: `Maybe`, tuples. `max`, `min` and prefix `(<)` are later bricks.
-  - Controls: `tests/dictionary_evidence_chirho/compare_route_chirho.rs`.
+  - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/compare_route_chirho.rs`.
 
 ## Reference evidence (bricks 3 and 4)
 
@@ -532,7 +532,7 @@ flowchart TD
     `import Prelude hiding (Ordering(..))`) keeps them;
   - a qualified `P.LT` resolves as before;
   - computed Orderings and user enums are untouched.
-- **Tests:** `tests/dictionary_evidence_chirho/ordering_literals_chirho.rs`. It also keeps
+- **Tests:** `tests/dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs`. It also keeps
   `succ LT` (T10) and `maximum [LT, GT, EQ]` (T11) with GHC's answers in an unasserted table,
   so the oracle still runs them. No committed test pins their current behavior.
 - **Bounded, still open, each its own unit:**

@@ -19,7 +19,7 @@ After gate run 1, C1-C4 were replayed onto main 0ec9f8f5 (gpt_chirho #28249). Th
 
 - [x] C2 (eedeb478), one commit:
   - seed LT/EQ/GT as `Ordering` in constructors_chirho.rs;
-  - add tests/dictionary_evidence_chirho/ordering_literals_chirho.rs and its harness `mod` lines.
+  - add tests/dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs and its harness `mod` lines.
   - Rows fixed to GHC's answer: R1, R2, R5, R9 and T12. C2 also claimed T10 and T11. Gate run 1 proved that claim wrong, and C4 corrects it.
   - Rejected like GHC: T01 and T04, by `check`, with a type mismatch naming `Ordering`.
   - Unchanged:

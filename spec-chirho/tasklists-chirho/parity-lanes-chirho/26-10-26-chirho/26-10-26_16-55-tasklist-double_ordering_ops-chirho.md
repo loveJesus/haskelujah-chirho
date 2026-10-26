@@ -41,7 +41,7 @@ The control program has 21 lines and prints only Bools.
 - **Classifiers:**
   - the dictionary pass's Bool result list, the LLVM show classifier and Cranelift's two Bool lists name the float comparisons;
   - LLVM's show classifier had none of them before.
-- **The control** is `tests/dictionary_evidence_chirho/double_primops_chirho.rs`. It runs through the interpreter and both native backends.
+- **The control** is `tests/dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs`. It runs through the interpreter and both native backends.
   - Its native assertion is now shared with row 543's controls as `assert_native_chirho` in `dictionary_evidence_chirho.rs`.
 
 ## Boundaries

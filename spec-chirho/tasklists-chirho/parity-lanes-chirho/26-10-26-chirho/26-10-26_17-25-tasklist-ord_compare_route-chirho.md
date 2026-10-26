@@ -35,7 +35,7 @@ The probes put the greater value first: `"b"`/`"a"`, `[1, 3]`/`[1, 2]`, `GreenCh
   - The route takes an operand's concrete key. Int, Char, Bool and Double keep their primops.
   - Otherwise `lookup_dispatch_body_name_id_chirho("$prim_Ord_compare_<key>")` must find a body-backed row, not a generated missing-method stub. This is the resolver compare dispatch trusts, so no bare `compare` placeholder is minted.
   - When it finds one, the primop becomes `test (compare a b)`. `compare` is evaluated once, because the test scrutinizes its argument once.
-- **The controls** are in `tests/dictionary_evidence_chirho/compare_route_chirho.rs`, measured on GHC as written:
+- **The controls** are in `tests/dictionary_evidence_chirho/ordering_chirho/compare_route_chirho.rs`, measured on GHC as written:
   - a 23-line program runs on all three engines: String, `[Int]` with a prefix case, derived enum and record, Ordering, both sections, and unchanged Int, Char, Bool and Double lines;
   - the interpreter keeps failing on `Maybe`, tuple, `max` and prefix `(<)` (GHC: False, False, b, False);
   - structurally, `main = print ("b" >= "a")` mentions the `[Char]` compare row exactly once and no `>=#`.
