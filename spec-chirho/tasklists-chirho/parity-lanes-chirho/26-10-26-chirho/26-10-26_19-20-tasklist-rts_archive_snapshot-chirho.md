@@ -60,4 +60,4 @@ Parallel CLI compiles of one small program alternate LLVM and Cranelift. The scr
     - no Clippy diagnostic on the 358 changed lines;
     - the judge at 126/126.
   - The contract's 82 native compiles ran 8 at a time through the snapshot, and no snapshot directory was left after the gate.
-- [ ] Land on main and close progress row 568.
+- [x] Land on main and close progress row 568 (`bb794cd9`, closing commit follows).
