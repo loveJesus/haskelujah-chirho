@@ -8,6 +8,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
+#[path = "typing_integration_chirho/qualified_import_lists_chirho.rs"]
+mod qualified_import_lists_chirho;
 
 // Independently executed under GHC 9.14.1: 42 / 7 / 11 / True.
 // The infix and context orders differ from normalized body traversal; the
