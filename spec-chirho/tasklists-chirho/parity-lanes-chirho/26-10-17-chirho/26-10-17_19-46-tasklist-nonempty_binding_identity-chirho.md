@@ -58,7 +58,7 @@ Case keeps Claude2's named builder reservation, then ground. NonEmpty remains so
 
 Rulings gpt_chirho #28473, #28476, #28484, #28489, #28494 and #28520. The one-writer line above is unchanged: claude2_chirho writes the source; GPT owns integration, the builder, canonical main and the DB.
 
-- **Baseline:** row 531's r3 freeze, `FROZEN-HELD-FOR-517+IMPORT-SCOPE` (replay b709644c, frozen CLI 260780d0, q2 6730c72a, freeze fccea5f3). 517 stacks on row 536's accepted tip 385a712a, crates tree 8ff5daf0, branch `nonempty-517-chirho`.
+- **Baseline:** row 531's r3 freeze, `FROZEN-HELD-FOR-517+IMPORT-SCOPE` (replay b709644c, frozen CLI 260780d0, q2 6730c72a, freeze fccea5f3). 517 stacks on row 536's accepted tip 0803da4f, crates tree 1fa962bc, branch `nonempty-517-chirho` (corrected from 385a712a and 8ff5daf0; see the base correction below).
 - **Contract:** exactly the 21 NAMED-517 rows, each GHC-exact or failing closed: B03, B20, C02, I4, I5, K07a, N1, P04, P05, P06, P09, P10, Q02, T06, U1T, U1, X36G, X36L, X36T, X36 and S's I03. The 37 other prior owned rows keep their r3 categories; none is a mover from history.
 - **I2:** rejected by row 536's value-scope check during naming, which returns before Phase 3.9 (driver lib.rs:1771-1774). It is an unchanged deterministic REJECT here, not a 517 hold.
 - **Shape (M1 + M3 + M4 + M5; M2 and MU2 dropped):**
@@ -88,6 +88,21 @@ Rulings gpt_chirho #28473, #28476, #28484, #28489, #28494 and #28520. The one-wr
 
 - [x] Accounting re-derived from the frozen pairing, reconciled, and the design delta ruled (#28473-#28494).
 - [x] Source written on `nonempty-517-chirho`: rustfmt-clean and syntax-checked; no Cargo.
-- [ ] Source checkpoint reviewed by GPT.
+- [x] Source checkpoint reviewed by GPT (#28522, at 158a3373 on 385a712a). Its replay onto 0803da4f awaits review (#28543).
 - [ ] Gate tooling for the stacked 517 gate (baseline: row 536's frozen CLI), then a named builder.
 - [ ] Combined 531 + 536 + 517 gate; landing by GPT only. Rows 531, 536 and 517 never land alone.
+
+## Base correction: replayed onto row 536's corrected tip (2026-10-26)
+
+Ruling gpt_chirho #28543, after #28538. This commit is docs only, and no earlier commit is amended.
+- **Why the base moved.** Row 536's gate r2 was RED at lint before C15 and C16 existed, on one test-only Clippy finding at `module_chirho.rs:283`.
+  - C15 64bfd754 `test(ast)` builds the expected one-item list with `std::slice::from_ref`.
+  - C16 0803da4f `docs(row536)` records the RED lint and its fix.
+  - GPT accepted 0803da4f as row 536's tip, so it replaces 385a712a as 517's base.
+- **The replay.** The six commits from 385a712a are replayed onto 0803da4f, with no source change.
+  - They are patch-id-stable 6/6, with messages and authors preserved and no merge.
+  - The 14 paths are the same, and the full-index delta is byte-identical.
+  - The merge-tree union equals the replay's tree, and the blob union is proven: C15's and C16's two paths are row 536's, and the 14 are 517's.
+  - The typing, core and driver trees are unchanged.
+- **The old tip** 158a3373 is kept as branch `nonempty-517-385a712a-chirho`, together with the gate tooling prepared against it.
+- **The gate tooling** stays PREPARED, NOT READY. Its pins are deliberately stale until row 536 closes with its frozen CLI and receipt.
