@@ -345,11 +345,11 @@ fn compare_answers_as_ghc_everywhere_chirho() {
     assert_prints_everywhere_chirho(COMPARE2_CHIRHO, "GT\nGT\nLT\nGT\n");
 }
 
-/// Native only: the interpreter's `compareFloat#` answers `EQ` when either
-/// side is NaN, where GHC answers `GT` (a residual outside row 539).
+/// Row 539 covers the native backends; row 542 closes the interpreter's
+/// unordered-Double residual, so the shared edge contract now holds everywhere.
 #[test]
-fn compare_edges_answer_as_ghc_natively_chirho() {
-    assert_prints_natively_chirho(COMPARE_EDGES_CHIRHO, COMPARE_EDGES_GHC_CHIRHO);
+fn compare_edges_answer_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(COMPARE_EDGES_CHIRHO, COMPARE_EDGES_GHC_CHIRHO);
 }
 
 // ── R5: no matching alternative fails named ───────────────────────────────
