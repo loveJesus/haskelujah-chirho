@@ -30,6 +30,8 @@ Problem: real constructor-operator values now reach Data.List.NonEmpty names tha
 - [ ] Named builder gate, meaningful mutations, paired corpus/replay/execution and final combined-source checks.
 - [ ] Review source/proof at actual scope, record a local landing decision and close the ledger unit only on its declared evidence. No push/release.
 
+The stage-B plan above was superseded on 2026-10-26: the frozen-baseline contract below replaced it, and the combined landing closed the unit.
+
 Evidence/design roots in Claude2's worktree: tmp-chirho/output-gaps-1017-chirho/ and tmp-chirho/nonempty-identity-1017-chirho/. Earlier invalid-scope acceptances I2/I3/I6/I8 remain baseline evidence, not desired accepted behavior or proof of correct resolution. Case is active under Claude2's named take #27431, then ground; NonEmpty has no Cargo lease.
 
 ## Measured representation traps and staged disposition
@@ -89,8 +91,8 @@ Rulings gpt_chirho #28473, #28476, #28484, #28489, #28494 and #28520. The one-wr
 - [x] Accounting re-derived from the frozen pairing, reconciled, and the design delta ruled (#28473-#28494).
 - [x] Source written on `nonempty-517-chirho`: rustfmt-clean and syntax-checked; no Cargo.
 - [x] Source checkpoint reviewed by GPT (#28522, at 158a3373 on 385a712a). Its replay onto 0803da4f was reviewed and accepted at e4d30a5b with no source corrections (#28543, #28548).
-- [ ] Gate tooling for the stacked 517 gate (baseline: row 536's frozen CLI), then a named builder.
-- [ ] Combined 531 + 536 + 517 gate; landing by GPT only. Rows 531, 536 and 517 never land alone.
+- [x] Gate tooling for the stacked 517 gate (baseline: row 536's frozen CLI). Under #28665 it became the combined gate's oracle: q517 judges the candidate against row 536 r3's saved receipts.
+- [x] Combined 531 + 536 + 517 gate and landing, done by claude2_chirho under #28665 and #28669. The three rows landed together.
 
 ## Base correction: replayed onto row 536's corrected tip (2026-10-26)
 
@@ -106,3 +108,28 @@ Ruling gpt_chirho #28543, after #28538. This commit is docs only, and no earlier
   - The typing, core and driver trees are unchanged.
 - **The old tip** 158a3373 is kept as branch `nonempty-517-385a712a-chirho`, together with the gate tooling prepared against it.
 - **The gate tooling** stays PREPARED, NOT READY. Its pins are deliberately stale until row 536 closes with its frozen CLI and receipt.
+
+## Combined landing (2026-10-26)
+
+Under L.J.'s 2-5 minute bar (#28665) and gpt_chirho's assignment (#28669), claude2_chirho integrated
+rows 531, 536 and 517 as one stack and landed it on main_chirho.
+- Stack: 63 commits on main 66832ade, no merges. The union was proven against rows 538 to 542: no
+  shared path, and every blob kept on both sides.
+- Two commits came out of the combined gate:
+  - be9b8e1c fixes a regression row 531's literal-pattern typing caused. A `'x'#` arm on `Char#` became
+    E0200, and text-2.1.4's CaseMapping frontend test failed. Three GHC 9.14.1-measured literal
+    controls now pin the rule.
+  - 1ddf122b clears two changed-line Clippy findings.
+- Gate r3 (combined-landing-1026-chirho, c3-1ddf122b-r3) was GREEN in 1149 s:
+  - build: 27 s, 0 warnings;
+  - focused: 3112 tests, with named skips: the driver proptests, the real-package project and frontend
+    builds, the whole-suite diffs and one LLVM euler1 round trip;
+  - lint: changed-line Clippy 0, with rustfmt, diff-check and gitleaks clean;
+  - oracle: q517 GREEN on 233 rows against row 536 r3's saved receipts. The 21 targets are GAIN-EXACT,
+    I2 is unchanged, and A/B T07 and Q01 are stable GHC-exact under #28560;
+  - corpus: exactly row 531's 11 movers, each agreeing with GHC 9.14.1. should_compile goes 885 to 884
+    and should_fail goes 242 to 252;
+  - execution: 30/35 on main and on the candidate, with equal verdicts.
+- r1 and r2 are kept. r1 was stopped in the driver proptests. r2 found the Char# regression and the
+  two Clippy findings.
+- The gate missed the 2-5 minute bar: focused took 702 s under machine load averages of 66 to 98.

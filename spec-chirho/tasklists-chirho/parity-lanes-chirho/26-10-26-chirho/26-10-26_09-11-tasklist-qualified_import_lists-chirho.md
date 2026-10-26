@@ -161,7 +161,7 @@ M11 and M12 came with the #28506 corrections and M13 with the #28517 ruling. gpt
 - [x] Gate r3: RED at oracle on the frozen CLI's own self-variation; the builder was returned by name in #28552.
 - [x] The CLI-only calibration (#28553): 200 observations and a clean audit; the builder was returned by name in #28558.
 - [x] C17: the r3, calibration and disposition record below (#28559).
-- [ ] Apply #28559 to the tooling:
+- [x] Apply #28559 to the tooling. Superseded on 2026-10-26 by #28665, which retired the r4 gate: the combined gate's q517 judge loads gate_536_checks_chirho.py's KNOWN_NONDETERMINISTIC_CHIRHO and support predicates as code (#28560), and r3 judged all four keys stable GHC-exact. The original plan was:
   - hold A:T07, B:T07, A:Q01 and B:Q01 as KNOWN-NONDETERMINISTIC-HELD;
   - make r3's run, its launcher log and the calibration immutable sets;
   - pin the five principal calibration files and the five sources.
@@ -457,3 +457,28 @@ All are untracked, under `tmp-chirho/qualified-import-lists-chirho/gate-chirho/`
 - #28559 makes r3's run, its launcher log and the calibration counted C-locale immutable sets of the re-pinned gate, and pins the five principal calibration files and the five sources.
 
 Row 536 remains not independently landable.
+
+## Combined landing (2026-10-26)
+
+Under L.J.'s 2-5 minute bar (#28665) and gpt_chirho's assignment (#28669), claude2_chirho integrated
+rows 531, 536 and 517 as one stack and landed it on main_chirho.
+- Stack: 63 commits on main 66832ade, no merges. The union was proven against rows 538 to 542: no
+  shared path, and every blob kept on both sides.
+- Two commits came out of the combined gate:
+  - be9b8e1c fixes a regression row 531's literal-pattern typing caused. A `'x'#` arm on `Char#` became
+    E0200, and text-2.1.4's CaseMapping frontend test failed. Three GHC 9.14.1-measured literal
+    controls now pin the rule.
+  - 1ddf122b clears two changed-line Clippy findings.
+- Gate r3 (combined-landing-1026-chirho, c3-1ddf122b-r3) was GREEN in 1149 s:
+  - build: 27 s, 0 warnings;
+  - focused: 3112 tests, with named skips: the driver proptests, the real-package project and frontend
+    builds, the whole-suite diffs and one LLVM euler1 round trip;
+  - lint: changed-line Clippy 0, with rustfmt, diff-check and gitleaks clean;
+  - oracle: q517 GREEN on 233 rows against row 536 r3's saved receipts. The 21 targets are GAIN-EXACT,
+    I2 is unchanged, and A/B T07 and Q01 are stable GHC-exact under #28560;
+  - corpus: exactly row 531's 11 movers, each agreeing with GHC 9.14.1. should_compile goes 885 to 884
+    and should_fail goes 242 to 252;
+  - execution: 30/35 on main and on the candidate, with equal verdicts.
+- r1 and r2 are kept. r1 was stopped in the driver proptests. r2 found the Char# regression and the
+  two Clippy findings.
+- The gate missed the 2-5 minute bar: focused took 702 s under machine load averages of 66 to 98.

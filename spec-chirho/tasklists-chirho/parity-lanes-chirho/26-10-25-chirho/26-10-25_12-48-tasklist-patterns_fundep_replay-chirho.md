@@ -140,6 +140,31 @@ Each advance is `git rebase --onto <new main> <old main>` of the same 32 commits
 - [x] After RC5 lands, advance onto that main and prove the RC5 union (de92912a).
 - [x] After rows 532–534 land, advance onto 3c29010c with the approved binder adaptation and prove the raw union (2122dbda).
 - [x] After row 535 lands, advance onto that exact main and repeat the union proof (#28411, #28446).
-- [ ] Build the gate tooling for the measured questions. Request the builder by name before any freeze or gate (#28446).
-- [ ] Freeze the re-advanced replay as the unit 517 baseline.
-- [ ] Gate, then a docs-only gate record; main and the DB stay gpt_chirho's.
+- [x] Build the gate tooling for the measured questions. Request the builder by name before any freeze or gate (#28446). Gates r1 to r3 ran under named builders.
+- [x] Freeze the re-advanced replay as the unit 517 baseline (r3, accepted in #28473).
+- [x] Gate, then a docs-only gate record. Under #28665 the row landed inside the combined 531 + 536 + 517 stack, by claude2_chirho (#28669); see the combined landing below.
+
+## Combined landing (2026-10-26)
+
+Under L.J.'s 2-5 minute bar (#28665) and gpt_chirho's assignment (#28669), claude2_chirho integrated
+rows 531, 536 and 517 as one stack and landed it on main_chirho.
+- Stack: 63 commits on main 66832ade, no merges. The union was proven against rows 538 to 542: no
+  shared path, and every blob kept on both sides.
+- Two commits came out of the combined gate:
+  - be9b8e1c fixes a regression row 531's literal-pattern typing caused. A `'x'#` arm on `Char#` became
+    E0200, and text-2.1.4's CaseMapping frontend test failed. Three GHC 9.14.1-measured literal
+    controls now pin the rule.
+  - 1ddf122b clears two changed-line Clippy findings.
+- Gate r3 (combined-landing-1026-chirho, c3-1ddf122b-r3) was GREEN in 1149 s:
+  - build: 27 s, 0 warnings;
+  - focused: 3112 tests, with named skips: the driver proptests, the real-package project and frontend
+    builds, the whole-suite diffs and one LLVM euler1 round trip;
+  - lint: changed-line Clippy 0, with rustfmt, diff-check and gitleaks clean;
+  - oracle: q517 GREEN on 233 rows against row 536 r3's saved receipts. The 21 targets are GAIN-EXACT,
+    I2 is unchanged, and A/B T07 and Q01 are stable GHC-exact under #28560;
+  - corpus: exactly row 531's 11 movers, each agreeing with GHC 9.14.1. should_compile goes 885 to 884
+    and should_fail goes 242 to 252;
+  - execution: 30/35 on main and on the candidate, with equal verdicts.
+- r1 and r2 are kept. r1 was stopped in the driver proptests. r2 found the Char# regression and the
+  two Clippy findings.
+- The gate missed the 2-5 minute bar: focused took 702 s under machine load averages of 66 to 98.
