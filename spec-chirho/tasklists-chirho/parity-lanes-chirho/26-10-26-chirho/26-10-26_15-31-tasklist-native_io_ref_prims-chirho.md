@@ -31,3 +31,11 @@ The progress row and landing wait for the combined 531 + 536 + 517 main/DB hold 
 - `cargo fmt --all -- --check` is GREEN. Warm changed-package Clippy took 3.87 seconds; its diagnostics are pre-existing and none lands on a changed or inserted line.
 - The source gate compiles once and runs ordinary unit tests. It has no serial source-edit mutants, cold targets, frozen-binary reruns, or broad receipt-tree hashing.
 - Post-checkpoint review found that Cranelift does not install a general root for every direct-call result. The correction roots the IORef cell under the same conservative process-lifetime contract already used for native produced heap values; the two RTS controls and P01 passed again afterward.
+
+## Post-rebase gate
+
+- The three source commits were rebased onto `4512a7ef`, main after Row 539 and its progress close. The LLVM primitive conflict preserves Row 539's four comparison primitives and adds Row 541's `writeIORef#`; the workflow conflict preserves both rows' measured contracts.
+- The rebased RTS, LLVM, and Cranelift library suites passed 50 + 38 + 42 tests. P01 again printed exact `2\n` through the interpreter, LLVM, and Cranelift.
+- Row 539's two comparison controls also passed 2/2 after the overlap resolution.
+- Format, diff check, and changed-library Clippy are GREEN. Clippy emitted only pre-existing diagnostics outside Row 541 and the resolved overlap lines.
+- The branch is ready for a fast-forward landing. The final checklist item remains open until `main_chirho` and progress row 541 are committed together.
