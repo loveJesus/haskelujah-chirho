@@ -178,6 +178,16 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             result_chirho
+        } else if args_chirho.len() == 1 && name_chirho == "toUpper#" {
+            let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+            let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = call i64 @haskelujah_char_to_upper_chirho(i64 {operand_chirho})"
+            )
+            .unwrap();
+            result_chirho
         } else if args_chirho.len() == 1 && matches!(name_chirho, "negate#" | "negateFloat#") {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
             let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);

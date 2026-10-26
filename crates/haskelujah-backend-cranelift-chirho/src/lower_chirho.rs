@@ -1552,26 +1552,9 @@ fn lower_app_chirho(
                 if let Some(arg_expr_chirho) = all_args_chirho.last() {
                     let val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
                     let v_chirho = ensure_i64_chirho(builder_chirho, val_chirho, false);
-                    let c97_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 97);
-                    let c122_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 122);
-                    let c32_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 32);
-                    let is_lower_chirho = builder_chirho.ins().icmp(
-                        IntCcChirho::SignedGreaterThanOrEqual,
-                        v_chirho,
-                        c97_chirho,
-                    );
-                    let is_lower_end_chirho = builder_chirho.ins().icmp(
-                        IntCcChirho::SignedLessThanOrEqual,
-                        v_chirho,
-                        c122_chirho,
-                    );
-                    let in_range_chirho = builder_chirho
-                        .ins()
-                        .band(is_lower_chirho, is_lower_end_chirho);
-                    let upper_chirho = builder_chirho.ins().isub(v_chirho, c32_chirho);
-                    return builder_chirho
-                        .ins()
-                        .select(in_range_chirho, upper_chirho, v_chirho);
+                    return ctx_chirho
+                        .runtime_calls_chirho
+                        .char_to_upper_chirho(builder_chirho, v_chirho);
                 }
             }
             // toLower :: Char -> Char
@@ -2759,24 +2742,9 @@ pub fn lower_primop_chirho(
         // ── Char operations as primops ──────────────────────────────────
         "toUpper#" => {
             let v_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
-            let c97_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 97);
-            let c122_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 122);
-            let c32_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, 32);
-            let ge_chirho = builder_chirho.ins().icmp(
-                IntCcChirho::SignedGreaterThanOrEqual,
-                v_chirho,
-                c97_chirho,
-            );
-            let le_chirho = builder_chirho.ins().icmp(
-                IntCcChirho::SignedLessThanOrEqual,
-                v_chirho,
-                c122_chirho,
-            );
-            let in_range_chirho = builder_chirho.ins().band(ge_chirho, le_chirho);
-            let upper_chirho = builder_chirho.ins().isub(v_chirho, c32_chirho);
-            builder_chirho
-                .ins()
-                .select(in_range_chirho, upper_chirho, v_chirho)
+            ctx_chirho
+                .runtime_calls_chirho
+                .char_to_upper_chirho(builder_chirho, v_chirho)
         }
         "toLower#" => {
             let v_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);

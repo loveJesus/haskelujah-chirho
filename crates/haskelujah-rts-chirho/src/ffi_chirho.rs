@@ -340,6 +340,16 @@ pub extern "C" fn haskelujah_pow_int_chirho(base_chirho: i64, exponent_chirho: i
     }
 }
 
+/// Native implementation of the interpreter's `toUpper#` convention.
+///
+/// `char::to_uppercase` can expand one scalar to several scalars. Haskell's
+/// `toUpper :: Char -> Char` and the interpreter both keep the first scalar.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_char_to_upper_chirho(value_chirho: u64) -> u64 {
+    let char_chirho = char::from_u32(value_chirho as u32).unwrap_or(char::REPLACEMENT_CHARACTER);
+    char_chirho.to_uppercase().next().unwrap_or(char_chirho) as u64
+}
+
 #[cfg(test)]
 mod arithmetic_tests_chirho;
 mod failure_chirho;
@@ -520,11 +530,23 @@ pub extern "C" fn haskelujah_show_bool_list_chirho(list_bits_chirho: u64) -> u64
     alloc_c_string_chirho(text_chirho.as_bytes())
 }
 
-/// Print a NUL-terminated UTF-8 string followed by a newline using the same
-/// stdout implementation as `haskelujah_print_int_chirho`, keeping IO order
-/// stable for Cranelift executables.
+fn native_c_string_bits_chirho(value_bits_chirho: u64) -> u64 {
+    if haskelujah_is_heap_ptr_chirho(value_bits_chirho) != 0 {
+        haskelujah_pack_string_chirho(value_bits_chirho)
+    } else {
+        value_bits_chirho
+    }
+}
+
+/// Print a native String followed by a newline using the same stdout
+/// implementation as `haskelujah_print_int_chirho`, keeping IO order stable.
+///
+/// Native literals and `show` helpers use aligned NUL-terminated buffers.
+/// List operations use registered, low-bit-tagged `[Char]` cells. Normalize
+/// only the latter, so neither representation is guessed from payload bytes.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_put_str_ln_chirho(ptr_bits_chirho: u64) -> i64 {
+    let ptr_bits_chirho = native_c_string_bits_chirho(ptr_bits_chirho);
     if ptr_bits_chirho == 0 {
         println!();
         let _ = std::io::stdout().flush();
@@ -1287,5 +1309,45 @@ mod tests_chirho {
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
         runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn native_string_output_normalizes_a_boxed_char_list_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+        drop(runtime_chirho);
+
+        static TEXT_CHIRHO: &[u8] = b"AbC\0";
+        let list_bits_chirho = haskelujah_unpack_string_chirho(TEXT_CHIRHO.as_ptr() as u64);
+        let packed_bits_chirho = native_c_string_bits_chirho(list_bits_chirho);
+        let packed_text_chirho = unsafe {
+            CStr::from_ptr(packed_bits_chirho as *const std::ffi::c_char)
+                .to_string_lossy()
+                .into_owned()
+        };
+
+        assert_eq!(packed_text_chirho, "AbC");
+        assert_eq!(
+            native_c_string_bits_chirho(TEXT_CHIRHO.as_ptr() as u64),
+            TEXT_CHIRHO.as_ptr() as u64,
+            "an existing C string stays in its representation"
+        );
+
+        let mut runtime_chirho = native_gc_runtime_lock_chirho();
+        runtime_chirho.reset_chirho();
+    }
+
+    #[test]
+    fn native_char_uppercase_matches_the_interpreter_convention_chirho() {
+        for input_chirho in ['a', 'Z', 'é', 'ß'] {
+            let expected_chirho = input_chirho.to_uppercase().next().unwrap_or(input_chirho) as u64;
+            assert_eq!(
+                haskelujah_char_to_upper_chirho(input_chirho as u64),
+                expected_chirho
+            );
+        }
     }
 }

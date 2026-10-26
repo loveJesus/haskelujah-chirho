@@ -1607,6 +1607,11 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
+            "declare i64 @haskelujah_put_str_ln_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
             "declare i64 @haskelujah_get_line_chirho()"
         )
         .unwrap();
@@ -1628,6 +1633,11 @@ impl LlvmCodegenChirho {
         writeln!(
             self.output_chirho,
             "declare i64 @haskelujah_read_int_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_char_to_upper_chirho(i64)"
         )
         .unwrap();
         writeln!(
@@ -1921,15 +1931,9 @@ impl LlvmCodegenChirho {
                 self.next_tmp_chirho = 0;
                 let argument_chirho =
                     self.emit_force_thunk_chirho(&format!("%v{}", arg_id_chirho.0));
-                let arg_ptr_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
-                    "  {arg_ptr_tmp_chirho} = inttoptr i64 {argument_chirho} to ptr"
-                )
-                .unwrap();
-                writeln!(
-                    self.output_chirho,
-                    "  call i32 @puts(ptr {arg_ptr_tmp_chirho})"
+                    "  call i64 @haskelujah_put_str_ln_chirho(i64 {argument_chirho})"
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "  ret i64 0").unwrap();

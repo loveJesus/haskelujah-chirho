@@ -93,6 +93,11 @@ const POWER_CHIRHO: &str =
 const FROM_INTEGRAL_CHIRHO: &str =
     "module Main where\nmain :: IO ()\nmain = print (fromIntegral (7 :: Int) / (2 :: Double))\n";
 
+/// Saved oracle P02: native `map` produces a boxed `[Char]`, while literals
+/// and `show` results use native C strings. GHC prints `ABC`.
+const CHAR_CASE_MAPPING_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = putStrLn (map toUpper \"abc\")\n";
+
 fn with_main_chirho(module_chirho: &str, main_chirho: &str) -> String {
     format!("{module_chirho}main :: IO ()\nmain = {main_chirho}\n")
 }
@@ -350,6 +355,11 @@ fn compare_answers_as_ghc_everywhere_chirho() {
 #[test]
 fn compare_edges_answer_as_ghc_everywhere_chirho() {
     assert_prints_everywhere_chirho(COMPARE_EDGES_CHIRHO, COMPARE_EDGES_GHC_CHIRHO);
+}
+
+#[test]
+fn char_case_mapping_answers_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(CHAR_CASE_MAPPING_CHIRHO, "ABC\n");
 }
 
 // ── R5: no matching alternative fails named ───────────────────────────────

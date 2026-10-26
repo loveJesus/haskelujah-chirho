@@ -21,6 +21,7 @@ pub(crate) struct RuntimeCallsChirho {
     new_io_ref_chirho: FuncRef,
     read_io_ref_chirho: FuncRef,
     write_io_ref_chirho: FuncRef,
+    char_to_upper_chirho: FuncRef,
 }
 
 fn import_chirho(
@@ -113,6 +114,13 @@ impl RuntimeCallsChirho {
                 2,
                 true,
             )?,
+            char_to_upper_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_char_to_upper_chirho",
+                1,
+                true,
+            )?,
         })
     }
 
@@ -160,6 +168,18 @@ impl RuntimeCallsChirho {
         let call_chirho = builder_chirho
             .ins()
             .call(self.write_io_ref_chirho, &[io_ref_chirho, value_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    /// `toUpper#`, sharing the interpreter's Unicode scalar convention.
+    pub(crate) fn char_to_upper_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        value_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.char_to_upper_chirho, &[value_chirho]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 

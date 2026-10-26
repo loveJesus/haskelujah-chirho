@@ -38,15 +38,15 @@ flowchart TD
   - Without the `strcmp` import, Cranelift refuses `compareStr#`.
   - Driver controls:
     - Compare2 requires GHC's `GT GT LT GT` through the interpreter and both native backends.
-    - A GHC-measured edge program covers NaN, -0.0, the empty string, a prefix, non-ASCII and a computed `show`. It runs natively only, because the interpreter's `compareFloat#` answers EQ for NaN.
+    - A GHC-measured edge program covers NaN, -0.0, the empty string, a prefix, non-ASCII and a computed `show`. Row 542's interpreter correction promotes the same control to all three engines.
 - Row 541 removes `newIORef#`, `readIORef#`, and `writeIORef#` from the native refused set. Both backends call the same RTS allocation-kind-checked mutable cell implementation; its initial payload is rooted across allocation and remains visible to native GC traversal. The saved P01 control requires `2` through the interpreter and both native backends.
+- Row 544 removes `toUpper#` from LLVM's refused set and routes both native backends through `haskelujah_char_to_upper_chirho`, which shares the interpreter's first-scalar Unicode convention. Native String output has two representations: aligned NUL-terminated buffers for literals and `show`, and registered low-bit-tagged `[Char]` cells after list operations. `haskelujah_put_str_ln_chirho` packs only the tagged-list form before printing. The saved P02 control requires `ABC` through the interpreter and both native backends.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## Residuals outside the route
 
 - A Cranelift miss for a local that Core binds but lowering did not bind keeps its 0 placeholder, like letrec zero initialization.
 - An effect adapter called as a value, such as `putStrLn#` passed to `mapM_`, keeps Cranelift's call-site behavior.
-- The interpreter's `compareFloat#` answers EQ when either side is NaN (`partial_cmp(..).unwrap_or(Equal)` in `haskelujah-runtime-chirho/src/eval_chirho.rs`), where GHC and both native backends answer GT.
 - Memory faults from upstream type confusion stay outside the route.
   - K01's Cranelift run, a SIGBUS at the base, now fails named with R2's line (measured at gate r3).
   - The likely reason, which is an inference and not an established cause: its `show` path reaches the checked runtime formatter before the old fault.
