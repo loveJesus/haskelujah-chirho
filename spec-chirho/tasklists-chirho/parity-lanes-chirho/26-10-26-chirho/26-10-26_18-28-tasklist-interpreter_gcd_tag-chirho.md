@@ -29,7 +29,8 @@ Char Enum, String representation/rendering, prefix-minus fixity, or the Ord aggr
 
 ## Gate
 
-- Source commit `5707e0b4` passed the warm focused gate in 49 seconds.
+- Source commit `5707e0b4` passed the warm focused gate in 49 seconds. It replayed without conflict
+  as `c4575ebd` after row 555; the three owned controls passed again on the replayed source.
 - `cargo build -p haskelujah` completed without a compiler warning.
 - The typing library passed 362/362 tests; `evaluation_values_chirho` passed 9/9; and
   `native_error_helpers_chirho` passed 35/35. The former R5 pair is exact on the interpreter,
@@ -47,4 +48,4 @@ Char Enum, String representation/rendering, prefix-minus fixity, or the Ord aggr
 - [x] Implement the narrow repair with focused controls.
 - [x] Run the focused gate under three minutes.
 - [x] Verify rustfmt, diff-check, changed-line Clippy, and gitleaks.
-- [ ] Land and close progress row 564.
+- [x] Land final tip `2472d350` on main and close progress row 564 GREEN.
