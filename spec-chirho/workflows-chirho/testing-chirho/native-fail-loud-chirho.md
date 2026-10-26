@@ -119,3 +119,21 @@ flowchart TD
   - a four-cell tagged chain survives collection whole: `a_tagged_chain_survives_collection_whole_chirho`;
   - an unpack keeps every cell across a collection in its middle: `unpack_string_keeps_its_cells_across_threshold_collection_chirho`;
   - a long literal unpacks whole on every engine: `a_long_literal_unpacks_whole_everywhere_chirho`.
+
+## Native Strings carry code points (row 560, minimal brick)
+
+gpt_chirho #29139. A native String is a NUL-terminated UTF-8 buffer or a list of code points.
+- **Unpack:** `haskelujah_unpack_string_chirho` decodes the buffer as UTF-8, one cell per code point
+  (before: one cell per byte).
+- **Pack:** `haskelujah_pack_string_chirho` writes each code point as UTF-8 (before: `?` above ASCII).
+- **Named failures.** Each case fails by one line instead of truncating or guessing:
+  - a NUL character, in an evaluated literal (`haskelujah_nul_string_literal_chirho`) or in packed cells:
+    `string: a NUL character has no native representation`;
+  - invalid UTF-8 being unpacked: `string: a native String is not valid UTF-8`;
+  - a cell with no UTF-8 encoding: `string: a character has no UTF-8 encoding`.
+- **Not in this brick:**
+  - `++#` reading a list (root 2);
+  - a list cut at a literal tail (root 3);
+  - the rest of row 560.
+- **Controls:** `native_strings_carry_code_points_everywhere_chirho`, `a_nul_character_fails_named_natively_chirho`,
+  and the RTS round trip `unpack_and_pack_carry_code_points_as_utf8_chirho`.

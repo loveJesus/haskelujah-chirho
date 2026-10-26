@@ -229,6 +229,12 @@ pub fn lower_expr_chirho(
         CoreExprChirho::LitChirho(lit_chirho) => {
             // Check for string literals with data section globals
             if let CoreLitChirho::StringChirho(s_chirho) = lit_chirho {
+                // A NUL-terminated global cannot hold a NUL (row 560).
+                if s_chirho.contains('\0') {
+                    return ctx_chirho
+                        .runtime_calls_chirho
+                        .nul_string_literal_chirho(builder_chirho);
+                }
                 if let Some(gv_chirho) = ctx_chirho.string_globals_chirho.get(s_chirho.as_str()) {
                     return builder_chirho
                         .ins()

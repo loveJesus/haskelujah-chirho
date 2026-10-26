@@ -383,10 +383,14 @@ mod native_io_refs_chirho;
 mod native_maps_chirho;
 mod native_thunks_chirho;
 pub use failure_chirho::{
-    haskelujah_error_chirho, haskelujah_no_match_chirho, haskelujah_unbound_thunk_chirho,
-    haskelujah_uncaught_exception_chirho, haskelujah_undefined_chirho,
+    haskelujah_error_chirho, haskelujah_no_match_chirho, haskelujah_nul_string_literal_chirho,
+    haskelujah_unbound_thunk_chirho, haskelujah_uncaught_exception_chirho,
+    haskelujah_undefined_chirho,
 };
-use failure_chirho::{internal_failure_chirho, refuse_boxed_integer_chirho};
+use failure_chirho::{
+    internal_failure_chirho, invalid_utf8_failure_chirho, nul_string_failure_chirho,
+    refuse_boxed_integer_chirho, unencodable_char_failure_chirho,
+};
 pub use native_io_refs_chirho::{
     haskelujah_new_io_ref_chirho, haskelujah_read_io_ref_chirho, haskelujah_write_io_ref_chirho,
 };
@@ -765,7 +769,7 @@ pub extern "C" fn haskelujah_read_int_chirho(text_bits_chirho: u64) -> i64 {
 /// Traverses the cons list collecting character codepoints into a buffer.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_pack_string_chirho(list_bits_chirho: u64) -> u64 {
-    let mut chars_chirho: Vec<u8> = Vec::new();
+    let mut bytes_chirho: Vec<u8> = Vec::new();
     let mut current_chirho = list_bits_chirho;
 
     loop {
@@ -793,16 +797,20 @@ pub extern "C" fn haskelujah_pack_string_chirho(list_bits_chirho: u64) -> u64 {
         let head_chirho = haskelujah_enter_thunk_chirho(head_chirho);
         haskelujah_gc_root_pop_chirho();
 
-        // Head is now a character codepoint.
-        if head_chirho < 128 {
-            chars_chirho.push(head_chirho as u8);
-        } else {
-            chars_chirho.push(b'?'); // Non-ASCII placeholder
+        // Head is now a code point, encoded as UTF-8 (row 560; before it, every code point above
+        // ASCII was written as '?'). A NUL would end the buffer early.
+        if head_chirho == 0 {
+            nul_string_failure_chirho();
         }
+        let Some(char_chirho) = u32::try_from(head_chirho).ok().and_then(char::from_u32) else {
+            unencodable_char_failure_chirho();
+        };
+        let mut utf8_chirho = [0_u8; 4];
+        bytes_chirho.extend_from_slice(char_chirho.encode_utf8(&mut utf8_chirho).as_bytes());
         current_chirho = tail_chirho;
     }
 
-    alloc_c_string_chirho(&chars_chirho)
+    alloc_c_string_chirho(&bytes_chirho)
 }
 
 /// Convert a NUL-terminated C string to a Haskell [Char] cons-list.
@@ -822,10 +830,14 @@ pub extern "C" fn haskelujah_unpack_string_chirho(str_bits_chirho: u64) -> u64 {
     let bytes_chirho = unsafe { CStr::from_ptr(ptr_chirho as *const std::ffi::c_char) }
         .to_bytes()
         .to_vec();
+    // One cell per code point, not per byte (row 560): the buffer is UTF-8.
+    let Ok(text_chirho) = String::from_utf8(bytes_chirho) else {
+        invalid_utf8_failure_chirho();
+    };
 
     // Build the list from the END (so we can chain tails)
     let mut tail_chirho: u64 = 0; // Nil tag
-    for &byte_chirho in bytes_chirho.iter().rev() {
+    for char_chirho in text_chirho.chars().rev() {
         haskelujah_gc_root_push_chirho(tail_chirho as usize as *mut u8);
         let cell_ptr_chirho = haskelujah_alloc_chirho(24);
         haskelujah_gc_root_pop_chirho();
@@ -835,8 +847,8 @@ pub extern "C" fn haskelujah_unpack_string_chirho(str_bits_chirho: u64) -> u64 {
         unsafe {
             // tag = 1 (Cons)
             *(cell_ptr_chirho as *mut u64) = 1;
-            // head = character codepoint
-            *(cell_ptr_chirho.add(8) as *mut u64) = byte_chirho as u64;
+            // head = character code point
+            *(cell_ptr_chirho.add(8) as *mut u64) = u64::from(u32::from(char_chirho));
             // tail = previous cell (boxed) or 0 (Nil)
             *(cell_ptr_chirho.add(16) as *mut u64) = tail_chirho;
         }
@@ -1178,6 +1190,34 @@ mod tests_chirho {
             current_chirho = unsafe { *words_chirho.add(2) };
         }
         assert_eq!(unpacked_chirho, text_chirho);
+        native_gc_runtime_lock_chirho().reset_chirho();
+    }
+
+    /// Row 560: unpack gives one cell per code point and pack writes each as UTF-8, so a String
+    /// above ASCII survives the round trip (before: one cell per byte, and '?' on the way back).
+    #[test]
+    fn unpack_and_pack_carry_code_points_as_utf8_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        native_gc_runtime_lock_chirho().reset_chirho();
+
+        let text_chirho = "h\u{e9}\u{4d2}";
+        let list_bits_chirho =
+            haskelujah_unpack_string_chirho(alloc_c_string_chirho(text_chirho.as_bytes()));
+        let mut code_points_chirho = Vec::new();
+        let mut current_chirho = list_bits_chirho;
+        while current_chirho != 0 && code_points_chirho.len() <= text_chirho.len() {
+            let words_chirho = (current_chirho & !1) as usize as *const u64;
+            code_points_chirho.push(unsafe { *words_chirho.add(1) });
+            current_chirho = unsafe { *words_chirho.add(2) };
+        }
+        assert_eq!(code_points_chirho, [104, 0xe9, 0x4d2]);
+
+        let packed_chirho = haskelujah_pack_string_chirho(list_bits_chirho);
+        let bytes_chirho =
+            unsafe { CStr::from_ptr(packed_chirho as usize as *const std::ffi::c_char) }.to_bytes();
+        assert_eq!(bytes_chirho, text_chirho.as_bytes());
         native_gc_runtime_lock_chirho().reset_chirho();
     }
 

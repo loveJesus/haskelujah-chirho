@@ -23,6 +23,9 @@ const UNCAUGHT_EXCEPTION_MESSAGE_CHIRHO: &[u8] = b"uncaught exception";
 const BOXED_SHOW_MESSAGE_CHIRHO: &[u8] = b"show: no native Show instance for a boxed value";
 /// GHC.Real's `(^)` on a negative exponent.
 pub(crate) const NEGATIVE_EXPONENT_MESSAGE_CHIRHO: &[u8] = b"Negative exponent";
+const NUL_STRING_MESSAGE_CHIRHO: &[u8] = b"string: a NUL character has no native representation";
+const INVALID_UTF8_MESSAGE_CHIRHO: &[u8] = b"string: a native String is not valid UTF-8";
+const UNENCODABLE_CHAR_MESSAGE_CHIRHO: &[u8] = b"string: a character has no UTF-8 encoding";
 
 unsafe extern "C" {
     // C stdio buffers what LLVM executables write through `printf` and `puts`.
@@ -71,6 +74,28 @@ pub(crate) fn refuse_boxed_integer_chirho(value_bits_chirho: u64) {
     if haskelujah_is_heap_ptr_chirho(value_bits_chirho) != 0 {
         user_failure_chirho(BOXED_SHOW_MESSAGE_CHIRHO);
     }
+}
+
+/// Native Strings are NUL-terminated UTF-8 buffers (row 560), so a NUL character, invalid UTF-8
+/// and a value with no UTF-8 encoding each fail by one named line instead of truncating or
+/// guessing.
+pub(crate) fn nul_string_failure_chirho() -> ! {
+    user_failure_chirho(NUL_STRING_MESSAGE_CHIRHO)
+}
+
+pub(crate) fn invalid_utf8_failure_chirho() -> ! {
+    user_failure_chirho(INVALID_UTF8_MESSAGE_CHIRHO)
+}
+
+pub(crate) fn unencodable_char_failure_chirho() -> ! {
+    user_failure_chirho(UNENCODABLE_CHAR_MESSAGE_CHIRHO)
+}
+
+/// An evaluated string literal that holds NUL: its NUL-terminated global would read shorter.
+/// workflow: testing-chirho/native-fail-loud-chirho
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_nul_string_literal_chirho() -> u64 {
+    nul_string_failure_chirho()
 }
 
 /// Runtime `error`, `errorWithoutStackTrace` and pattern-match failure: the

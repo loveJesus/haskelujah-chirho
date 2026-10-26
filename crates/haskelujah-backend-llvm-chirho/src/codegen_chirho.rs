@@ -1565,6 +1565,11 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
+            "declare i64 @haskelujah_nul_string_literal_chirho()"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
             "declare i64 @haskelujah_show_float_chirho(i64)"
         )
         .unwrap();
@@ -2759,6 +2764,17 @@ impl LlvmCodegenChirho {
             CoreLitChirho::IntChirho(v_chirho) => format!("{v_chirho}"),
             CoreLitChirho::FloatChirho(v_chirho) => encode_float_literal_chirho(*v_chirho),
             CoreLitChirho::CharChirho(c_chirho) => format!("{}", *c_chirho as i64),
+            // A NUL-terminated global cannot hold a NUL (row 560): evaluating the literal fails
+            // by the runtime's named line instead of reading a shorter string.
+            CoreLitChirho::StringChirho(value_chirho) if value_chirho.contains('\0') => {
+                let tmp_chirho = self.fresh_tmp_chirho();
+                writeln!(
+                    self.output_chirho,
+                    "  {tmp_chirho} = call i64 @haskelujah_nul_string_literal_chirho()"
+                )
+                .unwrap();
+                tmp_chirho
+            }
             CoreLitChirho::StringChirho(value_chirho) => {
                 self.intern_string_literal_chirho(value_chirho)
             }

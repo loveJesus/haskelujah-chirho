@@ -351,6 +351,65 @@ fn a_long_literal_unpacks_whole_everywhere_chirho() {
     assert_prints_everywhere_chirho(&long_literal_source_chirho(), "2000\nfghij\n");
 }
 
+// ── Row 560 (minimal): native Strings carry code points; NUL fails named ──
+
+/// Code points above ASCII through unpack, `reverse`, `toEnum`, `succ` and comparison, printed
+/// with `putStrLn`. Before row 560, unpack made one cell per UTF-8 byte (`length` 5 and
+/// `[195,169,211,146]`), and pack wrote '?' for each. GHC 9.14.1's output is the expected text.
+const CODE_POINTS_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = do
+  print (length "\233\1234x")
+  print (map fromEnum "\233\1234")
+  putStrLn (reverse "h\233llo")
+  putStrLn [toEnum 233, toEnum 1234]
+  putStrLn (map succ "\233z")
+  print (length (filter (> 'z') "a\233b\1234"))
+"#;
+
+/// A literal holding NUL. GHC 9.14.1 prints `3`; natively its NUL-terminated global read `1`.
+const NUL_LITERAL_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = print (length "a\0b")
+"#;
+
+/// A String built at run time holding NUL. GHC 9.14.1 writes `a`, NUL, `b`; natively pack
+/// ended the buffer at the NUL.
+const NUL_PACKED_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = putStrLn ['a', toEnum 0, 'b']
+"#;
+
+const NUL_STRING_CHIRHO: &str = "string: a NUL character has no native representation";
+
+#[test]
+fn native_strings_carry_code_points_everywhere_chirho() {
+    assert_prints_everywhere_chirho(CODE_POINTS_CHIRHO, "3\n[233,1234]\nolléh\néӒ\nê{\n2\n");
+}
+
+/// The interpreter keeps the NUL; natively it fails by one named line instead of truncating.
+#[test]
+fn a_nul_character_fails_named_natively_chirho() {
+    for (source_chirho, expected_chirho) in
+        [(NUL_LITERAL_CHIRHO, "3\n"), (NUL_PACKED_CHIRHO, "a\0b\n")]
+    {
+        let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "NulStringChirho.hs",
+            None,
+        )
+        .expect("the interpreter runs it");
+        assert_eq!(
+            machine_chirho.io_output_chirho, expected_chirho,
+            "interpreter"
+        );
+        for backend_chirho in BACKENDS_CHIRHO {
+            assert_fails_named_chirho(backend_chirho, source_chirho, NUL_STRING_CHIRHO);
+        }
+    }
+}
+
 // ── R1: an unbound reference fails named, and only when demanded ──────────
 
 #[test]

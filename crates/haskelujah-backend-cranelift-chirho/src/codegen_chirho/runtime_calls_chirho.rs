@@ -29,6 +29,7 @@ pub(crate) struct RuntimeCallsChirho {
     truncate_float_to_int_chirho: FuncRef,
     floor_float_to_int_chirho: FuncRef,
     ceiling_float_to_int_chirho: FuncRef,
+    nul_string_literal_chirho: FuncRef,
 }
 
 fn import_chirho(
@@ -177,6 +178,13 @@ impl RuntimeCallsChirho {
                 1,
                 true,
             )?,
+            nul_string_literal_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_nul_string_literal_chirho",
+                0,
+                true,
+            )?,
         })
     }
 
@@ -290,6 +298,18 @@ impl RuntimeCallsChirho {
             _ => unreachable!("the caller supplies one of the four float-to-Int primitives"),
         };
         let call_chirho = builder_chirho.ins().call(function_chirho, &[value_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    /// An evaluated string literal holding NUL (row 560): its NUL-terminated global would read
+    /// shorter, so the runtime fails by its named line.
+    pub(crate) fn nul_string_literal_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.nul_string_literal_chirho, &[]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 
