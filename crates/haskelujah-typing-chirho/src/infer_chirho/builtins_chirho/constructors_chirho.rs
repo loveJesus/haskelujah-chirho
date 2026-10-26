@@ -2,7 +2,8 @@
 
 //! Builtin constructor seeds: True and False, LT, EQ and GT, then Nothing and Just. A
 //! module's own constructors of the same names replace them before its declarations are
-//! inferred (`collect_module_shadowed_names_chirho`).
+//! inferred (`collect_module_shadowed_names_chirho`). Last, `Data.List.NonEmpty`'s `:|`,
+//! under module-qualified keys that only an import of that module reaches.
 
 use crate::env_chirho::TyEnvChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
@@ -51,4 +52,32 @@ pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
             ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(maybe_arg_chirho), maybe_ty_chirho),
         },
     );
+
+    // (:|) :: forall a. a -> [a] -> NonEmpty a, under both spellings the interface exports.
+    // Driver Phase 3.9 looks a module-qualified key up before it falls back to the
+    // accept-anything placeholder, so every import of Data.List.NonEmpty that exposes the
+    // constructor types it precisely, and nothing else can reach these keys. A value built
+    // with `:|` then has a concrete Show key (`NonEmpty Int`). Unit 517.
+    // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+    let non_empty_arg_chirho = TyVarChirho(1043);
+    let non_empty_ty_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("NonEmpty".to_string())),
+        Box::new(TyChirho::VarChirho(non_empty_arg_chirho)),
+    );
+    for name_chirho in ["Data.List.NonEmpty.:|", "Data.List.NonEmpty.(:|)"] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            SchemeChirho {
+                vars_chirho: vec![non_empty_arg_chirho],
+                preds_chirho: vec![],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(non_empty_arg_chirho),
+                    TyChirho::fun_chirho(
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(non_empty_arg_chirho))),
+                        non_empty_ty_chirho.clone(),
+                    ),
+                ),
+            },
+        );
+    }
 }
