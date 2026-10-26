@@ -52,6 +52,9 @@ flowchart TD
   - The method-reference walker replaces each evidenced `print` among a spine's arguments with
     `$print_via_show_chirho $prim_Show_show_<key>` before any special path rebuilds the spine.
   - The end-of-pass sweep does the same for a surviving occurrence.
+  - Row 556: the concrete Show row, `putStrLn` and `$print_via_show_chirho` resolve only through
+    body-backed lookups, for the applied form and the first-class form alike. A dangling name-table
+    id or a generated missing-method body keeps the canonical `print`.
   - Before this, the generic Int-only `print` printed every element with `showInt#`. Natively,
     that showed a Double's bits, a Bool as 1 or 0, a Char as its code point, and a String or a
     derived value as a heap word.

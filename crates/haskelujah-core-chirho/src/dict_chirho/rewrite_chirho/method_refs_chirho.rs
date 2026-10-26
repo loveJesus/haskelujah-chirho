@@ -55,7 +55,9 @@ impl DictPassCtxChirho {
         if class_name_chirho != "Show" {
             return None;
         }
-        self.find_global_id_by_name_chirho(&format!("$prim_Show_show_{ty_key_chirho}"))
+        // Only a row with an actual body counts (row 556): the name table can hold
+        // dangling placeholder ids, and a generated missing-method body is not the row.
+        self.lookup_dispatch_body_name_id_chirho(&format!("$prim_Show_show_{ty_key_chirho}"))
     }
 
     /// An unapplied, evidenced `print`, as in `mapM_ print xs`: the same proof the
@@ -66,7 +68,7 @@ impl DictPassCtxChirho {
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
         let show_prim_id_chirho = self.evidenced_print_show_chirho(id_chirho)?;
-        let helper_id_chirho = self.find_global_id_by_name_chirho(PRINT_VIA_SHOW_CHIRHO)?;
+        let helper_id_chirho = self.lookup_body_backed_name_id_chirho(PRINT_VIA_SHOW_CHIRHO)?;
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
             arg_chirho: Box::new(CoreExprChirho::VarChirho(show_prim_id_chirho)),
@@ -88,7 +90,7 @@ impl DictPassCtxChirho {
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
         let show_prim_id_chirho = self.evidenced_print_show_chirho(head_id_chirho)?;
-        let put_str_ln_id_chirho = self.find_global_id_by_name_chirho("putStrLn")?;
+        let put_str_ln_id_chirho = self.lookup_body_backed_name_id_chirho("putStrLn")?;
         let rewritten_arg_chirho = self.rewrite_method_refs_with_locals_chirho(
             arg_chirho,
             dict_vars_chirho,

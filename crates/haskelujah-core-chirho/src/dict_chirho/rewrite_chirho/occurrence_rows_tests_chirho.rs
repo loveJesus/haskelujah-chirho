@@ -404,3 +404,74 @@ fn a_proven_sum_folds_only_over_body_backed_rows_chirho() {
         "body-backed rows give the Double fold"
     );
 }
+
+/// A pass holding one `print` occurrence (id 12, canonical id 11) proved `Show Double`, whose
+/// show row, `putStrLn` and first-class helper (ids 13, 14, 15) exist only as name-table
+/// entries; `x` is id 16.
+fn print_pass_chirho() -> DictPassCtxChirho {
+    let names_chirho = HashMap::from([
+        (CoreIdChirho(11), "print".to_string()),
+        (CoreIdChirho(12), "print".to_string()),
+        (CoreIdChirho(13), "$prim_Show_show_Double".to_string()),
+        (CoreIdChirho(14), "putStrLn".to_string()),
+        (CoreIdChirho(15), "$print_via_show_chirho".to_string()),
+        (CoreIdChirho(16), "x".to_string()),
+    ]);
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+    pass_chirho
+        .method_occurrence_canon_chirho
+        .insert(CoreIdChirho(12), ("print".to_string(), CoreIdChirho(11)));
+    pass_chirho
+        .occurrence_evidence_chirho
+        .insert(CoreIdChirho(12), ("Show".to_string(), "Double".to_string()));
+    pass_chirho
+}
+
+/// Row 556: a proven `print`, applied or first-class, lands on its concrete Show row only
+/// when that row, `putStrLn` and the helper have actual bodies.
+#[test]
+fn a_proven_print_uses_only_body_backed_rows_chirho() {
+    let applied_chirho = app_chirho(var_expr_chirho(12), var_expr_chirho(16));
+    let first_class_chirho = var_expr_chirho(12);
+    let mut pass_chirho = print_pass_chirho();
+    let applied_unchanged_chirho =
+        pass_chirho.rewrite_method_refs_chirho(&applied_chirho, &HashMap::new());
+    assert!(
+        matches!(&applied_unchanged_chirho, CoreExprChirho::AppChirho { fun_chirho, arg_chirho }
+            if matches!(fun_chirho.as_ref(), CoreExprChirho::VarChirho(CoreIdChirho(11 | 12)))
+                && matches!(arg_chirho.as_ref(), CoreExprChirho::VarChirho(CoreIdChirho(16)))),
+        "dangling names must keep the canonical applied print, got {applied_unchanged_chirho:?}"
+    );
+    let first_class_unchanged_chirho =
+        pass_chirho.rewrite_method_refs_chirho(&first_class_chirho, &HashMap::new());
+    assert!(
+        matches!(
+            first_class_unchanged_chirho,
+            CoreExprChirho::VarChirho(CoreIdChirho(11 | 12))
+        ),
+        "dangling names must keep the canonical first-class print, got {first_class_unchanged_chirho:?}"
+    );
+
+    for (id_chirho, name_chirho) in [
+        (13, "$prim_Show_show_Double"),
+        (14, "putStrLn"),
+        (15, "$print_via_show_chirho"),
+    ] {
+        pass_chirho
+            .generated_bindings_chirho
+            .push(binding_chirho(id_chirho, name_chirho));
+    }
+    assert_eq!(
+        pass_chirho.rewrite_method_refs_chirho(&applied_chirho, &HashMap::new()),
+        app_chirho(
+            var_expr_chirho(14),
+            app_chirho(var_expr_chirho(13), var_expr_chirho(16))
+        ),
+        "body-backed rows give putStrLn (show_Double x)"
+    );
+    assert_eq!(
+        pass_chirho.rewrite_method_refs_chirho(&first_class_chirho, &HashMap::new()),
+        app_chirho(var_expr_chirho(15), var_expr_chirho(13)),
+        "body-backed rows give the first-class helper over show_Double"
+    );
+}
