@@ -1,7 +1,7 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 # Native Char Case Mapping Chirho
 
-Row 544 was scoped from held main `1b804afaa91d49c02c290e0b736839dc5d82b9f7` and is now replayed onto `66832ade`, after Rows 539, 541, and 542. It owns saved native oracle P02:
+Row 544 was scoped from held main `1b804afaa91d49c02c290e0b736839dc5d82b9f7`, replayed onto `66832ade` after Rows 539, 541, and 542, and finally rebased onto combined Rows 531, 536, and 517 at `80e3b7de`. It owns saved native oracle P02:
 
 ```haskell
 main = putStrLn (map toUpper "abc")
@@ -31,4 +31,5 @@ GHC and the interpreter print `ABC`. LLVM currently refuses `toUpper#/1`; Cranel
 - The RTS, LLVM, and Cranelift library suites passed 52 + 38 + 42 tests.
 - P02 printed exact `ABC\n` through the interpreter, LLVM, and Cranelift. The P01 IORef control and both Row 539/542 comparison controls also passed through all three engines after the overlap resolution.
 - Format and diff check are clean. Warm changed-package Clippy completed successfully; its diagnostics are pre-existing, with none on a Row 544 inserted or conflict-resolved line. Gitleaks scanned both commits with no leaks.
-- The tested branch remains isolated while #28786 holds `main_chirho` and the progress database.
+- After combined Rows 531, 536, and 517 landed, all three Row 544 commits rebased without conflict onto `80e3b7de`. The shared crates were recompiled against that exact base. The RTS, LLVM, and Cranelift libraries passed 52 + 38 + 42 tests, and all 26 native error-helper controls passed, including P01, P02, P03, P06, and the comparison programs. The warm rerun took 35 seconds.
+- Rustfmt, diff-check, and changed-package Clippy remain clean at the final source tree; Clippy's emitted diagnostics are pre-existing and none intersects a Row 544 hunk. Gitleaks scanned the three rebased commits and found no leaks.
