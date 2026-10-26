@@ -4,18 +4,21 @@
 use std::collections::HashMap;
 
 use haskelujah_ast_chirho::decl_chirho::{
-    AssocTypeFamilyChirho, ClassMethodChirho, DeclChirho, TyVarChirho,
+    AssocTypeFamilyChirho, ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho,
+    PatSynDirChirho, StrictnessChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
     ModuleChirho,
 };
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::{
     build_iface_chirho, build_iface_with_imports_chirho, builtin_module_ifaces_chirho,
+    merge_module_ifaces_chirho,
 };
 use crate::resolve_chirho::resolve_module_with_imports_chirho;
 
@@ -374,4 +377,302 @@ fn selected_associated_import_reaches_qualified_alias_scope_chirho() {
             )
             .is_some()
     );
+}
+
+/// `FacadeChirho`, importing `SourceChirho` with `spec_chirho` and
+/// re-exporting it whole through `module SourceChirho`.
+fn facade_reexporting_chirho(spec_chirho: ImportSpecChirho) -> ModuleChirho {
+    module_chirho(
+        "FacadeChirho",
+        Some(vec![ExportSpecChirho::ModuleChirho(name_chirho(
+            "SourceChirho",
+        ))]),
+        vec![ImportDeclChirho {
+            module_chirho: name_chirho("SourceChirho"),
+            qualified_chirho: false,
+            alias_chirho: None,
+            spec_chirho: Some(spec_chirho),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        vec![],
+    )
+}
+
+fn plain_data_chirho(
+    type_text_chirho: &str,
+    constructors_chirho: Vec<ConDeclChirho>,
+) -> DeclChirho {
+    DeclChirho::DataDeclChirho {
+        name_chirho: name_chirho(type_text_chirho),
+        type_vars_chirho: vec![],
+        constructors_chirho,
+        deriving_chirho: vec![],
+        kind_sig_chirho: None,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+fn ordinary_constructor_chirho(constructor_text_chirho: &str) -> ConDeclChirho {
+    ConDeclChirho::OrdinaryChirho {
+        name_chirho: name_chirho(constructor_text_chirho),
+        fields_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+// Row 536: an item lowering could not represent names nothing. A list holding
+// only that item re-exports nothing, and a `hiding` list holding it hides
+// nothing, exactly as when lowering dropped it.
+#[test]
+fn an_unrepresented_item_reexports_and_hides_nothing_chirho() {
+    let source_iface_chirho = build_iface_chirho(&module_chirho(
+        "SourceChirho",
+        None,
+        vec![],
+        vec![associated_class_chirho()],
+    ));
+    let unrepresented_chirho = vec![ImportItemChirho::UnrepresentedChirho(
+        SpanChirho::DUMMY_CHIRHO,
+    )];
+
+    let listed_chirho = build_iface_with_imports_chirho(
+        &facade_reexporting_chirho(ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: unrepresented_chirho.clone(),
+        }),
+        std::slice::from_ref(&source_iface_chirho),
+    )
+    .exports_chirho;
+    assert!(listed_chirho.types_chirho.is_empty());
+    assert!(listed_chirho.values_chirho.is_empty());
+
+    let hidden_chirho = build_iface_with_imports_chirho(
+        &facade_reexporting_chirho(ImportSpecChirho {
+            hiding_chirho: true,
+            items_chirho: unrepresented_chirho,
+        }),
+        std::slice::from_ref(&source_iface_chirho),
+    )
+    .exports_chirho;
+    for type_name_chirho in ["ContainerChirho", "ElementChirho", "IndexChirho"] {
+        assert!(
+            hidden_chirho.types_chirho.contains_key(type_name_chirho),
+            "{type_name_chirho}"
+        );
+    }
+    assert!(hidden_chirho.values_chirho.contains_key("extractChirho"));
+}
+
+// Row 536: a source module's own types are complete as exported, except a
+// data type with a GADT constructor, whose record fields are not lowered.
+#[test]
+fn a_source_module_marks_the_types_it_declares_complete_chirho() {
+    let iface_chirho = build_iface_chirho(&module_chirho(
+        "SourceChirho",
+        None,
+        vec![],
+        vec![
+            plain_data_chirho(
+                "RecordChirho",
+                vec![ConDeclChirho::RecordChirho {
+                    name_chirho: name_chirho("RecordChirho"),
+                    fields_chirho: vec![FieldDeclChirho {
+                        names_chirho: vec![name_chirho("nameChirho")],
+                        ty_chirho: TypeChirho::ConChirho(name_chirho("Int")),
+                        strictness_chirho: StrictnessChirho::LazyChirho,
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    }],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+            ),
+            DeclChirho::NewtypeDeclChirho {
+                name_chirho: name_chirho("WrapChirho"),
+                type_vars_chirho: vec![],
+                constructor_chirho: ordinary_constructor_chirho("WrapChirho"),
+                deriving_chirho: vec![],
+                kind_sig_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            associated_class_chirho(),
+            plain_data_chirho(
+                "GadtChirho",
+                vec![ConDeclChirho::GadtChirho {
+                    name_chirho: name_chirho("MkGadtChirho"),
+                    ty_chirho: TypeChirho::ConChirho(name_chirho("GadtChirho")),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }],
+            ),
+        ],
+    ));
+    let exports_chirho = &iface_chirho.exports_chirho;
+    for type_name_chirho in ["RecordChirho", "WrapChirho", "ContainerChirho"] {
+        assert!(
+            exports_chirho
+                .complete_member_types_chirho
+                .contains(type_name_chirho),
+            "{type_name_chirho}"
+        );
+    }
+    assert!(
+        !exports_chirho
+            .complete_member_types_chirho
+            .contains("GadtChirho")
+    );
+    // The record's field is one of its members, so `RecordChirho(..)` brings it.
+    assert!(
+        exports_chirho.types_chirho["RecordChirho"]
+            .methods_chirho
+            .iter()
+            .any(|method_chirho| method_chirho == "nameChirho")
+    );
+}
+
+// Row 536: a bundled `T(.., P)` loses `P` when `..` absorbs it, so a module
+// that declares or enables pattern synonyms marks none of its types.
+#[test]
+fn a_module_that_can_bundle_pattern_synonyms_marks_nothing_chirho() {
+    let declaring_chirho = module_chirho(
+        "DeclaringChirho",
+        None,
+        vec![],
+        vec![
+            plain_data_chirho(
+                "PlainChirho",
+                vec![ordinary_constructor_chirho("PlainChirho")],
+            ),
+            DeclChirho::PatSynDeclChirho {
+                name_chirho: name_chirho("SynonymChirho"),
+                args_chirho: vec![],
+                dir_chirho: PatSynDirChirho::ImplBidirChirho,
+                pat_chirho: PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ],
+    );
+    assert!(
+        build_iface_chirho(&declaring_chirho)
+            .exports_chirho
+            .complete_member_types_chirho
+            .is_empty()
+    );
+
+    let mut enabling_chirho = module_chirho(
+        "EnablingChirho",
+        None,
+        vec![],
+        vec![plain_data_chirho(
+            "PlainChirho",
+            vec![ordinary_constructor_chirho("PlainChirho")],
+        )],
+    );
+    enabling_chirho
+        .extensions_chirho
+        .push("PatternSynonyms".to_string());
+    assert!(
+        build_iface_chirho(&enabling_chirho)
+            .exports_chirho
+            .complete_member_types_chirho
+            .is_empty()
+    );
+}
+
+// Row 536: a re-exported type keeps only its own module's mark; the module
+// that re-exports it marks nothing for it.
+#[test]
+fn a_reexported_type_is_not_marked_by_the_reexporting_module_chirho() {
+    let source_iface_chirho = build_iface_chirho(&module_chirho(
+        "SourceChirho",
+        None,
+        vec![],
+        vec![associated_class_chirho()],
+    ));
+    assert!(
+        source_iface_chirho
+            .exports_chirho
+            .complete_member_types_chirho
+            .contains("ContainerChirho")
+    );
+    let facade_chirho = build_iface_with_imports_chirho(
+        &facade_reexporting_chirho(ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![ImportItemChirho::TyConChirho {
+                name_chirho: name_chirho("ContainerChirho"),
+                members_chirho: ExportMembersChirho::AllChirho,
+            }],
+        }),
+        std::slice::from_ref(&source_iface_chirho),
+    );
+    assert!(
+        facade_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("ContainerChirho")
+    );
+    assert!(
+        facade_chirho
+            .exports_chirho
+            .complete_member_types_chirho
+            .is_empty()
+    );
+}
+
+// Row 536: the builtin NonEmpty entry is base's declaration exactly, so it is
+// marked; a partial builtin entry is not; and merging keeps every mark.
+#[test]
+fn the_builtin_non_empty_entry_is_complete_and_merging_keeps_marks_chirho() {
+    let builtin_ifaces_chirho = builtin_module_ifaces_chirho();
+    let non_empty_chirho = builtin_ifaces_chirho
+        .iter()
+        .find(|iface_chirho| iface_chirho.name_chirho == "Data.List.NonEmpty")
+        .expect("a builtin Data.List.NonEmpty interface");
+    let exports_chirho = &non_empty_chirho.exports_chirho;
+    assert!(
+        exports_chirho
+            .complete_member_types_chirho
+            .contains("NonEmpty")
+    );
+    assert_eq!(
+        exports_chirho.types_chirho["NonEmpty"].constructors_chirho,
+        ["(:|)"]
+    );
+    assert!(
+        exports_chirho.types_chirho["NonEmpty"]
+            .methods_chirho
+            .is_empty()
+    );
+
+    // `Semigroup(..)` lists only `<>` here, so no builtin entry for it is marked.
+    let semigroup_exporters_chirho: Vec<_> = builtin_ifaces_chirho
+        .iter()
+        .filter(|iface_chirho| {
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .contains_key("Semigroup")
+        })
+        .collect();
+    assert!(!semigroup_exporters_chirho.is_empty());
+    assert!(semigroup_exporters_chirho.iter().all(|iface_chirho| {
+        !iface_chirho
+            .exports_chirho
+            .complete_member_types_chirho
+            .contains("Semigroup")
+    }));
+
+    // Two interfaces of one module merge with a union of members, so a mark
+    // from either side survives.
+    let source_chirho = build_iface_chirho(&module_chirho(
+        "Data.List.NonEmpty",
+        None,
+        vec![],
+        vec![plain_data_chirho(
+            "ExtraChirho",
+            vec![ordinary_constructor_chirho("ExtraChirho")],
+        )],
+    ));
+    let merged_chirho = merge_module_ifaces_chirho(vec![non_empty_chirho.clone(), source_chirho]);
+    assert_eq!(merged_chirho.len(), 1);
+    let marks_chirho = &merged_chirho[0].exports_chirho.complete_member_types_chirho;
+    assert!(marks_chirho.contains("NonEmpty"));
+    assert!(marks_chirho.contains("ExtraChirho"));
 }

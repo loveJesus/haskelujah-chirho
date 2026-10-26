@@ -8,7 +8,7 @@
 //! prevents the resolver from guessing that an unknown source spelling is
 //! available merely because a later compiler phase happens to recognize it.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::{ExportMembersChirho, ModuleChirho};
@@ -630,6 +630,58 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
     }
 
     exports_chirho
+}
+
+/// The types and classes this module declares whose exported member lists are
+/// complete, so that an importer's `T(..)` may close on them.
+///
+/// Every constructor, record field and class method a declaration names is in
+/// its entry, with two gaps this leaves open: a GADT constructor's record
+/// fields are not lowered, and a pattern synonym bundled into an export
+/// (`T(.., P)`) is lost when `..` absorbs it. So a data type with a GADT
+/// constructor is not marked, and neither is any type of a module that
+/// declares or enables pattern synonyms. A re-exported type is never marked
+/// here: its members come from its own module's interface.
+/// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+pub(crate) fn locally_complete_type_names_chirho(
+    module_chirho: &ModuleChirho,
+    exports_chirho: &IfaceExportsChirho,
+) -> HashSet<String> {
+    let may_bundle_patterns_chirho = module_chirho
+        .extensions_chirho
+        .iter()
+        .any(|extension_chirho| extension_chirho == "PatternSynonyms")
+        || module_chirho
+            .decls_chirho
+            .iter()
+            .any(|decl_chirho| matches!(decl_chirho, DeclChirho::PatSynDeclChirho { .. }));
+    if may_bundle_patterns_chirho {
+        return HashSet::new();
+    }
+    module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                name_chirho,
+                constructors_chirho,
+                ..
+            } if !constructors_chirho.iter().any(is_gadt_constructor_chirho) => Some(name_chirho),
+            DeclChirho::NewtypeDeclChirho {
+                name_chirho,
+                constructor_chirho,
+                ..
+            } if !is_gadt_constructor_chirho(constructor_chirho) => Some(name_chirho),
+            DeclChirho::ClassDeclChirho { name_chirho, .. } => Some(name_chirho),
+            _ => None,
+        })
+        .map(|name_chirho| canonical_type_name_chirho(name_chirho.text_chirho()))
+        .filter(|type_name_chirho| exports_chirho.types_chirho.contains_key(type_name_chirho))
+        .collect()
+}
+
+fn is_gadt_constructor_chirho(constructor_chirho: &ConDeclChirho) -> bool {
+    matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. })
 }
 
 fn insert_type_export_chirho(

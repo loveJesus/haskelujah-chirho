@@ -7,7 +7,7 @@
 //! names (values, types, constructors) that other modules may import from it.
 //! Building an interface applies the module's export list to its declarations.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
@@ -17,9 +17,9 @@ use haskelujah_span_chirho::SpanChirho;
 
 use crate::type_exports_chirho::{
     canonical_type_name_chirho, canonical_value_name_chirho, collect_all_definitions_chirho,
-    merge_all_associated_type_exports_chirho, merge_associated_type_exports_chirho,
-    normalize_builtin_type_exports_chirho, remove_associated_type_exports_chirho,
-    selected_associated_type_names_chirho,
+    locally_complete_type_names_chirho, merge_all_associated_type_exports_chirho,
+    merge_associated_type_exports_chirho, normalize_builtin_type_exports_chirho,
+    remove_associated_type_exports_chirho, selected_associated_type_names_chirho,
 };
 
 // ---------------------------------------------------------------------------
@@ -56,6 +56,13 @@ pub struct IfaceExportsChirho {
     /// Associated type/data-family names grouped under their parent class.
     /// Each member also has its own entry in `types_chirho`.
     pub associated_types_chirho: HashMap<String, Vec<String>>,
+    /// Types and classes whose entry lists every constructor, field and
+    /// method that `T(..)` brings. Only these let a `T(..)` item close a
+    /// qualified import list. A source module marks the types it declares; a
+    /// builtin interface marks a type only when its entry matches GHC's
+    /// declaration. Losing a mark only leaves a qualifier open.
+    /// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+    pub complete_member_types_chirho: HashSet<String>,
 }
 
 /// A compiled module's public interface.
@@ -563,7 +570,7 @@ pub fn build_iface_with_imports_chirho(
     let all_exports_chirho = collect_all_definitions_chirho(module_chirho);
 
     // Then filter by the export list.
-    let exports_chirho = match &module_chirho.exports_chirho {
+    let mut exports_chirho = match &module_chirho.exports_chirho {
         None => {
             // No export list means export everything.
             all_exports_chirho
@@ -575,6 +582,10 @@ pub fn build_iface_with_imports_chirho(
             imported_ifaces_chirho,
         ),
     };
+    // The types this module declares are complete as exported.
+    // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+    exports_chirho.complete_member_types_chirho =
+        locally_complete_type_names_chirho(module_chirho, &exports_chirho);
     ModuleIfaceChirho {
         name_chirho: module_name_chirho,
         exports_chirho,
@@ -2392,6 +2403,12 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         }
         let (k_chirho, v_chirho) = mk_type_chirho("NonEmpty", &["(:|)"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        // base declares `data NonEmpty a = a :| [a]`: one constructor and no
+        // field, exactly this entry, so `NonEmpty(..)` brings `:|` and nothing
+        // else. workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+        exports_chirho
+            .complete_member_types_chirho
+            .insert("NonEmpty".to_string());
         for con_name_chirho in &["(:|)", ":|"] {
             let (k_chirho, v_chirho) = mk_val_chirho(con_name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -16359,6 +16376,12 @@ pub fn merge_module_ifaces_chirho(
                     }
                 }
             }
+            // Members merge as a union, so a list complete on either side is
+            // still complete. workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+            existing_chirho
+                .exports_chirho
+                .complete_member_types_chirho
+                .extend(module_chirho.exports_chirho.complete_member_types_chirho);
         } else {
             index_chirho.insert(module_chirho.name_chirho.clone(), deduped_chirho.len());
             deduped_chirho.push(module_chirho);
