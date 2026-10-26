@@ -146,7 +146,7 @@ The remaining `enumAtChirho :: Enum a => Int -> a` failure is separate. The dict
 - [x] Measure current GHC 9.14.1 and all three Haskelujah engines on direct, bare, derived, user-instance and constrained-wrapper conversions, plus the adjacent `succ`/`pred`/range probes.
 - [x] Apply only the still-missing occurrence hooks and current controls; do not replay stale source wholesale.
 - [x] Run a warm focused gate within the 2-5 minute bar, including a mutation/reach check and changed-line Clippy.
-- [ ] Record the current gate, land the bounded row on exact main, and close progress row 520 only if the measured contract is GREEN.
+- [x] Record the current gate, land the bounded row on exact main, and close progress row 520 only if the measured contract is GREEN.
 
 Current main reproduced the historical dispatch defect: direct `toEnum 66 :: Char` printed `66`,
 bare `map toEnum` did not produce the two Chars, and the combined probe stopped at a derived Enum
@@ -168,3 +168,8 @@ Clippy completed over all targets of the five changed crates; its existing warni
 changed line. Rustfmt and diff-check are clean. Removing the occurrence hooks makes the derived/user
 control fail, and restoring the old identity Char row makes the witness control print `98` instead
 of GHC's `'b'`; each edited file was restored before the valid gate.
+
+The source replayed cleanly onto main after row 558 and landed as `99f0a14d`. On that exact base,
+dictionary evidence passed 92/92 and the core plus native-backend libraries passed 262/262. The
+progress close records this bounded occurrence-dispatch result without absorbing the named Enum and
+code-point boundaries.
