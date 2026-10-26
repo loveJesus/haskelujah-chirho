@@ -49,8 +49,9 @@ flowchart TD
 - Structured renderers use backend-neutral Core rather than interpreter-only compound primops.
 - Scalar show primops used by portable Core have matching STG mappings, including `showChar#`.
 - `ShowFloatChirho` gives non-finite `Double` values GHC's exact spellings: `NaN`, `Infinity`,
-  and `-Infinity`. Finite values retain the existing renderer; selecting GHC's scientific
-  notation for very large or small finite values is a separate boundary.
+  and `-Infinity`. Finite values use fixed notation for normalized decimal exponents -1 through
+  6 and scientific notation outside that interval. Scientific mantissas keep a decimal point,
+  including `1.0e7` and `1.0e-2`.
 - The RTS records allocation kind out of band before interpreting thunk headers; constructor
   payload bits cannot masquerade as thunk state.
 - String append owns borrowed input bytes before any allocation that can trigger collection.

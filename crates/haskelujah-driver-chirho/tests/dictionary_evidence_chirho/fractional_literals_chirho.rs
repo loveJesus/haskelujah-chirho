@@ -91,6 +91,17 @@ fn integer_literal_non_finite_values_render_in_the_interpreter_chirho() {
     }
 }
 
+/// GHC 9.14.1 changes from fixed to scientific notation below exponent -1 and above
+/// exponent 6. Native whole-Double formatting remains a separate residual.
+#[test]
+fn finite_double_show_uses_ghcs_exponent_boundaries_in_the_interpreter_chirho() {
+    let program_chirho = "module Main where\nmain :: IO ()\nmain = do\n  print (9999999.0 :: Double)\n  print (10000000.0 :: Double)\n  print (0.1 :: Double)\n  print (0.01 :: Double)\n  print (1.0e20 :: Double)\n  print (1.0e-20 :: Double)\n";
+    assert_eq!(
+        run_chirho("FiniteDoubleShowChirho.hs", program_chirho),
+        "9999999.0\n1.0e7\n0.1\n1.0e-2\n1.0e20\n1.0e-20\n"
+    );
+}
+
 /// A literal the checker solved at Int still dispatches at Int.
 #[test]
 fn integer_literals_at_int_still_dispatch_at_int_chirho() {

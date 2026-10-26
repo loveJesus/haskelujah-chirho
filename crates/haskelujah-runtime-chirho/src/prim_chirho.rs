@@ -9,28 +9,7 @@
 
 use crate::stack_chirho::PrimOpKindChirho;
 use crate::value_chirho::ValueChirho;
-
-/// Render a `Double#` scalar for the portable Show path.
-///
-/// workflow: print-show-evidence-chirho
-fn show_float_chirho(value_chirho: f64) -> String {
-    if value_chirho.is_nan() {
-        "NaN".to_string()
-    } else if value_chirho.is_infinite() {
-        if value_chirho.is_sign_negative() {
-            "-Infinity".to_string()
-        } else {
-            "Infinity".to_string()
-        }
-    } else {
-        let rendered_chirho = value_chirho.to_string();
-        if rendered_chirho.contains('.') {
-            rendered_chirho
-        } else {
-            format!("{rendered_chirho}.0")
-        }
-    }
-}
+use haskelujah_rts_chirho::show_double_chirho;
 
 /// Error type for primitive operation failures.
 #[derive(Debug, Clone, PartialEq)]
@@ -340,7 +319,7 @@ pub fn apply_prim_binop_chirho(
         // Show float (unary) — match Haskell's show for Double
         PrimOpKindChirho::ShowFloatChirho => match left_chirho {
             ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::StringChirho(
-                show_float_chirho(*v_chirho),
+                show_double_chirho(*v_chirho),
             )),
             _ => Err(PrimErrorChirho::TypeMismatchChirho {
                 op_chirho,
@@ -991,16 +970,13 @@ mod tests_chirho {
     }
 
     #[test]
-    fn show_float_specials_match_haskell_without_moving_finite_values_chirho() {
+    fn show_float_uses_the_shared_haskell_renderer_chirho() {
         for (value_chirho, expected_chirho) in [
             (f64::NAN, "NaN"),
             (f64::INFINITY, "Infinity"),
-            (f64::NEG_INFINITY, "-Infinity"),
-            (0.0, "0.0"),
             (-0.0, "-0.0"),
-            (1.5, "1.5"),
-            (1.0e20, "100000000000000000000.0"),
-            (1.0e-20, "0.00000000000000000001"),
+            (10_000_000.0, "1.0e7"),
+            (0.01, "1.0e-2"),
         ] {
             assert_eq!(
                 apply_prim_binop_chirho(
