@@ -55,4 +55,5 @@ The "at b2d67eb3" cells were measured by the reach mutation on this tree, with o
     - no Clippy diagnostic on the 67 changed lines;
     - the judge at 126/126, with 73 movers and 9 holds over the 29 landed changes.
   - **The final rebase onto `cebbbcfb`** keeps the crates tree `d631cab1`, the one r3 gated.
+- [x] Land replayed tip `32463562` on Row 559's main and close progress row 553.
 - **Measured, not claimed:** claude2's sweep case `filter (> 0.5) ([0.25, 1.5] :: [Double])` was `GtInt` in the interpreter on main, and is exact on all three engines here. It is an ordering section rebuilt at the key Double, so it is the same mechanism (#28986).
