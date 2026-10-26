@@ -67,9 +67,40 @@ Seven paths conflict in `git merge-tree --write-tree 0ec9f8f5 c1e04ecb`, the sam
   - `lower_chirho.rs` shrinks from 16,931 to 16,331 lines, `infer_chirho.rs` from 14,534 to 14,197, and `cst_parser_chirho.rs` grows from 6,403 to 6,432.
 - The held tasklists move into the `26-10-17-chirho` shard (now 13 entries). Nothing referenced their old paths.
 
+## Advances onto later main
+
+Each advance is `git rebase --onto <new main> <old main>` of the same 32 commits. Every commit keeps its original "cherry picked from <held>" line. Earlier branches stay as reviewed checkpoints.
+
+1. RC5 (2026-10-25, #28284): onto 9944ed4c, giving de92912a (tree 3bc326f0) on `patterns-fundep-rc5-replay-chirho`.
+   - RC5's 7 paths and the replay's 40 are disjoint.
+   - All 32 commits keep their patch-ids and messages.
+   - The tree equals `git merge-tree --write-tree 9944ed4c ed1b667e`.
+   - rustfmt is a stdin no-op on 31/31 changed Rust files. `git diff --check` is clean, and gitleaks finds no leaks in 32 commits.
+2. Rows 532, 533 and 534 (2026-10-26, #28409): onto 3c29010c, giving 37f431c0 (tree 4aa36878) on `patterns-fundep-534-replay-chirho`.
+   - The landed main's crates tree, 0cfd246e, is row 534's gated tree.
+   - Main's 29 commits since 9944ed4c are the import scope for join and &, derived Show and the Data.Map repair, with their reports and DB closes.
+   - All 32 commits keep their `patch-id --stable`, their full messages and their authors.
+   - The tree equals `git merge-tree --write-tree 3c29010c de92912a`. A per-commit dry replay with merge-tree and commit-tree meets it with no conflict.
+   - Blob-level union:
+     - main's 29 paths carry main's blobs;
+     - the replay's 47 paths (a rename counts on both sides) carry de92912a's;
+     - the one shared path, typing `deriving_chirho/mod.rs`, is `git merge-file`'s clean three-way merge.
+   - 2122dbda then applies the approved binder adaptation (#28369). Derived Show metadata takes `visible_instance_binders_chirho`, the inline-deriving instance's own binders. Row 533's metadata had read only the written binders, so `data E :: Type -> Type deriving Show` was described as monomorphic while its instance head is `Show (E x)`.
+     - A structural test pins the metadata's parameters to the instance head's.
+     - The workflow doc gains a Parameters bullet.
+     - Only empty declarations reach this case: GHC rejects ordinary constructors after a result kind.
+   - Hygiene over 3c29010c..2122dbda:
+     - rustfmt 1.8.0 is a stdin no-op on 33/33 changed Rust files;
+     - `git diff --check` is clean;
+     - gitleaks 8.30.1 scans 33 commits and finds no leaks.
+   - Ordering (#28411): row 535 (P1) lands first. This advance stays source-only: no build, freeze or builder request.
+     - After row 535 lands, the stack advances onto that exact main and these proofs repeat.
+     - Then comes the freeze and the unit 517 re-derivation.
+
 ## Measured questions for the post-RC5 gate
 
 1. The RC5 union: `tests/dictionary_evidence_chirho.rs` needs an additive module union and `dictionary-evidence-chirho.md` a docs union (#28256). Prove both.
+   - Answered at de92912a: RC5's paths and the replay's are disjoint, so neither file needed a union.
 2. The two output holds, under the #28247 rule:
    - Each exact infix Show/operator and NonEmpty control runs on a frozen base and on the candidate, with GHC 9.14.1 as the oracle.
    - A regression is RED.
@@ -81,6 +112,12 @@ Seven paths conflict in `git merge-tree --write-tree 0ec9f8f5 c1e04ecb`, the sam
    - should_compile: tc231 changes from accept to reject.
    - should_fail: exactly T7368a, T9318, tcfail004, tcfail005, tcfail012, tcfail182, FDsFromGivens2, FunDepOrigin1b, T18406 and T20064 change from accept to reject, each with a fresh GHC rejection.
 6. The execution pair keeps main's verdict set, using the narrow native Sections rule (#28082).
+7. The binder adaptation:
+   - the structural test `a_kind_signature_tail_gives_the_metadata_the_instance_heads_parameters_chirho` passes;
+   - reverting only its `show_chirho.rs` hunk fails that test by its assertion, with the expected text copied from a real log;
+   - two controls must print GHC 9.14.1's `0` with an empty stderr on both base and candidate: W1, an empty `data E :: Type -> Type deriving Show`, and W2, `data H a :: Type -> Type deriving Show`.
+8. Row 534's Data.Map controls stay non-interference holds on the repaired main (#28409). The candidate's streams must equal main's for D01, D02, M01–M08 and `eval_import_data_map_chirho`.
+   - T07 and Q01 are NonEmpty rows, not Data.Map controls. Their main-to-replay movement is measured, never assumed.
 
 ## Checklist
 
@@ -88,7 +125,10 @@ Seven paths conflict in `git merge-tree --write-tree 0ec9f8f5 c1e04ecb`, the sam
 - [x] Replay 28 commits on exact 0ec9f8f5, resolving the seven conflicts as above.
 - [x] Prove the union, patch-ids, rustfmt, diff-check, gitleaks, headers and limits.
 - [x] Move the held tasklists into their date shard and record this replay.
-- [ ] Post the source checkpoint for gpt's review.
-- [ ] After RC5 lands, advance onto that main and prove the RC5 union.
-- [ ] Build the gate tooling for the measured questions; request the builder by name.
+- [x] Post the source checkpoint for gpt's review.
+- [x] After RC5 lands, advance onto that main and prove the RC5 union (de92912a).
+- [x] After rows 532–534 land, advance onto 3c29010c with the approved binder adaptation and prove the raw union (2122dbda).
+- [ ] After row 535 lands, advance onto that exact main and repeat the union proof (#28411).
+- [ ] Build the gate tooling for the measured questions. Request the builder by name only after row 535 lands.
+- [ ] Freeze the re-advanced replay as the unit 517 baseline.
 - [ ] Gate, then a docs-only gate record; main and the DB stay gpt_chirho's.
