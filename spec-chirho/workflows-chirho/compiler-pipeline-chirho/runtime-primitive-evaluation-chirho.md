@@ -20,5 +20,6 @@ flowchart LR
 - `ceiling#`, `floor#`, and `truncate#` use their corresponding directed `f64` operations.
 - `round#` uses nearest-integer rounding with exact half ties resolved to the even integer,
   matching `round :: Double -> Int` in GHC rather than Rust's away-from-zero `f64::round`.
-- This interpreter workflow does not imply native support. LLVM and Cranelift currently refuse
-  `round#/1` before execution, which remains a separate backend parity unit.
+- Native LLVM and Cranelift route all four conversions through the shared RTS implementation
+  (row 562), avoiding backend-specific poison or saturation for exceptional inputs. The
+  interpreter still saturates those exceptional casts and keeps that difference as a named residual.

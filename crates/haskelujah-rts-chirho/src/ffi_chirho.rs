@@ -460,6 +460,30 @@ pub extern "C" fn haskelujah_show_float_chirho(bits_chirho: i64) -> u64 {
     alloc_c_string_chirho(text_chirho.as_bytes())
 }
 
+/// Round an f64 bit-pattern to `Int`, resolving exact half ties to even.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_round_float_to_int_chirho(bits_chirho: i64) -> i64 {
+    crate::float_to_int_chirho::round_float_to_int_chirho(f64::from_bits(bits_chirho as u64))
+}
+
+/// Truncate an f64 bit-pattern toward zero and convert it to `Int`.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_truncate_float_to_int_chirho(bits_chirho: i64) -> i64 {
+    crate::float_to_int_chirho::truncate_float_to_int_chirho(f64::from_bits(bits_chirho as u64))
+}
+
+/// Round an f64 bit-pattern toward negative infinity and convert it to `Int`.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_floor_float_to_int_chirho(bits_chirho: i64) -> i64 {
+    crate::float_to_int_chirho::floor_float_to_int_chirho(f64::from_bits(bits_chirho as u64))
+}
+
+/// Round an f64 bit-pattern toward positive infinity and convert it to `Int`.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_ceiling_float_to_int_chirho(bits_chirho: i64) -> i64 {
+    crate::float_to_int_chirho::ceiling_float_to_int_chirho(f64::from_bits(bits_chirho as u64))
+}
+
 /// Convert a Haskell `[Int]` cons-list to a heap-allocated string like
 /// `[1,2,3]`.
 #[unsafe(no_mangle)]

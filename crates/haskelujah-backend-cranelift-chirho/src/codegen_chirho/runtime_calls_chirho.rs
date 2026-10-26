@@ -24,6 +24,10 @@ pub(crate) struct RuntimeCallsChirho {
     map_from_list_chirho: FuncRef,
     map_size_chirho: FuncRef,
     char_to_upper_chirho: FuncRef,
+    round_float_to_int_chirho: FuncRef,
+    truncate_float_to_int_chirho: FuncRef,
+    floor_float_to_int_chirho: FuncRef,
+    ceiling_float_to_int_chirho: FuncRef,
 }
 
 fn import_chirho(
@@ -137,6 +141,34 @@ impl RuntimeCallsChirho {
                 1,
                 true,
             )?,
+            round_float_to_int_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_round_float_to_int_chirho",
+                1,
+                true,
+            )?,
+            truncate_float_to_int_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_truncate_float_to_int_chirho",
+                1,
+                true,
+            )?,
+            floor_float_to_int_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_floor_float_to_int_chirho",
+                1,
+                true,
+            )?,
+            ceiling_float_to_int_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_ceiling_float_to_int_chirho",
+                1,
+                true,
+            )?,
         })
     }
 
@@ -219,6 +251,23 @@ impl RuntimeCallsChirho {
         let call_chirho = builder_chirho
             .ins()
             .call(self.char_to_upper_chirho, &[value_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    pub(crate) fn float_to_int_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        primitive_chirho: &str,
+        value_chirho: Value,
+    ) -> Value {
+        let function_chirho = match primitive_chirho {
+            "round#" => self.round_float_to_int_chirho,
+            "truncate#" => self.truncate_float_to_int_chirho,
+            "floor#" => self.floor_float_to_int_chirho,
+            "ceiling#" => self.ceiling_float_to_int_chirho,
+            _ => unreachable!("the caller supplies one of the four float-to-Int primitives"),
+        };
+        let call_chirho = builder_chirho.ins().call(function_chirho, &[value_chirho]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 

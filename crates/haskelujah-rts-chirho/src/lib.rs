@@ -17,6 +17,7 @@
 //! without pulling in interpreter-specific machinery.
 
 pub mod ffi_chirho;
+mod float_to_int_chirho;
 pub mod gc_chirho;
 pub mod heap_chirho;
 pub mod native_layout_chirho;

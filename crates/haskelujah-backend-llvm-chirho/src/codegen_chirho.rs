@@ -1568,6 +1568,13 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_show_float_chirho(i64)"
         )
         .unwrap();
+        for float_to_int_chirho in ["round", "truncate", "floor", "ceiling"] {
+            writeln!(
+                self.output_chirho,
+                "declare i64 @haskelujah_{float_to_int_chirho}_float_to_int_chirho(i64)"
+            )
+            .unwrap();
+        }
         writeln!(
             self.output_chirho,
             "declare i64 @haskelujah_append_str_chirho(i64, i64)"

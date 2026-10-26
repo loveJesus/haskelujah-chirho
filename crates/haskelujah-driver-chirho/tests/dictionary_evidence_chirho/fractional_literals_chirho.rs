@@ -9,7 +9,7 @@
 //! Each program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{NativeBackendChirho, assert_native_chirho, native_round_trip_chirho, run_chirho};
+use super::{assert_native_chirho, run_chirho};
 
 #[test]
 fn integer_literals_divide_at_double_everywhere_chirho() {
@@ -82,23 +82,34 @@ fn double_round_uses_ghcs_ties_to_even_rule_in_the_interpreter_chirho() {
     );
 }
 
-/// Row 559 is the interpreter wrong-answer repair. Native `round#` remains an
-/// explicit backend boundary rather than acquiring an unreviewed lowering.
+/// Row 562 routes every native `Double -> Int` primitive through the shared
+/// RTS conversion. Each list is GHC 9.14.1's output for the source as written.
 #[test]
-fn native_round_stays_refused_by_primitive_name_chirho() {
-    let program_chirho =
-        "module Main where\nmain :: IO ()\nmain = print (round (0.5 :: Double) :: Int)\n";
-    for (backend_chirho, backend_name_chirho) in [
-        (NativeBackendChirho::LlvmChirho, "LLVM"),
-        (NativeBackendChirho::CraneliftChirho, "Cranelift"),
-    ] {
-        let error_chirho = native_round_trip_chirho(program_chirho, backend_chirho, "")
-            .expect_err("native round must remain an explicit boundary in row 559");
-        assert_eq!(
-            error_chirho,
-            format!("{backend_name_chirho} does not support primitive(s): round#/1")
-        );
-    }
+fn double_to_int_directions_match_ghc_natively_chirho() {
+    let program_chirho = "module Main where\nmain :: IO ()\nmain = do\n  print (map round ([0.5,1.5,2.5,3.5,-0.5,-1.5,-2.5,-3.5,0.49,0.51,-0.49,-0.51,0.0,-0.0,2.0,-2.0] :: [Double]) :: [Int])\n  print (map truncate ([-2.7,-2.0,-0.5,0.0,0.5,2.0,2.7] :: [Double]) :: [Int])\n  print (map floor ([-2.7,-2.0,-0.5,0.0,0.5,2.0,2.7] :: [Double]) :: [Int])\n  print (map ceiling ([-2.7,-2.0,-0.5,0.0,0.5,2.0,2.7] :: [Double]) :: [Int])\n";
+    let ghc_chirho = "[0,2,2,4,0,-2,-2,-4,0,1,0,-1,0,0,2,-2]\n[-2,-2,0,0,0,2,2]\n[-3,-2,-1,0,0,2,2]\n[-2,-2,0,0,1,2,3]\n";
+    assert_native_chirho("DoubleToIntDirectionsChirho.hs", program_chirho, ghc_chirho);
+}
+
+/// GHC converts non-finite values to zero and finite values modulo the `Int`
+/// word size. The interpreter still uses Rust's saturating cast; that existing
+/// difference is pinned rather than silently widened into this native row.
+#[test]
+fn exceptional_double_to_int_inputs_match_ghc_natively_and_hold_in_the_interpreter_chirho() {
+    let program_chirho = "module Main where\nmain :: IO ()\nmain = do\n  print (map round ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n  print (map truncate ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n  print (map floor ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n  print (map ceiling ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n";
+    let ghc_line_chirho = "[0,0,0,7766279631452241920,-7766279631452241920]\n";
+    assert_native_chirho(
+        "ExceptionalDoubleToIntChirho.hs",
+        program_chirho,
+        &ghc_line_chirho.repeat(4),
+    );
+
+    let interpreter_line_chirho =
+        "[0,9223372036854775807,-9223372036854775808,9223372036854775807,-9223372036854775808]\n";
+    assert_eq!(
+        run_chirho("ExceptionalDoubleToIntChirho.hs", program_chirho),
+        interpreter_line_chirho.repeat(4)
+    );
 }
 
 /// GHC 9.14.1 changes from fixed to scientific notation below exponent -1 and above

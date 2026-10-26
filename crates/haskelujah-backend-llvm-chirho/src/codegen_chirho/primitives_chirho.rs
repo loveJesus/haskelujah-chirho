@@ -177,6 +177,25 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             result_chirho
+        } else if args_chirho.len() == 1
+            && matches!(name_chirho, "round#" | "truncate#" | "floor#" | "ceiling#")
+        {
+            let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+            let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
+            let runtime_name_chirho = match name_chirho {
+                "round#" => "haskelujah_round_float_to_int_chirho",
+                "truncate#" => "haskelujah_truncate_float_to_int_chirho",
+                "floor#" => "haskelujah_floor_float_to_int_chirho",
+                "ceiling#" => "haskelujah_ceiling_float_to_int_chirho",
+                _ => unreachable!("the primitive set above is exhaustive"),
+            };
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = call i64 @{runtime_name_chirho}(i64 {operand_chirho})"
+            )
+            .unwrap();
+            result_chirho
         } else if args_chirho.len() == 1 && name_chirho == "fromIntegral#" {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
             let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);

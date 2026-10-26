@@ -2608,6 +2608,9 @@ pub fn lower_primop_chirho(
         ),
 
         // ── Float arithmetic ───────────────────────────────────────────────
+        "round#" | "truncate#" | "floor#" | "ceiling#" => ctx_chirho
+            .runtime_calls_chirho
+            .float_to_int_chirho(builder_chirho, name_chirho, lhs_raw_chirho),
         "fromIntegral#" => {
             let integer_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let converted_chirho = builder_chirho
