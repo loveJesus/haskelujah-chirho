@@ -144,12 +144,12 @@ export interface StatChirho {
 	labelChirho: string;
 }
 
-// Counted 2026-10-26 on main a674260f. Lines of Rust, crates and module interfaces come from
+// Counted 2026-10-26 on main e561b9e3. Lines of Rust, crates and module interfaces come from
 // `bash spec-chirho/stats-chirho.sh` (grep/find based). Package snapshots are the package
 // directories in the local `.haskelujah-packages-chirho/` cache, excluding its
 // `pkgdb-chirho.txt` index file, which the 2026-07-27 count of 411 also counted.
 export const statsStripChirho: StatChirho[] = [
-	{ valueChirho: '267,665', labelChirho: 'lines of Rust' },
+	{ valueChirho: '274,681', labelChirho: 'lines of Rust' },
 	{ valueChirho: '25', labelChirho: 'focused crates' },
 	{ valueChirho: '499', labelChirho: 'module interfaces' },
 	{ valueChirho: '410', labelChirho: 'Hackage package snapshots in the corpus' }
