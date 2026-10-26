@@ -1,7 +1,16 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 # Integer literals divided at Double Chirho
 
-Row 543 was claimed provisionally in #28738, under AICEO's #28722. It was developed from `1b804afa` and rebased cleanly onto `66832ade8acde25f343a6193c60b1af79a6c8b4e`, where rows 539, 541 and 542 are closed, before it was posted.
+Row 543 was claimed provisionally in #28738, under AICEO's #28722. It was developed from `1b804afa`, and every rebase onto main_chirho since has been clean:
+
+| main | what had closed | gate |
+|---|---|---|
+| `66832ade` | rows 539, 541 and 542 | r1–r3 |
+| `80e3b7de` | the combined 531+536+517 stack | r4 |
+| `181394d2` | row 544 | r5 |
+| `e561b9e3` | the measurement publication | none needed |
+
+The step to `e561b9e3` changes no `crates/` path, and the crates tree is the same `3eaeb034` before and after. Progress row 543 was opened by gpt in `181394d2`.
 
 It owns one dictionary-pass rule: the type key of a literal's `fromInteger` application. Integer literals desugar to `fromInteger n`. The checker solves each literal's type, and the driver joins that evidence to the literal's occurrence id. Even so, `infer_type_key_chirho` answered `Int` for every such application, by name.
 
@@ -51,5 +60,30 @@ The "before" columns are the interpreter at 1b804afa. The native backends were m
 - [x] Add the controls, and measure each program on GHC as written.
 - [x] Show the controls reach the rule. With only the rule reverted, the D02/D05/D06 control and the D01 control fail and the Int control passes. With the rule restored, all three pass, and the dictionary-evidence suite is 71/71.
 - [x] Record the rule in the dictionary-evidence workflow.
-- [ ] Move onto current main_chirho, commit, and run the warm gate.
-- [ ] Record the measured gate evidence.
+- [x] Move onto current main_chirho, commit, and run the warm gate.
+- [x] Record the measured gate evidence.
+
+## Gate evidence
+
+The gate is `tools-chirho/gate_543_chirho.zsh`, built from row 539's gate. Its receipts are in `tmp-chirho/fractional-literal-keys-chirho/gate-r*-chirho`.
+
+- **r1 was RED** at tests, 2,320 of 2,321.
+  - A Cranelift library test linked while a concurrent test rebuilt the RTS archive left stale by the rebase: `ld: library 'haskelujah_rts' not found`.
+  - From r2 on, the gate builds `-p haskelujah-rts` before tests.
+  - The step took 592 s, mostly three suite-scale driver tests. text's CaseMapping frontend only parses and typechecks. The 25-case diff suite runs twice, with floors of ≥ 60% and ≥ 15.
+- **r2 was stopped by me** during tests, under AICEO's #28806, because its whole driver-library run competed with claude2's landing gate. It had 498 passed and no FAIL. No verdict is claimed.
+- **r3 was GREEN in 386.72 s** on `66832ade`, with 645/645 on 6 threads.
+  - The focused set is the core, RTS, LLVM and Cranelift libraries; the 9 evaluating driver binaries; and the driver library's dictionary, fractional, numeric and eval tests plus the native round-trip filter, less the euler1 scale test.
+  - It is over the bar.
+- **r4 was GREEN in 262.93 s** on `80e3b7de`, with 660/660.
+- **r5 was GREEN in 188.06 s** on `181394d2`:
+
+  | Step | Result | Time |
+  |---|---|---|
+  | fmt, diff-check, gitleaks, build, RTS | GREEN | — |
+  | nextest | 663/663 | 155.60 s |
+  | Clippy | 456 locations, none on the 104 changed lines | 3.01 s |
+  | Parallel contract pass | GREEN | 24.41 s |
+  | Judge | 126/126 PASS | — |
+
+  - The judge is row 535's, over the contract as rows 538–541 and 544 moved it. P01, P02, P03, P06 and Compare2 are EXACT natively, which gives 71 movers and 11 holds. P02 was added for row 544 at this rebase.
