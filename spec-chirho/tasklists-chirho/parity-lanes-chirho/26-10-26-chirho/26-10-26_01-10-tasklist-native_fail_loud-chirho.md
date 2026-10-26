@@ -108,6 +108,10 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
     - two more LLVM unit tests found at implementation, which asserted `snprintf` for Int `show` and `printf` for a pure `main` and now assert the checked runtime formatters (C4);
     - `native_error_helpers`' failure helper, which accepted a signal and now requires exit 1 with the exact line (C6).
 - [x] C7: workflow `spec-chirho/workflows-chirho/testing-chirho/native-fail-loud-chirho.md`, cited by every new module.
+- [x] C10 (a14baa14), after gate r1 (#28421, #28422).
+  - Cranelift lowers `compare#` and `compareChar#` in `lower_chirho/ordering_chirho.rs`, with LLVM's semantics: signed less gives LT 0, equal gives EQ 1, anything else gives GT 2, using `con_tag_for_chirho`'s tags. `compareFloat#` and `compareStr#` stay refused.
+  - The new end-to-end control `int_and_char_compare_answer_as_ghc_on_cranelift_chirho` checks that `compare (2 :: Int) 1` and `compare 'b' 'a'` print GHC's `GT` and `GT` on Cranelift.
+  - Unit counts: 16 paths, 11 commits and 24 driver controls.
 - [ ] Checks without Cargo:
   - pinned rustfmt;
   - `diff --check`;
@@ -135,4 +139,30 @@ The gate runs only under a builder handed by name, after source and tooling revi
   - the `unreachable` and trap defaults;
   - `^#`;
   - `errorWithoutStackTrace`;
-  - the internal prefix.
+  - the internal prefix;
+  - M16 (#28422): the Int/Char Ordering back to the pre-535 constant 0. Its isolated killer is the new Cranelift semantic control. M04 stays scoped to the unknown-primitive zero fallback.
+
+### Gate runs
+
+**r1, RED** (tag `nfl535-native-fail-loud-c431f218-r1-chirho`, run once at 02:51:09 EDT on 2026-10-26 under the builder gpt_chirho handed over in #28419). The tag is never resumed.
+- Ledger:
+  - preflight GREEN at c431f218 (crates bb012aff);
+  - build GREEN with rc 0 and no warnings. Frozen CLI `c1f1feb6281a129f0ef26d2c91b640592ca9a36e0f63a27f00c98ef50c6e74bc`; RTS lib `7ef80b4536171d6287e75643a8d3c5e8d0bd81f168ca66d079e582f7597f1b56`;
+  - focused GREEN for rts-lib 47, rts-native_failure 10, rts-native_thunks 1, llvm-lib 38, cranelift-lib 42, native_error_helpers 23, native_laziness 5 and codegen_scaling 5;
+  - focused-cranelift_roundtrip RED: rc 101, 32 passed and 11 failed. Exit codes were build 0 and focused 1.
+  - Not run: the rest of focused, then lint, oracle, corpus and mutants (with postflight).
+- Each of the 11 failures is `Cranelift does not support primitive(s): compare#/2`, the complete refusal list. The failing tests:
+  - `cranelift_integral_operations_use_their_runtime_evidence_chirho`;
+  - the `cranelift_round_trip_*_chirho` tests applyop_divide, applyop_modulo, deep_tail_recursion, euler1_tail_recursion, guard_where_binding, merge_sort_preserves_all_elements, non_tail_recursive_list_fold, otherwise_guard, user_range_large and where_div_mod_binding.
+- Root cause, which corrects #28416 2d:
+  - these programs never call `compare`. A reachable Prelude `Ord` dictionary compiles its method body, `compare#` for Int (`instance_chirho.rs:111-114`);
+  - Cranelift used to lower that body to a silent 0, and LLVM lowers it itself;
+  - I had scanned test sources for `compare` instead of treating every primitive LLVM lowers as reachable.
+- After the run, the tree was clean at the tip, no process was alive, and every unit file matched its tip blob.
+- Receipts are kept byte-exact as two sets, each digested over its sorted file hashes:
+  - the run directory: 3,526 files, `47f0f1a5211f3f8a735534e6d710d1a33ec00e8780b639946551ffe4876af938`;
+  - the launcher directory: 3 files, `252e928e1e002cb5f8a3a8fe62c5e23175a559ca5981ee052f9f80506a48a44d`.
+- Disposition (#28422): C10, a 41st contract row, and M16.
+  - The new row is `IntCharCompareChirho`, with its GHC output re-derived without Cargo and its provenance in `contract-rows-chirho/`.
+  - The contract now has 41 programs and 82 native cells: 64 moving and 18 held.
+  - Compare2's Cranelift refusal is now exactly `compareFloat#/2, compareStr#/2`.
