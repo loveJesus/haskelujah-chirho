@@ -333,6 +333,24 @@ fn sums_and_products_answer_as_ghc_everywhere_chirho() {
     );
 }
 
+// ── Row 566: a long literal unpacks whole across collections ─────────────
+
+/// A 2000-character literal used as a list. Natively it is unpacked cell by cell, and those
+/// allocations cross collections. Before row 566 the built suffix was unrooted, and the
+/// collector traced tagged chains only two levels deep: `length` gave 240, and the slice read
+/// freed cells. GHC 9.14.1 prints `2000` and `fghij`.
+fn long_literal_source_chirho() -> String {
+    let literal_chirho = "abcdefghij".repeat(200);
+    format!(
+        "module Main where\nmain :: IO ()\nmain = do\n  print (length \"{literal_chirho}\")\n  putStrLn (take 5 (drop 1995 \"{literal_chirho}\"))\n"
+    )
+}
+
+#[test]
+fn a_long_literal_unpacks_whole_everywhere_chirho() {
+    assert_prints_everywhere_chirho(&long_literal_source_chirho(), "2000\nfghij\n");
+}
+
 // ── R1: an unbound reference fails named, and only when demanded ──────────
 
 #[test]

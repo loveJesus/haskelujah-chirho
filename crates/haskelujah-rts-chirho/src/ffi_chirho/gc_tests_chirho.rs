@@ -48,3 +48,27 @@ fn growing_live_heap_has_bounded_collection_work_and_still_retires_chirho() {
     runtime_chirho.collect_chirho();
     assert_eq!(runtime_chirho.allocation_count_chirho(), 0);
 }
+
+/// Row 566: a chain linked by tagged pointers survives whole. The marker queued each child by
+/// its tagged value, whose registry lookup failed, so only a root's direct children survived.
+#[test]
+fn a_tagged_chain_survives_collection_whole_chirho() {
+    let mut runtime_chirho = NativeGcRuntimeChirho::default();
+    let cells_chirho: Vec<*mut u8> = (0..4).map(|_| runtime_chirho.alloc_chirho(24)).collect();
+    for pair_chirho in cells_chirho.windows(2) {
+        unsafe {
+            pair_chirho[0]
+                .cast::<usize>()
+                .add(2)
+                .write_unaligned(pair_chirho[1] as usize | 1);
+        }
+    }
+    runtime_chirho.gc_root_push_chirho((cells_chirho[0] as usize | 1) as *mut u8);
+    runtime_chirho.collect_chirho();
+    for (depth_chirho, cell_chirho) in cells_chirho.iter().enumerate() {
+        assert!(
+            runtime_chirho.contains_alloc_chirho(*cell_chirho),
+            "the cell at depth {depth_chirho} was collected"
+        );
+    }
+}

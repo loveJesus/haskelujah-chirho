@@ -170,8 +170,12 @@ impl NativeGcRuntimeChirho {
                         .cast::<usize>()
                         .read_unaligned()
                 };
+                // Queue the child by its registry address (row 566): a tagged value failed
+                // the lookup above when popped, so nothing below a root's children was
+                // scanned, and a longer list lost its tail mid-use.
                 if self.try_mark_ptr_addr_chirho(child_ptr_addr_chirho) {
-                    worklist_chirho.push_back(child_ptr_addr_chirho);
+                    worklist_chirho
+                        .push_back(Self::normalize_heap_ptr_addr_chirho(child_ptr_addr_chirho));
                 }
                 offset_chirho += word_size_chirho;
             }
@@ -791,13 +795,20 @@ pub extern "C" fn haskelujah_unpack_string_chirho(str_bits_chirho: u64) -> u64 {
         return 0; // Nil
     }
     let ptr_chirho = str_bits_chirho as usize as *const u8;
-    let c_str_chirho = unsafe { CStr::from_ptr(ptr_chirho as *const std::ffi::c_char) };
-    let bytes_chirho = c_str_chirho.to_bytes();
+    // Each cell allocation below can collect (row 566). The input may be an unrooted RTS
+    // buffer, so own its bytes first; and root the suffix built so far around each allocation,
+    // since nothing else reaches it. Without both, a long string read freed memory: natively,
+    // `length "<2000 characters>"` was 15, and a longer one died with SIGBUS.
+    let bytes_chirho = unsafe { CStr::from_ptr(ptr_chirho as *const std::ffi::c_char) }
+        .to_bytes()
+        .to_vec();
 
     // Build the list from the END (so we can chain tails)
     let mut tail_chirho: u64 = 0; // Nil tag
     for &byte_chirho in bytes_chirho.iter().rev() {
+        haskelujah_gc_root_push_chirho(tail_chirho as usize as *mut u8);
         let cell_ptr_chirho = haskelujah_alloc_chirho(24);
+        haskelujah_gc_root_pop_chirho();
         if cell_ptr_chirho.is_null() {
             return 0;
         }
@@ -1108,6 +1119,46 @@ mod tests_chirho {
         assert!(!runtime_chirho.contains_alloc_chirho(rhs_bits_chirho as usize as *mut u8));
         assert!(runtime_chirho.contains_alloc_chirho(result_bits_chirho as usize as *mut u8));
         runtime_chirho.reset_chirho();
+    }
+
+    /// Row 566: a collection in the middle of an unpack keeps every cell built so far and the
+    /// input's bytes. Each cell is checked live before it is read, so a lost cell fails an
+    /// assertion instead of reading freed memory.
+    #[test]
+    fn unpack_string_keeps_its_cells_across_threshold_collection_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        native_gc_runtime_lock_chirho().reset_chirho();
+
+        let text_chirho = b"abcdefghij";
+        let input_bits_chirho = alloc_c_string_chirho(text_chirho);
+        // The fourth cell's allocation crosses the threshold, with three cells already built.
+        for _allocation_idx_chirho in 5..GC_THRESHOLD_CHIRHO {
+            assert!(!haskelujah_alloc_chirho(8).is_null());
+        }
+        let list_bits_chirho = haskelujah_unpack_string_chirho(input_bits_chirho);
+
+        let mut unpacked_chirho = Vec::new();
+        let mut current_chirho = list_bits_chirho;
+        while current_chirho != 0 {
+            // A freed cell reused by a later one makes a cycle: fail instead of looping.
+            assert!(
+                unpacked_chirho.len() < text_chirho.len(),
+                "the list is longer than its text"
+            );
+            let cell_chirho = (current_chirho & !1) as usize as *mut u8;
+            assert!(
+                native_gc_runtime_lock_chirho().contains_alloc_chirho(cell_chirho),
+                "cell {} was collected",
+                unpacked_chirho.len()
+            );
+            let words_chirho = cell_chirho as *const u64;
+            unpacked_chirho.push(unsafe { *words_chirho.add(1) } as u8);
+            current_chirho = unsafe { *words_chirho.add(2) };
+        }
+        assert_eq!(unpacked_chirho, text_chirho);
+        native_gc_runtime_lock_chirho().reset_chirho();
     }
 
     #[test]

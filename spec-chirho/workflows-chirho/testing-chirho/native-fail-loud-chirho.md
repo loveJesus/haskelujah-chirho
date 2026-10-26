@@ -89,3 +89,28 @@ flowchart LR
   - The R1 unbound-name fixtures use `realToFrac`, which still needs its Real and Fractional dictionaries. Row 548 bound
     the first fixture's `scanl1`, with `foldl1` and `until`, in `dict_chirho/prelude_chirho/report_folds_chirho.rs`. Its
     controls print GHC's answers on all three engines, and an empty `foldl1` fails named as GHC's does.
+
+## Collection keeps what roots reach (row 566)
+
+```mermaid
+flowchart TD
+    root_gc_chirho["a root (shadow stack, active or unbound thunk)"] --> canon_gc_chirho["its registry address (the tag bit cleared)"]
+    canon_gc_chirho --> scan_gc_chirho["scan every word of the block"]
+    scan_gc_chirho --> child_gc_chirho{"a word names a registered block, tagged or not?"}
+    child_gc_chirho -->|yes, unmarked| queue_gc_chirho["mark it and queue its registry address"]
+    queue_gc_chirho --> scan_gc_chirho
+    child_gc_chirho -->|no| next_gc_chirho[next word]
+```
+
+- **Before row 566:** the marker queued a child by its tagged value, and the registry lookup at
+  the queue's head missed it. So only a root's direct children survived a collection, and a list
+  reachable through a root lost its third cell onward.
+  - Compiled code seldom showed it: it builds and consumes lists lazily, a few cells at a time.
+  - The RTS's own eager builders did. A 2000-character literal used as a list gave `length` 240,
+    and a longer one died with SIGBUS.
+- **Unpack:** `haskelujah_unpack_string_chirho` owns its input's bytes before allocating, and
+  roots the suffix it has built around each cell allocation.
+- **Controls:**
+  - a four-cell tagged chain survives collection whole: `a_tagged_chain_survives_collection_whole_chirho`;
+  - an unpack keeps every cell across a collection in its middle: `unpack_string_keeps_its_cells_across_threshold_collection_chirho`;
+  - a long literal unpacks whole on every engine: `a_long_literal_unpacks_whole_everywhere_chirho`.
