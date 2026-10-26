@@ -23,3 +23,10 @@ flowchart LR
 - Native LLVM and Cranelift route all four conversions through the shared RTS implementation
   (row 562), avoiding backend-specific poison or saturation for exceptional inputs. The
   interpreter still saturates those exceptional casts and keeps that difference as a named residual.
+
+## String lines
+
+- `lines#` splits only on `\n`, preserving `\r` as content.
+- Empty input produces no lines. A final `\n` terminates the preceding line but does not synthesize
+  another empty line; repeated terminators still preserve the empty lines between them.
+- `unlines#` remains the inverse on the measured finite lists: it appends one `\n` per element.

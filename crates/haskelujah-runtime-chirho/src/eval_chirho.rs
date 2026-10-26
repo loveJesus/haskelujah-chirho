@@ -2337,7 +2337,14 @@ impl MachineChirho {
             PrimOpKindChirho::LinesChirho => {
                 // lines# s → split on newlines, build list of strings on heap
                 if let Some(ValueChirho::StringChirho(s_chirho)) = args_chirho.first() {
-                    let line_strs_chirho: Vec<&str> = s_chirho.split('\n').collect();
+                    let mut line_strs_chirho: Vec<&str> = if s_chirho.is_empty() {
+                        Vec::new()
+                    } else {
+                        s_chirho.split('\n').collect()
+                    };
+                    if s_chirho.ends_with('\n') {
+                        line_strs_chirho.pop();
+                    }
                     let nil_tag_chirho = self.lookup_con_tag_chirho("[]", 0);
                     let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
                     let nil_closure_chirho =

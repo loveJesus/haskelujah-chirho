@@ -17,9 +17,18 @@ or prefix-minus lowering owned by rows 557, 560, 561, and 555.
 
 ## Checklist
 
-- [ ] Record the GHC/interpreter matrix before source.
-- [ ] Repair the one primitive without changing String representation.
-- [ ] Add focused regression and boundary controls.
-- [ ] Run the runtime and focused driver gates under three minutes.
+- [x] Record the GHC/interpreter matrix before source.
+- [x] Repair the one primitive without changing String representation.
+- [x] Add focused regression and boundary controls.
+- [x] Run the runtime and focused driver gates under three minutes.
 - [ ] Verify rustfmt, diff-check, changed-line Clippy, and gitleaks.
 - [ ] Land and close progress row 563.
+
+## Gate record
+
+- `cargo test -p haskelujah-runtime --lib`: 57 passed, 0 failed.
+- `cargo test -p haskelujah-driver --test evaluation_values_chirho lines_chirho`: 2 passed,
+  0 failed. The tests cover the complete measured newline matrix and `lines . unlines` boundary.
+- Focused Clippy completed in 8.72 seconds. It reported no warning on a changed line; the existing
+  workspace warnings remain outside this unit.
+- `cargo fmt --all -- --check` and `git diff --check` are clean.
