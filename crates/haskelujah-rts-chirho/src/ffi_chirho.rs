@@ -42,6 +42,9 @@ struct NativeGcRuntimeChirho {
     allocations_by_ptr_chirho: HashMap<usize, NativeAllocRecordChirho>,
     gc_roots_chirho: Vec<usize>,
     active_thunks_chirho: HashSet<usize>,
+    /// One failing thunk per unbound name (keyed by the name's static
+    /// address), rooted for the program's lifetime.
+    unbound_thunks_chirho: HashMap<usize, u64>,
     alloc_total_chirho: u64,
     alloc_count_since_gc_chirho: u64,
     allocation_interval_chirho: u64,
@@ -84,11 +87,9 @@ impl NativeGcRuntimeChirho {
 
         let ptr_chirho = unsafe { alloc_zeroed(layout_chirho) };
         if ptr_chirho.is_null() {
-            eprintln!(
-                "haskelujah: out of memory (requested {} bytes)",
-                actual_size_chirho
+            internal_failure_chirho(
+                format!("out of memory (requested {actual_size_chirho} bytes)").as_bytes(),
             );
-            std::process::abort();
         }
 
         self.allocations_by_ptr_chirho.insert(
@@ -129,6 +130,11 @@ impl NativeGcRuntimeChirho {
         let mut worklist_chirho = VecDeque::new();
         let mut roots_snapshot_chirho = self.gc_roots_chirho.clone();
         roots_snapshot_chirho.extend(self.active_thunks_chirho.iter().copied());
+        roots_snapshot_chirho.extend(
+            self.unbound_thunks_chirho
+                .values()
+                .map(|thunk_bits_chirho| *thunk_bits_chirho as usize),
+        );
         for root_ptr_addr_chirho in roots_snapshot_chirho {
             let Some(canonical_root_addr_chirho) =
                 self.registered_heap_address_chirho(root_ptr_addr_chirho)
@@ -230,6 +236,7 @@ impl NativeGcRuntimeChirho {
     fn reset_chirho(&mut self) {
         self.gc_roots_chirho.clear();
         self.active_thunks_chirho.clear();
+        self.unbound_thunks_chirho.clear();
         self.clear_all_allocs_chirho();
         self.alloc_total_chirho = 0;
         self.alloc_count_since_gc_chirho = 0;
@@ -317,9 +324,15 @@ pub extern "C" fn haskelujah_is_heap_ptr_chirho(value_bits_chirho: u64) -> i64 {
     }
 }
 
+mod failure_chirho;
 #[cfg(test)]
 mod gc_tests_chirho;
 mod native_thunks_chirho;
+pub use failure_chirho::{
+    haskelujah_error_chirho, haskelujah_no_match_chirho, haskelujah_unbound_thunk_chirho,
+    haskelujah_uncaught_exception_chirho, haskelujah_undefined_chirho,
+};
+use failure_chirho::{internal_failure_chirho, refuse_boxed_integer_chirho};
 pub use native_thunks_chirho::{
     haskelujah_alloc_thunk_chirho, haskelujah_enter_thunk_chirho, haskelujah_update_thunk_chirho,
 };
@@ -330,8 +343,7 @@ pub use native_thunks_chirho::{
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_main_with_large_stack_chirho(entry_fn_bits_chirho: u64) -> i64 {
     if entry_fn_bits_chirho == 0 {
-        eprintln!("haskelujah: null native entry function");
-        std::process::abort();
+        internal_failure_chirho(b"null native entry function");
     }
 
     let entry_fn_chirho: NativeEntryFnChirho =
@@ -341,16 +353,14 @@ pub extern "C" fn haskelujah_main_with_large_stack_chirho(entry_fn_bits_chirho: 
         .stack_size(NATIVE_MAIN_STACK_SIZE_CHIRHO)
         .spawn(move || unsafe { entry_fn_chirho() })
         .unwrap_or_else(|error_chirho| {
-            eprintln!("haskelujah: failed to spawn main thread: {error_chirho}");
-            std::process::abort();
+            internal_failure_chirho(
+                format!("failed to spawn main thread: {error_chirho}").as_bytes(),
+            )
         });
 
     match join_handle_chirho.join() {
         Ok(result_chirho) => result_chirho,
-        Err(_) => {
-            eprintln!("haskelujah: native main thread panicked");
-            std::process::abort();
-        }
+        Err(_) => internal_failure_chirho(b"native main thread panicked"),
     }
 }
 
@@ -358,6 +368,7 @@ pub extern "C" fn haskelujah_main_with_large_stack_chirho(entry_fn_bits_chirho: 
 /// variadic libc calls.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_print_int_chirho(value_chirho: i64) -> i64 {
+    refuse_boxed_integer_chirho(value_chirho as u64);
     println!("{value_chirho}");
     let _ = std::io::stdout().flush();
     0
@@ -368,6 +379,7 @@ pub extern "C" fn haskelujah_print_int_chirho(value_chirho: i64) -> i64 {
 /// used as a Haskell `String` value.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_show_int_chirho(value_chirho: i64) -> u64 {
+    refuse_boxed_integer_chirho(value_chirho as u64);
     let s_chirho = format!("{value_chirho}");
     alloc_c_string_chirho(s_chirho.as_bytes())
 }
@@ -437,6 +449,7 @@ pub extern "C" fn haskelujah_show_int_list_chirho(list_bits_chirho: u64) -> u64 
 
         let head_chirho = unsafe { *ptr_chirho.add(1) } as i64;
         let tail_chirho = unsafe { *ptr_chirho.add(2) };
+        refuse_boxed_integer_chirho(head_chirho as u64);
         if !first_elem_chirho {
             text_chirho.push(',');
         }
@@ -553,26 +566,6 @@ pub extern "C" fn haskelujah_append_str_chirho(lhs_bits_chirho: u64, rhs_bits_ch
     }
 
     out_ptr_chirho as usize as u64
-}
-
-// ---------------------------------------------------------------------------
-// Runtime error handling
-// ---------------------------------------------------------------------------
-
-/// Runtime error: print message and abort.
-///
-/// # Safety
-/// `msg_chirho` must be nonnull and point to `len_chirho` initialized, readable
-/// bytes in one allocation. The message need not be NUL-terminated or UTF-8.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn haskelujah_error_chirho(msg_chirho: *const u8, len_chirho: u64) {
-    let slice_chirho = unsafe { std::slice::from_raw_parts(msg_chirho, len_chirho as usize) };
-    if let Ok(message_chirho) = std::str::from_utf8(slice_chirho) {
-        eprintln!("haskelujah: error: {}", message_chirho);
-    } else {
-        eprintln!("haskelujah: error (non-UTF8 message)");
-    }
-    std::process::abort();
 }
 
 /// Print a boolean as True/False followed by newline.
@@ -749,13 +742,6 @@ pub extern "C" fn haskelujah_unpack_string_chirho(str_bits_chirho: u64) -> u64 {
         tail_chirho = (cell_ptr_chirho as u64) | 1;
     }
     tail_chirho
-}
-
-/// Runtime panic for undefined/bottom values.
-#[unsafe(no_mangle)]
-pub extern "C" fn haskelujah_undefined_chirho() {
-    eprintln!("haskelujah: Prelude.undefined");
-    std::process::abort();
 }
 
 #[cfg(test)]

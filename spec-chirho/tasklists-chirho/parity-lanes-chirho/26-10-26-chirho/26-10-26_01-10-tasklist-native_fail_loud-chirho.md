@@ -58,7 +58,12 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
     - the four wildcard holds are EXACT on both.
   - Correction to the earlier inventory: U05 on Cranelift is SIGSEGV. The earlier "rc 0, empty output" reading took its exit code from the wrong pipeline.
   - The receipt is tmp-chirho/native-fail-loud-chirho/rebaseline-a5f7d483-chirho/: classes table sha 77c110ec, C-locale directory digest e8bd889b, 1,313 files.
-- [ ] The runtime error route: user and internal prefixes, stdout flushed, exit 1, and no `abort()` on the owned routes.
+- [x] C3, the runtime error route (written; unbuilt until the builder handoff):
+  - `ffi_chirho/failure_chirho.rs` holds the one route: Rust stdout and C stdio flushed, one `haskelujah: error:` or `haskelujah: internal error:` line, exit 1;
+  - `error`, `undefined`, the new `no_match`, `uncaught_exception` and unbound-thunk entries use it, and so do the allocator, main-thread and thunk invariants, which were `abort()`s. A blackholed thunk reports `<<loop>>`;
+  - the unbound thunk is one per name, rooted for the program's lifetime, so a loop that mentions the name allocates once;
+  - R2's check sits in `show_int`, `print_int` and the `[Int]` heads. `show_bool_list` formats no integer, so it is not an R2 site;
+  - `tests/native_failure_chirho.rs` observes each case from a child process: exit 1, the exact stderr line, and the report after buffered C output on a merged stream.
 - [ ] R1 on both backends.
 - [ ] R4 on both backends, with Cranelift's `^#` refused.
 - [ ] R3 on both backends, with `errorWithoutStackTrace`.

@@ -4,6 +4,7 @@
 //! payload occupy separate words. Enter follows indirections to WHNF, updates
 //! the entire path, and roots active evaluations across allocating callbacks.
 
+use super::failure_chirho::{internal_failure_chirho, user_failure_chirho};
 use super::{haskelujah_alloc_chirho, native_gc_runtime_lock_chirho};
 
 const UNEVALUATED_CHIRHO: u64 = 0;
@@ -29,17 +30,13 @@ pub unsafe extern "C" fn haskelujah_alloc_thunk_chirho(
     let size_chirho = num_fvs_chirho
         .checked_add(PREFIX_WORDS_CHIRHO as u64)
         .and_then(|words_chirho| words_chirho.checked_mul(8))
-        .unwrap_or_else(|| {
-            eprintln!("haskelujah: thunk allocation overflow");
-            std::process::abort()
-        });
+        .unwrap_or_else(|| internal_failure_chirho(b"thunk allocation overflow"));
     if code_ptr_chirho == 0 || (num_fvs_chirho != 0 && fvs_chirho.is_null()) {
-        eprintln!("haskelujah: invalid thunk entry or environment");
-        std::process::abort();
+        internal_failure_chirho(b"invalid thunk entry or environment");
     }
     let raw_chirho = haskelujah_alloc_chirho(size_chirho).cast::<u64>();
     if raw_chirho.is_null() {
-        std::process::abort();
+        internal_failure_chirho(b"thunk allocation failed");
     }
     native_gc_runtime_lock_chirho()
         .allocations_by_ptr_chirho
@@ -81,10 +78,8 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(mut value_chirho: u64) -> u64 {
     while let Some(raw_chirho) = thunk_address_chirho(value_chirho) {
         unsafe {
             match raw_chirho.read() {
-                BLACKHOLE_CHIRHO => {
-                    eprintln!("runtime error: thunk blackhole (infinite loop)");
-                    std::process::abort();
-                }
+                // GHC's report for a thunk that demands itself.
+                BLACKHOLE_CHIRHO => user_failure_chirho(b"<<loop>>"),
                 UNEVALUATED_CHIRHO | INDIRECTION_CHIRHO => {
                     let state_chirho = raw_chirho.read();
                     let payload_chirho = raw_chirho.add(1).read();
@@ -101,10 +96,7 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(mut value_chirho: u64) -> u64 {
                         code_chirho(raw_chirho.add(PREFIX_WORDS_CHIRHO))
                     };
                 }
-                _ => {
-                    eprintln!("haskelujah: corrupt native thunk state");
-                    std::process::abort();
-                }
+                _ => internal_failure_chirho(b"corrupt native thunk state"),
             }
         }
     }
@@ -131,8 +123,7 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(mut value_chirho: u64) -> u64 {
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_update_thunk_chirho(thunk_chirho: u64, value_chirho: u64) {
     let Some(raw_chirho) = thunk_address_chirho(thunk_chirho) else {
-        eprintln!("haskelujah: update of a non-thunk");
-        std::process::abort();
+        internal_failure_chirho(b"update of a non-thunk");
     };
     unsafe {
         raw_chirho.add(1).write(value_chirho);
