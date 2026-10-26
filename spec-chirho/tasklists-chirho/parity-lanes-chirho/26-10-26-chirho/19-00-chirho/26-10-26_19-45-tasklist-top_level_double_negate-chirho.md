@@ -10,7 +10,7 @@ Base: `49ef0320`, whose only change beyond source main `0d516dd3` is the progres
 - [x] Implement the smallest shared evidence repair without touching row 570's Double-power route.
 - [x] Add GHC-measured all-engine controls and kill the module-key omission mutation.
 - [x] Update the relevant workflow documentation.
-- [ ] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
+- [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
 - [ ] Rebase onto exact main, rerun the controls, land, and close only row 571.
 
 Scope is the 7b residual recorded after row 555: a negation whose operand is a top-level binding
@@ -35,3 +35,12 @@ performs the only operation rewrite.
 The mechanism mutation restored the old call-argument-only module map. The Core control failed
 with `negate#` still present, and the all-engine control failed immediately at the interpreter's
 `NegIntChirho`. Restoring the module-value key made both controls pass again.
+
+## Gate checkpoint
+
+The branch rebased without conflict onto `cf562154` after row 566 landed. The warm focused gate
+passed 171/171 Core library tests and 100/100 dictionary-evidence integration tests, including the
+interpreter, LLVM and Cranelift control. Clippy reported no diagnostic on a changed line; rustfmt
+and `git diff --check` were clean. Gitleaks scanned the one source commit and found no leaks. The
+focused tests plus changed-line Clippy and hygiene completed in under one minute after the warm
+build.
