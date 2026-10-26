@@ -43,8 +43,13 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
 ## Source
 
 - [x] C1 (7a701d64): this plan.
-- [x] Re-baseline the 36-row inventory with no Cargo: the 16 Show rows and 20 non-Show probes, plus the four wildcard holds.
+- [x] Re-baseline the 36-row inventory before any source edit: the 16 Show rows and 20 non-Show probes, plus the four wildcard holds.
   - It ran on a hash-verified copy of row 534's frozen CLI 15e1b77b, which is main's crates tree 0cfd246e, against GHC 9.14.1, in interpreter, LLVM and Cranelift mode.
+  - Correction (#28416, #28417): this re-baseline did invoke Cargo, though it rebuilt nothing. C2 and #28414 had said it ran with no Cargo.
+    - Every native `compile` runs `cargo build -p haskelujah-rts --quiet` in the tree the CLI was built in (cli `main.rs:871-885`). 15e1b77b was built in agy's worktree, and b19f30b8 in mine.
+    - Each native compile, and the later IR probes on 15e1b77b, therefore ran an RTS freshness check in those trees.
+    - Both checks were no-ops. agy's `libhaskelujah_rts.a` still dates from Oct 25 22:46:13 (18,950,288 bytes) and mine from Sep 18 11:21:44 (18,975,952 bytes), so neither RTS was rebuilt.
+    - After the C3 runtime edits, b19f30b8 is retired for native compiles, because it would rebuild the edited RTS. The gate's oracle runs this check under the builder lease.
   - Row 534's measured delta against b19f30b8 is exactly two rows: P04 (`M.toList`) and P05 (`M.size`) go from WRONG to EXACT in the interpreter.
   - Every native result of the 40 programs is unchanged, and the other 38 programs are identical in every mode.
   - On main, the native classes are:
