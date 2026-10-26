@@ -89,5 +89,13 @@ The branch starts from main_chirho `b4041964`. Main's tip `90ee1434` is crates-i
 - [x] Rebase onto `6ba58d57` (rows 558 and 520). No path is shared with either.
   - No contract program uses Enum conversions.
   - E22, `(foldr1 max ["b","c","a"], foldl1 min [2.5, 1.5])`, gives ("c",1.5) and is exact everywhere.
-- [ ] Run the warm gate on the rebased tip and record it.
+- [x] Run the warm gate on the rebased tip and record it.
+  - **r2 was RED at the judge on `c6ace130`, on B06HandShowsPrecTopChirho's Cranelift cell alone,** with all 735 tests passing.
+    - The Cranelift object compiled, then the link failed: `ld: file cannot be open()ed, errno=2 ... target/debug/libhaskelujah_rts.a`.
+    - Every no-op `cargo build -p haskelujah-rts` replaces that archive (new inode, same mtime). Each parallel native compile runs one as its freshness check, so one job can remove the archive while another links.
+    - The same binary, rerun alone, compiles B06 and fails with the contract's NAMED line.
+  - **r3, the same gate unchanged on the same tip, was GREEN in 279.29 s:**
+    - 735/735 focused tests;
+    - no Clippy diagnostic on the 353 changed lines;
+    - the judge at 126/126, with 73 movers and 9 holds over the landed changes and row 564's A01.
 - [ ] Land on main and close progress row 565.
