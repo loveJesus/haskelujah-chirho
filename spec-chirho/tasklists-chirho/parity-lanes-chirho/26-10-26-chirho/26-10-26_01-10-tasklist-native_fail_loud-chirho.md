@@ -42,10 +42,22 @@ It never aliases an enclosing parameter, never substitutes 0, and never formats 
 
 ## Source
 
-- [ ] C1: this plan.
-- [ ] Re-baseline the 36-row inventory with no Cargo: the 16 Show rows and 20 non-Show probes, plus the four wildcard holds.
-  - It runs on a hash-verified copy of row 534's frozen CLI 15e1b77b, which is main's crates tree 0cfd246e, against GHC 9.14.1, in interpreter, LLVM and Cranelift mode.
-  - Record row 534's measured delta against b19f30b8.
+- [x] C1 (7a701d64): this plan.
+- [x] Re-baseline the 36-row inventory with no Cargo: the 16 Show rows and 20 non-Show probes, plus the four wildcard holds.
+  - It ran on a hash-verified copy of row 534's frozen CLI 15e1b77b, which is main's crates tree 0cfd246e, against GHC 9.14.1, in interpreter, LLVM and Cranelift mode.
+  - Row 534's measured delta against b19f30b8 is exactly two rows: P04 (`M.toList`) and P05 (`M.size`) go from WRONG to EXACT in the interpreter.
+  - Every native result of the 40 programs is unchanged, and the other 38 programs are identical in every mode.
+  - On main, the native classes are:
+    - every unbound name, including the U05 CAF on Cranelift, dies by SIGSEGV. U05 on LLVM fails to compile, with clang's undefined-value error;
+    - the five pointer-format rows are WRONG on both backends;
+    - the missing-method rows (B06, B09, M01, M02) are SIGABRT on LLVM and WRONG on Cranelift;
+    - E01 and E04 are SIGABRT on both backends; E03 is SIGABRT on LLVM and WRONG-ACCEPT on Cranelift;
+    - E05 is SIGSEGV on both;
+    - A01 and E02 are SIGTRAP on LLVM and SIGILL on Cranelift;
+    - P01-P06 and compare are REFUSED on LLVM and WRONG on Cranelift;
+    - the four wildcard holds are EXACT on both.
+  - Correction to the earlier inventory: U05 on Cranelift is SIGSEGV. The earlier "rc 0, empty output" reading took its exit code from the wrong pipeline.
+  - The receipt is tmp-chirho/native-fail-loud-chirho/rebaseline-a5f7d483-chirho/: classes table sha 77c110ec, C-locale directory digest e8bd889b, 1,313 files.
 - [ ] The runtime error route: user and internal prefixes, stdout flushed, exit 1, and no `abort()` on the owned routes.
 - [ ] R1 on both backends.
 - [ ] R4 on both backends, with Cranelift's `^#` refused.
