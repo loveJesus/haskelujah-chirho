@@ -183,11 +183,14 @@ impl DictPassCtxChirho {
                             .unwrap_or_else(|| "Int".to_string()),
                     ),
                     "+#" | "-#" | "*#" | "div#" | "mod#" | "readInt#" => Some("Int".to_string()),
+                    // `x ^ n` has its base's type; an unknown base stays unknown (row 570).
+                    "^#" => args_chirho
+                        .first()
+                        .and_then(|base_chirho| self.infer_type_key_chirho(base_chirho)),
                     "chr#" => Some("Char".to_string()),
                     "ord#" => Some("Int".to_string()),
-                    "+.#" | "-.#" | "*.#" | "/.#" | "negateFloat#" | "recip#" | "readFloat#" => {
-                        Some("Double".to_string())
-                    }
+                    "+.#" | "-.#" | "*.#" | "/.#" | "^.#" | "negateFloat#" | "recip#"
+                    | "readFloat#" => Some("Double".to_string()),
                     "==#" | "/=#" | "<#" | "<=#" | ">#" | ">=#" | "not#" | "eqFloat#" | "<.#"
                     | "<=.#" | ">.#" | ">=.#" | "readBool#" => Some("Bool".to_string()),
                     "compare#" | "compareChar#" | "compareFloat#" | "compareStr#" => {
@@ -560,6 +563,14 @@ impl DictPassCtxChirho {
                 ..
             } => Self::concrete_local_type_key_chirho(format!("{ty_chirho}")).or_else(|| {
                 self.infer_type_key_for_rewrite_chirho(inner_chirho, local_type_keys_chirho)
+            }),
+            // `x ^ n` has its base's type, read with this traversal's keys, so a negated
+            // power of a top-level Double negates a Double (row 570).
+            CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho,
+            } if name_chirho == "^#" => args_chirho.first().and_then(|base_chirho| {
+                self.infer_type_key_for_rewrite_chirho(base_chirho, local_type_keys_chirho)
             }),
             _ => self.infer_type_key_chirho(expr_chirho),
         }

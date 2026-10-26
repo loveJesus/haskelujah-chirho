@@ -271,6 +271,8 @@ pub enum PrimOpKindChirho {
     // ── Power/exponentiation primops ──
     /// ^# :: Int -> Int -> Int — integer exponentiation
     PowIntChirho,
+    /// ^.# :: Double -> Int -> Double — GHC.Real's `(^)` at Double (row 570)
+    PowDoubleIntChirho,
     /// **# :: Double -> Double -> Double — floating-point exponentiation
     PowFloatChirho,
 

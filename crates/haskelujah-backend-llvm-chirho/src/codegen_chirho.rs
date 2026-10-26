@@ -1587,6 +1587,11 @@ impl LlvmCodegenChirho {
         .unwrap();
         writeln!(
             self.output_chirho,
+            "declare i64 @haskelujah_pow_double_int_chirho(i64, i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
             "declare i64 @haskelujah_new_io_ref_chirho(i64)"
         )
         .unwrap();

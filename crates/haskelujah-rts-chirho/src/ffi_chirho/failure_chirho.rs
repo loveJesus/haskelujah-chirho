@@ -21,6 +21,8 @@ const NO_MATCH_MESSAGE_CHIRHO: &[u8] = b"no matching alternative";
 const UNDEFINED_MESSAGE_CHIRHO: &[u8] = b"Prelude.undefined";
 const UNCAUGHT_EXCEPTION_MESSAGE_CHIRHO: &[u8] = b"uncaught exception";
 const BOXED_SHOW_MESSAGE_CHIRHO: &[u8] = b"show: no native Show instance for a boxed value";
+/// GHC.Real's `(^)` on a negative exponent.
+pub(crate) const NEGATIVE_EXPONENT_MESSAGE_CHIRHO: &[u8] = b"Negative exponent";
 
 unsafe extern "C" {
     // C stdio buffers what LLVM executables write through `printf` and `puts`.

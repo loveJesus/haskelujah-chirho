@@ -22,6 +22,8 @@ pub enum PrimErrorChirho {
     },
     /// Division by zero.
     DivByZeroChirho,
+    /// GHC.Real's `(^)` with a negative exponent.
+    NegativeExponentChirho,
 }
 
 impl std::fmt::Display for PrimErrorChirho {
@@ -37,6 +39,7 @@ impl std::fmt::Display for PrimErrorChirho {
                 op_chirho, expected_chirho, got_chirho
             ),
             Self::DivByZeroChirho => write!(f_chirho, "division by zero"),
+            Self::NegativeExponentChirho => write!(f_chirho, "Negative exponent"),
         }
     }
 }
@@ -673,6 +676,17 @@ pub fn apply_prim_binop_chirho(
         PrimOpKindChirho::PowFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::FloatChirho(a_chirho.powf(b_chirho)))
         }),
+        // GHC.Real's `(^)` at Double: the RTS's one implementation of its multiplication
+        // order, which the native backends call too (row 570).
+        PrimOpKindChirho::PowDoubleIntChirho => match (left_chirho, right_chirho) {
+            (ValueChirho::FloatChirho(base_chirho), ValueChirho::IntChirho(exponent_chirho)) => {
+                haskelujah_rts_chirho::float_power_chirho::pow_double_int_chirho(*base_chirho, *exponent_chirho)
+                    .map(ValueChirho::FloatChirho)
+                    .ok_or(PrimErrorChirho::NegativeExponentChirho)
+            }
+            (ValueChirho::FloatChirho(_), _) => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Int#", got_chirho: format!("{right_chirho}") }),
+            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
+        },
 
         // I/O primops — handled in eval_prim_chirho before reaching here
         PrimOpKindChirho::PutStrLnChirho

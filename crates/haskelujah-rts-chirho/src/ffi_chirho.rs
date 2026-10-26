@@ -344,6 +344,26 @@ pub extern "C" fn haskelujah_pow_int_chirho(base_chirho: i64, exponent_chirho: i
     }
 }
 
+/// Native `^.#`, GHC's `(^)` at Double, over the backends' Double bits. A negative
+/// exponent fails named, as GHC's does (row 570).
+///
+/// Workflow: testing-chirho/native-fail-loud-chirho.md.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_pow_double_int_chirho(
+    base_bits_chirho: i64,
+    exponent_chirho: i64,
+) -> i64 {
+    match crate::float_power_chirho::pow_double_int_chirho(
+        f64::from_bits(base_bits_chirho as u64),
+        exponent_chirho,
+    ) {
+        Some(power_chirho) => power_chirho.to_bits() as i64,
+        None => {
+            failure_chirho::user_failure_chirho(failure_chirho::NEGATIVE_EXPONENT_MESSAGE_CHIRHO)
+        }
+    }
+}
+
 /// Native implementation of the interpreter's `toUpper#` convention.
 ///
 /// `char::to_uppercase` can expand one scalar to several scalars. Haskell's

@@ -10,7 +10,9 @@
 //! missing `/`. The program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_native_chirho, run_chirho, run_result_chirho};
+use super::{
+    assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho, run_result_chirho,
+};
 
 /// Negative operands as literals, a binding and function parameters; NaN on each
 /// side of all four operators; -0.0 against 0.0; both section forms; and Int and
@@ -119,6 +121,72 @@ fn a_section_under_iterate_stays_the_named_residual_chirho() {
     )
     .expect_err("row 554 leaves the iterate section unchanged");
     assert!(error_chirho.contains("MulIntChirho"), "{error_chirho}");
+}
+
+/// Row 570: `^` at Double. A float-literal base took `**#`, whose `pow` is not GHC's
+/// answer: `1.1 ^ 50` was 117.39085287969579 in the interpreter, and both natives refused
+/// `**#`. Any other base took the Int `^#`: the interpreter stopped at `PowIntChirho`, and
+/// both natives printed 0.0. Both routes now take `^.#`, GHC.Real's repeated squaring
+/// from the RTS. The base can be a literal, an integer literal, a typed parameter, a
+/// section, a printed `map`'s lambda or a negated power, with an `Integer` exponent or an
+/// Int expression as the exponent. A top-level Double base, which row 571 keys, takes it
+/// too, negated included. Int powers hold.
+const DOUBLE_POWER_CHIRHO: &str = "module Main where\nkChirho :: Int\nkChirho = 2\nxChirho :: Double\nxChirho = 1.5\nsquareChirho :: Double -> Double\nsquareChirho v = v ^ 2\nmain :: IO ()\nmain = do\n  print (3 ^ 2 :: Double, 2.5 ^ 3 :: Double)\n  print (2.5 ^ 0 :: Double, 2.5 ^ 1 :: Double)\n  print (0 ^ 0 :: Double, (0 / 0) ^ 0 :: Double)\n  print (1.1 ^ 50 :: Double, 1.0000001 ^ 1000003 :: Double)\n  print (2 ^ 60 :: Double, 0.9 ^ 100 :: Double)\n  print ((-2) ^ 3 :: Double, (-0.5) ^ 4 :: Double)\n  print ((0 / 0) ^ 2 :: Double, (1 / 0) ^ 3 :: Double)\n  print ((-1 / 0) ^ 3 :: Double, (-0.0) ^ 3 :: Double)\n  print (2.5 ^ (3 :: Integer) :: Double, -3 ^ 2 :: Double)\n  print (squareChirho 1.5, map (\\v -> v ^ 3) [0.5, 2.0 :: Double])\n  print (map (^ 2) [1.5, 2.5 :: Double])\n  print (map (\\v -> v ^ (kChirho * 2)) [1.5, 2.0 :: Double])\n  print (Just (1.5 ^ 2 :: Double), [0.1 ^ 2 :: Double])\n  print (xChirho ^ 10, xChirho ^ (3 :: Integer))\n  print (-xChirho ^ 2, xChirho ^ (0 :: Integer))\n  print (2 ^ 10 :: Int, (-3) ^ 3 :: Int)\n";
+
+/// GHC 9.14.1's output for [`DOUBLE_POWER_CHIRHO`].
+const DOUBLE_POWER_GHC_CHIRHO: &str = "(9.0,15.625)\n(1.0,2.5)\n(1.0,1.0)\n(117.39085287969571,1.1051712441594597)\n(1.152921504606847e18,2.6561398887587605e-5)\n(-8.0,6.25e-2)\n(NaN,Infinity)\n(-Infinity,-0.0)\n(15.625,-9.0)\n(2.25,[0.125,8.0])\n[2.25,6.25]\n[5.0625,16.0]\n(Just 2.25,[1.0000000000000002e-2])\n(57.6650390625,3.375)\n(-2.25,1.0)\n(1024,-27)\n";
+
+#[test]
+fn double_power_answers_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("DoublePowerChirho.hs", DOUBLE_POWER_CHIRHO),
+        DOUBLE_POWER_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho(
+        "DoublePowerChirho.hs",
+        DOUBLE_POWER_CHIRHO,
+        DOUBLE_POWER_GHC_CHIRHO,
+    );
+}
+
+/// GHC.Real's `(^)` rejects a negative exponent with `Negative exponent`. At Double the
+/// interpreter's `pow` printed 0.4, and both natives refused `**#`.
+#[test]
+fn a_negative_double_exponent_fails_named_everywhere_chirho() {
+    assert_named_failure_everywhere_chirho(
+        "NegativeExponentChirho.hs",
+        "module Main where\nmain :: IO ()\nmain = print (2.5 ^ (-1 :: Int) :: Double)\n",
+        "Negative exponent",
+    );
+}
+
+/// Row 570's named residuals, where nothing keys the base as Double. GHC prints 5.0 and
+/// `[8.0,16.0]`.
+/// - A lambda under an aggregate: `sum (map (\v -> v ^ 2) xs)`.
+/// - A left section whose list holds the Int exponents: `map (2 ^) [3, 4 :: Int]`.
+///
+/// The base is a Double at run time, but the power stays the Int `^#`. The interpreter
+/// stops at `PowIntChirho`.
+#[test]
+fn an_unkeyed_double_base_stays_the_named_residual_chirho() {
+    for (file_name_chirho, program_chirho) in [
+        (
+            "SumOfPowersChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (sum (map (\\v -> v ^ 2) [1.0, 2.0 :: Double]))\n",
+        ),
+        (
+            "LeftPowerSectionChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (map (2 ^) [3, 4 :: Int] :: [Double])\n",
+        ),
+    ] {
+        let error_chirho = run_result_chirho(file_name_chirho, program_chirho)
+            .expect_err("row 570 leaves an unkeyed base on the Int power");
+        assert!(
+            error_chirho.contains("PowIntChirho"),
+            "{file_name_chirho}: {error_chirho}"
+        );
+    }
 }
 
 /// The same negated division where it already worked: the list printed directly, its

@@ -77,6 +77,14 @@ flowchart TD
     - Each rebuild site now gives them the float primop from its existing proof.
     - `/` sections take the Fractional evidence path, so no `/#` reaches the table.
     - Residual: a section under `iterate` has no keyed operand at either site and stays `*#`.
+  - `^#` maps to `^.#`, GHC.Real's repeated squaring at Double (row 570).
+    - The desugarer makes `x ^ n` the Int `^#`, except with a float-literal operand, which took `**#`'s `pow` and now takes `^.#`.
+    - A base keyed Double retargets at either rebuild site. That includes a top-level Double, through row 571's seeded key.
+    - Type keys give `^.#` Double and `^#` its base's key. The rewrite-time inference reads that base with the traversal's own keys, so both `-3 ^ 2 :: Double` and `-xChirho ^ 2` negate a Double.
+    - An Int exponent expression keeps its own evidence through the rebuild.
+    - Residuals keep `^#`, because nothing keys their base:
+      - a lambda under an aggregate (`sum (map (\v -> v ^ 2) xs)`);
+      - a left section over the exponents' list (`map (2 ^) [3, 4 :: Int]`).
   - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
   - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs`, including a top-level literal and a computed Double binding beside typed-parameter, typed-local, named-`negate` and Int holds.

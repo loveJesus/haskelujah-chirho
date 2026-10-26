@@ -2717,18 +2717,21 @@ impl DesugarCtxChirho {
                     };
                 }
 
-                // (^) is integer exponentiation (or float if operands are float)
+                // (^) is integer exponentiation, or GHC.Real's repeated squaring at
+                // Double (`^.#`, row 570) when the base is a float literal; never `**#`'s
+                // `pow`, whose last bits differ. Any other Double base takes `^.#` in the
+                // dictionary pass once its key is known.
+                // workflow: language-features-chirho/dictionary-evidence-chirho
                 if op_name_chirho == "^" {
-                    if is_float_core_chirho(&left_core_chirho)
-                        || is_float_core_chirho(&right_core_chirho)
-                    {
-                        return CoreExprChirho::PrimOpChirho {
-                            name_chirho: "**#".to_string(),
-                            args_chirho: vec![left_core_chirho, right_core_chirho],
-                        };
-                    }
                     return CoreExprChirho::PrimOpChirho {
-                        name_chirho: "^#".to_string(),
+                        name_chirho: if is_float_core_chirho(&left_core_chirho)
+                            || is_float_core_chirho(&right_core_chirho)
+                        {
+                            "^.#"
+                        } else {
+                            "^#"
+                        }
+                        .to_string(),
                         args_chirho: vec![left_core_chirho, right_core_chirho],
                     };
                 }

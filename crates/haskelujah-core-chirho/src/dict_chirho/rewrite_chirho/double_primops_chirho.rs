@@ -10,7 +10,9 @@
 //! and negation flips only the sign. Sections of `+`, `-` and `*` are blind the same
 //! way (`(+ 0.5)` becomes `\x -> +# x 0.5`), and take `+.#`, `-.#` and `*.#` when
 //! their operand keys as Double (row 554). Sections of `/` already take the
-//! Fractional evidence path, so no `/#` reaches this table.
+//! Fractional evidence path, so no `/#` reaches this table. `x ^ n` is the Int `^#` until
+//! its base keys as Double, when it takes `^.#`, GHC.Real's repeated squaring (row 570).
+//! An Int exponent expression such as `k * 2` keeps its own evidence through the rebuild.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::HashMap;
@@ -30,6 +32,7 @@ pub(super) fn double_counterpart_chirho(name_chirho: &str) -> Option<&'static st
         "+#" => Some("+.#"),
         "-#" => Some("-.#"),
         "*#" => Some("*.#"),
+        "^#" => Some("^.#"),
         _ => None,
     }
 }

@@ -130,6 +130,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
         "sqrt#" => PrimOpKindChirho::SqrtFloatChirho,
         "pi#" => PrimOpKindChirho::PiFloatChirho,
         "^#" => PrimOpKindChirho::PowIntChirho,
+        "^.#" => PrimOpKindChirho::PowDoubleIntChirho,
         "**#" => PrimOpKindChirho::PowFloatChirho,
         "id#" => PrimOpKindChirho::IdChirho,
         "error" => PrimOpKindChirho::ErrorChirho,

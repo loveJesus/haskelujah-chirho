@@ -18,6 +18,7 @@ pub(crate) struct RuntimeCallsChirho {
     uncaught_exception_chirho: FuncRef,
     unbound_thunk_chirho: FuncRef,
     pow_int_chirho: FuncRef,
+    pow_double_int_chirho: FuncRef,
     new_io_ref_chirho: FuncRef,
     read_io_ref_chirho: FuncRef,
     write_io_ref_chirho: FuncRef,
@@ -96,6 +97,13 @@ impl RuntimeCallsChirho {
                 module_chirho,
                 function_chirho,
                 "haskelujah_pow_int_chirho",
+                2,
+                true,
+            )?,
+            pow_double_int_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_pow_double_int_chirho",
                 2,
                 true,
             )?,
@@ -182,6 +190,20 @@ impl RuntimeCallsChirho {
         let call_chirho = builder_chirho
             .ins()
             .call(self.pow_int_chirho, &[base_chirho, exponent_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    /// `^.#`, GHC.Real's `(^)` at Double over the base's bits (row 570).
+    pub(crate) fn pow_double_int_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        base_bits_chirho: Value,
+        exponent_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho.ins().call(
+            self.pow_double_int_chirho,
+            &[base_bits_chirho, exponent_chirho],
+        );
         builder_chirho.inst_results(call_chirho)[0]
     }
 
