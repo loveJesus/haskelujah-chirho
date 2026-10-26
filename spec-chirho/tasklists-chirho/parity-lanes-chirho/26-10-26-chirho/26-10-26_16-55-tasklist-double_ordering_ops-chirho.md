@@ -66,4 +66,14 @@ The control program has 21 lines and prints only Bools.
   - The parallel contract pass took 22.95 s.
   - Row 535's judge gave 126/126. Its accounting is now derived from row 535's contract and the copy, at 73 movers and 9 holds. Checked on row 543's r5 run, the derivation reproduced 71 and 11.
   - The judge lists 26 cell changes, which are exactly the landed rows' moves (538-541, 544, 545 and 548). No contract cell moved for row 547.
-- [ ] Commit the `negate#` key, run gate r2 on `ddb64b43`, and record it.
+- [x] Commit the `negate#` key (`6dfe645f`), gate on `ddb64b43`, and record it.
+  - **Gate r2 was RED on its tests step, 674 of 675, and measured nothing.** The one failure was this row's own control, failing with `missing STG binding /`. That is the reverted `negate#` key's behavior.
+    - The reach check had restored the file with `cp -p`, which gave it the mtime it had before the revert. Cargo took the reverted build as fresh, so r2's binaries were the reverted code. Its 0.30 s build step and the reach check's "rebuilt" line were both no-ops.
+    - The committed source was correct. The reach-check scripts now restore with `cp` plus `touch`.
+    - After a forced rebuild (`Compiling haskelujah-core`), the interpreter printed `-0.5 LT` again.
+    - Row 543's reach check and this row's r1 used the same restore, but a rebase or stash rewrote those files before any gate ran. Both gates also passed controls that need their fixes.
+  - **Gate r3 was GREEN in 161.88 s** on `ddb64b43` (tip `6dfe645f`):
+    - 675/675 focused tests, the control included;
+    - Clippy: none of 456 diagnostic locations on the 166 changed lines;
+    - the parallel contract pass in 22.13 s;
+    - row 535's judge at 126/126, with 73 movers and 9 holds and the same 26 landed-row changes.
