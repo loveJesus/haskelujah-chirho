@@ -10,7 +10,7 @@
 //! missing `/`. The program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_native_chirho, run_chirho};
+use super::{assert_native_chirho, run_chirho, run_result_chirho};
 
 /// Negative operands as literals, a binding and function parameters; NaN on each
 /// side of all four operators; -0.0 against 0.0; both section forms; and Int and
@@ -32,4 +32,57 @@ fn double_ordering_answers_as_ghc_everywhere_chirho() {
         DOUBLE_ORDERING_CHIRHO,
         DOUBLE_ORDERING_GHC_CHIRHO,
     );
+}
+
+/// Row 553: under `map (+ 0)` the list's elements are rewritten at the exact key Double,
+/// and that type-keyed rebuild kept the desugarer's Int `negate#`. Both native backends
+/// printed `[-0.75,1.0]` and the interpreter stopped at `NegIntChirho`. The rebuild now
+/// takes row 547's float counterpart; the interpreter still stops at the section's `+#`
+/// (`AddIntChirho`), which row 554 owns. GHC: `[-1.5,1.0]`.
+const TYPE_KEYED_NEGATION_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (map (+ 0) ([-3 / 2, 1] :: [Double]))\n";
+
+#[test]
+fn a_type_keyed_minus_takes_the_float_primop_chirho() {
+    assert_native_chirho(
+        "TypeKeyedNegationChirho.hs",
+        TYPE_KEYED_NEGATION_CHIRHO,
+        "[-1.5,1.0]\n",
+    );
+    let error_chirho = run_result_chirho("TypeKeyedNegationChirho.hs", TYPE_KEYED_NEGATION_CHIRHO)
+        .expect_err("the interpreter holds at row 554's section boundary");
+    assert!(
+        error_chirho.contains("AddIntChirho") && !error_chirho.contains("NegIntChirho"),
+        "{error_chirho}"
+    );
+}
+
+/// The same negated division where it already worked: the list printed directly, its
+/// head, and the division alone. GHC: `[-1.5,1.0]`, `-1.5` and `-1.5`.
+#[test]
+fn a_negated_division_holds_everywhere_chirho() {
+    for (file_name_chirho, program_chirho, ghc_chirho) in [
+        (
+            "NegatedListChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print ([-3 / 2, 1] :: [Double])\n",
+            "[-1.5,1.0]\n",
+        ),
+        (
+            "NegatedHeadChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (head ([-3 / 2, 1] :: [Double]))\n",
+            "-1.5\n",
+        ),
+        (
+            "NegatedDivisionChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (-3 / 2 :: Double)\n",
+            "-1.5\n",
+        ),
+    ] {
+        assert_eq!(
+            run_chirho(file_name_chirho, program_chirho),
+            ghc_chirho,
+            "{file_name_chirho} interpreter"
+        );
+        assert_native_chirho(file_name_chirho, program_chirho, ghc_chirho);
+    }
 }

@@ -15,8 +15,9 @@ use std::collections::HashMap;
 use super::DictPassCtxChirho;
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
 
-/// The float primop standing for an Int primop the desugarer chose blind.
-fn double_counterpart_chirho(name_chirho: &str) -> Option<&'static str> {
+/// The float primop standing for an Int primop the desugarer chose blind. The
+/// type-keyed rebuild in `method_args_chirho.rs` reads the same table (row 553).
+pub(super) fn double_counterpart_chirho(name_chirho: &str) -> Option<&'static str> {
     match name_chirho {
         "<#" => Some("<.#"),
         "<=#" => Some("<=.#"),

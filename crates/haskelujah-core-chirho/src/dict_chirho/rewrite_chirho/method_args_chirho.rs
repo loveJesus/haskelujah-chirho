@@ -596,8 +596,17 @@ impl DictPassCtxChirho {
                         })
                     })
                     .collect();
+                // At the exact key Double, the desugarer's blind Int primop takes row
+                // 547's float counterpart: this traversal has just resolved its operands
+                // at that key, as `(fromInteger 3)` in `[-3 / 2, 1] :: [Double]` (row 553).
+                // workflow: language-features-chirho/dictionary-evidence-chirho
                 changed_chirho.then(|| CoreExprChirho::PrimOpChirho {
-                    name_chirho: name_chirho.clone(),
+                    name_chirho: (type_key_chirho == "Double")
+                        .then(|| {
+                            super::double_primops_chirho::double_counterpart_chirho(name_chirho)
+                        })
+                        .flatten()
+                        .map_or_else(|| name_chirho.clone(), str::to_string),
                     args_chirho: rewritten_args_chirho,
                 })
             }
