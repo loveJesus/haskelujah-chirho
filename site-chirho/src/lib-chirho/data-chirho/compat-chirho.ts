@@ -3,8 +3,9 @@
 
 // TRUTH SOURCE: both GHC-compatibility numbers are parsed at BUILD TIME from the
 // committed measurement artifacts in spec-chirho/. Nothing on the page is hand-typed,
-// so the site cannot drift from the repo's published measurement. If an artifact's
-// format changes, the build fails loudly rather than shipping a stale or wrong number.
+// so the site cannot drift from the repo's published measurement. The page is
+// prerendered (src/routes/+page.ts), so an artifact whose format changed fails
+// `vite build`, and with it `deploy-chirho`, rather than shipping a stale or wrong number.
 
 import shouldCompileRawChirho from '../../../../spec-chirho/ghc-should-compile-measurement-chirho.txt?raw';
 import shouldFailRawChirho from '../../../../spec-chirho/ghc-should-fail-measurement-chirho.txt?raw';
@@ -12,8 +13,6 @@ import shouldFailRawChirho from '../../../../spec-chirho/ghc-should-fail-measure
 export interface CompatAxisChirho {
 	passChirho: number;
 	totalChirho: number;
-	/** raw percent string as written in the artifact — parsed for validation, NOT displayed */
-	percentChirho: string;
 	/**
 	 * What the page shows. The type checker currently has a measured run-to-run
 	 * nondeterminism (±1 file observed on the should_compile corpus), so a third
@@ -69,50 +68,57 @@ function parseStabilityChirho(rawChirho: string): string | null {
 	return stabilityChirho ? stabilityChirho[1].trim() : null;
 }
 
-function parseShouldCompileChirho(rawChirho: string): CompatAxisChirho {
-	const resultChirho = rawChirho.match(/# RESULT: PASS=(\d+) FAIL=\d+ TOTAL=(\d+) \((\d+\.?\d*)%\)/);
-	if (!resultChirho) {
-		throw new Error('compat-chirho: RESULT line missing in should_compile artifact');
+/** One axis's committed `# RESULT:` line: the counted outcome, its complement, and TOTAL. */
+interface ResultFormatChirho {
+	artifactChirho: string;
+	resultChirho: RegExp;
+}
+
+// The artifacts' format since 2026-10-25 (f772a0ad): plain counts, no percent. The display
+// string comes from `# QUOTE-AS:`, which must name the same counts.
+const shouldCompileFormatChirho: ResultFormatChirho = {
+	artifactChirho: 'should_compile',
+	resultChirho: /^# RESULT: PASS=(\d+) FAIL=(\d+) TOTAL=(\d+)$/m
+};
+
+const shouldFailFormatChirho: ResultFormatChirho = {
+	artifactChirho: 'should_fail',
+	resultChirho: /^# RESULT: REJECT=(\d+) WRONG_ACCEPT=(\d+) TOTAL=(\d+)$/m
+};
+
+function parseAxisChirho(rawChirho: string, formatChirho: ResultFormatChirho): CompatAxisChirho {
+	const { artifactChirho, resultChirho } = formatChirho;
+	const matchChirho = rawChirho.match(resultChirho);
+	if (!matchChirho) {
+		throw new Error(`compat-chirho: RESULT line missing or reformatted in ${artifactChirho} artifact`);
 	}
-	const metaChirho = parseMeasuredLineChirho(rawChirho, 'should_compile');
-	const passChirho = Number(resultChirho[1]);
-	const totalChirho = Number(resultChirho[2]);
+	const [passChirho, complementChirho, totalChirho] = matchChirho.slice(1, 4).map(Number);
+	if (passChirho + complementChirho !== totalChirho) {
+		throw new Error(`compat-chirho: ${artifactChirho} RESULT counts do not sum to TOTAL`);
+	}
+	const quoteAsChirho = parseQuoteAsChirho(rawChirho);
+	if (quoteAsChirho !== null && !quoteAsChirho.includes(`${passChirho} of ${totalChirho}`)) {
+		throw new Error(`compat-chirho: ${artifactChirho} QUOTE-AS disagrees with its RESULT counts`);
+	}
+	const metaChirho = parseMeasuredLineChirho(rawChirho, artifactChirho);
 	return {
 		passChirho,
 		totalChirho,
-		percentChirho: `${resultChirho[3]}%`,
-		displayPercentChirho:
-			parseQuoteAsChirho(rawChirho) ?? approxPercentChirho(passChirho, totalChirho),
+		displayPercentChirho: quoteAsChirho ?? approxPercentChirho(passChirho, totalChirho),
 		measuredDateChirho: metaChirho.dateChirho,
 		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8),
 		stabilityChirho: parseStabilityChirho(rawChirho)
 	};
 }
 
-function parseShouldFailChirho(rawChirho: string): CompatAxisChirho {
-	const resultChirho = rawChirho.match(
-		/# RESULT: CORRECTLY-REJECTED=(\d+) WRONGLY-ACCEPTED=\d+ TOTAL=(\d+) \((\d+\.?\d*)%/
-	);
-	if (!resultChirho) {
-		throw new Error('compat-chirho: RESULT line missing in should_fail artifact');
-	}
-	const metaChirho = parseMeasuredLineChirho(rawChirho, 'should_fail');
-	const passChirho = Number(resultChirho[1]);
-	const totalChirho = Number(resultChirho[2]);
-	return {
-		passChirho,
-		totalChirho,
-		percentChirho: `${resultChirho[3]}%`,
-		displayPercentChirho:
-			parseQuoteAsChirho(rawChirho) ?? approxPercentChirho(passChirho, totalChirho),
-		measuredDateChirho: metaChirho.dateChirho,
-		measuredCommitChirho: metaChirho.commitChirho.slice(0, 8),
-		stabilityChirho: parseStabilityChirho(rawChirho)
-	};
-}
-
-export const shouldCompileChirho: CompatAxisChirho = parseShouldCompileChirho(shouldCompileRawChirho);
-export const shouldFailChirho: CompatAxisChirho = parseShouldFailChirho(shouldFailRawChirho);
+export const shouldCompileChirho: CompatAxisChirho = parseAxisChirho(
+	shouldCompileRawChirho,
+	shouldCompileFormatChirho
+);
+export const shouldFailChirho: CompatAxisChirho = parseAxisChirho(
+	shouldFailRawChirho,
+	shouldFailFormatChirho
+);
 
 export const artifactRepoPathsChirho = {
 	shouldCompileChirho: 'spec-chirho/ghc-should-compile-measurement-chirho.txt',

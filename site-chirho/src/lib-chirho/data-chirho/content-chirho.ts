@@ -3,7 +3,7 @@
 
 // Structured page content. Provenance notes:
 // - toolsChirho: the 12 subcommands verified against crates/haskelujah-cli-chirho/src/main.rs
-// - statsStripChirho: bash spec-chirho/stats-chirho.sh, run 2026-07-27 (grep/find based)
+// - statsStripChirho: counted 2026-10-26 on main a674260f (see the note above the strip)
 // - phasesChirho: the 12-phase pipeline as documented in the repo
 // - compat numbers live in compat-chirho.ts (parsed from committed measurement artifacts)
 
@@ -144,16 +144,19 @@ export interface StatChirho {
 	labelChirho: string;
 }
 
-// bash spec-chirho/stats-chirho.sh, 2026-07-27
+// Counted 2026-10-26 on main a674260f. Lines of Rust, crates and module interfaces come from
+// `bash spec-chirho/stats-chirho.sh` (grep/find based). Package snapshots are the package
+// directories in the local `.haskelujah-packages-chirho/` cache, excluding its
+// `pkgdb-chirho.txt` index file, which the 2026-07-27 count of 411 also counted.
 export const statsStripChirho: StatChirho[] = [
-	{ valueChirho: '224,961', labelChirho: 'lines of Rust' },
+	{ valueChirho: '267,665', labelChirho: 'lines of Rust' },
 	{ valueChirho: '25', labelChirho: 'focused crates' },
 	{ valueChirho: '499', labelChirho: 'module interfaces' },
-	{ valueChirho: '411', labelChirho: 'Hackage package snapshots in the corpus' }
+	{ valueChirho: '410', labelChirho: 'Hackage package snapshots in the corpus' }
 ];
 
 export const statsProvenanceChirho =
-	'Counted by spec-chirho/stats-chirho.sh on 2026-07-27.';
+	'Counted on 2026-10-26: Rust, crates and interfaces by spec-chirho/stats-chirho.sh; snapshots are the package directories in the local package cache, its pkgdb-chirho.txt index excluded.';
 
 export interface LimitationChirho {
 	titleChirho: string;

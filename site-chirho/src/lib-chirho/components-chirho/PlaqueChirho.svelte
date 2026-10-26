@@ -102,11 +102,11 @@
 		</div>
 
 		<p class="method-note-chirho">
-			Method: each axis is a single timed sweep of the corpus, 15-second per-file timeout,
-			counts as committed in the artifacts above. Percentages are floored to the whole,
-			deliberately — a single sweep earns no third significant figure. Each card quotes its
-			artifact's stability line verbatim rather than translating it. When a sweep is re-run
-			and its artifact updated, this page updates with it.
+			Method: each axis is a timed sweep of the corpus with a 15-second per-file timeout,
+			counts as committed in the artifacts above. Each card shows its artifact's own quoted
+			figure and stability line verbatim rather than translating them; where an artifact gives
+			no quoted figure, the percentage is floored to the whole. When a sweep is re-run and its
+			artifact updated, this page updates with it.
 		</p>
 
 		<div class="stats-strip-chirho">
