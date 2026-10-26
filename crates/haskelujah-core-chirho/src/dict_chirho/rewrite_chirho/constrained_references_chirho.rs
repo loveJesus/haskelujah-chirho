@@ -305,11 +305,16 @@ impl DictPassCtxChirho {
     ) -> Option<CoreExprChirho> {
         let (method_name_chirho, canonical_id_chirho) =
             self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
-        // A constrained reference with evidence keeps its occurrence id: the
-        // dictionary-parameter call-site path reads the evidence off it and
-        // canonicalizes the head itself.
-        // workflow: language-features-chirho/dictionary-evidence-chirho
-        if self.reference_evidence_chirho.contains_key(&head_id_chirho) {
+        // A constrained reference with evidence keeps its occurrence id only when
+        // the canonical target takes dictionary parameters; a builtin alias such
+        // as `M.fromList` -> `mapFromList` canonicalizes here before class-method
+        // rewriting can strip the qualifier and dispatch `IsList.fromList`.
+        // workflow: language-features-chirho/own-class-method-occurrences-chirho
+        if self.reference_evidence_chirho.contains_key(&head_id_chirho)
+            && self
+                .dict_param_bindings_chirho
+                .contains_key(canonical_id_chirho)
+        {
             return None;
         }
         if let Some((class_name_chirho, ty_key_chirho)) =

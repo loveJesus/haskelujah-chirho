@@ -4697,12 +4697,12 @@ impl MachineChirho {
     ) -> ValueChirho {
         let nil_tag_chirho = self.lookup_con_tag_chirho("[]", 0);
         let cons_tag_chirho = self.lookup_con_tag_chirho(":", 1);
-        let tuple2_tag_chirho = self.lookup_con_tag_chirho("(,)", 0);
+        let tuple2_tag_chirho = self.lookup_con_tag_chirho("$tuple2", 0);
         let nil_closure_chirho = ClosureChirho::con_chirho(nil_tag_chirho, "[]", vec![]);
         let mut tail_addr_chirho = self.heap_chirho.alloc_chirho(nil_closure_chirho);
         for (k_chirho, v_chirho) in pairs_chirho.into_iter().rev() {
             let tup_closure_chirho =
-                ClosureChirho::con_chirho(tuple2_tag_chirho, "(,)", vec![k_chirho, v_chirho]);
+                ClosureChirho::con_chirho(tuple2_tag_chirho, "$tuple2", vec![k_chirho, v_chirho]);
             let tup_addr_chirho = self.heap_chirho.alloc_chirho(tup_closure_chirho);
             let cons_closure_chirho = ClosureChirho::con_chirho(
                 cons_tag_chirho,

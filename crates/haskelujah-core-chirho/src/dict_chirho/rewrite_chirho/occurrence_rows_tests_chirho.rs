@@ -4,7 +4,7 @@
 //! with the caller's key, and a `$prim` row only with the dictionaries its
 //! instance's context makes it take first.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
@@ -295,5 +295,51 @@ fn context_leading_rows_are_read_from_the_class_environment_chirho() {
             (20, vec!["Show".to_string()]),
             (21, vec!["NeedsChirho".to_string()]),
         ]
+    );
+}
+
+#[test]
+fn a_builtin_alias_without_dict_params_canonicalizes_despite_reference_evidence_chirho() {
+    let names_chirho = HashMap::from([
+        (CoreIdChirho(30), "M.fromList".to_string()),
+        (CoreIdChirho(31), "mapFromList".to_string()),
+    ]);
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+    pass_chirho
+        .method_occurrence_canon_chirho
+        .insert(CoreIdChirho(30), ("fromList".to_string(), CoreIdChirho(31)));
+    pass_chirho.reference_evidence_chirho.insert(
+        CoreIdChirho(30),
+        vec![("Ord".to_string(), Some("Int".to_string()))],
+    );
+    let empty_dicts_chirho = HashMap::new();
+    let empty_classes_chirho = HashSet::new();
+    let empty_local_dicts_chirho = HashMap::new();
+    // Without dictionary parameters on `mapFromList`, the occurrence canonicalizes
+    // immediately so `M.fromList` is not left on the spine for `IsList.fromList`.
+    assert_eq!(
+        pass_chirho.occurrence_head_replacement_chirho(
+            CoreIdChirho(30),
+            &empty_dicts_chirho,
+            &empty_classes_chirho,
+            &empty_local_dicts_chirho,
+            &|| None,
+        ),
+        Some(var_expr_chirho(31))
+    );
+    // When the canonical binding takes dictionary parameters, the occurrence id is
+    // kept for the dictionary-parameter call-site path.
+    pass_chirho
+        .dict_param_bindings_chirho
+        .insert(CoreIdChirho(31), vec!["Ord".to_string()]);
+    assert_eq!(
+        pass_chirho.occurrence_head_replacement_chirho(
+            CoreIdChirho(30),
+            &empty_dicts_chirho,
+            &empty_classes_chirho,
+            &empty_local_dicts_chirho,
+            &|| None,
+        ),
+        None
     );
 }
