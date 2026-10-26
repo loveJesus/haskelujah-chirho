@@ -50,6 +50,28 @@ fn io_ref_address_chirho(
         .map(|_| address_chirho as *mut u64)
 }
 
+fn read_io_ref_in_runtime_chirho(
+    runtime_chirho: &NativeGcRuntimeChirho,
+    io_ref_bits_chirho: u64,
+) -> Option<u64> {
+    let raw_chirho = io_ref_address_chirho(runtime_chirho, io_ref_bits_chirho)?;
+    Some(unsafe { raw_chirho.read() })
+}
+
+fn write_io_ref_in_runtime_chirho(
+    runtime_chirho: &mut NativeGcRuntimeChirho,
+    io_ref_bits_chirho: u64,
+    value_chirho: u64,
+) -> bool {
+    let Some(raw_chirho) = io_ref_address_chirho(runtime_chirho, io_ref_bits_chirho) else {
+        return false;
+    };
+    unsafe {
+        raw_chirho.write(value_chirho);
+    }
+    true
+}
+
 /// `newIORef#`: keep the initial value alive if allocating the cell collects.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_new_io_ref_chirho(initial_value_chirho: u64) -> u64 {
@@ -60,9 +82,8 @@ pub extern "C" fn haskelujah_new_io_ref_chirho(initial_value_chirho: u64) -> u64
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_read_io_ref_chirho(io_ref_bits_chirho: u64) -> u64 {
     let runtime_chirho = native_gc_runtime_lock_chirho();
-    let raw_chirho = io_ref_address_chirho(&runtime_chirho, io_ref_bits_chirho)
-        .unwrap_or_else(|| internal_failure_chirho(b"readIORef# received an invalid reference"));
-    unsafe { raw_chirho.read() }
+    read_io_ref_in_runtime_chirho(&runtime_chirho, io_ref_bits_chirho)
+        .unwrap_or_else(|| internal_failure_chirho(b"readIORef# received an invalid reference"))
 }
 
 /// `writeIORef#`: replace the traced cell payload and return native `()`.
@@ -71,11 +92,9 @@ pub extern "C" fn haskelujah_write_io_ref_chirho(
     io_ref_bits_chirho: u64,
     value_chirho: u64,
 ) -> u64 {
-    let runtime_chirho = native_gc_runtime_lock_chirho();
-    let raw_chirho = io_ref_address_chirho(&runtime_chirho, io_ref_bits_chirho)
-        .unwrap_or_else(|| internal_failure_chirho(b"writeIORef# received an invalid reference"));
-    unsafe {
-        raw_chirho.write(value_chirho);
+    let mut runtime_chirho = native_gc_runtime_lock_chirho();
+    if !write_io_ref_in_runtime_chirho(&mut runtime_chirho, io_ref_bits_chirho, value_chirho) {
+        internal_failure_chirho(b"writeIORef# received an invalid reference");
     }
     0
 }
@@ -89,12 +108,19 @@ mod tests_chirho {
     fn native_io_ref_round_trip_and_kind_check_chirho() {
         let mut runtime_chirho = NativeGcRuntimeChirho::default();
         let io_ref_chirho = new_io_ref_in_runtime_chirho(&mut runtime_chirho, 1);
-        let raw_chirho = io_ref_address_chirho(&runtime_chirho, io_ref_chirho).unwrap();
-        assert_eq!(unsafe { raw_chirho.read() }, 1);
-        unsafe {
-            raw_chirho.write(2);
-        }
-        assert_eq!(unsafe { raw_chirho.read() }, 2);
+        assert_eq!(
+            read_io_ref_in_runtime_chirho(&runtime_chirho, io_ref_chirho),
+            Some(1)
+        );
+        assert!(write_io_ref_in_runtime_chirho(
+            &mut runtime_chirho,
+            io_ref_chirho,
+            2,
+        ));
+        assert_eq!(
+            read_io_ref_in_runtime_chirho(&runtime_chirho, io_ref_chirho),
+            Some(2)
+        );
 
         let constructor_chirho = runtime_chirho.alloc_chirho(8) as u64 | 1;
         assert!(io_ref_address_chirho(&runtime_chirho, constructor_chirho).is_none());
@@ -110,8 +136,20 @@ mod tests_chirho {
 
         let io_ref_chirho = new_io_ref_in_runtime_chirho(&mut runtime_chirho, payload_chirho);
         assert!(runtime_chirho.contains_alloc_chirho(payload_raw_chirho));
+        let replacement_raw_chirho = runtime_chirho.alloc_chirho(8);
+        let replacement_chirho = replacement_raw_chirho as u64 | 1;
+        assert!(write_io_ref_in_runtime_chirho(
+            &mut runtime_chirho,
+            io_ref_chirho,
+            replacement_chirho,
+        ));
         runtime_chirho.collect_chirho();
-        assert!(runtime_chirho.contains_alloc_chirho(payload_raw_chirho));
+        assert!(!runtime_chirho.contains_alloc_chirho(payload_raw_chirho));
+        assert!(runtime_chirho.contains_alloc_chirho(replacement_raw_chirho));
+        assert_eq!(
+            read_io_ref_in_runtime_chirho(&runtime_chirho, io_ref_chirho),
+            Some(replacement_chirho)
+        );
         assert!(
             runtime_chirho
                 .registered_heap_address_chirho(io_ref_chirho as usize)
