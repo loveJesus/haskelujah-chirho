@@ -199,3 +199,27 @@ The gate runs only under a builder handed by name, after source and tooling revi
   - The parser, the changed-line rule and the unchanged-line multiset rule do not change.
   - The tooling proof runs the literal lint stage on a recording stub. One negative restores the warm route, and two pre-create a target.
   - The contract (41 programs, 64 movers and 18 holds) and all 16 mutants are unchanged.
+
+**r3, RED** (tag `nfl535-native-fail-loud-f5d896da-r3-chirho`, run once at 03:43:10 EDT on 2026-10-26 under the builder gpt_chirho handed over in #28429). The tag is never resumed.
+- Ledger:
+  - preflight GREEN at f5d896da (crates 0a9f3727);
+  - build GREEN with rc 0 and no warnings. Frozen CLI `a216bbf800f92db8d728f29bba2ae68058666ceca5ba4677e7c36f9a5472dbec`; RTS lib `7ef80b4536171d6287e75643a8d3c5e8d0bd81f168ca66d079e582f7597f1b56`;
+  - all 13 focused suites GREEN, with r2's counts;
+  - lint GREEN, with both sides linted cold in fresh run-local targets, so C12 and the fresh targets held. gitleaks GREEN, 13 commits and no leaks;
+  - oracle RED: 119 PASS and 7 FAIL in 126 checks, all seven on Cranelift. Exit codes were build 0, focused 0, lint 0 and oracle 1.
+  - Not run: corpus and mutants (with postflight).
+- Six Cranelift REFUSED cells (Compare2, P01, P03, P04, P05 and P06) were refused with exactly the contract's primitive lists.
+  - But the CLI printed them through its pre-existing wrapper: `cranelift compilation failed: Cranelift does not support primitive(s): …` (`haskelujah-cli-chirho/src/main.rs:816`, outside this unit).
+  - The contract had assumed the bare line, which only the in-process driver controls print.
+- K01's Cranelift cell was held as BASE (SIGBUS, rc 138). It now compiles, exits 1 with empty stdout, and prints exactly R2's line, `haskelujah: error: show: no native Show instance for a boxed value`.
+  - The likely reason, an inference and not an established cause: its `show` path reaches the checked runtime formatter before the base's fault.
+- After the run, the tree was clean at the tip, no process was alive, and the frozen CLI and RTS lib were unchanged.
+- Receipts are kept byte-exact as two sets, each digested over its sorted file hashes:
+  - the run directory: 6,831 files, `2459027a95aa5127f69aa6244b1a3bd209deca703e64e47af364176ab68d67e5`;
+  - the launcher directory: 5 files, `9e5edc8ec2a414cf050f3f43211000a95de9a7c8849e21e4785506bc0b854811`.
+- Disposition (#28432): both oracle corrections, with no source change and no lldb.
+  - A Cranelift REFUSED cell now requires the CLI's exact wrapped line, and LLVM's stays bare and exact. Selftest negatives cover a missing, changed or LLVM-style Cranelift prefix, and the wrapper on LLVM.
+  - K01's Cranelift cell becomes `NAMED:show: no native Show instance for a boxed value`, with negatives for its exit code, stdout and line.
+  - The contract is now 41 programs and 82 native cells: 65 moving and 17 held (58 NAMED, 6 REFUSED, 10 EXACT and 8 BASE).
+  - The updated judge is GREEN on r3's own oracle receipts (126 of 126), and its base view is RED on exactly the 65 movers.
+  - C14 is this record plus the workflow's wrapper note: 16 paths and 14 commits. The crates tree stays 0a9f3727, and the 16 mutants and the baseline of 38 are unchanged.
