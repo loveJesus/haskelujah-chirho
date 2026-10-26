@@ -1,7 +1,7 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 # Native Map Size Chirho
 
-Provisional Row 545 is stacked after tested Row 544 at `5dc19cb6` while #28786 holds `main_chirho` and the progress database. It owns saved native oracle P05:
+Row 545 landed on `main_chirho` at tested source tip `ec598813`. It owns saved native oracle P05:
 
 ```haskell
 print (M.size (M.fromList [(1 :: Int, "a")]))
@@ -27,7 +27,7 @@ GHC and the interpreter print `1`. LLVM and Cranelift currently refuse `mapFromL
 - [x] Turn P05 into an exact all-engine control and keep P04 refused.
 - [x] Update the native execution workflow at the changed seam.
 - [x] Run the warm 2–5 minute gate at the actual behavior scope.
-- [ ] Rebase onto released main, land, and close progress row 545 GREEN.
+- [x] Rebase onto released main, land, and close progress row 545 GREEN.
 
 ## Source checkpoint
 
