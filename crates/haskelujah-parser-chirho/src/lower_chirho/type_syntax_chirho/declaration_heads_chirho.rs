@@ -61,14 +61,14 @@ impl LowerCtxChirho {
     ) -> (Option<NameChirho>, Vec<TypeChirho>) {
         let mut idx_chirho = 0usize;
         let mut class_chirho = None;
-        if let Some((tok_chirho, tok_span_chirho)) = head_tokens_chirho.first() {
-            if matches!(
+        if let Some((tok_chirho, tok_span_chirho)) = head_tokens_chirho.first()
+            && matches!(
                 tok_chirho.kind_chirho(),
                 TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho
-            ) {
-                class_chirho = Some(self.name_from_token_chirho(tok_chirho, *tok_span_chirho));
-                idx_chirho = 1;
-            }
+            )
+        {
+            class_chirho = Some(self.name_from_token_chirho(tok_chirho, *tok_span_chirho));
+            idx_chirho = 1;
         }
 
         let mut types_chirho = Vec::new();
