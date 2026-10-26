@@ -15,6 +15,16 @@ missing-method body no longer authorizes the specialized route.
   canonical route instead of manufacturing a call through a placeholder ID.
 - Row 551's compare route and Row 552's evidenced aggregate route remain unchanged.
 
+## Measured contract movement
+
+Row 553's gate isolated one additional Row 556 movement in
+`B06HandShowsPrecTopChirho`, whose hand-written `showsPrec` instance prints `TChirho 5`.
+Reverting only Row 553's hook leaves the movement unchanged, while the pre-556 contract did
+not move it. The interpreter changes from `missing method Show.show for TChirho` to GHC's
+exact `TChirho 5`. LLVM and Cranelift remain loud with rc 1 and empty stdout, but their named
+reason changes to the existing R2 boundary `show: no native Show instance for a boxed value`.
+This is an interpreter gain and a native loud-reason change, not a native parity claim.
+
 ## Checklist
 
 - [x] Add one walker-level control for dangling and body-backed applied and first-class
