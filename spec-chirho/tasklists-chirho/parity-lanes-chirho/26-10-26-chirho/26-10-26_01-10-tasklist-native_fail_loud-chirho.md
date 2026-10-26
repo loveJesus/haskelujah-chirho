@@ -223,3 +223,35 @@ The gate runs only under a builder handed by name, after source and tooling revi
   - The contract is now 41 programs and 82 native cells: 65 moving and 17 held (58 NAMED, 6 REFUSED, 10 EXACT and 8 BASE).
   - The updated judge is GREEN on r3's own oracle receipts (126 of 126), and its base view is RED on exactly the 65 movers.
   - C14 is this record plus the workflow's wrapper note: 16 paths and 14 commits. The crates tree stays 0a9f3727, and the 16 mutants and the baseline of 38 are unchanged.
+
+**r4, RED at mutants only** (tag `nfl535-native-fail-loud-de348c32-r4-chirho`, run once from 04:04:44 to 04:36:25 EDT on 2026-10-26 under the builder gpt_chirho handed over in #28434). The tag is never resumed.
+- Ledger:
+  - preflight GREEN at de348c32 (crates 0a9f3727): 26 judge checks, 16 anchors, 9 tools and 10 immutable sets;
+  - build GREEN with rc 0 and no warnings. Frozen CLI `a216bbf800f92db8d728f29bba2ae68058666ceca5ba4677e7c36f9a5472dbec`, the same as r3's; RTS lib `7ef80b4536171d6287e75643a8d3c5e8d0bd81f168ca66d079e582f7597f1b56` at build;
+  - all 13 focused suites GREEN, with r2's counts;
+  - lint GREEN, cold on both sides; gitleaks GREEN, 14 commits and no leaks;
+  - oracle GREEN: all 41 programs and 126 checks, 65 moving and 17 held, each exactly as the contract says;
+  - corpus GREEN: accept, reject and replay identical to row 534 r4, execution verdicts identical at 30/35, and SectionsChirho's native run moved from a pointer to the named R2 failure;
+  - mutants RED; postflight GREEN, with the frozen CLI unchanged, the tree clean at de348c32 with all 8 mutated files at their tip blobs, the gate, tools and immutable sets at their pins, and nothing alive.
+  - Exit codes were build 0, focused 0, lint 0, oracle 0, corpus 0 and mutants 1.
+- The mutation partition:
+  - baseline VALID with 38 passed; restored BASELINE with 38 passed; caught 16 of 16;
+  - new-failure counts: M01 4, M02 2, M03 2, M04 2, M05 3, M06 1, M07 1, M08 3, M09 9, and 1 each for M10 through M16;
+  - every set matched its prediction except M02's.
+- M02 (the Cranelift parameter alias) killed `an_unbound_call_fails_named_on_cranelift_chirho`, as predicted, and also `undefined_fails_named_on_cranelift_chirho`, which ran to rc 0 printing `0`.
+  - M02 re-creates base's `bind_missing_param_aliases_chirho`, which C5 removed. That alias also binds `undefined` to a parameter, so the R3 route never runs.
+  - Base did the same on the same program: E03's 15e1b77b Cranelift run was rc 0 with stdout `0`.
+  - The second kill is genuine evidence, so M02 is not narrowed.
+- The RTS archive is not part of the evidence, by design.
+  - `target/debug/libhaskelujah_rts.a` was `7ef80b45` at build and `5c2ba764` after the mutants stage. It was rebuilt from tip source in M16's run, after M15's RTS edit was restored, with the same size.
+  - Rebuilt dev archives are not claimed reproducible, so no archive-hash invariant is pinned (#28437).
+  - The landing invariant stays explicit: the 8 mutated source files restored to their tip blobs, and the restored 38/38 baseline.
+- Receipts are kept byte-exact as two sets, each digested over its sorted file hashes:
+  - the run directory: 21,175 files, `3b1103be6e9aaa239921f1d114c563bdf7bd8ea4c1ee9dcc2a3e232082c94766`;
+  - the launcher directory: 7 files, `eea2798ddcd720af8942739a46d980d70dfc35cb2e071b2908dcdfc5cbda0e61`.
+- Disposition (#28437):
+  - M02's predicted set becomes exactly those two tests. Its control and signal reason stay.
+  - Re-judged with the corrected table, r4's preserved mutations log is GREEN (19 of 19).
+  - The judge's selftest judges that measured log against the table (GREEN) and against the old one-failure prediction (RED on M02 alone).
+  - C15 is this record: 16 paths and 15 commits, with the crates tree still 0a9f3727. The contract (41 programs, 65 movers and 17 holds) and the other 15 mutant definitions are unchanged.
+  - r5 runs the whole gate once more, from build through mutants and postflight.
