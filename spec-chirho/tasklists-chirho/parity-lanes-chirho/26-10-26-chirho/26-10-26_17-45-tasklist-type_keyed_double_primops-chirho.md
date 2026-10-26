@@ -45,4 +45,14 @@ The "at b2d67eb3" cells were measured by the reach mutation on this tree, with o
   - the mechanism control fails and the holds control passes;
   - the restored hook is byte-identical, core recompiled, and N1 is `[-1.5,1.0]` on LLVM again.
 - [x] Record the hook in the dictionary-evidence workflow.
-- [ ] Commit, run the warm gate, and record it.
+- [x] Commit, run the warm gate, and record it.
+  - **r1 was GREEN on `b2d67eb3` in 173.39 s:** 685/685, no Clippy diagnostic on the 67 changed lines, and the judge at 126/126 with the 26 landed moves.
+  - **r2 on `75988583` was RED at the judge on B06HandShowsPrecTopChirho**, while all 686 tests passed.
+    - Row 556, landed in between, had moved it. The interpreter gained GHC's `TChirho 5`, and the natives' named line became R2's boxed-Show line.
+    - B06 moves the same way with only this row's hook reverted, after a verified core recompile, so the move is row 556's. gpt recorded it on row 556 in #28986 (`cebbbcfb`).
+  - **r3 on `5b2ceca6` was GREEN in 219.45 s**, with the contract copy recording row 556's B06 move:
+    - 686/686 focused tests;
+    - no Clippy diagnostic on the 67 changed lines;
+    - the judge at 126/126, with 73 movers and 9 holds over the 29 landed changes.
+  - **The final rebase onto `cebbbcfb`** keeps the crates tree `d631cab1`, the one r3 gated.
+- **Measured, not claimed:** claude2's sweep case `filter (> 0.5) ([0.25, 1.5] :: [Double])` was `GtInt` in the interpreter on main, and is exact on all three engines here. It is an ordering section rebuilt at the key Double, so it is the same mechanism (#28986).
