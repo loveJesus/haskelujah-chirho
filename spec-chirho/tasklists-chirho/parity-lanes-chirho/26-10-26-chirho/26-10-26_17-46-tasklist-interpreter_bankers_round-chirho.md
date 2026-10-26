@@ -5,7 +5,8 @@ in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 
 Row 559 owns the interpreter-only wrong answers in `round` at exact half ties. The
 GHC-measured seed is `map round [0.5,1.5,2.5,-0.5] == [0,2,2,0]`; the current
-interpreter returns `[1,2,3,-1]` while the native engines are already exact.
+interpreter returns `[1,2,3,-1]`, while both native engines explicitly refuse the
+unsupported `round#/1` primitive.
 
 ## Contract
 
@@ -14,8 +15,8 @@ interpreter returns `[1,2,3,-1]` while the native engines are already exact.
   agree with GHC 9.14.1.
 - Existing `truncate`, `floor`, and `ceiling` behavior is measured and remains outside this
   row unless the trace proves they share the exact defective helper.
-- LLVM and Cranelift answers remain byte-exact; this row does not widen their conversion
-  surface.
+- LLVM and Cranelift keep their named `round#/1` refusal; implementing that primitive is a
+  separate native parity row.
 
 ## Checklist
 
