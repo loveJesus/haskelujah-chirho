@@ -24,7 +24,7 @@ Row 549 owns the finite-number formatting boundary left explicit by row 546.
 - [x] Add unit and interpreter end-to-end controls for the threshold and mantissa rule.
 - [x] Update the Show workflow with the finite rule.
 - [x] Run the warm focused gate inside 2–5 minutes.
-- [ ] Land on current `main_chirho` and close progress row 549 GREEN.
+- [x] Land on current `main_chirho` and close progress row 549 GREEN.
 
 ## Source checkpoint
 
@@ -36,3 +36,4 @@ Row 549 owns the finite-number formatting boundary left explicit by row 546.
 - Warm proof is GREEN in 19.7 seconds: RTS 56/56, runtime 57/57, and fractional-literal
   integration 4/4. Rustfmt and diff-check are clean. Clippy reports no diagnostic in a
   changed file; its warnings are pre-existing lines elsewhere.
+- Landed by fast-forward at `b05c94b7`; progress row 549 is GREEN.
