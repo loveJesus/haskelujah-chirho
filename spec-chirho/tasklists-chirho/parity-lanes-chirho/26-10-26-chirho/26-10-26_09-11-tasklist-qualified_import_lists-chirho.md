@@ -117,11 +117,11 @@ GHC 9.14.1 receipts are measured from the committed sources.
 | M8 | the interface-filtered table replaces the written list | `NE (reverse)` |
 | M9 | the marker ignored | the `pattern Empty` positive |
 | M10 | every builtin assumed complete | `Lazy.runRWST` |
-| M11 (proposed) | a bare `T` item supplies the value `T` again | the `P.Proxy` negative and the bare source `T` naming test |
-| M12 (proposed) | marks merge as a union again | the unmarked-copy cases of the per-type merge test |
+| M11 | a bare `T` item supplies the value `T` again | the `P.Proxy` negative and the bare source `T` naming test |
+| M12 | marks merge as a union again | the unmarked-copy cases of the per-type merge test |
 | M13 | a constructor-headed `data` item read as a type item again | the `data Proxy` positive, the paired negative's exact messages, and the producer's `data Proxy` test |
 
-M11 and M12 are proposed with the #28506 corrections. They join the gate's mutant set only if gpt_chirho accepts them. M13 was ruled in #28517; its partition is credited only from real logs.
+M11 and M12 came with the #28506 corrections and M13 with the #28517 ruling. gpt_chirho accepted all three as predicted mutants in #28519; each partition is credited only from real logs.
 
 ## Candidate gate contract (#28483)
 
@@ -152,7 +152,12 @@ M11 and M12 are proposed with the #28506 corrections. They join the gate's mutan
 - [x] #28517: the GHC-measured `data Proxy` positive and its paired negative (15bc256a), with GHC 9.14.1 receipt r4 from the committed file.
 - [x] #28517 docs: the superseded boundary claim is removed, and the workflow and this tasklist state the rule.
 - [x] Hygiene and reach re-run with no Cargo.
-- [ ] Post the corrected source checkpoint. The candidate gate tooling stays withheld until it is accepted.
+- [x] Post the corrected source checkpoint (#28518; accepted in #28519, which opened the gate tooling).
+- [x] Gate tooling, untracked: built per #28519, corrected per #28528 and #28530, accepted in #28532.
+- [x] Gate r2: RED at lint on one test-only Clippy finding; the builder was returned by name in #28536.
+- [x] C15: the finding's exact fix (64bfd754), as authorized in #28537.
+- [x] C16: the r2 record below.
+- [ ] Re-pin the tooling to the C16 tip, with the r2 run and its launcher log as immutable sets. Rerun rustfmt, `git diff --check`, gitleaks, the real preflight-only path and the zero-Cargo proof. Post the checkpoint with a fresh unused r3 tag; no builder until it is reviewed.
 
 ## Source checkpoint record
 
@@ -308,5 +313,51 @@ r3 reads named `data` items as c6ac9d95 does, and classifies every reference und
 - **Gate corpus, r3 oracle, execution and repository `.hs` files:** no reference changes. I2's `NE.toList` stays the only predicted rejection.
 - **Embedded test programs:** only the new controls change. Their three `P.Proxy` references are listed under r3 and would have been rejected under r2.
 - **Informational populations** (the package cache, and the GHC rename and module suites): nothing changes.
+
+Row 536 remains not independently landable.
+
+## Gate r2 record (#28532, #28536, #28537)
+
+gpt_chirho accepted the gate tooling in #28532 and handed the builder over by name for one run. The accepted tools were gate 5dc6c5f1, checks 723f0250, selftest 29d626ba, mutator f0a00788 and launcher 0ff29b05.
+
+### The run
+
+- **Tag and window:** `g536-qualified-import-lists-385a712a-r2-chirho` on tip 385a712a, launched once at 11:29:49 EDT on 2026-10-26, as one background task with no pipe. The launcher stopped after lint, and the ledger closed at 11:38:22.
+- **Terminal state: RED (first: lint).** Oracle, corpus, mutants and freeze did not run.
+- **GREEN before the stop:**
+  - preflight: the 14-commit chain and 14 paths, rustfmt 12/12, diff-check, the frozen 531 CLI 260780d0, 13 mutant anchors, the judge selftest 117/117, and 16 tools and 8 immutable sets at their pins;
+  - build: rc 0 with no warnings. Candidate CLI e2f7f41f10042dd4beb5a6944b358fe88288f2d8fd26de93c5bf5ff3b24ed42e; RTS archive d03876aae25dfbf8187c6e84988390b9056e332872fe30928386ba4fd9a50952, which the CLI's own RTS call left untouched;
+  - the six focused suites, each equal to its `#[test]` count in source: ast-lib 16, parser-lib 386, naming-lib 151, typing_integration 43, dictionary_evidence 68 and driver-modules 612;
+  - gitleaks: 14 commits scanned, no leaks.
+- **Postflight**, run after the stop as the cleanliness audit, was GREEN:
+  - the candidate CLI and the RTS archive were unchanged since the build;
+  - the tree was clean at 385a712a, with the three mutated files at their tip blobs;
+  - every pin held, nothing was alive, and no freeze was declared.
+
+### The one finding
+
+- `lint-clippy.compare` was RESULT RED, 1 of 20. The cold tip Clippy (rustc 1.93.0) reported one diagnostic on an inserted line: `` crates/haskelujah-ast-chirho/src/module_chirho.rs:283:50: warning: this call to `clone` can be replaced with `std::slice::from_ref` ``.
+- It was the expected value `&[head_chirho.clone()]` in `import_list_modes_follow_the_written_syntax_chirho`, added by b31d36c2.
+- Everything else equalled the base:
+  - on unchanged lines: ast 1 vs 1, parser 423 vs 423, naming 41 vs 41 and driver 454 vs 454;
+  - nothing on any other changed line, no error, and nothing unparsed.
+- The source rounds held no builder, so their hygiene was rustfmt and diff-check only. r2 was the unit's first Clippy pass.
+- C15 (64bfd754) replaces the expression with `std::slice::from_ref(&head_chirho)`, exactly as #28537 authorized. No other source line changes.
+
+### Receipts, kept byte for byte
+
+All are untracked, under `tmp-chirho/qualified-import-lists-chirho/gate-chirho/`.
+
+- **The run directory** `runs-chirho/g536-qualified-import-lists-385a712a-r2-chirho`: C-locale digest a8cd260cec8d8eb97f9e5c5a35770abce0fbc29296670815680b76c1d61598f0, 2298 files.
+- **The launcher's console output**, as the background-task harness captured it: `review-28537-chirho/g536-r2-launcher-chirho.log`.
+  - sha256 1d2ca764c3b5251833c7115ce664a0eec9904c138e44a1add60f656e48c38e79; as a one-file set, digest 62fcaede7b211663d466ef519f0643a3925162707df4ae2dc43aa3189e8d2ccc.
+  - Its last line, `[exited with code 1]`, is the harness's.
+- **Within the run** (sha256):
+  - `stages-chirho.tsv`: 2d89e2b0a8a8b2e894f91fe85ff6ff47b868cac34fe05813a7112ee44858543d;
+  - `inputs-chirho.txt`: 8b92a2256c261dd5e3f9c0102f59fae522a5f9a9aa1f32785f5d6a7205759c16;
+  - `logs-chirho/lint-clippy.compare`: 523203c379aa4470d3eb090c83b89662868b7783e84504d89b6fd628d660b14a;
+  - `logs-chirho/clippy-haskelujah-ast.log` (the tip): d19b5e1236d807e0f0a3060c5bd9e3750e329b529a40f8ba16a641c2b975c8e3;
+  - `base-clippy-chirho/clippy-haskelujah-ast.log`: cbb0ed3ebc801f6299a373a25e503f4368314ad03e90051ef818c2f968fc5266.
+- #28537 makes the run directory and the launcher log counted C-locale immutable sets of the re-pinned gate.
 
 Row 536 remains not independently landable.
