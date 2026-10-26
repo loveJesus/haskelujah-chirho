@@ -92,4 +92,4 @@ The scan was validated on the probes first. It reached exactly the 18 programs t
     - 1094/1094 focused tests, now including the parser library, the golden suites and the GHC-corpus suites;
     - no Clippy diagnostic on the 311 changed lines;
     - the judge at 126/126, with 73 movers and 9 holds over the 29 landed changes, so no contract cell moved.
-- [ ] Land on main and close progress row 555.
+- [x] Land final tip `e41e1405` on main and close progress row 555 GREEN.
