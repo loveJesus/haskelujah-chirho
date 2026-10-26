@@ -242,6 +242,11 @@ flowchart TD
   checker's occurrence proof selects the concrete Enum row. A result-only polymorphic wrapper
   such as `enumAt :: Enum a => Int -> a` is still defaulted before this dispatch and remains a
   separate boundary.
+- `succ` and `pred` at `Char` use the ordinary method-key route: their argument or enclosing
+  `Enum a` dictionary already supplies the key. Row 567 adds body-backed `Enum Char` rows that
+  apply `ord#`, shift by one, and restore the Char with `chr#`. GHC's `maxBound`/`minBound`
+  errors are preserved. A shift into the surrogate interval fails by name because the current
+  Rust `char` interpreter representation cannot carry the value GHC produces.
 
 ## Proven list keys at method occurrences (R2, 2026-10-17)
 
@@ -588,6 +593,7 @@ flowchart TD
 - Row 520 covers `toEnum` and `fromEnum` occurrence dispatch for valid scalar `Char` values and
   the corresponding native `chr#`/`ord#` word representation. The current `char`-backed runtime
   cannot represent GHC's surrogate `Char` values, and its `chr#` invalid-range behavior is not
-  GHC-exact. `Enum Char` also has no body-backed `succ` or `pred` row, while range syntax still
-  uses the Int-specialized sequence functions. Those are explicit follow-up units, not inferred
-  from this row's occurrence evidence.
+  GHC-exact. Row 567 supplies the missing body-backed `succ` and `pred` rows and keeps crossings
+  into the surrogate interval loud. Range syntax remains separate: LLVM and Cranelift already
+  produce the correct ordinal lists, while the interpreter mixes the first Char with later Int
+  values through its Int-specialized sequence functions.

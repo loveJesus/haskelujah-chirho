@@ -4,6 +4,7 @@
 //! Prelude function generation: all generate_*_prelude_chirho methods.
 
 #![allow(unused_imports)]
+mod char_enum_chirho;
 mod demand_chirho;
 mod integral_enum_chirho;
 mod io_refs_chirho;
@@ -7720,54 +7721,9 @@ impl DictPassCtxChirho {
             });
         }
 
-        // ── Enum Char: toEnum = chr-like, fromEnum = ord-like ──
+        // ── Enum Char ──
         // workflow: language-features-chirho/dictionary-evidence-chirho
-        {
-            let char_ty_chirho = TyChirho::ConChirho("Char".to_string());
-            let prim_name_chirho = "$prim_Enum_toEnum_Char";
-            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
-            let x_chirho = self.fresh_binder_chirho("x", int_ty_chirho.clone());
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: x_chirho.clone(),
-                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "chr#".to_string(),
-                    args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
-                }),
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: prim_id_chirho,
-                    name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(int_ty_chirho.clone(), char_ty_chirho.clone()),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-
-            let prim_name_chirho = "$prim_Enum_fromEnum_Char";
-            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
-            let x_chirho = self.fresh_binder_chirho("x", char_ty_chirho.clone());
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: x_chirho.clone(),
-                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "ord#".to_string(),
-                    args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
-                }),
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: prim_id_chirho,
-                    name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(char_ty_chirho, int_ty_chirho.clone()),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
+        self.generate_char_enum_rows_chirho(&int_ty_chirho);
 
         // ── Enum Bool: toEnum 0 = False, toEnum _ = True; fromEnum False = 0, fromEnum True = 1 ──
         {

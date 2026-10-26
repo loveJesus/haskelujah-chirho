@@ -8,7 +8,7 @@
 //! rendering of a runtime-built String remains the separately owned row 557.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_native_chirho, run_chirho};
+use super::{assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho};
 
 #[test]
 fn enum_conversions_follow_each_proven_instance_everywhere_chirho() {
@@ -96,4 +96,71 @@ main = print (enumAtChirho 97 :: Char)
         run_chirho("ResultOnlyEnumChirho.hs", program_chirho),
         "97\n"
     );
+}
+
+#[test]
+fn char_successor_and_predecessor_follow_the_enum_row_everywhere_chirho() {
+    let program_chirho = r#"module Main where
+data ColorChirho = RedChirho | GreenChirho | BlueChirho deriving (Show, Enum)
+nextChirho :: Enum a => a -> a
+nextChirho = succ
+previousChirho :: Enum a => a -> a
+previousChirho = pred
+main :: IO ()
+main = do
+  print (fromEnum (succ 'a'))
+  print (fromEnum (pred 'b'))
+  print (map fromEnum (map succ "ab"))
+  print (map fromEnum (map pred "bc"))
+  print (nextChirho 'c')
+  print (previousChirho 'd')
+  print (succ RedChirho)
+  print (pred BlueChirho)
+"#;
+    let ghc_chirho = "98\n97\n[98,99]\n[97,98]\n'd'\n'c'\nGreenChirho\nGreenChirho\n";
+
+    assert_eq!(
+        run_chirho("CharEnumSuccPredChirho.hs", program_chirho),
+        ghc_chirho
+    );
+    assert_native_chirho("CharEnumSuccPredChirho.hs", program_chirho, ghc_chirho);
+}
+
+#[test]
+fn char_successor_and_predecessor_keep_ghcs_endpoint_errors_everywhere_chirho() {
+    for (file_name_chirho, operation_chirho, message_chirho) in [
+        (
+            "CharSuccMaxChirho.hs",
+            "succ (maxBound :: Char)",
+            "Prelude.Enum.Char.succ: bad argument",
+        ),
+        (
+            "CharPredMinChirho.hs",
+            "pred (minBound :: Char)",
+            "Prelude.Enum.Char.pred: bad argument",
+        ),
+    ] {
+        let program_chirho =
+            format!("module Main where\nmain :: IO ()\nmain = print ({operation_chirho})\n");
+        assert_named_failure_everywhere_chirho(file_name_chirho, &program_chirho, message_chirho);
+    }
+}
+
+#[test]
+fn surrogate_crossings_stay_a_named_runtime_boundary_everywhere_chirho() {
+    for (file_name_chirho, operation_chirho) in [
+        ("CharSuccSurrogateChirho.hs", "succ '\\xD7FF'"),
+        ("CharPredSurrogateChirho.hs", "pred '\\xE000'"),
+    ] {
+        // GHC 9.14.1 produces '\55296' and '\57343'. The interpreter stores a
+        // Rust `char`, which cannot represent either surrogate. Loud refusal is
+        // retained until the shared Char representation can carry GHC values.
+        let program_chirho =
+            format!("module Main where\nmain :: IO ()\nmain = print ({operation_chirho})\n");
+        assert_named_failure_everywhere_chirho(
+            file_name_chirho,
+            &program_chirho,
+            "Enum Char result is not representable by the current Unicode scalar runtime",
+        );
+    }
 }

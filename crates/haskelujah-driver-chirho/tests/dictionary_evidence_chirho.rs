@@ -71,6 +71,32 @@ fn assert_native_chirho(file_name_chirho: &str, program_chirho: &str, ghc_chirho
     }
 }
 
+/// Every engine stops normally and names the same bounded runtime obligation.
+fn assert_named_failure_everywhere_chirho(
+    file_name_chirho: &str,
+    program_chirho: &str,
+    needle_chirho: &str,
+) {
+    let interpreter_chirho = run_result_chirho(file_name_chirho, program_chirho)
+        .expect_err("the interpreter must fail by name");
+    assert!(
+        interpreter_chirho.contains(needle_chirho),
+        "{file_name_chirho} interpreter: {interpreter_chirho}"
+    );
+
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        let native_chirho = native_round_trip_chirho(program_chirho, backend_chirho, "")
+            .expect_err("the native program must fail by name");
+        assert!(
+            native_chirho.contains(needle_chirho),
+            "{file_name_chirho} {backend_chirho:?}: {native_chirho}"
+        );
+    }
+}
+
 /// The run's output, or the error that stopped it.
 fn run_result_chirho(file_name_chirho: &str, source_chirho: &str) -> Result<String, String> {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
