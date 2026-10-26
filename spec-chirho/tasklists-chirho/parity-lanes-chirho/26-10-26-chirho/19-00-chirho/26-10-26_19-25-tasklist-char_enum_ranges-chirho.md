@@ -10,7 +10,7 @@ Base: `f8b3476a`, immediately after row 567 closed and row 569 was reserved.
 - [x] Preserve the current Enum value's Int/Char runtime kind at each bounded recursive step.
 - [x] Add all-engine controls and a mutation-sensitive mechanism check.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt and diff-check; run gitleaks on the committed range before landing.
-- [ ] Rebase onto exact main, rerun the controls, land, and close only row 569.
+- [x] Rebase onto exact main, rerun the controls, land, and close only row 569.
 
 GHC prints `"abcde"`, `[97,98,99,100,101]`, `'e'`, `"bcd"`, `"eca"`,
 `"ace"`, `""` and `"a"` for the measured interpreter probe. The interpreter prints
@@ -50,3 +50,9 @@ their old `+#` form. The all-engine control failed at `last ['a'..'e']`: the int
 returned `101` instead of `'e'`. Restoring both sites byte for byte and rebuilding made the
 control pass. This proves the new step, rather than the annotations in the control, carries the
 Char representation through recursion.
+
+The source commit rebased cleanly onto exact main `8b5b09db` as `44a48156`. After the rebase,
+the runtime primitive control passed 1/1 and the all-engine bounded-range control passed 1/1;
+`git diff --check` stayed clean and gitleaks found no leaks in the one-commit range. Main then
+fast-forwarded to `44a48156`. Row 569 alone is closed; the named String-rendering, escape,
+unbounded-range and surrogate boundaries remain open in their own rows.
