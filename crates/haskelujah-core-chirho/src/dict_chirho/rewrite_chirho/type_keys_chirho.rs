@@ -195,12 +195,22 @@ impl DictPassCtxChirho {
                 fun_chirho,
                 arg_chirho,
             } => {
-                // For App(Var(fromInteger), Lit(n)), the result type is Int
-                // (or Double, depending on context — default to Int).
+                // For App(Var(fromInteger), Lit(n)), the result type is the one
+                // the checker solved for this literal occurrence (`1 / 2 :: Double`,
+                // a signature, or defaulting give Double); with no evidence, Int.
+                // workflow: language-features-chirho/dictionary-evidence-chirho
                 if let CoreExprChirho::VarChirho(id_chirho) = fun_chirho.as_ref() {
                     if let Some(name_chirho) = self.names_chirho.get(id_chirho) {
                         if name_chirho == "fromInteger" {
-                            return Some("Int".to_string());
+                            return Some(
+                                self.occurrence_evidence_chirho
+                                    .get(id_chirho)
+                                    .filter(|(class_chirho, _)| class_chirho == "Num")
+                                    .map_or_else(
+                                        || "Int".to_string(),
+                                        |(_, key_chirho)| key_chirho.clone(),
+                                    ),
+                            );
                         }
                         // Well-known Prelude function return types:
                         // These functions have fixed return types regardless

@@ -46,6 +46,11 @@ flowchart TD
   boundary and nowhere else.
 - No heuristic in the pass is widened by this workflow; records are consulted first, and the
   heuristics remain the fallback until a gate retires them.
+- A literal's `fromInteger` application is keyed by its own record (row 543).
+  - `infer_type_key_chirho` gives that application the occurrence's Num record, and `Int` only when there is none.
+  - It used to answer `Int` by name. So a method keyed from its first argument, as `/` is, missed the Fractional row whenever that argument was a literal: `1 / 2 :: Double`, a Double signature, and `7 / 2` under defaulting.
+  - The interpreter then failed with `missing STG binding /`, and the native backends with `missing native binding /`.
+  - Controls: `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
 
 ## Reference evidence (bricks 3 and 4)
 

@@ -14,6 +14,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 mod derived_show_chirho;
 #[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
 mod equality_sections_chirho;
+#[path = "dictionary_evidence_chirho/fractional_literals_chirho.rs"]
+mod fractional_literals_chirho;
 #[path = "dictionary_evidence_chirho/ground_keys_chirho.rs"]
 mod ground_keys_chirho;
 #[path = "dictionary_evidence_chirho/higher_order_occurrences_chirho.rs"]
