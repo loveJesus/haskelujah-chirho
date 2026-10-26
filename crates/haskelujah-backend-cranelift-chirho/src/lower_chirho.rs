@@ -1431,17 +1431,15 @@ fn lower_app_chirho(
                 name_chirho.as_str(),
                 "error" | "error#" | "errorWithoutStackTrace"
             ) && !ctx_chirho.func_ref_map_chirho.contains_key(func_id_chirho)
+                && let Some(message_chirho) = all_args_chirho.last()
             {
-                if let Some(message_chirho) = all_args_chirho.last() {
-                    let message_chirho =
-                        lower_expr_chirho(builder_chirho, ctx_chirho, message_chirho);
-                    let message_chirho = ensure_i64_chirho(builder_chirho, message_chirho, false);
-                    let message_chirho =
-                        force_if_thunk_chirho(builder_chirho, ctx_chirho, message_chirho);
-                    return ctx_chirho
-                        .runtime_calls_chirho
-                        .error_chirho(builder_chirho, message_chirho);
-                }
+                let message_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, message_chirho);
+                let message_chirho = ensure_i64_chirho(builder_chirho, message_chirho, false);
+                let message_chirho =
+                    force_if_thunk_chirho(builder_chirho, ctx_chirho, message_chirho);
+                return ctx_chirho
+                    .runtime_calls_chirho
+                    .error_chirho(builder_chirho, message_chirho);
             }
             // return/pure: identity for IO — just return the argument
             if matches!(name_chirho.as_str(), "return" | "pure") {
