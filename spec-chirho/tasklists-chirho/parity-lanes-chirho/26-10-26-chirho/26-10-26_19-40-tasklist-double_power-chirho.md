@@ -76,4 +76,8 @@ From the trace, I had proposed an exponent guard so that the type-keyed rebuild 
     - 863/863 focused tests, now including the interpreter runtime and the power tests;
     - no Clippy diagnostic on the 271 changed lines in 16 files;
     - the judge at 126/126, so no contract cell moved.
-- [ ] Land on main and close progress row 570.
+- [x] Land on main and close progress row 570.
+
+The tested tip `a4d8d0cb` fast-forwarded onto exact main `a593ce12`. Gitleaks scanned the two-commit
+range with no leaks; progress row 570 closes in the following progress commit, with no other row
+changed.
