@@ -1024,6 +1024,15 @@ flowchart LR
 - Rigid-signature literal evidence (row 584) and dictionary-passing `sum` and `product` (row 586)
   remain separate units.
 
+## Enum defaults and derived bounds (row 669, 2026-10-27)
+
+GHC's Enum requires only `toEnum` and `fromEnum`. Every other method defaults through those two with Int's own enumeration in between (`succ = toEnum . (+ 1) . fromEnum`, `enumFromTo x y = map toEnum [fromEnum x .. fromEnum y]`), and no default calls another method the instance may write. A derived instance also writes a bounded `enumFrom` and `enumFromThen`.
+
+- **Defaults** (`dict_chirho/instance_chirho/defaults_chirho/enum_defaults_chirho.rs`) are built from the module's own `toEnum` and `fromEnum` rows, so builtin instances keep their own rows. `succ` and `pred` default through their dictionary slots (`method_default_row_chirho`). The four enumerations have no slot, so a row is made for each key a written call was proved at (`generate_evidenced_enum_default_rows_chirho`). Defaults call only the compiler-owned `map` and Int enumerations.
+- **Derived bounds.** Typing records every local data type that derives Enum, with its constructors in order (`deriving_chirho/enum_chirho.rs`, beside derived Show's metadata). The dictionary pass builds `enumFrom x = enumFromTo x <last>` and `enumFromThen x y = enumFromThenTo x y (<last> when fromEnum y >=# fromEnum x, else <first>)` from the key's own rows, constructors and the primop, before the evidenced defaults, so no program-owned namesake reaches them.
+- **Controls:** `tests/dictionary_evidence_chirho/enum_chirho/enum_defaults_chirho.rs`, GHC-measured on all three engines, with a Core assertion that the derived rows name only their key's rows and `>=#`.
+- **Boundaries.** Polymorphic enumeration dispatch and the eight-slot layout are row 671's, and `Enum Double` is row 670's. Two gaps predate this row and are measured on main: a written enumeration call beside a program-owned namesake of its own name loses its evidence join, and an empty derived Enum is admitted where GHC rejects it (GHC-30750).
+
 ## Current boundary
 
 - A separately declared result-only `Num` or `Enum` predicate remains a dictionary parameter when

@@ -381,6 +381,14 @@ impl DictPassCtxChirho {
         // workflow: language-features-chirho/dictionary-evidence-chirho
         self.generate_evidenced_inequality_rows_chirho();
 
+        // A type that derives Enum gets GHC's bounded `enumFrom` and `enumFromThen` first, so
+        // its own pair wins; an enumeration method a written call was proved at, at a key
+        // whose own Enum instance does not write it, then takes GHC's default through that
+        // instance's `toEnum` and `fromEnum` (row 669).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_derived_enum_rows_chirho();
+        self.generate_evidenced_enum_default_rows_chirho();
+
         // A first-class or prefix `<`, `<=`, `>` or `>=` at a key the checker proved takes
         // that key's answer through a generated row (row 610).
         // workflow: language-features-chirho/dictionary-evidence-chirho

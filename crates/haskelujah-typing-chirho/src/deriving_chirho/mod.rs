@@ -41,8 +41,10 @@
 //! before type inference runs, so they go through the normal pipeline.
 
 mod declaration_heads_chirho;
+mod enum_chirho;
 mod show_chirho;
 
+pub use enum_chirho::derived_enum_metadata_chirho;
 use show_chirho::derive_show_chirho;
 pub use show_chirho::{
     DerivedShowChirho, DerivedShowConChirho, ShowConFormChirho, ShowFieldTypeChirho,

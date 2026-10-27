@@ -659,7 +659,7 @@ impl DictPassCtxChirho {
             })
     }
 
-    fn apply_all_chirho(
+    pub(super) fn apply_all_chirho(
         function_chirho: CoreIdChirho,
         arguments_chirho: Vec<CoreExprChirho>,
     ) -> CoreExprChirho {

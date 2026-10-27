@@ -764,9 +764,10 @@ impl DictPassCtxChirho {
     }
 
     /// GHC's default row for a method the instance does not write, read from the real rows
-    /// under `donor_key_chirho`: Eq's two methods from each other (row 606), and Ord's from its
-    /// `compare` (row 612) or its own `<=` (row 626), `compare` itself from `==` and `<=`. None
-    /// when no real row donates, so the caller's named failure stays.
+    /// under `donor_key_chirho`: Eq's two methods from each other (row 606), Ord's from its
+    /// `compare` (row 612) or its own `<=` (row 626), `compare` itself from `==` and `<=`, and
+    /// Enum's `succ` and `pred` from `toEnum` and `fromEnum` (row 669). None when no real row
+    /// donates, so the caller's named failure stays.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn method_default_row_chirho(
         &mut self,
@@ -783,6 +784,14 @@ impl DictPassCtxChirho {
         )
         .or_else(|| {
             self.ordering_default_row_chirho(
+                class_name_chirho,
+                method_name_chirho,
+                donor_key_chirho,
+                prim_name_chirho,
+            )
+        })
+        .or_else(|| {
+            self.enum_default_row_chirho(
                 class_name_chirho,
                 method_name_chirho,
                 donor_key_chirho,
@@ -990,9 +999,15 @@ impl DictPassCtxChirho {
 
 mod conditional_chirho;
 mod constructor_orders_chirho;
+// The default rows for methods an instance does not write live together in
+// `instance_chirho/defaults_chirho/` (rows 606, 612, 626 and 669).
+#[path = "instance_chirho/defaults_chirho/enum_defaults_chirho.rs"]
+mod enum_defaults_chirho;
+#[path = "instance_chirho/defaults_chirho/equality_defaults_chirho.rs"]
 mod equality_defaults_chirho;
 mod generic_heads_chirho;
 mod list_orders_chirho;
+#[path = "instance_chirho/defaults_chirho/ordering_defaults_chirho.rs"]
 mod ordering_defaults_chirho;
 mod ordering_operators_chirho;
 mod string_spellings_chirho;
