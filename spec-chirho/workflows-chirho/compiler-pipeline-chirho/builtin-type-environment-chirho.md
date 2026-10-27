@@ -172,3 +172,36 @@ flowchart TD
 - `constructors_chirho.rs` seeds `(:|) :: forall a. a -> [a] -> NonEmpty a` under the module-qualified keys `Data.List.NonEmpty.:|` and `Data.List.NonEmpty.(:|)`, the two spellings the interface exports. No bare key is seeded.
 - Phase 3.9 looks the `Module.name` key up first, so every import of Data.List.NonEmpty that exposes the constructor gives it this scheme under its own spelling (`:|`, `NE.:|`, `Data.List.NonEmpty.:|`). A value built with `:|` then has a concrete Show key (`NonEmpty Int` where the type is imported unqualified), and the derived NonEmpty metadata renders it (print-show-evidence-chirho).
 - Boundary: like `Data.List.NonEmpty.reverse`, the module-qualified keys are seeded for every module, but naming rejects a full-qualifier `Data.List.NonEmpty.:|` that no import binds before inference reads one (row 598).
+
+## The builtin interface tables (row 648)
+
+`builtin_module_ifaces_chirho` builds the interfaces of the 518 modules the compiler provides, from `Prelude` to `GHC.Exts`. Its tables live in family files under `crates/haskelujah-naming-chirho/src/iface_chirho/builtin_chirho/`, so a module's statements sit together and every file stays bounded.
+
+```mermaid
+flowchart TD
+    root_chirho["builtin_module_ifaces_chirho in iface_chirho/builtin_chirho.rs"] --> base_chirho["base_chirho: prelude, classes, reflection, numbers, control, concurrency"]
+    root_chirho --> ghc_chirho["ghc_chirho: exts, prim, generics, numeric, io"]
+    root_chirho --> packages_chirho["packages_chirho: maps, collections, arrays, bytestring, text, transformers, mtl, functors"]
+    root_chirho --> platform_chirho["platform_chirho: system, posix, foreign, time_network, formats, tooling"]
+    base_chirho --> class_norm_chirho[normalize_builtin_class_exports_chirho]
+    ghc_chirho --> class_norm_chirho
+    packages_chirho --> class_norm_chirho
+    platform_chirho --> class_norm_chirho
+    class_norm_chirho --> merge_chirho["merge_module_ifaces_chirho: one entry per module name"]
+    merge_chirho --> type_norm_chirho[normalize_builtin_type_exports_chirho]
+    type_norm_chirho --> origin_chirho["every module marked BuiltinChirho, row 608"]
+```
+
+- **One file per module.** Every statement that names a module sits in that module's family file, in the order the tables were written. The merge appends a repeated module's constructors and methods in push order, and its values are first-wins, so each module's merged interface is the same whatever order the families run in.
+- **Modules by name, never by position.** The returned vector follows the family order.
+  - Every reader finds a module by its name (`find`, `rev().find`, `position`, `any`) or loops per module, and none reads a position.
+  - Before row 648 the vector followed the order the tables were written. A reversed vector passed the naming, typing_integration and native-symbol suites.
+- **Adding a module.** Put its statement in its family's file, or start a family file if none fits, keeping each under 1,000 lines.
+- **Shared statements.** Some statements push modules of two families, and each stays whole in one file:
+  - `concurrency_chirho.rs`: GHC.Conc, GHC.Conc.Sync and Control.Monad.STM, beside Control.Concurrent;
+  - `numbers_chirho.rs`: GHC.Num.Natural;
+  - `foreign_chirho.rs`: GHC.ForeignPtr;
+  - `io_chirho.rs`: System.Console.GetOpt, Text.Read.Lex and System.Mem.Weak, in loops led by GHC.IO modules.
+- **Controls.**
+  - The builtin-table tests are in `builtin_chirho/tests_chirho.rs`, with the `GHC.*` ones in `builtin_chirho/ghc_chirho/tests_chirho.rs`.
+  - The export-filter tests stay in `iface_chirho/tests_chirho.rs`.
