@@ -32,6 +32,8 @@ pub(crate) struct RuntimeCallsChirho {
     ceiling_float_to_int_chirho: FuncRef,
     nul_string_literal_chirho: FuncRef,
     show_string_chirho: FuncRef,
+    /// Each unary Floating primop with its RTS libm import (row 575).
+    float_math_imports_chirho: Vec<(&'static str, FuncRef)>,
 }
 
 fn import_chirho(
@@ -201,7 +203,31 @@ impl RuntimeCallsChirho {
                 1,
                 true,
             )?,
+            float_math_imports_chirho:
+                haskelujah_rts_chirho::float_math_chirho::FLOAT_MATH_PRIMOPS_CHIRHO
+                    .iter()
+                    .map(|(primop_chirho, symbol_chirho)| {
+                        import_chirho(module_chirho, function_chirho, symbol_chirho, 1, true)
+                            .map(|import_chirho| (*primop_chirho, import_chirho))
+                    })
+                    .collect::<Result<_, _>>()?,
         })
+    }
+
+    /// A unary Floating primop's call into the RTS's libm symbol over the operand's bits
+    /// (row 575), or None for any other primop.
+    pub(crate) fn float_math_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        primop_chirho: &str,
+        bits_chirho: Value,
+    ) -> Option<Value> {
+        let (_, import_chirho) = self
+            .float_math_imports_chirho
+            .iter()
+            .find(|(name_chirho, _)| *name_chirho == primop_chirho)?;
+        let call_chirho = builder_chirho.ins().call(*import_chirho, &[bits_chirho]);
+        Some(builder_chirho.inst_results(call_chirho)[0])
     }
 
     /// `^#`, sharing the interpreter's wrapping integer-power convention.

@@ -17,6 +17,7 @@
 //! without pulling in interpreter-specific machinery.
 
 pub mod ffi_chirho;
+pub mod float_math_chirho;
 pub mod float_power_chirho;
 mod float_to_int_chirho;
 pub mod gc_chirho;

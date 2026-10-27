@@ -1600,6 +1600,11 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_pow_double_int_chirho(i64, i64)"
         )
         .unwrap();
+        for (_, symbol_chirho) in
+            haskelujah_rts_chirho::float_math_chirho::FLOAT_MATH_PRIMOPS_CHIRHO
+        {
+            writeln!(self.output_chirho, "declare i64 @{symbol_chirho}(i64)").unwrap();
+        }
         writeln!(
             self.output_chirho,
             "declare i64 @haskelujah_pow_float_chirho(i64, i64)"

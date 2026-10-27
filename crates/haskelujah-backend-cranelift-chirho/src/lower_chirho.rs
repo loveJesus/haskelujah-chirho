@@ -2451,6 +2451,19 @@ pub fn lower_primop_chirho(
             let bits_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             builder_chirho.ins().bxor_imm(bits_chirho, i64::MIN)
         }
+        // A unary Floating primop calls the RTS's libm symbol for it (row 575).
+        primop_chirho
+            if haskelujah_rts_chirho::float_math_chirho::float_math_symbol_chirho(
+                primop_chirho,
+            )
+            .is_some() =>
+        {
+            let bits_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, true);
+            ctx_chirho
+                .runtime_calls_chirho
+                .float_math_chirho(builder_chirho, primop_chirho, bits_chirho)
+                .expect("every unary Floating primop has its RTS import")
+        }
         "absInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let neg_chirho = builder_chirho.ins().ineg(lhs_chirho);

@@ -3,9 +3,63 @@
 use super::{
     haskelujah_pow_double_int_chirho, haskelujah_pow_float_chirho, haskelujah_pow_int_chirho,
 };
+use crate::float_math_chirho::{
+    float_math_symbol_chirho, haskelujah_float_acos_chirho, haskelujah_float_asin_chirho,
+    haskelujah_float_atan_chirho, haskelujah_float_cos_chirho, haskelujah_float_exp_chirho,
+    haskelujah_float_log_chirho, haskelujah_float_sin_chirho, haskelujah_float_sqrt_chirho,
+    haskelujah_float_tan_chirho,
+};
 use crate::float_power_chirho::{pow_double_int_chirho, pow_float_chirho};
 use crate::integer_power_chirho::pow_int_chirho;
 use std::f64::consts::{FRAC_1_SQRT_2, SQRT_2};
+
+fn native_float_chirho(native_chirho: extern "C" fn(i64) -> i64, argument_chirho: f64) -> f64 {
+    f64::from_bits(native_chirho(argument_chirho.to_bits() as i64) as u64)
+}
+
+/// Row 575: the unary Floating primops natively, against GHC 9.14.1's printed answers. A
+/// finite answer is compared as its printed digits, which Rust's shortest form shares with
+/// GHC's in this range; several are constants such as π/6, which Clippy would otherwise ask
+/// to be named.
+#[test]
+fn unary_floating_primops_answer_as_ghc_chirho() {
+    let cases_chirho: [(extern "C" fn(i64) -> i64, f64, &str); 12] = [
+        (haskelujah_float_sqrt_chirho, 2.0, "1.4142135623730951"),
+        (haskelujah_float_exp_chirho, 1.0, "2.718281828459045"),
+        (haskelujah_float_log_chirho, 10.0, "2.302585092994046"),
+        (haskelujah_float_sin_chirho, 1.0, "0.8414709848078965"),
+        (haskelujah_float_cos_chirho, 1.0, "0.5403023058681398"),
+        (haskelujah_float_tan_chirho, 1.0, "1.557407724654902"),
+        (haskelujah_float_tan_chirho, 0.5, "0.5463024898437905"),
+        (haskelujah_float_asin_chirho, 0.5, "0.5235987755982988"),
+        (haskelujah_float_acos_chirho, 0.5, "1.0471975511965976"),
+        (haskelujah_float_acos_chirho, -1.0, "3.141592653589793"),
+        (haskelujah_float_atan_chirho, 1.0, "0.7853981633974483"),
+        (haskelujah_float_atan_chirho, 1e300, "1.5707963267948966"),
+    ];
+    for (native_chirho, argument_chirho, ghc_chirho) in cases_chirho {
+        assert_eq!(
+            native_float_chirho(native_chirho, argument_chirho).to_string(),
+            ghc_chirho,
+            "{ghc_chirho}"
+        );
+    }
+    assert!(native_float_chirho(haskelujah_float_sqrt_chirho, -1.0).is_nan());
+    assert!(native_float_chirho(haskelujah_float_asin_chirho, 2.0).is_nan());
+    assert_eq!(
+        native_float_chirho(haskelujah_float_exp_chirho, 710.0),
+        f64::INFINITY
+    );
+    assert_eq!(
+        native_float_chirho(haskelujah_float_log_chirho, 0.0),
+        f64::NEG_INFINITY
+    );
+    assert_eq!(
+        float_math_symbol_chirho("sqrt#"),
+        Some("haskelujah_float_sqrt_chirho")
+    );
+    assert_eq!(float_math_symbol_chirho("+.#"), None);
+}
 
 /// Row 573: GHC's Double `**`, the C library's `pow`, against GHC 9.14.1's printed answers,
 /// libm's edge cases included. GHC prints `2 ** 0.5` as 1.4142135623730951 and

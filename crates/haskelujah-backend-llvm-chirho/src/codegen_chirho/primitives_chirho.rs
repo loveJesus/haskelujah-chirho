@@ -192,6 +192,20 @@ impl LlvmCodegenChirho {
             .unwrap();
             result_chirho
         } else if args_chirho.len() == 1
+            && let Some(runtime_name_chirho) =
+                haskelujah_rts_chirho::float_math_chirho::float_math_symbol_chirho(name_chirho)
+        {
+            // A unary Floating primop calls the RTS's libm symbol for it (row 575).
+            let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+            let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = call i64 @{runtime_name_chirho}(i64 {operand_chirho})"
+            )
+            .unwrap();
+            result_chirho
+        } else if args_chirho.len() == 1
             && matches!(name_chirho, "round#" | "truncate#" | "floor#" | "ceiling#")
         {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);

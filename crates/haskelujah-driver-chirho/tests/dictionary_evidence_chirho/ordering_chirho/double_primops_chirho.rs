@@ -216,6 +216,31 @@ fn double_float_power_answers_as_ghc_everywhere_chirho() {
     );
 }
 
+/// Row 575: the unary Floating primops at Double. GHC's are libm calls. The interpreter
+/// already answered, but both native backends refused `sqrt#`, `exp#`, `log#`, `sin#`,
+/// `cos#`, `tan#`, `asin#`, `acos#` and `atan#`, so every line here failed to compile
+/// natively. Each now calls the RTS's libm symbol for it. The program covers NaN and
+/// infinite results, a top-level base, a section and `map`. `pi` stays a missing binding,
+/// so none is used.
+const FLOATING_PRIMOPS_CHIRHO: &str = "module Main where\nxChirho :: Double\nxChirho = 2.25\nmain :: IO ()\nmain = do\n  print (sqrt 2 :: Double, sqrt (-1) :: Double)\n  print (exp 1 :: Double, exp 710 :: Double)\n  print (log 10 :: Double, log 0 :: Double)\n  print (sin 1 :: Double, cos 1 :: Double)\n  print (tan 1 :: Double, tan 0.5 :: Double)\n  print (asin 0.5 :: Double, asin 2 :: Double)\n  print (acos 0.5 :: Double, acos (-1) :: Double)\n  print (atan 1 :: Double, atan 1e300 :: Double)\n  print (sqrt xChirho, exp (log xChirho))\n  print (map sqrt [4, 9 :: Double], map (\\v -> sin v * sin v + cos v * cos v) [0.5 :: Double])\n";
+
+/// GHC 9.14.1's output for [`FLOATING_PRIMOPS_CHIRHO`].
+const FLOATING_PRIMOPS_GHC_CHIRHO: &str = "(1.4142135623730951,NaN)\n(2.718281828459045,Infinity)\n(2.302585092994046,-Infinity)\n(0.8414709848078965,0.5403023058681398)\n(1.557407724654902,0.5463024898437905)\n(0.5235987755982988,NaN)\n(1.0471975511965976,3.141592653589793)\n(0.7853981633974483,1.5707963267948966)\n(1.5,2.25)\n([2.0,3.0],[1.0])\n";
+
+#[test]
+fn unary_floating_primops_answer_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("FloatingPrimopsChirho.hs", FLOATING_PRIMOPS_CHIRHO),
+        FLOATING_PRIMOPS_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho(
+        "FloatingPrimopsChirho.hs",
+        FLOATING_PRIMOPS_CHIRHO,
+        FLOATING_PRIMOPS_GHC_CHIRHO,
+    );
+}
+
 /// The same negated division where it already worked: the list printed directly, its
 /// head, and the division alone. GHC: `[-1.5,1.0]`, `-1.5` and `-1.5`.
 #[test]

@@ -52,7 +52,10 @@ flowchart TD
 - Row 573 removes `**#` from the native refused set. GHC's Double `**` is the C library's `pow`.
   - `float_power_chirho::pow_float_chirho` is the one call, made by the interpreter and by the wrapper `haskelujah_pow_float_chirho`, which LLVM and Cranelift call with both operands' bits.
   - libm's edge cases come with it: `0 ** 0` and `NaN ** 0` are 1, and a negative base to a fractional power is NaN.
-  - `sqrt#` is still refused natively, a separate primitive.
+- Row 575 removes the unary Floating primops from the native refused set: `sqrt#`, `exp#`, `log#`, `sin#`, `cos#`, `tan#`, `asin#`, `acos#` and `atan#`. GHC's are libm calls.
+  - One macro in `float_math_chirho.rs` generates an RTS symbol for each, `haskelujah_float_<op>_chirho` over a Double's bits, together with the table `FLOAT_MATH_PRIMOPS_CHIRHO` naming them.
+  - LLVM declares every symbol in that table and calls the one `float_math_symbol_chirho` names. Cranelift imports every symbol and lowers each through the same lookup. The interpreter's own primops already make the same libm calls.
+  - `pi`, the hyperbolics, `logBase` and `atan2` are missing bindings on every engine, outside the route.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## The native link's RTS archive (row 568)
