@@ -8,7 +8,7 @@
 - [x] Post a bounded design checkpoint before compiler source changes, including the overlap audit against Rows 594, 597 and 598.
 - [x] Implement only the proven result-type evidence repair and add structural plus all-engine controls.
 - [x] Mutation-prove the repair and run the focused warm gate.
-- [ ] Land through the canonical single-writer chain and close progress Row 599.
+- [x] Land through the canonical single-writer chain and close progress Row 599.
 
 ## Scope Chirho
 
@@ -42,3 +42,4 @@
 - Clippy reports no diagnostic on a changed line; rustfmt and diff-check are clean.
 - Claude's B8 local-literal hold is unchanged on the final source: the interpreter stops at `ShowFloatChirho`, and both natives print `(2.08e-322,42)`.
 - Gate r1 is GREEN on `4ec2d410` in 68 seconds: build; core 185/185; dictionary evidence 117/117; focused driver library 57/57; rustfmt and diff-check. The preceding Clippy screen has no diagnostic on a changed line, and gitleaks found no leak in the source commit.
+- Landed as source tip `3607176e` and closed progress Row 599 on `main_chirho`.
