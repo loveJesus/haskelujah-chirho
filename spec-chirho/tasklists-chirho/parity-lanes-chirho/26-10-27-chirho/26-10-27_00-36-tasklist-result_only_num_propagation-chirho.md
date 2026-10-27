@@ -7,7 +7,8 @@
 - [x] Trace where `convert :: (Integral a, Num b) => a -> b; convert = fromIntegral` loses or defaults its result dictionary.
 - [x] Post a bounded design checkpoint before compiler source changes, including the overlap audit against Rows 594, 597 and 598.
 - [x] Implement only the proven result-type evidence repair and add structural plus all-engine controls.
-- [ ] Mutation-prove the repair, run the focused warm gate and land through the canonical single-writer chain.
+- [x] Mutation-prove the repair and run the focused warm gate.
+- [ ] Land through the canonical single-writer chain and close progress Row 599.
 
 ## Scope Chirho
 
@@ -40,3 +41,4 @@
 - Core library: 185/185. Dictionary-evidence integration target: 117/117. Row 596's direct and monomorphic control, result-only Applicative/Monad, and the result-only Enum boundary all pass.
 - Clippy reports no diagnostic on a changed line; rustfmt and diff-check are clean.
 - Claude's B8 local-literal hold is unchanged on the final source: the interpreter stops at `ShowFloatChirho`, and both natives print `(2.08e-322,42)`.
+- Gate r1 is GREEN on `4ec2d410` in 68 seconds: build; core 185/185; dictionary evidence 117/117; focused driver library 57/57; rustfmt and diff-check. The preceding Clippy screen has no diagnostic on a changed line, and gitleaks found no leak in the source commit.
