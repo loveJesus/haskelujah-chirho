@@ -119,8 +119,13 @@ impl DictPassCtxChirho {
         match expr_chirho {
             CoreExprChirho::VarChirho(id_chirho) => {
                 // A first-class `print` keeps its solved Show proof, never the
-                // generic Int-only binding (row 550).
-                if let Some(print_function_chirho) = self.evidenced_value_chirho(*id_chirho) {
+                // generic Int-only binding (row 550), and an own-key aggregate takes
+                // the binding's dictionary (row 586).
+                if let Some(print_function_chirho) = self.evidenced_value_in_scope_chirho(
+                    *id_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                ) {
                     return print_function_chirho;
                 }
                 // Evidence-threading P1 (design-evidence-threading-chirho.md):
@@ -202,7 +207,11 @@ impl DictPassCtxChirho {
                         // (row 550).
                         if spine_args_chirho.iter().any(|spine_arg_chirho| {
                             matches!(spine_arg_chirho, CoreExprChirho::VarChirho(arg_id_chirho)
-                                if self.evidenced_value_chirho(*arg_id_chirho).is_some())
+                                if self.evidenced_value_in_scope_chirho(
+                                    *arg_id_chirho,
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                ).is_some())
                         }) {
                             let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
                                 CoreExprChirho::VarChirho(*head_id_chirho),
@@ -210,7 +219,11 @@ impl DictPassCtxChirho {
                                     fun_chirho: Box::new(fun_acc_chirho),
                                     arg_chirho: Box::new(match spine_arg_chirho {
                                         CoreExprChirho::VarChirho(arg_id_chirho) => self
-                                            .evidenced_value_chirho(*arg_id_chirho)
+                                            .evidenced_value_in_scope_chirho(
+                                                *arg_id_chirho,
+                                                dict_vars_chirho,
+                                                evidence_classes_chirho,
+                                            )
                                             .unwrap_or_else(|| (*spine_arg_chirho).clone()),
                                         _ => (*spine_arg_chirho).clone(),
                                     }),
@@ -270,12 +283,15 @@ impl DictPassCtxChirho {
                                 },
                             );
                         }
-                        // An evidenced `sum` or `product` (row 552), or `max`, `min`,
-                        // `maximum` or `minimum` (row 565), at the head of an application
-                        // takes its proof as an argument does.
-                        if let Some(aggregate_chirho) =
-                            self.evidenced_applied_head_chirho(*head_id_chirho)
-                        {
+                        // An evidenced `sum` or `product` (row 552, and at the binding's
+                        // own key, row 586), or `max`, `min`, `maximum` or `minimum`
+                        // (row 565), at the head of an application takes its proof as an
+                        // argument does.
+                        if let Some(aggregate_chirho) = self.evidenced_applied_head_in_scope_chirho(
+                            *head_id_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                        ) {
                             let rebuilt_chirho = spine_args_chirho.iter().rev().fold(
                                 aggregate_chirho,
                                 |fun_acc_chirho, spine_arg_chirho| CoreExprChirho::AppChirho {

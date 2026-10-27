@@ -19,6 +19,10 @@
 //! workflow: print-show-evidence-chirho
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
+use std::collections::{HashMap, HashSet};
+
+use haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho;
+
 use super::DictPassCtxChirho;
 use crate::dict_chirho::prelude_chirho::fractional_power_chirho::FRACTIONAL_POWER_DOUBLE_INT_CHIRHO;
 use crate::dict_chirho::prelude_chirho::ordering_extrema_chirho::ORDERING_EXTREMA_CHIRHO;
@@ -64,6 +68,44 @@ impl DictPassCtxChirho {
         })
     }
 
+    /// `sum` or `product`: the `Num` method its fold steps with and its start.
+    fn aggregate_shape_chirho(&self, id_chirho: CoreIdChirho) -> Option<(&'static str, i64)> {
+        let (reference_name_chirho, _canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&id_chirho)?;
+        match reference_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(reference_name_chirho)
+        {
+            "sum" => Some(("+", 0)),
+            "product" => Some(("*", 1)),
+            _ => None,
+        }
+    }
+
+    /// `foldl step (fromInteger unit)`, an aggregate's fold over one dictionary's rows.
+    fn aggregate_fold_chirho(
+        &self,
+        step_chirho: CoreExprChirho,
+        from_integer_chirho: CoreExprChirho,
+        unit_chirho: i64,
+    ) -> Option<CoreExprChirho> {
+        let foldl_id_chirho = self.lookup_body_backed_name_id_chirho("foldl")?;
+        let start_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(from_integer_chirho),
+            arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
+                unit_chirho,
+            ))),
+        };
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(foldl_id_chirho)),
+                arg_chirho: Box::new(step_chirho),
+            }),
+            arg_chirho: Box::new(start_chirho),
+        })
+    }
+
     /// An evidenced `sum` or `product` occurrence as a fold over its element type's
     /// own `Num` rows, or None.
     /// workflow: print-show-evidence-chirho
@@ -71,17 +113,7 @@ impl DictPassCtxChirho {
         &self,
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
-        let (reference_name_chirho, _canonical_id_chirho) =
-            self.method_occurrence_canon_chirho.get(&id_chirho)?;
-        let (operator_chirho, unit_chirho) = match reference_name_chirho
-            .rsplit('.')
-            .next()
-            .unwrap_or(reference_name_chirho)
-        {
-            "sum" => ("+", 0),
-            "product" => ("*", 1),
-            _ => return None,
-        };
+        let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
         let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
         if class_name_chirho != "Num" {
             return None;
@@ -95,20 +127,50 @@ impl DictPassCtxChirho {
         let from_integer_id_chirho = self.lookup_dispatch_body_name_id_chirho(&format!(
             "$prim_Num_fromInteger_{ty_key_chirho}"
         ))?;
-        let foldl_id_chirho = self.lookup_body_backed_name_id_chirho("foldl")?;
-        let start_chirho = CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::VarChirho(from_integer_id_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(
-                unit_chirho,
-            ))),
+        self.aggregate_fold_chirho(
+            CoreExprChirho::VarChirho(operator_id_chirho),
+            CoreExprChirho::VarChirho(from_integer_id_chirho),
+            unit_chirho,
+        )
+    }
+
+    /// An evidenced `sum` or `product` at the enclosing binding's own `Num` key, as the
+    /// same fold over that dictionary's methods (row 586). For example, it gives
+    /// `foldl ($sel_Num_+ d) ($sel_Num_fromInteger d 0)`, where `d` is the binding's
+    /// `$dNum`, or the Num its `$dFractional` holds. The Prelude's `sum` is Int-shaped and
+    /// served every instantiation, so at Double the interpreter failed on `AddIntChirho`,
+    /// and both natives added the Doubles' bits as integers.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn own_aggregate_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+    ) -> Option<CoreExprChirho> {
+        let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        if class_name_chirho != "Num" || !is_own_dictionary_key_chirho(ty_key_chirho) {
+            return None;
+        }
+        let dict_id_chirho = Self::own_dict_chirho(
+            "Num",
+            ty_key_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+        )?;
+        let selected_chirho = |method_chirho: &str| {
+            let (_class_chirho, selector_id_chirho) =
+                self.method_selectors_chirho.get(method_chirho)?;
+            Some(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(*selector_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+            })
         };
-        Some(CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(foldl_id_chirho)),
-                arg_chirho: Box::new(CoreExprChirho::VarChirho(operator_id_chirho)),
-            }),
-            arg_chirho: Box::new(start_chirho),
-        })
+        self.aggregate_fold_chirho(
+            selected_chirho(operator_chirho)?,
+            selected_chirho("fromInteger")?,
+            unit_chirho,
+        )
     }
 
     /// An evidenced `max`, `min`, `maximum` or `minimum` occurrence as its compare-backed
@@ -163,5 +225,33 @@ impl DictPassCtxChirho {
     pub(super) fn evidenced_value_chirho(&self, id_chirho: CoreIdChirho) -> Option<CoreExprChirho> {
         self.evidenced_print_function_chirho(id_chirho)
             .or_else(|| self.evidenced_applied_head_chirho(id_chirho))
+    }
+
+    /// [`Self::evidenced_value_chirho`] where the binding's dictionaries are in scope:
+    /// an own-key aggregate is served by them (row 586).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn evidenced_value_in_scope_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+    ) -> Option<CoreExprChirho> {
+        self.evidenced_value_chirho(id_chirho).or_else(|| {
+            self.own_aggregate_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+        })
+    }
+
+    /// [`Self::evidenced_applied_head_chirho`] where the binding's dictionaries are in
+    /// scope (row 586).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn evidenced_applied_head_in_scope_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+    ) -> Option<CoreExprChirho> {
+        self.evidenced_applied_head_chirho(id_chirho).or_else(|| {
+            self.own_aggregate_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+        })
     }
 }

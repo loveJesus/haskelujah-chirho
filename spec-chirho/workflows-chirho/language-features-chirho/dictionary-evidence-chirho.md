@@ -42,6 +42,13 @@ flowchart TD
   - A literal still on a unification variable, or on an instance method's skolem, produces no record and takes today's fallback.
   - Before row 584, a rigid literal produced no record either, and the fallback keyed it `Int`, not the binding's parameter. The interpreter masked this, because its float primops accept an Int operand. The natives read the Int's bits as a Double: `incChirho x = x + 1` under `Num a` printed 2.5 at Double, where GHC prints 3.5.
   - Controls: `literals_at_a_signature_variable_take_its_dictionary_everywhere_chirho`, which includes two predicates of one class, and `a_fractional_signatures_literal_takes_its_dictionary_chirho`, in `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
+- `sum` and `product` at a binding's own key fold over that binding's dictionary (row 586).
+  - Row 552 turned an evidenced aggregate at a concrete key K into `foldl $prim_Num_+_K ($prim_Num_fromInteger_K 0)`. At `$own:k` there is no such row, so `sum` fell back to the Prelude's Int-shaped `sum`.
+  - At Double the interpreter then failed on `AddIntChirho`, and both natives added the Doubles' bits as integers.
+  - Now `own_aggregate_chirho` (`rewrite_chirho/evidenced_aggregates_chirho.rs`) builds the same fold from selectors: `foldl ($sel_Num_+ d) ($sel_Num_fromInteger d 0)`.
+  - `d` is `own_dict_chirho`'s answer: the `$own:k` parameter, or the Num that a superclass extraction takes from `$dFractional`.
+  - The three rewrite sites with the binding's dictionaries in scope ask `evidenced_value_in_scope_chirho` and `evidenced_applied_head_in_scope_chirho`. The surviving-occurrence sweep has none, and keeps today's path.
+  - Controls: `sums_and_products_at_a_bindings_own_key_answer_as_ghc_everywhere_chirho`, covering the fold order, empty lists, Int, a point-free `product` and two predicates, and `a_fractional_bindings_aggregates_take_its_dictionary_chirho`, in `tests/native_error_helpers_chirho.rs`.
 - A key the checker inferred more than once (a re-check, a speculative branch) yields a record
   only when every inference agreed. An occurrence with an identity whose record is missing or
   conflicting receives nothing, and is never rescued by its span or its position.

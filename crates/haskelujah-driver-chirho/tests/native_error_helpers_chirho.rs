@@ -341,6 +341,54 @@ fn sums_and_products_answer_as_ghc_everywhere_chirho() {
     );
 }
 
+// ── Row 586: sum and product at the binding's own Num key ───────────────
+
+/// Under `Num a`, `sum` and `product` carried the binding's own key (`$own:k`) and still
+/// took the Int-shaped generic bindings. At Double the interpreter failed on
+/// `AddIntChirho`, and both natives added the Doubles' bits as integers: NaN, 0.0,
+/// -1.3671875000000001e-3. They now fold over the binding's own dictionary. The program
+/// covers the fold order (`0.6000000000000001`), empty lists, Int instantiations, a
+/// point-free `product`, a first-class use under `map`, and two predicates of one class.
+const OWN_AGGREGATES_CHIRHO: &str = "module Main where\ntotalChirho :: Num a => [a] -> a\ntotalChirho xs = sum xs\nprodChirho :: Num a => [a] -> a\nprodChirho = product\nbothChirho :: (Num a, Num b) => [a] -> [b] -> (a, b)\nbothChirho xs ys = (sum xs, product ys)\nmain :: IO ()\nmain = do\n  print (totalChirho [0.1, 0.2, 0.3 :: Double], totalChirho [1, 2, 3 :: Int])\n  print (totalChirho ([] :: [Double]), totalChirho [-1.5, 1.5 :: Double])\n  print (prodChirho [1.5, 2, 4 :: Double], prodChirho [2, 3, 7 :: Int])\n  print (prodChirho ([] :: [Double]), map totalChirho [[2.5], [1.5, 0.25 :: Double]])\n  print (bothChirho [1.5, 2.5 :: Double] [2, 3 :: Int], bothChirho [4, 5 :: Int] [0.5, 3 :: Double])\n";
+
+#[test]
+fn sums_and_products_at_a_bindings_own_key_answer_as_ghc_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        OWN_AGGREGATES_CHIRHO,
+        "(0.6000000000000001,6)\n(0.0,0.0)\n(12.0,42)\n(1.0,[2.5,1.75])\n((4.0,6),(9,1.5))\n",
+    );
+}
+
+/// Row 586: under `Fractional a` the aggregates fold over the Num inside `$dFractional`.
+/// The interpreter prints GHC's `(2.3333333333333335,9.0)`, where it failed on
+/// `AddIntChirho`. The natives still refuse the Fractional Double dictionary's `recip#`,
+/// the residual row 583 lifts.
+const FRACTIONAL_AGGREGATES_CHIRHO: &str = "module Main where\nmeanChirho :: Fractional a => [a] -> a\nmeanChirho xs = sum xs / fromIntegral (length xs)\nscaleSumChirho :: Fractional a => [a] -> a\nscaleSumChirho xs = sum xs * product xs\nmain :: IO ()\nmain = print (meanChirho [1, 2, 4 :: Double], scaleSumChirho [0.5, 4 :: Double])\n";
+
+#[test]
+fn a_fractional_bindings_aggregates_take_its_dictionary_chirho() {
+    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+        FRACTIONAL_AGGREGATES_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "ErrorHelperChirho.hs",
+        None,
+    )
+    .expect("the interpreter runs it");
+    assert_eq!(
+        machine_chirho.io_output_chirho, "(2.3333333333333335,9.0)\n",
+        "interpreter"
+    );
+    for backend_chirho in BACKENDS_CHIRHO {
+        let error_chirho =
+            native_round_trip_chirho(FRACTIONAL_AGGREGATES_CHIRHO, backend_chirho, "")
+                .expect_err("the natives refuse the Fractional dictionary's recip#");
+        assert!(
+            error_chirho.contains("does not support primitive(s): recip#/1"),
+            "{backend_chirho:?}: {error_chirho}"
+        );
+    }
+}
+
 // ── Row 566: a long literal unpacks whole across collections ─────────────
 
 /// A 2000-character literal used as a list. Natively it is unpacked cell by cell, and those
