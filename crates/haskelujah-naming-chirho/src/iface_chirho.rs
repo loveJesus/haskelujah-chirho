@@ -2583,7 +2583,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Semigroup"] {
+        {
+            let name_chirho = &"Semigroup";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["(<>)", "sconcat", "stimes"]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -3578,7 +3579,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.Identity
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["runIdentity"] {
+        {
+            let name_chirho = &"runIdentity";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -3762,7 +3764,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Solo"] {
+        {
+            let name_chirho = &"Solo";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["MkSolo"]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
             let (k_chirho, v_chirho) = mk_val_chirho("MkSolo");
@@ -5272,7 +5275,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Identity
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["runIdentity"] {
+        {
+            let name_chirho = &"runIdentity";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -5294,7 +5298,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Compose
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["getCompose"] {
+        {
+            let name_chirho = &"getCompose";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -5332,7 +5337,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Const
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["getConst"] {
+        {
+            let name_chirho = &"getConst";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -6460,7 +6466,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Storable"] {
+        {
+            let name_chirho = &"Storable";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -6608,7 +6615,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_val_chirho("setField");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
-        for name_chirho in &["HasField"] {
+        {
+            let name_chirho = &"HasField";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -7802,7 +7810,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Builder"] {
+        {
+            let name_chirho = &"Builder";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10693,7 +10702,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["ExceptionContext"] {
+        {
+            let name_chirho = &"ExceptionContext";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["ExceptionContext"]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10746,11 +10756,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Tree"] {
+        {
+            let name_chirho = &"Tree";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &["Node"]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Forest"] {
+        {
+            let name_chirho = &"Forest";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10782,7 +10794,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Binary"] {
+        {
+            let name_chirho = &"Binary";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10878,7 +10891,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Get"] {
+        {
+            let name_chirho = &"Get";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10908,7 +10922,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Coercible"] {
+        {
+            let name_chirho = &"Coercible";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -10921,7 +10936,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Identity
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["runIdentity"] {
+        {
+            let name_chirho = &"runIdentity";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -11042,7 +11058,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Set"] {
+        {
+            let name_chirho = &"Set";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11065,7 +11082,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["STRef"] {
+        {
+            let name_chirho = &"STRef";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11082,7 +11100,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["ST"] {
+        {
+            let name_chirho = &"ST";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11111,7 +11130,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["MArray"] {
+        {
+            let name_chirho = &"MArray";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11124,11 +11144,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Array.ST
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["runSTArray"] {
+        {
+            let name_chirho = &"runSTArray";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["STArray"] {
+        {
+            let name_chirho = &"STArray";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11182,7 +11204,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Storable"] {
+        {
+            let name_chirho = &"Storable";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11456,7 +11479,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Foldable"] {
+        {
+            let name_chirho = &"Foldable";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -11533,7 +11557,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Compose
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Compose"] {
+        {
+            let name_chirho = &"Compose";
             let (k_chirho, mut v_chirho) = mk_type_chirho(name_chirho, &["Compose"]);
             v_chirho.methods_chirho.push("getCompose".to_string());
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -11551,7 +11576,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Functor.Const
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Const"] {
+        {
+            let name_chirho = &"Const";
             let (k_chirho, mut v_chirho) = mk_type_chirho(name_chirho, &["Const"]);
             v_chirho.methods_chirho.push("getConst".to_string());
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -11614,11 +11640,13 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Control.Monad.IO.Class
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["MonadIO"] {
+        {
+            let name_chirho = &"MonadIO";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["liftIO"] {
+        {
+            let name_chirho = &"liftIO";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -11721,7 +11749,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Data.Sequence
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Seq"] {
+        {
+            let name_chirho = &"Seq";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -12231,7 +12260,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.Posix.ByteString
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["RawFilePath"] {
+        {
+            let name_chirho = &"RawFilePath";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -12664,7 +12694,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Vector"] {
+        {
+            let name_chirho = &"Vector";
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -15524,7 +15555,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // System.Timeout
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["timeout"] {
+        {
+            let name_chirho = &"timeout";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
@@ -15655,7 +15687,8 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     // Foreign.ForeignPtr.Unsafe
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["unsafeForeignPtrToPtr"] {
+        {
+            let name_chirho = &"unsafeForeignPtrToPtr";
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
