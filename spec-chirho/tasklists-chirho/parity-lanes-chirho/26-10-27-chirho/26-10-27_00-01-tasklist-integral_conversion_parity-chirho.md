@@ -9,7 +9,7 @@
 - [x] Add structural and all-engine controls for Int-to-Integer exactness, Int-to-Double preservation, first-class use, and downstream `encodeFloat`.
 - [x] Prove reach by removing the conversion route and observing the controls fail.
 - [x] Run the focused warm gate, changed-line Clippy, rustfmt, and diff review; run gitleaks over the committed range before handoff.
-- [ ] Commit the source and gate evidence, then hand the tested tip to the canonical landing chain.
+- [x] Commit the source and gate evidence, then hand the tested tip to the canonical landing chain.
 
 ## Placement Chirho
 
@@ -27,3 +27,4 @@
 - `cargo build -p haskelujah` completed with zero warnings.
 - The core library passed 184 of 184 tests. The complete `dictionary_evidence_chirho` integration binary passed 116 of 116 tests on six threads, including the interpreter, LLVM and Cranelift control.
 - `cargo fmt --all -- --check` and `git diff --check` are clean. Clippy completed successfully for the core and driver test targets; it reported no diagnostic on a changed line. Three pre-existing diagnostics in untouched lines of `prelude_chirho.rs` remain outside this row.
+- Source commit `4e57d152` rebased cleanly onto canonical `main_chirho` at `7f79fa8c`. The structural control and all-engine control passed again on the combined tree, `git diff --check` stayed clean, and gitleaks found no leak in the rebased source commit.
