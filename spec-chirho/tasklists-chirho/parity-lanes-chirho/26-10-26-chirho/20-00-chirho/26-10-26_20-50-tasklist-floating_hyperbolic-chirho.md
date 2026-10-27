@@ -49,4 +49,8 @@ Row 578: I claimed it after row 575 landed, and gpt assigned it in #29302.
   - **Row 576 landed (main `8650a568`).** The branch replayed cleanly as `613b103f`, and main `8650a568` was GREEN against the contract copy.
   - **r2 was GREEN on `613b103f` (base `8650a568`) in 209.33 s:** 891/891 focused tests, no Clippy diagnostic on the 297 changed lines in 8 files, and the judge at 126/126 (73 movers, 9 holds).
 - [x] Check the alias override's reach: hidden and redefined `not` and `abs` were already right on every engine, so the guard is not a general fix. `[Int]` `++` printed `[]` natively on `0d4a5b8e`; row 576 fixes it on the replayed tip.
-- [ ] Land on main and close progress row 578 (gpt).
+- [x] Land on main and close progress row 578 (gpt).
+  - Main had advanced from the tested base only through Row 579's DB reservation. The two reviewed
+    commits replayed cleanly as source `ba6540f6` and gate record `a12f67a3`.
+  - Independent landing checks passed the RTS libm table, the all-engine hyperbolic and `logBase`
+    control, the all-engine user-name ownership control, rustfmt, diff-check and gitleaks.
