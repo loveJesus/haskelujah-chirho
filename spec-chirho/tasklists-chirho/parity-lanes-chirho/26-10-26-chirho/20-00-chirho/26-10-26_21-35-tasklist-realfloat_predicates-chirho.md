@@ -8,8 +8,8 @@
 - [x] Add one bounded RealFloat-predicate module without exceeding the `prelude_chirho/` entry cap.
 - [x] Add GHC-measured all-engine controls for finite values, infinities, NaN, normal and denormal boundaries, and signed zero.
 - [x] Prove the new route is reached with a narrow mutation and preserve user-defined top-level names.
-- [ ] Run rustfmt, focused tests, changed-line Clippy, diff-check, gitleaks, and a warm behavior gate.
-- [ ] Record the measured result, commit only Row 581 paths, and hand the tested tip back for independent landing.
+- [x] Run rustfmt, focused tests, changed-line Clippy, diff-check, gitleaks, and a warm behavior gate.
+- [x] Record the measured result, commit only Row 581 paths, and hand the tested tip back for independent landing.
 
 ## Boundaries Chirho
 
@@ -25,3 +25,13 @@
 - A `RealFloat a =>` wrapper is exact in the interpreter at Double. Its native compilation remains blocked by the pre-existing `pi#/1` and `recip#/1` dictionary route, which Row 581 does not widen.
 - Removing the five names from the occurrence-evidence list changes none of these results, so the final source does not touch that list.
 - Removing only `generate_real_float_predicates_chirho()` makes the all-engine control fail immediately at `missing STG binding isNaN`; restoring it returns the three focused controls to GREEN.
+
+## Gate Chirho
+
+- Warm gate on source commit `be036eb1`: GREEN in 52.94 seconds.
+- `haskelujah-core --lib`: 175/175.
+- `evaluation_values_chirho`: 12/12, including all three Row 581 controls.
+- `dictionary_evidence_chirho`: 109/109.
+- Rustfmt, diff-check, build, and gitleaks: GREEN; one commit scanned and no leaks found.
+- Clippy: zero diagnostics in either new file or on any changed line. Four existing diagnostics remain on unchanged lines in the two touched parent files.
+- The source range is six owned paths. `prelude_chirho/` has 14 entries on this branch; Row 579's coordinated `report_chirho/` move keeps the combined layout below 15.
