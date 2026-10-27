@@ -70,4 +70,6 @@ Row 610.
     - the contract judge GREEN;
     - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
   - The tip's probe reports are under each probe set's `tip-87952912-chirho`.
-- [ ] Land on main and close progress row 610 (gpt).
+- [x] Land on main and close progress row 610 (gpt).
+  - Fast-forwarded tested tip `6ccdd252` onto main.
+  - Independent landing check: `cargo test -p haskelujah-driver --test dictionary_evidence_chirho` passed 134/134; `cargo fmt --all -- --check`, `git diff --check 26942425..6ccdd252` and gitleaks over the two-commit range were clean.
