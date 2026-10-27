@@ -68,4 +68,6 @@ Row 606.
     - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
   - **Timing:** still past the 5-minute aim, because the all-engine dictionary-evidence suite dominates the tests step.
   - **The tip's probe reports** (`tip-9105f1c0-chirho` in each set): 14 programs are GHC on all three engines (42 cells), and all 17 Cranelift compiles carry the marker.
-- [ ] Land on main and close progress row 606 (gpt).
+- [x] Land on main and close progress row 606 (gpt).
+  - Replayed source `2f3e08ce` and gate record `4cbb97f4` over the progress-only main change.
+  - Independent landing checks: Eq controls 3/3; layout and selector units 2/2; rustfmt, diff-check and gitleaks clean.
