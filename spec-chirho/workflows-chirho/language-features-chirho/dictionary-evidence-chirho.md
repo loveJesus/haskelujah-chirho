@@ -349,9 +349,9 @@ flowchart TD
 - `toEnum` and `fromEnum` are in the standard occurrence population. `toEnum :: Enum a => Int -> a`
   cannot be keyed from its Int argument because the class variable is its result. Bare `fromEnum`
   references and arguments whose type is opaque to the dictionary pass have the same need: the
-  checker's occurrence proof selects the concrete Enum row. A result-only polymorphic wrapper
-  such as `enumAt :: Enum a => Int -> a` is still defaulted before this dispatch and remains a
-  separate boundary.
+  checker's occurrence proof selects the concrete Enum row. Row 601 retains a result-only
+  polymorphic wrapper's Enum dictionary only when that same reference carries the wrapper's exact
+  `$own:<predicate-index>` proof; absent or mismatched proof keeps the existing default.
 - `succ` and `pred` at `Char` use the ordinary method-key route: their argument or enclosing
   `Enum a` dictionary already supplies the key. Row 567 adds body-backed `Enum Char` rows that
   apply `ord#`, shift by one, and restore the Char with `chr#`. GHC's `maxBound`/`minBound`
@@ -804,13 +804,16 @@ flowchart LR
 
 ## Current boundary
 
-- A separately declared result-only `Num` predicate remains a dictionary parameter when a free
-  constrained reference in that binding body carries the exact `$own:<predicate-index>` proof
-  (row 599). Definition and callers use the same body-aware inventory. Thus
+- A separately declared result-only `Num` or `Enum` predicate remains a dictionary parameter when
+  a free constrained reference in that binding body carries the exact
+  `$own:<predicate-index>` proof (rows 599 and 601). Definition and callers use the same body-aware
+  inventory. Thus
   `convert :: (Integral a, Num b) => a -> b; convert = fromIntegral` receives both dictionaries,
-  and its Integer and Double instantiations are exact on every engine. With no exact own proof,
-  result-only defaulting stays unchanged; this includes an inferred local binding whose body is
-  only an unkeyed literal. Other result-only classes also retain their existing policy.
+  and its Integer and Double instantiations are exact on every engine; likewise
+  `enumAt :: Enum a => Int -> a; enumAt = toEnum` receives the caller's concrete Enum dictionary.
+  With no exact own proof, result-only defaulting stays unchanged; this includes an inferred local
+  binding whose body is only an unkeyed literal. Other result-only classes retain their existing
+  policy.
 - Row 596 remains the occurrence-level foundation: concrete annotations directly on
   `fromIntegral`, and monomorphic aliases such as `Int -> Integer` or `Int -> Double`, carry both
   proofs independently of row 599.

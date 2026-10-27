@@ -80,22 +80,33 @@ main = print (fromEnum 21)
     );
 }
 
+/// Row 601: a result-only `Enum a` remains a real parameter when the body's
+/// `toEnum` reference carries its exact `$own:0` proof. Before this repair the
+/// interpreter kept Int values and failed when a String forced their Char tags;
+/// the native word representation happened to hide the wrong dictionary route.
 #[test]
-fn result_only_polymorphic_to_enum_keeps_the_named_boundary_chirho() {
+fn result_only_polymorphic_to_enum_uses_each_callers_dictionary_everywhere_chirho() {
     let program_chirho = r#"module Main where
+data ColorChirho = RedChirho | AmberChirho | GreenChirho deriving (Show, Enum)
 enumAtChirho :: Enum a => Int -> a
 enumAtChirho valueChirho = toEnum valueChirho
 main :: IO ()
-main = print (enumAtChirho 97 :: Char)
+main = do
+  print (enumAtChirho 97 :: Char)
+  print (enumAtChirho 42 :: Int)
+  print (enumAtChirho 1 :: Bool)
+  print (enumAtChirho 1 :: ColorChirho)
+  print (map enumAtChirho [97, 98] :: String)
+  print (map enumAtChirho [40, 41] :: [Int])
 "#;
+    let ghc_chirho = "'a'\n42\nTrue\nAmberChirho\n\"ab\"\n[40,41]\n";
 
-    // The pass still defaults a result-only class variable before occurrence
-    // dispatch. Row 520 repairs occurrences whose proof reaches the pass; it
-    // does not add result-type propagation.
     assert_eq!(
         run_chirho("ResultOnlyEnumChirho.hs", program_chirho),
-        "97\n"
+        ghc_chirho,
+        "interpreter"
     );
+    assert_native_chirho("ResultOnlyEnumChirho.hs", program_chirho, ghc_chirho);
 }
 
 #[test]
