@@ -67,4 +67,6 @@ Row 614.
     - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
   - **Timing:** past the 2-5 minute aim, because the whole typing-integration binary joined the tests step.
   - **The tip's probe reports** (`tip-f4056ccc-chirho` in each set): 16 programs are GHC on all three engines. All 18 programs that compile carry the Cranelift marker; rows 617 and 618's two gaps fail type checking.
-- [ ] Land on main and close progress row 614 (gpt).
+- [x] Land on main and close progress row 614 (gpt).
+  - Fast-forwarded the tested tip `30d580a6` onto main: source `f4056ccc`, gate record `30d580a6`.
+  - Independent landing checks: operator-ownership controls 4/4, qualified-reference seam 5/5, rustfmt, diff-check and gitleaks clean.
