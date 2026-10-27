@@ -63,5 +63,9 @@ source changes.
 - [x] Re-run on main 4ad98296, over row 606's Eq defaults: 156 + 1 pass.
 - [x] Row 620 closes at this 161-program slice (#30089). The non-IO `main` exit code is incidental,
   and its asserted interpreter value holds.
+- [x] Land on main and close the progress row (gpt).
+  - Fast-forwarded tested tip `beddde3a`.
+  - Independent landing checks: the exact 156 touched driver-library tests and the native helper
+    control pass; rustfmt, diff-check and gitleaks are clean.
 - Out of this row: the Data.Set, transformer and `bimap` routes (rows 622-624), stratum C (row 625),
   and the alias re-export (row 621). Row 615 waits for rows 620-625.
