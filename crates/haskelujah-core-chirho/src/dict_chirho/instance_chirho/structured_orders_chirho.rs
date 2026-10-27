@@ -14,6 +14,7 @@ use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreModuleChirho, InlineAnnotationChirho,
 };
+use haskelujah_typing_chirho::class_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 const ORD_KEY_DEPTH_LIMIT_CHIRHO: usize = 64;
@@ -88,7 +89,7 @@ impl DictPassCtxChirho {
             if key_chirho.starts_with('(') && key_chirho.ends_with(')') {
                 let fields_chirho =
                     split_outer_type_key_chirho(&key_chirho[1..key_chirho.len() - 1], ',')?;
-                if !(2..=3).contains(&fields_chirho.len()) {
+                if !(2..=MAX_TUPLE_INSTANCE_ARITY_CHIRHO).contains(&fields_chirho.len()) {
                     return None;
                 }
                 let compares_chirho = fields_chirho

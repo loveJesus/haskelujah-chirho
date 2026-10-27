@@ -22,6 +22,9 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho, TyVarChirho};
 use crate::unify_chirho::unify_chirho;
 
+mod tuple_instances_chirho;
+pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
+
 /// A class predicate: `ClassName Type`, e.g. `Eq Int`, `Show a`.
 /// For multi-parameter type classes: `Convert Int String`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2410,20 +2413,7 @@ impl ClassEnvChirho {
             )],
         });
 
-        // instance (Eq a, Eq b) => Eq (a, b)
         let b_var_chirho = TyVarChirho(9901);
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Eq".to_string(),
-            head_ty_chirho: TyChirho::TupleChirho(vec![
-                TyChirho::VarChirho(a_var_chirho),
-                TyChirho::VarChirho(b_var_chirho),
-            ]),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![
-                PredChirho::new_chirho("Eq", TyChirho::VarChirho(a_var_chirho)),
-                PredChirho::new_chirho("Eq", TyChirho::VarChirho(b_var_chirho)),
-            ],
-        });
 
         // instance Show a => Show (Maybe a)
         self.add_instance_chirho(InstDeclChirho {
@@ -2459,20 +2449,6 @@ impl ClassEnvChirho {
                 ],
             });
         }
-
-        // instance (Show a, Show b) => Show (a, b)
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Show".to_string(),
-            head_ty_chirho: TyChirho::TupleChirho(vec![
-                TyChirho::VarChirho(a_var_chirho),
-                TyChirho::VarChirho(b_var_chirho),
-            ]),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![
-                PredChirho::new_chirho("Show", TyChirho::VarChirho(a_var_chirho)),
-                PredChirho::new_chirho("Show", TyChirho::VarChirho(b_var_chirho)),
-            ],
-        });
 
         // instance Ord a => Ord [a]
         self.add_instance_chirho(InstDeclChirho {
@@ -2513,20 +2489,6 @@ impl ClassEnvChirho {
             )],
         });
 
-        // instance (Ord a, Ord b) => Ord (a, b)
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Ord".to_string(),
-            head_ty_chirho: TyChirho::TupleChirho(vec![
-                TyChirho::VarChirho(a_var_chirho),
-                TyChirho::VarChirho(b_var_chirho),
-            ]),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![
-                PredChirho::new_chirho("Ord", TyChirho::VarChirho(a_var_chirho)),
-                PredChirho::new_chirho("Ord", TyChirho::VarChirho(b_var_chirho)),
-            ],
-        });
-
         // instance Read a => Read [a]
         self.add_instance_chirho(InstDeclChirho {
             class_name_chirho: "Read".to_string(),
@@ -2552,53 +2514,8 @@ impl ClassEnvChirho {
             )],
         });
 
-        // 3-tuple instances
-        let c_var_chirho = TyVarChirho(9902);
-        // instance (Eq a, Eq b, Eq c) => Eq (a, b, c)
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Eq".to_string(),
-            head_ty_chirho: TyChirho::TupleChirho(vec![
-                TyChirho::VarChirho(a_var_chirho),
-                TyChirho::VarChirho(b_var_chirho),
-                TyChirho::VarChirho(c_var_chirho),
-            ]),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![
-                PredChirho::new_chirho("Eq", TyChirho::VarChirho(a_var_chirho)),
-                PredChirho::new_chirho("Eq", TyChirho::VarChirho(b_var_chirho)),
-                PredChirho::new_chirho("Eq", TyChirho::VarChirho(c_var_chirho)),
-            ],
-        });
-        // instance (Show a, Show b, Show c) => Show (a, b, c)
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Show".to_string(),
-            head_ty_chirho: TyChirho::TupleChirho(vec![
-                TyChirho::VarChirho(a_var_chirho),
-                TyChirho::VarChirho(b_var_chirho),
-                TyChirho::VarChirho(c_var_chirho),
-            ]),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![
-                PredChirho::new_chirho("Show", TyChirho::VarChirho(a_var_chirho)),
-                PredChirho::new_chirho("Show", TyChirho::VarChirho(b_var_chirho)),
-                PredChirho::new_chirho("Show", TyChirho::VarChirho(c_var_chirho)),
-            ],
-        });
-        // instance (Ord a, Ord b, Ord c) => Ord (a, b, c)
-        self.add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Ord".to_string(),
-            head_ty_chirho: TyChirho::TupleChirho(vec![
-                TyChirho::VarChirho(a_var_chirho),
-                TyChirho::VarChirho(b_var_chirho),
-                TyChirho::VarChirho(c_var_chirho),
-            ]),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![
-                PredChirho::new_chirho("Ord", TyChirho::VarChirho(a_var_chirho)),
-                PredChirho::new_chirho("Ord", TyChirho::VarChirho(b_var_chirho)),
-                PredChirho::new_chirho("Ord", TyChirho::VarChirho(c_var_chirho)),
-            ],
-        });
+        // Tuple instances, pairs through 15-tuples (row 604).
+        self.seed_tuple_instances_chirho();
 
         // instance Num a => Num [a] -- not standard, but avoids false errors
         // instance Enum a => Enum [a] -- not standard either, skip

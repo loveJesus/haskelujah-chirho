@@ -254,6 +254,16 @@ flowchart LR
     - In `tests/dictionary_evidence_chirho/ordering_chirho/structured_equalities_chirho.rs`: `structured_equality_answers_as_ghc_everywhere_chirho`, `int_shaped_keys_and_infix_not_equal_stay_exact_everywhere_chirho` and `unserved_equalities_still_fail_by_name_everywhere_chirho`.
     - Structural: `structured_eq_rows_compose_only_from_body_backed_components_chirho` and `routable_consumers_get_compiler_owned_helpers_chirho`.
 
+- Tuples have `Eq`, `Show` and `Ord` at every arity GHC's base gives them, 2 to 15 (row 604).
+  - **The defect:** typing seeded instances for pairs and triples only. `print`, `show`, `==` and `compare` on a 4-tuple failed to type-check on every engine (`no instance for Show (Int, Bool, Char, [Char])`).
+  - **The fix:**
+    - `class_chirho/tuple_instances_chirho.rs` seeds `instance (C a1, …, C an) => C (a1, …, an)` for the three classes at arities 2 to `MAX_TUPLE_INSTANCE_ARITY_CHIRHO` (15). This replaces the pair and triple seeds, which moved out of `class_chirho.rs`.
+    - The structured Ord rows (row 572) and Eq rows (row 603) compose tuples up to the same bound.
+    - The derived-Show generator was already arity-generic.
+  - **The bound:** a 16-tuple has no instance, as in GHC, which rejects its `print` too.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/tuple_instances_chirho.rs`: `tuples_show_as_ghc_at_every_arity_everywhere_chirho` and `tuples_compare_as_ghc_at_every_arity_everywhere_chirho`, which includes row 603's consumers on 4-tuples.
+    - In `class_chirho/tuple_instances_tests_chirho.rs`: `tuple_instances_cover_ghcs_arities_and_no_more_chirho`.
 ## Reference evidence (bricks 3 and 4)
 
 ```mermaid

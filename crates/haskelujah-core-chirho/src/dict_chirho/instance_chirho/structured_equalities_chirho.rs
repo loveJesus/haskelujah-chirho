@@ -16,6 +16,7 @@ use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho,
 };
 use haskelujah_span_chirho::SpanChirho;
+use haskelujah_typing_chirho::class_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 const EQ_KEY_DEPTH_LIMIT_CHIRHO: usize = 64;
@@ -94,7 +95,7 @@ impl DictPassCtxChirho {
     }
 
     /// The body-backed `$prim_Eq_==_K` row for `key_chirho`: the existing one, or one
-    /// composed for `Maybe`, a list or a tuple of arity 2 or 3 from its components' rows.
+    /// composed for `Maybe`, a list or a tuple of up to 15 fields (row 604) from its components' rows.
     /// None when any component lacks a real body.
     pub(in crate::dict_chirho) fn ensure_eq_row_chirho(
         &mut self,
@@ -139,7 +140,9 @@ impl DictPassCtxChirho {
             })
         } else if key_chirho.starts_with('(') && key_chirho.ends_with(')') {
             split_outer_type_key_chirho(&key_chirho[1..key_chirho.len() - 1], ',')
-                .filter(|fields_chirho| (2..=3).contains(&fields_chirho.len()))
+                .filter(|fields_chirho| {
+                    (2..=MAX_TUPLE_INSTANCE_ARITY_CHIRHO).contains(&fields_chirho.len())
+                })
                 .and_then(|fields_chirho| {
                     fields_chirho
                         .iter()

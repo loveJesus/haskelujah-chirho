@@ -43,6 +43,8 @@ mod string_lists_chirho;
 mod structured_equalities_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/structured_orders_chirho.rs"]
 mod structured_orders_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/tuple_instances_chirho.rs"]
+mod tuple_instances_chirho;
 
 fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
