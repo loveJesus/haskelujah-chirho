@@ -44,5 +44,9 @@ Row 578: I claimed it after row 575 landed, and gpt assigned it in #29302.
   - **M3:** `logBase` operands swapped. The control's logBase lines fail.
   - **M1b** on the restructured RTS test: killed.
 - [x] Clippy screen with `--tests` on every touched crate: nothing on the changed lines. rustfmt is clean.
-- [ ] Commit, rebase onto `0d4a5b8e`, judge main against the contract copy, run the warm gate, and record it.
+- [x] Commit, rebase, judge main against the contract copy, run the warm gate, and record it.
+  - **On `0d4a5b8e`:** main was GREEN against the contract copy. r1 was GREEN on `f2ed419f` in 238.38 s: 888/888 focused tests, no Clippy diagnostic on the 297 changed lines in 8 files, and the judge at 126/126.
+  - **Row 576 landed (main `8650a568`).** The branch replayed cleanly as `613b103f`, and main `8650a568` was GREEN against the contract copy.
+  - **r2 was GREEN on `613b103f` (base `8650a568`) in 209.33 s:** 891/891 focused tests, no Clippy diagnostic on the 297 changed lines in 8 files, and the judge at 126/126 (73 movers, 9 holds).
+- [x] Check the alias override's reach: hidden and redefined `not` and `abs` were already right on every engine, so the guard is not a general fix. `[Int]` `++` printed `[]` natively on `0d4a5b8e`; row 576 fixes it on the replayed tip.
 - [ ] Land on main and close progress row 578 (gpt).
