@@ -2115,7 +2115,7 @@ impl ClassEnvChirho {
         });
 
         // Enum instances
-        for ty_name_chirho in &["Int", "Integer", "Char", "Bool", "Word"] {
+        for ty_name_chirho in &["Int", "Integer", "Char", "Bool", "Word", "Ordering"] {
             self.add_instance_chirho(InstDeclChirho {
                 class_name_chirho: "Enum".to_string(),
                 head_ty_chirho: TyChirho::ConChirho(ty_name_chirho.to_string()),
@@ -3654,6 +3654,21 @@ mod tests_chirho {
         assert!(result_chirho.is_some());
         // Eq Int has no context, so sub-goals should be empty
         assert!(result_chirho.unwrap().is_empty());
+    }
+
+    #[test]
+    fn resolve_enum_ordering_chirho() {
+        let mut env_chirho = ClassEnvChirho::new_chirho();
+        env_chirho.seed_standard_chirho();
+
+        let pred_chirho =
+            PredChirho::new_chirho("Enum", TyChirho::ConChirho("Ordering".to_string()));
+        assert!(
+            env_chirho
+                .resolve_chirho(&pred_chirho)
+                .is_some_and(|subgoals_chirho| subgoals_chirho.is_empty()),
+            "Ordering has GHC's ground Enum instance"
+        );
     }
 
     #[test]

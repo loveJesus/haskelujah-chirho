@@ -142,19 +142,33 @@ flowchart TD
   - Controls: `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs` and the body-backed
     refusal unit in `rewrite_chirho/occurrence_rows_tests_chirho.rs`.
 - The shared lazy bounded-range bindings preserve the runtime kind of their current Enum value
-  when advancing it (row 569).
-  - `enumFromTo` and `enumFromThenTo` are generated once for the current Int/Char representation.
-    Their recursive advance uses `enumStepChirho#`: an Int plus a step remains Int, while the
-    interpreter turns a Char plus a step back into Char. LLVM, Cranelift and Wasm lower the same
-    primitive as integer addition because native Char values already are scalar words.
+  when advancing it (rows 569 and 602).
+  - `enumFromTo` and `enumFromThenTo` are generated once for the current Int/Char/Ordering
+    representation. Their recursive advance uses `enumStepChirho#`: an Int plus a step remains
+    Int, while the interpreter restores a Char or Ordering constructor after advancing it. LLVM,
+    Cranelift and Wasm lower the same primitive as integer addition because native Char and
+    Ordering values already are scalar words.
   - Before this, the first element of a bounded Char range was a Char literal and each recursive
     successor was an Int. `last ['a'..'e']` therefore returned `101`, and consumers saw a mixed
     list. The new step changes no list or String representation and does not claim the separate
     native Show-String boundary.
+  - `Ordering` has the body-backed `succ`, `pred`, `toEnum` and `fromEnum` rows GHC supplies.
+    Its finite-range adapter recognizes only LT/EQ/GT at the shared range primitives. The
+    one-step value outside the constructor interval is a transient Int used by the terminating
+    comparison; it cannot become a list element.
   - Unbounded ranges still use their existing `+#` step. A non-scalar Char result fails by name in
     the interpreter; representing GHC surrogate Chars remains a separate boundary.
-  - Controls: `tests/dictionary_evidence_chirho/enum_occurrences_chirho.rs` and the primitive unit
-    test `enum_step_preserves_the_runtime_value_kind_chirho`.
+  - Controls: `tests/dictionary_evidence_chirho/enum_occurrences_chirho.rs`,
+    `tests/dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs`, and the
+    primitive unit test `enum_step_preserves_the_runtime_value_kind_chirho`.
+
+```mermaid
+flowchart LR
+    seed_eo_chirho[Enum Ordering instance] --> rows_eo_chirho[body-backed methods]
+    rows_eo_chirho --> finite_eo_chirho[finite enumFromTo helpers]
+    finite_eo_chirho --> native_eo_chirho[native scalar tags]
+    finite_eo_chirho --> interp_eo_chirho[interpreter boxed constructor adapter]
+```
 - The desugarer's blind Int primops take the float primop at a Double operand (row 547).
   - Infix and section `<`, `<=`, `>` and `>=` become `<#`, `<=#`, `>#` and `>=#` before any type is known. So does a prefix minus on an operand that is not a float literal, which becomes `negate#`.
   - `rewrite_method_refs_with_locals_chirho` gives such a primop its float counterpart when an operand keys as Double: binder types, type applications and literal records. The rule is `rewrite_chirho/double_primops_chirho.rs`.
@@ -375,11 +389,12 @@ flowchart TD
   checker's occurrence proof selects the concrete Enum row. Row 601 retains a result-only
   polymorphic wrapper's Enum dictionary only when that same reference carries the wrapper's exact
   `$own:<predicate-index>` proof; absent or mismatched proof keeps the existing default.
-- `succ` and `pred` at `Char` use the ordinary method-key route: their argument or enclosing
-  `Enum a` dictionary already supplies the key. Row 567 adds body-backed `Enum Char` rows that
+- `succ` and `pred` at `Char` or `Ordering` use the ordinary method-key route: their argument or
+  enclosing `Enum a` dictionary already supplies the key. Row 567 adds body-backed `Enum Char` rows that
   apply `ord#`, shift by one, and restore the Char with `chr#`. GHC's `maxBound`/`minBound`
   errors are preserved. A shift into the surrogate interval fails by name because the current
-  Rust `char` interpreter representation cannot carry the value GHC produces.
+  Rust `char` interpreter representation cannot carry the value GHC produces. Row 602's
+  `Ordering` rows case directly on LT/EQ/GT and preserve GHC's endpoint messages.
 
 ## Proven list keys at method occurrences (R2, 2026-10-17)
 
@@ -695,15 +710,13 @@ flowchart TD
     `import Prelude hiding (Ordering(..))`) keeps them;
   - a qualified `P.LT` resolves as before;
   - computed Orderings and user enums are untouched.
-- **Tests:** `tests/dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs`. It also keeps
-  `succ LT` (T10) and `maximum [LT, GT, EQ]` (T11) with GHC's answers in an unasserted table,
-  so the oracle still runs them. No committed test pins their current behavior.
+- **Tests:** `tests/dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs`.
+  `succ LT` (T10), every other `Enum Ordering` method and both finite range directions are now
+  asserted on the interpreter, LLVM and Cranelift. `maximum [LT, GT, EQ]` is covered by the
+  compare-backed extrema row.
 - **Bounded, still open, each its own unit:**
-  - `succ LT` (T10) used to crash in the Int addition primop. It is now rejected at `check`,
-    naming the missing `Enum Ordering` instance (E0204). The class environment seeds Ordering's
-    Eq, Ord, Show, Semigroup, Monoid and NFData, but not Enum, Bounded or Read.
-  - `maximum [LT, GT, EQ]` (T11) still crashes in the Int `<=` primop, before and after the
-    seed. It is the Ord method-model boundary recorded under `Ord [T]` above.
+  - `Ordering` still has no `Bounded` or `Read` instance in the class environment;
+  - unbounded `enumFrom` remains outside row 602's finite-range contract;
   - any other constructor the seed lacks still becomes a fresh variable, so an imported `:|` is
     accepted at Int;
   - Eq and Ord still default to Int without Num;

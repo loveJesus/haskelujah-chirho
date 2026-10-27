@@ -11,7 +11,7 @@
 use haskelujah_driver::compile_source_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
-use super::run_chirho;
+use super::{assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho};
 
 /// GHC rejects the program, so the checker must too, with a message naming every reason.
 fn rejected_like_ghc_chirho(source_chirho: &str, file_name_chirho: &str, reasons_chirho: &[&str]) {
@@ -73,14 +73,60 @@ fn bare_ordering_literals_answer_as_ghc_chirho() {
             "{file_name_chirho}"
         );
     }
-    // An open boundary, its own unit: GHC's answer is recorded so the oracle still runs it,
-    // but nothing here asserts it. `succ LT` needs Ordering's Enum instance, which the class
-    // environment lacks, so it is now rejected naming it.
-    let _open_boundaries_chirho = [(
-        "T10SuccLtChirho.hs",
-        "module Main where\nmain :: IO ()\nmain = print (succ LT)\n",
-        "EQ\n",
-    )];
+}
+
+/// Row 602: `Ordering` now has the same finite Enum surface as GHC. Native
+/// constructors are scalar tags already; the interpreter's range adapter keeps
+/// its boxed LT/EQ/GT representation through the shared finite-range helpers.
+const ORDERING_ENUM_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (succ LT)\n  print (pred GT)\n  print (toEnum 0 :: Ordering)\n  print (toEnum 1 :: Ordering)\n  print (toEnum 2 :: Ordering)\n  print (fromEnum LT, fromEnum EQ, fromEnum GT)\n  print ([LT .. GT] :: [Ordering])\n  print ([GT, EQ .. LT] :: [Ordering])\n";
+
+const ORDERING_ENUM_GHC_CHIRHO: &str = "EQ\nEQ\nLT\nEQ\nGT\n(0,1,2)\n[LT,EQ,GT]\n[GT,EQ,LT]\n";
+
+#[test]
+fn ordering_enum_answers_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("OrderingEnumChirho.hs", ORDERING_ENUM_CHIRHO),
+        ORDERING_ENUM_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho(
+        "OrderingEnumChirho.hs",
+        ORDERING_ENUM_CHIRHO,
+        ORDERING_ENUM_GHC_CHIRHO,
+    );
+
+    let char_hold_chirho =
+        "module Main where\nmain :: IO ()\nmain = print (['a' .. 'c'] :: [Char])\n";
+    assert_eq!(
+        run_chirho("CharRangeHoldChirho.hs", char_hold_chirho),
+        "\"abc\"\n"
+    );
+    assert_native_chirho("CharRangeHoldChirho.hs", char_hold_chirho, "\"abc\"\n");
+}
+
+#[test]
+fn ordering_enum_endpoints_fail_as_ghc_everywhere_chirho() {
+    for (file_name_chirho, expression_chirho, message_chirho) in [
+        (
+            "OrderingSuccEndpointChirho.hs",
+            "succ GT",
+            "Prelude.Enum.Ordering.succ: bad argument",
+        ),
+        (
+            "OrderingPredEndpointChirho.hs",
+            "pred LT",
+            "Prelude.Enum.Ordering.pred: bad argument",
+        ),
+        (
+            "OrderingToEnumEndpointChirho.hs",
+            "toEnum 3 :: Ordering",
+            "Prelude.Enum.Ordering.toEnum: bad argument",
+        ),
+    ] {
+        let program_chirho =
+            format!("module Main where\nmain :: IO ()\nmain = print ({expression_chirho})\n");
+        assert_named_failure_everywhere_chirho(file_name_chirho, &program_chirho, message_chirho);
+    }
 }
 
 #[test]

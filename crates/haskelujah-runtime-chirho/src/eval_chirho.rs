@@ -3952,6 +3952,12 @@ impl MachineChirho {
             }
         }
 
+        if let Some(result_chirho) =
+            self.try_apply_ordering_enum_prim_chirho(op_chirho, args_chirho)?
+        {
+            return Ok(result_chirho);
+        }
+
         let resolved_args_chirho =
             self.resolve_primitive_operands_chirho(op_chirho, args_chirho)?;
 

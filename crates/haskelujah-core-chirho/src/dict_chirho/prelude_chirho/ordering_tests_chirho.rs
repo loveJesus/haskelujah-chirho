@@ -1,13 +1,12 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! The four `Ordering -> Bool` tests behind the compare route (row 551). GHC's `Ord`
-//! class defaults read `<`, `<=`, `>` and `>=` off one `compare`: `<` accepts LT, `<=`
-//! rejects GT, `>` accepts GT and `>=` rejects LT. Each test scrutinizes its Ordering
-//! once, so a routed `compare a b` is evaluated once.
+//! Body-backed operations over `Ordering`. The four `Ordering -> Bool` tests serve
+//! the compare route (row 551). The `Enum Ordering` rows preserve GHC's constructor
+//! order and its endpoint failures (row 602).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{
-    AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho,
+    AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho,
     DictPassCtxChirho, InlineAnnotationChirho, SpanChirho, TyChirho,
 };
 
@@ -24,6 +23,26 @@ fn bool_chirho(value_chirho: bool) -> CoreExprChirho {
     CoreExprChirho::ConAppChirho {
         con_name_chirho: if value_chirho { "True" } else { "False" }.to_string(),
         args_chirho: vec![],
+    }
+}
+
+fn ordering_chirho(name_chirho: &str) -> CoreExprChirho {
+    CoreExprChirho::ConAppChirho {
+        con_name_chirho: name_chirho.to_string(),
+        args_chirho: vec![],
+    }
+}
+
+fn int_chirho(value_chirho: i64) -> CoreExprChirho {
+    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(value_chirho))
+}
+
+fn error_chirho(message_chirho: &str) -> CoreExprChirho {
+    CoreExprChirho::PrimOpChirho {
+        name_chirho: "error".to_string(),
+        args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+            message_chirho.to_string(),
+        ))],
     }
 }
 
@@ -72,5 +91,146 @@ impl DictPassCtxChirho {
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
+    }
+
+    /// Generate the four body-backed `Enum Ordering` methods.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_ordering_enum_rows_chirho(&mut self) {
+        let ordering_ty_chirho = TyChirho::ConChirho("Ordering".to_string());
+        let int_ty_chirho = TyChirho::int_chirho();
+
+        let tag_chirho = self.fresh_binder_chirho("tag", int_ty_chirho.clone());
+        let tag_case_chirho = self.fresh_binder_chirho("$ordering_enum_tag", int_ty_chirho.clone());
+        let to_enum_chirho = CoreExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(tag_chirho.id_chirho)),
+            bind_chirho: tag_case_chirho,
+            result_ty_chirho: ordering_ty_chirho.clone(),
+            alts_chirho: vec![
+                CoreAltChirho {
+                    con_chirho: AltConChirho::LitConChirho(CoreLitChirho::IntChirho(0)),
+                    binders_chirho: vec![],
+                    rhs_chirho: ordering_chirho("LT"),
+                },
+                CoreAltChirho {
+                    con_chirho: AltConChirho::LitConChirho(CoreLitChirho::IntChirho(1)),
+                    binders_chirho: vec![],
+                    rhs_chirho: ordering_chirho("EQ"),
+                },
+                CoreAltChirho {
+                    con_chirho: AltConChirho::LitConChirho(CoreLitChirho::IntChirho(2)),
+                    binders_chirho: vec![],
+                    rhs_chirho: ordering_chirho("GT"),
+                },
+                CoreAltChirho {
+                    con_chirho: AltConChirho::DefaultChirho,
+                    binders_chirho: vec![],
+                    rhs_chirho: error_chirho("Prelude.Enum.Ordering.toEnum: bad argument"),
+                },
+            ],
+        };
+        self.push_ordering_enum_row_chirho(
+            "$prim_Enum_toEnum_Ordering",
+            TyChirho::fun_chirho(int_ty_chirho.clone(), ordering_ty_chirho.clone()),
+            tag_chirho,
+            to_enum_chirho,
+        );
+
+        let ordering_value_chirho =
+            self.fresh_binder_chirho("ordering", ordering_ty_chirho.clone());
+        let from_enum_chirho = self.ordering_case_chirho(
+            &ordering_value_chirho,
+            int_ty_chirho.clone(),
+            [int_chirho(0), int_chirho(1), int_chirho(2)],
+        );
+        self.push_ordering_enum_row_chirho(
+            "$prim_Enum_fromEnum_Ordering",
+            TyChirho::fun_chirho(ordering_ty_chirho.clone(), int_ty_chirho),
+            ordering_value_chirho,
+            from_enum_chirho,
+        );
+
+        let ordering_value_chirho =
+            self.fresh_binder_chirho("ordering", ordering_ty_chirho.clone());
+        let succ_chirho = self.ordering_case_chirho(
+            &ordering_value_chirho,
+            ordering_ty_chirho.clone(),
+            [
+                ordering_chirho("EQ"),
+                ordering_chirho("GT"),
+                error_chirho("Prelude.Enum.Ordering.succ: bad argument"),
+            ],
+        );
+        self.push_ordering_enum_row_chirho(
+            "$prim_Enum_succ_Ordering",
+            TyChirho::fun_chirho(ordering_ty_chirho.clone(), ordering_ty_chirho.clone()),
+            ordering_value_chirho,
+            succ_chirho,
+        );
+
+        let ordering_value_chirho =
+            self.fresh_binder_chirho("ordering", ordering_ty_chirho.clone());
+        let pred_chirho = self.ordering_case_chirho(
+            &ordering_value_chirho,
+            ordering_ty_chirho.clone(),
+            [
+                error_chirho("Prelude.Enum.Ordering.pred: bad argument"),
+                ordering_chirho("LT"),
+                ordering_chirho("EQ"),
+            ],
+        );
+        self.push_ordering_enum_row_chirho(
+            "$prim_Enum_pred_Ordering",
+            TyChirho::fun_chirho(ordering_ty_chirho.clone(), ordering_ty_chirho),
+            ordering_value_chirho,
+            pred_chirho,
+        );
+    }
+
+    fn ordering_case_chirho(
+        &mut self,
+        value_chirho: &BinderChirho,
+        result_ty_chirho: TyChirho,
+        results_chirho: [CoreExprChirho; 3],
+    ) -> CoreExprChirho {
+        let case_chirho =
+            self.fresh_binder_chirho("$ordering_enum_case", value_chirho.ty_chirho.clone());
+        CoreExprChirho::CaseChirho {
+            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(value_chirho.id_chirho)),
+            bind_chirho: case_chirho,
+            result_ty_chirho,
+            alts_chirho: ["LT", "EQ", "GT"]
+                .into_iter()
+                .zip(results_chirho)
+                .map(|(constructor_chirho, rhs_chirho)| CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho(constructor_chirho.to_string()),
+                    binders_chirho: vec![],
+                    rhs_chirho,
+                })
+                .collect(),
+        }
+    }
+
+    fn push_ordering_enum_row_chirho(
+        &mut self,
+        name_chirho: &str,
+        ty_chirho: TyChirho,
+        parameter_chirho: BinderChirho,
+        body_chirho: CoreExprChirho,
+    ) {
+        let id_chirho = self.resolve_or_fresh_id_chirho(name_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho,
+                name_chirho: name_chirho.to_string(),
+                ty_chirho,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: parameter_chirho,
+                body_chirho: Box::new(body_chirho),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
     }
 }

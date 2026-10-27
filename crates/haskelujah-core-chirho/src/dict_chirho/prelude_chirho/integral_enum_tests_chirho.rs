@@ -443,6 +443,19 @@ fn every_integral_dictionary_takes_real_rows_chirho() {
 }
 
 #[test]
+fn ordering_enum_dictionary_takes_four_body_backed_rows_chirho() {
+    let result_chirho = dict_pass_chirho();
+    for method_chirho in ["toEnum", "fromEnum", "succ", "pred"] {
+        let row_chirho = slot_row_chirho(&result_chirho, "Ordering", method_chirho);
+        assert!(
+            !DictPassCtxChirho::is_generated_missing_method_body_chirho(&row_chirho.rhs_chirho),
+            "{} is body-backed",
+            row_chirho.binder_chirho.name_chirho
+        );
+    }
+}
+
+#[test]
 fn wide_from_enum_slots_stay_missing_method_stubs_chirho() {
     let wide_chirho: BTreeSet<&str> = INTEGRAL_KEYS_CHIRHO
         .iter()
