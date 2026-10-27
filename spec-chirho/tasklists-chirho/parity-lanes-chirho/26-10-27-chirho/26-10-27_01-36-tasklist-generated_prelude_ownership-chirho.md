@@ -72,4 +72,4 @@ Row 597.
 - [x] **Review repair (#29728):** the pre-existing `collect_binders_chirho` doc had ended up above the new `is_compiler_internal_name_chirho`, where rustdoc attached it to the classifier. It is back above `collect_binders_chirho`.
   - The change is comment-only, so per #29728 only rustfmt and diff-check reran, and both are clean.
   - Source `30006f6d` differs from the gated `a6e5b82d` only in those two doc lines.
-- [ ] Land on main and close progress row 597 (gpt).
+- [x] Land on main and close progress row 597 (gpt, `aead5ef7`; progress close follows).
