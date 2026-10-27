@@ -235,3 +235,196 @@ fn a_local_result_literal_takes_the_enclosing_dictionary_everywhere_chirho() {
     );
     assert_native_chirho("LocalResultLiteralChirho.hs", program_chirho, ghc_chirho);
 }
+
+// Row 660: a literal's method is the class's, never a binding of the program's own.
+
+// The generated `fromInteger`, `fromString` (OverloadedStrings) and `fromList` (OverloadedLists)
+
+// used to resolve lexically, so a program that defined one, at top level or in a `where`,
+
+// captured its literals: the interpreter hit its step limit and the natives ran to a timeout or
+
+// died with a signal, or printed the wrong answer. Under RebindableSyntax the binding in scope
+
+// is the literal's, as GHC defines. Every table is GHC 9.14.1's output, byte for byte as
+
+// measured. workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+
+const INTEGER_LITERAL_MOVERS_CHIRHO: [(&str, &str, &str); 6] = [
+    (
+        "LSignedFromIntegerChirho.hs",
+        "module Main where\nimport Prelude hiding (fromInteger)\nfromInteger :: Integer -> Int\nfromInteger x = 42\nmain :: IO ()\nmain = print (fromInteger 5, 5 :: Int)\n",
+        "(42,5)\n",
+    ),
+    (
+        "LSignedIntegerChirho.hs",
+        "module Main where\nimport Prelude hiding (fromInteger)\nimport qualified Prelude as P\nfromInteger :: Integer -> Integer\nfromInteger n = n P.* 10\nmain :: IO ()\nmain = print (fromInteger 4, 4 :: Integer)\n",
+        "(40,4)\n",
+    ),
+    (
+        "LLiteralsOnlyChirho.hs",
+        "module Main where\nimport Prelude hiding (fromInteger)\nfromInteger :: Integer -> Int\nfromInteger _ = 7\nmain :: IO ()\nmain = print (1 + 2 :: Int)\n",
+        "3\n",
+    ),
+    (
+        "LWhereFromIntegerChirho.hs",
+        "module Main where\nmain :: IO ()\nmain = print (x :: Int)\n  where\n    fromInteger _ = 9\n    x = 3\n",
+        "3\n",
+    ),
+    (
+        "LWhereExplicitChirho.hs",
+        "module Main where\nmain :: IO ()\nmain = print (fromInteger 5 :: Int, 3 :: Int)\n  where\n    fromInteger _ = 9\n",
+        "(9,3)\n",
+    ),
+    (
+        "LNoImplicitPreludeChirho.hs",
+        "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Main where\nimport Prelude (IO, Int, Integer, print)\nfromInteger :: Integer -> Int\nfromInteger _ = 7\nmain :: IO ()\nmain = print (21 :: Int)\n",
+        "21\n",
+    ),
+];
+
+const STRING_LITERAL_MOVERS_CHIRHO: [(&str, &str, &str); 5] = [
+    (
+        "LFromStringChirho.hs",
+        "{-# LANGUAGE OverloadedStrings #-}\nmodule Main where\nfromString :: String -> Int\nfromString _ = 7\nmain :: IO ()\nmain = putStrLn \"literal\"\n",
+        "literal\n",
+    ),
+    (
+        "SStringExplicitChirho.hs",
+        "{-# LANGUAGE OverloadedStrings #-}\nmodule Main where\nfromString :: String -> Int\nfromString _ = 7\nmain :: IO ()\nmain = do\n  print (fromString \"x\")\n  putStrLn \"literal\"\n",
+        "7\nliteral\n",
+    ),
+    (
+        "SStringWhereChirho.hs",
+        "{-# LANGUAGE OverloadedStrings #-}\nmodule Main where\nmain :: IO ()\nmain = putStrLn s\n  where\n    fromString _ = \"own\"\n    s = \"literal\"\n",
+        "literal\n",
+    ),
+    (
+        "SStringNoImplicitPreludeChirho.hs",
+        "{-# LANGUAGE NoImplicitPrelude, OverloadedStrings #-}\nmodule Main where\nimport Prelude (IO, Int, String, putStrLn)\nfromString :: String -> Int\nfromString _ = 7\nmain :: IO ()\nmain = putStrLn \"literal\"\n",
+        "literal\n",
+    ),
+    (
+        "SCustomIsStringChirho.hs",
+        "{-# LANGUAGE OverloadedStrings #-}\nmodule Main where\nimport Data.String (IsString (..))\nnewtype Name = Name String deriving Show\ninstance IsString Name where\n  fromString s = Name (s ++ \"!\")\nmain :: IO ()\nmain = do\n  print (\"ab\" :: Name)\n  putStrLn \"plain\"\n",
+        "Name \"ab!\"\nplain\n",
+    ),
+];
+
+const LIST_LITERAL_MOVERS_CHIRHO: [(&str, &str, &str); 3] = [
+    (
+        "LFromListChirho.hs",
+        "{-# LANGUAGE OverloadedLists #-}\nmodule Main where\nfromList :: [Int] -> [Int]\nfromList _ = []\nmain :: IO ()\nmain = print ([1, 2, 3] :: [Int])\n",
+        "[1,2,3]\n",
+    ),
+    (
+        "LListExplicitChirho.hs",
+        "{-# LANGUAGE OverloadedLists #-}\nmodule Main where\nfromList :: [Int] -> [Int]\nfromList = reverse\nmain :: IO ()\nmain = do\n  print (fromList [1, 2, 3])\n  print ([4, 5, 6] :: [Int])\n",
+        "[3,2,1]\n[4,5,6]\n",
+    ),
+    (
+        "LListWhereChirho.hs",
+        "{-# LANGUAGE OverloadedLists #-}\nmodule Main where\nmain :: IO ()\nmain = print xs\n  where\n    fromList _ = [9 :: Int]\n    xs = [1, 2] :: [Int]\n",
+        "[1,2]\n",
+    ),
+];
+
+const REBINDABLE_LITERAL_HOLDS_CHIRHO: [(&str, &str, &str); 3] = [
+    (
+        "LRebindableChirho.hs",
+        "{-# LANGUAGE RebindableSyntax #-}\nmodule Main where\nimport Prelude hiding (fromInteger)\nimport qualified Prelude as P\nfromInteger :: Integer -> Int\nfromInteger n = P.fromInteger (n P.+ n)\nmain :: IO ()\nmain = print (21 :: Int)\n",
+        "42\n",
+    ),
+    (
+        "LFromStringRebindableChirho.hs",
+        "{-# LANGUAGE RebindableSyntax, OverloadedStrings #-}\nmodule Main where\nimport Prelude\nfromString :: String -> String\nfromString s = s ++ ['!']\nmain :: IO ()\nmain = putStrLn \"literal\"\n",
+        "literal!\n",
+    ),
+    (
+        "LFromListRebindableChirho.hs",
+        "{-# LANGUAGE RebindableSyntax, OverloadedLists #-}\nmodule Main where\nimport Prelude\nfromListN :: Int -> [Int] -> [Int]\nfromListN _ xs = reverse xs\nfromList :: [Int] -> [Int]\nfromList = reverse\nmain :: IO ()\nmain = print ([1, 2, 3] :: [Int])\n",
+        "[3,2,1]\n",
+    ),
+];
+
+const ORDINARY_LITERAL_HOLDS_CHIRHO: [(&str, &str, &str); 6] = [
+    (
+        "HLiteralsChirho.hs",
+        "module Main where\nmain :: IO ()\nmain = do\n  print (3 :: Int, 4 :: Integer, 2 :: Double, 7 / 2)\n  print (-5 :: Int, minBound :: Int, -9223372036854775808 :: Int)\n  print [1, 2, 3 :: Int]\n  print (sum [1 .. 3 :: Integer], product [4, 5 :: Integer])\n  print (map (\\x -> x + 1) [1.5, 2 :: Double])\n",
+        "(3,4,2.0,3.5)\n(-5,-9223372036854775808,-9223372036854775808)\n[1,2,3]\n(6,20)\n[2.5,3.0]\n",
+    ),
+    (
+        "HUserNumChirho.hs",
+        "module Main where\nnewtype V = V Int deriving Show\ninstance Num V where\n  V a + V b = V (a + b)\n  V a * V b = V (a * b)\n  abs (V a) = V (abs a)\n  signum (V a) = V (signum a)\n  fromInteger n = V (fromInteger n * 10)\n  negate (V a) = V (negate a)\nmain :: IO ()\nmain = print (3 :: V, 2 + 3 :: V, [1, 2] :: [V])\n",
+        "(V 30,V 50,[V 10,V 20])\n",
+    ),
+    (
+        "LFromRationalChirho.hs",
+        "module Main where\nimport Prelude hiding (fromRational)\nfromRational :: Rational -> Double\nfromRational _ = 0\nmain :: IO ()\nmain = print (fromRational 1, 2.5 :: Double)\n",
+        "(0.0,2.5)\n",
+    ),
+    (
+        "LPrefixNegateChirho.hs",
+        "module Main where\nimport Prelude hiding (negate)\nnegate :: Int -> Int\nnegate _ = 99\nmain :: IO ()\nmain = print (-5 :: Int, negate 1)\n",
+        "(-5,99)\n",
+    ),
+    (
+        "SStringHoldChirho.hs",
+        "{-# LANGUAGE OverloadedStrings #-}\nmodule Main where\nmain :: IO ()\nmain = do\n  putStrLn \"plain\"\n  print (\"a\" ++ \"b\" :: String)\n  print (words \"x y\")\n",
+        "plain\n\"ab\"\n[\"x\",\"y\"]\n",
+    ),
+    (
+        "LListHoldChirho.hs",
+        "{-# LANGUAGE OverloadedLists #-}\nmodule Main where\nmain :: IO ()\nmain = do\n  print ([1, 2, 3] :: [Int])\n  print (sum ([1, 2, 3] :: [Int]))\n  print (map (* 2) [1, 2 :: Int])\n",
+        "[1,2,3]\n6\n[2,4]\n",
+    ),
+];
+
+/// Each program prints GHC's output on the interpreter, LLVM and Cranelift. A native run is
+/// bounded by the harness's deadline, so a literal that recursed fails the test, never hangs it.
+fn assert_everywhere_chirho(table_chirho: &[(&str, &str, &str)]) {
+    for (file_name_chirho, program_chirho, ghc_chirho) in table_chirho {
+        assert_eq!(
+            run_chirho(file_name_chirho, program_chirho),
+            *ghc_chirho,
+            "{file_name_chirho} interpreter"
+        );
+        assert_native_chirho(file_name_chirho, program_chirho, ghc_chirho);
+    }
+}
+
+/// An integer literal takes Num's `fromInteger` past a program's own, signed or not, top-level
+/// or `where`-bound, and under NoImplicitPrelude; a written call keeps the program's.
+#[test]
+fn integer_literals_never_take_a_programs_from_integer_everywhere_chirho() {
+    assert_everywhere_chirho(&INTEGER_LITERAL_MOVERS_CHIRHO);
+}
+
+/// A string literal under OverloadedStrings takes IsString's `fromString`, including a custom
+/// instance's, through its own occurrence's proof.
+#[test]
+fn string_literals_never_take_a_programs_from_string_everywhere_chirho() {
+    assert_everywhere_chirho(&STRING_LITERAL_MOVERS_CHIRHO);
+}
+
+/// A list literal under OverloadedLists takes IsList's `fromList` at the list type. A custom
+/// IsList instance is not claimed here: the checker types the literal as a list (row 667).
+#[test]
+fn list_literals_never_take_a_programs_from_list_everywhere_chirho() {
+    assert_everywhere_chirho(&LIST_LITERAL_MOVERS_CHIRHO);
+}
+
+/// Under RebindableSyntax each literal takes the binding in scope.
+#[test]
+fn rebindable_syntax_literals_take_the_binding_in_scope_everywhere_chirho() {
+    assert_everywhere_chirho(&REBINDABLE_LITERAL_HOLDS_CHIRHO);
+}
+
+/// Literals of programs that bind none of these methods answer as before: Int, Integer, Double
+/// and defaulted Fractional, negatives and `minBound`, a user `Num` instance, a list, a range
+/// under `sum`, strings and lists under their extensions, and a program's own `fromRational`
+/// and `negate`, which no literal names.
+#[test]
+fn ordinary_literals_hold_everywhere_chirho() {
+    assert_everywhere_chirho(&ORDINARY_LITERAL_HOLDS_CHIRHO);
+}

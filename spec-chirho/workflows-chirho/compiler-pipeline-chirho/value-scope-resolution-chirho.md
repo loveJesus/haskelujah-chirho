@@ -181,3 +181,41 @@ flowchart TD
 - **The rule:** `filter_exports_chirho` in `crates/haskelujah-naming-chirho/src/iface_chirho.rs`, through `merge_imported_exports_chirho`.
 - **Each defect alone:** three tests in `value_scope_tests_chirho.rs` over the builtin `Data.List` interface. Each fails on the old rule at its own assertion.
 - **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/module_exports_chirho.rs`. 7 programs GHC 9.14.1 runs are exact on the interpreter, LLVM and true Cranelift, and the 3 it rejects are refused on all three. Row 621's p11 is row 629's n1 in `import_identity_chirho.rs`.
+
+## A literal's method is never a lexical binding (row 660)
+
+A literal names a class method the program never wrote: `fromInteger` for an integer literal, `fromString` under OverloadedStrings and `fromList` under OverloadedLists. The desugarer used to resolve that name lexically, so a program's own `fromInteger`, top-level or `where`-bound, captured every literal. One with a literal in its own body recursed:
+- the interpreter hit its step limit;
+- the natives ran to a timeout or died with SIGBUS;
+- a captured `fromString` printed nothing on the interpreter and died with SIGSEGV on the natives.
+
+```mermaid
+flowchart TD
+    literal_chirho["Literal: integer; string under OverloadedStrings; list under OverloadedLists"] --> rebind_chirho{RebindableSyntax?}
+    rebind_chirho -->|Yes| lexical_chirho["resolve_var_chirho: the binding in scope, as GHC defines"]
+    rebind_chirho -->|No| canonical_chirho["canonical_free_id_chirho: the name's one shared id"]
+    canonical_chirho --> mint_chirho["mint_method_occurrence_chirho: the literal's own occurrence"]
+    mint_chirho --> record_chirho["record_literal_occurrence_chirho: origin, span and role"]
+    record_chirho --> join_chirho["Driver join: the checker's proof for that literal, by provenance"]
+    join_chirho --> proved_chirho{Proof joined?}
+    proved_chirho -->|Yes| keyed_chirho["Dictionary pass: the proven key's method, a custom IsString instance's included"]
+    proved_chirho -->|No| fallback_chirho["finish_chirho: the canonical id, the route a program without the binding always took"]
+    written_chirho["A fromInteger, fromString or fromList the program writes"] --> normal_chirho["resolve_var_chirho: the program's binding where one is in scope"]
+```
+
+### Rules
+
+- **Only the generated reference changes.** A call the program writes still resolves lexically to the program's binding.
+- **The helper mints the literal's occurrence itself.** `resolve_syntax_method_chirho` does this whether or not the method is in the general evidence set, so `fromString` and `fromList` get one too, and a custom IsString literal reaches its own instance by its proof. A program with no binding of the name gets the same ids as before.
+- **RebindableSyntax keeps the lexical route.** NoImplicitPrelude alone does not: GHC's literals still use the standard methods.
+
+### Boundaries
+
+- **A custom IsList instance is not claimed.** The checker types an OverloadedLists literal as a list and publishes no IsList proof. That goes to row 667, with GHC's `fromListN`.
+- **Ranges (`enumFrom*`, row 665) and `do` operations (row 666)** still resolve lexically.
+
+### Code and controls
+
+- **The rule:** `crates/haskelujah-core-chirho/src/desugar_chirho/syntax_methods_chirho.rs`, called from the three literal sites in `desugar_chirho.rs`.
+- **The id choice:** two unit tests in `desugar_chirho/provenance_tests_chirho.rs`.
+- **GHC-measured programs:** the row 660 tables in `crates/haskelujah-driver-chirho/tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`. 14 movers, the 3 RebindableSyntax holds and 6 ordinary holds are exact on the interpreter, LLVM and true Cranelift.

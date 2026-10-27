@@ -17,6 +17,7 @@ use haskelujah_ast_chirho::provenance_chirho::{
 use haskelujah_span_chirho::SpanChirho;
 
 use super::DesugarCtxChirho;
+use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
 
 fn name_chirho(text_chirho: &str) -> NameChirho {
     NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -88,4 +89,136 @@ fn each_minted_occurrence_carries_its_uses_origin_and_role_chirho() {
     );
     // The desugarer read origins; it minted none.
     assert_eq!(supply_chirho.minted_chirho(), minted_before_chirho);
+}
+
+/// The three literal forms row 660 covers, each with the extension that makes it a method call:
+/// the generated method's name, the literal, and the provenance it records.
+fn literal_forms_chirho(
+    supply_chirho: &mut OriginSupplyChirho,
+) -> Vec<(
+    Option<&'static str>,
+    &'static str,
+    ExprChirho,
+    Option<ProvenanceChirho>,
+)> {
+    let integer_chirho = supply_chirho.fresh_chirho();
+    let string_chirho = supply_chirho.fresh_chirho();
+    vec![
+        (
+            None,
+            "fromInteger",
+            ExprChirho::LitChirho(LitChirho::IntChirho(
+                5,
+                SpanChirho::DUMMY_CHIRHO,
+                Some(integer_chirho),
+            )),
+            Some(ProvenanceChirho::new_chirho(
+                integer_chirho,
+                OccurrenceRoleChirho::IntegerLiteral,
+            )),
+        ),
+        (
+            Some("OverloadedStrings"),
+            "fromString",
+            ExprChirho::LitChirho(LitChirho::StringChirho(
+                "literal".to_string(),
+                SpanChirho::DUMMY_CHIRHO,
+                Some(string_chirho),
+            )),
+            Some(ProvenanceChirho::new_chirho(
+                string_chirho,
+                OccurrenceRoleChirho::StringLiteral,
+            )),
+        ),
+        (
+            Some("OverloadedLists"),
+            "fromList",
+            ExprChirho::ListChirho {
+                elements_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            None,
+        ),
+    ]
+}
+
+/// The id the literal's desugaring applies to its value.
+fn applied_method_id_chirho(core_chirho: &CoreExprChirho) -> CoreIdChirho {
+    match core_chirho {
+        CoreExprChirho::AppChirho { fun_chirho, .. } => match fun_chirho.as_ref() {
+            CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
+            other_chirho => panic!("expected the method applied by id, got {other_chirho:?}"),
+        },
+        other_chirho => panic!("expected the literal applied to its method, got {other_chirho:?}"),
+    }
+}
+
+/// A literal's generated method takes an occurrence of its own past the program's binding of
+/// that name, with the literal's provenance recorded on it, while the program's written
+/// reference keeps the program's binding (row 660).
+#[test]
+fn a_literals_generated_method_passes_the_programs_own_binding_chirho() {
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    for (extension_chirho, method_chirho, literal_chirho, provenance_chirho) in
+        literal_forms_chirho(&mut supply_chirho)
+    {
+        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+        ctx_chirho.extensions_chirho = extension_chirho.into_iter().map(String::from).collect();
+        let own_chirho = ctx_chirho.fresh_id_chirho(method_chirho);
+        ctx_chirho.bind_in_scope_chirho(method_chirho, own_chirho);
+
+        let core_chirho = ctx_chirho.desugar_expr_chirho(&literal_chirho);
+        let generated_chirho = applied_method_id_chirho(&core_chirho);
+        assert_ne!(
+            generated_chirho, own_chirho,
+            "{method_chirho}: the literal took the program's binding"
+        );
+        let (occurrence_name_chirho, canonical_chirho) =
+            &ctx_chirho.method_occurrences_chirho[&generated_chirho];
+        assert_eq!(occurrence_name_chirho, method_chirho);
+        assert_ne!(
+            *canonical_chirho, own_chirho,
+            "{method_chirho}: the fallback is the program's binding"
+        );
+        assert_eq!(
+            ctx_chirho
+                .occurrence_provenance_chirho
+                .get(&generated_chirho)
+                .copied(),
+            provenance_chirho,
+            "{method_chirho}: the literal's provenance"
+        );
+
+        let written_chirho =
+            ctx_chirho.desugar_expr_chirho(&ExprChirho::VarChirho(name_chirho(method_chirho)));
+        assert!(
+            matches!(written_chirho, CoreExprChirho::VarChirho(id_chirho) if id_chirho == own_chirho),
+            "{method_chirho}: a written reference must keep the program's binding, got {written_chirho:?}"
+        );
+    }
+}
+
+/// Under RebindableSyntax a literal's method is whatever binding is in scope, as GHC defines
+/// (row 660).
+#[test]
+fn under_rebindable_syntax_a_literal_takes_the_binding_in_scope_chirho() {
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    for (extension_chirho, method_chirho, literal_chirho, _provenance_chirho) in
+        literal_forms_chirho(&mut supply_chirho)
+    {
+        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+        ctx_chirho.extensions_chirho = std::iter::once("RebindableSyntax")
+            .chain(extension_chirho)
+            .map(String::from)
+            .collect();
+        let own_chirho = ctx_chirho.fresh_id_chirho(method_chirho);
+        ctx_chirho.bind_in_scope_chirho(method_chirho, own_chirho);
+
+        let core_chirho = ctx_chirho.desugar_expr_chirho(&literal_chirho);
+        assert_eq!(
+            applied_method_id_chirho(&core_chirho),
+            own_chirho,
+            "{method_chirho}"
+        );
+    }
 }

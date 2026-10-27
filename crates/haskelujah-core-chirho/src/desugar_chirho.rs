@@ -22,6 +22,7 @@ mod qualified_references_chirho;
 pub use qualified_references_chirho::ImportSuppliersChirho;
 mod rec_desugar_chirho;
 mod row_match_chirho;
+mod syntax_methods_chirho;
 
 use match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 
@@ -921,35 +922,44 @@ impl DesugarCtxChirho {
     /// cached, create a fresh ID and cache it. A qualified reference to an
     /// import comes here past every scope (row 598).
     fn resolve_unscoped_var_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
+        let canonical_id_chirho = self.canonical_free_id_chirho(name_chirho);
         if self.method_occurrence_names_chirho.contains(name_chirho) {
             // Evidence-threading P1: give each free reference of an opted-in
-            // class method its OWN occurrence id (the shared cache id below
-            // merges all `==`/`+` references, which blinds per-occurrence
-            // evidence). The canonical shared id is still allocated/cached so
-            // the dict pass can fall back to today's behavior.
-            let canonical_id_chirho =
-                if let Some(&id_chirho) = self.free_var_cache_chirho.get(name_chirho) {
-                    id_chirho
-                } else {
-                    let id_chirho = self.fresh_id_chirho(name_chirho);
-                    self.free_var_cache_chirho
-                        .insert(name_chirho.to_string(), id_chirho);
-                    id_chirho
-                };
-            let occurrence_id_chirho = self.fresh_id_chirho(name_chirho);
-            self.method_occurrences_chirho.insert(
-                occurrence_id_chirho,
-                (name_chirho.to_string(), canonical_id_chirho),
-            );
-            occurrence_id_chirho
-        } else if let Some(&id_chirho) = self.free_var_cache_chirho.get(name_chirho) {
-            id_chirho
+            // class method its OWN occurrence id (the shared cache id merges
+            // all `==`/`+` references, which blinds per-occurrence evidence).
+            // The canonical shared id is still allocated/cached so the dict
+            // pass can fall back to today's behavior.
+            self.mint_method_occurrence_chirho(name_chirho, canonical_id_chirho)
         } else {
-            let id_chirho = self.fresh_id_chirho(name_chirho);
-            self.free_var_cache_chirho
-                .insert(name_chirho.to_string(), id_chirho);
-            id_chirho
+            canonical_id_chirho
         }
+    }
+
+    /// The one id every unscoped reference to `name_chirho` shares, from the free-variable
+    /// cache.
+    fn canonical_free_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
+        if let Some(&id_chirho) = self.free_var_cache_chirho.get(name_chirho) {
+            return id_chirho;
+        }
+        let id_chirho = self.fresh_id_chirho(name_chirho);
+        self.free_var_cache_chirho
+            .insert(name_chirho.to_string(), id_chirho);
+        id_chirho
+    }
+
+    /// A fresh occurrence id for one reference to method `name_chirho`, with the canonical id
+    /// the dictionary pass falls back to when no evidence answers it.
+    fn mint_method_occurrence_chirho(
+        &mut self,
+        name_chirho: &str,
+        canonical_id_chirho: CoreIdChirho,
+    ) -> CoreIdChirho {
+        let occurrence_id_chirho = self.fresh_id_chirho(name_chirho);
+        self.method_occurrences_chirho.insert(
+            occurrence_id_chirho,
+            (name_chirho.to_string(), canonical_id_chirho),
+        );
+        occurrence_id_chirho
     }
 
     /// Resolve the operation a do statement SELECTED. Lowering chose it once,
@@ -2240,9 +2250,11 @@ impl DesugarCtxChirho {
                 let core_lit_chirho = self.desugar_lit_chirho(lit_chirho);
                 // Numeric literal overloading (Haskell 2010 §3.2):
                 // Integer literals become `fromInteger <lit>`, allowing
-                // the dict pass to select the correct Num instance.
+                // the dict pass to select the correct Num instance. That
+                // `fromInteger` is Num's method, never a binding of the
+                // program's own (row 660).
                 if matches!(core_lit_chirho, CoreLitChirho::IntChirho(_)) {
-                    let from_integer_id_chirho = self.resolve_var_chirho("fromInteger");
+                    let from_integer_id_chirho = self.resolve_syntax_method_chirho("fromInteger");
                     self.record_literal_occurrence_chirho(from_integer_id_chirho, lit_chirho);
                     CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(from_integer_id_chirho)),
@@ -2253,8 +2265,9 @@ impl DesugarCtxChirho {
                         .extensions_chirho
                         .contains(&"OverloadedStrings".to_string())
                 {
-                    // OverloadedStrings: string literals become `fromString "lit"`
-                    let from_string_id_chirho = self.resolve_var_chirho("fromString");
+                    // OverloadedStrings: string literals become `fromString "lit"`,
+                    // IsString's method, never a binding of the program's own (row 660).
+                    let from_string_id_chirho = self.resolve_syntax_method_chirho("fromString");
                     self.record_literal_occurrence_chirho(from_string_id_chirho, lit_chirho);
                     CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(from_string_id_chirho)),
@@ -2465,12 +2478,13 @@ impl DesugarCtxChirho {
                         args_chirho: vec![elem_core_chirho, result_chirho],
                     };
                 }
-                // OverloadedLists: list literals become `fromList [a, b, c]`
+                // OverloadedLists: list literals become `fromList [a, b, c]`,
+                // IsList's method, never a binding of the program's own (row 660).
                 if self
                     .extensions_chirho
                     .contains(&"OverloadedLists".to_string())
                 {
-                    let from_list_id_chirho = self.resolve_var_chirho("fromList");
+                    let from_list_id_chirho = self.resolve_syntax_method_chirho("fromList");
                     CoreExprChirho::AppChirho {
                         fun_chirho: Box::new(CoreExprChirho::VarChirho(from_list_id_chirho)),
                         arg_chirho: Box::new(result_chirho),
