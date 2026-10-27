@@ -106,7 +106,7 @@ pub struct DesugarCtxChirho {
     /// the same CoreId across multiple references, so the dict pass can
     /// create a single binding that all references share.
     free_var_cache_chirho: HashMap<String, CoreIdChirho>,
-    /// Which user modules supply each imported value name (row 629).
+    /// Which program modules define each imported value name (rows 629 and 642).
     import_suppliers_chirho: ImportSuppliersChirho,
     /// The id of each imported user reference, by its identity (row 629).
     imported_reference_ids_chirho: HashMap<ImportedReferenceChirho, CoreIdChirho>,
@@ -4016,8 +4016,8 @@ pub struct DesugarInputsChirho {
     /// positional constructor fills every argument with a missing-field thunk.
     /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
     pub constructor_arities_chirho: HashMap<String, usize>,
-    /// Which user modules supply each imported value name, so a reference to one takes that
-    /// import's identity (row 629).
+    /// Which program modules define each imported value name, so a reference to one takes its
+    /// definer's identity (rows 629 and 642).
     /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
     pub import_suppliers_chirho: ImportSuppliersChirho,
 }

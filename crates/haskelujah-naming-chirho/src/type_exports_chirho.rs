@@ -383,6 +383,7 @@ fn ensure_type_export_chirho(
             .or_insert_with(|| IfaceValueChirho {
                 name_chirho: canonical_constructor_chirho,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                defining_module_chirho: None,
             });
     }
 }
@@ -431,6 +432,9 @@ fn merge_type_members_chirho(target_chirho: &mut IfaceTypeChirho, source_chirho:
 /// type-scope-resolution-chirho.md`.
 pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsChirho {
     let mut exports_chirho = IfaceExportsChirho::default();
+    // Every value collected here is this module's own definition (row 642).
+    // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    let defining_module_chirho = Some(module_chirho.name_chirho.full_name_chirho());
 
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
@@ -462,6 +466,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                         IfaceValueChirho {
                             name_chirho: value_name_chirho.clone(),
                             span_chirho: *span_chirho,
+                            defining_module_chirho: defining_module_chirho.clone(),
                         },
                     );
                 }
@@ -498,6 +503,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                         IfaceValueChirho {
                             name_chirho: value_name_chirho.clone(),
                             span_chirho: *span_chirho,
+                            defining_module_chirho: defining_module_chirho.clone(),
                         },
                     );
                 }
@@ -547,6 +553,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                         IfaceValueChirho {
                             name_chirho: method_name_chirho.clone(),
                             span_chirho: *span_chirho,
+                            defining_module_chirho: defining_module_chirho.clone(),
                         },
                     );
                 }
@@ -600,6 +607,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                     IfaceValueChirho {
                         name_chirho: value_name_chirho,
                         span_chirho: *span_chirho,
+                        defining_module_chirho: defining_module_chirho.clone(),
                     },
                 );
             }
@@ -615,6 +623,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                         IfaceValueChirho {
                             name_chirho: value_name_chirho,
                             span_chirho: *span_chirho,
+                            defining_module_chirho: defining_module_chirho.clone(),
                         },
                     );
                 }

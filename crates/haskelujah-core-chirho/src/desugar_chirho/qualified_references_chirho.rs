@@ -8,8 +8,9 @@
 //! text let a local `reverse` capture `L.reverse`, and a local `foo` capture
 //! `Main.foo`.
 //!
-//! A reference to a user module's export takes that import's identity (row 629): `A.limit`
-//! and `B.limit` are two references, never one id by their shared text.
+//! A reference to a value a program module defines takes its definer's identity (rows 629 and
+//! 642): `A.limit` and `B.limit` are two references when A and B each define `limit`, never one
+//! id by their shared text, and one reference when A only re-exports B's.
 //! workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
@@ -20,9 +21,10 @@ use haskelujah_ast_chirho::name_chirho::NameChirho;
 use super::DesugarCtxChirho;
 use crate::expr_chirho::{CoreIdChirho, ImportedReferenceChirho};
 
-/// Which user modules supply each imported value name, by the qualifier a reference writes:
-/// `None` for an unqualified reference (row 629). The driver builds it from the module's imports
-/// and the interfaces they resolve against; builtin interfaces never supply here.
+/// Which program modules define each imported value name, by the qualifier a reference writes:
+/// `None` for an unqualified reference (rows 629 and 642). The driver builds it from the
+/// module's imports and the origins their interfaces record. A value with no program definer,
+/// such as a builtin a program module re-exports, is never recorded here.
 /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ImportSuppliersChirho {
@@ -30,8 +32,8 @@ pub struct ImportSuppliersChirho {
 }
 
 impl ImportSuppliersChirho {
-    /// Record that user module `module_chirho` supplies `name_chirho`, written under
-    /// `qualifier_chirho` (or unqualified).
+    /// Record that program module `module_chirho` defines a value `name_chirho` reaches when
+    /// written under `qualifier_chirho` (or unqualified).
     pub fn add_chirho(
         &mut self,
         qualifier_chirho: Option<&str>,
@@ -47,8 +49,8 @@ impl ImportSuppliersChirho {
             .insert(module_chirho.to_string());
     }
 
-    /// The identity of a reference written `qualifier.name` (or unqualified `name`), when user
-    /// modules supply it there.
+    /// The identity of a reference written `qualifier.name` (or unqualified `name`), when it
+    /// reaches a value a program module defines.
     pub fn reference_chirho(
         &self,
         qualifier_chirho: Option<&str>,
@@ -60,7 +62,7 @@ impl ImportSuppliersChirho {
         ))?;
         Some(ImportedReferenceChirho {
             name_chirho: name_chirho.to_string(),
-            suppliers_chirho: suppliers_chirho.iter().cloned().collect(),
+            defining_modules_chirho: suppliers_chirho.iter().cloned().collect(),
         })
     }
 }

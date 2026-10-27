@@ -3,17 +3,19 @@
 
 Row 628. The native backends name every top-level binding by its CoreId, and they recognize a spelling only where the provenance allows it. Two modules' `helper`s stay apart, as do `f'` and `f_prime`. A program's own `show` keeps its body, and a dependency's `main` is never the program's entry.
 
-Row 629. A reference to another module of the program names that module's binding, on the interpreter and on both native backends. `A.limit` and `B.limit` stay apart, and a dependency's own `show` stays the user's. A link that would have to guess is refused by name.
+Row 629. A reference to another module of the program names that module's binding, on the interpreter and on both native backends. `A.limit` and `B.limit` stay apart, and a dependency's own `show` stays the user's.
+
+Row 642. An imported value names the program module that defines it, whatever module forwarded it, so one definition reached through several paths is one identity. Two definitions in scope are refused by name as ambiguous. A builtin that a program module forwards keeps the compiler's route, beside any program's own namesake.
 
 ```mermaid
 flowchart TD
-    suppliers_chirho["Driver: which program modules supply each imported value name, by qualifier"] --> desugar_chirho["Desugaring: a written reference to one takes the typed identity (name, suppliers)"]
+    suppliers_chirho["Driver: which program modules define each imported value name, by qualifier, from the interfaces' origins"] --> desugar_chirho["Desugaring: a written reference to one takes the typed identity (name, defining modules)"]
     desugar_chirho --> dict_chirho
     dict_chirho["Dictionary pass: records the bindings it generates; no Prelude body or class method takes an imported reference"] --> simplify_chirho["Simplifier: carries the provenance"]
-    simplify_chirho --> driver_chirho["Driver, per module: entry candidate (its own main); builtin references (free ids that builtin interfaces or the registry name, and no source module does)"]
+    simplify_chirho --> driver_chirho["Driver, per module: entry candidate (its own main); builtin references (free ids with no user identity that builtin interfaces, forwarded builtins or the registry name, and no other source route claims)"]
     driver_chirho -->|single file| core_chirho[CoreModule with provenance]
     driver_chirho -->|Cabal executable| merge_chirho["Merge: offset, join and remap; the entry comes from Main; a builtin reference links only to the compiler's own body of its name"]
-    merge_chirho --> links_chirho["Shared link decision (both merges): an imported reference names its supplier's own source binding; a re-export, the one source binding of its name; anything else is refused by name"]
+    merge_chirho --> links_chirho["Shared link decision (both merges): an imported reference names its one definer's own source binding; several definers, or a definer without the binding, are refused by name"]
     links_chirho --> dedup_chirho["Dedup keys spell each source binding by its module"]
     dedup_chirho --> core_chirho
     core_chirho --> reach_chirho["Reachability from the recorded entry"]
@@ -47,9 +49,12 @@ Producers fill it, and the backends only read it:
 
 - `dict_chirho/rewrite_chirho.rs` records its generated bindings.
 - `simplify_module_chirho` carries the provenance.
-- `native_link_chirho/native_provenance_chirho.rs` records the entry and the builtin references after simplification. A free id counts as builtin when one of these names it and no source-module interface does:
+- `native_link_chirho/native_provenance_chirho.rs` records the entry and the builtin references after simplification. A free id counts as builtin when it carries no user identity, one of these names it, and no source-module interface claims the name by any other route:
   - the interfaces of the module's builtin imports;
+  - a builtin that a program module forwards, whose interface value has no origin (row 642);
   - the builtin type environment.
+
+  A name a program module defines links by identity, so it no longer blocks the builtin route of another reference that shares its spelling.
 - `merge_compile_results_core_chirho` offsets each module's provenance and joins the modules together. It takes the entry from `Main`, and follows link and dedup renames. A builtin reference links only to the compiler's own body of its name, never to a program's binding.
 - `prepare_native_io_actions_chirho` names its wrapper as the entry and records what it generates.
 
@@ -81,19 +86,32 @@ A program's own binding is never recognized by its spelling. A free id that is n
 
 Row 629 owns namesakes that resolve by bare name before the backend: interfaces, desugaring and merge linking.
 
-## Imported reference identity (row 629)
+## Imported reference identity (rows 629 and 642)
 
-- **The supplier map.** `import_suppliers_chirho` (`native_link_chirho/native_provenance_chirho.rs`) records, for each import of one of the program's own modules, which value names that module supplies.
-  - An unqualified import supplies them unqualified and under its qualifier; a qualified import, under its qualifier or alias only.
+- **Origins (row 642).** `IfaceValueChirho.defining_module_chirho` names the source module that defines a value.
+  - It is `Some` only for a source module's own definition, in `collect_all_definitions_chirho`.
+  - Every re-export clones the value, through an explicit name, `module M` or a type's members, so a chain keeps its first definer and no forwarding module is ever stamped over it.
+  - Builtin values and stub interfaces (module search, dependency packages) have `None`.
+- **The supplier map.** `import_suppliers_chirho` (`native_link_chirho/native_provenance_chirho.rs`) records, for each import of one of the program's own modules, the defining module of each value name it brings, never the module the name travels through.
+  - An unqualified import records under the bare name and its qualifier; a qualified import, under its qualifier or alias only.
+  - Only the program's own modules count as definers. A value with no program definer is left out and keeps its own route: a builtin a program module forwards counts as builtin in the provenance (row 642).
   - Class methods and constructors are left out: they link through their class and type.
-  - A dependency package or a stdlib module brings an interface but no Core, so it supplies nothing here.
-- **Desugaring.** `resolve_written_reference_chirho` gives a written reference to a supplied name the identity `ImportedReferenceChirho { name, suppliers }`: one id per identity, recorded in the provenance's `imported_references_chirho`.
+- **Desugaring.** `resolve_written_reference_chirho` gives a written reference to a recorded name the identity `ImportedReferenceChirho { name, defining_modules }`. It has one id per identity, recorded in the provenance's `imported_references_chirho`, so `A.f` forwarding B's `f` and `B.f` share one id.
 - **The dictionary pass** never gives an imported reference a Prelude body (`resolve_or_fresh_id_chirho`, `module_free_id_named_chirho`). Imported references also shadow class methods of their name, as the program's own bindings do.
 - **The shared link decision.** Both merges use `ImportLinkerChirho` (`project_chirho/import_links_chirho.rs`): the native one in `core_merge_chirho.rs`, the interpreter's in `multi_module_chirho.rs`.
-  - A direct import links to its supplier's own source binding. Compiler bindings are never candidates.
-  - A re-export, or one name through several imports, links only to the program's one source binding of that name. Row 642 will record re-export origins and lift this temporary rule.
-  - Anything else is refused, naming the reference, its suppliers and the candidate modules: two suppliers defining their own; no definition; several possible origins.
+  - One definer: the reference links to that module's own source binding. Compiler bindings are never candidates.
+  - Several definers: the name is ambiguous, in GHC-87543's class, and the link is refused naming them.
+  - A definer with no source binding of the name: refused too. No other binding of the same name ever stands in.
 - **Dedup.** The native merge's keys spell each source binding as `module::name`. Bodies that call different modules' bindings never merge, while compiler bindings keep their names and still do.
 - **Controls:**
-  - `haskelujah-driver-chirho/tests/native_symbol_identity_chirho/import_identity_chirho.rs` (a submodule of row 628's target), on the interpreter, LLVM and true Cranelift: n1 (row 621's p11), n5, n6, a1, x1, x2, x4, r2 and d1 exact; r1 and z1 refused by name; the recorded identities; no Prelude body taking an imported reference.
+  - `haskelujah-driver-chirho/tests/native_symbol_identity_chirho/import_identity_chirho.rs` (a submodule of row 628's target), on the interpreter, LLVM and true Cranelift: n1 (row 621's p11), n5, n6, a1, x1, x2, x4, r2, d1 and r1 exact; z1 refused as ambiguous; the recorded identities; no Prelude body taking an imported reference.
+  - `reexport_origins_chirho.rs` (row 642), on the same three engines:
+    - a builtin forwarded by a program module: `map`, `show`, `putStrLn`, a project Prelude, and one builtin through two forwarders. Each is exact, and each reference is asserted to be compiler-owned or a builtin reference, never a user identity.
+    - a forwarded builtin beside a program's own `map`: exact, with B's `map` one identity and A's on the compiler's route.
+    - a chain of forwarders, two paths to one definition (one identity), a `module B` re-export and a qualified alias of a forwarder, each beside a namesake: exact. A two-definition scope is refused as ambiguous.
+    - interface origins: a module's own definitions carry it, every re-export path keeps the definer, a chain keeps the first, and every builtin value has none.
   - The link decision's own tests: `project_chirho/import_links_tests_chirho.rs`.
+- **Residuals (not row 642).**
+  - `check` rejects a two-level chain and a project Prelude: its single-file stub interfaces carry no types for re-exported values.
+  - The frontend does not reject an ambiguous unqualified name; only the link refuses it.
+  - Class methods and constructors still link through their class and type.

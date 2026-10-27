@@ -36,6 +36,12 @@ pub use builtin_chirho::builtin_module_ifaces_chirho;
 pub struct IfaceValueChirho {
     pub name_chirho: String,
     pub span_chirho: SpanChirho,
+    /// The source module that defines the value (row 642). It is `Some` only for a source
+    /// module's own definition, and a re-export clones it, so it keeps naming the definer however
+    /// many modules forward the value. It is `None` for builtin values and for stub interfaces,
+    /// whose text cannot say where a value is defined.
+    /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    pub defining_module_chirho: Option<String>,
 }
 
 /// An exported type with its available constructors.

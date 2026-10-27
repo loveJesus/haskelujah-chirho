@@ -1,9 +1,9 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Row 629: a reference to another module's export names that module's binding. Each program and
-//! its expected output are GHC 9.14.1's, measured on the text embedded here. The interpreter, LLVM
-//! and true Cranelift each run it, with no fallback. A link that would have to guess is refused by
-//! name instead, on every engine.
+//! Row 629: a reference to another module's export names that module's binding; row 642 sees
+//! through re-exports to the module that defines it. Each program and its expected output are
+//! GHC 9.14.1's, measured on the text embedded here. The interpreter, LLVM and true Cranelift each
+//! run it, with no fallback. An ambiguous reference is refused by name instead, on every engine.
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
 use std::time::Duration;
@@ -329,7 +329,8 @@ main = print (f 5, C.f 5)
 "#,
         ),
     ],
-    r#"cannot link `f`, imported from A: it is defined by B, C, and without the re-export's origin (row 642) the link would guess (row 629)"#,
+    r#"(6,50)
+"#,
 );
 
 /// z1: two unqualified imports each define `f` (GHC-87543 rejects it).
@@ -359,7 +360,7 @@ main = print (f 5)
 "#,
         ),
     ],
-    r#"cannot link `f`: it is imported unqualified from A, B, and each of them defines its own (row 629)"#,
+    r#"cannot link `f`: it is ambiguous, defined by A, B (row 642)"#,
 );
 
 /// The interpreter's run of a program given as modules in dependency order.
@@ -401,7 +402,7 @@ pub(super) fn assert_exact_chirho((modules_chirho, expected_chirho): (ProgramChi
     }
 }
 
-fn assert_refused_chirho(program_chirho: (ProgramChirho, &str)) {
+pub(super) fn assert_refused_chirho(program_chirho: (ProgramChirho, &str)) {
     let (modules_chirho, refusal_chirho) = program_chirho;
     let interpreted_chirho = interpret_chirho(modules_chirho);
     assert!(
@@ -434,8 +435,8 @@ pub(super) fn assert_refused_natively_chirho(
 }
 
 /// The identities desugaring records in `module_chirho`'s Core for its references to other
-/// modules' exports, as (name, supplying modules), sorted.
-fn imported_identities_chirho(
+/// modules' exports, as (name, defining modules), sorted.
+pub(super) fn imported_identities_chirho(
     modules_chirho: ProgramChirho,
     module_chirho: &str,
 ) -> Vec<(String, Vec<String>)> {
@@ -446,7 +447,7 @@ fn imported_identities_chirho(
         .map(|reference_chirho| {
             (
                 reference_chirho.name_chirho,
-                reference_chirho.suppliers_chirho,
+                reference_chirho.defining_modules_chirho,
             )
         })
         .collect();
@@ -455,7 +456,7 @@ fn imported_identities_chirho(
 }
 
 /// `module_chirho`'s Core, compiled with the rest of the program.
-fn compiled_core_chirho(
+pub(super) fn compiled_core_chirho(
     modules_chirho: ProgramChirho,
     module_chirho: &str,
 ) -> haskelujah_core_chirho::CoreModuleChirho {
@@ -477,15 +478,15 @@ fn compiled_core_chirho(
         .core_chirho
 }
 
-fn identities_chirho(entries_chirho: &[(&str, &[&str])]) -> Vec<(String, Vec<String>)> {
+pub(super) fn identities_chirho(entries_chirho: &[(&str, &[&str])]) -> Vec<(String, Vec<String>)> {
     entries_chirho
         .iter()
-        .map(|(name_chirho, suppliers_chirho)| {
+        .map(|(name_chirho, definers_chirho)| {
             (
                 name_chirho.to_string(),
-                suppliers_chirho
+                definers_chirho
                     .iter()
-                    .map(|supplier_chirho| supplier_chirho.to_string())
+                    .map(|definer_chirho| definer_chirho.to_string())
                     .collect(),
             )
         })
@@ -570,8 +571,8 @@ fn same_text_bodies_over_different_helpers_stay_apart_chirho() {
 }
 
 #[test]
-fn a_re_export_with_several_definitions_is_refused_by_name_chirho() {
-    assert_refused_chirho(R1_CHIRHO);
+fn a_re_export_names_its_definer_beside_a_namesake_chirho() {
+    assert_exact_chirho(R1_CHIRHO);
 }
 
 #[test]

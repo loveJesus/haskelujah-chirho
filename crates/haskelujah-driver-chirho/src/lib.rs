@@ -2868,8 +2868,8 @@ fn compile_backend_chirho(
             ),
             constrained_names_chirho,
             constructor_arities_chirho,
-            // A reference to another module of this program takes that import's identity
-            // (row 629).
+            // A reference to a value another module of this program defines takes its
+            // definer's identity, seen through any re-export (rows 629 and 642).
             // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
             import_suppliers_chirho: native_provenance_chirho::import_suppliers_chirho(
                 &module_chirho,
@@ -2976,6 +2976,7 @@ fn compile_backend_chirho(
         &module_chirho,
         &mut core_chirho,
         ifaces_chirho,
+        program_modules_chirho,
     );
 
     // Phase 7: Backend lowering

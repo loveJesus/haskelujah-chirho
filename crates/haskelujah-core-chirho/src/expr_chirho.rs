@@ -235,18 +235,19 @@ pub struct CoreProvenanceChirho {
     pub imported_references_chirho: BTreeMap<CoreIdChirho, ImportedReferenceChirho>,
 }
 
-/// A reference to a user module's exported value, as the program's imports supply it (row 629):
-/// its exported name, and every user module whose import supplies that name in the reference's
-/// scope. A qualified reference has the modules behind its qualifier; an unqualified one, those
-/// imported unqualified. This is linking data, not the value's origin: a supplying module may
-/// re-export it, and only row 642's interface origins say where it is defined.
+/// A reference to a value one of the program's own modules defines, as its imports reach it
+/// (rows 629 and 642): the exported name, and every program module that defines a value the name
+/// reaches in the reference's scope. A qualified reference counts the imports behind its
+/// qualifier; an unqualified one, those imported unqualified. Re-exports are seen through, so
+/// `A.f`, where A re-exports B's `f`, and `B.f` are one identity. Several defining modules make
+/// the reference ambiguous.
 /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ImportedReferenceChirho {
     /// The exported name, unqualified.
     pub name_chirho: String,
-    /// The supplying user modules, sorted, without repeats, never empty.
-    pub suppliers_chirho: Vec<String>,
+    /// The program modules that define it, sorted, without repeats, never empty.
+    pub defining_modules_chirho: Vec<String>,
 }
 
 impl CoreProvenanceChirho {

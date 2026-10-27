@@ -1,6 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! The shared link decision on hand-built modules (row 629): each rule, and each refusal's text.
+//! The shared link decision on hand-built modules (rows 629 and 642): each rule, and each
+//! refusal's text.
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
 use std::collections::HashMap;
@@ -29,17 +30,17 @@ fn binding_chirho(name_chirho: &str, id_chirho: u32) -> CoreBindingChirho {
     }
 }
 
-fn reference_chirho(name_chirho: &str, suppliers_chirho: &[&str]) -> ImportedReferenceChirho {
+fn reference_chirho(name_chirho: &str, definers_chirho: &[&str]) -> ImportedReferenceChirho {
     ImportedReferenceChirho {
         name_chirho: name_chirho.to_string(),
-        suppliers_chirho: suppliers_chirho.iter().map(|m| m.to_string()).collect(),
+        defining_modules_chirho: definers_chirho.iter().map(|m| m.to_string()).collect(),
     }
 }
 
 /// A hand-built module: its name, its bindings as (name, id), and its compiler-owned ids.
 type ModuleSpecChirho<'a> = (&'a str, &'a [(&'a str, u32)], &'a [u32]);
 
-/// A linker over `modules_chirho`, with the references `(id, name, suppliers)` all recorded by
+/// A linker over `modules_chirho`, with the references `(id, name, definers)` all recorded by
 /// the last module.
 fn linker_chirho(
     modules_chirho: &[ModuleSpecChirho<'_>],
@@ -60,10 +61,10 @@ fn linker_chirho(
         if index_chirho + 1 == modules_chirho.len() {
             provenance_chirho.imported_references_chirho = references_chirho
                 .iter()
-                .map(|(id_chirho, name_chirho, suppliers_chirho)| {
+                .map(|(id_chirho, name_chirho, definers_chirho)| {
                     (
                         CoreIdChirho(*id_chirho),
-                        reference_chirho(name_chirho, suppliers_chirho),
+                        reference_chirho(name_chirho, definers_chirho),
                     )
                 })
                 .collect();
@@ -83,7 +84,7 @@ fn link_chirho(linker_chirho: &ImportLinkerChirho) -> Result<HashMap<u32, u32>, 
 }
 
 #[test]
-fn a_direct_import_names_its_supplier_beside_any_namesake_chirho() {
+fn a_reference_names_its_definers_binding_beside_any_namesake_chirho() {
     let linker_chirho = linker_chirho(
         &[
             ("B", &[("limit", 1)], &[]),
@@ -110,15 +111,17 @@ fn a_compiler_binding_is_never_a_candidate_chirho() {
     assert_eq!(
         link_chirho(&linker_chirho),
         Err(
-            "cannot link `show`, imported from A: no module of the program defines it (row 629)"
+            "cannot link `show`: A defines it, but has no source binding of it (row 642)"
                 .to_string()
         )
     );
 }
 
 #[test]
-fn a_re_export_links_only_to_the_one_definition_chirho() {
-    let one_chirho = linker_chirho(
+fn a_definer_without_the_binding_is_refused_and_no_namesake_steps_in_chirho() {
+    // The interfaces say A defines `g`, but A compiled no `g`: B's `g` must not stand in, as
+    // row 629's unique-source fallback let it.
+    let linker_chirho = linker_chirho(
         &[
             ("B", &[("g", 1)], &[]),
             ("A", &[("h", 2)], &[]),
@@ -126,23 +129,9 @@ fn a_re_export_links_only_to_the_one_definition_chirho() {
         ],
         &[(10, "g", &["A"])],
     );
-    assert_eq!(link_chirho(&one_chirho), Ok(HashMap::from([(10, 1)])));
-    let several_chirho = linker_chirho(
-        &[
-            ("C", &[("f", 3)], &[]),
-            ("B", &[("f", 1)], &[]),
-            ("A", &[], &[]),
-            ("Main", &[], &[]),
-        ],
-        &[(10, "f", &["A"])],
-    );
     assert_eq!(
-        link_chirho(&several_chirho),
-        Err(
-            "cannot link `f`, imported from A: it is defined by B, C, and without the \
-             re-export's origin (row 642) the link would guess (row 629)"
-                .to_string()
-        )
+        link_chirho(&linker_chirho),
+        Err("cannot link `g`: A defines it, but has no source binding of it (row 642)".to_string())
     );
 }
 
@@ -158,11 +147,7 @@ fn an_ambiguous_unqualified_import_gets_no_link_chirho() {
     );
     assert_eq!(
         link_chirho(&linker_chirho),
-        Err(
-            "cannot link `f`: it is imported unqualified from A, B, and each of them defines \
-             its own (row 629)"
-                .to_string()
-        )
+        Err("cannot link `f`: it is ambiguous, defined by A, B (row 642)".to_string())
     );
 }
 
@@ -180,10 +165,8 @@ fn refusals_come_in_one_stable_order_chirho() {
     assert_eq!(
         refusals_chirho.lines().collect::<Vec<_>>(),
         [
-            "cannot link `missing`, imported from A: no module of the program defines it \
-             (row 629)",
-            "cannot link `x`: it is imported unqualified from A, B, and each of them defines its \
-             own (row 629)",
+            "cannot link `missing`: A defines it, but has no source binding of it (row 642)",
+            "cannot link `x`: it is ambiguous, defined by A, B (row 642)",
         ]
     );
 }

@@ -480,6 +480,7 @@ fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<Modul
                                 IfaceValueChirho {
                                     name_chirho: name_chirho.clone(),
                                     span_chirho,
+                                    defining_module_chirho: None,
                                 },
                             );
                         } else {
@@ -488,6 +489,7 @@ fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<Modul
                                 IfaceValueChirho {
                                     name_chirho: name_chirho.clone(),
                                     span_chirho,
+                                    defining_module_chirho: None,
                                 },
                             );
                         }

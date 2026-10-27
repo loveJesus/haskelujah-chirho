@@ -364,6 +364,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                         IfaceValueChirho {
                             name_chirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            defining_module_chirho: None,
                         },
                     );
                 }

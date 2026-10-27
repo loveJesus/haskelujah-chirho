@@ -1,13 +1,13 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! The one link decision both multi-module merges make for an imported user reference (row 629).
+//! The one link decision both multi-module merges make for an imported user reference (rows 629
+//! and 642).
 //!
-//! An imported reference names the supplying module's own source binding of its name. A
-//! compiler binding is never a candidate. When no supplier defines the name, the reference is a
-//! re-export, and until row 642 records where a re-exported value is defined, it links only to
-//! the program's one source binding of that name. Every other case is refused, by name: two
-//! suppliers defining their own, no definition at all, or several possible origins. Nothing
-//! here falls back to the first binding of a name.
+//! An imported reference names the program modules that define its value, as the interfaces
+//! record them, whatever module forwarded it. One definer: the reference names that module's own
+//! source binding, and a compiler binding is never a candidate. Several definers: the name is
+//! ambiguous, and the link is refused naming them. A definer with no source binding of the name
+//! is refused too. Nothing here falls back to another binding of the same name.
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -90,54 +90,27 @@ impl ImportLinkerChirho {
         }
     }
 
-    /// The binding `reference_chirho` names, or why the link would guess.
+    /// The binding `reference_chirho` names, or why it names none.
     fn target_chirho(
         &self,
         reference_chirho: &ImportedReferenceChirho,
     ) -> Result<CoreIdChirho, String> {
         let name_chirho = &reference_chirho.name_chirho;
-        let suppliers_chirho = reference_chirho.suppliers_chirho.join(", ");
-        let defined_by_suppliers_chirho: Vec<CoreIdChirho> = reference_chirho
-            .suppliers_chirho
-            .iter()
-            .filter_map(|supplier_chirho| {
-                self.sources_chirho
-                    .get(supplier_chirho)?
-                    .get(name_chirho)
-                    .copied()
-            })
-            .collect();
-        let definers_chirho: Vec<&String> = self
-            .sources_chirho
-            .iter()
-            .filter(|(_, bindings_chirho)| bindings_chirho.contains_key(name_chirho))
-            .map(|(module_chirho, _)| module_chirho)
-            .collect();
-        match (
-            reference_chirho.suppliers_chirho.len(),
-            defined_by_suppliers_chirho.as_slice(),
-            definers_chirho.as_slice(),
-        ) {
-            // A direct import: the supplier's own binding.
-            (1, [target_chirho], _) => Ok(*target_chirho),
-            (_, [_, _, ..], _) => Err(format!(
-                "cannot link `{name_chirho}`: it is imported unqualified from {suppliers_chirho}, \
-                 and each of them defines its own (row 629)"
-            )),
-            // A re-export, or one name through several imports: one possible binding.
-            (_, _, [definer_chirho]) => Ok(self.sources_chirho[*definer_chirho][name_chirho]),
-            (_, _, []) => Err(format!(
-                "cannot link `{name_chirho}`, imported from {suppliers_chirho}: no module of the \
-                 program defines it (row 629)"
-            )),
-            (_, _, definers_chirho) => Err(format!(
-                "cannot link `{name_chirho}`, imported from {suppliers_chirho}: it is defined by \
-                 {}, and without the re-export's origin (row 642) the link would guess (row 629)",
-                definers_chirho
-                    .iter()
-                    .map(|definer_chirho| definer_chirho.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+        match reference_chirho.defining_modules_chirho.as_slice() {
+            [definer_chirho] => self
+                .sources_chirho
+                .get(definer_chirho)
+                .and_then(|bindings_chirho| bindings_chirho.get(name_chirho))
+                .copied()
+                .ok_or_else(|| {
+                    format!(
+                        "cannot link `{name_chirho}`: {definer_chirho} defines it, but has no \
+                         source binding of it (row 642)"
+                    )
+                }),
+            definers_chirho => Err(format!(
+                "cannot link `{name_chirho}`: it is ambiguous, defined by {} (row 642)",
+                definers_chirho.join(", ")
             )),
         }
     }

@@ -833,6 +833,7 @@ mod tests_chirho {
             IfaceValueChirho {
                 name_chirho: "sort".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                defining_module_chirho: None,
             },
         );
         values_chirho.insert(
@@ -840,6 +841,7 @@ mod tests_chirho {
             IfaceValueChirho {
                 name_chirho: "map".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                defining_module_chirho: None,
             },
         );
         values_chirho.insert(
@@ -847,6 +849,7 @@ mod tests_chirho {
             IfaceValueChirho {
                 name_chirho: "Red".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                defining_module_chirho: None,
             },
         );
         values_chirho.insert(
@@ -854,6 +857,7 @@ mod tests_chirho {
             IfaceValueChirho {
                 name_chirho: "Blue".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                defining_module_chirho: None,
             },
         );
 
@@ -1149,6 +1153,7 @@ mod tests_chirho {
             IfaceValueChirho {
                 name_chirho: "Wrap".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                defining_module_chirho: None,
             },
         );
         lib_chirho.exports_chirho.values_chirho.insert(
@@ -1156,6 +1161,7 @@ mod tests_chirho {
             IfaceValueChirho {
                 name_chirho: "unwrap".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                defining_module_chirho: None,
             },
         );
         lib_chirho.exports_chirho.types_chirho.insert(
@@ -1294,6 +1300,7 @@ mod tests_chirho {
                     IfaceValueChirho {
                         name_chirho: "oldOnly".to_string(),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        defining_module_chirho: None,
                     },
                 )]
                 .into_iter()
@@ -1312,6 +1319,7 @@ mod tests_chirho {
                     IfaceValueChirho {
                         name_chirho: "newOnly".to_string(),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        defining_module_chirho: None,
                     },
                 )]
                 .into_iter()
