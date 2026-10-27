@@ -277,8 +277,8 @@ pub enum PrimOpKindChirho {
     AcoshFloatChirho,
     /// atanh# :: Double -> Double (row 578)
     AtanhFloatChirho,
-    /// pi# :: -> Double (nullary constant, dispatched as unary ignoring arg)
-    PiFloatChirho,
+    /// atan2# :: Double -> Double -> Double — GHC's RealFloat default `atan2` (row 580)
+    Atan2FloatChirho,
 
     // ── Power/exponentiation primops ──
     /// ^# :: Int -> Int -> Int — integer exponentiation

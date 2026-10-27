@@ -97,6 +97,10 @@ pub struct DictPassCtxChirho {
     /// the name map. This prevents missing class methods from silently resolving
     /// to dangling `$prim_*` IDs that later evaluate as placeholder values.
     body_backed_names_chirho: HashMap<String, CoreIdChirho>,
+    /// Ids the module's own bindings use without binding them: the Prelude and imported
+    /// names they refer to. A Prelude alias binds one of these, never a local binder
+    /// that shares its name (row 580).
+    module_free_ids_chirho: HashSet<CoreIdChirho>,
     /// Method name -> (class_name, selector CoreId).
     method_selectors_chirho: HashMap<String, (String, CoreIdChirho)>,
     /// (class_name, type_key) -> CoreId of instance dictionary binding.
@@ -193,6 +197,7 @@ impl DictPassCtxChirho {
             layouts_chirho: HashMap::new(),
             generated_bindings_chirho: Vec::new(),
             body_backed_names_chirho: HashMap::new(),
+            module_free_ids_chirho: HashSet::new(),
             method_selectors_chirho: HashMap::new(),
             instance_dicts_chirho: HashMap::new(),
             con_types_chirho,
@@ -245,13 +250,38 @@ impl DictPassCtxChirho {
         self.fresh_id_chirho(name_chirho)
     }
 
-    /// Record top-level source bindings before generated dictionaries are built.
+    /// Record top-level source bindings, and the ids they use without binding, before
+    /// generated dictionaries are built.
     fn seed_body_backed_bindings_chirho(&mut self, module_chirho: &CoreModuleChirho) {
         for binding_chirho in &module_chirho.bindings_chirho {
             self.body_backed_names_chirho
                 .entry(binding_chirho.binder_chirho.name_chirho.clone())
                 .or_insert(binding_chirho.binder_chirho.id_chirho);
+            self.module_free_ids_chirho
+                .extend(crate::simplify_chirho::free_vars_chirho(
+                    &binding_chirho.rhs_chirho,
+                ));
         }
+        for binding_chirho in &module_chirho.bindings_chirho {
+            self.module_free_ids_chirho
+                .remove(&binding_chirho.binder_chirho.id_chirho);
+        }
+    }
+
+    /// The id the module's own bindings use free under `name_chirho`, if any, skipping
+    /// occurrence ids as `resolve_or_fresh_id_chirho` does; the least, should there be
+    /// several. A local binder sharing the name is never free, so it is never chosen.
+    fn module_free_id_named_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
+        self.module_free_ids_chirho
+            .iter()
+            .filter(|id_chirho| {
+                self.names_chirho
+                    .get(id_chirho)
+                    .is_some_and(|existing_chirho| existing_chirho == name_chirho)
+                    && !self.method_occurrence_canon_chirho.contains_key(id_chirho)
+            })
+            .min()
+            .copied()
     }
 
     /// Look up a binding only if this pass can see an actual RHS body for it.

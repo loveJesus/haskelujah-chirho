@@ -20,6 +20,7 @@ pub(crate) struct RuntimeCallsChirho {
     pow_int_chirho: FuncRef,
     pow_double_int_chirho: FuncRef,
     pow_float_chirho: FuncRef,
+    atan2_double_chirho: FuncRef,
     new_io_ref_chirho: FuncRef,
     read_io_ref_chirho: FuncRef,
     write_io_ref_chirho: FuncRef,
@@ -116,6 +117,13 @@ impl RuntimeCallsChirho {
                 module_chirho,
                 function_chirho,
                 "haskelujah_pow_float_chirho",
+                2,
+                true,
+            )?,
+            atan2_double_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_atan2_double_chirho",
                 2,
                 true,
             )?,
@@ -257,17 +265,23 @@ impl RuntimeCallsChirho {
         builder_chirho.inst_results(call_chirho)[0]
     }
 
-    /// `**#`, GHC's Double `**` over both operands' bits (row 573).
-    pub(crate) fn pow_float_chirho(
+    /// `**#`, GHC's Double `**` (row 573), or `atan2#`, GHC's RealFloat default `atan2`
+    /// (row 580): the RTS's one routine over both operands' bits.
+    pub(crate) fn float_binary_chirho(
         &self,
         builder_chirho: &mut FunctionBuilder<'_>,
-        base_bits_chirho: Value,
-        exponent_bits_chirho: Value,
+        primop_chirho: &str,
+        lhs_bits_chirho: Value,
+        rhs_bits_chirho: Value,
     ) -> Value {
-        let call_chirho = builder_chirho.ins().call(
-            self.pow_float_chirho,
-            &[base_bits_chirho, exponent_bits_chirho],
-        );
+        let routine_chirho = if primop_chirho == "atan2#" {
+            self.atan2_double_chirho
+        } else {
+            self.pow_float_chirho
+        };
+        let call_chirho = builder_chirho
+            .ins()
+            .call(routine_chirho, &[lhs_bits_chirho, rhs_bits_chirho]);
         builder_chirho.inst_results(call_chirho)[0]
     }
 

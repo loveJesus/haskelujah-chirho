@@ -7,6 +7,8 @@
 //! - **One table:** both native backends call the symbol it names (row 575).
 //! - **The interpreter** applies the same functions through `apply_float_math_chirho`, so
 //!   every engine makes one call per primop (row 578).
+//! - **`atan2`** is GHC's own Haskell, not libm: `atan2_double_chirho` transcribes it, and
+//!   every engine calls it (row 580).
 //!
 //! Workflow: testing-chirho/native-fail-loud-chirho.md.
 
@@ -69,4 +71,44 @@ pub fn float_math_symbol_chirho(primop_chirho: &str) -> Option<&'static str> {
         .iter()
         .find(|(name_chirho, _)| *name_chirho == primop_chirho)
         .map(|(_, symbol_chirho)| *symbol_chirho)
+}
+
+fn is_negative_zero_chirho(value_chirho: f64) -> bool {
+    value_chirho == 0.0 && value_chirho.is_sign_negative()
+}
+
+/// GHC's `atan2 y x` at Double: GHC.Float's `RealFloat` class default, which the Double
+/// instance keeps, with its guards in GHC's order (row 580). It is not libm's `atan2`.
+/// `atan (y/x)` rounds the quotient first, so `atan2 1 2` is 0.46364760900080615 where
+/// libm gives 0.4636476090008061, and two infinities make a NaN quotient.
+pub fn atan2_double_chirho(y_chirho: f64, x_chirho: f64) -> f64 {
+    if x_chirho > 0.0 {
+        (y_chirho / x_chirho).atan()
+    } else if x_chirho == 0.0 && y_chirho > 0.0 {
+        std::f64::consts::PI / 2.0
+    } else if x_chirho < 0.0 && y_chirho > 0.0 {
+        std::f64::consts::PI + (y_chirho / x_chirho).atan()
+    } else if (x_chirho <= 0.0 && y_chirho < 0.0)
+        || (x_chirho < 0.0 && is_negative_zero_chirho(y_chirho))
+        || (is_negative_zero_chirho(x_chirho) && is_negative_zero_chirho(y_chirho))
+    {
+        -atan2_double_chirho(-y_chirho, x_chirho)
+    } else if y_chirho == 0.0 && (x_chirho < 0.0 || is_negative_zero_chirho(x_chirho)) {
+        std::f64::consts::PI
+    } else if x_chirho == 0.0 && y_chirho == 0.0 {
+        y_chirho
+    } else {
+        // x or y is a NaN
+        x_chirho + y_chirho
+    }
+}
+
+/// Native `atan2#`: [`atan2_double_chirho`] over two Doubles' bits.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_atan2_double_chirho(y_bits_chirho: i64, x_bits_chirho: i64) -> i64 {
+    atan2_double_chirho(
+        f64::from_bits(y_bits_chirho as u64),
+        f64::from_bits(x_bits_chirho as u64),
+    )
+    .to_bits() as i64
 }

@@ -2413,13 +2413,14 @@ pub fn lower_primop_chirho(
                 exponent_chirho,
             )
         }
-        "**#" => {
-            let base_bits_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, true);
-            let exponent_bits_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, true);
-            ctx_chirho.runtime_calls_chirho.pow_float_chirho(
+        "**#" | "atan2#" => {
+            let lhs_bits_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, true);
+            let rhs_bits_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, true);
+            ctx_chirho.runtime_calls_chirho.float_binary_chirho(
                 builder_chirho,
-                base_bits_chirho,
-                exponent_bits_chirho,
+                name_chirho,
+                lhs_bits_chirho,
+                rhs_bits_chirho,
             )
         }
         "div#" | "divInt#" => {

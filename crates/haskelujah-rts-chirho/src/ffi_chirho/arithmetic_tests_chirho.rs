@@ -4,16 +4,17 @@ use super::{
     haskelujah_pow_double_int_chirho, haskelujah_pow_float_chirho, haskelujah_pow_int_chirho,
 };
 use crate::float_math_chirho::{
-    apply_float_math_chirho, float_math_symbol_chirho, haskelujah_float_acos_chirho,
-    haskelujah_float_acosh_chirho, haskelujah_float_asin_chirho, haskelujah_float_asinh_chirho,
-    haskelujah_float_atan_chirho, haskelujah_float_atanh_chirho, haskelujah_float_cos_chirho,
-    haskelujah_float_cosh_chirho, haskelujah_float_exp_chirho, haskelujah_float_log_chirho,
-    haskelujah_float_sin_chirho, haskelujah_float_sinh_chirho, haskelujah_float_sqrt_chirho,
-    haskelujah_float_tan_chirho, haskelujah_float_tanh_chirho,
+    apply_float_math_chirho, atan2_double_chirho, float_math_symbol_chirho,
+    haskelujah_atan2_double_chirho, haskelujah_float_acos_chirho, haskelujah_float_acosh_chirho,
+    haskelujah_float_asin_chirho, haskelujah_float_asinh_chirho, haskelujah_float_atan_chirho,
+    haskelujah_float_atanh_chirho, haskelujah_float_cos_chirho, haskelujah_float_cosh_chirho,
+    haskelujah_float_exp_chirho, haskelujah_float_log_chirho, haskelujah_float_sin_chirho,
+    haskelujah_float_sinh_chirho, haskelujah_float_sqrt_chirho, haskelujah_float_tan_chirho,
+    haskelujah_float_tanh_chirho,
 };
 use crate::float_power_chirho::{pow_double_int_chirho, pow_float_chirho};
 use crate::integer_power_chirho::pow_int_chirho;
-use std::f64::consts::{FRAC_1_SQRT_2, SQRT_2};
+use std::f64::consts::{FRAC_1_SQRT_2, PI, SQRT_2};
 
 fn native_float_chirho(native_chirho: extern "C" fn(i64) -> i64, argument_chirho: f64) -> f64 {
     f64::from_bits(native_chirho(argument_chirho.to_bits() as i64) as u64)
@@ -117,6 +118,72 @@ fn hyperbolic_floating_primops_answer_as_ghc_chirho() {
         float_math_symbol_chirho("atanh#"),
         Some("haskelujah_float_atanh_chirho")
     );
+}
+
+/// Row 580: GHC's RealFloat default `atan2` at Double, against GHC 9.14.1's printed
+/// answers. The table covers every quadrant, both axes, each signed-zero pair, NaN and the
+/// infinities. libm's `atan2` gives 0.4636476090008061 and 2.9441970937399127 for the
+/// first two, and π/4 for two positive infinities. Signed zeros and ±π are compared as raw
+/// bits, because `==` cannot tell -0.0 from 0.0.
+#[test]
+fn atan2_is_ghcs_real_float_default_chirho() {
+    for (y_chirho, x_chirho, ghc_chirho) in [
+        (1.0, 2.0, "0.46364760900080615"),
+        (1.0, -5.0, "2.9441970937399122"),
+        (-1.0, -5.0, "-2.9441970937399122"),
+        (-1.0, 5.0, "-0.19739555984988078"),
+        (5.0, -1.0, "1.7681918866447772"),
+        (1.0, 1.0, "0.7853981633974483"),
+        (1.0, 0.0, "1.5707963267948966"),
+        (-1.0, 0.0, "-1.5707963267948966"),
+        (f64::INFINITY, 1.0, "1.5707963267948966"),
+        (f64::NEG_INFINITY, 0.0, "-1.5707963267948966"),
+    ] {
+        assert_eq!(
+            atan2_double_chirho(y_chirho, x_chirho).to_string(),
+            ghc_chirho,
+            "atan2 {y_chirho} {x_chirho}"
+        );
+    }
+    for (y_chirho, x_chirho, ghc_chirho) in [
+        (0.0, 1.0, 0.0),
+        (0.0, -1.0, PI),
+        (-0.0, -1.0, -PI),
+        (-0.0, 1.0, -0.0),
+        (0.0, 0.0, 0.0),
+        (-0.0, 0.0, -0.0),
+        (0.0, -0.0, PI),
+        (-0.0, -0.0, -PI),
+        (1.0, f64::NEG_INFINITY, PI),
+        (-1.0, f64::NEG_INFINITY, -PI),
+    ] {
+        assert_eq!(
+            atan2_double_chirho(y_chirho, x_chirho).to_bits(),
+            ghc_chirho.to_bits(),
+            "atan2 {y_chirho} {x_chirho}"
+        );
+    }
+    for (y_chirho, x_chirho) in [
+        (f64::NAN, 1.0),
+        (1.0, f64::NAN),
+        (f64::INFINITY, f64::INFINITY),
+        (f64::NEG_INFINITY, f64::INFINITY),
+        (f64::INFINITY, f64::NEG_INFINITY),
+        (f64::NEG_INFINITY, f64::NEG_INFINITY),
+    ] {
+        assert!(
+            atan2_double_chirho(y_chirho, x_chirho).is_nan(),
+            "atan2 {y_chirho} {x_chirho}"
+        );
+    }
+    let native_chirho = |y_chirho: f64, x_chirho: f64| {
+        f64::from_bits(haskelujah_atan2_double_chirho(
+            y_chirho.to_bits() as i64,
+            x_chirho.to_bits() as i64,
+        ) as u64)
+    };
+    assert_eq!(native_chirho(1.0, 2.0).to_string(), "0.46364760900080615");
+    assert_eq!(native_chirho(-0.0, -0.0).to_bits(), (-PI).to_bits());
 }
 
 /// Row 573: GHC's Double `**`, the C library's `pow`, against GHC 9.14.1's printed answers,

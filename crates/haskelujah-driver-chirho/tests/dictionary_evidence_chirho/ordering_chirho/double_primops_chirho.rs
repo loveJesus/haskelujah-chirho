@@ -11,7 +11,8 @@
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{
-    assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho, run_result_chirho,
+    NativeBackendChirho, assert_named_failure_everywhere_chirho, assert_native_chirho,
+    native_round_trip_chirho, run_chirho, run_result_chirho,
 };
 
 /// Negative operands as literals, a binding and function parameters; NaN on each
@@ -289,6 +290,82 @@ fn a_programs_own_floating_names_stay_its_own_everywhere_chirho() {
         OWN_FLOATING_NAMES_CHIRHO,
         OWN_FLOATING_NAMES_GHC_CHIRHO,
     );
+}
+
+/// Row 580: `pi` and `atan2` at Double. `pi` was a function from `()`, so the interpreter
+/// met a closure where it needed a Double and both natives refused `pi#`. It is now
+/// π's value. `atan2` was a missing binding, and GHC's is RealFloat's class default, not
+/// libm's. It differs by an ulp at `atan2 1 2` and `atan2 1 (-5)`, and is NaN for two
+/// infinities. The program covers every quadrant, both axes, each signed-zero pair, NaN,
+/// the infinities, a partially applied `atan2` and a function parameter.
+const PI_ATAN2_CHIRHO: &str = "module Main where\nxChirho :: Double\nxChirho = -0.0\nangleChirho :: Double -> Double -> Double\nangleChirho y x = atan2 y x\nmain :: IO ()\nmain = do\n  print (pi :: Double, pi / 2 :: Double)\n  print (sin pi :: Double, cos pi :: Double)\n  print (map (* pi) [1, 2 :: Double], 2 * pi * 3 :: Double)\n  print (atan2 1 2 :: Double, atan2 1 (-5) :: Double)\n  print (atan2 (-1) (-5) :: Double, atan2 (-1) 5 :: Double)\n  print (atan2 5 (-1) :: Double, atan2 1 1 :: Double)\n  print (atan2 1 0 :: Double, atan2 (-1) 0 :: Double)\n  print (atan2 0 1 :: Double, atan2 0 (-1) :: Double)\n  print (atan2 xChirho (-1), atan2 xChirho 1)\n  print (atan2 0 0 :: Double, atan2 xChirho 0)\n  print (atan2 0 xChirho, atan2 xChirho xChirho)\n  print (atan2 (0 / 0) 1 :: Double, atan2 1 (0 / 0) :: Double)\n  print (atan2 (1 / 0) (1 / 0) :: Double, atan2 (-1 / 0) (1 / 0) :: Double)\n  print (atan2 (1 / 0) (-1 / 0) :: Double, atan2 (-1 / 0) (-1 / 0) :: Double)\n  print (atan2 (1 / 0) 1 :: Double, atan2 1 (-1 / 0) :: Double)\n  print (atan2 (-1) (-1 / 0) :: Double, atan2 (-1 / 0) 0 :: Double)\n  print (map (atan2 1) [2, -5 :: Double], angleChirho 1 (-5))\n";
+
+/// GHC 9.14.1's output for [`PI_ATAN2_CHIRHO`].
+const PI_ATAN2_GHC_CHIRHO: &str = "(3.141592653589793,1.5707963267948966)\n(1.2246467991473532e-16,-1.0)\n([3.141592653589793,6.283185307179586],18.84955592153876)\n(0.46364760900080615,2.9441970937399122)\n(-2.9441970937399122,-0.19739555984988078)\n(1.7681918866447772,0.7853981633974483)\n(1.5707963267948966,-1.5707963267948966)\n(0.0,3.141592653589793)\n(-3.141592653589793,-0.0)\n(0.0,-0.0)\n(3.141592653589793,-3.141592653589793)\n(NaN,NaN)\n(NaN,NaN)\n(NaN,NaN)\n(1.5707963267948966,3.141592653589793)\n(-3.141592653589793,-1.5707963267948966)\n([0.46364760900080615,2.9441970937399122],2.9441970937399122)\n";
+
+#[test]
+fn pi_and_atan2_answer_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("PiAtan2Chirho.hs", PI_ATAN2_CHIRHO),
+        PI_ATAN2_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho("PiAtan2Chirho.hs", PI_ATAN2_CHIRHO, PI_ATAN2_GHC_CHIRHO);
+}
+
+/// Row 580: `pi` through a `Floating a` dictionary. The dictionary's row is the same
+/// Double value, so the interpreter prints GHC's `(12.566370614359172,0.7853981633974483)`.
+/// The natives stop at a named residual outside the row: the Fractional Double
+/// dictionary's `recip#`, which neither lowers. On main 1641a772 they also refused `pi#`,
+/// and no `pi#` is left.
+const POLYMORPHIC_PI_CHIRHO: &str = "module Main where\nareaChirho :: Floating a => a -> a\nareaChirho r = pi * r * r\nmain :: IO ()\nmain = print (areaChirho (2 :: Double), areaChirho (0.5 :: Double))\n";
+
+#[test]
+fn a_polymorphic_pi_is_its_dictionarys_value_chirho() {
+    assert_eq!(
+        run_chirho("PolymorphicPiChirho.hs", POLYMORPHIC_PI_CHIRHO),
+        "(12.566370614359172,0.7853981633974483)\n",
+        "interpreter"
+    );
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        let error_chirho = native_round_trip_chirho(POLYMORPHIC_PI_CHIRHO, backend_chirho, "")
+            .expect_err("the natives refuse the Fractional dictionary's recip#");
+        assert!(
+            error_chirho.contains("does not support primitive(s): recip#/1")
+                && !error_chirho.contains("pi#"),
+            "{backend_chirho:?}: {error_chirho}"
+        );
+    }
+}
+
+/// Row 580: a program's own `pi` and `atan2`. Hidden and redefined at top level, they keep
+/// their bindings. A local `where pi = 3` stays local while another function uses the
+/// Prelude's `pi`. Resolving the alias by name alone could take the local's id, which
+/// left the Prelude `pi` unbound in some runs (`missing STG binding pi`).
+#[test]
+fn a_programs_own_pi_and_atan2_stay_its_own_everywhere_chirho() {
+    for (file_name_chirho, program_chirho, ghc_chirho) in [
+        (
+            "OwnPiAtan2Chirho.hs",
+            "module Main where\nimport Prelude hiding (pi, atan2)\npi :: Double\npi = 3.0\natan2 :: Double -> Double -> Double\natan2 y x = y * 10 + x\nmain :: IO ()\nmain = do\n  print (pi, atan2 1 2)\n  print (sqrt 4 :: Double, logBase 2 8 :: Double)\n  print (areaChirho 2)\n  where\n    areaChirho r = pi * r * r\n",
+            "(3.0,12.0)\n(2.0,3.0)\n12.0\n",
+        ),
+        (
+            "LocalPiAtan2Chirho.hs",
+            "module Main where\ncircleChirho :: Double -> Double\ncircleChirho r = pi * r * r\nmain :: IO ()\nmain = do\n  print (areaChirho 2, circleChirho 1)\n  print (let atan2 a b = a - b in atan2 5 2 :: Double, atan2 1 1 :: Double)\n  where\n    pi = 3 :: Double\n    areaChirho r = pi * r * r\n",
+            "(12.0,3.141592653589793)\n(3.0,0.7853981633974483)\n",
+        ),
+    ] {
+        assert_eq!(
+            run_chirho(file_name_chirho, program_chirho),
+            ghc_chirho,
+            "{file_name_chirho} interpreter"
+        );
+        assert_native_chirho(file_name_chirho, program_chirho, ghc_chirho);
+    }
 }
 
 /// The same negated division where it already worked: the list printed directly, its

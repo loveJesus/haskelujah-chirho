@@ -55,12 +55,21 @@ flowchart TD
 - Row 575 removes the unary Floating primops from the native refused set: `sqrt#`, `exp#`, `log#`, `sin#`, `cos#`, `tan#`, `asin#`, `acos#` and `atan#`. GHC's are libm calls.
   - One macro in `float_math_chirho.rs` generates an RTS symbol for each, `haskelujah_float_<op>_chirho` over a Double's bits, together with the table `FLOAT_MATH_PRIMOPS_CHIRHO` naming them.
   - LLVM declares every symbol in that table and calls the one `float_math_symbol_chirho` names. Cranelift imports every symbol and lowers each through the same lookup. The interpreter's own primops already make the same libm calls.
-  - `pi` and `atan2` are missing bindings on every engine, outside the route. Row 578 binds the hyperbolics and `logBase`.
+  - Row 578 binds the hyperbolics and `logBase`, and row 580 binds `pi` and `atan2`.
 - Row 578 adds the hyperbolic primops, `sinh#` through `atanh#`, as six more rows of that table, and binds `logBase`.
   - Rust's std computes `asinh`, `acosh` and `atanh` itself. At 1.8, 1.2 and -0.9 its answers are an ulp or two from libm's, and GHC prints libm's. So those three rows bind libm's own symbols.
   - The interpreter now applies the table's function too (`apply_float_math_chirho`), so all fifteen primops make one call on every engine.
   - `logBase x y` is `log# y /.# log# x`, GHC's definition (`dict_chirho/prelude_chirho/floating_methods_chirho.rs`).
   - A generated Prelude alias now yields to a program's own top-level binding of the same name. The alias took that binding's id and replaced it, so a program that hid the Prelude's `sin` and defined its own printed the Prelude's answer on every engine.
+- Row 580 binds `pi` and `atan2` at Double, and removes `pi#`.
+  - **`pi`** was `\u -> pi# u`, a function from `()`. The interpreter met a closure where it needed a Double, and both natives refused `pi#/1`.
+    - It is now a Double CAF holding π's bits, in its dictionary row and under its Prelude name.
+    - `pi#`'s generator, STG name, interpreter variant and arm are gone. A repository-wide scan found nothing else that emits it.
+  - **`atan2#`** calls `float_math_chirho::atan2_double_chirho`, the RTS's transcription of GHC.Float's RealFloat default, in its guard order.
+    - It is not libm's `atan2`. libm differs by an ulp on many finite inputs, and gives ±π/4 or ±3π/4 for two infinities, where GHC gives NaN.
+    - LLVM calls its wrapper beside `**#`. Cranelift's `**#` arm serves both, through `float_binary_chirho`.
+  - **A Prelude alias** binds the id that the program's own bindings use free under its name. Resolving by name alone could take a local binder's id, such as `where pi = 3`. Depending on hash order, that left the Prelude `pi` unbound in some runs.
+  - **Residual:** a polymorphic `Fractional` or `Floating` function at Double is refused natively for `recip#/1`, the Fractional Double dictionary's `recip`.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## The native link's RTS archive (row 568)

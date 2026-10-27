@@ -778,3 +778,211 @@ fn occurrence_without_evidence_restores_canonical_chirho() {
         "without evidence the occurrence must be restored to the canonical id (guaranteed elimination)"
     );
 }
+
+// ── Row 580: the generated Core of `pi` and `atan2` at Double ──
+
+/// The dictionary pass over a module with these bindings and names, with the standard
+/// classes and instances.
+fn standard_pass_chirho(
+    bindings_chirho: Vec<CoreBindingChirho>,
+    names_chirho: &[(u32, &str)],
+) -> DictPassResultChirho {
+    let mut class_env_chirho = ClassEnvChirho::new_chirho();
+    class_env_chirho.seed_standard_chirho();
+    let names_chirho: HashMap<CoreIdChirho, String> = names_chirho
+        .iter()
+        .map(|(id_chirho, name_chirho)| (CoreIdChirho(*id_chirho), name_chirho.to_string()))
+        .collect();
+    let module_chirho = CoreModuleChirho {
+        name_chirho: "FloatingMethodsChirho".to_string(),
+        bindings_chirho,
+        names_chirho: names_chirho.clone(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: vec![],
+    };
+    dict_pass_module_chirho(
+        &module_chirho,
+        names_chirho,
+        &TyEnvChirho::new_chirho(),
+        &class_env_chirho,
+    )
+}
+
+/// Every binding of the passed module named `name_chirho`.
+fn named_chirho<'a>(
+    result_chirho: &'a DictPassResultChirho,
+    name_chirho: &str,
+) -> Vec<&'a CoreBindingChirho> {
+    result_chirho
+        .module_chirho
+        .bindings_chirho
+        .iter()
+        .filter(|binding_chirho| binding_chirho.binder_chirho.name_chirho == name_chirho)
+        .collect()
+}
+
+/// Whether `expr_chirho` or any expression inside it passes `test_chirho`.
+fn any_part_chirho(
+    expr_chirho: &CoreExprChirho,
+    test_chirho: &dyn Fn(&CoreExprChirho) -> bool,
+) -> bool {
+    let mut found_chirho = test_chirho(expr_chirho);
+    crate::transform_chirho::children_chirho(expr_chirho, &mut |child_chirho| {
+        found_chirho = found_chirho || any_part_chirho(child_chirho, test_chirho);
+    });
+    found_chirho
+}
+
+/// `pi` is one Double value: its dictionary row holds π's bits, its Prelude name points
+/// at that row, the Floating Double dictionary refers to it, and nothing applies it as
+/// the old `\u -> pi# u` was applied. No generated binding names `pi#`.
+#[test]
+fn pi_is_one_double_value_chirho() {
+    let result_chirho = standard_pass_chirho(vec![], &[]);
+    let [row_chirho] = named_chirho(&result_chirho, "$prim_Floating_pi_Double")[..] else {
+        panic!("one pi row");
+    };
+    let pi_id_chirho = row_chirho.binder_chirho.id_chirho;
+    assert_eq!(
+        row_chirho.binder_chirho.ty_chirho,
+        TyChirho::double_chirho()
+    );
+    assert!(matches!(
+        row_chirho.rhs_chirho,
+        CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(value_chirho))
+            if value_chirho.to_bits() == std::f64::consts::PI.to_bits()
+    ));
+    let [alias_chirho] = named_chirho(&result_chirho, "pi")[..] else {
+        panic!("one pi alias");
+    };
+    assert_eq!(
+        alias_chirho.binder_chirho.ty_chirho,
+        TyChirho::double_chirho()
+    );
+    assert!(matches!(
+        alias_chirho.rhs_chirho,
+        CoreExprChirho::VarChirho(id_chirho) if id_chirho == pi_id_chirho
+    ));
+    let refers_chirho = |expr_chirho: &CoreExprChirho| matches!(expr_chirho, CoreExprChirho::VarChirho(id_chirho) if *id_chirho == pi_id_chirho);
+    assert!(
+        named_chirho(&result_chirho, "$fFloatingDouble")
+            .iter()
+            .any(|dictionary_chirho| any_part_chirho(
+                &dictionary_chirho.rhs_chirho,
+                &refers_chirho
+            ))
+    );
+    for binding_chirho in &result_chirho.module_chirho.bindings_chirho {
+        let applies_pi_chirho = any_part_chirho(
+            &binding_chirho.rhs_chirho,
+            &|expr_chirho| matches!(expr_chirho, CoreExprChirho::AppChirho { fun_chirho, .. } if refers_chirho(fun_chirho)),
+        );
+        let names_pi_hash_chirho = any_part_chirho(
+            &binding_chirho.rhs_chirho,
+            &|expr_chirho| matches!(expr_chirho, CoreExprChirho::PrimOpChirho { name_chirho, .. } if name_chirho == "pi#"),
+        );
+        assert!(
+            !applies_pi_chirho && !names_pi_hash_chirho,
+            "{}",
+            binding_chirho.binder_chirho.name_chirho
+        );
+    }
+}
+
+/// `atan2` at Double is `\y x -> atan2# y x`, the RTS's one transcription of GHC's
+/// RealFloat default, and nothing else; its Prelude name points at that row.
+#[test]
+fn atan2_is_the_one_routine_chirho() {
+    let result_chirho = standard_pass_chirho(vec![], &[]);
+    let [row_chirho] = named_chirho(&result_chirho, "$prim_Floating_atan2_Double")[..] else {
+        panic!("one atan2 row");
+    };
+    let double_chirho = TyChirho::double_chirho();
+    assert_eq!(
+        row_chirho.binder_chirho.ty_chirho,
+        TyChirho::fun_n_chirho(
+            [double_chirho.clone(), double_chirho.clone()],
+            double_chirho
+        )
+    );
+    let CoreExprChirho::LamChirho {
+        binder_chirho: y_chirho,
+        body_chirho,
+    } = &row_chirho.rhs_chirho
+    else {
+        panic!("atan2 takes y");
+    };
+    let CoreExprChirho::LamChirho {
+        binder_chirho: x_chirho,
+        body_chirho,
+    } = &**body_chirho
+    else {
+        panic!("atan2 takes x");
+    };
+    assert_eq!(
+        **body_chirho,
+        CoreExprChirho::PrimOpChirho {
+            name_chirho: "atan2#".to_string(),
+            args_chirho: vec![
+                CoreExprChirho::VarChirho(y_chirho.id_chirho),
+                CoreExprChirho::VarChirho(x_chirho.id_chirho),
+            ],
+        }
+    );
+    let [alias_chirho] = named_chirho(&result_chirho, "atan2")[..] else {
+        panic!("one atan2 alias");
+    };
+    assert!(matches!(
+        alias_chirho.rhs_chirho,
+        CoreExprChirho::VarChirho(id_chirho) if id_chirho == row_chirho.binder_chirho.id_chirho
+    ));
+}
+
+/// A local `pi` never takes the Prelude alias. The module uses the Prelude's `pi` free (id
+/// 5) and binds its own `pi` in a `let` (id 9). The alias binds id 5 in every pass. Each
+/// pass hashes its name table afresh, and resolving by name alone took id 9 in about
+/// half of them.
+#[test]
+fn a_local_pi_never_takes_the_prelude_alias_chirho() {
+    let local_pi_chirho = BinderChirho {
+        id_chirho: CoreIdChirho(9),
+        name_chirho: "pi".to_string(),
+        ty_chirho: TyChirho::double_chirho(),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let bindings_chirho = vec![
+        CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("circleChirho", 1),
+            rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(5)),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        },
+        CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("localChirho", 2),
+            rhs_chirho: CoreExprChirho::LetChirho {
+                rec_chirho: false,
+                binds_chirho: vec![(
+                    local_pi_chirho,
+                    CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(3.0)),
+                )],
+                body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(9))),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        },
+    ];
+    let names_chirho = [
+        (1, "circleChirho"),
+        (2, "localChirho"),
+        (5, "pi"),
+        (9, "pi"),
+    ];
+    for _ in 0..16 {
+        let result_chirho = standard_pass_chirho(bindings_chirho.clone(), &names_chirho);
+        let aliases_chirho: Vec<CoreIdChirho> = named_chirho(&result_chirho, "pi")
+            .iter()
+            .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+            .collect();
+        assert_eq!(aliases_chirho, vec![CoreIdChirho(5)]);
+    }
+}

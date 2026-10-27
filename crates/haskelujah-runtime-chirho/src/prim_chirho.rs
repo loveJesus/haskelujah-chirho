@@ -632,10 +632,11 @@ pub fn apply_prim_binop_chirho(
         PrimOpKindChirho::AsinhFloatChirho => float_math_chirho(op_chirho, "asinh#", left_chirho),
         PrimOpKindChirho::AcoshFloatChirho => float_math_chirho(op_chirho, "acosh#", left_chirho),
         PrimOpKindChirho::AtanhFloatChirho => float_math_chirho(op_chirho, "atanh#", left_chirho),
-        PrimOpKindChirho::PiFloatChirho => {
-            // pi is a constant — ignore arguments, return pi
-            Ok(ValueChirho::FloatChirho(std::f64::consts::PI))
-        },
+        // GHC's RealFloat default `atan2`: the RTS's one transcription, which the native
+        // backends call too (row 580).
+        PrimOpKindChirho::Atan2FloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |y_chirho, x_chirho| {
+            Ok(ValueChirho::FloatChirho(haskelujah_rts_chirho::float_math_chirho::atan2_double_chirho(y_chirho, x_chirho)))
+        }),
 
         // ── Power/exponentiation ──
         PrimOpKindChirho::PowIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {

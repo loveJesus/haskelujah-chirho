@@ -3595,7 +3595,9 @@ impl DictPassCtxChirho {
 
     /// Bind `alias_name_chirho` to the generated binding named `source_name_chirho`. A
     /// program's own top-level `alias_name_chirho` stays the binding: the alias would take
-    /// its id and replace it (row 578).
+    /// its id and replace it (row 578). The alias takes the id the program's bindings use
+    /// free under that name. Resolving by name alone could take a local binder's, such as
+    /// `where pi = 3`, and leave the Prelude `pi` unbound in a run's hash order (row 580).
     /// workflow: testing-chirho/native-fail-loud-chirho
     fn push_prelude_alias_chirho(&mut self, alias_name_chirho: &str, source_name_chirho: &str) {
         if self
@@ -3623,7 +3625,9 @@ impl DictPassCtxChirho {
             return;
         };
 
-        let alias_id_chirho = self.resolve_or_fresh_id_chirho(alias_name_chirho);
+        let alias_id_chirho = self
+            .module_free_id_named_chirho(alias_name_chirho)
+            .unwrap_or_else(|| self.resolve_or_fresh_id_chirho(alias_name_chirho));
         self.generated_bindings_chirho.push(CoreBindingChirho {
             binder_chirho: BinderChirho {
                 id_chirho: alias_id_chirho,
@@ -8889,38 +8893,8 @@ impl DictPassCtxChirho {
             self.push_prelude_alias_chirho(method_chirho, &prim_name_chirho);
         }
 
-        // pi :: Double (constant via pi# primop, wrapped as a thunk)
-        {
-            let prim_name_chirho = "$prim_Floating_pi_Double";
-            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
-            // pi# is dispatched as a unary primop that ignores its argument
-            let dummy_chirho = self.fresh_binder_chirho("u", TyChirho::ConChirho("()".to_string()));
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: dummy_chirho.clone(),
-                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "pi#".to_string(),
-                    args_chirho: vec![CoreExprChirho::VarChirho(dummy_chirho.id_chirho)],
-                }),
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: prim_id_chirho,
-                    name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::ConChirho("()".to_string()),
-                        double_ty_chirho.clone(),
-                    ),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-
-            // NOTE: We intentionally do NOT create a top-level "pi" alias
-            // because user code may define local "pi" bindings (e.g. `where pi = 3`).
-            // The $prim_Floating_pi_Double binding is available for typeclass dispatch.
-        }
+        // pi :: Double, a value (row 580)
+        self.generate_floating_pi_prelude_chirho();
 
         // ── Num Double: abs and signum ──
         // $prim_Num_abs_Double = \n -> if n <. 0.0 then negateFloat# n else n

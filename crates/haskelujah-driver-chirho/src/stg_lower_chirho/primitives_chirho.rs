@@ -134,7 +134,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
         "asinh#" => PrimOpKindChirho::AsinhFloatChirho,
         "acosh#" => PrimOpKindChirho::AcoshFloatChirho,
         "atanh#" => PrimOpKindChirho::AtanhFloatChirho,
-        "pi#" => PrimOpKindChirho::PiFloatChirho,
+        "atan2#" => PrimOpKindChirho::Atan2FloatChirho,
         "^#" => PrimOpKindChirho::PowIntChirho,
         "^.#" => PrimOpKindChirho::PowDoubleIntChirho,
         "**#" => PrimOpKindChirho::PowFloatChirho,
