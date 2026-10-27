@@ -20,9 +20,13 @@ flowchart LR
 - `ceiling#`, `floor#`, and `truncate#` use their corresponding directed `f64` operations.
 - `round#` uses nearest-integer rounding with exact half ties resolved to the even integer,
   matching `round :: Double -> Int` in GHC rather than Rust's away-from-zero `f64::round`.
+- The interpreter's `truncate#` calls the same wrapping IEEE conversion the native backends use.
+  A direct Rust float-to-int cast saturates finite out-of-range values, while GHC keeps the low
+  machine-word bits; non-finite values become zero. `properFraction` depends on that exact result.
 - Native LLVM and Cranelift route all four conversions through the shared RTS implementation
   (row 562), avoiding backend-specific poison or saturation for exceptional inputs. The
-  interpreter still saturates those exceptional casts and keeps that difference as a named residual.
+  interpreter now shares that implementation for `truncate#`; `round#`, `floor#`, and `ceiling#`
+  still saturate exceptional casts and keep that difference as a named residual.
 
 ## String lines and words
 

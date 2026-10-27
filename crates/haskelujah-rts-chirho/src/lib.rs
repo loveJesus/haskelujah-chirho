@@ -31,6 +31,7 @@ mod show_text_tests_chirho;
 pub mod target_chirho;
 pub mod value_chirho;
 
+pub use float_to_int_chirho::truncate_float_to_int_chirho;
 pub use gc_chirho::{
     GcConfigChirho, GcStateChirho, GcStatsChirho, extract_roots_from_values_chirho,
 };

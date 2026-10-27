@@ -491,6 +491,35 @@ pub(super) fn seed_part_03_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
+    // properFraction :: (RealFrac a, Integral b) => a -> (b, a)
+    let proper_fraction_a_chirho = TyVarChirho(10103);
+    let proper_fraction_b_chirho = TyVarChirho(10104);
+    env_chirho.bind_chirho(
+        "properFraction".to_string(),
+        SchemeChirho {
+            vars_chirho: vec![proper_fraction_a_chirho, proper_fraction_b_chirho],
+            preds_chirho: vec![
+                SchemePredChirho {
+                    class_name_chirho: "RealFrac".to_string(),
+                    ty_chirho: TyChirho::VarChirho(proper_fraction_a_chirho),
+                    extra_tys_chirho: vec![],
+                },
+                SchemePredChirho {
+                    class_name_chirho: "Integral".to_string(),
+                    ty_chirho: TyChirho::VarChirho(proper_fraction_b_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            ],
+            ty_chirho: TyChirho::fun_chirho(
+                TyChirho::VarChirho(proper_fraction_a_chirho),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::VarChirho(proper_fraction_b_chirho),
+                    TyChirho::VarChirho(proper_fraction_a_chirho),
+                ]),
+            ),
+        },
+    );
+
     // isJust :: forall f a. f a -> Bool
     // These generated helpers inspect the `Nothing`/`Just` constructor shape,
     // so allow local Maybe-like declarations without conflating tycons globally.

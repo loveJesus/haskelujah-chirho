@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Body-backed `RealFloat Double` predicates and representation properties.
+//! Body-backed `RealFrac Double` and `RealFloat Double` methods and properties.
 //! They are ordinary Core built from constants, ordered Double comparisons, and
 //! division every engine already implements, so all engines share one definition.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
@@ -33,6 +33,118 @@ fn primop_chirho(name_chirho: &str, args_chirho: Vec<CoreExprChirho>) -> CoreExp
 }
 
 impl DictPassCtxChirho {
+    /// Generate `properFraction :: Double -> (Int, Double)` behind a guarded
+    /// Prelude alias. The checker retains the standard polymorphic scheme; the
+    /// concrete generated row serves the Double/Int representation this compiler
+    /// can execute today.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_real_frac_proper_fraction_chirho(&mut self) {
+        let double_ty_chirho = TyChirho::double_chirho();
+        let int_ty_chirho = TyChirho::int_chirho();
+        let result_ty_chirho =
+            TyChirho::TupleChirho(vec![int_ty_chirho.clone(), double_ty_chirho.clone()]);
+        let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho.clone());
+
+        let zero_pair_chirho = || CoreExprChirho::ConAppChirho {
+            con_name_chirho: "$tuple2".to_string(),
+            args_chirho: vec![
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                float_chirho(0.0),
+            ],
+        };
+        let integral_chirho =
+            self.fresh_binder_chirho("$proper_fraction_integral_chirho", int_ty_chirho.clone());
+        let truncated_chirho = primop_chirho("truncate#", vec![var_chirho(&value_chirho)]);
+        let regular_pair_chirho = CoreExprChirho::LetChirho {
+            rec_chirho: false,
+            binds_chirho: vec![(integral_chirho.clone(), truncated_chirho.clone())],
+            body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                con_name_chirho: "$tuple2".to_string(),
+                args_chirho: vec![
+                    var_chirho(&integral_chirho),
+                    primop_chirho(
+                        "-.#",
+                        vec![
+                            var_chirho(&value_chirho),
+                            primop_chirho("fromIntegral#", vec![var_chirho(&integral_chirho)]),
+                        ],
+                    ),
+                ],
+            }),
+        };
+        let out_of_range_pair_chirho = CoreExprChirho::ConAppChirho {
+            con_name_chirho: "$tuple2".to_string(),
+            args_chirho: vec![truncated_chirho, float_chirho(0.0)],
+        };
+
+        let zero_or_regular_chirho = self.real_float_bool_case_chirho(
+            primop_chirho(
+                "eqFloat#",
+                vec![var_chirho(&value_chirho), float_chirho(0.0)],
+            ),
+            zero_pair_chirho(),
+            regular_pair_chirho,
+        );
+        let below_int_chirho = self.real_float_bool_case_chirho(
+            primop_chirho(
+                "<.#",
+                vec![var_chirho(&value_chirho), float_chirho(i64::MIN as f64)],
+            ),
+            out_of_range_pair_chirho.clone(),
+            zero_or_regular_chirho,
+        );
+        let int_range_chirho = self.real_float_bool_case_chirho(
+            primop_chirho(
+                ">=.#",
+                vec![var_chirho(&value_chirho), float_chirho(-(i64::MIN as f64))],
+            ),
+            out_of_range_pair_chirho,
+            below_int_chirho,
+        );
+        let not_negative_infinity_chirho = self.real_float_bool_case_chirho(
+            primop_chirho(
+                "<.#",
+                vec![var_chirho(&value_chirho), float_chirho(-f64::MAX)],
+            ),
+            zero_pair_chirho(),
+            int_range_chirho,
+        );
+        let finite_chirho = self.real_float_bool_case_chirho(
+            primop_chirho(
+                ">.#",
+                vec![var_chirho(&value_chirho), float_chirho(f64::MAX)],
+            ),
+            zero_pair_chirho(),
+            not_negative_infinity_chirho,
+        );
+        let body_chirho = self.real_float_bool_case_chirho(
+            primop_chirho(
+                "eqFloat#",
+                vec![var_chirho(&value_chirho), var_chirho(&value_chirho)],
+            ),
+            finite_chirho,
+            zero_pair_chirho(),
+        );
+
+        let prim_name_chirho = "$prim_RealFrac_properFraction_Double_Int";
+        let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: prim_id_chirho,
+                name_chirho: prim_name_chirho.to_string(),
+                ty_chirho: TyChirho::fun_chirho(double_ty_chirho, result_ty_chirho),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: value_chirho,
+                body_chirho: Box::new(body_chirho),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+        self.push_prelude_alias_chirho("properFraction", prim_name_chirho);
+    }
+
     /// Generate the five `RealFloat Double` predicate rows and guarded Prelude aliases.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn generate_real_float_predicates_chirho(&mut self) {
@@ -272,5 +384,55 @@ impl DictPassCtxChirho {
                 },
             ],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests_chirho {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    #[test]
+    fn proper_fraction_has_one_concrete_row_and_guarded_alias_chirho() {
+        let mut context_chirho = DictPassCtxChirho::new_chirho(100, HashMap::new(), HashMap::new());
+        context_chirho.generate_real_frac_proper_fraction_chirho();
+
+        let [row_chirho] = context_chirho
+            .generated_bindings_chirho
+            .iter()
+            .filter(|binding_chirho| {
+                binding_chirho.binder_chirho.name_chirho
+                    == "$prim_RealFrac_properFraction_Double_Int"
+            })
+            .collect::<Vec<_>>()[..]
+        else {
+            panic!("one properFraction row");
+        };
+        assert_eq!(
+            row_chirho.binder_chirho.ty_chirho,
+            TyChirho::fun_chirho(
+                TyChirho::double_chirho(),
+                TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::double_chirho()]),
+            )
+        );
+        assert!(matches!(
+            row_chirho.rhs_chirho,
+            CoreExprChirho::LamChirho { .. }
+        ));
+
+        let [alias_chirho] = context_chirho
+            .generated_bindings_chirho
+            .iter()
+            .filter(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "properFraction")
+            .collect::<Vec<_>>()[..]
+        else {
+            panic!("one properFraction alias");
+        };
+        assert!(matches!(
+            alias_chirho.rhs_chirho,
+            CoreExprChirho::VarChirho(id_chirho)
+                if id_chirho == row_chirho.binder_chirho.id_chirho
+        ));
     }
 }

@@ -46,6 +46,6 @@
 
 ## Placement Chirho
 
-- Extend the existing `real_float_predicates_chirho.rs` generated rows; do not add a module or directory entry.
+- Extend the existing `real_number_methods_chirho.rs` generated rows; do not add a module or directory entry.
 - Put the pure Double scaling routine beside Row 585's representation routines in `haskelujah-rts-chirho/src/float_math_chirho.rs`.
 - Keep the per-argument rule beside the existing typed rewrite traversal in `method_args_chirho.rs`, with a structural control that sees the Int exponent remain Int.

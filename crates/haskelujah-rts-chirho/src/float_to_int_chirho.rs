@@ -50,7 +50,7 @@ pub(crate) fn round_float_to_int_chirho(value_chirho: f64) -> i64 {
     integral_float_to_wrapping_int_chirho(value_chirho.round_ties_even())
 }
 
-pub(crate) fn truncate_float_to_int_chirho(value_chirho: f64) -> i64 {
+pub fn truncate_float_to_int_chirho(value_chirho: f64) -> i64 {
     integral_float_to_wrapping_int_chirho(value_chirho.trunc())
 }
 
