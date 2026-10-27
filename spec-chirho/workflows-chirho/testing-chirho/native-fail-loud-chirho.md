@@ -122,7 +122,9 @@ flowchart TD
 - **Controls:**
   - a four-cell tagged chain survives collection whole: `a_tagged_chain_survives_collection_whole_chirho`;
   - an unpack keeps every cell across a collection in its middle: `unpack_string_keeps_its_cells_across_threshold_collection_chirho`;
-  - a long literal unpacks whole on every engine: `a_long_literal_unpacks_whole_everywhere_chirho`.
+  - a long literal unpacks whole natively: `a_long_literal_unpacks_whole_natively_chirho`. It is
+    native-only: `length` over a list this long overflows the interpreter in a 2 MiB test
+    thread, a separate interpreter limit.
 
 ## Native Strings carry code points (row 560, minimal brick)
 

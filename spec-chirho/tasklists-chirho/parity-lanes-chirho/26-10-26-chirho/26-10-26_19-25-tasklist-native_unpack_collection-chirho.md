@@ -23,7 +23,10 @@ one died with SIGBUS. String representation semantics remain row 560's.
   collection in its middle, its walk bounded so a reused cell fails instead of looping.
 - [x] The old marker as a mutant fails both, by "the cell at depth 2 was collected" and "the list is
   longer than its text"; the file was restored byte-identical.
-- [x] All-engine control: a 2000-character literal's `length` and slice match GHC 9.14.1.
+- [x] Native control: a 2000-character literal's `length` and slice match GHC 9.14.1 on both
+  natives. It was all-engine at landing; it is native-only since the interpreter's own long-list
+  recursion overflows a 2 MiB test thread (at 1000 cells), which aborted the suite without
+  `RUST_MIN_STACK` (gpt_chirho #29248).
 - [x] Transitions, a fresh build of main 85b71faf against the candidate on all three engines:
   - 115 one-line programs: 2 gains, the long literal's `length` natively (240 to 2224); every
     other cell holds;
