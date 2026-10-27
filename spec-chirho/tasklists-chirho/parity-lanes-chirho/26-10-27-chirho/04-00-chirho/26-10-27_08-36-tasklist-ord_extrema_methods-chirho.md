@@ -60,4 +60,4 @@ Row 627.
     - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
   - **The tip's probe reports** (`tip-ac1890eb-chirho`): 5 programs are GHC on all three engines (15 cells), and all 5 Cranelift compiles carry the marker.
   - Main has since moved to `e0dafd3d` with the progress DB only, so the commits replay patch-identically.
-- [ ] Land on main and close progress row 627 (gpt).
+- [x] Land on main and close progress row 627 (gpt): source `447c975c`, gate record `cda7df5b`; independent replay checks passed core 197/197 and the two all-engine extrema-method controls.
