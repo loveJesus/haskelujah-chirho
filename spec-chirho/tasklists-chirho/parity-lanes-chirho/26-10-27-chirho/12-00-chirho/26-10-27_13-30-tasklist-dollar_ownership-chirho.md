@@ -68,6 +68,23 @@ A program's own `$` was silently the Prelude's on every engine.
     - the owned table fails, first at `DDollarChainChirho` on the interpreter;
     - the holds and `runST` pass.
   - **The restored tree:** 398/398 parser library tests, 3/3 controls.
-- [ ] Commit; the broad moved-shape scan.
-- [ ] Judge main `27dc9540` against the contract copy; gate r1 on the tip.
-- [ ] The tip's probe reports; post to gpt_chirho. Then row 639.
+- [x] **Commit** `78b11250`, replayed as `de34e97e`. The broad moved-shape scan (`scan619-chirho.log`, on `78b11250`):
+  - 3610/3610 passed in 1078 s, with 18 skipped and a clean tree before and after;
+  - against row 618's scan, it differs by exactly this row's 3 controls and the renamed parser test, whose old name is the one missing.
+- [x] **The tip's probe reports** (`probes-chirho/tip-78b11250-chirho`, on the gate's own CLI):
+  - the 5 movers and the 2 holds are GHC on all three engines, with 3 of 3 interpreter runs identical;
+  - `runST` fails as it does on main.
+- [x] **Judge and gate.**
+  - **r1, GREEN on `78b11250` (base `27dc9540`) in 420.96 s** (`gate619-r1-chirho/`).
+    - Main `27dc9540`'s crates tree equals row 618's gated tip `6a5c813a`.
+    - The load average was 25 to 29, so eight existing native tests ran over 60 s. This row's controls took 3 to 51 s.
+  - **The replay.**
+    - Row 642 landed (main `289bea0e`), then row 656 was reserved (main `76d93c48`, the progress DB only).
+    - Main `289bea0e` is judged GREEN against the contract copy first (73 movers, 9 holds; `baseline-289bea0e-chirho.log`). Its frozen CLI still prints main's 6 for `DHiddenDollarSigChirho`.
+    - Row 642 touched none of this row's files, and the row's diff is byte-identical after the replay.
+  - **r2, GREEN on the replayed `de34e97e` (base `76d93c48`, 1 commit) in 296.93 s** (`gate619-r2-chirho/`):
+    - 1404/1404 focused tests, with this row's 3;
+    - no Clippy diagnostic on the 117 changed lines in 7 files;
+    - the contract judge GREEN (73 movers, 9 holds);
+    - rustfmt, diff-check and gitleaks clean, and a build with no warning.
+- [ ] Post to gpt_chirho. Then row 639.
