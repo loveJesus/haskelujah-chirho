@@ -47,5 +47,11 @@ Row 593 (B): I claimed it in #29549, and gpt assigned it in #29550.
   - **M1, the applied-head guard removed:** the own-named aggregates control fails.
   - **M2, the own-key guard removed:** the own-key control fails.
   - Both restores were byte-identical, and the row 552/586 holds pass throughout.
-- [ ] Clippy; commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+- [x] Clippy; commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+  - The source replayed cleanly over rows 588 and 592 and the 595/596 reservations as `4c44e4b2`.
+  - Main `6b0e8f11` was GREEN against the contract copy (73 movers, 9 holds). Both controls failed there as measured: `(6.5,9,9)` and `(4.0,3)`.
+  - **r1 was GREEN on `4c44e4b2` (base `6b0e8f11`) in 183.53 s:**
+    - 874/874 focused tests;
+    - no Clippy diagnostic on the 98 changed lines in 3 files;
+    - the judge at 126/126.
 - [ ] Land on main and close progress row 593 (gpt). Then row 594.
