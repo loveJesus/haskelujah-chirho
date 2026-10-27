@@ -172,7 +172,7 @@ flowchart TD
 
 ### Boundaries
 
-- The interpreter's multi-module path (`compile_modules_chirho`) gives each module every upstream export's type by bare name, so a name `module M` does not export still type-checks there and links by name. p2, p6 and p8 run on the interpreter, as they did on main; `check` and every native build refuse them.
+- The interpreter's multi-module path (`compile_modules_chirho`) used to give each module every upstream export's type by bare name, so a name `module M` does not export still type-checked there and linked by name. Since row 647 it gives each module only the value schemes of the modules it imports, through the project path's own `filter_seeded_imported_types_for_source_chirho`, so p2, p6 and p8 are refused there as in `check` and every native build. Its type synonyms stay unfiltered: the shared synonym filter drops a parent alias that a re-exported alias expands through, which is row 656's to repair.
 - Where a re-exported value is defined is row 642's.
 - Diagnostic bytes: an unexported name is reported by inference as E0202 `unbound variable`, where GHC 9.14.1 reports GHC-88464.
 
@@ -180,4 +180,4 @@ flowchart TD
 
 - **The rule:** `filter_exports_chirho` in `crates/haskelujah-naming-chirho/src/iface_chirho.rs`, through `merge_imported_exports_chirho`.
 - **Each defect alone:** three tests in `value_scope_tests_chirho.rs` over the builtin `Data.List` interface. Each fails on the old rule at its own assertion.
-- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/module_exports_chirho.rs`. 7 programs GHC 9.14.1 runs are exact on the interpreter, LLVM and true Cranelift, and the 3 it rejects are refused on both native backends. Row 621's p11 is row 629's n1 in `import_identity_chirho.rs`.
+- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/module_exports_chirho.rs`. 7 programs GHC 9.14.1 runs are exact on the interpreter, LLVM and true Cranelift, and the 3 it rejects are refused on all three. Row 621's p11 is row 629's n1 in `import_identity_chirho.rs`.

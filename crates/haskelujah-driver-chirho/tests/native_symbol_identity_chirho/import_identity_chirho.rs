@@ -415,9 +415,7 @@ pub(super) fn assert_refused_chirho(program_chirho: (ProgramChirho, &str)) {
 }
 
 /// LLVM and Cranelift each refuse the program, naming `refusal_chirho`.
-pub(super) fn assert_refused_natively_chirho(
-    (modules_chirho, refusal_chirho): (ProgramChirho, &str),
-) {
+fn assert_refused_natively_chirho((modules_chirho, refusal_chirho): (ProgramChirho, &str)) {
     for backend_chirho in BACKENDS_CHIRHO {
         let outcome_chirho = native_project_round_trip_chirho(
             modules_chirho,

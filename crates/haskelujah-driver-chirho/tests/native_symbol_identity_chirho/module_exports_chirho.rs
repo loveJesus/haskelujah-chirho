@@ -3,13 +3,11 @@
 //! Row 621: `module M` in an export list exports every entity in scope both unqualified and as
 //! `M.e` (Haskell 2010, 5.2). Each program and its expected output are GHC 9.14.1's, measured on
 //! the text embedded here. The programs GHC runs are exact on the interpreter, LLVM and true
-//! Cranelift; the ones GHC rejects are refused on both native backends. Row 621's p11 is row
-//! 629's n1, byte for byte.
+//! Cranelift, and the ones GHC rejects are refused on all three, the interpreter since row 647.
+//! Row 621's p11 is row 629's n1, byte for byte.
 //! workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
 
-use super::import_identity_chirho::{
-    ProgramChirho, assert_exact_chirho, assert_refused_natively_chirho,
-};
+use super::import_identity_chirho::{ProgramChirho, assert_exact_chirho, assert_refused_chirho};
 
 /// p1: a self export takes an unqualified alias of another module. GHC prints '6'.
 const P1_CHIRHO: (ProgramChirho, &str) = (
@@ -362,12 +360,9 @@ fn a_hiding_import_keeps_an_explicitly_exported_local_chirho() {
     assert_exact_chirho(P10_CHIRHO);
 }
 
-/// The interpreter's multi-module path still runs all three, as it did on main:
-/// `compile_modules_chirho` gives each module every upstream export's type by bare name, so
-/// the unbound name type-checks and then links by name. That gap is outside row 621.
 #[test]
 fn names_out_of_both_scopes_are_not_exported_chirho() {
-    assert_refused_natively_chirho(P2_CHIRHO);
-    assert_refused_natively_chirho(P6_CHIRHO);
-    assert_refused_natively_chirho(P8_CHIRHO);
+    assert_refused_chirho(P2_CHIRHO);
+    assert_refused_chirho(P6_CHIRHO);
+    assert_refused_chirho(P8_CHIRHO);
 }

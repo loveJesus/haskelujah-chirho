@@ -4,7 +4,9 @@
 
 use super::dependency_packages_chirho::insert_exported_schemes_into_imports_chirho;
 use super::import_links_chirho::ImportLinkerChirho;
-use super::project_dir_chirho::extract_module_name_chirho;
+use super::project_dir_chirho::{
+    extract_module_name_chirho, filter_seeded_imported_types_for_source_chirho,
+};
 use super::{
     CompileResultChirho, FrontendResultChirho, ImportedTypeSynonymsChirho, compile_backend_chirho,
     exported_type_synonyms_from_module_chirho, run_frontend_chirho,
@@ -54,12 +56,18 @@ pub fn compile_modules_chirho(
         );
         let file_id_chirho = source_file_chirho.file_id_chirho();
 
-        // Phases 1–4.5: shared front-end
+        // Phases 1–4.5: shared front-end. The module sees only the value schemes of the
+        // modules it imports, as the project path does, so a name no import brings stays
+        // unbound (row 647). Type synonyms stay unfiltered here: the shared synonym filter
+        // drops a parent alias that a re-exported alias expands through (row 656).
+        // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+        let filtered_imported_types_chirho =
+            filter_seeded_imported_types_for_source_chirho(source_chirho, &imported_types_chirho);
         let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
             source_chirho,
             file_id_chirho,
             &ifaces_chirho,
-            &imported_types_chirho,
+            &filtered_imported_types_chirho,
             &imported_type_synonyms_chirho,
             &imported_type_families_chirho,
         )?;
