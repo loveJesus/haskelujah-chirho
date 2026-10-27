@@ -785,11 +785,16 @@ flowchart LR
 
 ## Current boundary
 
-- A separately declared result-only polymorphic predicate is still defaulted by the dictionary
-  pass. For example, `convert :: (Integral a, Num b) => a -> b; convert = fromIntegral` fixes
-  `b` at Int before call-site result propagation. Row 596 does not change that existing policy;
-  concrete annotations directly on `fromIntegral`, and monomorphic aliases such as
-  `Int -> Integer` or `Int -> Double`, carry both proofs and are exact.
+- A separately declared result-only `Num` predicate remains a dictionary parameter when a free
+  constrained reference in that binding body carries the exact `$own:<predicate-index>` proof
+  (row 599). Definition and callers use the same body-aware inventory. Thus
+  `convert :: (Integral a, Num b) => a -> b; convert = fromIntegral` receives both dictionaries,
+  and its Integer and Double instantiations are exact on every engine. With no exact own proof,
+  result-only defaulting stays unchanged; this includes an inferred local binding whose body is
+  only an unkeyed literal. Other result-only classes also retain their existing policy.
+- Row 596 remains the occurrence-level foundation: concrete annotations directly on
+  `fromIntegral`, and monomorphic aliases such as `Int -> Integer` or `Int -> Double`, carry both
+  proofs independently of row 599.
 - An infix or section use of a class METHOD mints its own occurrence id and carries its
   operator's provenance, like a prefix use, unless the desugarer lowers that operator to a
   primop first. Those carry no occurrence and no evidence: infix `<`, `<=`, `>`, `>=`, `div`,

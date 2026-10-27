@@ -201,3 +201,20 @@ fn integral_conversions_use_both_proven_dictionaries_everywhere_chirho() {
     );
     assert_native_chirho("IntegralConversionsChirho.hs", program_chirho, ghc_chirho);
 }
+
+/// Row 599: a result-only `Num b` remains a real parameter when the binding body's
+/// constrained reference carries the exact `$own:1` proof. The old result-only
+/// default replaced that dictionary with Num Int: the interpreter stopped when the
+/// result was shown as Double, and both natives silently reinterpreted Int words as
+/// Double bits. Every line below is GHC 9.14.1's output for the source as written.
+#[test]
+fn a_result_only_num_dictionary_reaches_from_integral_everywhere_chirho() {
+    let program_chirho = "module Main where\nconvertChirho :: (Integral a, Num b) => a -> b\nconvertChirho = fromIntegral\nmain :: IO ()\nmain = do\n  print (convertChirho (minBound :: Int) :: Integer)\n  print (convertChirho (42 :: Int) :: Double)\n  print (map convertChirho ([minBound, -1, 0, maxBound] :: [Int]) :: [Integer])\n  print (map convertChirho ([minBound, -1, 0, maxBound] :: [Int]) :: [Double])\n";
+    let ghc_chirho = "-9223372036854775808\n42.0\n[-9223372036854775808,-1,0,9223372036854775807]\n[-9.223372036854776e18,-1.0,0.0,9.223372036854776e18]\n";
+    assert_eq!(
+        run_chirho("ResultOnlyNumChirho.hs", program_chirho),
+        ghc_chirho,
+        "interpreter"
+    );
+    assert_native_chirho("ResultOnlyNumChirho.hs", program_chirho, ghc_chirho);
+}

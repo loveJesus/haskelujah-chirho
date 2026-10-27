@@ -12,6 +12,65 @@ use crate::expr_chirho::{
 };
 
 impl DictPassCtxChirho {
+    /// Predicate indices whose dictionaries this binding must receive.
+    ///
+    /// Result-only `Num` predicates ordinarily keep the Report's defaulting
+    /// behavior. A constrained reference in the binding body can instead prove
+    /// that the exact predicate parameter is used: the checker names that proof
+    /// `$own:<index>`. In that case definition and caller must retain the same
+    /// dictionary parameter rather than silently replacing it with `Int`.
+    ///
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn binding_dict_param_indices_chirho(
+        &self,
+        binding_chirho: &CoreBindingChirho,
+        scheme_chirho: &SchemeChirho,
+    ) -> Vec<usize> {
+        let free_ids_chirho = crate::simplify_chirho::free_vars_chirho(&binding_chirho.rhs_chirho);
+        scheme_chirho
+            .preds_chirho
+            .iter()
+            .enumerate()
+            .filter_map(|(predicate_index_chirho, predicate_chirho)| {
+                let own_key_chirho =
+                    haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(Some(
+                        predicate_index_chirho,
+                    ));
+                let body_proves_own_chirho = predicate_chirho.class_name_chirho == "Num"
+                    && free_ids_chirho.iter().any(|id_chirho| {
+                        self.reference_evidence_chirho.get(id_chirho).is_some_and(
+                            |evidence_chirho| {
+                                evidence_chirho.iter().any(|(class_chirho, key_chirho)| {
+                                    class_chirho == &predicate_chirho.class_name_chirho
+                                        && key_chirho.as_deref() == Some(own_key_chirho.as_str())
+                                })
+                            },
+                        )
+                    });
+                (body_proves_own_chirho
+                    || self
+                        .resolved_pred_dictionary_chirho(predicate_chirho, scheme_chirho)
+                        .is_none())
+                .then_some(predicate_index_chirho)
+            })
+            .collect()
+    }
+
+    pub(super) fn dict_param_classes_for_binding_chirho(
+        &self,
+        binding_chirho: &CoreBindingChirho,
+        scheme_chirho: &SchemeChirho,
+    ) -> Vec<String> {
+        self.binding_dict_param_indices_chirho(binding_chirho, scheme_chirho)
+            .into_iter()
+            .map(|predicate_index_chirho| {
+                scheme_chirho.preds_chirho[predicate_index_chirho]
+                    .class_name_chirho
+                    .clone()
+            })
+            .collect()
+    }
+
     fn seed_value_binder_type_keys_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
@@ -154,10 +213,14 @@ impl DictPassCtxChirho {
         }
 
         let mut dict_binders_chirho = Vec::new();
+        let dict_param_indices_chirho =
+            self.binding_dict_param_indices_chirho(binding_chirho, scheme_chirho);
 
         for (pred_index_chirho, pred_chirho) in scheme_chirho.preds_chirho.iter().enumerate() {
             evidence_classes_chirho.insert(pred_chirho.class_name_chirho.clone());
-            let resolved_chirho = self.resolved_pred_dictionary_chirho(pred_chirho, scheme_chirho);
+            let resolved_chirho = (!dict_param_indices_chirho.contains(&pred_index_chirho))
+                .then(|| self.resolved_pred_dictionary_chirho(pred_chirho, scheme_chirho))
+                .flatten();
 
             if let Some(inst_id_chirho) = resolved_chirho {
                 // Ground predicate with known instance — use concrete dict
@@ -190,7 +253,8 @@ impl DictPassCtxChirho {
         // Record which classes this binding abstracts over so that call
         // sites can insert the corresponding dict arguments.
         if !dict_binders_chirho.is_empty() {
-            let classes_chirho = self.dict_param_classes_for_scheme_chirho(scheme_chirho);
+            let classes_chirho =
+                self.dict_param_classes_for_binding_chirho(binding_chirho, scheme_chirho);
             if !classes_chirho.is_empty() {
                 self.dict_param_bindings_chirho
                     .insert(binding_chirho.binder_chirho.id_chirho, classes_chirho);
@@ -460,5 +524,96 @@ impl DictPassCtxChirho {
             is_rec_chirho: binding_is_rec_chirho,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests_chirho {
+    use super::*;
+    use haskelujah_span_chirho::SpanChirho;
+    use haskelujah_typing_chirho::ty_chirho::{SchemePredChirho, TyVarChirho};
+
+    fn result_only_binding_chirho(rhs_id_chirho: u32) -> CoreBindingChirho {
+        CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: CoreIdChirho(1),
+                name_chirho: "convertChirho".to_string(),
+                ty_chirho: TyChirho::int_chirho(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(rhs_id_chirho)),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        }
+    }
+
+    fn result_only_scheme_chirho(result_class_chirho: &str) -> SchemeChirho {
+        let source_var_chirho = TyChirho::VarChirho(TyVarChirho(0));
+        let result_var_chirho = TyChirho::VarChirho(TyVarChirho(1));
+        SchemeChirho {
+            vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)],
+            preds_chirho: vec![
+                SchemePredChirho {
+                    class_name_chirho: "Integral".to_string(),
+                    ty_chirho: source_var_chirho.clone(),
+                    extra_tys_chirho: Vec::new(),
+                },
+                SchemePredChirho {
+                    class_name_chirho: result_class_chirho.to_string(),
+                    ty_chirho: result_var_chirho.clone(),
+                    extra_tys_chirho: Vec::new(),
+                },
+            ],
+            ty_chirho: TyChirho::fun_chirho(source_var_chirho, result_var_chirho),
+        }
+    }
+
+    #[test]
+    fn only_exact_body_proven_result_num_evidence_defeats_defaulting_chirho() {
+        let rhs_id_chirho = CoreIdChirho(20);
+        let binding_chirho = result_only_binding_chirho(rhs_id_chirho.0);
+        let scheme_chirho = result_only_scheme_chirho("Num");
+        let mut pass_chirho = DictPassCtxChirho::new_chirho(100, HashMap::new(), HashMap::new());
+        pass_chirho
+            .instance_dicts_chirho
+            .insert(("Num".to_string(), "Int".to_string()), CoreIdChirho(90));
+        pass_chirho.reference_evidence_chirho.insert(
+            rhs_id_chirho,
+            vec![
+                ("Integral".to_string(), Some("$own:0".to_string())),
+                ("Num".to_string(), Some("$own:1".to_string())),
+            ],
+        );
+        assert_eq!(
+            pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
+            vec![0, 1]
+        );
+
+        pass_chirho.reference_evidence_chirho.insert(
+            rhs_id_chirho,
+            vec![("Integral".to_string(), Some("$own:0".to_string()))],
+        );
+        assert_eq!(
+            pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
+            vec![0]
+        );
+
+        pass_chirho
+            .instance_dicts_chirho
+            .insert(("Enum".to_string(), "Int".to_string()), CoreIdChirho(91));
+        pass_chirho.reference_evidence_chirho.insert(
+            rhs_id_chirho,
+            vec![
+                ("Integral".to_string(), Some("$own:0".to_string())),
+                ("Enum".to_string(), Some("$own:1".to_string())),
+            ],
+        );
+        assert_eq!(
+            pass_chirho.binding_dict_param_indices_chirho(
+                &binding_chirho,
+                &result_only_scheme_chirho("Enum")
+            ),
+            vec![0]
+        );
     }
 }

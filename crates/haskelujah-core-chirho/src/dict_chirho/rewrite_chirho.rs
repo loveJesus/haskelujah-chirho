@@ -397,7 +397,8 @@ impl DictPassCtxChirho {
                 }
             }
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(name_chirho) {
-                let classes_chirho = self.dict_param_classes_for_scheme_chirho(scheme_chirho);
+                let classes_chirho =
+                    self.dict_param_classes_for_binding_chirho(binding_chirho, scheme_chirho);
                 if !classes_chirho.is_empty() {
                     self.dict_param_bindings_chirho
                         .insert(binding_chirho.binder_chirho.id_chirho, classes_chirho);
