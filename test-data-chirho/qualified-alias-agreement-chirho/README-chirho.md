@@ -61,14 +61,17 @@ applies to GHC's `:type` text and to the printed bare scheme alike:
 | Unkeyed builtin exports queried | 12,721 |
 | Not typed by GHC (module not exposed, or the export is absent) | 8,446 |
 | Typed by GHC, but no bare builtin scheme | 2,870 |
-| Disagree (`disagreements-chirho.tsv`) | 684 |
-| Agree (the table) | 721 |
+| Disagree (`disagreements-chirho.tsv`) | 679 |
+| Agree (the table) | 726 |
+
+Row 611 gave `fromMaybe`, `isJust`, `isNothing` and `maybe` GHC's `Maybe` types, so a
+regeneration moved five pairs from disagree to agree: Data.Maybe's four helpers and Prelude's
+`maybe`. Row 608 measured 721 and 684.
 
 - Container modules have no entries. That falls out of the data rather than a list: Data.Map,
   Data.Set, Data.IntMap, Data.Sequence, Data.Text, Data.ByteString and Data.List.NonEmpty.
 - The disagreements are named residuals, each for a row of its own:
   - GHC's Foldable-generic functions against list-only bare schemes;
-  - Data.Maybe's over-general bare schemes;
   - a String-only `intercalate`;
   - missing constraints on `forever`, `mapM` and `sequence`.
 

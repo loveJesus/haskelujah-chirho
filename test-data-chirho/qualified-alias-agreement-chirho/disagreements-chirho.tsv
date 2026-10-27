@@ -483,10 +483,6 @@ Data.Map.Strict	partition	(v0 -> Bool) -> Map v1 v0 -> (Map v1 v0, Map v1 v0)	(v
 Data.Map.Strict	split	(Ord v0) => v0 -> Map v0 v1 -> (Map v0 v1, Map v0 v1)	(RandomGen v0) => v0 -> (v0, v0)
 Data.Map.Strict	toList	Map v0 v1 -> [(v0, v1)]	(IsList v0) => v0 -> [v1]
 Data.Map.Strict	union	(Ord v0) => Map v0 v1 -> Map v0 v1 -> Map v0 v1	(Eq v0) => [v0] -> [v0] -> [v0]
-Data.Maybe	fromMaybe	v0 -> Maybe v0 -> v0	v0 -> v1 v0 -> v0
-Data.Maybe	isJust	Maybe v0 -> Bool	v0 v1 -> Bool
-Data.Maybe	isNothing	Maybe v0 -> Bool	v0 v1 -> Bool
-Data.Maybe	maybe	v0 -> (v1 -> v0) -> Maybe v1 -> v0	v0 -> (v1 -> v0) -> v2 v1 -> v0
 Data.Sequence	drop	Int -> Seq v0 -> Seq v0	Int -> [v0] -> [v0]
 Data.Sequence	empty	Seq v0	v0 v1
 Data.Sequence	filter	(v0 -> Bool) -> Seq v0 -> Seq v0	(v0 -> Bool) -> [v0] -> [v0]
@@ -638,7 +634,6 @@ Prelude	lex	ReadS [Char]	[Char] -> [([Char], [Char])]
 Prelude	liftA2	(Applicative v3) => (v0 -> v1 -> v2) -> v3 v0 -> v3 v1 -> v3 v2	(v0 -> v1 -> v2) -> v3 v0 -> v3 v1 -> v3 v2
 Prelude	mapM	(Monad v1, Traversable v3) => (v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)	(v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)
 Prelude	maximum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
-Prelude	maybe	v0 -> (v1 -> v0) -> Maybe v1 -> v0	v0 -> (v1 -> v0) -> v2 v1 -> v0
 Prelude	minimum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
 Prelude	notElem	(Eq v0, Foldable v1) => v0 -> v1 v0 -> Bool	(Eq v0) => v0 -> [v0] -> Bool
 Prelude	or	(Foldable v0) => v0 Bool -> Bool	[Bool] -> Bool

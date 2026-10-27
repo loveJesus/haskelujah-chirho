@@ -1281,13 +1281,16 @@ fn eval_to_integer_chirho() {
     }
 }
 
+// Rows 429 and 611: these five helper tests once declared their own `data Maybe` in module
+// `Test` and applied the builtin helpers to it, a program GHC 9.14.1 rejects (GHC-87543). Each now
+// uses the standard `Maybe` and imports the helper from Data.Maybe; GHC agrees on every value.
 #[test]
 fn eval_is_just_chirho() {
     use crate::eval_source_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(
         "module Test where\n\
-             data Maybe a = Nothing | Just a\n\
+             import Data.Maybe (isJust)\n\
              main = if isJust (Just 42) then 1 else 0\n",
         &mut source_map_chirho,
         "TestChirho.hs",
@@ -1310,7 +1313,7 @@ fn eval_is_nothing_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(
         "module Test where\n\
-             data Maybe a = Nothing | Just a\n\
+             import Data.Maybe (isNothing)\n\
              main = if isNothing Nothing then 1 else 0\n",
         &mut source_map_chirho,
         "TestChirho.hs",
@@ -1334,7 +1337,7 @@ fn eval_from_maybe_chirho() {
     // fromMaybe 0 (Just 42) should give 42
     let result_chirho = eval_source_chirho(
         "module Test where\n\
-             data Maybe a = Nothing | Just a\n\
+             import Data.Maybe (fromMaybe)\n\
              main = fromMaybe 0 (Just 42)\n",
         &mut source_map_chirho,
         "TestChirho.hs",
@@ -1358,7 +1361,7 @@ fn eval_from_maybe_nothing_chirho() {
     // fromMaybe 0 Nothing should give 0
     let result_chirho = eval_source_chirho(
         "module Test where\n\
-             data Maybe a = Nothing | Just a\n\
+             import Data.Maybe (fromMaybe)\n\
              main = fromMaybe 0 Nothing\n",
         &mut source_map_chirho,
         "TestChirho.hs",
@@ -1382,7 +1385,6 @@ fn eval_maybe_chirho() {
     // maybe 0 (\x -> x + 1) (Just 41) should give 42
     let result_chirho = eval_source_chirho(
         "module Test where\n\
-             data Maybe a = Nothing | Just a\n\
              inc x = x + 1\n\
              main = maybe 0 inc (Just 41)\n",
         &mut source_map_chirho,

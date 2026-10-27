@@ -94,13 +94,12 @@ flowchart TD
   - Only `builtin_module_ifaces_chirho` marks `BuiltinChirho`, in one loop over its finished vector.
   - `merge_module_ifaces_chirho` keeps `BuiltinChirho` only when every merged copy carries it, in either order.
   - So a source module named like a builtin module, or a source re-export of builtin names, never reads the table, whatever its spelling.
-- **The data.** GHC 9.14.1 measured 12,721 unkeyed builtin exports: 721 agree; 684 disagree; 2,870 have no bare scheme; and 8,446 GHC does not type.
+- **The data.** GHC 9.14.1 measured 12,721 unkeyed builtin exports: 726 agree; 679 disagree; 2,870 have no bare scheme; and 8,446 GHC does not type. Row 608 measured 721 and 684; row 611's Data.Maybe repair moved five pairs.
   - Container modules have no entries, by the data rather than a list.
   - The generator, the normalization contract and the evidence are in `test-data-chirho/qualified-alias-agreement-chirho/`.
   - Regeneration is deterministic: two bases gave byte-identical outputs.
 - **Disagreements kept the placeholder.** Each is a named residual for a row of its own:
   - GHC's Foldable-generic functions against list-only bare schemes;
-  - Data.Maybe's over-general bare schemes;
   - a String-only `intercalate`;
   - missing constraints on `forever`, `mapM` and `sequence`.
 - **Named-to-named transitions.**
@@ -122,6 +121,18 @@ flowchart TD
     - the routes the table leaves alone;
     - the two named-to-named transitions;
     - a user module's alias.
+
+## Data.Maybe helpers at GHC's types (row 611)
+
+- `fromMaybe`, `isJust`, `isNothing` and `maybe` are seeded in `core_chirho/part_03_chirho.rs` with `Maybe` itself, as GHC types them. Their neighbors `maybeToList`, `listToMaybe`, `catMaybes`, `mapMaybe` and `fromJust` already were.
+- **The shortcut it removes.** bea5612c (row 429, 2026-07-05) typed the four over any constructor `f a`. It existed for five driver tests that declared their own `data Maybe` and applied the builtin helpers to it, programs GHC 9.14.1 rejects (GHC-87543).
+  - So a list, an `Either`, a user `Box` or a rigid `g` checked.
+  - Then the interpreter failed "no matching alternative", and the natives printed wrong values.
+  - Those five tests now use the standard `Maybe` and import the helpers, with the same expected values.
+- **Now.** Each misuse is a frontend rejection on every engine. The valid uses keep GHC's answers, and the regenerated row 608 table types the qualified Data.Maybe aliases.
+- **Controls.**
+  - In `tests/typing_integration_chirho/maybe_helper_schemes_chirho.rs`: the valid and shadowing uses and the qualified aliases on all three engines; seven misuses; and the old local-`Maybe` shape as a rejection.
+  - In `eval_basic_chirho.rs`: the five rewritten value tests.
 
 ## Prelude numeric functions with generated bodies
 

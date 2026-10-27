@@ -11,6 +11,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
+#[path = "typing_integration_chirho/maybe_helper_schemes_chirho.rs"]
+mod maybe_helper_schemes_chirho;
 #[path = "typing_integration_chirho/qualified_alias_agreement_chirho.rs"]
 mod qualified_alias_agreement_chirho;
 #[path = "typing_integration_chirho/qualified_builtin_aliases_chirho.rs"]
