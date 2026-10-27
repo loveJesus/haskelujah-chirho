@@ -53,6 +53,7 @@ A program's own binding is never recognized by its spelling. A free id that is n
 
 - Table and provenance: `haskelujah-core-chirho/src/expr_chirho.rs`.
 - Free references: `haskelujah-core-chirho/src/transform_chirho.rs`.
+- The merge: `haskelujah-driver-chirho/src/native_link_chirho/core_merge_chirho.rs` (row 634 moved it out of the driver's `lib.rs`).
 - LLVM:
   - `toplevel_symbol_chirho` and `recognized_name_chirho` in `codegen_chirho.rs`;
   - the lazy nullary reference in `codegen_chirho/lazy_chirho.rs`.
