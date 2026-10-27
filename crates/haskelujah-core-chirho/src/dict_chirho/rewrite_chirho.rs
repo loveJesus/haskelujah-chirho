@@ -407,22 +407,12 @@ impl DictPassCtxChirho {
         for binding_chirho in &module_chirho.bindings_chirho {
             let name_chirho = &binding_chirho.binder_chirho.name_chirho;
             if self.method_selectors_chirho.contains_key(name_chirho) {
-                // Only shadow if the binding is NOT itself a class method
-                // (i.e. it has no matching class predicate in its type scheme)
-                let is_class_method_chirho = type_env_chirho
-                    .lookup_chirho(name_chirho)
-                    .map(|s_chirho| {
-                        s_chirho.preds_chirho.iter().any(|p_chirho| {
-                            let (class_chirho, _) = &self.method_selectors_chirho[name_chirho];
-                            &p_chirho.class_name_chirho == class_chirho
-                        })
-                    })
-                    .unwrap_or(false);
-                if !is_class_method_chirho {
-                    self.local_shadow_ids_chirho
-                        .borrow_mut()
-                        .insert(binding_chirho.binder_chirho.id_chirho);
-                }
+                // Every input binding is the program's own, whatever its scheme says: the
+                // pass generates the class selectors apart from the module's bindings (row 639).
+                // workflow: language-features-chirho/own-class-method-occurrences-chirho
+                self.local_shadow_ids_chirho
+                    .borrow_mut()
+                    .insert(binding_chirho.binder_chirho.id_chirho);
             }
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(name_chirho) {
                 let classes_chirho =
