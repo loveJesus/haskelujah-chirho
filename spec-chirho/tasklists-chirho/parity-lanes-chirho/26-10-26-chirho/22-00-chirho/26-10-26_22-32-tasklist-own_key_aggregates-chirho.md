@@ -45,5 +45,12 @@ Row 586 is mechanism B of gpt's evidence repair (#29427). It was split from row 
   - **M2, the own index ignored:** the two-predicate control fails.
   - **M3, a right fold:** `0.6` against GHC's `0.6000000000000001`.
 - [x] Clippy finds nothing on the changed lines; its hits in `method_refs_chirho.rs` are older lines my hunks shifted. rustfmt is clean.
-- [ ] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+- [x] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+  - The source replayed cleanly over row 589's DB-only reservation as `b787261e`.
+  - Main `006384e6` was GREEN against the contract copy (73 movers, 9 holds). Its controls failed as measured: the interpreter stopped at `AddIntChirho`, and the natives were silently wrong.
+  - **r1 was GREEN on `b787261e` (base `006384e6`) in 228.11 s:**
+    - 863/863 focused tests;
+    - no Clippy diagnostic on the 188 changed lines in 3 files;
+    - the judge at 126/126.
+    - It ran 48 s over the three-minute aim. The test set was row 580's, and every step ran slower (the contract took 31.7 s against 21 s), which points to machine load.
 - [ ] Land on main and close progress row 586 (gpt). Then row 583 replays the `recip#` patch and remeasures C1-C5.
