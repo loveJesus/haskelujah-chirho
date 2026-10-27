@@ -6,7 +6,7 @@
 Row 641, behavior-neutral structure.
 - **Released** by gpt_chirho in #30312, after row 617.
 - **Placement checkpoint #30313; approved #30314:** ten category homes, a flat module tree, and the arm extraction first.
-- **Branch:** `lower-split-chirho`, from main `b62328fb`.
+- **Branch:** `lower-split-chirho`, from main `b62328fb`, replayed onto `6d4e2326` after row 621 landed. Row 621 touched no parser, AST, syntax or span crate.
 - **Lane:** `tmp-chirho/lower-split-chirho/`. It holds the full AST dumps (on the 4 TB volume), the scripts and the receipts.
 
 ## Before
@@ -21,20 +21,22 @@ Row 641, behavior-neutral structure.
 
 ## Three commits, each proved on its own
 
-1. **`ffc2c751`, lint only.**
+1. **`86f26352`, lint only** (`ffc2c751` before the replay).
    - The move would carry 80 pre-existing Clippy findings, so they are cleared first: 74 of them with `cargo clippy --fix`.
    - The two `filter_map`s that only keep or drop are now filters.
    - Two pairs of identical branches in `parse_kind_atom_chirho` are merged.
    - `enum_variant_names` is allowed, with a reason, on two enums whose every variant carries the Chirho suffix.
    - **Proof:** the full AST dumps of all 3,864 tracked `.hs` files are byte-identical to main's; 402/402 parser tests pass; Clippy finds nothing in the file (the workspace drops from 444 to 364).
-2. **`57a349be`, the arm extraction.**
+2. **`3e1137a0`, the arm extraction** (`57a349be` before the replay).
    - `lower_paren_expr_chirho` and `lower_list_expr_chirho` take `node_chirho`, `base_chirho` and `span_chirho`. The arms become tail calls, and `lower_expr_chirho` is now 875 lines.
    - **Proof (`verify-extraction-chirho.txt`):**
      - The bodies match token for token, with the same string literals. rustfmt dropped 3 trailing commas from each, in calls that now fit on one line.
      - The rest of the file is unchanged.
      - The verifier was mutated: an added statement failed it.
      - The full AST dumps are byte-identical to the parent's and to main's.
-3. **The move** (`tools-chirho/split_lower_chirho.py`). Detailed below.
+3. **`46f229a3`, the move** (`tools-chirho/split_lower_chirho.py`). Detailed below.
+
+The AST dumps were taken before the replay. The replay changed no byte of the parser, AST, syntax or span crates in any of the three commits.
 
 ## Placement (`crates/haskelujah-parser-chirho/src/`)
 
@@ -66,8 +68,8 @@ Row 641, behavior-neutral structure.
 ## Checklist
 
 - [x] Placement checkpoint #30313; approved #30314.
-- [x] **The lint-only commit `ffc2c751` and the extraction commit `57a349be`,** each with full AST dumps byte-identical to main's.
-- [x] **The move proof** (`tools-chirho/verify_lower_split_chirho.py`, `verify-split-chirho.txt`) against `57a349be`:
+- [x] **The lint-only commit and the extraction commit,** each with full AST dumps byte-identical to main's.
+- [x] **The move proof** (`tools-chirho/verify_lower_split_chirho.py`): `verify-split-chirho.txt` against `57a349be`, and `verify-split-3e1137a0-chirho.txt` re-run against the replayed `3e1137a0`. Both are RESULT IDENTICAL.
   - 95/95 methods and 13 free items match, with 71 listed `pub(super)` additions. Each is byte-identical apart from `pub(super)`, except 10 signatures that `pub(super)` pushed past 100 columns. Each of those equals rustfmt's output for its widened base.
   - 178/178 tests and 15/15 helpers are token-identical, with all 1,208 string literals identical. String contents are never dedented.
     - 29 tests were re-joined by rustfmt after the dedent.
@@ -89,6 +91,14 @@ Row 641, behavior-neutral structure.
   - Workflows: flat-type syntax, instance obligations, value-scope resolution, operator fixity.
   - Bug records: data binders, GADT records, pattern-synonym contexts.
   - Dated tasklists and stale line numbers stay as history.
-- [ ] Commit the move; broad moved-shape scan.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] **The broad moved-shape scan** (`scan641-chirho.log`, on `46f229a3`): 3601/3601 passed in 867 s, with 18 skipped and a clean tree before and after.
+  - Against row 617's scan, exactly 178 test paths changed: the moved lowering tests, under the same function names.
+  - Nothing outside the parser crate moved.
+- [x] **Judge and gate.**
+  - **Main `6d4e2326`** is GREEN against the contract copy first (73 movers, 9 holds; `baseline-6d4e2326-chirho.log`).
+  - **r1, GREEN on `46f229a3` (base `6d4e2326`, 3 commits) in 271.08 s** (`gate641-r1-chirho/`):
+    - 1395/1395 focused tests;
+    - no Clippy diagnostic on the 16,485 changed lines in 27 files, the renamed files included;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (3 commits), and a build with no warning.
 - [ ] Land on main and close progress row 641 (gpt). Then rows 618 and 619, then row 639.
