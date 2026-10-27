@@ -8,7 +8,7 @@
 - [x] Add GHC-measured edge controls and structural RTS tests.
 - [x] Kill each primitive route with a narrow reach mutation.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check, and gitleaks.
-- [ ] Commit only Row 585 paths, fast-forward main, and close progress row 585.
+- [x] Commit only Row 585 paths, fast-forward main, and close progress row 585.
 
 ## Boundaries Chirho
 
