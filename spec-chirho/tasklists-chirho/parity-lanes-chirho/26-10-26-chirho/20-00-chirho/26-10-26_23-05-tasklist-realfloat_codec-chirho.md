@@ -12,7 +12,7 @@ in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
   or lazy-value lowering.
 - [x] Add all-engine, structural, ownership, and reach controls.
 - [x] Run a warm focused gate, changed-line Clippy, rustfmt, diff-check, and gitleaks.
-- [ ] Replay onto current main, fast-forward, and close progress row 590.
+- [x] Replay onto current main, fast-forward, and close progress row 590.
 
 ## Boundary Chirho
 
@@ -63,3 +63,10 @@ in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 - Clippy checked every Core and driver target. Its 562 inherited warnings include none on a Row
   590 changed or inserted line. Rustfmt and diff-check are clean.
 - Gitleaks scanned the one-commit source range and found no leaks.
+
+## Landing Chirho
+
+- Source tip `b1c4a262` fast-forwarded from the exact reservation base `281e79dc`; no replay was
+  needed and the gated tree is the landed tree.
+- Progress row 590 closed in the following DB-only documentation commit after SQLite reported one
+  changed row and `integrity_check=ok`.
