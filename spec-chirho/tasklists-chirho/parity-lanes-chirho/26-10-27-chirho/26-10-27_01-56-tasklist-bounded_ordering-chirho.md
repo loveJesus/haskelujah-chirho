@@ -7,7 +7,7 @@
 - [x] Trace the Bounded instance seed, evidence route, and generated Prelude rows.
 - [x] Implement only the ground `Bounded Ordering` instance and body-backed bounds.
 - [x] Add direct, first-class, structural, hold, and reach controls.
-- [ ] Run the focused gate and contract judge.
+- [x] Run the focused gate and contract judge.
 - [ ] Land through the canonical single-writer chain and close Row 605.
 
 ## Scope Chirho
@@ -47,3 +47,21 @@
   `1c189b023d0ace24013d052d08791131ab6c61a69fb8d05f7134a113160746d9`, and
   `evidence_join_chirho.rs` is
   `a2d9d811ec0c4d3f166d2a67b908a5738381162494a66e48dd4d4607e725eb19`.
+
+## Gate r1 Chirho
+
+- Source commit `a0733819` builds the workspace with no warning.
+- The bounded focused run is GREEN at 678/678: typing 365/365, core 191/191,
+  and dictionary evidence 122/122. The latter includes the interpreter, LLVM,
+  and real Cranelift controls for the new Ordering bounds and the program-owned
+  hold.
+- One initial command selected the entire driver library, including unrelated
+  60-second scale cases. It was deliberately interrupted after 885 clean passes
+  and is not counted as gate evidence; the three intended bounded suites above
+  replace it.
+- Changed-line Clippy is GREEN: 454 diagnostic locations were read against 150
+  changed Rust lines in seven files, with no diagnostic on a changed line.
+- The 41-program contract judge is GREEN at 126/126, accounting for 73 movers
+  and 9 holds. Row 605 moves no contract cell.
+- Rustfmt, diff-check, and gitleaks are clean; gitleaks scanned the source
+  commit and found no leak.
