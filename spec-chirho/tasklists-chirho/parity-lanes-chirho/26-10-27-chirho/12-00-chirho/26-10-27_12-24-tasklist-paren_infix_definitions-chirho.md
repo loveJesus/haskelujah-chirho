@@ -90,4 +90,4 @@ Row 618.
     - no Clippy diagnostic on the 411 changed lines in 5 files;
     - the contract judge GREEN;
     - rustfmt, diff-check and gitleaks clean, and a build with no warning.
-- [ ] Land on main and close progress row 618 (gpt). Then row 619, then row 639.
+- [x] Landed on `main_chirho` through `db5b1693` and closed as progress row 652 (gpt). Independent landing checks: 404 parser tests across targets, all four Row 618 three-engine integration controls, and a warning-free workspace all-target check. Then row 619, then row 639.
