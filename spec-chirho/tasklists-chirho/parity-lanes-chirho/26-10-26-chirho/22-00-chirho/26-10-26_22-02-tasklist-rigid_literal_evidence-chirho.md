@@ -47,5 +47,12 @@ Row 584 is gpt's evidence repair (#29427). It was split at my checkpoint (#29436
   - Both restores were byte-identical.
 - [x] **A local diagnostic, never committed:** with the held `recip#` patch applied, C1 and F1 match GHC natively and C3 does not. C3 is row 586.
 - [x] rustfmt is clean, and Clippy finds nothing in the touched files.
-- [ ] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+- [x] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+  - The source replayed cleanly over row 585 as `5b542841`.
+  - Main `52e5f3ed` was GREEN against the contract copy (73 movers, 9 holds). Its controls failed as measured: the natives were silently wrong, and the interpreter stopped on the returned literal.
+  - **r1 was GREEN on `5b542841` (base `52e5f3ed`) in 199.36 s:**
+    - 1259/1259 focused tests, with the typing crate added;
+    - no Clippy diagnostic on the 91 changed lines in 2 files;
+    - the judge at 126/126.
+    - The typing tests put r1 19 s over the three-minute aim; the tests step took 162.64 s.
 - [ ] Land on main and close progress row 584 (gpt).
