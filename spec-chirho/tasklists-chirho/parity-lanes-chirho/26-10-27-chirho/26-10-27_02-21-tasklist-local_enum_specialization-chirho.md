@@ -12,7 +12,7 @@ in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 - [x] Implement the smallest proven evidence-key repair and update its workflow.
 - [x] Add all-engine movers, existing-route holds and a mutation-sensitive control.
 - [x] Run the focused warm gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
-- [ ] Land through the canonical single-writer chain and close progress Row 607.
+- [x] Land through the canonical single-writer chain and close progress Row 607.
 
 ## Initial boundary Chirho
 
