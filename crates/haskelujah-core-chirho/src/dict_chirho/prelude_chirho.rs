@@ -6,6 +6,7 @@
 #![allow(unused_imports)]
 mod char_enum_chirho;
 mod demand_chirho;
+mod floating_methods_chirho;
 pub(super) mod fractional_power_chirho;
 mod integral_enum_chirho;
 mod io_refs_chirho;
@@ -3533,6 +3534,7 @@ impl DictPassCtxChirho {
 
         // ── Floating prim bindings ──
         self.generate_floating_prelude_chirho();
+        self.generate_floating_binary_prelude_chirho();
 
         // ── Functor / Applicative / Monad prim bindings ──
         self.generate_functor_monad_prelude_chirho();
@@ -3589,11 +3591,18 @@ impl DictPassCtxChirho {
         self.generate_nfdata_prelude_chirho();
     }
 
+    /// Bind `alias_name_chirho` to the generated binding named `source_name_chirho`. A
+    /// program's own top-level `alias_name_chirho` stays the binding: the alias would take
+    /// its id and replace it (row 578).
+    /// workflow: testing-chirho/native-fail-loud-chirho
     fn push_prelude_alias_chirho(&mut self, alias_name_chirho: &str, source_name_chirho: &str) {
         if self
-            .generated_bindings_chirho
-            .iter()
-            .any(|binding_chirho| binding_chirho.binder_chirho.name_chirho == alias_name_chirho)
+            .body_backed_names_chirho
+            .contains_key(alias_name_chirho)
+            || self
+                .generated_bindings_chirho
+                .iter()
+                .any(|binding_chirho| binding_chirho.binder_chirho.name_chirho == alias_name_chirho)
         {
             return;
         }
@@ -8844,6 +8853,13 @@ impl DictPassCtxChirho {
             ("exp", "exp#"),
             ("log", "log#"),
             ("sqrt", "sqrt#"),
+            // libm's hyperbolics, as GHC's Double instance calls them (row 578).
+            ("sinh", "sinh#"),
+            ("cosh", "cosh#"),
+            ("tanh", "tanh#"),
+            ("asinh", "asinh#"),
+            ("acosh", "acosh#"),
+            ("atanh", "atanh#"),
         ] {
             let prim_name_chirho = format!("$prim_Floating_{}_Double", method_chirho);
             let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
@@ -8868,18 +8884,7 @@ impl DictPassCtxChirho {
             });
 
             // Prelude-level alias: sin = $prim_Floating_sin_Double
-            let fn_id_chirho = self.resolve_or_fresh_id_chirho(method_chirho);
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: fn_id_chirho,
-                    name_chirho: method_chirho.to_string(),
-                    ty_chirho: d2d_chirho.clone(),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho: CoreExprChirho::VarChirho(prim_id_chirho),
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
+            self.push_prelude_alias_chirho(method_chirho, &prim_name_chirho);
         }
 
         // pi :: Double (constant via pi# primop, wrapped as a thunk)

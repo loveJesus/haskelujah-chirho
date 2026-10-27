@@ -265,6 +265,18 @@ pub enum PrimOpKindChirho {
     LogFloatChirho,
     /// sqrt# :: Double -> Double
     SqrtFloatChirho,
+    /// sinh# :: Double -> Double (row 578)
+    SinhFloatChirho,
+    /// cosh# :: Double -> Double (row 578)
+    CoshFloatChirho,
+    /// tanh# :: Double -> Double (row 578)
+    TanhFloatChirho,
+    /// asinh# :: Double -> Double (row 578)
+    AsinhFloatChirho,
+    /// acosh# :: Double -> Double (row 578)
+    AcoshFloatChirho,
+    /// atanh# :: Double -> Double (row 578)
+    AtanhFloatChirho,
     /// pi# :: -> Double (nullary constant, dispatched as unary ignoring arg)
     PiFloatChirho,
 

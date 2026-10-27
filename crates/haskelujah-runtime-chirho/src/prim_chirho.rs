@@ -615,51 +615,23 @@ pub fn apply_prim_binop_chirho(
         },
 
         // ── Floating math primops (unary, operate on Double) ──
-        PrimOpKindChirho::SinFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.sin())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).sin())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::CosFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.cos())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).cos())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::TanFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.tan())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).tan())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::AsinFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.asin())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).asin())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::AcosFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.acos())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).acos())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::AtanFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.atan())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).atan())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::ExpFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.exp())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).exp())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::LogFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.ln())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).ln())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
-        PrimOpKindChirho::SqrtFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => Ok(ValueChirho::FloatChirho(v_chirho.sqrt())),
-            ValueChirho::IntChirho(v_chirho) => Ok(ValueChirho::FloatChirho((*v_chirho as f64).sqrt())),
-            _ => Err(PrimErrorChirho::TypeMismatchChirho { op_chirho, expected_chirho: "Double#", got_chirho: format!("{left_chirho}") }),
-        },
+        // Each goes through the RTS's one libm table, which the native backends call too
+        // (rows 575 and 578).
+        PrimOpKindChirho::SinFloatChirho => float_math_chirho(op_chirho, "sin#", left_chirho),
+        PrimOpKindChirho::CosFloatChirho => float_math_chirho(op_chirho, "cos#", left_chirho),
+        PrimOpKindChirho::TanFloatChirho => float_math_chirho(op_chirho, "tan#", left_chirho),
+        PrimOpKindChirho::AsinFloatChirho => float_math_chirho(op_chirho, "asin#", left_chirho),
+        PrimOpKindChirho::AcosFloatChirho => float_math_chirho(op_chirho, "acos#", left_chirho),
+        PrimOpKindChirho::AtanFloatChirho => float_math_chirho(op_chirho, "atan#", left_chirho),
+        PrimOpKindChirho::ExpFloatChirho => float_math_chirho(op_chirho, "exp#", left_chirho),
+        PrimOpKindChirho::LogFloatChirho => float_math_chirho(op_chirho, "log#", left_chirho),
+        PrimOpKindChirho::SqrtFloatChirho => float_math_chirho(op_chirho, "sqrt#", left_chirho),
+        PrimOpKindChirho::SinhFloatChirho => float_math_chirho(op_chirho, "sinh#", left_chirho),
+        PrimOpKindChirho::CoshFloatChirho => float_math_chirho(op_chirho, "cosh#", left_chirho),
+        PrimOpKindChirho::TanhFloatChirho => float_math_chirho(op_chirho, "tanh#", left_chirho),
+        PrimOpKindChirho::AsinhFloatChirho => float_math_chirho(op_chirho, "asinh#", left_chirho),
+        PrimOpKindChirho::AcoshFloatChirho => float_math_chirho(op_chirho, "acosh#", left_chirho),
+        PrimOpKindChirho::AtanhFloatChirho => float_math_chirho(op_chirho, "atanh#", left_chirho),
         PrimOpKindChirho::PiFloatChirho => {
             // pi is a constant — ignore arguments, return pi
             Ok(ValueChirho::FloatChirho(std::f64::consts::PI))
@@ -836,6 +808,34 @@ fn int_binop_chirho(
             got_chirho: format!("({left_chirho}, {right_chirho})"),
         }),
     }
+}
+
+/// A unary Floating primop at Double: the libm function the RTS's one table names for
+/// `primop_chirho`, which the native backends call too (rows 575 and 578). An Int operand is
+/// read as its Double value, as the separate arms before this one read it.
+fn float_math_chirho(
+    op_chirho: PrimOpKindChirho,
+    primop_chirho: &str,
+    operand_chirho: &ValueChirho,
+) -> Result<ValueChirho, PrimErrorChirho> {
+    let value_chirho = match operand_chirho {
+        ValueChirho::FloatChirho(value_chirho) => *value_chirho,
+        ValueChirho::IntChirho(value_chirho) => *value_chirho as f64,
+        _ => {
+            return Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Double#",
+                got_chirho: format!("{operand_chirho}"),
+            });
+        }
+    };
+    haskelujah_rts_chirho::float_math_chirho::apply_float_math_chirho(primop_chirho, value_chirho)
+        .map(ValueChirho::FloatChirho)
+        .ok_or_else(|| PrimErrorChirho::TypeMismatchChirho {
+            op_chirho,
+            expected_chirho: "a unary Floating primop",
+            got_chirho: primop_chirho.to_string(),
+        })
 }
 
 /// Helper for float binary operations.

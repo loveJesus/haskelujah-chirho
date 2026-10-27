@@ -4,10 +4,12 @@ use super::{
     haskelujah_pow_double_int_chirho, haskelujah_pow_float_chirho, haskelujah_pow_int_chirho,
 };
 use crate::float_math_chirho::{
-    float_math_symbol_chirho, haskelujah_float_acos_chirho, haskelujah_float_asin_chirho,
-    haskelujah_float_atan_chirho, haskelujah_float_cos_chirho, haskelujah_float_exp_chirho,
-    haskelujah_float_log_chirho, haskelujah_float_sin_chirho, haskelujah_float_sqrt_chirho,
-    haskelujah_float_tan_chirho,
+    apply_float_math_chirho, float_math_symbol_chirho, haskelujah_float_acos_chirho,
+    haskelujah_float_acosh_chirho, haskelujah_float_asin_chirho, haskelujah_float_asinh_chirho,
+    haskelujah_float_atan_chirho, haskelujah_float_atanh_chirho, haskelujah_float_cos_chirho,
+    haskelujah_float_cosh_chirho, haskelujah_float_exp_chirho, haskelujah_float_log_chirho,
+    haskelujah_float_sin_chirho, haskelujah_float_sinh_chirho, haskelujah_float_sqrt_chirho,
+    haskelujah_float_tan_chirho, haskelujah_float_tanh_chirho,
 };
 use crate::float_power_chirho::{pow_double_int_chirho, pow_float_chirho};
 use crate::integer_power_chirho::pow_int_chirho;
@@ -59,6 +61,62 @@ fn unary_floating_primops_answer_as_ghc_chirho() {
         Some("haskelujah_float_sqrt_chirho")
     );
     assert_eq!(float_math_symbol_chirho("+.#"), None);
+}
+
+/// Row 578: the hyperbolic Floating primops, against GHC 9.14.1's printed answers. Rust's
+/// std computes `asinh`, `acosh` and `atanh` itself, which gives 1.3504407402749723,
+/// 0.6223625037147785 and -1.4722194895832208 at 1.8, 1.2 and -0.9. libm and GHC give
+/// the answers below, natively and through the interpreter's call.
+#[test]
+fn hyperbolic_floating_primops_answer_as_ghc_chirho() {
+    let cases_chirho: [(extern "C" fn(i64) -> i64, f64, &str); 9] = [
+        (haskelujah_float_sinh_chirho, 1.0, "1.1752011936438014"),
+        (haskelujah_float_cosh_chirho, 1.0, "1.5430806348152437"),
+        (haskelujah_float_tanh_chirho, 0.5, "0.46211715726000974"),
+        (haskelujah_float_asinh_chirho, 1.0, "0.881373587019543"),
+        (haskelujah_float_asinh_chirho, 1.8, "1.3504407402749725"),
+        (haskelujah_float_acosh_chirho, 2.0, "1.3169578969248166"),
+        (haskelujah_float_acosh_chirho, 1.2, "0.6223625037147786"),
+        (haskelujah_float_atanh_chirho, 0.5, "0.5493061443340549"),
+        (haskelujah_float_atanh_chirho, -0.9, "-1.4722194895832204"),
+    ];
+    for (native_chirho, argument_chirho, ghc_chirho) in cases_chirho {
+        assert_eq!(
+            native_float_chirho(native_chirho, argument_chirho).to_string(),
+            ghc_chirho,
+            "{ghc_chirho}"
+        );
+    }
+    for (primop_chirho, argument_chirho, ghc_chirho) in [
+        ("asinh#", 1.8, "1.3504407402749725"),
+        ("acosh#", 1.2, "0.6223625037147786"),
+        ("atanh#", -0.9, "-1.4722194895832204"),
+    ] {
+        assert_eq!(
+            apply_float_math_chirho(primop_chirho, argument_chirho)
+                .map(|v_chirho| v_chirho.to_string()),
+            Some(ghc_chirho.to_string()),
+            "{primop_chirho} interpreted"
+        );
+    }
+    assert_eq!(native_float_chirho(haskelujah_float_tanh_chirho, 30.0), 1.0);
+    assert_eq!(
+        native_float_chirho(haskelujah_float_sinh_chirho, 710.0),
+        1.1169973830808555e308
+    );
+    assert_eq!(
+        native_float_chirho(haskelujah_float_sinh_chirho, 711.0),
+        f64::INFINITY
+    );
+    assert_eq!(
+        native_float_chirho(haskelujah_float_atanh_chirho, 1.0),
+        f64::INFINITY
+    );
+    assert!(native_float_chirho(haskelujah_float_acosh_chirho, 0.5).is_nan());
+    assert_eq!(
+        float_math_symbol_chirho("atanh#"),
+        Some("haskelujah_float_atanh_chirho")
+    );
 }
 
 /// Row 573: GHC's Double `**`, the C library's `pow`, against GHC 9.14.1's printed answers,

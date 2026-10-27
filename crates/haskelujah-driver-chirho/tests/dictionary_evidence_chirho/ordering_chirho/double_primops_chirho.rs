@@ -241,6 +241,56 @@ fn unary_floating_primops_answer_as_ghc_everywhere_chirho() {
     );
 }
 
+/// Row 578: the hyperbolic Floating methods and `logBase` at Double. The checker typed
+/// them, but no Core bound them, so every engine failed with a missing binding. Each is
+/// now a libm call through the RTS, as GHC's are. Rust's std computes `asinh 1.8`,
+/// `acosh 1.2` and `atanh (-0.9)` an ulp or two away from libm and GHC. The program also
+/// covers overflow and domain edges, a top-level base, `map`, a partially applied
+/// `logBase` and a function parameter.
+const HYPERBOLIC_PRIMOPS_CHIRHO: &str = "module Main where\nxChirho :: Double\nxChirho = 1.8\nlogTwoChirho :: Double -> Double\nlogTwoChirho v = logBase 2 v\nmain :: IO ()\nmain = do\n  print (sinh 1 :: Double, cosh 1 :: Double)\n  print (tanh 0.5 :: Double, tanh 30 :: Double)\n  print (asinh 1.8 :: Double, acosh 1.2 :: Double)\n  print (atanh (-0.9) :: Double, atanh 1 :: Double)\n  print (acosh 0.5 :: Double, sinh 711 :: Double)\n  print (sinh 710 :: Double, cosh (-1) :: Double)\n  print (logBase 2 1024 :: Double, logBase 10 1000 :: Double)\n  print (logBase 3 81 :: Double, logBase 1 2 :: Double)\n  print (asinh xChirho, logBase 2 xChirho)\n  print (map tanh [0.5, -0.5 :: Double], map (logBase 2) [8, 0.5 :: Double])\n  print (logTwoChirho 1024, map logTwoChirho [4])\n  print (cosh xChirho * cosh xChirho - sinh xChirho * sinh xChirho)\n";
+
+/// GHC 9.14.1's output for [`HYPERBOLIC_PRIMOPS_CHIRHO`].
+const HYPERBOLIC_PRIMOPS_GHC_CHIRHO: &str = "(1.1752011936438014,1.5430806348152437)\n(0.46211715726000974,1.0)\n(1.3504407402749725,0.6223625037147786)\n(-1.4722194895832204,Infinity)\n(NaN,Infinity)\n(1.1169973830808555e308,1.5430806348152437)\n(10.0,2.9999999999999996)\n(4.0,Infinity)\n(1.3504407402749725,0.8479969065549501)\n([0.46211715726000974,-0.46211715726000974],[3.0,-1.0])\n(10.0,[2.0])\n1.0\n";
+
+#[test]
+fn hyperbolic_methods_and_log_base_answer_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("HyperbolicPrimopsChirho.hs", HYPERBOLIC_PRIMOPS_CHIRHO),
+        HYPERBOLIC_PRIMOPS_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho(
+        "HyperbolicPrimopsChirho.hs",
+        HYPERBOLIC_PRIMOPS_CHIRHO,
+        HYPERBOLIC_PRIMOPS_GHC_CHIRHO,
+    );
+}
+
+/// Row 578: a program that hides the Prelude's `logBase` and `sin` and defines its own
+/// keeps them. The generated Prelude alias took the id of the program's top-level
+/// binding and replaced it, so `sin 1` printed 0.8414709848078965 on every engine, and
+/// row 578's new `logBase` alias would have done the same. A local `tanh` was already
+/// its own.
+const OWN_FLOATING_NAMES_CHIRHO: &str = "module Main where\nimport Prelude hiding (logBase, sin)\nlogBase :: Double -> Double -> Double\nlogBase b x = b * 100 + x\nsin :: Double -> Double\nsin v = v + 0.25\nmain :: IO ()\nmain = do\n  print (logBase 2 1024, sin 1)\n  print (sinh 1 :: Double, cos 1 :: Double)\n  print (atanh 0.5 :: Double, tanh 2)\n  where\n    tanh v = v * 3 :: Double\n";
+
+/// GHC 9.14.1's output for [`OWN_FLOATING_NAMES_CHIRHO`].
+const OWN_FLOATING_NAMES_GHC_CHIRHO: &str =
+    "(1224.0,1.25)\n(1.1752011936438014,0.5403023058681398)\n(0.5493061443340549,6.0)\n";
+
+#[test]
+fn a_programs_own_floating_names_stay_its_own_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("OwnFloatingNamesChirho.hs", OWN_FLOATING_NAMES_CHIRHO),
+        OWN_FLOATING_NAMES_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho(
+        "OwnFloatingNamesChirho.hs",
+        OWN_FLOATING_NAMES_CHIRHO,
+        OWN_FLOATING_NAMES_GHC_CHIRHO,
+    );
+}
+
 /// The same negated division where it already worked: the list printed directly, its
 /// head, and the division alone. GHC: `[-1.5,1.0]`, `-1.5` and `-1.5`.
 #[test]

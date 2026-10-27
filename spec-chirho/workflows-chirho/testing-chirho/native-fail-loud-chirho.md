@@ -55,7 +55,12 @@ flowchart TD
 - Row 575 removes the unary Floating primops from the native refused set: `sqrt#`, `exp#`, `log#`, `sin#`, `cos#`, `tan#`, `asin#`, `acos#` and `atan#`. GHC's are libm calls.
   - One macro in `float_math_chirho.rs` generates an RTS symbol for each, `haskelujah_float_<op>_chirho` over a Double's bits, together with the table `FLOAT_MATH_PRIMOPS_CHIRHO` naming them.
   - LLVM declares every symbol in that table and calls the one `float_math_symbol_chirho` names. Cranelift imports every symbol and lowers each through the same lookup. The interpreter's own primops already make the same libm calls.
-  - `pi`, the hyperbolics, `logBase` and `atan2` are missing bindings on every engine, outside the route.
+  - `pi` and `atan2` are missing bindings on every engine, outside the route. Row 578 binds the hyperbolics and `logBase`.
+- Row 578 adds the hyperbolic primops, `sinh#` through `atanh#`, as six more rows of that table, and binds `logBase`.
+  - Rust's std computes `asinh`, `acosh` and `atanh` itself. At 1.8, 1.2 and -0.9 its answers are an ulp or two from libm's, and GHC prints libm's. So those three rows bind libm's own symbols.
+  - The interpreter now applies the table's function too (`apply_float_math_chirho`), so all fifteen primops make one call on every engine.
+  - `logBase x y` is `log# y /.# log# x`, GHC's definition (`dict_chirho/prelude_chirho/floating_methods_chirho.rs`).
+  - A generated Prelude alias now yields to a program's own top-level binding of the same name. The alias took that binding's id and replaced it, so a program that hid the Prelude's `sin` and defined its own printed the Prelude's answer on every engine.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## The native link's RTS archive (row 568)
