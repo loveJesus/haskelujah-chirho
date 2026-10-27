@@ -283,6 +283,8 @@ pub enum PrimOpKindChirho {
     ExponentFloatChirho,
     /// significandFloatChirho# :: Double -> Double — GHC's normalized significand (row 585)
     SignificandFloatChirho,
+    /// scaleFloatChirho# :: Int -> Double -> Double — GHC's Double scaling (row 587)
+    ScaleFloatChirho,
 
     // ── Power/exponentiation primops ──
     /// ^# :: Int -> Int -> Int — integer exponentiation

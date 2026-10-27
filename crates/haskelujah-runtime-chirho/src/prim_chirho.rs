@@ -659,6 +659,26 @@ pub fn apply_prim_binop_chirho(
                 got_chirho: format!("{left_chirho}"),
             }),
         },
+        PrimOpKindChirho::ScaleFloatChirho => match (left_chirho, right_chirho) {
+            (ValueChirho::IntChirho(exponent_chirho), ValueChirho::FloatChirho(value_chirho)) => {
+                Ok(ValueChirho::FloatChirho(
+                    haskelujah_rts_chirho::float_math_chirho::scale_float_double_chirho(
+                        *exponent_chirho,
+                        *value_chirho,
+                    ),
+                ))
+            }
+            (ValueChirho::IntChirho(_), _) => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Double#",
+                got_chirho: format!("{right_chirho}"),
+            }),
+            _ => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Int#",
+                got_chirho: format!("{left_chirho}"),
+            }),
+        },
         // ── Power/exponentiation ──
         PrimOpKindChirho::PowIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             haskelujah_rts_chirho::integer_power_chirho::pow_int_chirho(a_chirho, b_chirho)

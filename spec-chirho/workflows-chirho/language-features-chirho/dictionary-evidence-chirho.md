@@ -705,6 +705,35 @@ flowchart LR
   Double result key to that argument retargeted an Int negation to `negateFloat#`, so Row 585 does
   not widen evidence routing to make it pass accidentally.
 
+Row 587 supplies `scaleFloat :: Int -> Double -> Double`. Its body-backed RealFloat row makes the
+two argument types explicit, and the typed rewrite preserves the exponent's Int key both at the
+generated-row application boundary and inside `scaleFloatChirho#`. This is deliberately keyed by
+the generated row rather than by the source spelling `scaleFloat`, so a program-owned function of
+that name keeps its own argument types.
+
+```mermaid
+flowchart LR
+    use_scale_chirho["scaleFloat exponent value"] --> row_scale_chirho["body-backed RealFloat Double row"]
+    exponent_scale_chirho["exponent"] --> int_key_scale_chirho["Int key; Int negate remains negate#"]
+    value_scale_chirho["value"] --> double_key_scale_chirho["Double key"]
+    int_key_scale_chirho --> row_scale_chirho
+    double_key_scale_chirho --> row_scale_chirho
+    row_scale_chirho --> prim_scale_chirho["scaleFloatChirho#"]
+    prim_scale_chirho --> rts_scale_chirho["one RTS scalbn implementation"]
+    rts_scale_chirho --> interpreter_scale_chirho["STG interpreter"]
+    rts_scale_chirho --> llvm_scale_chirho["LLVM"]
+    rts_scale_chirho --> cranelift_scale_chirho["Cranelift"]
+```
+
+- The RTS clamps a machine-Int exponent to C `scalbn`'s `int` range. GHC-measured controls pin
+  overflow, underflow, the normal/subnormal boundaries, signed zero, Infinity, NaN, and the full
+  machine-Int extremes.
+- First-class `map (uncurry scaleFloat)` and a top-level negative exponent cross the same route.
+  A separate ownership control defines `scaleFloat :: Double -> Double -> Double`, proving this
+  row does not infer from the unqualified spelling alone.
+- `decodeFloat` and `encodeFloat`, rigid-signature literal evidence (row 584), and dictionary-
+  passing `sum` and `product` (row 586) remain separate units.
+
 ## Current boundary
 
 - An infix or section use of a class METHOD mints its own occurrence id and carries its

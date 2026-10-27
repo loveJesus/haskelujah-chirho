@@ -17,6 +17,7 @@ unsafe extern "C" {
     safe fn asinh(value_chirho: f64) -> f64;
     safe fn acosh(value_chirho: f64) -> f64;
     safe fn atanh(value_chirho: f64) -> f64;
+    safe fn scalbn(value_chirho: f64, exponent_chirho: i32) -> f64;
 }
 
 const DOUBLE_FRACTION_BITS_CHIRHO: u32 = 52;
@@ -175,4 +176,21 @@ pub extern "C" fn haskelujah_exponent_double_chirho(bits_chirho: i64) -> i64 {
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_significand_double_chirho(bits_chirho: i64) -> i64 {
     significand_double_chirho(f64::from_bits(bits_chirho as u64)).to_bits() as i64
+}
+
+/// GHC's `scaleFloat` for a Double. C's `scalbn` has an `int` exponent, while
+/// Haskell's exponent is a machine `Int`; clamping beyond the C range preserves
+/// the same overflow or underflow result without narrowing through wraparound.
+pub fn scale_float_double_chirho(exponent_chirho: i64, value_chirho: f64) -> f64 {
+    let bounded_exponent_chirho = exponent_chirho.clamp(i32::MIN as i64, i32::MAX as i64) as i32;
+    scalbn(value_chirho, bounded_exponent_chirho)
+}
+
+/// Native `scaleFloatChirho#`: [`scale_float_double_chirho`] over a Double's bits.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_scale_float_double_chirho(
+    exponent_chirho: i64,
+    bits_chirho: i64,
+) -> i64 {
+    scale_float_double_chirho(exponent_chirho, f64::from_bits(bits_chirho as u64)).to_bits() as i64
 }

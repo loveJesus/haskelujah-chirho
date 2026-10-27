@@ -184,6 +184,43 @@ impl DictPassCtxChirho {
         }
     }
 
+    /// Generate `scaleFloat :: Int -> Double -> Double` with its two argument
+    /// types explicit. The rewrite traversal keeps the exponent at Int (row 587).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_real_float_scale_chirho(&mut self) {
+        let int_ty_chirho = TyChirho::int_chirho();
+        let double_ty_chirho = TyChirho::double_chirho();
+        let exponent_chirho = self.fresh_binder_chirho("exponent_chirho", int_ty_chirho.clone());
+        let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho.clone());
+        let prim_name_chirho = "$prim_RealFloat_scaleFloat_Double";
+        let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+        let body_chirho = primop_chirho(
+            "scaleFloatChirho#",
+            vec![var_chirho(&exponent_chirho), var_chirho(&value_chirho)],
+        );
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: prim_id_chirho,
+                name_chirho: prim_name_chirho.to_string(),
+                ty_chirho: TyChirho::fun_n_chirho(
+                    [int_ty_chirho, double_ty_chirho.clone()],
+                    double_ty_chirho,
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: exponent_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: value_chirho,
+                    body_chirho: Box::new(body_chirho),
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+        self.push_prelude_alias_chirho("scaleFloat", prim_name_chirho);
+    }
+
     fn push_real_float_row_chirho(
         &mut self,
         method_chirho: &str,

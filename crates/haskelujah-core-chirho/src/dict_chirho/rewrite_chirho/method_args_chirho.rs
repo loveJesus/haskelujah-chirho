@@ -8,6 +8,38 @@ use std::collections::{HashMap, HashSet};
 use super::DictPassCtxChirho;
 use crate::expr_chirho::{CoreAltChirho, CoreExprChirho, CoreIdChirho};
 
+/// A concrete primop can have argument types different from its result key.
+/// `scaleFloat Int Double -> Double` is the first such generated row: letting
+/// its exponent inherit Double retargets an Int `negate#` to `negateFloat#`.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+fn primop_argument_type_key_chirho<'a>(
+    primop_chirho: &str,
+    argument_index_chirho: usize,
+    result_type_key_chirho: &'a str,
+) -> &'a str {
+    if primop_chirho == "scaleFloatChirho#" && argument_index_chirho == 0 {
+        "Int"
+    } else {
+        result_type_key_chirho
+    }
+}
+
+/// The first application in `scaleFloat exponent value` consumes an `Int`,
+/// even though the completed expression has the value's `Double` key. This
+/// boundary matters before the generated primitive is reached: a negative
+/// exponent must keep `negate#`, not be retargeted to `negateFloat#`.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+fn application_argument_type_key_chirho<'a>(
+    function_name_chirho: Option<&str>,
+    result_type_key_chirho: &'a str,
+) -> &'a str {
+    if function_name_chirho == Some("$prim_RealFloat_scaleFloat_Double") {
+        "Int"
+    } else {
+        result_type_key_chirho
+    }
+}
+
 impl DictPassCtxChirho {
     /// Try to rewrite a method Var reference into a dictionary projection.
     /// If `type_key_override_chirho` is provided, use it to select a
@@ -345,6 +377,15 @@ impl DictPassCtxChirho {
                 fun_chirho,
                 arg_chirho,
             } => {
+                let function_name_chirho = match fun_chirho.as_ref() {
+                    CoreExprChirho::VarChirho(id_chirho) => self
+                        .names_chirho
+                        .get(id_chirho)
+                        .and_then(|name_chirho| name_chirho.rsplit('.').next()),
+                    _ => None,
+                };
+                let argument_type_key_chirho =
+                    application_argument_type_key_chirho(function_name_chirho, type_key_chirho);
                 let rewritten_fun_chirho = self.rewrite_expr_with_type_key_chirho(
                     fun_chirho,
                     dict_vars_chirho,
@@ -359,7 +400,7 @@ impl DictPassCtxChirho {
                     evidence_classes_chirho,
                     local_type_keys_chirho,
                     local_instance_dicts_chirho,
-                    type_key_chirho,
+                    argument_type_key_chirho,
                 );
                 if rewritten_fun_chirho.is_none() && rewritten_arg_chirho.is_none() {
                     return None;
@@ -580,14 +621,20 @@ impl DictPassCtxChirho {
                 let mut changed_chirho = false;
                 let rewritten_args_chirho = args_chirho
                     .iter()
-                    .map(|arg_chirho| {
+                    .enumerate()
+                    .map(|(argument_index_chirho, arg_chirho)| {
+                        let argument_type_key_chirho = primop_argument_type_key_chirho(
+                            name_chirho,
+                            argument_index_chirho,
+                            type_key_chirho,
+                        );
                         let rewritten_arg_chirho = self.rewrite_expr_with_type_key_chirho(
                             arg_chirho,
                             dict_vars_chirho,
                             evidence_classes_chirho,
                             local_type_keys_chirho,
                             local_instance_dicts_chirho,
-                            type_key_chirho,
+                            argument_type_key_chirho,
                         );
                         if rewritten_arg_chirho.is_some() {
                             changed_chirho = true;
@@ -802,5 +849,41 @@ impl DictPassCtxChirho {
             };
         }
         Some(result_chirho)
+    }
+}
+
+#[cfg(test)]
+mod tests_chirho {
+    use super::{application_argument_type_key_chirho, primop_argument_type_key_chirho};
+
+    #[test]
+    fn scale_float_keeps_its_exponent_int_and_its_value_double_chirho() {
+        assert_eq!(
+            application_argument_type_key_chirho(
+                Some("$prim_RealFloat_scaleFloat_Double"),
+                "Double"
+            ),
+            "Int"
+        );
+        assert_eq!(
+            application_argument_type_key_chirho(Some("scaleFloat"), "Double"),
+            "Double"
+        );
+        assert_eq!(
+            application_argument_type_key_chirho(Some("significand"), "Double"),
+            "Double"
+        );
+        assert_eq!(
+            primop_argument_type_key_chirho("scaleFloatChirho#", 0, "Double"),
+            "Int"
+        );
+        assert_eq!(
+            primop_argument_type_key_chirho("scaleFloatChirho#", 1, "Double"),
+            "Double"
+        );
+        assert_eq!(
+            primop_argument_type_key_chirho("negate#", 0, "Double"),
+            "Double"
+        );
     }
 }

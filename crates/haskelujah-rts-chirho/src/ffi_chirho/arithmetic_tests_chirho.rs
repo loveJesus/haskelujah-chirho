@@ -11,7 +11,8 @@ use crate::float_math_chirho::{
     haskelujah_float_cos_chirho, haskelujah_float_cosh_chirho, haskelujah_float_exp_chirho,
     haskelujah_float_log_chirho, haskelujah_float_sin_chirho, haskelujah_float_sinh_chirho,
     haskelujah_float_sqrt_chirho, haskelujah_float_tan_chirho, haskelujah_float_tanh_chirho,
-    haskelujah_significand_double_chirho, significand_double_chirho,
+    haskelujah_scale_float_double_chirho, haskelujah_significand_double_chirho,
+    scale_float_double_chirho, significand_double_chirho,
 };
 use crate::float_power_chirho::{pow_double_int_chirho, pow_float_chirho};
 use crate::integer_power_chirho::pow_int_chirho;
@@ -219,6 +220,31 @@ fn real_float_components_answer_as_ghc_chirho() {
     assert_eq!(
         haskelujah_significand_double_chirho((-2.5f64).to_bits() as i64),
         (-0.625f64).to_bits() as i64
+    );
+}
+
+/// Row 587: GHC 9.14.1's Double scaling answers, including signed zero,
+/// subnormal rounding, and exponents beyond the native libm argument width.
+#[test]
+fn scale_float_answers_as_ghc_chirho() {
+    assert_eq!(scale_float_double_chirho(3, 1.5), 12.0);
+    assert_eq!(scale_float_double_chirho(-3, 1.5), 0.1875);
+    assert_eq!(scale_float_double_chirho(1023, 1.0), 8.98846567431158e307);
+    assert!(scale_float_double_chirho(1024, 1.0).is_infinite());
+    assert_eq!(scale_float_double_chirho(-1074, 1.0).to_bits(), 1);
+    assert_eq!(scale_float_double_chirho(-1075, 1.0), 0.0);
+    assert_eq!(scale_float_double_chirho(1, f64::from_bits(1)).to_bits(), 2);
+    assert_eq!(scale_float_double_chirho(-1, f64::from_bits(1)), 0.0);
+    assert_eq!(
+        scale_float_double_chirho(3, -0.0).to_bits(),
+        (-0.0f64).to_bits()
+    );
+    assert!(scale_float_double_chirho(0, f64::NAN).is_nan());
+    assert!(scale_float_double_chirho(i64::MAX, 1.0).is_infinite());
+    assert_eq!(scale_float_double_chirho(i64::MIN, 1.0), 0.0);
+    assert_eq!(
+        haskelujah_scale_float_double_chirho(-3, (-2.5f64).to_bits() as i64),
+        (-0.3125f64).to_bits() as i64
     );
 }
 

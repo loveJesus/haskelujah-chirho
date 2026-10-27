@@ -137,6 +137,7 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
         "atan2#" => PrimOpKindChirho::Atan2FloatChirho,
         "exponentFloatChirho#" => PrimOpKindChirho::ExponentFloatChirho,
         "significandFloatChirho#" => PrimOpKindChirho::SignificandFloatChirho,
+        "scaleFloatChirho#" => PrimOpKindChirho::ScaleFloatChirho,
         "^#" => PrimOpKindChirho::PowIntChirho,
         "^.#" => PrimOpKindChirho::PowDoubleIntChirho,
         "**#" => PrimOpKindChirho::PowFloatChirho,

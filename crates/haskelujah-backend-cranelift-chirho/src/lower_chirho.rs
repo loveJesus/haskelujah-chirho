@@ -2477,6 +2477,15 @@ pub fn lower_primop_chirho(
                 .runtime_calls_chirho
                 .significand_double_chirho(builder_chirho, bits_chirho)
         }
+        "scaleFloatChirho#" => {
+            let exponent_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
+            let bits_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, true);
+            ctx_chirho.runtime_calls_chirho.scale_float_double_chirho(
+                builder_chirho,
+                exponent_chirho,
+                bits_chirho,
+            )
+        }
         "absInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let neg_chirho = builder_chirho.ins().ineg(lhs_chirho);

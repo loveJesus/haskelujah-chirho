@@ -23,6 +23,7 @@ pub(crate) struct RuntimeCallsChirho {
     atan2_double_chirho: FuncRef,
     exponent_double_chirho: FuncRef,
     significand_double_chirho: FuncRef,
+    scale_float_double_chirho: FuncRef,
     new_io_ref_chirho: FuncRef,
     read_io_ref_chirho: FuncRef,
     write_io_ref_chirho: FuncRef,
@@ -141,6 +142,13 @@ impl RuntimeCallsChirho {
                 function_chirho,
                 "haskelujah_significand_double_chirho",
                 1,
+                true,
+            )?,
+            scale_float_double_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_scale_float_double_chirho",
+                2,
                 true,
             )?,
             new_io_ref_chirho: import_chirho(
@@ -275,6 +283,20 @@ impl RuntimeCallsChirho {
         let call_chirho = builder_chirho
             .ins()
             .call(self.significand_double_chirho, &[bits_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    /// `scaleFloatChirho#`: GHC's Double scaling with its Int exponent (row 587).
+    pub(crate) fn scale_float_double_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        exponent_chirho: Value,
+        bits_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho.ins().call(
+            self.scale_float_double_chirho,
+            &[exponent_chirho, bits_chirho],
+        );
         builder_chirho.inst_results(call_chirho)[0]
     }
 

@@ -56,6 +56,20 @@ main = do
 
 const COMPONENTS_GHC_CHIRHO: &str = "[0,0,1,2,-996,1025,1025]\n[0.0,0.0,0.75,-0.625,0.6696928794914171,0.5,0.75]\n[-1073,-1021,1024]\n";
 
+const SCALE_FLOAT_CHIRHO: &str = r#"module Main where
+exponentChirho :: Int
+exponentChirho = -3
+main :: IO ()
+main = do
+  print [scaleFloat 0 1.5, scaleFloat 1 1.5, scaleFloat (-1) 1.5, scaleFloat exponentChirho 1.5]
+  print [scaleFloat 1023 1.0, scaleFloat 1024 1.0, scaleFloat (-1074) 1.0, scaleFloat (-1075) 1.0]
+  print [scaleFloat 1 5.0e-324, scaleFloat (-1) 5.0e-324, scaleFloat 3 (-0.0), scaleFloat (-3) (-0.0)]
+  print [scaleFloat 1000000 1.0, scaleFloat (-1000000) 1.0]
+  print (map (uncurry scaleFloat) [(3,1.5),(-3,-2.5),(0,1.0/0.0),(2,0.0/0.0)])
+"#;
+
+const SCALE_FLOAT_GHC_CHIRHO: &str = "[1.5,3.0,0.75,0.1875]\n[8.98846567431158e307,Infinity,5.0e-324,0.0]\n[1.0e-323,0.0,-0.0,-0.0]\n[Infinity,0.0]\n[12.0,-0.3125,Infinity,NaN]\n";
+
 const POLYMORPHIC_CHIRHO: &str = r#"module Main where
 inspectChirho :: RealFloat aChirho => aChirho -> [Bool]
 inspectChirho valueChirho = [isNaN valueChirho, isInfinite valueChirho, isDenormalized valueChirho, isNegativeZero valueChirho, isIEEE valueChirho]
@@ -104,6 +118,14 @@ significand :: Double -> Double
 significand _ = 8
 main :: IO ()
 main = print (exponent 1.0, significand 1.0)
+"#;
+
+const OWN_SCALE_FLOAT_NAME_CHIRHO: &str = r#"module Main where
+import Prelude hiding (scaleFloat)
+scaleFloat :: Double -> Double -> Double
+scaleFloat exponentChirho valueChirho = valueChirho + exponentChirho
+main :: IO ()
+main = print (scaleFloat (-3.0) 1.5)
 "#;
 
 fn interpreter_output_chirho(name_chirho: &str, source_chirho: &str) -> String {
@@ -165,6 +187,15 @@ fn real_float_components_answer_as_ghc_everywhere_chirho() {
 }
 
 #[test]
+fn scale_float_answers_as_ghc_everywhere_chirho() {
+    assert_everywhere_chirho(
+        "ScaleFloatChirho.hs",
+        SCALE_FLOAT_CHIRHO,
+        SCALE_FLOAT_GHC_CHIRHO,
+    );
+}
+
+#[test]
 fn real_float_predicates_work_through_a_passed_dictionary_in_the_interpreter_chirho() {
     assert_eq!(
         interpreter_output_chirho("PolymorphicPredicatesChirho.hs", POLYMORPHIC_CHIRHO),
@@ -196,5 +227,14 @@ fn a_programs_own_real_float_component_names_stay_its_own_everywhere_chirho() {
         "OwnRealFloatComponentsChirho.hs",
         OWN_COMPONENT_NAMES_CHIRHO,
         "(7,8.0)\n",
+    );
+}
+
+#[test]
+fn a_programs_own_scale_float_name_stays_its_own_everywhere_chirho() {
+    assert_everywhere_chirho(
+        "OwnScaleFloatChirho.hs",
+        OWN_SCALE_FLOAT_NAME_CHIRHO,
+        "-1.5\n",
     );
 }
