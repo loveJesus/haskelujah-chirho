@@ -955,6 +955,7 @@ mod conditional_chirho;
 mod constructor_orders_chirho;
 mod generic_heads_chirho;
 mod list_orders_chirho;
+mod ordering_operators_chirho;
 mod string_spellings_chirho;
 pub(in crate::dict_chirho) mod structured_equalities_chirho;
 mod structured_orders_chirho;

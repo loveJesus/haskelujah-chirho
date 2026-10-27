@@ -35,6 +35,8 @@ mod higher_order_occurrences_chirho;
 mod list_orders_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs"]
 mod ordering_literals_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/ordering_operators_chirho.rs"]
+mod ordering_operators_chirho;
 #[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
 mod proven_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/string_lists_chirho.rs"]

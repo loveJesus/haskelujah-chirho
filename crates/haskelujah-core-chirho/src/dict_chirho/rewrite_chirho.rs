@@ -20,7 +20,7 @@ mod call_keys_chirho;
 mod compare_route_chirho;
 mod constrained_references_chirho;
 mod dict_params_chirho;
-mod double_primops_chirho;
+pub(in crate::dict_chirho) mod double_primops_chirho;
 mod evidenced_aggregates_chirho;
 mod head_dispatch_chirho;
 mod method_args_chirho;
@@ -376,6 +376,11 @@ impl DictPassCtxChirho {
         // workflow: language-features-chirho/dictionary-evidence-chirho
         self.generate_evidenced_eq_bindings_chirho();
 
+        // A first-class or prefix `<`, `<=`, `>` or `>=` at a key the checker proved takes
+        // that key's answer through a generated row (row 610).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_ordering_operator_rows_chirho();
+
         // Seed local_shadow_ids with top-level user bindings whose name
         // collides with a class method (e.g. user defines `toList` which
         // shadows the IsList class method).  Without this, the dict pass
@@ -443,9 +448,13 @@ impl DictPassCtxChirho {
             }
         }
 
-        // Transform each binding
+        // Transform each binding, once its written infix and section Ord operators have
+        // taken their answers (row 610).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        let resolved_bindings_chirho =
+            self.written_orderings_resolved_chirho(&module_chirho.bindings_chirho);
         let mut bindings_chirho = Vec::new();
-        for binding_chirho in &module_chirho.bindings_chirho {
+        for binding_chirho in resolved_bindings_chirho.iter() {
             let name_chirho = &binding_chirho.binder_chirho.name_chirho;
 
             // Look up the type scheme for this binding

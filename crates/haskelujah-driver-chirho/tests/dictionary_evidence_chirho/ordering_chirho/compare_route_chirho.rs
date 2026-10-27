@@ -5,8 +5,8 @@
 //! Strings, lists, derived values and Orderings as heap values or C strings: the
 //! interpreter refused them (`LtIntChirho: expected Int#`). Where the operand's key has a
 //! body-backed `$prim_Ord_compare_<key>` row, the pass now reads one `compare a b`. Keys
-//! without such a row and prefix `(<)` stay as they were; row 572 adds body-backed
-//! `Maybe` and tuple rows, while `max` and `min` read the same rows since row 565.
+//! without such a row stay as they were; row 572 adds body-backed `Maybe` and tuple rows,
+//! `max` and `min` read the same rows since row 565, and prefix `(<)` since row 610.
 //! Each program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
@@ -37,19 +37,16 @@ fn ordering_operators_answer_as_ghc_through_compare_everywhere_chirho() {
     );
 }
 
-/// Prefix `(<)` does not carry the operand key through the desugarer's variable route, so
-/// it remains outside the compare route. GHC answers False. (`Maybe` and tuple operators
-/// moved in row 572; `max` moved in row 565.)
+/// Prefix `(<)` had no binding, so the interpreter failed. Since row 610 its proof names a
+/// generated `$prim_Ord_<_[Char]` row over the same compare row, and it answers GHC's
+/// False. (`Maybe` and tuple operators moved in row 572; `max` moved in row 565.)
 #[test]
-fn orderings_outside_the_compare_route_still_fail_in_the_interpreter_chirho() {
+fn prefix_less_answers_through_its_compare_row_chirho() {
     let result_chirho = run_result_chirho(
         "PrefixLessChirho.hs",
         "module Main where\nmain :: IO ()\nmain = print ((<) \"b\" \"a\")\n",
     );
-    assert!(
-        result_chirho.is_err(),
-        "prefix (<) moved outside row 551's route: {result_chirho:?}"
-    );
+    assert_eq!(result_chirho, Ok("False\n".to_string()));
 }
 
 /// The routed `>=` reads one `compare "b" "a"`: main mentions the `[Char]` compare row once

@@ -21,8 +21,9 @@ use super::DictPassCtxChirho;
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
 
 /// The float primop standing for an Int primop the desugarer chose blind. The
-/// type-keyed rebuild in `method_args_chirho.rs` reads the same table (row 553).
-pub(super) fn double_counterpart_chirho(name_chirho: &str) -> Option<&'static str> {
+/// type-keyed rebuild in `method_args_chirho.rs` reads the same table (row 553), and so
+/// do the Ord operators proved at Double (row 610).
+pub(in crate::dict_chirho) fn double_counterpart_chirho(name_chirho: &str) -> Option<&'static str> {
     match name_chirho {
         "<#" => Some("<.#"),
         "<=#" => Some("<=.#"),

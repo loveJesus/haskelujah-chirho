@@ -85,12 +85,24 @@ impl DictPassCtxChirho {
         &self,
         key_chirho: &str,
     ) -> Option<CoreIdChirho> {
+        self.existing_keyed_row_chirho("$prim_Eq_==_", key_chirho)
+    }
+
+    /// The body-backed `<row_prefix><key>` row already present for `key_chirho`, under
+    /// its canonical spelling or with `String` spelled out; never a missing-method stub.
+    pub(in crate::dict_chirho) fn existing_keyed_row_chirho(
+        &self,
+        row_prefix_chirho: &str,
+        key_chirho: &str,
+    ) -> Option<CoreIdChirho> {
         let canonical_chirho = canonical_type_key_chirho(key_chirho);
         let spelled_chirho = Self::string_spelled_out_chirho(&canonical_chirho);
         [canonical_chirho, spelled_chirho]
             .iter()
             .find_map(|spelling_chirho| {
-                self.lookup_dispatch_body_name_id_chirho(&format!("$prim_Eq_==_{spelling_chirho}"))
+                self.lookup_dispatch_body_name_id_chirho(&format!(
+                    "{row_prefix_chirho}{spelling_chirho}"
+                ))
             })
     }
 

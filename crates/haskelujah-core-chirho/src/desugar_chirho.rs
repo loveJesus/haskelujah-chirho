@@ -14,6 +14,7 @@ mod guards_chirho;
 mod lazy_patterns_chirho;
 mod match_rows_chirho;
 mod matches_chirho;
+mod ordering_operators_chirho;
 mod provenance_chirho;
 #[cfg(test)]
 mod provenance_tests_chirho;
@@ -74,6 +75,11 @@ pub struct DesugarOutputChirho {
     /// it stands for, copied from the AST. The join matches by this first.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
+    /// The minted occurrences that stand for a written infix or section Ord operator
+    /// (row 610). Desugaring once lowered each to an Int primop; the dictionary pass
+    /// gives one that primop back where no row serves its proof.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub operator_occurrences_chirho: HashSet<CoreIdChirho>,
 }
 
 /// A registered pattern synonym definition used during desugaring.
@@ -130,6 +136,8 @@ pub struct DesugarCtxChirho {
     reference_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
     method_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
     occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
+    /// Written infix and section Ord operators' minted occurrences (row 610).
+    operator_occurrences_chirho: HashSet<CoreIdChirho>,
 }
 
 impl DesugarCtxChirho {
@@ -152,6 +160,7 @@ impl DesugarCtxChirho {
             reference_occurrence_spans_chirho: HashMap::new(),
             method_occurrence_spans_chirho: HashMap::new(),
             occurrence_provenance_chirho: HashMap::new(),
+            operator_occurrences_chirho: HashSet::new(),
         }
     }
 
@@ -1023,7 +1032,10 @@ impl DesugarCtxChirho {
             "**" => Some("**#"),
             _ => None,
         };
-        if let Some(primop_name_chirho) = primop_chirho {
+        // A written Ord operator takes its occurrence's evidence instead (row 610).
+        if let Some(primop_name_chirho) = primop_chirho
+            && !self.takes_operator_evidence_chirho(op_chirho)
+        {
             return CoreExprChirho::PrimOpChirho {
                 name_chirho: primop_name_chirho.to_string(),
                 args_chirho: vec![left_chirho, right_chirho],
@@ -1044,6 +1056,7 @@ impl DesugarCtxChirho {
             op_id_chirho,
             op_chirho.span_chirho(),
         );
+        self.note_operator_occurrence_chirho(op_chirho, op_id_chirho);
         self.record_occurrence_provenance_chirho(
             op_id_chirho,
             op_origin_chirho,
@@ -1789,6 +1802,7 @@ impl DesugarCtxChirho {
             reference_occurrence_spans_chirho: self.reference_occurrence_spans_chirho.clone(),
             method_occurrence_spans_chirho: self.method_occurrence_spans_chirho.clone(),
             occurrence_provenance_chirho: self.occurrence_provenance_chirho.clone(),
+            operator_occurrences_chirho: self.operator_occurrences_chirho.clone(),
         }
     }
 
@@ -2772,8 +2786,11 @@ impl DesugarCtxChirho {
                     };
                 }
 
-                // Check if this is a known primitive operator
-                if let Some(primop_name_chirho) = builtin_primop_name_chirho(op_name_chirho) {
+                // Check if this is a known primitive operator, unless the written
+                // operator takes its occurrence's evidence (row 610).
+                if !self.takes_operator_evidence_chirho(op_chirho)
+                    && let Some(primop_name_chirho) = builtin_primop_name_chirho(op_name_chirho)
+                {
                     return CoreExprChirho::PrimOpChirho {
                         name_chirho: primop_name_chirho.to_string(),
                         args_chirho: vec![left_core_chirho, right_core_chirho],
@@ -2789,6 +2806,7 @@ impl DesugarCtxChirho {
                         id_chirho,
                         op_chirho.span_chirho(),
                     );
+                    self.note_operator_occurrence_chirho(op_chirho, id_chirho);
                     self.record_occurrence_provenance_chirho(
                         id_chirho,
                         op_chirho.origin_chirho(),
@@ -4063,7 +4081,8 @@ pub fn desugar_module_with_inputs_chirho(
 /// `+`, `-`, `*` are Num class methods and go through the dictionary-
 /// passing transform instead of being lowered to primops directly.
 /// `==`, `/=` are Eq class methods and handled separately in the
-/// desugarer. The Ord operators remain as primops for now.
+/// desugarer. The Ord operators are primops here only where the written
+/// operator takes no evidence (row 610).
 fn builtin_primop_name_chirho(op_chirho: &str) -> Option<&'static str> {
     match op_chirho {
         // +, -, * are handled by the Num class dict transform

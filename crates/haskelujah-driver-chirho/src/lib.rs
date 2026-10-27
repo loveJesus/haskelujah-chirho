@@ -2886,6 +2886,7 @@ fn compile_backend_chirho(
         occurrence_evidence_chirho,
         reference_evidence_chirho,
         derived_shows_chirho,
+        desugar_output_chirho.operator_occurrences_chirho,
     );
     let core_chirho = dict_result_chirho.module_chirho;
 

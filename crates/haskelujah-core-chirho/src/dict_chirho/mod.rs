@@ -144,6 +144,10 @@ pub struct DictPassCtxChirho {
     /// (class, key) per predicate in scheme order; a `None` key is "nothing
     /// proved for this position". See `evidence_dict_for_class_chirho`.
     reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    /// The occurrences of written infix and section Ord operators, from
+    /// `DesugarOutputChirho::operator_occurrences_chirho` (row 610).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    operator_occurrences_chirho: HashSet<CoreIdChirho>,
     /// Module `$prim` rows whose instance has a context → that context, in
     /// order: those rows take the context's dictionaries before the method's
     /// arguments. Recorded before any binding is rewritten.
@@ -223,6 +227,7 @@ impl DictPassCtxChirho {
             method_occurrence_canon_chirho: HashMap::new(),
             occurrence_evidence_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
+            operator_occurrences_chirho: HashSet::new(),
             context_leading_rows_chirho: HashMap::new(),
             super_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
@@ -582,8 +587,9 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
 }
 
 /// Dictionary-evidence entry: like the method-occurrence entry, also threading
-/// the checker's per-reference evidence for constrained references, and the
-/// constructor metadata of every type that derives Show (row 533).
+/// the checker's per-reference evidence for constrained references, the
+/// constructor metadata of every type that derives Show (row 533), and the
+/// occurrences of written infix and section Ord operators (row 610).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[allow(clippy::too_many_arguments)]
 pub fn dict_pass_module_full_with_evidence_chirho(
@@ -598,6 +604,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
     reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,
+    operator_occurrences_chirho: HashSet<CoreIdChirho>,
 ) -> DictPassResultChirho {
     let max_id_chirho = find_max_id_chirho(module_chirho);
     let mut ctx_chirho =
@@ -608,6 +615,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
     ctx_chirho.reference_evidence_chirho = reference_evidence_chirho;
     ctx_chirho.derived_shows_chirho = derived_shows_chirho;
+    ctx_chirho.operator_occurrences_chirho = operator_occurrences_chirho;
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)

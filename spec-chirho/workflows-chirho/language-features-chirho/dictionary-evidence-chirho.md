@@ -197,7 +197,8 @@ flowchart LR
   - If found, the primop becomes `test (compare a b)`, with one of the Ordering tests generated in `prelude_chirho/ordering_tests_chirho.rs`.
   - That serves Strings, lists, derived types and Ordering.
   - A key without such a row keeps the primop. `Maybe` and pairs/triples receive bounded
-    body-backed rows in row 572; prefix `(<)` is a later brick.
+    body-backed rows in row 572; written and prefix operators take their own evidence since
+    row 610.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/compare_route_chirho.rs`.
 - `max`, `min`, `maximum` and `minimum` read the same rows (row 565, the Ord aggregate brick).
   - Their generic bindings are Int-shaped, over `<=#` and `>=#`. `maximum` and `minimum` join `max` and `min` in the driver's per-occurrence evidence names, since their schemes are `Ord a => [a] -> a`.
@@ -264,6 +265,39 @@ flowchart LR
   - Controls:
     - In `tests/dictionary_evidence_chirho/ordering_chirho/tuple_instances_chirho.rs`: `tuples_show_as_ghc_at_every_arity_everywhere_chirho` and `tuples_compare_as_ghc_at_every_arity_everywhere_chirho`, which includes row 603's consumers on 4-tuples.
     - In `class_chirho/tuple_instances_tests_chirho.rs`: `tuple_instances_cover_ghcs_arities_and_no_more_chirho`.
+- `<`, `<=`, `>` and `>=` answer at the key the checker proved, written or first-class (row 610).
+  - **The defect:** desugaring lowered written infix and section Ord operators to Int primops before any type was known. Rows 547 and 551 rekeyed a primop only where an operand's type key could be read, so:
+    - a computed String in a section or lambda was ordered as a C string (`filter (< "b") ["a" ++ "", "c"]` gave `[]`), and so were derived values, a program's own `compare`, `Maybe`, lists and tuples;
+    - a lambda-bound Double at NaN or `-0.0` was ordered as integer bits;
+    - a program's hidden-and-redefined `(<)`, and a `where`-bound `(<=)`, lost to the primop;
+    - a first-class or prefix `(<)` had no binding at all.
+  - **Desugar** (`desugar_chirho/ordering_operators_chirho.rs`): a written Ord operator that carries its origin, and is opted in to occurrences, resolves as a reference, infix and section alike, as R1's `==` section does. Its minted occurrence is recorded in `DesugarOutputChirho::operator_occurrences_chirho`, which the driver passes to the dictionary pass. Without an origin it keeps its primop.
+  - **Answers** (`instance_chirho/ordering_operators_chirho.rs`), at a concrete proved key:
+    - the instance's own row for that operator, where the program's instance defines one;
+    - Int, Char and Bool: the Int primop, as before;
+    - Double: row 547's IEEE primop, so a NaN on either side gives False and `-0.0` equals `0.0`;
+    - any other key with a body-backed compare row: `test (compare_K a b)`, row 551's shape.
+  - **Written uses** take their answer in place, in one pass over the module's bindings before any binding is rewritten (`written_orderings_resolved_chirho`). The typed walkers of higher-order arguments rewrite an application node by node, so a spine hook never sees `filter (< "b")`'s section.
+  - **First-class and prefix uses** take the same answer through a generated `$prim_Ord_<op>_<key>` row (`generate_ordering_operator_rows_chirho`, after the Eq rows). `occurrence_head_replacement_chirho` serves it by the name the proof gives.
+  - **Without an answer**, a written operator takes back the primop desugaring gave it, and behaves as on main; a first-class one gets no row and stays loud. That covers the binding's own dictionary key, no evidence, and a compare row that is a missing-method stub. A program's own operator keeps its binding (row 593's guard).
+  - **Residuals, unchanged from main:**
+    - `Ord a =>` code orders with the blind primop: `smallerChirho ("a" ++ "") "b"` gives `False` natively, where GHC gives `True`;
+    - a stub compare row: builtin instances without a compare body (`()`, Float, Word) keep their primop answers, and a program instance that defines only `<=` still orders `<` and `>` by representation, though its own `<=` is now served.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/ordering_operators_chirho.rs`: `written_ordering_operators_take_the_proved_key_everywhere_chirho`, `a_programs_own_ordering_operator_keeps_its_binding_everywhere_chirho`, `first_class_ordering_operators_take_their_rows_everywhere_chirho`, `ordering_holds_stay_ghc_everywhere_chirho` and `a_first_class_operator_at_a_stub_compare_key_stays_loud_chirho`.
+    - Row 551's boundary pin became `prefix_less_answers_through_its_compare_row_chirho`.
+
+```mermaid
+flowchart LR
+    written_oo_chirho[written infix or section operator with origin] --> recorded_oo_chirho[recorded minted occurrence]
+    prefix_oo_chirho[first-class or prefix operator] --> reference_oo_chirho[minted occurrence]
+    recorded_oo_chirho --> resolve_oo_chirho[pass over bindings before rewriting]
+    resolve_oo_chirho --> answer_oo_chirho{answer at the proved key}
+    answer_oo_chirho -->|found| inline_oo_chirho[own row, primop, IEEE primop or compare test]
+    answer_oo_chirho -->|none| primop_oo_chirho[desugaring's primop, as on main]
+    reference_oo_chirho --> row_oo_chirho[generated operator row]
+    row_oo_chirho --> serve_oo_chirho[occurrence_head_replacement_chirho]
+```
 ## Reference evidence (bricks 3 and 4)
 
 ```mermaid
@@ -503,10 +537,9 @@ instance's row), a dictionary, or R2's named failure for a proven nested list (g
 - A section without an origin keeps `==#`. Every parsed section has one (the lowerer names
   its operator through `reference_name_chirho`), so the guard serves only producers without
   that metadata, and no parsed program can tell it apart.
-- Only `==`. The engine's `Ord` dictionary holds `compare` alone: a variable `<` has no
-  binding (`(<) 1 (2 :: Int)` fails with `missing STG binding <`), so the ordering operators
-  keep their primops until an Ord method model gives them `compare`-backed defaults. `/=`
-  waits for Eq's method set; `+`, `-`, `*` sections keep theirs, unmeasured.
+- Only `==` here. The engine's `Ord` dictionary holds `compare` alone, so the ordering
+  operators take their own occurrences' evidence through rows built over `compare` (row 610,
+  above). `/=` waits for Eq's method set; `+`, `-`, `*` sections keep theirs, unmeasured.
 
 ## R2 at every occurrence entry (R2b, 2026-10-18)
 
