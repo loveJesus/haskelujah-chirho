@@ -8,7 +8,7 @@
 - [x] Post a bounded design checkpoint and overlap audit before compiler source changes.
 - [x] Implement only the missing `Enum Ordering` instance and required method bodies.
 - [x] Mutation-prove the repair.
-- [ ] Run the focused warm gate.
+- [x] Run the focused warm gate.
 - [ ] Land through the canonical single-writer chain and close Row 602.
 
 ## Scope Chirho
@@ -36,3 +36,8 @@
   `GtIntChirho: expected Int#` while the Char range hold remains exact. Restoring the hook makes
   the source file byte-identical (SHA-256 `cd9a9f9c469e779f267df734470576d3b55156231fba4180afba1244ea18a2ff`),
   rebuilds without warnings, and restores the eight-line GHC answer.
+- Gate r1 is GREEN: 1,107/1,107 focused tests in 175.84 seconds, including the interpreter,
+  LLVM, real Cranelift, every Row 602 control, and Row 597's generated-Prelude ownership control.
+  The 41-program contract judge is GREEN at 126/126, accounting for 73 movers and 9 holds with no
+  Row 602 movement. Clippy reports no warning on a changed line; rustfmt, diff-check and gitleaks
+  are clean.
