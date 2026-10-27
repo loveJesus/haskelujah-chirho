@@ -134,14 +134,15 @@ fn ordering_holds_stay_ghc_everywhere_chirho() {
     }
 }
 
-/// An instance without `compare` leaves a missing-method stub as its compare row. A
-/// first-class `(<)` there stays loud, as on main; since row 612 it names its own dictionary
-/// slot's stub, where main named a missing binding. GHC prints `[False]`.
+/// An instance with neither `compare` nor `<=` leaves missing-method stubs as both rows. A
+/// first-class `(<)` there stays loud, naming its own dictionary slot's stub; GHC's defaults call
+/// each other forever. Its twin that writes `<=` answers GHC's `[False]` since row 626
+/// (`ord_chain_chirho.rs`).
 #[test]
 fn a_first_class_operator_at_a_stub_compare_key_stays_loud_chirho() {
     assert_named_failure_everywhere_chirho(
-        "OStubFirstClassChirho.hs",
-        "module Main where\nnewtype VChirho = VChirho Int deriving (Eq, Show)\ninstance Ord VChirho where\n  VChirho a <= VChirho b = a >= b\nmain :: IO ()\nmain = print (zipWith (<) [VChirho 1] [VChirho 2])\n",
+        "LNeitherFirstClassChirho.hs",
+        "module Main where\nnewtype VChirho = VChirho Int deriving (Eq, Show)\ninstance Ord VChirho\nmain :: IO ()\nmain = print (zipWith (<) [VChirho 1] [VChirho 2])\n",
         "missing method Ord.< for VChirho",
     );
 }

@@ -764,9 +764,9 @@ impl DictPassCtxChirho {
     }
 
     /// GHC's default row for a method the instance does not write, read from the real rows
-    /// under `donor_key_chirho`: Eq's two methods from each other (row 606), and Ord's other
-    /// six from its `compare` (row 612). None when no real row donates, so the caller's
-    /// named failure stays.
+    /// under `donor_key_chirho`: Eq's two methods from each other (row 606), and Ord's from its
+    /// `compare` (row 612) or its own `<=` (row 626), `compare` itself from `==` and `<=`. None
+    /// when no real row donates, so the caller's named failure stays.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn method_default_row_chirho(
         &mut self,

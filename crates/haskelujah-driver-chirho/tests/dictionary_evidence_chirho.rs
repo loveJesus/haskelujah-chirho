@@ -37,6 +37,8 @@ mod higher_order_occurrences_chirho;
 mod list_orders_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/operator_sections_chirho.rs"]
 mod operator_sections_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/ord_chain_chirho.rs"]
+mod ord_chain_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/ord_methods_chirho.rs"]
 mod ord_methods_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs"]

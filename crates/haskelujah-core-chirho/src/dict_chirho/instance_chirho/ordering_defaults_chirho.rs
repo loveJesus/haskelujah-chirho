@@ -6,15 +6,19 @@
 //! inside `Ord a =>` code they fell back to Int primops, and an instance's own operators were
 //! never read through a dictionary. Ord's layout is now `[Eq | <, <=, >, >=, compare, max, min]`.
 //!
-//! A slot the instance does not write takes a body-backed default from the key's real rows:
+//! A slot the instance does not write takes GHC's default (GHC.Classes) from the key's real rows:
 //! - `<=` reads the key's `compare` row through its Ordering test;
-//! - row 612 also leaves `<`, `>` and `>=` compare-backed. GHC instead defines those three
-//!   through `<=`; row 626 owns that chain together with `compare`'s `==`/`<=` default;
+//! - `x < y = not (y <= x)`, `x > y = not (x <= y)` and `x >= y = y <= x`, through the key's
+//!   `<=`, which is the instance's own `<=` where it writes one (row 626; row 612 had left these
+//!   three compare-backed);
 //! - `max x y = if x <= y then y else x` and `min x y = if x <= y then x else y`, through the
-//!   key's `<=` answer, which is the instance's own `<=` where it writes one.
+//!   key's `<=` answer;
+//! - `compare x y = if x == y then EQ else if x <= y then LT else GT`, through the Eq
+//!   superclass's real `==` and the instance's own `<=`, so an instance that writes only `<=`
+//!   orders everywhere (row 626).
 //!
-//! A missing-method stub never donates: a key whose `compare` has no real body keeps each
-//! operator's named failure. `compare`'s own default, from `==` and `<=`, is row 626's.
+//! A missing-method stub never donates: a key with neither a real `compare` nor its own `<=`
+//! keeps each slot's named failure, where GHC's defaults call each other forever.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use haskelujah_span_chirho::SpanChirho;
@@ -28,13 +32,13 @@ use crate::expr_chirho::{
 };
 
 /// The Ord operator, with its Int primop, whose answer `method_name_chirho`'s default reads:
-/// the operator itself, or `<=` for `max` and `min`. None for `compare` and any other class.
+/// the operator itself, or `<=` for `max`, `min` and `compare`. None for any other class.
 fn ordering_default_operator_chirho(
     class_name_chirho: &str,
     method_name_chirho: &str,
 ) -> Option<(&'static str, &'static str)> {
     let operator_chirho = match (class_name_chirho, method_name_chirho) {
-        ("Ord", "max" | "min") => "<=",
+        ("Ord", "max" | "min" | "compare") => "<=",
         ("Ord", method_chirho) => method_chirho,
         _ => return None,
     };
@@ -43,10 +47,52 @@ fn ordering_default_operator_chirho(
         .find(|(written_chirho, _)| *written_chirho == operator_chirho)
 }
 
+/// `case scrutinee of True -> when_true; _ -> otherwise`.
+fn if_then_else_chirho(
+    scrutinee_chirho: CoreExprChirho,
+    decided_chirho: BinderChirho,
+    result_ty_chirho: TyChirho,
+    when_true_chirho: CoreExprChirho,
+    otherwise_chirho: CoreExprChirho,
+) -> CoreExprChirho {
+    CoreExprChirho::CaseChirho {
+        scrutinee_chirho: Box::new(scrutinee_chirho),
+        bind_chirho: decided_chirho,
+        result_ty_chirho,
+        alts_chirho: vec![
+            CoreAltChirho {
+                con_chirho: AltConChirho::DataConChirho("True".to_string()),
+                binders_chirho: vec![],
+                rhs_chirho: when_true_chirho,
+            },
+            CoreAltChirho {
+                con_chirho: AltConChirho::DefaultChirho,
+                binders_chirho: vec![],
+                rhs_chirho: otherwise_chirho,
+            },
+        ],
+    }
+}
+
 impl DictPassCtxChirho {
-    /// The default row `$prim_Ord_<method>_<key>` for an Ord method besides `compare`, read
-    /// from the rows written under `donor_key_chirho`; None for any other class or method,
-    /// or when the key has no answer for the operator the default reads.
+    /// The key's body-backed `Eq.==` row: the instance's own or derived one, else row 606's
+    /// default from its own `/=`. None when Eq has neither real body at the key.
+    fn real_equality_row_chirho(&mut self, key_chirho: &str) -> Option<CoreIdChirho> {
+        self.existing_keyed_row_chirho("$prim_Eq_==_", key_chirho)
+            .or_else(|| {
+                self.equality_default_row_chirho(
+                    "Eq",
+                    "==",
+                    key_chirho,
+                    &format!("$prim_Eq_==_{key_chirho}"),
+                )
+            })
+    }
+
+    /// The default row `$prim_Ord_<method>_<key>` for an Ord method the instance does not
+    /// write, read from the rows written under `donor_key_chirho`; None for any other class
+    /// or method, or when the key has no answer for the `<=` or operator the default reads,
+    /// or, for `compare`, no real `==`.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(in crate::dict_chirho) fn ordering_default_row_chirho(
         &mut self,
@@ -58,6 +104,11 @@ impl DictPassCtxChirho {
         let operator_chirho =
             ordering_default_operator_chirho(class_name_chirho, method_name_chirho)?;
         let answer_chirho = self.ordering_answer_chirho(operator_chirho, donor_key_chirho)?;
+        let equality_chirho = if method_name_chirho == "compare" {
+            Some(self.real_equality_row_chirho(donor_key_chirho)?)
+        } else {
+            None
+        };
 
         let any_ty_chirho = TyChirho::int_chirho();
         let x_chirho = self.fresh_binder_chirho("x", any_ty_chirho.clone());
@@ -66,33 +117,49 @@ impl DictPassCtxChirho {
             Self::var_expr_chirho(&x_chirho),
             Self::var_expr_chirho(&y_chirho),
         );
-        let (body_chirho, result_ty_chirho) = match method_name_chirho {
-            "max" | "min" => {
+        let (body_chirho, result_ty_chirho) = match (method_name_chirho, equality_chirho) {
+            ("compare", Some(equality_chirho)) => {
+                // `if x == y then EQ else if x <= y then LT else GT`.
+                let ordering_ty_chirho = TyChirho::ConChirho("Ordering".to_string());
+                let equal_chirho = self.fresh_binder_chirho("$ord_equal", TyChirho::bool_chirho());
+                let at_most_chirho =
+                    self.fresh_binder_chirho("$ord_at_most", TyChirho::bool_chirho());
+                let ordered_chirho = if_then_else_chirho(
+                    answered_chirho,
+                    at_most_chirho,
+                    ordering_ty_chirho.clone(),
+                    Self::nullary_con_chirho("LT"),
+                    Self::nullary_con_chirho("GT"),
+                );
+                let body_chirho = if_then_else_chirho(
+                    Self::apply_two_chirho(
+                        equality_chirho,
+                        Self::var_expr_chirho(&x_chirho),
+                        Self::var_expr_chirho(&y_chirho),
+                    ),
+                    equal_chirho,
+                    ordering_ty_chirho.clone(),
+                    Self::nullary_con_chirho("EQ"),
+                    ordered_chirho,
+                );
+                (body_chirho, ordering_ty_chirho)
+            }
+            ("max" | "min", _) => {
                 // `x <= y` picks `y` for `max` and `x` for `min`; otherwise the other one.
                 let (at_most_chirho, otherwise_chirho) = if method_name_chirho == "max" {
                     (&y_chirho, &x_chirho)
                 } else {
                     (&x_chirho, &y_chirho)
                 };
-                let at_most_ty_chirho = TyChirho::bool_chirho();
-                let decided_chirho = self.fresh_binder_chirho("$ord_default", at_most_ty_chirho);
-                let body_chirho = CoreExprChirho::CaseChirho {
-                    scrutinee_chirho: Box::new(answered_chirho),
-                    bind_chirho: decided_chirho,
-                    result_ty_chirho: any_ty_chirho.clone(),
-                    alts_chirho: vec![
-                        CoreAltChirho {
-                            con_chirho: AltConChirho::DataConChirho("True".to_string()),
-                            binders_chirho: vec![],
-                            rhs_chirho: Self::var_expr_chirho(at_most_chirho),
-                        },
-                        CoreAltChirho {
-                            con_chirho: AltConChirho::DefaultChirho,
-                            binders_chirho: vec![],
-                            rhs_chirho: Self::var_expr_chirho(otherwise_chirho),
-                        },
-                    ],
-                };
+                let decided_chirho =
+                    self.fresh_binder_chirho("$ord_default", TyChirho::bool_chirho());
+                let body_chirho = if_then_else_chirho(
+                    answered_chirho,
+                    decided_chirho,
+                    any_ty_chirho.clone(),
+                    Self::var_expr_chirho(at_most_chirho),
+                    Self::var_expr_chirho(otherwise_chirho),
+                );
                 (body_chirho, any_ty_chirho.clone())
             }
             _ => (answered_chirho, TyChirho::bool_chirho()),

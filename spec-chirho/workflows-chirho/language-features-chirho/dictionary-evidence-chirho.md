@@ -276,11 +276,11 @@ flowchart LR
     - the instance's own row for that operator, where the program's instance defines one;
     - Int, Char and Bool: the Int primop, as before;
     - Double: row 547's IEEE primop, so a NaN on either side gives False and `-0.0` equals `0.0`;
-    - any other key with a body-backed compare row: `test (compare_K a b)`, row 551's shape.
+    - any other key: GHC's default through the key's `<=` since row 626 (`x < y = not (y <= x)`, `x > y = not (x <= y)`, `x >= y = y <= x`), where `<=` is the instance's own, else the key's body-backed compare row read by its Ordering test, row 551's shape.
   - **Written uses** take their answer in place, in one pass over the module's bindings before any binding is rewritten (`written_orderings_resolved_chirho`). The typed walkers of higher-order arguments rewrite an application node by node, so a spine hook never sees `filter (< "b")`'s section.
   - **First-class and prefix uses** take the same answer through a generated `$prim_Ord_<op>_<key>` row (`generate_ordering_operator_rows_chirho`, after the Eq rows). `occurrence_head_replacement_chirho` serves it by the name the proof gives.
   - **Without an answer**, a written operator takes back the primop desugaring gave it, and behaves as on main; a first-class one stays loud. That covers no evidence and a compare row that is a missing-method stub. At the binding's own dictionary key the operator is Ord's method since row 612, and the dictionary route selects it. A program's own operator keeps its binding (row 593's guard).
-  - **Residuals, unchanged from main:** a stub compare row. Builtin instances without a compare body (`()`, Float, Word) keep their primop answers, and a program instance that defines only `<=` still orders `<` and `>` by representation, though its own `<=` is now served.
+  - **Residuals, unchanged from main:** a stub compare row. Builtin instances without a compare body (`()`, Float, Word) keep their primop answers. A program instance that defines only `<=` orders through it since row 626.
   - `Ord a =>` code ordered with the blind primop until row 612: `smallerChirho ("a" ++ "") "b"` gave `False` natively, where GHC gives `True`.
   - Controls:
     - In `tests/dictionary_evidence_chirho/ordering_chirho/ordering_operators_chirho.rs`: `written_ordering_operators_take_the_proved_key_everywhere_chirho`, `a_programs_own_ordering_operator_keeps_its_binding_everywhere_chirho`, `first_class_ordering_operators_take_their_rows_everywhere_chirho`, `ordering_holds_stay_ghc_everywhere_chirho` and `a_first_class_operator_at_a_stub_compare_key_stays_loud_chirho`.
@@ -342,11 +342,11 @@ flowchart LR
   - **Typing:** the seeded Ord has GHC's seven methods. Layouts sort method names, so `$Dict_Ord` is `[Eq | <, <=, >, >=, compare, max, min]`, and `compare` moved from slot 1 to slot 5. Every Ord dictionary and selector follows the layout, and the hand-built `Ord [T]` fills every slot.
   - **Defaults** (`instance_chirho/ordering_defaults_chirho.rs`), asked before any stub by the dictionary resolver, the conditional list path and the list builder:
     - `<=` is its answer at the key through row 610's `ordering_answer_chirho`: the Int primop at Int, Char and Bool, the IEEE primop at Double, else the key's compare row read by its Ordering test;
-    - row 612 also leaves `<`, `>` and `>=` compare-backed. GHC defines them through `<=` (`not (y <= x)`, `not (x <= y)`, and `y <= x` respectively); row 626 owns that chain together with `compare`'s `==`/`<=` default. The mixed ordinary-`compare`/reversed-`<=` probe is unchanged from main by row 612 and is row 626's control;
+    - `<`, `>` and `>=` were compare-backed in row 612. Since row 626 they follow GHC's `<=` chain, and `compare` defaults from `==` and `<=` (below);
     - `max x y = if x <= y then y else x` and `min x y = if x <= y then x else y`, through the key's `<=` answer, which is the instance's own `<=` where it writes one. At Double this matches GHC at NaN and signed zero.
     - The donor must be a real body. A key whose `compare` is a missing-method stub keeps each slot's named failure, where GHC's defaults loop.
   - **The binding's own key:** a written operator proved at the binding's own dictionary leaves row 610's pass and selects its slot (`$sel_Ord_< $dOrd`). `max` and `min` select theirs as methods. `maximum` and `minimum` apply row 565's compare-backed fold to the dictionary's `compare` (`own_extremum_chirho`).
-  - **Kept for rows 626 and 627:** row 626 supplies `compare` from `==` and `<=`, and moves `<`, `>` and `>=` onto GHC's `<=` chain. A `<=`-only instance's `max` and `min` already answer through its own `<=`. At concrete keys `max`, `min`, `maximum` and `minimum` keep row 565's compare-backed helpers, so an instance's own `max` is read only through a dictionary (row 627).
+  - **Kept for row 627:** a `<=`-only instance's `max` and `min` already answer through its own `<=`. At concrete keys `max`, `min`, `maximum` and `minimum` keep row 565's compare-backed helpers, so an instance's own `max` is read only through a dictionary (row 627).
   - **Residuals, measured on main too:**
     - no `Ord` or `Eq` dictionary exists at `Maybe` or tuple keys, so `Ord a =>` code called there fails with `no instance dictionary for Ord Maybe`, where main's operators answered silently wrong;
     - an Ord instance at a generic head is never generic (row 600's G6: Ord has a superclass), so `Ord a =>` code at `TagChirho Int` fails with `no instance dictionary for Ord TagChirho`, as `compare` there did on main;
@@ -355,8 +355,29 @@ flowchart LR
   - Controls:
     - In `tests/dictionary_evidence_chirho/ordering_chirho/ord_methods_chirho.rs`: `ord_methods_default_from_compare_everywhere_chirho`, `ord_method_holds_stay_ghc_everywhere_chirho` and `an_instance_without_compare_fails_by_name_everywhere_chirho`.
     - The layout and selector units, `build_layouts_from_class_env_chirho` and `generate_selectors_creates_bindings_chirho`.
-    - Row 565's polymorphic `maximum` residual now answers and moved into these controls. Row 610's stub-key pin names `missing method Ord.< for VChirho`, where main named a missing binding.
+    - Row 565's polymorphic `maximum` residual now answers and moved into these controls. Row 610's stub-key pin names `missing method Ord.< for VChirho`, where main named a missing binding; since row 626 its `<=`-only program answers, and the pin holds an instance with neither `compare` nor `<=`.
   - **Row 608's table:** the committed generator was rerun on this row. Its outputs are byte-identical (726 agree, 679 disagree), and the 18 drift tests pass.
+- GHC's `<=` chain for `<`, `>` and `>=`, and `compare` from `==` and `<=` (row 626).
+  - **The defect:** GHC.Classes defines `x < y = not (y <= x)`, `x > y = not (x <= y)` and `x >= y = y <= x`, `x <= y` from `compare`, and `compare x y = if x == y then EQ else if x <= y then LT else GT`. Rows 610 and 612 read `compare` through each operator's own Ordering test, so:
+    - an instance whose own `<=` disagrees with its `compare` answered from `compare`: `(True,False,False,LT)`, where GHC prints `(False,True,True,LT)`;
+    - a `compare` that is not antisymmetric (`compare _ _ = LT`) answered `<` and `>=` wrongly;
+    - an instance that writes only `<=`, GHC's other minimal definition, failed with `missing method Ord.compare`, or with `Ord.<` inside `Ord a =>` code.
+  - **The answer** (`ordering_answer_chirho`, shared by written, first-class and dictionary uses):
+    - the exact primops at Int, Char, Bool and Double, as before;
+    - the instance's own row for the operator;
+    - else the chain through the key's `<=`, which is the instance's own `<=`, else the key's real `compare` read by its Ordering test.
+    - Through `compare`, `not (a <= b)` is `compare a b == GT`, so no `not` is applied. Through an own `<=`, `<` and `>` apply the compiler's `not`.
+  - **`compare`'s default** (`ordering_defaults_chirho.rs`): `if x == y then EQ else if x <= y then LT else GT`, through the Eq superclass's real `==` and the instance's own `<=`.
+    - The `==` is the instance's own or derived one, or row 606's default from its own `/=`.
+    - With neither `compare` nor `<=`, every slot keeps its named failure, where GHC's defaults loop.
+    - A `<=`-only key's compare row is now real, so `sortBy compare`, row 565's extrema and row 572's structured rows read it.
+  - **Kept:**
+    - concrete `max`, `min`, `maximum` and `minimum` read row 565's compare-backed helpers (row 627), so the measured mixed program's concrete `max` cell stays `MixChirho 2`;
+    - `sort` and `insert` are Int-shaped at user keys (row 633);
+    - row 551's compare route, for primops without evidence, still reads each operator's own test.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/ord_chain_chirho.rs`: `ordering_operators_follow_ghcs_at_most_chain_everywhere_chirho` and `ord_chain_holds_stay_ghc_everywhere_chirho`.
+    - Row 610's stub-key program moved into them: its `<=`-only instance answers GHC's `[False]`. The pin now holds an instance with neither `compare` nor `<=`, still loud.
 
 ## Reference evidence (bricks 3 and 4)
 

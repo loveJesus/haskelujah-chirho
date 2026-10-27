@@ -8,8 +8,9 @@
 //! - the program's own operator row, where its instance defines the operator;
 //! - at Int, Char and Bool, the Int primop desugaring chose, which is exact there;
 //! - at Double, row 547's IEEE primop: a NaN on either side gives False, and -0.0 equals 0.0;
-//! - at a key with a body-backed `Ord.compare` row, that row read by the operator's
-//!   Ordering test, as row 551's compare route reads it.
+//! - otherwise GHC's default through the key's `<=` (row 626): `x < y = not (y <= x)`,
+//!   `x > y = not (x <= y)` and `x >= y = y <= x`, where `<=` is the instance's own, else the
+//!   key's body-backed `Ord.compare` row read by its Ordering test.
 //!
 //! A written operator applied to its operands takes its answer in place, before any walker
 //! reads its binding: the typed walkers of higher-order arguments, such as `filter (< "b")`'s
@@ -38,15 +39,29 @@ use crate::expr_chirho::{CoreBindingChirho, CoreExprChirho, CoreIdChirho, Inline
 pub(super) const ORDERING_OPERATORS_CHIRHO: [(&str, &str); 4] =
     [("<", "<#"), ("<=", "<=#"), (">", ">#"), (">=", ">=#")];
 
+/// GHC's default for each Ord operator an instance does not define, through `<=`
+/// (GHC.Classes): whether it swaps the operands, and whether it negates the answer.
+/// `x < y = not (y <= x)`, `x > y = not (x <= y)`, `x >= y = y <= x`, and `<=` itself reads
+/// `compare`.
+const AT_MOST_CHAIN_CHIRHO: [(&str, bool, bool); 4] = [
+    ("<", true, true),
+    ("<=", false, false),
+    (">", false, true),
+    (">=", true, false),
+];
+
 /// An Ord operator's answer at one proof key.
 pub(super) enum OrderingAnswerChirho {
     /// A primop exact at the key.
     PrimopChirho(&'static str),
-    /// A row over both operands: the program's own operator row, or the key's compare row
-    /// read by the operator's Ordering test.
+    /// A row over both operands, in GHC's order: the program's own operator row, the
+    /// instance's own `<=`, or the key's compare row read by an Ordering test. Through an
+    /// own `<=`, `<` and `>` are negated by `not`; a compare row's test carries the negation.
     RowChirho {
         row_chirho: CoreIdChirho,
         test_chirho: Option<CoreIdChirho>,
+        swapped_chirho: bool,
+        negated_by_chirho: Option<CoreIdChirho>,
     },
 }
 
@@ -64,16 +79,25 @@ impl OrderingAnswerChirho {
             Self::RowChirho {
                 row_chirho,
                 test_chirho,
+                swapped_chirho,
+                negated_by_chirho,
             } => {
+                let (first_chirho, second_chirho) = if *swapped_chirho {
+                    (right_chirho, left_chirho)
+                } else {
+                    (left_chirho, right_chirho)
+                };
                 let applied_chirho =
-                    DictPassCtxChirho::apply_two_chirho(*row_chirho, left_chirho, right_chirho);
-                match test_chirho {
-                    Some(test_chirho) => CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(*test_chirho)),
-                        arg_chirho: Box::new(applied_chirho),
-                    },
-                    None => applied_chirho,
-                }
+                    DictPassCtxChirho::apply_two_chirho(*row_chirho, first_chirho, second_chirho);
+                [*test_chirho, *negated_by_chirho]
+                    .into_iter()
+                    .flatten()
+                    .fold(applied_chirho, |inner_chirho, wrapper_chirho| {
+                        CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(wrapper_chirho)),
+                            arg_chirho: Box::new(inner_chirho),
+                        }
+                    })
             }
         }
     }
@@ -111,7 +135,23 @@ impl DictPassCtxChirho {
         )
     }
 
-    /// The operator's answer at `key_chirho`, or None.
+    /// The program's own `$prim_Ord_<operator>_<key>` row, unless its instance leads with
+    /// context dictionaries.
+    fn own_ordering_row_chirho(
+        &self,
+        operator_chirho: &str,
+        key_chirho: &str,
+    ) -> Option<CoreIdChirho> {
+        self.body_backed_names_chirho
+            .get(&format!("$prim_Ord_{operator_chirho}_{key_chirho}"))
+            .copied()
+            .filter(|row_chirho| !self.context_leading_rows_chirho.contains_key(row_chirho))
+    }
+
+    /// The operator's answer at `key_chirho`, or None: its exact primop at Int, Char, Bool
+    /// and Double; the instance's own row; else GHC's default through the key's `<=`, which
+    /// is the instance's own `<=`, else the key's real compare row read by an Ordering test
+    /// (row 626). Through `compare`, `not (a <= b)` is `compare a b == GT`.
     pub(super) fn ordering_answer_chirho(
         &self,
         (operator_chirho, primop_chirho): (&str, &'static str),
@@ -124,24 +164,41 @@ impl DictPassCtxChirho {
             return double_counterpart_chirho(primop_chirho)
                 .map(OrderingAnswerChirho::PrimopChirho);
         }
-        if let Some(row_chirho) = self
-            .body_backed_names_chirho
-            .get(&format!("$prim_Ord_{operator_chirho}_{key_chirho}"))
-            .filter(|row_chirho| !self.context_leading_rows_chirho.contains_key(row_chirho))
-        {
+        if let Some(row_chirho) = self.own_ordering_row_chirho(operator_chirho, key_chirho) {
             return Some(OrderingAnswerChirho::RowChirho {
-                row_chirho: *row_chirho,
+                row_chirho,
                 test_chirho: None,
+                swapped_chirho: false,
+                negated_by_chirho: None,
+            });
+        }
+        let (_, swapped_chirho, negated_chirho) = AT_MOST_CHAIN_CHIRHO
+            .into_iter()
+            .find(|(chained_chirho, ..)| *chained_chirho == operator_chirho)?;
+        if let Some(at_most_chirho) = self.own_ordering_row_chirho("<=", key_chirho) {
+            let negated_by_chirho = if negated_chirho {
+                Some(self.lookup_compiler_owned_name_id_chirho("not")?)
+            } else {
+                None
+            };
+            return Some(OrderingAnswerChirho::RowChirho {
+                row_chirho: at_most_chirho,
+                test_chirho: None,
+                swapped_chirho,
+                negated_by_chirho,
             });
         }
         let compare_chirho = self.existing_keyed_row_chirho("$prim_Ord_compare_", key_chirho)?;
+        let test_primop_chirho = if negated_chirho { ">#" } else { "<=#" };
         let (_, test_name_chirho, ..) = ORDERING_TESTS_CHIRHO
             .iter()
-            .find(|(test_primop_chirho, ..)| *test_primop_chirho == primop_chirho)?;
+            .find(|(tested_primop_chirho, ..)| *tested_primop_chirho == test_primop_chirho)?;
         let test_chirho = self.lookup_body_backed_name_id_chirho(test_name_chirho)?;
         Some(OrderingAnswerChirho::RowChirho {
             row_chirho: compare_chirho,
             test_chirho: Some(test_chirho),
+            swapped_chirho,
+            negated_by_chirho: None,
         })
     }
 
