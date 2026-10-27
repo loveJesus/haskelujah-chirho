@@ -68,7 +68,20 @@ The paths now point at the category files:
   - Three builds, each from its own `git archive` or the worktree: main `7b7eaf9c`, the lint commit `573a1fc1` and the split. Their 76 MB of full dumps are byte-identical (`cmp`, one SHA-256), with no panic.
   - Each binary's dependency file names its own parser layout: the single file for the two bases, the category files for the split.
 - [x] **The parser crate:** 400/400 tests at the split and at `573a1fc1`, with no compiler warning; the 400 test names, 47 of them in the CST parser's modules, are identical.
-- [ ] No Clippy finding on a changed line (the gate's step).
-- [ ] Commit; broad moved-shape scan.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] **The dump comparison was itself mutated.** In the scratch `573a1fc1` copy, one node kind was changed: `QualTypeChirho` to `FunTypeChirho` at `parse_type_chirho`'s main `=>` site. The trees of 568 of the 3,864 files changed.
+  - The source restore was byte-identical, and after a forced rebuild the dumps equal the split's again.
+  - `tar` had restored the file with its old commit mtime, so Cargo first skipped the rebuild and served the mutant binary until the file was touched.
+- [x] **Commit** `8ac4ccaf` on `573a1fc1`.
+- [x] **The broad moved-shape scan** (`scan640-r2-chirho.log`, on `8ac4ccaf`): 3589/3589 passed in 779 s, with 18 skipped and a clean tree before and after.
+  - Every lib, the parser's included, and the 20 driver suites ran; `ghc_bulk` was left out.
+  - By name, these are the same 3,589 tests that passed in r1's scan of the RED version.
+- [x] **Judge and gate.**
+  - **Main `7b7eaf9c`** is GREEN against the contract copy first (73 movers, 9 holds; `main-7b7eaf9c-judge-chirho.log`). Main has not moved since.
+  - **r1, RED** on `97388445`, at changed-line Clippy (above).
+  - **r2, GREEN on `8ac4ccaf` (base `7b7eaf9c`, 2 commits) in 218.42 s** (`gate640-r2-chirho/`):
+    - 1357/1357 focused tests;
+    - no Clippy diagnostic on the 6,471 changed lines in 12 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (2 commits), and a build with no warning.
+  - **The verifier, mutated on the tip:** one space added inside `parse_btype_chirho` made it fail, naming that method. The restore was byte-identical, and the tree stayed clean.
 - [ ] Land on main and close progress row 640 (gpt). Then row 617, the whitespace rule, in `bindings_chirho.rs`.
