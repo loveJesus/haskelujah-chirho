@@ -200,6 +200,36 @@ runs every measured program on the three engines. The parser's
 `cst_parser_chirho/tests_chirho/infix_definition_spacing_tests_chirho.rs` holds each shape,
 GHC's `proposal-229e` comment cases among them.
 
+## A parenthesized function left side
+
+Haskell 2010's `funlhs` also has the form `( funlhs ) apat { apat }`: `(f . g) x = g (f x)`
+defines `.`, as the prefix form `(.) f g x` does (row 618). The inner `funlhs` is
+`pat varop pat`, or another parenthesized one (`((f <%> g) x) y`).
+
+- **The operator.** A `varop` is a variable operator under the whitespace rule above, or a
+  backticked variable name.
+- **What stays a pattern binding.** A constructor operator (`(x:_) = ...`) and a tuple are
+  patterns, so those heads keep their pattern bindings.
+- **An argument must follow.** GHC 9.14.1 rejects `(a <+> b) = ...`, and so does this compiler.
+
+The parser lays the left side out as one flat run in the Match: `(`, the operands around the
+operator, `)`, then the arguments. A nested left side is laid out the same way. Lowering is
+unchanged: `extract_fun_name_from_match_chirho` takes the operator after the first operand, and
+`lower_match_arm_chirho` takes every pattern in order.
+
+```mermaid
+flowchart TD
+    HEAD["a value declaration that opens with ("] --> FUNLHS["cst_parser_chirho/bindings_chirho.rs\nstarts_parenthesized_funlhs_chirho\n( pat varop pat ) or ( funlhs ) apat,\nthen at least one argument"]
+    FUNLHS -->|"yes"| RUN["one flat run in the Match:\n( operand varop operand ) apat ..."]
+    RUN --> FUN["FunBindChirho named by the operator,\nevery pattern in order"]
+    FUNLHS -->|"no: a tuple, a constructor operator,\nor no argument"| PAT["a pattern binding, as before"]
+```
+
+Controls: `crates/haskelujah-driver-chirho/tests/typing_integration_chirho/paren_infix_definitions_chirho.rs`
+runs every measured program on the three engines, and holds GHC's rejection. The parser's
+`cst_parser_chirho/tests_chirho/paren_funlhs_tests_chirho.rs` holds the flat and nested Match
+runs that lowering reads.
+
 ## Literal patterns and MagicHash
 
 Character literals and ordinary string literals (without OverloadedStrings) have fixed pattern

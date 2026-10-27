@@ -89,6 +89,9 @@ impl ParserChirho<'_> {
             // it as an operator-in-parens binding head. Otherwise it is still
             // a parenthesized pattern such as `(!x, y) = ...`.
             Some(RawTokenKindChirho::LeftParenChirho) => {
+                if self.starts_parenthesized_funlhs_chirho() {
+                    return false;
+                }
                 let mut i_chirho = self.pos_chirho + 1;
                 // Skip trivia
                 while i_chirho < self.tokens_chirho.len()
@@ -249,6 +252,8 @@ impl ParserChirho<'_> {
             {
                 self.bump_chirho();
                 self.eat_trivia_chirho();
+            } else if self.starts_parenthesized_funlhs_chirho() {
+                self.parse_parenthesized_funlhs_chirho();
             } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
                 let mut lookahead_idx_chirho = self.pos_chirho + 1;
                 while lookahead_idx_chirho < self.tokens_chirho.len()
@@ -336,6 +341,114 @@ impl ParserChirho<'_> {
         }
 
         self.builder_chirho.finish_node_chirho(); // FunBind
+    }
+
+    /// A parenthesized function left side, Haskell 2010's `( funlhs ) apat { apat }`: the
+    /// operator's own definition, as in `(f . g) x = g (f x)`. The inner `funlhs` is
+    /// `pat varop pat`, or another parenthesized one. A `varop` is a variable operator or a
+    /// backticked variable name, never a constructor operator, so `(x:_) = ...` stays a
+    /// pattern binding. At least one argument pattern must follow, as GHC requires.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    fn starts_parenthesized_funlhs_chirho(&self) -> bool {
+        self.peek_after_parenthesized_funlhs_chirho(self.pos_chirho)
+            .is_some_and(|after_chirho| {
+                self.can_start_fun_arg_pat_idx_chirho(self.skip_trivia_idx_chirho(after_chirho))
+            })
+    }
+
+    /// The index after the `)` of a parenthesized `funlhs` that opens at `open_idx_chirho`.
+    fn peek_after_parenthesized_funlhs_chirho(&self, open_idx_chirho: usize) -> Option<usize> {
+        if self.tokens_chirho.get(open_idx_chirho)?.kind_chirho
+            != RawTokenKindChirho::LeftParenChirho
+        {
+            return None;
+        }
+        let inner_chirho = self.skip_trivia_idx_chirho(open_idx_chirho + 1);
+        let close_chirho = match self.peek_after_parenthesized_funlhs_chirho(inner_chirho) {
+            Some(after_nested_chirho) => {
+                let mut idx_chirho = self.skip_trivia_idx_chirho(after_nested_chirho);
+                if !self.can_start_fun_arg_pat_idx_chirho(idx_chirho) {
+                    return None;
+                }
+                while self.can_start_fun_arg_pat_idx_chirho(idx_chirho) {
+                    let after_chirho = self.peek_after_fun_arg_pat_chirho(idx_chirho)?;
+                    if after_chirho == idx_chirho {
+                        return None;
+                    }
+                    idx_chirho = self.skip_trivia_idx_chirho(after_chirho);
+                }
+                idx_chirho
+            }
+            None => {
+                let operator_chirho =
+                    self.skip_trivia_idx_chirho(self.peek_after_fun_arg_pat_chirho(inner_chirho)?);
+                let right_chirho =
+                    self.skip_trivia_idx_chirho(self.peek_after_varop_chirho(operator_chirho)?);
+                self.skip_trivia_idx_chirho(self.peek_after_fun_arg_pat_chirho(right_chirho)?)
+            }
+        };
+        (self.tokens_chirho.get(close_chirho)?.kind_chirho == RawTokenKindChirho::RightParenChirho)
+            .then_some(close_chirho + 1)
+    }
+
+    /// The index after a variable operator at `idx_chirho`: a variable symbol that is not a
+    /// prefix pattern operator (`!x`, `-1`), or a backticked variable name.
+    fn peek_after_varop_chirho(&self, idx_chirho: usize) -> Option<usize> {
+        match self.tokens_chirho.get(idx_chirho)?.kind_chirho {
+            RawTokenKindChirho::VarSymChirho
+                if !self.starts_prefix_pattern_operator_chirho(idx_chirho) =>
+            {
+                Some(idx_chirho + 1)
+            }
+            RawTokenKindChirho::BacktickChirho => {
+                let name_chirho = self.skip_trivia_idx_chirho(idx_chirho + 1);
+                let close_chirho = self.skip_trivia_idx_chirho(name_chirho + 1);
+                (self.tokens_chirho.get(name_chirho)?.kind_chirho
+                    == RawTokenKindChirho::VarIdChirho
+                    && self.tokens_chirho.get(close_chirho)?.kind_chirho
+                        == RawTokenKindChirho::BacktickChirho)
+                    .then_some(close_chirho + 1)
+            }
+            _ => None,
+        }
+    }
+
+    /// A parenthesized function left side, as one flat run in the Match: `(`, the left operand,
+    /// the operator, the right operand and `)`, or a nested one and its arguments. Lowering
+    /// names the binding by the operator after the first operand and takes every pattern in
+    /// order, as it does for the prefix form `(op) x y z`.
+    fn parse_parenthesized_funlhs_chirho(&mut self) {
+        self.bump_chirho(); // (
+        self.eat_trivia_chirho();
+        if self
+            .peek_after_parenthesized_funlhs_chirho(self.pos_chirho)
+            .is_some()
+        {
+            self.parse_parenthesized_funlhs_chirho();
+            while self.can_start_fun_arg_pat_chirho() {
+                let before_chirho = self.pos_chirho;
+                self.parse_fun_arg_pat_chirho();
+                self.eat_trivia_chirho();
+                if self.pos_chirho == before_chirho {
+                    break;
+                }
+            }
+        } else {
+            self.parse_lpat_chirho();
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::BacktickChirho) {
+                self.bump_backticked_operator_chirho();
+            } else {
+                self.bump_chirho(); // the operator
+            }
+            self.eat_trivia_chirho();
+            self.parse_lpat_chirho();
+            self.eat_trivia_chirho();
+        }
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            self.bump_chirho(); // )
+            self.eat_trivia_chirho();
+        }
     }
 
     fn starts_infix_fun_bind_chirho(&self) -> bool {

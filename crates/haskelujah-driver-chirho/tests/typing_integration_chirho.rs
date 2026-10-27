@@ -17,6 +17,8 @@ mod infix_definition_spacing_chirho;
 mod maybe_helper_schemes_chirho;
 #[path = "typing_integration_chirho/operator_ownership_chirho.rs"]
 mod operator_ownership_chirho;
+#[path = "typing_integration_chirho/paren_infix_definitions_chirho.rs"]
+mod paren_infix_definitions_chirho;
 #[path = "typing_integration_chirho/qualified_alias_agreement_chirho.rs"]
 mod qualified_alias_agreement_chirho;
 #[path = "typing_integration_chirho/qualified_builtin_aliases_chirho.rs"]

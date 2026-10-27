@@ -41,6 +41,9 @@ mod guard_let_tests_chirho;
 mod infix_definition_spacing_tests_chirho;
 mod let_qualifier_chirho;
 mod module_chirho;
+#[cfg(test)]
+#[path = "cst_parser_chirho/tests_chirho/paren_funlhs_tests_chirho.rs"]
+mod paren_funlhs_tests_chirho;
 mod patterns_chirho;
 mod template_haskell_chirho;
 mod types_chirho;
