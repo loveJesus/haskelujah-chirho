@@ -105,8 +105,7 @@ const FROM_INTEGRAL_CHIRHO: &str =
 
 /// Saved oracle P02: native `map` produces a boxed `[Char]`, while literals
 /// and `show` results use native C strings. GHC prints `ABC`.
-const CHAR_CASE_MAPPING_CHIRHO: &str =
-    "module Main where\nmain :: IO ()\nmain = putStrLn (map toUpper \"abc\")\n";
+const CHAR_CASE_MAPPING_CHIRHO: &str = "module Main where\nimport Data.Char (toUpper)\nmain :: IO ()\nmain = putStrLn (map toUpper \"abc\")\n";
 
 /// Saved oracle P05: empty/singleton `fromList` needs no key comparison.
 const MAP_SINGLETON_SIZE_CHIRHO: &str = "module Main where\nimport qualified Data.Map as M\nmain :: IO ()\nmain = print (M.size (M.fromList [(1 :: Int, \"a\")]))\n";

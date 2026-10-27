@@ -153,7 +153,7 @@ fn eval_ioref_new_read_chirho() {
     // newIORef 42, readIORef, show → "42\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r <- newIORef 42\n  v <- readIORef r\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (newIORef, readIORef)\nmain = do\n  r <- newIORef 42\n  v <- readIORef r\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -170,7 +170,7 @@ fn eval_ioref_modify_chirho() {
     // modifyIORef r add1 should increment: newIORef 41, modifyIORef, readIORef → "42\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nadd1 x = x + 1\nmain = do\n  r <- newIORef 41\n  modifyIORef r add1\n  v <- readIORef r\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (modifyIORef, newIORef, readIORef)\nadd1 x = x + 1\nmain = do\n  r <- newIORef 41\n  modifyIORef r add1\n  v <- readIORef r\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -191,7 +191,7 @@ fn eval_ioref_new_read_show_chirho() {
     // newIORef 42, readIORef, show → "42\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r <- newIORef 42\n  v <- readIORef r\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (newIORef, readIORef)\nmain = do\n  r <- newIORef 42\n  v <- readIORef r\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -208,7 +208,7 @@ fn eval_ioref_write_overwrite_chirho() {
     // newIORef 1, writeIORef r 99, readIORef r → 99
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r <- newIORef 1\n  writeIORef r 99\n  v <- readIORef r\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (newIORef, readIORef, writeIORef)\nmain = do\n  r <- newIORef 1\n  writeIORef r 99\n  v <- readIORef r\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -225,7 +225,7 @@ fn eval_ioref_do_modify_lambda_chirho() {
     // modifyIORef r (\x -> x * 2), newIORef 21, readIORef → 42
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r <- newIORef 21\n  modifyIORef r (\\x -> x + x)\n  v <- readIORef r\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (modifyIORef, newIORef, readIORef)\nmain = do\n  r <- newIORef 21\n  modifyIORef r (\\x -> x + x)\n  v <- readIORef r\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -242,7 +242,7 @@ fn eval_ioref_two_refs_independent_chirho() {
     // Two separate IORefs hold independent values
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r1 <- newIORef 10\n  r2 <- newIORef 20\n  writeIORef r1 99\n  v1 <- readIORef r1\n  v2 <- readIORef r2\n  putStrLn (show (v1 + v2))\n";
+    let src_chirho = "module Test where\nimport Data.IORef (newIORef, readIORef, writeIORef)\nmain = do\n  r1 <- newIORef 10\n  r2 <- newIORef 20\n  writeIORef r1 99\n  v1 <- readIORef r1\n  v2 <- readIORef r2\n  putStrLn (show (v1 + v2))\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -259,7 +259,7 @@ fn eval_ioref_counter_increment_chirho() {
     // IORef counter: start at 0, increment 3 times via modifyIORef, read → 3
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nincr x = x + 1\nmain = do\n  c <- newIORef 0\n  modifyIORef c incr\n  modifyIORef c incr\n  modifyIORef c incr\n  v <- readIORef c\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (modifyIORef, newIORef, readIORef)\nincr x = x + 1\nmain = do\n  c <- newIORef 0\n  modifyIORef c incr\n  modifyIORef c incr\n  modifyIORef c incr\n  v <- readIORef c\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -280,7 +280,8 @@ fn eval_when_true_output_chirho() {
     // when True (putStrLn "yes") → "yes\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = when True (putStrLn \"yes\")\n";
+    let src_chirho =
+        "module Test where\nimport Control.Monad (when)\nmain = when True (putStrLn \"yes\")\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -297,7 +298,8 @@ fn eval_when_false_silent_chirho() {
     // when False (putStrLn "no") → ""
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = when False (putStrLn \"no\")\n";
+    let src_chirho =
+        "module Test where\nimport Control.Monad (when)\nmain = when False (putStrLn \"no\")\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -314,7 +316,7 @@ fn eval_unless_false_output_chirho() {
     // unless False (putStrLn "ran") → "ran\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = unless False (putStrLn \"ran\")\n";
+    let src_chirho = "module Test where\nimport Control.Monad (unless)\nmain = unless False (putStrLn \"ran\")\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -430,6 +432,7 @@ fn eval_void_io_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Control.Monad (void)
 main = void (putStrLn \"hello\")
 ";
     let (_, machine_chirho) =
@@ -445,6 +448,7 @@ fn eval_builtin_when_true_io_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Control.Monad (when)
 main = when True (putStrLn \"yes\")
 ";
     let (_, machine_chirho) =
@@ -460,6 +464,7 @@ fn eval_builtin_unless_true_io_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Control.Monad (unless)
 main = unless True (putStrLn \"skipped\")
 ";
     let (_, machine_chirho) =
@@ -475,6 +480,7 @@ fn eval_guard_true_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Control.Monad (guard)
 main = guard True >> putStrLn \"passed\"
 ";
     let (_, machine_chirho) =
@@ -583,6 +589,7 @@ fn eval_io_when_true_prelude_chirho() {
     use crate::eval_source_with_input_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad (when)
 main = when True (putStrLn "yes")
 "#;
     let (_, machine_chirho) =
@@ -597,6 +604,7 @@ fn eval_io_when_false_prelude_chirho() {
     use crate::eval_source_with_input_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad (when)
 main = when False (putStrLn "no")
 "#;
     let (_, machine_chirho) =
@@ -611,6 +619,7 @@ fn eval_io_unless_false_prelude_chirho() {
     use crate::eval_source_with_input_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad (unless)
 main = unless False (putStrLn "yes")
 "#;
     let (_, machine_chirho) =
@@ -655,6 +664,7 @@ fn eval_stm_new_read_tvar_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Concurrent.STM (newTVarIO, readTVarIO)
 main = do
   tv <- newTVarIO 42
   v <- readTVarIO tv
@@ -690,6 +700,7 @@ fn eval_stm_atomically_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Concurrent.STM (atomically, newTVar, readTVar)
 main = do
   v <- atomically (do { tv <- newTVar 10; readTVar tv })
   putStrLn (show v)
@@ -706,6 +717,7 @@ fn eval_stm_multiple_tvars_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Concurrent.STM (newTVarIO, readTVarIO)
 main = do
   tv1 <- newTVarIO 30
   tv2 <- newTVarIO 12

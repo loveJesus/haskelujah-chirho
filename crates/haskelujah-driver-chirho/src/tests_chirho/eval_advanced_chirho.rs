@@ -867,6 +867,7 @@ fn eval_caesar_cipher_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Data.Char (chr, ord)
 encrypt shift msg = map (\c -> chr (ord c + shift)) msg
 decrypt shift msg = map (\c -> chr (ord c - shift)) msg
 main = putStrLn (decrypt 3 (encrypt 3 "HELLO"))
@@ -1431,7 +1432,8 @@ fn eval_evaluate_basic_chirho() {
     // evaluate x forces to WHNF, returns result
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = evaluate (2 + 3)\n";
+    let src_chirho =
+        "module Test where\nimport Control.Exception (evaluate)\nmain = evaluate (2 + 3)\n";
     let result_chirho =
         eval_source_chirho(src_chirho, &mut sm_chirho, "Test.hs", None).expect("evaluate basic");
     assert_eq!(

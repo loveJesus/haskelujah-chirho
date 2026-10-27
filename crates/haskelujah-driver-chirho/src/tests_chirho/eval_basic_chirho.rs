@@ -2859,6 +2859,7 @@ fn eval_sort_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (sort)
 main = sum (sort [3,1,4,1,5,9])
 ";
     let result_chirho =
@@ -3097,7 +3098,7 @@ fn eval_to_from_enum_chirho() {
 
     let mut sm4_chirho = SourceMapChirho::new_chirho();
     let r4_chirho = crate::eval_source_with_machine_chirho(
-        "module Test where\nmain = print (fromEnum (chr 97))\n",
+        "module Test where\nimport Data.Char (chr)\nmain = print (fromEnum (chr 97))\n",
         &mut sm4_chirho,
         "TestChirho.hs",
         None,
@@ -3130,7 +3131,7 @@ fn eval_is_digit_chirho() {
     // isDigit '5' = True → if then 1 else 0
     let mut sm1_chirho = SourceMapChirho::new_chirho();
     let r1_chirho = eval_source_chirho(
-        "module Test where\nmain = if isDigit '5' then 1 else 0\n",
+        "module Test where\nimport Data.Char (isDigit)\nmain = if isDigit '5' then 1 else 0\n",
         &mut sm1_chirho,
         "TestChirho.hs",
         None,
@@ -3144,7 +3145,7 @@ fn eval_is_digit_chirho() {
     // isDigit 'x' = False
     let mut sm2_chirho = SourceMapChirho::new_chirho();
     let r2_chirho = eval_source_chirho(
-        "module Test where\nmain = if isDigit 'x' then 1 else 0\n",
+        "module Test where\nimport Data.Char (isDigit)\nmain = if isDigit 'x' then 1 else 0\n",
         &mut sm2_chirho,
         "TestChirho.hs",
         None,
@@ -3163,7 +3164,7 @@ fn eval_to_lower_upper_chirho() {
     // ord (toLower 'A') = 97
     let mut sm1_chirho = SourceMapChirho::new_chirho();
     let r1_chirho = eval_source_chirho(
-        "module Test where\nmain = ord (toLower 'A')\n",
+        "module Test where\nimport Data.Char (ord, toLower)\nmain = ord (toLower 'A')\n",
         &mut sm1_chirho,
         "TestChirho.hs",
         None,
@@ -3177,7 +3178,7 @@ fn eval_to_lower_upper_chirho() {
     // ord (toUpper 'a') = 65
     let mut sm2_chirho = SourceMapChirho::new_chirho();
     let r2_chirho = eval_source_chirho(
-        "module Test where\nmain = ord (toUpper 'a')\n",
+        "module Test where\nimport Data.Char (ord, toUpper)\nmain = ord (toUpper 'a')\n",
         &mut sm2_chirho,
         "TestChirho.hs",
         None,
@@ -3195,7 +3196,7 @@ fn eval_is_alpha_space_chirho() {
     // isAlpha 'z' = True
     let mut sm1_chirho = SourceMapChirho::new_chirho();
     let r1_chirho = eval_source_chirho(
-        "module Test where\nmain = if isAlpha 'z' then 1 else 0\n",
+        "module Test where\nimport Data.Char (isAlpha)\nmain = if isAlpha 'z' then 1 else 0\n",
         &mut sm1_chirho,
         "TestChirho.hs",
         None,
@@ -3209,7 +3210,7 @@ fn eval_is_alpha_space_chirho() {
     // isSpace ' ' = True
     let mut sm2_chirho = SourceMapChirho::new_chirho();
     let r2_chirho = eval_source_chirho(
-        "module Test where\nmain = if isSpace ' ' then 1 else 0\n",
+        "module Test where\nimport Data.Char (isSpace)\nmain = if isSpace ' ' then 1 else 0\n",
         &mut sm2_chirho,
         "TestChirho.hs",
         None,
@@ -3735,7 +3736,7 @@ fn eval_partition_chirho() {
     // partition even [1,2,3,4,5,6] = ([2,4,6],[1,3,5]), fst has length 3
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let r_chirho = eval_source_chirho(
-        "module Test where\nmain = length (fst (partition even [1,2,3,4,5,6]))\n",
+        "module Test where\nimport Data.List (partition)\nmain = length (fst (partition even [1,2,3,4,5,6]))\n",
         &mut sm_chirho,
         "TestChirho.hs",
         None,
@@ -4455,7 +4456,7 @@ fn eval_when_true_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_with_machine_chirho(
-        "module Test where\nmain = when True (putStrLn \"yes\")\n",
+        "module Test where\nimport Control.Monad (when)\nmain = when True (putStrLn \"yes\")\n",
         &mut sm_chirho,
         "TestChirho.hs",
         None,
@@ -4471,7 +4472,7 @@ fn eval_when_false_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_with_machine_chirho(
-        "module Test where\nmain = when False (putStrLn \"no\")\n",
+        "module Test where\nimport Control.Monad (when)\nmain = when False (putStrLn \"no\")\n",
         &mut sm_chirho,
         "TestChirho.hs",
         None,
@@ -4487,7 +4488,7 @@ fn eval_unless_false_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_with_machine_chirho(
-        "module Test where\nmain = unless False (putStrLn \"run\")\n",
+        "module Test where\nimport Control.Monad (unless)\nmain = unless False (putStrLn \"run\")\n",
         &mut sm_chirho,
         "TestChirho.hs",
         None,
@@ -4506,7 +4507,7 @@ fn eval_unless_true_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     // unless True should NOT execute the action
     let result_chirho = eval_source_with_machine_chirho(
-        "module Test where\nmain = unless True (putStrLn \"no\")\n",
+        "module Test where\nimport Control.Monad (unless)\nmain = unless True (putStrLn \"no\")\n",
         &mut sm_chirho,
         "TestChirho.hs",
         None,
@@ -5228,7 +5229,7 @@ fn eval_ioref_write_read_chirho() {
     // newIORef 10, writeIORef r 99, readIORef r → "99\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r <- newIORef 10\n  writeIORef r 99\n  v <- readIORef r\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (newIORef, readIORef, writeIORef)\nmain = do\n  r <- newIORef 10\n  writeIORef r 99\n  v <- readIORef r\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -5245,7 +5246,7 @@ fn eval_ioref_show_read_chirho() {
     // newIORef 7, readIORef, show, putStrLn → "7\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r <- newIORef 7\n  v <- readIORef r\n  putStrLn (show v)\n";
+    let src_chirho = "module Test where\nimport Data.IORef (newIORef, readIORef)\nmain = do\n  r <- newIORef 7\n  v <- readIORef r\n  putStrLn (show v)\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -5262,7 +5263,7 @@ fn eval_ioref_multiple_refs_chirho() {
     // Two IORefs: newIORef 10, newIORef 20, read both, add, show → "30\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = do\n  r1 <- newIORef 10\n  r2 <- newIORef 20\n  v1 <- readIORef r1\n  v2 <- readIORef r2\n  putStrLn (show (v1 + v2))\n";
+    let src_chirho = "module Test where\nimport Data.IORef (newIORef, readIORef)\nmain = do\n  r1 <- newIORef 10\n  r2 <- newIORef 20\n  v1 <- readIORef r1\n  v2 <- readIORef r2\n  putStrLn (show (v1 + v2))\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -5296,7 +5297,7 @@ fn eval_map_fromlist_chirho() {
     // mapFromList [(1,10),(2,20),(3,30)] — size should be 3 (returned as Int)
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapSize (mapFromList [(1,10),(2,20),(3,30)])\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.fromList [(1,10),(2,20),(3,30)])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5312,7 +5313,7 @@ fn eval_map_size_chirho() {
     // mapSize of singleton → 1
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapSize (mapInsert 1 10 mapEmpty)\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.insert 1 10 Map.empty)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5328,7 +5329,7 @@ fn eval_map_insert_two_keys_chirho() {
     // Insert two keys, lookup both (using Prelude mapInsert)
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 3 99 (mapInsert 5 42 mapEmpty)) 5\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.insert 3 99 (Map.insert 5 42 Map.empty)) 5\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5344,7 +5345,7 @@ fn eval_map_member_chirho() {
     // mapMember 5 (mapInsert 5 42 mapEmpty) → True (1)
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nboolToInt b = if b then 1 else 0\nmain = boolToInt (mapMember 5 (mapInsert 5 42 mapEmpty))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nboolToInt b = if b then 1 else 0\nmain = boolToInt (Map.member 5 (Map.insert 5 42 Map.empty))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5360,8 +5361,7 @@ fn eval_map_size_two_chirho() {
     // Insert two keys, check size is 2
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = mapSize (mapInsert 3 99 (mapInsert 5 42 mapEmpty))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.insert 3 99 (Map.insert 5 42 Map.empty))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5377,7 +5377,7 @@ fn eval_map_insert_overwrite_chirho() {
     // Insert same key twice, latest value wins
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 5 99 (mapInsert 5 42 mapEmpty)) 5\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.insert 5 99 (Map.insert 5 42 Map.empty)) 5\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5393,7 +5393,7 @@ fn eval_map_from_list_chirho() {
     // mapFromList [(1,10),(2,20),(3,30)] then lookup key 2 → 20
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapFromList [(1,10),(2,20),(3,30)]) 2\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.fromList [(1,10),(2,20),(3,30)]) 2\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5409,7 +5409,7 @@ fn eval_map_three_keys_chirho() {
     // Insert three keys, lookup all three
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 1 10 (mapInsert 3 30 (mapInsert 2 20 mapEmpty))) 1 + getVal (mapInsert 1 10 (mapInsert 3 30 (mapInsert 2 20 mapEmpty))) 2 + getVal (mapInsert 1 10 (mapInsert 3 30 (mapInsert 2 20 mapEmpty))) 3\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.insert 1 10 (Map.insert 3 30 (Map.insert 2 20 Map.empty))) 1 + getVal (Map.insert 1 10 (Map.insert 3 30 (Map.insert 2 20 Map.empty))) 2 + getVal (Map.insert 1 10 (Map.insert 3 30 (Map.insert 2 20 Map.empty))) 3\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5425,7 +5425,7 @@ fn eval_map_delete_chirho() {
     // mapDelete removes a key from the map
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapDelete 5 (mapInsert 5 42 (mapInsert 3 99 mapEmpty))) 3\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.delete 5 (Map.insert 5 42 (Map.insert 3 99 Map.empty))) 3\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5441,8 +5441,7 @@ fn eval_map_delete_missing_chirho() {
     // mapDelete on a key not in the map is a no-op
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = mapSize (mapDelete 999 (mapInsert 1 10 mapEmpty))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.delete 999 (Map.insert 1 10 Map.empty))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5458,8 +5457,7 @@ fn eval_map_keys_chirho() {
     // mapKeys extracts sorted keys from the map
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = sum (mapKeys (mapFromList [(3,30),(1,10),(2,20)]))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = sum (Map.keys (Map.fromList [(3,30),(1,10),(2,20)]))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5475,8 +5473,7 @@ fn eval_map_elems_chirho() {
     // mapElems extracts values from the map
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = sum (mapElems (mapFromList [(1,10),(2,20),(3,30)]))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = sum (Map.elems (Map.fromList [(1,10),(2,20),(3,30)]))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5492,7 +5489,7 @@ fn eval_map_null_chirho() {
     // mapNull checks if map is empty
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nboolToInt b = if b then 1 else 0\nmain = boolToInt (mapNull mapEmpty) + boolToInt (mapNull (mapInsert 1 10 mapEmpty))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nboolToInt b = if b then 1 else 0\nmain = boolToInt (Map.null Map.empty) + boolToInt (Map.null (Map.insert 1 10 Map.empty))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         // mapNull mapEmpty → True (1), mapNull (mapInsert...) → False (0), total 1
@@ -5509,7 +5506,7 @@ fn eval_map_map_chirho() {
     // mapMap (*2) doubles all values
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapMap (\\x -> x * 2) (mapFromList [(1,10),(2,20)])) 2\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.map (\\x -> x * 2) (Map.fromList [(1,10),(2,20)])) 2\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5525,7 +5522,7 @@ fn eval_map_foldl_with_key_chirho() {
     // mapFoldlWithKey sums all values
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapFoldlWithKey (\\acc k v -> acc + v) 0 (mapFromList [(1,10),(2,20),(3,30)])\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.foldlWithKey (\\acc k v -> acc + v) 0 (Map.fromList [(1,10),(2,20),(3,30)])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5541,7 +5538,7 @@ fn eval_map_foldl_with_key_strict_chirho() {
     // mapFoldlWithKey' reuses the strict left-fold runtime path and keeps Map typed.
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapFoldlWithKey' (\\acc k v -> acc + k + v) 0 (mapFromList [(1,10),(2,20)])\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.foldlWithKey' (\\acc k v -> acc + k + v) 0 (Map.fromList [(1,10),(2,20)])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5776,7 +5773,7 @@ fn eval_head_string_chirho() {
     // head "hello" → 'h'
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = ord (head \"hello\")\n";
+    let src_chirho = "module Test where\nimport Data.Char (ord)\nmain = ord (head \"hello\")\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -5808,7 +5805,8 @@ fn eval_map_toupper_string_chirho() {
     // map toUpper "hello" → "HELLO" via putStrLn
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = putStrLn (map toUpper \"hello\")\n";
+    let src_chirho =
+        "module Test where\nimport Data.Char (toUpper)\nmain = putStrLn (map toUpper \"hello\")\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -5825,7 +5823,7 @@ fn eval_filter_string_chirho() {
     // filter isDigit "abc123" → "123"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = putStrLn (filter isDigit \"abc123\")\n";
+    let src_chirho = "module Test where\nimport Data.Char (isDigit)\nmain = putStrLn (filter isDigit \"abc123\")\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6568,7 +6566,8 @@ fn eval_map_find_with_default_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-main = mapFindWithDefault 99 5 mapEmpty
+import qualified Data.Map as Map
+main = Map.findWithDefault 99 5 Map.empty
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6587,7 +6586,8 @@ fn eval_map_find_with_default_found_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-main = mapFindWithDefault 99 1 (mapSingleton 1 42)
+import qualified Data.Map as Map
+main = Map.findWithDefault 99 1 (Map.singleton 1 42)
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6606,8 +6606,9 @@ fn eval_map_adjust_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapAdjust (*10) 1 (mapSingleton 1 5)
-main = mapFindWithDefault 0 1 m
+import qualified Data.Map as Map
+m = Map.adjust (*10) 1 (Map.singleton 1 5)
+main = Map.findWithDefault 0 1 m
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6626,8 +6627,9 @@ fn eval_map_union_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapUnion (mapSingleton 1 10) (mapSingleton 2 20)
-main = mapSize m
+import qualified Data.Map as Map
+m = Map.union (Map.singleton 1 10) (Map.singleton 2 20)
+main = Map.size m
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6646,9 +6648,10 @@ fn eval_map_difference_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m1 = mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))
-m2 = mapSingleton 2 99
-main = mapSize (mapDifference m1 m2)
+import qualified Data.Map as Map
+m1 = Map.insert 1 10 (Map.insert 2 20 (Map.insert 3 30 Map.empty))
+m2 = Map.singleton 2 99
+main = Map.size (Map.difference m1 m2)
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6667,8 +6670,9 @@ fn eval_map_filter_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))
-main = mapSize (mapFilter (> 15) m)
+import qualified Data.Map as Map
+m = Map.insert 1 10 (Map.insert 2 20 (Map.insert 3 30 Map.empty))
+main = Map.size (Map.filter (> 15) m)
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6687,6 +6691,7 @@ fn eval_nub_head_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (nub)
 main = head (nub [3,1,3,2])
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
@@ -6706,6 +6711,7 @@ fn eval_intersperse_sum_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (intersperse)
 main = sum (intersperse 0 [1,2,3])
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
@@ -6725,8 +6731,9 @@ fn eval_map_str_multiple_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapInsertStr \"a\" 1 (mapInsertStr \"b\" 2 (mapInsertStr \"c\" 3 mapEmpty))
-main = mapSize m
+import qualified Data.Map as Map
+m = Map.insert \"a\" 1 (Map.insert \"b\" 2 (Map.insert \"c\" 3 Map.empty))
+main = Map.size m
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6785,8 +6792,9 @@ fn eval_map_fold_sum_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))
-main = mapFoldlWithKey (\\acc k v -> acc + v) 0 m
+import qualified Data.Map as Map
+m = Map.insert 1 10 (Map.insert 2 20 (Map.insert 3 30 Map.empty))
+main = Map.foldlWithKey (\\acc k v -> acc + v) 0 m
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6825,8 +6833,9 @@ fn eval_string_map_values_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapInsertStr \"foo\" 10 (mapInsertStr \"bar\" 20 (mapInsertStr \"baz\" 30 mapEmpty))
-main = mapFindWithDefaultStr 0 \"bar\" m
+import qualified Data.Map as Map
+m = Map.insert \"foo\" 10 (Map.insert \"bar\" 20 (Map.insert \"baz\" 30 Map.empty))
+main = Map.findWithDefault 0 \"bar\" m
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -6929,7 +6938,7 @@ fn eval_data_maybe_chain_chirho() {
     // safeDivide with guard instead of literal pattern match
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nsafeDivide x y\n  | y == 0 = Nothing\n  | otherwise = Just (x `div` y)\nmain = fromMaybe 0 (safeDivide 10 3) + fromMaybe 0 (safeDivide 10 0)\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (fromMaybe)\nsafeDivide x y\n  | y == 0 = Nothing\n  | otherwise = Just (x `div` y)\nmain = fromMaybe 0 (safeDivide 10 3) + fromMaybe 0 (safeDivide 10 0)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -6962,7 +6971,7 @@ fn eval_first_tuple_chirho() {
     // first (+10) (5, 99) → (15, 99) → fst → 15
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nadd10 x = x + 10\nmain = fst (first add10 (5, 99))\n";
+    let src_chirho = "module Test where\nimport Control.Arrow (first)\nadd10 x = x + 10\nmain = fst (first add10 (5, 99))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -6975,7 +6984,7 @@ fn eval_second_tuple_chirho() {
     // second (*2) (10, 7) → (10, 14) → snd → 14
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ndbl x = x * 2\nmain = snd (second dbl (10, 7))\n";
+    let src_chirho = "module Test where\nimport Control.Arrow (second)\ndbl x = x * 2\nmain = snd (second dbl (10, 7))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -7106,7 +7115,7 @@ fn eval_evaluate_returns_value_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let (val_chirho, _machine_chirho) = eval_source_with_machine_chirho(
-        "module Test where\nmain = evaluate 42\n",
+        "module Test where\nimport Control.Exception (evaluate)\nmain = evaluate 42\n",
         &mut sm_chirho,
         "TestChirho.hs",
         None,

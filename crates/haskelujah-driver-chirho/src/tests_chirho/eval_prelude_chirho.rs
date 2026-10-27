@@ -524,6 +524,7 @@ fn eval_intercalate_chirho() {
     // intercalate ", " (words "one two three") should give "one, two, three"
     let result_chirho = eval_source_with_machine_chirho(
         "module Test where\n\
+             import Data.List (intercalate)\n\
              main = putStrLn (intercalate \", \" (words \"one two three\"))\n",
         &mut source_map_chirho,
         "TestChirho.hs",
@@ -790,6 +791,7 @@ fn eval_sort_head_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (sort)
 main = head (sort [5,2,8,1])
 ";
     let result_chirho =
@@ -808,6 +810,7 @@ fn eval_sort_last_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (sort)
 main = last (sort [5,2,8,1])
 ";
     let result_chirho =
@@ -862,7 +865,7 @@ fn eval_ord_chr_chirho() {
     // ord 'A' = 65
     let mut sm1_chirho = SourceMapChirho::new_chirho();
     let r1_chirho = eval_source_chirho(
-        "module Test where\nmain = ord 'A'\n",
+        "module Test where\nimport Data.Char (ord)\nmain = ord 'A'\n",
         &mut sm1_chirho,
         "TestChirho.hs",
         None,
@@ -876,7 +879,7 @@ fn eval_ord_chr_chirho() {
     // chr (ord 'A' + 1) = 'B' = 66
     let mut sm2_chirho = SourceMapChirho::new_chirho();
     let r2_chirho = eval_source_chirho(
-        "module Test where\nmain = ord 'A' + 1\n",
+        "module Test where\nimport Data.Char (ord)\nmain = ord 'A' + 1\n",
         &mut sm2_chirho,
         "TestChirho.hs",
         None,
@@ -893,7 +896,7 @@ fn eval_from_enum_chr_dispatches_char_instance_chirho() {
     use crate::eval_source_chirho;
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho = eval_source_chirho(
-        "module Test where\nmain = fromEnum (chr 97)\n",
+        "module Test where\nimport Data.Char (chr)\nmain = fromEnum (chr 97)\n",
         &mut source_map_chirho,
         "TestChirho.hs",
         None,
@@ -1143,7 +1146,7 @@ fn eval_map_insert_lookup_chirho() {
     // Use case on mapLookup result to extract Int
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 5 42 mapEmpty) 5\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.insert 5 42 Map.empty) 5\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1159,7 +1162,7 @@ fn eval_map_lookup_missing_chirho() {
     // Lookup a key that doesn't exist → Nothing → 0
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 5 42 mapEmpty) 10\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.insert 5 42 Map.empty) 10\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1175,7 +1178,7 @@ fn eval_map_insert_lookup_other_key_chirho() {
     // Insert two keys, lookup the other key (3→99)
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\ngetVal m k = case mapLookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (mapInsert 3 99 (mapInsert 5 42 mapEmpty)) 3\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\ngetVal m k = case Map.lookup k m of\n  Just v -> v\n  Nothing -> 0\nmain = getVal (Map.insert 3 99 (Map.insert 5 42 Map.empty)) 3\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1281,7 +1284,8 @@ fn eval_interact_map_toupper_chirho() {
     // interact (map toUpper) should uppercase all chars
     use crate::eval_source_with_input_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = interact (map toUpper)\n";
+    let src_chirho =
+        "module Test where\nimport Data.Char (toUpper)\nmain = interact (map toUpper)\n";
     let result_chirho = eval_source_with_input_chirho(
         src_chirho,
         &mut sm_chirho,
@@ -1459,6 +1463,7 @@ fn eval_nub_length_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (nub)
 main = length (nub [1,2,1,3,2,4])
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
@@ -1478,7 +1483,8 @@ fn eval_map_lookup_str_not_found_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-main = mapFindWithDefaultStr 99 \"missing\" mapEmpty
+import qualified Data.Map as Map
+main = Map.findWithDefault 99 \"missing\" Map.empty
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -1513,7 +1519,8 @@ fn eval_maybe_to_list_just_chirho() {
     // maybeToList (Just 42) → [42] → head = 42
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = head (maybeToList (Just 42))\n";
+    let src_chirho =
+        "module Test where\nimport Data.Maybe (maybeToList)\nmain = head (maybeToList (Just 42))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1529,7 +1536,8 @@ fn eval_maybe_to_list_nothing_chirho() {
     // maybeToList Nothing → [] → length = 0
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = length (maybeToList Nothing)\n";
+    let src_chirho =
+        "module Test where\nimport Data.Maybe (maybeToList)\nmain = length (maybeToList Nothing)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1545,7 +1553,7 @@ fn eval_list_to_maybe_chirho() {
     // listToMaybe [10,20,30] → Just 10 → fromMaybe 0 = 10
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = fromMaybe 0 (listToMaybe [10,20,30])\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (fromMaybe, listToMaybe)\nmain = fromMaybe 0 (listToMaybe [10,20,30])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1561,7 +1569,7 @@ fn eval_list_to_maybe_empty_chirho() {
     // listToMaybe [] → Nothing → fromMaybe 99 = 99
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = fromMaybe 99 (listToMaybe [])\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (fromMaybe, listToMaybe)\nmain = fromMaybe 99 (listToMaybe [])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1577,8 +1585,7 @@ fn eval_cat_maybes_chirho() {
     // catMaybes [Just 1, Nothing, Just 3, Nothing, Just 5] → [1,3,5] → sum = 9
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = sum (catMaybes [Just 1, Nothing, Just 3, Nothing, Just 5])\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (catMaybes)\nmain = sum (catMaybes [Just 1, Nothing, Just 3, Nothing, Just 5])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1594,7 +1601,7 @@ fn eval_map_maybe_filter_chirho() {
     // mapMaybe (\x -> if x > 3 then Just (x * 10) else Nothing) [1,2,3,4,5] → [40,50] → sum = 90
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = sum (mapMaybe (\\x -> if x > 3 then Just (x * 10) else Nothing) [1,2,3,4,5])\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (mapMaybe)\nmain = sum (mapMaybe (\\x -> if x > 3 then Just (x * 10) else Nothing) [1,2,3,4,5])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1668,7 +1675,7 @@ fn eval_char_operations_chirho() {
     // ord 'A' + ord 'a' = 65 + 97 = 162
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = ord 'A' + ord 'a'\n";
+    let src_chirho = "module Test where\nimport Data.Char (ord)\nmain = ord 'A' + ord 'a'\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1802,8 +1809,9 @@ fn eval_import_hiding_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import qualified Data.Map as Map
 import Data.Map hiding (mapDelete)
-main = mapSize (mapInsert 1 10 mapEmpty)
+main = Map.size (Map.insert 1 10 Map.empty)
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {

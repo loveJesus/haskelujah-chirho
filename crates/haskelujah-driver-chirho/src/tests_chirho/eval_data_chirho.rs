@@ -266,7 +266,7 @@ fn eval_map_basic_chirho() {
     // Basic Data.Map: empty + insert + lookup → I/O output "42\n"
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = let m = mapInsert 1 42 mapEmpty\n       in case mapLookup 1 m of\n            Just v -> putStrLn (show v)\n            Nothing -> putStrLn \"gone\"\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = let m = Map.insert 1 42 Map.empty\n       in case Map.lookup 1 m of\n            Just v -> putStrLn (show v)\n            Nothing -> putStrLn \"gone\"\n";
     let result_chirho =
         eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -309,9 +309,10 @@ fn eval_map_insert_with_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m1 = mapInsert 1 10 (mapInsert 2 20 mapEmpty)
-m2 = mapInsertWith (+) 1 100 m1
-main = mapFindWithDefault 0 1 m2
+import qualified Data.Map as Map
+m1 = Map.insert 1 10 (Map.insert 2 20 Map.empty)
+m2 = Map.insertWith (+) 1 100 m1
+main = Map.findWithDefault 0 1 m2
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -330,8 +331,9 @@ fn eval_map_union_with_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapUnionWith (+) (mapSingleton 1 10) (mapSingleton 1 20)
-main = mapFindWithDefault 0 1 m
+import qualified Data.Map as Map
+m = Map.unionWith (+) (Map.singleton 1 10) (Map.singleton 1 20)
+main = Map.findWithDefault 0 1 m
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -354,8 +356,9 @@ fn eval_map_insert_str_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapInsertStr \"hello\" 42 mapEmpty
-main = mapFindWithDefaultStr 0 \"hello\" m
+import qualified Data.Map as Map
+m = Map.insert \"hello\" 42 Map.empty
+main = Map.findWithDefault 0 \"hello\" m
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -372,7 +375,7 @@ fn eval_map_singleton_lookup_chirho() {
     // mapSingleton 42 99: lookup existing key
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapFindWithDefault 0 42 (mapSingleton 42 99)\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.findWithDefault 0 42 (Map.singleton 42 99)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -406,7 +409,7 @@ fn eval_from_just_chirho() {
     // fromJust (Just 42) = 42
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = fromJust (Just 42)\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (fromJust)\nmain = fromJust (Just 42)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -422,7 +425,7 @@ fn eval_swap_tuple_chirho() {
     // fst (swap (1, 2)) = 2
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = fst (swap (1, 2))\n";
+    let src_chirho = "module Test where\nimport Data.Tuple (swap)\nmain = fst (swap (1, 2))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -438,7 +441,7 @@ fn eval_swap_snd_chirho() {
     // snd (swap (10, 20)) = 10
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = snd (swap (10, 20))\n";
+    let src_chirho = "module Test where\nimport Data.Tuple (swap)\nmain = snd (swap (10, 20))\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -455,7 +458,7 @@ fn eval_map_delete_preserves_chirho() {
     // after mapDelete 2, mapSize should be 2 and both 1 and 3 remain
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nm = mapInsert 1 10 (mapInsert 2 20 (mapInsert 3 30 mapEmpty))\nmain = mapSize (mapDelete 2 m)\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nm = Map.insert 1 10 (Map.insert 2 20 (Map.insert 3 30 Map.empty))\nmain = Map.size (Map.delete 2 m)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -472,7 +475,7 @@ fn eval_map_delete_both_subtrees_chirho() {
     // both 1 and 3 should remain, verify via lookup
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nm = mapInsert 2 20 (mapInsert 1 10 (mapInsert 3 30 mapEmpty))\nm2 = mapDelete 2 m\nmain = fromMaybe 0 (mapLookup 1 m2) + fromMaybe 0 (mapLookup 3 m2)\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (fromMaybe)\nimport qualified Data.Map as Map\nm = Map.insert 2 20 (Map.insert 1 10 (Map.insert 3 30 Map.empty))\nm2 = Map.delete 2 m\nmain = fromMaybe 0 (Map.lookup 1 m2) + fromMaybe 0 (Map.lookup 3 m2)\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -516,8 +519,9 @@ fn eval_import_data_map_size_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import qualified Data.Map as Map
 import Data.Map
-main = mapSize (mapInsert 2 20 (mapInsert 1 10 mapEmpty))
+main = Map.size (Map.insert 2 20 (Map.insert 1 10 Map.empty))
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
@@ -643,7 +647,7 @@ fn eval_map_fromlist_size_chirho() {
     // mapSize (mapFromList [(1,10),(2,20),(3,30)]) → 3
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapSize (mapFromList [(1,10),(2,20),(3,30)])\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.fromList [(1,10),(2,20),(3,30)])\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -656,7 +660,7 @@ fn eval_map_lookup_insert_e2e_chirho() {
     // fromMaybe 0 (mapLookup 2 (mapInsert 2 42 (mapFromList [(1,10)]))) → 42
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = fromMaybe 0 (mapLookup 2 (mapInsert 2 42 (mapFromList [(1,10)])))\n";
+    let src_chirho = "module Test where\nimport Data.Maybe (fromMaybe)\nimport qualified Data.Map as Map\nmain = fromMaybe 0 (Map.lookup 2 (Map.insert 2 42 (Map.fromList [(1,10)])))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -669,8 +673,7 @@ fn eval_map_delete_size_chirho() {
     // mapSize (mapDelete 2 (mapFromList [(1,10),(2,20),(3,30)])) → 2
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = mapSize (mapDelete 2 (mapFromList [(1,10),(2,20),(3,30)]))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.delete 2 (Map.fromList [(1,10),(2,20),(3,30)]))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -683,7 +686,7 @@ fn eval_map_null_empty_e2e_chirho() {
     // mapNull mapEmpty → True → 1
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = if mapNull mapEmpty then 1 else 0\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = if Map.null Map.empty then 1 else 0\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -696,7 +699,7 @@ fn eval_map_union_size_chirho() {
     // mapSize (mapUnion (mapFromList [(1,10),(2,20)]) (mapFromList [(2,99),(3,30)])) → 3
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapSize (mapUnion (mapFromList [(1,10),(2,20)]) (mapFromList [(2,99),(3,30)]))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.union (Map.fromList [(1,10),(2,20)]) (Map.fromList [(2,99),(3,30)]))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -709,7 +712,7 @@ fn eval_map_difference_size_chirho() {
     // mapSize (mapDifference (mapFromList [(1,10),(2,20),(3,30)]) (mapFromList [(2,99)])) → 2
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = mapSize (mapDifference (mapFromList [(1,10),(2,20),(3,30)]) (mapFromList [(2,99)]))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = Map.size (Map.difference (Map.fromList [(1,10),(2,20),(3,30)]) (Map.fromList [(2,99)]))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -722,8 +725,7 @@ fn eval_map_keys_sum_chirho() {
     // sum (mapKeys (mapFromList [(1,10),(2,20),(3,30)])) → 6
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = sum (mapKeys (mapFromList [(1,10),(2,20),(3,30)]))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = sum (Map.keys (Map.fromList [(1,10),(2,20),(3,30)]))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -736,8 +738,7 @@ fn eval_map_elems_sum_chirho() {
     // sum (mapElems (mapFromList [(1,10),(2,20),(3,30)])) → 60
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = sum (mapElems (mapFromList [(1,10),(2,20),(3,30)]))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = sum (Map.elems (Map.fromList [(1,10),(2,20),(3,30)]))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -750,8 +751,7 @@ fn eval_map_map_double_chirho() {
     // sum (mapElems (mapMap (*2) (mapFromList [(1,10),(2,20)]))) → 60
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = sum (mapElems (mapMap (*2) (mapFromList [(1,10),(2,20)])))\n";
+    let src_chirho = "module Test where\nimport qualified Data.Map as Map\nmain = sum (Map.elems (Map.map (*2) (Map.fromList [(1,10),(2,20)])))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1430,8 +1430,9 @@ fn eval_map_foldr_with_key_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapFromList [(1,10),(2,20),(3,30)]
-main = mapFoldrWithKey (\\k v acc -> acc + v) 0 m
+import qualified Data.Map as Map
+m = Map.fromList [(1,10),(2,20),(3,30)]
+main = Map.foldrWithKey (\\k v acc -> acc + v) 0 m
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
         .unwrap_or_else(|e_chirho| panic!("mapFoldrWithKey sum failed: {}", e_chirho));
@@ -1448,8 +1449,9 @@ fn eval_map_filter_values_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapFromList [(1,10),(2,20),(3,30)]
-main = sum (mapElems (mapFilter (> 15) m))
+import qualified Data.Map as Map
+m = Map.fromList [(1,10),(2,20),(3,30)]
+main = sum (Map.elems (Map.filter (> 15) m))
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
         .unwrap_or_else(|e_chirho| panic!("mapFilter sum elems failed: {}", e_chirho));
@@ -1466,8 +1468,9 @@ fn eval_map_map_triple_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m = mapFromList [(1,10),(2,20)]
-main = sum (mapElems (mapMap (\\x -> x * 3) m))
+import qualified Data.Map as Map
+m = Map.fromList [(1,10),(2,20)]
+main = sum (Map.elems (Map.map (\\x -> x * 3) m))
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
         .unwrap_or_else(|e_chirho| panic!("mapMap (*3) sum failed: {}", e_chirho));
@@ -1484,9 +1487,10 @@ fn eval_map_union_with_sum_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m1 = mapFromList [(1,10),(2,20)]
-m2 = mapFromList [(2,5),(3,30)]
-main = sum (mapElems (mapUnionWith (+) m1 m2))
+import qualified Data.Map as Map
+m1 = Map.fromList [(1,10),(2,20)]
+m2 = Map.fromList [(2,5),(3,30)]
+main = sum (Map.elems (Map.unionWith (+) m1 m2))
 ";
     // key 1→10, key 2→20+5=25, key 3→30 : total = 65
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1504,9 +1508,10 @@ fn eval_map_intersection_with_sum_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
-m1 = mapFromList [(1,10),(2,20),(4,40)]
-m2 = mapFromList [(2,5),(3,30),(4,7)]
-main = sum (mapElems (mapIntersectionWith (+) m1 m2))
+import qualified Data.Map as Map
+m1 = Map.fromList [(1,10),(2,20),(4,40)]
+m2 = Map.fromList [(2,5),(3,30),(4,7)]
+main = sum (Map.elems (Map.intersectionWith (+) m1 m2))
 ";
     // Shared keys: 2 -> 25 and 4 -> 47. Non-overlapping keys are omitted.
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)

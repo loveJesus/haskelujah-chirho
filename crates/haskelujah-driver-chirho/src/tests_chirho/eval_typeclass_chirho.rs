@@ -1700,6 +1700,7 @@ fn state_t_get_eval_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad.State (evalState, get)
 main = print (evalState get 42)
 "#;
     let (_val_chirho, m_chirho) =
@@ -1714,6 +1715,7 @@ fn state_t_put_exec_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad.State (execState, put)
 main = print (execState (put 99) 0)
 "#;
     let (_val_chirho, m_chirho) =
@@ -1777,6 +1779,7 @@ fn reader_t_ask_eval_chirho() {
     // ask returns the environment: runReader ask 42 → 42
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad.Reader (ask, runReader)
 main = print (runReader ask 42)
 "#;
     let result_chirho =
@@ -1810,6 +1813,7 @@ fn reader_t_local_chirho() {
     use crate::eval_source_with_machine_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Control.Monad.Reader (ask, local, runReader)
 doubled = local (\r -> r * 2) ask
 main = print (runReader doubled 5)
 "#;

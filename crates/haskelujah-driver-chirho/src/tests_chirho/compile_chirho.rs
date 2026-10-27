@@ -3908,6 +3908,7 @@ fn frontend_prelude_exports_alternative_helpers_implicitly_chirho() {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_chirho = "\
 module PreludeAlternativeMiniChirho where
+import Control.Applicative ((<|>))
 choicesChirho :: [Int]
 choicesChirho = [1] <|> [2]
 pairedChirho :: [Int]

@@ -706,6 +706,7 @@ fn eval_is_prefix_of_true_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (isPrefixOf)
 main = if isPrefixOf [1,2] [1,2,3] then 1 else 0
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
@@ -725,6 +726,7 @@ fn eval_is_prefix_of_false_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (isPrefixOf)
 main = if isPrefixOf [2,3] [1,2,3] then 1 else 0
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
@@ -746,6 +748,7 @@ fn eval_is_suffix_of_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (isSuffixOf)
 main = if isSuffixOf [2,3] [1,2,3] then 1 else 0
 ";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
@@ -992,7 +995,8 @@ fn eval_sortby_chirho() {
     // sortBy compare [3,1,4,1,5] → [1,1,3,4,5], head → 1
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = head (sortBy compare [3,1,4,1,5])\n";
+    let src_chirho =
+        "module Test where\nimport Data.List (sortBy)\nmain = head (sortBy compare [3,1,4,1,5])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1008,7 +1012,8 @@ fn eval_sortby_sum_chirho() {
     // sortBy compare [5,2,8,1,3] → [1,2,3,5,8], sum → 19
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = sum (sortBy compare [5,2,8,1,3])\n";
+    let src_chirho =
+        "module Test where\nimport Data.List (sortBy)\nmain = sum (sortBy compare [5,2,8,1,3])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1024,7 +1029,7 @@ fn eval_insertby_chirho() {
     // insertBy compare 3 [1,2,4,5] → [1,2,3,4,5], head → 1, length → 5
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = length (insertBy compare 3 [1,2,4,5])\n";
+    let src_chirho = "module Test where\nimport Data.List (insertBy)\nmain = length (insertBy compare 3 [1,2,4,5])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1040,8 +1045,7 @@ fn eval_nubby_chirho() {
     // nubBy (\x y -> x == y) [1,2,1,3,2,4] → [1,2,3,4], length → 4
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho =
-        "module Test where\nmain = length (nubBy (\\x -> \\y -> x == y) [1,2,1,3,2,4])\n";
+    let src_chirho = "module Test where\nimport Data.List (nubBy)\nmain = length (nubBy (\\x -> \\y -> x == y) [1,2,1,3,2,4])\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1057,7 +1061,8 @@ fn eval_maximumby_chirho() {
     // maximumBy compare [3,1,5,2,4] → 5
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = maximumBy compare [3,1,5,2,4]\n";
+    let src_chirho =
+        "module Test where\nimport Data.List (maximumBy)\nmain = maximumBy compare [3,1,5,2,4]\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1073,7 +1078,8 @@ fn eval_minimumby_chirho() {
     // minimumBy compare [3,1,5,2,4] → 1
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = minimumBy compare [3,1,5,2,4]\n";
+    let src_chirho =
+        "module Test where\nimport Data.List (minimumBy)\nmain = minimumBy compare [3,1,5,2,4]\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1092,7 +1098,7 @@ fn eval_on_chirho() {
     // on (+) negate 3 4 = negate 3 + negate 4 = (-3) + (-4) = -7
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = on (+) negate 3 4\n";
+    let src_chirho = "module Test where\nimport Data.Function (on)\nmain = on (+) negate 3 4\n";
     let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None);
     match result_chirho {
         Ok(val_chirho) => assert_eq!(
@@ -1112,7 +1118,7 @@ fn eval_nub_sum_e2e_chirho() {
     // nub [1,2,1,3,2,4] → [1,2,3,4], sum = 10
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = sum (nub [1,2,1,3,2,4])\n";
+    let src_chirho = "module Test where\nimport Data.List (nub)\nmain = sum (nub [1,2,1,3,2,4])\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1125,7 +1131,7 @@ fn eval_sort_by_e2e_chirho() {
     // sortBy (\x y -> compare y x) [3,1,2] → [3,2,1], head = 3
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = head (sortBy (\\x y -> compare y x) [3,1,2])\n";
+    let src_chirho = "module Test where\nimport Data.List (sortBy)\nmain = head (sortBy (\\x y -> compare y x) [3,1,2])\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1138,7 +1144,7 @@ fn eval_is_prefix_of_chirho() {
     // isPrefixOf "he" "hello" → True → 1
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = if isPrefixOf \"he\" \"hello\" then 1 else 0\n";
+    let src_chirho = "module Test where\nimport Data.List (isPrefixOf)\nmain = if isPrefixOf \"he\" \"hello\" then 1 else 0\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1212,7 +1218,7 @@ fn eval_is_suffix_of_e2e_chirho() {
     // isSuffixOf "lo" "hello" → True → 1
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = if isSuffixOf \"lo\" \"hello\" then 1 else 0\n";
+    let src_chirho = "module Test where\nimport Data.List (isSuffixOf)\nmain = if isSuffixOf \"lo\" \"hello\" then 1 else 0\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1238,7 +1244,7 @@ fn eval_nub_string_chirho() {
     // length (nub "banana") → 3 (b, a, n)
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = length (nub \"banana\")\n";
+    let src_chirho = "module Test where\nimport Data.List (nub)\nmain = length (nub \"banana\")\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1281,7 +1287,7 @@ fn eval_nub_char_string_chirho() {
     // length (nub "abcabc") → 3
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = length (nub \"abcabc\")\n";
+    let src_chirho = "module Test where\nimport Data.List (nub)\nmain = length (nub \"abcabc\")\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1294,7 +1300,7 @@ fn eval_is_prefix_of_char_chirho() {
     // isPrefixOf "hel" "hello" → True → 1
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = if isPrefixOf \"hel\" \"hello\" then 1 else 0\n";
+    let src_chirho = "module Test where\nimport Data.List (isPrefixOf)\nmain = if isPrefixOf \"hel\" \"hello\" then 1 else 0\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1337,7 +1343,7 @@ fn eval_fix_factorial_chirho() {
     // fix (\f n -> if n == 0 then 1 else n * f (n - 1)) applied to 5 → 120
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nfact = fix (\\f -> \\n -> if n == 0 then 1 else n * f (n - 1))\nmain = fact 5\n";
+    let src_chirho = "module Test where\nimport Data.Function (fix)\nfact = fix (\\f -> \\n -> if n == 0 then 1 else n * f (n - 1))\nmain = fact 5\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1350,7 +1356,8 @@ fn eval_group_chirho() {
     // group [1,1,2,2,2,3] → [[1,1],[2,2,2],[3]] → length → 3
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = length (group [1,1,2,2,2,3])\n";
+    let src_chirho =
+        "module Test where\nimport Data.List (group)\nmain = length (group [1,1,2,2,2,3])\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1389,7 +1396,8 @@ fn eval_group_sum_head_chirho() {
     // head (group [5,5,5,3]) → [5,5,5] → sum → 15
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let src_chirho = "module Test where\nmain = sum (head (group [5,5,5,3]))\n";
+    let src_chirho =
+        "module Test where\nimport Data.List (group)\nmain = sum (head (group [5,5,5,3]))\n";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
     assert_eq!(
         val_chirho,
@@ -1431,6 +1439,7 @@ fn eval_tails_length_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Data.List (tails)
 main = length (tails [1,2,3])
 "#;
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
@@ -1446,6 +1455,7 @@ fn eval_tails_head_sum_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Data.List (tails)
 main = sum (head (tails [10,20,30]))
 "#;
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
@@ -1461,6 +1471,7 @@ fn eval_inits_length_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Data.List (inits)
 main = length (inits [1,2,3])
 "#;
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
@@ -1476,6 +1487,7 @@ fn eval_inits_last_sum_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Data.List (inits)
 main = sum (last (inits [10,20,30]))
 "#;
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None).unwrap();
@@ -1496,6 +1508,8 @@ fn eval_find_just_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (find)
+import Data.Maybe (fromMaybe)
 main = fromMaybe 0 (find (> 3) [1,2,3,4,5])
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1513,6 +1527,8 @@ fn eval_find_nothing_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (find)
+import Data.Maybe (fromMaybe)
 main = fromMaybe 99 (find (> 10) [1,2,3])
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1534,6 +1550,7 @@ fn eval_nub_by_mod_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (nubBy)
 main = length (nubBy (\\x y -> x `mod` 3 == y `mod` 3) [1,2,3,4,5,6])
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1551,6 +1568,7 @@ fn eval_nub_by_eq_head_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (nubBy)
 main = head (nubBy (==) [1,1,2,2,3])
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1572,6 +1590,7 @@ fn eval_sort_by_descending_sum_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (sortBy)
 main = sum (sortBy (\\x y -> compare y x) [3,1,4,1,5])
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1589,6 +1608,7 @@ fn eval_sort_by_ascending_head_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (sortBy)
 main = head (sortBy compare [5,2,8,1])
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1610,6 +1630,7 @@ fn eval_group_by_length_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (groupBy)
 main = length (groupBy (==) [1,1,2,2,2,3])
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1627,6 +1648,7 @@ fn eval_group_by_sum_of_heads_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = "\
 module Test where
+import Data.List (groupBy)
 main = sum (map head (groupBy (==) [1,1,2,3,3]))
 ";
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1647,6 +1669,7 @@ fn eval_tails_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Data.List (tails)
 main = length (tails [1,2,3])
 "#;
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
@@ -1663,6 +1686,7 @@ fn eval_inits_chirho() {
     use crate::eval_source_chirho;
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"module Test where
+import Data.List (inits)
 main = length (inits [1,2,3])
 "#;
     let val_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
