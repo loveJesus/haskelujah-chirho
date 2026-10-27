@@ -21,6 +21,8 @@ mod derived_show_chirho;
 mod double_primops_chirho;
 #[path = "dictionary_evidence_chirho/enum_occurrences_chirho.rs"]
 mod enum_occurrences_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/equality_methods_chirho.rs"]
+mod equality_methods_chirho;
 #[path = "dictionary_evidence_chirho/equality_sections_chirho.rs"]
 mod equality_sections_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/extrema_chirho.rs"]

@@ -2604,31 +2604,6 @@ impl DesugarCtxChirho {
                     };
                 }
 
-                // UNFIXED SEMANTIC DEFECT, kept only until the Eq class model is repaired:
-                // (/=) is rewritten to not (==), which IGNORES a user instance's own `/=`.
-                // GHC 9.14.1 prints (True,False) for an Eq instance defining
-                // `(==) _ _ = True` and `(/=) _ _ = True` under
-                // `print (x /= x, not (x == x))`; this rewrite prints (False,False).
-                // The seeded Eq class declares only `==`, so `/=` has no dictionary
-                // slot. This is not a provenance contract and must not be given an
-                // evidence role; the repair is Eq's method set with its default.
-                // workflow: language-features-chirho/dictionary-evidence-chirho
-                if op_name_chirho == "/=" {
-                    let eq_id_chirho = self.resolve_var_chirho("==");
-                    let not_id_chirho = self.resolve_var_chirho("not");
-                    let eq_app_chirho = CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                            fun_chirho: Box::new(CoreExprChirho::VarChirho(eq_id_chirho)),
-                            arg_chirho: Box::new(left_core_chirho),
-                        }),
-                        arg_chirho: Box::new(right_core_chirho),
-                    };
-                    return CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(not_id_chirho)),
-                        arg_chirho: Box::new(eq_app_chirho),
-                    };
-                }
-
                 // (>>) is monadic then: a >> b → (>>) a b as a Var app so the
                 // dict pass dispatches it per-type ($prim_Monad_>>_<Head>);
                 // unresolved names still lower to ThenIOChirho at STG (INV-001).

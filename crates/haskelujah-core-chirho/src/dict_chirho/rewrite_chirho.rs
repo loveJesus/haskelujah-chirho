@@ -376,6 +376,11 @@ impl DictPassCtxChirho {
         // workflow: language-features-chirho/dictionary-evidence-chirho
         self.generate_evidenced_eq_bindings_chirho();
 
+        // A `/=` proved at a key with no dictionary to carry it, such as a tuple, takes the
+        // default row from that key's `==` (row 606).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_evidenced_inequality_rows_chirho();
+
         // A first-class or prefix `<`, `<=`, `>` or `>=` at a key the checker proved takes
         // that key's answer through a generated row (row 610).
         // workflow: language-features-chirho/dictionary-evidence-chirho

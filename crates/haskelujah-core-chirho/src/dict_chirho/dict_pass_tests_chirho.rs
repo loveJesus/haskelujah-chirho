@@ -166,11 +166,15 @@ fn build_layouts_from_class_env_chirho() {
     let mut ctx_chirho = DictPassCtxChirho::new_chirho(0, HashMap::new(), HashMap::new());
     ctx_chirho.build_layouts_chirho(&class_env_chirho);
 
-    // Eq: no supers, 1 method (==)
+    // Eq: no supers, and GHC's two methods in sorted slots, `/=` then `==` (row 606).
+    // Every Eq dictionary and selector follows this order.
     let eq_layout_chirho = ctx_chirho.layouts_chirho.get("Eq").unwrap();
     assert_eq!(eq_layout_chirho.super_slots_chirho.len(), 0);
-    assert_eq!(eq_layout_chirho.method_slots_chirho.len(), 1);
-    assert_eq!(eq_layout_chirho.method_slots_chirho[0].0, "==");
+    assert_eq!(
+        eq_layout_chirho.method_slots_chirho,
+        vec![("/=".to_string(), 0), ("==".to_string(), 1)]
+    );
+    assert_eq!(eq_layout_chirho.field_count_chirho, 2);
 
     // Ord: 1 super (Eq), 1 method (compare)
     let ord_layout_chirho = ctx_chirho.layouts_chirho.get("Ord").unwrap();
@@ -212,8 +216,15 @@ fn generate_selectors_creates_bindings_chirho() {
     // Should have selectors for each method across all classes
     assert!(!ctx_chirho.generated_bindings_chirho.is_empty());
 
-    // Check that == selector exists
+    // Check that the == and /= selectors exist, both Eq's (row 606)
     assert!(ctx_chirho.method_selectors_chirho.contains_key("=="));
+    assert_eq!(
+        ctx_chirho
+            .method_selectors_chirho
+            .get("/=")
+            .map(|(class_name_chirho, _)| class_name_chirho.as_str()),
+        Some("Eq")
+    );
 
     // Check that the selector is a lambda wrapping a case
     let (class_name_chirho, _sel_id_chirho) = ctx_chirho.method_selectors_chirho.get("==").unwrap();

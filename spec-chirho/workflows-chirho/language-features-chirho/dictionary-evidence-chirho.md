@@ -249,7 +249,7 @@ flowchart LR
     - `$eqList_T` takes a boxed element's row. An element without one keeps `==#`.
   - **Kept:**
     - Int, Char and Bool keep their bodies.
-    - `/=` is row 606's. Infix `/=` at String and Double was already exact; structured infix and the `(/= x)` section are unchanged.
+    - `/=` became Eq's second method in row 606 (below), and takes these rows' defaults.
     - A parameterized derived type's `==` still fails by name, because its row is named with its type variable.
   - Controls:
     - In `tests/dictionary_evidence_chirho/ordering_chirho/structured_equalities_chirho.rs`: `structured_equality_answers_as_ghc_everywhere_chirho`, `int_shaped_keys_and_infix_not_equal_stay_exact_everywhere_chirho` and `unserved_equalities_still_fail_by_name_everywhere_chirho`.
@@ -317,6 +317,24 @@ flowchart LR
     - In `tests/dictionary_evidence_chirho/ordering_chirho/operator_sections_chirho.rs`: `operator_sections_take_their_evidence_everywhere_chirho`, `qualified_operator_sections_answer_as_ghc_everywhere_chirho`, `section_holds_stay_ghc_everywhere_chirho`, `division_without_a_body_fails_closed_everywhere_chirho` and `subtract_stays_the_named_residual_everywhere_chirho`.
     - Row 554's iterate residual is now `a_section_under_iterate_answers_as_ghc_everywhere_chirho`.
     - Parser units in `lower_chirho/expr_syntax_chirho/qualified_sections_tests_chirho.rs`.
+- Eq's `==` and `/=` default to each other's negation, as GHC's do (row 606).
+  - **The defect:**
+    - The seeded Eq declared only `==`, so a program's own `(/=)` row was never read: an instance with `(==) _ _ = True` and `(/=) _ _ = True` printed `(False,False)` for `(x /= x, not (x == x))`, where GHC prints `(True,False)`.
+    - Infix `/=` was rewritten to `not (== …)` with an evidence-free `==`, so pairs and `Maybe` failed with `missing binding ==`.
+    - First-class `(/=)` had no binding.
+    - `(/= "ab")` kept a computed `"ab"` natively.
+  - **Typing:** `/=` is Eq's second method. Layouts sort method names, so `$Dict_Eq` is `[/=, ==]`, and `==` moved from slot 0 to slot 1. Every Eq dictionary and selector is built from the layout.
+  - **Defaults** (`instance_chirho/equality_defaults_chirho.rs`):
+    - A key with only one method's row takes the other as `\x y -> not (row x y)`.
+    - Both resolvers that would have made a missing-method stub ask for it first, as does the list `Eq` builder, and `/=` occurrences at keys without a dictionary, such as tuples, take it after row 603's rows exist.
+    - The donor must be a real body. A key with neither keeps both named missing-method failures; GHC's two defaults loop there.
+    - A generic head (row 600) that writes one Eq method is still generic. Its other slot takes the default under the written spelling, which the donor lookup now reads.
+  - **Desugar:** infix `/=` takes its occurrence like `==`, and `/=` joins the section method operators.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/equality_methods_chirho.rs`: `eq_methods_default_to_each_other_everywhere_chirho`, `equality_holds_stay_ghc_everywhere_chirho` and `an_instance_with_neither_method_fails_by_name_everywhere_chirho`.
+    - The layout and selector units, `build_layouts_from_class_env_chirho` and `generate_selectors_creates_bindings_chirho`.
+    - Row 603's pinned structured `/=` failure now answers, and leaves its named-failure control.
+  - **Row 608's table:** the committed generator was rerun on this row. Its outputs are byte-identical (726 agree, 679 disagree), and the drift tests pass.
 ## Reference evidence (bricks 3 and 4)
 
 ```mermaid
@@ -535,10 +553,9 @@ flowchart TD
 - Scope: `Eq` and `Ord` (`PROVEN_LIST_CLASSES_CHIRHO`). `Show` keeps its documented
   dictionary path for shapes without a generated row (`show [Just RedChirho]` prints GHC's
   answer through it); every other class keeps its path, unmeasured.
-- Not on this route: `/=` desugars to `not (==)` with no provenance, so it carries no evidence
-  and `[[1]] /= [[2 :: Int]]` still prints `False` (GHC `True`), the Eq method set's repair.
-  Sections other than an `==` section with an origin (R1, below), and infix `<`, `<=`, `>`,
-  `>=`, lower to Int primops before any occurrence exists.
+- `/=` once desugared to `not (==)` with no provenance, so `[[1]] /= [[2 :: Int]]` printed
+  `False` (GHC `True`). It is Eq's method since row 606 and takes this route as `==` does.
+  Sections and written comparisons take their evidence since rows 609 and 610.
 
 ## Equality sections (R1, 2026-10-17)
 
@@ -559,7 +576,7 @@ instance's row), a dictionary, or R2's named failure for a proven nested list (g
 - Only `==` here. The engine's `Ord` dictionary holds `compare` alone, so the ordering
   operators take their own occurrences' evidence through rows built over `compare` (row 610,
   above). Sections of `+`, `-` and `*` take this route since row 609, which folded this rule
-  into one predicate. `/=` waits for Eq's method set.
+  into one predicate. `/=` sections join it with Eq's method set (row 606).
 
 ## R2 at every occurrence entry (R2b, 2026-10-18)
 
@@ -971,10 +988,11 @@ flowchart LR
   proofs independently of row 599.
 - An infix or section use of a class METHOD mints its own occurrence id and carries its
   operator's provenance, like a prefix use, unless the desugarer lowers that operator to a
-  primop first. Those carry no occurrence and no evidence: infix `<`, `<=`, `>`, `>=`, `div`,
-  `mod`; every section of `+`, `-`, `*`, `/=`, `<`, `<=`, `>`, `>=`, `^`, `**`, and an `==`
-  section without an origin; a saturated prefix `div`, `mod`, `quot` or `rem` call. Infix
-  `/=` becomes `not (==)` with no provenance. An infix or section use of a constrained function
+  primop first. Those carry no occurrence and no evidence: infix `div`, `mod` and `++`;
+  sections of `^`, `**` and `++`, and any operator section without an origin; a saturated
+  prefix `div`, `mod`, `quot` or `rem` call. Written comparisons (row 610), `+`, `-`, `*`, `==`
+  and `/=` sections (rows 609 and 606), and `/` (row 609) take their occurrences, and an
+  operator the program owns keeps its own binding (row 614). An infix or section use of a constrained function
   that is not a method mints a reference occurrence when it takes the fallback variable path,
   just as a prefix use does (row 577). A constrained operator lowered to a primop still has no
   reference occurrence or per-predicate reference evidence.

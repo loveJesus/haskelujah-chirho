@@ -6,8 +6,9 @@
 //! type was known. Those primops met Doubles as integer bits and Strings and derived values as
 //! heap words, and they beat a program's own operator. A written operator that carries its
 //! origin resolves as a reference instead, to the program's own binder where one is in scope:
-//! - a section of `==` (R1, gpt_chirho #27508), or of `+`, `-` or `*` (row 609), takes its
-//!   method's route, as the infix operator does; `/` has no primop and always did;
+//! - a section of `==` (R1, gpt_chirho #27508), of `+`, `-` or `*` (row 609), or of `/=`
+//!   (row 606) takes its method's route, as the infix operator does; `/` has no primop and
+//!   always did;
 //! - Ord's operators (row 610), infix or section, take a minted occurrence the dictionary pass
 //!   serves by the checker's evidence. Each one is recorded, so that where no row serves its
 //!   proof the pass can give it back the primop it replaced.
@@ -22,8 +23,9 @@ use super::DesugarCtxChirho;
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
 
 /// Class-method operators whose written section takes its method's route. Each has a method
-/// binding, so the route serves it with or without a minted occurrence.
-const SECTION_METHOD_OPERATORS_CHIRHO: [&str; 4] = ["==", "+", "-", "*"];
+/// binding, so the route serves it with or without a minted occurrence. `/=` joined Eq's
+/// methods in row 606.
+const SECTION_METHOD_OPERATORS_CHIRHO: [&str; 5] = ["==", "/=", "+", "-", "*"];
 
 /// Ord's operators, which take their evidence infix as well. Their only binding is the one the
 /// dictionary pass builds for an occurrence, so each needs one minted.

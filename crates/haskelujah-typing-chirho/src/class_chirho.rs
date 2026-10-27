@@ -453,26 +453,28 @@ impl ClassEnvChirho {
 
     /// Seed the environment with standard Haskell typeclasses.
     pub fn seed_standard_chirho(&mut self) {
-        // Eq
+        // Eq: `==` and `/=`, each defaulting to the other's negation in the dictionary
+        // pass, as GHC's do (row 606).
         let eq_var_chirho = TyVarChirho(9000);
+        let eq_method_chirho = SchemeChirho {
+            vars_chirho: vec![eq_var_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                [
+                    TyChirho::VarChirho(eq_var_chirho),
+                    TyChirho::VarChirho(eq_var_chirho),
+                ],
+                TyChirho::bool_chirho(),
+            ),
+        };
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Eq".to_string(),
             supers_chirho: vec![],
             var_chirho: eq_var_chirho,
-            methods_chirho: HashMap::from([(
-                "==".to_string(),
-                SchemeChirho {
-                    vars_chirho: vec![eq_var_chirho],
-                    preds_chirho: vec![],
-                    ty_chirho: TyChirho::fun_n_chirho(
-                        [
-                            TyChirho::VarChirho(eq_var_chirho),
-                            TyChirho::VarChirho(eq_var_chirho),
-                        ],
-                        TyChirho::bool_chirho(),
-                    ),
-                },
-            )]),
+            methods_chirho: HashMap::from([
+                ("==".to_string(), eq_method_chirho.clone()),
+                ("/=".to_string(), eq_method_chirho),
+            ]),
             extra_vars_chirho: vec![],
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),

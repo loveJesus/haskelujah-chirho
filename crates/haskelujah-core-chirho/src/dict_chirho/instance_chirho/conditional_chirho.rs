@@ -244,13 +244,22 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, list_type_key_chirho
                 );
-                let prim_id_chirho = self.generate_missing_method_binding_chirho(
-                    class_env_chirho,
+                // Eq's methods default to each other's negation first (row 606).
+                let prim_id_chirho = match self.equality_default_row_chirho(
                     class_name_chirho,
                     method_name_chirho,
                     list_type_key_chirho,
                     &prim_name_chirho,
-                );
+                ) {
+                    Some(default_id_chirho) => default_id_chirho,
+                    None => self.generate_missing_method_binding_chirho(
+                        class_env_chirho,
+                        class_name_chirho,
+                        method_name_chirho,
+                        list_type_key_chirho,
+                        &prim_name_chirho,
+                    ),
+                };
                 field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
             }
         }
@@ -461,6 +470,14 @@ impl DictPassCtxChirho {
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
+
+        // Its `/=` row defaults from that `==` (row 606).
+        self.equality_default_row_chirho(
+            "Eq",
+            "/=",
+            list_type_key_chirho,
+            &format!("$prim_Eq_/=_{list_type_key_chirho}"),
+        );
 
         // Generate the Eq dict for this list type
         let dict_name_chirho = format!("$fEq{}", list_type_key_chirho);

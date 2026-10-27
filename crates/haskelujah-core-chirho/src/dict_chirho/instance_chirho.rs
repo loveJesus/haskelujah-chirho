@@ -736,6 +736,16 @@ impl DictPassCtxChirho {
             return prim_id_chirho;
         }
 
+        // Eq's methods default to each other's negation, from a real body only (row 606).
+        if let Some(default_id_chirho) = self.equality_default_row_chirho(
+            class_name_chirho,
+            method_name_chirho,
+            written_key_chirho.unwrap_or(type_key_chirho),
+            prim_name_chirho,
+        ) {
+            return default_id_chirho;
+        }
+
         if class_name_chirho == "Monoid" && method_name_chirho == "mappend" {
             let semigroup_prim_name_chirho = format!("$prim_Semigroup_<>_{}", type_key_chirho);
             if let Some(prim_id_chirho) =
@@ -953,6 +963,7 @@ impl DictPassCtxChirho {
 
 mod conditional_chirho;
 mod constructor_orders_chirho;
+mod equality_defaults_chirho;
 mod generic_heads_chirho;
 mod list_orders_chirho;
 mod ordering_operators_chirho;

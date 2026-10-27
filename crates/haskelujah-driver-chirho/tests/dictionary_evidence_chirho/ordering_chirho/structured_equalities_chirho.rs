@@ -98,17 +98,12 @@ const HOLDS_CHIRHO: [(&str, &str, &str); 2] = [
 ];
 
 /// Still failing by name, as ruled: `==` on a parameterized derived type (its row is
-/// named with its type variable), and structured `/=` (row 606).
-const NAMED_FAILURES_CHIRHO: [(&str, &str); 2] = [
-    (
-        "HDerivedBoxChirho.hs",
-        "module Main where\ndata BoxChirho a = BoxChirho a deriving (Eq, Show)\nmain :: IO ()\nmain = print (BoxChirho (1 :: Int) == BoxChirho 1, BoxChirho 'a' /= BoxChirho 'b')\n",
-    ),
-    (
-        "NStructuredChirho.hs",
-        "module Main where\nmain :: IO ()\nmain = print ((1 :: Int, 2 :: Int) /= (2, 1), Just 'a' /= Just 'a', [1 :: Int] /= [1])\n",
-    ),
-];
+/// named with its type variable). Structured `/=` answers since row 606, in
+/// `equality_methods_chirho.rs`.
+const NAMED_FAILURES_CHIRHO: [(&str, &str); 1] = [(
+    "HDerivedBoxChirho.hs",
+    "module Main where\ndata BoxChirho a = BoxChirho a deriving (Eq, Show)\nmain :: IO ()\nmain = print (BoxChirho (1 :: Int) == BoxChirho 1, BoxChirho 'a' /= BoxChirho 'b')\n",
+)];
 
 fn assert_ghc_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
     assert_eq!(

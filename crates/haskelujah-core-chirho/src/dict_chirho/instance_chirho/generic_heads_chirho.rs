@@ -21,6 +21,7 @@
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
+use super::equality_defaults_chirho::equality_counterpart_chirho;
 use super::{DictLayoutChirho, DictPassCtxChirho};
 
 /// A generic head: the alias a use site finds it by, and the spelling of its
@@ -42,7 +43,9 @@ impl DictPassCtxChirho {
     /// variables by position, a bijection. Coverage and lookup read the same
     /// spellings in the same order (agy_chirho #27369, gpt_chirho #27370), so a
     /// bare `T` row covers nothing. A missing row would make a stub reachable
-    /// and a second spelling is ambiguous; either refuses. The list head `[v]`
+    /// and a second spelling is ambiguous; either refuses. An Eq method without
+    /// a source row is covered when its counterpart has one: the slot takes the
+    /// counterpart's default under the written spelling (row 606). The list head `[v]`
     /// is the one exception to the missing row: its rows have one written
     /// spelling, so a slot no row covers is a method the instance genuinely
     /// omits, and its generated stub fails by name when forced, as GHC's
@@ -60,6 +63,7 @@ impl DictPassCtxChirho {
         let (constructor_chirho, arity_chirho) =
             generic_spine_chirho(class_env_chirho, class_name_chirho, inst_chirho)?;
         let mut written_key_chirho: Option<&str> = None;
+        let mut uncovered_chirho = Vec::new();
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
             let row_prefix_chirho = format!("$prim_{class_name_chirho}_{method_name_chirho}_");
             let mut covered_chirho = self
@@ -79,8 +83,19 @@ impl DictPassCtxChirho {
                 covered_chirho = true;
             }
             if !covered_chirho && constructor_chirho != "[]" {
-                return None;
+                uncovered_chirho.push(method_name_chirho.as_str());
             }
+        }
+        // An Eq method without a source row is covered by its counterpart's default (row 606).
+        let covered_by_default_chirho = |method_name_chirho: &str| {
+            equality_counterpart_chirho(class_name_chirho, method_name_chirho)
+                .is_some_and(|counterpart_chirho| !uncovered_chirho.contains(&counterpart_chirho))
+        };
+        if !uncovered_chirho
+            .iter()
+            .all(|method_name_chirho| covered_by_default_chirho(method_name_chirho))
+        {
+            return None;
         }
         Some(GenericHeadChirho {
             constructor_chirho: constructor_chirho.to_string(),
