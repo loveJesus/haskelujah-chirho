@@ -32,11 +32,8 @@ The dictionary pass's shadow seeding (`transform_module_chirho` in `dict_chirho/
 ## Measurements (GHC 9.14.1 -O0; the interpreter, LLVM and true Cranelift; every run bounded)
 
 - **The candidate is identical to the E1 tip on 69 programs.** Its CLI is sha256 `c0b26a81…`, and the receipts are `cand-own-verdicts-chirho.txt`.
-- **55 of them are GHC on all three engines:**
-  - the row's 23;
-  - its 3 selector holds;
-  - row 660's 24;
-  - the 5 new polymorphic owned holds.
+- **55 of them are GHC on all three engines.** The receipt includes this row's measured movers
+  and holds, its 4 selector holds, row 660's exact cells and the 5 new polymorphic owned holds.
 - **The polymorphic owned `+`, `==` and `show`,** signed and inferred, at Int:
   - all are GHC on main, on E1 and on the candidate;
   - the exception is the signed `show` on Cranelift, the same on main.
