@@ -41,3 +41,9 @@
 - The warm focused gate is GREEN in 36.91 seconds: build 4.24 seconds; 621 affected-library tests in 18.94 seconds; 16/16 all-engine evaluation tests in 13.73 seconds.
 - Clippy completed for the seven affected packages with no diagnostic on a Row 585 changed line. Its remaining warnings predate this row and sit outside the changed lines.
 - `cargo fmt --all -- --check` and `git diff --check` are clean. The staged source range passes gitleaks 8.30.1 with no leak.
+
+## Replay Chirho
+
+- Source commit `759db0e3` replayed cleanly as `386e8dda` onto exact main `68d271a1`. The crates tree stayed byte-identical at `d70ef65212dc91bd6cc541a4b70104a172cf6f6d`.
+- The post-replay gate is GREEN in 17.63 seconds: build 3.47 seconds, the focused RTS representation table 1/1 in 0.54 seconds, and the all-engine evaluation suite 16/16 in 13.62 seconds.
+- The replayed range is rustfmt-clean and diff-check-clean. Gitleaks 8.30.1 scanned its one commit and found no leak.
