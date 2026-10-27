@@ -62,6 +62,11 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     // workflow: language-features-chirho/dictionary-evidence-chirho
     "toEnum",
     "fromEnum",
+    // Like `toEnum`, the Bounded methods carry their class variable only in
+    // the result. Their occurrence proof keeps a result-only polymorphic
+    // binding on its own dictionary instead of defaulting it to Bounded Int.
+    "minBound",
+    "maxBound",
 ];
 
 /// The monad-chain operators the standard set leaves out (INV-001). No rule

@@ -2,7 +2,8 @@
 
 //! Body-backed operations over `Ordering`. The four `Ordering -> Bool` tests serve
 //! the compare route (row 551). The `Enum Ordering` rows preserve GHC's constructor
-//! order and its endpoint failures (row 602).
+//! order and its endpoint failures (row 602). The two `Bounded Ordering` rows
+//! expose LT and GT as GHC's finite endpoints (row 605).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{
@@ -184,6 +185,29 @@ impl DictPassCtxChirho {
             ordering_value_chirho,
             pred_chirho,
         );
+    }
+
+    /// Generate the two body-backed `Bounded Ordering` methods.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_ordering_bounded_rows_chirho(&mut self) {
+        let ordering_ty_chirho = TyChirho::ConChirho("Ordering".to_string());
+        for (name_chirho, constructor_chirho) in [
+            ("$prim_Bounded_minBound_Ordering", "LT"),
+            ("$prim_Bounded_maxBound_Ordering", "GT"),
+        ] {
+            let id_chirho = self.resolve_or_fresh_id_chirho(name_chirho);
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: name_chirho.to_string(),
+                    ty_chirho: ordering_ty_chirho.clone(),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: ordering_chirho(constructor_chirho),
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
     }
 
     fn ordering_case_chirho(

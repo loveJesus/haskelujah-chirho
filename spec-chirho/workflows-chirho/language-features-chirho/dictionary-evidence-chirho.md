@@ -714,13 +714,30 @@ flowchart TD
   `succ LT` (T10), every other `Enum Ordering` method and both finite range directions are now
   asserted on the interpreter, LLVM and Cranelift. `maximum [LT, GT, EQ]` is covered by the
   compare-backed extrema row.
-- **Bounded, still open, each its own unit:**
-  - `Ordering` still has no `Bounded` or `Read` instance in the class environment;
+- **Bounded and adjacent open units:**
+  - Row 605 gives `Ordering` its ground `Bounded` instance. The body-backed
+    `$prim_Bounded_minBound_Ordering` and `$prim_Bounded_maxBound_Ordering` rows are the LT and GT
+    constructor values; the ordinary evidence route serves direct and polymorphic uses on every
+    engine.
+    - `minBound` and `maxBound` join the occurrence population because their class variable is
+      result-only. A `Bounded a =>` binding retains its own dictionary only when its body proves
+      that exact `$own:k` predicate; otherwise the Report's existing result-only Int default stays.
+    - A program's hidden-and-redefined bounds remain its own bindings and receive no Prelude
+      evidence rewrite.
+  - `Ordering` still has no `Read` instance in the class environment;
   - unbounded `enumFrom` remains outside row 602's finite-range contract;
   - any other constructor the seed lacks still becomes a fresh variable, so an imported `:|` is
     accepted at Int;
   - Eq and Ord still default to Int without Num;
   - a user `data Ordering` under `Prelude hiding` still fails Show (T15).
+
+```mermaid
+flowchart LR
+    seed_bo_chirho[Bounded Ordering instance] --> dict_bo_chirho[$fBoundedOrdering]
+    min_bo_chirho[$prim_Bounded_minBound_Ordering = LT] --> dict_bo_chirho
+    max_bo_chirho[$prim_Bounded_maxBound_Ordering = GT] --> dict_bo_chirho
+    dict_bo_chirho --> use_bo_chirho[direct or polymorphic minBound / maxBound]
+```
 
 ## RealFloat Double predicates (2026-10-26)
 

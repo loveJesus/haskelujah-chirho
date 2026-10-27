@@ -3335,6 +3335,7 @@ impl DictPassCtxChirho {
         // ── The Ordering tests the compare route reads (row 551) ──
         self.generate_ordering_tests_prelude_chirho();
         self.generate_ordering_enum_rows_chirho();
+        self.generate_ordering_bounded_rows_chirho();
 
         // ── The compare-backed extrema evidenced occurrences read (row 565) ──
         self.generate_ordering_extrema_prelude_chirho();

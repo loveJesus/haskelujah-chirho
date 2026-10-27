@@ -129,6 +129,31 @@ fn ordering_enum_endpoints_fail_as_ghc_everywhere_chirho() {
     }
 }
 
+/// Row 605: `Ordering` has GHC's finite bounds, and a polymorphic Bounded
+/// binding receives the same dictionary on every engine.
+#[test]
+fn ordering_bounds_answer_as_ghc_everywhere_chirho() {
+    let program_chirho = "module Main where\nboundsChirho :: Bounded a => (a, a)\nboundsChirho = (minBound, maxBound)\nmain :: IO ()\nmain = do\n  print (minBound :: Ordering)\n  print (maxBound :: Ordering)\n  print (boundsChirho :: (Ordering, Ordering))\n  print ([minBound, maxBound] :: [Ordering])\n  print (boundsChirho :: (Bool, Bool))\n  print (map fromEnum ([minBound, maxBound] :: [Char]))\n  print (boundsChirho :: (Int, Int))\n";
+    let ghc_chirho = "LT\nGT\n(LT,GT)\n[LT,GT]\n(False,True)\n[0,1114111]\n(-9223372036854775808,9223372036854775807)\n";
+    assert_eq!(
+        run_chirho("OrderingBoundsChirho.hs", program_chirho),
+        ghc_chirho,
+        "interpreter"
+    );
+    assert_native_chirho("OrderingBoundsChirho.hs", program_chirho, ghc_chirho);
+}
+
+#[test]
+fn a_programs_own_bounds_stay_its_own_everywhere_chirho() {
+    let program_chirho = "module Main where\nimport Prelude hiding (minBound, maxBound)\nminBound :: Ordering\nminBound = EQ\nmaxBound :: Ordering\nmaxBound = EQ\nmain :: IO ()\nmain = print (minBound, maxBound)\n";
+    assert_eq!(
+        run_chirho("OwnOrderingBoundsChirho.hs", program_chirho),
+        "(EQ,EQ)\n",
+        "interpreter"
+    );
+    assert_native_chirho("OwnOrderingBoundsChirho.hs", program_chirho, "(EQ,EQ)\n");
+}
+
 #[test]
 fn annotated_computed_and_user_orderings_keep_their_answers_chirho() {
     // These were already exact: an annotation, a signed binding, a computed Ordering, a

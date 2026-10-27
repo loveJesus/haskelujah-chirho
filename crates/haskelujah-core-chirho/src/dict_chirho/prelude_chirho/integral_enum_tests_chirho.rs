@@ -357,14 +357,15 @@ fn raised_chirho(
     ))
 }
 
-/// The binding that `$fEnum<Key>`'s slot for `method_chirho` refers to. It must
-/// be the binding named `$prim_Enum_<method>_<Key>`.
+/// The binding that `$f<Class><Key>`'s slot for `method_chirho` refers to. It
+/// must be the binding named `$prim_<Class>_<method>_<Key>`.
 fn slot_row_chirho<'a>(
     result_chirho: &'a DictPassResultChirho,
+    class_chirho: &str,
     key_chirho: &str,
     method_chirho: &str,
 ) -> &'a CoreBindingChirho {
-    let dictionary_name_chirho = format!("$fEnum{key_chirho}");
+    let dictionary_name_chirho = format!("$f{class_chirho}{key_chirho}");
     let CoreExprChirho::ConAppChirho {
         args_chirho: fields_chirho,
         ..
@@ -372,11 +373,11 @@ fn slot_row_chirho<'a>(
     else {
         panic!("{dictionary_name_chirho} is a dictionary constructor");
     };
-    let (_, slot_chirho) = result_chirho.layouts_chirho["Enum"]
+    let (_, slot_chirho) = result_chirho.layouts_chirho[class_chirho]
         .method_slots_chirho
         .iter()
         .find(|(name_chirho, _)| name_chirho == method_chirho)
-        .unwrap_or_else(|| panic!("Enum has a {method_chirho} slot"));
+        .unwrap_or_else(|| panic!("{class_chirho} has a {method_chirho} slot"));
     let CoreExprChirho::VarChirho(row_id_chirho) = &fields_chirho[*slot_chirho] else {
         panic!("{dictionary_name_chirho}'s {method_chirho} slot is a reference");
     };
@@ -388,7 +389,7 @@ fn slot_row_chirho<'a>(
         .unwrap_or_else(|| panic!("{dictionary_name_chirho}'s {method_chirho} row is bound"));
     assert_eq!(
         row_chirho.binder_chirho.name_chirho,
-        format!("$prim_Enum_{method_chirho}_{key_chirho}"),
+        format!("$prim_{class_chirho}_{method_chirho}_{key_chirho}"),
         "{dictionary_name_chirho}'s {method_chirho} slot"
     );
     row_chirho
@@ -426,8 +427,12 @@ fn every_integral_dictionary_takes_real_rows_chirho() {
             &["toEnum"]
         };
         for method_chirho in methods_chirho {
-            let row_chirho =
-                slot_row_chirho(&result_chirho, integral_chirho.key_chirho, method_chirho);
+            let row_chirho = slot_row_chirho(
+                &result_chirho,
+                "Enum",
+                integral_chirho.key_chirho,
+                method_chirho,
+            );
             assert!(
                 !DictPassCtxChirho::is_generated_missing_method_body_chirho(&row_chirho.rhs_chirho),
                 "{} is a missing-method stub",
@@ -446,10 +451,34 @@ fn every_integral_dictionary_takes_real_rows_chirho() {
 fn ordering_enum_dictionary_takes_four_body_backed_rows_chirho() {
     let result_chirho = dict_pass_chirho();
     for method_chirho in ["toEnum", "fromEnum", "succ", "pred"] {
-        let row_chirho = slot_row_chirho(&result_chirho, "Ordering", method_chirho);
+        let row_chirho = slot_row_chirho(&result_chirho, "Enum", "Ordering", method_chirho);
         assert!(
             !DictPassCtxChirho::is_generated_missing_method_body_chirho(&row_chirho.rhs_chirho),
             "{} is body-backed",
+            row_chirho.binder_chirho.name_chirho
+        );
+    }
+}
+
+#[test]
+fn ordering_bounded_dictionary_takes_two_body_backed_rows_chirho() {
+    let result_chirho = dict_pass_chirho();
+    for (method_chirho, constructor_chirho) in [("minBound", "LT"), ("maxBound", "GT")] {
+        let row_chirho = slot_row_chirho(&result_chirho, "Bounded", "Ordering", method_chirho);
+        assert!(
+            !DictPassCtxChirho::is_generated_missing_method_body_chirho(&row_chirho.rhs_chirho),
+            "{} is body-backed",
+            row_chirho.binder_chirho.name_chirho
+        );
+        assert!(
+            matches!(
+                &row_chirho.rhs_chirho,
+                CoreExprChirho::ConAppChirho {
+                    con_name_chirho,
+                    args_chirho,
+                } if con_name_chirho == constructor_chirho && args_chirho.is_empty()
+            ),
+            "{} is the {constructor_chirho} constructor",
             row_chirho.binder_chirho.name_chirho
         );
     }
@@ -469,7 +498,7 @@ fn wide_from_enum_slots_stay_missing_method_stubs_chirho() {
     );
     let result_chirho = dict_pass_chirho();
     for key_chirho in wide_chirho {
-        let row_chirho = slot_row_chirho(&result_chirho, key_chirho, "fromEnum");
+        let row_chirho = slot_row_chirho(&result_chirho, "Enum", key_chirho, "fromEnum");
         assert!(
             DictPassCtxChirho::is_generated_missing_method_body_chirho(&row_chirho.rhs_chirho),
             "{} must stay a missing-method stub",

@@ -14,8 +14,8 @@ use crate::expr_chirho::{
 impl DictPassCtxChirho {
     /// Predicate indices whose dictionaries this binding must receive.
     ///
-    /// Result-only `Num` and `Enum` predicates ordinarily keep the Report's
-    /// defaulting behavior. A constrained reference or method occurrence in
+    /// Result-only `Num`, `Enum`, and `Bounded` predicates ordinarily keep the
+    /// Report's defaulting behavior. A constrained reference or method occurrence in
     /// the binding body can instead prove that the exact predicate parameter is
     /// used: the checker names that proof `$own:<index>`. In that case definition
     /// and caller must retain the same dictionary parameter rather than silently
@@ -48,15 +48,17 @@ impl DictPassCtxChirho {
                             },
                         )
                     });
-                let occurrence_proves_own_chirho = predicate_chirho.class_name_chirho == "Enum"
-                    && free_ids_chirho.iter().any(|id_chirho| {
-                        self.occurrence_evidence_chirho.get(id_chirho).is_some_and(
-                            |(class_chirho, key_chirho)| {
-                                class_chirho == &predicate_chirho.class_name_chirho
-                                    && key_chirho == &own_key_chirho
-                            },
-                        )
-                    });
+                let occurrence_proves_own_chirho = matches!(
+                    predicate_chirho.class_name_chirho.as_str(),
+                    "Enum" | "Bounded"
+                ) && free_ids_chirho.iter().any(|id_chirho| {
+                    self.occurrence_evidence_chirho.get(id_chirho).is_some_and(
+                        |(class_chirho, key_chirho)| {
+                            class_chirho == &predicate_chirho.class_name_chirho
+                                && key_chirho == &own_key_chirho
+                        },
+                    )
+                });
                 let body_proves_own_chirho =
                     reference_proves_own_chirho || occurrence_proves_own_chirho;
                 (body_proves_own_chirho
@@ -581,7 +583,7 @@ mod tests_chirho {
     }
 
     #[test]
-    fn only_exact_body_proven_result_num_or_enum_evidence_defeats_defaulting_chirho() {
+    fn only_exact_body_proven_result_evidence_defeats_defaulting_chirho() {
         let rhs_id_chirho = CoreIdChirho(20);
         let binding_chirho = result_only_binding_chirho(rhs_id_chirho.0);
         let scheme_chirho = result_only_scheme_chirho("Num");
@@ -635,6 +637,31 @@ mod tests_chirho {
             pass_chirho.binding_dict_param_indices_chirho(
                 &binding_chirho,
                 &result_only_scheme_chirho("Enum")
+            ),
+            vec![0]
+        );
+
+        pass_chirho
+            .instance_dicts_chirho
+            .insert(("Bounded".to_string(), "Int".to_string()), CoreIdChirho(92));
+        pass_chirho
+            .occurrence_evidence_chirho
+            .insert(rhs_id_chirho, ("Bounded".to_string(), "$own:1".to_string()));
+        assert_eq!(
+            pass_chirho.binding_dict_param_indices_chirho(
+                &binding_chirho,
+                &result_only_scheme_chirho("Bounded")
+            ),
+            vec![0, 1]
+        );
+
+        pass_chirho
+            .occurrence_evidence_chirho
+            .insert(rhs_id_chirho, ("Bounded".to_string(), "$own:0".to_string()));
+        assert_eq!(
+            pass_chirho.binding_dict_param_indices_chirho(
+                &binding_chirho,
+                &result_only_scheme_chirho("Bounded")
             ),
             vec![0]
         );
