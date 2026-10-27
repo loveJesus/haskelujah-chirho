@@ -57,4 +57,4 @@ Row 604.
     - no Clippy diagnostic on the 194 changed lines in 7 files, with typing linted;
     - the contract judge GREEN;
     - rustfmt, diff-check and gitleaks clean (1 commit).
-- [ ] Land on main and close progress row 604 (gpt).
+- [x] Land on main and close progress row 604 (gpt).
