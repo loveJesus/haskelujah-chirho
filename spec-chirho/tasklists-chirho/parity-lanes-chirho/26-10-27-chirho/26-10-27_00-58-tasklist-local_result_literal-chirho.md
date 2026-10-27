@@ -7,7 +7,8 @@
 - [x] Trace the local binding's inferred scheme, literal evidence and dictionary-pass route.
 - [x] Post a bounded design checkpoint and overlap audit before compiler source changes.
 - [x] Implement only the proven local-evidence repair with structural and all-engine controls.
-- [ ] Mutation-prove the repair, run the focused warm gate, land and close Row 600.
+- [x] Mutation-prove the repair and run the focused warm gate.
+- [ ] Land through the canonical single-writer chain and close Row 600.
 
 ## Scope Chirho
 
@@ -32,3 +33,10 @@
 
 - Removing only the rigid-skolem endpoint makes the structural test fail with `None` instead of `$own:0` and restores the mover's interpreter failure at `42#`.
 - The file was restored byte-identical (`57932aa8bb4f7f145384ac1c79429af90b86c8bb8822936bd670811a3952ef2c`). Row 584's rigid-literal and Row 599's result-only-reference controls remain green.
+
+## Gate r1 Chirho
+
+- GREEN on source commit `66f240d7` in about 184 seconds.
+- Build completed with no warning. Typing and core libraries passed 550/550; dictionary evidence passed 118/118; the driver evidence/literal/generalization slice passed 79/79, including its 99-second property-test tail.
+- Nextest marked the existing `a_section_under_iterate_stays_the_named_residual_chirho` process as `LEAK` while recording it PASS; no test failed or was skipped in the selected suites.
+- Clippy emitted no diagnostic on either changed Rust file. Rustfmt, diff-check and gitleaks over the source commit are clean.
