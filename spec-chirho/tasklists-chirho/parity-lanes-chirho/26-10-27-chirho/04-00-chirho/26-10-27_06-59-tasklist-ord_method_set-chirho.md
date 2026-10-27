@@ -10,6 +10,7 @@ Row 612 core.
   - Ord's layout is `[Eq | <, <=, >, >=, compare, max, min]`, with `compare` in slot 5, and every builder and selector is layout-driven.
   - A stub row never donates.
   - Row 565's extrema helper may stay through rows 612 and 626, but it is not the final route; row 627 makes `max` and `min` method-driven, `maximum` and `minimum` included.
+- **Correction #30138, recorded after landing:** row 612's `<=`, `max` and `min` defaults match GHC. Its `<`, `>` and `>=` slots remain compare-backed. GHC defines those three through `<=`; row 626 owns that chain together with `compare`'s `==`/`<=` default. A measured instance with ordinary `compare` and reversed `<=` is unchanged from main by row 612 and becomes row 626's control.
 - **Branch:** `ord-method-set-chirho`, from main `a7d3336a`.
 
 ## Measured (GHC 9.14.1, /opt/homebrew/bin/ghc -O0)
@@ -68,4 +69,4 @@ Row 612 core.
     - The contract judge GREEN.
     - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
   - **The tip's probe reports** (`tip-00cdba1c-chirho` in each set): 8 programs are GHC on all three engines (24 cells), and all 18 Cranelift compiles carry the marker.
-- [ ] Land on main and close progress row 612 (gpt).
+- [x] Land on main and close progress row 612 (gpt): source `0459f863`, gate record `2abc1462`, ledger closure `67ca1d96`; independent replay checks passed core 193/193 and the three all-engine controls.

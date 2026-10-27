@@ -334,18 +334,19 @@ flowchart LR
     - The layout and selector units, `build_layouts_from_class_env_chirho` and `generate_selectors_creates_bindings_chirho`.
     - Row 603's pinned structured `/=` failure now answers, and leaves its named-failure control.
   - **Row 608's table:** the committed generator was rerun on this row. Its outputs are byte-identical (726 agree, 679 disagree), and the drift tests pass.
-- Ord's seven methods, the six besides `compare` defaulting from it, as GHC's do (row 612).
+- Ord's seven methods and compare-backed core defaults (row 612).
   - **The defect:** the seeded Ord declared only `compare`. `<`, `<=`, `>`, `>=`, `max` and `min` were standalone `Ord a =>` builtins, answered only where a concrete key was proved (rows 551, 565 and 610). Inside `Ord a =>` code no dictionary slot held them, so:
     - written operators fell back to the Int primops: `smallerChirho ("a" ++ "") "b"` gave `False` natively, NaN and negative Doubles ordered as integer bits, and the two natives disagreed with each other;
     - `max` and `minimum` were the Int-shaped bindings: `biggerChirho "b" ("a" ++ "")` gave `"a"`, and the interpreter stopped at `LeIntChirho`;
     - an instance's own operators were never read through a dictionary, and a first-class `(>=)` at such a key had no binding.
   - **Typing:** the seeded Ord has GHC's seven methods. Layouts sort method names, so `$Dict_Ord` is `[Eq | <, <=, >, >=, compare, max, min]`, and `compare` moved from slot 1 to slot 5. Every Ord dictionary and selector follows the layout, and the hand-built `Ord [T]` fills every slot.
   - **Defaults** (`instance_chirho/ordering_defaults_chirho.rs`), asked before any stub by the dictionary resolver, the conditional list path and the list builder:
-    - each operator is its answer at the key, through row 610's `ordering_answer_chirho`: the Int primop at Int, Char and Bool, the IEEE primop at Double, else the key's compare row read by the operator's Ordering test;
+    - `<=` is its answer at the key through row 610's `ordering_answer_chirho`: the Int primop at Int, Char and Bool, the IEEE primop at Double, else the key's compare row read by its Ordering test;
+    - row 612 also leaves `<`, `>` and `>=` compare-backed. GHC defines them through `<=` (`not (y <= x)`, `not (x <= y)`, and `y <= x` respectively); row 626 owns that chain together with `compare`'s `==`/`<=` default. The mixed ordinary-`compare`/reversed-`<=` probe is unchanged from main by row 612 and is row 626's control;
     - `max x y = if x <= y then y else x` and `min x y = if x <= y then x else y`, through the key's `<=` answer, which is the instance's own `<=` where it writes one. At Double this matches GHC at NaN and signed zero.
     - The donor must be a real body. A key whose `compare` is a missing-method stub keeps each slot's named failure, where GHC's defaults loop.
   - **The binding's own key:** a written operator proved at the binding's own dictionary leaves row 610's pass and selects its slot (`$sel_Ord_< $dOrd`). `max` and `min` select theirs as methods. `maximum` and `minimum` apply row 565's compare-backed fold to the dictionary's `compare` (`own_extremum_chirho`).
-  - **Kept for rows 626 and 627:** a `<=`-only instance keeps `missing method Ord.compare` for `compare` and the other operators (row 626); its `max` and `min` already answer through its own `<=`, which is GHC's definition. At concrete keys `max`, `min`, `maximum` and `minimum` keep row 565's compare-backed helpers, so an instance's own `max` is read only through a dictionary (row 627).
+  - **Kept for rows 626 and 627:** row 626 supplies `compare` from `==` and `<=`, and moves `<`, `>` and `>=` onto GHC's `<=` chain. A `<=`-only instance's `max` and `min` already answer through its own `<=`. At concrete keys `max`, `min`, `maximum` and `minimum` keep row 565's compare-backed helpers, so an instance's own `max` is read only through a dictionary (row 627).
   - **Residuals, measured on main too:**
     - no `Ord` or `Eq` dictionary exists at `Maybe` or tuple keys, so `Ord a =>` code called there fails with `no instance dictionary for Ord Maybe`, where main's operators answered silently wrong;
     - an Ord instance at a generic head is never generic (row 600's G6: Ord has a superclass), so `Ord a =>` code at `TagChirho Int` fails with `no instance dictionary for Ord TagChirho`, as `compare` there did on main;

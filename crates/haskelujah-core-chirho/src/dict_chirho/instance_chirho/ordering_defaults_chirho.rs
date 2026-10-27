@@ -1,14 +1,15 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Ord's six methods besides `compare` default as GHC's do (row 612). The seeded Ord class
-//! declared only `compare`, so `<`, `<=`, `>`, `>=`, `max` and `min` had no dictionary slot:
+//! Ord's six methods besides `compare` receive dictionary slots and body-backed defaults in row
+//! 612. The seeded Ord class declared only `compare`, so `<`, `<=`, `>`, `>=`, `max` and `min`
+//! had no dictionary slot:
 //! inside `Ord a =>` code they fell back to Int primops, and an instance's own operators were
 //! never read through a dictionary. Ord's layout is now `[Eq | <, <=, >, >=, compare, max, min]`.
 //!
-//! A slot the instance does not write takes GHC's default, built from the key's real rows:
-//! - each operator, its answer at the key (`ordering_operators_chirho.rs`): the Int primop at
-//!   Int, Char and Bool, the IEEE primop at Double, else the key's `compare` row read by the
-//!   operator's Ordering test;
+//! A slot the instance does not write takes a body-backed default from the key's real rows:
+//! - `<=` reads the key's `compare` row through its Ordering test;
+//! - row 612 also leaves `<`, `>` and `>=` compare-backed. GHC instead defines those three
+//!   through `<=`; row 626 owns that chain together with `compare`'s `==`/`<=` default;
 //! - `max x y = if x <= y then y else x` and `min x y = if x <= y then x else y`, through the
 //!   key's `<=` answer, which is the instance's own `<=` where it writes one.
 //!

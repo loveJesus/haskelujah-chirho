@@ -1,7 +1,8 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Ord's seven methods, the six besides `compare` defaulting from it as GHC's do (row 612). The
-//! seeded Ord class declared only `compare`, so `<`, `<=`, `>`, `>=`, `max` and `min` had no
+//! Ord's seven methods, with row 612's six body-backed slots beside `compare`. `<=`, `max` and
+//! `min` follow GHC's defaults; `<`, `>` and `>=` remain compare-backed until row 626 moves them
+//! onto GHC's `<=` chain. The seeded Ord class declared only `compare`, so those six methods had no
 //! dictionary slot. Inside `Ord a =>` code they fell back to Int primops, silently wrong outside
 //! Int, Char and Bool, and an instance's own operators were never read through a dictionary.
 //! Every program below is GHC 9.14.1's, byte for byte as measured.
