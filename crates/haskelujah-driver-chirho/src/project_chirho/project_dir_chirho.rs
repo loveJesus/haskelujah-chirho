@@ -412,6 +412,11 @@ pub fn compile_project_dir_chirho(
         );
     }
 
+    // The modules this project compiles and links together (row 629).
+    let program_modules_chirho: std::collections::HashSet<String> = module_sources_chirho
+        .iter()
+        .map(|(module_name_chirho, _, _)| module_name_chirho.clone())
+        .collect();
     for scc_chirho in &sccs_chirho {
         if scc_chirho.len() > 1 {
             // Circular import group — look for .hs-boot files to break the cycle.
@@ -539,6 +544,7 @@ pub fn compile_project_dir_chirho(
                 infer_result_chirho,
                 extra_dict_param_names_chirho,
                 &ifaces_chirho,
+                &program_modules_chirho,
             )
             .map_err(|e_chirho| {
                 format!("Backend error for {}: {}", module_name_chirho, e_chirho)

@@ -765,6 +765,11 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
     }
     let mut order_chirho: Vec<String> = Vec::new();
 
+    // The modules this package compiles and links together (row 629).
+    let program_modules_chirho: std::collections::HashSet<String> = module_sources_chirho
+        .iter()
+        .map(|(module_name_chirho, _, _)| module_name_chirho.clone())
+        .collect();
     for scc_chirho in &sccs_chirho {
         for module_name_chirho in scc_chirho {
             let (_, file_name_chirho, source_chirho) = module_sources_chirho
@@ -833,6 +838,7 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
                 infer_result_chirho,
                 extra_dict_param_names_chirho,
                 &ifaces_chirho,
+                &program_modules_chirho,
             )
             .map_err(|e_chirho| {
                 format!("Backend error for {}: {}", module_name_chirho, e_chirho)

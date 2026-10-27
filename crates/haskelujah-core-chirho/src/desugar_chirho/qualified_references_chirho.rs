@@ -7,12 +7,63 @@
 //! or `case` binder can be written with a qualifier. Resolving it by its bare
 //! text let a local `reverse` capture `L.reverse`, and a local `foo` capture
 //! `Main.foo`.
+//!
+//! A reference to a user module's export takes that import's identity (row 629): `A.limit`
+//! and `B.limit` are two references, never one id by their shared text.
 //! workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+//! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+
+use std::collections::{BTreeSet, HashMap};
 
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 
 use super::DesugarCtxChirho;
-use crate::expr_chirho::CoreIdChirho;
+use crate::expr_chirho::{CoreIdChirho, ImportedReferenceChirho};
+
+/// Which user modules supply each imported value name, by the qualifier a reference writes:
+/// `None` for an unqualified reference (row 629). The driver builds it from the module's imports
+/// and the interfaces they resolve against; builtin interfaces never supply here.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ImportSuppliersChirho {
+    suppliers_chirho: HashMap<(Option<String>, String), BTreeSet<String>>,
+}
+
+impl ImportSuppliersChirho {
+    /// Record that user module `module_chirho` supplies `name_chirho`, written under
+    /// `qualifier_chirho` (or unqualified).
+    pub fn add_chirho(
+        &mut self,
+        qualifier_chirho: Option<&str>,
+        name_chirho: &str,
+        module_chirho: &str,
+    ) {
+        self.suppliers_chirho
+            .entry((
+                qualifier_chirho.map(str::to_string),
+                name_chirho.to_string(),
+            ))
+            .or_default()
+            .insert(module_chirho.to_string());
+    }
+
+    /// The identity of a reference written `qualifier.name` (or unqualified `name`), when user
+    /// modules supply it there.
+    pub fn reference_chirho(
+        &self,
+        qualifier_chirho: Option<&str>,
+        name_chirho: &str,
+    ) -> Option<ImportedReferenceChirho> {
+        let suppliers_chirho = self.suppliers_chirho.get(&(
+            qualifier_chirho.map(str::to_string),
+            name_chirho.to_string(),
+        ))?;
+        Some(ImportedReferenceChirho {
+            name_chirho: name_chirho.to_string(),
+            suppliers_chirho: suppliers_chirho.iter().cloned().collect(),
+        })
+    }
+}
 
 impl DesugarCtxChirho {
     /// The name a written reference resolves by, and the id it resolves to.
@@ -34,6 +85,14 @@ impl DesugarCtxChirho {
     ) -> (String, CoreIdChirho) {
         let text_chirho = name_chirho.text_chirho().to_string();
         let Some(qualifier_chirho) = name_chirho.qualifier_chirho() else {
+            if self.lookup_scope_chirho(&text_chirho).is_none()
+                && let Some(reference_chirho) = self
+                    .import_suppliers_chirho
+                    .reference_chirho(None, &text_chirho)
+            {
+                let id_chirho = self.resolve_imported_reference_chirho(reference_chirho);
+                return (text_chirho, id_chirho);
+            }
             let id_chirho = self.resolve_var_chirho(&text_chirho);
             return (text_chirho, id_chirho);
         };
@@ -42,10 +101,36 @@ impl DesugarCtxChirho {
             let id_chirho = self.resolve_var_chirho(&full_name_chirho);
             return (full_name_chirho, id_chirho);
         }
-        let id_chirho = self
-            .own_top_level_id_chirho(qualifier_chirho, &text_chirho)
-            .unwrap_or_else(|| self.resolve_unscoped_var_chirho(&text_chirho));
+        if let Some(id_chirho) = self.own_top_level_id_chirho(qualifier_chirho, &text_chirho) {
+            return (text_chirho, id_chirho);
+        }
+        if let Some(reference_chirho) = self
+            .import_suppliers_chirho
+            .reference_chirho(Some(qualifier_chirho), &text_chirho)
+        {
+            let id_chirho = self.resolve_imported_reference_chirho(reference_chirho);
+            return (text_chirho, id_chirho);
+        }
+        let id_chirho = self.resolve_unscoped_var_chirho(&text_chirho);
         (text_chirho, id_chirho)
+    }
+
+    /// The id of an imported user reference: one per identity, whatever text names it, and
+    /// recorded with that identity for the dictionary pass and the multi-module link (row 629).
+    /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    fn resolve_imported_reference_chirho(
+        &mut self,
+        reference_chirho: ImportedReferenceChirho,
+    ) -> CoreIdChirho {
+        if let Some(&id_chirho) = self.imported_reference_ids_chirho.get(&reference_chirho) {
+            return id_chirho;
+        }
+        let id_chirho = self.fresh_id_chirho(&reference_chirho.name_chirho);
+        self.imported_reference_ids_chirho
+            .insert(reference_chirho.clone(), id_chirho);
+        self.imported_references_chirho
+            .insert(id_chirho, reference_chirho);
+        id_chirho
     }
 
     /// The module's own top-level binding of `text_chirho`, when `qualifier_chirho` is the

@@ -3,6 +3,8 @@
 //! Multi-module compilation and evaluation of sources given in memory (row 634).
 
 use super::dependency_packages_chirho::insert_exported_schemes_into_imports_chirho;
+use super::import_links_chirho::ImportLinkerChirho;
+use super::project_dir_chirho::extract_module_name_chirho;
 use super::{
     CompileResultChirho, FrontendResultChirho, ImportedTypeSynonymsChirho, compile_backend_chirho,
     exported_type_synonyms_from_module_chirho, run_frontend_chirho,
@@ -39,6 +41,11 @@ pub fn compile_modules_chirho(
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
 
+    // The modules this program compiles and links together (row 629).
+    let program_modules_chirho: std::collections::HashSet<String> = sources_chirho
+        .iter()
+        .map(|(_, source_chirho)| extract_module_name_chirho(source_chirho))
+        .collect();
     for (file_name_chirho, source_chirho) in sources_chirho {
         let source_file_chirho = SourceFileChirho::from_source_map_chirho(
             source_map_chirho,
@@ -94,6 +101,7 @@ pub fn compile_modules_chirho(
             infer_result_chirho,
             extra_dict_param_names_chirho,
             &ifaces_chirho,
+            &program_modules_chirho,
         )?;
         results_chirho.push(compile_result_chirho);
     }
@@ -109,6 +117,23 @@ pub fn eval_modules_chirho(
     source_map_chirho: &mut SourceMapChirho,
     entry_name_chirho: Option<&str>,
 ) -> Result<haskelujah_runtime_chirho::ValueChirho, String> {
+    eval_modules_with_machine_chirho(sources_chirho, source_map_chirho, entry_name_chirho)
+        .map(|(value_chirho, _machine_chirho)| value_chirho)
+}
+
+/// [`eval_modules_chirho`], also returning the machine, whose `io_output_chirho` holds what
+/// the program printed (row 629).
+pub fn eval_modules_with_machine_chirho(
+    sources_chirho: &[(&str, &str)],
+    source_map_chirho: &mut SourceMapChirho,
+    entry_name_chirho: Option<&str>,
+) -> Result<
+    (
+        haskelujah_runtime_chirho::ValueChirho,
+        haskelujah_runtime_chirho::eval_chirho::MachineChirho,
+    ),
+    String,
+> {
     use haskelujah_core_chirho::expr_chirho::{
         CoreExprChirho, CoreIdChirho, CoreModuleChirho as CoreModChirho,
     };
@@ -346,6 +371,8 @@ pub fn eval_modules_chirho(
     }
 
     // Phase 1: Offset each module's IDs into non-overlapping ranges.
+    // Imported user references link through the decision both merges share (row 629).
+    let mut import_linker_chirho = ImportLinkerChirho::default();
     let mut merged_bindings_chirho = Vec::new();
     let mut merged_names_chirho: std::collections::HashMap<CoreIdChirho, String> =
         std::collections::HashMap::new();
@@ -362,6 +389,15 @@ pub fn eval_modules_chirho(
                 offset_expr_chirho(&mut binding_chirho.rhs_chirho, id_offset_chirho);
             }
         }
+
+        import_linker_chirho.add_module_chirho(
+            &result_chirho.module_chirho.name_chirho.full_name_chirho(),
+            &bindings_chirho,
+            &result_chirho
+                .core_chirho
+                .provenance_chirho
+                .offset_chirho(id_offset_chirho),
+        );
 
         // Merge names with offset
         for (id_chirho, name_chirho) in &result_chirho.core_chirho.names_chirho {
@@ -467,9 +503,11 @@ pub fn eval_modules_chirho(
     }
 
     let mut remap_chirho: std::collections::HashMap<CoreIdChirho, CoreIdChirho> =
-        std::collections::HashMap::new();
+        import_linker_chirho.link_chirho()?;
     for (id_chirho, name_chirho) in &merged_names_chirho {
-        if all_binder_ids_chirho.contains(id_chirho) {
+        if all_binder_ids_chirho.contains(id_chirho)
+            || import_linker_chirho.is_imported_reference_chirho(id_chirho)
+        {
             continue;
         }
         if let Some(&def_id_chirho) = def_name_to_id_chirho.get(name_chirho)
@@ -502,12 +540,11 @@ pub fn eval_modules_chirho(
         provenance_chirho: Default::default(),
     };
 
-    let (value_chirho, _machine_chirho) = stg_lower_chirho::lower_and_run_chirho(
+    stg_lower_chirho::lower_and_run_chirho(
         &merged_core_chirho,
         entry_name_chirho,
         merged_newtype_cons_chirho,
-    )?;
-    Ok(value_chirho)
+    )
 }
 
 /// Compile multiple Haskell source files with incremental recompilation avoidance.
@@ -580,6 +617,10 @@ pub fn compile_modules_incremental_chirho(
     // TODO: cache serialized CompileResultChirho in the artifact store
     // so the cache-hit branch can skip recompilation entirely.
 
+    let program_modules_chirho: std::collections::HashSet<String> = module_infos_chirho
+        .iter()
+        .map(|(module_name_chirho, _, _, _)| module_name_chirho.clone())
+        .collect();
     for module_name_chirho in &order_chirho {
         let info_chirho = module_infos_chirho
             .iter()
@@ -632,6 +673,7 @@ pub fn compile_modules_incremental_chirho(
             infer_result_chirho,
             std::collections::HashSet::new(),
             &ifaces_chirho,
+            &program_modules_chirho,
         )?;
 
         results_chirho.push((compile_result_chirho, recompiled_chirho));

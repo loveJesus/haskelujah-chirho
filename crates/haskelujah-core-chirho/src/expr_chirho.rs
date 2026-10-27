@@ -8,7 +8,7 @@
 //! is restricted to flat case expressions, and all syntactic sugar has
 //! been removed by the desugaring pass.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -230,6 +230,23 @@ pub struct CoreProvenanceChirho {
     /// References no program binding owns that name a builtin or runtime function. A free
     /// reference outside this set is a missing binding, and fails closed.
     pub builtin_references_chirho: BTreeSet<CoreIdChirho>,
+    /// References to a user module's exported value, each with the identity its import gives
+    /// it (row 629). The multi-module link reads these; nothing generates a body for them.
+    pub imported_references_chirho: BTreeMap<CoreIdChirho, ImportedReferenceChirho>,
+}
+
+/// A reference to a user module's exported value, as the program's imports supply it (row 629):
+/// its exported name, and every user module whose import supplies that name in the reference's
+/// scope. A qualified reference has the modules behind its qualifier; an unqualified one, those
+/// imported unqualified. This is linking data, not the value's origin: a supplying module may
+/// re-export it, and only row 642's interface origins say where it is defined.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ImportedReferenceChirho {
+    /// The exported name, unqualified.
+    pub name_chirho: String,
+    /// The supplying user modules, sorted, without repeats, never empty.
+    pub suppliers_chirho: Vec<String>,
 }
 
 impl CoreProvenanceChirho {
@@ -248,6 +265,13 @@ impl CoreProvenanceChirho {
                 .iter()
                 .map(shift_chirho)
                 .collect(),
+            imported_references_chirho: self
+                .imported_references_chirho
+                .iter()
+                .map(|(id_chirho, reference_chirho)| {
+                    (shift_chirho(id_chirho), reference_chirho.clone())
+                })
+                .collect(),
         }
     }
 
@@ -258,6 +282,12 @@ impl CoreProvenanceChirho {
             .extend(other_chirho.compiler_bindings_chirho.iter().copied());
         self.builtin_references_chirho
             .extend(other_chirho.builtin_references_chirho.iter().copied());
+        self.imported_references_chirho.extend(
+            other_chirho
+                .imported_references_chirho
+                .iter()
+                .map(|(id_chirho, reference_chirho)| (*id_chirho, reference_chirho.clone())),
+        );
     }
 
     /// Follow a renaming of ids, as linking and deduplication rename references.
@@ -274,6 +304,10 @@ impl CoreProvenanceChirho {
             .builtin_references_chirho
             .iter()
             .map(|id_chirho| follow_chirho(*id_chirho))
+            .collect();
+        self.imported_references_chirho = std::mem::take(&mut self.imported_references_chirho)
+            .into_iter()
+            .map(|(id_chirho, reference_chirho)| (follow_chirho(id_chirho), reference_chirho))
             .collect();
     }
 }

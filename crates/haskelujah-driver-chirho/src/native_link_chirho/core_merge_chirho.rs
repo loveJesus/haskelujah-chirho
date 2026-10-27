@@ -4,6 +4,7 @@
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
 use super::CompileResultChirho;
+use super::import_links_chirho::ImportLinkerChirho;
 use haskelujah_core_chirho::CoreModuleChirho;
 
 pub(crate) fn merge_compile_results_core_chirho(
@@ -490,6 +491,8 @@ pub(crate) fn merge_compile_results_core_chirho(
     // supplies the entry (row 628).
     // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
     let mut merged_provenance_chirho = haskelujah_core_chirho::CoreProvenanceChirho::default();
+    // Imported user references link through the decision both merges share (row 629).
+    let mut import_linker_chirho = ImportLinkerChirho::default();
 
     for result_chirho in results_chirho {
         let moved_provenance_chirho = result_chirho
@@ -507,6 +510,11 @@ pub(crate) fn merge_compile_results_core_chirho(
                 offset_expr_chirho(&mut binding_chirho.rhs_chirho, id_offset_chirho);
             }
         }
+        import_linker_chirho.add_module_chirho(
+            &result_chirho.module_chirho.name_chirho.full_name_chirho(),
+            &bindings_chirho,
+            &moved_provenance_chirho,
+        );
         for (id_chirho, name_chirho) in &result_chirho.core_chirho.names_chirho {
             merged_names_chirho.insert(
                 offset_id_chirho(*id_chirho, id_offset_chirho),
@@ -549,9 +557,12 @@ pub(crate) fn merge_compile_results_core_chirho(
         collect_binder_ids_chirho(&binding_chirho.rhs_chirho, &mut all_binder_ids_chirho);
     }
 
-    let mut remap_chirho: HashMap<CoreIdChirho, CoreIdChirho> = HashMap::new();
+    let mut remap_chirho: HashMap<CoreIdChirho, CoreIdChirho> =
+        import_linker_chirho.link_chirho()?;
     for (id_chirho, name_chirho) in &merged_names_chirho {
-        if all_binder_ids_chirho.contains(id_chirho) {
+        if all_binder_ids_chirho.contains(id_chirho)
+            || import_linker_chirho.is_imported_reference_chirho(id_chirho)
+        {
             continue;
         }
         let definitions_chirho = if merged_provenance_chirho
@@ -575,13 +586,15 @@ pub(crate) fn merge_compile_results_core_chirho(
         }
     }
 
+    // Deduplication keys name each source binding by its module (row 629).
+    let identity_names_chirho = import_linker_chirho.identity_names_chirho(&merged_names_chirho);
     let mut canonical_binding_to_id_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
     let mut deduped_bindings_chirho = Vec::with_capacity(merged_bindings_chirho.len());
     let mut removed_binding_ids_chirho = HashSet::new();
     let mut duplicate_binding_remap_chirho: HashMap<CoreIdChirho, CoreIdChirho> = HashMap::new();
     for binding_chirho in merged_bindings_chirho {
         let canonical_key_chirho =
-            canonical_binding_key_chirho(&binding_chirho, &merged_names_chirho);
+            canonical_binding_key_chirho(&binding_chirho, &identity_names_chirho);
         if let Some(&kept_id_chirho) = canonical_binding_to_id_chirho.get(&canonical_key_chirho) {
             duplicate_binding_remap_chirho
                 .insert(binding_chirho.binder_chirho.id_chirho, kept_id_chirho);

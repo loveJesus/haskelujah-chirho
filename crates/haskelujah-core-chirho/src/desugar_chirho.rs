@@ -19,12 +19,13 @@ mod provenance_chirho;
 #[cfg(test)]
 mod provenance_tests_chirho;
 mod qualified_references_chirho;
+pub use qualified_references_chirho::ImportSuppliersChirho;
 mod rec_desugar_chirho;
 mod row_match_chirho;
 
 use match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::{
     ConDeclChirho, DeclChirho, PatSynDirChirho, StrictnessChirho,
@@ -42,7 +43,7 @@ use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
+    CoreLitChirho, CoreModuleChirho, ImportedReferenceChirho, InlineAnnotationChirho,
 };
 use crate::simplify_chirho::free_vars_chirho;
 
@@ -105,6 +106,12 @@ pub struct DesugarCtxChirho {
     /// the same CoreId across multiple references, so the dict pass can
     /// create a single binding that all references share.
     free_var_cache_chirho: HashMap<String, CoreIdChirho>,
+    /// Which user modules supply each imported value name (row 629).
+    import_suppliers_chirho: ImportSuppliersChirho,
+    /// The id of each imported user reference, by its identity (row 629).
+    imported_reference_ids_chirho: HashMap<ImportedReferenceChirho, CoreIdChirho>,
+    /// Each imported user reference's identity, for the output's provenance (row 629).
+    imported_references_chirho: BTreeMap<CoreIdChirho, ImportedReferenceChirho>,
     /// Active LANGUAGE extensions (e.g. "OverloadedStrings").
     extensions_chirho: Vec<String>,
     /// Name of the module currently being desugared.
@@ -147,6 +154,9 @@ impl DesugarCtxChirho {
             names_chirho: HashMap::new(),
             scope_chirho: vec![HashMap::new()],
             free_var_cache_chirho: HashMap::new(),
+            import_suppliers_chirho: ImportSuppliersChirho::default(),
+            imported_reference_ids_chirho: HashMap::new(),
+            imported_references_chirho: BTreeMap::new(),
             extensions_chirho: Vec::new(),
             current_module_name_chirho: None,
             con_strictness_chirho: HashMap::new(),
@@ -1776,7 +1786,10 @@ impl DesugarCtxChirho {
                         }
                     })
                     .collect(),
-                provenance_chirho: Default::default(),
+                provenance_chirho: crate::expr_chirho::CoreProvenanceChirho {
+                    imported_references_chirho: self.imported_references_chirho.clone(),
+                    ..Default::default()
+                },
             },
             names_chirho: self.names_chirho.clone(),
             method_occurrences_chirho: self.method_occurrences_chirho.clone(),
@@ -4003,6 +4016,10 @@ pub struct DesugarInputsChirho {
     /// positional constructor fills every argument with a missing-field thunk.
     /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
     pub constructor_arities_chirho: HashMap<String, usize>,
+    /// Which user modules supply each imported value name, so a reference to one takes that
+    /// import's identity (row 629).
+    /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    pub import_suppliers_chirho: ImportSuppliersChirho,
 }
 
 /// Like [`desugar_module_with_method_occurrences_chirho`] with the full set of
@@ -4016,6 +4033,7 @@ pub fn desugar_module_with_inputs_chirho(
     ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);
     ctx_chirho.set_constrained_names_chirho(inputs_chirho.constrained_names_chirho);
     ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
+    ctx_chirho.import_suppliers_chirho = inputs_chirho.import_suppliers_chirho;
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 

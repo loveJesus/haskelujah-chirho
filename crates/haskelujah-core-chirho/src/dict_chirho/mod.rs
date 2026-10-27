@@ -115,6 +115,11 @@ pub struct DictPassCtxChirho {
     /// compiler's `$`-names for the program's declarations, such as its `$prim_` instance
     /// rows, stay reachable.
     module_source_binder_ids_chirho: HashSet<CoreIdChirho>,
+    /// References to a user module's exports (row 629). They name that module's binding, so no
+    /// generated body ever takes one of their ids, whatever its spelling: an imported `show`
+    /// is the user's, not the Prelude's.
+    /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    imported_reference_ids_chirho: HashSet<CoreIdChirho>,
     /// Method name -> (class_name, selector CoreId).
     method_selectors_chirho: HashMap<String, (String, CoreIdChirho)>,
     /// (class_name, type_key) -> CoreId of instance dictionary binding.
@@ -219,6 +224,7 @@ impl DictPassCtxChirho {
             module_bound_ids_chirho: HashSet::new(),
             module_local_binder_ids_chirho: HashSet::new(),
             module_source_binder_ids_chirho: HashSet::new(),
+            imported_reference_ids_chirho: HashSet::new(),
             method_selectors_chirho: HashMap::new(),
             instance_dicts_chirho: HashMap::new(),
             con_types_chirho,
@@ -273,6 +279,7 @@ impl DictPassCtxChirho {
                     && !self.method_occurrence_canon_chirho.contains_key(id_chirho)
                     && !self.module_local_binder_ids_chirho.contains(id_chirho)
                     && !self.module_source_binder_ids_chirho.contains(id_chirho)
+                    && !self.imported_reference_ids_chirho.contains(id_chirho)
             })
             .map(|(id_chirho, _)| *id_chirho)
             .min();
@@ -282,6 +289,13 @@ impl DictPassCtxChirho {
     /// Record top-level source bindings, the ids they use without binding, and the ids
     /// they bind, before generated dictionaries are built.
     fn seed_body_backed_bindings_chirho(&mut self, module_chirho: &CoreModuleChirho) {
+        self.imported_reference_ids_chirho.extend(
+            module_chirho
+                .provenance_chirho
+                .imported_references_chirho
+                .keys()
+                .copied(),
+        );
         for binding_chirho in &module_chirho.bindings_chirho {
             self.body_backed_names_chirho
                 .entry(binding_chirho.binder_chirho.name_chirho.clone())
@@ -335,6 +349,7 @@ impl DictPassCtxChirho {
                     .get(id_chirho)
                     .is_some_and(|existing_chirho| existing_chirho == name_chirho)
                     && !self.method_occurrence_canon_chirho.contains_key(id_chirho)
+                    && !self.imported_reference_ids_chirho.contains(id_chirho)
             })
             .min()
             .copied()

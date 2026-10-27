@@ -28,7 +28,7 @@ pub mod simplify_chirho;
 mod transform_chirho;
 
 pub use desugar_chirho::{
-    DesugarInputsChirho, DesugarOutputChirho, desugar_module_chirho,
+    DesugarInputsChirho, DesugarOutputChirho, ImportSuppliersChirho, desugar_module_chirho,
     desugar_module_with_inputs_chirho, desugar_module_with_method_occurrences_chirho,
 };
 pub use dict_chirho::{
@@ -39,9 +39,9 @@ pub use dict_chirho::{
 };
 pub use expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho, CoreProvenanceChirho, InlineAnnotationChirho,
-    NATIVE_ENTRY_SYMBOL_CHIRHO, NativeSymbolsChirho, native_binding_symbol_chirho,
-    native_mangle_chirho,
+    CoreLitChirho, CoreModuleChirho, CoreProvenanceChirho, ImportedReferenceChirho,
+    InlineAnnotationChirho, NATIVE_ENTRY_SYMBOL_CHIRHO, NativeSymbolsChirho,
+    native_binding_symbol_chirho, native_mangle_chirho,
 };
 pub use pretty_chirho::pretty_module_chirho;
 pub use simplify_chirho::{

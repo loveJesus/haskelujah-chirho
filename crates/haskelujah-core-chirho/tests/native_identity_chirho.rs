@@ -148,6 +148,7 @@ fn provenance_moves_with_the_merge_chirho() {
         entry_chirho: Some(CoreIdChirho(4)),
         compiler_bindings_chirho: ids_chirho(&[1, 2]),
         builtin_references_chirho: ids_chirho(&[9]),
+        ..Default::default()
     };
     let moved_chirho = dependency_chirho.offset_chirho(100);
     assert_eq!(moved_chirho.entry_chirho, Some(CoreIdChirho(104)));

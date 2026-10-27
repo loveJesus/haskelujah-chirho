@@ -425,6 +425,12 @@ impl DictPassCtxChirho {
                 }
             }
         }
+        // A reference to a user module's export shadows a class method of its name, as the
+        // program's own binding does: an imported `compare` is the user's function (row 629).
+        // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+        self.local_shadow_ids_chirho
+            .borrow_mut()
+            .extend(self.imported_reference_ids_chirho.iter().copied());
         for (id_chirho, name_chirho) in self.names_chirho.clone() {
             let short_name_chirho = name_chirho
                 .rsplit('.')

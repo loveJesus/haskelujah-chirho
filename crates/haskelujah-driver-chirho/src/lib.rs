@@ -12,6 +12,8 @@ mod cabal_build_chirho;
 mod core_merge_chirho;
 #[path = "project_chirho/dependency_packages_chirho.rs"]
 mod dependency_packages_chirho;
+#[path = "project_chirho/import_links_chirho.rs"]
+mod import_links_chirho;
 #[path = "project_chirho/module_discovery_chirho.rs"]
 mod module_discovery_chirho;
 mod module_search_chirho;
@@ -40,6 +42,7 @@ pub use cabal_build_chirho::{
 pub use module_discovery_chirho::discover_modules_chirho;
 pub use multi_module_chirho::{
     compile_modules_chirho, compile_modules_incremental_chirho, eval_modules_chirho,
+    eval_modules_with_machine_chirho,
 };
 pub use package_install_chirho::{InstallResultChirho, install_package_chirho};
 pub use project_dir_chirho::{ProjectCompileResultChirho, compile_project_dir_chirho};
@@ -2716,6 +2719,8 @@ pub fn compile_source_chirho(
         infer_result_chirho,
         std::collections::HashSet::new(),
         &ifaces_chirho,
+        // A single module links no other module of the program.
+        &std::collections::HashSet::new(),
     )
 }
 
@@ -2792,6 +2797,8 @@ pub fn compile_source_with_search_path_chirho(
         infer_result_chirho,
         std::collections::HashSet::new(),
         &all_ifaces_chirho,
+        // Siblings lend their interfaces; their Core is not linked here.
+        &std::collections::HashSet::new(),
     )
 }
 
@@ -2807,6 +2814,7 @@ fn compile_backend_chirho(
     infer_result_chirho: InferResultChirho,
     extra_dict_param_names_chirho: std::collections::HashSet<String>,
     ifaces_chirho: &[ModuleIfaceChirho],
+    program_modules_chirho: &std::collections::HashSet<String>,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
     // per-occurrence ids for the method-occurrence names).
@@ -2860,6 +2868,14 @@ fn compile_backend_chirho(
             ),
             constrained_names_chirho,
             constructor_arities_chirho,
+            // A reference to another module of this program takes that import's identity
+            // (row 629).
+            // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+            import_suppliers_chirho: native_provenance_chirho::import_suppliers_chirho(
+                &module_chirho,
+                ifaces_chirho,
+                program_modules_chirho,
+            ),
         },
     );
     let reference_evidence_chirho = evidence_join_chirho::join_reference_evidence_chirho(
