@@ -1276,6 +1276,7 @@ fn maybe_unpack_list_case_string_scrutinee_chirho(
         .ins()
         .call(unpack_string_ref_chirho, &[scrut_i64_chirho]);
     let unpacked_list_chirho = builder_chirho.inst_results(unpack_call_chirho)[0];
+    root_unpacked_list_chirho(builder_chirho, ctx_chirho, unpacked_list_chirho);
     builder_chirho
         .ins()
         .jump(join_block_chirho, &[unpacked_list_chirho]);
@@ -1284,6 +1285,22 @@ fn maybe_unpack_list_case_string_scrutinee_chirho(
     builder_chirho.switch_to_block(join_block_chirho);
     builder_chirho.seal_block(join_block_chirho);
     builder_chirho.block_params(join_block_chirho)[0]
+}
+
+/// Root a list the runtime just unpacked from a String buffer (row 595). It is fresh, reachable
+/// only through this value, and the lowering that follows may allocate before storing it
+/// anywhere rooted; a collection there freed its cells while a thunk still held the tail. The
+/// root lasts for the process, as Cranelift's other roots do.
+fn root_unpacked_list_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &LowerCtxChirho<'_>,
+    list_chirho: ClValueChirho,
+) {
+    if let Some(gc_push_ref_chirho) = ctx_chirho.gc_root_push_ref_chirho {
+        builder_chirho
+            .ins()
+            .call(gc_push_ref_chirho, &[list_chirho]);
+    }
 }
 
 fn load_constructor_tag_chirho(
@@ -1663,21 +1680,20 @@ fn lower_app_chirho(
                 }
             }
             // unpack :: String -> [Char] — convert C string to cons-list
-            if matches!(name_chirho.as_str(), "unpack" | "unpack#") {
-                if let Some(unpack_ref_chirho) = ctx_chirho.unpack_string_ref_chirho {
-                    if let Some(arg_expr_chirho) = all_args_chirho.last() {
-                        let arg_val_chirho =
-                            lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
-                        let arg_i64_chirho =
-                            ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
-                        let arg_i64_chirho =
-                            force_if_thunk_chirho(builder_chirho, ctx_chirho, arg_i64_chirho);
-                        let call_chirho = builder_chirho
-                            .ins()
-                            .call(unpack_ref_chirho, &[arg_i64_chirho]);
-                        return builder_chirho.inst_results(call_chirho)[0];
-                    }
-                }
+            if matches!(name_chirho.as_str(), "unpack" | "unpack#")
+                && let Some(unpack_ref_chirho) = ctx_chirho.unpack_string_ref_chirho
+                && let Some(arg_expr_chirho) = all_args_chirho.last()
+            {
+                let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho);
+                let arg_i64_chirho = ensure_i64_chirho(builder_chirho, arg_val_chirho, false);
+                let arg_i64_chirho =
+                    force_if_thunk_chirho(builder_chirho, ctx_chirho, arg_i64_chirho);
+                let call_chirho = builder_chirho
+                    .ins()
+                    .call(unpack_ref_chirho, &[arg_i64_chirho]);
+                let list_chirho = builder_chirho.inst_results(call_chirho)[0];
+                root_unpacked_list_chirho(builder_chirho, ctx_chirho, list_chirho);
+                return list_chirho;
             }
             // ord :: Char -> Int, chr :: Int -> Char — identity at runtime
             if matches!(name_chirho.as_str(), "ord" | "chr" | "ord#" | "chr#") {
@@ -2845,7 +2861,9 @@ pub fn lower_primop_chirho(
             let val_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             if let Some(unpack_ref_chirho) = ctx_chirho.unpack_string_ref_chirho {
                 let call_chirho = builder_chirho.ins().call(unpack_ref_chirho, &[val_chirho]);
-                builder_chirho.inst_results(call_chirho)[0]
+                let list_chirho = builder_chirho.inst_results(call_chirho)[0];
+                root_unpacked_list_chirho(builder_chirho, ctx_chirho, list_chirho);
+                list_chirho
             } else {
                 builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
             }

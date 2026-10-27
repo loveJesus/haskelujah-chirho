@@ -148,6 +148,28 @@ flowchart TD
     native-only: `length` over a list this long overflows the interpreter in a 2 MiB test
     thread, a separate interpreter limit.
 
+## A list Cranelift unpacks stays rooted (row 595)
+
+- **The window:** a list-pattern case on a literal String called `haskelujah_unpack_string_chirho`
+  and kept the fresh list only in registers. The next allocation's collection freed its cells
+  while the thunk the alternative built still held the tail.
+  - `length (words (concat (replicate N "ab ")))` failed from N = 1,181 on Cranelift alone, by
+    a message that varied with the run: `<<loop>>`, "no matching alternative", "not valid
+    UTF-8", or a hang.
+  - A quarantine RTS (scratch: freed blocks poisoned, never reused) named the freed object: the
+    unpacked 'b' cell of "ab ".
+- **The fix:** `root_unpacked_list_chirho` pushes the list at all three Cranelift unpack sites,
+  the case, the `unpack` application and the `unpack#` primop. It uses the process-lifetime
+  root Cranelift's other pushes use. LLVM already roots produced heap values this way.
+- **Controls:**
+  - `a_list_unpacked_for_a_case_stays_rooted_natively_chirho`: the four walks at their failing
+    sizes on both natives;
+  - `small_unpacked_list_walks_answer_as_ghc_everywhere_chirho`: the same walks at 50, on
+    every engine;
+  - `text_unpack_lists_answer_as_ghc_on_cranelift_chirho`: `Data.Text`'s `unpack`, applied
+    directly and taken first-class, on Cranelift. It reaches the other two sites once a step;
+    no collection was measured inside their window.
+
 ## Native Strings carry code points (row 560, minimal brick)
 
 gpt_chirho #29139. A native String is a NUL-terminated UTF-8 buffer or a list of code points.

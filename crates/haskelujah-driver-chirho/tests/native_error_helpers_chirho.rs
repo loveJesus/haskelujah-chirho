@@ -414,6 +414,91 @@ fn a_long_literal_unpacks_whole_natively_chirho() {
     assert_prints_natively_chirho(&long_literal_source_chirho(), "2000\nfghij\n");
 }
 
+// ── Row 595: a list unpacked for a case stays rooted on Cranelift ────────
+
+/// Walks over a long list built from a literal. Each comes with the size at which it failed
+/// on Cranelift, GHC 9.14.1's answer there, and its answer at 50.
+/// - Cranelift's case on a literal unpacked it into a fresh list nothing rooted. The next
+///   allocation's collection could then free its cells while a thunk still held the tail.
+/// - From 1,181 copies, `words` failed, by a message that varied with the run (`<<loop>>`, "no
+///   matching alternative", "not valid UTF-8"), or hung.
+/// - The interpreter's run budget stops the large walks, so it takes the small ones.
+const UNPACKED_LIST_WALKS_CHIRHO: [(&str, usize, &str, &str); 4] = [
+    (
+        "print (length (words (concat (replicate SIZE \"ab \"))))",
+        2000,
+        "2000\n",
+        "50\n",
+    ),
+    (
+        "print (length (concat (replicate SIZE \"ab \")))",
+        10000,
+        "30000\n",
+        "150\n",
+    ),
+    (
+        "print (length (dropWhile (== 'x') (concat (replicate SIZE \"ab \"))))",
+        3000,
+        "9000\n",
+        "150\n",
+    ),
+    (
+        "print (length (lines (concat (replicate SIZE \"ab\\n\"))))",
+        10000,
+        "10000\n",
+        "50\n",
+    ),
+];
+
+fn unpacked_list_walk_chirho(walk_chirho: &str, size_chirho: usize) -> String {
+    with_main_chirho(
+        "module Main where\n",
+        &walk_chirho.replace("SIZE", &size_chirho.to_string()),
+    )
+}
+
+#[test]
+fn a_list_unpacked_for_a_case_stays_rooted_natively_chirho() {
+    for (walk_chirho, size_chirho, expected_chirho, _) in UNPACKED_LIST_WALKS_CHIRHO {
+        assert_prints_natively_chirho(
+            &unpacked_list_walk_chirho(walk_chirho, size_chirho),
+            expected_chirho,
+        );
+    }
+}
+
+#[test]
+fn small_unpacked_list_walks_answer_as_ghc_everywhere_chirho() {
+    for (walk_chirho, _, _, small_expected_chirho) in UNPACKED_LIST_WALKS_CHIRHO {
+        assert_prints_everywhere_chirho(
+            &unpacked_list_walk_chirho(walk_chirho, 50),
+            small_expected_chirho,
+        );
+    }
+}
+
+/// `Data.Text`'s `unpack`, applied directly and taken first-class, reaches Cranelift's other two
+/// unpack sites: the `unpack` application and the `unpack#` primop. Each runs once a step.
+/// - No collection was measured inside their window, but it is the same window, so they are
+///   rooted too.
+/// - The interpreter and LLVM do not run `Data.Text` here, so this control is Cranelift's.
+/// - GHC 9.14.1 prints `9000` for both.
+const TEXT_UNPACK_SOURCES_CHIRHO: [&str; 2] = [
+    "module Main where\nimport qualified Data.Text as T\nmain :: IO ()\nmain = print (length (concatMap (\\_ -> case T.unpack (T.pack \"ab \") of { (c : rest) -> c : rest; [] -> [] }) [1 .. 3000 :: Int]))\n",
+    "module Main where\nimport qualified Data.Text as T\nmain :: IO ()\nmain = do { let { unpackers = [T.unpack] }; print (length (concatMap (\\_ -> case head unpackers (T.pack \"ab \") of { (c : rest) -> c : rest; [] -> [] }) [1 .. 3000 :: Int])) }\n",
+];
+
+#[test]
+fn text_unpack_lists_answer_as_ghc_on_cranelift_chirho() {
+    for source_chirho in TEXT_UNPACK_SOURCES_CHIRHO {
+        assert_eq!(
+            native_round_trip_chirho(source_chirho, CRANELIFT_CHIRHO, "")
+                .unwrap_or_else(|error_chirho| panic!("{error_chirho}")),
+            (0, "9000\n".to_string())
+        );
+    }
+}
+
 // ── Row 560 (minimal): native Strings carry code points; NUL fails named ──
 
 /// Code points above ASCII through unpack, `reverse`, `toEnum`, `succ` and comparison, printed
