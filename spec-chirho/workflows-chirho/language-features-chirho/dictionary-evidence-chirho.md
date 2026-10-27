@@ -639,6 +639,35 @@ flowchart TD
   - Eq and Ord still default to Int without Num;
   - a user `data Ordering` under `Prelude hiding` still fails Show (T15).
 
+## RealFloat Double predicates (2026-10-26)
+
+Row 581 gives `isNaN`, `isInfinite`, `isDenormalized`, `isNegativeZero`, and `isIEEE`
+body-backed Double rows and guarded Prelude aliases. The definitions are generated Core, not five
+backend-specific primitives: all three engines therefore evaluate the same comparisons, cases, and
+division.
+
+```mermaid
+flowchart LR
+    use_rf_chirho["RealFloat predicate at Double"] --> alias_rf_chirho["guarded Prelude alias"]
+    alias_rf_chirho --> row_rf_chirho["$prim_RealFloat_method_Double"]
+    row_rf_chirho --> core_rf_chirho["ordered Double comparisons, cases, and division"]
+    core_rf_chirho --> interp_rf_chirho["STG interpreter"]
+    core_rf_chirho --> llvm_rf_chirho["LLVM"]
+    core_rf_chirho --> clif_rf_chirho["Cranelift"]
+    own_rf_chirho["program top-level name"] -->|"body_backed_names_chirho wins"| use_rf_chirho
+```
+
+- `isNaN x` is `not (x == x)`; `isInfinite` compares past the largest finite magnitude.
+- `isDenormalized` excludes both signed zeros and accepts only magnitudes below the smallest
+  positive normal Double. `isNegativeZero` first proves equality to zero, then tests the sign of
+  `1 / x`. `isIEEE` is true for the Double representation.
+- GHC 9.14.1 controls cover finite values, both infinities, NaN, both signed zeros, the smallest
+  subnormal, the smallest normal value, a top-level value, and first-class use through `map`.
+- The guarded alias yields to any body-backed top-level definition of the same name. A polymorphic
+  `RealFloat a =>` wrapper is exact in the interpreter at Double; the native backends still stop on
+  their separate `pi#` and `recip#` dictionary obligations, so this row does not claim that broader
+  dictionary-passing route.
+
 ## Current boundary
 
 - An infix or section use of a class METHOD mints its own occurrence id and carries its

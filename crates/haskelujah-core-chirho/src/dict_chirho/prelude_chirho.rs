@@ -15,6 +15,7 @@ mod non_empty_chirho;
 pub(super) mod ordering_extrema_chirho;
 pub(super) mod ordering_tests_chirho;
 mod print_via_show_chirho;
+mod real_float_predicates_chirho;
 mod report_folds_chirho;
 pub(crate) use non_empty_chirho::TO_LIST_ROUTE_CHIRHO;
 pub(crate) use print_via_show_chirho::PRINT_VIA_SHOW_CHIRHO;
@@ -3535,6 +3536,7 @@ impl DictPassCtxChirho {
         // ── Floating prim bindings ──
         self.generate_floating_prelude_chirho();
         self.generate_floating_binary_prelude_chirho();
+        self.generate_real_float_predicates_chirho();
 
         // ── Functor / Applicative / Monad prim bindings ──
         self.generate_functor_monad_prelude_chirho();

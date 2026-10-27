@@ -9,6 +9,8 @@ mod element_failures_chirho;
 mod gcd_lcm_chirho;
 #[path = "evaluation_values_chirho/lines_chirho.rs"]
 mod lines_chirho;
+#[path = "evaluation_values_chirho/real_float_predicates_chirho.rs"]
+mod real_float_predicates_chirho;
 
 #[test]
 fn numeric_application_returns_its_value_chirho() {
