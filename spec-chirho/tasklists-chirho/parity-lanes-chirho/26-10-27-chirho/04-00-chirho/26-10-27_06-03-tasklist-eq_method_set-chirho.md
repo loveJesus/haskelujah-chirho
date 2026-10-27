@@ -49,7 +49,23 @@ Row 606.
   - **First suite run:** two generic-head tests failed. G5 required a source row for every slot, so an instance writing only `==` stopped being generic. G5 now counts the Eq counterpart.
   - Row 603's structured `/=` pin moved, as its label anticipated.
 - [x] **Rerun row 608's generator and drift checks** (`generator608-chirho.log`): the outputs are byte-identical, 726 agree and 679 disagree, so the delta is none. The 18 qualified-alias, builtin-alias and reference tests pass.
-- [ ] Commit; replay onto the newest main; broad moved-shape scan.
-- [ ] Reach: the `/=` method entry; the default generator; the desugar route.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] Commit; replay onto the newest main; broad moved-shape scan.
+  - The source `9105f1c0` sits on main `90a8b3fc`. Main has since moved to `0f21c8f1`, with the progress DB only.
+  - **Scan** (`scan606-chirho.log`): 3582/3582 passed in 592 s, with no mover.
+    - It covered every lib, the parser's included, and the 20 driver suites, leaving out `ghc_bulk`.
+    - It skipped the same 18 tests as before. The count is row 614's 3579, plus this row's 3 controls.
+- [x] **Reach** (`tools-chirho/reach_606_chirho.zsh`, log `reach606-r1-chirho.log`):
+  - **M1, the `/=` method entry removed:** the Eq controls fail with `missing binding /=`.
+  - **M2, the defaults off** (no Eq counterpart): the Eq controls, row 603's holds and both generic-head programs fail, with `missing method Eq./=` or a missing `==`. The neither-body pin still passes.
+  - **M3, the `/=` section route off:** `(/= ModChirho 0)` keeps `ModChirho 3` silently.
+  - Every restore was byte-identical, and the restored tree passes 15/15.
+- [x] Judge main against the contract copy; warm gate; record.
+  - **Main `90a8b3fc`** is GREEN against the contract copy first (73 movers, 9 holds). Its probes give main's measured answers (`baseline-90a8b3fc-chirho.log`).
+  - **r1, GREEN on `9105f1c0` (base `90a8b3fc`) in 312.46 s:**
+    - 1701/1701 focused tests, with typing-integration filtered to row 608's drift tests and the reference and ownership controls;
+    - no Clippy diagnostic on the 350 changed lines in 12 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
+  - **Timing:** still past the 5-minute aim, because the all-engine dictionary-evidence suite dominates the tests step.
+  - **The tip's probe reports** (`tip-9105f1c0-chirho` in each set): 14 programs are GHC on all three engines (42 cells), and all 17 Cranelift compiles carry the marker.
 - [ ] Land on main and close progress row 606 (gpt).
