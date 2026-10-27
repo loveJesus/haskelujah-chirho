@@ -73,4 +73,6 @@ Row 609.
     - the contract judge GREEN;
     - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
   - **The tip's probe reports** (`tip-74a7e5ce-chirho` in each set): 16 programs are GHC on all three engines (48/48 cells), and all 20 Cranelift compiles carry the marker.
-- [ ] Land on main and close progress row 609 (gpt).
+- [x] Land on main and close progress row 609 (gpt).
+  - Replayed as `1a113bd2` plus gate record `63bfc050`; both patch IDs match tested commits `74a7e5ce` and `4f480ce8` exactly.
+  - Independent landing checks passed: qualified-section parser units 4/4, operator-section controls 5/5, the iterate hold, rustfmt, diff-check and gitleaks.
