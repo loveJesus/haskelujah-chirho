@@ -47,6 +47,59 @@ fn lazy_field_captures_are_not_limited_by_call_trampoline_arity_chirho() {
     }
 }
 
+/// Row 588: a nullary top-level binding or builtin in a lazy position stays unevaluated
+/// natively. Both backends called such a reference for its value, so `undefined`, a user
+/// error CAF and a self-recursive CAF ran before anything demanded them: named failures, and
+/// for the recursive CAF a stack overflow (SIGBUS). The case argument, `head`, the local
+/// thunk and the direct `error` argument held. GHC 9.14.1's output is the expected text.
+const CAF_LAZINESS_SOURCE_CHIRHO: &str = r#"module Main where
+appChirho :: [a] -> [a] -> [a]
+appChirho [] ys = ys
+appChirho (x:xs) ys = x : appChirho xs ys
+badChirho :: String
+badChirho = error "boom"
+loopChirho :: Int
+loopChirho = loopChirho
+main :: IO ()
+main = do
+  putStrLn (take 2 (appChirho "ab" undefined))
+  putStrLn (take 2 (appChirho "ab" (case (undefined :: String) of { [] -> ""; _ -> "x" })))
+  putStrLn (case "ab" : undefined of { (w : _) -> w; [] -> "" })
+  let xs = "ab" : undefined
+  putStrLn (case xs of { (w : _) -> w; [] -> "" })
+  putStrLn (head ("ab" : undefined))
+  putStrLn (take 2 (appChirho "ab" badChirho))
+  let localBadChirho = error "boom" :: String
+  putStrLn (take 2 (appChirho "ab" localBadChirho))
+  putStrLn (take 2 (appChirho "ab" (error "boom")))
+  print (length [undefined, undefined :: Int])
+  print (length [loopChirho, 1])
+"#;
+
+#[test]
+fn nullary_globals_stay_lazy_in_lazy_positions_everywhere_chirho() {
+    let expected_chirho = "ab\nab\nab\nab\nab\nab\nab\nab\n2\n2\n";
+    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+        CAF_LAZINESS_SOURCE_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "CafLazinessChirho.hs",
+        None,
+    )
+    .expect("the interpreter runs it");
+    assert_eq!(machine_chirho.io_output_chirho, expected_chirho);
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        assert_eq!(
+            native_round_trip_chirho(CAF_LAZINESS_SOURCE_CHIRHO, backend_chirho, "")
+                .unwrap_or_else(|error_chirho| panic!("{backend_chirho:?}: {error_chirho}")),
+            (0, expected_chirho.to_string()),
+            "{backend_chirho:?}"
+        );
+    }
+}
+
 #[test]
 fn demanding_the_other_field_reports_its_failure_chirho() {
     let source_chirho = format!(

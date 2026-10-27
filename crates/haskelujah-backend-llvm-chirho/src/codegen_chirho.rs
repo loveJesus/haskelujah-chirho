@@ -283,9 +283,15 @@ impl LlvmCodegenChirho {
             fv_vals_chirho.push(arg_val_chirho);
         }
 
+        Some(self.emit_thunk_chirho(args_chirho.len(), &fv_vals_chirho))
+    }
+
+    /// Allocate a thunk over `fv_vals_chirho` (the function address, then its captured
+    /// arguments) that the trampoline for `call_arity_chirho` arguments enters, rooted for GC.
+    fn emit_thunk_chirho(&mut self, call_arity_chirho: usize, fv_vals_chirho: &[String]) -> String {
         // Get trampoline address
         let trampoline_name_chirho =
-            format!("haskelujah_thunk_trampoline_{}_chirho", args_chirho.len());
+            format!("haskelujah_thunk_trampoline_{call_arity_chirho}_chirho");
         let tramp_addr_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(
             self.output_chirho,
@@ -328,7 +334,7 @@ impl LlvmCodegenChirho {
         // Push as GC root
         self.emit_gc_root_push_i64_chirho(&thunk_val_chirho);
 
-        Some(thunk_val_chirho)
+        thunk_val_chirho
     }
 
     fn emit_gc_root_push_i64_chirho(&mut self, value_chirho: &str) {
@@ -4992,8 +4998,10 @@ mod tests_chirho {
         assert!(ir_chirho.contains("ret i64 ptrtoint (ptr @.str.0 to i64)"));
     }
 
+    /// `undefined` resolves to the runtime abort, not an unbound register. As a lazy argument
+    /// it is suspended over the abort's address and never called where it stands (row 588).
     #[test]
-    fn compile_undefined_argument_resolves_to_runtime_abort_chirho() {
+    fn compile_undefined_argument_suspends_its_runtime_abort_chirho() {
         let ignore_binder_chirho = dummy_binder_chirho("ignore", 1);
         let arg_binder_chirho = dummy_binder_chirho("arg", 2);
         let undefined_id_chirho = CoreIdChirho(5);
@@ -5030,7 +5038,8 @@ mod tests_chirho {
 
         let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
         assert!(ir_chirho.contains("define i64 @haskelujah_undefined()"));
-        assert!(ir_chirho.contains("call i64 @haskelujah_undefined()"));
+        assert!(ir_chirho.contains("ptrtoint ptr @haskelujah_undefined to i64"));
+        assert!(!ir_chirho.contains("call i64 @haskelujah_undefined()"));
         assert!(!ir_chirho.contains("@haskelujah_ignore(i64 %v5)"));
     }
 

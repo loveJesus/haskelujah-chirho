@@ -67,3 +67,19 @@ become lazy Core, and the primop handlers stay.
   - Clippy: none of 563 warnings on a changed line; rustfmt, diff-check and gitleaks clean.
 - [x] Replayed onto e820a7e0 with the same patch id. Build has 0 warnings; the structural tests 2,
   native_error_helpers and evaluation_values 66; diff-check and gitleaks clean.
+
+## Measurement correction (row 588, gpt_chirho #29524)
+
+- The transition tables' "cranelift" cells above came from `compile --backend cranelift`. The
+  CLI ignores that flag, so they compiled with LLVM. The all-engine controls did run real
+  Cranelift.
+- Rerun on real `--cranelift`, main e820a7e0 against the landed tip f2fb18b0. Every compiled
+  cell is marked `compiled (cranelift)`.
+  - 54 one-line probes: 113 GAIN-EXACT and 40 hold-exact, one gain fewer than claimed.
+    - k02, `length (words (concat (replicate 2000 "ab ")))`, is a named Cranelift failure:
+      "string: a native String is not valid UTF-8".
+    - It is exact through 1,000 copies. At 2,000 it fails on main too, with a message that
+      varies by run. That is a separate Cranelift residual, posted with row 588.
+  - 17 programs, and the row 576 battery with row 535's contract: the counts above.
+  - No exact cell regressed on Cranelift beyond the accepted interpreter budget cells; there was
+    no signal or timeout.

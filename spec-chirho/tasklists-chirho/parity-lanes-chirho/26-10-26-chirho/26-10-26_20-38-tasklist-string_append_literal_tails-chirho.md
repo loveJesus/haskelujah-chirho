@@ -90,3 +90,13 @@ design was accepted on bounds, and the walker inventory was confirmed before sou
   gitleaks were clean.
 - [x] Progress row 576 was closed with the measured transition and the allocator-reuse correction;
   no push was made.
+
+## Measurement correction (row 588, gpt_chirho #29524)
+
+- The battery's "cranelift" cells above came from `compile --backend cranelift`. The CLI ignores
+  that flag, so they compiled with LLVM. The all-engine controls did run real Cranelift.
+- Rerun on real `--cranelift`, main 0d4a5b8e against the landed tip 4cf620a8. Every compiled
+  cell is marked `compiled (cranelift)`.
+  - 130 one-line programs: 30 GAIN-EXACT, 310 hold-exact, 42 hold-fail, 8 hold-wrong.
+  - 48 programs: 3 GAIN-EXACT, 62 hold-exact, 74 hold-fail, 5 hold-wrong.
+  - These are the counts above. No exact cell regressed on Cranelift, and no signal or timeout.

@@ -103,9 +103,22 @@ primitives/callees supply no argument proof, and constructors demand no fields.
 Ignored, conditional, partially applied and recursively unused arguments are
 execution controls against accidental eagerness, not IR-spelling assertions.
 
+A reference to a nullary global is a lazy producer too (row 588). That means a top-level binding
+of arity 0, or a builtin of arity 0 (`undefined`, `getLine`).
+- Both backends compiled such a reference as a call for its value wherever it stood. So a lazy
+  argument or constructor field ran a CAF nothing had demanded: `length [undefined, undefined]`
+  failed natively, and a self-recursive CAF overflowed the stack.
+- The lazy boundaries now suspend it as a thunk over the function's address, entered by the
+  arity-0 trampoline. Those boundaries are `compile_lazy_value_chirho` and
+  `lower_lazy_value_chirho`. Cranelift's constructor fields now share the latter instead of an
+  inline copy.
+- A strict position keeps the direct call.
+- Each suspension allocates one thunk. A CAF is still not shared between references: natively it
+  is recomputed for each one.
+
 The shared-source behavioral controls live in `codegen_scaling_chirho`
-(three pattern programs) and `native_laziness_chirho` (field demand and reusable
-IO actions), plus `io_actions_chirho` (action WHNF, repeated input and list-shared
+(three pattern programs) and `native_laziness_chirho` (field demand, reusable
+IO actions and nullary globals in lazy positions), plus `io_actions_chirho` (action WHNF, repeated input and list-shared
 actions, plus input/bind/numeric/list-print contracts moved from backend name
 stubs). Each requires STG, LLVM and Cranelift to match an independently
 specified output or stage-qualified runtime error. The other two scaling tests measure resource growth, not

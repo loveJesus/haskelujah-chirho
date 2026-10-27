@@ -514,6 +514,24 @@ fn try_create_thunk_for_app_chirho(
         &mut fv_vals_chirho,
     );
 
+    Some(alloc_thunk_from_fvs_chirho(
+        builder_chirho,
+        ctx_chirho,
+        alloc_thunk_ref_chirho,
+        call_arity_chirho,
+        &fv_vals_chirho,
+    ))
+}
+
+/// Allocate a thunk over `fv_vals_chirho` (the function address, then its captured
+/// arguments) that the trampoline for `call_arity_chirho` arguments enters, rooted for GC.
+pub(super) fn alloc_thunk_from_fvs_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    alloc_thunk_ref_chirho: cranelift_codegen::ir::FuncRef,
+    call_arity_chirho: usize,
+    fv_vals_chirho: &[ClValueChirho],
+) -> ClValueChirho {
     // Get the trampoline address for this arity.
     let trampoline_ref_chirho = ctx_chirho.thunk_trampoline_refs_chirho[call_arity_chirho];
     let trampoline_addr_chirho = builder_chirho
@@ -562,7 +580,7 @@ fn try_create_thunk_for_app_chirho(
             .call(gc_push_ref_chirho, &[thunk_ptr_chirho]);
     }
 
-    Some(thunk_ptr_chirho)
+    thunk_ptr_chirho
 }
 
 // ─── Let lowering ─────────────────────────────────────────────────────────────
@@ -1136,18 +1154,12 @@ fn lower_constructor_app_chirho(
         .store(mem_flags_chirho, tag_val_chirho, alloc_ptr_chirho, 0);
 
     for (field_idx_chirho, arg_chirho) in args_chirho.iter().enumerate() {
-        // Try to create a lazy thunk for function application arguments.
-        // This enables lazy constructor fields for infinite data structures.
-        // With low-bit tagging + primop forcing, thunk pointers are safely
-        // forced at all use sites (case scrutinees and primop args).
-        let field_i64_chirho = if let Some(thunk_val_chirho) =
-            try_create_thunk_for_app_chirho(builder_chirho, ctx_chirho, arg_chirho)
-        {
-            thunk_val_chirho
-        } else {
-            let field_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, arg_chirho);
-            ensure_i64_chirho(builder_chirho, field_val_chirho, false)
-        };
+        // A field is a lazy position: the same boundary as a call argument suspends a known
+        // application or a nullary global (row 588), so infinite data stays lazy. With
+        // low-bit tagging + primop forcing, thunk pointers are safely forced at all use
+        // sites (case scrutinees and primop args).
+        let field_val_chirho = lower_lazy_value_chirho(builder_chirho, ctx_chirho, arg_chirho);
+        let field_i64_chirho = ensure_i64_chirho(builder_chirho, field_val_chirho, false);
         let offset_chirho = ((field_idx_chirho + 1) * 8) as i32;
         builder_chirho.ins().store(
             mem_flags_chirho,

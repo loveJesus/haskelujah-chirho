@@ -61,8 +61,9 @@ const CALL_SITE_PRIMITIVES_CHIRHO: &[&str] = &[
 
 /// A reference no scope resolved. An unbound free id becomes the runtime's
 /// failing thunk for its name, so it fails named only if demanded; `undefined`
-/// fails where it is referenced, as on LLVM. Any other miss, a bound local
-/// that lowering did not bind, keeps the 0 placeholder (outside row 535).
+/// fails where it is referenced in a strict position, as on LLVM, and a lazy
+/// position suspends it first (row 588). Any other miss, a bound local that
+/// lowering did not bind, keeps the 0 placeholder (outside row 535).
 pub(super) fn lower_unresolved_reference_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,

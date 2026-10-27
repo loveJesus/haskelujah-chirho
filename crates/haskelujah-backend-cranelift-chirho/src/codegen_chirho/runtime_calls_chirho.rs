@@ -490,10 +490,16 @@ impl RuntimeCallsChirho {
         builder_chirho.ins().iconst(types::I64, 0)
     }
 
-    /// `undefined`, failing where it is referenced, as on LLVM.
+    /// `undefined` in a strict position, failing where it is referenced, as on LLVM. A lazy
+    /// position suspends it instead (row 588).
     pub(crate) fn undefined_chirho(&self, builder_chirho: &mut FunctionBuilder<'_>) -> Value {
         builder_chirho.ins().call(self.undefined_chirho, &[]);
         builder_chirho.ins().iconst(types::I64, 0)
+    }
+
+    /// The runtime's `undefined`, for a thunk that fails only if demanded.
+    pub(crate) fn undefined_ref_chirho(&self) -> FuncRef {
+        self.undefined_chirho
     }
 
     /// `throw#`: a native executable has no handler to catch it.
