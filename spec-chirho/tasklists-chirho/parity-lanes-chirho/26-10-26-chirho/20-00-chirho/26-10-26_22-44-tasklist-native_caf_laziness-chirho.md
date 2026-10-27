@@ -76,3 +76,8 @@ The interpreter was exact on all of them.
   At N = 2,000 it fails named, on main too, with a message that varies by run (`<<loop>>`,
   "no matching alternative", "not valid UTF-8"). That is consistent with a rooting defect on long
   lists. LLVM is exact.
+
+## Landing
+
+- [x] Replayed on main after row 592 as `6b419b95`; every one of row 588's 11 path blobs equals tested tip `7a8c752a`, every row 592 path is preserved, and the all-engine nullary-global control passes on the combined tree.
+- [x] Close progress row 588 in the following docs-only commit.
