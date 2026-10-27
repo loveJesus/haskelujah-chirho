@@ -792,13 +792,18 @@ pub(super) fn seed_part_08_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // elem :: forall a. a -> [a] -> Bool
+    // elem :: Eq a => a -> [a] -> Bool (row 603: GHC's constraint, so the checker
+    // records the element's Eq evidence)
     let elem_a_chirho = TyVarChirho(3500);
     env_chirho.bind_chirho(
         "elem".to_string(),
         SchemeChirho {
             vars_chirho: vec![elem_a_chirho],
-            preds_chirho: vec![],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Eq".to_string(),
+                ty_chirho: TyChirho::VarChirho(elem_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
                     TyChirho::VarChirho(elem_a_chirho),
@@ -809,13 +814,17 @@ pub(super) fn seed_part_08_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // notElem :: forall a. a -> [a] -> Bool
+    // notElem :: Eq a => a -> [a] -> Bool (row 603)
     let notelem_a_chirho = TyVarChirho(3501);
     env_chirho.bind_chirho(
         "notElem".to_string(),
         SchemeChirho {
             vars_chirho: vec![notelem_a_chirho],
-            preds_chirho: vec![],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Eq".to_string(),
+                ty_chirho: TyChirho::VarChirho(notelem_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
                     TyChirho::VarChirho(notelem_a_chirho),

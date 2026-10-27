@@ -76,14 +76,18 @@ pub(super) fn seed_part_09_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // lookup :: forall a b. a -> [(a,b)] -> Maybe b
+    // lookup :: Eq a => a -> [(a,b)] -> Maybe b (row 603)
     let lu_a_chirho = TyVarChirho(3303);
     let lu_b_chirho = TyVarChirho(3304);
     env_chirho.bind_chirho(
         "lookup".to_string(),
         SchemeChirho {
             vars_chirho: vec![lu_a_chirho, lu_b_chirho],
-            preds_chirho: vec![],
+            preds_chirho: vec![SchemePredChirho {
+                class_name_chirho: "Eq".to_string(),
+                ty_chirho: TyChirho::VarChirho(lu_a_chirho),
+                extra_tys_chirho: vec![],
+            }],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
                     TyChirho::VarChirho(lu_a_chirho),
@@ -354,14 +358,18 @@ pub(super) fn seed_part_09_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // isPrefixOf :: [a] -> [a] -> Bool
+    // isPrefixOf :: Eq a => [a] -> [a] -> Bool (row 603)
     {
         let ipf_a_chirho = TyVarChirho(3405);
         env_chirho.bind_chirho(
             "isPrefixOf".to_string(),
             SchemeChirho {
                 vars_chirho: vec![ipf_a_chirho],
-                preds_chirho: vec![],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Eq".to_string(),
+                    ty_chirho: TyChirho::VarChirho(ipf_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ListChirho(Box::new(TyChirho::VarChirho(ipf_a_chirho))),
                     TyChirho::fun_chirho(
@@ -373,14 +381,18 @@ pub(super) fn seed_part_09_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // isSuffixOf :: [a] -> [a] -> Bool
+    // isSuffixOf :: Eq a => [a] -> [a] -> Bool (row 603)
     {
         let isf_a_chirho = TyVarChirho(3406);
         env_chirho.bind_chirho(
             "isSuffixOf".to_string(),
             SchemeChirho {
                 vars_chirho: vec![isf_a_chirho],
-                preds_chirho: vec![],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Eq".to_string(),
+                    ty_chirho: TyChirho::VarChirho(isf_a_chirho),
+                    extra_tys_chirho: vec![],
+                }],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ListChirho(Box::new(TyChirho::VarChirho(isf_a_chirho))),
                     TyChirho::fun_chirho(

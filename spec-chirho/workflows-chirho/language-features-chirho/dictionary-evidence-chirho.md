@@ -231,6 +231,28 @@ flowchart LR
     one row, while the application separator in `Maybe Int` remains meaningful.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/structured_orders_chirho.rs` and
     `instance_chirho/structured_orders_tests_chirho.rs`.
+- Concrete `Maybe`, list and tuple equality composes only body-backed component rows, and the Eq-polymorphic list functions take a key's row (row 603).
+  - **The defect:** list functions compared elements with Int `==#` at every element type.
+    - Affected: the generated `elem`, `lookup`, `nub`, `group` and `isPrefixOf`; `notElem` and `isSuffixOf` through them; and the list-equality helper `$eqList_T`.
+    - Natively that compared computed Strings, tuples, `Maybe` and lists by address, and Doubles by their bits: `lookup (show 12) [("12",'y')]` gave `Nothing`, and `elem (-0.0) [0.0]` gave `False`.
+    - The interpreter failed on `EqIntChirho`.
+    - Tuple and `Maybe` `==` had no row at all, and failed by name.
+  - **Typing:**
+    - A concrete Eq occurrence keys its type whole, as Show and Ord do (`$prim_Eq_==_(Int,Bool)`, `$prim_Eq_==_Maybe Int`). The reference channel keeps its head keys: no consumer reads Eq references (reach M2 survived).
+    - `elem`, `notElem`, `lookup`, `isPrefixOf` and `isSuffixOf` carry GHC's `Eq a`, as `nub` and `group` already did.
+    - Own keys, skolems and open types are unchanged.
+  - **Rows:** `instance_chirho/structured_equalities_chirho.rs` composes `$prim_Eq_==_K` for `Maybe`, lists and tuples of arity 2-3 from component rows with real bodies. A missing-method stub or a missing component leaves the key unserved.
+  - **Route:**
+    - An evidenced consumer at a key that is not Int-shaped, and that has a body-backed row, becomes its helper applied to that row. The helpers are the compiler-owned `$elemBy`, `$notElemBy`, `$lookupBy`, `$isPrefixOfBy` and `$isSuffixOfBy`, plus the Prelude's `nubBy` and `groupBy`.
+    - The route sits behind row 593's program-owned guard and goes through row 597's compiler-owned lookup.
+    - `$eqList_T` takes a boxed element's row. An element without one keeps `==#`.
+  - **Kept:**
+    - Int, Char and Bool keep their bodies.
+    - `/=` is row 606's. Infix `/=` at String and Double was already exact; structured infix and the `(/= x)` section are unchanged.
+    - A parameterized derived type's `==` still fails by name, because its row is named with its type variable.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/structured_equalities_chirho.rs`: `structured_equality_answers_as_ghc_everywhere_chirho`, `int_shaped_keys_and_infix_not_equal_stay_exact_everywhere_chirho` and `unserved_equalities_still_fail_by_name_everywhere_chirho`.
+    - Structural: `structured_eq_rows_compose_only_from_body_backed_components_chirho` and `routable_consumers_get_compiler_owned_helpers_chirho`.
 
 ## Reference evidence (bricks 3 and 4)
 

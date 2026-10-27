@@ -24,12 +24,12 @@ use std::collections::{HashMap, HashSet};
 use haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho;
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::instance_chirho::structured_equalities_chirho::{
+    EQUALITY_CONSUMERS_CHIRHO, INT_SHAPED_KEYS_CHIRHO,
+};
 use crate::dict_chirho::prelude_chirho::fractional_power_chirho::FRACTIONAL_POWER_DOUBLE_INT_CHIRHO;
 use crate::dict_chirho::prelude_chirho::ordering_extrema_chirho::ORDERING_EXTREMA_CHIRHO;
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
-
-/// Keys whose Int-shaped `max`, `min`, `maximum` and `minimum` are already exact.
-const INT_SHAPED_ORD_KEYS_CHIRHO: [&str; 3] = ["Int", "Char", "Bool"];
 
 impl DictPassCtxChirho {
     /// A `(^^)` reference proved at both `Fractional Double` and `Integral Int`, as the
@@ -195,9 +195,7 @@ impl DictPassCtxChirho {
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
         let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
-        if class_name_chirho != "Ord"
-            || INT_SHAPED_ORD_KEYS_CHIRHO.contains(&ty_key_chirho.as_str())
-        {
+        if class_name_chirho != "Ord" || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str()) {
             return None;
         }
         let compare_id_chirho = self
@@ -206,6 +204,36 @@ impl DictPassCtxChirho {
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
             arg_chirho: Box::new(CoreExprChirho::VarChirho(compare_id_chirho)),
+        })
+    }
+
+    /// An evidenced `elem`, `notElem`, `lookup`, `nub`, `group`, `isPrefixOf` or
+    /// `isSuffixOf` occurrence as its helper applied to its key's own `Eq.==` row, or None.
+    /// Int, Char and Bool keep their exact Int-shaped bindings, and a key without a
+    /// body-backed row, or a helper without a body, keeps today's path (row 603).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn evidenced_equality_consumer_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+    ) -> Option<CoreExprChirho> {
+        let (reference_name_chirho, _canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&id_chirho)?;
+        let base_name_chirho = reference_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(reference_name_chirho);
+        let (_, helper_chirho) = EQUALITY_CONSUMERS_CHIRHO
+            .iter()
+            .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        if class_name_chirho != "Eq" || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str()) {
+            return None;
+        }
+        let row_id_chirho = self.existing_eq_row_chirho(ty_key_chirho)?;
+        let helper_id_chirho = self.lookup_compiler_owned_name_id_chirho(helper_chirho)?;
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::VarChirho(row_id_chirho)),
         })
     }
 
@@ -224,6 +252,7 @@ impl DictPassCtxChirho {
         self.evidenced_fractional_power_chirho(id_chirho)
             .or_else(|| self.evidenced_aggregate_chirho(id_chirho))
             .or_else(|| self.evidenced_extremum_chirho(id_chirho))
+            .or_else(|| self.evidenced_equality_consumer_chirho(id_chirho))
     }
 
     /// Every evidenced Prelude occurrence's replacement: `print` (row 550), then the

@@ -6729,8 +6729,10 @@ impl InferCtxChirho {
                             origin_chirho: *origin_chirho,
                         });
                     }
+                    // A concrete type keys whole for Show, Ord and Eq, as their
+                    // structured rows are named (`$prim_Eq_==_Maybe Int`, row 603).
                     let resolved_structured_key_chirho =
-                        (matches!(class_chirho.as_str(), "Show" | "Ord")
+                        (matches!(class_chirho.as_str(), "Show" | "Ord" | "Eq")
                             && !resolved_chirho.contains_var_chirho())
                         .then(|| {
                             evidence_chirho::concrete_evidence_key_chirho(&resolved_chirho, false)

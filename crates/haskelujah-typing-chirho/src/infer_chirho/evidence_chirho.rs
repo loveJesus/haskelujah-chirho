@@ -501,8 +501,8 @@ impl InferCtxChirho {
 /// `Show` and `Ord` rows are named: `[Char]` for a top-level `String` (`String` once nested inside
 /// another key), `[Int]`, `(Int,Bool)`, `Maybe Int` (`(Maybe Int)` nested).
 /// `None` for any variable, rigid variable, function type or polytype.
-/// Moved from `finalize_occurrence_records_chirho`; `Show` and `Ord` occurrences
-/// use it when their resolved type is fully concrete.
+/// Moved from `finalize_occurrence_records_chirho`; `Show`, `Ord` and `Eq` (row 603)
+/// occurrences use it when their resolved type is fully concrete.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(super) fn concrete_evidence_key_chirho(
     ty_chirho: &TyChirho,

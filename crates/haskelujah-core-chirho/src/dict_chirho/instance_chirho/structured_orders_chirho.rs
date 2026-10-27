@@ -286,11 +286,11 @@ impl DictPassCtxChirho {
             bind_chirho: nothing_y_case_chirho,
             result_ty_chirho: any_ty_chirho.clone(),
             alts_chirho: vec![
-                Self::constructor_alt_chirho("Nothing", vec![], Self::ordering_chirho("EQ")),
+                Self::constructor_alt_chirho("Nothing", vec![], Self::nullary_con_chirho("EQ")),
                 Self::constructor_alt_chirho(
                     "Just",
                     vec![ignored_chirho],
-                    Self::ordering_chirho("LT"),
+                    Self::nullary_con_chirho("LT"),
                 ),
             ],
         };
@@ -299,7 +299,7 @@ impl DictPassCtxChirho {
             bind_chirho: just_y_case_chirho,
             result_ty_chirho: any_ty_chirho.clone(),
             alts_chirho: vec![
-                Self::constructor_alt_chirho("Nothing", vec![], Self::ordering_chirho("GT")),
+                Self::constructor_alt_chirho("Nothing", vec![], Self::nullary_con_chirho("GT")),
                 Self::constructor_alt_chirho(
                     "Just",
                     vec![y_field_chirho.clone()],
@@ -364,9 +364,9 @@ impl DictPassCtxChirho {
                 bind_chirho: ordering_case_chirho,
                 result_ty_chirho: any_ty_chirho.clone(),
                 alts_chirho: vec![
-                    Self::constructor_alt_chirho("LT", vec![], Self::ordering_chirho("LT")),
+                    Self::constructor_alt_chirho("LT", vec![], Self::nullary_con_chirho("LT")),
                     Self::constructor_alt_chirho("EQ", vec![], comparison_chirho),
-                    Self::constructor_alt_chirho("GT", vec![], Self::ordering_chirho("GT")),
+                    Self::constructor_alt_chirho("GT", vec![], Self::nullary_con_chirho("GT")),
                 ],
             };
         }
@@ -420,18 +420,18 @@ impl DictPassCtxChirho {
         row_id_chirho
     }
 
-    fn var_expr_chirho(binder_chirho: &BinderChirho) -> CoreExprChirho {
+    pub(super) fn var_expr_chirho(binder_chirho: &BinderChirho) -> CoreExprChirho {
         CoreExprChirho::VarChirho(binder_chirho.id_chirho)
     }
 
-    fn ordering_chirho(name_chirho: &str) -> CoreExprChirho {
+    pub(super) fn nullary_con_chirho(name_chirho: &str) -> CoreExprChirho {
         CoreExprChirho::ConAppChirho {
             con_name_chirho: name_chirho.to_string(),
             args_chirho: vec![],
         }
     }
 
-    fn constructor_alt_chirho(
+    pub(super) fn constructor_alt_chirho(
         name_chirho: &str,
         binders_chirho: Vec<BinderChirho>,
         rhs_chirho: CoreExprChirho,
@@ -443,7 +443,7 @@ impl DictPassCtxChirho {
         }
     }
 
-    fn apply_two_chirho(
+    pub(super) fn apply_two_chirho(
         function_chirho: CoreIdChirho,
         left_chirho: CoreExprChirho,
         right_chirho: CoreExprChirho,

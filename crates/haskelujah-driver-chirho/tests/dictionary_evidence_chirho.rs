@@ -39,6 +39,8 @@ mod ordering_literals_chirho;
 mod proven_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/string_lists_chirho.rs"]
 mod string_lists_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/structured_equalities_chirho.rs"]
+mod structured_equalities_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/structured_orders_chirho.rs"]
 mod structured_orders_chirho;
 

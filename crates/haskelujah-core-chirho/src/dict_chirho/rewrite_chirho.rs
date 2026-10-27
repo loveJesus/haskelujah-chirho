@@ -371,6 +371,11 @@ impl DictPassCtxChirho {
         // workflow: language-features-chirho/dictionary-evidence-chirho
         self.generate_evidenced_ord_bindings_chirho(module_chirho, &module_type_keys_chirho);
 
+        // A proven Eq key is served by its body-backed row, composed for `Maybe`, lists
+        // and tuples when absent, and its list consumers by their By-helpers (row 603).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_evidenced_eq_bindings_chirho();
+
         // Seed local_shadow_ids with top-level user bindings whose name
         // collides with a class method (e.g. user defines `toList` which
         // shadows the IsList class method).  Without this, the dict pass

@@ -286,11 +286,17 @@ impl DictPassCtxChirho {
     ) {
         let str_ty_chirho = TyChirho::string_chirho();
 
-        // Determine the element equality primop
-        let elem_eq_primop_chirho = match elem_type_chirho {
-            "Double" => "eqFloat#",
-            "Bool" => "==#",
-            _ => "==#",
+        // Int, Char and Bool compare with `==#` and Double with `eqFloat#`. Any other
+        // element takes its own body-backed `Eq.==` row: `[String]` compared String
+        // addresses natively (row 603). An element without a row keeps today's `==#`.
+        let element_row_chirho = match elem_type_chirho {
+            "Double" | "Int" | "Char" | "Bool" => None,
+            _ => self.ensure_eq_row_chirho(elem_type_chirho),
+        };
+        let elem_eq_primop_chirho = if elem_type_chirho == "Double" {
+            "eqFloat#"
+        } else {
+            "==#"
         };
 
         // Generate the recursive list equality function:
@@ -322,12 +328,19 @@ impl DictPassCtxChirho {
             arg_chirho: Box::new(CoreExprChirho::VarChirho(ys2_chirho.id_chirho)),
         };
 
-        let eq_test_chirho = CoreExprChirho::PrimOpChirho {
-            name_chirho: elem_eq_primop_chirho.to_string(),
-            args_chirho: vec![
+        let eq_test_chirho = match element_row_chirho {
+            Some(row_chirho) => Self::apply_two_chirho(
+                row_chirho,
                 CoreExprChirho::VarChirho(x_chirho.id_chirho),
                 CoreExprChirho::VarChirho(y_chirho.id_chirho),
-            ],
+            ),
+            None => CoreExprChirho::PrimOpChirho {
+                name_chirho: elem_eq_primop_chirho.to_string(),
+                args_chirho: vec![
+                    CoreExprChirho::VarChirho(x_chirho.id_chirho),
+                    CoreExprChirho::VarChirho(y_chirho.id_chirho),
+                ],
+            },
         };
 
         let true_con_chirho = CoreExprChirho::ConAppChirho {
