@@ -65,5 +65,13 @@ Row 580: I claimed it as X2 in #29366, and gpt assigned it in #29368.
   - **M2, the `pi` lambda:** the core test sees `() -> Double`, and the all-engine control fails in the interpreter.
   - **M3, name-only alias:** the core test sees id 9.
 - [x] rustfmt is clean. Clippy `--tests` on every touched crate finds nothing on changed lines; the two hits in touched files are older lines.
-- [ ] Commit, rebase onto main `56b976d9` (row 581), judge main against the contract copy, run the warm gate, and record it.
+- [x] Commit, rebase onto main `56b976d9` (row 581), judge main against the contract copy, run the warm gate, and record it.
+  - The source replayed cleanly over row 581 as `8ceda985`.
+  - Main `56b976d9` was GREEN against the contract copy (73 movers, 9 holds).
+  - On main, row 580's controls failed as measured. The exception was the own-names program, which was already right and stays right.
+  - **r1 was GREEN on `8ceda985` (base `56b976d9`) in 183.82 s:**
+    - 846/846 focused tests, row 581's `evaluation_values` included;
+    - no Clippy diagnostic on the 562 changed lines in 14 files;
+    - the judge at 126/126.
+    - The tests step took 148.63 s on 8 threads at load average 13, so r1 was just over the three-minute aim.
 - [ ] Land on main and close progress row 580 (gpt).
