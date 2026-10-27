@@ -44,7 +44,7 @@ Row 618.
 
 ## Findings, pre-existing and separate (`probes-chirho/findings-chirho/`)
 
-- **Row 649, reserved by #30368:** showing some tuples fails at runtime with `no matching alternative for tag 47`.
+- **Row 653, reserved after landing:** showing some tuples fails at runtime with `no matching alternative for tag 47`. This supersedes the stale Row 649 label from #30368; progress row 649 already records the Edward Kmett meeting brief.
   - `print (3 :: Int, subtract 1 4)` fails.
   - A top-level `(a, b)` binding fails under `print (a, b)` but works in a `where`.
   - Printing the components one by one works.
