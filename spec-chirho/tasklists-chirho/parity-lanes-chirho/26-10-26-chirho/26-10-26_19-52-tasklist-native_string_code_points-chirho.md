@@ -25,4 +25,13 @@ wrong answer to another, because a native literal could not hold the decoded val
   `haskelujah_nul_string_literal_chirho` (Cranelift through a required runtime import).
 - [x] Controls: the RTS round trip; all-engine code points; NUL failing named on both natives while
   the interpreter keeps it. RTS 61/61, native_error_helpers 40/40.
-- [ ] Rebase onto main, transitions, the focused gate, and post.
+- [x] Landed as one stack with rows 560 (minimal), 561 and 557 (#29139): each alone changed cells
+  another fixes. A fresh build of main a593ce12 against the stack on all three engines:
+  - 115 one-line programs: 116 gains, 10 named failures, 0 RED, 0 regressions from exact;
+  - 47 programs (the controls, escapes, the long literal, row 535's 41 contract programs):
+    6 gains, 6 named failures, 0 RED; all 123 contract cells hold;
+  - every failing cell is named: the NUL line or the literal-tail refusal; none by signal.
+- [x] Stack gate GREEN in 287 s:
+  - RTS 64, runtime 58, core 171, ast 18, typing 362, parser 395, LLVM 38, Cranelift 42;
+  - nine driver suites 225, and the driver library's show/print/string/char/literal/escape filter 212;
+  - Clippy: none of 732 warnings on a changed line; rustfmt, diff-check and gitleaks clean.

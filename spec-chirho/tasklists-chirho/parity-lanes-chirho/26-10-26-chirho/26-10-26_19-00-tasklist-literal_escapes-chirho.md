@@ -36,4 +36,16 @@ Against GHC, 7 of 10 measured lines differed:
 - [x] Fix the character token's quote trim.
 - [x] Generate the table test from runghc's output: ast 18/18, parser 395/395.
 - [x] All-engine control generated from GHC's output; byte-identical on all three engines.
-- [ ] Rebase, corpus attribution, battery transitions, reach mutations, the focused gate, and post.
+- [x] Corpus: none of the 1,705 typecheck files uses an affected form (the selector proven on a
+  probe file); only 4 character literals there carry any escape, all valid.
+- [x] Reach mutations: 5 of 5 killed by named assertions, every file restored byte-identical.
+- [x] Landed as one stack with rows 560 (minimal), 561 and 557 (#29139): each alone changed cells
+  another fixes. A fresh build of main a593ce12 against the stack on all three engines:
+  - 115 one-line programs: 116 gains, 10 named failures, 0 RED, 0 regressions from exact;
+  - 47 programs (the controls, escapes, the long literal, row 535's 41 contract programs):
+    6 gains, 6 named failures, 0 RED; all 123 contract cells hold;
+  - every failing cell is named: the NUL line or the literal-tail refusal; none by signal.
+- [x] Stack gate GREEN in 287 s:
+  - RTS 64, runtime 58, core 171, ast 18, typing 362, parser 395, LLVM 38, Cranelift 42;
+  - nine driver suites 225, and the driver library's show/print/string/char/literal/escape filter 212;
+  - Clippy: none of 732 warnings on a changed line; rustfmt, diff-check and gitleaks clean.
