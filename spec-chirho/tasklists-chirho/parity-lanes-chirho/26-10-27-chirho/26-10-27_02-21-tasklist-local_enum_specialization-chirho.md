@@ -49,3 +49,7 @@ in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
   clean.
 - The row 535 contract judge passed all 41 programs and 126 engine cells, accounting for the 73
   landed movers and 9 holds. Row 607 moved no contract cell.
+- After replay over Row 603, the workspace rebuilt without warnings, the occurrence-name units
+  passed 3/3, and the combined dictionary-evidence suite passed 127/127, including both rows'
+  controls. Changed-line Clippy, rustfmt, diff-check and the one-commit gitleaks scan were clean.
+  The contract rerun on the exact rebased binary was GREEN again.
