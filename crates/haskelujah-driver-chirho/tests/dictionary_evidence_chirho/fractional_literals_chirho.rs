@@ -93,10 +93,10 @@ fn double_to_int_directions_match_ghc_natively_chirho() {
 }
 
 /// GHC converts non-finite values to zero and finite values modulo the `Int`
-/// word size. The interpreter still uses Rust's saturating cast; that existing
-/// difference is pinned rather than silently widened into this native row.
+/// word size. Rows 589 and 591 make the interpreter share the same four RTS
+/// conversions that row 562 established for both native backends.
 #[test]
-fn exceptional_double_to_int_inputs_match_ghc_natively_and_hold_in_the_interpreter_chirho() {
+fn exceptional_double_to_int_inputs_match_ghc_everywhere_chirho() {
     let program_chirho = "module Main where\nmain :: IO ()\nmain = do\n  print (map round ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n  print (map truncate ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n  print (map floor ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n  print (map ceiling ([0 / 0, 1 / 0, (-1) / 0, 1.0e20, -1.0e20] :: [Double]) :: [Int])\n";
     let ghc_line_chirho = "[0,0,0,7766279631452241920,-7766279631452241920]\n";
     assert_native_chirho(
@@ -104,12 +104,9 @@ fn exceptional_double_to_int_inputs_match_ghc_natively_and_hold_in_the_interpret
         program_chirho,
         &ghc_line_chirho.repeat(4),
     );
-
-    let interpreter_line_chirho =
-        "[0,9223372036854775807,-9223372036854775808,9223372036854775807,-9223372036854775808]\n";
     assert_eq!(
         run_chirho("ExceptionalDoubleToIntChirho.hs", program_chirho),
-        interpreter_line_chirho.repeat(4)
+        ghc_line_chirho.repeat(4)
     );
 }
 

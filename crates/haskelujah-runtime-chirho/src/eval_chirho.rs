@@ -2390,24 +2390,35 @@ impl MachineChirho {
                 return Ok(ValueChirho::FloatChirho(0.0));
             }
             PrimOpKindChirho::CeilingChirho => {
-                // ceiling# x → round Double up to Int
+                // ceiling# x → GHC's wrapping Double-to-Int conversion after
+                // rounding up, shared with native code.
+                // Workflow: compiler-pipeline-chirho/runtime-primitive-evaluation-chirho.md.
                 if let Some(ValueChirho::FloatChirho(f_chirho)) = args_chirho.first() {
-                    return Ok(ValueChirho::IntChirho(f_chirho.ceil() as i64));
+                    return Ok(ValueChirho::IntChirho(
+                        haskelujah_rts_chirho::ceiling_float_to_int_chirho(*f_chirho),
+                    ));
                 }
                 return Ok(ValueChirho::IntChirho(0));
             }
             PrimOpKindChirho::FloorChirho => {
-                // floor# x → round Double down to Int
+                // floor# x → GHC's wrapping Double-to-Int conversion after
+                // rounding down, shared with native code.
+                // Workflow: compiler-pipeline-chirho/runtime-primitive-evaluation-chirho.md.
                 if let Some(ValueChirho::FloatChirho(f_chirho)) = args_chirho.first() {
-                    return Ok(ValueChirho::IntChirho(f_chirho.floor() as i64));
+                    return Ok(ValueChirho::IntChirho(
+                        haskelujah_rts_chirho::floor_float_to_int_chirho(*f_chirho),
+                    ));
                 }
                 return Ok(ValueChirho::IntChirho(0));
             }
             PrimOpKindChirho::RoundChirho => {
-                // round# x → nearest Int, resolving exact half ties to the even integer.
+                // round# x → GHC's wrapping Double-to-Int conversion after
+                // nearest-integer rounding with exact half ties to even.
                 // Workflow: compiler-pipeline-chirho/runtime-primitive-evaluation-chirho.md.
                 if let Some(ValueChirho::FloatChirho(f_chirho)) = args_chirho.first() {
-                    return Ok(ValueChirho::IntChirho(f_chirho.round_ties_even() as i64));
+                    return Ok(ValueChirho::IntChirho(
+                        haskelujah_rts_chirho::round_float_to_int_chirho(*f_chirho),
+                    ));
                 }
                 return Ok(ValueChirho::IntChirho(0));
             }

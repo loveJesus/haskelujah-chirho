@@ -46,7 +46,7 @@ fn integral_float_to_wrapping_int_chirho(value_chirho: f64) -> i64 {
     }
 }
 
-pub(crate) fn round_float_to_int_chirho(value_chirho: f64) -> i64 {
+pub fn round_float_to_int_chirho(value_chirho: f64) -> i64 {
     integral_float_to_wrapping_int_chirho(value_chirho.round_ties_even())
 }
 
@@ -54,11 +54,11 @@ pub fn truncate_float_to_int_chirho(value_chirho: f64) -> i64 {
     integral_float_to_wrapping_int_chirho(value_chirho.trunc())
 }
 
-pub(crate) fn floor_float_to_int_chirho(value_chirho: f64) -> i64 {
+pub fn floor_float_to_int_chirho(value_chirho: f64) -> i64 {
     integral_float_to_wrapping_int_chirho(value_chirho.floor())
 }
 
-pub(crate) fn ceiling_float_to_int_chirho(value_chirho: f64) -> i64 {
+pub fn ceiling_float_to_int_chirho(value_chirho: f64) -> i64 {
     integral_float_to_wrapping_int_chirho(value_chirho.ceil())
 }
 
