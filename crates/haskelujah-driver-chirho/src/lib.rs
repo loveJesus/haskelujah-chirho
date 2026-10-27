@@ -3381,10 +3381,10 @@ pub fn eval_modules_chirho(
         if all_binder_ids_chirho.contains(id_chirho) {
             continue;
         }
-        if let Some(&def_id_chirho) = def_name_to_id_chirho.get(name_chirho) {
-            if def_id_chirho != *id_chirho {
-                remap_chirho.insert(*id_chirho, def_id_chirho);
-            }
+        if let Some(&def_id_chirho) = def_name_to_id_chirho.get(name_chirho)
+            && def_id_chirho != *id_chirho
+        {
+            remap_chirho.insert(*id_chirho, def_id_chirho);
         }
     }
 
@@ -3557,7 +3557,7 @@ pub fn compile_modules_incremental_chirho(
             *source_chirho,
         );
         let file_id_chirho = source_file_chirho.file_id_chirho();
-        let parser_chirho = ParserChirho::new_chirho(*source_chirho, file_id_chirho);
+        let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
         let green_chirho = parser_chirho.parse_chirho();
         let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
 
@@ -3705,7 +3705,7 @@ fn discover_hs_files_chirho(dir_chirho: &Path) -> Vec<PathBuf> {
                 }
             } else if path_chirho
                 .extension()
-                .map_or(false, |ext_chirho| ext_chirho == "hs")
+                .is_some_and(|ext_chirho| ext_chirho == "hs")
             {
                 files_chirho.push(path_chirho);
             }
@@ -3747,10 +3747,10 @@ fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
     let mut imports_chirho = Vec::new();
     for line_chirho in source_chirho.lines() {
         let trimmed_chirho = line_chirho.trim();
-        if let Some(rest_chirho) = trimmed_chirho.strip_prefix("import ") {
-            if let Some(module_name_chirho) = parse_import_module_name_chirho(rest_chirho) {
-                imports_chirho.push(module_name_chirho);
-            }
+        if let Some(rest_chirho) = trimmed_chirho.strip_prefix("import ")
+            && let Some(module_name_chirho) = parse_import_module_name_chirho(rest_chirho)
+        {
+            imports_chirho.push(module_name_chirho);
         }
     }
     imports_chirho
@@ -3760,31 +3760,30 @@ fn parse_import_module_name_chirho(rest_chirho: &str) -> Option<String> {
     let mut remaining_chirho = rest_chirho.trim();
 
     'scan_modifiers_chirho: loop {
-        if let Some(pragma_rest_chirho) = remaining_chirho.strip_prefix("{-#") {
-            if let Some(pragma_end_chirho) = pragma_rest_chirho.find("#-}") {
-                remaining_chirho = pragma_rest_chirho[pragma_end_chirho + 3..].trim_start();
-                continue;
-            }
+        if let Some(pragma_rest_chirho) = remaining_chirho.strip_prefix("{-#")
+            && let Some(pragma_end_chirho) = pragma_rest_chirho.find("#-}")
+        {
+            remaining_chirho = pragma_rest_chirho[pragma_end_chirho + 3..].trim_start();
+            continue;
         }
 
         for keyword_chirho in ["qualified", "safe", "unsafe", "interruptible"] {
-            if let Some(after_keyword_chirho) = remaining_chirho.strip_prefix(keyword_chirho) {
-                if after_keyword_chirho
+            if let Some(after_keyword_chirho) = remaining_chirho.strip_prefix(keyword_chirho)
+                && after_keyword_chirho
                     .chars()
                     .next()
                     .is_some_and(|char_chirho| char_chirho.is_whitespace())
-                {
-                    remaining_chirho = after_keyword_chirho.trim_start();
-                    continue 'scan_modifiers_chirho;
-                }
+            {
+                remaining_chirho = after_keyword_chirho.trim_start();
+                continue 'scan_modifiers_chirho;
             }
         }
 
-        if let Some(package_rest_chirho) = remaining_chirho.strip_prefix('"') {
-            if let Some(package_end_chirho) = package_rest_chirho.find('"') {
-                remaining_chirho = package_rest_chirho[package_end_chirho + 1..].trim_start();
-                continue;
-            }
+        if let Some(package_rest_chirho) = remaining_chirho.strip_prefix('"')
+            && let Some(package_end_chirho) = package_rest_chirho.find('"')
+        {
+            remaining_chirho = package_rest_chirho[package_end_chirho + 1..].trim_start();
+            continue;
         }
 
         break;
@@ -3851,14 +3850,13 @@ fn filter_seeded_imported_types_for_source_chirho(
                 continue;
             }
             let remainder_chirho = &suffix_chirho[1..];
-            if let Some((first_segment_chirho, _rest_chirho)) = remainder_chirho.split_once('.') {
-                if first_segment_chirho
+            if let Some((first_segment_chirho, _rest_chirho)) = remainder_chirho.split_once('.')
+                && first_segment_chirho
                     .chars()
                     .next()
                     .is_some_and(|chirho| chirho.is_uppercase())
-                {
-                    continue;
-                }
+            {
+                continue;
             }
             if !remainder_chirho.is_empty() && !remainder_chirho.contains('.') {
                 qualified_bare_schemes_chirho
@@ -3894,14 +3892,12 @@ fn filter_seeded_imported_types_for_source_chirho(
                         let remainder_chirho = &suffix_chirho[1..];
                         if let Some((first_segment_chirho, _rest_chirho)) =
                             remainder_chirho.split_once('.')
-                        {
-                            if first_segment_chirho
+                            && first_segment_chirho
                                 .chars()
                                 .next()
                                 .is_some_and(|chirho| chirho.is_uppercase())
-                            {
-                                return false;
-                            }
+                        {
+                            return false;
                         }
                         true
                     })
@@ -3965,12 +3961,12 @@ fn parse_boot_iface_chirho(
 
     // Extract type schemes from the boot file
     let mut types_chirho = std::collections::HashMap::new();
-    for (name_chirho, _) in &iface_chirho.exports_chirho.values_chirho {
+    for name_chirho in iface_chirho.exports_chirho.values_chirho.keys() {
         if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
             types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
         }
     }
-    for (_name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
+    for ty_info_chirho in iface_chirho.exports_chirho.types_chirho.values() {
         for con_name_chirho in &ty_info_chirho.constructors_chirho {
             if let Some(scheme_chirho) = infer_result_chirho
                 .env_chirho
@@ -4584,7 +4580,7 @@ fn scan_dependency_package_ifaces_chirho(project_dir_chirho: &Path) -> Vec<Modul
     // .haskelujah-packages-chirho/. This gives tests and package-scan callers
     // forward module stubs for same-package imports such as containers'
     // Utils.Containers.Internal.BitUtil.
-    scan_package_hs_files_chirho(project_dir_chirho, project_dir_chirho, &mut ifaces_chirho);
+    scan_package_hs_files_chirho(project_dir_chirho, &mut ifaces_chirho);
 
     // Scan each package directory
     let entries_chirho = match std::fs::read_dir(&packages_dir_chirho) {
@@ -4603,7 +4599,7 @@ fn scan_dependency_package_ifaces_chirho(project_dir_chirho: &Path) -> Vec<Modul
             continue;
         }
         // Recursively find .hs files and generate stub interfaces
-        scan_package_hs_files_chirho(&pkg_dir_chirho, &pkg_dir_chirho, &mut ifaces_chirho);
+        scan_package_hs_files_chirho(&pkg_dir_chirho, &mut ifaces_chirho);
     }
 
     ifaces_chirho
@@ -4782,10 +4778,12 @@ fn collect_local_dependency_frontend_artifacts_chirho(
     };
 
     let builtin_deps_chirho = builtin_dependency_names_chirho();
-    let mut artifacts_chirho = FrontendSeedArtifactsChirho::default();
     // Seed PrimState type family equations so dependency packages like
     // primitive can resolve PrimState (ST s) = s during compilation.
-    artifacts_chirho.imported_type_families_chirho = seed_builtin_type_families_chirho();
+    let mut artifacts_chirho = FrontendSeedArtifactsChirho {
+        imported_type_families_chirho: seed_builtin_type_families_chirho(),
+        ..Default::default()
+    };
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let mut visited_chirho = std::collections::HashSet::new();
     let mut active_chirho = std::collections::HashSet::new();
@@ -4942,11 +4940,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
 
 /// Recursively scan a package directory for .hs files and generate stub interfaces.
 #[cfg(test)]
-fn scan_package_hs_files_chirho(
-    root_chirho: &Path,
-    dir_chirho: &Path,
-    ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
-) {
+fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<ModuleIfaceChirho>) {
     let entries_chirho = match std::fs::read_dir(dir_chirho) {
         Ok(e_chirho) => e_chirho,
         Err(_) => return,
@@ -4969,7 +4963,7 @@ fn scan_package_hs_files_chirho(
             {
                 continue;
             }
-            scan_package_hs_files_chirho(root_chirho, &path_chirho, ifaces_chirho);
+            scan_package_hs_files_chirho(&path_chirho, ifaces_chirho);
         } else if path_chirho.extension().is_some_and(|extension_chirho| {
             extension_chirho == "hs" || extension_chirho == "lhs" || extension_chirho == "hsc"
         }) {
@@ -5065,7 +5059,7 @@ fn insert_exported_schemes_into_imports_chirho(
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
     >,
 ) {
-    for (name_chirho, _val_chirho) in &iface_chirho.exports_chirho.values_chirho {
+    for name_chirho in iface_chirho.exports_chirho.values_chirho.keys() {
         if let Some(scheme_chirho) = infer_result_chirho.env_chirho.lookup_chirho(name_chirho) {
             imported_types_chirho.insert(name_chirho.clone(), scheme_chirho.clone());
             imported_types_chirho.insert(
@@ -5074,7 +5068,7 @@ fn insert_exported_schemes_into_imports_chirho(
             );
         }
     }
-    for (_name_chirho, ty_info_chirho) in &iface_chirho.exports_chirho.types_chirho {
+    for ty_info_chirho in iface_chirho.exports_chirho.types_chirho.values() {
         for con_name_chirho in &ty_info_chirho.constructors_chirho {
             if let Some(scheme_chirho) = infer_result_chirho
                 .env_chirho
@@ -6027,12 +6021,11 @@ pub fn discover_modules_chirho(
 
         // Compile other-modules BEFORE main-is so dependencies are available
         for mod_name_chirho in &exe_chirho.other_modules_chirho {
-            if seen_chirho.insert(format!("{}:{}", exe_chirho.name_chirho, mod_name_chirho)) {
-                if let Some(path_chirho) =
+            if seen_chirho.insert(format!("{}:{}", exe_chirho.name_chirho, mod_name_chirho))
+                && let Some(path_chirho) =
                     find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
-                {
-                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
-                }
+            {
+                modules_chirho.push((mod_name_chirho.clone(), path_chirho));
             }
         }
 
@@ -6067,12 +6060,10 @@ pub fn discover_modules_chirho(
             if seen_chirho.insert(format!(
                 "test:{}:{}",
                 test_chirho.name_chirho, mod_name_chirho
-            )) {
-                if let Some(path_chirho) =
-                    find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
-                {
-                    modules_chirho.push((mod_name_chirho.clone(), path_chirho));
-                }
+            )) && let Some(path_chirho) =
+                find_module_file_chirho(mod_name_chirho, &src_dirs_chirho, project_dir_chirho)
+            {
+                modules_chirho.push((mod_name_chirho.clone(), path_chirho));
             }
         }
 
