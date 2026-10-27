@@ -53,7 +53,26 @@ Row 626.
 - [x] Source: the chain in the shared answer, and `compare`'s default from real `==` and own `<=` bodies.
 - [x] Controls: GHC-measured, byte for byte.
   - **First suite run** (1387 tests): 1386 passed. The one failure was an intended mover: row 610's stub-key pin, whose `<=`-only program now answers GHC's `[False]`, moved into the controls, and the pin took an instance with neither body.
-- [ ] Reach: each piece removed alone, then restored byte-identical.
-- [ ] Commit; replay onto the newest main; broad moved-shape scan.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] Commit; replay onto the newest main; broad moved-shape scan.
+  - The source `294fd482` sits on main `d99f8d2d`.
+  - **Scan** (`scan626-chirho.log`): 3587/3587 passed in 750 s, with no mover beyond the intended one. That is row 612's 3585, plus this row's 2 controls.
+    - It covered every lib, the parser's included, and the 20 driver suites, leaving out `ghc_bulk`, and skipped the same 18.
+    - One harness test, `run_compile_fail_test_pass_chirho`, passed but was flagged leaky under the scan's load. It passed cleanly 3 more times alone.
+- [x] **Reach** (`tools-chirho/reach_626_chirho.zsh`, log `reach626-r1-chirho.log`): every mutation killed by the chain controls.
+  - **M1, the own `<=` route off:** the mixed instance answers from `compare`, `(True,False,False,LT)`.
+  - **M2, the chain through `compare` off** (each operator's own test, unswapped): `compare _ _ = LT` gives `((True,True,False,False),True,False)`.
+  - **M3, `compare`'s default off:** `missing method Ord.compare for VChirho`.
+  - **M4, the default's `==` branch answering LT:** equal operands compare LT.
+  - **M5, the `not` through an own `<=` off:** `(True,False,True,LT)`.
+  - **M6, the swap through an own `<=` off:** `(True,True,False,LT)`.
+  - Every restore was byte-identical, and the restored tree passes 14/14.
+- [x] Judge main against the contract copy; warm gate; record.
+  - **Main `d99f8d2d`** is GREEN against the contract copy first (73 movers, 9 holds). Its probes give main's measured answers (`baseline-d99f8d2d-chirho.log`).
+  - **r1, GREEN on `294fd482` (base `d99f8d2d`) in 237.36 s:**
+    - 1355/1355 focused tests;
+    - no Clippy diagnostic on the 260 changed lines in 7 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
+  - **The tip's probe reports** (`tip-294fd482-chirho`): 7 programs are GHC on all three engines (21 cells).
+    - Every compiled Cranelift run carries the marker; the one unmarked log is `LInsertSchemeChirho`, which fails type-checking first.
 - [ ] Land on main and close progress row 626 (gpt).
