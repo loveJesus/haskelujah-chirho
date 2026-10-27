@@ -938,22 +938,28 @@ fn atan2_is_the_one_routine_chirho() {
     ));
 }
 
-/// A local `pi` never takes the Prelude alias. The module uses the Prelude's `pi` free (id
-/// 5) and binds its own `pi` in a `let` (id 9). The alias binds id 5 in every pass. Each
-/// pass hashes its name table afresh, and resolving by name alone took id 9 in about
-/// half of them.
-#[test]
-fn a_local_pi_never_takes_the_prelude_alias_chirho() {
-    let local_pi_chirho = BinderChirho {
+/// A module whose `localChirho` binds its own `name_chirho` (id 9) in a `let`. With
+/// `free_chirho`, its `useChirho` also uses the Prelude's `name_chirho` free (id 5).
+fn local_named_module_chirho(
+    name_chirho: &str,
+    (ty_chirho, lit_chirho): (TyChirho, CoreLitChirho),
+    free_chirho: bool,
+) -> (Vec<CoreBindingChirho>, Vec<(u32, &str)>) {
+    let local_chirho = BinderChirho {
         id_chirho: CoreIdChirho(9),
-        name_chirho: "pi".to_string(),
-        ty_chirho: TyChirho::double_chirho(),
+        name_chirho: name_chirho.to_string(),
+        ty_chirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let use_chirho = if free_chirho {
+        CoreExprChirho::VarChirho(CoreIdChirho(5))
+    } else {
+        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0))
     };
     let bindings_chirho = vec![
         CoreBindingChirho {
-            binder_chirho: dummy_binder_chirho("circleChirho", 1),
-            rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(5)),
+            binder_chirho: dummy_binder_chirho("useChirho", 1),
+            rhs_chirho: use_chirho,
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         },
@@ -961,28 +967,97 @@ fn a_local_pi_never_takes_the_prelude_alias_chirho() {
             binder_chirho: dummy_binder_chirho("localChirho", 2),
             rhs_chirho: CoreExprChirho::LetChirho {
                 rec_chirho: false,
-                binds_chirho: vec![(
-                    local_pi_chirho,
-                    CoreExprChirho::LitChirho(CoreLitChirho::FloatChirho(3.0)),
-                )],
+                binds_chirho: vec![(local_chirho, CoreExprChirho::LitChirho(lit_chirho))],
                 body_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(9))),
             },
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         },
     ];
-    let names_chirho = [
-        (1, "circleChirho"),
-        (2, "localChirho"),
-        (5, "pi"),
-        (9, "pi"),
+    let mut names_chirho = vec![(1, "useChirho"), (2, "localChirho"), (9, name_chirho)];
+    if free_chirho {
+        names_chirho.push((5, name_chirho));
+    }
+    (bindings_chirho, names_chirho)
+}
+
+/// The ids of the bindings named `name_chirho` after each of 16 passes over the module.
+/// Each pass hashes its name table afresh.
+fn named_ids_per_pass_chirho(
+    bindings_chirho: &[CoreBindingChirho],
+    names_chirho: &[(u32, &str)],
+    name_chirho: &str,
+) -> Vec<Vec<CoreIdChirho>> {
+    (0..16)
+        .map(|_| {
+            let result_chirho = standard_pass_chirho(bindings_chirho.to_vec(), names_chirho);
+            named_chirho(&result_chirho, name_chirho)
+                .iter()
+                .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+                .collect()
+        })
+        .collect()
+}
+
+/// A local `pi` never takes the Prelude alias. The module uses the Prelude's `pi` free (id
+/// 5) and binds its own `pi` in a `let` (id 9). The alias binds id 5 in every pass, where
+/// resolving by name alone took id 9 in about half of them.
+#[test]
+fn a_local_pi_never_takes_the_prelude_alias_chirho() {
+    let (bindings_chirho, names_chirho) = local_named_module_chirho(
+        "pi",
+        (TyChirho::double_chirho(), CoreLitChirho::FloatChirho(3.0)),
+        true,
+    );
+    for ids_chirho in named_ids_per_pass_chirho(&bindings_chirho, &names_chirho, "pi") {
+        assert_eq!(ids_chirho, vec![CoreIdChirho(5)]);
+    }
+}
+
+/// Row 594: a generated Prelude body takes its id as the alias does. Beside a local
+/// `length` (id 9), the generated `length` binds the id the module uses free (id 5) in
+/// every pass. With no free use, the generated `reverse` never takes the local
+/// `reverse`'s id.
+#[test]
+fn a_generated_prelude_binding_never_takes_a_local_binders_id_chirho() {
+    let int_local_chirho = (TyChirho::int_chirho(), CoreLitChirho::IntChirho(99));
+    let (bindings_chirho, names_chirho) =
+        local_named_module_chirho("length", int_local_chirho.clone(), true);
+    for ids_chirho in named_ids_per_pass_chirho(&bindings_chirho, &names_chirho, "length") {
+        assert_eq!(ids_chirho, vec![CoreIdChirho(5)]);
+    }
+    let (bindings_chirho, names_chirho) =
+        local_named_module_chirho("reverse", int_local_chirho, false);
+    for ids_chirho in named_ids_per_pass_chirho(&bindings_chirho, &names_chirho, "reverse") {
+        assert!(
+            matches!(ids_chirho[..], [id_chirho] if id_chirho != CoreIdChirho(9)),
+            "{ids_chirho:?}"
+        );
+    }
+}
+
+/// Row 594: the program's own top-level `length` (id 3) beside a free use of the Prelude's
+/// (id 5), as `import Prelude hiding (length)` with a qualified `P.length` gives. The
+/// generated `length` binds the free id in every pass, never the program's binder.
+#[test]
+fn a_generated_prelude_binding_takes_the_free_id_beside_a_top_level_namesake_chirho() {
+    let bindings_chirho = vec![
+        CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("useChirho", 1),
+            rhs_chirho: CoreExprChirho::VarChirho(CoreIdChirho(5)),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        },
+        CoreBindingChirho {
+            binder_chirho: dummy_binder_chirho("length", 3),
+            rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(99)),
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        },
     ];
-    for _ in 0..16 {
-        let result_chirho = standard_pass_chirho(bindings_chirho.clone(), &names_chirho);
-        let aliases_chirho: Vec<CoreIdChirho> = named_chirho(&result_chirho, "pi")
-            .iter()
-            .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
-            .collect();
-        assert_eq!(aliases_chirho, vec![CoreIdChirho(5)]);
+    let names_chirho = [(1, "useChirho"), (3, "length"), (5, "length")];
+    for mut ids_chirho in named_ids_per_pass_chirho(&bindings_chirho, &names_chirho, "length") {
+        ids_chirho.sort();
+        assert_eq!(ids_chirho, vec![CoreIdChirho(3), CoreIdChirho(5)]);
     }
 }

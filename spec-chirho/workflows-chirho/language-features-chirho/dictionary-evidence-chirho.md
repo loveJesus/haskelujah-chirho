@@ -56,6 +56,17 @@ flowchart TD
   - **Already right:** local `print`, `max`, `min`, `maximum`, `minimum` and `^^`, because the checker records no evidence there. They need no guard of their own, and the extrema and `^^` sit behind the same applied-head guard.
   - **Residual:** a literal in a local polymorphic binding inside a signature-polymorphic one is still keyed at Int. For example, `where sum _ = 42` under `Num a`, used at Double, prints `2.08e-322` natively.
   - Controls: `a_programs_own_sum_and_product_keep_their_bodies_everywhere_chirho` and `a_local_sum_in_a_polymorphic_binding_keeps_its_body_everywhere_chirho`, in `tests/native_error_helpers_chirho.rs`.
+- A generated Prelude binding never takes a local binder's id (row 594).
+  - **The defect:** `resolve_or_fresh_id_chirho` gave a generated binding the first id named like it in the name table's hash order, skipping only occurrence ids. Generated bindings include the Prelude's `length` body, and the `foldl` that row 552's fold calls.
+  - Beside a local `where length _ = 99`, that was the local binder's id in about half the passes. The Prelude `length` the program uses was then unbound, on every engine.
+  - A lone local `foldl` captured row 552's `sum` fold inside `main`. LLVM printed `(4336781493,6)`, where GHC prints `(6,6)`.
+  - **The fix:** the resolver prefers the id the program's bindings use free under the name. Otherwise it takes the least other id that is neither a local binder (`module_local_binder_ids_chirho`, split from row 593's set) nor an occurrence id; otherwise a fresh one. Row 580's alias helper goes through it.
+  - **Not covered:** top-level binders stay resolvable. Instance generation resolves `$f…` super-dictionaries and `$prim_…` rows by name through the same function.
+    - A hidden-and-redefined top-level `foldl` under `sum`, or `reverse` under `isSuffixOf`, is row 597.
+  - Controls:
+    - `local_binders_leave_the_prelude_functions_bound_everywhere_chirho`, in `tests/native_error_helpers_chirho.rs`: six local Prelude names, eight interpreted runs and one per native backend.
+    - `a_lone_local_foldl_leaves_the_sum_fold_alone_everywhere_chirho`, beside it: the capture of row 552's fold, on every engine.
+    - The 16-pass `a_generated_prelude_binding_never_takes_a_local_binders_id_chirho` and `a_generated_prelude_binding_takes_the_free_id_beside_a_top_level_namesake_chirho`, beside row 580's `a_local_pi_never_takes_the_prelude_alias_chirho`.
 - A key the checker inferred more than once (a re-check, a speculative branch) yields a record
   only when every inference agreed. An occurrence with an identity whose record is missing or
   conflicting receives nothing, and is never rescued by its span or its position.

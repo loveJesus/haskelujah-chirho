@@ -122,6 +122,11 @@ fn with_main_chirho(module_chirho: &str, main_chirho: &str) -> String {
 }
 
 fn assert_prints_everywhere_chirho(source_chirho: &str, expected_chirho: &str) {
+    assert_interprets_chirho(source_chirho, expected_chirho);
+    assert_prints_natively_chirho(source_chirho, expected_chirho);
+}
+
+fn assert_interprets_chirho(source_chirho: &str, expected_chirho: &str) {
     let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),
@@ -133,7 +138,6 @@ fn assert_prints_everywhere_chirho(source_chirho: &str, expected_chirho: &str) {
         machine_chirho.io_output_chirho, expected_chirho,
         "interpreter"
     );
-    assert_prints_natively_chirho(source_chirho, expected_chirho);
 }
 
 fn assert_prints_natively_chirho(source_chirho: &str, expected_chirho: &str) {
@@ -392,6 +396,35 @@ const OWN_KEY_LOCAL_SUM_CHIRHO: &str = "module Main where\ntotalChirho :: Num a 
 #[test]
 fn a_local_sum_in_a_polymorphic_binding_keeps_its_body_everywhere_chirho() {
     assert_prints_everywhere_chirho(OWN_KEY_LOCAL_SUM_CHIRHO, "(3.0,2)\n");
+}
+
+// ── Row 594: a generated Prelude binding never takes a local binder's id ──
+
+/// Local `even`, `head`, `length`, `not`, `reverse` and `maximum` beside the Prelude's.
+/// A generated Prelude binding took the first id named like it in the name table's hash
+/// order, and that could be the local binder's. The Prelude function the program uses was
+/// then left unbound, in about half the runs for each name, on every engine. Each pass
+/// hashes its name table afresh, so the interpreter runs it repeatedly.
+const LOCAL_PRELUDE_NAMES_CHIRHO: &str = "module Main where\npreludeChirho :: [Int] -> (Bool, Int, Int)\npreludeChirho xs = (even (head xs), head xs, length xs)\npreludeMoreChirho :: [Int] -> (Bool, [Int], Int)\npreludeMoreChirho xs = (not (null xs), reverse xs, maximum xs)\nmain :: IO ()\nmain = do\n  print (preludeChirho [4, 1, 7])\n  print (preludeMoreChirho [4, 1, 7])\n  print (even (3 :: Int), head [9 :: Int], length [9 :: Int])\n  print (not False, reverse [9 :: Int], maximum [9 :: Int])\n  where\n    even _ = True\n    head _ = (0 :: Int)\n    length _ = (99 :: Int)\n    not _ = False\n    reverse _ = ([7] :: [Int])\n    maximum _ = (98 :: Int)\n";
+
+#[test]
+fn local_binders_leave_the_prelude_functions_bound_everywhere_chirho() {
+    let ghc_chirho = "(True,4,3)\n(True,[7,1,4],7)\n(True,0,99)\n(False,[7],98)\n";
+    for _ in 0..8 {
+        assert_interprets_chirho(LOCAL_PRELUDE_NAMES_CHIRHO, ghc_chirho);
+    }
+    assert_prints_natively_chirho(LOCAL_PRELUDE_NAMES_CHIRHO, ghc_chirho);
+}
+
+/// Row 594: a lone local `foldl` beside the Prelude's `sum`. The generated `foldl` took the
+/// local binder's id, the only one named so, and row 552's fold in `main` then called the
+/// local function. LLVM printed `(4336781493,6)`, the interpreter failed on `AddIntChirho`
+/// and Cranelift printed nothing, where GHC prints `(6,6)`.
+const LONE_LOCAL_FOLDL_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = print (sum [1, 2, 3 :: Int], foldl (5 :: Int))\n  where\n    foldl :: Int -> Int\n    foldl n = n + 1\n";
+
+#[test]
+fn a_lone_local_foldl_leaves_the_sum_fold_alone_everywhere_chirho() {
+    assert_prints_everywhere_chirho(LONE_LOCAL_FOLDL_CHIRHO, "(6,6)\n");
 }
 
 // ── Row 566: a long literal unpacks whole across collections ─────────────

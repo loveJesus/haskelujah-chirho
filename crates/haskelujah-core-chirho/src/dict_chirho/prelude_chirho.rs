@@ -3421,8 +3421,8 @@ impl DictPassCtxChirho {
     /// Bind `alias_name_chirho` to the generated binding named `source_name_chirho`. A
     /// program's own top-level `alias_name_chirho` stays the binding: the alias would take
     /// its id and replace it (row 578). The alias takes the id the program's bindings use
-    /// free under that name. Resolving by name alone could take a local binder's, such as
-    /// `where pi = 3`, and leave the Prelude `pi` unbound in a run's hash order (row 580).
+    /// free under that name, never a local binder's such as `where pi = 3` (row 580).
+    /// `resolve_or_fresh_id_chirho` makes that choice for every generated name (row 594).
     /// workflow: testing-chirho/native-fail-loud-chirho
     fn push_prelude_alias_chirho(&mut self, alias_name_chirho: &str, source_name_chirho: &str) {
         if self
@@ -3450,9 +3450,7 @@ impl DictPassCtxChirho {
             return;
         };
 
-        let alias_id_chirho = self
-            .module_free_id_named_chirho(alias_name_chirho)
-            .unwrap_or_else(|| self.resolve_or_fresh_id_chirho(alias_name_chirho));
+        let alias_id_chirho = self.resolve_or_fresh_id_chirho(alias_name_chirho);
         self.generated_bindings_chirho.push(CoreBindingChirho {
             binder_chirho: BinderChirho {
                 id_chirho: alias_id_chirho,

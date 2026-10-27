@@ -105,6 +105,10 @@ pub struct DictPassCtxChirho {
     /// `case` and alternative binder inside them. An occurrence whose canonical id is one
     /// of these names the program's own binding, never a Prelude function (row 593).
     module_bound_ids_chirho: HashSet<CoreIdChirho>,
+    /// Ids bound inside the module's own bindings: their lambda, `let`, `case` and
+    /// alternative binders, never the top-level binders. Name resolution for a generated
+    /// binding never takes one of these (row 594).
+    module_local_binder_ids_chirho: HashSet<CoreIdChirho>,
     /// Method name -> (class_name, selector CoreId).
     method_selectors_chirho: HashMap<String, (String, CoreIdChirho)>,
     /// (class_name, type_key) -> CoreId of instance dictionary binding.
@@ -203,6 +207,7 @@ impl DictPassCtxChirho {
             body_backed_names_chirho: HashMap::new(),
             module_free_ids_chirho: HashSet::new(),
             module_bound_ids_chirho: HashSet::new(),
+            module_local_binder_ids_chirho: HashSet::new(),
             method_selectors_chirho: HashMap::new(),
             instance_dicts_chirho: HashMap::new(),
             con_types_chirho,
@@ -236,23 +241,29 @@ impl DictPassCtxChirho {
         id_chirho
     }
 
-    /// Look up an existing CoreId by name, or create a fresh one.
-    /// This is used when generating references to bindings that may
-    /// already exist (e.g. `$prim_` bindings from desugaring).
-    /// Evidence-threading P2b: per-occurrence ids share the method's NAME but
-    /// must never be chosen as the binding id for generated prelude bodies —
-    /// only the canonical shared id may anchor a generated binding.
+    /// The id a generated binding or reference takes for `name_chirho`, which may already
+    /// exist (e.g. `$prim_` bindings from desugaring). That is the id the program's own
+    /// bindings use free under the name; else the least other id with it that is neither
+    /// a local binder nor a per-occurrence id (evidence-threading P2b: only the canonical
+    /// shared id may anchor a generated binding); else a fresh one. A scan in hash order
+    /// could take a local binder's id, as a `where length _ = 99` did, and leave the
+    /// Prelude's `length` unbound in some runs (row 594).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn resolve_or_fresh_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
-        // Search for an existing ID with this name (skipping occurrence ids)
-        for (id_chirho, existing_name_chirho) in &self.names_chirho {
-            if existing_name_chirho == name_chirho
-                && !self.method_occurrence_canon_chirho.contains_key(id_chirho)
-            {
-                return *id_chirho;
-            }
+        if let Some(id_chirho) = self.module_free_id_named_chirho(name_chirho) {
+            return id_chirho;
         }
-        // Not found — create a fresh one
-        self.fresh_id_chirho(name_chirho)
+        let existing_chirho = self
+            .names_chirho
+            .iter()
+            .filter(|(id_chirho, existing_name_chirho)| {
+                existing_name_chirho.as_str() == name_chirho
+                    && !self.method_occurrence_canon_chirho.contains_key(id_chirho)
+                    && !self.module_local_binder_ids_chirho.contains(id_chirho)
+            })
+            .map(|(id_chirho, _)| *id_chirho)
+            .min();
+        existing_chirho.unwrap_or_else(|| self.fresh_id_chirho(name_chirho))
     }
 
     /// Record top-level source bindings, the ids they use without binding, and the ids
@@ -270,9 +281,11 @@ impl DictPassCtxChirho {
                 .insert(binding_chirho.binder_chirho.id_chirho);
             collect_binders_chirho(
                 &binding_chirho.rhs_chirho,
-                &mut self.module_bound_ids_chirho,
+                &mut self.module_local_binder_ids_chirho,
             );
         }
+        self.module_bound_ids_chirho
+            .extend(self.module_local_binder_ids_chirho.iter().copied());
         for binding_chirho in &module_chirho.bindings_chirho {
             self.module_free_ids_chirho
                 .remove(&binding_chirho.binder_chirho.id_chirho);
