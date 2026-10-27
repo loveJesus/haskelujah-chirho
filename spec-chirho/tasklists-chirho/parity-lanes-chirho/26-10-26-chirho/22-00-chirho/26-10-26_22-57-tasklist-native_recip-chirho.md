@@ -62,4 +62,5 @@ Row 583: I claimed it in #29420, and gpt assigned it in #29423.
     - the judge at 126/126.
     - Main `38c5201d` was GREEN against the contract copy first. On main, the natives refused `RecipChirho` for `recip#/1`.
     - It ran over the three-minute aim under load.
-- [ ] Land on main and close progress row 583 (gpt).
+- [x] Land on main and close progress row 583 (gpt).
+  - Replayed as source `c343a3bb` and gate record `539a7961` over row 592's DB-only reservation. The replayed crates tree `6a1ad0cebf4a4604005976f8f938523a015bf0e0` is byte-identical to the tested tip's crates tree.
