@@ -467,14 +467,14 @@ impl InferCtxChirho {
 /// The instance-head key of a concrete literal type; `None` for anything still
 /// carrying a unification variable, and for a rigid variable (that literal is
 /// dispatched through the enclosing binding's dictionary parameter).
-/// A type's full key when every part of it is ground, as `Show`'s dictionaries
-/// are named: `[Char]` for a top-level `String` (`String` once nested inside
+/// A type's full evidence key when every part of it is ground, as structured
+/// `Show` and `Ord` rows are named: `[Char]` for a top-level `String` (`String` once nested inside
 /// another key), `[Int]`, `(Int,Bool)`, `Maybe Int` (`(Maybe Int)` nested).
 /// `None` for any variable, rigid variable, function type or polytype.
-/// Moved unchanged from `finalize_occurrence_records_chirho`, which keys `Show`
-/// occurrences by it.
+/// Moved from `finalize_occurrence_records_chirho`; `Show` and `Ord` occurrences
+/// use it when their resolved type is fully concrete.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
-pub(super) fn concrete_show_key_chirho(
+pub(super) fn concrete_evidence_key_chirho(
     ty_chirho: &TyChirho,
     nested_chirho: bool,
 ) -> Option<String> {
@@ -497,21 +497,21 @@ pub(super) fn concrete_show_key_chirho(
             }
             Some(format!(
                 "[{}]",
-                concrete_show_key_chirho(inner_chirho, true)?
+                concrete_evidence_key_chirho(inner_chirho, true)?
             ))
         }
         TyChirho::TupleChirho(items_chirho) => {
             let item_keys_chirho = items_chirho
                 .iter()
-                .map(|item_chirho| concrete_show_key_chirho(item_chirho, true))
+                .map(|item_chirho| concrete_evidence_key_chirho(item_chirho, true))
                 .collect::<Option<Vec<_>>>()?;
             Some(format!("({})", item_keys_chirho.join(",")))
         }
         TyChirho::AppChirho(fun_chirho, arg_chirho) => {
             let key_chirho = format!(
                 "{} {}",
-                concrete_show_key_chirho(fun_chirho, false)?,
-                concrete_show_key_chirho(arg_chirho, true)?
+                concrete_evidence_key_chirho(fun_chirho, false)?,
+                concrete_evidence_key_chirho(arg_chirho, true)?
             );
             Some(if nested_chirho {
                 format!("({key_chirho})")
@@ -531,9 +531,9 @@ pub(super) fn concrete_show_key_chirho(
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(super) fn ground_list_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
     match ty_chirho {
-        TyChirho::ListChirho(_) => concrete_show_key_chirho(ty_chirho, false),
+        TyChirho::ListChirho(_) => concrete_evidence_key_chirho(ty_chirho, false),
         TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {
-            concrete_show_key_chirho(ty_chirho, false)
+            concrete_evidence_key_chirho(ty_chirho, false)
         }
         _ => None,
     }

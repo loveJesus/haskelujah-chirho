@@ -413,7 +413,10 @@ impl DictPassCtxChirho {
         }
     }
 
-    pub(super) fn binder_type_key_chirho(&self, binder_chirho: &BinderChirho) -> Option<String> {
+    pub(in crate::dict_chirho) fn binder_type_key_chirho(
+        &self,
+        binder_chirho: &BinderChirho,
+    ) -> Option<String> {
         match &binder_chirho.ty_chirho {
             TyChirho::FunChirho(_, _, _) => None,
             TyChirho::ForallChirho { body_chirho, .. } => Some(format!("{}", body_chirho)),
@@ -436,7 +439,9 @@ impl DictPassCtxChirho {
             .any(Self::key_token_is_type_var_chirho)
     }
 
-    pub(super) fn concrete_local_type_key_chirho(type_key_chirho: String) -> Option<String> {
+    pub(in crate::dict_chirho) fn concrete_local_type_key_chirho(
+        type_key_chirho: String,
+    ) -> Option<String> {
         if type_key_chirho.is_empty() || Self::type_key_has_type_var_chirho(&type_key_chirho) {
             None
         } else {
@@ -538,7 +543,7 @@ impl DictPassCtxChirho {
         alt_type_keys_chirho
     }
 
-    pub(super) fn infer_type_key_for_rewrite_chirho(
+    pub(in crate::dict_chirho) fn infer_type_key_for_rewrite_chirho(
         &self,
         expr_chirho: &CoreExprChirho,
         local_type_keys_chirho: &HashMap<CoreIdChirho, String>,

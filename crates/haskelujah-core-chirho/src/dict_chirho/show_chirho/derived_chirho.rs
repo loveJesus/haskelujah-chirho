@@ -14,7 +14,9 @@ use haskelujah_typing_chirho::deriving_chirho::{
     DerivedShowConChirho, ShowConFormChirho, ShowFieldTypeChirho,
 };
 
-use super::shape_chirho::{SHOW_SHAPE_DEPTH_LIMIT_CHIRHO, split_outer_chirho};
+use crate::dict_chirho::type_keys_chirho::split_outer_type_key_chirho;
+
+use super::shape_chirho::SHOW_SHAPE_DEPTH_LIMIT_CHIRHO;
 use super::{
     AltConChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho,
     DictPassCtxChirho, InlineAnnotationChirho, TyChirho, join_string_parts_chirho,
@@ -157,7 +159,7 @@ impl DictPassCtxChirho {
         &self,
         key_chirho: &str,
     ) -> Option<(String, HashMap<String, String>)> {
-        let parts_chirho = split_outer_chirho(key_chirho, ' ')?;
+        let parts_chirho = split_outer_type_key_chirho(key_chirho, ' ')?;
         let (head_chirho, arguments_chirho) = parts_chirho.split_first()?;
         let metadata_chirho = self.derived_shows_chirho.get(*head_chirho)?;
         if metadata_chirho.type_vars_chirho.len() != arguments_chirho.len() {

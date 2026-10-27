@@ -13,6 +13,7 @@ use std::collections::HashMap;
 
 use super::DictPassCtxChirho;
 use crate::dict_chirho::prelude_chirho::ordering_tests_chirho::ORDERING_TESTS_CHIRHO;
+use crate::dict_chirho::type_keys_chirho::canonical_type_key_chirho;
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
 
 /// Keys whose ordering the primops already serve: Int, Char and Bool as Int primops,
@@ -35,10 +36,10 @@ impl DictPassCtxChirho {
         let [left_chirho, right_chirho] = rewritten_args_chirho else {
             return None;
         };
-        let key_chirho = args_chirho.iter().find_map(|arg_chirho| {
+        let key_chirho = canonical_type_key_chirho(&args_chirho.iter().find_map(|arg_chirho| {
             self.infer_type_key_for_rewrite_chirho(arg_chirho, local_type_keys_chirho)
                 .and_then(Self::concrete_local_type_key_chirho)
-        })?;
+        })?);
         if PRIMOP_KEYS_CHIRHO.contains(&key_chirho.as_str()) {
             return None;
         }

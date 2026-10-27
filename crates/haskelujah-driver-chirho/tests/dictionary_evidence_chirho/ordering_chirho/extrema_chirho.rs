@@ -49,24 +49,13 @@ fn int_shaped_extrema_keep_their_answers_everywhere_chirho() {
     );
 }
 
-/// Row 565's named residuals, each failing in the interpreter as before. GHC answers
-/// `Just 3`, `(2,'a')` and `"c"`, and fails `Prelude.maximum: empty list`.
-/// - Maybe and tuple keys have no body-backed compare row, so they wait for a later Ord brick.
+/// Row 565's remaining named residuals, each failing in the interpreter as before.
+/// GHC answers `"c"` and fails `Prelude.maximum: empty list`.
 /// - A polymorphic `Ord a =>` wrapper holds a dictionary, not a key.
 /// - The empty list fails in `head`, not with GHC's message.
 #[test]
 fn extrema_outside_the_compare_rows_stay_named_residuals_chirho() {
     for (file_name_chirho, program_chirho, reason_chirho) in [
-        (
-            "MaximumMaybeChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print (maximum [Just 3, Nothing, Just (1 :: Int)])\n",
-            "LeIntChirho",
-        ),
-        (
-            "MaximumTupleChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print (maximum [(1, 'b'), (2, 'a'), (1, 'c') :: (Int, Char)])\n",
-            "LeIntChirho",
-        ),
         (
             "PolymorphicMaximumChirho.hs",
             "module Main where\nlargestChirho :: Ord a => [a] -> a\nlargestChirho = maximum\nmain :: IO ()\nmain = print (largestChirho [\"b\", \"c\", \"a\"])\n",

@@ -36,6 +36,7 @@ pub mod prelude_chirho;
 mod print_evidence_tests_chirho;
 pub mod rewrite_chirho;
 mod show_chirho;
+mod type_keys_chirho;
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};

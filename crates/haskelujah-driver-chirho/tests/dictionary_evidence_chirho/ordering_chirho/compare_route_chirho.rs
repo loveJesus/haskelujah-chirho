@@ -5,8 +5,8 @@
 //! Strings, lists, derived values and Orderings as heap values or C strings: the
 //! interpreter refused them (`LtIntChirho: expected Int#`). Where the operand's key has a
 //! body-backed `$prim_Ord_compare_<key>` row, the pass now reads one `compare a b`. Keys
-//! without such a row (`Maybe`, tuples) and prefix `(<)` stay as they were; `max` and
-//! `min` read the same rows since row 565.
+//! without such a row and prefix `(<)` stay as they were; row 572 adds body-backed
+//! `Maybe` and tuple rows, while `max` and `min` read the same rows since row 565.
 //! Each program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
@@ -37,30 +37,19 @@ fn ordering_operators_answer_as_ghc_through_compare_everywhere_chirho() {
     );
 }
 
-/// The interpreter still fails on keys without a body-backed compare row and on prefix
-/// `(<)`; GHC answers False, False and False. Each is a later Ord brick. (`max` moved with
-/// row 565; see `extrema_chirho.rs`.)
+/// Prefix `(<)` does not carry the operand key through the desugarer's variable route, so
+/// it remains outside the compare route. GHC answers False. (`Maybe` and tuple operators
+/// moved in row 572; `max` moved in row 565.)
 #[test]
 fn orderings_outside_the_compare_route_still_fail_in_the_interpreter_chirho() {
-    for (file_name_chirho, program_chirho) in [
-        (
-            "MaybeLessChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print (Just (2 :: Int) < Nothing)\n",
-        ),
-        (
-            "TupleLessChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print ((1 :: Int, 3 :: Int) < (1, 2))\n",
-        ),
-        (
-            "PrefixLessChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print ((<) \"b\" \"a\")\n",
-        ),
-    ] {
-        assert!(
-            run_result_chirho(file_name_chirho, program_chirho).is_err(),
-            "{file_name_chirho}: moved outside row 551's route"
-        );
-    }
+    let result_chirho = run_result_chirho(
+        "PrefixLessChirho.hs",
+        "module Main where\nmain :: IO ()\nmain = print ((<) \"b\" \"a\")\n",
+    );
+    assert!(
+        result_chirho.is_err(),
+        "prefix (<) moved outside row 551's route: {result_chirho:?}"
+    );
 }
 
 /// The routed `>=` reads one `compare "b" "a"`: main mentions the `[Char]` compare row once

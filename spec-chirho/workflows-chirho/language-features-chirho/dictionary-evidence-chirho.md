@@ -92,7 +92,8 @@ flowchart TD
   - When an operand of the desugarer's `<#`, `<=#`, `>#` or `>=#` keys as anything but Int, Char, Bool or Double, `rewrite_chirho/compare_route_chirho.rs` looks up `$prim_Ord_compare_<key>` with `lookup_dispatch_body_name_id_chirho`. That lookup accepts a body-backed row and never a missing-method stub.
   - If found, the primop becomes `test (compare a b)`, with one of the Ordering tests generated in `prelude_chirho/ordering_tests_chirho.rs`.
   - That serves Strings, lists, derived types and Ordering.
-  - A key without such a row keeps the primop: `Maybe`, tuples. Prefix `(<)` is a later brick.
+  - A key without such a row keeps the primop. `Maybe` and pairs/triples receive bounded
+    body-backed rows in row 572; prefix `(<)` is a later brick.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/compare_route_chirho.rs`.
 - `max`, `min`, `maximum` and `minimum` read the same rows (row 565, the Ord aggregate brick).
   - Their generic bindings are Int-shaped, over `<=#` and `>=#`. `maximum` and `minimum` join `max` and `min` in the driver's per-occurrence evidence names, since their schemes are `Ord a => [a] -> a`.
@@ -103,10 +104,29 @@ flowchart TD
     - `$ord_maximum_by_chirho` and `$ord_minimum_by_chirho` fold the picks, as the Int-shaped bindings do.
   - Int, Char and Bool keep their exact Int-shaped bindings. Double routes too, because `compare x y /= GT` matches IEEE `x <= y`, NaN included.
   - Residuals keep today's path:
-    - keys without a compare row (`Maybe`, tuples);
+    - keys without a body-backed compare row;
     - a polymorphic `Ord a =>` wrapper, whose evidence is a dictionary;
     - the empty list, which fails in `head` rather than with `Prelude.maximum: empty list`.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/extrema_chirho.rs`.
+- Concrete `Maybe` and tuple ordering composes only body-backed component rows (row 572).
+  - `Show` and `Ord` occurrence evidence retain a complete concrete key, rather than only the
+    application or tuple head: `Maybe Int`, `(Int,Char)` and `(Int,Int,Int)`. Open variables
+    still name only their enclosing dictionary route.
+  - `generate_evidenced_ord_bindings_chirho` runs after conditional list rows exist. It reads
+    concrete `Ord` evidence and the same concrete operand keys that the compare route will use
+    for already-lowered ordering primops. The prepass is read-only; it does not infer a key from
+    heap representation.
+  - A `Maybe K` row orders `Nothing` before `Just`, then delegates two `Just` fields to
+    `$prim_Ord_compare_K`. A pair or triple compares fields lexicographically and stops at the
+    first non-`EQ` answer. Nested components such as `[Int]`, `Maybe Double` or `String` qualify
+    only when their compare row already has a real non-stub body.
+  - The generator is depth-bounded and limited to pairs and triples. A missing component row,
+    a dangling name-table ID, a generated missing-method body, or another tuple arity produces
+    no parent row and keeps the previous failure path.
+  - Type-key layout is canonical at the registry boundary: `(Int, Char)` and `(Int,Char)` name
+    one row, while the application separator in `Maybe Int` remains meaningful.
+  - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/structured_orders_chirho.rs` and
+    `instance_chirho/structured_orders_tests_chirho.rs`.
 
 ## Reference evidence (bricks 3 and 4)
 

@@ -363,6 +363,14 @@ impl DictPassCtxChirho {
         // (e.g. Eq [Double] from Eq a => Eq [a] + Eq Double)
         self.generate_conditional_ground_dicts_chirho(class_env_chirho);
 
+        let module_type_keys_chirho =
+            self.collect_module_type_keys_chirho(module_chirho, type_env_chirho);
+
+        // A proven structured Ord key can be served only after its component
+        // rows, including conditional list rows, have real bodies.
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_evidenced_ord_bindings_chirho(module_chirho, &module_type_keys_chirho);
+
         // Seed local_shadow_ids with top-level user bindings whose name
         // collides with a class method (e.g. user defines `toList` which
         // shadows the IsList class method).  Without this, the dict pass
@@ -431,9 +439,6 @@ impl DictPassCtxChirho {
 
         // Transform each binding
         let mut bindings_chirho = Vec::new();
-        let module_type_keys_chirho =
-            self.collect_module_type_keys_chirho(module_chirho, type_env_chirho);
-
         for binding_chirho in &module_chirho.bindings_chirho {
             let name_chirho = &binding_chirho.binder_chirho.name_chirho;
 

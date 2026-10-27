@@ -3,6 +3,7 @@
 //! Decode the checker's concrete Show evidence, retaining applied argument boundaries.
 //! Unknown instances remain on the dictionary path; they are never guessed as Int.
 
+use crate::dict_chirho::type_keys_chirho::split_outer_type_key_chirho;
 use crate::expr_chirho::CoreIdChirho;
 
 /// How deep a Show key may nest: in the parser, and in the derived support check (row 533).
@@ -73,7 +74,7 @@ impl ShowShapeChirho {
         }
         if key_chirho.starts_with('(') && key_chirho.ends_with(')') {
             let inner_chirho = &key_chirho[1..key_chirho.len() - 1];
-            let parts_chirho = split_outer_chirho(inner_chirho, ',')?;
+            let parts_chirho = split_outer_type_key_chirho(inner_chirho, ',')?;
             return if parts_chirho.len() == 1 {
                 descend_chirho(inner_chirho, precedence_chirho)
             } else {
@@ -92,7 +93,7 @@ impl ShowShapeChirho {
             )?)));
         }
         if let Some(inner_chirho) = key_chirho.strip_prefix("Either ") {
-            let parts_chirho = split_outer_chirho(inner_chirho, ' ')?;
+            let parts_chirho = split_outer_type_key_chirho(inner_chirho, ' ')?;
             let [left_chirho, right_chirho] = parts_chirho.as_slice() else {
                 return None;
             };
@@ -113,33 +114,4 @@ impl ShowShapeChirho {
             .flatten()
             .map(Self::BackedChirho)
     }
-}
-
-pub(super) fn split_outer_chirho(source_chirho: &str, separator_chirho: char) -> Option<Vec<&str>> {
-    let mut closing_chirho = Vec::new();
-    let mut parts_chirho = Vec::new();
-    let mut start_chirho = 0;
-    for (index_chirho, char_chirho) in source_chirho.char_indices() {
-        match char_chirho {
-            '(' => closing_chirho.push(')'),
-            '[' => closing_chirho.push(']'),
-            ')' | ']' if closing_chirho.pop() != Some(char_chirho) => return None,
-            _ => {}
-        }
-        if char_chirho == separator_chirho && closing_chirho.is_empty() {
-            let part_chirho = source_chirho[start_chirho..index_chirho].trim();
-            if !part_chirho.is_empty() {
-                parts_chirho.push(part_chirho);
-            }
-            start_chirho = index_chirho + char_chirho.len_utf8();
-        }
-    }
-    if !closing_chirho.is_empty() {
-        return None;
-    }
-    let part_chirho = source_chirho[start_chirho..].trim();
-    if !part_chirho.is_empty() {
-        parts_chirho.push(part_chirho);
-    }
-    Some(parts_chirho)
 }
