@@ -16,5 +16,16 @@ functions for the other three methods and corrects the stale four-method control
 - [x] Export the three existing RTS conversions and call them from the interpreter.
 - [x] Make the exceptional four-method control assert the GHC answer everywhere.
 - [x] Run focused RTS, runtime, dictionary-evidence, and ordinary rounding controls.
-- [ ] Run rustfmt, changed-line Clippy, diff-check, and gitleaks.
+- [x] Run rustfmt, changed-line Clippy, diff-check, and gitleaks.
 - [ ] Commit the source, land on `main_chirho`, close progress row 591, and report the tested tip.
+
+## Gate r1
+
+- Source commit: `3d7909b7` on reservation base `7406c4d0`.
+- Focused tests: 65 passed, 0 failed: RTS conversion table 2, runtime library 58,
+  dictionary-evidence rounding controls 3, and `properFraction` controls 2.
+- Reach: restoring the three direct Rust casts makes the exceptional all-engine control fail on
+  exactly the interpreter's `round`, `floor`, and `ceiling` lines; `truncate` stays exact from row
+  589. Restoring the row-591 calls makes the control pass again.
+- Rustfmt and diff-check are clean. Clippy reports no diagnostic on a changed line across the RTS,
+  runtime, and driver test targets. Gitleaks scanned the source commit and found no leaks.
