@@ -48,7 +48,23 @@ Row 614.
 - [x] Trace every shortcut (#30034); ruling #30035; checkpoint on `$` (#30040), ruling #30041.
 - [x] Source: the predicate at the three sites, and the shared reference route.
 - [x] Controls: GHC-measured, byte for byte; 4 tests, with `$` excluded.
-- [ ] Commit; replay onto the newest main; broad moved-shape scan.
-- [ ] Reach: the predicate removed at each site alone.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] Commit; replay onto the newest main; broad moved-shape scan.
+  - The source `f4056ccc` sits on main `b83c7491`, which adds only the row 619 reservation.
+  - **Scan** (`scan614-chirho.log`): 3579/3579 passed in 719 s, with no mover.
+    - It covered every lib, the parser's included, and the 20 driver suites, leaving out `ghc_bulk`.
+    - It skipped the same 18 tests as before. The count is row 609's 3575, plus this row's 4 controls.
+- [x] **Reach** (`tools-chirho/reach_614_chirho.zsh`, log `reach614-r1-chirho.log`). Each site was removed alone and gave main's answers there:
+  - **M1, the infix arm's head:** `(3.5,-0.5,3.0,2.0,3.5)` and `(3.5,2.0)`. Infix `div` and `mod` revert while prefix division stays exact.
+  - **M2, the section table:** `([[1,9]],[8],[9.0],[2],[9])`.
+  - **M3, the prefix rewrite:** `(9,14,3,1,3,1)`, and the local prefix cells revert.
+  - Every restore was byte-identical, and the restored tree passes 4/4. The Prelude holds passed under every mutation.
+- [x] Judge main against the contract copy; warm gate; record.
+  - **Main `b83c7491`** is GREEN against the contract copy first (73 movers, 9 holds). Its probes give main's measured answers (`baseline-b83c7491-chirho.log`).
+  - **r1, GREEN on `f4056ccc` (base `b83c7491`) in 331.72 s:**
+    - 1746/1746 focused tests, with `typing_integration_chirho` added;
+    - no Clippy diagnostic on the 254 changed lines in 5 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
+  - **Timing:** past the 2-5 minute aim, because the whole typing-integration binary joined the tests step.
+  - **The tip's probe reports** (`tip-f4056ccc-chirho` in each set): 16 programs are GHC on all three engines. All 18 programs that compile carry the Cranelift marker; rows 617 and 618's two gaps fail type checking.
 - [ ] Land on main and close progress row 614 (gpt).
