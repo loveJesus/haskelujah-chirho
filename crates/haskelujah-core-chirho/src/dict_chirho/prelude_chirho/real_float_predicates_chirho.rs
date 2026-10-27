@@ -1,8 +1,8 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Body-backed `RealFloat Double` predicates. They are ordinary Core built from
-//! the ordered Double comparisons and division every engine already implements,
-//! so the interpreter and both native backends share one definition.
+//! Body-backed `RealFloat Double` predicates and representation properties.
+//! They are ordinary Core built from constants, ordered Double comparisons, and
+//! division every engine already implements, so all engines share one definition.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{
@@ -46,7 +46,7 @@ impl DictPassCtxChirho {
             "isNegativeZero",
             "isIEEE",
         ] {
-            let value_chirho = self.fresh_binder_chirho("value", double_ty_chirho.clone());
+            let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho.clone());
             let body_chirho = match predicate_chirho {
                 "isNaN" => primop_chirho(
                     "not#",
@@ -112,27 +112,76 @@ impl DictPassCtxChirho {
                 "isIEEE" => bool_chirho(true),
                 _ => unreachable!(),
             };
-            let prim_name_chirho = format!("$prim_RealFloat_{predicate_chirho}_Double");
-            let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: prim_id_chirho,
-                    name_chirho: prim_name_chirho.clone(),
-                    ty_chirho: TyChirho::fun_chirho(
-                        double_ty_chirho.clone(),
-                        bool_ty_chirho.clone(),
-                    ),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho: CoreExprChirho::LamChirho {
-                    binder_chirho: value_chirho,
-                    body_chirho: Box::new(body_chirho),
-                },
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-            self.push_prelude_alias_chirho(predicate_chirho, &prim_name_chirho);
+            self.push_real_float_row_chirho(
+                predicate_chirho,
+                bool_ty_chirho.clone(),
+                value_chirho,
+                body_chirho,
+            );
         }
+    }
+
+    /// Generate the three constant properties of the concrete Double representation.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_real_float_properties_chirho(&mut self) {
+        let double_ty_chirho = TyChirho::double_chirho();
+        let int_ty_chirho = TyChirho::int_chirho();
+
+        let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho.clone());
+        self.push_real_float_row_chirho(
+            "floatRadix",
+            TyChirho::ConChirho("Integer".to_string()),
+            value_chirho,
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2)),
+        );
+
+        let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho.clone());
+        self.push_real_float_row_chirho(
+            "floatDigits",
+            int_ty_chirho.clone(),
+            value_chirho,
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(53)),
+        );
+
+        let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho);
+        self.push_real_float_row_chirho(
+            "floatRange",
+            TyChirho::TupleChirho(vec![int_ty_chirho.clone(), int_ty_chirho]),
+            value_chirho,
+            CoreExprChirho::ConAppChirho {
+                con_name_chirho: "$tuple2".to_string(),
+                args_chirho: vec![
+                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(-1021)),
+                    CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1024)),
+                ],
+            },
+        );
+    }
+
+    fn push_real_float_row_chirho(
+        &mut self,
+        method_chirho: &str,
+        result_ty_chirho: TyChirho,
+        value_chirho: BinderChirho,
+        body_chirho: CoreExprChirho,
+    ) {
+        let prim_name_chirho = format!("$prim_RealFloat_{method_chirho}_Double");
+        let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: prim_id_chirho,
+                name_chirho: prim_name_chirho.clone(),
+                ty_chirho: TyChirho::fun_chirho(TyChirho::double_chirho(), result_ty_chirho),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: value_chirho,
+                body_chirho: Box::new(body_chirho),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+        self.push_prelude_alias_chirho(method_chirho, &prim_name_chirho);
     }
 
     fn real_float_bool_case_chirho(
@@ -141,7 +190,8 @@ impl DictPassCtxChirho {
         true_chirho: CoreExprChirho,
         false_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
-        let case_chirho = self.fresh_binder_chirho("$real_float_case", TyChirho::bool_chirho());
+        let case_chirho =
+            self.fresh_binder_chirho("$real_float_case_chirho", TyChirho::bool_chirho());
         CoreExprChirho::CaseChirho {
             scrutinee_chirho: Box::new(scrutinee_chirho),
             bind_chirho: case_chirho,

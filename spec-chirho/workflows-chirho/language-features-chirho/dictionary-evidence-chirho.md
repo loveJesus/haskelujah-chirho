@@ -668,6 +668,13 @@ flowchart LR
   their separate `pi#` and `recip#` dictionary obligations, so this row does not claim that broader
   dictionary-passing route.
 
+Row 582 extends the same module with the three properties that are constant for a concrete Double
+representation: `floatRadix _ = 2`, `floatDigits _ = 53`, and
+`floatRange _ = (-1021, 1024)`. Their body-backed rows return Core literals (and one `$tuple2`), so
+no engine-specific primitive or representation reader is involved. GHC 9.14.1 controls cover
+ordinary values, signed zero, NaN, Infinity, the normal/subnormal boundary, first-class `map` uses,
+and program-owned definitions of all three names.
+
 ## Current boundary
 
 - An infix or section use of a class METHOD mints its own occurrence id and carries its
