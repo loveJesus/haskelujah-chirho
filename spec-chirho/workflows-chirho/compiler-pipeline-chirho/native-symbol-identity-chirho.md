@@ -111,6 +111,7 @@ Row 629 owns namesakes that resolve by bare name before the backend: interfaces,
     - a chain of forwarders, two paths to one definition (one identity), a `module B` re-export and a qualified alias of a forwarder, each beside a namesake: exact. A two-definition scope is refused as ambiguous.
     - interface origins: a module's own definitions carry it, every re-export path keeps the definer, a chain keeps the first, and every builtin value has none.
   - The link decision's own tests: `project_chirho/import_links_tests_chirho.rs`.
+  - `synonym_closure_chirho.rs` (row 656) only shares this target's harness. It tests type-synonym expansion, recorded in `type-scope-resolution-chirho.md`.
 - **Residuals (not row 642).**
   - `check` rejects a two-level chain and a project Prelude: its single-file stub interfaces carry no types for re-exported values.
   - The frontend does not reject an ambiguous unqualified name; only the link refuses it.

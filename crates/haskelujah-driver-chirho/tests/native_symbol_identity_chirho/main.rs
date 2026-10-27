@@ -11,7 +11,9 @@
 //! The interpreter row is checked wherever it matches GHC. Row 629's import identity controls,
 //! row 621's `module M` export controls and row 642's re-export origin controls, which run
 //! multi-module programs on the interpreter too, are the `import_identity_chirho`,
-//! `module_exports_chirho` and `reexport_origins_chirho` submodules.
+//! `module_exports_chirho` and `reexport_origins_chirho` submodules. Row 656's synonym-closure
+//! programs reuse this harness from the `synonym_closure_chirho` submodule; they test type-synonym
+//! expansion, not symbol identity.
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
 use std::time::Duration;
@@ -24,6 +26,7 @@ use haskelujah_test_harness_chirho::native_chirho::{
 mod import_identity_chirho;
 mod module_exports_chirho;
 mod reexport_origins_chirho;
+mod synonym_closure_chirho;
 
 /// A run's budget for a multi-module program. One run of the parallel suite exceeded 15 s while
 /// another agent's tests loaded the machine, though the same binaries finish in under 0.1 s.

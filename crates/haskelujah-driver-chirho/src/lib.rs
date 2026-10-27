@@ -1360,6 +1360,32 @@ fn collect_safe_unqualified_imported_type_names_chirho(
     safe_type_names_chirho
 }
 
+/// Give each type name a module may spell bare the bare synonym key that spelling needs (row 656).
+///
+/// A name with exactly one exporter among the module's imports is canonicalized to its bare
+/// spelling, by the import rewrite and by inference alike, whether or not an import lists it. A
+/// synonym so spelled therefore needs a bare key, or a re-exported alias stops expanding at a
+/// parent the module never imported by name. The key is cloned from that exporter's qualified
+/// key, only when no bare key exists and the qualified one is already in the merged input. It
+/// serves expansion only: naming still decides what the source may write.
+/// workflow: compiler-pipeline-chirho/type-scope-resolution-chirho
+fn align_preferred_synonym_keys_chirho(
+    merged_imported_type_synonyms_chirho: &mut ImportedTypeSynonymsChirho,
+    preferred_qualified_type_names_chirho: &std::collections::HashMap<String, String>,
+) {
+    for (type_name_chirho, exporter_chirho) in preferred_qualified_type_names_chirho {
+        if merged_imported_type_synonyms_chirho.contains_key(type_name_chirho) {
+            continue;
+        }
+        if let Some(synonym_chirho) = merged_imported_type_synonyms_chirho
+            .get(&format!("{exporter_chirho}.{type_name_chirho}"))
+            .cloned()
+        {
+            merged_imported_type_synonyms_chirho.insert(type_name_chirho.clone(), synonym_chirho);
+        }
+    }
+}
+
 fn collect_preferred_qualified_type_names_chirho(
     module_chirho: &ModuleChirho,
     ifaces_chirho: &[ModuleIfaceChirho],
@@ -2039,6 +2065,14 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
             }
         }
     }
+
+    // Names spelled bare by their unique exporter keep the synonym key that spelling needs
+    // (row 656).
+    // workflow: compiler-pipeline-chirho/type-scope-resolution-chirho
+    align_preferred_synonym_keys_chirho(
+        &mut merged_imported_type_synonyms_chirho,
+        &preferred_qualified_type_names_chirho,
+    );
 
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.
@@ -3146,5 +3180,7 @@ pub fn render_summary_chirho(check_summary_chirho: &CheckSummaryChirho) -> Strin
     )
 }
 
+#[cfg(test)]
+mod synonym_keys_tests_chirho;
 #[cfg(test)]
 mod tests_chirho;

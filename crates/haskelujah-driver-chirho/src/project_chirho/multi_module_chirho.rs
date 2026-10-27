@@ -58,8 +58,9 @@ pub fn compile_modules_chirho(
 
         // Phases 1–4.5: shared front-end. The module sees only the value schemes of the
         // modules it imports, as the project path does, so a name no import brings stays
-        // unbound (row 647). Type synonyms stay unfiltered here: the shared synonym filter
-        // drops a parent alias that a re-exported alias expands through (row 656).
+        // unbound (row 647). Type synonyms stay unfiltered here; whether this path takes the
+        // shared synonym filter, whose alias-chain failures row 656 traced to a missing bare
+        // synonym key, is a separate decision.
         // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
         let filtered_imported_types_chirho =
             filter_seeded_imported_types_for_source_chirho(source_chirho, &imported_types_chirho);

@@ -102,3 +102,33 @@ Layout and lowering preserve scope before naming sees the AST. An explicit right
 The kind/type layer uses the same faithful shape downstream: required foralls contribute the kind of their body; symbolic standalone kind operators preserve application order; imported closed Boolean families reduce only when their leading argument selects an equation and otherwise remain stuck.
 
 Two deliberately narrow AST trust boundaries remain. The record-field branch covers `bug-record-field-forall-lowering-chirho.md`; ordinary and required-forall fields remain checked. The constructor-prefix branch covers `bug-existential-constructor-scope-dropped-chirho.md`; it requires a prefix constructor name whose source span begins after its enclosing constructor span, excludes infix constructors, and defers only that constructor's field-variable scope. Both branches should disappear when the AST can carry the source binders and contexts directly.
+
+## Imported synonym expansion keys (row 656)
+
+Naming above decides which imported type names a source may write. Separately, the driver frontend (`run_frontend_with_type_synonyms_families_and_class_env_chirho`) hands inference one table of imported type synonyms per module, and that table decides only how a synonym expands. Every multi-module path shares it: the project directory, both dependency-package paths behind `haskelujah build-run`, and the interpreter.
+
+```mermaid
+flowchart TD
+    seed_chirho[Each exporter seeds its synonyms and their transitive dependencies under bare and Module.Name keys] --> filter_chirho[Project and package paths keep only the keys of modules the source imports]
+    filter_chirho --> merge_chirho[Each import adds its listed names under bare and Qualifier.Name keys, right-hand sides in canonical spelling]
+    merge_chirho --> preferred_chirho[Preferred exporters: type names with exactly one exporter among the imports, import lists ignored]
+    preferred_chirho --> align_chirho{"Preferred name N with exporter E: no bare key N, and E.N in the table?"}
+    align_chirho -->|Yes| bare_chirho[Clone E.N under the bare key N, for expansion only]
+    align_chirho -->|No| keep_chirho[Leave the table unchanged]
+    bare_chirho --> register_chirho[Inference registers each synonym, normalizing preferred names to bare]
+    keep_chirho --> register_chirho
+    register_chirho --> expand_chirho[Expansion looks up the full name, then the bare name]
+```
+
+- **Why a bare key.** Since b32bcc14 the import rewrite (`qualify_imported_ast_type_chirho`) and inference (`normalize_imported_type_name_chirho`) both spell a preferred name bare, whether or not an import lists it. Before row 656 a bare key existed only for a listed name, so a re-exported alias whose right-hand side names a parent the module imports without listing it stopped expanding at that parent. GHC 9.14.1 accepts that Parsec-style chain; every Cabal build refused it with `type mismatch: expected ParsecAliasCompatMiniChirho, found (ParsecTAliasCompatMiniChirho [tokChirho])`.
+- **The rule.** `align_preferred_synonym_keys_chirho` adds the bare key N only when no bare key N exists and the one exporter's `E.N` is already in the filtered, merged table. It never overwrites a bare key, never takes a synonym from a module the source does not import, and never chooses among several exporters.
+- **Not a naming grant.** A source that writes the hidden parent, or a synonym from a module it does not import, is still refused by naming with E0101, as GHC refuses both with GHC-76037.
+- **What the trace ruled out.** The exporters seed the parent at every step. Keeping each admitted synonym's dependencies in the filter, or keeping the rewritten reference qualified, each leaves the chain failing, because the other canonicalization spells the reference bare again.
+- **The interpreter path** keeps its synonyms unfiltered (row 647), so it ran the chain before and after. With the alignment in place, a scratch run of that path under the shared synonym filter passed all 29 interpreter callers, including both alias chains that failed under the filter in row 647's trace. Adopting the filter there is a separate decision.
+
+### Code and controls
+
+- **The rule:** `align_preferred_synonym_keys_chirho` in `crates/haskelujah-driver-chirho/src/lib.rs`, called once after the frontend's import loop.
+- **Unit pins:** `crates/haskelujah-driver-chirho/src/synonym_keys_tests_chirho.rs`. A unique exporter adds the bare key; two exporters add none; a missing qualified source adds none; an existing bare key is kept.
+- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/synonym_closure_chirho.rs`. The chain and an import of only the forwarder are exact on the interpreter, LLVM and true Cranelift; the hidden parent and an unimported synonym are refused on all three. They live in that target for its multi-module harness, not for symbol identity.
+- **Holds:** `frontend_imported_type_alias_expands_through_parent_alias_chirho` and `frontend_reexported_type_alias_expands_through_hidden_parent_alias_chirho` in `crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs`.
