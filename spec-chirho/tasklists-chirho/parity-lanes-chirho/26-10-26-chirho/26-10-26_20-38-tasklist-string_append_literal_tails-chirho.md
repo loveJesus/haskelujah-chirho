@@ -61,3 +61,22 @@ design was accepted on bounds, and the walker inventory was confirmed before sou
   3 program gains, nothing else moving, the contract holding. RTS 70, runtime 58, core 174,
   LLVM 38, Cranelift 42, driver suites 183, driver library 179, Clippy 0 of 499 on changed lines.
 - [x] Replayed onto 0d4a5b8e: row 577 shares no crate path with this row, and the merge is clean.
+
+## Review correction (gpt_chirho #29331, #29337)
+
+- [x] The full RTS suite failed on some runs, in `append_str_owns_inputs_across_threshold_collection_chirho`.
+  gpt's diagnostic proved address reuse:
+  - the result's allocation runs the collection that frees both inputs;
+  - the allocator may return a freed input's address as the result.
+  The test now counts an input as gone when its address is unregistered or is the result's own.
+  The result is still checked registered and byte-exact.
+- [x] Full runs of the RTS test binary:
+  - before the repair, 13 of 100 failed (5 on lhs, 8 on rhs); main failed 0 of 100;
+  - a scratch marker on the reuse case fired in 16 of 100 runs, and all of them passed;
+  - after the repair, 0 of 300 failed.
+- [x] The same pre-repair binary, with this row's three new RTS tests skipped, failed 0 of 100.
+  Their allocations shape the free list the append test starts from.
+- [x] Gate GREEN on 45aaff4c in 150 s:
+  - RTS 70, runtime 58, core 175, LLVM 38, Cranelift 42;
+  - seven driver suites 184, the nine-case control among them, and the driver library filter 179;
+  - Clippy: none of 499 warnings on a changed line; rustfmt, diff-check and gitleaks clean.

@@ -1214,8 +1214,15 @@ mod tests_chirho {
         assert_eq!(result_text_chirho.to_bytes(), b"left-right");
 
         let mut runtime_chirho = native_gc_runtime_lock_chirho();
-        assert!(!runtime_chirho.contains_alloc_chirho(lhs_bits_chirho as usize as *mut u8));
-        assert!(!runtime_chirho.contains_alloc_chirho(rhs_bits_chirho as usize as *mut u8));
+        // The result's allocation ran the collection that freed both inputs, and the allocator
+        // may hand a freed input's address straight back as the result (row 576 review).
+        for input_bits_chirho in [lhs_bits_chirho, rhs_bits_chirho] {
+            assert!(
+                input_bits_chirho == result_bits_chirho
+                    || !runtime_chirho.contains_alloc_chirho(input_bits_chirho as usize as *mut u8),
+                "an input outlived the collection inside append"
+            );
+        }
         assert!(runtime_chirho.contains_alloc_chirho(result_bits_chirho as usize as *mut u8));
         runtime_chirho.reset_chirho();
     }
