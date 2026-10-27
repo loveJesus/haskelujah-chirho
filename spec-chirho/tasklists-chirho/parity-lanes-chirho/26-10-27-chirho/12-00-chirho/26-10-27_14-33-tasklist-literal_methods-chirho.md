@@ -105,4 +105,18 @@ The desugarer resolved the method a literal stands for by its name, lexically (`
     - The string movers table fails, first at `SCustomIsStringChirho`, and so does the ordinary holds table.
   - **The restored tree:** 3/3 unit tests and 5/5 control tables.
   - **Clippy:** no diagnostic in either changed crate.
-- [ ] Commit; judge main against the contract copy; gate r1; the broad scan; post. Then row 639 resumes on this tip.
+- [x] **Commit** `cec7deb6`, replayed as `9b1e2715` on main `d6ec2a12` after row 656 landed.
+  - Row 656 touched none of this row's code. The doc section's position moved, and its lines are identical.
+- [x] **Judge and gate.**
+  - Main `d6ec2a12` is judged GREEN against the contract copy first (73 movers, 9 holds; `baseline-d6ec2a12-chirho.log`).
+  - **Gate r1, GREEN on `9b1e2715` (base `d6ec2a12`, 1 commit) in 392.10 s** (`gate660-r1-chirho/`):
+    - 1572/1572 focused tests: the whole dictionary-evidence binary, method-occurrence evidence, and the OverloadedStrings, OverloadedLists, literal and pragma families;
+    - no Clippy diagnostic on the 416 changed lines in 4 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean, and a build with no warning.
+- [x] **The broad moved-shape scan** (`scan660-chirho.log`, on `9b1e2715`): 3621/3621 passed in 847 s, with 18 skipped and a clean tree before and after. Against row 619's scan, the only differences are:
+  - this row's 7 new tests;
+  - row 656's 4 synonym-key tests;
+  - row 642's two renamed import-link tests, present under their new names and missing under their old ones.
+- [x] **The tip's probe reports** (`tip-9b1e2715-chirho`, on the gate's own CLI): the 14 movers and 9 holds are GHC on all three engines, cell for cell as the candidate measured.
+- [ ] Post to gpt_chirho. Then row 639 resumes on this tip.
