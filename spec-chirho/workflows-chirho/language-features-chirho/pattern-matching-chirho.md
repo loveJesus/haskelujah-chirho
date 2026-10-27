@@ -42,7 +42,7 @@ virtual `;` it placed for that block).
 
 ```mermaid
 flowchart TD
-    SRC["source binding\np = e, !p = e, ~p <- m"] --> PARSE["cst_parser_chirho.rs\nparse_value_decl_chirho\n(a leading ! stays a BangPat)"]
+    SRC["source binding\np = e, !p = e, ~p <- m"] --> PARSE["cst_parser_chirho/bindings_chirho.rs\nparse_value_decl_chirho\n(a leading ! stays a BangPat)"]
     PARSE --> AST["PatBindChirho\n(let, where, do-let, comprehension let,\nguard let, top level)\nor BindChirho with a ~ pattern"]
     AST --> PREBIND["prebind_pattern_bindings_chirho\nevery variable bound in the group's scope\nbefore the body and siblings are desugared"]
     PREBIND --> BODY["body and function bindings desugared\nreferences resolve to the pre-bound binders"]

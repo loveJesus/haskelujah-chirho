@@ -16,7 +16,7 @@ blocks a real GHC-compatibility check and mis-scopes rank-N record fields.
 ## What happens
 
 Record constructor fields are the ONE constructor site our parser does not lower through
-`lower_type_chirho`. `parse_record_fields_chirho` (`crates/haskelujah-parser-chirho/src/cst_parser_chirho.rs:925`)
+`lower_type_chirho`. `parse_record_fields_chirho` (`crates/haskelujah-parser-chirho/src/cst_parser_chirho/data_decls_chirho.rs` since row 640)
 bumps the field type as raw tokens, so `lower_record_field_chirho`
 (`crates/haskelujah-parser-chirho/src/lower_chirho.rs:7350`) takes the flat fallback
 `type_from_flat_children_chirho` (`lower_chirho.rs:7380`).

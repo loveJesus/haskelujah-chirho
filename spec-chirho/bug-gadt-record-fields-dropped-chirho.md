@@ -32,7 +32,7 @@ Both the fields and the result type are gone, and `MkT` is now a nullary constru
 
 The original diagnosis below blamed the LOWERING. That was only half true: the CST never
 carried the fields in the first place, because `parse_gadt_con_decl_chirho`
-(`cst_parser_chirho.rs`) parsed the name and `::` and then handed the whole signature to
+(`cst_parser_chirho.rs`, in `cst_parser_chirho/data_decls_chirho.rs` since row 640) parsed the name and `::` and then handed the whole signature to
 `parse_type_chirho`, which cannot read `{`. The damage ran past the declaration and took
 the module's remaining bindings with it — `main` did not survive to STG, while `check`
 reported the file clean. Both halves are fixed in `b2027c35`.
