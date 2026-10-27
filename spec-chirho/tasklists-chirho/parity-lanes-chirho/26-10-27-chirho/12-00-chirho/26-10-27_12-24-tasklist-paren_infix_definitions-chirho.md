@@ -7,6 +7,7 @@ Row 618.
 - **Released** by gpt_chirho in #30364, after row 641.
 - **Trace and design posted** in #30367 and approved in #30368. The scope is the `funlhs` distinction in `cst_parser_chirho/bindings_chirho.rs` only; lowering stays untouched.
 - **Branch:** `paren-infix-definitions-chirho`, from main `9421c5d9`.
+- **Replayed** onto `d1192c01` as `6a5c813a`, after row 648 landed. Row 648 touched none of this row's files.
 - **Lane:** `tmp-chirho/paren-infix-definitions-chirho/`, with `trace-notes-chirho.md`, the probes and the findings.
 
 ## The bug
@@ -51,7 +52,7 @@ Row 618.
   - `a <.> b = a * 10 + b` with a signature prints `False`; GHC prints 12.
   - A four-argument `<.>` fails with `primop GtIntChirho: expected Int#, got (…, …)`.
   - The same programs with `<%>` print GHC's answers.
-  - The pointers: `<.>` is listed in `haskelujah-naming-chirho/src/iface_chirho.rs`, and in the builtin fixity table (`lower_chirho/expr_syntax_chirho/fixity_chirho.rs`).
+  - The pointers on `d1192c01`, after row 648's split: `<.>` is listed in `iface_chirho/builtin_chirho/packages_chirho/functors_chirho.rs` (lines 312 and 338) and `iface_chirho/builtin_chirho/platform_chirho/posix_chirho.rs` (line 423), and in the builtin fixity table (`lower_chirho/expr_syntax_chirho/fixity_chirho.rs:154`, `infixl 4`).
   - The probes use `<%>` so they stay inside this row.
 - **For row 615's builtin-scope inputs (#30368):** a Seq-typed `|>` is in main's scope (`type mismatch: expected Seq`), and GHC's Prelude has no `|>`.
 
@@ -75,6 +76,18 @@ Row 618.
     - Everything else passes.
   - **r1 is void.** Its default tag list was one zsh word, so nothing ran; it is fixed.
 - [x] The workflow doc: `pattern-matching-chirho.md`, "A parenthesized function left side".
-- [ ] Commit; broad moved-shape scan.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] **Commit** `f3dbb939`, replayed as `6a5c813a`. The broad moved-shape scan (`scan618-chirho.log`, on `f3dbb939`):
+  - 3607/3607 passed in 852 s, with 18 skipped and a clean tree before and after;
+  - against row 641's scan, it differs by exactly this row's 6 new tests, with none missing.
+- [x] **The tip's probe reports** (`probes-chirho/tip-f3dbb939-chirho`):
+  - the 9 movers are GHC on all three engines, and the 3 holds stay GHC;
+  - the zero-argument program exits 1 at `check`.
+- [x] **Judge and gate.**
+  - **r1, GREEN on `f3dbb939` (base `9421c5d9`) in 271.42 s** (`gate618-r1-chirho/`). Main `9421c5d9`'s crates tree equals row 641's gated tip, which was judged GREEN.
+  - **The replay.** Main `d1192c01` is judged GREEN against the contract copy first (73 movers, 9 holds; `baseline-d1192c01-chirho.log`).
+  - **r2, GREEN on the replayed `6a5c813a` (base `d1192c01`, 1 commit) in 275.01 s** (`gate618-r2-chirho/`):
+    - 1401/1401 focused tests, this row's 6 among them;
+    - no Clippy diagnostic on the 411 changed lines in 5 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean, and a build with no warning.
 - [ ] Land on main and close progress row 618 (gpt). Then row 619, then row 639.
