@@ -675,6 +675,33 @@ no engine-specific primitive or representation reader is involved. GHC 9.14.1 co
 ordinary values, signed zero, NaN, Infinity, the normal/subnormal boundary, first-class `map` uses,
 and program-owned definitions of all three names.
 
+Row 585 supplies the remaining representation queries `exponent` and `significand` at Double.
+Their surface schemes were absent, so the typing environment first records
+`exponent :: RealFloat a => a -> Int` and `significand :: RealFloat a => a -> a`. Generated,
+body-backed Double rows then call `exponentFloatChirho#` and `significandFloatChirho#`; the STG
+interpreter, LLVM, and Cranelift route both primitives to one pair of bit-level routines in the RTS.
+
+```mermaid
+flowchart LR
+    use_component_chirho["exponent or significand at Double"] --> alias_component_chirho["guarded Prelude alias"]
+    alias_component_chirho --> row_component_chirho["body-backed RealFloat Double row"]
+    row_component_chirho --> prim_component_chirho["exponentFloatChirho# or significandFloatChirho#"]
+    prim_component_chirho --> rts_component_chirho["one IEEE-754 RTS implementation"]
+    rts_component_chirho --> interp_component_chirho["STG interpreter"]
+    rts_component_chirho --> llvm_component_chirho["LLVM"]
+    rts_component_chirho --> clif_component_chirho["Cranelift"]
+```
+
+- `exponent` normalizes subnormals before deriving GHC's `decodeFloat`-style exponent and gives
+  1025 for Infinity and NaN.
+- `significand` installs the Double exponent for 0.5 through 1.0 while preserving the sign and
+  fraction bits. GHC maps both signed zeros to positive `0.0`, which the shared routine preserves.
+- GHC 9.14.1 controls cover ordinary values, both signed zeros, the minimum subnormal, the smallest
+  normal, the largest finite Double, Infinity, NaN, first-class uses, and program-owned names.
+- `scaleFloat` remains Row 587. Its Int exponent needs a per-argument key: applying this row's
+  Double result key to that argument retargeted an Int negation to `negateFloat#`, so Row 585 does
+  not widen evidence routing to make it pass accidentally.
+
 ## Current boundary
 
 - An infix or section use of a class METHOD mints its own occurrence id and carries its

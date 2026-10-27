@@ -5,12 +5,13 @@ use super::{
 };
 use crate::float_math_chirho::{
     apply_float_math_chirho, atan2_double_chirho, float_math_symbol_chirho,
-    haskelujah_atan2_double_chirho, haskelujah_float_acos_chirho, haskelujah_float_acosh_chirho,
-    haskelujah_float_asin_chirho, haskelujah_float_asinh_chirho, haskelujah_float_atan_chirho,
-    haskelujah_float_atanh_chirho, haskelujah_float_cos_chirho, haskelujah_float_cosh_chirho,
-    haskelujah_float_exp_chirho, haskelujah_float_log_chirho, haskelujah_float_sin_chirho,
-    haskelujah_float_sinh_chirho, haskelujah_float_sqrt_chirho, haskelujah_float_tan_chirho,
-    haskelujah_float_tanh_chirho,
+    haskelujah_atan2_double_chirho, haskelujah_exponent_double_chirho,
+    haskelujah_float_acos_chirho, haskelujah_float_acosh_chirho, haskelujah_float_asin_chirho,
+    haskelujah_float_asinh_chirho, haskelujah_float_atan_chirho, haskelujah_float_atanh_chirho,
+    haskelujah_float_cos_chirho, haskelujah_float_cosh_chirho, haskelujah_float_exp_chirho,
+    haskelujah_float_log_chirho, haskelujah_float_sin_chirho, haskelujah_float_sinh_chirho,
+    haskelujah_float_sqrt_chirho, haskelujah_float_tan_chirho, haskelujah_float_tanh_chirho,
+    haskelujah_significand_double_chirho, significand_double_chirho,
 };
 use crate::float_power_chirho::{pow_double_int_chirho, pow_float_chirho};
 use crate::integer_power_chirho::pow_int_chirho;
@@ -184,6 +185,41 @@ fn atan2_is_ghcs_real_float_default_chirho() {
     };
     assert_eq!(native_chirho(1.0, 2.0).to_string(), "0.46364760900080615");
     assert_eq!(native_chirho(-0.0, -0.0).to_bits(), (-PI).to_bits());
+}
+
+/// Row 585: representation-level RealFloat operations, including GHC's deliberate
+/// representation answers for infinities and NaNs.
+#[test]
+fn real_float_components_answer_as_ghc_chirho() {
+    let values_chirho = [0.0, -0.0, 1.5, -2.5, 1.0e-300, f64::INFINITY, f64::NAN];
+    assert_eq!(
+        values_chirho.map(crate::float_math_chirho::exponent_double_chirho),
+        [0, 0, 1, 2, -996, 1025, 1025]
+    );
+    for (value_chirho, ghc_chirho) in
+        values_chirho
+            .into_iter()
+            .zip([0.0f64, 0.0, 0.75, -0.625, 0.6696928794914171, 0.5, 0.75])
+    {
+        assert_eq!(
+            significand_double_chirho(value_chirho).to_bits(),
+            ghc_chirho.to_bits(),
+            "significand {value_chirho}"
+        );
+    }
+    assert_eq!(
+        crate::float_math_chirho::exponent_double_chirho(f64::from_bits(1)),
+        -1073
+    );
+    assert_eq!(significand_double_chirho(f64::from_bits(1)), 0.5);
+    assert_eq!(
+        haskelujah_exponent_double_chirho(1.5f64.to_bits() as i64),
+        1
+    );
+    assert_eq!(
+        haskelujah_significand_double_chirho((-2.5f64).to_bits() as i64),
+        (-0.625f64).to_bits() as i64
+    );
 }
 
 /// Row 573: GHC's Double `**`, the C library's `pow`, against GHC 9.14.1's printed answers,

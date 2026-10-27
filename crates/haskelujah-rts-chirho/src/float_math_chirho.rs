@@ -19,6 +19,13 @@ unsafe extern "C" {
     safe fn atanh(value_chirho: f64) -> f64;
 }
 
+const DOUBLE_FRACTION_BITS_CHIRHO: u32 = 52;
+const DOUBLE_EXPONENT_SHIFT_CHIRHO: u32 = DOUBLE_FRACTION_BITS_CHIRHO;
+const DOUBLE_FRACTION_MASK_CHIRHO: u64 = (1u64 << DOUBLE_FRACTION_BITS_CHIRHO) - 1;
+const DOUBLE_EXPONENT_MASK_CHIRHO: u64 = 0x7ff;
+const DOUBLE_SIGN_MASK_CHIRHO: u64 = 1u64 << 63;
+const DOUBLE_SIGNIFICAND_EXPONENT_CHIRHO: u64 = 1022;
+
 macro_rules! float_math_chirho {
     ($(($primop_chirho:literal, $symbol_chirho:ident, $function_chirho:path)),* $(,)?) => {
         /// Each unary Floating primop and the RTS symbol native code calls for it.
@@ -111,4 +118,61 @@ pub extern "C" fn haskelujah_atan2_double_chirho(y_bits_chirho: i64, x_bits_chir
         f64::from_bits(x_bits_chirho as u64),
     )
     .to_bits() as i64
+}
+
+/// GHC's `exponent` for a Double, including its representation-level answers for
+/// subnormals, infinities and NaNs (row 585).
+pub fn exponent_double_chirho(value_chirho: f64) -> i64 {
+    let magnitude_chirho = value_chirho.to_bits() & !DOUBLE_SIGN_MASK_CHIRHO;
+    let exponent_bits_chirho =
+        (magnitude_chirho >> DOUBLE_EXPONENT_SHIFT_CHIRHO) & DOUBLE_EXPONENT_MASK_CHIRHO;
+    let fraction_chirho = magnitude_chirho & DOUBLE_FRACTION_MASK_CHIRHO;
+    if exponent_bits_chirho == 0 {
+        if fraction_chirho == 0 {
+            0
+        } else {
+            let highest_bit_chirho = 63 - i64::from(fraction_chirho.leading_zeros());
+            highest_bit_chirho - 1073
+        }
+    } else {
+        exponent_bits_chirho as i64 - 1022
+    }
+}
+
+/// GHC's `significand` for a Double. A nonzero value is normalized into `[0.5, 1)`,
+/// preserving its sign and fraction payload; either signed zero becomes positive zero.
+pub fn significand_double_chirho(value_chirho: f64) -> f64 {
+    let bits_chirho = value_chirho.to_bits();
+    let sign_chirho = bits_chirho & DOUBLE_SIGN_MASK_CHIRHO;
+    let magnitude_chirho = bits_chirho & !DOUBLE_SIGN_MASK_CHIRHO;
+    let exponent_bits_chirho =
+        (magnitude_chirho >> DOUBLE_EXPONENT_SHIFT_CHIRHO) & DOUBLE_EXPONENT_MASK_CHIRHO;
+    let fraction_chirho = magnitude_chirho & DOUBLE_FRACTION_MASK_CHIRHO;
+    if magnitude_chirho == 0 {
+        return 0.0;
+    }
+    let normalized_fraction_chirho = if exponent_bits_chirho == 0 {
+        let highest_bit_chirho = 63 - fraction_chirho.leading_zeros();
+        let shift_chirho = DOUBLE_FRACTION_BITS_CHIRHO - highest_bit_chirho;
+        (fraction_chirho << shift_chirho) & DOUBLE_FRACTION_MASK_CHIRHO
+    } else {
+        fraction_chirho
+    };
+    f64::from_bits(
+        sign_chirho
+            | (DOUBLE_SIGNIFICAND_EXPONENT_CHIRHO << DOUBLE_EXPONENT_SHIFT_CHIRHO)
+            | normalized_fraction_chirho,
+    )
+}
+
+/// Native `exponentFloatChirho#` over a Double's bits.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_exponent_double_chirho(bits_chirho: i64) -> i64 {
+    exponent_double_chirho(f64::from_bits(bits_chirho as u64))
+}
+
+/// Native `significandFloatChirho#` over a Double's bits.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_significand_double_chirho(bits_chirho: i64) -> i64 {
+    significand_double_chirho(f64::from_bits(bits_chirho as u64)).to_bits() as i64
 }

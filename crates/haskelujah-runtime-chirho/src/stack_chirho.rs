@@ -279,6 +279,10 @@ pub enum PrimOpKindChirho {
     AtanhFloatChirho,
     /// atan2# :: Double -> Double -> Double — GHC's RealFloat default `atan2` (row 580)
     Atan2FloatChirho,
+    /// exponentFloatChirho# :: Double -> Int — GHC's representation exponent (row 585)
+    ExponentFloatChirho,
+    /// significandFloatChirho# :: Double -> Double — GHC's normalized significand (row 585)
+    SignificandFloatChirho,
 
     // ── Power/exponentiation primops ──
     /// ^# :: Int -> Int -> Int — integer exponentiation

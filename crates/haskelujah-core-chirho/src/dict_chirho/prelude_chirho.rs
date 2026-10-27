@@ -3538,6 +3538,7 @@ impl DictPassCtxChirho {
         self.generate_floating_binary_prelude_chirho();
         self.generate_real_float_predicates_chirho();
         self.generate_real_float_properties_chirho();
+        self.generate_real_float_components_chirho();
 
         // ── Functor / Applicative / Monad prim bindings ──
         self.generate_functor_monad_prelude_chirho();

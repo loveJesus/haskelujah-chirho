@@ -485,6 +485,8 @@ pub(super) fn seed_part_13_chirho(env_chirho: &mut TyEnvChirho) {
     // floatDigits :: RealFloat a => a -> Int
     // floatRadix :: RealFloat a => a -> Integer
     // decodeFloat :: RealFloat a => a -> (Integer, Int)
+    // exponent :: RealFloat a => a -> Int
+    // significand :: RealFloat a => a -> a
     // isNaN :: RealFloat a => a -> Bool
     // isInfinite :: RealFloat a => a -> Bool
     {
@@ -527,6 +529,30 @@ pub(super) fn seed_part_13_chirho(env_chirho: &mut TyEnvChirho) {
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(rf_a_chirho),
                     TyChirho::ConChirho("Integer".to_string()),
+                ),
+            },
+        );
+        // exponent :: RealFloat a => a -> Int
+        env_chirho.bind_chirho(
+            "exponent".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rf_a_chirho],
+                preds_chirho: vec![rf_pred_chirho.clone()],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(rf_a_chirho),
+                    TyChirho::int_chirho(),
+                ),
+            },
+        );
+        // significand :: RealFloat a => a -> a
+        env_chirho.bind_chirho(
+            "significand".to_string(),
+            SchemeChirho {
+                vars_chirho: vec![rf_a_chirho],
+                preds_chirho: vec![rf_pred_chirho.clone()],
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(rf_a_chirho),
+                    TyChirho::VarChirho(rf_a_chirho),
                 ),
             },
         );

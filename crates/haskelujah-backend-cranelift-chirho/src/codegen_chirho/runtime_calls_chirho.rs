@@ -21,6 +21,8 @@ pub(crate) struct RuntimeCallsChirho {
     pow_double_int_chirho: FuncRef,
     pow_float_chirho: FuncRef,
     atan2_double_chirho: FuncRef,
+    exponent_double_chirho: FuncRef,
+    significand_double_chirho: FuncRef,
     new_io_ref_chirho: FuncRef,
     read_io_ref_chirho: FuncRef,
     write_io_ref_chirho: FuncRef,
@@ -125,6 +127,20 @@ impl RuntimeCallsChirho {
                 function_chirho,
                 "haskelujah_atan2_double_chirho",
                 2,
+                true,
+            )?,
+            exponent_double_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_exponent_double_chirho",
+                1,
+                true,
+            )?,
+            significand_double_chirho: import_chirho(
+                module_chirho,
+                function_chirho,
+                "haskelujah_significand_double_chirho",
+                1,
                 true,
             )?,
             new_io_ref_chirho: import_chirho(
@@ -236,6 +252,30 @@ impl RuntimeCallsChirho {
             .find(|(name_chirho, _)| *name_chirho == primop_chirho)?;
         let call_chirho = builder_chirho.ins().call(*import_chirho, &[bits_chirho]);
         Some(builder_chirho.inst_results(call_chirho)[0])
+    }
+
+    /// `exponentFloatChirho#`: GHC's representation exponent for a Double (row 585).
+    pub(crate) fn exponent_double_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        bits_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.exponent_double_chirho, &[bits_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
+    }
+
+    /// `significandFloatChirho#`: GHC's normalized Double significand (row 585).
+    pub(crate) fn significand_double_chirho(
+        &self,
+        builder_chirho: &mut FunctionBuilder<'_>,
+        bits_chirho: Value,
+    ) -> Value {
+        let call_chirho = builder_chirho
+            .ins()
+            .call(self.significand_double_chirho, &[bits_chirho]);
+        builder_chirho.inst_results(call_chirho)[0]
     }
 
     /// `^#`, sharing the interpreter's wrapping integer-power convention.

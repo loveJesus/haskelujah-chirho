@@ -207,6 +207,26 @@ impl LlvmCodegenChirho {
             .unwrap();
             result_chirho
         } else if args_chirho.len() == 1
+            && matches!(
+                name_chirho,
+                "exponentFloatChirho#" | "significandFloatChirho#"
+            )
+        {
+            let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);
+            let operand_chirho = self.emit_force_thunk_chirho(&operand_chirho);
+            let runtime_name_chirho = match name_chirho {
+                "exponentFloatChirho#" => "haskelujah_exponent_double_chirho",
+                "significandFloatChirho#" => "haskelujah_significand_double_chirho",
+                _ => unreachable!("the primitive set above is exhaustive"),
+            };
+            let result_chirho = self.fresh_tmp_chirho();
+            writeln!(
+                self.output_chirho,
+                "  {result_chirho} = call i64 @{runtime_name_chirho}(i64 {operand_chirho})"
+            )
+            .unwrap();
+            result_chirho
+        } else if args_chirho.len() == 1
             && matches!(name_chirho, "round#" | "truncate#" | "floor#" | "ceiling#")
         {
             let operand_chirho = self.compile_expr_chirho(&args_chirho[0]);

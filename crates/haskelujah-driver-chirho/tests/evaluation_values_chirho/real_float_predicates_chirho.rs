@@ -44,6 +44,18 @@ main = do
 const PROPERTIES_GHC_CHIRHO: &str =
     "2\n53\n(-1021,1024)\n[2,2,2]\n[53,53,53]\n[(-1021,1024),(-1021,1024),(-1021,1024)]\n";
 
+const COMPONENTS_CHIRHO: &str = r#"module Main where
+valuesChirho :: [Double]
+valuesChirho = [0.0, -0.0, 1.5, -2.5, 1.0e-300, 1.0 / 0.0, 0.0 / 0.0]
+main :: IO ()
+main = do
+  print (map exponent valuesChirho)
+  print (map significand valuesChirho)
+  print (map exponent [5.0e-324, 2.2250738585072014e-308, 1.7976931348623157e308 :: Double])
+"#;
+
+const COMPONENTS_GHC_CHIRHO: &str = "[0,0,1,2,-996,1025,1025]\n[0.0,0.0,0.75,-0.625,0.6696928794914171,0.5,0.75]\n[-1073,-1021,1024]\n";
+
 const POLYMORPHIC_CHIRHO: &str = r#"module Main where
 inspectChirho :: RealFloat aChirho => aChirho -> [Bool]
 inspectChirho valueChirho = [isNaN valueChirho, isInfinite valueChirho, isDenormalized valueChirho, isNegativeZero valueChirho, isIEEE valueChirho]
@@ -82,6 +94,16 @@ main = do
   print (floatRadix 1.0)
   print (floatDigits 1.0)
   print (floatRange 1.0)
+"#;
+
+const OWN_COMPONENT_NAMES_CHIRHO: &str = r#"module Main where
+import Prelude hiding (exponent, significand)
+exponent :: Double -> Int
+exponent _ = 7
+significand :: Double -> Double
+significand _ = 8
+main :: IO ()
+main = print (exponent 1.0, significand 1.0)
 "#;
 
 fn interpreter_output_chirho(name_chirho: &str, source_chirho: &str) -> String {
@@ -134,6 +156,15 @@ fn real_float_properties_answer_as_ghc_everywhere_chirho() {
 }
 
 #[test]
+fn real_float_components_answer_as_ghc_everywhere_chirho() {
+    assert_everywhere_chirho(
+        "RealFloatComponentsChirho.hs",
+        COMPONENTS_CHIRHO,
+        COMPONENTS_GHC_CHIRHO,
+    );
+}
+
+#[test]
 fn real_float_predicates_work_through_a_passed_dictionary_in_the_interpreter_chirho() {
     assert_eq!(
         interpreter_output_chirho("PolymorphicPredicatesChirho.hs", POLYMORPHIC_CHIRHO),
@@ -156,5 +187,14 @@ fn a_programs_own_real_float_property_names_stay_its_own_everywhere_chirho() {
         "OwnRealFloatPropertiesChirho.hs",
         OWN_PROPERTY_NAMES_CHIRHO,
         "9\n8\n(7,6)\n",
+    );
+}
+
+#[test]
+fn a_programs_own_real_float_component_names_stay_its_own_everywhere_chirho() {
+    assert_everywhere_chirho(
+        "OwnRealFloatComponentsChirho.hs",
+        OWN_COMPONENT_NAMES_CHIRHO,
+        "(7,8.0)\n",
     );
 }

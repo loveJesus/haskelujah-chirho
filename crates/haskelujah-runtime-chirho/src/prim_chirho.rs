@@ -637,7 +637,28 @@ pub fn apply_prim_binop_chirho(
         PrimOpKindChirho::Atan2FloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |y_chirho, x_chirho| {
             Ok(ValueChirho::FloatChirho(haskelujah_rts_chirho::float_math_chirho::atan2_double_chirho(y_chirho, x_chirho)))
         }),
-
+        PrimOpKindChirho::ExponentFloatChirho => match left_chirho {
+            ValueChirho::FloatChirho(value_chirho) => Ok(ValueChirho::IntChirho(
+                haskelujah_rts_chirho::float_math_chirho::exponent_double_chirho(*value_chirho),
+            )),
+            _ => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Double#",
+                got_chirho: format!("{left_chirho}"),
+            }),
+        },
+        PrimOpKindChirho::SignificandFloatChirho => match left_chirho {
+            ValueChirho::FloatChirho(value_chirho) => Ok(ValueChirho::FloatChirho(
+                haskelujah_rts_chirho::float_math_chirho::significand_double_chirho(
+                    *value_chirho,
+                ),
+            )),
+            _ => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho,
+                expected_chirho: "Double#",
+                got_chirho: format!("{left_chirho}"),
+            }),
+        },
         // ── Power/exponentiation ──
         PrimOpKindChirho::PowIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             haskelujah_rts_chirho::integer_power_chirho::pow_int_chirho(a_chirho, b_chirho)

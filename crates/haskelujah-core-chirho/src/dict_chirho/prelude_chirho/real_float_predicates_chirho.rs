@@ -158,6 +158,32 @@ impl DictPassCtxChirho {
         );
     }
 
+    /// Generate `exponent` and `significand` for the concrete Double representation
+    /// through the RTS routines every engine shares (row 585).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_real_float_components_chirho(&mut self) {
+        let double_ty_chirho = TyChirho::double_chirho();
+        let int_ty_chirho = TyChirho::int_chirho();
+
+        for (method_chirho, primop_name_chirho, result_ty_chirho) in [
+            ("exponent", "exponentFloatChirho#", int_ty_chirho.clone()),
+            (
+                "significand",
+                "significandFloatChirho#",
+                double_ty_chirho.clone(),
+            ),
+        ] {
+            let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho.clone());
+            let body_chirho = primop_chirho(primop_name_chirho, vec![var_chirho(&value_chirho)]);
+            self.push_real_float_row_chirho(
+                method_chirho,
+                result_ty_chirho,
+                value_chirho,
+                body_chirho,
+            );
+        }
+    }
+
     fn push_real_float_row_chirho(
         &mut self,
         method_chirho: &str,
