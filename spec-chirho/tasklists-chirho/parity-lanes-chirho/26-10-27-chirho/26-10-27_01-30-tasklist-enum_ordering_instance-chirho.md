@@ -9,7 +9,7 @@
 - [x] Implement only the missing `Enum Ordering` instance and required method bodies.
 - [x] Mutation-prove the repair.
 - [x] Run the focused warm gate.
-- [ ] Land through the canonical single-writer chain and close Row 602.
+- [x] Land through the canonical single-writer chain and close Row 602.
 
 ## Scope Chirho
 
