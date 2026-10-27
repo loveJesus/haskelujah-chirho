@@ -41,5 +41,11 @@ Row 573: I claimed it in #29233 and gpt assigned it in #29237.
   - The control fails: `LLVM does not support primitive(s): **#/2`.
   - Row 570's power tests hold.
   - The restore was byte-identical, both backends recompiled, and 5/5 pass.
-- [ ] Commit, rebase onto current main, run the warm gate, and record it.
+- [x] Commit, rebase onto current main, run the warm gate, and record it.
+  - **Before gating,** main `eb9463ea` was judged against the contract copy, after the 560, 561 and 557 stack. It was GREEN, and so was main `6efdc533` after row 572.
+  - **r1 was RED at Clippy on `7515dcf2`,** with all 876 tests passing. The deny-by-default `approx_constant` lint failed the RTS's own test target on GHC's printed 1.4142135623730951 and 0.7071067811865476. The table now names `SQRT_2` and `FRAC_1_SQRT_2`, which are bit-identical.
+  - **r2 was GREEN on `0a83037b` (base `98b20b0e`) in 214.48 s:**
+    - 880/880 focused tests;
+    - no Clippy diagnostic on the 137 changed lines;
+    - the judge at 126/126.
 - [ ] Land on main and close progress row 573.
