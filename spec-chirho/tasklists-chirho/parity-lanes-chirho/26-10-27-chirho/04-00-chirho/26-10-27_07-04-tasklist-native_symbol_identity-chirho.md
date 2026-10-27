@@ -54,8 +54,10 @@ Row 629 owns layers 1 to 3 (interfaces, desugaring and merge identity).
     collisions M1 and M2;
   - the user print/show/getLine/compare family (B1, B2, B4, U1), plus B8;
   - table determinism and injectivity, and provenance offset, join and remap.
-- [ ] Gate on current main, then post the tip; report n1, n5, n6 and x1, x2, x4 as row 629
-  inputs.
+- [x] Gate on current main, then post the tip; report n1, n5, n6 and x1, x2, x4 as row 629
+  inputs. Gate commit `eeb0d156` replayed patch-identically as `358e2d68` over row 626.
+- [x] Land on main and close progress row 628: landed as `c5fe42c5`; independent replay checks
+  passed core 197/197 and native symbol identity 12/12.
 
 ## Measured (main d99f8d2d against the tip; both CLIs built in one tree; GHC 9.14.1)
 
