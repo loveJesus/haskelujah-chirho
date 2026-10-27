@@ -17,7 +17,7 @@ functions for the other three methods and corrects the stale four-method control
 - [x] Make the exceptional four-method control assert the GHC answer everywhere.
 - [x] Run focused RTS, runtime, dictionary-evidence, and ordinary rounding controls.
 - [x] Run rustfmt, changed-line Clippy, diff-check, and gitleaks.
-- [ ] Commit the source, land on `main_chirho`, close progress row 591, and report the tested tip.
+- [x] Commit the source, land on `main_chirho`, close progress row 591, and report the tested tip.
 
 ## Gate r1
 
