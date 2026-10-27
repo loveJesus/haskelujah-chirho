@@ -143,3 +143,41 @@ flowchart TD
 - **The producer, including the `data` items:** in `lower_chirho/import_item_tests_chirho.rs`.
 - **Completeness, the per-type merge and the inert marker:** in `type_exports_tests_chirho.rs`.
 - **The check itself, including a bare source type that supplies no constructor:** in `value_scope_tests_chirho.rs`.
+
+## Export side: `module M` exports what is in scope both as `e` and as `M.e` (row 621)
+
+Haskell 2010, section 5.2: `module M` in an export list exports every entity in scope both unqualified (`e`) and qualified by M (`M.e`). The two scopes may come from different imports. `filter_exports_chirho`'s `ExportSpecChirho::ModuleChirho` arm builds both and exports their intersection.
+
+```mermaid
+flowchart TD
+    item_chirho["Export item: module M"] --> locals_chirho["Unqualified scope starts with the module's own entities"]
+    item_chirho --> self_chirho{"M is this module's own name?"}
+    self_chirho -->|Yes| m_locals_chirho["M scope starts with them too"]
+    self_chirho -->|No| m_empty_chirho["M scope starts empty"]
+    locals_chirho --> each_chirho["Each import alone: its interface under its own list or hiding"]
+    m_locals_chirho --> each_chirho
+    m_empty_chirho --> each_chirho
+    each_chirho -->|"not qualified"| unqualified_chirho["Joins the unqualified scope"]
+    each_chirho -->|"effective qualifier is M"| m_scope_chirho["Joins the M scope"]
+    unqualified_chirho --> meet_chirho["Export each value and type in both scopes"]
+    m_scope_chirho --> meet_chirho
+```
+
+### Rules
+
+- **Each import is weighed alone.** One import's `hiding` removes names only from what that import brings. Before row 621 it was applied to everything already exported, so it deleted an explicitly exported local of the same name (p10).
+- **A qualified import never reaches the unqualified scope.** Under `import qualified B as L`, `module L` exports nothing from B (p2).
+- **A self export takes unqualified aliases.** `module A (module A)` exports A's own entities and what an unqualified `import B as A` brings (p1, GHC's mod173), but nothing a qualified `import qualified B as A` brings (p8).
+- **Types follow values.** A type in both scopes is exported with the M scope's associated types and completeness mark.
+
+### Boundaries
+
+- The interpreter's multi-module path (`compile_modules_chirho`) gives each module every upstream export's type by bare name, so a name `module M` does not export still type-checks there and links by name. p2, p6 and p8 run on the interpreter, as they did on main; `check` and every native build refuse them.
+- Where a re-exported value is defined is row 642's.
+- Diagnostic bytes: an unexported name is reported by inference as E0202 `unbound variable`, where GHC 9.14.1 reports GHC-88464.
+
+### Code and controls
+
+- **The rule:** `filter_exports_chirho` in `crates/haskelujah-naming-chirho/src/iface_chirho.rs`, through `merge_imported_exports_chirho`.
+- **Each defect alone:** three tests in `value_scope_tests_chirho.rs` over the builtin `Data.List` interface. Each fails on the old rule at its own assertion.
+- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/module_exports_chirho.rs`. 7 programs GHC 9.14.1 runs are exact on the interpreter, LLVM and true Cranelift, and the 3 it rejects are refused on both native backends. Row 621's p11 is row 629's n1 in `import_identity_chirho.rs`.

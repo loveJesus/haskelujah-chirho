@@ -21,7 +21,7 @@ const BACKENDS_CHIRHO: [NativeBackendChirho; 2] = [
     NativeBackendChirho::CraneliftChirho,
 ];
 
-type ProgramChirho = &'static [(&'static str, &'static str)];
+pub(super) type ProgramChirho = &'static [(&'static str, &'static str)];
 
 /// n1 (row 621's p11, byte-identical): A's own `myFun` and B's re-exported `other`. GHC prints '700'.
 const N1_CHIRHO: (ProgramChirho, &str) = (
@@ -380,7 +380,7 @@ fn interpret_chirho(modules_chirho: ProgramChirho) -> Result<String, String> {
     .map(|(_, machine_chirho)| machine_chirho.io_output_chirho)
 }
 
-fn assert_exact_chirho((modules_chirho, expected_chirho): (ProgramChirho, &str)) {
+pub(super) fn assert_exact_chirho((modules_chirho, expected_chirho): (ProgramChirho, &str)) {
     assert_eq!(
         interpret_chirho(modules_chirho).as_deref(),
         Ok(expected_chirho),
@@ -401,7 +401,8 @@ fn assert_exact_chirho((modules_chirho, expected_chirho): (ProgramChirho, &str))
     }
 }
 
-fn assert_refused_chirho((modules_chirho, refusal_chirho): (ProgramChirho, &str)) {
+fn assert_refused_chirho(program_chirho: (ProgramChirho, &str)) {
+    let (modules_chirho, refusal_chirho) = program_chirho;
     let interpreted_chirho = interpret_chirho(modules_chirho);
     assert!(
         interpreted_chirho
@@ -409,6 +410,13 @@ fn assert_refused_chirho((modules_chirho, refusal_chirho): (ProgramChirho, &str)
             .is_err_and(|error_chirho| error_chirho.contains(refusal_chirho)),
         "interpreter: {interpreted_chirho:?}"
     );
+    assert_refused_natively_chirho(program_chirho);
+}
+
+/// LLVM and Cranelift each refuse the program, naming `refusal_chirho`.
+pub(super) fn assert_refused_natively_chirho(
+    (modules_chirho, refusal_chirho): (ProgramChirho, &str),
+) {
     for backend_chirho in BACKENDS_CHIRHO {
         let outcome_chirho = native_project_round_trip_chirho(
             modules_chirho,

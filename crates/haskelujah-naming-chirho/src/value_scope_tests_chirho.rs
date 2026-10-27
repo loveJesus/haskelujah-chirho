@@ -8,14 +8,15 @@
 //! not supply; every way a qualifier stays open keeps today's behavior.
 //! workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::{
     ConDeclChirho, DeclChirho, FieldDeclChirho, StrictnessChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho, RhsChirho, StmtChirho};
 use haskelujah_ast_chirho::module_chirho::{
-    ExportMembersChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho, ModuleChirho,
+    ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
+    ModuleChirho,
 };
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
@@ -24,7 +25,10 @@ use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
-use crate::iface_chirho::{ModuleIfaceChirho, build_iface_chirho, builtin_module_ifaces_chirho};
+use crate::iface_chirho::{
+    ModuleIfaceChirho, build_iface_chirho, build_iface_with_imports_chirho,
+    builtin_module_ifaces_chirho,
+};
 use crate::resolve_chirho::resolve_module_with_imports_chirho;
 
 fn name_chirho(text_chirho: &str) -> NameChirho {
@@ -574,4 +578,98 @@ fn an_import_binds_its_qualifier_in_every_form_chirho() {
         vec![],
     );
     assert!(messages_chirho.is_empty(), "{messages_chirho:?}");
+}
+
+/// The values `module_text_chirho` exports under `exports_chirho`, its imports resolved against the
+/// builtin interfaces (row 621).
+fn exported_values_chirho(
+    module_text_chirho: &str,
+    exports_chirho: Vec<ExportSpecChirho>,
+    imports_chirho: Vec<ImportDeclChirho>,
+    decls_chirho: Vec<DeclChirho>,
+) -> HashSet<String> {
+    let mut exporter_chirho = module_chirho(module_text_chirho, imports_chirho, decls_chirho);
+    exporter_chirho.exports_chirho = Some(exports_chirho);
+    build_iface_with_imports_chirho(&exporter_chirho, &builtin_module_ifaces_chirho())
+        .exports_chirho
+        .values_chirho
+        .into_keys()
+        .collect()
+}
+
+/// `name = undefined`.
+fn binding_named_chirho(text_chirho: &str) -> DeclChirho {
+    DeclChirho::FunBindChirho {
+        name_chirho: name_chirho(text_chirho),
+        matches_chirho: vec![MatchArmChirho {
+            pats_chirho: vec![],
+            rhs_chirho: RhsChirho::UnguardedChirho(undefined_chirho()),
+            where_binds_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+#[test]
+fn a_self_export_takes_the_unqualified_alias_but_not_the_qualified_one_chirho() {
+    // GHC's mod173: `module Mod173_Aux (module Mod173_Aux)` exports its own `frob` and the
+    // `partition` it imports unqualified as `Mod173_Aux`, never the qualified-only `nub`.
+    let exported_chirho = exported_values_chirho(
+        "Mod173_Aux",
+        vec![ExportSpecChirho::ModuleChirho(name_chirho("Mod173_Aux"))],
+        vec![
+            import_chirho(
+                "Data.List",
+                true,
+                Some("Mod173_Aux"),
+                listing_chirho(vec![item_chirho("nub")]),
+            ),
+            import_chirho(
+                "Data.List",
+                false,
+                Some("Mod173_Aux"),
+                listing_chirho(vec![item_chirho("partition")]),
+            ),
+        ],
+        vec![binding_named_chirho("frob")],
+    );
+    assert!(exported_chirho.contains("frob"), "{exported_chirho:?}");
+    assert!(exported_chirho.contains("partition"), "{exported_chirho:?}");
+    assert!(!exported_chirho.contains("nub"), "{exported_chirho:?}");
+}
+
+#[test]
+fn a_qualified_only_alias_exports_nothing_chirho() {
+    // `module A (module L) where import qualified Data.List as L`: nothing is in scope
+    // unqualified, so nothing is exported.
+    let exported_chirho = exported_values_chirho(
+        "A",
+        vec![ExportSpecChirho::ModuleChirho(name_chirho("L"))],
+        vec![import_chirho("Data.List", true, Some("L"), None)],
+        vec![],
+    );
+    assert!(exported_chirho.is_empty(), "{exported_chirho:?}");
+}
+
+#[test]
+fn one_imports_hiding_never_removes_an_explicit_local_chirho() {
+    // `module A (nub, module L) where import Data.List as L hiding (nub); nub = ...`: the
+    // module's own `nub` stays exported, and the rest of Data.List comes through `module L`.
+    let exported_chirho = exported_values_chirho(
+        "A",
+        vec![
+            ExportSpecChirho::VarChirho(name_chirho("nub")),
+            ExportSpecChirho::ModuleChirho(name_chirho("L")),
+        ],
+        vec![import_chirho(
+            "Data.List",
+            false,
+            Some("L"),
+            hiding_chirho(vec![item_chirho("nub")]),
+        )],
+        vec![binding_named_chirho("nub")],
+    );
+    assert!(exported_chirho.contains("nub"), "{exported_chirho:?}");
+    assert!(exported_chirho.contains("partition"), "{exported_chirho:?}");
 }

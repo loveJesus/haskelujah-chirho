@@ -10,8 +10,7 @@
 use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::module_chirho::{
-    ExportMembersChirho, ExportSpecChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
-    ModuleChirho,
+    ExportMembersChirho, ExportSpecChirho, ImportItemChirho, ImportSpecChirho, ModuleChirho,
 };
 use haskelujah_span_chirho::SpanChirho;
 
@@ -16567,55 +16566,78 @@ fn filter_exports_chirho(
                 }
             }
             ExportSpecChirho::ModuleChirho(re_export_name_chirho) => {
+                // `module M` exports every entity in scope both unqualified (`e`) and qualified
+                // by M (`M.e`), whichever imports bring it (Haskell 2010, 5.2; row 621). Each
+                // import is weighed on its own, so a qualified-only import never leaks into the
+                // unqualified scope, and one import's `hiding` never removes another's names.
+                // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
                 let target_mod_chirho = re_export_name_chirho.full_name_chirho();
-                let matching_imports_chirho: Vec<&ImportDeclChirho> = module_chirho
-                    .imports_chirho
-                    .iter()
-                    .filter(|imp_chirho| {
-                        imp_chirho.module_chirho.full_name_chirho() == target_mod_chirho
-                            || imp_chirho
-                                .alias_chirho
-                                .as_ref()
-                                .is_some_and(|alias_chirho| {
-                                    alias_chirho.full_name_chirho() == target_mod_chirho
-                                })
-                    })
-                    .collect();
-                // `module M` in the export list of module M itself means
-                // "export all local definitions" — this is the self-re-export pattern.
                 let is_self_chirho =
                     module_chirho.name_chirho.full_name_chirho() == target_mod_chirho;
-
-                if is_self_chirho {
-                    // Export all local definitions.
-                    for (k_chirho, v_chirho) in &all_chirho.values_chirho {
+                let mut unqualified_chirho = all_chirho.clone();
+                let mut qualified_chirho = if is_self_chirho {
+                    all_chirho.clone()
+                } else {
+                    IfaceExportsChirho::default()
+                };
+                for import_chirho in &module_chirho.imports_chirho {
+                    let Some(iface_chirho) = imported_ifaces_chirho.iter().find(|iface_chirho| {
+                        iface_chirho.name_chirho == import_chirho.module_chirho.full_name_chirho()
+                    }) else {
+                        continue;
+                    };
+                    let mut supplied_chirho = IfaceExportsChirho::default();
+                    merge_imported_exports_chirho(
+                        &mut supplied_chirho,
+                        &iface_chirho.exports_chirho,
+                        &import_chirho.spec_chirho,
+                    );
+                    if !import_chirho.qualified_chirho {
+                        merge_imported_exports_chirho(
+                            &mut unqualified_chirho,
+                            &supplied_chirho,
+                            &None,
+                        );
+                    }
+                    if import_chirho.effective_qualifier_chirho() == target_mod_chirho {
+                        merge_imported_exports_chirho(
+                            &mut qualified_chirho,
+                            &supplied_chirho,
+                            &None,
+                        );
+                    }
+                }
+                for (key_chirho, value_chirho) in &qualified_chirho.values_chirho {
+                    if unqualified_chirho.values_chirho.contains_key(key_chirho) {
                         result_chirho
                             .values_chirho
-                            .insert(k_chirho.clone(), v_chirho.clone());
+                            .insert(key_chirho.clone(), value_chirho.clone());
                     }
-                    for (k_chirho, v_chirho) in &all_chirho.types_chirho {
+                }
+                for (key_chirho, ty_chirho) in &qualified_chirho.types_chirho {
+                    if unqualified_chirho.types_chirho.contains_key(key_chirho) {
                         result_chirho
                             .types_chirho
-                            .insert(k_chirho.clone(), v_chirho.clone());
-                    }
-                    merge_all_associated_type_exports_chirho(&mut result_chirho, all_chirho);
-                } else if !matching_imports_chirho.is_empty() {
-                    for import_chirho in matching_imports_chirho {
-                        if let Some(iface_chirho) =
-                            imported_ifaces_chirho.iter().find(|iface_chirho| {
-                                iface_chirho.name_chirho
-                                    == import_chirho.module_chirho.full_name_chirho()
-                            })
+                            .insert(key_chirho.clone(), ty_chirho.clone());
+                        if let Some(associated_chirho) =
+                            qualified_chirho.associated_types_chirho.get(key_chirho)
                         {
-                            merge_imported_exports_chirho(
-                                &mut result_chirho,
-                                &iface_chirho.exports_chirho,
-                                &import_chirho.spec_chirho,
-                            );
+                            result_chirho
+                                .associated_types_chirho
+                                .entry(key_chirho.clone())
+                                .or_default()
+                                .extend(associated_chirho.iter().cloned());
+                        }
+                        if qualified_chirho
+                            .complete_member_types_chirho
+                            .contains(key_chirho)
+                        {
+                            result_chirho
+                                .complete_member_types_chirho
+                                .insert(key_chirho.clone());
                         }
                     }
                 }
-                // If not imported and not self, silently skip (could warn).
             }
         }
     }
