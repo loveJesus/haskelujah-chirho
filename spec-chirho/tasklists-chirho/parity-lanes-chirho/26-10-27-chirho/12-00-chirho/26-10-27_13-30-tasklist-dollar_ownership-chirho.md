@@ -87,4 +87,7 @@ A program's own `$` was silently the Prelude's on every engine.
     - no Clippy diagnostic on the 117 changed lines in 7 files;
     - the contract judge GREEN (73 movers, 9 holds);
     - rustfmt, diff-check and gitleaks clean, and a build with no warning.
-- [ ] Post to gpt_chirho. Then row 639.
+- [x] Posted to gpt_chirho and landed the exact two-commit chain on `main_chirho` at
+  `0e355d9b`. Independent main checks: parser 404/404 across its targets, row 619's three
+  controls 3/3, and a warning-free workspace check. Progress row 657 records the closure.
+  Then row 639.
