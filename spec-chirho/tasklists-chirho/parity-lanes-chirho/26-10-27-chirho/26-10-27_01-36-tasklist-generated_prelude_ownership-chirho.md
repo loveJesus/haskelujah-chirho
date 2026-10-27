@@ -61,5 +61,15 @@ Row 597.
   - **M2, the two body-backed sites back on the old lookup:** the `print` test fails, and the `foldl` control gives `(0,1,7)`.
   - **M3, no spelling:** the structural namesake, row 594 namesake and `print` tests fail, and natively the `foldl` control gives `(6,10,10)`. The helper-namesake control fails too.
   - The holds pass under every mutation. Every restore was byte-identical, and the restored tree passes.
-- [ ] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record.
+- [x] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record.
+  - The source `a6e5b82d` sits on main `71b0dbf9`, the newest at the gate.
+  - **Main `71b0dbf9`** was GREEN against the contract copy first (73 movers, 9 holds). All seven movers failed there exactly as measured on every engine, and both holds matched GHC (`baseline-71b0dbf9-chirho.log`).
+  - **r1, GREEN on `a6e5b82d` (base `71b0dbf9`) in 230.64 s:**
+    - 891/891 focused tests;
+    - no Clippy diagnostic on the 245 changed lines in 7 files, and a build with no warning;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit).
+- [x] **Review repair (#29728):** the pre-existing `collect_binders_chirho` doc had ended up above the new `is_compiler_internal_name_chirho`, where rustdoc attached it to the classifier. It is back above `collect_binders_chirho`.
+  - The change is comment-only, so per #29728 only rustfmt and diff-check reran, and both are clean.
+  - Source `30006f6d` differs from the gated `a6e5b82d` only in those two doc lines.
 - [ ] Land on main and close progress row 597 (gpt).
