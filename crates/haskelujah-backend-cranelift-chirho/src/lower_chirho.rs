@@ -89,8 +89,9 @@ pub struct LowerCtxChirho<'a> {
     /// partial applications.
     pub pap_wrapper_ref_map_chirho:
         &'a HashMap<PapWrapperKeyChirho, cranelift_codegen::ir::FuncRef>,
-    /// Map of CoreId → name for detecting Prelude functions (putStrLn, print, etc.)
-    pub toplevel_names_chirho: &'a HashMap<CoreIdChirho, String>,
+    /// The spellings this lowering may recognize (putStrLn, print, etc.): those of compiler
+    /// bindings and builtin references only, never of a program's own binding (row 628).
+    pub recognized_names_chirho: &'a HashMap<CoreIdChirho, String>,
     /// Full filtered Core module for looking through nullary top-level values.
     pub core_module_chirho: &'a haskelujah_core_chirho::expr_chirho::CoreModuleChirho,
     /// Optional FuncRef for RTS `haskelujah_put_str_ln_chirho`
@@ -262,7 +263,7 @@ pub fn lower_expr_chirho(
                     *func_ref_chirho,
                     *arity_chirho,
                 )
-            } else if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(id_chirho) {
+            } else if let Some(name_chirho) = ctx_chirho.recognized_names_chirho.get(id_chirho) {
                 // Check for 0-arg IO actions that should be called immediately
                 if matches!(name_chirho.as_str(), "getLine" | "getLine#") {
                     if let Some(get_line_ref_chirho) = ctx_chirho.get_line_ref_chirho {
@@ -1461,7 +1462,7 @@ fn lower_app_chirho(
     // Try direct call for known functions via pre-imported FuncRefs.
     if let CoreExprChirho::VarChirho(func_id_chirho) = callee_chirho {
         // Check for Prelude IO functions (putStrLn, print, return)
-        if let Some(name_chirho) = ctx_chirho.toplevel_names_chirho.get(func_id_chirho) {
+        if let Some(name_chirho) = ctx_chirho.recognized_names_chirho.get(func_id_chirho) {
             if matches!(
                 name_chirho.as_str(),
                 "error" | "error#" | "errorWithoutStackTrace"
@@ -3044,7 +3045,7 @@ fn infer_print_arg_kind_chirho(
             let (callee_chirho, args_chirho) = flatten_apps_chirho(expr_chirho);
             match strip_runtime_tyapps_chirho(callee_chirho) {
                 CoreExprChirho::VarChirho(id_chirho) => ctx_chirho
-                    .toplevel_names_chirho
+                    .recognized_names_chirho
                     .get(id_chirho)
                     .and_then(|name_chirho| {
                         if name_chirho.starts_with("$prim_Eq_==_") && args_chirho.len() == 2 {
@@ -3088,7 +3089,7 @@ fn classify_nullary_constructor_print_name_chirho(
             args_chirho,
         } if args_chirho.is_empty() => Some(con_name_chirho.clone()),
         CoreExprChirho::VarChirho(id_chirho) => ctx_chirho
-            .toplevel_names_chirho
+            .recognized_names_chirho
             .get(id_chirho)
             .filter(|name_chirho| looks_like_data_constructor_name_chirho(name_chirho))
             .cloned(),
@@ -3315,7 +3316,7 @@ fn decompose_constructor_app_chirho<'a>(
                 return None;
             };
             let name_chirho = ctx_chirho
-                .toplevel_names_chirho
+                .recognized_names_chirho
                 .get(id_chirho)
                 .or_else(|| ctx_chirho.core_module_chirho.names_chirho.get(id_chirho))?;
             if looks_like_data_constructor_name_chirho(name_chirho)

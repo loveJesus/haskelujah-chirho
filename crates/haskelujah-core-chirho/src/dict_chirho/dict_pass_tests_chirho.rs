@@ -278,6 +278,7 @@ fn max_id_finder_chirho() {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     };
     assert_eq!(find_max_id_chirho(&module_chirho), 42);
 }
@@ -595,6 +596,7 @@ fn transform_module_adds_selectors_and_wraps_chirho() {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     };
 
     let result_chirho = dict_pass_module_chirho(
@@ -664,6 +666,7 @@ fn a_concrete_top_level_value_supplies_its_type_key_chirho() {
         names_chirho: names_chirho.clone(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
     };
 
     let result_chirho = dict_pass_module_chirho(
@@ -729,6 +732,7 @@ fn occurrence_test_module_chirho() -> (
         names_chirho: names_chirho.clone(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
     };
     let mut canon_chirho = HashMap::new();
     canon_chirho.insert(CoreIdChirho(50), ("==".to_string(), CoreIdChirho(60)));
@@ -829,6 +833,7 @@ fn standard_pass_chirho(
         names_chirho: names_chirho.clone(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     };
     dict_pass_module_chirho(
         &module_chirho,

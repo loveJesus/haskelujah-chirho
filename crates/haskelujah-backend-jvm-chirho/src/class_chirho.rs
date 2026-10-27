@@ -99,6 +99,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let config_chirho = JvmConfigChirho::default();
         let result_chirho = compile_core_to_class_chirho(&module_chirho, &config_chirho);
@@ -118,6 +119,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let mut config_chirho = JvmConfigChirho::default();
         config_chirho.package_chirho = "com/example".to_string();

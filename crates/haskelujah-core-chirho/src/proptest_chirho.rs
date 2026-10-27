@@ -79,6 +79,7 @@ mod tests_chirho {
                 names_chirho: HashMap::new(),
                 specialize_pragmas_chirho: HashMap::new(),
                 foreign_exports_chirho: vec![],
+                provenance_chirho: Default::default(),
             };
             let config_chirho = SimplifyConfigChirho::default();
             let _result_chirho = simplify_module_chirho(&module_chirho, &config_chirho);
@@ -101,6 +102,7 @@ mod tests_chirho {
                 names_chirho: HashMap::new(),
                 specialize_pragmas_chirho: HashMap::new(),
                 foreign_exports_chirho: vec![],
+                provenance_chirho: Default::default(),
             };
             let config_chirho = SimplifyConfigChirho::default();
             let once_chirho = simplify_module_chirho(&module_chirho, &config_chirho);
@@ -126,6 +128,7 @@ mod tests_chirho {
                 names_chirho: HashMap::new(),
                 specialize_pragmas_chirho: HashMap::new(),
                 foreign_exports_chirho: vec![],
+                provenance_chirho: Default::default(),
             };
             let config_chirho = SimplifyConfigChirho::default();
             let result_chirho = simplify_module_chirho(&module_chirho, &config_chirho);

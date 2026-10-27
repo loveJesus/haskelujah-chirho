@@ -156,6 +156,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let config_chirho = BeamConfigChirho::default();
         let result_chirho = compile_core_to_beam_chirho(&module_chirho, &config_chirho);
@@ -175,6 +176,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let mut config_chirho = BeamConfigChirho::default();
         config_chirho.module_name_chirho = "my_module".to_string();
@@ -200,6 +202,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let config_chirho = BeamConfigChirho::default();
         let atom_data_chirho = build_atom_table_chirho(&module_chirho, &config_chirho);

@@ -2,6 +2,7 @@
 
 //! Unit-generated IR uses the source harness's artifact ownership and deadlines.
 
+use haskelujah_test_harness_chirho::fixtures_chirho::recorded_fixture_chirho;
 use std::time::Duration;
 
 use haskelujah_test_harness_chirho::native_chirho::{
@@ -13,7 +14,7 @@ use super::*;
 pub(super) fn run_executable_module_result_chirho(
     module_chirho: &CoreModuleChirho,
 ) -> (i32, String, String) {
-    let ir_chirho = compile_core_to_llvm_executable_chirho(module_chirho);
+    let ir_chirho = compile_core_to_llvm_executable_chirho(&recorded_fixture_chirho(module_chirho));
     let (code_chirho, stdout_chirho) = native_artifact_round_trip_chirho(
         NativeArtifactChirho::LlvmIrChirho(ir_chirho),
         "",
@@ -26,7 +27,7 @@ pub(super) fn run_executable_module_result_chirho(
 /// The harness's report for a program that must fail: a nonzero exit with
 /// stderr, or a signal. Row 535's routes exit 1 with one stderr line.
 pub(super) fn run_executable_module_failure_chirho(module_chirho: &CoreModuleChirho) -> String {
-    let ir_chirho = compile_core_to_llvm_executable_chirho(module_chirho);
+    let ir_chirho = compile_core_to_llvm_executable_chirho(&recorded_fixture_chirho(module_chirho));
     native_artifact_round_trip_chirho(
         NativeArtifactChirho::LlvmIrChirho(ir_chirho),
         "",
@@ -58,6 +59,7 @@ fn concurrent_native_programs_execute_their_own_artifact_chirho() {
                         names_chirho: Default::default(),
                         specialize_pragmas_chirho: Default::default(),
                         foreign_exports_chirho: vec![],
+                        provenance_chirho: Default::default(),
                     };
                     let (code_chirho, stdout_chirho, _) =
                         run_executable_module_result_chirho(&module_chirho);

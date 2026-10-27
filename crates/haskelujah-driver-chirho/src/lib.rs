@@ -7,6 +7,8 @@
 //! and backend lowering across execution modes.
 
 mod module_search_chirho;
+#[path = "native_link_chirho/native_provenance_chirho.rs"]
+mod native_provenance_chirho;
 #[path = "native_link_chirho/rts_snapshot_chirho.rs"]
 pub mod rts_snapshot_chirho;
 #[cfg(test)]
@@ -2645,8 +2647,12 @@ pub fn compile_source_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
-    let frontend_result_chirho =
-        typecheck_source_chirho(source_chirho, source_map_chirho, file_name_chirho)?;
+    let (frontend_result_chirho, ifaces_chirho) =
+        source_chirho::typecheck_source_with_ifaces_chirho(
+            source_chirho,
+            source_map_chirho,
+            file_name_chirho,
+        )?;
 
     let FrontendResultChirho {
         module_chirho,
@@ -2659,6 +2665,7 @@ pub fn compile_source_chirho(
         module_chirho,
         infer_result_chirho,
         std::collections::HashSet::new(),
+        &ifaces_chirho,
     )
 }
 
@@ -2734,6 +2741,7 @@ pub fn compile_source_with_search_path_chirho(
         module_chirho,
         infer_result_chirho,
         std::collections::HashSet::new(),
+        &all_ifaces_chirho,
     )
 }
 
@@ -2748,6 +2756,7 @@ fn compile_backend_chirho(
     module_chirho: ModuleChirho,
     infer_result_chirho: InferResultChirho,
     extra_dict_param_names_chirho: std::collections::HashSet<String>,
+    ifaces_chirho: &[ModuleIfaceChirho],
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
     // per-occurrence ids for the method-occurrence names).
@@ -2892,7 +2901,16 @@ fn compile_backend_chirho(
 
     // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
     let config_chirho = SimplifyConfigChirho::default();
-    let core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
+    let mut core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
+
+    // Phase 6.5: Native provenance — the module's entry candidate and its builtin
+    // references, from its imports (row 628).
+    // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    native_provenance_chirho::record_module_provenance_chirho(
+        &module_chirho,
+        &mut core_chirho,
+        ifaces_chirho,
+    );
 
     // Phase 7: Backend lowering
     let llvm_ir_chirho = compile_core_to_llvm_chirho(&core_chirho);
@@ -2984,6 +3002,7 @@ pub fn compile_modules_chirho(
             module_chirho,
             infer_result_chirho,
             extra_dict_param_names_chirho,
+            &ifaces_chirho,
         )?;
         results_chirho.push(compile_result_chirho);
     }
@@ -3388,6 +3407,8 @@ pub fn eval_modules_chirho(
         names_chirho: merged_names_chirho,
         specialize_pragmas_chirho: std::collections::HashMap::new(),
         foreign_exports_chirho: vec![],
+        // Only the STG interpreter reads this module, and it reads no native provenance.
+        provenance_chirho: Default::default(),
     };
 
     let (value_chirho, _machine_chirho) = stg_lower_chirho::lower_and_run_chirho(
@@ -3633,6 +3654,7 @@ pub fn compile_modules_incremental_chirho(
             module_chirho,
             infer_result_chirho,
             std::collections::HashSet::new(),
+            &ifaces_chirho,
         )?;
 
         results_chirho.push((compile_result_chirho, recompiled_chirho));
@@ -4169,6 +4191,7 @@ pub fn compile_project_dir_chirho(
                 module_chirho,
                 infer_result_chirho,
                 extra_dict_param_names_chirho,
+                &ifaces_chirho,
             )
             .map_err(|e_chirho| {
                 format!("Backend error for {}: {}", module_name_chirho, e_chirho)
@@ -5342,6 +5365,7 @@ fn compile_module_sources_with_extra_ifaces_chirho(
                 module_chirho,
                 infer_result_chirho,
                 extra_dict_param_names_chirho,
+                &ifaces_chirho,
             )
             .map_err(|e_chirho| {
                 format!("Backend error for {}: {}", module_name_chirho, e_chirho)
@@ -5839,8 +5863,20 @@ fn merge_compile_results_core_chirho(
     let mut merged_bindings_chirho = Vec::new();
     let mut merged_names_chirho: HashMap<CoreIdChirho, String> = HashMap::new();
     let mut id_offset_chirho: u32 = 0;
+    // Each module's provenance moves with its ids. Only the program's root module, `Main`,
+    // supplies the entry (row 628).
+    // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    let mut merged_provenance_chirho = haskelujah_core_chirho::CoreProvenanceChirho::default();
 
     for result_chirho in results_chirho {
+        let moved_provenance_chirho = result_chirho
+            .core_chirho
+            .provenance_chirho
+            .offset_chirho(id_offset_chirho);
+        merged_provenance_chirho.absorb_chirho(&moved_provenance_chirho);
+        if result_chirho.module_chirho.name_chirho.full_name_chirho() == "Main" {
+            merged_provenance_chirho.entry_chirho = moved_provenance_chirho.entry_chirho;
+        }
         let mut bindings_chirho = result_chirho.core_chirho.bindings_chirho.clone();
         if id_offset_chirho > 0 {
             for binding_chirho in &mut bindings_chirho {
@@ -5866,10 +5902,22 @@ fn merge_compile_results_core_chirho(
     }
 
     let mut def_name_to_id_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
+    // A builtin reference links only to the compiler's own body of its name, never to a
+    // program's binding that shares the spelling (row 628).
+    let mut compiler_name_to_id_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
     for binding_chirho in &merged_bindings_chirho {
+        let binder_chirho = &binding_chirho.binder_chirho;
         def_name_to_id_chirho
-            .entry(binding_chirho.binder_chirho.name_chirho.clone())
-            .or_insert(binding_chirho.binder_chirho.id_chirho);
+            .entry(binder_chirho.name_chirho.clone())
+            .or_insert(binder_chirho.id_chirho);
+        if merged_provenance_chirho
+            .compiler_bindings_chirho
+            .contains(&binder_chirho.id_chirho)
+        {
+            compiler_name_to_id_chirho
+                .entry(binder_chirho.name_chirho.clone())
+                .or_insert(binder_chirho.id_chirho);
+        }
     }
 
     let mut all_binder_ids_chirho: HashSet<CoreIdChirho> = HashSet::new();
@@ -5883,10 +5931,18 @@ fn merge_compile_results_core_chirho(
         if all_binder_ids_chirho.contains(id_chirho) {
             continue;
         }
-        if let Some(&def_id_chirho) = def_name_to_id_chirho.get(name_chirho) {
-            if def_id_chirho != *id_chirho {
-                remap_chirho.insert(*id_chirho, def_id_chirho);
-            }
+        let definitions_chirho = if merged_provenance_chirho
+            .builtin_references_chirho
+            .contains(id_chirho)
+        {
+            &compiler_name_to_id_chirho
+        } else {
+            &def_name_to_id_chirho
+        };
+        if let Some(&def_id_chirho) = definitions_chirho.get(name_chirho)
+            && def_id_chirho != *id_chirho
+        {
+            remap_chirho.insert(*id_chirho, def_id_chirho);
         }
     }
 
@@ -5922,6 +5978,7 @@ fn merge_compile_results_core_chirho(
             );
         }
         merged_names_chirho.retain(|id_chirho, _| !removed_binding_ids_chirho.contains(id_chirho));
+        merged_provenance_chirho.remap_chirho(&duplicate_binding_remap_chirho);
     }
 
     Ok(CoreModuleChirho {
@@ -5939,6 +5996,7 @@ fn merge_compile_results_core_chirho(
         names_chirho: merged_names_chirho,
         specialize_pragmas_chirho: std::collections::HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: merged_provenance_chirho,
     })
 }
 

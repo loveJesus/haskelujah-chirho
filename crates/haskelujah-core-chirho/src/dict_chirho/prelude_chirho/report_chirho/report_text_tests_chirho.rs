@@ -69,6 +69,7 @@ fn each_text_function_is_generated_once_with_no_text_primop_and_shares_is_space_
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
     };
     let result_chirho = dict_pass_module_chirho(
         &module_chirho,

@@ -9,6 +9,7 @@
 
 pub mod bench_chirho;
 pub mod diff_chirho;
+pub mod fixtures_chirho;
 pub mod ghc_suite_chirho;
 pub mod native_chirho;
 pub mod process_chirho;

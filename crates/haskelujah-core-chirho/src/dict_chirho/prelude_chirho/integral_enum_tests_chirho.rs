@@ -201,6 +201,7 @@ fn dict_pass_chirho() -> DictPassResultChirho {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
     };
     dict_pass_module_chirho(
         &module_chirho,

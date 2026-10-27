@@ -781,6 +781,7 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         }
     }
 

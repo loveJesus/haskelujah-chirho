@@ -39,9 +39,12 @@ pub use dict_chirho::{
 };
 pub use expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
+    CoreLitChirho, CoreModuleChirho, CoreProvenanceChirho, InlineAnnotationChirho,
+    NATIVE_ENTRY_SYMBOL_CHIRHO, NativeSymbolsChirho, native_binding_symbol_chirho,
+    native_mangle_chirho,
 };
 pub use pretty_chirho::pretty_module_chirho;
 pub use simplify_chirho::{
     SimplifyConfigChirho, elide_dicts_and_filter_chirho, elide_dicts_chirho, simplify_module_chirho,
 };
+pub use transform_chirho::module_free_reference_ids_chirho;

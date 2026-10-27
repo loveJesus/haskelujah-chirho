@@ -13,7 +13,7 @@
 
 use std::fmt::Write;
 
-use super::{CoreExprChirho, LlvmCodegenChirho, mangle_name_chirho};
+use super::{CoreExprChirho, LlvmCodegenChirho};
 
 impl LlvmCodegenChirho {
     pub(super) fn compile_lazy_value_chirho(
@@ -48,15 +48,15 @@ impl LlvmCodegenChirho {
         {
             return None;
         }
-        if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
+        if let Some(symbol_chirho) = self.toplevel_symbol_chirho(*id_chirho) {
             let arity_chirho = self
                 .toplevel_arities_chirho
                 .get(id_chirho)
                 .copied()
                 .unwrap_or(0);
-            return (arity_chirho == 0).then(|| format!("@{}", mangle_name_chirho(name_chirho)));
+            return (arity_chirho == 0).then(|| format!("@{symbol_chirho}"));
         }
-        let name_chirho = self.resolved_names_chirho.get(id_chirho).cloned()?;
+        let name_chirho = self.recognized_name_chirho(*id_chirho).cloned()?;
         let (fn_ref_chirho, arity_chirho) =
             self.resolve_builtin_runtime_function_chirho(&name_chirho)?;
         (arity_chirho == 0).then_some(fn_ref_chirho)

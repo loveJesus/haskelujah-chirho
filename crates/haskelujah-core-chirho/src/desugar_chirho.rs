@@ -1776,6 +1776,7 @@ impl DesugarCtxChirho {
                         }
                     })
                     .collect(),
+                provenance_chirho: Default::default(),
             },
             names_chirho: self.names_chirho.clone(),
             method_occurrences_chirho: self.method_occurrences_chirho.clone(),

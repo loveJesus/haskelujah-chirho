@@ -25,7 +25,8 @@ use std::fmt::Write;
 
 use haskelujah_core_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, CoreModuleChirho,
+    CoreLitChirho, CoreModuleChirho, CoreProvenanceChirho, NativeSymbolsChirho,
+    native_binding_symbol_chirho, native_mangle_chirho,
 };
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
@@ -60,6 +61,11 @@ pub struct LlvmCodegenChirho {
     string_globals_chirho: HashMap<String, String>,
     /// Maps CoreId → name for top-level bindings, used to resolve cross-references.
     toplevel_names_chirho: HashMap<CoreIdChirho, String>,
+    /// The symbol every top-level binding is defined and referenced under (row 628).
+    native_symbols_chirho: NativeSymbolsChirho,
+    /// Where the module's top-level identities come from: only a compiler binding or a
+    /// builtin reference may be recognized by its spelling (row 628).
+    provenance_chirho: CoreProvenanceChirho,
     /// Maps CoreId → resolved Haskell name for any identifier referenced by Core.
     resolved_names_chirho: HashMap<CoreIdChirho, String>,
     /// Maps CoreId → lambda arity for top-level bindings.
@@ -119,6 +125,8 @@ impl LlvmCodegenChirho {
             emitted_names_chirho: HashSet::new(),
             string_globals_chirho: HashMap::new(),
             toplevel_names_chirho: HashMap::new(),
+            native_symbols_chirho: NativeSymbolsChirho::default(),
+            provenance_chirho: CoreProvenanceChirho::default(),
             resolved_names_chirho: HashMap::new(),
             toplevel_arities_chirho: HashMap::new(),
             toplevel_value_kinds_chirho: HashMap::new(),
@@ -256,7 +264,7 @@ impl LlvmCodegenChirho {
             CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
             _ => return None,
         };
-        let func_name_chirho = self.toplevel_names_chirho.get(&func_id_chirho)?;
+        let mangled_chirho = self.toplevel_symbol_chirho(func_id_chirho)?;
         let func_arity_chirho = self
             .toplevel_arities_chirho
             .get(&func_id_chirho)
@@ -265,7 +273,6 @@ impl LlvmCodegenChirho {
         if args_chirho.len() != func_arity_chirho {
             return None;
         }
-        let mangled_chirho = mangle_name_chirho(func_name_chirho);
 
         // Get the function address
         let fn_addr_tmp_chirho = self.fresh_tmp_chirho();
@@ -420,9 +427,41 @@ impl LlvmCodegenChirho {
             return false;
         }
 
-        self.resolved_names_chirho
-            .get(&id_chirho)
-            .is_none_or(|name_chirho| builtin_runtime_arity_by_name_chirho(name_chirho).is_none())
+        !self
+            .provenance_chirho
+            .builtin_references_chirho
+            .contains(&id_chirho)
+            || self
+                .resolved_names_chirho
+                .get(&id_chirho)
+                .is_none_or(|name_chirho| {
+                    builtin_runtime_arity_by_name_chirho(name_chirho).is_none()
+                })
+    }
+
+    /// The symbol of the top-level binding `id_chirho` (row 628).
+    fn toplevel_symbol_chirho(&self, id_chirho: CoreIdChirho) -> Option<String> {
+        self.native_symbols_chirho
+            .symbol_chirho(id_chirho)
+            .map(str::to_string)
+    }
+
+    /// The spelling of `id_chirho`, when provenance lets the backend recognize it: a binding
+    /// the compiler generated, or a builtin reference. A program's own binding never answers,
+    /// whatever its spelling (row 628).
+    fn recognized_name_chirho(&self, id_chirho: CoreIdChirho) -> Option<&String> {
+        let provenance_chirho = &self.provenance_chirho;
+        if provenance_chirho
+            .compiler_bindings_chirho
+            .contains(&id_chirho)
+            || provenance_chirho
+                .builtin_references_chirho
+                .contains(&id_chirho)
+        {
+            self.resolved_names_chirho.get(&id_chirho)
+        } else {
+            None
+        }
     }
 
     fn collect_free_runtime_var_ids_chirho(
@@ -890,6 +929,8 @@ impl LlvmCodegenChirho {
         inner_codegen_chirho.next_lifted_function_chirho = self.next_lifted_function_chirho;
         inner_codegen_chirho.string_globals_chirho = self.string_globals_chirho.clone();
         inner_codegen_chirho.toplevel_names_chirho = self.toplevel_names_chirho.clone();
+        inner_codegen_chirho.native_symbols_chirho = self.native_symbols_chirho.clone();
+        inner_codegen_chirho.provenance_chirho = self.provenance_chirho.clone();
         inner_codegen_chirho.resolved_names_chirho = self.resolved_names_chirho.clone();
         inner_codegen_chirho.toplevel_arities_chirho = self.toplevel_arities_chirho.clone();
         inner_codegen_chirho.toplevel_value_kinds_chirho = self.toplevel_value_kinds_chirho.clone();
@@ -1074,8 +1115,7 @@ impl LlvmCodegenChirho {
                 let (callee_chirho, args_chirho) = flatten_app_chirho(expr_chirho);
                 match strip_runtime_tyapps_chirho(callee_chirho) {
                     CoreExprChirho::VarChirho(id_chirho) => self
-                        .toplevel_names_chirho
-                        .get(id_chirho)
+                        .recognized_name_chirho(*id_chirho)
                         .and_then(
                             |name_chirho| match (name_chirho.as_str(), args_chirho.len()) {
                                 (name_chirho, 2) if name_chirho.starts_with("$prim_Eq_==_") => {
@@ -1140,19 +1180,19 @@ impl LlvmCodegenChirho {
                 }
                 _ => None,
             },
-            CoreExprChirho::VarChirho(id_chirho) => self
-                .local_value_kinds_chirho
-                .get(id_chirho)
-                .cloned()
-                .or_else(|| self.toplevel_value_kinds_chirho.get(id_chirho).cloned())
-                .or_else(|| {
-                    self.toplevel_names_chirho
-                        .get(id_chirho)
-                        .and_then(|name_chirho| match name_chirho.as_str() {
-                            "True" | "False" => Some(ShowBuiltinKindChirho::BoolChirho),
-                            _ => None,
-                        })
-                }),
+            CoreExprChirho::VarChirho(id_chirho) => {
+                self.local_value_kinds_chirho
+                    .get(id_chirho)
+                    .cloned()
+                    .or_else(|| self.toplevel_value_kinds_chirho.get(id_chirho).cloned())
+                    .or_else(|| {
+                        self.recognized_name_chirho(*id_chirho)
+                            .and_then(|name_chirho| match name_chirho.as_str() {
+                                "True" | "False" => Some(ShowBuiltinKindChirho::BoolChirho),
+                                _ => None,
+                            })
+                    })
+            }
             CoreExprChirho::TyAppChirho { expr_chirho, .. } => {
                 self.classify_expr_show_kind_chirho(expr_chirho)
             }
@@ -1437,10 +1477,10 @@ impl LlvmCodegenChirho {
 
     /// Compile a Core module to LLVM IR text.
     pub fn compile_module_chirho(&mut self, module_chirho: &CoreModuleChirho) -> String {
-        let actions_chirho = haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(
-            module_chirho,
-            "main",
-        );
+        let actions_chirho =
+            haskelujah_core_chirho::io_actions_chirho::prepare_native_io_actions_chirho(
+                module_chirho,
+            );
         let prepared_chirho =
             haskelujah_core_chirho::native_thunks_chirho::prepare_native_thunks_chirho(
                 &actions_chirho,
@@ -1473,10 +1513,6 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         writeln!(self.output_chirho).unwrap();
-
-        let has_toplevel_show_chirho = module_chirho.bindings_chirho.iter().any(|binding_chirho| {
-            mangle_name_chirho(&binding_chirho.binder_chirho.name_chirho) == "haskelujah_show"
-        });
 
         // Declare external functions we might call
         writeln!(
@@ -1661,10 +1697,15 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_map_size_chirho(i64)"
         )
         .unwrap();
-        // Fallback: if print's show call isn't elided, provide a default
-        // wrapper. LLVM aliases must point at definitions, but the RTS show
-        // helpers are external declarations.
-        if !has_toplevel_show_chirho {
+        // Fallback: if print's show call isn't elided, the backend's own wrapper over the
+        // RTS's universal show. It is the compiler's generated `show` (`showInt#`), named apart
+        // from every binding, so a program's own `show` never answers here (row 628). LLVM
+        // aliases must point at definitions, but the RTS show helpers are external
+        // declarations.
+        if self
+            .emitted_names_chirho
+            .insert("haskelujah_show".to_string())
+        {
             writeln!(
                 self.output_chirho,
                 "define i64 @haskelujah_show(i64 %value_chirho) {{"
@@ -1756,6 +1797,8 @@ impl LlvmCodegenChirho {
             }
         }
         self.toplevel_names_chirho = toplevel_names_chirho;
+        self.native_symbols_chirho = NativeSymbolsChirho::of_module_chirho(module_chirho);
+        self.provenance_chirho = module_chirho.provenance_chirho.clone();
         self.resolved_names_chirho = resolved_names_chirho;
         self.toplevel_arities_chirho = toplevel_arities_chirho;
         self.toplevel_value_kinds_chirho = toplevel_value_kinds_chirho;
@@ -1833,7 +1876,19 @@ impl LlvmCodegenChirho {
         // Emit foreign export stubs: wrapper functions with C linkage
         // that call into the corresponding Haskell binding.
         for export_chirho in &module_chirho.foreign_exports_chirho {
-            let haskell_fn_chirho = mangle_name_chirho(&export_chirho.haskell_name_chirho);
+            let haskell_fn_chirho = module_chirho
+                .bindings_chirho
+                .iter()
+                .map(|binding_chirho| &binding_chirho.binder_chirho)
+                .find(|binder_chirho| {
+                    binder_chirho.name_chirho == export_chirho.haskell_name_chirho
+                        && !self
+                            .provenance_chirho
+                            .compiler_bindings_chirho
+                            .contains(&binder_chirho.id_chirho)
+                })
+                .and_then(|binder_chirho| self.toplevel_symbol_chirho(binder_chirho.id_chirho))
+                .unwrap_or_else(|| mangle_name_chirho(&export_chirho.haskell_name_chirho));
             let c_name_chirho = &export_chirho.foreign_name_chirho;
             writeln!(self.output_chirho).unwrap();
             writeln!(
@@ -1857,7 +1912,14 @@ impl LlvmCodegenChirho {
 
     /// Compile a top-level binding to an LLVM function.
     fn compile_binding_chirho(&mut self, binding_chirho: &CoreBindingChirho) {
-        let fn_name_chirho = mangle_name_chirho(&binding_chirho.binder_chirho.name_chirho);
+        let fn_name_chirho = self
+            .toplevel_symbol_chirho(binding_chirho.binder_chirho.id_chirho)
+            .unwrap_or_else(|| {
+                native_binding_symbol_chirho(
+                    &binding_chirho.binder_chirho.name_chirho,
+                    binding_chirho.binder_chirho.id_chirho,
+                )
+            });
 
         // Skip duplicate function definitions (e.g. Prelude `min` and `$prim_Ord_min_Int`
         // can both mangle to the same name)
@@ -1892,8 +1954,19 @@ impl LlvmCodegenChirho {
             .collect::<Vec<_>>()
             .join(", ");
 
+        // Only a binding the compiler generated may take a builtin body by its spelling; a
+        // program's own `show` or `undefined` compiles as written (row 628).
+        let builtin_body_name_chirho = if self
+            .provenance_chirho
+            .compiler_bindings_chirho
+            .contains(&binding_chirho.binder_chirho.id_chirho)
+        {
+            binding_chirho.binder_chirho.name_chirho.as_str()
+        } else {
+            ""
+        };
         if self.compile_builtin_binding_chirho(
-            &binding_chirho.binder_chirho.name_chirho,
+            builtin_body_name_chirho,
             &fn_name_chirho,
             &param_binders_chirho,
             &params_chirho,
@@ -2289,8 +2362,7 @@ impl LlvmCodegenChirho {
                     self.lifted_local_names_chirho.get(id_chirho).cloned()
                 {
                     self.compile_lifted_local_value_chirho(*id_chirho, &lifted_name_chirho)
-                } else if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho) {
-                    let mangled_chirho = mangle_name_chirho(name_chirho);
+                } else if let Some(mangled_chirho) = self.toplevel_symbol_chirho(*id_chirho) {
                     let arity_chirho = self
                         .toplevel_arities_chirho
                         .get(id_chirho)
@@ -2314,8 +2386,7 @@ impl LlvmCodegenChirho {
                         .unwrap();
                         tmp_chirho
                     }
-                } else if let Some(name_chirho) = self.resolved_names_chirho.get(id_chirho).cloned()
-                {
+                } else if let Some(name_chirho) = self.recognized_name_chirho(*id_chirho).cloned() {
                     if let Some((fn_ref_chirho, arity_chirho)) =
                         self.resolve_builtin_runtime_function_chirho(&name_chirho)
                     {
@@ -2370,7 +2441,11 @@ impl LlvmCodegenChirho {
                             return result_chirho;
                         }
                     }
-                    if let Some(name_chirho) = self.toplevel_names_chirho.get(id_chirho).cloned() {
+                    if let Some(symbol_chirho) = self.toplevel_symbol_chirho(*id_chirho) {
+                        let name_chirho = self
+                            .recognized_name_chirho(*id_chirho)
+                            .cloned()
+                            .unwrap_or_default();
                         if matches!(name_chirho.as_str(), "print" | "print#") {
                             if let Some(arg_expr_chirho) = args_chirho.last() {
                                 if let Some(show_kind_chirho) =
@@ -2428,7 +2503,7 @@ impl LlvmCodegenChirho {
                                 }
                             }
                         }
-                        let fn_ref_chirho = format!("@{}", mangle_name_chirho(&name_chirho));
+                        let fn_ref_chirho = format!("@{symbol_chirho}");
                         let arity_chirho = self
                             .toplevel_arities_chirho
                             .get(id_chirho)
@@ -2442,18 +2517,16 @@ impl LlvmCodegenChirho {
                             return result_chirho;
                         }
                     }
-                    if let Some(name_chirho) = self.resolved_names_chirho.get(id_chirho).cloned() {
-                        if let Some((fn_ref_chirho, arity_chirho)) =
+                    if let Some(name_chirho) = self.recognized_name_chirho(*id_chirho).cloned()
+                        && let Some((fn_ref_chirho, arity_chirho)) =
                             self.resolve_builtin_runtime_function_chirho(&name_chirho)
-                        {
-                            if let Some(result_chirho) = self.compile_known_call_chirho(
-                                &fn_ref_chirho,
-                                arity_chirho,
-                                &arg_vals_chirho,
-                            ) {
-                                return result_chirho;
-                            }
-                        }
+                        && let Some(result_chirho) = self.compile_known_call_chirho(
+                            &fn_ref_chirho,
+                            arity_chirho,
+                            &arg_vals_chirho,
+                        )
+                    {
+                        return result_chirho;
                     }
                 }
 
@@ -4584,19 +4657,7 @@ fn collect_app_chain_llvm_chirho(
 }
 
 fn mangle_name_chirho(name_chirho: &str) -> String {
-    let mut mangled_chirho = String::with_capacity(name_chirho.len() + 8);
-    mangled_chirho.push_str("haskelujah_");
-    for ch_chirho in name_chirho.chars() {
-        match ch_chirho {
-            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => mangled_chirho.push(ch_chirho),
-            '\'' => mangled_chirho.push_str("_prime"),
-            '.' => mangled_chirho.push('_'),
-            _ => {
-                mangled_chirho.push_str(&format!("_u{:04x}", ch_chirho as u32));
-            }
-        }
-    }
-    mangled_chirho
+    native_mangle_chirho(name_chirho)
 }
 
 /// Compile a Core module to LLVM IR text.
@@ -4663,11 +4724,17 @@ pub fn try_compile_core_to_llvm_executable_chirho(
                 )
             });
 
-    // Check if there's a binding named "main" — that's the Haskell entry point
-    let has_main_chirho = module_chirho
-        .bindings_chirho
-        .iter()
-        .any(|b_chirho| b_chirho.binder_chirho.name_chirho == "main");
+    // The recorded program entry, never a spelling, gets the C `main()` (row 628).
+    let has_main_chirho =
+        module_chirho
+            .provenance_chirho
+            .entry_chirho
+            .is_some_and(|entry_chirho| {
+                module_chirho
+                    .bindings_chirho
+                    .iter()
+                    .any(|binding_chirho| binding_chirho.binder_chirho.id_chirho == entry_chirho)
+            });
 
     if has_main_chirho {
         // Add a C main() entry point.
@@ -4762,6 +4829,7 @@ mod tests_chirho {
 
     use haskelujah_core_chirho::CoreBindingChirho;
     use haskelujah_core_chirho::{BinderChirho, CoreIdChirho, InlineAnnotationChirho};
+    use haskelujah_test_harness_chirho::fixtures_chirho::recorded_fixture_chirho;
     use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
     fn dummy_binder_chirho(name_chirho: &str, id_chirho: u32) -> BinderChirho {
@@ -4877,6 +4945,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         }
     }
 
@@ -4893,9 +4962,10 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("; ModuleID = 'Test'"));
         assert!(ir_chirho.contains("define i64 @haskelujah_main()"));
         assert!(ir_chirho.contains("ret i64 42"));
@@ -4921,10 +4991,12 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(ir_chirho.contains("define i64 @haskelujah_f(i64 %v0.entry_chirho)"));
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
+        let f_chirho = native_binding_symbol_chirho("f", CoreIdChirho(10));
+        assert!(ir_chirho.contains(&format!("define i64 @{f_chirho}(i64 %v0.entry_chirho)")));
         assert!(ir_chirho.contains("tail.loop."));
         assert!(ir_chirho.contains("ret i64 %v0"));
     }
@@ -4947,9 +5019,10 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("define i64 @haskelujah_main()"));
         assert!(ir_chirho.contains("; let x = 42"));
     }
@@ -4967,9 +5040,10 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("ret i64 4615063718147915776"));
         assert!(!ir_chirho.contains("ret i64 0"));
     }
@@ -4989,9 +5063,10 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains(
             "@.str.0 = private unnamed_addr constant [7 x i8] c\"Hello\\0A\\00\", align 1"
         ));
@@ -5034,13 +5109,15 @@ mod tests_chirho {
             names_chirho,
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("define i64 @haskelujah_undefined()"));
         assert!(ir_chirho.contains("ptrtoint ptr @haskelujah_undefined to i64"));
         assert!(!ir_chirho.contains("call i64 @haskelujah_undefined()"));
-        assert!(!ir_chirho.contains("@haskelujah_ignore(i64 %v5)"));
+        let ignore_chirho = native_binding_symbol_chirho("ignore", CoreIdChirho(1));
+        assert!(!ir_chirho.contains(&format!("@{ignore_chirho}(i64 %v5)")));
     }
 
     #[test]
@@ -5108,9 +5185,10 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("define i64 @haskelujah_lambda_0(i64 %v0.entry_chirho)"));
         assert!(ir_chirho.contains("ptrtoint ptr @haskelujah_lambda_0 to i64"));
         assert!(
@@ -5220,9 +5298,10 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(
             ir_chirho.matches("define i64 @haskelujah_lambda_").count() >= 2,
             "nested where should emit both outer and inner lifted helpers, got:\n{ir_chirho}"
@@ -5267,9 +5346,10 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("declare ptr @haskelujah_alloc_chirho(i64)"));
         assert!(ir_chirho.contains("call ptr @haskelujah_alloc_chirho(i64 24)"));
         assert!(ir_chirho.contains("call void @haskelujah_gc_root_push_chirho(ptr"));
@@ -5312,9 +5392,10 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("switch i64"));
         assert!(ir_chirho.contains("i64 1, label"));
     }
@@ -5370,9 +5451,11 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        let ir_chirho =
+            compile_core_to_llvm_executable_chirho(&recorded_fixture_chirho(&module_chirho));
         // Should contain the haskelujah_main function
         assert!(ir_chirho.contains("define i64 @haskelujah_main()"));
         // Should contain the C main entry point
@@ -5398,12 +5481,15 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        let ir_chirho =
+            compile_core_to_llvm_executable_chirho(&recorded_fixture_chirho(&module_chirho));
         // Without a `main` binding, no user bindings are reachable,
         // so no functions should be emitted (only module header)
-        assert!(!ir_chirho.contains("define i64 @haskelujah_helper()"));
+        let helper_chirho = native_binding_symbol_chirho("helper", CoreIdChirho(0));
+        assert!(!ir_chirho.contains(&format!("define i64 @{helper_chirho}()")));
         // Should NOT contain C main entry point since no "main" binding
         assert!(!ir_chirho.contains("define i32 @main()"));
     }
@@ -5425,6 +5511,7 @@ mod tests_chirho {
             names_chirho: std::collections::HashMap::new(),
             specialize_pragmas_chirho: std::collections::HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (status_chirho, _stdout_chirho, stderr_chirho) =
@@ -5457,6 +5544,7 @@ mod tests_chirho {
                 names_chirho: HashMap::new(),
                 specialize_pragmas_chirho: HashMap::new(),
                 foreign_exports_chirho: vec![],
+                provenance_chirho: Default::default(),
             };
 
             let (status_chirho, _stdout_chirho, stderr_chirho) =
@@ -5485,6 +5573,7 @@ mod tests_chirho {
                 names_chirho: HashMap::new(),
                 specialize_pragmas_chirho: HashMap::new(),
                 foreign_exports_chirho: vec![],
+                provenance_chirho: Default::default(),
             };
 
             // -7 `div` 2 is -4 (exit status 252); `mod` is 1. Truncating
@@ -5531,6 +5620,7 @@ mod tests_chirho {
                 names_chirho: HashMap::new(),
                 specialize_pragmas_chirho: HashMap::new(),
                 foreign_exports_chirho: vec![],
+                provenance_chirho: Default::default(),
             };
 
             let (status_chirho, _stdout_chirho, stderr_chirho) =
@@ -5558,6 +5648,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (status_chirho, _stdout_chirho, stderr_chirho) =
@@ -5570,7 +5661,8 @@ mod tests_chirho {
         // It used to alias the unused first parameter (10), so `10 div 2`
         // printed a wrong 5.
         let module_chirho = wildcard_first_column_safe_divide_module_chirho(2);
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        let ir_chirho =
+            compile_core_to_llvm_executable_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(!ir_chirho.contains("%v8 = add i64 0, %v"), "{ir_chirho}");
         assert_eq!(
             run_executable_module_failure_chirho(&module_chirho),
@@ -5598,9 +5690,11 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
+        let ir_chirho =
+            compile_core_to_llvm_executable_chirho(&recorded_fixture_chirho(&module_chirho));
         assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %value_chirho)"));
         assert!(ir_chirho.contains("call i64 @haskelujah_show_int_chirho"));
         assert!(
@@ -5640,10 +5734,13 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_executable_chirho(&module_chirho);
-        assert!(ir_chirho.contains("define i64 @haskelujah_show(i64 %v2)"));
+        let ir_chirho =
+            compile_core_to_llvm_executable_chirho(&recorded_fixture_chirho(&module_chirho));
+        let show_chirho = native_binding_symbol_chirho("show", CoreIdChirho(1));
+        assert!(ir_chirho.contains(&format!("define i64 @{show_chirho}(i64 %v2)")));
         // The runtime refuses a live heap value; `%ld` would print its address.
         assert!(ir_chirho.contains("call i64 @haskelujah_show_int_chirho(i64 "));
         assert!(!ir_chirho.contains("call i32 (ptr, i64, ptr, ...) @snprintf("));
@@ -5724,6 +5821,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let stdout_chirho = run_executable_module_chirho(&module_chirho);
@@ -5754,14 +5852,14 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(
-            ir_chirho.contains(
-                "define i64 @haskelujah__u0024sel_Num_fromInteger(i64 %v1.entry_chirho, i64 %v2.entry_chirho)"
-            )
-        );
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
+        let selector_chirho = native_binding_symbol_chirho("$sel_Num_fromInteger", CoreIdChirho(0));
+        assert!(ir_chirho.contains(&format!(
+            "define i64 @{selector_chirho}(i64 %v1.entry_chirho, i64 %v2.entry_chirho)"
+        )));
         assert!(ir_chirho.contains("ret i64 %v2"));
     }
 
@@ -5830,14 +5928,15 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
-        let ir_chirho = compile_core_to_llvm_chirho(&module_chirho);
-        assert!(ir_chirho.contains("call i64 @haskelujah__u0024sel_Num_fromInteger(i64"));
+        let ir_chirho = compile_core_to_llvm_chirho(&recorded_fixture_chirho(&module_chirho));
+        let selector_chirho =
+            native_binding_symbol_chirho("$sel_Num_fromInteger", CoreIdChirho(10));
+        assert!(ir_chirho.contains(&format!("call i64 @{selector_chirho}(i64")));
         assert!(ir_chirho.contains("inttoptr i64 %t"));
-        assert!(
-            !ir_chirho.contains("call i64 @haskelujah__u0024sel_Num_fromInteger(i64 %t0, i64 42)")
-        );
+        assert!(!ir_chirho.contains(&format!("call i64 @{selector_chirho}(i64 %t0, i64 42)")));
     }
 
     #[test]
@@ -5895,6 +5994,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let mut filtered_module_chirho = CoreModuleChirho {
             name_chirho: module_chirho.name_chirho.clone(),
@@ -5914,6 +6014,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         restore_selector_bindings_chirho(&module_chirho, &mut filtered_module_chirho);

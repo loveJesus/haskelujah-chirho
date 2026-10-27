@@ -81,12 +81,13 @@ fn nullary_global_ref_chirho(
     {
         return (arity_chirho == 0).then_some(func_ref_chirho);
     }
-    if let Some(name_chirho) = context_chirho.toplevel_names_chirho.get(id_chirho)
+    if let Some(name_chirho) = context_chirho.recognized_names_chirho.get(id_chirho)
         && matches!(name_chirho.as_str(), "getLine" | "getLine#")
     {
         return context_chirho.get_line_ref_chirho;
     }
-    let name_chirho = context_chirho.unbound_names_chirho.get(id_chirho)?;
-    matches!(name_chirho.as_str(), "undefined" | "undefined#")
-        .then(|| context_chirho.runtime_calls_chirho.undefined_ref_chirho())
+    let name_chirho = context_chirho.recognized_names_chirho.get(id_chirho)?;
+    (context_chirho.unbound_names_chirho.contains_key(id_chirho)
+        && matches!(name_chirho.as_str(), "undefined" | "undefined#"))
+    .then(|| context_chirho.runtime_calls_chirho.undefined_ref_chirho())
 }

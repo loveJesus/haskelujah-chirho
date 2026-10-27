@@ -2,7 +2,30 @@
 
 //! Shared, linear Core traversal support for execution lowering.
 
-use crate::expr_chirho::CoreExprChirho;
+use std::collections::{BTreeSet, HashSet};
+
+use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreModuleChirho};
+
+/// Every id a module's bindings reference that neither a top-level binding nor a local binder
+/// owns: what a native backend must find among builtin references, or fail on (row 628).
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+pub fn module_free_reference_ids_chirho(
+    module_chirho: &CoreModuleChirho,
+) -> BTreeSet<CoreIdChirho> {
+    let bound_chirho: HashSet<CoreIdChirho> = module_chirho
+        .bindings_chirho
+        .iter()
+        .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+        .collect();
+    module_chirho
+        .bindings_chirho
+        .iter()
+        .flat_map(|binding_chirho| {
+            crate::simplify_chirho::free_vars_chirho(&binding_chirho.rhs_chirho)
+        })
+        .filter(|id_chirho| !bound_chirho.contains(id_chirho))
+        .collect()
+}
 
 pub(crate) fn children_chirho<'a>(
     expression_chirho: &'a CoreExprChirho,

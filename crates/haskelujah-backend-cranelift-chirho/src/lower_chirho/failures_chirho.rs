@@ -73,7 +73,11 @@ pub(super) fn lower_unresolved_reference_chirho(
     let Some(name_chirho) = unbound_names_chirho.get(&id_chirho) else {
         return builder_chirho.ins().iconst(cl_types_chirho::I64, 0);
     };
-    if matches!(name_chirho.as_str(), "undefined" | "undefined#") {
+    // Only the builtin `undefined` fails as Prelude's; a missing binding of that name reports
+    // itself unresolved (row 628).
+    if matches!(name_chirho.as_str(), "undefined" | "undefined#")
+        && ctx_chirho.recognized_names_chirho.contains_key(&id_chirho)
+    {
         return ctx_chirho
             .runtime_calls_chirho
             .undefined_chirho(builder_chirho);

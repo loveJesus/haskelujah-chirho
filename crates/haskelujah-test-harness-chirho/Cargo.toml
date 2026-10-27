@@ -11,6 +11,8 @@ version.workspace = true
 [dependencies]
 haskelujah-span-chirho = { package = "haskelujah-span", path = "../haskelujah-span-chirho", version = "0.1.2" }
 haskelujah-diagnostics-chirho = { package = "haskelujah-diagnostics", path = "../haskelujah-diagnostics-chirho", version = "0.1.2" }
+haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.2" }
+haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.2" }
 haskelujah-driver-chirho = { package = "haskelujah-driver", path = "../haskelujah-driver-chirho", version = "0.1.2" }
 haskelujah-runtime-chirho = { package = "haskelujah-runtime", path = "../haskelujah-runtime-chirho", version = "0.1.2" }
 haskelujah-backend-cranelift-chirho = { package = "haskelujah-backend-cranelift", path = "../haskelujah-backend-cranelift-chirho", version = "0.1.2" }

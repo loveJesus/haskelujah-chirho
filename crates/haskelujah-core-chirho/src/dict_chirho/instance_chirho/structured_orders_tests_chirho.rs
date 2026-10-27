@@ -57,6 +57,7 @@ fn structured_ord_rows_require_body_backed_components_chirho() {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         },
         &HashMap::new(),
     );

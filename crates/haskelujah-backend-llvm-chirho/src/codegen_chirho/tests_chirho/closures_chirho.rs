@@ -31,6 +31,7 @@ fn compile_indirect_call_for_local_function_value_chirho() {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     };
 
     assert_eq!(
@@ -77,6 +78,7 @@ fn compile_captured_local_lambda_passes_env_chirho() {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     };
 
     assert_eq!(
@@ -150,6 +152,7 @@ fn compile_case_binder_capture_materializes_closure_chirho() {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     };
 
     module_chirho.bindings_chirho.push(CoreBindingChirho {
@@ -230,6 +233,7 @@ fn compile_transitive_local_lambda_capture_materializes_outer_value_chirho() {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     };
 
     assert_eq!(

@@ -73,6 +73,7 @@ fn evidenced_print_rewrites_to_show_instance_then_put_str_ln_chirho() {
         names_chirho: names_chirho.clone(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
     };
     let mut canonical_occurrences_chirho = HashMap::new();
     canonical_occurrences_chirho.insert(CoreIdChirho(50), ("print".to_string(), CoreIdChirho(60)));
@@ -168,6 +169,7 @@ fn evidenced_print_materializes_missing_flat_either_show_binding_chirho() {
         names_chirho: names_chirho.clone(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
     };
     let mut canonical_occurrences_chirho = HashMap::new();
     canonical_occurrences_chirho.insert(CoreIdChirho(50), ("print".to_string(), CoreIdChirho(60)));

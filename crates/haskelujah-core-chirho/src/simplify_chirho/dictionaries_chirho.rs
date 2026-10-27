@@ -261,7 +261,8 @@ pub fn elide_dicts_chirho(
     specialize_chirho(expr_chirho, &definitions_chirho, &HashMap::new())
 }
 
-/// Specialize known evidence, then retain runtime bindings reachable from main.
+/// Specialize known evidence, then retain runtime bindings reachable from the recorded program
+/// entry. A binding that is only spelled `main`, such as a dependency's, is no root (row 628).
 pub fn elide_dicts_and_filter_chirho(module_chirho: &CoreModuleChirho) -> CoreModuleChirho {
     let definitions_chirho = module_chirho
         .bindings_chirho
@@ -295,11 +296,13 @@ pub fn elide_dicts_and_filter_chirho(module_chirho: &CoreModuleChirho) -> CoreMo
         .collect();
     let mut reachable_chirho = HashSet::new();
     let mut pending_chirho = Vec::new();
-    for (index_chirho, binding_chirho) in bindings_chirho.iter().enumerate() {
-        if binding_chirho.binder_chirho.name_chirho == "main" {
-            reachable_chirho.insert(index_chirho);
-            pending_chirho.push(index_chirho);
-        }
+    if let Some(&entry_chirho) = module_chirho
+        .provenance_chirho
+        .entry_chirho
+        .and_then(|entry_id_chirho| indices_chirho.get(&entry_id_chirho))
+    {
+        reachable_chirho.insert(entry_chirho);
+        pending_chirho.push(entry_chirho);
     }
     while let Some(index_chirho) = pending_chirho.pop() {
         for id_chirho in free_vars_chirho(&bindings_chirho[index_chirho].rhs_chirho) {

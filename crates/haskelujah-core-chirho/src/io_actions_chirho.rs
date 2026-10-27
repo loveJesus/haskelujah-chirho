@@ -29,12 +29,39 @@ pub fn prepare_io_actions_chirho(
     module_chirho: &CoreModuleChirho,
     entry_name_chirho: &str,
 ) -> CoreModuleChirho {
-    let mut prepared_chirho = module_chirho.clone();
     let entry_id_chirho = module_chirho
         .bindings_chirho
         .iter()
         .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == entry_name_chirho)
         .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho);
+    prepare_io_actions_for_entry_chirho(module_chirho, entry_id_chirho, entry_name_chirho, &|_| {
+        true
+    })
+}
+
+/// [`prepare_io_actions_chirho`] for the native backends (row 628). The entry is the module's
+/// recorded entry, never a spelling, and only a builtin reference becomes a primitive: a free
+/// reference the provenance does not call builtin stays unresolved, so it fails closed. The
+/// result's provenance names the wrapper as the entry and every binding made here as the
+/// compiler's own.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+pub fn prepare_native_io_actions_chirho(module_chirho: &CoreModuleChirho) -> CoreModuleChirho {
+    let builtin_chirho = &module_chirho.provenance_chirho.builtin_references_chirho;
+    prepare_io_actions_for_entry_chirho(
+        module_chirho,
+        module_chirho.provenance_chirho.entry_chirho,
+        "main",
+        &|id_chirho| builtin_chirho.contains(&id_chirho),
+    )
+}
+
+fn prepare_io_actions_for_entry_chirho(
+    module_chirho: &CoreModuleChirho,
+    entry_id_chirho: Option<CoreIdChirho>,
+    entry_name_chirho: &str,
+    is_primitive_reference_chirho: &dyn Fn(CoreIdChirho) -> bool,
+) -> CoreModuleChirho {
+    let mut prepared_chirho = module_chirho.clone();
     let mut maximum_chirho = module_chirho
         .names_chirho
         .keys()
@@ -66,12 +93,14 @@ pub fn prepare_io_actions_chirho(
         .names_chirho
         .iter()
         .filter_map(|(id_chirho, name_chirho)| {
-            (!defined_chirho.contains(id_chirho) && referenced_chirho.contains(id_chirho))
-                .then(|| {
-                    operation_chirho(name_chirho)
-                        .map(|op_chirho| (*id_chirho, name_chirho.clone(), op_chirho))
-                })
-                .flatten()
+            (!defined_chirho.contains(id_chirho)
+                && referenced_chirho.contains(id_chirho)
+                && is_primitive_reference_chirho(*id_chirho))
+            .then(|| {
+                operation_chirho(name_chirho)
+                    .map(|op_chirho| (*id_chirho, name_chirho.clone(), op_chirho))
+            })
+            .flatten()
         })
         .collect();
     primitives_chirho.sort_by_key(|(id_chirho, _, _)| *id_chirho);
@@ -133,6 +162,7 @@ pub fn prepare_io_actions_chirho(
         );
         let mut wrapper_chirho = context_chirho.binder_chirho("io_entry");
         wrapper_chirho.name_chirho = entry_name_chirho.to_string();
+        prepared_chirho.provenance_chirho.entry_chirho = Some(wrapper_chirho.id_chirho);
         wrapper_chirho.ty_chirho = entry_chirho.binder_chirho.ty_chirho.clone();
         let result_chirho = context_chirho.execute_entry_chirho(value_chirho);
         prepared_chirho
@@ -152,6 +182,17 @@ pub fn prepare_io_actions_chirho(
         );
         prepared_chirho.bindings_chirho.push(binding_chirho);
     }
+    // Everything made here (primitives, raw effects, the entry wrapper) is the compiler's own.
+    let generated_chirho: Vec<_> = prepared_chirho
+        .bindings_chirho
+        .iter()
+        .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+        .filter(|id_chirho| !defined_chirho.contains(id_chirho))
+        .collect();
+    prepared_chirho
+        .provenance_chirho
+        .compiler_bindings_chirho
+        .extend(generated_chirho);
     prepared_chirho
 }
 

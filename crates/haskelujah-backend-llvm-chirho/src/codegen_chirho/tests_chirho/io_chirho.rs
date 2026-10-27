@@ -60,6 +60,7 @@ fn module_chirho(
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: vec![],
+        provenance_chirho: Default::default(),
     }
 }
 

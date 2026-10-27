@@ -1928,8 +1928,10 @@ version = "0.1.35"
 dependencies = [
  "haskelujah-backend-cranelift",
  "haskelujah-backend-llvm",
+ "haskelujah-core",
  "haskelujah-diagnostics",
  "haskelujah-driver",
+ "haskelujah-package",
  "haskelujah-runtime",
  "haskelujah-span",
  "libc",

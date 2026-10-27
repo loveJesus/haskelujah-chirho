@@ -13,6 +13,7 @@ use super::{
     run_frontend_chirho, run_frontend_with_type_synonyms_and_type_families_chirho,
     seed_builtin_type_families_chirho, source_imports_stdlib_chirho,
 };
+use haskelujah_naming_chirho::ModuleIfaceChirho;
 
 /// Preprocess, parse, resolve and typecheck source text, stopping before Core and
 /// code generation. Uses the same builtin/stdlib interfaces as full compilation.
@@ -22,6 +23,17 @@ pub fn typecheck_source_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    typecheck_source_with_ifaces_chirho(source_chirho, source_map_chirho, file_name_chirho)
+        .map(|(frontend_chirho, _ifaces_chirho)| frontend_chirho)
+}
+
+/// [`typecheck_source_chirho`], also returning the interfaces the module was resolved
+/// against, which the backend reads to tell builtin references from program ones (row 628).
+pub(crate) fn typecheck_source_with_ifaces_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+) -> Result<(FrontendResultChirho, Vec<ModuleIfaceChirho>), DiagnosticBundleChirho> {
     // Run CPP preprocessing if {-# LANGUAGE CPP #-} is present
     let preprocessed_chirho = preprocess_cpp_chirho(source_chirho);
     let effective_source_chirho = &preprocessed_chirho;
@@ -46,7 +58,7 @@ pub fn typecheck_source_chirho(
         );
     }
 
-    if imported_types_chirho.is_empty()
+    let frontend_chirho = if imported_types_chirho.is_empty()
         && imported_type_synonyms_chirho.is_empty()
         && imported_type_families_chirho.is_empty()
     {
@@ -65,5 +77,6 @@ pub fn typecheck_source_chirho(
             &imported_type_synonyms_chirho,
             &imported_type_families_chirho,
         )
-    }
+    }?;
+    Ok((frontend_chirho, builtin_ifaces_chirho))
 }

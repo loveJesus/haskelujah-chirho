@@ -317,6 +317,7 @@ fn context_leading_rows_are_read_from_the_class_environment_chirho() {
         names_chirho: HashMap::new(),
         specialize_pragmas_chirho: HashMap::new(),
         foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
     };
     let mut pass_chirho = DictPassCtxChirho::new_chirho(100, HashMap::new(), HashMap::new());
     for (class_chirho, method_chirho) in [

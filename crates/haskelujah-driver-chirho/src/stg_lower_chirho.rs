@@ -1567,6 +1567,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let program_chirho = lower_module_to_stg_chirho(&module_chirho, HashSet::new());
@@ -1588,6 +1589,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _machine_chirho) =
@@ -1608,6 +1610,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _) =
@@ -1636,6 +1639,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _) =
@@ -1667,6 +1671,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _) =
@@ -1690,6 +1695,7 @@ mod tests_chirho {
             names_chirho,
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let err_chirho = lower_and_run_chirho(&module_chirho, None, HashSet::new())
@@ -1732,6 +1738,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _) =
@@ -1771,6 +1778,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _) =
@@ -1791,6 +1799,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let result_chirho = lower_and_run_chirho(&module_chirho, None, HashSet::new());
@@ -1815,6 +1824,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _) =
@@ -1844,6 +1854,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let (result_chirho, _) =

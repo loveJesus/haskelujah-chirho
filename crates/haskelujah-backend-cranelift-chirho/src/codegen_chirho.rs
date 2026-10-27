@@ -39,6 +39,7 @@ use cranelift_object::{ObjectBuilder as ObjBuilderChirho, ObjectModule as ObjMod
 use haskelujah_core_chirho::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho, CoreModuleChirho,
 };
+use haskelujah_core_chirho::{NATIVE_ENTRY_SYMBOL_CHIRHO, NativeSymbolsChirho};
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
@@ -75,7 +76,7 @@ fn compile_core_to_object_inner_chirho(
     executable_mode_chirho: bool,
 ) -> Result<NativeObjectChirho, String> {
     let actions_chirho =
-        haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(module_chirho, "main");
+        haskelujah_core_chirho::io_actions_chirho::prepare_native_io_actions_chirho(module_chirho);
     let prepared_chirho =
         haskelujah_core_chirho::native_thunks_chirho::prepare_native_thunks_chirho(&actions_chirho);
     let module_chirho = &prepared_chirho;
@@ -114,8 +115,12 @@ fn compile_core_to_object_inner_chirho(
         (cranelift_module::FuncId, usize),
     > = HashMap::new();
 
+    // Every binding is declared under its table symbol, so namesakes stay apart and none
+    // meets an RTS or libc import (row 628).
+    // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    let native_symbols_chirho = NativeSymbolsChirho::of_module_chirho(module_chirho);
     for binding_chirho in &module_chirho.bindings_chirho {
-        let name_chirho = &binding_chirho.binder_chirho.name_chirho;
+        let id_chirho = binding_chirho.binder_chirho.id_chirho;
         let (param_binders_chirho, _body_chirho) = peel_lambdas_chirho(&binding_chirho.rhs_chirho);
         let param_count_chirho = param_binders_chirho.len();
 
@@ -129,14 +134,17 @@ fn compile_core_to_object_inner_chirho(
                 .push(AbiParamChirho::new(cl_types_chirho::I64));
         }
 
-        let (symbol_name_chirho, linkage_chirho) =
-            if executable_mode_chirho && name_chirho == "main" {
-                ("haskelujah_main", LinkageChirho::Local)
-            } else if name_chirho == "main" {
-                ("main", LinkageChirho::Export)
-            } else {
-                (name_chirho.as_str(), LinkageChirho::Local)
-            };
+        let symbol_chirho = native_symbols_chirho
+            .symbol_chirho(id_chirho)
+            .ok_or_else(|| format!("binding {} has no native symbol", id_chirho.0))?;
+        let is_entry_chirho = module_chirho.provenance_chirho.entry_chirho == Some(id_chirho);
+        let (symbol_name_chirho, linkage_chirho) = if is_entry_chirho && executable_mode_chirho {
+            (NATIVE_ENTRY_SYMBOL_CHIRHO, LinkageChirho::Local)
+        } else if is_entry_chirho {
+            ("main", LinkageChirho::Export)
+        } else {
+            (symbol_chirho, LinkageChirho::Local)
+        };
         let func_id_chirho = obj_module_chirho
             .declare_function(symbol_name_chirho, linkage_chirho, &sig_chirho)
             .map_err(|e_chirho| {
@@ -699,24 +707,20 @@ fn compile_core_to_object_inner_chirho(
         failures_chirho::refuse_unsupported_primitives_chirho(&unsupported_primitives_chirho)?;
     }
 
-    if executable_mode_chirho {
-        if let Some(main_binding_chirho) = module_chirho
-            .bindings_chirho
-            .iter()
-            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "main")
-        {
-            if let (Some((main_func_id_chirho, _)), Some(main_with_large_stack_func_id_chirho)) = (
-                func_decl_map_chirho.get(&main_binding_chirho.binder_chirho.id_chirho),
-                main_with_large_stack_func_id_chirho,
-            ) {
-                define_native_main_wrapper_chirho(
-                    &mut obj_module_chirho,
-                    &mut fb_ctx_chirho,
-                    *main_func_id_chirho,
-                    main_with_large_stack_func_id_chirho,
-                )?;
-            }
-        }
+    // The recorded entry, never a binding spelled `main`, gets the C `main` (row 628).
+    if executable_mode_chirho
+        && let Some(entry_chirho) = module_chirho.provenance_chirho.entry_chirho
+        && let (Some((main_func_id_chirho, _)), Some(main_with_large_stack_func_id_chirho)) = (
+            func_decl_map_chirho.get(&entry_chirho),
+            main_with_large_stack_func_id_chirho,
+        )
+    {
+        define_native_main_wrapper_chirho(
+            &mut obj_module_chirho,
+            &mut fb_ctx_chirho,
+            *main_func_id_chirho,
+            main_with_large_stack_func_id_chirho,
+        )?;
     }
 
     // ── Finalize and emit object bytes ─────────────────────────────────────
@@ -1746,7 +1750,8 @@ fn define_function_body_chirho(
             func_ref_map_chirho: &func_ref_map_chirho,
             lifted_capture_ids_chirho: lifted_capture_ids_map_chirho,
             pap_wrapper_ref_map_chirho: &pap_wrapper_ref_map_chirho,
-            toplevel_names_chirho,
+            // The caller passes only the spellings this lowering may recognize (row 628).
+            recognized_names_chirho: toplevel_names_chirho,
             core_module_chirho,
             put_str_ln_ref_chirho: put_str_ln_fref_chirho,
             print_int_ref_chirho: print_int_fref_chirho,
@@ -2151,13 +2156,24 @@ fn lower_binding_chirho(
     let pap_wrapper_decl_map_chirho =
         declare_pap_wrappers_chirho(module_chirho, &pap_wrappers_chirho)?;
 
-    let mut toplevel_names_chirho = core_module_chirho.names_chirho.clone();
+    // Only a compiler binding or a builtin reference may be recognized by its spelling; a
+    // program's own binding lowers as code whatever its name (row 628).
+    let provenance_chirho = &core_module_chirho.provenance_chirho;
+    let mut recognized_names_chirho = core_module_chirho.names_chirho.clone();
     for binding_chirho in &core_module_chirho.bindings_chirho {
-        toplevel_names_chirho.insert(
+        recognized_names_chirho.insert(
             binding_chirho.binder_chirho.id_chirho,
             binding_chirho.binder_chirho.name_chirho.clone(),
         );
     }
+    recognized_names_chirho.retain(|id_chirho, _| {
+        provenance_chirho
+            .compiler_bindings_chirho
+            .contains(id_chirho)
+            || provenance_chirho
+                .builtin_references_chirho
+                .contains(id_chirho)
+    });
 
     let mut unsupported_primitives_chirho = BTreeSet::new();
     for lifted_binding_chirho in &lifted_bindings_chirho {
@@ -2181,7 +2197,7 @@ fn lower_binding_chirho(
             &imported_decl_map_chirho,
             &lifted_capture_ids_map_chirho,
             &pap_wrapper_decl_map_chirho,
-            &toplevel_names_chirho,
+            &recognized_names_chirho,
             put_str_ln_func_id_chirho,
             print_int_func_id_chirho,
             append_str_func_id_chirho,
@@ -2222,7 +2238,7 @@ fn lower_binding_chirho(
         &imported_decl_map_chirho,
         &lifted_capture_ids_map_chirho,
         &pap_wrapper_decl_map_chirho,
-        &toplevel_names_chirho,
+        &recognized_names_chirho,
         put_str_ln_func_id_chirho,
         print_int_func_id_chirho,
         append_str_func_id_chirho,
@@ -2335,6 +2351,7 @@ mod tests_chirho {
         CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
     };
     use haskelujah_span_chirho::SpanChirho;
+    use haskelujah_test_harness_chirho::fixtures_chirho::recorded_fixture_chirho;
     use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
     // ── Shared helpers ────────────────────────────────────────────────────
@@ -2363,12 +2380,14 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         }
     }
 
     fn compile_ok_chirho(module_chirho: &CoreModuleChirho) -> Vec<u8> {
         let config_chirho = TargetConfigChirho::default();
-        let result_chirho = compile_core_to_object_chirho(module_chirho, &config_chirho);
+        let result_chirho =
+            compile_core_to_object_chirho(&recorded_fixture_chirho(module_chirho), &config_chirho);
         assert!(
             result_chirho.is_ok(),
             "Compilation failed: {:?}",
@@ -2389,9 +2408,11 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let config_chirho = TargetConfigChirho::default();
-        let result_chirho = compile_core_to_object_chirho(&module_chirho, &config_chirho);
+        let result_chirho =
+            compile_core_to_object_chirho(&recorded_fixture_chirho(&module_chirho), &config_chirho);
         assert!(result_chirho.is_ok());
         let obj_chirho = result_chirho.unwrap();
         assert!(!obj_chirho.object_bytes_chirho.is_empty());
@@ -2423,6 +2444,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2541,6 +2563,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2572,6 +2595,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2603,6 +2627,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2707,6 +2732,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2750,6 +2776,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2792,6 +2819,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2854,6 +2882,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -2962,6 +2991,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -3004,6 +3034,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -3038,11 +3069,14 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let config_chirho = TargetConfigChirho::default();
-        let result_chirho =
-            compile_core_to_object_executable_chirho(&module_chirho, &config_chirho);
+        let result_chirho = compile_core_to_object_executable_chirho(
+            &recorded_fixture_chirho(&module_chirho),
+            &config_chirho,
+        );
         assert!(
             result_chirho.is_ok(),
             "Dict-elided compilation failed: {:?}",
@@ -3080,10 +3114,13 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         let config_chirho = TargetConfigChirho::default();
-        let result_chirho =
-            compile_core_to_object_executable_chirho(&module_chirho, &config_chirho);
+        let result_chirho = compile_core_to_object_executable_chirho(
+            &recorded_fixture_chirho(&module_chirho),
+            &config_chirho,
+        );
         assert!(
             result_chirho.is_ok(),
             "print executable compilation failed: {:?}",
@@ -3151,6 +3188,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -3213,6 +3251,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         compile_ok_chirho(&module_chirho);
     }
@@ -3344,6 +3383,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
@@ -3402,6 +3442,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
@@ -3455,6 +3496,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
@@ -3511,6 +3553,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let stdout_chirho = compile_and_run_stdout_chirho(&module_chirho);
@@ -3587,6 +3630,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let exit_code_chirho = compile_and_run_exit_code_chirho(&module_chirho);
@@ -3682,6 +3726,7 @@ mod tests_chirho {
             names_chirho: Default::default(),
             specialize_pragmas_chirho: Default::default(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
 
         let exit_code_chirho = compile_executable_and_run_exit_code_chirho(&module_chirho);

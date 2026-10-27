@@ -8,7 +8,7 @@
 //! is restricted to flat case expressions, and all syntactic sugar has
 //! been removed by the desugaring pass.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -204,6 +204,145 @@ pub struct CoreModuleChirho {
     pub specialize_pragmas_chirho: HashMap<String, Vec<String>>,
     /// Foreign exports: Haskell functions to expose via C/JS calling convention.
     pub foreign_exports_chirho: Vec<ForeignExportChirho>,
+    /// Where the top-level identities come from: the entry, the compiler's own bindings, and
+    /// builtin references (row 628).
+    pub provenance_chirho: CoreProvenanceChirho,
+}
+
+// ---------------------------------------------------------------------------
+// Native identity (row 628)
+// ---------------------------------------------------------------------------
+
+/// Where a module's top-level identities come from. The native backends decide what is the
+/// program's entry, what is the compiler's own binding and what is a builtin reference from
+/// this alone, never from a spelling or from an id that nothing binds. Producers fill it: the
+/// driver records the entry and the builtin references, the dictionary pass its generated
+/// bindings, and the multi-module merge offsets, joins and remaps it.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CoreProvenanceChirho {
+    /// The program's entry binding, `Main.main`: the only binding that keeps
+    /// [`NATIVE_ENTRY_SYMBOL_CHIRHO`].
+    pub entry_chirho: Option<CoreIdChirho>,
+    /// Bindings the compiler generated: the dictionary pass's bodies, dictionaries, selectors
+    /// and instance methods. Only these may be recognized by a backend through a spelling.
+    pub compiler_bindings_chirho: BTreeSet<CoreIdChirho>,
+    /// References no program binding owns that name a builtin or runtime function. A free
+    /// reference outside this set is a missing binding, and fails closed.
+    pub builtin_references_chirho: BTreeSet<CoreIdChirho>,
+}
+
+impl CoreProvenanceChirho {
+    /// This provenance with every id moved by `offset_chirho`, as the merge moves a module's ids.
+    pub fn offset_chirho(&self, offset_chirho: u32) -> Self {
+        let shift_chirho = |id_chirho: &CoreIdChirho| CoreIdChirho(id_chirho.0 + offset_chirho);
+        Self {
+            entry_chirho: self.entry_chirho.as_ref().map(shift_chirho),
+            compiler_bindings_chirho: self
+                .compiler_bindings_chirho
+                .iter()
+                .map(shift_chirho)
+                .collect(),
+            builtin_references_chirho: self
+                .builtin_references_chirho
+                .iter()
+                .map(shift_chirho)
+                .collect(),
+        }
+    }
+
+    /// Join another module's compiler bindings and builtin references. The entry is never
+    /// joined: only the program's root module supplies it.
+    pub fn absorb_chirho(&mut self, other_chirho: &Self) {
+        self.compiler_bindings_chirho
+            .extend(other_chirho.compiler_bindings_chirho.iter().copied());
+        self.builtin_references_chirho
+            .extend(other_chirho.builtin_references_chirho.iter().copied());
+    }
+
+    /// Follow a renaming of ids, as linking and deduplication rename references.
+    pub fn remap_chirho(&mut self, remap_chirho: &HashMap<CoreIdChirho, CoreIdChirho>) {
+        let follow_chirho =
+            |id_chirho: CoreIdChirho| remap_chirho.get(&id_chirho).copied().unwrap_or(id_chirho);
+        self.entry_chirho = self.entry_chirho.map(follow_chirho);
+        self.compiler_bindings_chirho = self
+            .compiler_bindings_chirho
+            .iter()
+            .map(|id_chirho| follow_chirho(*id_chirho))
+            .collect();
+        self.builtin_references_chirho = self
+            .builtin_references_chirho
+            .iter()
+            .map(|id_chirho| follow_chirho(*id_chirho))
+            .collect();
+    }
+}
+
+/// The internal symbol of the program's entry, which the C `main` reaches.
+pub const NATIVE_ENTRY_SYMBOL_CHIRHO: &str = "haskelujah_main";
+
+/// `haskelujah_` and a spelling that native assemblers accept: letters, digits and `_` stay,
+/// `'` is `_prime`, `.` is `_`, and any other character is `_uXXXX`. Several spellings share
+/// a result (`f'` and `f_prime`), so a binding's symbol also carries its CoreId.
+pub fn native_mangle_chirho(name_chirho: &str) -> String {
+    let mut mangled_chirho = String::with_capacity(name_chirho.len() + 16);
+    mangled_chirho.push_str("haskelujah_");
+    for ch_chirho in name_chirho.chars() {
+        match ch_chirho {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => mangled_chirho.push(ch_chirho),
+            '\'' => mangled_chirho.push_str("_prime"),
+            '.' => mangled_chirho.push('_'),
+            _ => mangled_chirho.push_str(&format!("_u{:04x}", ch_chirho as u32)),
+        }
+    }
+    mangled_chirho
+}
+
+/// The symbol of a top-level binding that is not the entry: its mangled spelling, a `.`, and
+/// its CoreId. The CoreId makes it injective, and the `.` keeps it apart from every symbol a
+/// backend writes by name (builtin runtime functions, RTS imports, lifted lambdas and
+/// trampolines), none of which has one. The CoreId is an identity within one compiled Core
+/// program, not a stable ABI across builds.
+pub fn native_binding_symbol_chirho(name_chirho: &str, id_chirho: CoreIdChirho) -> String {
+    format!("{}.{}", native_mangle_chirho(name_chirho), id_chirho.0)
+}
+
+/// The native symbol of every top-level binding of one module. Both native backends define
+/// and reference top-level bindings through this table alone.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct NativeSymbolsChirho {
+    symbols_chirho: HashMap<CoreIdChirho, String>,
+}
+
+impl NativeSymbolsChirho {
+    /// The table for `module_chirho`: the recorded entry takes [`NATIVE_ENTRY_SYMBOL_CHIRHO`],
+    /// and every other binding [`native_binding_symbol_chirho`].
+    pub fn of_module_chirho(module_chirho: &CoreModuleChirho) -> Self {
+        let entry_chirho = module_chirho.provenance_chirho.entry_chirho;
+        let symbols_chirho = module_chirho
+            .bindings_chirho
+            .iter()
+            .map(|binding_chirho| {
+                let binder_chirho = &binding_chirho.binder_chirho;
+                let symbol_chirho = if entry_chirho == Some(binder_chirho.id_chirho) {
+                    NATIVE_ENTRY_SYMBOL_CHIRHO.to_string()
+                } else {
+                    native_binding_symbol_chirho(
+                        &binder_chirho.name_chirho,
+                        binder_chirho.id_chirho,
+                    )
+                };
+                (binder_chirho.id_chirho, symbol_chirho)
+            })
+            .collect();
+        Self { symbols_chirho }
+    }
+
+    /// The symbol of the top-level binding `id_chirho`, if one binds it.
+    pub fn symbol_chirho(&self, id_chirho: CoreIdChirho) -> Option<&str> {
+        self.symbols_chirho.get(&id_chirho).map(String::as_str)
+    }
 }
 
 #[cfg(test)]
@@ -306,6 +445,7 @@ mod tests_chirho {
             names_chirho: HashMap::new(),
             specialize_pragmas_chirho: HashMap::new(),
             foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
         };
         assert_eq!(module_chirho.name_chirho, "Main");
         assert_eq!(module_chirho.bindings_chirho.len(), 1);

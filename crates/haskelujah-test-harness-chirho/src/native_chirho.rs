@@ -7,8 +7,9 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use haskelujah_driver_chirho::compile_source_chirho;
+use haskelujah_core_chirho::CoreModuleChirho;
 use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
+use haskelujah_driver_chirho::{build_cabal_project_chirho, compile_source_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
 use crate::process_chirho::{run_bounded_chirho, run_bounded_with_memory_chirho};
@@ -99,21 +100,76 @@ pub fn native_round_trip_with_deadline_chirho(
     let compiled_chirho =
         compile_source_chirho(source_chirho, &mut source_map_chirho, "Main.hs")
             .map_err(|diagnostics_chirho| format!("frontend failed: {diagnostics_chirho:?}"))?;
-    let artifact_chirho = match backend_chirho {
+    let artifact_chirho = native_artifact_chirho(&compiled_chirho.core_chirho, backend_chirho)?;
+    native_artifact_round_trip_chirho(artifact_chirho, input_chirho, deadline_chirho)
+}
+
+/// A multi-module program (row 628): `modules_chirho` are (module name, source) pairs, built as
+/// one Cabal executable whose `main-is` is `Main.hs`, as `haskelujah build-run` builds it, then
+/// linked and run like a single source. The chosen backend runs alone, with no fallback. The
+/// caller names the run's deadline, as scale tests do.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+pub fn native_project_round_trip_chirho(
+    modules_chirho: &[(&str, &str)],
+    backend_chirho: NativeBackendChirho,
+    input_chirho: &str,
+    deadline_chirho: Duration,
+) -> Result<(i32, String), String> {
+    let directory_chirho = tempfile::tempdir().map_err(|error_chirho| error_chirho.to_string())?;
+    for (module_chirho, source_chirho) in modules_chirho {
+        std::fs::write(
+            directory_chirho.path().join(format!("{module_chirho}.hs")),
+            source_chirho,
+        )
+        .map_err(|error_chirho| error_chirho.to_string())?;
+    }
+    let others_chirho: Vec<&str> = modules_chirho
+        .iter()
+        .map(|(module_chirho, _)| *module_chirho)
+        .filter(|module_chirho| *module_chirho != "Main")
+        .collect();
+    let cabal_path_chirho = directory_chirho.path().join("probe-chirho.cabal");
+    std::fs::write(
+        &cabal_path_chirho,
+        format!(
+            "cabal-version: 3.0\nname: probe-chirho\nversion: 0.1.0\nbuild-type: Simple\n\n\
+             executable probe-chirho\n  main-is: Main.hs\n  other-modules: {}\n  \
+             build-depends: base\n  hs-source-dirs: .\n  default-language: Haskell2010\n",
+            others_chirho.join(", ")
+        ),
+    )
+    .map_err(|error_chirho| error_chirho.to_string())?;
+    let built_chirho = build_cabal_project_chirho(
+        &cabal_path_chirho,
+        &haskelujah_package_chirho::PackageIndexChirho::new_chirho(),
+    )?;
+    let executable_chirho = built_chirho
+        .executables_chirho
+        .first()
+        .ok_or("the package built no executable")?;
+    let artifact_chirho = native_artifact_chirho(&executable_chirho.core_chirho, backend_chirho)?;
+    native_artifact_round_trip_chirho(artifact_chirho, input_chirho, deadline_chirho)
+}
+
+/// The backend's executable artifact for compiled Core.
+fn native_artifact_chirho(
+    core_chirho: &CoreModuleChirho,
+    backend_chirho: NativeBackendChirho,
+) -> Result<NativeArtifactChirho, String> {
+    Ok(match backend_chirho {
         NativeBackendChirho::LlvmChirho => NativeArtifactChirho::LlvmIrChirho(
             haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho(
-                &compiled_chirho.core_chirho,
+                core_chirho,
             )?,
         ),
         NativeBackendChirho::CraneliftChirho => NativeArtifactChirho::CraneliftObjectChirho(
             haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
-                &compiled_chirho.core_chirho,
+                core_chirho,
                 &Default::default(),
             )?
             .object_bytes_chirho,
         ),
-    };
-    native_artifact_round_trip_chirho(artifact_chirho, input_chirho, deadline_chirho)
+    })
 }
 
 /// Link and run an already-generated module with private, atomically reserved

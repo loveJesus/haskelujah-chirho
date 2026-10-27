@@ -681,6 +681,15 @@ impl DictPassCtxChirho {
         // Prepend generated dictionary bindings
         let mut all_bindings_chirho = self.generated_bindings_chirho.clone();
         self.spell_compiler_owned_apart_chirho(&mut all_bindings_chirho, module_chirho);
+        // Every binding generated here is the compiler's own; the rewritten bindings that
+        // follow keep their source binders (row 628).
+        // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+        let mut provenance_chirho = module_chirho.provenance_chirho.clone();
+        provenance_chirho.compiler_bindings_chirho.extend(
+            all_bindings_chirho
+                .iter()
+                .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho),
+        );
         all_bindings_chirho.extend(bindings_chirho);
 
         CoreModuleChirho {
@@ -689,6 +698,7 @@ impl DictPassCtxChirho {
             names_chirho: self.names_chirho.clone(),
             specialize_pragmas_chirho: module_chirho.specialize_pragmas_chirho.clone(),
             foreign_exports_chirho: module_chirho.foreign_exports_chirho.clone(),
+            provenance_chirho,
         }
     }
 

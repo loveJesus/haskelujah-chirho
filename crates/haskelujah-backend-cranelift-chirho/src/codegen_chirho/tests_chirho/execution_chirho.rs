@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use haskelujah_test_harness_chirho::fixtures_chirho::recorded_fixture_chirho;
 use haskelujah_test_harness_chirho::native_chirho::{
     NativeArtifactChirho, native_artifact_round_trip_chirho,
 };
@@ -24,9 +25,11 @@ pub(super) fn compile_and_run_exit_code_chirho(module_chirho: &CoreModuleChirho)
 }
 
 pub(super) fn compile_executable_and_run_exit_code_chirho(module_chirho: &CoreModuleChirho) -> i32 {
-    let object_chirho =
-        compile_core_to_object_executable_chirho(module_chirho, &TargetConfigChirho::default())
-            .expect("executable object generation");
+    let object_chirho = compile_core_to_object_executable_chirho(
+        &recorded_fixture_chirho(module_chirho),
+        &TargetConfigChirho::default(),
+    )
+    .expect("executable object generation");
     run_object_chirho(object_chirho.object_bytes_chirho).0
 }
 
