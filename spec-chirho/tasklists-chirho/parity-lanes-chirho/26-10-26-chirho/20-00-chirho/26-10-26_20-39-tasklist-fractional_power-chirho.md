@@ -11,7 +11,7 @@ Base: `76ed56e4`, exact main with the row 577 progress reservation.
 - [x] Add GHC-measured all-engine controls and pin named boundaries.
 - [x] Kill a focused reach mutation and restore source byte-for-byte.
 - [x] Update the dictionary-evidence workflow.
-- [x] Run the warm focused gate, changed-line Clippy, rustfmt and diff-check.
+- [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
 - [ ] Replay onto exact main, rerun actual behavior, land, and close only row 577.
 
 Scope is `(^^) :: (Fractional a, Integral b) => a -> b -> a`, first measured at `Double` with
@@ -67,5 +67,14 @@ representation, and unrelated missing Prelude bindings remain outside this row.
 - Clippy reports 456 pre-existing primary warning locations across the two packages' dependency
   and test graph, with `0` on a Row 577 added line. The stricter `-D warnings` run stops first in
   untouched diagnostics, RTS and AST files, so no broader warning-free claim is made.
-- `cargo fmt --all -- --check` and `git diff --check` are clean. Gitleaks follows the committed
-  range, then the exact-main replay and actual all-engine rerun remain.
+- `cargo fmt --all -- --check` and `git diff --check` are clean. The committed-range gitleaks scan
+  and exact-main replay are recorded below.
+
+## Exact-main replay
+
+- Source commit `f41302a3` is the clean replay of the gated source onto exact main `04a3b6a0`,
+  which includes row 575 and the row 578 reservation.
+- The actual all-engine `(^^)` control passes again on that tree: interpreter, LLVM and Cranelift
+  each reproduce the nine-line GHC 9.14.1 oracle.
+- The body-backed exact-pair unit passes again; rustfmt and diff-check are clean.
+- Gitleaks scanned the one-commit range, about 21.7 KB, and found no leaks.
