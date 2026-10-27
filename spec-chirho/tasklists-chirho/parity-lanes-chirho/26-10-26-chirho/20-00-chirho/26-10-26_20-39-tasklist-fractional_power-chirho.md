@@ -12,7 +12,7 @@ Base: `76ed56e4`, exact main with the row 577 progress reservation.
 - [x] Kill a focused reach mutation and restore source byte-for-byte.
 - [x] Update the dictionary-evidence workflow.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
-- [ ] Replay onto exact main, rerun actual behavior, land, and close only row 577.
+- [x] Replay onto exact main, rerun actual behavior, land, and close only row 577.
 
 Scope is `(^^) :: (Fractional a, Integral b) => a -> b -> a`, first measured at `Double` with
 `Int` and `Integer` exponents. Row 575's unary native Floating primitives, `(**)`, `(^)`, String
@@ -78,3 +78,9 @@ representation, and unrelated missing Prelude bindings remain outside this row.
   each reproduce the nine-line GHC 9.14.1 oracle.
 - The body-backed exact-pair unit passes again; rustfmt and diff-check are clean.
 - Gitleaks scanned the one-commit range, about 21.7 KB, and found no leaks.
+
+## Landing
+
+- Main fast-forwarded from `04a3b6a0` through source `f41302a3` and gate record `cb39ae49`.
+- Progress row 577 closes in the following main-only record commit. Row 578 remains open for its
+  separate owner; no other progress row is changed.
