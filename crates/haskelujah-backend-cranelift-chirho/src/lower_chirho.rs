@@ -2413,6 +2413,15 @@ pub fn lower_primop_chirho(
                 exponent_chirho,
             )
         }
+        "**#" => {
+            let base_bits_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, true);
+            let exponent_bits_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, true);
+            ctx_chirho.runtime_calls_chirho.pow_float_chirho(
+                builder_chirho,
+                base_bits_chirho,
+                exponent_bits_chirho,
+            )
+        }
         "div#" | "divInt#" => {
             let lhs_chirho = ensure_i64_chirho(builder_chirho, lhs_raw_chirho, false);
             let rhs_chirho = ensure_i64_chirho(builder_chirho, rhs_raw_chirho, false);

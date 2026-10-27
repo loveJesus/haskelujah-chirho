@@ -364,6 +364,21 @@ pub extern "C" fn haskelujah_pow_double_int_chirho(
     }
 }
 
+/// Native `**#`, GHC's Double `**`, over the backends' Double bits (row 573).
+///
+/// Workflow: testing-chirho/native-fail-loud-chirho.md.
+#[unsafe(no_mangle)]
+pub extern "C" fn haskelujah_pow_float_chirho(
+    base_bits_chirho: i64,
+    exponent_bits_chirho: i64,
+) -> i64 {
+    crate::float_power_chirho::pow_float_chirho(
+        f64::from_bits(base_bits_chirho as u64),
+        f64::from_bits(exponent_bits_chirho as u64),
+    )
+    .to_bits() as i64
+}
+
 /// Native implementation of the interpreter's `toUpper#` convention.
 ///
 /// `char::to_uppercase` can expand one scalar to several scalars. Haskell's

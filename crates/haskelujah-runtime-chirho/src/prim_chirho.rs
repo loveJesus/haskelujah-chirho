@@ -673,8 +673,9 @@ pub fn apply_prim_binop_chirho(
                 Ok(ValueChirho::IntChirho(a_chirho.wrapping_pow(b_chirho as u32)))
             }
         }),
+        // GHC's Double `**`: the RTS's one call, which the native backends make too (row 573).
         PrimOpKindChirho::PowFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
-            Ok(ValueChirho::FloatChirho(a_chirho.powf(b_chirho)))
+            Ok(ValueChirho::FloatChirho(haskelujah_rts_chirho::float_power_chirho::pow_float_chirho(a_chirho, b_chirho)))
         }),
         // GHC.Real's `(^)` at Double: the RTS's one implementation of its multiplication
         // order, which the native backends call too (row 570).

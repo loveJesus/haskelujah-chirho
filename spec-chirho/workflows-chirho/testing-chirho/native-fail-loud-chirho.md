@@ -49,6 +49,10 @@ flowchart TD
   - The interpreter calls it directly. LLVM and Cranelift call its wrapper `haskelujah_pow_double_int_chirho` with the base's bits and the Int exponent.
   - A negative exponent fails on the route as `haskelujah: error: Negative exponent`, GHC's message.
   - It is not `pow`: `1.1 ^ 50` is GHC's 117.39085287969571, not `powf`'s …579.
+- Row 573 removes `**#` from the native refused set. GHC's Double `**` is the C library's `pow`.
+  - `float_power_chirho::pow_float_chirho` is the one call, made by the interpreter and by the wrapper `haskelujah_pow_float_chirho`, which LLVM and Cranelift call with both operands' bits.
+  - libm's edge cases come with it: `0 ** 0` and `NaN ** 0` are 1, and a negative base to a fractional power is NaN.
+  - `sqrt#` is still refused natively, a separate primitive.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## The native link's RTS archive (row 568)

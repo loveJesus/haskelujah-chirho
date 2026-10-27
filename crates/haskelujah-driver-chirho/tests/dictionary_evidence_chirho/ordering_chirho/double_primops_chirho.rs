@@ -189,6 +189,33 @@ fn an_unkeyed_double_base_stays_the_named_residual_chirho() {
     }
 }
 
+/// Row 573: Double `**`, which is a different operation from row 570's `^`. GHC's `**##`
+/// is the C library's `pow`. The interpreter already answered with `powf`, but both native
+/// backends refused `**#`, so every program here failed to compile natively. They now call
+/// the RTS's one `pow`.
+/// - Fractional, integral and negative exponents.
+/// - libm's edge cases: `0 ** 0`, NaN on either side, overflow and underflow, and a
+///   negative base to a fractional power.
+/// - Top-level, section, function and aggregate bases.
+const FLOAT_POWER_CHIRHO: &str = "module Main where\nxChirho :: Double\nxChirho = 2.5\nrootChirho :: Double -> Double\nrootChirho v = v ** 0.5\nmain :: IO ()\nmain = do\n  print (2 ** 0.5 :: Double, 2 ** 3 :: Double)\n  print (10 ** (-2) :: Double, 0.5 ** 0.5 :: Double)\n  print ((-8) ** (1 / 3) :: Double, 0 ** 0 :: Double)\n  print (1e308 ** 2 :: Double, 0 ** (-1) :: Double)\n  print ((0 / 0) ** 0 :: Double, 1 ** (0 / 0) :: Double)\n  print (2 ** 1024 :: Double, 2 ** (-1075) :: Double)\n  print ((-2) ** 3 :: Double, (-2) ** 0.5 :: Double)\n  print (xChirho ** 1.5, xChirho ** 2)\n  print (map (** 2) [1.5, 2.5 :: Double], map (2 **) [0.5, 1.5 :: Double])\n  print (rootChirho 2, map rootChirho [4, 9])\n  print (sum (map (** 2) [1.0, 2.0 :: Double]), (1.1 ** 50) / (1.1 ^ 50) :: Double)\n";
+
+/// GHC 9.14.1's output for [`FLOAT_POWER_CHIRHO`].
+const FLOAT_POWER_GHC_CHIRHO: &str = "(1.4142135623730951,8.0)\n(1.0e-2,0.7071067811865476)\n(NaN,1.0)\n(Infinity,Infinity)\n(1.0,1.0)\n(Infinity,0.0)\n(-8.0,NaN)\n(3.952847075210474,6.25)\n([2.25,6.25],[1.4142135623730951,2.8284271247461903])\n(1.4142135623730951,[2.0,3.0])\n(5.0,1.0000000000000007)\n";
+
+#[test]
+fn double_float_power_answers_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("FloatPowerChirho.hs", FLOAT_POWER_CHIRHO),
+        FLOAT_POWER_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho(
+        "FloatPowerChirho.hs",
+        FLOAT_POWER_CHIRHO,
+        FLOAT_POWER_GHC_CHIRHO,
+    );
+}
+
 /// The same negated division where it already worked: the list printed directly, its
 /// head, and the division alone. GHC: `[-1.5,1.0]`, `-1.5` and `-1.5`.
 #[test]

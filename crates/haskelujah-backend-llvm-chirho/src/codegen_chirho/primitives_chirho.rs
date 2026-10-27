@@ -73,12 +73,13 @@ impl LlvmCodegenChirho {
             if name_chirho == "eqStr#" {
                 return self.emit_string_equal_chirho(&lhs_chirho, &rhs_chirho);
             }
-            if matches!(name_chirho, "^#" | "^.#") {
-                // `^.#` passes the Double base's bits and returns the power's (row 570).
-                let runtime_chirho = if name_chirho == "^#" {
-                    "haskelujah_pow_int_chirho"
-                } else {
-                    "haskelujah_pow_double_int_chirho"
+            if matches!(name_chirho, "^#" | "^.#" | "**#") {
+                // `^.#` passes the Double base's bits (row 570) and `**#` both operands'
+                // (row 573); each returns the power's.
+                let runtime_chirho = match name_chirho {
+                    "^#" => "haskelujah_pow_int_chirho",
+                    "^.#" => "haskelujah_pow_double_int_chirho",
+                    _ => "haskelujah_pow_float_chirho",
                 };
                 let result_chirho = self.fresh_tmp_chirho();
                 writeln!(

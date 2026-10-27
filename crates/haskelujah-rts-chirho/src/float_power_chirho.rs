@@ -5,7 +5,18 @@
 //! differ from a correctly rounded power in its last bits: `1.1 ^ 50` is
 //! 117.39085287969571 by GHC's multiplications and 117.39085287969579 by `powf`. The
 //! interpreter and both native backends share this one implementation.
+//!
+//! `x ** y` at Double is a different operation: GHC's `**##` primop is the C library's
+//! `pow`, which Rust's `powf` also reaches, so `pow_float_chirho` serves the interpreter
+//! and both native backends with that one call (row 573).
 //! Workflow: testing-chirho/native-fail-loud-chirho.md.
+
+/// `base_chirho ** exponent_chirho`, GHC's Double `**`: the C library's `pow`, with its
+/// IEEE edge cases (`0 ** 0` and `nan ** 0` are 1, a negative base to a fractional power
+/// is NaN).
+pub fn pow_float_chirho(base_chirho: f64, exponent_chirho: f64) -> f64 {
+    base_chirho.powf(exponent_chirho)
+}
 
 /// `base_chirho ^ exponent_chirho` by GHC.Real's repeated squaring, or `None` for a
 /// negative exponent, which GHC rejects with `Negative exponent`.
