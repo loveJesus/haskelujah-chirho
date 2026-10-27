@@ -40,6 +40,10 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     "+",
     "-",
     "*",
+    // Fractional's `/` (row 609): its occurrence carries the checker's proof, so `(/ 2)` and a
+    // polymorphic `x / 2` reach the key's own row rather than an operand guess.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    "/",
     "negate",
     "abs",
     "signum",

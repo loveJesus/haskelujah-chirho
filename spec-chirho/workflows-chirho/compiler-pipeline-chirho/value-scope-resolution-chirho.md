@@ -89,6 +89,10 @@ flowchart TD
   - The infix and section paths resolved the operator by bare text alone.
   - The checker's fallback read the bare name through every scope, so `L.nonexistentChirho` beside a `let nonexistentChirho` checked, where GHC 9.14.1 reports GHC-76037.
 - **One route.** `resolve_written_reference_chirho` (`desugar_chirho/qualified_references_chirho.rs`) serves the variable arm, the infix fallback and `build_section_body_chirho`.
+- **A section's operator keeps its qualifier (row 609).** The parser lowers `(2 P.-)` through its right-section fallback whenever the trailing operator was folded into an infix node.
+  - That fallback made one unqualified name, `P.-`, of the operator, and of each operator before it (`(1 P.+ 2 P.-)`).
+  - The desugarer then built a constructor application named `P.-`. The interpreter printed `[P.- 2 0.5]`, and both natives printed a denormal.
+  - The fallback now splits the name with `name_from_text_chirho`, as the direct-token path always did, so the route above sees `P` and `-`.
 - **This module's name** takes its own top-level binding. Otherwise it takes a name no scope binds, such as one of its own class methods.
 - **An import's namesake.** A top-level binding the module itself writes no longer captures an import's `L.reverse`. Row 597's `spell_compiler_owned_apart_chirho` gives the import's generated body its own native symbol. Before row 597, the two `reverse` bindings crashed LLVM (exit 139) and Cranelift refused the second declaration.
 - **A sibling user module's alias.** `import qualified Lib as L` with a local `twice` used to capture `L.twice`, giving a wrong answer natively. It now reaches `Lib`'s export. A single-file native compile links no sibling module, so it fails "missing native binding `twice`", as plain `import Lib` already did (ruled #29717). The interpreter's `run` loads no sibling module at all.

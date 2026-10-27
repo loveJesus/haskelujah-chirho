@@ -180,7 +180,7 @@ flowchart LR
     - `build_section_body_chirho` makes `(+ e)`, `(e -)` and `(* e)` blind Int primops. At Double the interpreter refused them, and the natives added IEEE bits.
     - Each rebuild site now gives them the float primop from its existing proof.
     - `/` sections take the Fractional evidence path, so no `/#` reaches the table.
-    - Residual: a section under `iterate` has no keyed operand at either site and stays `*#`.
+    - A section under `iterate` had no keyed operand at either site and kept `*#`. Since row 609 it takes its operator's evidence.
   - `^#` maps to `^.#`, GHC.Real's repeated squaring at Double (row 570).
     - The desugarer makes `x ^ n` the Int `^#`, except with a float-literal operand, which took `**#`'s `pow` and now takes `^.#`.
     - A base keyed Double retargets at either rebuild site. That includes a top-level Double, through row 571's seeded key.
@@ -271,7 +271,7 @@ flowchart LR
     - a lambda-bound Double at NaN or `-0.0` was ordered as integer bits;
     - a program's hidden-and-redefined `(<)`, and a `where`-bound `(<=)`, lost to the primop;
     - a first-class or prefix `(<)` had no binding at all.
-  - **Desugar** (`desugar_chirho/ordering_operators_chirho.rs`): a written Ord operator that carries its origin, and is opted in to occurrences, resolves as a reference, infix and section alike, as R1's `==` section does. Its minted occurrence is recorded in `DesugarOutputChirho::operator_occurrences_chirho`, which the driver passes to the dictionary pass. Without an origin it keeps its primop.
+  - **Desugar** (`desugar_chirho/operator_evidence_chirho.rs` since row 609): a written Ord operator that carries its origin, and is opted in to occurrences, resolves as a reference, infix and section alike, as R1's `==` section does. Its minted occurrence is recorded in `DesugarOutputChirho::operator_occurrences_chirho`, which the driver passes to the dictionary pass. Without an origin it keeps its primop.
   - **Answers** (`instance_chirho/ordering_operators_chirho.rs`), at a concrete proved key:
     - the instance's own row for that operator, where the program's instance defines one;
     - Int, Char and Bool: the Int primop, as before;
@@ -298,6 +298,25 @@ flowchart LR
     reference_oo_chirho --> row_oo_chirho[generated operator row]
     row_oo_chirho --> serve_oo_chirho[occurrence_head_replacement_chirho]
 ```
+- Sections of `+`, `-`, `*` and `/` take their written operator's evidence (row 609).
+  - **The defect:**
+    - `build_section_body_chirho` lowered `(+ e)`, `(e -)` and `(* e)` to Int primops. `map (+ 0.5) [1 :: Double]` gave `[4.49423283715579e307]` natively; the interpreter stopped at `AddIntChirho`.
+    - Row 554 retargeted such a primop only where an operand's key could be read.
+    - A program's own hidden-and-redefined `(+)` lost to the primop.
+    - Fractional's `/` minted no occurrence, so `(/ 2)`, `zipWith (/)` and the `0 / 0` under a comparison section had no binding at all.
+  - **Desugar** (`desugar_chirho/operator_evidence_chirho.rs`): one predicate, `takes_operator_evidence_chirho`, decides which written operators skip the primop table.
+    - With its origin, a section of `==` (R1, folded in from its table guard), `+`, `-` or `*` takes its method's route, as the infix operator does. Each has a method binding, so the route serves it with or without a minted occurrence.
+    - Ord's operators take row 610's route when opted in.
+    - Without an origin, a section keeps its primop.
+  - **Driver:** `/` joins `EVIDENCE_METHOD_NAMES_CHIRHO`, so each `/` reference is its own occurrence and carries the checker's proof.
+    - At a key with a body-backed `$prim_Fractional_/_K` row, the occurrence takes that row, and at the binding's own key, its dictionary.
+    - At a key whose row is a stub it fails closed by name (`missing method Fractional./ for Float`).
+  - **Parser:** an operand-first section of a qualified operator, `(2 P.-)`, keeps its qualifier; see value-scope resolution.
+  - **Kept:** `++`, `^` and `**` keep their primops. `subtract 1` is not a section and stays a named residual (`no matching alternative`). Row 608's agreement table holds no Prelude entries, so no table claim is made.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/operator_sections_chirho.rs`: `operator_sections_take_their_evidence_everywhere_chirho`, `qualified_operator_sections_answer_as_ghc_everywhere_chirho`, `section_holds_stay_ghc_everywhere_chirho`, `division_without_a_body_fails_closed_everywhere_chirho` and `subtract_stays_the_named_residual_everywhere_chirho`.
+    - Row 554's iterate residual is now `a_section_under_iterate_answers_as_ghc_everywhere_chirho`.
+    - Parser units in `lower_chirho/expr_syntax_chirho/qualified_sections_tests_chirho.rs`.
 ## Reference evidence (bricks 3 and 4)
 
 ```mermaid
@@ -539,7 +558,8 @@ instance's row), a dictionary, or R2's named failure for a proven nested list (g
   that metadata, and no parsed program can tell it apart.
 - Only `==` here. The engine's `Ord` dictionary holds `compare` alone, so the ordering
   operators take their own occurrences' evidence through rows built over `compare` (row 610,
-  above). `/=` waits for Eq's method set; `+`, `-`, `*` sections keep theirs, unmeasured.
+  above). Sections of `+`, `-` and `*` take this route since row 609, which folded this rule
+  into one predicate. `/=` waits for Eq's method set.
 
 ## R2 at every occurrence entry (R2b, 2026-10-18)
 

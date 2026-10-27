@@ -110,17 +110,23 @@ fn numeric_sections_answer_as_ghc_everywhere_chirho() {
     );
 }
 
-/// Row 554's named residual (#29012): under `iterate` the section's literal carries no
-/// concrete key at either rebuild site, so `(* 2)` keeps `*#`. The interpreter still stops
-/// at `MulIntChirho` (GHC: `[1.5,3.0,6.0,12.0]`); nothing is inferred from `iterate`.
+/// Row 554's named residual (#29012): under `iterate` the section's literal carried no
+/// concrete key at either rebuild site, so `(* 2)` kept `*#`, and the interpreter stopped at
+/// `MulIntChirho`. Since row 609 the section takes its operator's evidence, at Double.
 #[test]
-fn a_section_under_iterate_stays_the_named_residual_chirho() {
-    let error_chirho = run_result_chirho(
+fn a_section_under_iterate_answers_as_ghc_everywhere_chirho() {
+    let program_chirho =
+        "module Main where\nmain :: IO ()\nmain = print (take 4 (iterate (* 2) (1.5 :: Double)))\n";
+    assert_eq!(
+        run_chirho("IterateSectionChirho.hs", program_chirho),
+        "[1.5,3.0,6.0,12.0]\n",
+        "interpreter"
+    );
+    assert_native_chirho(
         "IterateSectionChirho.hs",
-        "module Main where\nmain :: IO ()\nmain = print (take 4 (iterate (* 2) (1.5 :: Double)))\n",
-    )
-    .expect_err("row 554 leaves the iterate section unchanged");
-    assert!(error_chirho.contains("MulIntChirho"), "{error_chirho}");
+        program_chirho,
+        "[1.5,3.0,6.0,12.0]\n",
+    );
 }
 
 /// Row 570: `^` at Double. A float-literal base took `**#`, whose `pow` is not GHC's

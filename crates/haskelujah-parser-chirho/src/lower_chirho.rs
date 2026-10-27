@@ -36,6 +36,9 @@ mod prefix_minus_chirho;
 #[path = "lower_chirho/expr_syntax_chirho/prefix_minus_tests_chirho.rs"]
 mod prefix_minus_tests_chirho;
 #[cfg(test)]
+#[path = "lower_chirho/expr_syntax_chirho/qualified_sections_tests_chirho.rs"]
+mod qualified_sections_tests_chirho;
+#[cfg(test)]
 #[path = "lower_chirho/type_syntax_chirho/type_operator_tests_chirho.rs"]
 mod type_operator_tests_chirho;
 #[path = "lower_chirho/type_syntax_chirho/type_operators_chirho.rs"]
@@ -5630,16 +5633,15 @@ impl LowerCtxChirho {
                                         .iter()
                                         .map(|c_chirho| self.lower_expr_from_child_chirho(c_chirho))
                                         .collect();
+                                    // A qualified operator keeps its qualifier here, as
+                                    // on the direct-token path (row 609).
                                     let sub_ops_chirho: Vec<NameChirho> = inner_ops_chirho
                                         [..inner_ops_chirho.len() - 1]
                                         .iter()
                                         .map(|(t_chirho, s_chirho)| {
-                                            self.reference_name_chirho(NameChirho::RawChirho(
-                                                RawNameChirho::unqualified_chirho(
-                                                    t_chirho.clone(),
-                                                    *s_chirho,
-                                                ),
-                                            ))
+                                            self.reference_name_chirho(
+                                                self.name_from_text_chirho(t_chirho, *s_chirho),
+                                            )
                                         })
                                         .collect();
                                     self.resolve_infix_precedence_chirho(
@@ -5648,14 +5650,13 @@ impl LowerCtxChirho {
                                         span_chirho,
                                     )
                                 };
+                                // `(2 P.-)` names Prelude's `-`, not one unqualified
+                                // `P.-` the desugarer took for a constructor (row 609).
                                 return ExprChirho::RightSectionChirho {
                                     arg_chirho: Box::new(arg_expr_chirho),
-                                    op_chirho: self.reference_name_chirho(NameChirho::RawChirho(
-                                        RawNameChirho::unqualified_chirho(
-                                            op_text_chirho,
-                                            span_chirho,
-                                        ),
-                                    )),
+                                    op_chirho: self.reference_name_chirho(
+                                        self.name_from_text_chirho(&op_text_chirho, span_chirho),
+                                    ),
                                     span_chirho,
                                 };
                             }

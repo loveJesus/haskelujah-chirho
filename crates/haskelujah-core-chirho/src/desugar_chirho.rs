@@ -14,7 +14,7 @@ mod guards_chirho;
 mod lazy_patterns_chirho;
 mod match_rows_chirho;
 mod matches_chirho;
-mod ordering_operators_chirho;
+mod operator_evidence_chirho;
 mod provenance_chirho;
 #[cfg(test)]
 mod provenance_tests_chirho;
@@ -999,8 +999,9 @@ impl DesugarCtxChirho {
     /// known built-in operators so they work without dict-pass
     /// bindings. `left_chirho` is the first arg, `right_chirho` is
     /// the second arg (already in correct application order).
-    /// An `==` section with its operator's origin is the exception: it
-    /// takes the variable path below, as an infix `==` does.
+    /// A written class-method operator with its origin is the exception: it
+    /// takes the variable path below, as the infix operator does (R1, rows
+    /// 609 and 610; `desugar_chirho/operator_evidence_chirho.rs`).
     fn build_section_body_chirho(
         &mut self,
         op_chirho: &NameChirho,
@@ -1014,14 +1015,7 @@ impl DesugarCtxChirho {
             "+" => Some("+#"),
             "-" => Some("-#"),
             "*" => Some("*#"),
-            // The checker typed this operator as an occurrence of Eq's `==` at
-            // the section's type; with its origin the fallback below mints that
-            // occurrence, and the pass dispatches it by the checker's evidence.
-            // The Int primop compared `(== [1])`'s lists as empty string
-            // prefixes and a newtype's raw Int under its own `==` (R1,
-            // gpt_chirho #27508). A section without an origin keeps the primop.
-            // workflow: language-features-chirho/dictionary-evidence-chirho
-            "==" if op_origin_chirho.is_none() => Some("==#"),
+            "==" => Some("==#"),
             "/=" => Some("/=#"),
             "<" => Some("<#"),
             "<=" => Some("<=#"),
@@ -1032,7 +1026,11 @@ impl DesugarCtxChirho {
             "**" => Some("**#"),
             _ => None,
         };
-        // A written Ord operator takes its occurrence's evidence instead (row 610).
+        // A written class-method operator takes its occurrence's evidence instead. The Int
+        // primop compared `(== [1])`'s lists as empty string prefixes (R1, gpt_chirho
+        // #27508), added `(+ 0.5)`'s Doubles as integer bits (row 609), and ordered computed
+        // Strings as words (row 610).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
         if let Some(primop_name_chirho) = primop_chirho
             && !self.takes_operator_evidence_chirho(op_chirho)
         {

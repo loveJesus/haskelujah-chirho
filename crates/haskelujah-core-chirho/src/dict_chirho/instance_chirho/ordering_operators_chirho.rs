@@ -3,7 +3,7 @@
 //! `<`, `<=`, `>` and `>=` at the key the checker proved (row 610).
 //!
 //! A written infix or section Ord operator reaches the pass as its own occurrence, as a
-//! first-class `(<)` always did (`desugar_chirho/ordering_operators_chirho.rs`). At a
+//! first-class `(<)` always did (`desugar_chirho/operator_evidence_chirho.rs`). At a
 //! concrete key its answer is:
 //! - the program's own operator row, where its instance defines the operator;
 //! - at Int, Char and Bool, the Int primop desugaring chose, which is exact there;

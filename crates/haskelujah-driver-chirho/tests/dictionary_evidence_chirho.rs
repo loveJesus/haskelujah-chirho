@@ -33,6 +33,8 @@ mod ground_keys_chirho;
 mod higher_order_occurrences_chirho;
 #[path = "dictionary_evidence_chirho/list_orders_chirho.rs"]
 mod list_orders_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/operator_sections_chirho.rs"]
+mod operator_sections_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs"]
 mod ordering_literals_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/ordering_operators_chirho.rs"]
