@@ -62,6 +62,22 @@ GHC's rule is about spacing. A prefix occurrence (`f !x`, `g -1`) is a pattern, 
   - **M4, a prefix `-` before anything starts a pattern:** the minus list first fails at `SPrefixMinusVarSigChirho` (`a -b`), after the loose and tight programs pass. Every bang mover passes. The unit table reads `a -b` as defining `a`.
   - **Receipts:** `reach617-r1-chirho` (M1, M2, M4); `reach617-r2-m3-chirho` (M3 together); `reach617-r3-m3ab-chirho` (each half alone).
   - **r1's M3 run is void:** zsh `$"..."` quoting left its anchors unexpanded, so it ran the unmutated tree. A mutation that does not apply now stops the script.
-- [ ] Commit; rebase on the newest main; broad moved-shape scan.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] **Commit and rebase.** Commit `13cf17e1`; replayed as `df7fb105` on main `0d0eac63`, which row 629 reached meanwhile. They share no parser or control file.
+- [x] **Re-measured on the replay** (`probes-chirho/{main-0d0eac63,tip-df7fb105}-chirho`, both probe sets, all three engines):
+  - the 12 movers reach GHC, and the 8 holds keep it;
+  - four boundary cells are byte-identical on main and the tip;
+  - `SInstanceMinusConChirho` and `XNoNegLitMinusChirho` stay loud. Only their errors change: the first now stops at `negate`, and the second loses the unbound `-`.
+- [x] **The corpus on the replay** (`corpus-chirho/verdicts-{main-0d0eac63,tip-df7fb105}-chirho.tsv`):
+  - main's parser crate is identical to `dd03ca05`'s;
+  - the tip's full CST dump equals the measured one, and changes 10 files with no panic;
+  - the same four REJECT to ACCEPT moves;
+  - `church.hs` prints 74 on the tip, and `missing method Num.- for Ch` on main.
+- [x] **The broad scan** (`scan617-chirho.log`, on `df7fb105`): 3601/3601 passed in 915 s, with 18 skipped and a clean tree before and after. It is row 640's 3,589 tests, plus row 629's 6 and this row's 6, with none missing.
+- [x] **Judge and gate.**
+  - **Main `0d0eac63`** is GREEN against the contract copy first (73 movers, 9 holds; `baseline-0d0eac63-chirho.log`). Its CLI is frozen for the probe sets.
+  - **r1, GREEN on `df7fb105` (base `0d0eac63`, 1 commit) in 228.67 s** (`gate617-r1-chirho/`):
+    - 1395/1395 focused tests, with this row's 6 and the 32 lazy-pattern tests;
+    - no Clippy diagnostic on the 316 changed lines in 5 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
 - [ ] Land on main and close progress row 617 (gpt). Then row 641.
