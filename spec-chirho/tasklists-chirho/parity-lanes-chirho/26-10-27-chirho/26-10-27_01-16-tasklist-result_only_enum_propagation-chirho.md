@@ -8,7 +8,7 @@
 - [x] Post a bounded design checkpoint and overlap audit before compiler source changes.
 - [x] Implement only the proven result-type evidence repair with structural and all-engine controls.
 - [x] Mutation-prove the repair and run the focused warm gate.
-- [ ] Land through the canonical single-writer chain and close Row 601.
+- [x] Land through the canonical single-writer chain and close Row 601.
 
 ## Scope Chirho
 
@@ -44,3 +44,8 @@
 - The source restored byte-identically at SHA-256 `0bcca1610692e3ddb393c19550a752ce9fb57fea53c73072790952215aa6e129`, and both controls passed again.
 - Gate r1 is GREEN on source commit `154c8df8`. Build completed with no warning; core passed 187/187, dictionary evidence passed 118/118, and the focused driver evidence/Enum slice passed 59/59: 364 selected tests in 121 seconds.
 - Clippy reported only three pre-existing findings on untouched lines 161, 314 and 318 of `dict_params_chirho.rs`; no changed line has a diagnostic. Rustfmt, diff-check and gitleaks are clean. The lint and hygiene phase took about 17 seconds.
+
+## Landing Chirho
+
+- Source commit `154c8df8` and gate-record tip `bc2df4d4` fast-forwarded onto canonical `main_chirho`.
+- The progress database closure commit records Row 601 complete after its integrity check.
