@@ -8,7 +8,7 @@
 - [x] Implement only the ground `Bounded Ordering` instance and body-backed bounds.
 - [x] Add direct, first-class, structural, hold, and reach controls.
 - [x] Run the focused gate and contract judge.
-- [ ] Land through the canonical single-writer chain and close Row 605.
+- [x] Land through the canonical single-writer chain and close Row 605.
 
 ## Scope Chirho
 
@@ -65,3 +65,13 @@
   and 9 holds. Row 605 moves no contract cell.
 - Rustfmt, diff-check, and gitleaks are clean; gitleaks scanned the source
   commit and found no leak.
+
+## Landing Chirho
+
+- The source replayed cleanly over exact main `4c353787` as `6939aaaa`; the gate
+  record is `93a4590b`.
+- The replayed workspace builds without warning. All five named Row 605
+  controls pass after replay; the typing control's isolated rerun is a normal
+  PASS.
+- Canonical `main_chirho` fast-forwarded to `93a4590b` before the progress row
+  was closed.
