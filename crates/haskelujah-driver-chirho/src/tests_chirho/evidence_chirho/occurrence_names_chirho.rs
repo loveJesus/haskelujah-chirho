@@ -65,7 +65,9 @@ fn imported_and_seeded_class_methods_keep_their_shared_id_chirho() {
         );
     }
     assert!(
-        names_chirho.contains("compare") && names_chirho.contains("show"),
-        "the standard set stays: {names_chirho:?}"
+        ["compare", "show", "succ", "pred"]
+            .into_iter()
+            .all(|name_chirho| names_chirho.contains(name_chirho)),
+        "the standard set stays and includes the locally specialized Enum steps: {names_chirho:?}"
     );
 }

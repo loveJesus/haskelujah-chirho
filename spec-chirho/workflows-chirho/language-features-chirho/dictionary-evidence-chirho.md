@@ -417,6 +417,20 @@ flowchart TD
   errors are preserved. A shift into the surrogate interval fails by name because the current
   Rust `char` interpreter representation cannot carry the value GHC produces. Row 602's
   `Ordering` rows case directly on LT/EQ/GT and preserve GHC's endpoint messages.
+- A locally generalized alias such as `where nextChirho = succ` gets no dictionary parameter in
+  Core. Typing nevertheless records its one agreeing instantiation through
+  `local_specialization_key_chirho`; Row 607 adds `succ` and `pred` to the occurrence population
+  so that proof reaches the ordinary method-key route. A local user binding of either name stays
+  outside occurrence minting. Seeded instances whose step row is still a generated
+  missing-method body (`Word`, `Int8`, and `()`) retain their pre-row named residual.
+
+```mermaid
+flowchart LR
+    local_enum_chirho["local alias = succ or pred"] --> specialize_enum_chirho["one agreeing local instantiation"]
+    specialize_enum_chirho --> occurrence_enum_chirho["minted method occurrence carries Enum key"]
+    occurrence_enum_chirho --> row_enum_chirho["ordinary body or dictionary method route"]
+    own_enum_chirho["local user binding named succ or pred"] --> own_body_enum_chirho["program body unchanged"]
+```
 
 ## Proven list keys at method occurrences (R2, 2026-10-17)
 
@@ -908,6 +922,7 @@ flowchart LR
   the corresponding native `chr#`/`ord#` word representation. The current `char`-backed runtime
   cannot represent GHC's surrogate `Char` values, and its `chr#` invalid-range behavior is not
   GHC-exact. Row 567 supplies the missing body-backed `succ` and `pred` rows and keeps crossings
-  into the surrogate interval loud. Range syntax remains separate: LLVM and Cranelift already
-  produce the correct ordinal lists, while the interpreter mixes the first Char with later Int
-  values through its Int-specialized sequence functions.
+  into the surrogate interval loud. Row 607 carries a locally generalized `succ` or `pred` alias's
+  one concrete occurrence proof to those existing rows. Range syntax remains separate: LLVM and
+  Cranelift already produce the correct ordinal lists, while the interpreter mixes the first Char
+  with later Int values through its Int-specialized sequence functions.

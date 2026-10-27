@@ -62,6 +62,12 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     // workflow: language-features-chirho/dictionary-evidence-chirho
     "toEnum",
     "fromEnum",
+    // A locally generalized alias such as `where nextChirho = succ` gets no
+    // dictionary parameter in Core. Its one concrete instantiation is already
+    // proved by typing, but the proof can reach the pass only through a minted
+    // occurrence (row 607). `pred` is the symmetric Enum method.
+    "succ",
+    "pred",
     // Like `toEnum`, the Bounded methods carry their class variable only in
     // the result. Their occurrence proof keeps a result-only polymorphic
     // binding on its own dictionary instead of defaulting it to Bounded Int.

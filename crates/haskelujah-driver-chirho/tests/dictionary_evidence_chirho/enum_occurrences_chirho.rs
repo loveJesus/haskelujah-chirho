@@ -65,6 +65,13 @@ fn local_and_top_level_shadows_keep_their_own_bindings_chirho() {
 main :: IO ()
 main = print (let toEnum = (+ 1) in toEnum (5 :: Int))
 "#;
+    let local_succ_pred_chirho = r#"module Main where
+main :: IO ()
+main = print (succ (1 :: Int), pred (10 :: Int))
+  where
+    succ valueChirho = valueChirho + 10
+    pred valueChirho = valueChirho - 10
+"#;
     let top_level_chirho = r#"module Main where
 import Prelude hiding (fromEnum)
 fromEnum :: Int -> Int
@@ -74,6 +81,15 @@ main = print (fromEnum 21)
 "#;
 
     assert_eq!(run_chirho("LocalEnumShadowChirho.hs", local_chirho), "6\n");
+    assert_eq!(
+        run_chirho("LocalSuccPredShadowChirho.hs", local_succ_pred_chirho),
+        "(11,0)\n"
+    );
+    assert_native_chirho(
+        "LocalSuccPredShadowChirho.hs",
+        local_succ_pred_chirho,
+        "(11,0)\n",
+    );
     assert_eq!(
         run_chirho("TopLevelEnumShadowChirho.hs", top_level_chirho),
         "42\n"
@@ -107,6 +123,62 @@ main = do
         "interpreter"
     );
     assert_native_chirho("ResultOnlyEnumChirho.hs", program_chirho, ghc_chirho);
+}
+
+/// Row 607: locally generalized `succ` and `pred` aliases get no dictionary
+/// parameter in Core. Typing already specializes each one to its sole Char
+/// instantiation; per-reference occurrence ids carry that proof to the pass.
+#[test]
+fn local_enum_aliases_take_their_only_instantiation_everywhere_chirho() {
+    let program_chirho = r#"module Main where
+nextTopChirho :: Enum a => a -> a
+nextTopChirho = succ
+previousTopChirho :: Enum a => a -> a
+previousTopChirho = pred
+main :: IO ()
+main = do
+  print (map succ "ab", map pred "bc")
+  print (nextTopChirho 'c', previousTopChirho 'd')
+  print (localNextChirho 'e', localPreviousChirho 'f')
+  where
+    localNextChirho = succ
+    localPreviousChirho = pred
+"#;
+    let ghc_chirho = "(\"bc\",\"ab\")\n('d','c')\n('f','e')\n";
+
+    assert_eq!(
+        run_chirho("LocalEnumAliasesChirho.hs", program_chirho),
+        ghc_chirho,
+        "interpreter"
+    );
+    assert_native_chirho("LocalEnumAliasesChirho.hs", program_chirho, ghc_chirho);
+}
+
+/// Row 607 hold: seeded Enum instances whose `succ` or `pred` row is still a
+/// generated missing-method body keep the same named failure as main. Minting
+/// occurrence ids must not turn that existing residual into a wrong answer or
+/// a different failure route.
+#[test]
+fn enum_steps_without_implemented_rows_keep_the_named_residual_chirho() {
+    for (file_name_chirho, program_chirho, message_chirho) in [
+        (
+            "WordSuccResidualChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (succ (1 :: Word))\n",
+            "missing method Enum.succ for Word",
+        ),
+        (
+            "Int8PredResidualChirho.hs",
+            "module Main where\nimport Data.Int (Int8)\nmain :: IO ()\nmain = print (pred (2 :: Int8))\n",
+            "missing method Enum.pred for Int8",
+        ),
+        (
+            "UnitSuccResidualChirho.hs",
+            "module Main where\nmain :: IO ()\nmain = print (succ ())\n",
+            "missing method Enum.succ for ()",
+        ),
+    ] {
+        assert_named_failure_everywhere_chirho(file_name_chirho, program_chirho, message_chirho);
+    }
 }
 
 #[test]
