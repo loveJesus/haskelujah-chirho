@@ -16,9 +16,10 @@
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::provenance_chirho::OccurrenceRoleChirho;
 
 use super::DesugarCtxChirho;
-use crate::expr_chirho::CoreIdChirho;
+use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
 
 /// Class-method operators whose written section takes its method's route. Each has a method
 /// binding, so the route serves it with or without a minted occurrence.
@@ -38,6 +39,38 @@ impl DesugarCtxChirho {
             && (SECTION_METHOD_OPERATORS_CHIRHO.contains(&text_chirho)
                 || (EVIDENCED_ORDERING_OPERATORS_CHIRHO.contains(&text_chirho)
                     && self.method_occurrence_names_chirho.contains(text_chirho)))
+    }
+
+    /// `left op right` through written operator `op_chirho`'s reference route: the binding
+    /// its name resolves to (row 598), with its occurrence minted and its provenance recorded.
+    /// It serves the infix fallback, a section's fallback, and an owned operator ahead of
+    /// every Prelude shortcut (row 614).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn written_operator_application_chirho(
+        &mut self,
+        op_chirho: &NameChirho,
+        left_chirho: CoreExprChirho,
+        right_chirho: CoreExprChirho,
+    ) -> CoreExprChirho {
+        let (op_lookup_chirho, op_id_chirho) = self.resolve_written_reference_chirho(op_chirho);
+        let op_id_chirho = self.reference_occurrence_chirho(
+            &op_lookup_chirho,
+            op_id_chirho,
+            op_chirho.span_chirho(),
+        );
+        self.note_operator_occurrence_chirho(op_chirho, op_id_chirho);
+        self.record_occurrence_provenance_chirho(
+            op_id_chirho,
+            op_chirho.origin_chirho(),
+            OccurrenceRoleChirho::Reference,
+        );
+        CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(op_id_chirho)),
+                arg_chirho: Box::new(left_chirho),
+            }),
+            arg_chirho: Box::new(right_chirho),
+        }
     }
 
     /// Record `id_chirho` when it is the minted occurrence of a written Ord operator, which

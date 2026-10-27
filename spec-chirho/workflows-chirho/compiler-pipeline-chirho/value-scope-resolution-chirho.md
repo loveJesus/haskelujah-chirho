@@ -93,6 +93,20 @@ flowchart TD
   - That fallback made one unqualified name, `P.-`, of the operator, and of each operator before it (`(1 P.+ 2 P.-)`).
   - The desugarer then built a constructor application named `P.-`. The interpreter printed `[P.- 2 0.5]`, and both natives printed a denormal.
   - The fallback now splits the name with `name_from_text_chirho`, as the direct-token path always did, so the route above sees `P` and `-`.
+- **An operator the program owns keeps its own binding over every shortcut (row 614).**
+  - **Owned:** `names_owned_binding_chirho` (`desugar_chirho/qualified_references_chirho.rs`) asks whether a written operator names a binding the module owns:
+    - unqualified and bound in scope, at top level or locally;
+    - or qualified by the module's own name, naming its top-level binding.
+  - **Where it is checked:**
+    - at the head of the infix arm, before `$`, `$!`, `$!!`, `.`, `/=`, `>>`, `>>=`, `&&`, `||`, `**`, `^`, the float-literal arithmetic and the primop table;
+    - before the section table;
+    - before the prefix `div`, `mod`, `quot` and `rem` rewrite, through `is_owned_binding_id_chirho` on the resolved id.
+  - **The route:** an owned operator takes the reference route above, through `written_operator_application_chirho`, which the infix and section fallbacks share. Every other operator keeps its shortcut, so the Prelude's answers are unchanged.
+  - **The defect:** each shortcut chose by spelling alone. A program's hidden-and-redefined `&&` gave `(True,True,False)` where GHC gives `(False,False,False)`, and a `where`-bound `/` gave the Prelude's `2.0` for `6.0 / 3.0`.
+  - **Boundaries:**
+    - An infix `$` is rewritten to an application by the parser's fixity resolution, before naming (row 619).
+    - An operator imported from another user module is not in scope, and keeps its shortcut; a single-file run links no sibling module (#29717).
+    - The definition forms `a - b = …` and `(f . g) x = …` are rows 617 and 618.
 - **This module's name** takes its own top-level binding. Otherwise it takes a name no scope binds, such as one of its own class methods.
 - **An import's namesake.** A top-level binding the module itself writes no longer captures an import's `L.reverse`. Row 597's `spell_compiler_owned_apart_chirho` gives the import's generated body its own native symbol. Before row 597, the two `reverse` bindings crashed LLVM (exit 139) and Cranelift refused the second declaration.
 - **A sibling user module's alias.** `import qualified Lib as L` with a local `twice` used to capture `L.twice`, giving a wrong answer natively. It now reaches `Lib`'s export. A single-file native compile links no sibling module, so it fails "missing native binding `twice`", as plain `import Lib` already did (ruled #29717). The interpreter's `run` loads no sibling module at all.

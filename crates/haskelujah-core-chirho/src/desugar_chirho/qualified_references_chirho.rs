@@ -42,17 +42,54 @@ impl DesugarCtxChirho {
             let id_chirho = self.resolve_var_chirho(&full_name_chirho);
             return (full_name_chirho, id_chirho);
         }
-        let own_top_level_chirho =
-            if self.current_module_name_chirho.as_deref() == Some(qualifier_chirho) {
-                self.scope_chirho
-                    .first()
-                    .and_then(|scope_chirho| scope_chirho.get(&text_chirho))
-                    .copied()
-            } else {
-                None
-            };
-        let id_chirho =
-            own_top_level_chirho.unwrap_or_else(|| self.resolve_unscoped_var_chirho(&text_chirho));
+        let id_chirho = self
+            .own_top_level_id_chirho(qualifier_chirho, &text_chirho)
+            .unwrap_or_else(|| self.resolve_unscoped_var_chirho(&text_chirho));
         (text_chirho, id_chirho)
+    }
+
+    /// The module's own top-level binding of `text_chirho`, when `qualifier_chirho` is the
+    /// module's own name.
+    fn own_top_level_id_chirho(
+        &self,
+        qualifier_chirho: &str,
+        text_chirho: &str,
+    ) -> Option<CoreIdChirho> {
+        if self.current_module_name_chirho.as_deref() != Some(qualifier_chirho) {
+            return None;
+        }
+        self.scope_chirho
+            .first()
+            .and_then(|scope_chirho| scope_chirho.get(text_chirho))
+            .copied()
+    }
+
+    /// Whether written reference `name_chirho` names a binding this module owns. That is an
+    /// unqualified name bound in scope, at top level or locally, or a name qualified by the
+    /// module's own name that names its top-level binding. Every Prelude shortcut the
+    /// desugarer takes for a written operator yields to such a binding (row 614).
+    /// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+    pub(super) fn names_owned_binding_chirho(&self, name_chirho: &NameChirho) -> bool {
+        match name_chirho.qualifier_chirho() {
+            None => self
+                .lookup_scope_chirho(name_chirho.text_chirho())
+                .is_some(),
+            Some(qualifier_chirho) => self
+                .own_top_level_id_chirho(qualifier_chirho, name_chirho.text_chirho())
+                .is_some(),
+        }
+    }
+
+    /// Whether `id_chirho`, resolved under `name_chirho`, is a binding this module owns:
+    /// one that some scope frame binds under that name (row 614).
+    /// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+    pub(super) fn is_owned_binding_id_chirho(
+        &self,
+        name_chirho: &str,
+        id_chirho: CoreIdChirho,
+    ) -> bool {
+        self.scope_chirho
+            .iter()
+            .any(|scope_chirho| scope_chirho.get(name_chirho) == Some(&id_chirho))
     }
 }

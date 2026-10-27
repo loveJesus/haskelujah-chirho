@@ -1009,7 +1009,6 @@ impl DesugarCtxChirho {
         right_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
         let op_name_chirho = op_chirho.text_chirho();
-        let op_origin_chirho = op_chirho.origin_chirho();
         // Direct primop operators
         let primop_chirho = match op_name_chirho {
             "+" => Some("+#"),
@@ -1031,8 +1030,10 @@ impl DesugarCtxChirho {
         // #27508), added `(+ 0.5)`'s Doubles as integer bits (row 609), and ordered computed
         // Strings as words (row 610).
         // workflow: language-features-chirho/dictionary-evidence-chirho
+        // An operator this module owns keeps its own binding over the table (row 614).
         if let Some(primop_name_chirho) = primop_chirho
             && !self.takes_operator_evidence_chirho(op_chirho)
+            && !self.names_owned_binding_chirho(op_chirho)
         {
             return CoreExprChirho::PrimOpChirho {
                 name_chirho: primop_name_chirho.to_string(),
@@ -1048,25 +1049,7 @@ impl DesugarCtxChirho {
         }
         // Fallback: operator as variable reference, by a written name's route,
         // so a qualified operator never takes a local binder (row 598).
-        let (op_lookup_chirho, op_id_chirho) = self.resolve_written_reference_chirho(op_chirho);
-        let op_id_chirho = self.reference_occurrence_chirho(
-            &op_lookup_chirho,
-            op_id_chirho,
-            op_chirho.span_chirho(),
-        );
-        self.note_operator_occurrence_chirho(op_chirho, op_id_chirho);
-        self.record_occurrence_provenance_chirho(
-            op_id_chirho,
-            op_origin_chirho,
-            OccurrenceRoleChirho::Reference,
-        );
-        CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(op_id_chirho)),
-                arg_chirho: Box::new(left_chirho),
-            }),
-            arg_chirho: Box::new(right_chirho),
-        }
+        self.written_operator_application_chirho(op_chirho, left_chirho, right_chirho)
     }
 
     /// Create a binder with a fresh ID.
@@ -2290,20 +2273,20 @@ impl DesugarCtxChirho {
                         fun_chirho: ref inner_fun_chirho,
                         arg_chirho: ref first_arg_chirho,
                     } => {
-                        if let CoreExprChirho::VarChirho(id_chirho) = inner_fun_chirho.as_ref() {
-                            if let Some(name_chirho) = self.names_chirho.get(id_chirho) {
-                                if let Some(primop_chirho) =
-                                    prefix_binary_primop_name_chirho(name_chirho)
-                                {
-                                    return CoreExprChirho::PrimOpChirho {
-                                        name_chirho: primop_chirho.to_string(),
-                                        args_chirho: vec![
-                                            first_arg_chirho.as_ref().clone(),
-                                            desugared_arg_chirho,
-                                        ],
-                                    };
-                                }
-                            }
+                        // A `div` this module owns keeps its own binding (row 614).
+                        if let CoreExprChirho::VarChirho(id_chirho) = inner_fun_chirho.as_ref()
+                            && let Some(name_chirho) = self.names_chirho.get(id_chirho)
+                            && !self.is_owned_binding_id_chirho(name_chirho, *id_chirho)
+                            && let Some(primop_chirho) =
+                                prefix_binary_primop_name_chirho(name_chirho)
+                        {
+                            return CoreExprChirho::PrimOpChirho {
+                                name_chirho: primop_chirho.to_string(),
+                                args_chirho: vec![
+                                    first_arg_chirho.as_ref().clone(),
+                                    desugared_arg_chirho,
+                                ],
+                            };
                         }
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(desugared_fun_chirho),
@@ -2519,6 +2502,16 @@ impl DesugarCtxChirho {
                 let op_name_chirho = op_chirho.text_chirho();
                 let left_core_chirho = self.desugar_expr_chirho(left_chirho);
                 let right_core_chirho = self.desugar_expr_chirho(right_chirho);
+
+                // An operator this module owns, at top level or locally, takes its own
+                // binding ahead of every Prelude shortcut below (row 614).
+                if self.names_owned_binding_chirho(op_chirho) {
+                    return self.written_operator_application_chirho(
+                        op_chirho,
+                        left_core_chirho,
+                        right_core_chirho,
+                    );
+                }
 
                 // ($) is function application: f $ x = f x
                 if op_name_chirho == "$" {
@@ -2796,29 +2789,11 @@ impl DesugarCtxChirho {
                 }
 
                 // Otherwise: a `op` b → (op a) b
-                let op_core_chirho = {
-                    let (op_lookup_chirho, id_chirho) =
-                        self.resolve_written_reference_chirho(op_chirho);
-                    let id_chirho = self.reference_occurrence_chirho(
-                        &op_lookup_chirho,
-                        id_chirho,
-                        op_chirho.span_chirho(),
-                    );
-                    self.note_operator_occurrence_chirho(op_chirho, id_chirho);
-                    self.record_occurrence_provenance_chirho(
-                        id_chirho,
-                        op_chirho.origin_chirho(),
-                        OccurrenceRoleChirho::Reference,
-                    );
-                    CoreExprChirho::VarChirho(id_chirho)
-                };
-                CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(op_core_chirho),
-                        arg_chirho: Box::new(left_core_chirho),
-                    }),
-                    arg_chirho: Box::new(right_core_chirho),
-                }
+                self.written_operator_application_chirho(
+                    op_chirho,
+                    left_core_chirho,
+                    right_core_chirho,
+                )
             }
 
             ExprChirho::LeftSectionChirho {
