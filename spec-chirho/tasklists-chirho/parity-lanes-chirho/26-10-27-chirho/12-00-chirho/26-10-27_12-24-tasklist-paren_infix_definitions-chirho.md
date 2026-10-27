@@ -48,7 +48,7 @@ Row 618.
   - `print (3 :: Int, subtract 1 4)` fails.
   - A top-level `(a, b)` binding fails under `print (a, b)` but works in a `where`.
   - Printing the components one by one works.
-- **A program's own `<.>` loses to a builtin one.**
+- **Row 654, reserved trace-first after Rows 619 and 639: a program's own `<.>` loses to a builtin one.** It folds into Row 615 instead if that scope mechanism fully explains it.
   - `a <.> b = a * 10 + b` with a signature prints `False`; GHC prints 12.
   - A four-argument `<.>` fails with `primop GtIntChirho: expected Int#, got (…, …)`.
   - The same programs with `<%>` print GHC's answers.
