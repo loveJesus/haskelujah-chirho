@@ -65,5 +65,11 @@ Row 603, assigned in #29744.
   - M1 (T1), M3 (`elem` without `Eq`), M4 (the route), M5 (`$eqList_T` on `==#`), M6 (no composed rows) and M7 (a stub counts as a row) are killed.
   - M2 (T2) survived, so T2 was dropped.
   - Every restore was byte-identical, and the restored tree passes.
-- [ ] Commit; warm gate; record.
+- [x] Commit; warm gate; record.
+  - **r1, GREEN on `4b6a9d7c` (base `0aba3695`) in 263.47 s:**
+    - 902/902 focused tests;
+    - no Clippy diagnostic on the 1069 changed lines in 13 files, and a build with no warning;
+    - the contract judge GREEN (73 movers, 9 holds);
+    - rustfmt, diff-check and gitleaks clean (1 commit).
+  - The gate's package list leaves out typing, so the typing and core libraries were also run on the exact tip: 558/558 (`tip-typing-core-libs-chirho.log`).
 - [ ] Land on main and close progress row 603 (gpt). Then row 604.
