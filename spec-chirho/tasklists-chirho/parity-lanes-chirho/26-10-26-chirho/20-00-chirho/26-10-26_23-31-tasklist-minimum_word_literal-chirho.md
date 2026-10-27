@@ -22,7 +22,10 @@ Make the directly written machine-word minimum, `-9223372036854775808`, retain i
   - Gate r1 was ABNORMAL on the nested-parentheses parser proptest with a default-stack overflow. Exact main `8318aad6` aborts identically. With the test thread stack set to 32 MiB, the exact test and all 390 parser tests pass.
   - Focused remainder: core 183/183, evaluation values 23/23 and dictionary evidence 115/115 in 95.22 seconds. Clippy reports no diagnostic on a changed line; rustfmt and diff-check are clean.
   - Gitleaks scanned the staged source and docs: no leaks.
-- [ ] Commit the source and gate record; replay onto current main; land and close progress row 592.
+- [x] Commit the source and gate record; replay onto current main.
+  - Source tip `105dd013` is a clean replay over main `8318aad6`. Its crates tree `d73fc0977287cc4670eab4903402a9aca9120412` is byte-identical to gated pre-replay source `4abfbf75`.
+  - Post-replay parser and all-engine controls pass; diff-check and the one-commit gitleaks scan are clean.
+- [ ] Land on main and close progress row 592.
 
 ## Placement
 
