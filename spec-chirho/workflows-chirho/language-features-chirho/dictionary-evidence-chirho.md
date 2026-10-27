@@ -14,7 +14,7 @@ flowchart TD
     lit_chirho[Literal inferred: infer_expr_chirho pushes Num / Fractional / IsString wanted]
     lit_chirho --> capture_chirho[capture_literal_evidence_chirho: the literal's origin and span, class, literal type; a literal with neither identity is skipped]
     solve_chirho[Module solved: unification + Report defaulting composed]
-    capture_chirho --> finalize_chirho[finalize_literal_evidence_chirho: type resolved to a concrete head → key; variables and rigid variables yield nothing; a key seen twice must agree]
+    capture_chirho --> finalize_chirho[finalize_literal_evidence_chirho: type resolved to a concrete head → key; a signature's rigid variable → its own key; open variables and instance-method skolems yield nothing; a key seen twice must agree]
     solve_chirho --> finalize_chirho
     finalize_chirho --> result_chirho[literal_evidence_by_origin_chirho: origin → LiteralEvidenceChirho, plus literal_evidence_chirho as the origin-free legacy span projection]
     desugar_chirho[Desugar: literal becomes App fromInteger-occurrence lit]
@@ -36,9 +36,12 @@ flowchart TD
   were joined by a per-name ordinal until 2026-09-19. See "Method occurrences" below; the
   lesson is that an invariant in this document is not evidence about the code, and the join it
   describes has to be read.
-- Only a concrete head is evidence. A literal whose type is still a unification variable or a
-  rigid variable produces no record; the enclosing binding's dictionary parameter (or today's
-  fallback) serves it.
+- A concrete head is evidence, and so is a signature's rigid variable (row 584). A literal there
+  takes the binding's own key, as an occurrence at that variable does.
+  - It takes `$own:k` for the predicate the signature declares. It takes the class-only `$own` for a class that no predicate names, such as a Num literal under `Fractional a`. The pass serves that through the superclass extraction.
+  - A literal still on a unification variable, or on an instance method's skolem, produces no record and takes today's fallback.
+  - Before row 584, a rigid literal produced no record either, and the fallback keyed it `Int`, not the binding's parameter. The interpreter masked this, because its float primops accept an Int operand. The natives read the Int's bits as a Double: `incChirho x = x + 1` under `Num a` printed 2.5 at Double, where GHC prints 3.5.
+  - Controls: `literals_at_a_signature_variable_take_its_dictionary_everywhere_chirho`, which includes two predicates of one class, and `a_fractional_signatures_literal_takes_its_dictionary_chirho`, in `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
 - A key the checker inferred more than once (a re-check, a speculative branch) yields a record
   only when every inference agreed. An occurrence with an identity whose record is missing or
   conflicting receives nothing, and is never rescued by its span or its position.

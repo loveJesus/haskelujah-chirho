@@ -407,9 +407,10 @@ impl InferCtxChirho {
     }
 
     /// Finalize the captures through the module's composed substitution.
-    /// Only a literal whose type resolved to a concrete head yields evidence;
-    /// one still on a variable (generalized, or ambiguous) or on a rigid
-    /// variable keeps today's dispatch path. A literal with an origin is
+    /// A literal whose type resolved to a concrete head yields that key. One at a
+    /// signature's rigid variable yields the binding's own key, as an occurrence
+    /// there does (row 584). One still on a variable (generalized, or ambiguous),
+    /// or on an instance method's skolem, keeps today's dispatch path. A literal with an origin is
     /// published under that origin only; the span map holds only literals
     /// without one. A key inferred more than once (a re-check, a speculative
     /// branch) yields evidence only when every inference agrees.
@@ -432,6 +433,11 @@ impl InferCtxChirho {
             let key_chirho = match &resolved_chirho {
                 TyChirho::VarChirho(var_chirho) => {
                     self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
+                }
+                // A literal at the enclosing signature's rigid variable is the binding's
+                // own dictionary's, as an occurrence there is (row 584).
+                TyChirho::ForallVarChirho(skolem_chirho) => {
+                    self.own_parameter_key_chirho(class_name_chirho, skolem_chirho)
                 }
                 _ => ground_or_head_key_chirho(&resolved_chirho),
             };
@@ -652,26 +658,36 @@ mod tests_chirho {
         )
     }
 
+    /// A literal at a concrete type keeps that key and one still open is dropped. One at a
+    /// signature's rigid variable takes the binding's own dictionary key (row 584): `$own:0`
+    /// where the signature declares `Num b`, and the class-only `$own` where none names the
+    /// class, as for a Num literal under `Fractional a`. An instance method's skolem is no
+    /// binding's parameter, so its literal stays unpublished.
     #[test]
-    fn literal_evidence_keeps_concrete_keys_and_drops_variables_chirho() {
+    fn literal_evidence_keeps_concrete_and_own_keys_and_drops_open_variables_chirho() {
         let mut ctx_chirho = InferCtxChirho::new_chirho();
         let int_lit_chirho = ctx_chirho.fresh_var_chirho();
         let open_lit_chirho = ctx_chirho.fresh_var_chirho();
-        ctx_chirho.capture_literal_evidence_chirho(
-            &test_int_literal_chirho(span_chirho(10), None),
+        ctx_chirho.record_own_dictionary_indices_chirho(&[PredChirho::new_chirho(
             "Num",
-            &int_lit_chirho,
-        );
-        ctx_chirho.capture_literal_evidence_chirho(
-            &test_int_literal_chirho(span_chirho(20), None),
-            "Num",
-            &open_lit_chirho,
-        );
-        ctx_chirho.capture_literal_evidence_chirho(
-            &test_int_literal_chirho(span_chirho(30), None),
-            "Num",
-            &TyChirho::ForallVarChirho("a%1".to_string()),
-        );
+            TyChirho::ForallVarChirho("b%2".to_string()),
+        )]);
+        ctx_chirho
+            .instance_method_skolems_chirho
+            .insert("c%3".to_string());
+        for (start_chirho, ty_chirho) in [
+            (10, int_lit_chirho.clone()),
+            (20, open_lit_chirho),
+            (30, TyChirho::ForallVarChirho("a%1".to_string())),
+            (40, TyChirho::ForallVarChirho("b%2".to_string())),
+            (50, TyChirho::ForallVarChirho("c%3".to_string())),
+        ] {
+            ctx_chirho.capture_literal_evidence_chirho(
+                &test_int_literal_chirho(span_chirho(start_chirho), None),
+                "Num",
+                &ty_chirho,
+            );
+        }
         ctx_chirho.capture_literal_evidence_chirho(
             &test_int_literal_chirho(SpanChirho::DUMMY_CHIRHO, None),
             "Num",
@@ -683,14 +699,17 @@ mod tests_chirho {
         }
         let (evidence_chirho, _by_origin_chirho) =
             ctx_chirho.finalize_literal_evidence_chirho(&subst_chirho);
-        assert_eq!(
-            evidence_chirho.get(&span_chirho(10)),
-            Some(&LiteralEvidenceChirho {
-                class_name_chirho: "Num".to_string(),
-                ty_key_chirho: "Double".to_string(),
-            })
-        );
-        assert_eq!(evidence_chirho.len(), 1, "{evidence_chirho:?}");
+        let key_chirho = |start_chirho: u32| {
+            evidence_chirho
+                .get(&span_chirho(start_chirho))
+                .map(|record_chirho| record_chirho.ty_key_chirho.as_str())
+        };
+        assert_eq!(key_chirho(10), Some("Double"));
+        assert_eq!(key_chirho(20), None);
+        assert_eq!(key_chirho(30), Some("$own"));
+        assert_eq!(key_chirho(40), Some("$own:0"));
+        assert_eq!(key_chirho(50), None);
+        assert_eq!(evidence_chirho.len(), 3, "{evidence_chirho:?}");
     }
 
     /// Finalize one `Show` reference capture at a genuine span, resolved to Int.
