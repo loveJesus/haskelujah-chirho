@@ -361,32 +361,13 @@ fn sums_and_products_at_a_bindings_own_key_answer_as_ghc_everywhere_chirho() {
 
 /// Row 586: under `Fractional a` the aggregates fold over the Num inside `$dFractional`.
 /// The interpreter prints GHC's `(2.3333333333333335,9.0)`, where it failed on
-/// `AddIntChirho`. The natives still refuse the Fractional Double dictionary's `recip#`,
-/// the residual row 583 lifts.
+/// `AddIntChirho`. The natives refused the Fractional Double dictionary's `recip#` until
+/// row 583.
 const FRACTIONAL_AGGREGATES_CHIRHO: &str = "module Main where\nmeanChirho :: Fractional a => [a] -> a\nmeanChirho xs = sum xs / fromIntegral (length xs)\nscaleSumChirho :: Fractional a => [a] -> a\nscaleSumChirho xs = sum xs * product xs\nmain :: IO ()\nmain = print (meanChirho [1, 2, 4 :: Double], scaleSumChirho [0.5, 4 :: Double])\n";
 
 #[test]
 fn a_fractional_bindings_aggregates_take_its_dictionary_chirho() {
-    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
-        FRACTIONAL_AGGREGATES_CHIRHO,
-        &mut SourceMapChirho::new_chirho(),
-        "ErrorHelperChirho.hs",
-        None,
-    )
-    .expect("the interpreter runs it");
-    assert_eq!(
-        machine_chirho.io_output_chirho, "(2.3333333333333335,9.0)\n",
-        "interpreter"
-    );
-    for backend_chirho in BACKENDS_CHIRHO {
-        let error_chirho =
-            native_round_trip_chirho(FRACTIONAL_AGGREGATES_CHIRHO, backend_chirho, "")
-                .expect_err("the natives refuse the Fractional dictionary's recip#");
-        assert!(
-            error_chirho.contains("does not support primitive(s): recip#/1"),
-            "{backend_chirho:?}: {error_chirho}"
-        );
-    }
+    assert_prints_everywhere_chirho(FRACTIONAL_AGGREGATES_CHIRHO, "(2.3333333333333335,9.0)\n");
 }
 
 // ── Row 566: a long literal unpacks whole across collections ─────────────

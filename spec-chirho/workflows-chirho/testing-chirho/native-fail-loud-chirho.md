@@ -69,7 +69,12 @@ flowchart TD
     - It is not libm's `atan2`. libm differs by an ulp on many finite inputs, and gives ±π/4 or ±3π/4 for two infinities, where GHC gives NaN.
     - LLVM calls its wrapper beside `**#`. Cranelift's `**#` arm serves both, through `float_binary_chirho`.
   - **A Prelude alias** binds the id that the program's own bindings use free under its name. Resolving by name alone could take a local binder's id, such as `where pi = 3`. Depending on hash order, that left the Prelude `pi` unbound in some runs.
-  - **Residual:** a polymorphic `Fractional` or `Floating` function at Double is refused natively for `recip#/1`, the Fractional Double dictionary's `recip`.
+  - **Residual:** a polymorphic `Fractional` or `Floating` function at Double was refused natively for `recip#/1`, the Fractional Double dictionary's `recip`. Row 583 lifts it.
+- Row 583 adds `recip#` as one more row of the unary table: GHC's `recip x = 1.0 / x`, which is Rust's `f64::recip`. The interpreter's arm calls the same row, and an Int operand stays a mismatch.
+  - **The refusal was hiding wrong answers.** Every program that reached the Fractional Double dictionary was refused, and that refusal hid two evidence defects.
+    - Lowering `recip#` alone made them silently wrong natively. `r / 2` under `Fractional a` printed `(Infinity,-Infinity)`, because its literal took `$fNumInt`.
+    - Row 584 keyed such literals at the binding's own dictionary first, and row 586 did the same for `sum` and `product`.
+  - **Measured on GHC 9.14.1:** with all three, C1-C5 match GHC on every engine. So do the `numeric_hierarchy` programs, which are now asserted natively too.
 - Through the CLI, a Cranelift refusal reads `cranelift compilation failed: Cranelift does not support primitive(s): …`, because the CLI wraps every Cranelift compile error (`haskelujah-cli-chirho/src/main.rs:816`). LLVM's refusal prints bare. The driver controls call the backends directly, so they see the bare line on both.
 
 ## The native link's RTS archive (row 568)

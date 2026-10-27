@@ -5,16 +5,19 @@
 //! entail `Eq a` or `Show a`), and `Integral` inherits `Eq`/`Ord` through
 //! `Real`. Every expected output is GHC 9.14.1's own (runghc).
 //!
-//! Scope: the interpreter. On untouched main both native backends already
-//! print wrong values for these very programs (custom-Num literals, `half 5`
-//! as 0, `double 1.5` as 3; LLVM lacks `fromIntegral#`/`recip#`), so a native
-//! assertion here could not tell this correction from those defects; native
-//! layout consistency is covered by the existing round-trip suites.
+//! Every engine. The natives once printed wrong values for these programs:
+//! custom-Num literals, `half 5` as 0, `double 1.5` as 3. They also refused
+//! `recip#`. With rows 584 and 586 and native `recip#` (row 583), each program
+//! answers as GHC on LLVM and Cranelift too, so each is asserted there.
 //! workflow: language-features-chirho/instance-obligations-chirho
 
 use haskelujah_driver::{compile_source_chirho, eval_source_with_machine_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
+use haskelujah_test_harness_chirho::native_chirho::{
+    NativeBackendChirho, native_round_trip_chirho,
+};
 
+/// The interpreter's output, once both native backends have printed the same (row 583).
 fn output_chirho(name_chirho: &str, source_chirho: &str) -> String {
     let (_, machine_chirho) = eval_source_with_machine_chirho(
         source_chirho,
@@ -23,6 +26,18 @@ fn output_chirho(name_chirho: &str, source_chirho: &str) -> String {
         None,
     )
     .unwrap_or_else(|err_chirho| panic!("{name_chirho} must run: {err_chirho}"));
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        assert_eq!(
+            native_round_trip_chirho(source_chirho, backend_chirho, "").unwrap_or_else(
+                |error_chirho| panic!("{name_chirho} {backend_chirho:?}: {error_chirho}")
+            ),
+            (0, machine_chirho.io_output_chirho.clone()),
+            "{name_chirho} {backend_chirho:?}"
+        );
+    }
     machine_chirho.io_output_chirho
 }
 

@@ -11,8 +11,7 @@
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{
-    NativeBackendChirho, assert_named_failure_everywhere_chirho, assert_native_chirho,
-    native_round_trip_chirho, run_chirho, run_result_chirho,
+    assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho, run_result_chirho,
 };
 
 /// Negative operands as literals, a binding and function parameters; NaN on each
@@ -314,31 +313,41 @@ fn pi_and_atan2_answer_as_ghc_everywhere_chirho() {
 }
 
 /// Row 580: `pi` through a `Floating a` dictionary. The dictionary's row is the same
-/// Double value, so the interpreter prints GHC's `(12.566370614359172,0.7853981633974483)`.
-/// The natives stop at a named residual outside the row: the Fractional Double
-/// dictionary's `recip#`, which neither lowers. On main 1641a772 they also refused `pi#`,
-/// and no `pi#` is left.
+/// Double value, so every engine prints GHC's `(12.566370614359172,0.7853981633974483)`.
+/// The natives refused the Fractional Double dictionary's `recip#` until row 583; on main
+/// 1641a772 they refused `pi#` too.
 const POLYMORPHIC_PI_CHIRHO: &str = "module Main where\nareaChirho :: Floating a => a -> a\nareaChirho r = pi * r * r\nmain :: IO ()\nmain = print (areaChirho (2 :: Double), areaChirho (0.5 :: Double))\n";
 
 #[test]
 fn a_polymorphic_pi_is_its_dictionarys_value_chirho() {
+    let ghc_chirho = "(12.566370614359172,0.7853981633974483)\n";
     assert_eq!(
         run_chirho("PolymorphicPiChirho.hs", POLYMORPHIC_PI_CHIRHO),
-        "(12.566370614359172,0.7853981633974483)\n",
+        ghc_chirho,
         "interpreter"
     );
-    for backend_chirho in [
-        NativeBackendChirho::LlvmChirho,
-        NativeBackendChirho::CraneliftChirho,
-    ] {
-        let error_chirho = native_round_trip_chirho(POLYMORPHIC_PI_CHIRHO, backend_chirho, "")
-            .expect_err("the natives refuse the Fractional dictionary's recip#");
-        assert!(
-            error_chirho.contains("does not support primitive(s): recip#/1")
-                && !error_chirho.contains("pi#"),
-            "{backend_chirho:?}: {error_chirho}"
-        );
-    }
+    assert_native_chirho("PolymorphicPiChirho.hs", POLYMORPHIC_PI_CHIRHO, ghc_chirho);
+}
+
+/// Row 583: `recip#` at Double, one more row of the RTS's unary table, GHC's
+/// `recip x = 1.0 / x`. Both natives refused it, and with it any program that reached the
+/// Fractional Double dictionary: a polymorphic `r / 2`, a `sum` under `Fractional a`, a
+/// `sqrt` under `Floating a`. Rows 584 and 586 made those dictionaries' literals and
+/// aggregates right first; lowering `recip#` alone made them silently wrong natively.
+const RECIP_CHIRHO: &str = "module Main where\nhalfChirho :: Fractional a => a -> a\nhalfChirho r = r / 2\nmeanChirho :: Fractional a => [a] -> a\nmeanChirho xs = sum xs / fromIntegral (length xs)\nhypChirho :: Floating a => a -> a -> a\nhypChirho a b = sqrt (a * a + b * b)\nmain :: IO ()\nmain = do\n  print (recip (4 :: Double), recip (0 :: Double))\n  print (recip (-0.0 :: Double), recip (1 / 0 :: Double))\n  print (halfChirho (3 :: Double), meanChirho [1, 2, 4 :: Double])\n  print (hypChirho 3 (4 :: Double), map recip [2, 0.5 :: Double])\n";
+
+/// GHC 9.14.1's output for [`RECIP_CHIRHO`].
+const RECIP_GHC_CHIRHO: &str =
+    "(0.25,Infinity)\n(-Infinity,0.0)\n(1.5,2.3333333333333335)\n(5.0,[0.5,2.0])\n";
+
+#[test]
+fn recip_and_the_fractional_dictionary_answer_as_ghc_everywhere_chirho() {
+    assert_eq!(
+        run_chirho("RecipChirho.hs", RECIP_CHIRHO),
+        RECIP_GHC_CHIRHO,
+        "interpreter"
+    );
+    assert_native_chirho("RecipChirho.hs", RECIP_CHIRHO, RECIP_GHC_CHIRHO);
 }
 
 /// Row 580: a program's own `pi` and `atan2`. Hidden and redefined at top level, they keep

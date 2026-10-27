@@ -71,6 +71,8 @@ float_math_chirho! {
     ("asinh#", haskelujah_float_asinh_chirho, asinh),
     ("acosh#", haskelujah_float_acosh_chirho, acosh),
     ("atanh#", haskelujah_float_atanh_chirho, atanh),
+    // GHC's Fractional Double `recip x = 1.0 / x` (row 583).
+    ("recip#", haskelujah_float_recip_chirho, f64::recip),
 }
 
 /// The RTS symbol native code calls for `primop_chirho`, if it is a unary Floating primop.

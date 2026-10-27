@@ -9,10 +9,10 @@ use crate::float_math_chirho::{
     haskelujah_float_acos_chirho, haskelujah_float_acosh_chirho, haskelujah_float_asin_chirho,
     haskelujah_float_asinh_chirho, haskelujah_float_atan_chirho, haskelujah_float_atanh_chirho,
     haskelujah_float_cos_chirho, haskelujah_float_cosh_chirho, haskelujah_float_exp_chirho,
-    haskelujah_float_log_chirho, haskelujah_float_sin_chirho, haskelujah_float_sinh_chirho,
-    haskelujah_float_sqrt_chirho, haskelujah_float_tan_chirho, haskelujah_float_tanh_chirho,
-    haskelujah_scale_float_double_chirho, haskelujah_significand_double_chirho,
-    scale_float_double_chirho, significand_double_chirho,
+    haskelujah_float_log_chirho, haskelujah_float_recip_chirho, haskelujah_float_sin_chirho,
+    haskelujah_float_sinh_chirho, haskelujah_float_sqrt_chirho, haskelujah_float_tan_chirho,
+    haskelujah_float_tanh_chirho, haskelujah_scale_float_double_chirho,
+    haskelujah_significand_double_chirho, scale_float_double_chirho, significand_double_chirho,
 };
 use crate::float_power_chirho::{pow_double_int_chirho, pow_float_chirho};
 use crate::integer_power_chirho::pow_int_chirho;
@@ -245,6 +245,34 @@ fn scale_float_answers_as_ghc_chirho() {
     assert_eq!(
         haskelujah_scale_float_double_chirho(-3, (-2.5f64).to_bits() as i64),
         (-0.3125f64).to_bits() as i64
+    );
+}
+
+/// Row 583: `recip#` natively, GHC's `recip x = 1.0 / x` at Double, against GHC 9.14.1's
+/// printed answers, and through the interpreter's call. Signed infinities and zeros are
+/// compared as raw bits.
+#[test]
+fn recip_is_one_over_its_operand_chirho() {
+    assert_eq!(
+        native_float_chirho(haskelujah_float_recip_chirho, 4.0).to_string(),
+        "0.25"
+    );
+    for (argument_chirho, ghc_chirho) in [
+        (0.0, f64::INFINITY),
+        (-0.0, f64::NEG_INFINITY),
+        (f64::INFINITY, 0.0),
+    ] {
+        assert_eq!(
+            native_float_chirho(haskelujah_float_recip_chirho, argument_chirho).to_bits(),
+            ghc_chirho.to_bits(),
+            "recip {argument_chirho}"
+        );
+    }
+    assert!(native_float_chirho(haskelujah_float_recip_chirho, f64::NAN).is_nan());
+    assert_eq!(apply_float_math_chirho("recip#", 0.5), Some(2.0));
+    assert_eq!(
+        float_math_symbol_chirho("recip#"),
+        Some("haskelujah_float_recip_chirho")
     );
 }
 

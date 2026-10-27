@@ -10,7 +10,7 @@
 //! (row 584). Each program's GHC 9.14.1 output is recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{NativeBackendChirho, assert_native_chirho, native_round_trip_chirho, run_chirho};
+use super::{assert_native_chirho, run_chirho};
 
 #[test]
 fn integer_literals_divide_at_double_everywhere_chirho() {
@@ -167,25 +167,20 @@ fn literals_at_a_signature_variable_take_its_dictionary_everywhere_chirho() {
 /// Row 584: under `Fractional a` no predicate names `Num`, so the literal takes the
 /// class-only own key, and the pass extracts the Num dictionary from `$dFractional`. On
 /// main the literal took `$fNumInt`. A returned literal shows it: the interpreter then
-/// stopped at `ShowFloatChirho: expected Double#, got 2#`. The natives still refuse the
-/// Fractional Double dictionary's `recip#`, the named residual that row 583 lifts.
+/// stopped at `ShowFloatChirho: expected Double#, got 2#`. The natives refused the
+/// Fractional Double dictionary's `recip#` until row 583.
 #[test]
 fn a_fractional_signatures_literal_takes_its_dictionary_chirho() {
     let program_chirho = "module Main where\nhalfChirho :: Fractional a => a -> a\nhalfChirho r = r / 2\ntwoChirho :: Fractional a => a -> a\ntwoChirho _ = 2\nmain :: IO ()\nmain = do\n  print (halfChirho (3 :: Double), halfChirho (-0.5 :: Double))\n  print (twoChirho (1 :: Double), twoChirho 0.5 + 1 :: Double)\n";
+    let ghc_chirho = "(1.5,-0.25)\n(2.0,3.0)\n";
     assert_eq!(
         run_chirho("FractionalSignatureLiteralChirho.hs", program_chirho),
-        "(1.5,-0.25)\n(2.0,3.0)\n",
+        ghc_chirho,
         "interpreter"
     );
-    for backend_chirho in [
-        NativeBackendChirho::LlvmChirho,
-        NativeBackendChirho::CraneliftChirho,
-    ] {
-        let error_chirho = native_round_trip_chirho(program_chirho, backend_chirho, "")
-            .expect_err("the natives refuse the Fractional dictionary's recip#");
-        assert!(
-            error_chirho.contains("does not support primitive(s): recip#/1"),
-            "{backend_chirho:?}: {error_chirho}"
-        );
-    }
+    assert_native_chirho(
+        "FractionalSignatureLiteralChirho.hs",
+        program_chirho,
+        ghc_chirho,
+    );
 }

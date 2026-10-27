@@ -365,11 +365,10 @@ pub fn apply_prim_binop_chirho(
             }),
         },
 
-        // Reciprocal (unary): 1.0 / x
+        // Reciprocal (unary): 1.0 / x, the RTS table's row, which the native backends call
+        // too (row 583). An Int operand stays a mismatch.
         PrimOpKindChirho::RecipFloatChirho => match left_chirho {
-            ValueChirho::FloatChirho(v_chirho) => {
-                Ok(ValueChirho::FloatChirho(1.0 / v_chirho))
-            }
+            ValueChirho::FloatChirho(_) => float_math_chirho(op_chirho, "recip#", left_chirho),
             _ => Err(PrimErrorChirho::TypeMismatchChirho {
                 op_chirho,
                 expected_chirho: "Double#",
