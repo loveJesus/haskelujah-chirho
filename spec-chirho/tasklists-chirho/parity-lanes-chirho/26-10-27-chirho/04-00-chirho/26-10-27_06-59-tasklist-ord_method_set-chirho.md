@@ -46,6 +46,26 @@ Row 612 core.
   - **First suite run** (1701 tests): 1698 passed. The three failures were the layout unit, rewritten for the approved layout, and two intended movers: row 565's polymorphic `maximum` residual now answers `"c"`, and row 610's stub-key pin names `missing method Ord.< for VChirho`.
 - [x] **Rerun row 608's generator and drift checks** (`generator608-chirho.log`): the outputs are byte-identical, 726 agree and 679 disagree, so the delta is none. The 18 qualified-alias, builtin-alias and reference tests pass.
 - [x] A `<=`-only instance's `max` and `min` move too: GHC defines them through `<=`, so its own `<=` donates (`OLeOnlyExtremaChirho`, now a control). Its `compare` and other operators stay with row 626.
-- [ ] Reach: each mechanism removed alone, then restored byte-identical.
-- [ ] Commit; replay onto the newest main; broad moved-shape scan.
-- [ ] Baseline judge on main, gate, record, post.
+- [x] Commit; replay onto the newest main; broad moved-shape scan.
+  - The source sits on main `37ddaa5a`. Main moved from `a7d3336a` with row 620's test fixtures, the progress DB and tasklists only, so its compiler source is the row 606 tip's.
+  - **Scan** (`scan612-chirho.log`, on `d1177999`): 3585/3585 passed in 732 s, with no mover beyond the intended ones.
+    - It covered every lib, the parser's included, and the 20 driver suites, leaving out `ghc_bulk`.
+    - It skipped the same 18 tests as before. The count is row 606's 3582, plus this row's 3 controls.
+- [x] **Reach** (`tools-chirho/reach_612_chirho.zsh`, log `reach612-r1-chirho.log`, on `d1177999`):
+  - **M1, the six methods out of the seeded Ord:** the movers fail with `missing STG binding <`, and both named-failure controls lose their method names.
+  - **M2, the defaults off:** the movers fail with `missing method Ord.< for Int`. Row 565's Int-shaped extrema and row 610's String operators fail too, because their keys now read the default rows.
+  - **M3, the own-key operator route off:** `LtIntChirho`, and polymorphic `<` without `compare` stops naming its stub.
+  - **M4, own-key `maximum` and `minimum` off:** `LeIntChirho`.
+  - **M5, the list builder's defaults off:** `missing method Ord.< for [Int]`.
+  - **M6, `max` picking as `min`:** wrong values in row 565's control and in the `max`/`min` defaults control.
+  - Every restore was byte-identical, and the restored tree passes 16/16.
+- [x] Judge main against the contract copy; warm gate; record.
+  - **Main `37ddaa5a`** is GREEN against the contract copy first (73 movers, 9 holds). Its probes give main's measured answers (`baseline-37ddaa5a-chirho.log`).
+  - **r1, RED at the changed-lines Clippy step:** the residual table moved out of row 565's pin kept one entry, and `single_element_loop` fired. The loop became a direct call, amended into the source `00cdba1c`.
+  - **r2, GREEN on `00cdba1c` (base `37ddaa5a`) in 147.76 s:**
+    - 1353/1353 focused tests. The tests step runs the families an Ord method change can move, and the scan runs the rest.
+    - No Clippy diagnostic on the 456 changed lines in 16 files.
+    - The contract judge GREEN.
+    - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
+  - **The tip's probe reports** (`tip-00cdba1c-chirho` in each set): 8 programs are GHC on all three engines (24 cells), and all 18 Cranelift compiles carry the marker.
+- [ ] Land on main and close progress row 612 (gpt).
