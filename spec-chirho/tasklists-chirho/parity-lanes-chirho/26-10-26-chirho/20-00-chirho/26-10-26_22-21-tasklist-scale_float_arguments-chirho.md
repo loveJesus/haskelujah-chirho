@@ -38,6 +38,12 @@
 - Clippy completed on every affected package and target. It first found the new structural test above non-test items; moving that test module to the file's end cleared the changed-line finding. The final run has no diagnostic on a Row 587 changed line; remaining warnings predate this range.
 - `cargo fmt --all -- --check` and `git diff --check` are clean. Gitleaks runs on the committed range before replay.
 
+## Replay Chirho
+
+- Source commit `31806bc4` replayed cleanly as `1568b1d2` onto exact main `0ac0e6df`, after Row 584 landed. All fifteen non-overlap path blobs are byte-identical; the shared dictionary-evidence workflow keeps both rows' text.
+- The post-replay gate is GREEN in 23.80 seconds: build 3.58 seconds; RTS scale table 1/1 in 0.54 seconds; structural key control 1/1 in 1.06 seconds; evaluation values 18/18 in 12.46 seconds; and Row 584's signature evidence controls 2/2 in 6.16 seconds.
+- The replayed range is rustfmt-clean and diff-check-clean. Gitleaks 8.30.1 scanned its one commit and found no leak.
+
 ## Placement Chirho
 
 - Extend the existing `real_float_predicates_chirho.rs` generated rows; do not add a module or directory entry.
