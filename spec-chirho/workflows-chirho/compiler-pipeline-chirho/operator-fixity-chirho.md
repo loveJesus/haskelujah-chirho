@@ -17,12 +17,21 @@ flowchart TD
     absorb_chirho --> split_chirho[Split at the loosest operator; associativity breaks ties]
     unchanged_chirho --> split_chirho
     split_chirho --> recurse_chirho[Resolve each side the same way]
-    recurse_chirho --> tree_chirho[Dollar becomes application; every other operator an infix node]
+    recurse_chirho --> tree_chirho[Every operator an infix node, the dollar included]
+    tree_chirho --> desugar_chirho[Desugaring: an owned operator takes its own binding; the Prelude's dollar becomes application]
 ```
 
 ## The split
 
 `resolve_infix_precedence_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho/expr_syntax_chirho/fixity_chirho.rs`) splits a chain at its loosest operator and recurses. At equal precedence it splits at the rightmost operator for `infixl` and the leftmost for `infixr`.
+
+## The dollar (row 619)
+
+`$` stays an infix node through lowering, like every other operator. Lowering used to turn every infix `$` into an application by its spelling, before naming could say which `$` it was. A program's own `$`, or a local one, was then silently the Prelude's on every engine.
+
+- **Desugaring.** An operator the program owns takes its own binding (row 614's ownership check). The Prelude's `$` becomes an application, as before.
+- **Typing.** The Prelude's `$` is typed as before. `runST $ do ...` still type-checks, and both typecheck corpus axes kept every verdict when the rewrite left lowering.
+- **Controls:** `crates/haskelujah-driver-chirho/tests/typing_integration_chirho/dollar_ownership_chirho.rs`.
 
 ## Prefix minus (row 555)
 

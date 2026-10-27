@@ -400,11 +400,13 @@ fn lower_show_paren_dollar_keeps_composition_rhs_with_char_literal_chirho() {
     };
 
     match rhs_expr_chirho {
-        ExprChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
+        ExprChirho::InfixChirho {
+            left_chirho: fun_chirho,
+            op_chirho: dollar_chirho,
+            right_chirho: arg_chirho,
             ..
         } => {
+            assert_eq!(dollar_chirho.text_chirho(), "$");
             assert!(
                 matches!(
                     fun_chirho.as_ref(),
@@ -475,7 +477,7 @@ fn lower_show_paren_dollar_keeps_composition_rhs_with_char_literal_chirho() {
             );
         }
         other_chirho => panic!(
-            "expected `$` lowering to become application of the composition tree, got {:?}",
+            "expected the `$` to keep the composition tree on its right, got {:?}",
             other_chirho
         ),
     }

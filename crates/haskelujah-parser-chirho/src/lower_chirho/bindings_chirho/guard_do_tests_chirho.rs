@@ -30,10 +30,12 @@ fn lower_infix_fun_bind_with_signature_and_do_rhs_chirho() {
         assert!(
             matches!(
                 &matches_chirho[0].rhs_chirho,
-                RhsChirho::UnguardedChirho(ExprChirho::AppChirho {
-                    arg_chirho,
+                RhsChirho::UnguardedChirho(ExprChirho::InfixChirho {
+                    op_chirho,
+                    right_chirho,
                     ..
-                }) if matches!(&**arg_chirho, ExprChirho::DoChirho { .. })
+                }) if op_chirho.text_chirho() == "$"
+                    && matches!(&**right_chirho, ExprChirho::DoChirho { .. })
             ),
             "signed infix catchE funbind should preserve the constructor/do RHS"
         );

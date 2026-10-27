@@ -236,7 +236,7 @@ fn lower_tabulate_projection_argument_keeps_dot_operator_chirho() {
 }
 
 #[test]
-fn lower_nested_dollar_to_right_associated_apps_chirho() {
+fn lower_nested_dollar_keeps_its_right_association_chirho() {
     let module_chirho = parse_and_lower_chirho(
         "module M where\nx = WriterT $ callCC $ \\c -> runWriterT (f (\\a -> WriterT (c (a, mempty))))\n",
     );
@@ -253,25 +253,29 @@ fn lower_nested_dollar_to_right_associated_apps_chirho() {
         other_chirho => panic!("expected function binding, got {:?}", other_chirho),
     };
 
+    // `$` stays an operator through lowering (row 619): the desugarer makes the Prelude's `$`
+    // an application, and a program's own `$` keeps its own binding.
     match rhs_expr_chirho {
-        ExprChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
+        ExprChirho::InfixChirho {
+            left_chirho,
+            op_chirho,
+            right_chirho,
             ..
         } => {
+            assert_eq!(op_chirho.text_chirho(), "$");
             assert!(
-                matches!(&**fun_chirho, ExprChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "WriterT"),
-                "outer $ should lower to application of WriterT, got {:?}",
-                fun_chirho
+                matches!(&**left_chirho, ExprChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "WriterT"),
+                "the outer $ should take WriterT on its left, got {:?}",
+                left_chirho
             );
             assert!(
-                matches!(&**arg_chirho, ExprChirho::AppChirho { .. }),
-                "nested $ chain should stay as right-associated applications, got {:?}",
-                arg_chirho
+                matches!(&**right_chirho, ExprChirho::InfixChirho { op_chirho, .. } if op_chirho.text_chirho() == "$"),
+                "the nested $ chain should stay right-associated, got {:?}",
+                right_chirho
             );
         }
         other_chirho => panic!(
-            "expected application tree for nested $, got {:?}",
+            "expected an infix $ tree for nested $, got {:?}",
             other_chirho
         ),
     }

@@ -51,19 +51,11 @@ impl LowerCtxChirho {
             let left_chirho = it_chirho.next().unwrap();
             let right_chirho = it_chirho.next().unwrap();
             let split_op_chirho = ops_chirho.into_iter().next().unwrap();
-            return if split_op_chirho.text_chirho() == "$" {
-                ExprChirho::AppChirho {
-                    fun_chirho: Box::new(left_chirho),
-                    arg_chirho: Box::new(right_chirho),
-                    span_chirho,
-                }
-            } else {
-                ExprChirho::InfixChirho {
-                    left_chirho: Box::new(left_chirho),
-                    op_chirho: split_op_chirho,
-                    right_chirho: Box::new(right_chirho),
-                    span_chirho,
-                }
+            return ExprChirho::InfixChirho {
+                left_chirho: Box::new(left_chirho),
+                op_chirho: split_op_chirho,
+                right_chirho: Box::new(right_chirho),
+                span_chirho,
             };
         }
 
@@ -123,19 +115,11 @@ impl LowerCtxChirho {
         let right_chirho =
             self.resolve_infix_precedence_chirho(right_exprs_chirho, right_ops_chirho, span_chirho);
 
-        if split_op_chirho.text_chirho() == "$" {
-            ExprChirho::AppChirho {
-                fun_chirho: Box::new(left_chirho),
-                arg_chirho: Box::new(right_chirho),
-                span_chirho,
-            }
-        } else {
-            ExprChirho::InfixChirho {
-                left_chirho: Box::new(left_chirho),
-                op_chirho: split_op_chirho,
-                right_chirho: Box::new(right_chirho),
-                span_chirho,
-            }
+        ExprChirho::InfixChirho {
+            left_chirho: Box::new(left_chirho),
+            op_chirho: split_op_chirho,
+            right_chirho: Box::new(right_chirho),
+            span_chirho,
         }
     }
 }
