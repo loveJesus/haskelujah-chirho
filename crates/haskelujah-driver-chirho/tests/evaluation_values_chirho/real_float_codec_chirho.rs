@@ -51,6 +51,30 @@ main :: IO ()
 main = print (decodeFloat 3.5, encodeFloat 4 2)
 "#;
 
+const MINIMUM_WORD_LITERAL_CHIRHO: &str = r#"module Main where
+literalIntegerChirho :: Integer
+literalIntegerChirho = -9223372036854775808
+literalIntChirho :: Int
+literalIntChirho = -9223372036854775808
+literalDoubleChirho :: Double
+literalDoubleChirho = -9223372036854775808
+computedMinChirho :: Integer
+computedMinChirho = (-9223372036854775807) - 1
+main :: IO ()
+main = do
+  print literalIntegerChirho
+  print literalIntChirho
+  print literalDoubleChirho
+  print (-0x8000000000000000 :: Integer)
+  print (-0o1000000000000000000000 :: Integer)
+  print (-0b1000000000000000000000000000000000000000000000000000000000000000 :: Integer)
+  print (encodeFloat literalIntegerChirho (-63) :: Double)
+  print computedMinChirho
+  print (toInteger (minBound :: Int))
+"#;
+
+const MINIMUM_WORD_LITERAL_GHC_CHIRHO: &str = "-9223372036854775808\n-9223372036854775808\n-9.223372036854776e18\n-9223372036854775808\n-9223372036854775808\n-9223372036854775808\n-1.0\n-9223372036854775808\n-9223372036854775808\n";
+
 fn interpreter_output_chirho(name_chirho: &str, source_chirho: &str) -> String {
     let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
         source_chirho,
@@ -97,5 +121,14 @@ fn a_programs_own_real_float_codec_stays_its_own_everywhere_chirho() {
         "OwnRealFloatCodecChirho.hs",
         OWN_REAL_FLOAT_CODEC_CHIRHO,
         "((7,3),6.0)\n",
+    );
+}
+
+#[test]
+fn the_minimum_word_literal_answers_as_ghc_everywhere_chirho() {
+    assert_everywhere_chirho(
+        "MinimumWordLiteralChirho.hs",
+        MINIMUM_WORD_LITERAL_CHIRHO,
+        MINIMUM_WORD_LITERAL_GHC_CHIRHO,
     );
 }

@@ -10,12 +10,41 @@
 //! `(-3) ^ 2` keeps its grouping, as does the application `negate 3 ^ 2`.
 //! workflow: compiler-pipeline-chirho/operator-fixity-chirho
 
-use super::{ExprChirho, LowerCtxChirho, NameChirho};
+use haskelujah_ast_chirho::lit_chirho::LitChirho;
+use haskelujah_syntax_chirho::green_chirho::{GreenElementChirho, GreenNodeChirho};
+use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
+
+use super::{ExprChirho, LowerCtxChirho, NameChirho, parse_integer_magnitude_chirho};
 
 /// Prefix minus resolves as `infixl 6` (Haskell 2010, §10.6).
 const PREFIX_MINUS_PRECEDENCE_CHIRHO: u8 = 6;
 
 impl LowerCtxChirho {
+    /// Preserve the one magnitude that a positive `i64` cannot hold but a direct
+    /// prefix minus can: `2^63`. The AST keeps the negation node for fixity; the
+    /// inner `i64::MIN` is a marker consumed by Core lowering, never a positive
+    /// source literal.
+    /// workflow: compiler-pipeline-chirho/operator-fixity-chirho
+    pub(super) fn preserve_minimum_word_operand_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        expr_chirho: ExprChirho,
+    ) -> ExprChirho {
+        let ExprChirho::LitChirho(LitChirho::IntChirho(value_chirho, span_chirho, origin_chirho)) =
+            expr_chirho
+        else {
+            return expr_chirho;
+        };
+        if value_chirho != 0 || single_integer_magnitude_chirho(node_chirho) != Some(1_u64 << 63) {
+            return ExprChirho::LitChirho(LitChirho::IntChirho(
+                value_chirho,
+                span_chirho,
+                origin_chirho,
+            ));
+        }
+        ExprChirho::LitChirho(LitChirho::IntChirho(i64::MIN, span_chirho, origin_chirho))
+    }
+
     /// Gives each bare negation in a flat operator chain the run of operators after it
     /// that bind tighter than prefix minus, with their operands, resolved as one chain
     /// under the negation. The rest of the chain is returned as it was, for the
@@ -39,7 +68,8 @@ impl LowerCtxChirho {
                     span_chirho: minus_span_chirho,
                 } if ops_left_chirho.peek().is_some_and(binds_tighter_chirho) => {
                     let mut chain_span_chirho = operand_chirho.span_chirho();
-                    let mut chain_exprs_chirho = vec![*operand_chirho];
+                    let mut chain_exprs_chirho =
+                        vec![bounded_chain_operand_chirho(*operand_chirho)];
                     let mut chain_ops_chirho = Vec::new();
                     while let Some(op_chirho) = ops_left_chirho.next_if(binds_tighter_chirho) {
                         chain_ops_chirho.push(op_chirho);
@@ -68,4 +98,47 @@ impl LowerCtxChirho {
         kept_ops_chirho.extend(ops_left_chirho);
         (kept_exprs_chirho, kept_ops_chirho)
     }
+}
+
+/// The minimum-word marker is valid only when its prefix-minus node remains
+/// direct. If fixity absorbs a tighter operator, restore the positive-overflow
+/// boundary's former zero instead of leaking `i64::MIN` into that inner chain.
+fn bounded_chain_operand_chirho(expr_chirho: ExprChirho) -> ExprChirho {
+    match expr_chirho {
+        ExprChirho::LitChirho(LitChirho::IntChirho(i64::MIN, span_chirho, origin_chirho)) => {
+            ExprChirho::LitChirho(LitChirho::IntChirho(0, span_chirho, origin_chirho))
+        }
+        other_chirho => other_chirho,
+    }
+}
+
+fn single_integer_magnitude_chirho(node_chirho: &GreenNodeChirho) -> Option<u64> {
+    fn visit_chirho(
+        node_chirho: &GreenNodeChirho,
+        count_chirho: &mut usize,
+        magnitude_chirho: &mut Option<u64>,
+    ) {
+        for child_chirho in node_chirho.children_chirho() {
+            match child_chirho {
+                GreenElementChirho::TokenChirho(token_chirho)
+                    if token_chirho.kind_chirho() == TokenKindChirho::IntegerLiteralChirho =>
+                {
+                    *count_chirho += 1;
+                    if *count_chirho == 1 {
+                        *magnitude_chirho =
+                            parse_integer_magnitude_chirho(token_chirho.text_chirho());
+                    }
+                }
+                GreenElementChirho::NodeChirho(inner_chirho) => {
+                    visit_chirho(inner_chirho, count_chirho, magnitude_chirho);
+                }
+                GreenElementChirho::TokenChirho(_) => {}
+            }
+        }
+    }
+
+    let mut count_chirho = 0;
+    let mut magnitude_chirho = None;
+    visit_chirho(node_chirho, &mut count_chirho, &mut magnitude_chirho);
+    (count_chirho == 1).then_some(magnitude_chirho).flatten()
 }

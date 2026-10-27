@@ -132,3 +132,17 @@ fn declared_fixities_decide_what_a_negation_takes_in_chirho() {
         ],
     );
 }
+
+#[test]
+fn a_direct_minimum_word_literal_preserves_its_one_extra_magnitude_chirho() {
+    assert_groupings_chirho(
+        "",
+        &[
+            ("-9223372036854775808", "(- -9223372036854775808)"),
+            ("-0x8000000000000000", "(- -9223372036854775808)"),
+            ("9223372036854775808", "0"),
+            ("9223372036854775809", "0"),
+            ("-9223372036854775808 ^ 1", "(- (0 ^ 1))"),
+        ],
+    );
+}

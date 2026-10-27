@@ -44,9 +44,12 @@ flowchart TD
 
 A negation desugars to `negate#`. The dictionary pass then retargets it by its operand's key (row 547; see [dictionary evidence](../language-features-chirho/dictionary-evidence-chirho.md)).
 
+The direct minimum machine-word literal is the one bounded exception (row 592). Its positive magnitude, `9223372036854775808`, is one above `i64::MAX`; `preserve_minimum_word_operand_chirho` retains that magnitude only beneath the direct prefix-minus node. Core lowering then sends the already-negative `i64::MIN` marker through `fromInteger` without executing `negate#`, preserving both overload evidence and the value. If fixity absorbs a tighter operator, `bounded_chain_operand_chirho` restores that operand to the existing positive-overflow boundary instead of leaking the marker into the inner chain. The positive magnitude by itself, larger magnitudes, tighter operator chains and the separately measured `fromIntegral (minBound :: Int) :: Integer` conversion remain outside this row.
+
 An operand that is now a whole chain is keyed like any other expression. So `-3 / 2 :: Double` and `-x * 2` take the float negation.
 
-Two Double cases are still open:
+One Double case is still open:
 
 - A `**` result is not keyed, so `-2 ** 2 :: Double` stops at `NegIntChirho` in the interpreter.
-- `^` at Double fails with or without a negation.
+
+Row 570 made `^` at Double exact by routing it through `^.#`; it is no longer a prefix-minus residual.

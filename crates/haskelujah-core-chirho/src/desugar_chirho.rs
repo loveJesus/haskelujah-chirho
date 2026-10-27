@@ -2472,6 +2472,16 @@ impl DesugarCtxChirho {
                 expr_chirho: inner_chirho,
                 ..
             } => {
+                // Parser row 592 preserves the direct source magnitude `2^63` as
+                // `Neg(Lit(i64::MIN))`: keep its `fromInteger` evidence, but do not
+                // execute `negate#` on the already-negative machine-word marker.
+                // workflow: compiler-pipeline-chirho/operator-fixity-chirho
+                if matches!(
+                    inner_chirho.as_ref(),
+                    ExprChirho::LitChirho(LitChirho::IntChirho(i64::MIN, ..))
+                ) {
+                    return self.desugar_expr_chirho(inner_chirho);
+                }
                 // -x → negate# x (Int) or negateFloat# x (Double)
                 let desugared_chirho = self.desugar_expr_chirho(inner_chirho);
                 let primop_chirho = if is_float_core_chirho(&desugared_chirho) {

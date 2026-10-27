@@ -107,9 +107,9 @@ struct LowerCtxChirho {
     origin_supply_chirho: RefCell<OriginSupplyChirho>,
 }
 
-/// Parse an integer literal that may have a hex (0x/0X), octal (0o/0O),
-/// or binary (0b/0B) prefix.
-fn parse_integer_literal_chirho(text_chirho: &str) -> i64 {
+/// Parse an unsigned integer-literal magnitude that may have a hex (0x/0X),
+/// octal (0o/0O), or binary (0b/0B) prefix.
+fn parse_integer_magnitude_chirho(text_chirho: &str) -> Option<u64> {
     // Strip MagicHash trailing # and NumericUnderscores
     let clean_chirho: String = text_chirho
         .trim_end_matches('#')
@@ -121,20 +121,28 @@ fn parse_integer_literal_chirho(text_chirho: &str) -> i64 {
         .strip_prefix("0x")
         .or_else(|| text_chirho.strip_prefix("0X"))
     {
-        i64::from_str_radix(hex_chirho, 16).unwrap_or(0)
+        u64::from_str_radix(hex_chirho, 16).ok()
     } else if let Some(octal_chirho) = text_chirho
         .strip_prefix("0o")
         .or_else(|| text_chirho.strip_prefix("0O"))
     {
-        i64::from_str_radix(octal_chirho, 8).unwrap_or(0)
+        u64::from_str_radix(octal_chirho, 8).ok()
     } else if let Some(binary_chirho) = text_chirho
         .strip_prefix("0b")
         .or_else(|| text_chirho.strip_prefix("0B"))
     {
-        i64::from_str_radix(binary_chirho, 2).unwrap_or(0)
+        u64::from_str_radix(binary_chirho, 2).ok()
     } else {
-        text_chirho.parse::<i64>().unwrap_or(0)
+        text_chirho.parse::<u64>().ok()
     }
+}
+
+/// Parse a positive machine-word integer literal. The one extra magnitude that
+/// prefix minus can represent is preserved by `preserve_minimum_word_operand_chirho`.
+fn parse_integer_literal_chirho(text_chirho: &str) -> i64 {
+    parse_integer_magnitude_chirho(text_chirho)
+        .and_then(|magnitude_chirho| i64::try_from(magnitude_chirho).ok())
+        .unwrap_or(0)
 }
 
 impl LowerCtxChirho {
@@ -5998,6 +6006,12 @@ impl LowerCtxChirho {
                 let inner_chirho = expr_node_chirho
                     .map(|c_chirho| self.lower_expr_from_child_chirho(c_chirho))
                     .unwrap_or_else(|| self.placeholder_expr_chirho());
+                let inner_chirho =
+                    match expr_node_chirho.map(|child_chirho| child_chirho.element_chirho) {
+                        Some(GreenElementChirho::NodeChirho(inner_node_chirho)) => self
+                            .preserve_minimum_word_operand_chirho(inner_node_chirho, inner_chirho),
+                        _ => inner_chirho,
+                    };
                 ExprChirho::NegChirho {
                     expr_chirho: Box::new(inner_chirho),
                     span_chirho,
