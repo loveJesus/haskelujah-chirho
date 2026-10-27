@@ -48,7 +48,7 @@ removed it.
 
 ## Where to look
 
-`lower_pat_syn_decl_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho.rs:4699`)
+`lower_pat_syn_decl_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho/declarations_chirho/declarations_chirho.rs` since row 641)
 walks tokens looking for `=` / `<-` and never handles the `::` signature form: for
 `pattern Q :: …` no separator is seen, so the type node is skipped and the declaration is
 built without its signature. The spurious `Num` wanted is created downstream of that

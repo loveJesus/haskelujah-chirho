@@ -77,7 +77,7 @@ flowchart TD
     M --> N[ClassChirho / QuantifiedChirho constraints on the declaration]
 ```
 
-`lower_chirho/contexts_chirho.rs` owns the context entry point, the telescope
+`lower_chirho/declarations_chirho/contexts_chirho.rs` owns the context entry point, the telescope
 strip and the type-to-constraint conversion (shared with signature contexts).
 The old scanner is deleted. Two rules of the flat grammar exist because of this
 path and are tested on their own:

@@ -37,7 +37,7 @@ carried the fields in the first place, because `parse_gadt_con_decl_chirho`
 the module's remaining bindings with it — `main` did not survive to STG, while `check`
 reported the file clean. Both halves are fixed in `b2027c35`.
 
-`lower_gadt_con_decl_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho.rs`)
+`lower_gadt_con_decl_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho/data_types_chirho/data_types_chirho.rs` since row 641)
 scans a `GadtConDeclChirho` node for two things: a `ConId` for the name, and the first
 child node satisfying `is_type_kind_chirho` for the signature. A GADT *record* signature
 is not one type node — the CST puts the braces in `RecordFieldsChirho` /
@@ -132,7 +132,7 @@ The shape decision below is what closes it.
 `haskelujah check` accepts the snippet above without complaint today; the defect is
 visible only in the lowered AST. A parser unit test in the style of
 `gadt_constructor_double_colon_is_not_the_declaration_kind_chirho`
-(`lower_chirho.rs` tests) asserting `matches!(con, ConDeclChirho::RecordChirho { .. })`
+(`lower_chirho/data_types_chirho/data_type_tests_chirho.rs` since row 641) asserting `matches!(con, ConDeclChirho::RecordChirho { .. })`
 or a new GADT-record variant will fail on the current tree.
 
 ## Two things for the brick after the shape is chosen

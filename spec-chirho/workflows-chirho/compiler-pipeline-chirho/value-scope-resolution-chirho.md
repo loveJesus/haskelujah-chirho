@@ -127,7 +127,7 @@ flowchart TD
 ## Code
 
 - **The marker and the classifier:** `crates/haskelujah-ast-chirho/src/module_chirho.rs`, with `ImportItemChirho::UnrepresentedChirho`, `is_represented_chirho`, `ImportListModeChirho`, `effective_qualifier_chirho` and `list_mode_chirho`.
-- **The producer:** `lower_import_spec_item_chirho` in `crates/haskelujah-parser-chirho/src/lower_chirho.rs`.
+- **The producer:** `lower_import_spec_item_chirho` in `crates/haskelujah-parser-chirho/src/lower_chirho/module_items_chirho/module_items_chirho.rs`.
 - **The exhaustive consumers:** `import_item_names_chirho` (`resolve_chirho.rs`), and `merge_import_item_into_exports_chirho` and `remove_import_item_from_exports_chirho` (`iface_chirho.rs`).
 - **Completeness:**
   - `IfaceExportsChirho::complete_member_types_chirho`;
@@ -140,7 +140,7 @@ flowchart TD
 
 - **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/typing_integration_chirho/qualified_import_lists_chirho.rs`. It holds 9 programs GHC 9.14.1 rejects and 16 it accepts, run through the parser and name resolution, and I2 through the whole driver. Of the 9, 8 are rejected with GHC-76037, and 1 (a bare type item's same-named constructor) with GHC-01928. A `data Proxy` item is paired: its constructor is supplied, and an unlisted `P.asProxyTypeOf` beside it is rejected, so the list stays closed.
 - **The classifier's three modes:** in `module_chirho.rs`.
-- **The producer, including the `data` items:** in `lower_chirho/import_item_tests_chirho.rs`.
+- **The producer, including the `data` items:** in `lower_chirho/module_items_chirho/import_item_tests_chirho.rs`.
 - **Completeness, the per-type merge and the inert marker:** in `type_exports_tests_chirho.rs`.
 - **The check itself, including a bare source type that supplies no constructor:** in `value_scope_tests_chirho.rs`.
 

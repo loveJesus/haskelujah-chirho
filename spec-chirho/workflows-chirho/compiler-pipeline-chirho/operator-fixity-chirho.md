@@ -22,7 +22,7 @@ flowchart TD
 
 ## The split
 
-`resolve_infix_precedence_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho.rs`) splits a chain at its loosest operator and recurses. At equal precedence it splits at the rightmost operator for `infixl` and the leftmost for `infixr`.
+`resolve_infix_precedence_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho/expr_syntax_chirho/fixity_chirho.rs`) splits a chain at its loosest operator and recurses. At equal precedence it splits at the rightmost operator for `infixl` and the leftmost for `infixr`.
 
 ## Prefix minus (row 555)
 

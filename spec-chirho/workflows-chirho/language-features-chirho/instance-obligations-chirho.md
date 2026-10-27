@@ -157,10 +157,10 @@ two facts measured 2026-09-18:
    `C1 x`, `Duper (Fam a)` becomes `Duper a`, and a `forall`/`=>` context is dropped whole. Nothing
    in the AST records the loss, so no checker-side guard can tell a mangled context from a real
    one; ten valid files were falsely rejected in the diagnostic pass. gpt's branch lowers contexts
-   as types (`lower_chirho/contexts_chirho.rs`). Constraint synonyms in contexts (T10335) must be
+   as types (`lower_chirho/declarations_chirho/contexts_chirho.rs`). Constraint synonyms in contexts (T10335) must be
    expanded as well.
    RESOLVED since: the scanner is deleted (no `parse_simple_constraint_segment_chirho` remains in
-   the parser), contexts lower through `lower_chirho/contexts_chirho.rs`, and
+   the parser), contexts lower through `lower_chirho/declarations_chirho/contexts_chirho.rs`, and
    `convert_written_context_chirho` keeps every argument and expands constraint synonyms. The
    instance-method check above relies on that. Completeness (1) still stands.
 

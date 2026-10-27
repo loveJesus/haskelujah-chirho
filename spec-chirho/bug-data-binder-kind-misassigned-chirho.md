@@ -19,7 +19,7 @@ In a data declaration head, a *binder's* kind annotation can end up recorded as 
 data Foo (_ :: Constraint)          -- GHC ACCEPTS: Foo :: Constraint -> Type
 ```
 
-`lower_data_decl_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho.rs`, the
+`lower_data_decl_chirho` (`crates/haskelujah-parser-chirho/src/lower_chirho/data_types_chirho/data_types_chirho.rs` since row 641, the
 `DoubleColonChirho` arm) produces
 
 ```
