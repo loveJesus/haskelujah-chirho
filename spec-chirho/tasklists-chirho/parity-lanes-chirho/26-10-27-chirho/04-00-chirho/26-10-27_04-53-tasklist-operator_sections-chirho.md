@@ -51,7 +51,26 @@ Row 609.
 - [x] Re-measure on main `263a3b9b`. Row 610 made the comparison sections exact.
 - [x] Source: the predicate, `/` in the evidence names, and the parser fallback repair (after #29990).
 - [x] Controls: GHC-measured, byte for byte. Parser units for the direct and folded paths, nested qualified operators included.
-- [ ] Commit; replay onto the newest main; broad moved-shape scan.
-- [ ] Reach: the section-origin hook alone; the parser repair alone; `/` in the evidence names alone.
-- [ ] Judge main against the contract copy; warm gate with the parser crate in tests and Clippy; record.
+- [x] Commit; replay onto the newest main; broad moved-shape scan.
+  - The source `74a7e5ce` sits on main `ebd47b78`, which adds only the row 613 and 614 reservations.
+  - **Scan** (`scan609-chirho.log`): 3575/3575 passed in 525 s, with no mover. It covered every lib, the parser's now included, and the 20 driver suites, leaving out `ghc_bulk`.
+    - 18 tests were skipped: the 16 `proptest_chirho::eval` properties and row 608's two ignored generator steps.
+    - The count is row 610's 3172, plus the parser's 390, this row's 4 parser units and 5 controls, and row 611's 4 controls.
+- [x] **Reach** (`tools-chirho/reach_609_chirho.zsh`, log `reach609-r1-chirho.log`):
+  - **M1, the section-origin hook off:** the movers, holds, qualified and iterate controls fail.
+    - The M1 CLI matches main's reports in 37 cells. Its wrong arithmetic answers (`4.49e307`, `4.45e-308`, `0.0`) include those main never printed because it failed first on `/`.
+    - R1's `==` sections revert too, since R1's rule now rides the predicate.
+    - The other differing cells are the `/` and parser mechanisms.
+  - **M2, the parser's trailing-operator site reverted:** the operand-first and nested parser units read `(None, "P.-")`. The qualified control prints main's `[P.+ 1 1]` and `[P.- 10 3]`.
+  - **M3, `/` out of the evidence names:** the fail-closed, `/` and qualified controls fail.
+  - **M4, the parser's inner-operator site reverted:** the nested unit reads `(None, "P.+")`, and the qualified control fails.
+  - Every restore was byte-identical, and the restored tree passes 4/4 parser units and 6/6 controls.
+- [x] Judge main against the contract copy; warm gate with the parser crate in tests and Clippy; record.
+  - **Main `ebd47b78`** is GREEN against the contract copy first (73 movers, 9 holds). Its probes give main's measured answers (`baseline-ebd47b78-chirho.log`).
+  - **r1, GREEN on `74a7e5ce` (base `ebd47b78`) in 245.86 s:**
+    - 1676/1676 focused tests, the parser library included;
+    - no Clippy diagnostic on the 360 changed lines in 9 files, with the parser linted;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
+  - **The tip's probe reports** (`tip-74a7e5ce-chirho` in each set): 16 programs are GHC on all three engines (48/48 cells), and all 20 Cranelift compiles carry the marker.
 - [ ] Land on main and close progress row 609 (gpt).
