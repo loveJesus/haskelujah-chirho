@@ -355,21 +355,18 @@ impl ParserChirho<'_> {
             return false;
         }
         if starts_with_name_head_chirho
-            && self.tokens_chirho[lookahead_idx_chirho].kind_chirho
-                == RawTokenKindChirho::VarSymChirho
+            && self.starts_prefix_pattern_operator_chirho(lookahead_idx_chirho)
         {
-            let op_text_chirho = self.token_text_chirho(&self.tokens_chirho[lookahead_idx_chirho]);
             let head_continues_as_pattern_chirho = self
                 .tokens_chirho
                 .get(self.skip_trivia_idx_chirho(self.pos_chirho + 1))
                 .is_some_and(|token_chirho| {
                     token_chirho.kind_chirho == RawTokenKindChirho::AtChirho
                 });
-            if (op_text_chirho == "!" || op_text_chirho == "-") && !head_continues_as_pattern_chirho
-            {
-                // Prefer prefix function bindings with bang / negated argument
-                // patterns (e.g. `f !x !y = ...`, `g -1 y = ...`) over the rare
-                // bare infix declaration shape `x ! y = ...`.
+            if !head_continues_as_pattern_chirho {
+                // A prefix `!x` or `-1` after the head is an argument pattern
+                // (`f !x !y = ...`, `g -1 y = ...`); a loose, suffix or tight
+                // `x ! y`, `a-b` defines the operator (GHC's whitespace rule).
                 return false;
             }
         }
@@ -798,8 +795,79 @@ impl ParserChirho<'_> {
             .get(idx_chirho)
             .is_some_and(|token_chirho| {
                 token_chirho.kind_chirho == RawTokenKindChirho::VarSymChirho
-                    && self.token_text_chirho(token_chirho) != "-"
-                    && self.token_text_chirho(token_chirho) != "!"
+                    && !self.starts_prefix_pattern_operator_chirho(idx_chirho)
             })
+    }
+
+    /// GHC's whitespace rule for `!` and `-` after a pattern. Only a PREFIX occurrence starts an
+    /// argument pattern: a bang pattern (`f !x`), or a negative literal (`g -1`, read as
+    /// NegativeLiterals reads it). A loose, suffix or tight-infix occurrence (`x ! y`, `a! b`,
+    /// `a-b`), or a prefix `-` before anything but a number (`a -b`), is the operator an infix
+    /// definition defines.
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    fn starts_prefix_pattern_operator_chirho(&self, idx_chirho: usize) -> bool {
+        let Some(token_chirho) = self.tokens_chirho.get(idx_chirho) else {
+            return false;
+        };
+        if token_chirho.kind_chirho != RawTokenKindChirho::VarSymChirho
+            || !self.is_prefix_occurrence_chirho(idx_chirho)
+        {
+            return false;
+        }
+        match self.token_text_chirho(token_chirho) {
+            "!" => true,
+            "-" => self
+                .tokens_chirho
+                .get(idx_chirho + 1)
+                .is_some_and(|next_chirho| {
+                    matches!(
+                        next_chirho.kind_chirho,
+                        RawTokenKindChirho::IntLitChirho | RawTokenKindChirho::FloatLitChirho
+                    )
+                }),
+            _ => false,
+        }
+    }
+
+    /// GHC's lexer (`varsym_prefix` in `Lexer.x`): an operator occurrence is PREFIX when the
+    /// character before it does not close a token and the character after it opens one.
+    fn is_prefix_occurrence_chirho(&self, idx_chirho: usize) -> bool {
+        let Some(token_chirho) = self.tokens_chirho.get(idx_chirho) else {
+            return false;
+        };
+        let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
+        let end_chirho = token_chirho.span_chirho.end_chirho().as_usize_chirho();
+        !self
+            .source_chirho
+            .get(..start_chirho)
+            .is_some_and(closes_token_chirho)
+            && self
+                .source_chirho
+                .get(end_chirho..)
+                .is_some_and(opens_token_chirho)
+    }
+}
+
+/// GHC's `precededByClosingToken`: the text before an operator ends an identifier, a literal or
+/// a closing bracket, so the operator touches what precedes it. A comment's `-}` does not count.
+fn closes_token_chirho(before_chirho: &str) -> bool {
+    let mut chars_chirho = before_chirho.chars().rev();
+    match chars_chirho.next() {
+        Some('}') => chars_chirho.next() != Some('-'),
+        Some(')' | ']' | '"' | '\'' | '_' | '⟧' | '⦈') => true,
+        Some(char_chirho) => char_chirho.is_alphanumeric(),
+        None => false,
+    }
+}
+
+/// GHC's `followedByOpeningToken`: the text after an operator starts an identifier, a literal or
+/// an opening bracket. A comment's `{-` does not count.
+fn opens_token_chirho(after_chirho: &str) -> bool {
+    let mut chars_chirho = after_chirho.chars();
+    match chars_chirho.next() {
+        Some('{') => chars_chirho.next() != Some('-'),
+        Some('(' | '[' | '"' | '\'' | '_' | '⟦' | '⦇') => true,
+        Some(char_chirho) => char_chirho.is_alphanumeric(),
+        None => false,
     }
 }

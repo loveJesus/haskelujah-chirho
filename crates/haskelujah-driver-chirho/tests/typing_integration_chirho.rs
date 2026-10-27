@@ -11,6 +11,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
+#[path = "typing_integration_chirho/infix_definition_spacing_chirho.rs"]
+mod infix_definition_spacing_chirho;
 #[path = "typing_integration_chirho/maybe_helper_schemes_chirho.rs"]
 mod maybe_helper_schemes_chirho;
 #[path = "typing_integration_chirho/operator_ownership_chirho.rs"]

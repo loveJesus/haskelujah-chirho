@@ -36,6 +36,9 @@ mod expressions_chirho;
 #[cfg(test)]
 #[path = "cst_parser_chirho/tests_chirho/guard_let_tests_chirho.rs"]
 mod guard_let_tests_chirho;
+#[cfg(test)]
+#[path = "cst_parser_chirho/tests_chirho/infix_definition_spacing_tests_chirho.rs"]
+mod infix_definition_spacing_tests_chirho;
 mod let_qualifier_chirho;
 mod module_chirho;
 mod patterns_chirho;

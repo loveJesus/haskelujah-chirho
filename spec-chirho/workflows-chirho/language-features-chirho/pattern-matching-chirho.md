@@ -167,6 +167,39 @@ remain separately named baseline gaps.
 - An outer `~` on a binding changes nothing (a binding is lazy already), which is why a
   top-level `~(Just n) = ...` is an ordinary binding and no longer loops.
 
+## Operator or argument pattern: GHC's whitespace rule
+
+After a pattern, a `!` or a `-` either starts an argument pattern or is the operator that an
+infix definition defines (row 617). GHC's lexer decides by the characters around it (proposal
+229, `Lexer.x`'s `precededByClosingToken` and `followedByOpeningToken`), and the parser ports
+both predicates over the source text. An occurrence is PREFIX when the character before it closes
+no token (an identifier, a literal or a closing bracket would) and the character after it opens
+one. A comment's `-}` closes nothing and its `{-` opens nothing.
+
+- A prefix `!` is a bang pattern: `f !x !y = ...`, `\ !x -> ...`, `Just !x`.
+- A prefix `-` before a number is a negative literal, read as NegativeLiterals reads it:
+  `g -1 y = ...`. Without NegativeLiterals, GHC reads `n -1 = ...` as a definition of `-`; that
+  boundary is named and kept.
+- Every other `!` or `-` is the operator: loose `x ! y`, suffix `a! b`, tight `a!b`, `a-b`,
+  `a -b`. After a constructor's arguments, `V a - V b = ...` and `Box a ! i = ...` define the
+  operator too.
+- Current boundary: a bare negative literal argument (`g -1 y`) still loses its sign in
+  `parse_fun_arg_pat_chirho`. That repair is row 644's.
+
+```mermaid
+flowchart TD
+    LHS["a definition's left side, or a lambda's\nparameters: a pattern, then ! or -"] --> GATE["cst_parser_chirho/bindings_chirho.rs\nstarts_prefix_pattern_operator_chirho\nGHC's prefix occurrence over the source"]
+    GATE -->|"prefix !"| BANG["a bang pattern\nf !x = ..., Just !x"]
+    GATE -->|"prefix - before a number"| NEG["a negative literal pattern\ng -1 y = ..."]
+    GATE -->|"loose, suffix or tight,\nor - before a name"| OP["the operator's own definition\nx ! y = ..., a-b = ..., V a - V b = ..."]
+    OP --> AST2["FunBindChirho named ! or -"]
+```
+
+Controls: `crates/haskelujah-driver-chirho/tests/typing_integration_chirho/infix_definition_spacing_chirho.rs`
+runs every measured program on the three engines. The parser's
+`cst_parser_chirho/tests_chirho/infix_definition_spacing_tests_chirho.rs` holds each shape,
+GHC's `proposal-229e` comment cases among them.
+
 ## Literal patterns and MagicHash
 
 Character literals and ordinary string literals (without OverloadedStrings) have fixed pattern
