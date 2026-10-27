@@ -13,7 +13,7 @@ Base: `98b20b0e`, the exact main tip carrying row 574's progress reservation.
 - [x] Update the native failure workflow.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
 - [x] Rebase onto exact main and rerun the actual behavior controls.
-- [ ] Land and close only row 574.
+- [x] Land and close only row 574.
 
 Scope is `(^)` at an `Int` result with a negative integral exponent. GHC fails with the named
 `Negative exponent` payload, while main currently returns `0` silently on the interpreter, LLVM
@@ -57,3 +57,6 @@ made the long-literal control native-only; after replaying onto that exact main,
 46-test `native_error_helpers_chirho` suite passed at the default 2 MiB test stack. The final
 170-test replay took 21 seconds, formatting and diff checks stayed clean, and gitleaks found no
 leaks in the row 574 commit.
+
+The source and evidence tip `5db27a9d` fast-forwarded onto exact main `962835fb`. The following
+progress-only commit closes row 574; no other progress row changes.
