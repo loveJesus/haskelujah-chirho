@@ -90,7 +90,7 @@ impl DictPassCtxChirho {
         from_integer_chirho: CoreExprChirho,
         unit_chirho: i64,
     ) -> Option<CoreExprChirho> {
-        let foldl_id_chirho = self.lookup_body_backed_name_id_chirho("foldl")?;
+        let foldl_id_chirho = self.lookup_compiler_owned_name_id_chirho("foldl")?;
         let start_chirho = CoreExprChirho::AppChirho {
             fun_chirho: Box::new(from_integer_chirho),
             arg_chirho: Box::new(CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(

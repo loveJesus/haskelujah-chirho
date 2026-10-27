@@ -90,7 +90,7 @@ impl DictPassCtxChirho {
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
         let show_prim_id_chirho = self.evidenced_print_show_chirho(head_id_chirho)?;
-        let put_str_ln_id_chirho = self.lookup_body_backed_name_id_chirho("putStrLn")?;
+        let put_str_ln_id_chirho = self.lookup_compiler_owned_name_id_chirho("putStrLn")?;
         let rewritten_arg_chirho = self.rewrite_method_refs_with_locals_chirho(
             arg_chirho,
             dict_vars_chirho,

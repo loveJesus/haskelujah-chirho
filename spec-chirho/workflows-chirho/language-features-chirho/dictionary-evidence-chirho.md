@@ -69,12 +69,35 @@ flowchart TD
   - Beside a local `where length _ = 99`, that was the local binder's id in about half the passes. The Prelude `length` the program uses was then unbound, on every engine.
   - A lone local `foldl` captured row 552's `sum` fold inside `main`. LLVM printed `(4336781493,6)`, where GHC prints `(6,6)`.
   - **The fix:** the resolver prefers the id the program's bindings use free under the name. Otherwise it takes the least other id that is neither a local binder (`module_local_binder_ids_chirho`, split from row 593's set) nor an occurrence id; otherwise a fresh one. Row 580's alias helper goes through it.
-  - **Not covered:** top-level binders stay resolvable. Instance generation resolves `$f…` super-dictionaries and `$prim_…` rows by name through the same function.
-    - A hidden-and-redefined top-level `foldl` under `sum`, or `reverse` under `isSuffixOf`, is row 597.
+  - **Not covered here:** top-level binders, which row 597 below takes up. Those under source names become program-owned. The compiler's `$f…` and `$prim_…` spellings stay resolvable by name.
   - Controls:
     - `local_binders_leave_the_prelude_functions_bound_everywhere_chirho`, in `tests/native_error_helpers_chirho.rs`: six local Prelude names, eight interpreted runs and one per native backend.
     - `a_lone_local_foldl_leaves_the_sum_fold_alone_everywhere_chirho`, beside it: the capture of row 552's fold, on every engine.
     - The 16-pass `a_generated_prelude_binding_never_takes_a_local_binders_id_chirho` and `a_generated_prelude_binding_takes_the_free_id_beside_a_top_level_namesake_chirho`, beside row 580's `a_local_pi_never_takes_the_prelude_alias_chirho`.
+- Generated Prelude code keeps to its own dependencies (row 597).
+  - **The defect:** generated bodies reach their dependencies by name. A function the program wrote at top level under the same source name took them.
+    - The resolver gave the generated binding the program's id, so the program's body won, and every generated caller called it.
+    - The two plain-named body-backed lookups, `foldl` in row 552's fold and `putStrLn` in the evidenced `print`, returned the program's binding first.
+  - **Silent on every engine,** each from a hidden-and-redefined function:
+    - `foldl` under `sum` and `product` gave `(0,1,7)`, where GHC gives `(6,10,7)`;
+    - `reverse` under `isSuffixOf` gave `False`;
+    - `gcd` under `lcm` gave `(24,1)`;
+    - `mapM_` under `forM_` ran the program's version;
+    - `putStrLn` under `print` gave `own 7`.
+  - **No hiding needed:** a program's own `append` broke `concat` and `concatMap`, and a binary search tree's `insert` broke Data.List `sort`.
+  - **The fix:**
+    - `module_source_binder_ids_chirho` records the module's top-level binders under source names.
+    - The resolver skips them, as it skips local binders (row 594), so a generated binding takes a compiler-owned id.
+    - `lookup_compiler_owned_name_id_chirho` serves the two plain-named body-backed sites. The other body-backed lookups name `$` rows and are unchanged.
+  - **Still resolvable:** the compiler's own spellings (`$prim_…`, `$f…`, `$w…`), which no program can write. Instance generation still reaches the program's `$prim_` rows by name. `$` and `$!` are source operators.
+  - **Spelling:** the natives name top-level functions by spelling.
+    - With ids alone, Cranelift refused a second `foldl`, and LLVM merged the two: the program's `foldl (+) 7 [1,2]` gave 10.
+    - `spell_compiler_owned_apart_chirho` therefore spells a compiler-owned binding that shares a source name with one of the program's top-level functions `$prelude_<name>`.
+    - A program without such a collision keeps every spelling.
+  - Controls:
+    - In `tests/native_error_helpers_chirho.rs`: `generated_prelude_code_never_calls_a_hidden_redefinition_everywhere_chirho`, `a_programs_own_helper_namesakes_leave_the_prelude_whole_everywhere_chirho`, and the hold `hidden_redefinitions_used_directly_stay_the_programs_everywhere_chirho`.
+    - Structural: `generated_code_never_reaches_a_program_written_namesake_chirho` and `only_the_compilers_own_spellings_are_internal_chirho`.
+    - Re-pinned: row 594's `a_generated_prelude_binding_takes_the_free_id_beside_a_top_level_namesake_chirho`, and `evidenced_print_rewrites_to_show_instance_then_put_str_ln_chirho`, whose fixture defines its own `putStrLn`.
 - A key the checker inferred more than once (a re-check, a speculative branch) yields a record
   only when every inference agreed. An occurrence with an identity whose record is missing or
   conflicting receives nothing, and is never rescued by its span or its position.

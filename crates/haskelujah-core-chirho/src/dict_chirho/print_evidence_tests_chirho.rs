@@ -105,12 +105,16 @@ fn evidenced_print_rewrites_to_show_instance_then_put_str_ln_chirho() {
                 CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
                 other_chirho => panic!("expected putStrLn function, got {other_chirho:?}"),
             };
+            // The module's own `putStrLn` (id 101) is a function the program wrote, and
+            // GHC's `print` never calls it. `print` takes the compiler's, spelled apart
+            // (row 597).
+            assert_ne!(put_str_ln_id_chirho, CoreIdChirho(101));
             assert_eq!(
                 result_chirho
                     .names_chirho
                     .get(&put_str_ln_id_chirho)
                     .map(String::as_str),
-                Some("putStrLn")
+                Some("$prelude_putStrLn")
             );
             arg_chirho.as_ref()
         }
@@ -127,6 +131,9 @@ fn evidenced_print_rewrites_to_show_instance_then_put_str_ln_chirho() {
             .map(String::as_str),
         Some("$prim_Show_show_Bool")
     );
+    // The program's own `$prim_` row still serves: the compiler's spellings stay
+    // resolvable (row 597).
+    assert_eq!(show_head_chirho, CoreIdChirho(100));
 }
 
 #[test]

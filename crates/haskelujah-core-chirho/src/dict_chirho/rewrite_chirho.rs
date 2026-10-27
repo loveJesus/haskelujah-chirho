@@ -661,6 +661,7 @@ impl DictPassCtxChirho {
 
         // Prepend generated dictionary bindings
         let mut all_bindings_chirho = self.generated_bindings_chirho.clone();
+        self.spell_compiler_owned_apart_chirho(&mut all_bindings_chirho, module_chirho);
         all_bindings_chirho.extend(bindings_chirho);
 
         CoreModuleChirho {

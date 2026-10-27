@@ -427,6 +427,83 @@ fn a_lone_local_foldl_leaves_the_sum_fold_alone_everywhere_chirho() {
     assert_prints_everywhere_chirho(LONE_LOCAL_FOLDL_CHIRHO, "(6,6)\n");
 }
 
+// ── Row 597: generated Prelude code keeps to its own dependencies ───────────
+
+/// A program that hides and redefines a Prelude function owns it. Generated Prelude code
+/// reached its dependencies by name and took the program's function instead, on every
+/// engine: `sum` and `product` folded with its `foldl` (`(0,1,7)`), `isSuffixOf` reversed
+/// with its `reverse` (`False`), `lcm` divided by its `gcd` (`(24,1)`), `forM_` ran its
+/// `mapM_` (`own`, `own`) and `print` wrote through its `putStrLn` (`own 7`).
+const HIDDEN_FOLDL_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Prelude hiding (foldl)\nfoldl :: (b -> a -> b) -> b -> [a] -> b\nfoldl _ z _ = z\nmain :: IO ()\nmain = print (sum [1, 2, 3 :: Int], product [2, 5 :: Int], foldl (+) (7 :: Int) [1, 2])\n",
+    "(6,10,7)\n",
+);
+const HIDDEN_REVERSE_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Prelude hiding (reverse)\nimport Data.List (isSuffixOf)\nreverse :: [a] -> [a]\nreverse xs = xs\nmain :: IO ()\nmain = print (isSuffixOf [2, 3] [1, 2, 3 :: Int], reverse [1, 2, 3 :: Int])\n",
+    "(True,[1,2,3])\n",
+);
+const HIDDEN_GCD_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Prelude hiding (gcd)\ngcd :: Int -> Int -> Int\ngcd _ _ = 1\nmain :: IO ()\nmain = print (lcm 4 6 :: Int, gcd 4 6)\n",
+    "(12,1)\n",
+);
+const HIDDEN_MAP_M_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Prelude hiding (mapM_)\nimport Control.Monad (forM_)\nmapM_ :: (a -> IO ()) -> [a] -> IO ()\nmapM_ _ _ = putStrLn \"own\"\nmain :: IO ()\nmain = do\n  forM_ [1, 2 :: Int] print\n  mapM_ print [3 :: Int]\n",
+    "1\n2\nown\n",
+);
+const HIDDEN_PUT_STR_LN_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Prelude hiding (putStrLn)\nputStrLn :: String -> IO ()\nputStrLn s = putStr (\"own \" ++ s ++ \"\\n\")\nmain :: IO ()\nmain = do\n  print (7 :: Int)\n  putStrLn \"x\"\n",
+    "7\nown x\n",
+);
+
+/// No hiding needed: a program's own top-level `append` broke `concat` and `concatMap`
+/// (the interpreter failed on `MulIntChirho`, the natives printed nothing), and a binary
+/// search tree's `insert` broke Data.List `sort` (`Non-exhaustive patterns`).
+const OWN_APPEND_CHIRHO: (&str, &str) = (
+    "module Main where\nappend :: Int -> Int -> Int\nappend x y = x * 100 + y\nmain :: IO ()\nmain = print (concat [[1, 2], [3 :: Int]], concatMap (\\x -> [x, x]) [1, 2 :: Int], append 1 2)\n",
+    "([1,2,3],[1,1,2,2],102)\n",
+);
+const OWN_INSERT_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Data.List (sort)\ndata TreeChirho = LeafChirho | NodeChirho TreeChirho Int TreeChirho\ninsert :: Int -> TreeChirho -> TreeChirho\ninsert x LeafChirho = NodeChirho LeafChirho x LeafChirho\ninsert x t@(NodeChirho l v r)\n  | x < v = NodeChirho (insert x l) v r\n  | x > v = NodeChirho l v (insert x r)\n  | otherwise = t\ntoListChirho :: TreeChirho -> [Int]\ntoListChirho LeafChirho = []\ntoListChirho (NodeChirho l v r) = toListChirho l ++ [v] ++ toListChirho r\nmain :: IO ()\nmain = print (toListChirho (foldr insert LeafChirho [3, 1, 2]), sort [3, 1, 2 :: Int])\n",
+    "([1,2,3],[1,2,3])\n",
+);
+
+/// Holds: hidden-and-redefined names used directly were the program's already.
+const HIDDEN_DIRECT_USES_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Prelude hiding (length, reverse, even)\nlength :: [a] -> Int\nlength _ = 99\nreverse :: [a] -> [a]\nreverse xs = xs\neven :: Int -> Bool\neven _ = False\nmain :: IO ()\nmain = print (length \"abc\", reverse [1, 2, 3 :: Int], even 4)\n",
+    "(99,[1,2,3],False)\n",
+);
+const HIDDEN_MAP_CHIRHO: (&str, &str) = (
+    "module Main where\nimport Prelude hiding (map)\nmap :: (a -> b) -> [a] -> [b]\nmap _ _ = []\nmain :: IO ()\nmain = do\n  print (concatMap (\\x -> [x, x]) [1, 2 :: Int], map (+ 1) [1 :: Int])\n  mapM_ print [3 :: Int]\n",
+    "([1,1,2,2],[])\n3\n",
+);
+
+#[test]
+fn generated_prelude_code_never_calls_a_hidden_redefinition_everywhere_chirho() {
+    for (source_chirho, ghc_chirho) in [
+        HIDDEN_FOLDL_CHIRHO,
+        HIDDEN_REVERSE_CHIRHO,
+        HIDDEN_GCD_CHIRHO,
+        HIDDEN_MAP_M_CHIRHO,
+        HIDDEN_PUT_STR_LN_CHIRHO,
+    ] {
+        assert_prints_everywhere_chirho(source_chirho, ghc_chirho);
+    }
+}
+
+#[test]
+fn a_programs_own_helper_namesakes_leave_the_prelude_whole_everywhere_chirho() {
+    for (source_chirho, ghc_chirho) in [OWN_APPEND_CHIRHO, OWN_INSERT_CHIRHO] {
+        assert_prints_everywhere_chirho(source_chirho, ghc_chirho);
+    }
+}
+
+#[test]
+fn hidden_redefinitions_used_directly_stay_the_programs_everywhere_chirho() {
+    for (source_chirho, ghc_chirho) in [HIDDEN_DIRECT_USES_CHIRHO, HIDDEN_MAP_CHIRHO] {
+        assert_prints_everywhere_chirho(source_chirho, ghc_chirho);
+    }
+}
+
 // ── Row 566: a long literal unpacks whole across collections ─────────────
 
 /// A 2000-character literal used as a list. Natively it is unpacked cell by cell, and those

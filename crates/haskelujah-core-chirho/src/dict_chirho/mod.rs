@@ -109,6 +109,12 @@ pub struct DictPassCtxChirho {
     /// alternative binders, never the top-level binders. Name resolution for a generated
     /// binding never takes one of these (row 594).
     module_local_binder_ids_chirho: HashSet<CoreIdChirho>,
+    /// Ids of the module's top-level binders under source names, the functions the
+    /// program wrote. Generated code never takes one of these for its own dependency, as
+    /// a hidden-and-redefined `foldl` or a program's own `insert` is (row 597). The
+    /// compiler's `$`-names for the program's declarations, such as its `$prim_` instance
+    /// rows, stay reachable.
+    module_source_binder_ids_chirho: HashSet<CoreIdChirho>,
     /// Method name -> (class_name, selector CoreId).
     method_selectors_chirho: HashMap<String, (String, CoreIdChirho)>,
     /// (class_name, type_key) -> CoreId of instance dictionary binding.
@@ -208,6 +214,7 @@ impl DictPassCtxChirho {
             module_free_ids_chirho: HashSet::new(),
             module_bound_ids_chirho: HashSet::new(),
             module_local_binder_ids_chirho: HashSet::new(),
+            module_source_binder_ids_chirho: HashSet::new(),
             method_selectors_chirho: HashMap::new(),
             instance_dicts_chirho: HashMap::new(),
             con_types_chirho,
@@ -260,6 +267,7 @@ impl DictPassCtxChirho {
                 existing_name_chirho.as_str() == name_chirho
                     && !self.method_occurrence_canon_chirho.contains_key(id_chirho)
                     && !self.module_local_binder_ids_chirho.contains(id_chirho)
+                    && !self.module_source_binder_ids_chirho.contains(id_chirho)
             })
             .map(|(id_chirho, _)| *id_chirho)
             .min();
@@ -279,6 +287,10 @@ impl DictPassCtxChirho {
                 ));
             self.module_bound_ids_chirho
                 .insert(binding_chirho.binder_chirho.id_chirho);
+            if !is_compiler_internal_name_chirho(&binding_chirho.binder_chirho.name_chirho) {
+                self.module_source_binder_ids_chirho
+                    .insert(binding_chirho.binder_chirho.id_chirho);
+            }
             collect_binders_chirho(
                 &binding_chirho.rhs_chirho,
                 &mut self.module_local_binder_ids_chirho,
@@ -337,6 +349,61 @@ impl DictPassCtxChirho {
             .iter()
             .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == name_chirho)
             .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+    }
+
+    /// The body-backed binding a generated Prelude dependency names: the compiler's own,
+    /// never a top-level function the program wrote under that source name. A program's
+    /// hidden-and-redefined `foldl` took row 552's sum fold this way (row 597).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn lookup_compiler_owned_name_id_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
+        self.lookup_body_backed_name_id_chirho(name_chirho)
+            .filter(|id_chirho| !self.module_source_binder_ids_chirho.contains(id_chirho))
+            .or_else(|| {
+                self.generated_bindings_chirho
+                    .iter()
+                    .map(|binding_chirho| &binding_chirho.binder_chirho)
+                    .find(|binder_chirho| {
+                        binder_chirho.name_chirho == name_chirho
+                            && !self
+                                .module_source_binder_ids_chirho
+                                .contains(&binder_chirho.id_chirho)
+                    })
+                    .map(|binder_chirho| binder_chirho.id_chirho)
+            })
+    }
+
+    /// Give each compiler-owned binding that shares a source name with one of the
+    /// program's top-level functions a `$prelude_` spelling. The natives name top-level
+    /// functions by spelling, so the program's own `foldl` and the compiler's would
+    /// otherwise define one symbol twice, or one silently (row 597).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn spell_compiler_owned_apart_chirho(
+        &mut self,
+        generated_chirho: &mut [CoreBindingChirho],
+        module_chirho: &CoreModuleChirho,
+    ) {
+        let program_names_chirho: HashSet<&str> = module_chirho
+            .bindings_chirho
+            .iter()
+            .map(|binding_chirho| &binding_chirho.binder_chirho)
+            .filter(|binder_chirho| {
+                self.module_source_binder_ids_chirho
+                    .contains(&binder_chirho.id_chirho)
+            })
+            .map(|binder_chirho| binder_chirho.name_chirho.as_str())
+            .collect();
+        for binding_chirho in generated_chirho {
+            let binder_chirho = &mut binding_chirho.binder_chirho;
+            if program_names_chirho.contains(binder_chirho.name_chirho.as_str())
+                && !self
+                    .module_source_binder_ids_chirho
+                    .contains(&binder_chirho.id_chirho)
+            {
+                binder_chirho.name_chirho = format!("$prelude_{}", binder_chirho.name_chirho);
+                self.names_chirho
+                    .insert(binder_chirho.id_chirho, binder_chirho.name_chirho.clone());
+            }
+        }
     }
 
     fn lookup_dispatch_body_name_id_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
@@ -544,6 +611,15 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)
+}
+
+/// Whether `name_chirho` is the compiler's own spelling (`$prim_…`, `$f…`, `$w…`), which
+/// no program can write. `$` and `$!` are source operators.
+fn is_compiler_internal_name_chirho(name_chirho: &str) -> bool {
+    name_chirho
+        .strip_prefix('$')
+        .and_then(|rest_chirho| rest_chirho.chars().next())
+        .is_some_and(|first_chirho| first_chirho.is_alphanumeric() || first_chirho == '_')
 }
 
 /// Every binder inside `expr_chirho`: lambda, `let` and `case` binders and each

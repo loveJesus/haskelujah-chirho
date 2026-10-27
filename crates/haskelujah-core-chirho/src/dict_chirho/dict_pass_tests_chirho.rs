@@ -1038,7 +1038,9 @@ fn a_generated_prelude_binding_never_takes_a_local_binders_id_chirho() {
 
 /// Row 594: the program's own top-level `length` (id 3) beside a free use of the Prelude's
 /// (id 5), as `import Prelude hiding (length)` with a qualified `P.length` gives. The
-/// generated `length` binds the free id in every pass, never the program's binder.
+/// generated `length` binds the free id in every pass, never the program's binder. Row
+/// 597 spells it `$prelude_length`, apart from the program's `length`, which keeps its
+/// name.
 #[test]
 fn a_generated_prelude_binding_takes_the_free_id_beside_a_top_level_namesake_chirho() {
     let bindings_chirho = vec![
@@ -1056,8 +1058,83 @@ fn a_generated_prelude_binding_takes_the_free_id_beside_a_top_level_namesake_chi
         },
     ];
     let names_chirho = [(1, "useChirho"), (3, "length"), (5, "length")];
-    for mut ids_chirho in named_ids_per_pass_chirho(&bindings_chirho, &names_chirho, "length") {
-        ids_chirho.sort();
-        assert_eq!(ids_chirho, vec![CoreIdChirho(3), CoreIdChirho(5)]);
+    for _ in 0..16 {
+        let result_chirho = standard_pass_chirho(bindings_chirho.clone(), &names_chirho);
+        assert_eq!(
+            ids_named_chirho(&result_chirho, "length"),
+            vec![CoreIdChirho(3)]
+        );
+        assert_eq!(
+            ids_named_chirho(&result_chirho, "$prelude_length"),
+            vec![CoreIdChirho(5)]
+        );
+    }
+}
+
+/// The ids of the bindings named `name_chirho` in one pass's module.
+fn ids_named_chirho(result_chirho: &DictPassResultChirho, name_chirho: &str) -> Vec<CoreIdChirho> {
+    named_chirho(result_chirho, name_chirho)
+        .iter()
+        .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+        .collect()
+}
+
+/// Row 597: a program's own top-level `insert` (id 3) is a function it wrote, as a binary
+/// search tree's is. The generated Int `sort` calls the compiler's `insert`, a binding of
+/// its own spelled `$prelude_insert`. No generated binding reaches id 3, and the program's
+/// binding keeps its id and its name. Before, both were one binding: the program's body
+/// won, and `sort` failed on its patterns.
+#[test]
+fn generated_code_never_reaches_a_program_written_namesake_chirho() {
+    let bindings_chirho = vec![CoreBindingChirho {
+        binder_chirho: dummy_binder_chirho("insert", 3),
+        rhs_chirho: CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(99)),
+        is_rec_chirho: false,
+        inline_chirho: InlineAnnotationChirho::NoneChirho,
+    }];
+    let result_chirho = standard_pass_chirho(bindings_chirho, &[(3, "insert")]);
+    assert_eq!(
+        ids_named_chirho(&result_chirho, "insert"),
+        vec![CoreIdChirho(3)]
+    );
+    let [owned_chirho] = ids_named_chirho(&result_chirho, "$prelude_insert")[..] else {
+        panic!("one compiler-owned insert");
+    };
+    assert_ne!(owned_chirho, CoreIdChirho(3));
+    let reaches_program_chirho = |expr_chirho: &CoreExprChirho| matches!(expr_chirho, CoreExprChirho::VarChirho(id_chirho) if *id_chirho == CoreIdChirho(3));
+    assert!(
+        result_chirho
+            .module_chirho
+            .bindings_chirho
+            .iter()
+            .filter(|binding_chirho| binding_chirho.binder_chirho.id_chirho != CoreIdChirho(3))
+            .all(|binding_chirho| !any_part_chirho(
+                &binding_chirho.rhs_chirho,
+                &reaches_program_chirho
+            ))
+    );
+}
+
+/// Row 597: the compiler's own spellings, which no program can write, stay resolvable for
+/// generated code; a source operator that starts with `$` does not count as one.
+#[test]
+fn only_the_compilers_own_spellings_are_internal_chirho() {
+    for internal_chirho in [
+        "$prim_Show_show_Bool",
+        "$fShowInt",
+        "$w",
+        "$sel_Num_+",
+        "$_x",
+    ] {
+        assert!(
+            is_compiler_internal_name_chirho(internal_chirho),
+            "{internal_chirho}"
+        );
+    }
+    for source_chirho in ["$", "$!", "foldl", "insert", "++", ""] {
+        assert!(
+            !is_compiler_internal_name_chirho(source_chirho),
+            "{source_chirho}"
+        );
     }
 }
