@@ -12,7 +12,8 @@ Base: `98b20b0e`, the exact main tip carrying row 574's progress reservation.
 - [x] Prove the guard is reached by a focused mutation.
 - [x] Update the native failure workflow.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check and gitleaks.
-- [ ] Rebase onto exact main, rerun the actual behavior controls, land, and close only row 574.
+- [x] Rebase onto exact main and rerun the actual behavior controls.
+- [ ] Land and close only row 574.
 
 Scope is `(^)` at an `Int` result with a negative integral exponent. GHC fails with the named
 `Negative exponent` payload, while main currently returns `0` silently on the interpreter, LLVM
@@ -45,3 +46,14 @@ The five negative-exponent forms fail named on the interpreter, LLVM and Craneli
 nonnegative hold prints `1`, `1024`, and `-27` on all three. Clippy reported no diagnostic on a
 changed line. Rustfmt and `git diff --check` are clean. The exact-main replay and final landing
 remain open because row 573 finished on the same base while this gate ran.
+
+## Final replay
+
+Row 573 landed first and added native Double `**` beside this row in three source files. The
+replay kept both routes; its sole content conflict was the RTS arithmetic test imports, resolved
+as their union. The replay passed all 66 RTS tests, all 58 interpreter-runtime tests, Row 573's
+all-engine `**` control, and both Int-power controls. The subsequent row 566 test-only correction
+made the long-literal control native-only; after replaying onto that exact main, the complete
+46-test `native_error_helpers_chirho` suite passed at the default 2 MiB test stack. The final
+170-test replay took 21 seconds, formatting and diff checks stayed clean, and gitleaks found no
+leaks in the row 574 commit.
