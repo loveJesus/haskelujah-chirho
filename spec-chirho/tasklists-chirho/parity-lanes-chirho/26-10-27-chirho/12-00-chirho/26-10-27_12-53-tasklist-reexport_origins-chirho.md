@@ -44,6 +44,9 @@ exact before 629 and refused natively after it.
   - core 197, naming 156, typing_integration 78 (2 ignored), and native_symbol_identity 45;
   - the driver library's 350 project, re-export, Hackage and multi-module tests;
   - a warning-free check, changed-line Clippy 0 over 982 lines, rustfmt, diff-check and gitleaks.
+- [x] Landed the exact two-commit chain on `main_chirho` at `8c3efdcf`. Independent main checks:
+  core 197/197, naming 156/156, row 642's re-export-origin controls 16/16, and a warning-free
+  workspace check. Progress row 655 records the closure.
 
 ## Residuals (not row 642)
 
