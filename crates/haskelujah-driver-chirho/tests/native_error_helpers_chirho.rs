@@ -390,6 +390,12 @@ main :: IO ()
 main = putStrLn ['a', toEnum 0, 'b']
 "#;
 
+/// The same String through `putStr`, which reads it as `putStrLn` does since row 579.
+const NUL_PUT_STR_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = putStr ['a', toEnum 0, 'b']
+"#;
+
 const NUL_STRING_CHIRHO: &str = "string: a NUL character has no native representation";
 
 #[test]
@@ -400,9 +406,11 @@ fn native_strings_carry_code_points_everywhere_chirho() {
 /// The interpreter keeps the NUL; natively it fails by one named line instead of truncating.
 #[test]
 fn a_nul_character_fails_named_natively_chirho() {
-    for (source_chirho, expected_chirho) in
-        [(NUL_LITERAL_CHIRHO, "3\n"), (NUL_PACKED_CHIRHO, "a\0b\n")]
-    {
+    for (source_chirho, expected_chirho) in [
+        (NUL_LITERAL_CHIRHO, "3\n"),
+        (NUL_PACKED_CHIRHO, "a\0b\n"),
+        (NUL_PUT_STR_CHIRHO, "a\0b"),
+    ] {
         let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
             source_chirho,
             &mut SourceMapChirho::new_chirho(),
@@ -541,6 +549,58 @@ fn appends_and_literal_tails_read_whole_everywhere_chirho() {
         STRING_APPEND_TAILS_CHIRHO,
         "<cba>\nabc\nabcd\n\"abc\"\nxbc\n4\nabcd\n\"<ba\"\nxxy\n",
     );
+}
+
+// ── Row 579: lazy Core text functions, and putStr reading a list ─────────
+
+/// `words`, `lines`, `unwords`, `unlines` and `intercalate` over Strings built at run time,
+/// empty and terminal cases, GHC's `isSpace` set (U+0085 and U+2028 are no spaces), and
+/// infinite input. They were strict primops that read only a literal: a run-time String read
+/// as "", and an infinite one never ended. GHC 9.14.1's output is the expected text.
+const REPORT_TEXT_CHIRHO: &str = r#"module Main where
+import Data.Char (isSpace)
+import Data.List (intercalate)
+main :: IO ()
+main = do
+  print (words (reverse "b a"))
+  print (lines (reverse "\n\nb\n\na"))
+  putStrLn (unwords ["x", map succ "ab"])
+  print (unlines [reverse "ba", "cd"])
+  putStrLn (intercalate ", " [reverse "ba", "cd"])
+  print (words "", lines "")
+  print (unwords [], unlines [])
+  print (lines "a\n", lines "\n\n")
+  print (words "a\tb\nc\x85\&d\xa0\&e\x3000\&f")
+  print (map isSpace "\t\x85\xa0\x2028\x3000\&a")
+  print (take 1 (lines (cycle "a\n")))
+  print (take 2 (words (cycle "a ")))
+  putStrLn (take 3 (head (lines (repeat 'a'))))
+  putStrLn (take 5 (unwords (repeat "ab")))
+  putStrLn (take 7 (intercalate ", " (repeat "ab")))
+"#;
+
+/// `putStr` of a literal, a String built at run time, a cons onto a literal, and `unlines`.
+/// Natively `putStr` read a list as a buffer and printed nothing. GHC 9.14.1's output.
+const PUT_STR_LISTS_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = do
+  putStr "ab\n"
+  putStr (reverse "\ndc")
+  putStr ('e' : "f\n")
+  putStr (unlines [reverse "hg", "ij"])
+"#;
+
+#[test]
+fn report_text_functions_are_lazy_and_exact_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        REPORT_TEXT_CHIRHO,
+        "[\"a\",\"b\"]\n[\"a\",\"\",\"b\",\"\"]\nx bc\n\"ab\\ncd\\n\"\nab, cd\n([],[])\n(\"\",\"\")\n([\"a\"],[\"\",\"\"])\n[\"a\",\"b\",\"c\\133d\",\"e\",\"f\"]\n[True,False,True,False,True,False]\n[\"a\"]\n[\"a\",\"a\"]\naaa\nab ab\nab, ab,\n",
+    );
+}
+
+#[test]
+fn put_str_reads_every_string_representation_everywhere_chirho() {
+    assert_prints_everywhere_chirho(PUT_STR_LISTS_CHIRHO, "ab\ncd\nef\ngh\nij\n");
 }
 
 // ── R1: an unbound reference fails named, and only when demanded ──────────

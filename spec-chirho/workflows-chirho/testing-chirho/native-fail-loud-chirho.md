@@ -113,7 +113,7 @@ flowchart LR
   - Int `show` and the pure `main` result use the checked formatters.
 - Driver (`haskelujah-driver-chirho/tests/native_error_helpers_chirho.rs`): one test per route per backend, with exact harness text. The shared error-helper programs require exit 1 and their exact line.
   - The R1 unbound-name fixtures use `realToFrac`, which still needs its Real and Fractional dictionaries. Row 548 bound
-    the first fixture's `scanl1`, with `foldl1` and `until`, in `dict_chirho/prelude_chirho/report_folds_chirho.rs`. Its
+    the first fixture's `scanl1`, with `foldl1` and `until`, in `dict_chirho/prelude_chirho/report_chirho/report_folds_chirho.rs`. Its
     controls print GHC's answers on all three engines, and an empty `foldl1` fails named as GHC's does.
 
 ## Collection keeps what roots reach (row 566)
@@ -160,6 +160,10 @@ gpt_chirho #29139. A native String is a NUL-terminated UTF-8 buffer or a list of
   - `pack` and the native show reader read a forced tail that is no registered cell as the
     literal's UTF-8 buffer. Only these two walkers do; `native_maps` keeps its strict cells.
   - The interpreter's `++#` keeps a literal tail's characters.
+  - Row 579: `haskelujah_put_str_chirho` reads its String through
+    `native_c_string_bits_chirho`, as `putStrLn` does. A list prints whole; before, natively it
+    was read as a buffer and printed nothing. A NUL fails by the same named line. Control:
+    `put_str_reads_every_string_representation_everywhere_chirho`.
   - Controls: `appends_and_literal_tails_read_whole_everywhere_chirho`;
     `append_str_keeps_both_operands_across_a_collection_in_packing_chirho`;
     `pack_reads_a_literal_tail_at_any_address_chirho`.

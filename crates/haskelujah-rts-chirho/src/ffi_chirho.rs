@@ -730,9 +730,11 @@ pub extern "C" fn haskelujah_get_line_chirho() -> u64 {
     alloc_c_string_chirho(line_chirho.as_bytes())
 }
 
-/// Print a NUL-terminated string WITHOUT a trailing newline.
+/// Print a native String WITHOUT a trailing newline. It reads the String as
+/// `haskelujah_put_str_ln_chirho` does: a list is packed first (row 579).
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_put_str_chirho(ptr_bits_chirho: u64) -> i64 {
+    let ptr_bits_chirho = native_c_string_bits_chirho(ptr_bits_chirho);
     if ptr_bits_chirho == 0 {
         return 0;
     }

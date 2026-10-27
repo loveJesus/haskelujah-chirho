@@ -10,8 +10,8 @@
 //! workflow: testing-chirho/native-fail-loud-chirho
 
 use super::{
-    AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
-    CoreLitChirho, DictPassCtxChirho, InlineAnnotationChirho, SpanChirho, TyChirho, TyVarChirho,
+    AltConChirho, CoreAltChirho, CoreExprChirho, CoreLitChirho, DictPassCtxChirho, TyChirho,
+    TyVarChirho, alt_chirho, apply_chirho, lambdas_chirho, var_chirho,
 };
 
 /// GHC 9.14.1's first stderr line for `foldl1` on an empty list.
@@ -19,50 +19,6 @@ const EMPTY_FOLDL1_CHIRHO: &str = "Prelude.foldl1: empty list";
 
 /// GHC 9.14.1's first stderr line for `foldr1` on an empty list.
 const EMPTY_FOLDR1_CHIRHO: &str = "Prelude.foldr1: empty list";
-
-fn var_chirho(binder_chirho: &BinderChirho) -> CoreExprChirho {
-    CoreExprChirho::VarChirho(binder_chirho.id_chirho)
-}
-
-/// `fun arg1 arg2 ...` as nested applications.
-fn apply_chirho(fun_chirho: CoreExprChirho, args_chirho: Vec<CoreExprChirho>) -> CoreExprChirho {
-    args_chirho
-        .into_iter()
-        .fold(fun_chirho, |fun_chirho, arg_chirho| {
-            CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(fun_chirho),
-                arg_chirho: Box::new(arg_chirho),
-            }
-        })
-}
-
-/// `\b1 -> \b2 -> ... -> body`.
-fn lambdas_chirho(
-    binders_chirho: Vec<BinderChirho>,
-    body_chirho: CoreExprChirho,
-) -> CoreExprChirho {
-    binders_chirho
-        .into_iter()
-        .rev()
-        .fold(body_chirho, |body_chirho, binder_chirho| {
-            CoreExprChirho::LamChirho {
-                binder_chirho,
-                body_chirho: Box::new(body_chirho),
-            }
-        })
-}
-
-fn alt_chirho(
-    con_chirho: &str,
-    binders_chirho: Vec<BinderChirho>,
-    rhs_chirho: CoreExprChirho,
-) -> CoreAltChirho {
-    CoreAltChirho {
-        con_chirho: AltConChirho::DataConChirho(con_chirho.to_string()),
-        binders_chirho,
-        rhs_chirho,
-    }
-}
 
 /// The default alternative an empty list takes: `error` with GHC's message.
 fn empty_list_failure_alt_chirho(message_chirho: &str) -> CoreAltChirho {
@@ -81,7 +37,7 @@ fn empty_list_failure_alt_chirho(message_chirho: &str) -> CoreAltChirho {
 impl DictPassCtxChirho {
     /// Generate the report's `scanl1`, `foldl1`, `foldr1` and `until`.
     /// workflow: testing-chirho/native-fail-loud-chirho
-    pub(super) fn generate_report_folds_prelude_chirho(&mut self) {
+    pub(in crate::dict_chirho::prelude_chirho) fn generate_report_folds_prelude_chirho(&mut self) {
         let a_chirho = TyChirho::VarChirho(TyVarChirho(9970));
         let list_a_chirho = TyChirho::ListChirho(Box::new(a_chirho.clone()));
         let step_ty_chirho =
@@ -267,26 +223,5 @@ impl DictPassCtxChirho {
                 true,
             );
         }
-    }
-
-    fn push_report_binding_chirho(
-        &mut self,
-        id_chirho: CoreIdChirho,
-        name_chirho: &str,
-        ty_chirho: TyChirho,
-        rhs_chirho: CoreExprChirho,
-        is_rec_chirho: bool,
-    ) {
-        self.generated_bindings_chirho.push(CoreBindingChirho {
-            binder_chirho: BinderChirho {
-                id_chirho,
-                name_chirho: name_chirho.to_string(),
-                ty_chirho,
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            },
-            rhs_chirho,
-            is_rec_chirho,
-            inline_chirho: InlineAnnotationChirho::NoneChirho,
-        });
     }
 }

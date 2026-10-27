@@ -16,7 +16,7 @@ pub(super) mod ordering_extrema_chirho;
 pub(super) mod ordering_tests_chirho;
 mod print_via_show_chirho;
 mod real_float_predicates_chirho;
-mod report_folds_chirho;
+mod report_chirho;
 pub(crate) use non_empty_chirho::TO_LIST_ROUTE_CHIRHO;
 pub(crate) use print_via_show_chirho::PRINT_VIA_SHOW_CHIRHO;
 use std::collections::HashMap;
@@ -1202,122 +1202,6 @@ impl DictPassCtxChirho {
             });
         }
 
-        // words :: String -> [String]
-        // words s = wordsStr# s
-        {
-            let str_ty_chirho = TyChirho::string_chirho();
-            let list_str_ty_chirho = TyChirho::ListChirho(Box::new(str_ty_chirho.clone()));
-            let words_id_chirho = self.resolve_or_fresh_id_chirho("words");
-            let s_chirho = self.fresh_binder_chirho("s", str_ty_chirho.clone());
-            let body_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "wordsStr#".to_string(),
-                args_chirho: vec![CoreExprChirho::VarChirho(s_chirho.id_chirho)],
-            };
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: s_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-            let binder_chirho = BinderChirho {
-                id_chirho: words_id_chirho,
-                name_chirho: "words".to_string(),
-                ty_chirho: TyChirho::fun_chirho(str_ty_chirho, list_str_ty_chirho),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho,
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
-
-        // unwords :: [String] -> String
-        // unwords xs = unwordsStr# xs
-        {
-            let str_ty_chirho = TyChirho::string_chirho();
-            let list_str_ty_chirho = TyChirho::ListChirho(Box::new(str_ty_chirho.clone()));
-            let unwords_id_chirho = self.resolve_or_fresh_id_chirho("unwords");
-            let xs_chirho = self.fresh_binder_chirho("xs", list_str_ty_chirho.clone());
-            let body_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "unwordsStr#".to_string(),
-                args_chirho: vec![CoreExprChirho::VarChirho(xs_chirho.id_chirho)],
-            };
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: xs_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-            let binder_chirho = BinderChirho {
-                id_chirho: unwords_id_chirho,
-                name_chirho: "unwords".to_string(),
-                ty_chirho: TyChirho::fun_chirho(list_str_ty_chirho, str_ty_chirho),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho,
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
-
-        // lines :: String -> [String]
-        // lines s = lines# s
-        {
-            let str_ty_chirho = TyChirho::string_chirho();
-            let list_str_ty_chirho = TyChirho::ListChirho(Box::new(str_ty_chirho.clone()));
-            let lines_id_chirho = self.resolve_or_fresh_id_chirho("lines");
-            let s_chirho = self.fresh_binder_chirho("s", str_ty_chirho.clone());
-            let body_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "lines#".to_string(),
-                args_chirho: vec![CoreExprChirho::VarChirho(s_chirho.id_chirho)],
-            };
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: s_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-            let binder_chirho = BinderChirho {
-                id_chirho: lines_id_chirho,
-                name_chirho: "lines".to_string(),
-                ty_chirho: TyChirho::fun_chirho(str_ty_chirho, list_str_ty_chirho),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho,
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
-
-        // unlines :: [String] -> String
-        // unlines xs = unlines# xs
-        {
-            let str_ty_chirho = TyChirho::string_chirho();
-            let list_str_ty_chirho = TyChirho::ListChirho(Box::new(str_ty_chirho.clone()));
-            let unlines_id_chirho = self.resolve_or_fresh_id_chirho("unlines");
-            let xs_chirho = self.fresh_binder_chirho("xs", list_str_ty_chirho.clone());
-            let body_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "unlines#".to_string(),
-                args_chirho: vec![CoreExprChirho::VarChirho(xs_chirho.id_chirho)],
-            };
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: xs_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-            let binder_chirho = BinderChirho {
-                id_chirho: unlines_id_chirho,
-                name_chirho: "unlines".to_string(),
-                ty_chirho: TyChirho::fun_chirho(list_str_ty_chirho, str_ty_chirho),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho,
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
-
         // concat :: [[a]] -> [a]
         // concat [] = []; concat (xs:xss) = append xs (concat xss)
         {
@@ -1376,45 +1260,6 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 rhs_chirho,
                 is_rec_chirho: true,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
-
-        // intercalate :: String -> [String] -> String
-        // intercalate sep xs = intercalateStr# sep xs
-        {
-            let str_ty_chirho = TyChirho::string_chirho();
-            let list_str_ty_chirho = TyChirho::ListChirho(Box::new(str_ty_chirho.clone()));
-            let intercalate_id_chirho = self.resolve_or_fresh_id_chirho("intercalate");
-            let sep_chirho = self.fresh_binder_chirho("sep", str_ty_chirho.clone());
-            let xs_chirho = self.fresh_binder_chirho("xs", list_str_ty_chirho.clone());
-            let body_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "intercalateStr#".to_string(),
-                args_chirho: vec![
-                    CoreExprChirho::VarChirho(sep_chirho.id_chirho),
-                    CoreExprChirho::VarChirho(xs_chirho.id_chirho),
-                ],
-            };
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: sep_chirho,
-                body_chirho: Box::new(CoreExprChirho::LamChirho {
-                    binder_chirho: xs_chirho,
-                    body_chirho: Box::new(body_chirho),
-                }),
-            };
-            let binder_chirho = BinderChirho {
-                id_chirho: intercalate_id_chirho,
-                name_chirho: "intercalate".to_string(),
-                ty_chirho: TyChirho::fun_chirho(
-                    str_ty_chirho.clone(),
-                    TyChirho::fun_chirho(list_str_ty_chirho, str_ty_chirho),
-                ),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho,
-                rhs_chirho,
-                is_rec_chirho: false,
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
             });
         }
@@ -3508,6 +3353,7 @@ impl DictPassCtxChirho {
 
         // ── The report's scanl1, foldl1 and until, over scanl and foldl (row 548) ──
         self.generate_report_folds_prelude_chirho();
+        self.generate_report_text_prelude_chirho();
 
         // ── Fractional (^^) after its Double and Int proofs (row 577) ──
         self.generate_fractional_power_prelude_chirho();
@@ -8698,7 +8544,6 @@ impl DictPassCtxChirho {
             ("isAlphaNum", "isAlphaNum#"),
             ("isUpper", "isUpper#"),
             ("isLower", "isLower#"),
-            ("isSpace", "isSpace#"),
         ] {
             let fn_id_chirho = self.resolve_or_fresh_id_chirho(name_chirho);
             let c_chirho = self.fresh_binder_chirho("c", char_ty_chirho.clone());

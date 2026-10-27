@@ -78,7 +78,7 @@ flowchart TD
 
 ## Report folds with generated bodies (row 558)
 
-- `foldl1`, `foldr1` and `until` have generated Core bodies (`report_folds_chirho.rs`; row 548 for
+- `foldl1`, `foldr1` and `until` have generated Core bodies (`report_chirho/report_folds_chirho.rs`; row 548 for
   `foldl1` and `until`, row 558 for `foldr1`). Their builtin schemes name the report's types:
   `(a -> a -> a) -> [a] -> a` for both folds, as `foldl1'` already had, and
   `(a -> Bool) -> (a -> a) -> a -> a` for `until`.
