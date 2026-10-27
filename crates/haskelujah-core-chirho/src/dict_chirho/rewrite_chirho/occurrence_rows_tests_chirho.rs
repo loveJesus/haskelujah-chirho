@@ -17,6 +17,7 @@ use crate::expr_chirho::{
 };
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::prelude_chirho::fractional_power_chirho::FRACTIONAL_POWER_DOUBLE_INT_CHIRHO;
 
 fn con_chirho(name_chirho: &str) -> TyChirho {
     TyChirho::ConChirho(name_chirho.to_string())
@@ -31,6 +32,61 @@ fn app_chirho(fun_chirho: CoreExprChirho, arg_chirho: CoreExprChirho) -> CoreExp
         fun_chirho: Box::new(fun_chirho),
         arg_chirho: Box::new(arg_chirho),
     }
+}
+
+/// Row 577: `(^^)` consumes both of its reference predicates and only body-backed
+/// implementation rows. A dangling helper or division name, or a non-Int exponent proof,
+/// keeps the existing named-failure route.
+#[test]
+fn fractional_power_requires_two_exact_proofs_and_body_backed_rows_chirho() {
+    let names_chirho = HashMap::from([
+        (CoreIdChirho(1), "^^".to_string()),
+        (
+            CoreIdChirho(2),
+            FRACTIONAL_POWER_DOUBLE_INT_CHIRHO.to_string(),
+        ),
+        (CoreIdChirho(3), "$prim_Fractional_/_Double".to_string()),
+    ]);
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+    pass_chirho.reference_evidence_chirho.insert(
+        CoreIdChirho(1),
+        vec![
+            ("Fractional".to_string(), Some("Double".to_string())),
+            ("Integral".to_string(), Some("Int".to_string())),
+        ],
+    );
+    assert_eq!(
+        pass_chirho.evidenced_fractional_power_chirho(CoreIdChirho(1)),
+        None
+    );
+
+    for (id_chirho, name_chirho) in [
+        (2, FRACTIONAL_POWER_DOUBLE_INT_CHIRHO),
+        (3, "$prim_Fractional_/_Double"),
+    ] {
+        pass_chirho
+            .generated_bindings_chirho
+            .push(binding_chirho(id_chirho, name_chirho));
+    }
+    assert_eq!(
+        pass_chirho.evidenced_fractional_power_chirho(CoreIdChirho(1)),
+        Some(app_chirho(var_expr_chirho(2), var_expr_chirho(3)))
+    );
+
+    pass_chirho.reference_evidence_chirho.insert(
+        CoreIdChirho(1),
+        vec![
+            ("Fractional".to_string(), Some("Double".to_string())),
+            (
+                "Integral".to_string(),
+                Some("IntegerLikeChirho".to_string()),
+            ),
+        ],
+    );
+    assert_eq!(
+        pass_chirho.evidenced_fractional_power_chirho(CoreIdChirho(1)),
+        None
+    );
 }
 
 /// A pass holding one occurrence (id 2) of `describeChirho` (canonical id 1),

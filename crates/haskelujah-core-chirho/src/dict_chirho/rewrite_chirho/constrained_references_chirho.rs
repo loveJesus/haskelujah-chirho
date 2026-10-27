@@ -303,6 +303,14 @@ impl DictPassCtxChirho {
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
         syntactic_key_chirho: &dyn Fn() -> Option<String>,
     ) -> Option<CoreExprChirho> {
+        // `(^^)` is a constrained Prelude function, not a class method. Its occurrence still
+        // shares this canonicalization path because desugaring gives every constrained reference
+        // an occurrence id. Consume its full two-predicate proof before the single-method proof
+        // path can restore the missing canonical binding (row 577).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if let Some(power_chirho) = self.evidenced_fractional_power_chirho(head_id_chirho) {
+            return Some(power_chirho);
+        }
         let (method_name_chirho, canonical_id_chirho) =
             self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
         // A constrained reference with evidence keeps its occurrence id only when

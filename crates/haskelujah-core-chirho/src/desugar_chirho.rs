@@ -990,6 +990,7 @@ impl DesugarCtxChirho {
         &mut self,
         op_name_chirho: &str,
         op_origin_chirho: Option<OriginIdChirho>,
+        op_span_chirho: SpanChirho,
         left_chirho: CoreExprChirho,
         right_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
@@ -1031,6 +1032,8 @@ impl DesugarCtxChirho {
         }
         // Fallback: operator as variable reference
         let op_id_chirho = self.resolve_var_chirho(op_name_chirho);
+        let op_id_chirho =
+            self.reference_occurrence_chirho(op_name_chirho, op_id_chirho, op_span_chirho);
         self.record_occurrence_provenance_chirho(
             op_id_chirho,
             op_origin_chirho,
@@ -2767,6 +2770,11 @@ impl DesugarCtxChirho {
                 // Otherwise: a `op` b → (op a) b
                 let op_core_chirho = {
                     let id_chirho = self.resolve_var_chirho(op_name_chirho);
+                    let id_chirho = self.reference_occurrence_chirho(
+                        op_name_chirho,
+                        id_chirho,
+                        op_chirho.span_chirho(),
+                    );
                     self.record_occurrence_provenance_chirho(
                         id_chirho,
                         op_chirho.origin_chirho(),
@@ -2804,6 +2812,7 @@ impl DesugarCtxChirho {
                 let body_chirho = self.build_section_body_chirho(
                     op_name_chirho,
                     op_chirho.origin_chirho(),
+                    op_chirho.span_chirho(),
                     CoreExprChirho::VarChirho(y_id_chirho),
                     arg_core_chirho,
                 );
@@ -2832,6 +2841,7 @@ impl DesugarCtxChirho {
                 let body_chirho = self.build_section_body_chirho(
                     op_name_chirho,
                     op_chirho.origin_chirho(),
+                    op_chirho.span_chirho(),
                     arg_core_chirho,
                     CoreExprChirho::VarChirho(y_id_chirho),
                 );

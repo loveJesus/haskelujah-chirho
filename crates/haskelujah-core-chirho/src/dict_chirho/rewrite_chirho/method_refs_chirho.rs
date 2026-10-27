@@ -224,6 +224,52 @@ impl DictPassCtxChirho {
                                 local_instance_dicts_chirho,
                             );
                         }
+                        // `(^^)` has two independently proved type variables. Its first value
+                        // argument is known Double from the Fractional proof, so rewrite that
+                        // argument under this exact key before its blind `negate#` or numeric
+                        // literal can default to Int. The exponent keeps its own Integral proof.
+                        // workflow: language-features-chirho/dictionary-evidence-chirho
+                        if let Some(power_chirho) =
+                            self.evidenced_fractional_power_chirho(*head_id_chirho)
+                        {
+                            return spine_args_chirho.iter().rev().enumerate().fold(
+                                power_chirho,
+                                |fun_acc_chirho, (index_chirho, spine_arg_chirho)| {
+                                    let rewritten_arg_chirho =
+                                        if index_chirho == 0 {
+                                            self.rewrite_expr_with_type_key_chirho(
+                                                spine_arg_chirho,
+                                                dict_vars_chirho,
+                                                evidence_classes_chirho,
+                                                local_type_keys_chirho,
+                                                local_instance_dicts_chirho,
+                                                "Double",
+                                            )
+                                            .unwrap_or_else(|| {
+                                                self.rewrite_method_refs_with_locals_chirho(
+                                                    spine_arg_chirho,
+                                                    dict_vars_chirho,
+                                                    evidence_classes_chirho,
+                                                    local_type_keys_chirho,
+                                                    local_instance_dicts_chirho,
+                                                )
+                                            })
+                                        } else {
+                                            self.rewrite_method_refs_with_locals_chirho(
+                                                spine_arg_chirho,
+                                                dict_vars_chirho,
+                                                evidence_classes_chirho,
+                                                local_type_keys_chirho,
+                                                local_instance_dicts_chirho,
+                                            )
+                                        };
+                                    CoreExprChirho::AppChirho {
+                                        fun_chirho: Box::new(fun_acc_chirho),
+                                        arg_chirho: Box::new(rewritten_arg_chirho),
+                                    }
+                                },
+                            );
+                        }
                         // An evidenced `sum` or `product` (row 552), or `max`, `min`,
                         // `maximum` or `minimum` (row 565), at the head of an application
                         // takes its proof as an argument does.

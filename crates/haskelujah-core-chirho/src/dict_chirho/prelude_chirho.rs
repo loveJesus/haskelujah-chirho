@@ -6,6 +6,7 @@
 #![allow(unused_imports)]
 mod char_enum_chirho;
 mod demand_chirho;
+pub(super) mod fractional_power_chirho;
 mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
@@ -3505,6 +3506,9 @@ impl DictPassCtxChirho {
 
         // ── The report's scanl1, foldl1 and until, over scanl and foldl (row 548) ──
         self.generate_report_folds_prelude_chirho();
+
+        // ── Fractional (^^) after its Double and Int proofs (row 577) ──
+        self.generate_fractional_power_prelude_chirho();
 
         // ── The Ordering tests the compare route reads (row 551) ──
         self.generate_ordering_tests_prelude_chirho();

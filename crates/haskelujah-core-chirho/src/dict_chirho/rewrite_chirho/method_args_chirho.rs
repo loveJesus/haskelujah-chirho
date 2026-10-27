@@ -24,6 +24,13 @@ impl DictPassCtxChirho {
         if self.local_shadow_ids_chirho.borrow().contains(&id_chirho) {
             return CoreExprChirho::VarChirho(id_chirho);
         }
+        // Typed higher-order arguments and section bodies enter through this method-var path,
+        // not the ordinary application-spine path. Consume `(^^)`'s two-predicate proof here
+        // before the generic method logic can restore its missing canonical binding (row 577).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if let Some(power_chirho) = self.evidenced_fractional_power_chirho(id_chirho) {
+            return power_chirho;
+        }
         // Dictionary evidence: an occurrence the checker proved dispatches by
         // that proof, before any syntactic guess — the engine's prim row when
         // it has one, else the keyed selector path below with the proven key.

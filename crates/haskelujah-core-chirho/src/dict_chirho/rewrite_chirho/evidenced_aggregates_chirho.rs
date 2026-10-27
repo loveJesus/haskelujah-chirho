@@ -20,6 +20,7 @@
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::prelude_chirho::fractional_power_chirho::FRACTIONAL_POWER_DOUBLE_INT_CHIRHO;
 use crate::dict_chirho::prelude_chirho::ordering_extrema_chirho::ORDERING_EXTREMA_CHIRHO;
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
 
@@ -27,6 +28,42 @@ use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
 const INT_SHAPED_ORD_KEYS_CHIRHO: [&str; 3] = ["Int", "Char", "Bool"];
 
 impl DictPassCtxChirho {
+    /// A `(^^)` reference proved at both `Fractional Double` and `Integral Int`, as the
+    /// concrete helper applied to its body-backed reciprocal row. Any absent, open or
+    /// unsupported proof pair keeps the canonical named-failure route.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn evidenced_fractional_power_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+    ) -> Option<CoreExprChirho> {
+        let name_chirho = self.names_chirho.get(&id_chirho)?;
+        if name_chirho.rsplit('.').next() != Some("^^") {
+            return None;
+        }
+        let evidence_chirho = self.reference_evidence_chirho.get(&id_chirho)?;
+        let fractional_key_chirho = evidence_chirho
+            .iter()
+            .find(|(class_chirho, _)| class_chirho == "Fractional")?
+            .1
+            .as_deref();
+        let integral_key_chirho = evidence_chirho
+            .iter()
+            .find(|(class_chirho, _)| class_chirho == "Integral")?
+            .1
+            .as_deref();
+        if fractional_key_chirho != Some("Double") || integral_key_chirho != Some("Int") {
+            return None;
+        }
+        let divide_chirho =
+            self.lookup_dispatch_body_name_id_chirho("$prim_Fractional_/_Double")?;
+        let helper_chirho =
+            self.lookup_body_backed_name_id_chirho(FRACTIONAL_POWER_DOUBLE_INT_CHIRHO)?;
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::VarChirho(divide_chirho)),
+        })
+    }
+
     /// An evidenced `sum` or `product` occurrence as a fold over its element type's
     /// own `Num` rows, or None.
     /// workflow: print-show-evidence-chirho
@@ -115,7 +152,8 @@ impl DictPassCtxChirho {
         &self,
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
-        self.evidenced_aggregate_chirho(id_chirho)
+        self.evidenced_fractional_power_chirho(id_chirho)
+            .or_else(|| self.evidenced_aggregate_chirho(id_chirho))
             .or_else(|| self.evidenced_extremum_chirho(id_chirho))
     }
 

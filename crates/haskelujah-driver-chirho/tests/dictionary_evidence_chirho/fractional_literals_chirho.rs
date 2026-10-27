@@ -133,3 +133,18 @@ fn integer_literals_at_int_still_dispatch_at_int_chirho() {
     );
     assert_native_chirho("IntLiteralsChirho.hs", program_chirho, "3\n1024\n");
 }
+
+/// `(^^) :: (Fractional a, Integral b) => a -> b -> a` needs both predicate
+/// proofs. GHC 9.14.1's output for this source is recorded exactly; the precision
+/// line also proves that the implementation reuses `(^)` rather than libm `pow`.
+#[test]
+fn fractional_power_answers_as_ghc_everywhere_chirho() {
+    let program_chirho = "module Main where\nbaseChirho :: Double\nbaseChirho = 1.5\nexponentChirho :: Integer\nexponentChirho = -2\nmain :: IO ()\nmain = do\n  print (2 ^^ 3 :: Double)\n  print (2 ^^ (-3) :: Double)\n  print (0 ^^ 0 :: Double)\n  print (0 ^^ (-1) :: Double)\n  print ((-2) ^^ (-3) :: Double)\n  print (1.1 ^^ 50 :: Double)\n  print (map (2 ^^) ([-2, 0, 3] :: [Int]) :: [Double])\n  print (map (^^ 2) ([1.5, 2.5] :: [Double]))\n  print (baseChirho ^^ exponentChirho)\n";
+    let ghc_chirho = "8.0\n0.125\n1.0\nInfinity\n-0.125\n117.39085287969571\n[0.25,1.0,8.0]\n[2.25,6.25]\n0.4444444444444444\n";
+    assert_eq!(
+        run_chirho("FractionalPowerChirho.hs", program_chirho),
+        ghc_chirho,
+        "FractionalPowerChirho.hs interpreter"
+    );
+    assert_native_chirho("FractionalPowerChirho.hs", program_chirho, ghc_chirho);
+}

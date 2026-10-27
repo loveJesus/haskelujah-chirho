@@ -51,6 +51,26 @@ flowchart TD
   - It used to answer `Int` by name. So a method keyed from its first argument, as `/` is, missed the Fractional row whenever that argument was a literal: `1 / 2 :: Double`, a Double signature, and `7 / 2` under defaulting.
   - The interpreter then failed with `missing STG binding /`, and the native backends with `missing native binding /`.
   - Controls: `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
+- `(^^)` consumes both predicates in its wired-in scheme (row 577).
+  - Its scheme is `(Fractional a, Integral b) => a -> b -> a`. The driver therefore keeps the
+    full per-reference evidence list instead of collapsing the occurrence to one class/key pair.
+    The binding is present in the environment's constrained-name scan, so no `^^`-specific
+    desugaring allowlist is needed.
+  - Infix and section fallback operators now mint the same reference occurrence as a prefix use,
+    with the operator's span and provenance. Operators lowered to primops still carry no reference
+    occurrence. This makes `2 ^^ n`, `(2 ^^)` and `(^^ 2)` join the checker's two proofs without
+    widening `+`, `-`, `*`, `^` or `**` sections away from their existing primop paths.
+  - The first supported pair is `Fractional Double` and `Integral Int`; the driver already
+    normalizes a checked `Integer` exponent to the engine's `Int` row. The occurrence becomes the
+    body-backed `$fractional_power_Double_Int_chirho` helper applied to the body-backed
+    `$prim_Fractional_/_Double` row. A missing body, an open proof or another key pair keeps the
+    existing named-failure route.
+  - The helper uses row 570's `^.#`, preserving GHC.Real's repeated-squaring order. A negative
+    exponent computes `1.0 / (base ^.# negate exponent)` because the native backends deliberately
+    have no standalone `recip#` lowering. When the base is already applied, only that argument is
+    rewritten under the proved `Double` key; the exponent keeps its own `Integral` evidence.
+  - Controls: `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs` and the body-backed
+    refusal unit in `rewrite_chirho/occurrence_rows_tests_chirho.rs`.
 - The shared lazy bounded-range bindings preserve the runtime kind of their current Enum value
   when advancing it (row 569).
   - `enumFromTo` and `enumFromThenTo` are generated once for the current Int/Char representation.
@@ -626,10 +646,10 @@ flowchart TD
   primop first. Those carry no occurrence and no evidence: infix `<`, `<=`, `>`, `>=`, `div`,
   `mod`; every section of `+`, `-`, `*`, `/=`, `<`, `<=`, `>`, `>=`, `^`, `**`, and an `==`
   section without an origin; a saturated prefix `div`, `mod`, `quot` or `rem` call. Infix
-  `/=` becomes `not (==)` with no provenance. An infix or
-  section use of a constrained function that is not a method still resolves through the
-  shared canonical id: only a prefix reference mints a reference occurrence for per-predicate
-  reference evidence.
+  `/=` becomes `not (==)` with no provenance. An infix or section use of a constrained function
+  that is not a method mints a reference occurrence when it takes the fallback variable path,
+  just as a prefix use does (row 577). A constrained operator lowered to a primop still has no
+  reference occurrence or per-predicate reference evidence.
 - Class methods never mint reference occurrences (the method paths key on canonical ids);
   own-parameter evidence therefore reaches the standard method list only, and a user class
   method at a rigid variable is still dispatched by the pass's inferred parameter keys.
