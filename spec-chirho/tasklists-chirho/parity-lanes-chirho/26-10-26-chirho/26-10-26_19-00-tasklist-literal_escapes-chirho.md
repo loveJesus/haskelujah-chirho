@@ -49,3 +49,13 @@ Against GHC, 7 of 10 measured lines differed:
   - RTS 64, runtime 58, core 171, ast 18, typing 362, parser 395, LLVM 38, Cranelift 42;
   - nine driver suites 225, and the driver library's show/print/string/char/literal/escape filter 212;
   - Clippy: none of 732 warnings on a changed line; rustfmt, diff-check and gitleaks clean.
+
+## Landing record
+
+The four-commit stack replayed onto row 570 at `22497167`. Its only content conflict was the
+expected union of the independent named-failure constants in `failure_chirho.rs`. The first
+default-stack run stopped abnormally in the pre-existing long-literal control; that same control
+passed with the project's recorded `RUST_MIN_STACK=16777216`. The complete overlap gate then
+passed in 139.63 seconds: RTS 65/65, runtime 58/58, LLVM 38/38, Cranelift 42/42,
+native-error helpers 45/45, and dictionary evidence 103/103. Gitleaks found no leak in the replayed
+four-commit range. The stack landed at `2abce64b`; progress closes in the following commit.
