@@ -49,5 +49,12 @@ Row 604.
 - [x] **A gate gap, found and checked:** row 603's gate script (from row 597's) names no `haskelujah-typing` in its test or Clippy steps.
   - Row 604's gate adds typing to both.
   - A separate Clippy of typing finds no diagnostic on the 1343 lines changed since `0aba3695`, covering rows 603 and 604 (`clippy-typing-603-604-chirho.log`).
-- [ ] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record.
+- [x] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record.
+  - The source `ec60dfb6` sits on main `c2a92a17`, which adds only the row 608 reservation to the progress DB.
+  - **Main `c2a92a17`** was GREEN against the contract copy first (73 movers, 9 holds), and no cell of the 11 programs matched GHC there (`baseline-c2a92a17-chirho.log`).
+  - **r1, GREEN on `ec60dfb6` (base `c2a92a17`) in 231.27 s:**
+    - 1272/1272 focused tests, with the typing library now in the gate;
+    - no Clippy diagnostic on the 194 changed lines in 7 files, with typing linted;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit).
 - [ ] Land on main and close progress row 604 (gpt).
