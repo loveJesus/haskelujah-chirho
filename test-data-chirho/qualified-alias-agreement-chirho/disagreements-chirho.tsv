@@ -1,0 +1,685 @@
+# module	name	GHC 9.14.1 type, normalized	bare builtin scheme, normalized
+Control.Applicative	<|>	(Alternative v0) => v0 v1 -> v0 v1 -> v0 v1	v0 v1 -> v0 v1 -> v0 v1
+Control.Applicative	empty	(Alternative v0) => v0 v1	v0 v1
+Control.Applicative	liftA2	(Applicative v3) => (v0 -> v1 -> v2) -> v3 v0 -> v3 v1 -> v3 v2	(v0 -> v1 -> v2) -> v3 v0 -> v3 v1 -> v3 v2
+Control.Applicative	many	(Alternative v0) => v0 v1 -> v0 [v1]	v0 v1 -> v0 [v1]
+Control.Applicative	optional	(Alternative v0) => v0 v1 -> v0 (Maybe v1)	v0 v1 -> v0 (Maybe v1)
+Control.Applicative	some	(Alternative v0) => v0 v1 -> v0 [v1]	v0 v1 -> v0 [v1]
+Control.Arrow	first	(Arrow v0) => v0 v1 v2 -> v0 (v1, v3) (v2, v3)	(Bifunctor v2) => (v0 -> v1) -> v2 v0 v3 -> v2 v1 v3
+Control.Arrow	second	(Arrow v0) => v0 v1 v2 -> v0 (v3, v1) (v3, v2)	(Bifunctor v2) => (v0 -> v1) -> v2 v3 v0 -> v2 v3 v1
+Control.Category	.	(Category v0) => v0 v1 v2 -> v0 v3 v1 -> v0 v3 v2	(v0 -> v1) -> (v2 -> v0) -> v2 -> v1
+Control.Category	id	(Category v0) => v0 v1 v1	v0 -> v0
+Control.DeepSeq	$!!	(NFData v0) => (v0 -> v1) -> v0 -> v1	(v0 -> v1) -> v0 -> v1
+Control.Exception.Base	assert	(? v1 :: CallStack) => Bool -> v0 -> v0	Bool -> v0 -> v0
+Control.Monad	forM	(Monad v2, Traversable v0) => v0 v1 -> (v1 -> v2 v3) -> v2 (v0 v3)	(Monad v1) => [v0] -> (v0 -> v1 v2) -> v1 [v2]
+Control.Monad	forever	(Applicative v0) => v0 v1 -> v0 v2	v0 v1 -> v0 v2
+Control.Monad	mapM	(Monad v1, Traversable v3) => (v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)	(v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)
+Control.Monad	sequence	(Monad v1, Traversable v0) => v0 (v1 v2) -> v1 (v0 v2)	v0 (v1 v2) -> v1 (v0 v2)
+Control.Monad.IO.Class	liftIO	(MonadIO v1) => IO v0 -> v1 v0	IO v0 -> v1 v0
+Control.Monad.RWS	ask	(MonadReader v1 v0) => v0 v1	(Monad v1) => ReaderT v0 v1 v0
+Control.Monad.RWS	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.RWS	local	(MonadReader v0 v1) => (v0 -> v0) -> v1 v2 -> v1 v2	(v0 -> v0) -> ReaderT v0 v1 v2 -> ReaderT v0 v1 v2
+Control.Monad.RWS	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.RWS	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.RWS	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.RWS	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.RWS.CPS	ask	(MonadReader v1 v0) => v0 v1	(Monad v1) => ReaderT v0 v1 v0
+Control.Monad.RWS.CPS	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.RWS.CPS	local	(MonadReader v0 v1) => (v0 -> v0) -> v1 v2 -> v1 v2	(v0 -> v0) -> ReaderT v0 v1 v2 -> ReaderT v0 v1 v2
+Control.Monad.RWS.CPS	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.RWS.CPS	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.RWS.CPS	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.RWS.CPS	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.RWS.Class	ask	(MonadReader v1 v0) => v0 v1	(Monad v1) => ReaderT v0 v1 v0
+Control.Monad.RWS.Class	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.RWS.Class	local	(MonadReader v0 v1) => (v0 -> v0) -> v1 v2 -> v1 v2	(v0 -> v0) -> ReaderT v0 v1 v2 -> ReaderT v0 v1 v2
+Control.Monad.RWS.Class	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.RWS.Class	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.RWS.Class	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.RWS.Class	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.RWS.Lazy	ask	(MonadReader v1 v0) => v0 v1	(Monad v1) => ReaderT v0 v1 v0
+Control.Monad.RWS.Lazy	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.RWS.Lazy	local	(MonadReader v0 v1) => (v0 -> v0) -> v1 v2 -> v1 v2	(v0 -> v0) -> ReaderT v0 v1 v2 -> ReaderT v0 v1 v2
+Control.Monad.RWS.Lazy	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.RWS.Lazy	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.RWS.Lazy	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.RWS.Lazy	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.RWS.Strict	ask	(MonadReader v1 v0) => v0 v1	(Monad v1) => ReaderT v0 v1 v0
+Control.Monad.RWS.Strict	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.RWS.Strict	local	(MonadReader v0 v1) => (v0 -> v0) -> v1 v2 -> v1 v2	(v0 -> v0) -> ReaderT v0 v1 v2 -> ReaderT v0 v1 v2
+Control.Monad.RWS.Strict	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.RWS.Strict	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.RWS.Strict	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.RWS.Strict	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.Reader	ask	(MonadReader v1 v0) => v0 v1	(Monad v1) => ReaderT v0 v1 v0
+Control.Monad.Reader	local	(MonadReader v0 v1) => (v0 -> v0) -> v1 v2 -> v1 v2	(v0 -> v0) -> ReaderT v0 v1 v2 -> ReaderT v0 v1 v2
+Control.Monad.Reader	runReader	Reader v0 v1 -> v0 -> v1	ReaderT v0 v1 v2 -> v0 -> v2
+Control.Monad.Reader.Class	ask	(MonadReader v1 v0) => v0 v1	(Monad v1) => ReaderT v0 v1 v0
+Control.Monad.Reader.Class	local	(MonadReader v0 v1) => (v0 -> v0) -> v1 v2 -> v1 v2	(v0 -> v0) -> ReaderT v0 v1 v2 -> ReaderT v0 v1 v2
+Control.Monad.State	evalStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v2	StateT v0 v1 v2 -> v0 -> v1 v2
+Control.Monad.State	execStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v0	StateT v0 v1 v2 -> v0 -> v1 v0
+Control.Monad.State	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.State	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.State	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.State	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.State.Class	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.State.Class	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.State.Class	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.State.Class	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.State.Lazy	evalStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v2	StateT v0 v1 v2 -> v0 -> v1 v2
+Control.Monad.State.Lazy	execStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v0	StateT v0 v1 v2 -> v0 -> v1 v0
+Control.Monad.State.Lazy	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.State.Lazy	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.State.Lazy	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.State.Lazy	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.State.Strict	evalStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v2	StateT v0 v1 v2 -> v0 -> v1 v2
+Control.Monad.State.Strict	execStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v0	StateT v0 v1 v2 -> v0 -> v1 v0
+Control.Monad.State.Strict	get	(MonadState v1 v0) => v0 v1	StateT v0 v1 v0
+Control.Monad.State.Strict	modify	(MonadState v0 v1) => (v0 -> v0) -> v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.State.Strict	put	(MonadState v0 v1) => v0 -> v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.State.Strict	state	(MonadState v0 v2) => (v0 -> (v1, v0)) -> v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.Trans	lift	(Monad v0, MonadTrans v2) => v0 v1 -> v2 v0 v1	v0 v1 -> v2 v0 v1
+Control.Monad.Trans	liftIO	(MonadIO v1) => IO v0 -> v1 v0	IO v0 -> v1 v0
+Control.Monad.Trans.Class	lift	(Monad v0, MonadTrans v2) => v0 v1 -> v2 v0 v1	v0 v1 -> v2 v0 v1
+Control.Monad.Trans.Except	catchE	(Monad v1) => ExceptT v0 v1 v2 -> (v0 -> ExceptT v3 v1 v2) -> ExceptT v3 v1 v2	ExceptT v0 v1 v2 -> (v0 -> ExceptT v3 v1 v2) -> ExceptT v3 v1 v2
+Control.Monad.Trans.Except	throwE	(Monad v1) => v0 -> ExceptT v0 v1 v2	v0 -> ExceptT v0 v1 v2
+Control.Monad.Trans.RWS.CPS	runRWST	(Monoid v1) => RWST v0 v1 v2 v3 v4 -> v0 -> v2 -> v3 (v4, v2, v1)	RWST v0 v1 v2 v3 v4 -> v0 -> v2 -> v3 (v4, v2, v1)
+Control.Monad.Trans.State	evalStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v2	StateT v0 v1 v2 -> v0 -> v1 v2
+Control.Monad.Trans.State	execStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v0	StateT v0 v1 v2 -> v0 -> v1 v0
+Control.Monad.Trans.State	get	(Monad v1) => StateT v0 v1 v0	StateT v0 v1 v0
+Control.Monad.Trans.State	modify	(Monad v1) => (v0 -> v0) -> StateT v0 v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.Trans.State	put	(Monad v1) => v0 -> StateT v0 v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.Trans.State	state	(Monad v2) => (v0 -> (v1, v0)) -> StateT v0 v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.Trans.State.Lazy	evalStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v2	StateT v0 v1 v2 -> v0 -> v1 v2
+Control.Monad.Trans.State.Lazy	execStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v0	StateT v0 v1 v2 -> v0 -> v1 v0
+Control.Monad.Trans.State.Lazy	get	(Monad v1) => StateT v0 v1 v0	StateT v0 v1 v0
+Control.Monad.Trans.State.Lazy	modify	(Monad v1) => (v0 -> v0) -> StateT v0 v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.Trans.State.Lazy	put	(Monad v1) => v0 -> StateT v0 v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.Trans.State.Lazy	state	(Monad v2) => (v0 -> (v1, v0)) -> StateT v0 v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.Trans.State.Strict	evalStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v2	StateT v0 v1 v2 -> v0 -> v1 v2
+Control.Monad.Trans.State.Strict	execStateT	(Monad v1) => StateT v0 v1 v2 -> v0 -> v1 v0	StateT v0 v1 v2 -> v0 -> v1 v0
+Control.Monad.Trans.State.Strict	get	(Monad v1) => StateT v0 v1 v0	StateT v0 v1 v0
+Control.Monad.Trans.State.Strict	modify	(Monad v1) => (v0 -> v0) -> StateT v0 v1 ()	(v0 -> v0) -> StateT v0 v1 ()
+Control.Monad.Trans.State.Strict	put	(Monad v1) => v0 -> StateT v0 v1 ()	v0 -> StateT v0 v1 ()
+Control.Monad.Trans.State.Strict	state	(Monad v2) => (v0 -> (v1, v0)) -> StateT v0 v2 v1	(v0 -> (v1, v0)) -> StateT v0 v2 v1
+Control.Monad.Trans.Writer	WriterT	v0 (v1, v2) -> WriterT v2 v0 v1	(v0, v1) -> WriterT v1 v2 v0
+Control.Monad.Trans.Writer	execWriter	Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Trans.Writer	execWriterT	(Monad v1) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Trans.Writer	runWriter	Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Trans.Writer	runWriterT	WriterT v0 v1 v2 -> v1 (v2, v0)	WriterT v0 v1 v2 -> (v2, v0)
+Control.Monad.Trans.Writer.CPS	execWriter	(Monoid v0) => Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Trans.Writer.CPS	execWriterT	(Monad v1, Monoid v0) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Trans.Writer.CPS	runWriter	(Monoid v0) => Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Trans.Writer.CPS	runWriterT	(Monoid v0) => WriterT v0 v1 v2 -> v1 (v2, v0)	WriterT v0 v1 v2 -> (v2, v0)
+Control.Monad.Trans.Writer.CPS	tell	(Monad v1, Monoid v0) => v0 -> WriterT v0 v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.Trans.Writer.Lazy	WriterT	v0 (v1, v2) -> WriterT v2 v0 v1	(v0, v1) -> WriterT v1 v2 v0
+Control.Monad.Trans.Writer.Lazy	execWriter	Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Trans.Writer.Lazy	execWriterT	(Monad v1) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Trans.Writer.Lazy	runWriter	Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Trans.Writer.Lazy	runWriterT	WriterT v0 v1 v2 -> v1 (v2, v0)	WriterT v0 v1 v2 -> (v2, v0)
+Control.Monad.Trans.Writer.Strict	WriterT	v0 (v1, v2) -> WriterT v2 v0 v1	(v0, v1) -> WriterT v1 v2 v0
+Control.Monad.Trans.Writer.Strict	execWriter	Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Trans.Writer.Strict	execWriterT	(Monad v1) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Trans.Writer.Strict	runWriter	Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Trans.Writer.Strict	runWriterT	WriterT v0 v1 v2 -> v1 (v2, v0)	WriterT v0 v1 v2 -> (v2, v0)
+Control.Monad.Writer	WriterT	v0 (v1, v2) -> WriterT v2 v0 v1	(v0, v1) -> WriterT v1 v2 v0
+Control.Monad.Writer	execWriter	Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Writer	execWriterT	(Monad v1) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Writer	runWriter	Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Writer	runWriterT	WriterT v0 v1 v2 -> v1 (v2, v0)	WriterT v0 v1 v2 -> (v2, v0)
+Control.Monad.Writer	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.Writer.CPS	execWriter	(Monoid v0) => Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Writer.CPS	execWriterT	(Monad v1, Monoid v0) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Writer.CPS	runWriter	(Monoid v0) => Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Writer.CPS	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.Writer.Class	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.Writer.Lazy	WriterT	v0 (v1, v2) -> WriterT v2 v0 v1	(v0, v1) -> WriterT v1 v2 v0
+Control.Monad.Writer.Lazy	execWriter	Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Writer.Lazy	execWriterT	(Monad v1) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Writer.Lazy	runWriter	Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Writer.Lazy	runWriterT	WriterT v0 v1 v2 -> v1 (v2, v0)	WriterT v0 v1 v2 -> (v2, v0)
+Control.Monad.Writer.Lazy	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Control.Monad.Writer.Strict	WriterT	v0 (v1, v2) -> WriterT v2 v0 v1	(v0, v1) -> WriterT v1 v2 v0
+Control.Monad.Writer.Strict	execWriter	Writer v0 v1 -> v0	WriterT v0 Identity v1 -> v0
+Control.Monad.Writer.Strict	execWriterT	(Monad v1) => WriterT v0 v1 v2 -> v1 v0	(Monad v1) => WriterT v0 v1 v2 -> v0
+Control.Monad.Writer.Strict	runWriter	Writer v0 v1 -> (v1, v0)	WriterT v0 Identity v1 -> (v1, v0)
+Control.Monad.Writer.Strict	runWriterT	WriterT v0 v1 v2 -> v1 (v2, v0)	WriterT v0 v1 v2 -> (v2, v0)
+Control.Monad.Writer.Strict	tell	(MonadWriter v0 v1) => v0 -> v1 ()	(Monad v1) => v0 -> WriterT v0 v1 ()
+Data.Bits	popCountDefault	(Bits v0, Num v0) => v0 -> Int	(Bits v0) => v0 -> Int
+Data.Bits	toIntegralSized	(Bits v0, Bits v1, Integral v0, Integral v1) => v0 -> Maybe v1	(Integral v0, Integral v1) => v0 -> Maybe v1
+Data.ByteString	all	(Word8 -> Bool) -> ByteString -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.ByteString	any	(Word8 -> Bool) -> ByteString -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.ByteString	append	ByteString -> ByteString -> ByteString	[v0] -> [v0] -> [v0]
+Data.ByteString	appendFile	[Char] -> ByteString -> IO ()	[Char] -> [Char] -> IO ()
+Data.ByteString	break	(Word8 -> Bool) -> ByteString -> (ByteString, ByteString)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.ByteString	concat	[ByteString] -> ByteString	[[v0]] -> [v0]
+Data.ByteString	concatMap	(Word8 -> ByteString) -> ByteString -> ByteString	(v0 -> [v1]) -> [v0] -> [v1]
+Data.ByteString	copy	ByteString -> ByteString	Ptr Word8 -> ByteString -> IO (Ptr Word8)
+Data.ByteString	drop	Int -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString	dropWhile	(Word8 -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString	elem	Word8 -> ByteString -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.ByteString	empty	ByteString	v0 v1
+Data.ByteString	filter	(Word8 -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString	find	(Word8 -> Bool) -> ByteString -> Maybe Word8	(v0 -> Bool) -> [v0] -> Maybe v0
+Data.ByteString	foldl	(v0 -> Word8 -> v0) -> v0 -> ByteString -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.ByteString	foldr	(Word8 -> v0 -> v0) -> v0 -> ByteString -> v0	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.ByteString	getLine	IO ByteString	IO [Char]
+Data.ByteString	group	ByteString -> [ByteString]	(Eq v0) => [v0] -> [[v0]]
+Data.ByteString	groupBy	(Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]	(v0 -> v0 -> Bool) -> [v0] -> [[v0]]
+Data.ByteString	hGetContents	Handle -> IO ByteString	Handle -> IO [Char]
+Data.ByteString	hPutStr	Handle -> ByteString -> IO ()	Handle -> [Char] -> IO ()
+Data.ByteString	head	ByteString -> Word8	[v0] -> v0
+Data.ByteString	init	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString	inits	ByteString -> [ByteString]	[v0] -> [[v0]]
+Data.ByteString	interact	(ByteString -> ByteString) -> IO ()	([Char] -> [Char]) -> IO ()
+Data.ByteString	intercalate	ByteString -> [ByteString] -> ByteString	[Char] -> [[Char]] -> [Char]
+Data.ByteString	isInfixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString	isPrefixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString	isSuffixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString	last	ByteString -> Word8	[v0] -> v0
+Data.ByteString	length	ByteString -> Int	(Foldable v0) => v0 v1 -> Int
+Data.ByteString	map	(Word8 -> Word8) -> ByteString -> ByteString	(v0 -> v1) -> [v0] -> [v1]
+Data.ByteString	notElem	Word8 -> ByteString -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.ByteString	null	ByteString -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.ByteString	partition	(Word8 -> Bool) -> ByteString -> (ByteString, ByteString)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.ByteString	replicate	Int -> Word8 -> ByteString	Int -> v0 -> [v0]
+Data.ByteString	reverse	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString	sort	ByteString -> ByteString	(Ord v0) => [v0] -> [v0]
+Data.ByteString	span	(Word8 -> Bool) -> ByteString -> (ByteString, ByteString)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.ByteString	splitAt	Int -> ByteString -> (ByteString, ByteString)	Int -> [v0] -> ([v0], [v0])
+Data.ByteString	stripPrefix	ByteString -> ByteString -> Maybe ByteString	(Eq v0) => [v0] -> [v0] -> Maybe [v0]
+Data.ByteString	tail	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString	tails	ByteString -> [ByteString]	[v0] -> [[v0]]
+Data.ByteString	take	Int -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString	takeWhile	(Word8 -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString	transpose	[ByteString] -> [ByteString]	[[v0]] -> [[v0]]
+Data.ByteString	unfoldr	(v0 -> Maybe (Word8, v0)) -> v0 -> ByteString	(v0 -> Maybe (v1, v0)) -> v0 -> [v1]
+Data.ByteString	unzip	[(Word8, Word8)] -> (ByteString, ByteString)	[(v0, v1)] -> ([v0], [v1])
+Data.ByteString	zip	ByteString -> ByteString -> [(Word8, Word8)]	[v0] -> [v1] -> [(v0, v1)]
+Data.ByteString	zipWith	(Word8 -> Word8 -> v0) -> ByteString -> ByteString -> [v0]	(v0 -> v1 -> v2) -> [v0] -> [v1] -> [v2]
+Data.ByteString.Char8	append	ByteString -> ByteString -> ByteString	[v0] -> [v0] -> [v0]
+Data.ByteString.Char8	concat	[ByteString] -> ByteString	[[v0]] -> [v0]
+Data.ByteString.Char8	concatMap	(Char -> ByteString) -> ByteString -> ByteString	(v0 -> [v1]) -> [v0] -> [v1]
+Data.ByteString.Char8	drop	Int -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString.Char8	dropWhile	(Char -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString.Char8	empty	ByteString	v0 v1
+Data.ByteString.Char8	foldl	(v0 -> Char -> v0) -> v0 -> ByteString -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.ByteString.Char8	foldr	(Char -> v0 -> v0) -> v0 -> ByteString -> v0	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.ByteString.Char8	head	ByteString -> Char	[v0] -> v0
+Data.ByteString.Char8	init	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString.Char8	intercalate	ByteString -> [ByteString] -> ByteString	[Char] -> [[Char]] -> [Char]
+Data.ByteString.Char8	isInfixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Char8	isPrefixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Char8	isSuffixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Char8	last	ByteString -> Char	[v0] -> v0
+Data.ByteString.Char8	length	ByteString -> Int	(Foldable v0) => v0 v1 -> Int
+Data.ByteString.Char8	map	(Char -> Char) -> ByteString -> ByteString	(v0 -> v1) -> [v0] -> [v1]
+Data.ByteString.Char8	null	ByteString -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.ByteString.Char8	reverse	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString.Char8	splitAt	Int -> ByteString -> (ByteString, ByteString)	Int -> [v0] -> ([v0], [v0])
+Data.ByteString.Char8	tail	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString.Char8	take	Int -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString.Char8	takeWhile	(Char -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString.Char8	useAsCStringLen	ByteString -> (CStringLen -> IO v0) -> IO v0	ByteString -> ((Ptr CChar, Int) -> IO v0) -> IO v0
+Data.ByteString.Lazy	all	(Word8 -> Bool) -> ByteString -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.ByteString.Lazy	any	(Word8 -> Bool) -> ByteString -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.ByteString.Lazy	append	ByteString -> ByteString -> ByteString	[v0] -> [v0] -> [v0]
+Data.ByteString.Lazy	appendFile	[Char] -> ByteString -> IO ()	[Char] -> [Char] -> IO ()
+Data.ByteString.Lazy	break	(Word8 -> Bool) -> ByteString -> (ByteString, ByteString)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.ByteString.Lazy	concat	[ByteString] -> ByteString	[[v0]] -> [v0]
+Data.ByteString.Lazy	concatMap	(Word8 -> ByteString) -> ByteString -> ByteString	(v0 -> [v1]) -> [v0] -> [v1]
+Data.ByteString.Lazy	copy	ByteString -> ByteString	Ptr Word8 -> ByteString -> IO (Ptr Word8)
+Data.ByteString.Lazy	drop	Int64 -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString.Lazy	dropWhile	(Word8 -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString.Lazy	elem	Word8 -> ByteString -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.ByteString.Lazy	empty	ByteString	v0 v1
+Data.ByteString.Lazy	filter	(Word8 -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString.Lazy	find	(Word8 -> Bool) -> ByteString -> Maybe Word8	(v0 -> Bool) -> [v0] -> Maybe v0
+Data.ByteString.Lazy	foldl	(v0 -> Word8 -> v0) -> v0 -> ByteString -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.ByteString.Lazy	foldr	(Word8 -> v0 -> v0) -> v0 -> ByteString -> v0	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.ByteString.Lazy	group	ByteString -> [ByteString]	(Eq v0) => [v0] -> [[v0]]
+Data.ByteString.Lazy	groupBy	(Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]	(v0 -> v0 -> Bool) -> [v0] -> [[v0]]
+Data.ByteString.Lazy	hGetContents	Handle -> IO ByteString	Handle -> IO [Char]
+Data.ByteString.Lazy	hPutStr	Handle -> ByteString -> IO ()	Handle -> [Char] -> IO ()
+Data.ByteString.Lazy	head	ByteString -> Word8	[v0] -> v0
+Data.ByteString.Lazy	init	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString.Lazy	inits	ByteString -> [ByteString]	[v0] -> [[v0]]
+Data.ByteString.Lazy	interact	(ByteString -> ByteString) -> IO ()	([Char] -> [Char]) -> IO ()
+Data.ByteString.Lazy	intercalate	ByteString -> [ByteString] -> ByteString	[Char] -> [[Char]] -> [Char]
+Data.ByteString.Lazy	isPrefixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Lazy	isSuffixOf	ByteString -> ByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Lazy	last	ByteString -> Word8	[v0] -> v0
+Data.ByteString.Lazy	length	ByteString -> Int64	(Foldable v0) => v0 v1 -> Int
+Data.ByteString.Lazy	map	(Word8 -> Word8) -> ByteString -> ByteString	(v0 -> v1) -> [v0] -> [v1]
+Data.ByteString.Lazy	notElem	Word8 -> ByteString -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.ByteString.Lazy	null	ByteString -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.ByteString.Lazy	partition	(Word8 -> Bool) -> ByteString -> (ByteString, ByteString)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.ByteString.Lazy	replicate	Int64 -> Word8 -> ByteString	Int -> v0 -> [v0]
+Data.ByteString.Lazy	reverse	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString.Lazy	span	(Word8 -> Bool) -> ByteString -> (ByteString, ByteString)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.ByteString.Lazy	splitAt	Int64 -> ByteString -> (ByteString, ByteString)	Int -> [v0] -> ([v0], [v0])
+Data.ByteString.Lazy	stripPrefix	ByteString -> ByteString -> Maybe ByteString	(Eq v0) => [v0] -> [v0] -> Maybe [v0]
+Data.ByteString.Lazy	tail	ByteString -> ByteString	[v0] -> [v0]
+Data.ByteString.Lazy	tails	ByteString -> [ByteString]	[v0] -> [[v0]]
+Data.ByteString.Lazy	take	Int64 -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString.Lazy	takeWhile	(Word8 -> Bool) -> ByteString -> ByteString	(v0 -> Bool) -> [v0] -> [v0]
+Data.ByteString.Lazy	transpose	[ByteString] -> [ByteString]	[[v0]] -> [[v0]]
+Data.ByteString.Lazy	unfoldr	(v0 -> Maybe (Word8, v0)) -> v0 -> ByteString	(v0 -> Maybe (v1, v0)) -> v0 -> [v1]
+Data.ByteString.Lazy	unzip	[(Word8, Word8)] -> (ByteString, ByteString)	[(v0, v1)] -> ([v0], [v1])
+Data.ByteString.Lazy	zip	ByteString -> ByteString -> [(Word8, Word8)]	[v0] -> [v1] -> [(v0, v1)]
+Data.ByteString.Lazy	zipWith	(Word8 -> Word8 -> v0) -> ByteString -> ByteString -> [v0]	(v0 -> v1 -> v2) -> [v0] -> [v1] -> [v2]
+Data.ByteString.Lazy.Char8	append	ByteString -> ByteString -> ByteString	[v0] -> [v0] -> [v0]
+Data.ByteString.Lazy.Char8	concat	[ByteString] -> ByteString	[[v0]] -> [v0]
+Data.ByteString.Lazy.Char8	drop	Int64 -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString.Lazy.Char8	empty	ByteString	v0 v1
+Data.ByteString.Lazy.Char8	foldr	(Char -> v0 -> v0) -> v0 -> ByteString -> v0	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.ByteString.Lazy.Char8	hGetContents	Handle -> IO ByteString	Handle -> IO [Char]
+Data.ByteString.Lazy.Char8	intercalate	ByteString -> [ByteString] -> ByteString	[Char] -> [[Char]] -> [Char]
+Data.ByteString.Lazy.Char8	length	ByteString -> Int64	(Foldable v0) => v0 v1 -> Int
+Data.ByteString.Lazy.Char8	map	(Char -> Char) -> ByteString -> ByteString	(v0 -> v1) -> [v0] -> [v1]
+Data.ByteString.Lazy.Char8	null	ByteString -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.ByteString.Lazy.Char8	take	Int64 -> ByteString -> ByteString	Int -> [v0] -> [v0]
+Data.ByteString.Short	append	ShortByteString -> ShortByteString -> ShortByteString	[v0] -> [v0] -> [v0]
+Data.ByteString.Short	concat	[ShortByteString] -> ShortByteString	[[v0]] -> [v0]
+Data.ByteString.Short	empty	ShortByteString	v0 v1
+Data.ByteString.Short	head	ShortByteString -> Word8	[v0] -> v0
+Data.ByteString.Short	init	ShortByteString -> ShortByteString	[v0] -> [v0]
+Data.ByteString.Short	isPrefixOf	ShortByteString -> ShortByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Short	isSuffixOf	ShortByteString -> ShortByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Short	last	ShortByteString -> Word8	[v0] -> v0
+Data.ByteString.Short	length	ShortByteString -> Int	(Foldable v0) => v0 v1 -> Int
+Data.ByteString.Short	null	ShortByteString -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.ByteString.Short	pack	[Word8] -> ShortByteString	[Char] -> [Char]
+Data.ByteString.Short	tail	ShortByteString -> ShortByteString	[v0] -> [v0]
+Data.ByteString.Short	unpack	ShortByteString -> [Word8]	[Char] -> [Char]
+Data.ByteString.Short.Internal	append	ShortByteString -> ShortByteString -> ShortByteString	[v0] -> [v0] -> [v0]
+Data.ByteString.Short.Internal	concat	[ShortByteString] -> ShortByteString	[[v0]] -> [v0]
+Data.ByteString.Short.Internal	empty	ShortByteString	v0 v1
+Data.ByteString.Short.Internal	head	ShortByteString -> Word8	[v0] -> v0
+Data.ByteString.Short.Internal	init	ShortByteString -> ShortByteString	[v0] -> [v0]
+Data.ByteString.Short.Internal	isPrefixOf	ShortByteString -> ShortByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Short.Internal	isSuffixOf	ShortByteString -> ShortByteString -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.ByteString.Short.Internal	last	ShortByteString -> Word8	[v0] -> v0
+Data.ByteString.Short.Internal	length	ShortByteString -> Int	(Foldable v0) => v0 v1 -> Int
+Data.ByteString.Short.Internal	null	ShortByteString -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.ByteString.Short.Internal	pack	[Word8] -> ShortByteString	[Char] -> [Char]
+Data.ByteString.Short.Internal	tail	ShortByteString -> ShortByteString	[v0] -> [v0]
+Data.ByteString.Short.Internal	unpack	ShortByteString -> [Word8]	[Char] -> [Char]
+Data.ByteString.Unsafe	unsafeIndex	ByteString -> Int -> Word8	Array -> Int -> Word8
+Data.Coerce	coerce	(Coercible v0 v1) => v0 -> v1	v0 -> v1
+Data.Data	Refl	v0 :~: v0	:~: v0 v0
+Data.Data	cast	(Typeable v0, Typeable v1) => v0 -> Maybe v1	v0 -> Maybe v1
+Data.Data	typeOf	(Typeable v0) => v0 -> TypeRep	v0 -> TypeRep v0
+Data.Data	typeRep	(Typeable v1) => v0 v1 -> TypeRep	Proxy v0 -> TypeRep v0
+Data.Foldable	all	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.Foldable	and	(Foldable v0) => v0 Bool -> Bool	[Bool] -> Bool
+Data.Foldable	any	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.Foldable	concat	(Foldable v0) => v0 [v1] -> [v1]	[[v0]] -> [v0]
+Data.Foldable	concatMap	(Foldable v2) => (v0 -> [v1]) -> v2 v0 -> [v1]	(v0 -> [v1]) -> [v0] -> [v1]
+Data.Foldable	elem	(Eq v0, Foldable v1) => v0 -> v1 v0 -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.Foldable	find	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Maybe v0	(v0 -> Bool) -> [v0] -> Maybe v0
+Data.Foldable	foldMap	(Foldable v2, Monoid v1) => (v0 -> v1) -> v2 v0 -> v1	(v0 -> v1) -> v2 v0 -> v1
+Data.Foldable	foldl	(Foldable v2) => (v0 -> v1 -> v0) -> v0 -> v2 v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.Foldable	foldr	(Foldable v2) => (v0 -> v1 -> v1) -> v1 -> v2 v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.Foldable	maximum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
+Data.Foldable	maximumBy	(Foldable v1) => (v0 -> v0 -> Ordering) -> v1 v0 -> v0	(v0 -> v0 -> Ordering) -> [v0] -> v0
+Data.Foldable	minimum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
+Data.Foldable	minimumBy	(Foldable v1) => (v0 -> v0 -> Ordering) -> v1 v0 -> v0	(v0 -> v0 -> Ordering) -> [v0] -> v0
+Data.Foldable	notElem	(Eq v0, Foldable v1) => v0 -> v1 v0 -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.Foldable	or	(Foldable v0) => v0 Bool -> Bool	[Bool] -> Bool
+Data.Foldable	product	(Foldable v0, Num v1) => v0 v1 -> v1	(Num v0) => [v0] -> v0
+Data.Foldable	sum	(Foldable v0, Num v1) => v0 v1 -> v1	(Num v0) => [v0] -> v0
+Data.Foldable	toList	(Foldable v0) => v0 v1 -> [v1]	(IsList v0) => v0 -> [v1]
+Data.IntMap	empty	IntMap v0	v0 v1
+Data.IntMap	filter	(v0 -> Bool) -> IntMap v0 -> IntMap v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.IntMap	foldl	(v0 -> v1 -> v0) -> v0 -> IntMap v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.IntMap	foldr	(v0 -> v1 -> v1) -> v1 -> IntMap v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.IntMap	fromList	[(Key, v0)] -> IntMap v0	(IsList v1) => [v0] -> v1
+Data.IntMap	insert	Key -> v0 -> IntMap v0 -> IntMap v0	Int -> [Int] -> [Int]
+Data.IntMap	lookup	Key -> IntMap v0 -> Maybe v0	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.IntMap	map	(v0 -> v1) -> IntMap v0 -> IntMap v1	(v0 -> v1) -> [v0] -> [v1]
+Data.IntMap	mapKeys	(Key -> Key) -> IntMap v0 -> IntMap v0	Map v0 v1 -> [v0]
+Data.IntMap	mapMaybe	(v0 -> Maybe v1) -> IntMap v0 -> IntMap v1	(v0 -> Maybe v1) -> [v0] -> [v1]
+Data.IntMap	null	IntMap v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.IntMap	partition	(v0 -> Bool) -> IntMap v0 -> (IntMap v0, IntMap v0)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.IntMap	split	Key -> IntMap v0 -> (IntMap v0, IntMap v0)	(RandomGen v0) => v0 -> (v0, v0)
+Data.IntMap	toList	IntMap v0 -> [(Key, v0)]	(IsList v0) => v0 -> [v1]
+Data.IntMap	union	IntMap v0 -> IntMap v0 -> IntMap v0	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.IntMap.Internal	empty	IntMap v0	v0 v1
+Data.IntMap.Internal	filter	(v0 -> Bool) -> IntMap v0 -> IntMap v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.IntMap.Internal	foldl	(v0 -> v1 -> v0) -> v0 -> IntMap v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.IntMap.Internal	foldr	(v0 -> v1 -> v1) -> v1 -> IntMap v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.IntMap.Internal	fromList	[(Key, v0)] -> IntMap v0	(IsList v1) => [v0] -> v1
+Data.IntMap.Internal	insert	Key -> v0 -> IntMap v0 -> IntMap v0	Int -> [Int] -> [Int]
+Data.IntMap.Internal	lookup	Key -> IntMap v0 -> Maybe v0	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.IntMap.Internal	map	(v0 -> v1) -> IntMap v0 -> IntMap v1	(v0 -> v1) -> [v0] -> [v1]
+Data.IntMap.Internal	mapKeys	(Key -> Key) -> IntMap v0 -> IntMap v0	Map v0 v1 -> [v0]
+Data.IntMap.Internal	mapMaybe	(v0 -> Maybe v1) -> IntMap v0 -> IntMap v1	(v0 -> Maybe v1) -> [v0] -> [v1]
+Data.IntMap.Internal	null	IntMap v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.IntMap.Internal	partition	(v0 -> Bool) -> IntMap v0 -> (IntMap v0, IntMap v0)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.IntMap.Internal	split	Key -> IntMap v0 -> (IntMap v0, IntMap v0)	(RandomGen v0) => v0 -> (v0, v0)
+Data.IntMap.Internal	toList	IntMap v0 -> [(Key, v0)]	(IsList v0) => v0 -> [v1]
+Data.IntMap.Internal	union	IntMap v0 -> IntMap v0 -> IntMap v0	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.IntMap.Lazy	empty	IntMap v0	v0 v1
+Data.IntMap.Lazy	filter	(v0 -> Bool) -> IntMap v0 -> IntMap v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.IntMap.Lazy	foldl	(v0 -> v1 -> v0) -> v0 -> IntMap v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.IntMap.Lazy	foldr	(v0 -> v1 -> v1) -> v1 -> IntMap v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.IntMap.Lazy	fromList	[(Key, v0)] -> IntMap v0	(IsList v1) => [v0] -> v1
+Data.IntMap.Lazy	insert	Key -> v0 -> IntMap v0 -> IntMap v0	Int -> [Int] -> [Int]
+Data.IntMap.Lazy	lookup	Key -> IntMap v0 -> Maybe v0	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.IntMap.Lazy	map	(v0 -> v1) -> IntMap v0 -> IntMap v1	(v0 -> v1) -> [v0] -> [v1]
+Data.IntMap.Lazy	mapKeys	(Key -> Key) -> IntMap v0 -> IntMap v0	Map v0 v1 -> [v0]
+Data.IntMap.Lazy	mapMaybe	(v0 -> Maybe v1) -> IntMap v0 -> IntMap v1	(v0 -> Maybe v1) -> [v0] -> [v1]
+Data.IntMap.Lazy	null	IntMap v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.IntMap.Lazy	partition	(v0 -> Bool) -> IntMap v0 -> (IntMap v0, IntMap v0)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.IntMap.Lazy	split	Key -> IntMap v0 -> (IntMap v0, IntMap v0)	(RandomGen v0) => v0 -> (v0, v0)
+Data.IntMap.Lazy	toList	IntMap v0 -> [(Key, v0)]	(IsList v0) => v0 -> [v1]
+Data.IntMap.Lazy	union	IntMap v0 -> IntMap v0 -> IntMap v0	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.IntMap.Strict	empty	IntMap v0	v0 v1
+Data.IntMap.Strict	filter	(v0 -> Bool) -> IntMap v0 -> IntMap v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.IntMap.Strict	foldl	(v0 -> v1 -> v0) -> v0 -> IntMap v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.IntMap.Strict	foldr	(v0 -> v1 -> v1) -> v1 -> IntMap v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.IntMap.Strict	fromList	[(Key, v0)] -> IntMap v0	(IsList v1) => [v0] -> v1
+Data.IntMap.Strict	insert	Key -> v0 -> IntMap v0 -> IntMap v0	Int -> [Int] -> [Int]
+Data.IntMap.Strict	lookup	Key -> IntMap v0 -> Maybe v0	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.IntMap.Strict	map	(v0 -> v1) -> IntMap v0 -> IntMap v1	(v0 -> v1) -> [v0] -> [v1]
+Data.IntMap.Strict	mapKeys	(Key -> Key) -> IntMap v0 -> IntMap v0	Map v0 v1 -> [v0]
+Data.IntMap.Strict	mapMaybe	(v0 -> Maybe v1) -> IntMap v0 -> IntMap v1	(v0 -> Maybe v1) -> [v0] -> [v1]
+Data.IntMap.Strict	null	IntMap v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.IntMap.Strict	partition	(v0 -> Bool) -> IntMap v0 -> (IntMap v0, IntMap v0)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.IntMap.Strict	split	Key -> IntMap v0 -> (IntMap v0, IntMap v0)	(RandomGen v0) => v0 -> (v0, v0)
+Data.IntMap.Strict	toList	IntMap v0 -> [(Key, v0)]	(IsList v0) => v0 -> [v1]
+Data.IntMap.Strict	union	IntMap v0 -> IntMap v0 -> IntMap v0	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.IntSet	empty	IntSet	v0 v1
+Data.IntSet	filter	(Key -> Bool) -> IntSet -> IntSet	(v0 -> Bool) -> [v0] -> [v0]
+Data.IntSet	foldl	(v0 -> Key -> v0) -> v0 -> IntSet -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.IntSet	foldr	(Key -> v0 -> v0) -> v0 -> IntSet -> v0	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.IntSet	fromList	[Key] -> IntSet	(IsList v1) => [v0] -> v1
+Data.IntSet	insert	Key -> IntSet -> IntSet	Int -> [Int] -> [Int]
+Data.IntSet	map	(Key -> Key) -> IntSet -> IntSet	(v0 -> v1) -> [v0] -> [v1]
+Data.IntSet	null	IntSet -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.IntSet	partition	(Key -> Bool) -> IntSet -> (IntSet, IntSet)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.IntSet	split	Key -> IntSet -> (IntSet, IntSet)	(RandomGen v0) => v0 -> (v0, v0)
+Data.IntSet	toList	IntSet -> [Key]	(IsList v0) => v0 -> [v1]
+Data.IntSet	union	IntSet -> IntSet -> IntSet	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.IntSet.Internal	empty	IntSet	v0 v1
+Data.IntSet.Internal	filter	(Key -> Bool) -> IntSet -> IntSet	(v0 -> Bool) -> [v0] -> [v0]
+Data.IntSet.Internal	foldl	(v0 -> Key -> v0) -> v0 -> IntSet -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.IntSet.Internal	foldr	(Key -> v0 -> v0) -> v0 -> IntSet -> v0	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.IntSet.Internal	fromList	[Key] -> IntSet	(IsList v1) => [v0] -> v1
+Data.IntSet.Internal	insert	Key -> IntSet -> IntSet	Int -> [Int] -> [Int]
+Data.IntSet.Internal	map	(Key -> Key) -> IntSet -> IntSet	(v0 -> v1) -> [v0] -> [v1]
+Data.IntSet.Internal	null	IntSet -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.IntSet.Internal	partition	(Key -> Bool) -> IntSet -> (IntSet, IntSet)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.IntSet.Internal	split	Key -> IntSet -> (IntSet, IntSet)	(RandomGen v0) => v0 -> (v0, v0)
+Data.IntSet.Internal	toList	IntSet -> [Key]	(IsList v0) => v0 -> [v1]
+Data.IntSet.Internal	union	IntSet -> IntSet -> IntSet	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.List	all	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.List	any	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.List	concat	(Foldable v0) => v0 [v1] -> [v1]	[[v0]] -> [v0]
+Data.List	concatMap	(Foldable v2) => (v0 -> [v1]) -> v2 v0 -> [v1]	(v0 -> [v1]) -> [v0] -> [v1]
+Data.List	elem	(Eq v0, Foldable v1) => v0 -> v1 v0 -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.List	find	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Maybe v0	(v0 -> Bool) -> [v0] -> Maybe v0
+Data.List	foldl	(Foldable v2) => (v0 -> v1 -> v0) -> v0 -> v2 v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.List	foldl1	(Foldable v1) => (v0 -> v0 -> v0) -> v1 v0 -> v0	(v0 -> v0 -> v0) -> [v0] -> v0
+Data.List	foldr	(Foldable v2) => (v0 -> v1 -> v1) -> v1 -> v2 v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.List	foldr1	(Foldable v1) => (v0 -> v0 -> v0) -> v1 v0 -> v0	(v0 -> v0 -> v0) -> [v0] -> v0
+Data.List	insert	(Ord v0) => v0 -> [v0] -> [v0]	Int -> [Int] -> [Int]
+Data.List	intercalate	[v0] -> [[v0]] -> [v0]	[Char] -> [[Char]] -> [Char]
+Data.List	maximum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
+Data.List	maximumBy	(Foldable v1) => (v0 -> v0 -> Ordering) -> v1 v0 -> v0	(v0 -> v0 -> Ordering) -> [v0] -> v0
+Data.List	minimum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
+Data.List	minimumBy	(Foldable v1) => (v0 -> v0 -> Ordering) -> v1 v0 -> v0	(v0 -> v0 -> Ordering) -> [v0] -> v0
+Data.List	notElem	(Eq v0, Foldable v1) => v0 -> v1 v0 -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Data.List	product	(Foldable v0, Num v1) => v0 v1 -> v1	(Num v0) => [v0] -> v0
+Data.List	sum	(Foldable v0, Num v1) => v0 v1 -> v1	(Num v0) => [v0] -> v0
+Data.List.NonEmpty	fromList	[v0] -> NonEmpty v0	(IsList v1) => [v0] -> v1
+Data.List.NonEmpty	head	NonEmpty v0 -> v0	[v0] -> v0
+Data.List.NonEmpty	map	(v0 -> v1) -> NonEmpty v0 -> NonEmpty v1	(v0 -> v1) -> [v0] -> [v1]
+Data.List.NonEmpty	tail	NonEmpty v0 -> [v0]	[v0] -> [v0]
+Data.List.NonEmpty	toList	NonEmpty v0 -> [v0]	(IsList v0) => v0 -> [v1]
+Data.Map	filter	(v0 -> Bool) -> Map v1 v0 -> Map v1 v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Map	mapMaybe	(v0 -> Maybe v1) -> Map v2 v0 -> Map v2 v1	(v0 -> Maybe v1) -> [v0] -> [v1]
+Data.Map	partition	(v0 -> Bool) -> Map v1 v0 -> (Map v1 v0, Map v1 v0)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.Map	split	(Ord v0) => v0 -> Map v0 v1 -> (Map v0 v1, Map v0 v1)	(RandomGen v0) => v0 -> (v0, v0)
+Data.Map	union	(Ord v0) => Map v0 v1 -> Map v0 v1 -> Map v0 v1	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.Map.Internal	empty	Map v0 v1	v0 v1
+Data.Map.Internal	filter	(v0 -> Bool) -> Map v1 v0 -> Map v1 v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Map.Internal	fromList	(Ord v0) => [(v0, v1)] -> Map v0 v1	(IsList v1) => [v0] -> v1
+Data.Map.Internal	insert	(Ord v0) => v0 -> v1 -> Map v0 v1 -> Map v0 v1	Int -> [Int] -> [Int]
+Data.Map.Internal	lookup	(Ord v0) => v0 -> Map v0 v1 -> Maybe v1	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.Map.Internal	map	(v0 -> v1) -> Map v2 v0 -> Map v2 v1	(v0 -> v1) -> [v0] -> [v1]
+Data.Map.Internal	mapKeys	(Ord v1) => (v0 -> v1) -> Map v0 v2 -> Map v1 v2	Map v0 v1 -> [v0]
+Data.Map.Internal	null	Map v0 v1 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Map.Internal	toList	Map v0 v1 -> [(v0, v1)]	(IsList v0) => v0 -> [v1]
+Data.Map.Internal	union	(Ord v0) => Map v0 v1 -> Map v0 v1 -> Map v0 v1	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.Map.Lazy	empty	Map v0 v1	v0 v1
+Data.Map.Lazy	filter	(v0 -> Bool) -> Map v1 v0 -> Map v1 v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Map.Lazy	foldl	(v0 -> v1 -> v0) -> v0 -> Map v2 v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.Map.Lazy	foldr	(v0 -> v1 -> v1) -> v1 -> Map v2 v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.Map.Lazy	fromList	(Ord v0) => [(v0, v1)] -> Map v0 v1	(IsList v1) => [v0] -> v1
+Data.Map.Lazy	insert	(Ord v0) => v0 -> v1 -> Map v0 v1 -> Map v0 v1	Int -> [Int] -> [Int]
+Data.Map.Lazy	lookup	(Ord v0) => v0 -> Map v0 v1 -> Maybe v1	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.Map.Lazy	map	(v0 -> v1) -> Map v2 v0 -> Map v2 v1	(v0 -> v1) -> [v0] -> [v1]
+Data.Map.Lazy	mapKeys	(Ord v1) => (v0 -> v1) -> Map v0 v2 -> Map v1 v2	Map v0 v1 -> [v0]
+Data.Map.Lazy	mapMaybe	(v0 -> Maybe v1) -> Map v2 v0 -> Map v2 v1	(v0 -> Maybe v1) -> [v0] -> [v1]
+Data.Map.Lazy	null	Map v0 v1 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Map.Lazy	partition	(v0 -> Bool) -> Map v1 v0 -> (Map v1 v0, Map v1 v0)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.Map.Lazy	split	(Ord v0) => v0 -> Map v0 v1 -> (Map v0 v1, Map v0 v1)	(RandomGen v0) => v0 -> (v0, v0)
+Data.Map.Lazy	toList	Map v0 v1 -> [(v0, v1)]	(IsList v0) => v0 -> [v1]
+Data.Map.Lazy	union	(Ord v0) => Map v0 v1 -> Map v0 v1 -> Map v0 v1	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.Map.Strict	empty	Map v0 v1	v0 v1
+Data.Map.Strict	filter	(v0 -> Bool) -> Map v1 v0 -> Map v1 v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Map.Strict	foldl	(v0 -> v1 -> v0) -> v0 -> Map v2 v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.Map.Strict	foldr	(v0 -> v1 -> v1) -> v1 -> Map v2 v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.Map.Strict	fromList	(Ord v0) => [(v0, v1)] -> Map v0 v1	(IsList v1) => [v0] -> v1
+Data.Map.Strict	insert	(Ord v0) => v0 -> v1 -> Map v0 v1 -> Map v0 v1	Int -> [Int] -> [Int]
+Data.Map.Strict	lookup	(Ord v0) => v0 -> Map v0 v1 -> Maybe v1	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.Map.Strict	map	(v0 -> v1) -> Map v2 v0 -> Map v2 v1	(v0 -> v1) -> [v0] -> [v1]
+Data.Map.Strict	mapKeys	(Ord v1) => (v0 -> v1) -> Map v0 v2 -> Map v1 v2	Map v0 v1 -> [v0]
+Data.Map.Strict	mapMaybe	(v0 -> Maybe v1) -> Map v2 v0 -> Map v2 v1	(v0 -> Maybe v1) -> [v0] -> [v1]
+Data.Map.Strict	null	Map v0 v1 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Map.Strict	partition	(v0 -> Bool) -> Map v1 v0 -> (Map v1 v0, Map v1 v0)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.Map.Strict	split	(Ord v0) => v0 -> Map v0 v1 -> (Map v0 v1, Map v0 v1)	(RandomGen v0) => v0 -> (v0, v0)
+Data.Map.Strict	toList	Map v0 v1 -> [(v0, v1)]	(IsList v0) => v0 -> [v1]
+Data.Map.Strict	union	(Ord v0) => Map v0 v1 -> Map v0 v1 -> Map v0 v1	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.Maybe	fromMaybe	v0 -> Maybe v0 -> v0	v0 -> v1 v0 -> v0
+Data.Maybe	isJust	Maybe v0 -> Bool	v0 v1 -> Bool
+Data.Maybe	isNothing	Maybe v0 -> Bool	v0 v1 -> Bool
+Data.Maybe	maybe	v0 -> (v1 -> v0) -> Maybe v1 -> v0	v0 -> (v1 -> v0) -> v2 v1 -> v0
+Data.Sequence	drop	Int -> Seq v0 -> Seq v0	Int -> [v0] -> [v0]
+Data.Sequence	empty	Seq v0	v0 v1
+Data.Sequence	filter	(v0 -> Bool) -> Seq v0 -> Seq v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Sequence	fromList	[v0] -> Seq v0	(IsList v1) => [v0] -> v1
+Data.Sequence	length	Seq v0 -> Int	(Foldable v0) => v0 v1 -> Int
+Data.Sequence	lookup	Int -> Seq v0 -> Maybe v0	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.Sequence	null	Seq v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Sequence	replicate	Int -> v0 -> Seq v0	Int -> v0 -> [v0]
+Data.Sequence	reverse	Seq v0 -> Seq v0	[v0] -> [v0]
+Data.Sequence	sort	(Ord v0) => Seq v0 -> Seq v0	(Ord v0) => [v0] -> [v0]
+Data.Sequence	splitAt	Int -> Seq v0 -> (Seq v0, Seq v0)	Int -> [v0] -> ([v0], [v0])
+Data.Sequence	take	Int -> Seq v0 -> Seq v0	Int -> [v0] -> [v0]
+Data.Sequence	unfoldr	(v0 -> Maybe (v1, v0)) -> v0 -> Seq v1	(v0 -> Maybe (v1, v0)) -> v0 -> [v1]
+Data.Sequence	unzip	Seq (v0, v1) -> (Seq v0, Seq v1)	[(v0, v1)] -> ([v0], [v1])
+Data.Sequence	zip	Seq v0 -> Seq v1 -> Seq (v0, v1)	[v0] -> [v1] -> [(v0, v1)]
+Data.Sequence	zipWith	(v0 -> v1 -> v2) -> Seq v0 -> Seq v1 -> Seq v2	(v0 -> v1 -> v2) -> [v0] -> [v1] -> [v2]
+Data.Sequence.Internal	drop	Int -> Seq v0 -> Seq v0	Int -> [v0] -> [v0]
+Data.Sequence.Internal	empty	Seq v0	v0 v1
+Data.Sequence.Internal	filter	(v0 -> Bool) -> Seq v0 -> Seq v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Sequence.Internal	fromList	[v0] -> Seq v0	(IsList v1) => [v0] -> v1
+Data.Sequence.Internal	length	Seq v0 -> Int	(Foldable v0) => v0 v1 -> Int
+Data.Sequence.Internal	lookup	Int -> Seq v0 -> Maybe v0	(Eq v0) => v0 -> [(v0, v1)] -> Maybe v1
+Data.Sequence.Internal	null	Seq v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Sequence.Internal	replicate	Int -> v0 -> Seq v0	Int -> v0 -> [v0]
+Data.Sequence.Internal	reverse	Seq v0 -> Seq v0	[v0] -> [v0]
+Data.Sequence.Internal	splitAt	Int -> Seq v0 -> (Seq v0, Seq v0)	Int -> [v0] -> ([v0], [v0])
+Data.Sequence.Internal	take	Int -> Seq v0 -> Seq v0	Int -> [v0] -> [v0]
+Data.Sequence.Internal	unfoldr	(v0 -> Maybe (v1, v0)) -> v0 -> Seq v1	(v0 -> Maybe (v1, v0)) -> v0 -> [v1]
+Data.Sequence.Internal	unzip	Seq (v0, v1) -> (Seq v0, Seq v1)	[(v0, v1)] -> ([v0], [v1])
+Data.Sequence.Internal	zip	Seq v0 -> Seq v1 -> Seq (v0, v1)	[v0] -> [v1] -> [(v0, v1)]
+Data.Sequence.Internal	zipWith	(v0 -> v1 -> v2) -> Seq v0 -> Seq v1 -> Seq v2	(v0 -> v1 -> v2) -> [v0] -> [v1] -> [v2]
+Data.Set	\\	(Ord v0) => Set v0 -> Set v0 -> Set v0	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.Set	empty	Set v0	v0 v1
+Data.Set	filter	(v0 -> Bool) -> Set v0 -> Set v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Set	foldr	(v0 -> v1 -> v1) -> v1 -> Set v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.Set	fromList	(Ord v0) => [v0] -> Set v0	(IsList v1) => [v0] -> v1
+Data.Set	insert	(Ord v0) => v0 -> Set v0 -> Set v0	Int -> [Int] -> [Int]
+Data.Set	map	(Ord v1) => (v0 -> v1) -> Set v0 -> Set v1	(v0 -> v1) -> [v0] -> [v1]
+Data.Set	null	Set v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Set	toList	Set v0 -> [v0]	(IsList v0) => v0 -> [v1]
+Data.Set	union	(Ord v0) => Set v0 -> Set v0 -> Set v0	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.Set.Internal	empty	Set v0	v0 v1
+Data.Set.Internal	filter	(v0 -> Bool) -> Set v0 -> Set v0	(v0 -> Bool) -> [v0] -> [v0]
+Data.Set.Internal	foldr	(v0 -> v1 -> v1) -> v1 -> Set v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.Set.Internal	fromList	(Ord v0) => [v0] -> Set v0	(IsList v1) => [v0] -> v1
+Data.Set.Internal	insert	(Ord v0) => v0 -> Set v0 -> Set v0	Int -> [Int] -> [Int]
+Data.Set.Internal	map	(Ord v1) => (v0 -> v1) -> Set v0 -> Set v1	(v0 -> v1) -> [v0] -> [v1]
+Data.Set.Internal	null	Set v0 -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Set.Internal	toList	Set v0 -> [v0]	(IsList v0) => v0 -> [v1]
+Data.Set.Internal	union	(Ord v0) => Set v0 -> Set v0 -> Set v0	(Eq v0) => [v0] -> [v0] -> [v0]
+Data.Text	all	(Char -> Bool) -> Text -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.Text	any	(Char -> Bool) -> Text -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Data.Text	append	Text -> Text -> Text	[v0] -> [v0] -> [v0]
+Data.Text	concat	[Text] -> Text	[[v0]] -> [v0]
+Data.Text	concatMap	(Char -> Text) -> Text -> Text	(v0 -> [v1]) -> [v0] -> [v1]
+Data.Text	drop	Int -> Text -> Text	Int -> [v0] -> [v0]
+Data.Text	dropWhile	(Char -> Bool) -> Text -> Text	(v0 -> Bool) -> [v0] -> [v0]
+Data.Text	empty	Text	v0 v1
+Data.Text	filter	(Char -> Bool) -> Text -> Text	(v0 -> Bool) -> [v0] -> [v0]
+Data.Text	find	(Char -> Bool) -> Text -> Maybe Char	(v0 -> Bool) -> [v0] -> Maybe v0
+Data.Text	foldl	(v0 -> Char -> v0) -> v0 -> Text -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Data.Text	foldr	(Char -> v0 -> v0) -> v0 -> Text -> v0	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Data.Text	head	Text -> Char	[v0] -> v0
+Data.Text	init	Text -> Text	[v0] -> [v0]
+Data.Text	intercalate	Text -> [Text] -> Text	[Char] -> [[Char]] -> [Char]
+Data.Text	intersperse	Char -> Text -> Text	v0 -> [v0] -> [v0]
+Data.Text	isInfixOf	Text -> Text -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.Text	isPrefixOf	Text -> Text -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.Text	isSuffixOf	Text -> Text -> Bool	(Eq v0) => [v0] -> [v0] -> Bool
+Data.Text	last	Text -> Char	[v0] -> v0
+Data.Text	length	Text -> Int	(Foldable v0) => v0 v1 -> Int
+Data.Text	lines	Text -> [Text]	[Char] -> [[Char]]
+Data.Text	map	(Char -> Char) -> Text -> Text	(v0 -> v1) -> [v0] -> [v1]
+Data.Text	maximum	Text -> Char	(Ord v0) => [v0] -> v0
+Data.Text	minimum	Text -> Char	(Ord v0) => [v0] -> v0
+Data.Text	null	Text -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Text	partition	(Char -> Bool) -> Text -> (Text, Text)	(v0 -> Bool) -> [v0] -> ([v0], [v0])
+Data.Text	reverse	Text -> Text	[v0] -> [v0]
+Data.Text	splitAt	Int -> Text -> (Text, Text)	Int -> [v0] -> ([v0], [v0])
+Data.Text	tail	Text -> Text	[v0] -> [v0]
+Data.Text	take	Int -> Text -> Text	Int -> [v0] -> [v0]
+Data.Text	takeWhile	(Char -> Bool) -> Text -> Text	(v0 -> Bool) -> [v0] -> [v0]
+Data.Text	toLower	Text -> Text	Char -> Char
+Data.Text	toUpper	Text -> Text	Char -> Char
+Data.Text	transpose	[Text] -> [Text]	[[v0]] -> [[v0]]
+Data.Text	unlines	[Text] -> Text	[[Char]] -> [Char]
+Data.Text	unwords	[Text] -> Text	[[Char]] -> [Char]
+Data.Text	words	Text -> [Text]	[Char] -> [[Char]]
+Data.Text.Internal	append	Text -> Text -> Text	[v0] -> [v0] -> [v0]
+Data.Text.Internal	empty	Text	v0 v1
+Data.Text.Internal	pack	[Char] -> Text	[Char] -> [Char]
+Data.Text.Lazy	concat	[Text] -> Text	[[v0]] -> [v0]
+Data.Text.Lazy	drop	Int64 -> Text -> Text	Int -> [v0] -> [v0]
+Data.Text.Lazy	empty	Text	v0 v1
+Data.Text.Lazy	intercalate	Text -> [Text] -> Text	[Char] -> [[Char]] -> [Char]
+Data.Text.Lazy	length	Text -> Int64	(Foldable v0) => v0 v1 -> Int
+Data.Text.Lazy	map	(Char -> Char) -> Text -> Text	(v0 -> v1) -> [v0] -> [v1]
+Data.Text.Lazy	null	Text -> Bool	(Foldable v0) => v0 v1 -> Bool
+Data.Text.Lazy	splitAt	Int64 -> Text -> (Text, Text)	Int -> [v0] -> ([v0], [v0])
+Data.Text.Lazy	take	Int64 -> Text -> Text	Int -> [v0] -> [v0]
+Data.Text.Lazy.Builder	fromString	[Char] -> Builder	(IsString v0) => [Char] -> v0
+Data.Traversable	forM	(Monad v2, Traversable v0) => v0 v1 -> (v1 -> v2 v3) -> v2 (v0 v3)	(Monad v1) => [v0] -> (v0 -> v1 v2) -> v1 [v2]
+Data.Traversable	mapAccumL	(Traversable v3) => (v0 -> v1 -> (v0, v2)) -> v0 -> v3 v1 -> (v0, v3 v2)	(v0 -> v1 -> (v0, v2)) -> v0 -> [v1] -> (v0, [v2])
+Data.Traversable	mapAccumR	(Traversable v3) => (v0 -> v1 -> (v0, v2)) -> v0 -> v3 v1 -> (v0, v3 v2)	(v0 -> v1 -> (v0, v2)) -> v0 -> [v1] -> (v0, [v2])
+Data.Traversable	mapM	(Monad v1, Traversable v3) => (v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)	(v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)
+Data.Traversable	sequence	(Monad v1, Traversable v0) => v0 (v1 v2) -> v1 (v0 v2)	v0 (v1 v2) -> v1 (v0 v2)
+Data.Traversable	sequenceA	(Applicative v1, Traversable v0) => v0 (v1 v2) -> v1 (v0 v2)	v0 (v1 v2) -> v1 (v0 v2)
+Data.Traversable	traverse	(Applicative v1, Traversable v3) => (v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)	(v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)
+Data.Tuple	swap	(v0, v1) -> (v1, v0)	v0 v1 v2 -> v0 v2 v1
+Data.Type.Equality	HRefl	v0 :~~: v0	:~~: v0 v0
+Data.Type.Equality	Refl	v0 :~: v0	:~: v0 v0
+Data.Typeable	Refl	v0 :~: v0	:~: v0 v0
+Data.Typeable	cast	(Typeable v0, Typeable v1) => v0 -> Maybe v1	v0 -> Maybe v1
+Data.Typeable	eqT	(Typeable v0, Typeable v1) => Maybe (v0 :~: v1)	Maybe v0
+Data.Typeable	typeOf	(Typeable v0) => v0 -> TypeRep	v0 -> TypeRep v0
+Data.Typeable	typeRepFingerprint	TypeRep -> Fingerprint	TypeRep v0 -> Fingerprint
+Data.Typeable	typeRepTyCon	TypeRep -> TyCon	TypeRep v0 -> TyCon
+Foreign.C	newCString	[Char] -> IO CString	[Char] -> IO (Ptr CChar)
+Foreign.C	peekCString	CString -> IO [Char]	Ptr CChar -> IO [Char]
+Foreign.C	throwErrnoIfMinus1_	(Eq v0, Num v0) => [Char] -> IO v0 -> IO ()	[Char] -> IO v0 -> IO ()
+Foreign.C	withCString	[Char] -> (CString -> IO v0) -> IO v0	[Char] -> (Ptr CChar -> IO v0) -> IO v0
+Foreign.Marshal	new	(Storable v0) => v0 -> IO (Ptr v0)	Int -> ST v0 (MArray v0)
+Foreign.Marshal.Utils	new	(Storable v0) => v0 -> IO (Ptr v0)	Int -> ST v0 (MArray v0)
+GHC.Event	registerTimeout	TimerManager -> Int -> TimeoutCallback -> IO TimeoutKey	TimerManager -> Int -> IO () -> IO TimeoutKey
+GHC.Exts	coerce	(Coercible v0 v1) => v0 -> v1	v0 -> v1
+GHC.Exts	fromList	(IsList v0) => [Item v0] -> v0	(IsList v1) => [v0] -> v1
+GHC.Exts	toList	(IsList v0) => v0 -> [Item v0]	(IsList v0) => v0 -> [v1]
+GHC.Float	atan2	(RealFloat v0) => v0 -> v0 -> v0	(Floating v0) => v0 -> v0 -> v0
+GHC.List	length	[v0] -> Int	(Foldable v0) => v0 v1 -> Int
+GHC.List	null	[v0] -> Bool	(Foldable v0) => v0 v1 -> Bool
+GHC.Read	lex	ReadS [Char]	[Char] -> [([Char], [Char])]
+GHC.Read	readList	(Read v0) => ReadS [v0]	(Read v0) => [Char] -> [([v0], [Char])]
+GHC.Read	readParen	Bool -> ReadS v0 -> ReadS v0	Bool -> ([Char] -> [(v0, [Char])]) -> [Char] -> [(v0, [Char])]
+GHC.Read	readsPrec	(Read v0) => Int -> ReadS v0	(Read v0) => Int -> [Char] -> [(v0, [Char])]
+GHC.Stack	withFrozenCallStack	(HasCallStack => v0) -> v0	v0 -> v0
+Prelude	all	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Prelude	and	(Foldable v0) => v0 Bool -> Bool	[Bool] -> Bool
+Prelude	any	(Foldable v1) => (v0 -> Bool) -> v1 v0 -> Bool	(v0 -> Bool) -> [v0] -> Bool
+Prelude	atan2	(RealFloat v0) => v0 -> v0 -> v0	(Floating v0) => v0 -> v0 -> v0
+Prelude	concat	(Foldable v0) => v0 [v1] -> [v1]	[[v0]] -> [v0]
+Prelude	concatMap	(Foldable v2) => (v0 -> [v1]) -> v2 v0 -> [v1]	(v0 -> [v1]) -> [v0] -> [v1]
+Prelude	elem	(Eq v0, Foldable v1) => v0 -> v1 v0 -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Prelude	foldMap	(Foldable v2, Monoid v1) => (v0 -> v1) -> v2 v0 -> v1	(v0 -> v1) -> v2 v0 -> v1
+Prelude	foldl	(Foldable v2) => (v0 -> v1 -> v0) -> v0 -> v2 v1 -> v0	(v0 -> v1 -> v0) -> v0 -> [v1] -> v0
+Prelude	foldl1	(Foldable v1) => (v0 -> v0 -> v0) -> v1 v0 -> v0	(v0 -> v0 -> v0) -> [v0] -> v0
+Prelude	foldr	(Foldable v2) => (v0 -> v1 -> v1) -> v1 -> v2 v0 -> v1	(v0 -> v1 -> v1) -> v1 -> [v0] -> v1
+Prelude	foldr1	(Foldable v1) => (v0 -> v0 -> v0) -> v1 v0 -> v0	(v0 -> v0 -> v0) -> [v0] -> v0
+Prelude	lex	ReadS [Char]	[Char] -> [([Char], [Char])]
+Prelude	liftA2	(Applicative v3) => (v0 -> v1 -> v2) -> v3 v0 -> v3 v1 -> v3 v2	(v0 -> v1 -> v2) -> v3 v0 -> v3 v1 -> v3 v2
+Prelude	mapM	(Monad v1, Traversable v3) => (v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)	(v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)
+Prelude	maximum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
+Prelude	maybe	v0 -> (v1 -> v0) -> Maybe v1 -> v0	v0 -> (v1 -> v0) -> v2 v1 -> v0
+Prelude	minimum	(Foldable v0, Ord v1) => v0 v1 -> v1	(Ord v0) => [v0] -> v0
+Prelude	notElem	(Eq v0, Foldable v1) => v0 -> v1 v0 -> Bool	(Eq v0) => v0 -> [v0] -> Bool
+Prelude	or	(Foldable v0) => v0 Bool -> Bool	[Bool] -> Bool
+Prelude	product	(Foldable v0, Num v1) => v0 v1 -> v1	(Num v0) => [v0] -> v0
+Prelude	readParen	Bool -> ReadS v0 -> ReadS v0	Bool -> ([Char] -> [(v0, [Char])]) -> [Char] -> [(v0, [Char])]
+Prelude	reads	(Read v0) => ReadS v0	(Read v0) => [Char] -> [(v0, [Char])]
+Prelude	readsPrec	(Read v0) => Int -> ReadS v0	(Read v0) => Int -> [Char] -> [(v0, [Char])]
+Prelude	sequence	(Monad v1, Traversable v0) => v0 (v1 v2) -> v1 (v0 v2)	v0 (v1 v2) -> v1 (v0 v2)
+Prelude	sequenceA	(Applicative v1, Traversable v0) => v0 (v1 v2) -> v1 (v0 v2)	v0 (v1 v2) -> v1 (v0 v2)
+Prelude	sum	(Foldable v0, Num v1) => v0 v1 -> v1	(Num v0) => [v0] -> v0
+Prelude	traverse	(Applicative v1, Traversable v3) => (v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)	(v0 -> v1 v2) -> v3 v0 -> v1 (v3 v2)
+Text.ParserCombinators.ReadP	char	Char -> ReadP Char	Char -> GenParser Char v0 Char
+Text.ParserCombinators.ReadP	count	Int -> ReadP v0 -> ReadP [v0]	Int -> GenParser v0 v1 v2 -> GenParser v0 v1 [v2]
+Text.ParserCombinators.ReadP	eof	ReadP ()	GenParser v0 v1 ()
+Text.ParserCombinators.ReadP	get	ReadP Char	StateT v0 v1 v0
+Text.ParserCombinators.ReadP	many	ReadP v0 -> ReadP [v0]	v0 v1 -> v0 [v1]
+Text.ParserCombinators.ReadP	many1	ReadP v0 -> ReadP [v0]	GenParser v0 v1 v2 -> GenParser v0 v1 [v2]
+Text.ParserCombinators.ReadP	option	v0 -> ReadP v0 -> ReadP v0	v0 -> GenParser v1 v2 v0 -> GenParser v1 v2 v0
+Text.ParserCombinators.ReadP	optional	ReadP v0 -> ReadP ()	v0 v1 -> v0 (Maybe v1)
+Text.ParserCombinators.ReadP	satisfy	(Char -> Bool) -> ReadP Char	(v0 -> Bool) -> GenParser v0 v1 v0
+Text.ParserCombinators.ReadP	string	[Char] -> ReadP [Char]	[Char] -> GenParser Char v0 [Char]
+Text.ParserCombinators.ReadPrec	get	ReadPrec Char	StateT v0 v1 v0
+Text.ParserCombinators.ReadPrec	lift	ReadP v0 -> ReadPrec v0	v0 v1 -> v2 v0 v1
+Text.Printf	FieldFormat	Maybe Int -> Maybe Int -> Maybe FormatAdjustment -> Maybe FormatSign -> Bool -> [Char] -> Char -> FieldFormat	v0 -> v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> FieldFormat
+Text.Printf	FormatParse	[Char] -> Char -> [Char] -> FormatParse	v0 -> v1 -> v2 -> FormatParse
+Text.Printf	fmtAdjust	FieldFormat -> Maybe FormatAdjustment	FieldFormat -> v0
+Text.Printf	fmtAlternate	FieldFormat -> Bool	FieldFormat -> v0
+Text.Printf	fmtChar	FieldFormat -> Char	FieldFormat -> v0
+Text.Printf	fmtModifiers	FieldFormat -> [Char]	FieldFormat -> v0
+Text.Printf	fmtPrecision	FieldFormat -> Maybe Int	FieldFormat -> v0
+Text.Printf	fmtSign	FieldFormat -> Maybe FormatSign	FieldFormat -> v0
+Text.Printf	fmtWidth	FieldFormat -> Maybe Int	FieldFormat -> v0
+Text.Printf	fpChar	FormatParse -> Char	FormatParse -> v0
+Text.Printf	fpModifiers	FormatParse -> [Char]	FormatParse -> v0
+Text.Printf	fpRest	FormatParse -> [Char]	FormatParse -> v0
+Text.Read	get	ReadPrec Char	StateT v0 v1 v0
+Text.Read	lex	ReadS [Char]	[Char] -> [([Char], [Char])]
+Text.Read	lift	ReadP v0 -> ReadPrec v0	v0 v1 -> v2 v0 v1
+Text.Read	readList	(Read v0) => ReadS [v0]	(Read v0) => [Char] -> [([v0], [Char])]
+Text.Read	readParen	Bool -> ReadS v0 -> ReadS v0	Bool -> ([Char] -> [(v0, [Char])]) -> [Char] -> [(v0, [Char])]
+Text.Read	reads	(Read v0) => ReadS v0	(Read v0) => [Char] -> [(v0, [Char])]
+Text.Read	readsPrec	(Read v0) => Int -> ReadS v0	(Read v0) => Int -> [Char] -> [(v0, [Char])]
+Type.Reflection	HRefl	v0 :~~: v0	:~~: v0 v0
+Type.Reflection	typeOf	(Typeable v0) => v0 -> TypeRep v0	v0 -> TypeRep v0

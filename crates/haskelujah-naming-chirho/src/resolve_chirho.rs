@@ -875,6 +875,7 @@ mod tests_chirho {
                 types_chirho,
                 associated_types_chirho: std::collections::HashMap::new(),
                 complete_member_types_chirho: std::collections::HashSet::new(),
+                origin_chirho: Default::default(),
             },
         }
     }
@@ -1300,6 +1301,7 @@ mod tests_chirho {
                 types_chirho: std::collections::HashMap::new(),
                 associated_types_chirho: std::collections::HashMap::new(),
                 complete_member_types_chirho: std::collections::HashSet::new(),
+                origin_chirho: Default::default(),
             },
         };
         let newer_iface_chirho = ModuleIfaceChirho {
@@ -1317,6 +1319,7 @@ mod tests_chirho {
                 types_chirho: std::collections::HashMap::new(),
                 associated_types_chirho: std::collections::HashMap::new(),
                 complete_member_types_chirho: std::collections::HashSet::new(),
+                origin_chirho: Default::default(),
             },
         };
         let module_chirho = mk_module_chirho(

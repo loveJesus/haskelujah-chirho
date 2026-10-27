@@ -1204,6 +1204,28 @@ fn is_placeholder_import_scheme_chirho(
     }
 }
 
+/// The scheme a qualified import gives `name_chirho` when the interface it selected has no
+/// `module.name` key (row 608). Only an interface proven builtin reads the generated GHC agreement
+/// table. A source module's interface, whatever its name, and any interface of unknown origin
+/// keep today's placeholder.
+/// workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+pub fn qualified_import_alias_scheme_chirho(
+    iface_chirho: &ModuleIfaceChirho,
+    name_chirho: &str,
+    builtins_chirho: &std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho>,
+) -> Option<haskelujah_typing_chirho::SchemeChirho> {
+    if iface_chirho.exports_chirho.origin_chirho
+        != haskelujah_naming_chirho::IfaceOriginChirho::BuiltinChirho
+    {
+        return None;
+    }
+    haskelujah_typing_chirho::infer_chirho::qualified_builtin_alias_scheme_chirho(
+        &iface_chirho.name_chirho,
+        name_chirho,
+        builtins_chirho,
+    )
+}
+
 fn should_override_imported_scheme_chirho(
     existing_scheme_chirho: Option<&haskelujah_typing_chirho::SchemeChirho>,
     new_scheme_chirho: &haskelujah_typing_chirho::SchemeChirho,
@@ -1799,12 +1821,12 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         String,
         Vec<String>,
     > = std::collections::HashMap::new();
-    for (builtin_name_chirho, builtin_scheme_chirho) in
-        haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho()
-    {
+    let builtin_value_schemes_chirho =
+        haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho();
+    for (builtin_name_chirho, builtin_scheme_chirho) in &builtin_value_schemes_chirho {
         merged_imported_types_chirho
-            .entry(builtin_name_chirho)
-            .or_insert(builtin_scheme_chirho);
+            .entry(builtin_name_chirho.clone())
+            .or_insert_with(|| builtin_scheme_chirho.clone());
     }
     let safe_unqualified_imported_type_names_chirho =
         collect_safe_unqualified_imported_type_names_chirho(&module_chirho, ifaces_chirho);
@@ -1907,7 +1929,14 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
                         .cloned()
                         .or_else(|| {
                             if import_chirho.qualified_chirho {
-                                None
+                                // Row 608: a builtin alias takes its bare scheme only where
+                                // GHC 9.14.1 types the export exactly so; otherwise the placeholder.
+                                // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+                                qualified_import_alias_scheme_chirho(
+                                    iface_chirho,
+                                    name_chirho,
+                                    &builtin_value_schemes_chirho,
+                                )
                             } else {
                                 merged_imported_types_chirho.get(name_chirho).cloned()
                             }

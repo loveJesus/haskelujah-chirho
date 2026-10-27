@@ -24,7 +24,7 @@ mod value_scope_chirho;
 
 pub use env_chirho::NameEnvChirho;
 pub use iface_chirho::{
-    ModuleIfaceChirho, build_iface_chirho, build_iface_with_imports_chirho,
+    IfaceOriginChirho, ModuleIfaceChirho, build_iface_chirho, build_iface_with_imports_chirho,
     builtin_module_ifaces_chirho,
 };
 pub use resolve_chirho::{

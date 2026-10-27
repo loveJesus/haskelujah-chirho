@@ -8,13 +8,7 @@
 //! embedded byte for byte from the measured file.
 //! workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
 
-use haskelujah_driver::eval_source_with_machine_chirho;
-use haskelujah_span_chirho::SourceMapChirho;
-use haskelujah_test_harness_chirho::native_chirho::{
-    NativeBackendChirho, native_round_trip_chirho,
-};
-
-use super::rejected_like_ghc_chirho;
+use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
 
 /// Every local binder form beside a qualified namesake: a `where` under a qualified-only
 /// import, a `let`, a function and a lambda parameter, and a `case` binder. Each local
@@ -81,33 +75,6 @@ main = do
   print (L.reverse [1, 2, 3 :: Int] == [3, 2, 1])
   print (let size = const (0 :: Int) in (M.size (M.fromList [(1 :: Int, 'a')]), size "x"))
 "#;
-
-/// The interpreter, then LLVM and Cranelift, each print exactly GHC's output.
-fn assert_prints_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
-    let (_, machine_chirho) = eval_source_with_machine_chirho(
-        source_chirho,
-        &mut SourceMapChirho::new_chirho(),
-        file_name_chirho,
-        None,
-    )
-    .unwrap_or_else(|error_chirho| panic!("{file_name_chirho}: interpreter: {error_chirho}"));
-    assert_eq!(
-        machine_chirho.io_output_chirho, ghc_chirho,
-        "{file_name_chirho}: interpreter"
-    );
-    for backend_chirho in [
-        NativeBackendChirho::LlvmChirho,
-        NativeBackendChirho::CraneliftChirho,
-    ] {
-        assert_eq!(
-            native_round_trip_chirho(source_chirho, backend_chirho, "").unwrap_or_else(
-                |error_chirho| panic!("{file_name_chirho}: {backend_chirho:?}: {error_chirho}")
-            ),
-            (0, ghc_chirho.to_string()),
-            "{file_name_chirho}: {backend_chirho:?}"
-        );
-    }
-}
 
 #[test]
 fn a_qualified_reference_skips_every_local_binder_everywhere_chirho() {

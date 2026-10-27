@@ -99,7 +99,7 @@ flowchart TD
 - `M.do`'s selected `M.>>=`, `M.>>` and reserved `M.fail`.
 - Unimported qualifiers in patterns (`X.Just y ->`) and in types (`1 :: X.Int`) still check where GHC reports GHC-76037: the walk does not visit patterns, and type scope is its own check (row 598).
 - `Main.reverse`, where the module's own name qualifies an import rather than one of its own values, still checks where GHC reports GHC-76037 (row 598).
-- A qualified alias of a builtin module types as the placeholder `forall a. a` unless a `Module.name` key exists. So `print (L.reverse xs)` defaults Show to Int and fails natively (row 598's R2; see the builtin type environment).
+- A qualified alias of a builtin module takes its bare scheme only where GHC 9.14.1 types the export exactly so (row 608). The rest keep the placeholder `forall a. a`; see the builtin type environment.
 - Bare-seed over-exposure (I8).
 - Shared-alias ambiguity (I3, I3b, M1).
 - Builtin member lists not proven complete.

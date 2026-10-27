@@ -38,6 +38,9 @@ mod ast_conversion_chirho;
 #[path = "infer_chirho/conversion_chirho/ast_conversion_tests_chirho.rs"]
 mod ast_conversion_tests_chirho;
 mod builtins_chirho;
+pub use builtins_chirho::{
+    QUALIFIED_ALIAS_AGREEMENT_CHIRHO, qualified_builtin_alias_scheme_chirho,
+};
 mod conditionals_chirho;
 mod do_operations_chirho;
 mod equalities_chirho;

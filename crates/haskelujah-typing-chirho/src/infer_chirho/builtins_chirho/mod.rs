@@ -8,10 +8,34 @@ mod classes_chirho;
 mod constructors_chirho;
 mod core_chirho;
 mod effects_chirho;
+mod qualified_alias_agreement_chirho;
 mod surface_chirho;
 mod transformer_types_chirho;
 
+use std::collections::HashMap;
+
 use crate::env_chirho::TyEnvChirho;
+use crate::ty_chirho::SchemeChirho;
+
+pub use qualified_alias_agreement_chirho::QUALIFIED_ALIAS_AGREEMENT_CHIRHO;
+
+/// The scheme a qualified import of builtin module `module_chirho` gives `name_chirho` when no
+/// `module.name` key exists (row 608): the bare builtin scheme, exactly where GHC 9.14.1 types the
+/// export as that scheme. `None` keeps the accept-anything placeholder. The generated table is the
+/// whole decision.
+/// workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+pub fn qualified_builtin_alias_scheme_chirho(
+    module_chirho: &str,
+    name_chirho: &str,
+    builtins_chirho: &HashMap<String, SchemeChirho>,
+) -> Option<SchemeChirho> {
+    QUALIFIED_ALIAS_AGREEMENT_CHIRHO
+        .binary_search_by(|(entry_module_chirho, entry_name_chirho, _)| {
+            (*entry_module_chirho, *entry_name_chirho).cmp(&(module_chirho, name_chirho))
+        })
+        .ok()
+        .and_then(|_| builtins_chirho.get(name_chirho).cloned())
+}
 
 /// Seed the type environment with Haskell Prelude types.
 // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho

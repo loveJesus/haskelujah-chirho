@@ -1,13 +1,20 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
-use haskelujah_driver::compile_source_chirho;
+use haskelujah_driver::{compile_source_chirho, eval_source_with_machine_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
+use haskelujah_test_harness_chirho::native_chirho::{
+    NativeBackendChirho, native_round_trip_chirho,
+};
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
+#[path = "typing_integration_chirho/qualified_alias_agreement_chirho.rs"]
+mod qualified_alias_agreement_chirho;
+#[path = "typing_integration_chirho/qualified_builtin_aliases_chirho.rs"]
+mod qualified_builtin_aliases_chirho;
 #[path = "typing_integration_chirho/qualified_import_lists_chirho.rs"]
 mod qualified_import_lists_chirho;
 #[path = "typing_integration_chirho/qualified_references_chirho.rs"]
@@ -48,6 +55,33 @@ fn rejected_like_ghc_chirho(source_chirho: &str, file_name_chirho: &str, reasons
                 );
             }
         }
+    }
+}
+
+/// The interpreter, then LLVM and Cranelift, each print exactly GHC's output.
+fn assert_prints_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
+    let (_, machine_chirho) = eval_source_with_machine_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+        None,
+    )
+    .unwrap_or_else(|error_chirho| panic!("{file_name_chirho}: interpreter: {error_chirho}"));
+    assert_eq!(
+        machine_chirho.io_output_chirho, ghc_chirho,
+        "{file_name_chirho}: interpreter"
+    );
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        assert_eq!(
+            native_round_trip_chirho(source_chirho, backend_chirho, "").unwrap_or_else(
+                |error_chirho| panic!("{file_name_chirho}: {backend_chirho:?}: {error_chirho}")
+            ),
+            (0, ghc_chirho.to_string()),
+            "{file_name_chirho}: {backend_chirho:?}"
+        );
     }
 }
 

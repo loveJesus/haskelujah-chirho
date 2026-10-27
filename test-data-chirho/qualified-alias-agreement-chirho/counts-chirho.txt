@@ -1,0 +1,5 @@
+queried pairs	12721
+agree	721
+disagree	684
+no bare scheme	2870
+not typed by GHC	8446

@@ -47,6 +47,18 @@ pub struct IfaceTypeChirho {
     pub span_chirho: SpanChirho,
 }
 
+/// Where an interface came from (row 608). Only a builtin interface lets a qualified alias read
+/// the generated GHC agreement table; a source module's never does, whatever its name.
+/// workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum IfaceOriginChirho {
+    /// Built from source, or of unknown origin: the fail-closed default.
+    #[default]
+    SourceChirho,
+    /// Built by `builtin_module_ifaces_chirho`, and never merged with a source copy.
+    BuiltinChirho,
+}
+
 /// Everything a module exports.
 #[derive(Debug, Clone, Default)]
 pub struct IfaceExportsChirho {
@@ -65,6 +77,8 @@ pub struct IfaceExportsChirho {
     /// a mark only leaves a qualifier open.
     /// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
     pub complete_member_types_chirho: HashSet<String>,
+    /// Where this interface came from; source unless proven builtin (row 608).
+    pub origin_chirho: IfaceOriginChirho,
 }
 
 /// A compiled module's public interface.
@@ -16311,6 +16325,10 @@ pub fn builtin_module_ifaces_chirho() -> Vec<ModuleIfaceChirho> {
     normalize_builtin_class_exports_chirho(&mut modules_chirho);
     let mut merged_modules_chirho = merge_module_ifaces_chirho(modules_chirho);
     normalize_builtin_type_exports_chirho(&mut merged_modules_chirho);
+    // Row 608: these, and only these, are builtin. workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+    for module_chirho in &mut merged_modules_chirho {
+        module_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::BuiltinChirho;
+    }
     merged_modules_chirho
 }
 
@@ -16327,6 +16345,11 @@ pub fn merge_module_ifaces_chirho(
     for module_chirho in modules_chirho {
         if let Some(&idx_chirho) = index_chirho.get(&module_chirho.name_chirho) {
             let existing_chirho = &mut deduped_chirho[idx_chirho];
+            // A merge stays builtin only when both copies are (row 608).
+            // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+            if module_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::BuiltinChirho {
+                existing_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::SourceChirho;
+            }
             // Marks merge per type, read before this copy's types join the
             // entry. workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
             existing_chirho.exports_chirho.complete_member_types_chirho =
