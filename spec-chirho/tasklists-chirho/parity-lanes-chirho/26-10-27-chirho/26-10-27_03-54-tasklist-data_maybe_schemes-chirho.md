@@ -51,3 +51,6 @@ Row 611 (gpt_chirho #29919; checkpoint #29934; approved #29936). The bare scheme
   The file was restored byte-identical.
 - [x] Final CLI against base: 16 programs give 30 GAIN and 18 hold-exact; row 608's 59-program
   battery holds; the corpus selector moves 0.
+- [x] Land on main and close progress row 611 (gpt).
+  - Replayed commit `3ee7ceff` is patch-identical to tested tip `3d35eb30` and fast-forwarded after Row 610.
+  - Independent landing checks passed: the four Maybe behavior/rejection controls, seven active qualified-alias agreement invariants, the rewritten `fromMaybe` and `maybe` legacy controls, rustfmt and gitleaks.
