@@ -147,6 +147,9 @@ impl DictPassCtxChirho {
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
         evidence_classes_chirho: &HashSet<String>,
     ) -> Option<CoreExprChirho> {
+        if self.names_programs_own_binder_chirho(id_chirho) {
+            return None;
+        }
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
         let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
         if class_name_chirho != "Num" || !is_own_dictionary_key_chirho(ty_key_chirho) {
@@ -214,6 +217,10 @@ impl DictPassCtxChirho {
         &self,
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
+        // A program's own binding keeps its body, whatever evidence it carries (row 593).
+        if self.names_programs_own_binder_chirho(id_chirho) {
+            return None;
+        }
         self.evidenced_fractional_power_chirho(id_chirho)
             .or_else(|| self.evidenced_aggregate_chirho(id_chirho))
             .or_else(|| self.evidenced_extremum_chirho(id_chirho))

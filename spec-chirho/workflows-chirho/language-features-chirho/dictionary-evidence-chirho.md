@@ -49,6 +49,13 @@ flowchart TD
   - `d` is `own_dict_chirho`'s answer: the `$own:k` parameter, or the Num that a superclass extraction takes from `$dFractional`.
   - The three rewrite sites with the binding's dictionaries in scope ask `evidenced_value_in_scope_chirho` and `evidenced_applied_head_in_scope_chirho`. The surviving-occurrence sweep has none, and keeps today's path.
   - Controls: `sums_and_products_at_a_bindings_own_key_answer_as_ghc_everywhere_chirho`, covering the fold order, empty lists, Int, a point-free `product` and two predicates, and `a_fractional_bindings_aggregates_take_its_dictionary_chirho`, in `tests/native_error_helpers_chirho.rs`.
+- A program's own `sum` or `product` keeps its body (row 593).
+  - **The defect:** the checker recorded the Prelude function's `Num` evidence on an occurrence whose canonical id is the program's own binder, such as a local `where sum _ = 99`.
+  - Both aggregate routes then replaced the call with the Prelude fold: row 552's concrete key, and row 586's own key. It was silently wrong on every engine: `(6.5,9,9)`, where GHC prints `(6.5,99,98)`.
+  - **The fix:** `module_bound_ids_chirho` holds every binder in the module's bindings, seeded beside the free ids. `names_programs_own_binder_chirho` checks an occurrence's canonical id against it, and `evidenced_applied_head_chirho` and `own_aggregate_chirho` yield for the program's own.
+  - **Already right:** local `print`, `max`, `min`, `maximum`, `minimum` and `^^`, because the checker records no evidence there. They need no guard of their own, and the extrema and `^^` sit behind the same applied-head guard.
+  - **Residual:** a literal in a local polymorphic binding inside a signature-polymorphic one is still keyed at Int. For example, `where sum _ = 42` under `Num a`, used at Double, prints `2.08e-322` natively.
+  - Controls: `a_programs_own_sum_and_product_keep_their_bodies_everywhere_chirho` and `a_local_sum_in_a_polymorphic_binding_keeps_its_body_everywhere_chirho`, in `tests/native_error_helpers_chirho.rs`.
 - A key the checker inferred more than once (a re-check, a speculative branch) yields a record
   only when every inference agreed. An occurrence with an identity whose record is missing or
   conflicting receives nothing, and is never rescued by its span or its position.

@@ -370,6 +370,30 @@ fn a_fractional_bindings_aggregates_take_its_dictionary_chirho() {
     assert_prints_everywhere_chirho(FRACTIONAL_AGGREGATES_CHIRHO, "(2.3333333333333335,9.0)\n");
 }
 
+// ── Row 593: a program's own sum and product keep their bodies ──────────
+
+/// A local `sum` or `product` named like the Prelude's. The checker recorded the Prelude
+/// function's `Num` evidence on the occurrence, though its canonical id is the program's
+/// own `where` binder, and row 552's route replaced the call with the Prelude fold. Every
+/// engine printed `(6.5,9,9)`, where GHC prints `(6.5,99,98)`. The Prelude's `sum` and
+/// `product` beside them hold, and so do local `maximum` and `minimum`.
+const OWN_NAMED_AGGREGATES_CHIRHO: &str = "module Main where\ntotalChirho :: [Double] -> Double\ntotalChirho xs = sum xs + product xs\nmain :: IO ()\nmain = do\n  print (totalChirho [1.5, 2.0], sum [9 :: Int], product [9 :: Int])\n  print (maximum [1, 5 :: Int], minimum [4, 2 :: Int])\n  where\n    sum _ = (99 :: Int)\n    product _ = (98 :: Int)\n    maximum _ = (97 :: Int)\n    minimum _ = (96 :: Int)\n";
+
+#[test]
+fn a_programs_own_sum_and_product_keep_their_bodies_everywhere_chirho() {
+    assert_prints_everywhere_chirho(OWN_NAMED_AGGREGATES_CHIRHO, "(6.5,99,98)\n(97,96)\n");
+}
+
+/// Row 593: inside a `Num a` binding, a local `sum` whose own type carries `Num` took
+/// row 586's own-key fold instead of its body. Every engine printed `(4.0,3)`, where GHC
+/// prints `(3.0,2)`.
+const OWN_KEY_LOCAL_SUM_CHIRHO: &str = "module Main where\ntotalChirho :: Num a => [a] -> a\ntotalChirho xs = sum xs\n  where\n    sum ys = head ys + head ys\nmain :: IO ()\nmain = print (totalChirho [1.5, 2.5 :: Double], totalChirho [1, 2 :: Int])\n";
+
+#[test]
+fn a_local_sum_in_a_polymorphic_binding_keeps_its_body_everywhere_chirho() {
+    assert_prints_everywhere_chirho(OWN_KEY_LOCAL_SUM_CHIRHO, "(3.0,2)\n");
+}
+
 // ── Row 566: a long literal unpacks whole across collections ─────────────
 
 /// A 2000-character literal used as a list. Natively it is unpacked cell by cell, and those

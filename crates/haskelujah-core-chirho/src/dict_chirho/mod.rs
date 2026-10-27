@@ -101,6 +101,10 @@ pub struct DictPassCtxChirho {
     /// names they refer to. A Prelude alias binds one of these, never a local binder
     /// that shares its name (row 580).
     module_free_ids_chirho: HashSet<CoreIdChirho>,
+    /// Ids the module's own bindings bind: each top-level binder and every lambda, `let`,
+    /// `case` and alternative binder inside them. An occurrence whose canonical id is one
+    /// of these names the program's own binding, never a Prelude function (row 593).
+    module_bound_ids_chirho: HashSet<CoreIdChirho>,
     /// Method name -> (class_name, selector CoreId).
     method_selectors_chirho: HashMap<String, (String, CoreIdChirho)>,
     /// (class_name, type_key) -> CoreId of instance dictionary binding.
@@ -198,6 +202,7 @@ impl DictPassCtxChirho {
             generated_bindings_chirho: Vec::new(),
             body_backed_names_chirho: HashMap::new(),
             module_free_ids_chirho: HashSet::new(),
+            module_bound_ids_chirho: HashSet::new(),
             method_selectors_chirho: HashMap::new(),
             instance_dicts_chirho: HashMap::new(),
             con_types_chirho,
@@ -250,8 +255,8 @@ impl DictPassCtxChirho {
         self.fresh_id_chirho(name_chirho)
     }
 
-    /// Record top-level source bindings, and the ids they use without binding, before
-    /// generated dictionaries are built.
+    /// Record top-level source bindings, the ids they use without binding, and the ids
+    /// they bind, before generated dictionaries are built.
     fn seed_body_backed_bindings_chirho(&mut self, module_chirho: &CoreModuleChirho) {
         for binding_chirho in &module_chirho.bindings_chirho {
             self.body_backed_names_chirho
@@ -261,11 +266,32 @@ impl DictPassCtxChirho {
                 .extend(crate::simplify_chirho::free_vars_chirho(
                     &binding_chirho.rhs_chirho,
                 ));
+            self.module_bound_ids_chirho
+                .insert(binding_chirho.binder_chirho.id_chirho);
+            collect_binders_chirho(
+                &binding_chirho.rhs_chirho,
+                &mut self.module_bound_ids_chirho,
+            );
         }
         for binding_chirho in &module_chirho.bindings_chirho {
             self.module_free_ids_chirho
                 .remove(&binding_chirho.binder_chirho.id_chirho);
         }
+    }
+
+    /// Whether the occurrence `id_chirho` names a binding the program owns: its canonical
+    /// id, or the id itself, is one of the module's binders (row 593). The checker can
+    /// record a Prelude function's evidence on such an occurrence, as on a local
+    /// `sum _ = 99`, and an evidenced Prelude-value hook must then yield.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn names_programs_own_binder_chirho(&self, id_chirho: CoreIdChirho) -> bool {
+        let canonical_id_chirho = self
+            .method_occurrence_canon_chirho
+            .get(&id_chirho)
+            .map_or(id_chirho, |(_name_chirho, canonical_id_chirho)| {
+                *canonical_id_chirho
+            });
+        self.module_bound_ids_chirho.contains(&canonical_id_chirho)
     }
 
     /// The id the module's own bindings use free under `name_chirho`, if any, skipping
@@ -505,6 +531,45 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)
+}
+
+/// Every binder inside `expr_chirho`: lambda, `let` and `case` binders and each
+/// alternative's (row 593).
+fn collect_binders_chirho(
+    expr_chirho: &CoreExprChirho,
+    binders_chirho: &mut HashSet<CoreIdChirho>,
+) {
+    match expr_chirho {
+        CoreExprChirho::LamChirho { binder_chirho, .. } => {
+            binders_chirho.insert(binder_chirho.id_chirho);
+        }
+        CoreExprChirho::LetChirho { binds_chirho, .. } => {
+            binders_chirho.extend(
+                binds_chirho
+                    .iter()
+                    .map(|(binder_chirho, _)| binder_chirho.id_chirho),
+            );
+        }
+        CoreExprChirho::CaseChirho {
+            bind_chirho,
+            alts_chirho,
+            ..
+        } => {
+            binders_chirho.insert(bind_chirho.id_chirho);
+            for alt_chirho in alts_chirho {
+                binders_chirho.extend(
+                    alt_chirho
+                        .binders_chirho
+                        .iter()
+                        .map(|binder_chirho| binder_chirho.id_chirho),
+                );
+            }
+        }
+        _ => {}
+    }
+    crate::transform_chirho::children_chirho(expr_chirho, &mut |child_chirho| {
+        collect_binders_chirho(child_chirho, binders_chirho);
+    });
 }
 
 /// Find the highest CoreIdChirho used in a module.
