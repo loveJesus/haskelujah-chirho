@@ -480,26 +480,37 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
-        // Ord (superclass: Eq)
+        // Ord (superclass: Eq): GHC's seven methods. `compare` is the minimal definition
+        // here, and the dictionary pass defaults the other six from it (row 612).
         let ord_var_chirho = TyVarChirho(9001);
+        let ord_method_chirho = |result_ty_chirho: TyChirho| SchemeChirho {
+            vars_chirho: vec![ord_var_chirho],
+            preds_chirho: vec![],
+            ty_chirho: TyChirho::fun_n_chirho(
+                [
+                    TyChirho::VarChirho(ord_var_chirho),
+                    TyChirho::VarChirho(ord_var_chirho),
+                ],
+                result_ty_chirho,
+            ),
+        };
+        let ord_methods_chirho = ["<", "<=", ">", ">="]
+            .map(|name_chirho| (name_chirho, TyChirho::bool_chirho()))
+            .into_iter()
+            .chain([("compare", TyChirho::ConChirho("Ordering".to_string()))])
+            .chain(
+                ["max", "min"]
+                    .map(|name_chirho| (name_chirho, TyChirho::VarChirho(ord_var_chirho))),
+            )
+            .map(|(name_chirho, result_ty_chirho)| {
+                (name_chirho.to_string(), ord_method_chirho(result_ty_chirho))
+            })
+            .collect();
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Ord".to_string(),
             supers_chirho: vec!["Eq".to_string()],
             var_chirho: ord_var_chirho,
-            methods_chirho: HashMap::from([(
-                "compare".to_string(),
-                SchemeChirho {
-                    vars_chirho: vec![ord_var_chirho],
-                    preds_chirho: vec![],
-                    ty_chirho: TyChirho::fun_n_chirho(
-                        [
-                            TyChirho::VarChirho(ord_var_chirho),
-                            TyChirho::VarChirho(ord_var_chirho),
-                        ],
-                        TyChirho::ConChirho("Ordering".to_string()),
-                    ),
-                },
-            )]),
+            methods_chirho: ord_methods_chirho,
             extra_vars_chirho: vec![],
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),

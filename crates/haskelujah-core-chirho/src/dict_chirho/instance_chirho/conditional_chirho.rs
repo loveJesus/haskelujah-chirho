@@ -138,6 +138,7 @@ impl DictPassCtxChirho {
                 // A real `Ord [T]` when the element's compare row has a body;
                 // the generic path names the method otherwise.
                 if !self.generate_ord_list_dict_chirho(
+                    class_env_chirho,
                     elem_type_chirho,
                     list_type_key_chirho,
                     layout_chirho,
@@ -244,8 +245,8 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, list_type_key_chirho
                 );
-                // Eq's methods default to each other's negation first (row 606).
-                let prim_id_chirho = match self.equality_default_row_chirho(
+                // GHC's defaults first: Eq's (row 606) and Ord's (row 612).
+                let prim_id_chirho = match self.method_default_row_chirho(
                     class_name_chirho,
                     method_name_chirho,
                     list_type_key_chirho,

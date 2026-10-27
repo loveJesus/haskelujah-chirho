@@ -8,6 +8,7 @@ use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     InlineAnnotationChirho,
 };
+use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 /// The list comparison every generated `Ord [T]` row applies to its element's row.
@@ -15,25 +16,21 @@ const COMPARE_LIST_BY_CHIRHO: &str = "$compareListBy";
 
 impl DictPassCtxChirho {
     /// `Ord [T]` from the element's compare row:
-    /// `$prim_Ord_compare_[T] = $compareListBy $prim_Ord_compare_T` and
-    /// `$fOrd[T] = $Dict_Ord $fEq[T] $prim_Ord_compare_[T]`.
+    /// `$prim_Ord_compare_[T] = $compareListBy $prim_Ord_compare_T`, each other method in
+    /// the layout defaulting from that row as every Ord key's does (row 612), and
+    /// `$fOrd[T] = $Dict_Ord $fEq[T] <the method rows, in layout order>`.
     ///
     /// Nothing is generated, and `false` comes back, when the element's row is
-    /// missing or is itself a missing-method stub, or when the class holds a
-    /// method besides `compare`: the generic path then names what is missing.
+    /// missing or is itself a missing-method stub: the generic path then names
+    /// what is missing.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn generate_ord_list_dict_chirho(
         &mut self,
+        class_env_chirho: &ClassEnvChirho,
         elem_type_chirho: &str,
         list_type_key_chirho: &str,
         layout_chirho: &DictLayoutChirho,
     ) -> bool {
-        if !matches!(
-            layout_chirho.method_slots_chirho.as_slice(),
-            [(method_name_chirho, _)] if method_name_chirho == "compare"
-        ) {
-            return false;
-        }
         let Some(elem_compare_id_chirho) = self
             .lookup_dispatch_body_name_id_chirho(&format!("$prim_Ord_compare_{elem_type_chirho}"))
         else {
@@ -68,7 +65,30 @@ impl DictPassCtxChirho {
             let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
             field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
         }
-        field_args_chirho.push(CoreExprChirho::VarChirho(row_id_chirho));
+        for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
+            let method_row_id_chirho = if method_name_chirho == "compare" {
+                row_id_chirho
+            } else {
+                let prim_name_chirho =
+                    format!("$prim_Ord_{method_name_chirho}_{list_type_key_chirho}");
+                match self.method_default_row_chirho(
+                    "Ord",
+                    method_name_chirho,
+                    list_type_key_chirho,
+                    &prim_name_chirho,
+                ) {
+                    Some(default_id_chirho) => default_id_chirho,
+                    None => self.generate_missing_method_binding_chirho(
+                        class_env_chirho,
+                        "Ord",
+                        method_name_chirho,
+                        list_type_key_chirho,
+                        &prim_name_chirho,
+                    ),
+                }
+            };
+            field_args_chirho.push(CoreExprChirho::VarChirho(method_row_id_chirho));
+        }
         self.generated_bindings_chirho.push(CoreBindingChirho {
             binder_chirho: dict_binder_chirho,
             rhs_chirho: CoreExprChirho::ConAppChirho {

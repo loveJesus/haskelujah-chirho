@@ -15,10 +15,11 @@
 //! reads its binding: the typed walkers of higher-order arguments, such as `filter (< "b")`'s
 //! section, never see a whole application spine. A first-class or
 //! prefix use takes the same answer through a generated `$prim_Ord_<op>_<key>` row, which
-//! its proof names. Without an answer (the binding's own dictionary key, no evidence, or a
-//! key whose compare row is missing or a stub), a written operator takes back the primop
-//! desugaring once gave it, and a first-class one stays loud as before. A program's own
-//! operator keeps its binding.
+//! its proof names. At the binding's own dictionary key the operator is Ord's method, and
+//! the dictionary route selects it from that dictionary (row 612). Without an answer (no
+//! evidence, or a key whose compare row is missing or a stub), a written operator takes
+//! back the primop desugaring once gave it, and a first-class one stays loud as before. A
+//! program's own operator keeps its binding.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::borrow::Cow;
@@ -34,11 +35,11 @@ use crate::dict_chirho::rewrite_chirho::double_primops_chirho::double_counterpar
 use crate::expr_chirho::{CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho};
 
 /// Each Ord operator and the Int primop desugaring gave it.
-const ORDERING_OPERATORS_CHIRHO: [(&str, &str); 4] =
+pub(super) const ORDERING_OPERATORS_CHIRHO: [(&str, &str); 4] =
     [("<", "<#"), ("<=", "<=#"), (">", ">#"), (">=", ">=#")];
 
 /// An Ord operator's answer at one proof key.
-enum OrderingAnswerChirho {
+pub(super) enum OrderingAnswerChirho {
     /// A primop exact at the key.
     PrimopChirho(&'static str),
     /// A row over both operands: the program's own operator row, or the key's compare row
@@ -50,7 +51,7 @@ enum OrderingAnswerChirho {
 }
 
 impl OrderingAnswerChirho {
-    fn applied_chirho(
+    pub(super) fn applied_chirho(
         &self,
         left_chirho: CoreExprChirho,
         right_chirho: CoreExprChirho,
@@ -100,8 +101,18 @@ impl DictPassCtxChirho {
             .then_some(key_chirho.as_str())
     }
 
+    /// Whether the checker proved an occurrence at the binding's own `Ord` dictionary, whose
+    /// slot the dictionary route selects (row 612).
+    fn proved_at_own_ordering_chirho(&self, id_chirho: CoreIdChirho) -> bool {
+        self.occurrence_evidence_chirho.get(&id_chirho).is_some_and(
+            |(class_name_chirho, key_chirho)| {
+                class_name_chirho == "Ord" && is_own_dictionary_key_chirho(key_chirho)
+            },
+        )
+    }
+
     /// The operator's answer at `key_chirho`, or None.
-    fn ordering_answer_chirho(
+    pub(super) fn ordering_answer_chirho(
         &self,
         (operator_chirho, primop_chirho): (&str, &'static str),
         key_chirho: &str,
@@ -136,7 +147,8 @@ impl DictPassCtxChirho {
 
     /// A written infix or section Ord operator applied to its operands: its answer at the
     /// key its proof names, else the primop desugaring once gave it. None for any other
-    /// head, and for a program's own operator, whose binding stays.
+    /// head, for a program's own operator, whose binding stays, and for a proof at the
+    /// binding's own dictionary, whose slot the dictionary route selects.
     fn written_ordering_operator_chirho(
         &self,
         head_id_chirho: CoreIdChirho,
@@ -145,6 +157,7 @@ impl DictPassCtxChirho {
     ) -> Option<CoreExprChirho> {
         if !self.operator_occurrences_chirho.contains(&head_id_chirho)
             || self.names_programs_own_binder_chirho(head_id_chirho)
+            || self.proved_at_own_ordering_chirho(head_id_chirho)
         {
             return None;
         }

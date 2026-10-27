@@ -9,7 +9,7 @@
 //! Every program below is GHC 9.14.1's, byte for byte as measured.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho};
+use super::{assert_ghc_everywhere_chirho, assert_named_failure_everywhere_chirho};
 
 /// Movers, with GHC's stdout: computed Strings, `[String]` equality, Double signed zero
 /// and NaN, pairs, `Maybe` and lists under `==` and the seven consumers, and a derived
@@ -104,15 +104,6 @@ const NAMED_FAILURES_CHIRHO: [(&str, &str); 1] = [(
     "HDerivedBoxChirho.hs",
     "module Main where\ndata BoxChirho a = BoxChirho a deriving (Eq, Show)\nmain :: IO ()\nmain = print (BoxChirho (1 :: Int) == BoxChirho 1, BoxChirho 'a' /= BoxChirho 'b')\n",
 )];
-
-fn assert_ghc_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
-    assert_eq!(
-        run_chirho(file_name_chirho, source_chirho),
-        ghc_chirho,
-        "{file_name_chirho} interpreter"
-    );
-    assert_native_chirho(file_name_chirho, source_chirho, ghc_chirho);
-}
 
 #[test]
 fn structured_equality_answers_as_ghc_everywhere_chirho() {

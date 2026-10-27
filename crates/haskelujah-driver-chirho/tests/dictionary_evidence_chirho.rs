@@ -37,6 +37,8 @@ mod higher_order_occurrences_chirho;
 mod list_orders_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/operator_sections_chirho.rs"]
 mod operator_sections_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/ord_methods_chirho.rs"]
+mod ord_methods_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/ordering_literals_chirho.rs"]
 mod ordering_literals_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/ordering_operators_chirho.rs"]
@@ -81,6 +83,16 @@ fn assert_native_chirho(file_name_chirho: &str, program_chirho: &str, ghc_chirho
             "{file_name_chirho} {backend_chirho:?}"
         );
     }
+}
+
+/// GHC's stdout, byte for byte, from the interpreter and from both native backends.
+fn assert_ghc_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
+    assert_eq!(
+        run_chirho(file_name_chirho, source_chirho),
+        ghc_chirho,
+        "{file_name_chirho} interpreter"
+    );
+    assert_native_chirho(file_name_chirho, source_chirho, ghc_chirho);
 }
 
 /// Every engine stops normally and names the same bounded runtime obligation.

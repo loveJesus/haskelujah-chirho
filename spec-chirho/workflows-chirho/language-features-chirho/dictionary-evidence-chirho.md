@@ -190,7 +190,7 @@ flowchart LR
       - a lambda under an aggregate (`sum (map (\v -> v ^ 2) xs)`);
       - a left section over the exponents' list (`map (2 ^) [3, 4 :: Int]`).
   - Before, the interpreter refused every such comparison (`LtIntChirho: expected Int#`), and the native backends compared IEEE bits as integers, which orders negative Doubles backwards.
-  - Ordering of Strings, tuples and derived types is outside this rule: the seeded `Ord` class has only `compare`.
+  - Ordering of Strings, tuples and derived types is outside this rule. Those keys take row 551's compare route below, and since row 612 an `Ord a =>` binding selects its operators from its dictionary.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/double_primops_chirho.rs`, including a top-level literal and a computed Double binding beside typed-parameter, typed-local, named-`negate` and Int holds.
 - Other keys reach their ordering through a body-backed `compare` (row 551, the first Ord brick).
   - When an operand of the desugarer's `<#`, `<=#`, `>#` or `>=#` keys as anything but Int, Char, Bool or Double, `rewrite_chirho/compare_route_chirho.rs` looks up `$prim_Ord_compare_<key>` with `lookup_dispatch_body_name_id_chirho`. That lookup accepts a body-backed row and never a missing-method stub.
@@ -210,8 +210,8 @@ flowchart LR
   - Int, Char and Bool keep their exact Int-shaped bindings. Double routes too, because `compare x y /= GT` matches IEEE `x <= y`, NaN included.
   - Residuals keep today's path:
     - keys without a body-backed compare row;
-    - a polymorphic `Ord a =>` wrapper, whose evidence is a dictionary;
     - the empty list, which fails in `head` rather than with `Prelude.maximum: empty list`.
+  - A polymorphic `Ord a =>` wrapper, whose evidence is a dictionary, was a residual here until row 612. `max` and `min` are now its dictionary's methods, and `maximum` and `minimum` fold over that dictionary's `compare`.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/extrema_chirho.rs`.
 - Concrete `Maybe` and tuple ordering composes only body-backed component rows (row 572).
   - `Show` and `Ord` occurrence evidence retain a complete concrete key, rather than only the
@@ -279,10 +279,9 @@ flowchart LR
     - any other key with a body-backed compare row: `test (compare_K a b)`, row 551's shape.
   - **Written uses** take their answer in place, in one pass over the module's bindings before any binding is rewritten (`written_orderings_resolved_chirho`). The typed walkers of higher-order arguments rewrite an application node by node, so a spine hook never sees `filter (< "b")`'s section.
   - **First-class and prefix uses** take the same answer through a generated `$prim_Ord_<op>_<key>` row (`generate_ordering_operator_rows_chirho`, after the Eq rows). `occurrence_head_replacement_chirho` serves it by the name the proof gives.
-  - **Without an answer**, a written operator takes back the primop desugaring gave it, and behaves as on main; a first-class one gets no row and stays loud. That covers the binding's own dictionary key, no evidence, and a compare row that is a missing-method stub. A program's own operator keeps its binding (row 593's guard).
-  - **Residuals, unchanged from main:**
-    - `Ord a =>` code orders with the blind primop: `smallerChirho ("a" ++ "") "b"` gives `False` natively, where GHC gives `True`;
-    - a stub compare row: builtin instances without a compare body (`()`, Float, Word) keep their primop answers, and a program instance that defines only `<=` still orders `<` and `>` by representation, though its own `<=` is now served.
+  - **Without an answer**, a written operator takes back the primop desugaring gave it, and behaves as on main; a first-class one stays loud. That covers no evidence and a compare row that is a missing-method stub. At the binding's own dictionary key the operator is Ord's method since row 612, and the dictionary route selects it. A program's own operator keeps its binding (row 593's guard).
+  - **Residuals, unchanged from main:** a stub compare row. Builtin instances without a compare body (`()`, Float, Word) keep their primop answers, and a program instance that defines only `<=` still orders `<` and `>` by representation, though its own `<=` is now served.
+  - `Ord a =>` code ordered with the blind primop until row 612: `smallerChirho ("a" ++ "") "b"` gave `False` natively, where GHC gives `True`.
   - Controls:
     - In `tests/dictionary_evidence_chirho/ordering_chirho/ordering_operators_chirho.rs`: `written_ordering_operators_take_the_proved_key_everywhere_chirho`, `a_programs_own_ordering_operator_keeps_its_binding_everywhere_chirho`, `first_class_ordering_operators_take_their_rows_everywhere_chirho`, `ordering_holds_stay_ghc_everywhere_chirho` and `a_first_class_operator_at_a_stub_compare_key_stays_loud_chirho`.
     - Row 551's boundary pin became `prefix_less_answers_through_its_compare_row_chirho`.
@@ -335,6 +334,29 @@ flowchart LR
     - The layout and selector units, `build_layouts_from_class_env_chirho` and `generate_selectors_creates_bindings_chirho`.
     - Row 603's pinned structured `/=` failure now answers, and leaves its named-failure control.
   - **Row 608's table:** the committed generator was rerun on this row. Its outputs are byte-identical (726 agree, 679 disagree), and the drift tests pass.
+- Ord's seven methods, the six besides `compare` defaulting from it, as GHC's do (row 612).
+  - **The defect:** the seeded Ord declared only `compare`. `<`, `<=`, `>`, `>=`, `max` and `min` were standalone `Ord a =>` builtins, answered only where a concrete key was proved (rows 551, 565 and 610). Inside `Ord a =>` code no dictionary slot held them, so:
+    - written operators fell back to the Int primops: `smallerChirho ("a" ++ "") "b"` gave `False` natively, NaN and negative Doubles ordered as integer bits, and the two natives disagreed with each other;
+    - `max` and `minimum` were the Int-shaped bindings: `biggerChirho "b" ("a" ++ "")` gave `"a"`, and the interpreter stopped at `LeIntChirho`;
+    - an instance's own operators were never read through a dictionary, and a first-class `(>=)` at such a key had no binding.
+  - **Typing:** the seeded Ord has GHC's seven methods. Layouts sort method names, so `$Dict_Ord` is `[Eq | <, <=, >, >=, compare, max, min]`, and `compare` moved from slot 1 to slot 5. Every Ord dictionary and selector follows the layout, and the hand-built `Ord [T]` fills every slot.
+  - **Defaults** (`instance_chirho/ordering_defaults_chirho.rs`), asked before any stub by the dictionary resolver, the conditional list path and the list builder:
+    - each operator is its answer at the key, through row 610's `ordering_answer_chirho`: the Int primop at Int, Char and Bool, the IEEE primop at Double, else the key's compare row read by the operator's Ordering test;
+    - `max x y = if x <= y then y else x` and `min x y = if x <= y then x else y`, through the key's `<=` answer, which is the instance's own `<=` where it writes one. At Double this matches GHC at NaN and signed zero.
+    - The donor must be a real body. A key whose `compare` is a missing-method stub keeps each slot's named failure, where GHC's defaults loop.
+  - **The binding's own key:** a written operator proved at the binding's own dictionary leaves row 610's pass and selects its slot (`$sel_Ord_< $dOrd`). `max` and `min` select theirs as methods. `maximum` and `minimum` apply row 565's compare-backed fold to the dictionary's `compare` (`own_extremum_chirho`).
+  - **Kept for rows 626 and 627:** a `<=`-only instance keeps `missing method Ord.compare` for `compare` and the other operators (row 626); its `max` and `min` already answer through its own `<=`, which is GHC's definition. At concrete keys `max`, `min`, `maximum` and `minimum` keep row 565's compare-backed helpers, so an instance's own `max` is read only through a dictionary (row 627).
+  - **Residuals, measured on main too:**
+    - no `Ord` or `Eq` dictionary exists at `Maybe` or tuple keys, so `Ord a =>` code called there fails with `no instance dictionary for Ord Maybe`, where main's operators answered silently wrong;
+    - an Ord instance at a generic head is never generic (row 600's G6: Ord has a superclass), so `Ord a =>` code at `TagChirho Int` fails with `no instance dictionary for Ord TagChirho`, as `compare` there did on main;
+    - Cranelift's `show` inside `Show a =>` code formats a non-immediate value as an integer, so `show (max x y)` there now fails with `no native Show instance for a boxed value`, as `show (head xs)` did on main;
+    - `sort` at `[[Int]]`, at Double in the interpreter and at a derived enum on Cranelift, and `comparing` natively, unchanged.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/ord_methods_chirho.rs`: `ord_methods_default_from_compare_everywhere_chirho`, `ord_method_holds_stay_ghc_everywhere_chirho` and `an_instance_without_compare_fails_by_name_everywhere_chirho`.
+    - The layout and selector units, `build_layouts_from_class_env_chirho` and `generate_selectors_creates_bindings_chirho`.
+    - Row 565's polymorphic `maximum` residual now answers and moved into these controls. Row 610's stub-key pin names `missing method Ord.< for VChirho`, where main named a missing binding.
+  - **Row 608's table:** the committed generator was rerun on this row. Its outputs are byte-identical (726 agree, 679 disagree), and the 18 drift tests pass.
+
 ## Reference evidence (bricks 3 and 4)
 
 ```mermaid
@@ -573,9 +595,9 @@ instance's row), a dictionary, or R2's named failure for a proven nested list (g
 - A section without an origin keeps `==#`. Every parsed section has one (the lowerer names
   its operator through `reference_name_chirho`), so the guard serves only producers without
   that metadata, and no parsed program can tell it apart.
-- Only `==` here. The engine's `Ord` dictionary holds `compare` alone, so the ordering
-  operators take their own occurrences' evidence through rows built over `compare` (row 610,
-  above). Sections of `+`, `-` and `*` take this route since row 609, which folded this rule
+- Only `==` here. The ordering operators take their own occurrences' evidence through rows
+  built over `compare` (row 610, above), and since row 612 they are slots of the engine's `Ord`
+  dictionary too. Sections of `+`, `-` and `*` take this route since row 609, which folded this rule
   into one predicate. `/=` sections join it with Eq's method set (row 606).
 
 ## R2 at every occurrence entry (R2b, 2026-10-18)
@@ -615,7 +637,8 @@ flowchart TD
 - Ord boundary, measured on the frozen R1/R2 CLI: the `Ord [Int]` list dictionary has no
   `compare` (`compare [1] [2]` fails with `missing method Ord.compare for [Int]`), and
   `compare` at `[Int]` crashes (`no matching alternative for tag 0`). A defaulted `compare` in
-  a typed argument reaches that dictionary too; it waits for the Ord method model.
+  a typed argument reaches that dictionary too; it waits for the Ord method model. The Ord list
+  unit below gave `Ord [T]` its compare row, and row 612 gave Ord its seven methods.
 
 ## A generated `Eq [String]` (A4, 2026-10-18)
 
@@ -657,9 +680,10 @@ flowchart TD
     inst_ol_chirho["Ord a => Ord [a]"] --> gen_ol_chirho[generate_conditional_ground_dicts_chirho]
     gen_ol_chirho -->|Int, Bool, Double, String elements| ord_ol_chirho[generate_ord_list_dict_chirho]
     ord_ol_chirho -->|the element row is real, not a stub| row_ol_chirho["$prim_Ord_compare_[T] = $compareListBy $prim_Ord_compare_T"]
-    row_ol_chirho --> dict_ol_chirho["$fOrd[T] = $Dict_Ord $fEq[T] row"]
+    row_ol_chirho --> defaults_ol_chirho["the six other methods default from that row (row 612)"]
+    defaults_ol_chirho --> dict_ol_chirho["$fOrd[T] = $Dict_Ord $fEq[T] and the seven rows in layout order"]
     shared_ol_chirho["$compareListBy cmp xs ys: built once, no default alternative"] --> row_ol_chirho
-    ord_ol_chirho -->|no real element row, or a method besides compare| stub_ol_chirho["generic path: $prim_Ord_compare_[T] fails by name"]
+    ord_ol_chirho -->|no real element row| stub_ol_chirho["generic path: $prim_Ord_compare_[T] fails by name"]
 ```
 
 - One recursive `$compareListBy` serves every element type. It compares element by element

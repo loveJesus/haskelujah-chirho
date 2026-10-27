@@ -736,8 +736,7 @@ impl DictPassCtxChirho {
             return prim_id_chirho;
         }
 
-        // Eq's methods default to each other's negation, from a real body only (row 606).
-        if let Some(default_id_chirho) = self.equality_default_row_chirho(
+        if let Some(default_id_chirho) = self.method_default_row_chirho(
             class_name_chirho,
             method_name_chirho,
             written_key_chirho.unwrap_or(type_key_chirho),
@@ -762,6 +761,34 @@ impl DictPassCtxChirho {
             type_key_chirho,
             prim_name_chirho,
         )
+    }
+
+    /// GHC's default row for a method the instance does not write, read from the real rows
+    /// under `donor_key_chirho`: Eq's two methods from each other (row 606), and Ord's other
+    /// six from its `compare` (row 612). None when no real row donates, so the caller's
+    /// named failure stays.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn method_default_row_chirho(
+        &mut self,
+        class_name_chirho: &str,
+        method_name_chirho: &str,
+        donor_key_chirho: &str,
+        prim_name_chirho: &str,
+    ) -> Option<CoreIdChirho> {
+        self.equality_default_row_chirho(
+            class_name_chirho,
+            method_name_chirho,
+            donor_key_chirho,
+            prim_name_chirho,
+        )
+        .or_else(|| {
+            self.ordering_default_row_chirho(
+                class_name_chirho,
+                method_name_chirho,
+                donor_key_chirho,
+                prim_name_chirho,
+            )
+        })
     }
 
     /// A row that fails by name, with its method's own calling convention, as
@@ -966,6 +993,7 @@ mod constructor_orders_chirho;
 mod equality_defaults_chirho;
 mod generic_heads_chirho;
 mod list_orders_chirho;
+mod ordering_defaults_chirho;
 mod ordering_operators_chirho;
 mod string_spellings_chirho;
 pub(in crate::dict_chirho) mod structured_equalities_chirho;

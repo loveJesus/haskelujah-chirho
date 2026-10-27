@@ -176,13 +176,22 @@ fn build_layouts_from_class_env_chirho() {
     );
     assert_eq!(eq_layout_chirho.field_count_chirho, 2);
 
-    // Ord: 1 super (Eq), 1 method (compare)
+    // Ord: Eq in slot 0, then GHC's seven methods in sorted slots, `compare` in slot 5
+    // (row 612). Every Ord dictionary and selector follows this order.
     let ord_layout_chirho = ctx_chirho.layouts_chirho.get("Ord").unwrap();
-    assert_eq!(ord_layout_chirho.super_slots_chirho.len(), 1);
-    assert_eq!(ord_layout_chirho.super_slots_chirho[0].0, "Eq");
-    assert_eq!(ord_layout_chirho.method_slots_chirho.len(), 1);
-    assert_eq!(ord_layout_chirho.method_slots_chirho[0].0, "compare");
-    assert_eq!(ord_layout_chirho.field_count_chirho, 2);
+    assert_eq!(
+        ord_layout_chirho.super_slots_chirho,
+        vec![("Eq".to_string(), 0)]
+    );
+    assert_eq!(
+        ord_layout_chirho.method_slots_chirho,
+        ["<", "<=", ">", ">=", "compare", "max", "min"]
+            .iter()
+            .zip(1..)
+            .map(|(name_chirho, slot_chirho)| (name_chirho.to_string(), slot_chirho))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(ord_layout_chirho.field_count_chirho, 8);
 
     // Num: no supers (GHC dropped Eq and Show from Num in 7.4; the old
     // expectation here encoded the Haskell 98 report, not GHC), 7 methods
@@ -216,7 +225,7 @@ fn generate_selectors_creates_bindings_chirho() {
     // Should have selectors for each method across all classes
     assert!(!ctx_chirho.generated_bindings_chirho.is_empty());
 
-    // Check that the == and /= selectors exist, both Eq's (row 606)
+    // Check that the == and /= selectors exist, both Eq's (row 606), and Ord's seven (row 612)
     assert!(ctx_chirho.method_selectors_chirho.contains_key("=="));
     assert_eq!(
         ctx_chirho
@@ -225,6 +234,16 @@ fn generate_selectors_creates_bindings_chirho() {
             .map(|(class_name_chirho, _)| class_name_chirho.as_str()),
         Some("Eq")
     );
+    for method_chirho in ["<", "<=", ">", ">=", "compare", "max", "min"] {
+        assert_eq!(
+            ctx_chirho
+                .method_selectors_chirho
+                .get(method_chirho)
+                .map(|(class_name_chirho, _)| class_name_chirho.as_str()),
+            Some("Ord"),
+            "{method_chirho}"
+        );
+    }
 
     // Check that the selector is a lambda wrapping a case
     let (class_name_chirho, _sel_id_chirho) = ctx_chirho.method_selectors_chirho.get("==").unwrap();

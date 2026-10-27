@@ -7,7 +7,7 @@
 //! at all. Every program below is GHC 9.14.1's, byte for byte as measured.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho};
+use super::{assert_ghc_everywhere_chirho, assert_named_failure_everywhere_chirho};
 
 /// Written operators at computed Strings, NaN and signed-zero Doubles, a derived enum, a
 /// program's own `compare`, derived fields, a newtype, `Maybe`, lists and tuples, in
@@ -106,15 +106,6 @@ const HOLDS_CHIRHO: [(&str, &str, &str); 3] = [
     ),
 ];
 
-fn assert_ghc_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
-    assert_eq!(
-        run_chirho(file_name_chirho, source_chirho),
-        ghc_chirho,
-        "{file_name_chirho} interpreter"
-    );
-    assert_native_chirho(file_name_chirho, source_chirho, ghc_chirho);
-}
-
 #[test]
 fn written_ordering_operators_take_the_proved_key_everywhere_chirho() {
     for (file_name_chirho, source_chirho, ghc_chirho) in MOVERS_CHIRHO {
@@ -144,12 +135,13 @@ fn ordering_holds_stay_ghc_everywhere_chirho() {
 }
 
 /// An instance without `compare` leaves a missing-method stub as its compare row. A
-/// first-class `(<)` there gets no row and stays loud, as on main; GHC prints `[False]`.
+/// first-class `(<)` there stays loud, as on main; since row 612 it names its own dictionary
+/// slot's stub, where main named a missing binding. GHC prints `[False]`.
 #[test]
 fn a_first_class_operator_at_a_stub_compare_key_stays_loud_chirho() {
     assert_named_failure_everywhere_chirho(
         "OStubFirstClassChirho.hs",
         "module Main where\nnewtype VChirho = VChirho Int deriving (Eq, Show)\ninstance Ord VChirho where\n  VChirho a <= VChirho b = a >= b\nmain :: IO ()\nmain = print (zipWith (<) [VChirho 1] [VChirho 2])\n",
-        "binding `<`",
+        "missing method Ord.< for VChirho",
     );
 }

@@ -49,29 +49,19 @@ fn int_shaped_extrema_keep_their_answers_everywhere_chirho() {
     );
 }
 
-/// Row 565's remaining named residuals, each failing in the interpreter as before.
-/// GHC answers `"c"` and fails `Prelude.maximum: empty list`.
-/// - A polymorphic `Ord a =>` wrapper holds a dictionary, not a key.
-/// - The empty list fails in `head`, not with GHC's message.
+/// Row 565's remaining named residual, failing in the interpreter as before: the empty list
+/// fails in `head`, where GHC fails `Prelude.maximum: empty list`. A polymorphic `Ord a =>`
+/// wrapper, once pinned here, folds over its dictionary's `compare` since row 612
+/// (`ord_methods_chirho.rs`).
 #[test]
 fn extrema_outside_the_compare_rows_stay_named_residuals_chirho() {
-    for (file_name_chirho, program_chirho, reason_chirho) in [
-        (
-            "PolymorphicMaximumChirho.hs",
-            "module Main where\nlargestChirho :: Ord a => [a] -> a\nlargestChirho = maximum\nmain :: IO ()\nmain = print (largestChirho [\"b\", \"c\", \"a\"])\n",
-            "LeIntChirho",
-        ),
-        (
-            "EmptyMaximumChirho.hs",
-            "module Main where\nmain :: IO ()\nmain = print (maximum ([] :: [Int]))\n",
-            "no matching alternative",
-        ),
-    ] {
-        let error_chirho = run_result_chirho(file_name_chirho, program_chirho)
-            .expect_err("row 565 leaves this extremum on today's path");
-        assert!(
-            error_chirho.contains(reason_chirho),
-            "{file_name_chirho}: {error_chirho}"
-        );
-    }
+    let error_chirho = run_result_chirho(
+        "EmptyMaximumChirho.hs",
+        "module Main where\nmain :: IO ()\nmain = print (maximum ([] :: [Int]))\n",
+    )
+    .expect_err("row 565 leaves this extremum on today's path");
+    assert!(
+        error_chirho.contains("no matching alternative"),
+        "EmptyMaximumChirho.hs: {error_chirho}"
+    );
 }

@@ -176,6 +176,70 @@ impl DictPassCtxChirho {
         )
     }
 
+    /// An evidenced `maximum` or `minimum` at the enclosing binding's own `Ord` key, as row
+    /// 565's compare-backed fold over that dictionary's `compare` (row 612), such as
+    /// `$ord_minimum_by_chirho ($sel_Ord_compare d)`. The Prelude's are Int-shaped, so
+    /// inside `Ord a =>` code the interpreter failed on `LeIntChirho`, and both natives
+    /// compared heap values as integers. `max` and `min` are Ord's methods there, which the
+    /// dictionary route selects.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn own_extremum_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+    ) -> Option<CoreExprChirho> {
+        if self.names_programs_own_binder_chirho(id_chirho) {
+            return None;
+        }
+        let (reference_name_chirho, _canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&id_chirho)?;
+        let base_name_chirho = reference_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(reference_name_chirho);
+        if !matches!(base_name_chirho, "maximum" | "minimum") {
+            return None;
+        }
+        let (_, helper_chirho) = ORDERING_EXTREMA_CHIRHO
+            .iter()
+            .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        if class_name_chirho != "Ord" || !is_own_dictionary_key_chirho(ty_key_chirho) {
+            return None;
+        }
+        let dict_id_chirho = Self::own_dict_chirho(
+            "Ord",
+            ty_key_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+        )?;
+        let (_class_chirho, compare_selector_id_chirho) =
+            self.method_selectors_chirho.get("compare")?;
+        let helper_id_chirho = self.lookup_body_backed_name_id_chirho(helper_chirho)?;
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(*compare_selector_id_chirho)),
+                arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+            }),
+        })
+    }
+
+    /// An own-key aggregate (row 586) or extremum (row 612), served by the binding's
+    /// dictionaries.
+    fn own_evidenced_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+    ) -> Option<CoreExprChirho> {
+        self.own_aggregate_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+            .or_else(|| {
+                self.own_extremum_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+            })
+    }
+
     /// An evidenced `max`, `min`, `maximum` or `minimum` occurrence as its compare-backed
     /// helper applied to its key's own `Ord.compare` row, or None. Int, Char and Bool keep
     /// their exact Int-shaped bindings, and a key without a body-backed compare row keeps
@@ -264,7 +328,7 @@ impl DictPassCtxChirho {
     }
 
     /// [`Self::evidenced_value_chirho`] where the binding's dictionaries are in scope:
-    /// an own-key aggregate is served by them (row 586).
+    /// an own-key aggregate (row 586) or extremum (row 612) is served by them.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn evidenced_value_in_scope_chirho(
         &self,
@@ -273,12 +337,12 @@ impl DictPassCtxChirho {
         evidence_classes_chirho: &HashSet<String>,
     ) -> Option<CoreExprChirho> {
         self.evidenced_value_chirho(id_chirho).or_else(|| {
-            self.own_aggregate_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+            self.own_evidenced_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
         })
     }
 
     /// [`Self::evidenced_applied_head_chirho`] where the binding's dictionaries are in
-    /// scope (row 586).
+    /// scope (rows 586 and 612).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn evidenced_applied_head_in_scope_chirho(
         &self,
@@ -287,7 +351,7 @@ impl DictPassCtxChirho {
         evidence_classes_chirho: &HashSet<String>,
     ) -> Option<CoreExprChirho> {
         self.evidenced_applied_head_chirho(id_chirho).or_else(|| {
-            self.own_aggregate_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+            self.own_evidenced_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
         })
     }
 }

@@ -6,7 +6,7 @@
 //! as measured.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_native_chirho, run_chirho};
+use super::assert_ghc_everywhere_chirho;
 
 /// `print` and `show` at arities 5 to 8 and 15, mixed and nested fields, negative numbers
 /// unparenthesized inside a tuple as GHC prints them.
@@ -72,15 +72,6 @@ const COMPARISONS_CHIRHO: [(&str, &str, &str); 4] = [
         "(True,LT,False)\n",
     ),
 ];
-
-fn assert_ghc_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
-    assert_eq!(
-        run_chirho(file_name_chirho, source_chirho),
-        ghc_chirho,
-        "{file_name_chirho} interpreter"
-    );
-    assert_native_chirho(file_name_chirho, source_chirho, ghc_chirho);
-}
 
 #[test]
 fn tuples_show_as_ghc_at_every_arity_everywhere_chirho() {

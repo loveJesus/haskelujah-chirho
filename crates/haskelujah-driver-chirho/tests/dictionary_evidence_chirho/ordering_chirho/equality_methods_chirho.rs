@@ -6,7 +6,7 @@
 //! Every program below is GHC 9.14.1's, byte for byte as measured.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{assert_named_failure_everywhere_chirho, assert_native_chirho, run_chirho};
+use super::{assert_ghc_everywhere_chirho, assert_named_failure_everywhere_chirho};
 
 /// An instance with both methods, only `==` or only `/=`; first-class `(/=)`; `/=` at pairs,
 /// `Maybe` and lists; sections at computed Strings, NaN and signed zero; a derived enum; and
@@ -68,15 +68,6 @@ const EQUALITY_HOLDS_CHIRHO: [(&str, &str, &str); 2] = [
         "(False,True,True,True)\n((False,True,LT),(True,False,EQ),(False,True,GT))\n([ModChirho 1,ModChirho 2],True)\n",
     ),
 ];
-
-fn assert_ghc_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
-    assert_eq!(
-        run_chirho(file_name_chirho, source_chirho),
-        ghc_chirho,
-        "{file_name_chirho} interpreter"
-    );
-    assert_native_chirho(file_name_chirho, source_chirho, ghc_chirho);
-}
 
 #[test]
 fn eq_methods_default_to_each_other_everywhere_chirho() {
