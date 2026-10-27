@@ -7,9 +7,9 @@
 //! - A registered `[Char]` list is walked cell by cell, forcing each character
 //!   as `haskelujah_pack_string_chirho` does.
 //!
-//! A cell holds a code point (row 560's unpack decodes UTF-8). Row 560 owns the one
-//! representation this reading refuses, because no exact reading of it exists yet: a list
-//! that ends in a literal tail instead of `[]`.
+//! A cell holds a code point (row 560's unpack decodes UTF-8), and a list may end in a
+//! literal's buffer instead of `[]` (row 576), which is read as UTF-8 too. What remains
+//! refused is a buffer that is not UTF-8, or a value that is neither a list nor a buffer.
 //!
 //! workflow: print-show-evidence-chirho
 
@@ -59,6 +59,12 @@ fn list_code_points_chirho(list_bits_chirho: u64) -> Option<Vec<u32>> {
     let mut current_chirho = list_bits_chirho;
     loop {
         current_chirho = haskelujah_enter_thunk_chirho(current_chirho);
+        // A forced, nonzero tail that is no registered cell is a NUL-terminated UTF-8 buffer
+        // (row 576); registration decides it, since a literal may sit at an odd address.
+        if current_chirho != 0 && haskelujah_is_heap_ptr_chirho(current_chirho) == 0 {
+            code_points_chirho.extend(buffer_code_points_chirho(current_chirho)?);
+            return Some(code_points_chirho);
+        }
         let node_chirho = list_node_chirho(&native_gc_runtime_lock_chirho(), current_chirho)?;
         let NativeListNodeChirho::ConsChirho {
             head_chirho,

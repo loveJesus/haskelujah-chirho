@@ -140,9 +140,14 @@ gpt_chirho #29139. A native String is a NUL-terminated UTF-8 buffer or a list of
     `string: a NUL character has no native representation`;
   - invalid UTF-8 being unpacked: `string: a native String is not valid UTF-8`;
   - a cell with no UTF-8 encoding: `string: a character has no UTF-8 encoding`.
-- **Not in this brick:**
-  - `++#` reading a list (root 2);
-  - a list cut at a literal tail (root 3);
-  - the rest of row 560.
+- **Row 576, roots 2 and 3:**
+  - `haskelujah_append_str_chirho` packs a list operand, as `putStrLn` does. Both operands stay
+    rooted until both are read, and each side's bytes are owned before the result allocation.
+  - `pack` and the native show reader read a forced tail that is no registered cell as the
+    literal's UTF-8 buffer. Only these two walkers do; `native_maps` keeps its strict cells.
+  - The interpreter's `++#` keeps a literal tail's characters.
+  - Controls: `appends_and_literal_tails_read_whole_everywhere_chirho`;
+    `append_str_keeps_both_operands_across_a_collection_in_packing_chirho`;
+    `pack_reads_a_literal_tail_at_any_address_chirho`.
 - **Controls:** `native_strings_carry_code_points_everywhere_chirho`, `a_nul_character_fails_named_natively_chirho`,
   and the RTS round trip `unpack_and_pack_carry_code_points_as_utf8_chirho`.

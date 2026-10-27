@@ -486,13 +486,6 @@ Just "x\""
 ""
 "#;
 
-/// A cons onto a literal. GHC 9.14.1 prints `"abc"`. Natively the literal tail has no exact
-/// reading yet (row 560), so the renderer refuses it instead of printing `""` or `"a"`.
-const LITERAL_TAIL_CHIRHO: &str = r#"module Main where
-main :: IO ()
-main = print ('a' : "bc")
-"#;
-
 /// A runtime-built String above ASCII. GHC 9.14.1 prints `"x\233"`. Row 560's unpack gives
 /// code points, so every engine reads it exactly (before: a cell per UTF-8 byte).
 const RUNTIME_NON_ASCII_CHIRHO: &str = r#"module Main where
@@ -507,27 +500,9 @@ main :: IO ()
 main = print (map toEnum [72, 105] :: String)
 "#;
 
-const UNREAD_STRING_CHIRHO: &str = "show: no exact native reading of this String";
-
 #[test]
 fn chars_and_strings_are_shown_as_ghc_shows_them_everywhere_chirho() {
     assert_prints_everywhere_chirho(SHOW_TEXT_CHIRHO, SHOW_TEXT_GHC_CHIRHO);
-}
-
-/// The interpreter reads a literal tail exactly; natively it fails named (row 560).
-#[test]
-fn a_literal_tail_fails_named_natively_chirho() {
-    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
-        LITERAL_TAIL_CHIRHO,
-        &mut SourceMapChirho::new_chirho(),
-        "ShowTextChirho.hs",
-        None,
-    )
-    .expect("the interpreter runs it");
-    assert_eq!(machine_chirho.io_output_chirho, "\"abc\"\n", "interpreter");
-    for backend_chirho in BACKENDS_CHIRHO {
-        assert_fails_named_chirho(backend_chirho, LITERAL_TAIL_CHIRHO, UNREAD_STRING_CHIRHO);
-    }
 }
 
 #[test]
@@ -538,6 +513,34 @@ fn a_runtime_string_above_ascii_shows_as_ghc_shows_it_everywhere_chirho() {
 #[test]
 fn a_string_of_converted_characters_shows_as_ghc_shows_it_everywhere_chirho() {
     assert_prints_everywhere_chirho(TO_ENUM_STRING_CHIRHO, "\"Hi\"\n");
+}
+
+// ── Row 576: native ++ and literal tails read whole ──────────────────────
+
+/// Runtime lists through `++`, and a cons onto a literal, shown and printed. Natively `++#`
+/// read a list as "", so `"<" ++ reverse "abc" ++ ">"` printed `<>`; the pack and show walkers
+/// stopped at a literal tail, so `'a' : "bc"` printed `a` or was refused; and the interpreter's
+/// `++#` dropped that tail (`ad`). GHC 9.14.1's output is the expected text.
+const STRING_APPEND_TAILS_CHIRHO: &str = r#"module Main where
+main :: IO ()
+main = do
+  putStrLn ("<" ++ reverse "abc" ++ ">")
+  putStrLn ('a' : "bc")
+  putStrLn (('a' : "bc") ++ "d")
+  print ('a' : "bc")
+  putStrLn ("x" ++ map succ "ab")
+  print (length ("ab" ++ reverse "cd"))
+  putStrLn (reverse "ba" ++ reverse "dc")
+  print ("<" ++ reverse "ab")
+  putStrLn (replicate 2 'x' ++ "y")
+"#;
+
+#[test]
+fn appends_and_literal_tails_read_whole_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        STRING_APPEND_TAILS_CHIRHO,
+        "<cba>\nabc\nabcd\n\"abc\"\nxbc\n4\nabcd\n\"<ba\"\nxxy\n",
+    );
 }
 
 // ── R1: an unbound reference fails named, and only when demanded ──────────

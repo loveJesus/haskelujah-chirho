@@ -2632,6 +2632,14 @@ impl MachineChirho {
                                             cur_chirho =
                                                 self.heap_chirho.follow_ind_chirho(*tail_chirho);
                                         }
+                                        // A literal tail ('a' : "bc") ends xs with its
+                                        // characters (row 576; it used to be dropped).
+                                        ValueChirho::StringChirho(literal_chirho) => {
+                                            xs_elems_chirho.extend(
+                                                literal_chirho.chars().map(ValueChirho::CharChirho),
+                                            );
+                                            break;
+                                        }
                                         _ => break,
                                     }
                                 } else {

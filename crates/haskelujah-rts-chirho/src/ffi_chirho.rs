@@ -636,28 +636,46 @@ pub extern "C" fn haskelujah_put_str_ln_chirho(ptr_bits_chirho: u64) -> i64 {
     0
 }
 
+/// Run `body` with both values rooted, so a collection inside it keeps them, and unroot them
+/// after (row 576). The roots are balanced on the one way out.
+fn with_rooted_pair_chirho<T>(
+    first_chirho: u64,
+    second_chirho: u64,
+    body_chirho: impl FnOnce() -> T,
+) -> T {
+    haskelujah_gc_root_push_chirho(first_chirho as usize as *mut u8);
+    haskelujah_gc_root_push_chirho(second_chirho as usize as *mut u8);
+    let result_chirho = body_chirho();
+    haskelujah_gc_root_pop_chirho();
+    haskelujah_gc_root_pop_chirho();
+    result_chirho
+}
+
+/// The UTF-8 bytes of a native String, a buffer or a packed list, owned by the caller.
+fn owned_string_bytes_chirho(value_bits_chirho: u64) -> Vec<u8> {
+    let ptr_bits_chirho = native_c_string_bits_chirho(value_bits_chirho);
+    if ptr_bits_chirho == 0 {
+        return Vec::new();
+    }
+    let ptr_chirho = ptr_bits_chirho as usize as *const std::ffi::c_char;
+    unsafe { CStr::from_ptr(ptr_chirho) }.to_bytes().to_vec()
+}
+
 /// Concatenate two NUL-terminated byte strings into a newly allocated
 /// NUL-terminated buffer owned by the native RTS allocator.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_append_str_chirho(lhs_bits_chirho: u64, rhs_bits_chirho: u64) -> u64 {
-    // The output allocation can trigger collection, so do not retain borrowed
-    // slices into unrooted RTS allocations across that call.
-    let lhs_bytes_chirho: Vec<u8> = if lhs_bits_chirho == 0 {
-        Vec::new()
-    } else {
-        let lhs_ptr_chirho = lhs_bits_chirho as usize as *const std::ffi::c_char;
-        unsafe { CStr::from_ptr(lhs_ptr_chirho) }
-            .to_bytes()
-            .to_vec()
-    };
-    let rhs_bytes_chirho: Vec<u8> = if rhs_bits_chirho == 0 {
-        Vec::new()
-    } else {
-        let rhs_ptr_chirho = rhs_bits_chirho as usize as *const std::ffi::c_char;
-        unsafe { CStr::from_ptr(rhs_ptr_chirho) }
-            .to_bytes()
-            .to_vec()
-    };
+    // Either operand may be a NUL-terminated buffer or a registered [Char] list, packed here
+    // as putStrLn packs it (row 576; a list used to read as ""). Packing allocates and can
+    // collect, so both operands stay rooted until both are read, and each side's bytes are
+    // owned before the result allocation.
+    let (lhs_bytes_chirho, rhs_bytes_chirho) =
+        with_rooted_pair_chirho(lhs_bits_chirho, rhs_bits_chirho, || {
+            (
+                owned_string_bytes_chirho(lhs_bits_chirho),
+                owned_string_bytes_chirho(rhs_bits_chirho),
+            )
+        });
 
     let total_len_chirho = lhs_bytes_chirho
         .len()
@@ -798,8 +816,13 @@ pub extern "C" fn haskelujah_pack_string_chirho(list_bits_chirho: u64) -> u64 {
         if current_chirho == 0 {
             break; // Nil (immediate 0)
         }
-        if current_chirho & 1 == 0 {
-            // Immediate value — tag 0 = Nil
+        if haskelujah_is_heap_ptr_chirho(current_chirho) == 0 {
+            // A forced, nonzero tail that is no registered cell is a NUL-terminated UTF-8
+            // buffer, as in 'a' : "bc" (row 576). Registration decides it, as in
+            // native_c_string_bits_chirho: a literal may sit at an odd address, which its
+            // low bit cannot tell from a tagged cell. Its bytes end the String.
+            let literal_chirho = current_chirho as usize as *const std::ffi::c_char;
+            bytes_chirho.extend_from_slice(unsafe { CStr::from_ptr(literal_chirho) }.to_bytes());
             break;
         }
         // Unbox: clear low tag bit to get real pointer
@@ -1262,6 +1285,100 @@ mod tests_chirho {
         let bytes_chirho =
             unsafe { CStr::from_ptr(packed_chirho as usize as *const std::ffi::c_char) }.to_bytes();
         assert_eq!(bytes_chirho, text_chirho.as_bytes());
+        native_gc_runtime_lock_chirho().reset_chirho();
+    }
+
+    /// Row 576: append packs a list operand, which allocates and can collect; both operands
+    /// stay rooted until both are read. A buffer operand rooted only by append must survive a
+    /// collection inside the other operand's packing.
+    #[test]
+    fn append_str_keeps_both_operands_across_a_collection_in_packing_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        native_gc_runtime_lock_chirho().reset_chirho();
+
+        let rhs_bits_chirho = alloc_c_string_chirho(b"cd");
+        let lhs_bits_chirho = haskelujah_unpack_string_chirho(alloc_c_string_chirho(b"ab"));
+        // Packing the list allocates its buffer next, and that allocation collects.
+        let allocated_chirho = native_gc_runtime_lock_chirho().allocation_count_chirho() as u64;
+        for _allocation_idx_chirho in allocated_chirho..GC_THRESHOLD_CHIRHO {
+            assert!(!haskelujah_alloc_chirho(8).is_null());
+        }
+        let out_bits_chirho = haskelujah_append_str_chirho(lhs_bits_chirho, rhs_bits_chirho);
+
+        assert!(
+            native_gc_runtime_lock_chirho()
+                .contains_alloc_chirho(rhs_bits_chirho as usize as *mut u8),
+            "the buffer operand was collected inside append"
+        );
+        let out_chirho =
+            unsafe { CStr::from_ptr(out_bits_chirho as usize as *const std::ffi::c_char) };
+        assert_eq!(out_chirho.to_bytes(), b"abcd");
+        native_gc_runtime_lock_chirho().reset_chirho();
+    }
+
+    /// Row 576: a collection inside append's root window keeps both operands, a buffer and a
+    /// list. Liveness is read inside the window, so a missing root fails this assertion
+    /// instead of reading freed memory.
+    #[test]
+    fn a_rooted_pair_survives_a_collection_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        native_gc_runtime_lock_chirho().reset_chirho();
+
+        let buffer_bits_chirho = alloc_c_string_chirho(b"ab");
+        let list_bits_chirho = haskelujah_unpack_string_chirho(alloc_c_string_chirho(b"cd"));
+        let kept_chirho = with_rooted_pair_chirho(buffer_bits_chirho, list_bits_chirho, || {
+            haskelujah_gc_collect_chirho();
+            let runtime_chirho = native_gc_runtime_lock_chirho();
+            (
+                runtime_chirho.contains_alloc_chirho(buffer_bits_chirho as usize as *mut u8),
+                runtime_chirho.contains_alloc_chirho((list_bits_chirho & !1) as usize as *mut u8),
+            )
+        });
+        assert_eq!(kept_chirho, (true, true), "a rooted operand was collected");
+        native_gc_runtime_lock_chirho().reset_chirho();
+    }
+
+    /// Row 576: pack reads a literal tail whole, at an even or an odd address. Registration,
+    /// not the low bit, tells a buffer from a cell: a byte-aligned literal may sit at an odd
+    /// address, where the low bit read it as a tagged cell.
+    #[test]
+    fn pack_reads_a_literal_tail_at_any_address_chirho() {
+        let _guard_chirho = ffi_test_lock_chirho()
+            .lock()
+            .unwrap_or_else(|poisoned_chirho| poisoned_chirho.into_inner());
+        native_gc_runtime_lock_chirho().reset_chirho();
+
+        // An unregistered buffer holding "bc" at an even and at an odd address.
+        let backing_chirho = vec![0_u8; 16];
+        let base_chirho = backing_chirho.as_ptr() as usize;
+        let even_chirho = (base_chirho + 1) & !1;
+        let mut backing_chirho = backing_chirho;
+        for start_chirho in [even_chirho, even_chirho + 3] {
+            let offset_chirho = start_chirho - base_chirho;
+            backing_chirho[offset_chirho..offset_chirho + 3].copy_from_slice(b"bc\0");
+        }
+        for literal_chirho in [even_chirho, even_chirho + 3] {
+            let cell_chirho = haskelujah_alloc_chirho(24).cast::<u64>();
+            unsafe {
+                cell_chirho.write(1);
+                cell_chirho.add(1).write(u64::from(b'a'));
+                cell_chirho.add(2).write(literal_chirho as u64);
+            }
+            let packed_chirho = haskelujah_pack_string_chirho(cell_chirho as u64 | 1);
+            let text_chirho =
+                unsafe { CStr::from_ptr(packed_chirho as usize as *const std::ffi::c_char) };
+            assert_eq!(
+                text_chirho.to_bytes(),
+                b"abc",
+                "literal tail at address parity {}",
+                literal_chirho & 1
+            );
+        }
+        drop(backing_chirho);
         native_gc_runtime_lock_chirho().reset_chirho();
     }
 

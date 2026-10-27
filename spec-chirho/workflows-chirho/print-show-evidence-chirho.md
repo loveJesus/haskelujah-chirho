@@ -173,7 +173,7 @@ flowchart TD
     native_st_chirho --> repr_st_chirho{"a registered list cell?"}
     repr_st_chirho -->|"no: a NUL-terminated buffer"| utf8_st_chirho{UTF-8?}
     utf8_st_chirho -->|yes| core_st_chirho
-    repr_st_chirho -->|yes| walk_st_chirho{"each tail a list cell? (native_lists_chirho.rs reads the cells; each holds a code point)"}
+    repr_st_chirho -->|yes| walk_st_chirho{"each tail a list cell, [] or an unregistered literal buffer? (native_lists_chirho.rs reads the cells)"}
     walk_st_chirho -->|yes| core_st_chirho
     utf8_st_chirho -->|no| native_fail_st_chirho["show: no exact native reading of this String"]
     walk_st_chirho -->|no| native_fail_st_chirho
@@ -185,8 +185,11 @@ flowchart TD
   escapes `"`, a Char `'`. The input is code points, so a surrogate shows as GHC shows it.
 - **Sites:** the interpreter's `showStr#`, `showChar#`, `showList#` elements and universal show;
   the Core `[Char]` row; LLVM's and Cranelift's `showStr#` and `showChar#` lowerings.
-- **Refused natively (row 560 owns it):** a list ending in a literal tail. The interpreter reads it
-  exactly. A cell above ASCII is read exactly since row 560's unpack carries code points.
+- **Read natively since row 576:** a list ending in a literal tail. A forced tail that is no
+  registered cell is the literal's UTF-8 buffer; registration decides it, since a literal may sit
+  at an odd address. A cell above ASCII is read exactly since row 560's unpack carries code points.
+- **Still refused natively:** a buffer that is not UTF-8, or a value that is neither a list nor a
+  buffer. This is retained, because no battery can prove it unreachable (gpt_chirho #29274).
 - **Landed together** with row 561's literal decoding and row 560's code points, because each alone
   changed cells that another fixes.
 - **Boundaries:**
