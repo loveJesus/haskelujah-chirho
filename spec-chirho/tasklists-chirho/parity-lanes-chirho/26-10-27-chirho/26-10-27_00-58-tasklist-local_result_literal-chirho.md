@@ -8,7 +8,7 @@
 - [x] Post a bounded design checkpoint and overlap audit before compiler source changes.
 - [x] Implement only the proven local-evidence repair with structural and all-engine controls.
 - [x] Mutation-prove the repair and run the focused warm gate.
-- [ ] Land through the canonical single-writer chain and close Row 600.
+- [x] Land through the canonical single-writer chain and close Row 600.
 
 ## Scope Chirho
 
@@ -40,3 +40,8 @@
 - Build completed with no warning. Typing and core libraries passed 550/550; dictionary evidence passed 118/118; the driver evidence/literal/generalization slice passed 79/79, including its 99-second property-test tail.
 - Nextest marked the existing `a_section_under_iterate_stays_the_named_residual_chirho` process as `LEAK` while recording it PASS; no test failed or was skipped in the selected suites.
 - Clippy emitted no diagnostic on either changed Rust file. Rustfmt, diff-check and gitleaks over the source commit are clean.
+
+## Landing Chirho
+
+- Source commit `66f240d7` and gate-record tip `74a078ed` fast-forwarded onto canonical `main_chirho`.
+- The progress database closure commit records Row 600 as complete; the canonical checkout was clean after verification.
