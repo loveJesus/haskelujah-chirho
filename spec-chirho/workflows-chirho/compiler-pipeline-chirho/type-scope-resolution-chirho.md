@@ -109,7 +109,7 @@ Naming above decides which imported type names a source may write. Separately, t
 
 ```mermaid
 flowchart TD
-    seed_chirho[Each exporter seeds its synonyms and their transitive dependencies under bare and Module.Name keys] --> filter_chirho[Project and package paths keep only the keys of modules the source imports]
+    seed_chirho[Each exporter seeds its synonyms and their transitive dependencies under bare and Module.Name keys] --> filter_chirho[Every multi-module path keeps only the keys of modules the source imports]
     filter_chirho --> merge_chirho[Each import adds its listed names under bare and Qualifier.Name keys, right-hand sides in canonical spelling]
     merge_chirho --> preferred_chirho[Preferred exporters: type names with exactly one exporter among the imports, import lists ignored]
     preferred_chirho --> align_chirho{"Preferred name N with exporter E: no bare key N, and E.N in the table?"}
@@ -124,11 +124,14 @@ flowchart TD
 - **The rule.** `align_preferred_synonym_keys_chirho` adds the bare key N only when no bare key N exists and the one exporter's `E.N` is already in the filtered, merged table. It never overwrites a bare key, never takes a synonym from a module the source does not import, and never chooses among several exporters.
 - **Not a naming grant.** A source that writes the hidden parent, or a synonym from a module it does not import, is still refused by naming with E0101, as GHC refuses both with GHC-76037.
 - **What the trace ruled out.** The exporters seed the parent at every step. Keeping each admitted synonym's dependencies in the filter, or keeping the rewritten reference qualified, each leaves the chain failing, because the other canonicalization spells the reference bare again.
-- **The interpreter path** keeps its synonyms unfiltered (row 647), so it ran the chain before and after. With the alignment in place, a scratch run of that path under the shared synonym filter passed all 29 interpreter callers, including both alias chains that failed under the filter in row 647's trace. Adopting the filter there is a separate decision.
+- **The interpreter path takes the same filter (row 668).** Before, it gave each module the bare synonyms of every module compiled before it, imported or not. The import loop's bare fallback then turned a type named like one of them, even a module's own data type, into that synonym's right-hand side, so a derived `Show` became `instance Show Int` and the interpreter refused the program as a duplicate instance. Under the filter a module sees only the synonyms of the modules it imports, as every native build does, and row 656's bare keys keep its alias chains exact.
 
 ### Code and controls
 
 - **The rule:** `align_preferred_synonym_keys_chirho` in `crates/haskelujah-driver-chirho/src/lib.rs`, called once after the frontend's import loop.
 - **Unit pins:** `crates/haskelujah-driver-chirho/src/synonym_keys_tests_chirho.rs`. A unique exporter adds the bare key; two exporters add none; a missing qualified source adds none; an existing bare key is kept.
-- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/synonym_closure_chirho.rs`. The chain and an import of only the forwarder are exact on the interpreter, LLVM and true Cranelift; the hidden parent and an unimported synonym are refused on all three. They live in that target for its multi-module harness, not for symbol identity.
+- **The interpreter's filter:** `compile_modules_chirho` in `crates/haskelujah-driver-chirho/src/project_chirho/multi_module_chirho.rs` (row 668).
+- **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/synonym_closure_chirho.rs`, each on the interpreter, LLVM and true Cranelift. They live in that target for its multi-module harness, not for symbol identity.
+  - Row 656: the chain and an import of only the forwarder are exact; the hidden parent and an unimported synonym are refused.
+  - Row 668: a local and an imported type named like another module's synonym keep their own instances, a synonym used only upstream stays there, and qualified and aliased uses resolve, all exact; qualified-only, hidden and unexported synonyms are refused.
 - **Holds:** `frontend_imported_type_alias_expands_through_parent_alias_chirho` and `frontend_reexported_type_alias_expands_through_hidden_parent_alias_chirho` in `crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs`.

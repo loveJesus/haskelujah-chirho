@@ -172,7 +172,7 @@ flowchart TD
 
 ### Boundaries
 
-- The interpreter's multi-module path (`compile_modules_chirho`) used to give each module every upstream export's type by bare name, so a name `module M` does not export still type-checked there and linked by name. Since row 647 it gives each module only the value schemes of the modules it imports, through the project path's own `filter_seeded_imported_types_for_source_chirho`, so p2, p6 and p8 are refused there as in `check` and every native build. Its type synonyms stay unfiltered. Row 656 traced the alias chains the shared synonym filter broke on this path to a missing bare synonym key, which the frontend now aligns (`type-scope-resolution-chirho.md`); whether this path takes that filter is a separate decision.
+- The interpreter's multi-module path (`compile_modules_chirho`) used to give each module every upstream export's type by bare name, so a name `module M` does not export still type-checked there and linked by name. Since row 647 it gives each module only the value schemes of the modules it imports, through the project path's own `filter_seeded_imported_types_for_source_chirho`, so p2, p6 and p8 are refused there as in `check` and every native build. Since row 668 it filters type synonyms the same way, through `filter_seeded_type_synonyms_for_source_chirho`, once row 656's bare expansion keys had removed the alias-chain failures that filter used to cause here (`type-scope-resolution-chirho.md`).
 - Where a re-exported value is defined is row 642's.
 - Diagnostic bytes: an unexported name is reported by inference as E0202 `unbound variable`, where GHC 9.14.1 reports GHC-88464.
 

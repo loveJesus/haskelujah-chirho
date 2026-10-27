@@ -6,6 +6,7 @@ use super::dependency_packages_chirho::insert_exported_schemes_into_imports_chir
 use super::import_links_chirho::ImportLinkerChirho;
 use super::project_dir_chirho::{
     extract_module_name_chirho, filter_seeded_imported_types_for_source_chirho,
+    filter_seeded_type_synonyms_for_source_chirho,
 };
 use super::{
     CompileResultChirho, FrontendResultChirho, ImportedTypeSynonymsChirho, compile_backend_chirho,
@@ -56,20 +57,25 @@ pub fn compile_modules_chirho(
         );
         let file_id_chirho = source_file_chirho.file_id_chirho();
 
-        // Phases 1–4.5: shared front-end. The module sees only the value schemes of the
-        // modules it imports, as the project path does, so a name no import brings stays
-        // unbound (row 647). Type synonyms stay unfiltered here; whether this path takes the
-        // shared synonym filter, whose alias-chain failures row 656 traced to a missing bare
-        // synonym key, is a separate decision.
+        // Phases 1–4.5: shared front-end. The module sees only the value schemes and the
+        // type synonyms of the modules it imports, as the project path does: a name no import
+        // brings stays unbound (row 647), and an earlier module's synonym never rewrites a
+        // type of the same name here (row 668). Row 656's bare expansion keys still let a
+        // re-exported alias expand through a parent the module never lists.
         // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+        // workflow: compiler-pipeline-chirho/type-scope-resolution-chirho
         let filtered_imported_types_chirho =
             filter_seeded_imported_types_for_source_chirho(source_chirho, &imported_types_chirho);
+        let filtered_type_synonyms_chirho = filter_seeded_type_synonyms_for_source_chirho(
+            source_chirho,
+            &imported_type_synonyms_chirho,
+        );
         let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
             source_chirho,
             file_id_chirho,
             &ifaces_chirho,
             &filtered_imported_types_chirho,
-            &imported_type_synonyms_chirho,
+            &filtered_type_synonyms_chirho,
             &imported_type_families_chirho,
         )?;
 
