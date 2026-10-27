@@ -11,6 +11,8 @@ mod gcd_lcm_chirho;
 mod lines_chirho;
 #[path = "evaluation_values_chirho/proper_fraction_chirho.rs"]
 mod proper_fraction_chirho;
+#[path = "evaluation_values_chirho/real_float_codec_chirho.rs"]
+mod real_float_codec_chirho;
 #[path = "evaluation_values_chirho/real_float_predicates_chirho.rs"]
 mod real_float_predicates_chirho;
 

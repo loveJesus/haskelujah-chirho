@@ -77,51 +77,57 @@ impl DictPassCtxChirho {
             args_chirho: vec![truncated_chirho, float_chirho(0.0)],
         };
 
-        let zero_or_regular_chirho = self.real_float_bool_case_chirho(
+        let zero_or_regular_chirho = self.real_float_case_chirho(
             primop_chirho(
                 "eqFloat#",
                 vec![var_chirho(&value_chirho), float_chirho(0.0)],
             ),
+            result_ty_chirho.clone(),
             zero_pair_chirho(),
             regular_pair_chirho,
         );
-        let below_int_chirho = self.real_float_bool_case_chirho(
+        let below_int_chirho = self.real_float_case_chirho(
             primop_chirho(
                 "<.#",
                 vec![var_chirho(&value_chirho), float_chirho(i64::MIN as f64)],
             ),
+            result_ty_chirho.clone(),
             out_of_range_pair_chirho.clone(),
             zero_or_regular_chirho,
         );
-        let int_range_chirho = self.real_float_bool_case_chirho(
+        let int_range_chirho = self.real_float_case_chirho(
             primop_chirho(
                 ">=.#",
                 vec![var_chirho(&value_chirho), float_chirho(-(i64::MIN as f64))],
             ),
+            result_ty_chirho.clone(),
             out_of_range_pair_chirho,
             below_int_chirho,
         );
-        let not_negative_infinity_chirho = self.real_float_bool_case_chirho(
+        let not_negative_infinity_chirho = self.real_float_case_chirho(
             primop_chirho(
                 "<.#",
                 vec![var_chirho(&value_chirho), float_chirho(-f64::MAX)],
             ),
+            result_ty_chirho.clone(),
             zero_pair_chirho(),
             int_range_chirho,
         );
-        let finite_chirho = self.real_float_bool_case_chirho(
+        let finite_chirho = self.real_float_case_chirho(
             primop_chirho(
                 ">.#",
                 vec![var_chirho(&value_chirho), float_chirho(f64::MAX)],
             ),
+            result_ty_chirho.clone(),
             zero_pair_chirho(),
             not_negative_infinity_chirho,
         );
-        let body_chirho = self.real_float_bool_case_chirho(
+        let body_chirho = self.real_float_case_chirho(
             primop_chirho(
                 "eqFloat#",
                 vec![var_chirho(&value_chirho), var_chirho(&value_chirho)],
             ),
+            result_ty_chirho.clone(),
             finite_chirho,
             zero_pair_chirho(),
         );
@@ -333,6 +339,120 @@ impl DictPassCtxChirho {
         self.push_prelude_alias_chirho("scaleFloat", prim_name_chirho);
     }
 
+    /// Generate the concrete `Double` codec rows from the representation
+    /// operations shared by all engines. The compiler currently represents
+    /// `Integer` in one machine word; `decodeFloat`'s 53-bit mantissa is exact,
+    /// while `encodeFloat` follows that existing representable-domain boundary.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_real_float_codec_chirho(&mut self) {
+        let integer_ty_chirho = TyChirho::ConChirho("Integer".to_string());
+        let int_ty_chirho = TyChirho::int_chirho();
+        let double_ty_chirho = TyChirho::double_chirho();
+        let decoded_ty_chirho =
+            TyChirho::TupleChirho(vec![integer_ty_chirho.clone(), int_ty_chirho.clone()]);
+
+        let value_chirho = self.fresh_binder_chirho("value_chirho", double_ty_chirho.clone());
+        let mantissa_chirho =
+            self.fresh_binder_chirho("$decoded_mantissa_chirho", integer_ty_chirho.clone());
+        let scaled_significand_chirho = primop_chirho(
+            "scaleFloatChirho#",
+            vec![
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(53)),
+                primop_chirho("significandFloatChirho#", vec![var_chirho(&value_chirho)]),
+            ],
+        );
+        let decoded_nonzero_chirho = CoreExprChirho::LetChirho {
+            rec_chirho: false,
+            binds_chirho: vec![(
+                mantissa_chirho.clone(),
+                primop_chirho("truncate#", vec![scaled_significand_chirho]),
+            )],
+            body_chirho: Box::new(CoreExprChirho::ConAppChirho {
+                con_name_chirho: "$tuple2".to_string(),
+                args_chirho: vec![
+                    var_chirho(&mantissa_chirho),
+                    primop_chirho(
+                        "-#",
+                        vec![
+                            primop_chirho("exponentFloatChirho#", vec![var_chirho(&value_chirho)]),
+                            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(53)),
+                        ],
+                    ),
+                ],
+            }),
+        };
+        let decoded_zero_chirho = CoreExprChirho::ConAppChirho {
+            con_name_chirho: "$tuple2".to_string(),
+            args_chirho: vec![
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0)),
+            ],
+        };
+        let decode_body_chirho = self.real_float_case_chirho(
+            primop_chirho(
+                "eqFloat#",
+                vec![var_chirho(&value_chirho), float_chirho(0.0)],
+            ),
+            decoded_ty_chirho.clone(),
+            decoded_zero_chirho,
+            decoded_nonzero_chirho,
+        );
+        let decode_name_chirho = "$prim_RealFloat_decodeFloat_Double";
+        let decode_id_chirho = self.resolve_or_fresh_id_chirho(decode_name_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: decode_id_chirho,
+                name_chirho: decode_name_chirho.to_string(),
+                ty_chirho: TyChirho::fun_chirho(double_ty_chirho.clone(), decoded_ty_chirho),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: value_chirho,
+                body_chirho: Box::new(decode_body_chirho),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+        self.push_prelude_alias_chirho("decodeFloat", decode_name_chirho);
+
+        let encoded_mantissa_chirho =
+            self.fresh_binder_chirho("mantissa_chirho", integer_ty_chirho.clone());
+        let encoded_exponent_chirho =
+            self.fresh_binder_chirho("exponent_chirho", int_ty_chirho.clone());
+        let encode_name_chirho = "$prim_RealFloat_encodeFloat_Double";
+        let encode_id_chirho = self.resolve_or_fresh_id_chirho(encode_name_chirho);
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: encode_id_chirho,
+                name_chirho: encode_name_chirho.to_string(),
+                ty_chirho: TyChirho::fun_n_chirho(
+                    [integer_ty_chirho, int_ty_chirho],
+                    double_ty_chirho,
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: encoded_mantissa_chirho.clone(),
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: encoded_exponent_chirho.clone(),
+                    body_chirho: Box::new(primop_chirho(
+                        "scaleFloatChirho#",
+                        vec![
+                            var_chirho(&encoded_exponent_chirho),
+                            primop_chirho(
+                                "fromIntegral#",
+                                vec![var_chirho(&encoded_mantissa_chirho)],
+                            ),
+                        ],
+                    )),
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+        self.push_prelude_alias_chirho("encodeFloat", encode_name_chirho);
+    }
+
     fn push_real_float_row_chirho(
         &mut self,
         method_chirho: &str,
@@ -365,12 +485,27 @@ impl DictPassCtxChirho {
         true_chirho: CoreExprChirho,
         false_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
+        self.real_float_case_chirho(
+            scrutinee_chirho,
+            TyChirho::bool_chirho(),
+            true_chirho,
+            false_chirho,
+        )
+    }
+
+    fn real_float_case_chirho(
+        &mut self,
+        scrutinee_chirho: CoreExprChirho,
+        result_ty_chirho: TyChirho,
+        true_chirho: CoreExprChirho,
+        false_chirho: CoreExprChirho,
+    ) -> CoreExprChirho {
         let case_chirho =
             self.fresh_binder_chirho("$real_float_case_chirho", TyChirho::bool_chirho());
         CoreExprChirho::CaseChirho {
             scrutinee_chirho: Box::new(scrutinee_chirho),
             bind_chirho: case_chirho,
-            result_ty_chirho: TyChirho::bool_chirho(),
+            result_ty_chirho,
             alts_chirho: vec![
                 CoreAltChirho {
                     con_chirho: AltConChirho::DataConChirho("True".to_string()),
@@ -434,5 +569,71 @@ mod tests_chirho {
             CoreExprChirho::VarChirho(id_chirho)
                 if id_chirho == row_chirho.binder_chirho.id_chirho
         ));
+    }
+
+    #[test]
+    fn real_float_codec_has_two_concrete_rows_and_guarded_aliases_chirho() {
+        let mut context_chirho = DictPassCtxChirho::new_chirho(100, HashMap::new(), HashMap::new());
+        context_chirho.generate_real_float_codec_chirho();
+
+        let decode_name_chirho = "$prim_RealFloat_decodeFloat_Double";
+        let encode_name_chirho = "$prim_RealFloat_encodeFloat_Double";
+        let decode_chirho = context_chirho
+            .generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == decode_name_chirho)
+            .expect("decodeFloat row");
+        let encode_chirho = context_chirho
+            .generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == encode_name_chirho)
+            .expect("encodeFloat row");
+
+        assert_eq!(
+            decode_chirho.binder_chirho.ty_chirho,
+            TyChirho::fun_chirho(
+                TyChirho::double_chirho(),
+                TyChirho::TupleChirho(vec![
+                    TyChirho::ConChirho("Integer".to_string()),
+                    TyChirho::int_chirho(),
+                ]),
+            )
+        );
+        assert_eq!(
+            encode_chirho.binder_chirho.ty_chirho,
+            TyChirho::fun_n_chirho(
+                [
+                    TyChirho::ConChirho("Integer".to_string()),
+                    TyChirho::int_chirho(),
+                ],
+                TyChirho::double_chirho(),
+            )
+        );
+        assert!(matches!(
+            decode_chirho.rhs_chirho,
+            CoreExprChirho::LamChirho { .. }
+        ));
+        assert!(matches!(
+            encode_chirho.rhs_chirho,
+            CoreExprChirho::LamChirho { .. }
+        ));
+
+        for (alias_name_chirho, row_chirho) in [
+            ("decodeFloat", decode_chirho),
+            ("encodeFloat", encode_chirho),
+        ] {
+            let alias_chirho = context_chirho
+                .generated_bindings_chirho
+                .iter()
+                .find(|binding_chirho| {
+                    binding_chirho.binder_chirho.name_chirho == alias_name_chirho
+                })
+                .expect("codec alias");
+            assert!(matches!(
+                alias_chirho.rhs_chirho,
+                CoreExprChirho::VarChirho(id_chirho)
+                    if id_chirho == row_chirho.binder_chirho.id_chirho
+            ));
+        }
     }
 }

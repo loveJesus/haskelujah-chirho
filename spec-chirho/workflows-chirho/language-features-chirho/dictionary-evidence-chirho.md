@@ -738,8 +738,32 @@ flowchart LR
 - First-class `map (uncurry scaleFloat)` and a top-level negative exponent cross the same route.
   A separate ownership control defines `scaleFloat :: Double -> Double -> Double`, proving this
   row does not infer from the unqualified spelling alone.
-- `decodeFloat` and `encodeFloat`, rigid-signature literal evidence (row 584), and dictionary-
-  passing `sum` and `product` (row 586) remain separate units.
+- Row 590 supplies `decodeFloat` and `encodeFloat` at Double as generated Core over these same
+  representation operations. `decodeFloat` scales the significand by 53 binary digits, truncates
+  its exact integral mantissa, and subtracts 53 from the exponent; either signed zero becomes
+  `(0,0)`. `encodeFloat` converts the currently representable machine-word `Integer` mantissa and
+  applies the existing `scaleFloat` routine. Infinity and NaN therefore retain GHC's IEEE payload
+  mantissas and exponent, while finite round trips need no new backend primitive.
+
+```mermaid
+flowchart LR
+    decode_codec_chirho["decodeFloat Double"] --> significand_codec_chirho["significandFloatChirho#"]
+    decode_codec_chirho --> exponent_codec_chirho["exponentFloatChirho#"]
+    significand_codec_chirho --> scale_codec_chirho["scaleFloatChirho# by 53"]
+    scale_codec_chirho --> truncate_codec_chirho["truncate# to exact 53-bit mantissa"]
+    encode_codec_chirho["encodeFloat Integer Int"] --> integral_codec_chirho["fromIntegral# mantissa"]
+    integral_codec_chirho --> scale_encode_codec_chirho["scaleFloatChirho# exponent"]
+    truncate_codec_chirho --> shared_engines_codec_chirho["interpreter, LLVM, Cranelift"]
+    scale_encode_codec_chirho --> shared_engines_codec_chirho
+```
+
+- Both public aliases yield to program-owned top-level definitions. The standard surface schemes
+  were already present; Row 590 adds the executable body-backed Double rows.
+- The generated case helper now records the branch's actual Core result type. This corrects the
+  tuple-valued `properFraction` and `decodeFloat` case metadata while retaining a Boolean wrapper
+  for the predicate rows.
+- Rigid-signature literal evidence (row 584) and dictionary-passing `sum` and `product` (row 586)
+  remain separate units.
 
 ## Current boundary
 
