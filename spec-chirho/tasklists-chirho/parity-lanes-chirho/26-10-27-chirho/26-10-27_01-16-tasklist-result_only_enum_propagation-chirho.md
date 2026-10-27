@@ -7,7 +7,7 @@
 - [x] Trace its checker evidence, retained dictionary parameters and call-site dictionary arguments.
 - [x] Post a bounded design checkpoint and overlap audit before compiler source changes.
 - [x] Implement only the proven result-type evidence repair with structural and all-engine controls.
-- [ ] Mutation-prove the repair and run the focused warm gate.
+- [x] Mutation-prove the repair and run the focused warm gate.
 - [ ] Land through the canonical single-writer chain and close Row 601.
 
 ## Scope Chirho
@@ -37,3 +37,10 @@
 - The structural control accepts `(Enum, $own:1)` for predicate index 1 and rejects `(Enum, $own:0)` there.
 - The all-engine control covers Char, Int, Bool, a derived Enum and mapped Char/Int uses. Each is byte-identical to GHC on the interpreter, LLVM and marker-verified real Cranelift.
 - The corrected trace and source checkpoint were posted as Metropoleluya message `#29695`; all temporary instrumentation was removed.
+
+## Reach and gate r1 Chirho
+
+- Removing only the method-occurrence proof channel makes the structural control return `[0]` instead of `[0,1]` and makes the all-engine mover fail in the interpreter with the old derived-Enum tag error. Both failures are named; Row 599's reference-evidence channel is untouched.
+- The source restored byte-identically at SHA-256 `0bcca1610692e3ddb393c19550a752ce9fb57fea53c73072790952215aa6e129`, and both controls passed again.
+- Gate r1 is GREEN on source commit `154c8df8`. Build completed with no warning; core passed 187/187, dictionary evidence passed 118/118, and the focused driver evidence/Enum slice passed 59/59: 364 selected tests in 121 seconds.
+- Clippy reported only three pre-existing findings on untouched lines 161, 314 and 318 of `dict_params_chirho.rs`; no changed line has a diagnostic. Rustfmt, diff-check and gitleaks are clean. The lint and hygiene phase took about 17 seconds.
