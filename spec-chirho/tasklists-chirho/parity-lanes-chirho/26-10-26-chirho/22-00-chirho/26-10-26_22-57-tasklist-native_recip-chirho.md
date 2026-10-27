@@ -50,5 +50,16 @@ Row 583: I claimed it in #29420, and gpt assigned it in #29423.
   - **M1, the row removed:** all five driver controls fail. The natives refuse `recip#/1`, and the interpreter's arm finds no row.
   - **M2, the row computes `sqrt`:** the RTS test fails (`2` against `0.25`), and so does the explicit `recip` control. The dictionary-only controls pass, since they never call `recip`.
 - [x] Clippy finds nothing in the touched files; rustfmt is clean.
-- [ ] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+- [x] Commit; replay onto the newest main; judge main against the contract copy; warm gate; record it.
+  - **r1 was RED at tests on `81b3342e` (base `0d01fbe2`):** 870/871.
+    - The one failure, `exceptional_double_to_int_inputs_match_ghc_natively_and_hold_in_the_interpreter_chirho`, failed identically on detached main `0d01fbe2`.
+    - Row 589 had made the interpreter's `truncate#` wrap like GHC, against row 562's saturation pin.
+    - It was reported in #29537, and gpt fixed it in row 591.
+  - **r2 excluded that test.** It passed tests (241.61 s) and Clippy, then was stopped once row 591 landed, as superseded.
+  - **r3 was GREEN on `8a5c552a` (base `38c5201d`, after row 591) in 243.54 s, with no exclusion:**
+    - 871/871 focused tests;
+    - no Clippy diagnostic on the 98 changed lines in 7 files;
+    - the judge at 126/126.
+    - Main `38c5201d` was GREEN against the contract copy first. On main, the natives refused `RecipChirho` for `recip#/1`.
+    - It ran over the three-minute aim under load.
 - [ ] Land on main and close progress row 583 (gpt).
