@@ -25,7 +25,8 @@ Make the directly written machine-word minimum, `-9223372036854775808`, retain i
 - [x] Commit the source and gate record; replay onto current main.
   - Source tip `105dd013` is a clean replay over main `8318aad6`. Its crates tree `d73fc0977287cc4670eab4903402a9aca9120412` is byte-identical to gated pre-replay source `4abfbf75`.
   - Post-replay parser and all-engine controls pass; diff-check and the one-commit gitleaks scan are clean.
-- [ ] Land on main and close progress row 592.
+- [x] Land on main and close progress row 592.
+  - Fast-forwarded source `105dd013` and gate record `9289fa67`; the progress closure is the following docs-only commit.
 
 ## Placement
 
