@@ -75,4 +75,4 @@ Row 626.
     - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
   - **The tip's probe reports** (`tip-294fd482-chirho`): 7 programs are GHC on all three engines (21 cells).
     - Every compiled Cranelift run carries the marker; the one unmarked log is `LInsertSchemeChirho`, which fails type-checking first.
-- [ ] Land on main and close progress row 626 (gpt).
+- [x] Land on main and close progress row 626 (gpt): source `92f0d064`, gate record `b89de152`; independent replay checks passed core 193/193 and the two all-engine chain controls.
