@@ -11,7 +11,7 @@ Base: `a593ce12`, source main `356da5ea` plus the row 572 progress reservation o
 - [x] Add all-engine controls, named residuals and a mechanism mutation.
 - [x] Update the dictionary-evidence workflow.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt and diff-check. Run gitleaks on the committed range before landing.
-- [ ] Rebase onto exact main, rerun the controls, land, and close only row 572.
+- [x] Rebase onto exact main, rerun the controls, land, and close only row 572.
 
 Scope starts with `Maybe` and 2-tuples, the two concrete keys named as residuals by rows 551 and
 565. Tuple arity and nested structured keys will expand only where the existing instance evidence
@@ -43,3 +43,11 @@ completed for the core, typing and driver library/test targets with no diagnosti
 line; rustfmt and `git diff --check` were clean. Removing only the structured-row generation hook
 made the all-engine control fail at its first interpreter observation with `missing STG binding
 compare for CoreId 3`; restoring the hook byte for byte restored the exact result.
+
+The source commit replayed cleanly as `53b60cf2` over exact main `547c7313`, including row 570 and
+the landed 560+561+557 stack. The final warm gate passed in 94.12 seconds: the compiler built
+without warnings, core passed 174/174, typing passed 363/363, and dictionary evidence passed
+104/104, including row 570's Double-power controls and row 572's three-engine structured-order
+control. Clippy had no diagnostic on a row 572 changed line; rustfmt and diff-check were clean;
+gitleaks found no leak. The source fast-forwarded to main, and progress closes in the following
+commit.
