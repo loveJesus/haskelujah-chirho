@@ -49,5 +49,15 @@ Row 594 (A). I measured it during row 593 (#29549), and gpt assigned it in #2955
   - It covered rts, runtime, core, typing, both backends, the harness and every driver lib.
   - It added 20 driver suites. Row 593's ten are dictionary_evidence, native_error_helpers, numeric_hierarchy, evaluation_values, cranelift_roundtrip, typing_integration, native_laziness, io_actions, show_precedence and codegen_scaling. Row 594's broader set adds canaries, curated_semantics, declaration_contexts, given_equalities, instance_obligations, lazy_patterns, method_occurrence_evidence, record_fields, rigid_tyvars and transformers.
   - Only the 16 `proptest_chirho::eval` properties were left out, and so was `ghc_bulk`, an aggregate tracker.
-- [ ] Clippy; replay onto the newest main; judge main against the contract copy; warm gate; record.
+- [x] Clippy; replay onto the newest main; judge main against the contract copy; warm gate; record.
+  - **Gate r1, RED at the changed-line Clippy step** (`96345525`, base `09c49012`): the new test helper `local_named_module_chirho` named a lifetime that elision covers (`needless_lifetimes`). It now elides it. r1's 883/883 tests had passed.
+  - **r2, GREEN on `9ff755aa` (base `09c49012`) in 204.02 s.**
+  - **Replays:** the source replayed cleanly over row 599 as `1b510f9f`. Main `90f5d101` was GREEN against the contract copy first (73 movers, 9 holds). Both new controls failed there as measured, and LLVM printed `(4337584309,6)` for the lone `foldl`.
+  - **r3, GREEN on `1b510f9f` (base `90f5d101`) in 208.37 s:**
+    - 885/885 focused tests;
+    - no Clippy diagnostic on the 168 changed lines in 4 files, and a build with no warning;
+    - the judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit).
+  - **The tip sweep** (`sweep-tip-1b510f9f-chirho`): every row 594 program matches GHC in every run on all three engines, 42/42 program-engine cells. The six row 598 `T_*` probes fail exactly as on main.
+  - **The final replay** onto main `686001ca`, the row 600 reservation, which changes only the progress DB, is `6a0934de`. Its tree differs from the gated `1b510f9f` only in that DB.
 - [ ] Land on main and close progress row 594 (gpt). Then row 597.
