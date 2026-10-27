@@ -17,6 +17,7 @@ mod matches_chirho;
 mod provenance_chirho;
 #[cfg(test)]
 mod provenance_tests_chirho;
+mod qualified_references_chirho;
 mod rec_desugar_chirho;
 mod row_match_chirho;
 
@@ -32,9 +33,7 @@ use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
-use haskelujah_ast_chirho::provenance_chirho::{
-    OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
-};
+use haskelujah_ast_chirho::provenance_chirho::{OccurrenceRoleChirho, ProvenanceChirho};
 use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -889,14 +888,21 @@ impl DesugarCtxChirho {
     }
 
     /// Look up or create a CoreId for a variable reference.
-    /// If the name is in scope (bound by a lambda, let, etc.), return its ID.
-    /// Otherwise, check the free-variable cache so repeated references to the
-    /// same unscoped name share a single CoreId.  If not cached, create a
-    /// fresh ID and cache it.
+    /// If the name is in scope (bound by a lambda, let, etc.), return its ID;
+    /// otherwise it resolves as a name no scope binds.
     fn resolve_var_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
-        if let Some(id_chirho) = self.lookup_scope_chirho(name_chirho) {
-            id_chirho
-        } else if self.method_occurrence_names_chirho.contains(name_chirho) {
+        match self.lookup_scope_chirho(name_chirho) {
+            Some(id_chirho) => id_chirho,
+            None => self.resolve_unscoped_var_chirho(name_chirho),
+        }
+    }
+
+    /// Resolve a name no scope binds. Check the free-variable cache so repeated
+    /// references to the same unscoped name share a single CoreId. If not
+    /// cached, create a fresh ID and cache it. A qualified reference to an
+    /// import comes here past every scope (row 598).
+    fn resolve_unscoped_var_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
+        if self.method_occurrence_names_chirho.contains(name_chirho) {
             // Evidence-threading P1: give each free reference of an opted-in
             // class method its OWN occurrence id (the shared cache id below
             // merges all `==`/`+` references, which blinds per-occurrence
@@ -988,12 +994,12 @@ impl DesugarCtxChirho {
     /// takes the variable path below, as an infix `==` does.
     fn build_section_body_chirho(
         &mut self,
-        op_name_chirho: &str,
-        op_origin_chirho: Option<OriginIdChirho>,
-        op_span_chirho: SpanChirho,
+        op_chirho: &NameChirho,
         left_chirho: CoreExprChirho,
         right_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
+        let op_name_chirho = op_chirho.text_chirho();
+        let op_origin_chirho = op_chirho.origin_chirho();
         // Direct primop operators
         let primop_chirho = match op_name_chirho {
             "+" => Some("+#"),
@@ -1030,10 +1036,14 @@ impl DesugarCtxChirho {
                 vec![left_chirho, right_chirho],
             );
         }
-        // Fallback: operator as variable reference
-        let op_id_chirho = self.resolve_var_chirho(op_name_chirho);
-        let op_id_chirho =
-            self.reference_occurrence_chirho(op_name_chirho, op_id_chirho, op_span_chirho);
+        // Fallback: operator as variable reference, by a written name's route,
+        // so a qualified operator never takes a local binder (row 598).
+        let (op_lookup_chirho, op_id_chirho) = self.resolve_written_reference_chirho(op_chirho);
+        let op_id_chirho = self.reference_occurrence_chirho(
+            &op_lookup_chirho,
+            op_id_chirho,
+            op_chirho.span_chirho(),
+        );
         self.record_occurrence_provenance_chirho(
             op_id_chirho,
             op_origin_chirho,
@@ -2163,17 +2173,10 @@ impl DesugarCtxChirho {
     pub fn desugar_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> CoreExprChirho {
         match expr_chirho {
             ExprChirho::VarChirho(name_chirho) => {
-                let full_name_chirho = name_chirho.full_name_chirho();
-                let lookup_name_chirho = if full_name_chirho != name_chirho.text_chirho()
-                    && self.lookup_scope_chirho(&full_name_chirho).is_some()
-                {
-                    full_name_chirho.as_str()
-                } else {
-                    name_chirho.text_chirho()
-                };
-                let id_chirho = self.resolve_var_chirho(lookup_name_chirho);
+                let (lookup_name_chirho, id_chirho) =
+                    self.resolve_written_reference_chirho(name_chirho);
                 let id_chirho = self.reference_occurrence_chirho(
-                    lookup_name_chirho,
+                    &lookup_name_chirho,
                     id_chirho,
                     name_chirho.span_chirho(),
                 );
@@ -2779,9 +2782,10 @@ impl DesugarCtxChirho {
 
                 // Otherwise: a `op` b → (op a) b
                 let op_core_chirho = {
-                    let id_chirho = self.resolve_var_chirho(op_name_chirho);
+                    let (op_lookup_chirho, id_chirho) =
+                        self.resolve_written_reference_chirho(op_chirho);
                     let id_chirho = self.reference_occurrence_chirho(
-                        op_name_chirho,
+                        &op_lookup_chirho,
                         id_chirho,
                         op_chirho.span_chirho(),
                     );
@@ -2809,7 +2813,6 @@ impl DesugarCtxChirho {
                 // (op e) → \y -> y `op` e → \y -> op y e
                 // For primop operators, emit PrimOp in the lambda body
                 // so they work without dict-pass bindings.
-                let op_name_chirho = op_chirho.text_chirho();
                 let arg_core_chirho = self.desugar_expr_chirho(arg_chirho);
                 let y_binder_chirho = self.fresh_binder_chirho(
                     "_sec",
@@ -2820,9 +2823,7 @@ impl DesugarCtxChirho {
                 );
                 let y_id_chirho = y_binder_chirho.id_chirho;
                 let body_chirho = self.build_section_body_chirho(
-                    op_name_chirho,
-                    op_chirho.origin_chirho(),
-                    op_chirho.span_chirho(),
+                    op_chirho,
                     CoreExprChirho::VarChirho(y_id_chirho),
                     arg_core_chirho,
                 );
@@ -2838,7 +2839,6 @@ impl DesugarCtxChirho {
                 ..
             } => {
                 // (e op) → \y -> e `op` y → \y -> op e y
-                let op_name_chirho = op_chirho.text_chirho();
                 let arg_core_chirho = self.desugar_expr_chirho(arg_chirho);
                 let y_binder_chirho = self.fresh_binder_chirho(
                     "_sec",
@@ -2849,9 +2849,7 @@ impl DesugarCtxChirho {
                 );
                 let y_id_chirho = y_binder_chirho.id_chirho;
                 let body_chirho = self.build_section_body_chirho(
-                    op_name_chirho,
-                    op_chirho.origin_chirho(),
-                    op_chirho.span_chirho(),
+                    op_chirho,
                     arg_core_chirho,
                     CoreExprChirho::VarChirho(y_id_chirho),
                 );

@@ -2710,8 +2710,10 @@ impl InferCtxChirho {
             return first_match_chirho;
         }
 
+        // A qualified name never falls back to a local binder: `L.x` beside a
+        // `let x` named the local (row 598).
         self.env_chirho
-            .lookup_chirho(&canonical_bare_name_chirho)
+            .lookup_outermost_chirho(&canonical_bare_name_chirho)
             .cloned()
     }
 

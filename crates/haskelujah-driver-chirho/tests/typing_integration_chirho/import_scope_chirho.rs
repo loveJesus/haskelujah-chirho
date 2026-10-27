@@ -10,28 +10,11 @@
 //! written before its file name.
 //! workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
 
-use haskelujah_driver::{compile_source_chirho, eval_source_with_machine_chirho};
+use haskelujah_driver::eval_source_with_machine_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho;
 
-use super::assert_compile_success_chirho;
-
-/// GHC rejects the program, so the checker must too, with a message naming every reason.
-fn rejected_like_ghc_chirho(source_chirho: &str, file_name_chirho: &str, reasons_chirho: &[&str]) {
-    let mut source_map_chirho = SourceMapChirho::new_chirho();
-    match compile_source_chirho(source_chirho, &mut source_map_chirho, file_name_chirho) {
-        Ok(_) => panic!("{file_name_chirho}: GHC rejects this program; we accepted it"),
-        Err(err_chirho) => {
-            let message_chirho = err_chirho.to_string();
-            for reason_chirho in reasons_chirho {
-                assert!(
-                    message_chirho.contains(reason_chirho),
-                    "{file_name_chirho}: rejected, but not for `{reason_chirho}`: {message_chirho}"
-                );
-            }
-        }
-    }
-}
+use super::{assert_compile_success_chirho, rejected_like_ghc_chirho};
 
 fn run_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -269,19 +252,25 @@ fn a_module_s_own_join_and_amp_still_shadow_chirho() {
             "{file_name_chirho}"
         );
     }
-    // Open boundary, its own unit: GHC rejects an unimported fully qualified name with
-    // GHC-76037. These still check, because the type environment seeds every canonical key.
-    // GHC's verdict is recorded so the oracle still runs them; nothing here asserts them.
-    let _open_boundaries_chirho = [
+}
+
+#[test]
+fn unimported_full_qualifiers_are_out_of_scope_chirho() {
+    // GHC 9.14.1: GHC-76037, since no import binds `Control.Monad` or `Data.Function`. The
+    // type environment seeds every canonical key, so these checked until naming required
+    // every written qualifier to name an import (row 598).
+    for (source_chirho, file_name_chirho, reason_chirho) in [
         (
             "module Main where\nmain :: IO ()\nmain = print (Control.Monad.join (Just (Just (1 :: Int))))\n",
             "Q01QualifiedJoinUnimportedChirho.hs",
-            "GHC-76037",
+            "variable not in scope: `Control.Monad.join`",
         ),
         (
             "module Main where\nmain :: IO ()\nmain = print ((5 :: Int) Data.Function.& (+ 1))\n",
             "Q02QualifiedAmpUnimportedChirho.hs",
-            "GHC-76037",
+            "variable not in scope: `Data.Function.&`",
         ),
-    ];
+    ] {
+        rejected_like_ghc_chirho(source_chirho, file_name_chirho, &[reason_chirho]);
+    }
 }

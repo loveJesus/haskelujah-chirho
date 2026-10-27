@@ -519,3 +519,59 @@ fn a_do_statements_selected_operations_are_not_written_occurrences_chirho() {
     );
     assert_eq!(messages_chirho, ["variable not in scope: `M.lookup`"]);
 }
+
+#[test]
+fn every_written_qualifier_names_an_import_or_this_module_chirho() {
+    // GHC 9.14.1 reports each rejected occurrence as GHC-76037 (row 598): no
+    // import binds `X`; `import Data.List as L` binds `L`, never `Data.List`;
+    // and no import here binds `Prelude`. `L` and the module's own `Main` stay.
+    let decls_chirho = bindings_chirho(vec![
+        var_chirho("X", "reverse"),
+        var_chirho("Data.List", "reverse"),
+        infix_chirho("X", "+"),
+        con_chirho("X", "Just"),
+        var_chirho("Prelude", "print"),
+        var_chirho("L", "reverse"),
+        var_chirho("Main", "value0Chirho"),
+    ]);
+    let imports_chirho = vec![import_chirho("Data.List", false, Some("L"), None)];
+    let messages_chirho = messages_chirho(imports_chirho.clone(), decls_chirho.clone(), vec![]);
+    assert_eq!(
+        messages_chirho,
+        [
+            "variable not in scope: `X.reverse`",
+            "variable not in scope: `Data.List.reverse`",
+            "variable not in scope: `X.+`",
+            "data constructor not in scope: `X.Just`",
+            "variable not in scope: `Prelude.print`",
+        ]
+    );
+    let main_chirho = module_chirho("Main", imports_chirho, decls_chirho);
+    let resolved_chirho =
+        resolve_module_with_imports_chirho(&main_chirho, &builtin_module_ifaces_chirho());
+    let first_chirho = &resolved_chirho.diagnostics_chirho.diagnostics_chirho()[0];
+    assert_eq!(
+        first_chirho.notes_chirho,
+        ["no module named `X` is imported"]
+    );
+}
+
+#[test]
+fn an_import_binds_its_qualifier_in_every_form_chirho() {
+    // An open import, a qualified import without an alias, and an alias each
+    // bind a qualifier (row 598), so nothing here is reported.
+    let messages_chirho = messages_chirho(
+        vec![
+            import_chirho("Prelude", false, None, None),
+            import_chirho("Data.Map", true, None, None),
+            import_chirho("Data.Char", true, Some("C"), None),
+        ],
+        bindings_chirho(vec![
+            var_chirho("Prelude", "print"),
+            var_chirho("Data.Map", "insert"),
+            var_chirho("C", "toUpper"),
+        ]),
+        vec![],
+    );
+    assert!(messages_chirho.is_empty(), "{messages_chirho:?}");
+}

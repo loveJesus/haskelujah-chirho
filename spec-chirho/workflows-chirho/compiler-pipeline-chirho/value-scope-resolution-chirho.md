@@ -1,11 +1,15 @@
 <!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
 # Value-scope resolution workflow
 
-This workflow is owned by `resolve_module_with_imports_chirho` and `check_module_value_scope_chirho` (row 536).
+This workflow is owned by `resolve_module_with_imports_chirho` and `check_module_value_scope_chirho` (rows 536 and 598).
 - It runs after the type-scope check (`type-scope-resolution-chirho.md`), once imports and every top-level definition are in `NameEnvChirho`.
 - It runs before Phase 3.9 seeds the type environment, and before inference.
 
 It closes one gap. Naming built the right qualified table for an explicit import list, but never checked a value occurrence against it. So typing's fallback dropped the qualifier and read a bare binding the list leaves out (I2: `NE.toList` under `import qualified Data.List.NonEmpty as NE (head, NonEmpty(..))`, GHC-76037).
+
+Row 598 closes two more:
+- Nothing checked that a qualifier names an import. `X.reverse`, and `Data.List.reverse` with no import of `Data.List`, checked and ran.
+- After naming, a qualified reference resolved by its bare text. A local `reverse` captured `L.reverse`, and a local `foo` captured `Main.foo`, on every engine. The second section below covers that.
 
 ```mermaid
 flowchart TD
@@ -36,10 +40,13 @@ flowchart TD
     merge_chirho -->|"No: an unmarked copy clears the mark"| unmarked_chirho
     unmarked_chirho --> dotdot_chirho
 
-    closed_chirho --> walk_chirho["Copy the declarations, clear do-selected operations, walk written occurrences"]
+    every_module_chirho[Every module] --> walk_chirho["Copy the declarations, clear do-selected operations, walk written occurrences"]
     walk_chirho --> qualified_chirho{"Qualified Q.x: variable, operator, constructor or record construction?"}
     qualified_chirho -->|No| pass_chirho[Not this check]
-    qualified_chirho -->|Yes| q_closed_chirho{Q closed?}
+    qualified_chirho -->|Yes| named_chirho{"Q an import's effective qualifier, or this module's name?"}
+    named_chirho -->|"No (row 598)"| unimported_chirho["E0100 not in scope, GHC-76037's class: no module named Q is imported"]
+    named_chirho -->|Yes| q_closed_chirho{Q closed?}
+    closed_chirho -.-> q_closed_chirho
     q_closed_chirho -->|No| pass_chirho
     q_closed_chirho -->|Yes| supplied_chirho{"x supplied, or Q is this module and x one of its own top-level values?"}
     supplied_chirho -->|Yes| pass_chirho
@@ -55,13 +62,44 @@ flowchart TD
 - **A named `data x` item is a value item.** The `data` keyword puts the name in the value namespace whatever its spelling, so lowering reads `data Proxy`, `data f` and `data (:+)` as value items. GHC 9.14.1 imports the constructor for `data Proxy` and never the type of the same name (gpt_chirho #28515, #28517). The list stays EXPLICIT, so every other value under its qualifier is still checked. A `data` item with a member list has no faithful item and stays unrepresented, and a named `type T` stays a bare type item.
 - **`T(..)` closes only on a member list marked complete.** Losing a mark only leaves a qualifier open.
 - **Marks merge per type.** When copies of one module merge (`merge_module_ifaces_chirho`), a type both copies export stays marked only when both mark it, because the unmarked copy may export a member no entry lists, such as a bundled pattern synonym. A type only one copy exports keeps that copy's mark, so disjoint marked types still union. Over many copies, a type stays marked only where every copy exporting it marks it, in any order.
-- **The walk.** It is the AST's exhaustive occurrence walk, over a copy of the declarations, taken only when some qualifier is closed. The operations a do statement selects are cleared first, because they are not written.
+- **The walk.** It is the AST's exhaustive occurrence walk, over a copy of the declarations. Row 536 took it only when some qualifier was closed; since row 598 it runs for every module. On a 149-line qualified module, `check` took 1.69-1.74 s before and 1.71-1.73 s after. The operations a do statement selects are cleared first, because they are not written.
+- **Every qualifier names something (row 598).** It must be an import's effective qualifier or the module's own name. The driver injects the implicit Prelude before naming, so `Prelude` counts unless the module opts out or imports Prelude itself. An alias replaces its module's name: `import Data.List as L` binds `L`, never `Data.List`.
+
+## After naming: a qualified reference never takes a local binder (row 598)
+
+```mermaid
+flowchart TD
+    reference_chirho["Written reference: a variable, an infix operator, or a section's operator"] --> written_qualified_chirho{Qualified?}
+    written_qualified_chirho -->|No| chain_chirho["Scope chain, innermost first (resolve_var_chirho)"]
+    written_qualified_chirho -->|Yes| spelled_chirho{"Bound in scope under its full spelling? The seeded Data.Map and QualifiedDo aliases are"}
+    spelled_chirho -->|Yes| alias_chirho[That binding]
+    spelled_chirho -->|No| own_chirho{"Q is this module, and its top level binds x?"}
+    own_chirho -->|Yes| top_chirho[The module's top-level binding]
+    own_chirho -->|No| unscoped_chirho["resolve_unscoped_var_chirho: past every scope; the linker binds the bare export name"]
+    unscoped_chirho --> apart_chirho["Beside a same-named top-level binding, the dictionary pass spells the import's body $prelude_x (row 597)"]
+
+    checker_chirho["Checker: the scheme of Q.x"] --> keyed_chirho{"Q.x keyed, or exactly one key ends in .Q.x?"}
+    keyed_chirho -->|Yes| scheme_chirho[That scheme]
+    keyed_chirho -->|No| outermost_chirho["Bare x in the outermost scope only: the module level and the builtins (lookup_outermost_chirho)"]
+    outermost_chirho -->|Unbound| unbound_chirho[E0202 unbound variable]
+```
+
+- **Why the bare text was wrong.** No `let`, `where`, lambda or `case` binder can be written with a qualifier, so no local binder can answer for `Q.x`.
+  - The desugarer's `ExprChirho::VarChirho` arm used the full spelling only when it was bound in scope, then fell back to the bare text through the scope chain.
+  - The infix and section paths resolved the operator by bare text alone.
+  - The checker's fallback read the bare name through every scope, so `L.nonexistentChirho` beside a `let nonexistentChirho` checked, where GHC 9.14.1 reports GHC-76037.
+- **One route.** `resolve_written_reference_chirho` (`desugar_chirho/qualified_references_chirho.rs`) serves the variable arm, the infix fallback and `build_section_body_chirho`.
+- **This module's name** takes its own top-level binding. Otherwise it takes a name no scope binds, such as one of its own class methods.
+- **An import's namesake.** A top-level binding the module itself writes no longer captures an import's `L.reverse`. Row 597's `spell_compiler_owned_apart_chirho` gives the import's generated body its own native symbol. Before row 597, the two `reverse` bindings crashed LLVM (exit 139) and Cranelift refused the second declaration.
+- **A sibling user module's alias.** `import qualified Lib as L` with a local `twice` used to capture `L.twice`, giving a wrong answer natively. It now reaches `Lib`'s export. A single-file native compile links no sibling module, so it fails "missing native binding `twice`", as plain `import Lib` already did (ruled #29717). The interpreter's `run` loads no sibling module at all.
 
 ## Boundaries (row 536 claims none of these)
 
 - Constructor patterns and record field labels, which the walk does not visit.
 - `M.do`'s selected `M.>>=`, `M.>>` and reserved `M.fail`.
-- Unimported qualifiers (I6, and row 532's Q01/Q02).
+- Unimported qualifiers in patterns (`X.Just y ->`) and in types (`1 :: X.Int`) still check where GHC reports GHC-76037: the walk does not visit patterns, and type scope is its own check (row 598).
+- `Main.reverse`, where the module's own name qualifies an import rather than one of its own values, still checks where GHC reports GHC-76037 (row 598).
+- A qualified alias of a builtin module types as the placeholder `forall a. a` unless a `Module.name` key exists. So `print (L.reverse xs)` defaults Show to Int and fails natively (row 598's R2; see the builtin type environment).
 - Bare-seed over-exposure (I8).
 - Shared-alias ambiguity (I3, I3b, M1).
 - Builtin member lists not proven complete.

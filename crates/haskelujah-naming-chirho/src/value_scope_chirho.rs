@@ -15,6 +15,11 @@
 //! has no list, hides names, holds an item lowering could not represent, or
 //! lists a `T(..)` whose members are not known to be complete. Interfaces
 //! here are partial, so only a written list proves a name is not supplied.
+//!
+//! Every qualifier must also name something (row 598): an import's effective
+//! qualifier, the injected implicit Prelude's included, or the module's own
+//! name. `X.reverse` with no import behind `X` is out of scope, as GHC reports
+//! it (GHC-76037), so no later phase can stand the bare `reverse` in for it.
 //! workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
 
 use std::collections::{HashMap, HashSet};
@@ -44,8 +49,9 @@ struct ClosedQualifierChirho {
     modules_chirho: Vec<String>,
 }
 
-/// Check every qualified value occurrence written in the module's expressions
-/// against the qualifiers its explicit import lists close.
+/// Check every qualified value occurrence written in the module's expressions:
+/// its qualifier must name an import or the module (row 598), and a qualifier
+/// its explicit import lists close must supply it (row 536).
 ///
 /// Workflow: see the value-scope resolution DAG under
 /// `spec-chirho/workflows-chirho/compiler-pipeline-chirho`.
@@ -57,14 +63,16 @@ pub(crate) fn check_module_value_scope_chirho(
 ) {
     let closed_chirho =
         closed_qualifiers_chirho(&module_chirho.imports_chirho, available_modules_chirho);
-    if closed_chirho.is_empty() {
-        return;
-    }
+    let imported_chirho = imported_qualifiers_chirho(&module_chirho.imports_chirho);
     let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
     for name_chirho in written_qualified_references_chirho(&module_chirho.decls_chirho) {
         let Some(qualifier_chirho) = name_chirho.qualifier_chirho() else {
             continue;
         };
+        if qualifier_chirho != module_name_chirho && !imported_chirho.contains(qualifier_chirho) {
+            report_unimported_chirho(diagnostics_chirho, &name_chirho, qualifier_chirho);
+            continue;
+        }
         let Some(closed_entry_chirho) = closed_chirho.get(qualifier_chirho) else {
             continue;
         };
@@ -88,6 +96,16 @@ pub(crate) fn check_module_value_scope_chirho(
             closed_entry_chirho,
         );
     }
+}
+
+/// Every qualifier an import binds: its alias, otherwise its module name. The
+/// driver injects the implicit Prelude before naming, so `Prelude` is among
+/// them unless the module opts out (row 598).
+fn imported_qualifiers_chirho(imports_chirho: &[ImportDeclChirho]) -> HashSet<String> {
+    imports_chirho
+        .iter()
+        .map(ImportDeclChirho::effective_qualifier_chirho)
+        .collect()
 }
 
 /// The qualifiers every one of whose imports is an explicit list of
@@ -248,6 +266,36 @@ fn written_qualified_references_chirho(decls_chirho: &[DeclChirho]) -> Vec<NameC
     references_chirho
 }
 
+/// What a written value occurrence names, by its spelling.
+fn reference_kind_chirho(text_chirho: &str) -> &'static str {
+    if text_chirho.starts_with(|char_chirho: char| char_chirho.is_uppercase() || char_chirho == ':')
+    {
+        "data constructor"
+    } else {
+        "variable"
+    }
+}
+
+/// `Q.x` written where no import binds `Q` and `Q` is not this module (row 598).
+fn report_unimported_chirho(
+    diagnostics_chirho: &mut DiagnosticBundleChirho,
+    name_chirho: &NameChirho,
+    qualifier_chirho: &str,
+) {
+    diagnostics_chirho.push_chirho(
+        DiagnosticChirho::error_with_code_chirho(
+            ErrorCodeChirho::error_chirho(UNDEFINED_VALUE_CODE_CHIRHO),
+            format!(
+                "{} not in scope: `{}`",
+                reference_kind_chirho(name_chirho.text_chirho()),
+                name_chirho.full_name_chirho()
+            ),
+            name_chirho.span_chirho(),
+        )
+        .with_note_chirho(format!("no module named `{qualifier_chirho}` is imported")),
+    );
+}
+
 fn report_unlisted_chirho(
     diagnostics_chirho: &mut DiagnosticBundleChirho,
     name_chirho: &NameChirho,
@@ -255,18 +303,12 @@ fn report_unlisted_chirho(
     closed_entry_chirho: &ClosedQualifierChirho,
 ) {
     let text_chirho = name_chirho.text_chirho();
-    let kind_chirho = if text_chirho
-        .starts_with(|char_chirho: char| char_chirho.is_uppercase() || char_chirho == ':')
-    {
-        "data constructor"
-    } else {
-        "variable"
-    };
     diagnostics_chirho.push_chirho(
         DiagnosticChirho::error_with_code_chirho(
             ErrorCodeChirho::error_chirho(UNDEFINED_VALUE_CODE_CHIRHO),
             format!(
-                "{kind_chirho} not in scope: `{}`",
+                "{} not in scope: `{}`",
+                reference_kind_chirho(text_chirho),
                 name_chirho.full_name_chirho()
             ),
             name_chirho.span_chirho(),

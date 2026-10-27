@@ -10,6 +10,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 mod import_scope_chirho;
 #[path = "typing_integration_chirho/qualified_import_lists_chirho.rs"]
 mod qualified_import_lists_chirho;
+#[path = "typing_integration_chirho/qualified_references_chirho.rs"]
+mod qualified_references_chirho;
 
 // Independently executed under GHC 9.14.1: 42 / 7 / 11 / True.
 // The infix and context orders differ from normalized body traversal; the
@@ -31,6 +33,23 @@ main = do
   print (fst (prefixChirho @(,) @Int @Bool (11, True)))
   print (contextChirho @Bool @Int 9 False)
 "#;
+
+/// GHC rejects the program, so the checker must too, with a message naming every reason.
+fn rejected_like_ghc_chirho(source_chirho: &str, file_name_chirho: &str, reasons_chirho: &[&str]) {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    match compile_source_chirho(source_chirho, &mut source_map_chirho, file_name_chirho) {
+        Ok(_) => panic!("{file_name_chirho}: GHC rejects this program; we accepted it"),
+        Err(err_chirho) => {
+            let message_chirho = err_chirho.to_string();
+            for reason_chirho in reasons_chirho {
+                assert!(
+                    message_chirho.contains(reason_chirho),
+                    "{file_name_chirho}: rejected, but not for `{reason_chirho}`: {message_chirho}"
+                );
+            }
+        }
+    }
+}
 
 fn assert_compile_success_chirho(file_name_chirho: &str, source_chirho: &str) {
     let mut source_map_chirho = SourceMapChirho::new_chirho();

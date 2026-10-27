@@ -106,6 +106,15 @@ impl TyEnvChirho {
         }
     }
 
+    /// Look up a name in the outermost scope alone: the module level and the
+    /// builtins, never a local binder (row 598).
+    /// workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
+    pub fn lookup_outermost_chirho(&self, name_chirho: &str) -> Option<&SchemeChirho> {
+        self.scopes_chirho
+            .first()
+            .and_then(|scope_chirho| scope_chirho.get(name_chirho))
+    }
+
     /// Look up a name, searching from innermost to outermost scope.
     pub fn lookup_chirho(&self, name_chirho: &str) -> Option<&SchemeChirho> {
         for scope_chirho in self.scopes_chirho.iter().rev() {

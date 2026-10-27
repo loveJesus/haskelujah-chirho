@@ -59,8 +59,9 @@ Each of these keeps its shared id and today's verdict:
   (`resolve_var_chirho`), and the dictionary pass skips local shadow ids.
 - Top-level functions and record fields are bound in scope before any body (desugar Pass 1 and
   1b). In one module, neither can share a name with a method of that module's own class.
-- A qualified reference resolves by its text unless the qualified name itself is bound, and the
-  checker records the same text.
+- A qualified reference is bound under its full spelling, takes the module's own top-level
+  binding when the qualifier is the module, or else resolves by its text past every scope
+  (row 598). The checker records the same text.
 
 ## Dependency on Ord brick 2
 

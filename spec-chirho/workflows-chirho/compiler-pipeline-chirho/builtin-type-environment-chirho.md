@@ -59,7 +59,11 @@ flowchart TD
   - hiding the name, or leaving it out of an import list, binds nothing.
 - A module that imports none of them reports the name unbound, as GHC does (GHC-88464).
 - Boundaries:
-  - `InferCtxChirho::new_chirho` still seeds every canonical key, so an unimported fully qualified `Control.Monad.join` still checks where GHC reports GHC-76037.
+  - `InferCtxChirho::new_chirho` still seeds every canonical key. An unimported fully qualified `Control.Monad.join` no longer reaches it: naming reports GHC-76037's class first (row 598).
+  - A qualified import of a builtin module types `Q.x` as the placeholder `forall a. a` whenever no `Module.x` key exists, which covers every Prelude, Data.List and Data.Char name. So `print (L.reverse xs)` defaults Show to Int and fails natively (row 598's R2).
+    - Giving those modules' aliases the bare builtin scheme was measured: 20 more cells became exact.
+    - It also turned two loud failures silent. One was a module's own top-level `reverse` beside `L.reverse`; the other is the local `where toUpper = succ` Enum residual, which prints 100 in the interpreter with no qualifier at all.
+    - So R2 is its own row.
   - The semigroupoids modules' preserved scheme is Monad's `join`, not their `Bind` method's own. That approximation predates this unit.
   - Which `Control.Lens.*` modules really export `(&)` was not measured. Their preserved keys carry no GHC-exact claim, and no oracle row covers them.
   - `guard` and the other non-Prelude bare seeds keep the old route.
@@ -102,4 +106,4 @@ flowchart TD
 
 - `constructors_chirho.rs` seeds `(:|) :: forall a. a -> [a] -> NonEmpty a` under the module-qualified keys `Data.List.NonEmpty.:|` and `Data.List.NonEmpty.(:|)`, the two spellings the interface exports. No bare key is seeded.
 - Phase 3.9 looks the `Module.name` key up first, so every import of Data.List.NonEmpty that exposes the constructor gives it this scheme under its own spelling (`:|`, `NE.:|`, `Data.List.NonEmpty.:|`). A value built with `:|` then has a concrete Show key (`NonEmpty Int` where the type is imported unqualified), and the derived NonEmpty metadata renders it (print-show-evidence-chirho).
-- Boundary: like `Data.List.NonEmpty.reverse`, the module-qualified keys are seeded for every module, so a full-qualifier `Data.List.NonEmpty.:|` with no import binding that qualifier now type-checks (the unimported-qualifier class, outside row 536's INV-I2). No measured program or corpus file writes that form.
+- Boundary: like `Data.List.NonEmpty.reverse`, the module-qualified keys are seeded for every module, but naming rejects a full-qualifier `Data.List.NonEmpty.:|` that no import binds before inference reads one (row 598).
