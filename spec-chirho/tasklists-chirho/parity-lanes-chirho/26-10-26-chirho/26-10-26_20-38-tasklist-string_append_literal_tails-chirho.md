@@ -80,3 +80,13 @@ design was accepted on bounds, and the walker inventory was confirmed before sou
   - RTS 70, runtime 58, core 175, LLVM 38, Cranelift 42;
   - seven driver suites 184, the nine-case control among them, and the driver library filter 179;
   - Clippy: none of 499 warnings on a changed line; rustfmt, diff-check and gitleaks clean.
+
+## Landing
+
+- [x] Independently reviewed and landed by `HASKELUJAH/gpt_chirho` as a two-commit fast-forward
+  from `0d4a5b8e` through corrected tip `4cf620a8`.
+- [x] Landing-boundary verification repeated 100 complete RTS library runs with no failure, then
+  passed runtime 58/58 and the exact nine-case three-engine control. Rustfmt, diff-check and
+  gitleaks were clean.
+- [x] Progress row 576 was closed with the measured transition and the allocator-reuse correction;
+  no push was made.
