@@ -288,7 +288,24 @@ impl InferCtxChirho {
         var_chirho: TyVarChirho,
         final_subst_chirho: &SubstChirho,
     ) -> Option<String> {
-        self.local_specialization_key_at_depth_chirho(var_chirho, final_subst_chirho, 0)
+        self.local_specialization_key_at_depth_chirho(var_chirho, final_subst_chirho, None, 0)
+    }
+
+    /// A literal in a locally generalized binding may be specialized at the
+    /// enclosing signature's rigid variable. That variable names an exact
+    /// dictionary parameter, not a concrete instance (row 600).
+    fn local_literal_specialization_key_chirho(
+        &self,
+        class_name_chirho: &str,
+        var_chirho: TyVarChirho,
+        final_subst_chirho: &SubstChirho,
+    ) -> Option<String> {
+        self.local_specialization_key_at_depth_chirho(
+            var_chirho,
+            final_subst_chirho,
+            Some(class_name_chirho),
+            0,
+        )
     }
 
     /// A local binding instantiated only by another local binding (`isPrime n =
@@ -299,6 +316,7 @@ impl InferCtxChirho {
         &self,
         var_chirho: TyVarChirho,
         final_subst_chirho: &SubstChirho,
+        rigid_class_name_chirho: Option<&str>,
         depth_chirho: usize,
     ) -> Option<String> {
         if depth_chirho > 8 || !self.local_generalized_vars_chirho.contains(&var_chirho) {
@@ -314,8 +332,12 @@ impl InferCtxChirho {
                     .local_specialization_key_at_depth_chirho(
                         *other_chirho,
                         final_subst_chirho,
+                        rigid_class_name_chirho,
                         depth_chirho + 1,
                     )?,
+                TyChirho::ForallVarChirho(skolem_chirho) => {
+                    self.own_parameter_key_chirho(rigid_class_name_chirho?, skolem_chirho)?
+                }
                 _ => ground_or_head_key_chirho(&resolved_chirho)?,
             };
             match &key_chirho {
@@ -431,9 +453,11 @@ impl InferCtxChirho {
         {
             let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
             let key_chirho = match &resolved_chirho {
-                TyChirho::VarChirho(var_chirho) => {
-                    self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
-                }
+                TyChirho::VarChirho(var_chirho) => self.local_literal_specialization_key_chirho(
+                    class_name_chirho,
+                    *var_chirho,
+                    final_subst_chirho,
+                ),
                 // A literal at the enclosing signature's rigid variable is the binding's
                 // own dictionary's, as an occurrence there is (row 584).
                 TyChirho::ForallVarChirho(skolem_chirho) => {
@@ -922,11 +946,18 @@ mod tests_chirho {
         let split_chirho = fresh_chirho(&mut ctx_chirho);
         let inst_c_chirho = fresh_chirho(&mut ctx_chirho);
         let inst_d_chirho = fresh_chirho(&mut ctx_chirho);
+        let outer_chirho = fresh_chirho(&mut ctx_chirho);
+        let outer_inst_chirho = fresh_chirho(&mut ctx_chirho);
         ctx_chirho.local_generalized_vars_chirho.extend([
             check_div_chirho,
             is_prime_chirho,
             split_chirho,
+            outer_chirho,
         ]);
+        ctx_chirho.record_own_dictionary_indices_chirho(&[PredChirho::new_chirho(
+            "Num",
+            TyChirho::ForallVarChirho("a%600".to_string()),
+        )]);
         ctx_chirho
             .local_instantiations_chirho
             .insert(check_div_chirho, vec![inst_a_chirho]);
@@ -936,11 +967,18 @@ mod tests_chirho {
         ctx_chirho
             .local_instantiations_chirho
             .insert(split_chirho, vec![inst_c_chirho, inst_d_chirho]);
+        ctx_chirho
+            .local_instantiations_chirho
+            .insert(outer_chirho, vec![outer_inst_chirho]);
         let mut subst_chirho = SubstChirho::empty_chirho();
         subst_chirho.insert_chirho(inst_a_chirho, TyChirho::VarChirho(is_prime_chirho));
         subst_chirho.insert_chirho(inst_b_chirho, TyChirho::int_chirho());
         subst_chirho.insert_chirho(inst_c_chirho, TyChirho::int_chirho());
         subst_chirho.insert_chirho(inst_d_chirho, TyChirho::ConChirho("Double".to_string()));
+        subst_chirho.insert_chirho(
+            outer_inst_chirho,
+            TyChirho::ForallVarChirho("a%600".to_string()),
+        );
         assert_eq!(
             ctx_chirho.local_specialization_key_chirho(check_div_chirho, &subst_chirho),
             Some("Int".to_string())
@@ -952,6 +990,10 @@ mod tests_chirho {
         assert_eq!(
             ctx_chirho.local_specialization_key_chirho(inst_a_chirho, &subst_chirho),
             None
+        );
+        assert_eq!(
+            ctx_chirho.local_literal_specialization_key_chirho("Num", outer_chirho, &subst_chirho),
+            Some("$own:0".to_string())
         );
     }
 

@@ -42,6 +42,14 @@ flowchart TD
   - A literal still on a unification variable, or on an instance method's skolem, produces no record and takes today's fallback.
   - Before row 584, a rigid literal produced no record either, and the fallback keyed it `Int`, not the binding's parameter. The interpreter masked this, because its float primops accept an Int operand. The natives read the Int's bits as a Double: `incChirho x = x + 1` under `Num a` printed 2.5 at Double, where GHC prints 3.5.
   - Controls: `literals_at_a_signature_variable_take_its_dictionary_everywhere_chirho`, which includes two predicates of one class, and `a_fractional_signatures_literal_takes_its_dictionary_chirho`, in `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
+- A literal in a locally generalized binding may reach that same rigid variable through its one
+  agreeing instantiation (row 600). `local_literal_specialization_key_chirho` follows the local
+  instantiation chain and turns the terminal signature skolem into its exact `$own:k` key. A
+  concrete terminal keeps the existing specialization path; open, cyclic, disagreeing and
+  instance-method-skolem paths still publish nothing. Reference and method-occurrence evidence do
+  not take this literal-only endpoint.
+  - Before row 600, `where sum _ = 42` under `total :: Num a => [a] -> a` produced no literal record. The dictionary pass therefore used Num Int: the interpreter rejected `42#` at Double and both natives silently printed `2.08e-322`.
+  - Control: `a_local_result_literal_takes_the_enclosing_dictionary_everywhere_chirho` in `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
 - `sum` and `product` at a binding's own key fold over that binding's dictionary (row 586).
   - Row 552 turned an evidenced aggregate at a concrete key K into `foldl $prim_Num_+_K ($prim_Num_fromInteger_K 0)`. At `$own:k` there is no such row, so `sum` fell back to the Prelude's Int-shaped `sum`.
   - At Double the interpreter then failed on `AddIntChirho`, and both natives added the Doubles' bits as integers.
@@ -54,7 +62,7 @@ flowchart TD
   - Both aggregate routes then replaced the call with the Prelude fold: row 552's concrete key, and row 586's own key. It was silently wrong on every engine: `(6.5,9,9)`, where GHC prints `(6.5,99,98)`.
   - **The fix:** `module_bound_ids_chirho` holds every binder in the module's bindings, seeded beside the free ids. `names_programs_own_binder_chirho` checks an occurrence's canonical id against it, and `evidenced_applied_head_chirho` and `own_aggregate_chirho` yield for the program's own.
   - **Already right:** local `print`, `max`, `min`, `maximum`, `minimum` and `^^`, because the checker records no evidence there. They need no guard of their own, and the extrema and `^^` sit behind the same applied-head guard.
-  - **Residual:** a literal in a local polymorphic binding inside a signature-polymorphic one is still keyed at Int. For example, `where sum _ = 42` under `Num a`, used at Double, prints `2.08e-322` natively.
+  - **Row 600 follow-up:** the local literal residual recorded here now takes the enclosing signature's exact dictionary through the literal-evidence path above.
   - Controls: `a_programs_own_sum_and_product_keep_their_bodies_everywhere_chirho` and `a_local_sum_in_a_polymorphic_binding_keeps_its_body_everywhere_chirho`, in `tests/native_error_helpers_chirho.rs`.
 - A generated Prelude binding never takes a local binder's id (row 594).
   - **The defect:** `resolve_or_fresh_id_chirho` gave a generated binding the first id named like it in the name table's hash order, skipping only occurrence ids. Generated bindings include the Prelude's `length` body, and the `foldl` that row 552's fold calls.

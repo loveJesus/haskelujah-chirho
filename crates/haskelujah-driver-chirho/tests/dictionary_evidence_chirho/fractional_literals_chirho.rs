@@ -218,3 +218,20 @@ fn a_result_only_num_dictionary_reaches_from_integral_everywhere_chirho() {
     );
     assert_native_chirho("ResultOnlyNumChirho.hs", program_chirho, ghc_chirho);
 }
+
+/// Row 600: a locally generalized result literal is specialized at the enclosing
+/// signature's rigid variable. That single instantiation proves the same `$own:0`
+/// dictionary the outer binding already carries. Previously the literal had no
+/// evidence, so the pass chose Num Int: the interpreter rejected `42#` as a Double,
+/// and both natives silently printed the Int word as `2.08e-322`.
+#[test]
+fn a_local_result_literal_takes_the_enclosing_dictionary_everywhere_chirho() {
+    let program_chirho = "module Main where\ntotalChirho :: Num a => [a] -> a\ntotalChirho xsChirho = sum xsChirho\n  where\n    sum _ = 42\nmain :: IO ()\nmain = print (totalChirho [1.5, 2.5 :: Double], totalChirho [1, 2 :: Int])\n";
+    let ghc_chirho = "(42.0,42)\n";
+    assert_eq!(
+        run_chirho("LocalResultLiteralChirho.hs", program_chirho),
+        ghc_chirho,
+        "interpreter"
+    );
+    assert_native_chirho("LocalResultLiteralChirho.hs", program_chirho, ghc_chirho);
+}
