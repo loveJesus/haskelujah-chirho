@@ -45,3 +45,6 @@ the separate type-synonym filter bug.
 - [x] Replayed onto df542bb0 (row 619, no shared file) with the same patch-id. There the check is
   warning-free, native_symbol_identity passes 45, the 29 callers and install pass, and
   typing_integration passes 81 (row 619's three new controls included).
+- [x] Landed the exact two-commit chain on `main_chirho` at `ff9862e5`. Independent main checks:
+  native_symbol_identity 45/45, both hidden-parent alias holds, install 8/8, and a warning-free
+  workspace check. Progress row 659 records the closure.
