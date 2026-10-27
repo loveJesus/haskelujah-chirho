@@ -42,7 +42,22 @@ Row 627.
 - [x] Source: one method-driven fold, rows for keys without a dictionary, and row 565's helpers deleted.
 - [x] Controls: GHC-measured, byte for byte, the required mixed program included.
   - **First suite run** (1407 tests): 1407 passed, with no moved pin; row 565's programs hold through the method rows.
-- [ ] Reach: each new route removed alone, then restored byte-identical.
-- [ ] Commit; replay onto the newest main; broad moved-shape scan.
-- [ ] Judge main against the contract copy; warm gate; record.
+- [x] **Reach** (`tools-chirho/reach_627_chirho.zsh`, log `reach627-r1-chirho.log`, on `9a9d2781`):
+  - **M1, the concrete fold off:** `maximum` falls back to the Int-shaped binding. An own `max` gives `(WChirho 0,WChirho 1,WChirho 5)`, and the holds program and row 565's control stop at `LeIntChirho`.
+  - **M2, the own-key fold off:** polymorphic `minimum` gives `UChirho 5`, and row 612's polymorphic-extrema control stops at `LeIntChirho`.
+  - **M3, the generated rows off:** `max` at `Maybe Char` stops at `LeIntChirho`.
+  - Every restore was byte-identical, and the restored tree passes 8/8. Row 565's helpers are deleted, so no path to them is left to mutate.
+- [x] Commit; replay onto the newest main; broad moved-shape scan.
+  - The source `9a9d2781` was first scanned on main `4f6e938c`: 3589/3589 in 800 s.
+  - Main then moved to `a2567c61` with row 628's CoreId-named native bindings across both backends. The rebased source `ac1890eb` was re-probed (all five programs keep their answers on all three engines) and re-scanned: 3589/3589 in 903 s, with no mover (`scan627-rebased-chirho.log`).
+    - That is row 626's 3587, plus this row's 2 controls. It covered every lib and the 20 driver suites, leaving out `ghc_bulk`, and skipped the same 18.
+- [x] Judge main against the contract copy; warm gate; record.
+  - **Main `4f6e938c`** and then **main `a2567c61`** are GREEN against the contract copy first (73 movers, 9 holds). Their probes give main's measured answers (`baseline-4f6e938c-chirho.log`, `baseline-a2567c61-chirho.log`).
+  - **r1, GREEN on `ac1890eb` (base `a2567c61`) in 226.49 s:**
+    - 1357/1357 focused tests, row 626's filter plus the extrema controls;
+    - no Clippy diagnostic on the 229 changed lines in 7 files;
+    - the contract judge GREEN;
+    - rustfmt, diff-check and gitleaks clean (1 commit), and a build with no warning.
+  - **The tip's probe reports** (`tip-ac1890eb-chirho`): 5 programs are GHC on all three engines (15 cells), and all 5 Cranelift compiles carry the marker.
+  - Main has since moved to `e0dafd3d` with the progress DB only, so the commits replay patch-identically.
 - [ ] Land on main and close progress row 627 (gpt).
