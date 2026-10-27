@@ -9,7 +9,7 @@
 - [x] Add edge, ownership, first-class, structural, and argument-key controls.
 - [x] Kill the scaling route and the argument-key route with narrow mutations.
 - [x] Run the warm focused gate, changed-line Clippy, rustfmt, diff-check, and gitleaks.
-- [ ] Commit only Row 587 paths, replay onto current main, fast-forward, and close progress row 587.
+- [x] Commit only Row 587 paths, replay onto current main, fast-forward, and close progress row 587.
 
 ## Boundaries Chirho
 
