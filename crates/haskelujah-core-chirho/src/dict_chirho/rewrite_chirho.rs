@@ -386,6 +386,11 @@ impl DictPassCtxChirho {
         // workflow: language-features-chirho/dictionary-evidence-chirho
         self.generate_ordering_operator_rows_chirho();
 
+        // `max`, `min`, `maximum` and `minimum` proved at a key with no dictionary to carry
+        // their rows, such as `Maybe Int`, take GHC's defaults through the key's `<=` (row 627).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_evidenced_extremum_rows_chirho();
+
         // Seed local_shadow_ids with top-level user bindings whose name
         // collides with a class method (e.g. user defines `toList` which
         // shadows the IsList class method).  Without this, the dict pass

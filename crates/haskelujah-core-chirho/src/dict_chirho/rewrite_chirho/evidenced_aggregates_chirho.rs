@@ -9,13 +9,15 @@
 //! `foldl $prim_Num_*_K ($prim_Num_fromInteger_K 1)`. With no evidence, or a missing row,
 //! today's path is kept, as it is when a row has no actual body.
 //!
-//! `max`, `min`, `maximum` and `minimum` from their solved `Ord` proof (row 565). Their
-//! generic bindings are Int-shaped too, comparing with `<=#` and `>=#`. Outside Int, Char
-//! and Bool, the interpreter failed on `LeIntChirho`, and both native backends picked by
-//! comparing heap values as integers: `minimum ["pear", "apple", "zoo"]` was "pear" and
-//! `maximum [1, 0 / 0]` was NaN. An evidenced occurrence at a key with a body-backed
-//! `Ord.compare` row becomes its compare-backed helper applied to that row, such as
-//! `$ord_maximum_by_chirho $prim_Ord_compare_K`.
+//! `maximum` and `minimum` from their solved `Ord` proof (rows 565 and 627). Their generic
+//! bindings are Int-shaped too, comparing with `<=#` and `>=#`. Outside Int, Char and Bool,
+//! the interpreter failed on `LeIntChirho`, and both native backends picked by comparing
+//! heap values as integers: `minimum ["pear", "apple", "zoo"]` was "pear" and
+//! `maximum [1, 0 / 0]` was NaN. Row 565 folded compare-backed picks. Since row 627 an
+//! evidenced occurrence folds its key's own `Ord.max` or `Ord.min` row, GHC's
+//! `foldl1' max`: `$ord_fold1_chirho $prim_Ord_max_K`. `max` and `min` themselves are Ord's
+//! methods and take their rows through the method route, so an instance's own `max` decides
+//! every use.
 //! workflow: print-show-evidence-chirho
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
@@ -28,7 +30,9 @@ use crate::dict_chirho::instance_chirho::structured_equalities_chirho::{
     EQUALITY_CONSUMERS_CHIRHO, INT_SHAPED_KEYS_CHIRHO,
 };
 use crate::dict_chirho::prelude_chirho::fractional_power_chirho::FRACTIONAL_POWER_DOUBLE_INT_CHIRHO;
-use crate::dict_chirho::prelude_chirho::ordering_extrema_chirho::ORDERING_EXTREMA_CHIRHO;
+use crate::dict_chirho::prelude_chirho::ordering_extrema_chirho::{
+    ORDERING_FOLD1_CHIRHO, ORDERING_FOLDS_CHIRHO,
+};
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
 
 impl DictPassCtxChirho {
@@ -176,11 +180,11 @@ impl DictPassCtxChirho {
         )
     }
 
-    /// An evidenced `maximum` or `minimum` at the enclosing binding's own `Ord` key, as row
-    /// 565's compare-backed fold over that dictionary's `compare` (row 612), such as
-    /// `$ord_minimum_by_chirho ($sel_Ord_compare d)`. The Prelude's are Int-shaped, so
-    /// inside `Ord a =>` code the interpreter failed on `LeIntChirho`, and both natives
-    /// compared heap values as integers. `max` and `min` are Ord's methods there, which the
+    /// An evidenced `maximum` or `minimum` at the enclosing binding's own `Ord` key, as the
+    /// fold over that dictionary's `max` or `min` slot (rows 612 and 627), such as
+    /// `$ord_fold1_chirho ($sel_Ord_min d)`. The Prelude's are Int-shaped, so inside
+    /// `Ord a =>` code the interpreter failed on `LeIntChirho`, and both natives compared
+    /// heap values as integers. `max` and `min` are Ord's methods there, which the
     /// dictionary route selects.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn own_extremum_chirho(
@@ -198,10 +202,7 @@ impl DictPassCtxChirho {
             .rsplit('.')
             .next()
             .unwrap_or(reference_name_chirho);
-        if !matches!(base_name_chirho, "maximum" | "minimum") {
-            return None;
-        }
-        let (_, helper_chirho) = ORDERING_EXTREMA_CHIRHO
+        let (_, method_chirho) = ORDERING_FOLDS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
         let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
@@ -214,13 +215,13 @@ impl DictPassCtxChirho {
             dict_vars_chirho,
             evidence_classes_chirho,
         )?;
-        let (_class_chirho, compare_selector_id_chirho) =
-            self.method_selectors_chirho.get("compare")?;
-        let helper_id_chirho = self.lookup_body_backed_name_id_chirho(helper_chirho)?;
+        let (_class_chirho, selector_id_chirho) =
+            self.method_selectors_chirho.get(*method_chirho)?;
+        let fold_id_chirho = self.lookup_body_backed_name_id_chirho(ORDERING_FOLD1_CHIRHO)?;
         Some(CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
             arg_chirho: Box::new(CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(*compare_selector_id_chirho)),
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(*selector_id_chirho)),
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
             }),
         })
@@ -240,10 +241,10 @@ impl DictPassCtxChirho {
             })
     }
 
-    /// An evidenced `max`, `min`, `maximum` or `minimum` occurrence as its compare-backed
-    /// helper applied to its key's own `Ord.compare` row, or None. Int, Char and Bool keep
-    /// their exact Int-shaped bindings, and a key without a body-backed compare row keeps
-    /// today's path.
+    /// An evidenced `maximum` or `minimum` occurrence as the fold over its key's own `Ord.max`
+    /// or `Ord.min` row (row 627): the instance's own method, else GHC's default through the
+    /// key's `<=`, and a stub where neither exists, which fails by name. None for a key with
+    /// no such row, which keeps today's path.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn evidenced_extremum_chirho(
         &self,
@@ -255,19 +256,18 @@ impl DictPassCtxChirho {
             .rsplit('.')
             .next()
             .unwrap_or(reference_name_chirho);
-        let (_, helper_chirho) = ORDERING_EXTREMA_CHIRHO
+        let (_, method_chirho) = ORDERING_FOLDS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
         let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
-        if class_name_chirho != "Ord" || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str()) {
+        if class_name_chirho != "Ord" || is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
-        let compare_id_chirho = self
-            .lookup_dispatch_body_name_id_chirho(&format!("$prim_Ord_compare_{ty_key_chirho}"))?;
-        let helper_id_chirho = self.lookup_body_backed_name_id_chirho(helper_chirho)?;
+        let row_id_chirho = self.ordering_method_row_chirho(method_chirho, ty_key_chirho)?;
+        let fold_id_chirho = self.lookup_body_backed_name_id_chirho(ORDERING_FOLD1_CHIRHO)?;
         Some(CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(compare_id_chirho)),
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::VarChirho(row_id_chirho)),
         })
     }
 
@@ -302,8 +302,8 @@ impl DictPassCtxChirho {
     }
 
     /// An evidenced occurrence that becomes the same value applied or not: `sum` and
-    /// `product` (row 552), then `max`, `min`, `maximum` and `minimum` (row 565). An
-    /// applied `print` is not one; it consumes its proof on its own path.
+    /// `product` (row 552), then `maximum` and `minimum` (rows 565 and 627). An applied
+    /// `print` is not one; it consumes its proof on its own path.
     /// workflow: print-show-evidence-chirho
     pub(super) fn evidenced_applied_head_chirho(
         &self,

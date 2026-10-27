@@ -5,8 +5,10 @@
 //! Bool the interpreter refused them (`LeIntChirho: expected Int#`), and both native
 //! backends compared heap values as integers: `minimum ["pear", "apple", "zoo"]` printed
 //! "pear", `maximum [Green, Red, Blue]` printed Green, and `maximum [1, 0 / 0]` printed NaN.
-//! An evidenced occurrence, applied, first-class or partially applied, now reads its key's
-//! own compare row. Each program's GHC 9.14.1 output is recorded beside it.
+//! An evidenced occurrence, applied, first-class or partially applied, read its key's own
+//! compare row in row 565; since row 627 it reads the key's own `max` or `min` row
+//! (`extrema_methods_chirho.rs`), and these programs hold. Each program's GHC 9.14.1 output is
+//! recorded beside it.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{assert_native_chirho, run_chirho, run_result_chirho};
@@ -29,7 +31,8 @@ fn extrema_read_their_key_compare_everywhere_chirho() {
     assert_native_chirho("ExtremaChirho.hs", EXTREMA_CHIRHO, EXTREMA_GHC_CHIRHO);
 }
 
-/// Int, Char and Bool keep their Int-shaped bindings, which were already exact.
+/// Int, Char and Bool, whose Int-shaped bindings were already exact; since row 627 they read
+/// their dictionaries' `max` and `min` rows, with the same answers.
 const INT_SHAPED_EXTREMA_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (maximum [3, 1, 2 :: Int], minimum [3, 1, 2 :: Int])\n  print (minimum \"hello\", maximum \"hello\")\n  print (maximum [True, False], minimum [True, False])\n  print (maximum (map negate [1, 2, 3 :: Int]), max 'a' 'b', min (2 :: Int) 1)\n";
 
 /// GHC 9.14.1's output for [`INT_SHAPED_EXTREMA_CHIRHO`].
@@ -50,9 +53,9 @@ fn int_shaped_extrema_keep_their_answers_everywhere_chirho() {
 }
 
 /// Row 565's remaining named residual, failing in the interpreter as before: the empty list
-/// fails in `head`, where GHC fails `Prelude.maximum: empty list`. A polymorphic `Ord a =>`
-/// wrapper, once pinned here, folds over its dictionary's `compare` since row 612
-/// (`ord_methods_chirho.rs`).
+/// fails with `no matching alternative`, where GHC fails `Prelude.maximum: empty list`. A
+/// polymorphic `Ord a =>` wrapper, once pinned here, folds its dictionary's `max` since row
+/// 627 (`ord_methods_chirho.rs`).
 #[test]
 fn extrema_outside_the_compare_rows_stay_named_residuals_chirho() {
     let error_chirho = run_result_chirho(

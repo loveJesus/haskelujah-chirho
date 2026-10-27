@@ -27,6 +27,8 @@ mod equality_methods_chirho;
 mod equality_sections_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/extrema_chirho.rs"]
 mod extrema_chirho;
+#[path = "dictionary_evidence_chirho/ordering_chirho/extrema_methods_chirho.rs"]
+mod extrema_methods_chirho;
 #[path = "dictionary_evidence_chirho/fractional_literals_chirho.rs"]
 mod fractional_literals_chirho;
 #[path = "dictionary_evidence_chirho/ground_keys_chirho.rs"]

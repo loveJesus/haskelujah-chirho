@@ -200,18 +200,13 @@ flowchart LR
     body-backed rows in row 572; written and prefix operators take their own evidence since
     row 610.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/compare_route_chirho.rs`.
-- `max`, `min`, `maximum` and `minimum` read the same rows (row 565, the Ord aggregate brick).
+- `max`, `min`, `maximum` and `minimum` read the key's rows (row 565, the Ord aggregate brick; Ord's method rows since row 627).
   - Their generic bindings are Int-shaped, over `<=#` and `>=#`. `maximum` and `minimum` join `max` and `min` in the driver's per-occurrence evidence names, since their schemes are `Ord a => [a] -> a`.
-  - An evidenced occurrence at key K becomes `helper $prim_Ord_compare_K`, in `rewrite_chirho/evidenced_aggregates_chirho.rs`. This holds whether the occurrence is applied, first-class or partially applied.
-  - The helpers are generated in `prelude_chirho/ordering_extrema_chirho.rs`.
-    - `$ord_max_by_chirho cmp x y` keeps `x` on GT and `y` otherwise, which is GHC's default `max` through `<=`.
-    - `$ord_min_by_chirho` mirrors it.
-    - `$ord_maximum_by_chirho` and `$ord_minimum_by_chirho` fold the picks, as the Int-shaped bindings do.
-  - Int, Char and Bool keep their exact Int-shaped bindings. Double routes too, because `compare x y /= GT` matches IEEE `x <= y`, NaN included.
+  - Row 565 made an evidenced occurrence at key K a compare-backed helper applied to `$prim_Ord_compare_K` (`$ord_max_by_chirho`, `$ord_min_by_chirho` and their folds). Row 627 deleted those helpers: GHC reads `max` and `min`, so a pick through `compare` ignored an instance's own `max` and its own `<=` (row 627, below).
   - Residuals keep today's path:
-    - keys without a body-backed compare row;
-    - the empty list, which fails in `head` rather than with `Prelude.maximum: empty list`.
-  - A polymorphic `Ord a =>` wrapper, whose evidence is a dictionary, was a residual here until row 612. `max` and `min` are now its dictionary's methods, and `maximum` and `minimum` fold over that dictionary's `compare`.
+    - keys with no `max` or `min` row, that is, with no dictionary and no `<=` answer;
+    - the empty list, which fails with `no matching alternative` rather than GHC's `Prelude.maximum: empty list`.
+  - A polymorphic `Ord a =>` wrapper, whose evidence is a dictionary, was a residual here until row 612. `max` and `min` are its dictionary's methods, and since row 627 `maximum` and `minimum` fold its `max` and `min` slots.
   - Controls: `tests/dictionary_evidence_chirho/ordering_chirho/extrema_chirho.rs`.
 - Concrete `Maybe` and tuple ordering composes only body-backed component rows (row 572).
   - `Show` and `Ord` occurrence evidence retain a complete concrete key, rather than only the
@@ -345,8 +340,8 @@ flowchart LR
     - `<`, `>` and `>=` were compare-backed in row 612. Since row 626 they follow GHC's `<=` chain, and `compare` defaults from `==` and `<=` (below);
     - `max x y = if x <= y then y else x` and `min x y = if x <= y then x else y`, through the key's `<=` answer, which is the instance's own `<=` where it writes one. At Double this matches GHC at NaN and signed zero.
     - The donor must be a real body. A key whose `compare` is a missing-method stub keeps each slot's named failure, where GHC's defaults loop.
-  - **The binding's own key:** a written operator proved at the binding's own dictionary leaves row 610's pass and selects its slot (`$sel_Ord_< $dOrd`). `max` and `min` select theirs as methods. `maximum` and `minimum` apply row 565's compare-backed fold to the dictionary's `compare` (`own_extremum_chirho`).
-  - **Kept for row 627:** a `<=`-only instance's `max` and `min` already answer through its own `<=`. At concrete keys `max`, `min`, `maximum` and `minimum` keep row 565's compare-backed helpers, so an instance's own `max` is read only through a dictionary (row 627).
+  - **The binding's own key:** a written operator proved at the binding's own dictionary leaves row 610's pass and selects its slot (`$sel_Ord_< $dOrd`). `max` and `min` select theirs as methods. `maximum` and `minimum` fold the dictionary's `max` and `min` slots since row 627 (`own_extremum_chirho`); row 612 had folded its `compare`.
+  - **Concrete extrema:** a `<=`-only instance's `max` and `min` answer through its own `<=`. Row 612 left concrete `max`, `min`, `maximum` and `minimum` on row 565's compare-backed helpers; row 627 moved them onto the method rows.
   - **Residuals, measured on main too:**
     - no `Ord` or `Eq` dictionary exists at `Maybe` or tuple keys, so `Ord a =>` code called there fails with `no instance dictionary for Ord Maybe`, where main's operators answered silently wrong;
     - an Ord instance at a generic head is never generic (row 600's G6: Ord has a superclass), so `Ord a =>` code at `TagChirho Int` fails with `no instance dictionary for Ord TagChirho`, as `compare` there did on main;
@@ -372,12 +367,24 @@ flowchart LR
     - With neither `compare` nor `<=`, every slot keeps its named failure, where GHC's defaults loop.
     - A `<=`-only key's compare row is now real, so `sortBy compare`, row 565's extrema and row 572's structured rows read it.
   - **Kept:**
-    - concrete `max`, `min`, `maximum` and `minimum` read row 565's compare-backed helpers (row 627), so the measured mixed program's concrete `max` cell stays `MixChirho 2`;
+    - concrete `max`, `min`, `maximum` and `minimum` read row 565's compare-backed helpers until row 627, so the measured mixed program's concrete `max` cell stayed `MixChirho 2` here;
     - `sort` and `insert` are Int-shaped at user keys (row 633);
     - row 551's compare route, for primops without evidence, still reads each operator's own test.
   - Controls:
     - In `tests/dictionary_evidence_chirho/ordering_chirho/ord_chain_chirho.rs`: `ordering_operators_follow_ghcs_at_most_chain_everywhere_chirho` and `ord_chain_holds_stay_ghc_everywhere_chirho`.
     - Row 610's stub-key program moved into them: its `<=`-only instance answers GHC's `[False]`. The pin now holds an instance with neither `compare` nor `<=`, still loud.
+- `max`, `min`, `maximum` and `minimum` read Ord's methods at every served key (row 627).
+  - **The defect:** GHC.List folds `maximum` and `minimum` with `max` and `min` (`foldl1' max`), and GHC's `max` and `min` are methods an instance may write. Row 565's compare-backed helpers decided every concrete key, so:
+    - an instance's own `max` was ignored at concrete keys, by `maximum` and by first-class `foldr1 max`: `(WChirho 2,WChirho 1,WChirho 5)`, where GHC prints `(WChirho 0,WChirho 1,WChirho 0)`;
+    - an instance's own `min` was ignored the same way, `zipWith min` included, and inside `Ord a =>` code `minimum` and `maximum` folded the dictionary's `compare`;
+    - an instance whose own `<=` disagrees with its `compare` took a concrete `max` from `compare`: the measured mixed program printed `MixChirho 2`, where GHC prints `MixChirho 1`.
+  - **The route:** `max` and `min` are Ord's methods, so an evidenced occurrence, applied, first-class or partial, takes the key's `$prim_Ord_max_K` or `$prim_Ord_min_K` row through the method route: the instance's own, else row 612's default through the key's `<=`.
+    - A concrete key without a dictionary, such as `Maybe Int` or a tuple, gets those rows from its `<=` answer (`generate_evidenced_extremum_rows_chirho`, after row 572's compare rows).
+    - `maximum` and `minimum` fold the row: `$ord_fold1_chirho $prim_Ord_max_K`, and at the binding's own key `$ord_fold1_chirho ($sel_Ord_max d)` (`prelude_chirho/ordering_extrema_chirho.rs`). The fold starts from the head with no `[]` alternative, so an empty list fails as before.
+    - Int, Char, Bool and Double read their dictionaries' rows too, which answer as their Int-shaped bindings did; Double matches GHC at NaN and signed zero.
+  - Row 565's compare-backed helpers are deleted, so none decides a served key.
+  - Controls:
+    - In `tests/dictionary_evidence_chirho/ordering_chirho/extrema_methods_chirho.rs`: `extrema_follow_ord_methods_everywhere_chirho`, which includes the full measured mixed program, and `extrema_method_holds_stay_ghc_everywhere_chirho`.
 
 ## Reference evidence (bricks 3 and 4)
 

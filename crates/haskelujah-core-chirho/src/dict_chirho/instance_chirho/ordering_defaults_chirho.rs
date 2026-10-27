@@ -19,13 +19,21 @@
 //!
 //! A missing-method stub never donates: a key with neither a real `compare` nor its own `<=`
 //! keeps each slot's named failure, where GHC's defaults call each other forever.
+//!
+//! `max` and `min` are read through these rows at every served key since row 627: a concrete
+//! key without a dictionary, such as `Maybe Int` or a tuple, gets its `max` and `min` rows the
+//! same way, and `maximum` and `minimum` fold them.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
+use std::collections::BTreeSet;
+
 use haskelujah_span_chirho::SpanChirho;
+use haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use super::DictPassCtxChirho;
 use super::ordering_operators_chirho::ORDERING_OPERATORS_CHIRHO;
+use crate::dict_chirho::type_keys_chirho::canonical_type_key_chirho;
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     InlineAnnotationChirho,
@@ -75,6 +83,64 @@ fn if_then_else_chirho(
 }
 
 impl DictPassCtxChirho {
+    /// The key's `$prim_Ord_<method>_<key>` row under the proof's spelling, its canonical
+    /// spelling or with `String` spelled out. A missing-method stub counts, so a key whose
+    /// slot has no real body fails by name (row 627).
+    pub(in crate::dict_chirho) fn ordering_method_row_chirho(
+        &self,
+        method_name_chirho: &str,
+        key_chirho: &str,
+    ) -> Option<CoreIdChirho> {
+        let canonical_chirho = canonical_type_key_chirho(key_chirho);
+        let spelled_chirho = Self::string_spelled_out_chirho(&canonical_chirho);
+        [key_chirho.to_string(), canonical_chirho, spelled_chirho]
+            .iter()
+            .find_map(|spelling_chirho| {
+                self.lookup_body_backed_name_id_chirho(&format!(
+                    "$prim_Ord_{method_name_chirho}_{spelling_chirho}"
+                ))
+            })
+    }
+
+    /// A `max` or `min` row, GHC's default through the key's `<=`, for each concrete key a
+    /// `max`, `min`, `maximum` or `minimum` occurrence was proved at that has none, such as
+    /// the `Maybe` and tuple keys row 572 composes compare rows for (row 627). Runs after
+    /// those rows exist; a key with no `<=` answer gets no row.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn generate_evidenced_extremum_rows_chirho(&mut self) {
+        let wanted_chirho = self
+            .occurrence_evidence_chirho
+            .iter()
+            .filter(|(id_chirho, (class_name_chirho, key_chirho))| {
+                class_name_chirho == "Ord"
+                    && !is_own_dictionary_key_chirho(key_chirho)
+                    && !self.names_programs_own_binder_chirho(**id_chirho)
+            })
+            .filter_map(|(id_chirho, (_, key_chirho))| {
+                let (name_chirho, _) = self.method_occurrence_canon_chirho.get(id_chirho)?;
+                let method_chirho = match name_chirho.rsplit('.').next()? {
+                    "max" | "maximum" => "max",
+                    "min" | "minimum" => "min",
+                    _ => return None,
+                };
+                Some((method_chirho, key_chirho.clone()))
+            })
+            .collect::<BTreeSet<_>>();
+        for (method_chirho, key_chirho) in wanted_chirho {
+            if self
+                .ordering_method_row_chirho(method_chirho, &key_chirho)
+                .is_none()
+            {
+                self.ordering_default_row_chirho(
+                    "Ord",
+                    method_chirho,
+                    &key_chirho,
+                    &format!("$prim_Ord_{method_chirho}_{key_chirho}"),
+                );
+            }
+        }
+    }
+
     /// The key's body-backed `Eq.==` row: the instance's own or derived one, else row 606's
     /// default from its own `/=`. None when Eq has neither real body at the key.
     fn real_equality_row_chirho(&mut self, key_chirho: &str) -> Option<CoreIdChirho> {
