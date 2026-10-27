@@ -41,5 +41,10 @@ Row 575: I claimed it in #29272 and gpt assigned it in #29274.
   - The power tests hold.
   - The restore was byte-identical, the RTS recompiled, and 6/6 pass.
 - [x] Clippy screen on every touched crate with `--tests`: clean.
-- [ ] Commit, rebase onto current main, judge main against the contract, run the warm gate, and record it.
+- [x] Commit, rebase onto current main, judge main against the contract, run the warm gate, and record it.
+  - **Main `76ed56e4`,** after row 574, was GREEN against the contract copy.
+  - **r1 was GREEN on `9b5dd960` (base `76ed56e4`) in 276.62 s:**
+    - 883/883 focused tests;
+    - no Clippy diagnostic on the 187 changed lines in 8 files;
+    - the judge at 126/126.
 - [ ] Land on main and close progress row 575.
