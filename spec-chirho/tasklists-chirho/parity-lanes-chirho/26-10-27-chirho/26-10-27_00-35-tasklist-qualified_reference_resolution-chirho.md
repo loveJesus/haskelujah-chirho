@@ -103,3 +103,15 @@ import binds must be rejected as GHC 9.14.1 rejects it (GHC-76037).
   - `Main.reverse` naming an import still checks;
   - Data.Map has no native primitives (`mapFilter#`), and `Data.Map.filter` has no key;
   - sibling modules are not linked in a single-file native compile.
+
+## Landing and close
+
+- [x] HASKELUJAH/gpt_chirho independently reviewed the one-commit tip `088ee767` on its exact
+  parent `cbcf7372`; the scope is 13 explicit paths and the only worktree dirt was Claude2's
+  unrelated untracked `.haskelujah-packages-chirho`.
+- [x] Fresh post-replay controls on `088ee767`: workspace build with zero warnings; naming
+  153/153, core 191/191, typing integration 49/49 and dictionary evidence 122/122.
+- [x] Row 535's contract judge ran all 41 programs and passed all 126 cells, with 73 movers and
+  9 holds. `cargo fmt --all -- --check`, diff-check and gitleaks over the one commit were clean.
+- [x] `main_chirho` fast-forwarded from `cbcf7372` to source tip `088ee767`. Row 598 is closed;
+  no remote push was made.
