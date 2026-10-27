@@ -71,5 +71,9 @@ From the trace, I had proposed an exponent guard so that the type-keyed rebuild 
   - **M1** removes the table entry: the mover program fails; the negative exponent and the residuals hold.
   - **M2**, the exponent guard: killed nothing, so the guard was withdrawn.
   - **The rewrite-time key arm:** without it, `-xChirho ^ 2` gave `NegIntChirho` and -1.875 natively.
-- [ ] Commit, run the warm gate, and record it.
+- [x] Commit, run the warm gate, and record it.
+  - **r1 was GREEN on `7a1fa66c` (base `a593ce12`) in 282.65 s:**
+    - 863/863 focused tests, now including the interpreter runtime and the power tests;
+    - no Clippy diagnostic on the 271 changed lines in 16 files;
+    - the judge at 126/126, so no contract cell moved.
 - [ ] Land on main and close progress row 570.
