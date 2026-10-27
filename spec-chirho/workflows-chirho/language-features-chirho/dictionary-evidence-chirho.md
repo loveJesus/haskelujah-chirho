@@ -61,6 +61,17 @@ flowchart TD
   conflicting receives nothing, and is never rescued by its span or its position.
 - The join maps the checker's `Integer` default onto the engine's `Int` rows at the driver
   boundary and nowhere else.
+- `fromIntegral` consumes both predicates of its own reference (row 596).
+  - Its generated Core is the Report composition `fromInteger . toInteger`, with explicit
+    `Integral` and `Num` dictionary parameters in that order. The constrained-reference walker
+    supplies the checker-proved source and result dictionaries independently.
+  - Before this, the generated binding was monomorphic `Int -> Double`. Thus
+    `fromIntegral (minBound :: Int) :: Integer` rounded through Double and both native backends
+    exposed the wrong representation; using that value as `encodeFloat`'s mantissa produced
+    `-0.4697265625` instead of `-1.0`.
+  - The all-engine control pins direct use, monomorphic first-class use, `map fromIntegral`, the
+    exact minimum and maximum machine words, the existing Int-to-Double route, and downstream
+    `encodeFloat`. The structural control pins the two dictionary selectors and their order.
 - No heuristic in the pass is widened by this workflow; records are consulted first, and the
   heuristics remain the fallback until a gate retires them.
 - A literal's `fromInteger` application is keyed by its own record (row 543).
@@ -774,6 +785,11 @@ flowchart LR
 
 ## Current boundary
 
+- A separately declared result-only polymorphic predicate is still defaulted by the dictionary
+  pass. For example, `convert :: (Integral a, Num b) => a -> b; convert = fromIntegral` fixes
+  `b` at Int before call-site result propagation. Row 596 does not change that existing policy;
+  concrete annotations directly on `fromIntegral`, and monomorphic aliases such as
+  `Int -> Integer` or `Int -> Double`, carry both proofs and are exact.
 - An infix or section use of a class METHOD mints its own occurrence id and carries its
   operator's provenance, like a prefix use, unless the desugarer lowers that operator to a
   primop first. Those carry no occurrence and no evidence: infix `<`, `<=`, `>`, `>=`, `div`,

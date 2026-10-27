@@ -9,6 +9,7 @@ use super::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho,
     DictPassCtxChirho, InlineAnnotationChirho, SpanChirho, TyChirho,
 };
+use haskelujah_typing_chirho::ty_chirho::TyVarChirho;
 
 fn var_chirho(binder_chirho: &BinderChirho) -> CoreExprChirho {
     CoreExprChirho::VarChirho(binder_chirho.id_chirho)
@@ -33,6 +34,72 @@ fn primop_chirho(name_chirho: &str, args_chirho: Vec<CoreExprChirho>) -> CoreExp
 }
 
 impl DictPassCtxChirho {
+    /// Generate the Report definition `fromIntegral = fromInteger . toInteger` with its
+    /// `Integral` source and `Num` result dictionaries explicit. The checker records those
+    /// two proofs independently for each reference; registering the binding here lets the
+    /// ordinary constrained-reference route supply them in scheme order (row 596).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generate_integral_conversion_chirho(&mut self) {
+        let source_ty_chirho = TyChirho::VarChirho(TyVarChirho(7392));
+        let result_ty_chirho = TyChirho::VarChirho(TyVarChirho(7393));
+        let integral_dict_ty_chirho = TyChirho::ConChirho("$Dict_Integral".to_string());
+        let num_dict_ty_chirho = TyChirho::ConChirho("$Dict_Num".to_string());
+
+        let integral_dict_chirho =
+            self.fresh_binder_chirho("$dIntegralChirho", integral_dict_ty_chirho.clone());
+        let num_dict_chirho = self.fresh_binder_chirho("$dNumChirho", num_dict_ty_chirho.clone());
+        let value_chirho = self.fresh_binder_chirho("value_chirho", source_ty_chirho.clone());
+        let to_integer_selector_chirho = self.resolve_or_fresh_id_chirho("$sel_Integral_toInteger");
+        let from_integer_selector_chirho = self.resolve_or_fresh_id_chirho("$sel_Num_fromInteger");
+
+        let integer_value_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(to_integer_selector_chirho)),
+                arg_chirho: Box::new(var_chirho(&integral_dict_chirho)),
+            }),
+            arg_chirho: Box::new(var_chirho(&value_chirho)),
+        };
+        let converted_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(from_integer_selector_chirho)),
+                arg_chirho: Box::new(var_chirho(&num_dict_chirho)),
+            }),
+            arg_chirho: Box::new(integer_value_chirho),
+        };
+        let from_integral_id_chirho = self.resolve_or_fresh_id_chirho("fromIntegral");
+        self.dict_param_bindings_chirho.insert(
+            from_integral_id_chirho,
+            vec!["Integral".to_string(), "Num".to_string()],
+        );
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: from_integral_id_chirho,
+                name_chirho: "fromIntegral".to_string(),
+                ty_chirho: TyChirho::fun_n_chirho(
+                    [
+                        integral_dict_ty_chirho,
+                        num_dict_ty_chirho,
+                        source_ty_chirho,
+                    ],
+                    result_ty_chirho,
+                ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho: CoreExprChirho::LamChirho {
+                binder_chirho: integral_dict_chirho,
+                body_chirho: Box::new(CoreExprChirho::LamChirho {
+                    binder_chirho: num_dict_chirho,
+                    body_chirho: Box::new(CoreExprChirho::LamChirho {
+                        binder_chirho: value_chirho,
+                        body_chirho: Box::new(converted_chirho),
+                    }),
+                }),
+            },
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+    }
+
     /// Generate `properFraction :: Double -> (Int, Double)` behind a guarded
     /// Prelude alias. The checker retains the standard polymorphic scheme; the
     /// concrete generated row serves the Double/Int representation this compiler
@@ -527,6 +594,85 @@ mod tests_chirho {
     use std::collections::HashMap;
 
     use super::*;
+
+    #[test]
+    fn from_integral_composes_its_two_dictionary_methods_chirho() {
+        let mut context_chirho = DictPassCtxChirho::new_chirho(100, HashMap::new(), HashMap::new());
+        context_chirho.generate_integral_conversion_chirho();
+
+        let row_chirho = context_chirho
+            .generated_bindings_chirho
+            .iter()
+            .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "fromIntegral")
+            .expect("fromIntegral binding");
+        assert_eq!(
+            context_chirho
+                .dict_param_bindings_chirho
+                .get(&row_chirho.binder_chirho.id_chirho),
+            Some(&vec!["Integral".to_string(), "Num".to_string()])
+        );
+
+        let CoreExprChirho::LamChirho {
+            binder_chirho: integral_dict_chirho,
+            body_chirho: num_lambda_chirho,
+        } = &row_chirho.rhs_chirho
+        else {
+            panic!("fromIntegral takes the Integral dictionary first");
+        };
+        let CoreExprChirho::LamChirho {
+            binder_chirho: num_dict_chirho,
+            body_chirho: value_lambda_chirho,
+        } = num_lambda_chirho.as_ref()
+        else {
+            panic!("fromIntegral takes the Num dictionary second");
+        };
+        let CoreExprChirho::LamChirho {
+            binder_chirho: value_chirho,
+            body_chirho: converted_chirho,
+        } = value_lambda_chirho.as_ref()
+        else {
+            panic!("fromIntegral takes its source value after both dictionaries");
+        };
+
+        let to_integer_selector_chirho = context_chirho
+            .names_chirho
+            .iter()
+            .find_map(|(id_chirho, name_chirho)| {
+                (name_chirho == "$sel_Integral_toInteger").then_some(*id_chirho)
+            })
+            .expect("Integral.toInteger selector");
+        let from_integer_selector_chirho = context_chirho
+            .names_chirho
+            .iter()
+            .find_map(|(id_chirho, name_chirho)| {
+                (name_chirho == "$sel_Num_fromInteger").then_some(*id_chirho)
+            })
+            .expect("Num.fromInteger selector");
+        assert!(matches!(
+            converted_chirho.as_ref(),
+            CoreExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+            } if matches!(fun_chirho.as_ref(),
+                CoreExprChirho::AppChirho {
+                    fun_chirho: from_integer_chirho,
+                    arg_chirho: selected_num_chirho,
+                } if matches!(from_integer_chirho.as_ref(), CoreExprChirho::VarChirho(id_chirho) if *id_chirho == from_integer_selector_chirho)
+                    && matches!(selected_num_chirho.as_ref(), CoreExprChirho::VarChirho(id_chirho) if *id_chirho == num_dict_chirho.id_chirho)
+            ) && matches!(arg_chirho.as_ref(),
+                CoreExprChirho::AppChirho {
+                    fun_chirho: to_integer_chirho,
+                    arg_chirho: source_chirho,
+                } if matches!(to_integer_chirho.as_ref(),
+                    CoreExprChirho::AppChirho {
+                        fun_chirho: selector_chirho,
+                        arg_chirho: selected_integral_chirho,
+                    } if matches!(selector_chirho.as_ref(), CoreExprChirho::VarChirho(id_chirho) if *id_chirho == to_integer_selector_chirho)
+                        && matches!(selected_integral_chirho.as_ref(), CoreExprChirho::VarChirho(id_chirho) if *id_chirho == integral_dict_chirho.id_chirho)
+                ) && matches!(source_chirho.as_ref(), CoreExprChirho::VarChirho(id_chirho) if *id_chirho == value_chirho.id_chirho)
+            )
+        ));
+    }
 
     #[test]
     fn proper_fraction_has_one_concrete_row_and_guarded_alias_chirho() {

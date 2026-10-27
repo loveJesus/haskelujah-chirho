@@ -184,3 +184,20 @@ fn a_fractional_signatures_literal_takes_its_dictionary_chirho() {
         ghc_chirho,
     );
 }
+
+/// Row 596: `fromIntegral` is the Report composition `fromInteger . toInteger`, with
+/// the source `Integral` and result `Num` dictionaries selected independently from the
+/// checker's proof. The former monomorphic `Int -> Double` binding rounded the minimum
+/// word even when the result was `Integer`; both natives also exposed its Double bits as
+/// an integer. Every line below is GHC 9.14.1's output for the source as written.
+#[test]
+fn integral_conversions_use_both_proven_dictionaries_everywhere_chirho() {
+    let program_chirho = "module Main where\nconvertIntegerChirho :: Int -> Integer\nconvertIntegerChirho = fromIntegral\nconvertDoubleChirho :: Int -> Double\nconvertDoubleChirho = fromIntegral\nmain :: IO ()\nmain = do\n  print (fromIntegral (minBound :: Int) :: Integer)\n  print (encodeFloat (fromIntegral (minBound :: Int) :: Integer) (-63) :: Double)\n  print (fromIntegral (minBound :: Int) :: Double)\n  print (map fromIntegral ([minBound, -1, 0, maxBound] :: [Int]) :: [Integer])\n  print (map fromIntegral ([minBound, -1, 0, maxBound] :: [Int]) :: [Double])\n  print (convertIntegerChirho minBound, convertDoubleChirho 42)\n";
+    let ghc_chirho = "-9223372036854775808\n-1.0\n-9.223372036854776e18\n[-9223372036854775808,-1,0,9223372036854775807]\n[-9.223372036854776e18,-1.0,0.0,9.223372036854776e18]\n(-9223372036854775808,42.0)\n";
+    assert_eq!(
+        run_chirho("IntegralConversionsChirho.hs", program_chirho),
+        ghc_chirho,
+        "interpreter"
+    );
+    assert_native_chirho("IntegralConversionsChirho.hs", program_chirho, ghc_chirho);
+}

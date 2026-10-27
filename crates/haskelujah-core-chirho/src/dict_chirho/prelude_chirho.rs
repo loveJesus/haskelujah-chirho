@@ -1476,33 +1476,7 @@ impl DictPassCtxChirho {
             });
         }
 
-        // fromIntegral :: Int -> Double
-        {
-            let int_ty_chirho = TyChirho::int_chirho();
-            let double_ty_chirho = TyChirho::double_chirho();
-            let from_integral_id_chirho = self.resolve_or_fresh_id_chirho("fromIntegral");
-            let x_chirho = self.fresh_binder_chirho("x", int_ty_chirho.clone());
-            let body_chirho = CoreExprChirho::PrimOpChirho {
-                name_chirho: "fromIntegral#".to_string(),
-                args_chirho: vec![CoreExprChirho::VarChirho(x_chirho.id_chirho)],
-            };
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: x_chirho,
-                body_chirho: Box::new(body_chirho),
-            };
-            let binder_chirho = BinderChirho {
-                id_chirho: from_integral_id_chirho,
-                name_chirho: "fromIntegral".to_string(),
-                ty_chirho: TyChirho::fun_chirho(int_ty_chirho, double_ty_chirho),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho,
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
+        self.generate_integral_conversion_chirho();
 
         // ceiling :: Double -> Int
         // floor :: Double -> Int
