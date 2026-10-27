@@ -667,11 +667,9 @@ pub fn apply_prim_binop_chirho(
 
         // ── Power/exponentiation ──
         PrimOpKindChirho::PowIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
-            if b_chirho < 0 {
-                Ok(ValueChirho::IntChirho(0)) // Haskell: negative exponent for Int gives 0
-            } else {
-                Ok(ValueChirho::IntChirho(a_chirho.wrapping_pow(b_chirho as u32)))
-            }
+            haskelujah_rts_chirho::integer_power_chirho::pow_int_chirho(a_chirho, b_chirho)
+                .map(ValueChirho::IntChirho)
+                .ok_or(PrimErrorChirho::NegativeExponentChirho)
         }),
         // GHC's Double `**`: the RTS's one call, which the native backends make too (row 573).
         PrimOpKindChirho::PowFloatChirho => float_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {

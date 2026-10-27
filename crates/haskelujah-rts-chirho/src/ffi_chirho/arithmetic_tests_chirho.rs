@@ -4,6 +4,7 @@ use super::{
     haskelujah_pow_double_int_chirho, haskelujah_pow_float_chirho, haskelujah_pow_int_chirho,
 };
 use crate::float_power_chirho::{pow_double_int_chirho, pow_float_chirho};
+use crate::integer_power_chirho::pow_int_chirho;
 use std::f64::consts::{FRAC_1_SQRT_2, SQRT_2};
 
 /// Row 573: GHC's Double `**`, the C library's `pow`, against GHC 9.14.1's printed answers,
@@ -39,7 +40,6 @@ fn float_power_is_the_c_librarys_pow_chirho() {
         SQRT_2.to_bits() as i64
     );
 }
-
 /// Row 570: GHC.Real's `(^)` at Double, against GHC 9.14.1's printed answers. `1.1 ^ 50`
 /// and `1.0000001 ^ 1000003` tell repeated squaring apart from `powf`, which gives
 /// 117.39085287969579 and 1.1051712441656278.
@@ -81,11 +81,11 @@ fn double_power_multiplies_in_ghcs_order_chirho() {
 }
 
 #[test]
-fn integer_power_matches_the_interpreter_convention_chirho() {
+fn integer_power_matches_ghc_chirho() {
     assert_eq!(haskelujah_pow_int_chirho(2, 10), 1024);
     assert_eq!(haskelujah_pow_int_chirho(0, 0), 1);
     assert_eq!(haskelujah_pow_int_chirho(-2, 3), -8);
-    assert_eq!(haskelujah_pow_int_chirho(2, -1), 0);
+    assert_eq!(pow_int_chirho(2, -1), None);
     assert_eq!(
         haskelujah_pow_int_chirho(i64::MAX, 2),
         i64::MAX.wrapping_pow(2)

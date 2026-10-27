@@ -332,15 +332,16 @@ pub extern "C" fn haskelujah_is_heap_ptr_chirho(value_bits_chirho: u64) -> i64 {
     }
 }
 
-/// Native implementation of the interpreter's integer `^#` convention.
+/// Native `^#`, GHC's `(^)` at Int. A negative exponent fails named (row 574).
 ///
 /// Workflow: testing-chirho/native-fail-loud-chirho.md.
 #[unsafe(no_mangle)]
 pub extern "C" fn haskelujah_pow_int_chirho(base_chirho: i64, exponent_chirho: i64) -> i64 {
-    if exponent_chirho < 0 {
-        0
-    } else {
-        base_chirho.wrapping_pow(exponent_chirho as u32)
+    match crate::integer_power_chirho::pow_int_chirho(base_chirho, exponent_chirho) {
+        Some(power_chirho) => power_chirho,
+        None => {
+            failure_chirho::user_failure_chirho(failure_chirho::NEGATIVE_EXPONENT_MESSAGE_CHIRHO)
+        }
     }
 }
 

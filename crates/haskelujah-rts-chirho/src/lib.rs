@@ -21,6 +21,7 @@ pub mod float_power_chirho;
 mod float_to_int_chirho;
 pub mod gc_chirho;
 pub mod heap_chirho;
+pub mod integer_power_chirho;
 pub mod native_layout_chirho;
 mod show_double_chirho;
 mod show_text_chirho;

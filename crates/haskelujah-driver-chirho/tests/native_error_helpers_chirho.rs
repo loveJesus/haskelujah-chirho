@@ -87,9 +87,17 @@ const COMPARE_EDGES_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\
 /// GHC 9.14.1's output for [`COMPARE_EDGES_CHIRHO`].
 const COMPARE_EDGES_GHC_CHIRHO: &str = "GT\nGT\nGT\nEQ\nEQ\nGT\nLT\nLT\nEQ\nLT\nGT\nGT\nLT\n";
 
-/// R4, P06: GHC prints `1024`; both native backends now share the RTS's `^#`.
-const POWER_CHIRHO: &str =
-    "module Main where\nmain :: IO ()\nmain = print (2 ^ (10 :: Int) :: Int)\n";
+/// R4, P06: nonnegative Int powers keep GHC's wrapping-machine-Int convention.
+const POWER_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = do\n  print (2 ^ (0 :: Int) :: Int)\n  print (2 ^ (10 :: Int) :: Int)\n  print ((-3) ^ (3 :: Int) :: Int)\n";
+
+/// Row 574: each form reaches GHC's named negative-exponent boundary before it can return `0`.
+const NEGATIVE_POWER_CASES_CHIRHO: [&str; 5] = [
+    "module Main where\nmain :: IO ()\nmain = print (2 ^ (-1 :: Int) :: Int)\n",
+    "module Main where\nmain :: IO ()\nmain = print ((-2) ^ (-3 :: Int) :: Int)\n",
+    "module Main where\nexponentChirho :: Int\nexponentChirho = -1\nmain :: IO ()\nmain = print (3 ^ exponentChirho :: Int)\n",
+    "module Main where\nmain :: IO ()\nmain = print (map (2 ^) [-1, 0, 3 :: Int] :: [Int])\n",
+    "module Main where\nmain :: IO ()\nmain = print (2 ^ (-1 :: Integer) :: Int)\n",
+];
 
 /// R4, P03: GHC and the interpreter print `3.5`.
 const FROM_INTEGRAL_CHIRHO: &str =
@@ -654,7 +662,14 @@ fn io_ref_answers_as_ghc_everywhere_chirho() {
 
 #[test]
 fn integer_power_answers_as_ghc_everywhere_chirho() {
-    assert_prints_everywhere_chirho(POWER_CHIRHO, "1024\n");
+    assert_prints_everywhere_chirho(POWER_CHIRHO, "1\n1024\n-27\n");
+}
+
+#[test]
+fn a_negative_integer_exponent_fails_named_everywhere_chirho() {
+    for source_chirho in NEGATIVE_POWER_CASES_CHIRHO {
+        assert_fails_everywhere_chirho(source_chirho, "Negative exponent");
+    }
 }
 
 #[test]
