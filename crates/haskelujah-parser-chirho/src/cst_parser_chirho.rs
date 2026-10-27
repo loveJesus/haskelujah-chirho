@@ -2591,7 +2591,6 @@ impl<'src> ParserChirho<'src> {
                 self.parse_type_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
-            return;
         }
         // Otherwise, just the btype stands as-is (no wrapping needed).
     }
