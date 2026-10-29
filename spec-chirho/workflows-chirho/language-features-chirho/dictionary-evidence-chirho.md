@@ -1034,6 +1034,30 @@ GHC's Enum requires only `toEnum` and `fromEnum`. Every other method defaults th
 - **Controls:** `tests/dictionary_evidence_chirho/enum_chirho/enum_defaults_chirho.rs`, GHC-measured on all three engines, with a Core assertion that the derived rows name only their key's rows and `>=#`.
 - **Boundaries.** Polymorphic enumeration dispatch and the eight-slot layout are row 671's, and `Enum Double` is row 670's. Two gaps predate this row and are measured on main: a written enumeration call beside a program-owned namesake of its own name loses its evidence join, and an empty derived Enum is admitted where GHC rejects it (GHC-30750).
 
+## The eight Enum slots (row 671, 2026-10-29)
+
+GHC's Enum has eight methods, and the four enumerations are methods like the rest, so a polymorphic `Enum a => a -> [a]` call runs its instance's own enumeration.
+
+- **Layout.** Typing's builtin Enum declares all eight methods (`class_chirho.rs`), so `$Dict_Enum` has eight sorted slots with a selector each, a written instance enumeration is checked against the class type, and naming's `Enum(..)` imports and hides all eight. The driver gives every reference to an enumeration an occurrence of its own (`evidence_join_chirho.rs`), as it gives `succ` and `pred`.
+- **Routes.** A written monomorphic call takes its proof's row `$prim_Enum_<m>_<K>`, else `$sel_Enum_<m> $fEnum<K>`. A call proved at the enclosing binding's own dictionary takes `$sel_Enum_<m>` on that dictionary. No body is bound under a source name such as `enumFromTo`, so an Enum use whose dictionary is unresolved fails by name instead of running Int's arithmetic.
+- **Builtin rows** (`dict_chirho/prelude_chirho/enum_chirho/`):
+  - Int owns the shared lazy bodies (`integral_sequence_chirho.rs`), moved byte-identical out of `prelude_chirho.rs` and bound as `$prim_Enum_<m>_Int`. The dead Int-only `enumFromTo` that shared their canonical id is deleted.
+  - Integer, Char, Word and the fifteen FFI keys reach those bodies by CoreId through rows of their own (`builtin_enum_slots_chirho.rs`), the bodies their written calls reached before. The bounded keys' `enumFrom` and `enumFromThen` still run past `maxBound` where GHC stops: a pre-existing wrong answer, not a failure by name.
+  - Bool and Ordering take GHC's derived enumerations over their constructors, through their builtin `toEnum` and `fromEnum` rows.
+  - Float and `()` have no rows, so their slots fail by the method's name. Float is an f64 at run time (row 676).
+  - Enum Double is held row 670's, so a Double enumeration is still refused (E0204).
+- **User and derived instances.** A written method fills its slot. An omitted method takes row 669's default as the dictionary is filled, through Int's enumeration row by CoreId. A derived type's bounded `enumFrom` and `enumFromThen` are built before any dictionary is filled, so they fill its slots.
+- **Every dictionary builder** fills each slot from a body-backed row, a default, or a stub that fails by the method's name: ground instances, GND aliases, conditional list instances, and the two context self-dictionaries (`instance_chirho/defaults_chirho/context_slots_chirho.rs`).
+- **Context instances.** A context instance's rows lead with its context dictionaries, so an ordinary default never takes them as donors. Its own self-dictionary takes GHC's default as a row that leads with the same dictionaries and passes them to the instance's `toEnum` and `fromEnum` (`context_default_row_chirho`), recorded as context-leading like them. A name nothing can answer gets its stub under the id any reference already holds, so no slot carries a dangling id.
+- **Controls.** These are in `tests/dictionary_evidence_chirho/enum_chirho/`:
+  - `enum_slots_chirho.rs` holds GHC-measured programs, byte-exact on the interpreter, LLVM and true Cranelift, and Float and `()` failing by the method's name.
+  - `enum_slot_structure_chirho.rs` checks Core: no compiler body under an enumeration's source spelling beside a program-owned `enumFromTo`, eight bound slots in every Enum dictionary, and a wrongly typed written enumeration rejected as GHC rejects it.
+- **Boundaries.**
+  - Range syntax's proofs are row 665's, landing with this row.
+  - A call site cannot reach a context instance's dictionary.
+  - Char `enumFrom` steps a Char as an Int in the interpreter.
+  - Enum Double waits on row 677's inferred Fractional residual.
+
 ## Current boundary
 
 - A separately declared result-only `Num` or `Enum` predicate remains a dictionary parameter when
