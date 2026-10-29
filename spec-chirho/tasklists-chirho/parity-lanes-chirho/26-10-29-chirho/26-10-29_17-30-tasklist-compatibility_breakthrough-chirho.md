@@ -7,9 +7,11 @@ L.J. asked to improve or close GHC compatibility and enlist claude2_chirho. Base
 - [x] Refresh committed measurements, source state and lane ownership; enlist Claude2 via broker #30749.
 - [x] Replay row 661's lint preparation bdc4b637; inference source is unchanged from the prepared base.
 - [x] Apply the prepared row 661 stage and independently verify item equality, mutation controls, test paths and corpus inference dumps.
-- [x] Run a focused row 661 gate and update moved workflow paths; verified source is ff133d3e, ready for landing with this record.
+- [x] Run a focused row 661 gate, update moved workflow paths and land the verified split (closed in ff4b5274; docs placement b76fcd03).
+- [x] Land row 675 after repairing explicit disabled-extension false accepts; independent paired corpus verification gains tc135 alone, with all other verdicts held.
 - [ ] Implement range typing, standard Enum identity and occurrence evidence (row 665), with all-engine GHC controls and holds.
 - [ ] Review and integrate Claude2's tested Enum Double change when ready.
+- [ ] Complete Enum's eight-slot dispatch (row 671) before landing newly reachable Double polymorphic calls. Row 670 is held for native wrong answers/SIGBUS until that prerequisite and range evidence form a safe stack.
 - [ ] Run paired compatibility measurements if frontend semantics change, record exact movers and residuals, and report the verified improvement.
 
 The published measurements predate this resumed work. The semantic gate must use an executable built from the current candidate; old CLI receipts are supporting evidence only.
