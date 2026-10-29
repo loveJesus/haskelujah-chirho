@@ -45,7 +45,7 @@ flowchart TD
     main_chirho --> restore_chirho
 ```
 
-Code: `crates/haskelujah-typing-chirho/src/infer_chirho/instances_chirho/`, two modules kept as
+Code: `crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/`, two modules kept as
 `infer_chirho` children through `#[path]`: `instance_obligations_chirho.rs` (duplicates, the method
 routes) and `instance_signatures_chirho.rs` (the pure-renaming correspondence).
 
