@@ -336,6 +336,9 @@ pub struct InferCtxChirho {
     /// `forall a b.`, maps those names to their TyVarChirho so that where-clause
     /// type annotations and local signatures use the same type variables.
     scoped_tyvars_chirho: HashMap<String, TyVarChirho>,
+    /// Pattern annotations are checked while binding a declaration's pattern. Argument and
+    /// lambda patterns retain their existing inference route.
+    checking_binding_pattern_annotations_chirho: bool,
     /// Next ordinal for a rigid signature variable (see `skolem_chirho`).
     next_skolem_chirho: u32,
     /// Signature variables already made rigid, `var ↦ skolem`. Consulted when a

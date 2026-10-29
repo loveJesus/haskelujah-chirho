@@ -6,6 +6,22 @@
 use super::*;
 
 impl InferCtxChirho {
+    /// A declaration's pattern signature checks its right-hand side, including annotations
+    /// nested below tuples, lists or constructors. The binding scope deliberately excludes
+    /// function arguments and lambda patterns (row 675).
+    /// workflow: language-features-chirho/pattern-matching-chirho
+    pub(super) fn bind_binding_pat_chirho(
+        &mut self,
+        pat_chirho: &PatChirho,
+        ty_chirho: &TyChirho,
+    ) -> SubstChirho {
+        let previous_chirho = self.checking_binding_pattern_annotations_chirho;
+        self.checking_binding_pattern_annotations_chirho = true;
+        let subst_chirho = self.bind_pat_chirho(pat_chirho, ty_chirho);
+        self.checking_binding_pattern_annotations_chirho = previous_chirho;
+        subst_chirho
+    }
+
     /// Whether a scrutinee is `Char#`, where a character literal pattern is
     /// MagicHash's unboxed `'x'#` rather than a boxed `Char`. Only `Char#` is
     /// exempt: GHC rejects `'a'#` on `Addr#` and every unboxed string pattern.
@@ -264,7 +280,10 @@ impl InferCtxChirho {
                 // View pattern (expr -> pat): the view expression must accept
                 // the scrutinee type and produce the inner pattern type.
                 let result_ty_chirho = self.fresh_var_chirho();
+                let binding_annotations_chirho = self.checking_binding_pattern_annotations_chirho;
+                self.checking_binding_pattern_annotations_chirho = false;
                 let (view_subst_chirho, view_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                self.checking_binding_pattern_annotations_chirho = binding_annotations_chirho;
                 self.apply_subst_all_chirho(&view_subst_chirho);
 
                 let expected_view_ty_chirho = TyChirho::fun_chirho(
@@ -293,11 +312,32 @@ impl InferCtxChirho {
             }
             PatChirho::TypeAnnotChirho {
                 pat_chirho: inner_pat_chirho,
-                ..
+                ty_chirho: annotation_chirho,
+                span_chirho,
             } => {
-                // Type-annotated pattern (x :: T): bind inner pattern with the
-                // given type. The annotation is used for scoped type variables
-                // but the underlying binding semantics are unchanged.
+                if self.checking_binding_pattern_annotations_chirho {
+                    // Reuse expression annotations' in-scope conversion: an enclosing
+                    // signature's `forall a` is the same rigid `a` here, not a new variable.
+                    let annotation_ty_chirho =
+                        self.ast_type_to_ty_in_scope_chirho(annotation_chirho);
+                    match self.subsume_normalized_chirho(
+                        ty_chirho,
+                        &annotation_ty_chirho,
+                        *span_chirho,
+                    ) {
+                        Ok(annotation_subst_chirho) => {
+                            self.apply_subst_all_chirho(&annotation_subst_chirho);
+                            let inner_ty_chirho =
+                                annotation_subst_chirho.apply_ty_chirho(&annotation_ty_chirho);
+                            let inner_subst_chirho =
+                                self.bind_pat_chirho(inner_pat_chirho, &inner_ty_chirho);
+                            return inner_subst_chirho.compose_chirho(&annotation_subst_chirho);
+                        }
+                        Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
+                    }
+                }
+                // Argument/lambda annotations retain their existing route here: the inner
+                // pattern uses its supplied type, with no annotation check in this branch.
                 self.bind_pat_chirho(inner_pat_chirho, ty_chirho)
             }
         }

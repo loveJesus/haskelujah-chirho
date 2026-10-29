@@ -26,7 +26,9 @@ impl ParserChirho<'_> {
             self.parse_pat_bind_cst_chirho();
             return;
         }
-        if self.is_type_sig_chirho() {
+        if self.starts_annotated_pat_bind_chirho() {
+            self.parse_pat_bind_cst_chirho();
+        } else if self.is_type_sig_chirho() {
             self.parse_type_sig_chirho();
         } else if self.starts_pat_bind_chirho() {
             self.parse_pat_bind_cst_chirho();

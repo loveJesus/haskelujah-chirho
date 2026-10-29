@@ -762,7 +762,7 @@ impl InferCtxChirho {
                 subst_chirho = s1_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&s1_chirho);
 
-                let sp_chirho = self.bind_pat_chirho(pat_chirho, &rhs_ty_chirho);
+                let sp_chirho = self.bind_binding_pat_chirho(pat_chirho, &rhs_ty_chirho);
                 subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&sp_chirho);
 

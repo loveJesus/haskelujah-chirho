@@ -9,6 +9,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
 // in this target's own directory is named by path.
+#[path = "typing_integration_chirho/annotated_pattern_bindings_chirho.rs"]
+mod annotated_pattern_bindings_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
 mod dollar_ownership_chirho;
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]

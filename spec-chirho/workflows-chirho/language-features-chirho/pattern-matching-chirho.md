@@ -337,3 +337,21 @@ are not established by those interpreter measurements.
 Constructor operator applications and operator-section bodies use the same enforce_strict_fields_chirho path as prefix constructor application. It forces declared strict fields only at full constructor arity, preserving lazy fields, uncalled sections and partial applications. Exact interpreter controls cover each behavior; native execution remains a separate gate. Faithful derived instance heads also require a shared typed/written method identity and compatible call-site selection. A typecheck recovery alone cannot establish runtime compatibility when a previously working Eq call no longer finds its binding.
 
 Generative GADT index decomposition compares the complete constructor-spine arity at every recursive application, including a nested poly-kinded wrapper. An equality between a fully applied type and a partial application supplies no component equations; valid independent same-arity components are still retained. Existential variables that were instantiated flexibly remain a separate checking boundary.
+
+## Annotated pattern bindings Chirho (row 675)
+
+`t :: [a] = xs` is a binding whose pattern carries a type annotation. The parser distinguishes it from a standalone signature by finding the binding's `=` or guard in the same declaration, after one atomic pattern and its annotation. A layout or explicit declaration boundary ends that lookahead. Existing pattern and type parsers retain the annotation and RHS in `PatBindChirho`; lowering is shared with other pattern bindings.
+
+Both top-level and local pattern binding inference enable annotation checks while binding the pattern. Each annotation uses the same in-scope type conversion and subsumption as an expression annotation, so an enclosing signature's scoped variable retains its identity. Nested pattern annotations are checked through the existing recursive binder. The scope ends after the binding and is suspended inside a view expression. Argument and lambda pattern inference is a separate route.
+
+```mermaid
+flowchart TD
+    start_chirho[Value declaration] --> look_chirho{Atomic pattern and annotation followed by binding RHS?}
+    look_chirho -- yes --> pattern_chirho[Shared pattern parser retains SigPat and RHS]
+    look_chirho -- no --> signature_chirho[Existing signature or function dispatch]
+    pattern_chirho --> lower_chirho[Lower annotated pattern binding]
+    lower_chirho --> scope_chirho[Top-level or local PatBind enables annotation checking]
+    scope_chirho --> annotation_chirho[Convert annotation in current scoped type environment]
+    annotation_chirho --> check_chirho[Subsume RHS and recursively bind nested patterns]
+    check_chirho --> restore_chirho[Restore annotation checking scope]
+```

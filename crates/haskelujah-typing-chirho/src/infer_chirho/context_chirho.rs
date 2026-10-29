@@ -352,6 +352,7 @@ impl InferCtxChirho {
             type_synonyms_chirho,
             type_families_chirho: HashMap::new(),
             scoped_tyvars_chirho: HashMap::new(),
+            checking_binding_pattern_annotations_chirho: false,
             next_skolem_chirho: 0,
             skolem_bindings_chirho: SubstChirho::empty_chirho(),
             instance_method_skolems_chirho: HashSet::new(),

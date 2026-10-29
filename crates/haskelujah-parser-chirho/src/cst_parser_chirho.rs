@@ -24,6 +24,10 @@ use std::sync::Arc;
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
 
+mod annotated_bindings_chirho;
+#[cfg(test)]
+#[path = "cst_parser_chirho/tests_chirho/annotated_bindings_tests_chirho.rs"]
+mod annotated_bindings_tests_chirho;
 mod atoms_chirho;
 mod bindings_chirho;
 #[cfg(test)]
