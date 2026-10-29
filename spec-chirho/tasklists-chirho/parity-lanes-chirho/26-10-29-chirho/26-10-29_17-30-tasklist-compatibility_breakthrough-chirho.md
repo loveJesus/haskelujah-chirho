@@ -10,9 +10,9 @@ L.J. asked to improve or close GHC compatibility and enlist claude2_chirho. Base
 - [x] Run a focused row 661 gate, update moved workflow paths and land the verified split (closed in ff4b5274; docs placement b76fcd03).
 - [x] Land row 675 after repairing explicit disabled-extension false accepts; independent paired corpus verification gains tc135 alone, with all other verdicts held.
 - [x] Land rows 663/664 (e196be3 and record 4a6419a): inferred/owned numeric dictionaries and partial Cranelift Show-selector correction, with actual regression controls. Fractional and imported result-only ABI remain explicit boundaries.
-- [ ] Implement range typing, standard Enum identity and occurrence evidence (row 665), with all-engine GHC controls and holds.
+- [x] Land range typing, standard Enum identity and occurrence evidence (row 665), with all-engine GHC controls and holds: source 9228f374, integrated with 671 through 1b824e5e.
 - [x] Review the Enum Double stack and composition controls. Hold row 670: after 663 repairs Num-only composition, the inferred Fractional+Enum composition still newly prints Infinity natively. Row 677 owns the remaining indexed superclass route; no Double instance is enabled in this landing.
-- [ ] Complete Enum's eight-slot dispatch (row 671) with row 665 for existing instances. Claude2 is preparing and gating this bounded split; Double rows and feature controls stay on the held branch.
+- [x] Land Enum's eight-slot dispatch (row 671) with row 665 for existing instances: source 14ea7341, required lint repairs through 79c74740 and record 1b824e5e. Double rows and feature controls stay on the held branch.
 - [ ] Run paired compatibility measurements if frontend semantics change, record exact movers and residuals, and report the verified improvement.
 
 The published measurements predate this resumed work. The semantic gate must use an executable built from the current candidate; old CLI receipts are supporting evidence only.
@@ -22,6 +22,10 @@ The published measurements predate this resumed work. The semantic gate must use
 Broker #30797 reports fresh GHC 9.14.1, interpreter, LLVM and true Cranelift measurements on the 663+665 base and the proposed 670/671 stack. Num-only inferred range composition now reaches GHC on all three engines. Inferred `enumFromTo (x / 2) (x / 2 + 1)` at Double newly prints `[Infinity,Infinity,Infinity]` on both native backends; the base rejects it for the absent Enum Double instance. Its signed twin is exact. Standalone inferred division already prints Infinity natively on the base, so the arithmetic root is pre-existing but the new instance exposes a new silent wrong answer.
 
 Decision #30802: keep 670 held and finish 665+671 for existing instances. No runtime approximation or silent-wrong residual is accepted to enable Double. Claude2 keeps the sole builder for the bounded split and focused gate; GPT keeps main and the single-writer ledger. Indexed Fractional superclass evidence (677), imported result-only dictionary inventory (678), Float representation (676), context-instance reachability and broader native Show remain open.
+
+Claude2's tested tip eeea2c21 was replayed in nine commits onto main 5408513e, producing 1b824e5e. Both crate trees are exactly 2d144db46f2e8477d7fbe4cf6bece3dd5ce1522d; the replay changed no crate byte. The first Enum gate is retained as RED: its semantic suites passed, but six changed-line Clippy findings blocked landing. The behavior-neutral eager fallback/let-chain repair passed its warning-free workspace check, zero-new-diagnostic Clippy check, Core 196, focused Enum/range 27 and method-occurrence 7 controls. The earlier full focused suites passed typing 377, naming 156, driver evidence 37, dictionary evidence 169 and typing integration 97 (2 ignored). Unrelated integration tests were not rerun after the lint-only repair. No full driver or ghc_bulk suite ran.
+
+Broker #30810 returned the builder. GPT accepted it in #30811 and is building a fresh final-main CLI for independent probes and paired corpus measurement. Context-instance call-site dictionary reachability, Char enumFrom on the interpreter and bounded-key maxBound overruns remain measured residuals. Row 673 receives partial credit for the qualified same-name control; its full requested matrix is not claimed closed.
 
 ## Row 661 verification
 
