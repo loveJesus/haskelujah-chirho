@@ -175,6 +175,10 @@ pub struct DictPassCtxChirho {
     /// Number of type parameters per class. 1 for single-parameter classes
     /// (Eq, Ord, ...), >1 for MPTCs (e.g., Addable a b has 2).
     class_param_count_chirho: HashMap<String, usize>,
+    /// Each class method's argument count by (class, method), recorded with the layouts so a
+    /// slot filled away from the class environment fails by name with its method's calling
+    /// convention (row 671).
+    method_arities_chirho: HashMap<(String, String), usize>,
     /// IDs of locally-bound variables during method rewriting.
     /// When a let/where/lambda introduces a binding whose name matches a
     /// class method (e.g. `where pi = 3`), that ID is added here so
@@ -243,6 +247,7 @@ impl DictPassCtxChirho {
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
             class_param_count_chirho: HashMap::new(),
+            method_arities_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),
             monad_context_stack_chirho: RefCell::new(Vec::new()),
             derived_shows_chirho: HashMap::new(),

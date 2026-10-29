@@ -35,6 +35,12 @@ impl DictPassCtxChirho {
             let mut method_names_chirho: Vec<String> =
                 decl_chirho.methods_chirho.keys().cloned().collect();
             method_names_chirho.sort();
+            for (method_name_chirho, scheme_chirho) in &decl_chirho.methods_chirho {
+                self.method_arities_chirho.insert(
+                    (name_chirho.clone(), method_name_chirho.clone()),
+                    Self::scheme_arity_chirho(scheme_chirho),
+                );
+            }
 
             let method_slots_chirho: Vec<(String, usize)> = method_names_chirho
                 .into_iter()

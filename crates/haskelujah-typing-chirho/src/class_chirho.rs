@@ -1313,8 +1313,24 @@ impl ClassEnvChirho {
             defaults_chirho: HashMap::new(),
         });
 
-        // Enum
+        // Enum: GHC's eight methods. The four enumerations are methods too, so a
+        // polymorphic call takes its instance's own and a written instance
+        // enumeration is checked against the class (row 671).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
         let enum_var_chirho = TyVarChirho(9006);
+        let enumeration_chirho = |name_chirho: &str, arity_chirho: usize| {
+            (
+                name_chirho.to_string(),
+                SchemeChirho {
+                    vars_chirho: vec![enum_var_chirho],
+                    preds_chirho: vec![],
+                    ty_chirho: TyChirho::fun_n_chirho(
+                        vec![TyChirho::VarChirho(enum_var_chirho); arity_chirho],
+                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(enum_var_chirho))),
+                    ),
+                },
+            )
+        };
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Enum".to_string(),
             supers_chirho: vec![],
@@ -1364,6 +1380,10 @@ impl ClassEnvChirho {
                         ),
                     },
                 ),
+                enumeration_chirho("enumFrom", 1),
+                enumeration_chirho("enumFromThen", 2),
+                enumeration_chirho("enumFromTo", 2),
+                enumeration_chirho("enumFromThenTo", 3),
             ]),
             extra_vars_chirho: vec![],
             fundeps_chirho: vec![],

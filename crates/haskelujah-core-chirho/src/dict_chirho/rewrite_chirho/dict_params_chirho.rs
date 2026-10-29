@@ -338,27 +338,26 @@ impl DictPassCtxChirho {
                             &format!("$d{}Self", class_name_chirho),
                             TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho)),
                         );
+                        let context_dict_ids_chirho: Vec<CoreIdChirho> = scheme_chirho
+                            .preds_chirho
+                            .iter()
+                            .filter_map(|pred_chirho| {
+                                dict_vars_chirho
+                                    .get(&pred_chirho.class_name_chirho)
+                                    .copied()
+                            })
+                            .collect();
                         let mut field_args_chirho = Vec::new();
                         for slot_method_name_chirho in &method_slot_names_chirho {
-                            let prim_name_chirho = format!(
-                                "$prim_{}_{}_{}",
-                                class_name_chirho, slot_method_name_chirho, parsed_type_key_chirho
-                            );
-                            let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
-                            let mut method_expr_chirho = CoreExprChirho::VarChirho(prim_id_chirho);
-                            for pred_chirho in &scheme_chirho.preds_chirho {
-                                if let Some(dict_id_chirho) =
-                                    dict_vars_chirho.get(&pred_chirho.class_name_chirho)
-                                {
-                                    method_expr_chirho = CoreExprChirho::AppChirho {
-                                        fun_chirho: Box::new(method_expr_chirho),
-                                        arg_chirho: Box::new(CoreExprChirho::VarChirho(
-                                            *dict_id_chirho,
-                                        )),
-                                    };
-                                }
-                            }
-                            field_args_chirho.push(method_expr_chirho);
+                            // A slot no row answers fails by its method's name, never a dangling
+                            // id (row 671).
+                            // workflow: language-features-chirho/dictionary-evidence-chirho
+                            field_args_chirho.push(self.context_slot_chirho(
+                                &class_name_chirho,
+                                slot_method_name_chirho,
+                                &parsed_type_key_chirho,
+                                &context_dict_ids_chirho,
+                            ));
                         }
                         self_dict_let_binds_chirho.push((
                             self_dict_binder_chirho.clone(),

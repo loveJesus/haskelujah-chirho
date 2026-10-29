@@ -148,6 +148,13 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
     // occurrence (row 607). `pred` is the symmetric Enum method.
     "succ",
     "pred",
+    // The four enumerations are Enum methods too (row 671). Each reference takes an
+    // occurrence of its own, so its proof reaches the dictionary pass by identity, never
+    // by a per-name count beside a program-owned namesake.
+    "enumFrom",
+    "enumFromThen",
+    "enumFromTo",
+    "enumFromThenTo",
     // Like `toEnum`, the Bounded methods carry their class variable only in
     // the result. Their occurrence proof keeps a result-only polymorphic
     // binding on its own dictionary instead of defaulting it to Bounded Int.

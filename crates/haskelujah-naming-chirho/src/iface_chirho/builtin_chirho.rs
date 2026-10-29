@@ -38,7 +38,17 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
             "pi", "exp", "log", "sqrt", "sin", "cos", "tan", "asin", "acos", "atan",
         ]),
         "Integral" => Some(&["div", "mod", "quot", "rem", "toInteger"]),
-        "Enum" => Some(&["succ", "pred", "toEnum", "fromEnum"]),
+        // GHC's eight Enum methods, so `Enum(..)` imports and hides each (row 671).
+        "Enum" => Some(&[
+            "succ",
+            "pred",
+            "toEnum",
+            "fromEnum",
+            "enumFrom",
+            "enumFromThen",
+            "enumFromTo",
+            "enumFromThenTo",
+        ]),
         "Bounded" => Some(&["minBound", "maxBound"]),
         "IsString" => Some(&["fromString"]),
         "IsList" => Some(&["fromList", "toList"]),

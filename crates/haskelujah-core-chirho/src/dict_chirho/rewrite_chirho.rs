@@ -353,6 +353,11 @@ impl DictPassCtxChirho {
         // Generate Prelude function bindings (not, id, const)
         self.generate_prelude_bindings_chirho();
 
+        // A type that derives Enum gets GHC's bounded `enumFrom` and `enumFromThen` before any
+        // dictionary is filled, so its own pair fills those two slots (rows 669, 671).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_derived_enum_rows_chirho();
+
         // Generate instance dictionary bindings
         self.generate_instance_dicts_chirho(class_env_chirho);
 
@@ -381,12 +386,10 @@ impl DictPassCtxChirho {
         // workflow: language-features-chirho/dictionary-evidence-chirho
         self.generate_evidenced_inequality_rows_chirho();
 
-        // A type that derives Enum gets GHC's bounded `enumFrom` and `enumFromThen` first, so
-        // its own pair wins; an enumeration method a written call was proved at, at a key
-        // whose own Enum instance does not write it, then takes GHC's default through that
-        // instance's `toEnum` and `fromEnum` (row 669).
+        // An enumeration method a written call was proved at, at a key whose dictionary did not
+        // already give it a row and whose own Enum instance does not write it, takes GHC's
+        // default through that instance's `toEnum` and `fromEnum` (row 669).
         // workflow: language-features-chirho/dictionary-evidence-chirho
-        self.generate_derived_enum_rows_chirho();
         self.generate_evidenced_enum_default_rows_chirho();
 
         // A first-class or prefix `<`, `<=`, `>` or `>=` at a key the checker proved takes
@@ -569,27 +572,22 @@ impl DictPassCtxChirho {
                                         &format!("$d{}Self", class_name_chirho),
                                         TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho)),
                                     );
+                                    let context_dict_ids_chirho: Vec<CoreIdChirho> =
+                                        dict_binders_chirho
+                                            .iter()
+                                            .map(|dict_binder_chirho| dict_binder_chirho.id_chirho)
+                                            .collect();
                                     let mut field_args_chirho = Vec::new();
                                     for slot_method_name_chirho in &method_slot_names_chirho {
-                                        let prim_name_chirho = format!(
-                                            "$prim_{}_{}_{}",
-                                            class_name_chirho,
+                                        // A slot no row answers fails by its method's name, never
+                                        // a dangling id (row 671).
+                                        // workflow: language-features-chirho/dictionary-evidence-chirho
+                                        field_args_chirho.push(self.context_slot_chirho(
+                                            &class_name_chirho,
                                             slot_method_name_chirho,
-                                            parsed_type_key_chirho
-                                        );
-                                        let prim_id_chirho =
-                                            self.resolve_or_fresh_id_chirho(&prim_name_chirho);
-                                        let mut method_expr_chirho =
-                                            CoreExprChirho::VarChirho(prim_id_chirho);
-                                        for dict_binder_chirho in &dict_binders_chirho {
-                                            method_expr_chirho = CoreExprChirho::AppChirho {
-                                                fun_chirho: Box::new(method_expr_chirho),
-                                                arg_chirho: Box::new(CoreExprChirho::VarChirho(
-                                                    dict_binder_chirho.id_chirho,
-                                                )),
-                                            };
-                                        }
-                                        field_args_chirho.push(method_expr_chirho);
+                                            &parsed_type_key_chirho,
+                                            &context_dict_ids_chirho,
+                                        ));
                                     }
                                     self_dict_let_binds_chirho.push((
                                         self_dict_binder_chirho.clone(),

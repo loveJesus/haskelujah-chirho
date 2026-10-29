@@ -821,13 +821,34 @@ impl DictPassCtxChirho {
             .map(Self::scheme_arity_chirho)
             .unwrap_or(0);
 
+        self.missing_method_row_chirho(
+            None,
+            prim_name_chirho,
+            format!(
+                "missing method {}.{} for {}",
+                class_name_chirho, method_name_chirho, type_key_chirho
+            ),
+            arity_chirho,
+            method_scheme_chirho.map(|scheme_chirho| scheme_chirho.ty_chirho.clone()),
+        )
+    }
+
+    /// The stub of `generate_missing_method_binding_chirho`: `arity_chirho` arguments, then
+    /// `error message_chirho`. It is bound under `row_id_chirho` when a reference already names
+    /// that id, so the reference is no longer dangling (row 671).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn missing_method_row_chirho(
+        &mut self,
+        row_id_chirho: Option<CoreIdChirho>,
+        prim_name_chirho: &str,
+        message_chirho: String,
+        arity_chirho: usize,
+        binder_ty_chirho: Option<TyChirho>,
+    ) -> CoreIdChirho {
         let mut rhs_chirho = CoreExprChirho::PrimOpChirho {
             name_chirho: "error".to_string(),
             args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
-                format!(
-                    "missing method {}.{} for {}",
-                    class_name_chirho, method_name_chirho, type_key_chirho
-                ),
+                message_chirho,
             ))],
         };
 
@@ -844,10 +865,17 @@ impl DictPassCtxChirho {
             };
         }
 
-        let binder_ty_chirho = method_scheme_chirho
-            .map(|scheme_chirho| scheme_chirho.ty_chirho.clone())
+        let binder_ty_chirho = binder_ty_chirho
             .unwrap_or_else(|| TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)));
-        let binder_chirho = self.fresh_binder_chirho(prim_name_chirho, binder_ty_chirho);
+        let binder_chirho = match row_id_chirho {
+            Some(id_chirho) => BinderChirho {
+                id_chirho,
+                name_chirho: prim_name_chirho.to_string(),
+                ty_chirho: binder_ty_chirho,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            None => self.fresh_binder_chirho(prim_name_chirho, binder_ty_chirho),
+        };
         let binder_id_chirho = binder_chirho.id_chirho;
 
         self.generated_bindings_chirho.push(CoreBindingChirho {
@@ -860,7 +888,7 @@ impl DictPassCtxChirho {
         binder_id_chirho
     }
 
-    fn scheme_arity_chirho(scheme_chirho: &SchemeChirho) -> usize {
+    pub(in crate::dict_chirho) fn scheme_arity_chirho(scheme_chirho: &SchemeChirho) -> usize {
         Self::ty_arity_chirho(&scheme_chirho.ty_chirho)
     }
 
@@ -1000,7 +1028,9 @@ impl DictPassCtxChirho {
 mod conditional_chirho;
 mod constructor_orders_chirho;
 // The default rows for methods an instance does not write live together in
-// `instance_chirho/defaults_chirho/` (rows 606, 612, 626 and 669).
+// `instance_chirho/defaults_chirho/` (rows 606, 612, 626, 669 and 671).
+#[path = "instance_chirho/defaults_chirho/context_slots_chirho.rs"]
+mod context_slots_chirho;
 #[path = "instance_chirho/defaults_chirho/enum_defaults_chirho.rs"]
 mod enum_defaults_chirho;
 #[path = "instance_chirho/defaults_chirho/equality_defaults_chirho.rs"]
