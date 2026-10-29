@@ -865,8 +865,8 @@ impl DictPassCtxChirho {
             };
         }
 
-        let binder_ty_chirho = binder_ty_chirho
-            .unwrap_or_else(|| TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)));
+        let binder_ty_chirho =
+            binder_ty_chirho.unwrap_or(TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)));
         let binder_chirho = match row_id_chirho {
             Some(id_chirho) => BinderChirho {
                 id_chirho,
