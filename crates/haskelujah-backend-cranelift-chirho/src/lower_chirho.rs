@@ -1835,7 +1835,7 @@ fn lower_app_chirho(
                 }
             }
             // show :: Show a => a -> String — use RTS haskelujah_show_int
-            if matches!(name_chirho.as_str(), "show" | "show#" | "$sel_Show_show") {
+            if matches!(name_chirho.as_str(), "show" | "show#") {
                 if let Some(arg_expr_chirho) = all_args_chirho.last() {
                     if let Some(shown_ptr_chirho) =
                         lower_show_expr_ptr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho)

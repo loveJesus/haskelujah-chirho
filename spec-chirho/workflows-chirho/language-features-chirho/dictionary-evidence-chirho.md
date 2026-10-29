@@ -407,8 +407,9 @@ flowchart TD
 - An own-parameter record names the signature predicate it stands for (`$own:k`, recorded when
   the signature is skolemized: `record_own_dictionary_indices_chirho`); the pass keys every
   dictionary binder by predicate index as well as by class, so two predicates of one class are
-  two parameters. The class-only form (`$own`) remains for superclass extractions and for
-  generalized variables, where the pass's class-keyed parameter is the right one.
+  two parameters. The class-only form (`$own`) remains for superclass extractions.
+  Inferred top-level variables use the agreed final scheme index
+  described below; a class-only key cannot distinguish two parameters of the same class.
 - Ground list keys and complete arguments (2026-10-17, gpt_chirho #27285). List dictionaries
   and method rows are named per element (`$fOrd[Int]`, `$prim_Eq_==_[Int]`, `$fOrd[Char]` for
   `String`); the head `[]` names none of them. So a list whose every part is ground keeps its
@@ -1069,3 +1070,42 @@ GHC's Enum requires only `toEnum` and `fromEnum`. Every other method defaults th
   one concrete occurrence proof to those existing rows. Range syntax remains separate: LLVM and
   Cranelift already produce the correct ordinal lists, while the interpreter mixes the first Char
   with later Int values through its Int-specialized sequence functions.
+
+## Inferred and source-owned dictionary evidence (rows 663 and 664)
+
+An inferred binding's final scheme is the producer of its dictionary parameter order.
+`record_inferred_dictionary_owners_chirho` runs after stable whole-predicate deduplication,
+predicate reduction and defaulting,
+only for top-level generalization. For each mentioned variable, every scheme must quantify
+it and agree on the class's predicate index. A missing or conflicting owner leaves an empty
+entry that later schemes cannot overwrite. Nested bindings keep their existing specialization
+route; they never claim an enclosing parameter from this table.
+Substitution moves the owner keys with captures; variables merged by substitution intersect
+their claims, including empty vetoes. A concrete target no longer owns a parameter.
+
+```mermaid
+flowchart TD
+    scheme_chirho[Final inferred top-level scheme] --> owner_chirho[Agree class and variable with final predicate index]
+    owner_chirho --> method_chirho[Method evidence uses indexed own parameter]
+    owner_chirho --> literal_chirho[Literal evidence uses the same indexed own parameter]
+    owner_chirho --> reference_chirho[Constrained reference evidence uses the same indexed own parameter]
+    conflict_chirho[Missing, duplicate or conflicting owner] --> unproved_chirho[No inferred own-parameter proof]
+    local_chirho[Nested binding] --> specialization_chirho[Existing local specialization and default hints]
+```
+
+Core retains a result-only Num parameter when the body's occurrence evidence names its
+exact index, including literal evidence. Definition and caller then use that same lambda.
+A source-owned function or pattern binder remains a constrained reference when a class
+declares the same spelling. Imported user values use the existing typed supplier map under
+all qualifiers and aliases; real class selectors, constructors and stubs retain their routes.
+These new reference occurrences inherit the canonical target's source ownership.
+
+Cranelift's `$sel_Show_show` has a real Core body. It takes ordinary arity-aware dispatch,
+returning a method from its dictionary before any further value application. It is not the
+`show`/`show#` primitive formatter shortcut: formatting the selector's dictionary argument
+caused the boxed-value failure exposed by correct indexed Show evidence (part of row 632).
+
+The controls distinguish two independent Num and Show dictionaries, source-owned mixed
+numeric arguments, result-only Num literals and qualified Prelude methods. Imported
+result-only dictionaries still lack exported parameter inventory and remain separately
+measured; this change adds no ABI metadata channel.

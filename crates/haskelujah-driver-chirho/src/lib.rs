@@ -2856,10 +2856,11 @@ fn compile_backend_chirho(
     // gets an occurrence id per reference, so the checker's per-reference
     // evidence can reach the dictionary pass.
     // workflow: language-features-chirho/dictionary-evidence-chirho
-    // Class methods are not references to constrained functions and are not
+    // Class selectors are not references to constrained functions and are not
     // minted here: the method-occurrence names (the standard set and this
     // module's own single-parameter class methods) get their ids from the
-    // method-occurrence mechanism, and every other method keeps its canonical id.
+    // method-occurrence mechanism, and every other selector keeps its canonical id.
+    // A source-owned value with that spelling remains a constrained reference (663/664).
     // workflow: language-features-chirho/own-class-method-occurrences-chirho
     let class_method_names_chirho: std::collections::HashSet<&String> = infer_result_chirho
         .class_env_chirho
@@ -2867,13 +2868,26 @@ fn compile_backend_chirho(
         .values()
         .flat_map(|class_chirho| class_chirho.methods_chirho.keys())
         .collect();
+    let import_suppliers_chirho = native_provenance_chirho::import_suppliers_chirho(
+        &module_chirho,
+        ifaces_chirho,
+        program_modules_chirho,
+    );
+    let mut source_value_names_chirho =
+        evidence_join_chirho::source_value_names_chirho(&module_chirho);
+    source_value_names_chirho.extend(
+        import_suppliers_chirho
+            .value_names_chirho()
+            .map(str::to_string),
+    );
     let constrained_names_chirho: std::collections::HashSet<String> = infer_result_chirho
         .env_chirho
         .all_bindings_chirho()
         .into_iter()
         .filter(|(name_chirho, scheme_chirho)| {
             !scheme_chirho.preds_chirho.is_empty()
-                && !class_method_names_chirho.contains(name_chirho)
+                && (!class_method_names_chirho.contains(name_chirho)
+                    || source_value_names_chirho.contains(*name_chirho))
         })
         .map(|(name_chirho, _scheme_chirho)| name_chirho.clone())
         .collect();
@@ -2905,11 +2919,7 @@ fn compile_backend_chirho(
             // A reference to a value another module of this program defines takes its
             // definer's identity, seen through any re-export (rows 629 and 642).
             // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
-            import_suppliers_chirho: native_provenance_chirho::import_suppliers_chirho(
-                &module_chirho,
-                ifaces_chirho,
-                program_modules_chirho,
-            ),
+            import_suppliers_chirho,
         },
     );
     let reference_evidence_chirho = evidence_join_chirho::join_reference_evidence_chirho(

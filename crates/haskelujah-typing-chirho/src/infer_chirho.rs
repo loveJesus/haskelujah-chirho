@@ -56,6 +56,8 @@ mod deferred_predicates_chirho;
 mod equalities_chirho;
 #[path = "infer_chirho/solving_chirho/fundep_generalization_chirho.rs"]
 mod fundep_generalization_chirho;
+#[path = "infer_chirho/solving_chirho/inferred_dictionary_owners_chirho.rs"]
+mod inferred_dictionary_owners_chirho;
 #[path = "infer_chirho/solving_chirho/rigid_chirho.rs"]
 mod rigid_chirho;
 #[path = "infer_chirho/solving_chirho/schemes_chirho.rs"]
@@ -98,6 +100,9 @@ mod evidence_validity_tests_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/tests_chirho/expression_tests_chirho.rs"]
 mod expression_tests_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/tests_chirho/inferred_dictionary_owners_tests_chirho.rs"]
+mod inferred_dictionary_owners_tests_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/tests_chirho/pattern_tests_chirho.rs"]
 mod pattern_tests_chirho;
@@ -302,6 +307,9 @@ pub struct InferCtxChirho {
     /// a binding scheme. Unhinted occurrences on these variables must stay
     /// polymorphic so the dict pass can use the binding's dictionary argument.
     occurrence_generalized_vars_chirho: HashSet<TyVarChirho>,
+    /// Own dictionary indices agreed by every top-level scheme mentioning a variable.
+    /// An empty map remains a veto against a later conflicting generalization.
+    inferred_dictionary_owners_chirho: HashMap<TyVarChirho, HashMap<String, usize>>,
     /// Evidence-threading P2: per-name reference counters (source order).
     occurrence_counters_chirho: HashMap<String, u32>,
     /// Literal evidence captures: (span, overloading class, literal type),

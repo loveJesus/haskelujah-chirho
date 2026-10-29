@@ -32,6 +32,14 @@ pub struct ImportSuppliersChirho {
 }
 
 impl ImportSuppliersChirho {
+    /// User-value spellings supplied by program modules, under any qualifier or alias.
+    /// The producer excludes class selectors, constructors, builtins and dependency stubs.
+    pub fn value_names_chirho(&self) -> impl Iterator<Item = &str> {
+        self.suppliers_chirho
+            .keys()
+            .map(|(_, name_chirho)| name_chirho.as_str())
+    }
+
     /// Record that program module `module_chirho` defines a value `name_chirho` reaches when
     /// written under `qualifier_chirho` (or unqualified).
     pub fn add_chirho(

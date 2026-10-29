@@ -340,6 +340,7 @@ impl InferCtxChirho {
             occurrence_captures_chirho: Vec::new(),
             occurrence_default_hints_chirho: HashMap::new(),
             occurrence_generalized_vars_chirho: HashSet::new(),
+            inferred_dictionary_owners_chirho: HashMap::new(),
             occurrence_counters_chirho: HashMap::new(),
             literal_captures_chirho: Vec::new(),
             reference_captures_chirho: Vec::new(),
@@ -447,12 +448,23 @@ impl InferCtxChirho {
                                 if self.occurrence_generalized_vars_chirho.contains(var_chirho)
                         )
                     {
-                        // A local binding's variable: the enclosing code's single
-                        // instantiation is the proof (workflow:
+                        // A local binding keeps its single-instantiation proof. A
+                        // top-level binding takes its final scheme's agreed index
+                        // (workflow:
                         // language-features-chirho/dictionary-evidence-chirho).
                         if let TyChirho::VarChirho(var_chirho) = &resolved_chirho
                             && let Some(key_chirho) = self
                                 .local_specialization_key_chirho(*var_chirho, final_subst_chirho)
+                                .or_else(|| {
+                                    (!self.local_generalized_vars_chirho.contains(var_chirho))
+                                        .then(|| {
+                                            self.inferred_dictionary_owner_key_chirho(
+                                                class_chirho,
+                                                *var_chirho,
+                                            )
+                                        })
+                                        .flatten()
+                                })
                         {
                             return Some(MethodOccurrenceRecordChirho {
                                 name_chirho: name_chirho.clone(),

@@ -449,7 +449,11 @@ impl DictPassCtxChirho {
             if !is_extra_imported_chirho {
                 continue;
             }
-            if self.is_class_method_name_chirho(&name_chirho) {
+            if self.is_class_method_name_chirho(&name_chirho)
+                && !self
+                    .imported_reference_ids_chirho
+                    .contains(&self.canonical_id_chirho(id_chirho))
+            {
                 continue;
             }
             if let Some(scheme_chirho) = type_env_chirho.lookup_chirho(&name_chirho) {

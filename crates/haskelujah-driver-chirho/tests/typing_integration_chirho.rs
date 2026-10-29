@@ -15,6 +15,8 @@ mod annotated_pattern_bindings_chirho;
 mod dollar_ownership_chirho;
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
+#[path = "typing_integration_chirho/inferred_evidence_chirho.rs"]
+mod inferred_evidence_chirho;
 #[path = "typing_integration_chirho/infix_definition_spacing_chirho.rs"]
 mod infix_definition_spacing_chirho;
 #[path = "typing_integration_chirho/maybe_helper_schemes_chirho.rs"]

@@ -325,6 +325,15 @@ impl DictPassCtxChirho {
         {
             return None;
         }
+        // A constrained reference to the program's own method-named value inherits its
+        // canonical target's ownership. Ground schemes may take no dictionary parameters.
+        if self
+            .local_shadow_ids_chirho
+            .borrow()
+            .contains(canonical_id_chirho)
+        {
+            return Some(CoreExprChirho::VarChirho(*canonical_id_chirho));
+        }
         if let Some((class_name_chirho, ty_key_chirho)) =
             self.occurrence_evidence_chirho.get(&head_id_chirho)
         {

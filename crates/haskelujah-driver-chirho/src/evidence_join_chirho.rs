@@ -14,12 +14,88 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
 };
 use haskelujah_core_chirho::CoreIdChirho;
 
 use crate::InferResultChirho;
+
+/// This module's value binders own their spelling even when a class declares a namesake.
+/// Class declarations are deliberately absent: their selectors keep the method route.
+/// workflow: language-features-chirho/own-class-method-occurrences-chirho
+pub(crate) fn source_value_names_chirho(module_chirho: &ModuleChirho) -> HashSet<String> {
+    fn collect_pattern_chirho(pat_chirho: &PatChirho, names_chirho: &mut HashSet<String>) {
+        match pat_chirho {
+            PatChirho::VarChirho(name_chirho) => {
+                names_chirho.insert(name_chirho.text_chirho().to_string());
+            }
+            PatChirho::AsChirho {
+                name_chirho,
+                pattern_chirho,
+                ..
+            } => {
+                names_chirho.insert(name_chirho.text_chirho().to_string());
+                collect_pattern_chirho(pattern_chirho, names_chirho);
+            }
+            PatChirho::ConChirho {
+                args_chirho: patterns_chirho,
+                ..
+            }
+            | PatChirho::TupleChirho {
+                elements_chirho: patterns_chirho,
+                ..
+            }
+            | PatChirho::ListChirho {
+                elements_chirho: patterns_chirho,
+                ..
+            } => {
+                for pattern_chirho in patterns_chirho {
+                    collect_pattern_chirho(pattern_chirho, names_chirho);
+                }
+            }
+            PatChirho::ParenChirho { inner_chirho, .. }
+            | PatChirho::LazyChirho { inner_chirho, .. }
+            | PatChirho::BangChirho { inner_chirho, .. } => {
+                collect_pattern_chirho(inner_chirho, names_chirho)
+            }
+            PatChirho::TypeAnnotChirho { pat_chirho, .. }
+            | PatChirho::ViewChirho { pat_chirho, .. } => {
+                collect_pattern_chirho(pat_chirho, names_chirho)
+            }
+            PatChirho::InfixConChirho {
+                left_chirho,
+                right_chirho,
+                ..
+            } => {
+                collect_pattern_chirho(left_chirho, names_chirho);
+                collect_pattern_chirho(right_chirho, names_chirho);
+            }
+            PatChirho::RecordChirho { fields_chirho, .. } => {
+                for field_chirho in fields_chirho {
+                    collect_pattern_chirho(&field_chirho.pattern_chirho, names_chirho);
+                }
+            }
+            PatChirho::LitChirho(_)
+            | PatChirho::WildcardChirho(_)
+            | PatChirho::NegChirho { .. } => {}
+        }
+    }
+    let mut names_chirho = HashSet::new();
+    for decl_chirho in &module_chirho.decls_chirho {
+        match decl_chirho {
+            DeclChirho::FunBindChirho { name_chirho, .. } => {
+                names_chirho.insert(name_chirho.text_chirho().to_string());
+            }
+            DeclChirho::PatBindChirho { pat_chirho, .. } => {
+                collect_pattern_chirho(pat_chirho, &mut names_chirho)
+            }
+            _ => {}
+        }
+    }
+    names_chirho
+}
 
 /// Evidence-threading P2b: standard single-param class methods and constrained
 /// Prelude functions whose free references get per-occurrence ids so typing

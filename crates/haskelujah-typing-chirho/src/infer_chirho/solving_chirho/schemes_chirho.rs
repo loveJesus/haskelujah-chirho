@@ -286,8 +286,10 @@ impl InferCtxChirho {
         }
         self.deferred_preds_chirho = remaining_chirho;
 
-        // Deduplicate predicates
-        scheme_preds_chirho.dedup();
+        // Keep the first occurrence of each whole predicate, including extra MPTC types.
+        // Adjacent-only dedup left Num b, Integral a, Num b with two dictionary indices.
+        let mut seen_preds_chirho = HashSet::new();
+        scheme_preds_chirho.retain(|pred_chirho| seen_preds_chirho.insert(pred_chirho.clone()));
 
         // Context reduction: remove predicates that are entailed by
         // other predicates via the superclass hierarchy.
@@ -399,18 +401,26 @@ impl InferCtxChirho {
                     }
                 })
                 .collect();
-            return SchemeChirho {
+            let scheme_chirho = SchemeChirho {
                 vars_chirho: defaulted_vars_chirho,
                 preds_chirho: defaulted_preds_chirho,
                 ty_chirho: defaulted_ty_chirho,
             };
+            if scope_chirho == GeneralizationScopeChirho::TopLevelChirho {
+                self.record_inferred_dictionary_owners_chirho(&scheme_chirho);
+            }
+            return scheme_chirho;
         }
 
-        SchemeChirho {
+        let scheme_chirho = SchemeChirho {
             vars_chirho,
             preds_chirho: scheme_preds_chirho,
             ty_chirho: ty_chirho.clone(),
+        };
+        if scope_chirho == GeneralizationScopeChirho::TopLevelChirho {
+            self.record_inferred_dictionary_owners_chirho(&scheme_chirho);
         }
+        scheme_chirho
     }
 
     /// Check if `potential_super_chirho` is a (transitive) superclass of
@@ -445,6 +455,7 @@ impl InferCtxChirho {
     /// Apply a substitution to the type environment and deferred predicates.
     pub(super) fn apply_subst_all_chirho(&mut self, subst_chirho: &SubstChirho) {
         self.env_chirho.apply_subst_chirho(subst_chirho);
+        self.substitute_inferred_dictionary_owners_chirho(subst_chirho);
         self.recursive_references_chirho
             .apply_subst_chirho(subst_chirho);
         // Every argument of a multi-parameter predicate must follow the

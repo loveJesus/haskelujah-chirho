@@ -48,9 +48,11 @@ impl DictPassCtxChirho {
                             },
                         )
                     });
+                // Literal evidence joins the occurrence channel too. An exact Num
+                // parameter used there must survive result-only defaulting (row 663).
                 let occurrence_proves_own_chirho = matches!(
                     predicate_chirho.class_name_chirho.as_str(),
-                    "Enum" | "Bounded"
+                    "Num" | "Enum" | "Bounded"
                 ) && free_ids_chirho.iter().any(|id_chirho| {
                     self.occurrence_evidence_chirho.get(id_chirho).is_some_and(
                         |(class_chirho, key_chirho)| {
@@ -607,6 +609,21 @@ mod tests_chirho {
             rhs_id_chirho,
             vec![("Integral".to_string(), Some("$own:0".to_string()))],
         );
+        assert_eq!(
+            pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
+            vec![0]
+        );
+
+        pass_chirho
+            .occurrence_evidence_chirho
+            .insert(rhs_id_chirho, ("Num".to_string(), "$own:1".to_string()));
+        assert_eq!(
+            pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
+            vec![0, 1]
+        );
+        pass_chirho
+            .occurrence_evidence_chirho
+            .insert(rhs_id_chirho, ("Num".to_string(), "$own:0".to_string()));
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
             vec![0]

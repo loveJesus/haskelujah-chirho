@@ -53,8 +53,13 @@ impl DictPassCtxChirho {
         type_key_override_chirho: Option<&str>,
     ) -> CoreExprChirho {
         // Skip rewriting for locally-bound variables that shadow class methods
-        if self.local_shadow_ids_chirho.borrow().contains(&id_chirho) {
-            return CoreExprChirho::VarChirho(id_chirho);
+        let canonical_id_chirho = self.canonical_id_chirho(id_chirho);
+        if self
+            .local_shadow_ids_chirho
+            .borrow()
+            .contains(&canonical_id_chirho)
+        {
+            return CoreExprChirho::VarChirho(canonical_id_chirho);
         }
         // Typed higher-order arguments and section bodies enter through this method-var path,
         // not the ordinary application-spine path. Consume `(^^)`'s two-predicate proof here

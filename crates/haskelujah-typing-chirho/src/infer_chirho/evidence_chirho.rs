@@ -369,7 +369,7 @@ impl InferCtxChirho {
                 } else if self.local_generalized_vars_chirho.contains(var_chirho) {
                     self.local_specialization_key_chirho(*var_chirho, final_subst_chirho)
                 } else if self.occurrence_generalized_vars_chirho.contains(var_chirho) {
-                    Some(OWN_DICTIONARY_KEY_CHIRHO.to_string())
+                    self.inferred_dictionary_owner_key_chirho(class_name_chirho, *var_chirho)
                 } else {
                     None
                 }
@@ -453,11 +453,25 @@ impl InferCtxChirho {
         {
             let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
             let key_chirho = match &resolved_chirho {
-                TyChirho::VarChirho(var_chirho) => self.local_literal_specialization_key_chirho(
-                    class_name_chirho,
-                    *var_chirho,
-                    final_subst_chirho,
-                ),
+                TyChirho::VarChirho(var_chirho) => self
+                    .local_literal_specialization_key_chirho(
+                        class_name_chirho,
+                        *var_chirho,
+                        final_subst_chirho,
+                    )
+                    .or_else(|| {
+                        (!self.local_generalized_vars_chirho.contains(var_chirho)
+                            && !self
+                                .occurrence_default_hints_chirho
+                                .contains_key(var_chirho))
+                        .then(|| {
+                            self.inferred_dictionary_owner_key_chirho(
+                                class_name_chirho,
+                                *var_chirho,
+                            )
+                        })
+                        .flatten()
+                    }),
                 // A literal at the enclosing signature's rigid variable is the binding's
                 // own dictionary's, as an occurrence there is (row 584).
                 TyChirho::ForallVarChirho(skolem_chirho) => {
@@ -853,6 +867,15 @@ mod tests_chirho {
             ctx_chirho
                 .occurrence_generalized_vars_chirho
                 .insert(var_chirho);
+            ctx_chirho.record_inferred_dictionary_owners_chirho(&SchemeChirho {
+                vars_chirho: vec![var_chirho],
+                preds_chirho: vec![SchemePredChirho {
+                    class_name_chirho: "Eq".to_string(),
+                    ty_chirho: generalized_chirho.clone(),
+                    extra_tys_chirho: vec![],
+                }],
+                ty_chirho: generalized_chirho.clone(),
+            });
         }
         ctx_chirho.capture_reference_evidence_chirho(
             span_chirho(40),
@@ -893,10 +916,7 @@ mod tests_chirho {
                     Some(OWN_DICTIONARY_KEY_CHIRHO.to_string())
                 ),
                 ("Show".to_string(), None),
-                (
-                    "Eq".to_string(),
-                    Some(OWN_DICTIONARY_KEY_CHIRHO.to_string())
-                ),
+                ("Eq".to_string(), Some(own_dictionary_key_chirho(Some(0)))),
             ]
         );
     }
