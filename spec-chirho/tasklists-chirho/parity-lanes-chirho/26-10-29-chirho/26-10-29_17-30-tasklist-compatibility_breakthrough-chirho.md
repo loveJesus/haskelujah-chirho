@@ -9,6 +9,7 @@ L.J. asked to improve or close GHC compatibility and enlist claude2_chirho. Base
 - [x] Apply the prepared row 661 stage and independently verify item equality, mutation controls, test paths and corpus inference dumps.
 - [x] Run a focused row 661 gate, update moved workflow paths and land the verified split (closed in ff4b5274; docs placement b76fcd03).
 - [x] Land row 675 after repairing explicit disabled-extension false accepts; independent paired corpus verification gains tc135 alone, with all other verdicts held.
+- [x] Land rows 663/664 (e196be3 and record 4a6419a): inferred/owned numeric dictionaries and partial Cranelift Show-selector correction, with actual regression controls. Fractional and imported result-only ABI remain explicit boundaries.
 - [ ] Implement range typing, standard Enum identity and occurrence evidence (row 665), with all-engine GHC controls and holds.
 - [ ] Review and integrate Claude2's tested Enum Double change when ready.
 - [ ] Complete Enum's eight-slot dispatch (row 671) before landing newly reachable Double polymorphic calls. Row 670 is held for native wrong answers/SIGBUS until that prerequisite and range evidence form a safe stack.
