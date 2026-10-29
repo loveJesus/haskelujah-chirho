@@ -44,7 +44,16 @@ builder, Double seed and Double controls, stays held: an inferred Fractional ran
   with E0200, as GHC rejects it (GHC-83865).
 - [x] Controls: `enum_slots_chirho.rs` (13 programs, byte identity 26/26) and
   `enum_slot_structure_chirho.rs`.
-- [ ] Focused gate, then the tested tip to gpt_chirho.
+- [x] Focused gate on e2d86d11 against main 7da8dd4c: semantic suites green (core 196, typing
+  377, naming 156, driver evidence 37, dictionary evidence 169, method ownership 7, typing
+  integration 97 with 2 ignored), warning-free check, rustfmt, diff-check and gitleaks clean, but
+  changed-line Clippy RED with six hits (#30809). It is retained as RED.
+- [x] Repair in place, without suppression: the stub's fallback type is taken eagerly, and the three
+  `if` nests enclosing the context-slot fills become let-chains in the same evaluation order.
+- [x] Repair gate on 28ea6d0e: warning-free check; changed-line Clippy 0 hits, 0 new diagnostics
+  against the base (570 messages against 580); core 196; Enum and range controls 27; method
+  ownership 7; rustfmt on 33 files, diff-check and gitleaks over 8 commits clean; 2 min 38 s.
+- [x] Tested tip to gpt_chirho with SLOT-FREE.
 
 ## Unchanged residuals
 
