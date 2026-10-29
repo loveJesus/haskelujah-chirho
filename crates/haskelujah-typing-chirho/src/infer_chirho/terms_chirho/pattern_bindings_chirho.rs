@@ -5,6 +5,9 @@
 
 use super::*;
 
+/// A binding's pattern signature needs ScopedTypeVariables (GHC-74097).
+const PATTERN_SIGNATURE_CODE_CHIRHO: u16 = 208;
+
 impl InferCtxChirho {
     /// A declaration's pattern signature checks its right-hand side, including annotations
     /// nested below tuples, lists or constructors. The binding scope deliberately excludes
@@ -316,6 +319,15 @@ impl InferCtxChirho {
                 span_chirho,
             } => {
                 if self.checking_binding_pattern_annotations_chirho {
+                    if !self.scoped_type_variables_chirho {
+                        self.diagnostics_chirho.push_chirho(
+                            DiagnosticChirho::error_with_code_chirho(
+                                ErrorCodeChirho::error_chirho(PATTERN_SIGNATURE_CODE_CHIRHO),
+                                "pattern type signature requires ScopedTypeVariables",
+                                *span_chirho,
+                            ),
+                        );
+                    }
                     // Reuse expression annotations' in-scope conversion: an enclosing
                     // signature's `forall a` is the same rigid `a` here, not a new variable.
                     let annotation_ty_chirho =

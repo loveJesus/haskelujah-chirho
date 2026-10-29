@@ -428,8 +428,10 @@ impl InferCtxChirho {
         let mut pre_ghc2021_chirho = false;
         for extension_chirho in &module_chirho.extensions_chirho {
             match extension_chirho.as_str() {
-                "ScopedTypeVariables" | "TypeAbstractions" => explicit_chirho = Some(true),
-                "NoScopedTypeVariables" => explicit_chirho = Some(false),
+                "ScopedTypeVariables" | "PatternSignatures" | "TypeAbstractions" => {
+                    explicit_chirho = Some(true);
+                }
+                "NoScopedTypeVariables" | "NoPatternSignatures" => explicit_chirho = Some(false),
                 "Haskell2010" | "Haskell98" => pre_ghc2021_chirho = true,
                 "GHC2021" | "GHC2024" => pre_ghc2021_chirho = false,
                 _ => {}

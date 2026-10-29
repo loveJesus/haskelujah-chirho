@@ -8,6 +8,58 @@ use super::{
     assert_compile_success_chirho, assert_prints_everywhere_chirho, rejected_like_ghc_chirho,
 };
 
+const EXTENSION_BINDING_CHIRHO: &str = r#"module Main where
+valueChirho :: Int = 7
+main :: IO ()
+main = print valueChirho
+"#;
+
+const EXTENSION_CASES_CHIRHO: [(&str, &str, bool); 7] = [
+    ("DefaultAnnotationChirho.hs", "", true),
+    (
+        "LegacyAnnotationChirho.hs",
+        "{-# LANGUAGE Haskell2010 #-}\n",
+        false,
+    ),
+    (
+        "DisabledAnnotationChirho.hs",
+        "{-# LANGUAGE GHC2021, NoScopedTypeVariables #-}\n",
+        false,
+    ),
+    (
+        "EnabledLegacyAnnotationChirho.hs",
+        "{-# LANGUAGE Haskell2010, ScopedTypeVariables #-}\n",
+        true,
+    ),
+    (
+        "ModernAnnotationChirho.hs",
+        "{-# LANGUAGE GHC2021 #-}\n",
+        true,
+    ),
+    (
+        "AliasAnnotationChirho.hs",
+        "{-# LANGUAGE Haskell2010, PatternSignatures #-}\n",
+        true,
+    ),
+    (
+        "DisabledAliasAnnotationChirho.hs",
+        "{-# LANGUAGE GHC2021, NoPatternSignatures #-}\n",
+        false,
+    ),
+];
+
+#[test]
+fn a_binding_signature_requires_its_language_extension_chirho() {
+    for (file_chirho, pragmas_chirho, enabled_chirho) in EXTENSION_CASES_CHIRHO {
+        let source_chirho = format!("{pragmas_chirho}{EXTENSION_BINDING_CHIRHO}");
+        if enabled_chirho {
+            assert_compile_success_chirho(file_chirho, &source_chirho);
+        } else {
+            rejected_like_ghc_chirho(&source_chirho, file_chirho, &["ScopedTypeVariables"]);
+        }
+    }
+}
+
 const ANNOTATED_BINDINGS_CHIRHO: &str = r#"{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 valueChirho :: Int = 7
