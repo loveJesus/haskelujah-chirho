@@ -209,7 +209,7 @@ impl InferCtxChirho {
     /// scheme's order, for evidence. A reference with neither a real span nor
     /// an origin (generated code before provenance) identifies nothing and is
     /// skipped.
-    fn capture_reference_evidence_chirho(
+    pub(super) fn capture_reference_evidence_chirho(
         &mut self,
         span_chirho: SpanChirho,
         origin_chirho: Option<OriginIdChirho>,

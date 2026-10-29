@@ -379,6 +379,18 @@ impl InferCtxChirho {
                 (subst_chirho, TyChirho::TupleChirho(final_elems_chirho))
             }
 
+            ExprChirho::ArithSeqChirho {
+                from_chirho,
+                then_chirho,
+                to_chirho,
+                span_chirho,
+            } => self.infer_range_chirho(
+                from_chirho,
+                then_chirho.as_deref(),
+                to_chirho.as_deref(),
+                *span_chirho,
+            ),
+
             ExprChirho::ListChirho {
                 elements_chirho,
                 span_chirho,

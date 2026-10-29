@@ -2927,13 +2927,25 @@ fn compile_backend_chirho(
         &desugar_output_chirho.reference_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
     );
-    let occurrence_evidence_chirho = join_occurrence_evidence_chirho(
+    let mut occurrence_evidence_chirho = join_occurrence_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
         &desugar_output_chirho.literal_occurrence_spans_chirho,
         &desugar_output_chirho.method_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
     );
+    // Range syntax selected Enum itself, independently of a lexical namesake.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    occurrence_evidence_chirho.retain(|id_chirho, _| {
+        !desugar_output_chirho
+            .range_occurrence_spans_chirho
+            .contains_key(id_chirho)
+    });
+    occurrence_evidence_chirho.extend(evidence_join_chirho::join_range_evidence_chirho(
+        &infer_result_chirho,
+        &desugar_output_chirho.method_occurrences_chirho,
+        &desugar_output_chirho.range_occurrence_spans_chirho,
+    ));
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
     let con_types_chirho = build_con_type_map_chirho(&module_chirho);

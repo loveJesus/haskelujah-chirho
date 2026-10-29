@@ -502,91 +502,14 @@ pub(super) fn seed_part_09_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
 
-    // enumFrom :: forall a. Enum a => a -> [a]
-    let enum_from_a_chirho = TyVarChirho(3266);
-    env_chirho.bind_chirho(
-        "enumFrom".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![enum_from_a_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Enum".to_string(),
-                ty_chirho: TyChirho::VarChirho(enum_from_a_chirho),
-                extra_tys_chirho: vec![],
-            }],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(enum_from_a_chirho),
-                TyChirho::ListChirho(Box::new(TyChirho::VarChirho(enum_from_a_chirho))),
-            ),
-        },
-    );
-
-    // enumFromThen :: forall a. Enum a => a -> a -> [a]
-    let enum_from_then_a_chirho = TyVarChirho(3267);
-    env_chirho.bind_chirho(
-        "enumFromThen".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![enum_from_then_a_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Enum".to_string(),
-                ty_chirho: TyChirho::VarChirho(enum_from_then_a_chirho),
-                extra_tys_chirho: vec![],
-            }],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(enum_from_then_a_chirho),
-                TyChirho::fun_chirho(
-                    TyChirho::VarChirho(enum_from_then_a_chirho),
-                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(enum_from_then_a_chirho))),
-                ),
-            ),
-        },
-    );
-
-    // enumFromTo :: forall a. Enum a => a -> a -> [a]
-    let enum_from_to_a_chirho = TyVarChirho(3268);
-    env_chirho.bind_chirho(
-        "enumFromTo".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![enum_from_to_a_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Enum".to_string(),
-                ty_chirho: TyChirho::VarChirho(enum_from_to_a_chirho),
-                extra_tys_chirho: vec![],
-            }],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(enum_from_to_a_chirho),
-                TyChirho::fun_chirho(
-                    TyChirho::VarChirho(enum_from_to_a_chirho),
-                    TyChirho::ListChirho(Box::new(TyChirho::VarChirho(enum_from_to_a_chirho))),
-                ),
-            ),
-        },
-    );
-
-    // enumFromThenTo :: forall a. Enum a => a -> a -> a -> [a]
-    let enum_from_then_to_a_chirho = TyVarChirho(3269);
-    env_chirho.bind_chirho(
-        "enumFromThenTo".to_string(),
-        SchemeChirho {
-            vars_chirho: vec![enum_from_then_to_a_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Enum".to_string(),
-                ty_chirho: TyChirho::VarChirho(enum_from_then_to_a_chirho),
-                extra_tys_chirho: vec![],
-            }],
-            ty_chirho: TyChirho::fun_chirho(
-                TyChirho::VarChirho(enum_from_then_to_a_chirho),
-                TyChirho::fun_chirho(
-                    TyChirho::VarChirho(enum_from_then_to_a_chirho),
-                    TyChirho::fun_chirho(
-                        TyChirho::VarChirho(enum_from_then_to_a_chirho),
-                        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
-                            enum_from_then_to_a_chirho,
-                        ))),
-                    ),
-                ),
-            ),
-        },
-    );
+    // The standard schemes also type range syntax independently of lexical shadows.
+    for name_chirho in ["enumFrom", "enumFromThen", "enumFromTo", "enumFromThenTo"] {
+        env_chirho.bind_chirho(
+            name_chirho.to_string(),
+            super::super::enumeration_scheme_chirho(name_chirho)
+                .expect("all four enumeration methods have a standard scheme"),
+        );
+    }
 
     // minBound :: forall a. Bounded a => a
     let min_bound_a_chirho = TyVarChirho(3264);

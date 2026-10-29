@@ -1067,9 +1067,9 @@ GHC's Enum requires only `toEnum` and `fromEnum`. Every other method defaults th
   cannot represent GHC's surrogate `Char` values, and its `chr#` invalid-range behavior is not
   GHC-exact. Row 567 supplies the missing body-backed `succ` and `pred` rows and keeps crossings
   into the surrogate interval loud. Row 607 carries a locally generalized `succ` or `pred` alias's
-  one concrete occurrence proof to those existing rows. Range syntax remains separate: LLVM and
-  Cranelift already produce the correct ordinal lists, while the interpreter mixes the first Char
-  with later Int values through its Int-specialized sequence functions.
+  one concrete occurrence proof to those existing rows. Range syntax's standard-method selection,
+  endpoint typing and dedicated evidence channel are documented in
+  [range syntax evidence](../compiler-pipeline-chirho/range-syntax-evidence-chirho.md).
 
 ## Inferred and source-owned dictionary evidence (rows 663 and 664)
 

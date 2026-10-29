@@ -22,8 +22,27 @@
 
 use super::DesugarCtxChirho;
 use crate::expr_chirho::CoreIdChirho;
+use haskelujah_span_chirho::SpanChirho;
 
 impl DesugarCtxChirho {
+    /// A range always selects the standard Enum method, including under
+    /// RebindableSyntax. Its endpoints are desugared separately and keep their rules.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn resolve_range_method_chirho(
+        &mut self,
+        name_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> CoreIdChirho {
+        let canonical_id_chirho = self.canonical_free_id_chirho(name_chirho);
+        let id_chirho = self.mint_method_occurrence_chirho(name_chirho, canonical_id_chirho);
+        // A real range span also keeps the legacy join out of positional fallback.
+        self.method_occurrence_spans_chirho
+            .insert(id_chirho, span_chirho);
+        self.range_occurrence_spans_chirho
+            .insert(id_chirho, span_chirho);
+        id_chirho
+    }
+
     /// The binding a compiler-generated reference to class method `name_chirho` stands for:
     /// under ordinary syntax, a fresh occurrence of the method with the name's canonical id
     /// behind it; under RebindableSyntax, the lexical binding.

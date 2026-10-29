@@ -579,6 +579,53 @@ pub(crate) fn join_reference_evidence_chirho(
         .collect()
 }
 
+/// Join the compiler-selected Enum method of each range to that range's proof.
+/// A source-written name never enters this map; it keeps the ordinary ownership
+/// checks even when its spelling is an enumeration method. Ranges have no AST
+/// origin yet, so only a genuine span and one solved Enum predicate identify one.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(crate) fn join_range_evidence_chirho(
+    infer_result_chirho: &InferResultChirho,
+    occurrences_chirho: &HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    ranges_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
+) -> HashMap<CoreIdChirho, (String, String)> {
+    ranges_chirho
+        .iter()
+        .filter_map(|(id_chirho, span_chirho)| {
+            use haskelujah_span_chirho::{FileIdChirho, SpanChirho};
+            if *span_chirho == SpanChirho::DUMMY_CHIRHO
+                || span_chirho.file_id_chirho() == FileIdChirho::SYNTHETIC_CHIRHO
+            {
+                return None;
+            }
+            let (method_chirho, _canonical_chirho) = occurrences_chirho.get(id_chirho)?;
+            if !matches!(
+                method_chirho.as_str(),
+                "enumFrom" | "enumFromThen" | "enumFromTo" | "enumFromThenTo"
+            ) {
+                return None;
+            }
+            let [proof_chirho] = infer_result_chirho
+                .reference_evidence_chirho
+                .get(span_chirho)?
+                .as_slice()
+            else {
+                return None;
+            };
+            if proof_chirho.class_name_chirho != "Enum" {
+                return None;
+            }
+            let key_chirho = proof_chirho.ty_key_chirho.as_deref()?;
+            let key_chirho = if key_chirho == "Integer" {
+                "Int"
+            } else {
+                key_chirho
+            };
+            Some((*id_chirho, ("Enum".to_string(), key_chirho.to_string())))
+        })
+        .collect()
+}
+
 /// The proof an occurrence takes from the records of its own origin: the first
 /// authoritative one in checker order, unless some class was proved at two
 /// different types, which is a conflict and proves nothing.

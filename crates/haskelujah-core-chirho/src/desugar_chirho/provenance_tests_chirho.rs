@@ -222,3 +222,45 @@ fn under_rebindable_syntax_a_literal_takes_the_binding_in_scope_chirho() {
         );
     }
 }
+
+#[test]
+fn ranges_have_their_own_method_identity_even_under_rebindable_syntax_chirho() {
+    for extensions_chirho in [Vec::new(), vec!["RebindableSyntax".to_string()]] {
+        let mut ctx_chirho = DesugarCtxChirho::new_chirho();
+        ctx_chirho.extensions_chirho = extensions_chirho;
+        let own_chirho = ctx_chirho.fresh_id_chirho("enumFromTo");
+        ctx_chirho.bind_in_scope_chirho("enumFromTo", own_chirho);
+        let span_chirho = SpanChirho::DUMMY_CHIRHO;
+        let range_chirho = ExprChirho::ArithSeqChirho {
+            from_chirho: Box::new(ExprChirho::VarChirho(name_chirho("firstChirho"))),
+            then_chirho: None,
+            to_chirho: Some(Box::new(ExprChirho::VarChirho(name_chirho("lastChirho")))),
+            span_chirho,
+        };
+        let range_core_chirho = ctx_chirho.desugar_expr_chirho(&range_chirho);
+        let mut head_chirho = &range_core_chirho;
+        while let CoreExprChirho::AppChirho { fun_chirho, .. } = head_chirho {
+            head_chirho = fun_chirho;
+        }
+        let CoreExprChirho::VarChirho(method_chirho) = head_chirho else {
+            panic!("expected a range method application: {range_core_chirho:?}");
+        };
+        let (name_chirho, canonical_chirho) = &ctx_chirho.method_occurrences_chirho[method_chirho];
+        assert_eq!(name_chirho, "enumFromTo");
+        assert_ne!(*canonical_chirho, own_chirho);
+        assert_eq!(
+            ctx_chirho.range_occurrence_spans_chirho.get(method_chirho),
+            Some(&span_chirho),
+        );
+        assert_eq!(
+            ctx_chirho.resolve_var_chirho("enumFromTo"),
+            own_chirho,
+            "a written call still names the source binding",
+        );
+        assert!(
+            !ctx_chirho
+                .range_occurrence_spans_chirho
+                .contains_key(&own_chirho)
+        );
+    }
+}

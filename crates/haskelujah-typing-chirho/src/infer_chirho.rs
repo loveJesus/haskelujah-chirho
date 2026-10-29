@@ -83,6 +83,8 @@ mod guards_chirho;
 mod matches_chirho;
 #[path = "infer_chirho/terms_chirho/pattern_bindings_chirho.rs"]
 mod pattern_bindings_chirho;
+#[path = "infer_chirho/terms_chirho/ranges_chirho.rs"]
+mod ranges_chirho;
 #[path = "infer_chirho/terms_chirho/records_chirho.rs"]
 mod records_chirho;
 #[path = "infer_chirho/terms_chirho/type_applications_chirho.rs"]

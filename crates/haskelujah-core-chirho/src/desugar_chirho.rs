@@ -65,6 +65,9 @@ pub struct DesugarOutputChirho {
     /// checker's per-literal instance to it.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub literal_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    /// Compiler-selected Enum method occurrences, each identified by its range span.
+    /// This producer channel keeps their proof independent of lexical method namesakes.
+    pub range_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
     /// Reference evidence: the occurrence id minted for a reference to a
     /// constrained top-level name → the reference's source span.
     pub reference_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
@@ -137,6 +140,7 @@ pub struct DesugarCtxChirho {
     method_occurrences_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     /// Literal evidence: literal occurrence id → the literal's source span.
     literal_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
+    range_occurrence_spans_chirho: HashMap<CoreIdChirho, SpanChirho>,
     /// Reference evidence: names whose scheme carries class predicates; a
     /// reference to one gets its own occurrence id (canonical = the binding).
     constrained_names_chirho: HashSet<String>,
@@ -167,6 +171,7 @@ impl DesugarCtxChirho {
             method_occurrence_names_chirho: HashSet::new(),
             method_occurrences_chirho: HashMap::new(),
             literal_occurrence_spans_chirho: HashMap::new(),
+            range_occurrence_spans_chirho: HashMap::new(),
             constrained_names_chirho: HashSet::new(),
             reference_occurrence_spans_chirho: HashMap::new(),
             method_occurrence_spans_chirho: HashMap::new(),
@@ -1804,6 +1809,7 @@ impl DesugarCtxChirho {
             names_chirho: self.names_chirho.clone(),
             method_occurrences_chirho: self.method_occurrences_chirho.clone(),
             literal_occurrence_spans_chirho: self.literal_occurrence_spans_chirho.clone(),
+            range_occurrence_spans_chirho: self.range_occurrence_spans_chirho.clone(),
             reference_occurrence_spans_chirho: self.reference_occurrence_spans_chirho.clone(),
             method_occurrence_spans_chirho: self.method_occurrence_spans_chirho.clone(),
             occurrence_provenance_chirho: self.occurrence_provenance_chirho.clone(),
@@ -2870,7 +2876,7 @@ impl DesugarCtxChirho {
                 from_chirho,
                 then_chirho,
                 to_chirho,
-                ..
+                span_chirho,
             } => {
                 // Desugar to calls to lazy Prelude functions (not primops)
                 // so infinite lists like [1..] are properly lazy.
@@ -2882,7 +2888,8 @@ impl DesugarCtxChirho {
                 let from_core_chirho = self.desugar_expr_chirho(from_chirho);
                 match (then_chirho, to_chirho) {
                     (None, None) => {
-                        let fun_id_chirho = self.resolve_var_chirho("enumFrom");
+                        let fun_id_chirho =
+                            self.resolve_range_method_chirho("enumFrom", *span_chirho);
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_id_chirho)),
                             arg_chirho: Box::new(from_core_chirho),
@@ -2890,7 +2897,8 @@ impl DesugarCtxChirho {
                     }
                     (Some(then_e_chirho), None) => {
                         let then_core_chirho = self.desugar_expr_chirho(then_e_chirho);
-                        let fun_id_chirho = self.resolve_var_chirho("enumFromThen");
+                        let fun_id_chirho =
+                            self.resolve_range_method_chirho("enumFromThen", *span_chirho);
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::AppChirho {
                                 fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_id_chirho)),
@@ -2901,7 +2909,8 @@ impl DesugarCtxChirho {
                     }
                     (None, Some(to_e_chirho)) => {
                         let to_core_chirho = self.desugar_expr_chirho(to_e_chirho);
-                        let fun_id_chirho = self.resolve_var_chirho("enumFromTo");
+                        let fun_id_chirho =
+                            self.resolve_range_method_chirho("enumFromTo", *span_chirho);
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::AppChirho {
                                 fun_chirho: Box::new(CoreExprChirho::VarChirho(fun_id_chirho)),
@@ -2913,7 +2922,8 @@ impl DesugarCtxChirho {
                     (Some(then_e_chirho), Some(to_e_chirho)) => {
                         let then_core_chirho = self.desugar_expr_chirho(then_e_chirho);
                         let to_core_chirho = self.desugar_expr_chirho(to_e_chirho);
-                        let fun_id_chirho = self.resolve_var_chirho("enumFromThenTo");
+                        let fun_id_chirho =
+                            self.resolve_range_method_chirho("enumFromThenTo", *span_chirho);
                         CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::AppChirho {
                                 fun_chirho: Box::new(CoreExprChirho::AppChirho {

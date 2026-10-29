@@ -15,9 +15,35 @@ mod transformer_types_chirho;
 use std::collections::HashMap;
 
 use crate::env_chirho::TyEnvChirho;
-use crate::ty_chirho::SchemeChirho;
+use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
 pub use qualified_alias_agreement_chirho::QUALIFIED_ALIAS_AGREEMENT_CHIRHO;
+
+/// The standard Enum enumeration scheme, shared by builtin seeding and range syntax.
+/// Range syntax selects this method independently of the lexical value environment.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(super) fn enumeration_scheme_chirho(name_chirho: &str) -> Option<SchemeChirho> {
+    let (var_chirho, arity_chirho) = match name_chirho {
+        "enumFrom" => (TyVarChirho(3266), 1),
+        "enumFromThen" => (TyVarChirho(3267), 2),
+        "enumFromTo" => (TyVarChirho(3268), 2),
+        "enumFromThenTo" => (TyVarChirho(3269), 3),
+        _ => return None,
+    };
+    let elem_chirho = TyChirho::VarChirho(var_chirho);
+    Some(SchemeChirho {
+        vars_chirho: vec![var_chirho],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "Enum".to_string(),
+            ty_chirho: elem_chirho.clone(),
+            extra_tys_chirho: Vec::new(),
+        }],
+        ty_chirho: TyChirho::fun_n_chirho(
+            vec![elem_chirho.clone(); arity_chirho],
+            TyChirho::ListChirho(Box::new(elem_chirho)),
+        ),
+    })
+}
 
 /// The scheme a qualified import of builtin module `module_chirho` gives `name_chirho` when no
 /// `module.name` key exists (row 608): the bare builtin scheme, exactly where GHC 9.14.1 types the

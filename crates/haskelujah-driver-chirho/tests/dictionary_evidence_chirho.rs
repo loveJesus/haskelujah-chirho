@@ -51,6 +51,8 @@ mod ordering_literals_chirho;
 mod ordering_operators_chirho;
 #[path = "dictionary_evidence_chirho/proven_occurrences_chirho.rs"]
 mod proven_occurrences_chirho;
+#[path = "dictionary_evidence_chirho/enum_chirho/range_syntax_chirho.rs"]
+mod range_syntax_chirho;
 #[path = "dictionary_evidence_chirho/string_lists_chirho.rs"]
 mod string_lists_chirho;
 #[path = "dictionary_evidence_chirho/ordering_chirho/structured_equalities_chirho.rs"]
