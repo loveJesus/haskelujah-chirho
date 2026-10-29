@@ -11,11 +11,17 @@ L.J. asked to improve or close GHC compatibility and enlist claude2_chirho. Base
 - [x] Land row 675 after repairing explicit disabled-extension false accepts; independent paired corpus verification gains tc135 alone, with all other verdicts held.
 - [x] Land rows 663/664 (e196be3 and record 4a6419a): inferred/owned numeric dictionaries and partial Cranelift Show-selector correction, with actual regression controls. Fractional and imported result-only ABI remain explicit boundaries.
 - [ ] Implement range typing, standard Enum identity and occurrence evidence (row 665), with all-engine GHC controls and holds.
-- [ ] Review and integrate Claude2's tested Enum Double change when ready.
-- [ ] Complete Enum's eight-slot dispatch (row 671) before landing newly reachable Double polymorphic calls. Row 670 is held for native wrong answers/SIGBUS until that prerequisite and range evidence form a safe stack.
+- [x] Review the Enum Double stack and composition controls. Hold row 670: after 663 repairs Num-only composition, the inferred Fractional+Enum composition still newly prints Infinity natively. Row 677 owns the remaining indexed superclass route; no Double instance is enabled in this landing.
+- [ ] Complete Enum's eight-slot dispatch (row 671) with row 665 for existing instances. Claude2 is preparing and gating this bounded split; Double rows and feature controls stay on the held branch.
 - [ ] Run paired compatibility measurements if frontend semantics change, record exact movers and residuals, and report the verified improvement.
 
 The published measurements predate this resumed work. The semantic gate must use an executable built from the current candidate; old CLI receipts are supporting evidence only.
+
+## Enum integration boundary
+
+Broker #30797 reports fresh GHC 9.14.1, interpreter, LLVM and true Cranelift measurements on the 663+665 base and the proposed 670/671 stack. Num-only inferred range composition now reaches GHC on all three engines. Inferred `enumFromTo (x / 2) (x / 2 + 1)` at Double newly prints `[Infinity,Infinity,Infinity]` on both native backends; the base rejects it for the absent Enum Double instance. Its signed twin is exact. Standalone inferred division already prints Infinity natively on the base, so the arithmetic root is pre-existing but the new instance exposes a new silent wrong answer.
+
+Decision #30802: keep 670 held and finish 665+671 for existing instances. No runtime approximation or silent-wrong residual is accepted to enable Double. Claude2 keeps the sole builder for the bounded split and focused gate; GPT keeps main and the single-writer ledger. Indexed Fractional superclass evidence (677), imported result-only dictionary inventory (678), Float representation (676), context-instance reachability and broader native Show remain open.
 
 ## Row 661 verification
 
