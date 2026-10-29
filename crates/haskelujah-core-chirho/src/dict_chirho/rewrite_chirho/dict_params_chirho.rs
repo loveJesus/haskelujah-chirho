@@ -318,8 +318,7 @@ impl DictPassCtxChirho {
             if !self
                 .instance_dicts_chirho
                 .contains_key(&(class_name_chirho.clone(), self_type_key_chirho.clone()))
-            {
-                if let Some((has_no_supers_chirho, method_slot_names_chirho)) = self
+                && let Some((has_no_supers_chirho, method_slot_names_chirho)) = self
                     .layouts_chirho
                     .get(&class_name_chirho)
                     .map(|layout_chirho| {
@@ -332,51 +331,49 @@ impl DictPassCtxChirho {
                                 .collect::<Vec<_>>(),
                         )
                     })
-                {
-                    if has_no_supers_chirho {
-                        let self_dict_binder_chirho = self.fresh_binder_chirho(
-                            &format!("$d{}Self", class_name_chirho),
-                            TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho)),
-                        );
-                        let context_dict_ids_chirho: Vec<CoreIdChirho> = scheme_chirho
-                            .preds_chirho
-                            .iter()
-                            .filter_map(|pred_chirho| {
-                                dict_vars_chirho
-                                    .get(&pred_chirho.class_name_chirho)
-                                    .copied()
-                            })
-                            .collect();
-                        let mut field_args_chirho = Vec::new();
-                        for slot_method_name_chirho in &method_slot_names_chirho {
-                            // A slot no row answers fails by its method's name, never a dangling
-                            // id (row 671).
-                            // workflow: language-features-chirho/dictionary-evidence-chirho
-                            field_args_chirho.push(self.context_slot_chirho(
-                                &class_name_chirho,
-                                slot_method_name_chirho,
-                                &parsed_type_key_chirho,
-                                &context_dict_ids_chirho,
-                            ));
-                        }
-                        self_dict_let_binds_chirho.push((
-                            self_dict_binder_chirho.clone(),
-                            CoreExprChirho::ConAppChirho {
-                                con_name_chirho: format!("$Dict_{}", class_name_chirho),
-                                args_chirho: field_args_chirho,
-                            },
-                        ));
-                        local_instance_dicts_chirho.insert(
-                            (class_name_chirho.clone(), self_type_key_chirho),
-                            self_dict_binder_chirho.id_chirho,
-                        );
-                        local_instance_dicts_chirho.insert(
-                            (class_name_chirho, parsed_type_key_chirho),
-                            self_dict_binder_chirho.id_chirho,
-                        );
-                        binding_is_rec_chirho = true;
-                    }
+                && has_no_supers_chirho
+            {
+                let self_dict_binder_chirho = self.fresh_binder_chirho(
+                    &format!("$d{}Self", class_name_chirho),
+                    TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho)),
+                );
+                let context_dict_ids_chirho: Vec<CoreIdChirho> = scheme_chirho
+                    .preds_chirho
+                    .iter()
+                    .filter_map(|pred_chirho| {
+                        dict_vars_chirho
+                            .get(&pred_chirho.class_name_chirho)
+                            .copied()
+                    })
+                    .collect();
+                let mut field_args_chirho = Vec::new();
+                for slot_method_name_chirho in &method_slot_names_chirho {
+                    // A slot no row answers fails by its method's name, never a dangling
+                    // id (row 671).
+                    // workflow: language-features-chirho/dictionary-evidence-chirho
+                    field_args_chirho.push(self.context_slot_chirho(
+                        &class_name_chirho,
+                        slot_method_name_chirho,
+                        &parsed_type_key_chirho,
+                        &context_dict_ids_chirho,
+                    ));
                 }
+                self_dict_let_binds_chirho.push((
+                    self_dict_binder_chirho.clone(),
+                    CoreExprChirho::ConAppChirho {
+                        con_name_chirho: format!("$Dict_{}", class_name_chirho),
+                        args_chirho: field_args_chirho,
+                    },
+                ));
+                local_instance_dicts_chirho.insert(
+                    (class_name_chirho.clone(), self_type_key_chirho),
+                    self_dict_binder_chirho.id_chirho,
+                );
+                local_instance_dicts_chirho.insert(
+                    (class_name_chirho, parsed_type_key_chirho),
+                    self_dict_binder_chirho.id_chirho,
+                );
+                binding_is_rec_chirho = true;
             }
         }
 
