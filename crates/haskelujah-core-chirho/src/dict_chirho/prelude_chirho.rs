@@ -4,10 +4,13 @@
 //! Prelude function generation: all generate_*_prelude_chirho methods.
 
 #![allow(unused_imports)]
+// The builtin Enum rows live together in `prelude_chirho/enum_chirho/` (rows 520 and 567).
+#[path = "prelude_chirho/enum_chirho/char_enum_chirho.rs"]
 mod char_enum_chirho;
 mod demand_chirho;
 mod floating_methods_chirho;
 pub(super) mod fractional_power_chirho;
+#[path = "prelude_chirho/enum_chirho/integral_enum_chirho.rs"]
 mod integral_enum_chirho;
 mod io_refs_chirho;
 mod maybe_transformer_chirho;
