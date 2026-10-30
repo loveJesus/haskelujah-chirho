@@ -23,6 +23,8 @@ use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
+pub mod declarations_chirho;
+
 /// `E0206`: a type form that needs an extension which is not enabled.
 const ILLEGAL_TYPE_FORM_CODE_CHIRHO: u16 = 206;
 

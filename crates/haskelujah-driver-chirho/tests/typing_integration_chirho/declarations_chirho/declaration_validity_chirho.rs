@@ -1,0 +1,339 @@
+// For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+
+//! Row 683 declaration-validity controls.
+//!
+//! The negatives run the whole frontend and must fail with E0209 for GHC's
+//! reason. The corpus positives are should_compile files that check clean
+//! today and must keep doing so. The direct validator tests read the AST that
+//! lowering really produces, so a hold cannot pass merely because an earlier
+//! phase stopped.
+//! workflow: compiler-pipeline-chirho/declaration-validity-chirho
+
+use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
+use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
+use haskelujah_span_chirho::{FileIdChirho, SourceMapChirho};
+use haskelujah_typing_chirho::check_module_declaration_validity_chirho;
+
+use super::rejected_like_ghc_chirho;
+
+// tcfail038 (GHC-10498): each method is bound twice, apart.
+const CONFLICT_SOURCE_CHIRHO: &str = r#"module ConflictChirho where
+data NumberChirho = OneChirho | TwoChirho
+instance Eq NumberChirho where
+  leftChirho == rightChirho = True
+  leftChirho /= rightChirho = False
+  leftChirho == rightChirho = False
+  leftChirho /= rightChirho = True
+"#;
+
+// A newtype error and an unknown type: naming reports first.
+const ORDER_SOURCE_CHIRHO: &str = r#"module OrderChirho where
+newtype BothChirho = BothChirho Int Int
+valueChirho :: NoSuchTypeOrderChirho
+valueChirho = undefined
+"#;
+
+// DatatypeContexts writes the context on the head; the CST eats the head up to
+// `=`, so the constructor keeps its one field (#30825).
+const DATATYPE_CONTEXTS_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE DatatypeContexts #-}
+module ContextsChirho where
+newtype Eq a => SameChirho a = SameChirho a
+newtype (Show a, Eq a) => ListedChirho a = ListedChirho [a]
+newtype () => BarChirho = BarChirho Int
+"#;
+
+// No constructor context: vanilla, reordered forall, rank-N field, and the
+// GADT record form of T18023.
+const GADT_NEWTYPES_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE GADTs, RankNTypes #-}
+module GadtChirho where
+newtype PlainChirho a where
+  MkPlainChirho :: a -> PlainChirho a
+newtype SwappedChirho a b where
+  MkSwappedChirho :: forall b a. Int -> SwappedChirho a b
+newtype RankChirho where
+  MkRankChirho :: (forall a. Show a => a -> String) -> RankChirho
+newtype RecordChirho a b where
+  MkRecordChirho :: forall b a. { unRecordChirho :: Either a b } -> RecordChirho a b
+"#;
+
+// Prefix and infix equations of one method kept together, and an instance
+// signature beside its equations.
+const EQUATIONS_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE InstanceSigs #-}
+module EquationsChirho where
+data ShapeChirho = CircleChirho | SquareChirho
+instance Eq ShapeChirho where
+  (==) CircleChirho CircleChirho = True
+  SquareChirho == SquareChirho = True
+  _ == _ = False
+instance Show ShapeChirho where
+  show :: ShapeChirho -> String
+  show CircleChirho = "circle"
+  show SquareChirho = "square"
+  showsPrec _ shapeChirho restChirho = show shapeChirho ++ restChirho
+"#;
+
+/// GHC accepts the program, so the checker must too.
+fn checks_like_ghc_chirho(file_name_chirho: &str, source_chirho: &str) {
+    if let Err(error_chirho) = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+    ) {
+        panic!("{file_name_chirho}: GHC accepts this program; we rejected it: {error_chirho}");
+    }
+}
+
+/// The module exactly as lowering writes it, before any later phase runs.
+fn lowered_chirho(source_chirho: &str) -> ModuleChirho {
+    let green_chirho =
+        ParserChirho::new_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO).parse_chirho();
+    lower_module_chirho(&green_chirho, FileIdChirho::SYNTHETIC_CHIRHO)
+}
+
+/// Each Haskell 98 newtype constructor as lowered: its name and field count.
+fn newtype_constructors_chirho(module_chirho: &ModuleChirho) -> Vec<(String, usize)> {
+    module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::NewtypeDeclChirho {
+                constructor_chirho:
+                    ConDeclChirho::OrdinaryChirho {
+                        name_chirho,
+                        fields_chirho,
+                        ..
+                    },
+                ..
+            } => Some((name_chirho.text_chirho().to_string(), fields_chirho.len())),
+            DeclChirho::NewtypeDeclChirho {
+                constructor_chirho:
+                    ConDeclChirho::RecordChirho {
+                        name_chirho,
+                        fields_chirho,
+                        ..
+                    },
+                ..
+            } => Some((
+                name_chirho.text_chirho().to_string(),
+                fields_chirho
+                    .iter()
+                    .map(|field_chirho| field_chirho.names_chirho.len())
+                    .sum::<usize>(),
+            )),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The validator finds nothing in the module as lowered.
+fn validator_is_silent_chirho(label_chirho: &str, module_chirho: &ModuleChirho) {
+    let errors_chirho = check_module_declaration_validity_chirho(module_chirho);
+    assert!(
+        errors_chirho.is_empty(),
+        "{label_chirho}: {errors_chirho:?}"
+    );
+}
+
+#[test]
+fn a_newtype_constructor_with_two_fields_is_rejected_chirho() {
+    // T23308's `newtype B1 = B1 C1 C1` (GHC-23517).
+    rejected_like_ghc_chirho(
+        "module TwoFieldsChirho where\ndata PartChirho = PartChirho Int\nnewtype BothChirho = BothChirho PartChirho PartChirho\n",
+        "TwoFieldsChirho.hs",
+        &["E0209", "exactly one field", "`BothChirho` has two"],
+    );
+}
+
+#[test]
+fn a_newtype_constructor_with_no_field_is_rejected_chirho() {
+    // T15523's `newtype Duration = Foo` (GHC-23517).
+    rejected_like_ghc_chirho(
+        "module NoFieldChirho where\nnewtype DurationChirho = FooChirho\n",
+        "NoFieldChirho.hs",
+        &["E0209", "exactly one field", "`FooChirho` has none"],
+    );
+}
+
+#[test]
+fn a_newtype_record_with_two_fields_is_rejected_chirho() {
+    rejected_like_ghc_chirho(
+        "module TwoNamesChirho where\nnewtype PairChirho = PairChirho { leftChirho, rightChirho :: Int }\n",
+        "TwoNamesChirho.hs",
+        &["E0209", "`PairChirho` has two"],
+    );
+}
+
+#[test]
+fn a_gadt_newtype_constructor_context_is_rejected_chirho() {
+    // T15796's `MkN :: Show a => a -> N a` (GHC-17440), with and without a forall.
+    for (file_chirho, signature_chirho) in [
+        ("ContextChirho.hs", "Show a => a -> ShownChirho a"),
+        (
+            "ForallContextChirho.hs",
+            "forall a. Show a => a -> ShownChirho a",
+        ),
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE GADTs #-}}\nmodule ContextChirho where\nnewtype ShownChirho a where\n  MkShownChirho :: {signature_chirho}\n"
+        );
+        rejected_like_ghc_chirho(
+            &source_chirho,
+            file_chirho,
+            &["E0209", "must not have a context", "MkShownChirho"],
+        );
+    }
+}
+
+#[test]
+fn conflicting_instance_bindings_are_rejected_chirho() {
+    rejected_like_ghc_chirho(
+        CONFLICT_SOURCE_CHIRHO,
+        "ConflictChirho.hs",
+        &[
+            "E0209",
+            "Conflicting definitions for `==`",
+            "Conflicting definitions for `/=`",
+        ],
+    );
+}
+
+#[test]
+fn name_resolution_errors_are_still_reported_first_chirho() {
+    // The rules run before deriving but report after naming, as GHC's renamer
+    // errors come before its validity checks.
+    let message_chirho = match haskelujah_driver::typecheck_source_chirho(
+        ORDER_SOURCE_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "OrderChirho.hs",
+    ) {
+        Ok(_) => String::new(),
+        Err(error_chirho) => error_chirho.to_string(),
+    };
+    assert!(
+        message_chirho.contains("NoSuchTypeOrderChirho"),
+        "naming must reject the unknown type: {message_chirho}"
+    );
+    assert!(
+        !message_chirho.contains("E0209"),
+        "naming errors come first: {message_chirho}"
+    );
+}
+
+#[test]
+fn should_compile_newtypes_keep_checking_chirho() {
+    // Rank-N, record and GADT-syntax newtypes that check clean before row 683.
+    for (file_chirho, source_chirho) in [
+        (
+            "tc233.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/tc233.hs"
+            ),
+        ),
+        (
+            "T12133.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T12133.hs"
+            ),
+        ),
+        (
+            "LocalGivenEqs.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/LocalGivenEqs.hs"
+            ),
+        ),
+        (
+            "Vta1.hs",
+            include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/Vta1.hs"),
+        ),
+        (
+            "tc225.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/tc225.hs"
+            ),
+        ),
+        (
+            "T14154.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T14154.hs"
+            ),
+        ),
+        (
+            "T16141.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T16141.hs"
+            ),
+        ),
+        (
+            "T18023.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T18023.hs"
+            ),
+        ),
+        (
+            "T18891.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T18891.hs"
+            ),
+        ),
+    ] {
+        checks_like_ghc_chirho(file_chirho, source_chirho);
+    }
+}
+
+#[test]
+fn derived_instances_are_not_judged_as_written_chirho() {
+    // syn-perf derives Show and Typeable on two dozen newtypes. Deriving runs after
+    // the rules, so no generated instance body is judged as if written.
+    checks_like_ghc_chirho(
+        "syn-perf.hs",
+        include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/syn-perf.hs"),
+    );
+}
+
+#[test]
+fn datatype_context_newtypes_lower_to_one_field_chirho() {
+    // The one-field precondition is asserted on the lowered AST itself. The head of
+    // a nonempty context is misnamed, a separate pre-existing lowering issue.
+    let module_chirho = lowered_chirho(DATATYPE_CONTEXTS_SOURCE_CHIRHO);
+    assert_eq!(
+        newtype_constructors_chirho(&module_chirho),
+        [
+            ("SameChirho".to_string(), 1),
+            ("ListedChirho".to_string(), 1),
+            ("BarChirho".to_string(), 1),
+        ]
+    );
+    validator_is_silent_chirho("datatype contexts", &module_chirho);
+}
+
+#[test]
+fn an_unreadable_constructor_name_is_not_judged_chirho() {
+    // `(:|)` is a valid prefix constructor that lowering cannot name yet.
+    let module_chirho =
+        lowered_chirho("module OperatorChirho where\nnewtype ConsChirho = (:|) Int\n");
+    for (name_chirho, field_count_chirho) in newtype_constructors_chirho(&module_chirho) {
+        assert!(
+            name_chirho.is_empty() || field_count_chirho == 1,
+            "a named constructor carries its one field: {name_chirho} {field_count_chirho}"
+        );
+    }
+    validator_is_silent_chirho("prefix operator constructor", &module_chirho);
+}
+
+#[test]
+fn gadt_newtypes_without_a_constructor_context_are_not_judged_chirho() {
+    validator_is_silent_chirho(
+        "GADT newtypes",
+        &lowered_chirho(GADT_NEWTYPES_SOURCE_CHIRHO),
+    );
+}
+
+#[test]
+fn signatures_and_adjacent_equations_are_not_conflicts_chirho() {
+    validator_is_silent_chirho(
+        "instance equations",
+        &lowered_chirho(EQUATIONS_SOURCE_CHIRHO),
+    );
+}

@@ -32,6 +32,10 @@ pub use infer_chirho::infer_module_chirho;
 pub use infer_chirho::infer_module_with_imports_chirho;
 pub use kind_chirho::{KindChirho, KindEnvChirho, KindResultChirho, infer_module_kinds_chirho};
 pub use ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
+pub use validity_chirho::declarations_chirho::{
+    DeclarationErrorChirho, check_module_declaration_validity_chirho,
+    check_module_declaration_validity_diagnostics_chirho,
+};
 pub use validity_chirho::{
     ValidityErrorChirho, ValidityResultChirho, check_module_type_validity_chirho,
     check_module_type_validity_diagnostics_chirho,

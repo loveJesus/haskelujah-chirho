@@ -1860,6 +1860,14 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     module_chirho.decls_chirho = splice_result_chirho.decls_chirho;
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 
+    // Phase 2.4: Declaration validity (row 683), judged on the module as written,
+    // before deriving appends generated instances. Reported after name resolution.
+    // workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    let declaration_validity_chirho =
+        haskelujah_typing_chirho::check_module_declaration_validity_diagnostics_chirho(
+            &module_chirho,
+        );
+
     // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
     let deriving_warnings_chirho =
         haskelujah_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
@@ -1879,6 +1887,13 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     let resolve_result_chirho = resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
     if !defer_errors_chirho && resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(resolve_result_chirho.diagnostics_chirho);
+    }
+    // GHC never defers a declaration-shape error, so the defer flags do not apply.
+    if declaration_validity_chirho
+        .diagnostics_chirho
+        .has_errors_chirho()
+    {
+        return Err(declaration_validity_chirho.diagnostics_chirho);
     }
 
     // Phase 3.1: Orphan instance detection
