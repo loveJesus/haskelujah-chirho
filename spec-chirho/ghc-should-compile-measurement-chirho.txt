@@ -1,61 +1,59 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 # GHC should_compile — current paired typecheck measurement
-# measured: 2026-10-30T00:04:58.472Z by HASKELUJAH/gpt_chirho.
-# source: ee64da7b7a2c391bf18cee474b327ff774c03aba
-# crates tree: 2d144db46f2e8477d7fbe4cf6bece3dd5ce1522d
-# local development evidence only. No remote push or release is implied.
-# frozen candidate CLI SHA-256: e60d256fc0e66b7621910e186756cc67829d6c0c174a456ebd2150e47925b077
-# frozen pre-semantic baseline CLI SHA-256: 546cce8c0a1ea1d1532431bcb4b064cd5cf4ab08d93af03c12a5626523c3f924
-# The baseline is the controlled post-661 neutral build (ff133d3e crate source), not
-# the October 26 published executable. Its per-file verdict sets were independently
-# compared with that publication before this final run; both sets were equal.
+# measured: 2026-10-30T12:36:55.341478+00:00 by HASKELUJAH/gpt_chirho.
+# source: b489fb01fd11422c39c45b7bffe7d6a8bd04defb
+# crates tree: 7cc25c58752497ac26bea5af9fc8a476e0c3482f
+# Local development evidence only. No remote push or release is implied.
+# Frozen candidate CLI SHA-256: ce9995561e0f6ac946fe086a44e0e66443e45bb02cabdbc4c468fac50f467f79
+# Retained previous-publication CLI SHA-256: e60d256fc0e66b7621910e186756cc67829d6c0c174a456ebd2150e47925b077
+# Baseline: complete retained e60d256f pass from the previous publication, not a
+# fresh execution in this unit. It matched the starting 75b4e3a9 crate source.
 # Source manifest (full relative paths plus content SHA-256):
 #   4cf60c2b36d41e9f7f9f4d70c95d7213b80de8e839ed1f62f89cdd684411dbc6
 # Candidate verdict-pass SHA-256 (both complete passes):
-#   c22508786b468b411bf1e370c278c340e1004cfa083c85dc2f2a16bd9202a5cc
-# Nonmatching-list SHA-256 (C-collated identities, each newline-terminated):
-#   685434be9b71e92ec2d93414072cbe58434ead71b03af347690f96e72d27a4f2
-# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/final-breakthrough-chirho/paired-measurement-chirho
-# One fresh baseline pass and TWO complete candidate passes per axis. Each candidate
-# pair is byte-identical. Frozen binary hashes and full corpus manifests are checked
-# unchanged before/after. Raw stdout, stderr, exit code and source SHA-256 are retained
-# per file, for every pass. comparison-chirho.json records both axes together.
-# Method: haskelujah check <file>; four workers; 15 seconds/file, each timeout retried
-# alone at 60 seconds. The committed corpus-runner-chirho/classify_chirho.sh rule is
-# unchanged: timeout, abnormal exit, real Rust panic header, then REJECT(error[E+rc1)
-# or ACCEPT(rc0 without error[E). The wrapper refuses every unresolved abnormal,
-# panic, timeout, unclassified row, wrong exit code or denominator mismatch.
+#   4f3c3fb74d5b255a457fb35d99afa60711b9dd7b31700e966d8add2776a14265
+# Nonmatching-list SHA-256 (C-collated identities, newline-terminated):
+#   54cf649b84fa5aafd5ee252a1e75b8d270d2d47efe6085e7ab43923c8182cfd6
+# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/frontier-closure-chirho/final-paired-measurement-chirho
+# TWO fresh complete candidate passes per axis have byte-identical verdict TSVs.
+# Every raw stdout/stderr/exit/source hash is retained. Full fixture manifests,
+# executable hashes and exact file identities are unchanged before/after; no
+# timeout, panic, abnormal exit or unclassified verdict remains. Both axes took
+# 400.89 seconds together. Root also verifies a clean source tree.
+# Method: committed axis_pass_chirho.sh and unchanged classifier; four workers,
+# 15 seconds/file, each timeout retried alone at 60 seconds. ACCEPT means rc0 without error[E,
+# REJECT means error[E with rc1; the wrapper refuses other classifications.
 # Scope: recursive ghc-tests-chirho/typecheck-chirho/should_compile, 938 .hs files.
-# These are preserved DIRECTORY-LABEL axes; the runner does not apply all.T options
-# or reconstruct the upstream driver. GHC/all.T disagreements (including tc134,
-# T12104 and T14590) remain explicit protocol boundaries, never relabelled here.
-# Check acceptance/rejection does not establish successful execution or full GHC
-# compatibility. Native arithmetic/Enum improvements have separate execution controls.
-# Fresh GHC 9.14.1 accepts tc135 and rejects tcfail009, confirming those two gains.
-# It also accepts tc087: the candidate's new rejection is a VALID-SOURCE CHECK LOSS,
-# because its Double range now requires the absent Enum Double instance. This loss
-# is explicit, not relabelled or hidden by an unchanged accept total. Row670 is held
-# behind row677: enabling it now exposes a native silent-wrong Fractional composition.
+# These remain DIRECTORY-LABEL axes. The runner does not apply all.T flags or
+# reconstruct its driver. The separate full frontier audit records expected
+# rejection/obsolete files, deferred-error options, helpers and warning policy.
+# No denominator or source fixture is relabelled. Check results do not establish
+# successful execution or full GHC compatibility.
+# Fresh GHC 9.14.1 checks all eight exact mover files: both acceptance gains and
+# all six new rejections agree in verdict. Five rejections are for GHC's reason;
+# T17955 is COINCIDENTAL: lowering invents a two-field Coercible constructor,
+# whereas GHC rejects its constructor context. Never count it as a reasoned fix.
+# The inherited tc087 valid-source loss is still OPEN: GHC accepts it, but Enum
+# Double remains absent. Held670 must not enable native wrong inferred Fractional
+# arithmetic;677 needs retained typed superclass/builtin authority, not names alone.
 # Full GHC compatibility remains OPEN.
 #
-# RESULT: PASS=884 FAIL=54 TOTAL=938
-# STABILITY: DETERMINISTIC — two complete byte-identical candidate passes.
-# QUOTE-AS: ~94% (884 of 938) — do not quote a third significant figure
-# OTHER AXIS (quote together): 253 of 767 = 33.0% — ~32% truncated, ~33% nearest; NO single label
+# RESULT: PASS=886 FAIL=52 TOTAL=938
+# STABILITY: DETERMINISTIC — two complete byte-identical candidate verdict passes.
+# QUOTE-AS: ~94% (886 of 938) — do not quote a third significant figure
+# OTHER AXIS (quote together): 259 of 767 = 33.8% — ~33% truncated, ~34% nearest; NO single label
 #
-# Fresh baseline -> candidate movers (2):
-#   tc087.hs: ACCEPT -> REJECT
-#   tc135.hs: REJECT -> ACCEPT
-# Previous publication -> candidate: gained 1, lost 1
-#   gained: tc135.hs
-#   lost: tc087.hs
-# The full previous measurement, original gate scopes and older history are retained
-# at Git fb8315ba983fbfbe150a281c49db463ac39ea227:spec-chirho/ghc-should-compile-measurement-chirho.txt.
-# This publication replaces the current record rather than relabelling old execution
-# receipts. Final source gates and limits are in the October 29 compatibility tasklist.
-# Fresh GHC mover verdicts and per-file source hashes are in the receipt directory.
+# Previous publication -> candidate movers (2):
+#   T18252.hs: REJECT -> ACCEPT
+#   T24845a.hs: REJECT -> ACCEPT
+# Accepted-source losses in this unit: none.
+# Prior publication and full historical record remain at
+# 75b4e3a9:spec-chirho/ghc-should-compile-measurement-chirho.txt.
+# Closure map, exact members and proof dependencies:
+# spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-30-chirho/
+# 26-10-30_06-53-tasklist-corpus_frontier_closure-chirho.md
 #
-# ---- 54 nonmatching files under the preserved directory-label protocol ----
+# ---- 52 nonmatching files under the preserved directory-label protocol ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -77,7 +75,6 @@ T16188.hs
 T17594a.hs
 T17772.hs
 T18036b.hs
-T18252.hs
 T20443a.hs
 T20922.hs
 T21010.hs
@@ -87,7 +84,6 @@ T21558.hs
 T23501a.hs
 T23739a.hs
 T24810.hs
-T24845a.hs
 T25180.hs
 T25266.hs
 T25266b.hs

@@ -19,7 +19,7 @@ Audit receipts and machine-readable manifests live in ignored `tmp-chirho/fronti
 - [x] Run fresh GHC 9.14.1 oracles over all 54: 46 plain accepts, three intended rejects, one obsolete reject, and four deliberate-error examples accepted with their literal upstream defer options. No abnormal result occurred.
 - [x] Build the shared-root dependency graph below, with complete member ledgers, control obligations, source homes and uncertainty labels in the companion audits.
 - [x] Implement and locally land row 682's shared equality-fixity correction, without changing equality solving.
-- [ ] Verify each source unit at its actual scope, preserve RED/abnormal evidence, and update paired results only after the tested candidate has completed both axes.
+- [x] Verify each source unit at its actual scope, retain held/RED evidence, and refresh both paired artifacts only after two complete matching candidate passes. Fresh GHC confirms all eight exact changed fixtures.
 - [ ] Publish the actionable closure map and actual improvements, update the existing ledger rows, and report unclosed work honestly.
 
 ## Initial protocol finding
@@ -76,3 +76,18 @@ Order is driven by actual shared roots, not easiest counts:
 6. **Proof/typing families remain open.** Row 662 owns ground-goal proof and placement; preserve proven/refuted/unknown outcomes and every MPTC argument variable. Higher-rank annotated parameters, pattern-binding SCC order, GADT branch givens, visible/invisible binder order and type-family improvement each have exact members in the accept audit. The new [677 trace](row677-fractional-evidence-trace-chirho.md) identifies both numeric-hint priority and missing indexed superclass projection, but withdraws the proposed names/arity proof: ClassEnv loses superclass arguments and canonical builtin origin. A source/imported `Fractional a` with superclass Num Int defeats that shortcut. Typed edge or surviving builtin authority must precede execution changes; existing generated selectors alone are not a proof. The 4,001-line class root needs a structural split before new logic. `RuleEqs` and `T21558` still require a live producer trace; their precise root is not asserted. Kind checking requires a mechanical split before broad additions to its oversized root. Primitive Int# literals, GHC2024 expansion, implicit parameters and Arrows have their own contracts, not placeholder builtins.
 
 Acceptance for each unit: unchanged fixtures; fresh GHC oracle at the actual case setup; normal positive/negative tests; runtime proof whenever newly admitted code can execute differently; complete both-axis verdict comparison with no unexplained loss or abnormal result; warning-free build and no new changed-line lint; exact source and executable hashes. Retain a RED intermediate and count the final tested tip only. The final paired artifact refresh runs twice on the combined source. Full compatibility stays open until these roots and the configured-case contract pass.
+
+## Final combined measurement
+
+Root source b489fb01, crate tree 7cc25c58752497ac26bea5af9fc8a476e0c3482f, frozen CLI ce9995561e0f6ac946fe086a44e0e66443e45bb02cabdbc4c468fac50f467f79. Two complete candidate passes per axis match byte for byte in 400.89 seconds. Full fixture manifests, all raw return codes/source hashes and executable hashes are unchanged. The baseline is the retained complete e60d256f pass, not a fresh baseline execution. Independent read-only review recomputes the exact members, hashes and movers. Root's final build has no warning; the two equality proof programs and class-default program match GHC on all three engines, nine execution cells. The valid local GADT hold checks again, proving the held 684 experiment is absent.
+
+Both current published quote lines:
+
+```text
+# QUOTE-AS: ~94% (886 of 938) — do not quote a third significant figure
+# QUOTE-AS: 259 of 767 = 33.8% — ~33% truncated, ~34% nearest; NO single label
+```
+
+Exactly two valid-file gains, five right-reason new refusals and one separately coincidental T17955 refusal; no accepted-source loss in this unit. The remaining 52 raw acceptance failures are 44 plain GHC-valid files, four upstream defer-option contracts, three intended rejections and one disabled obsolete file. The unchanged raw measurement is distinct from that configured expectation map. tc087's inherited valid-source loss and held Enum Double remain explicit.
+
+Receipts are `tmp-chirho/frontier-closure-chirho/final-paired-measurement-chirho/`, `final-mover-oracles-chirho/` and `final-main-chirho/`. The consolidated report is `spec-chirho/ai-ceo-reports-chirho/26-10-chirho/26-10-30_08-36-ai-ceo-report-haskelujah-chirho.md`; its review/transport state is recorded there. No remote push or release. This completes the audited closure map and first verified units, not every compiler repair on that map.
