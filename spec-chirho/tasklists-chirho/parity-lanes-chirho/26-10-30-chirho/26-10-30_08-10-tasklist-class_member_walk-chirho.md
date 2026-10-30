@@ -25,10 +25,25 @@ GPT owns main and the ledger. No remote push or release.
       the existing leak tests.
 - [x] Driver controls: 19 pass, including the default body after a class fixity executed on the
       interpreter, LLVM and Cranelift (inherited vs written).
-- [ ] Focused gate.
-- [ ] Candidate CLI on the declared-name shapes; one complete pass on both axes compared with
-      row 683's retained pass.
+- [x] Focused gate on 5ed91359 (4 min 57 s): changed-line Clippy 0 hits and no diagnostics in
+      changed files, warning-free check, parser 406/406, typing validity 30/30, typing integration
+      119/119 (2 ignored), instance obligations 28/28, rustfmt, diff-check, gitleaks.
+- [x] Frozen candidate CLI sha256 21642e026283d0d5ed9534a3bfaaec6134813fc1e45a402f290c9ec8f8326567:
+      the seven declared-name shapes (backtick fixity, two-operator fixity, associated-operator
+      fixity, INLINE and MINIMAL pragmas, Haddock comments, kinded associated type between) are
+      accepted like GHC and row 683, with no E0209. The default-body program row 683 rejected
+      now checks. One complete pass on both axes (216 s): should_compile is member-for-member
+      identical to row 683 (886/938, verdict file 4f3c3fb7); should_fail 259/767, whose only
+      mover is MissingDefaultMethodBinding for GHC's reason. E0209 appears only in the six
+      should_fail files rows 683 and 685 reject (T17955 counted as coincidental).
 - [ ] Tested tip and SLOT-FREE.
+
+## Gate record
+
+Receipts: `tmp-chirho/r685-class-member-walk-chirho/` in the claude2 worktree: `gate-chirho/`,
+`oracle-chirho/` (GHC, row 683 and candidate verdicts for every control and shape), and
+`corpus-chirho/comparison-chirho.json` (row 683 retained pass 3bb311b3 and the original e60d256f
+as baselines, neither re-run).
 
 Outside this unit: wrong or unknown class/instance members (an undeclared-operator class fixity
 and an instance fixity stay residual wrong-accepts), and every row 683 boundary.
