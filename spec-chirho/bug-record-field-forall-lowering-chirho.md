@@ -42,7 +42,7 @@ A second symptom on the same path: `fld :: forall a. a -> String` lowers as
 
 ## Why it matters
 
-The validity pass (`crates/haskelujah-typing-chirho/src/validity_chirho.rs`) walks constructor
+The validity pass (`crates/haskelujah-typing-chirho/src/validity_chirho/mod.rs`) walks constructor
 fields to implement GHC's `GHC-91510` "Illegal polymorphic/qualified type" check. When record
 fields were included, six should_compile files that GHC accepts were rejected, all through this
 artifact rather than through any defect in the programs:
@@ -74,6 +74,6 @@ It is a parser change that touches **every record field containing a `forall`** 
 938-file accept gate and its own 767-file reject count, not a bundle into a typing-crate guard.
 
 When it lands, re-enable the record arm in `walk_con_decl_chirho`
-(`validity_chirho.rs`, currently `ConDeclChirho::RecordChirho { .. } => {}`) and re-run both
+(`validity_chirho/mod.rs`, currently `ConDeclChirho::RecordChirho { .. } => {}`) and re-run both
 axes; `T7019`'s record field becomes reachable, though `T7019`'s *actual* GHC error is on a
 Constraint-kinded type synonym and still needs kind information the syntactic pass lacks.
