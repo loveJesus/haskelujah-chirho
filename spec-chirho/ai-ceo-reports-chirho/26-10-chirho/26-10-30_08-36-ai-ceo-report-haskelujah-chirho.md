@@ -2,7 +2,7 @@
 
 # HASKELUJAH corpus frontier and first repairs Chirho
 
-Status: READY FOR CONTRIBUTOR REVIEW - NOT SENT. Evidence cut: 2026-10-30 08:40 EDT. Compiler/sender: HASKELUJAH/gpt_chirho. Reporting fallback: HASKELUJAH/claude2_chirho. Previous report: `spec-chirho/ai-ceo-reports-chirho/26-10-chirho/26-10-29_20-08-ai-ceo-report-haskelujah-chirho.md` (sent once in DM2557). This report covers the project fleet once, with no second queue.
+Status: REVIEWED - NOT SENT. Evidence cut: 2026-10-30 08:44 EDT. Compiler/sender: HASKELUJAH/gpt_chirho. Reporting fallback: HASKELUJAH/claude2_chirho. Previous report: `spec-chirho/ai-ceo-reports-chirho/26-10-chirho/26-10-29_20-08-ai-ceo-report-haskelujah-chirho.md` (sent once in DM2557). This report covers the project fleet once, with no second queue.
 
 L.J. asked why the acceptance score remained near its previous level and how to close the remaining valid and invalid cases. The complete frontier now has a source-backed closure map, and three safe source units have landed locally. Full GHC compatibility remains open. No push, release or public activation occurred.
 
@@ -18,7 +18,7 @@ The tracked day directory contains complete member ledgers, 568 source/upstream 
 
 - **682, equality precedence:** the shared type lowerer gives `~` GHC's non-associative precedence four. T18252 and T24845a now check. The existing addition cancellation solver needed no relaxation. Unrelated addition, zero-product and false-equality negatives remain refused. Source fbef8a56, tests 6ffe8072.
 - **683, written declaration validity:** before generated deriving instances, check newtype field count, a GADT newtype constructor's own context and repeated instance bindings. Naming errors still report first; shape errors are never deferred. T15523, T15796, T23308 and tcfail038 now refuse for GHC's reason. T17955 also refuses, through a malformed lowered two-field Coercible constructor: it is a coincidental verdict change, never a right-reason gain. Source 22c4202f, preparatory moves 272bb1ec/cb6ac89f.
-- **685, complete class member walk and default signatures:** a class's own method/associated-family fixity no longer truncates its remaining members. Instance and other stop conditions remain. The fourth validity rule can then reject MissingDefaultMethodBinding without falsely rejecting FixityBetween. Source 7369f2c9. Inherited and written defaults print GHC's 4,42,5,6 on interpreter, LLVM and true Cranelift.
+- **685, class member walk past its own fixities and default signatures:** a class's own method/associated-family fixity no longer truncates its remaining members. Instance and other stop conditions remain. The fourth validity rule can then reject MissingDefaultMethodBinding without falsely rejecting FixityBetween. Source 7369f2c9. Inherited and written defaults print GHC's 4,42,5,6 on interpreter, LLVM and true Cranelift.
 
 The tested/replayed final crate tree is `7cc25c58752497ac26bea5af9fc8a476e0c3482f`, identical at Claude2's 8d13752f and root's b489fb01. The final unit gate passed parser 406, validity 30, typing integration 119 (2 ignored) and instance obligations 28. It took 4 min 57 s. Workspace check has zero compiler warnings; changed-file Clippy has zero diagnostics. Pre-existing workspace lint debt remains. Formatting, diff-check and complete-range secret scans pass. No full driver-library or ghc_bulk suite ran.
 
@@ -56,3 +56,7 @@ GPT owns main, the progress DB, final independent measurement and this report. C
 Closure map: `spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-30-chirho/26-10-30_06-53-tasklist-corpus_frontier_closure-chirho.md`.
 
 Root receipts: `tmp-chirho/frontier-closure-chirho/`, especially `final-paired-measurement-chirho/comparison-chirho.json`, `final-mover-oracles-chirho/` and `final-main-chirho/`; producer receipts: Claude2's `tmp-chirho/r683-declaration-validity-chirho/` and `tmp-chirho/r685-class-member-walk-chirho/`. Contributor review and transport are recorded below when complete. Saved draft, broker delivery, acknowledgment and portfolio fold remain distinct states.
+
+## Contributor review
+
+Claude2's read-only review #30840 verifies its source/replay identities, scoped gates, runtime outputs, held history and residuals. All three corrections are incorporated: the member walk is not complete for every member kind; three rules landed in 683 and the fourth in 685; the exhaustive 54/514 audits belong to internal reviewers, while Claude2 owned the focused validity review and implementation. Its formatting-only `rustfmt --emit stdout` during the source-only preparation window is disclosed: no Cargo, rustc, GHC or compiler CLI ran and no builder state was touched. Internal final measurement review independently confirms both complete passes, exact mover lists and hashes without executing compilers.

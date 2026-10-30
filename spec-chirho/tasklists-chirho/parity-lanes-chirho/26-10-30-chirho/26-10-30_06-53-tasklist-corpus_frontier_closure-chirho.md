@@ -13,14 +13,14 @@ The existing committed paired artifacts remain the published directory-label mea
 Audit receipts and machine-readable manifests live in ignored `tmp-chirho/frontier-closure-chirho/`. The durable outcome will be a concise tracked closure plan under this day directory, linked to existing row owners rather than creating another task queue. Compiler fixes use logical category homes under the completed inference decomposition, with positive and negative behavioral controls for the shared root. Source placement is reviewed before a new implementation module.
 
 - [x] Refresh direct request, instructions, Git, both committed measurements and machine/resource rules.
-- [x] Assign exhaustive read-only accept/reject audits and a focused declaration-validity review to Claude2.
+- [x] Assign exhaustive read-only accept/reject audits to internal reviewers and a focused declaration-validity review to Claude2.
 - [x] Account for all 54 directory-label rejections using raw diagnostics, actual compiler paths and upstream all.T expectations.
 - [x] Account for all 514 directory-label accepts in should_fail, distinguishing real invalid-program acceptance from auxiliary files, flags and driver context. Per-member causal proof remains incomplete and is labelled accordingly.
 - [x] Run fresh GHC 9.14.1 oracles over all 54: 46 plain accepts, three intended rejects, one obsolete reject, and four deliberate-error examples accepted with their literal upstream defer options. No abnormal result occurred.
 - [x] Build the shared-root dependency graph below, with complete member ledgers, control obligations, source homes and uncertainty labels in the companion audits.
 - [x] Implement and locally land row 682's shared equality-fixity correction, without changing equality solving.
 - [x] Verify each source unit at its actual scope, retain held/RED evidence, and refresh both paired artifacts only after two complete matching candidate passes. Fresh GHC confirms all eight exact changed fixtures.
-- [ ] Publish the actionable closure map and actual improvements, update the existing ledger rows, and report unclosed work honestly.
+- [x] Publish the actionable closure map and measured improvements, update the existing ledger rows, retain the held failures, and compile the reviewed consolidated report. Full compatibility remains open.
 
 ## Initial protocol finding
 
@@ -42,7 +42,7 @@ The directory-label measurements remain fixed-contract historical comparisons. A
 flowchart TD
     contracts_chirho[Exact source and upstream case contracts] --> configured_chirho[Companion configured-case runner]
     contracts_chirho --> equality_chirho[682 equality precedence: landed]
-    contracts_chirho --> validity_chirho[683 four preserved declaration rules]
+    contracts_chirho --> validity_chirho[683 and 685 declaration rules: three then rule 4]
     equality_chirho --> family_heads_chirho[Infix family equation head normalization]
     contracts_chirho --> providers_chirho[Provider identity and exact imported schemes]
     contracts_chirho --> metadata_chirho[Preserve written semantic metadata]
