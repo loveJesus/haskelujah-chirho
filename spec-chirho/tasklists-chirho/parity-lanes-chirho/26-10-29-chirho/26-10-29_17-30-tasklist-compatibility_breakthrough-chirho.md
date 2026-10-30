@@ -13,7 +13,7 @@ L.J. asked to improve or close GHC compatibility and enlist claude2_chirho. Base
 - [x] Land range typing, standard Enum identity and occurrence evidence (row 665), with all-engine GHC controls and holds: source 9228f374, integrated with 671 through 1b824e5e.
 - [x] Review the Enum Double stack and composition controls. Hold row 670: after 663 repairs Num-only composition, the inferred Fractional+Enum composition still newly prints Infinity natively. Row 677 owns the remaining indexed superclass route; no Double instance is enabled in this landing.
 - [x] Land Enum's eight-slot dispatch (row 671) with row 665 for existing instances: source 14ea7341, required lint repairs through 79c74740 and record 1b824e5e. Double rows and feature controls stay on the held branch.
-- [x] Run paired compatibility measurements, record exact movers and residuals, and independently verify final-main execution behavior. Consolidated fleet reporting is being finalized.
+- [x] Run paired compatibility measurements, record exact movers and residuals, and independently verify final-main execution behavior. The reviewed consolidated fleet report was delivered once to AICEO in DM #2557; delivery is not engineering acceptance.
 
 The paired measurements now describe the final ee64da7b source, crate tree 2d144db46f2e8477d7fbe4cf6bece3dd5ce1522d. The independently built frozen CLI is e60d256fc0e66b7621910e186756cc67829d6c0c174a456ebd2150e47925b077. Old CLI receipts remain supporting evidence at their original source only.
 
