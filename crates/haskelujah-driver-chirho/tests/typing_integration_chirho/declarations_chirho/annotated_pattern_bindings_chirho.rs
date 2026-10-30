@@ -138,7 +138,7 @@ fn a_view_expression_keeps_ordinary_argument_inference_chirho() {
 fn tc135_keeps_its_existential_where_binding_chirho() {
     assert_compile_success_chirho(
         "tc135.hs",
-        include_str!("../../../../ghc-tests-chirho/typecheck-chirho/should_compile/tc135.hs"),
+        include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/tc135.hs"),
     );
 }
 
