@@ -1,384 +1,61 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-# GHC should_compile — timed measurement artifact
-# measured: 2026-10-26 UTC by HASKELUJAH/claude2_chirho, from the combined landing gate's
-#   retained receipts. Local development evidence; independent review is requested.
-# code measured: 1ddf122bedfc9c319dd38c2cc28c1061fbc84c1d, the combined rows 531 + 536 + 517
-#   source tip, crates tree 033962219ff3c8e97e0f1f3224555ccf1783e1a2. Its docs record 63c5e2f2
-#   and progress close 80e3b7de change no crate byte.
-# local source landing: 80e3b7de0dccca051a470c44c5f334f15645fb4d on main_chirho, fast-forwarded
-#   from 66832ade. This paired measurement publication changes specs only. No remote push or
-#   release.
-# mechanism: row 531 replays the measured GHC patterns and functional-dependency stack: known
-#   pattern shapes are checked before constructor fields, and fundep improvement generalizes. It
-#   moves exactly eleven files, each toward GHC 9.14.1's own verdict. Row 536 (qualified import
-#   lists bind their qualifier) and row 517 (NonEmpty binding identity) move no corpus file.
-# build: cargo build -p haskelujah, DEBUG, macOS arm64, warm incremental, zero compiler warnings.
-# frozen CLI SHA256:
-#   5bef8b0d686412c330ccdfee26ff855890211d093b36975eecc6eba49a5e8e3d
-# evidence: two complete passes per axis are byte-identical at fan-out 16, with the frozen
-#   binary unchanged before and after. This axis's pass SHA-256 is
-#   e108195e8882c682145a05c94a9fa3fbf8b60e57ad9ba43785db941a36fa6197.
-#   The C-locale run digest of both axes' passes is
-#   ebce5d83affdadf6ed4ef40f1f35ebf2f8f7d16cd7aa75d84bcc98ea0cbee4bb.
-# receipts: ../haskelujah-workspaces-chirho/haskelujah-claude2-chirho/tmp-chirho/
-#   combined-landing-1026-chirho/runs-chirho/c3-1ddf122b-r3-chirho/ (gate r3 and pass 1) and
-#   combined-landing-1026-chirho/measurement-chirho/ (pass 2).
-# gate: combined gate r3 GREEN in 1149 s. Build 27 s; 3112 focused tests with named skips;
-#   changed-line Clippy 0; q517 judged 233 rows with no regression, the 21 NonEmpty targets
-#   GHC-exact; execution 30/35 on main and on the candidate, with equal verdicts.
-# movers: every moved file matches a fresh GHC 9.14.1 -fno-code verdict, and main's own CLI
-#   (66832ade, rebuilt warm) keeps the old verdict on each, so all eleven moves are the stack's.
-# protocol: published directory-label axes and denominators are preserved; standalone
-#   GHC/all.T disagreements remain a separate protocol decision, never relabelled here.
-# method: haskelujah check <file>, timeout 15s/file, parallelism 16, every timeout re-run
-#   alone at 60s before it counts (none remained). The verdict rule is the COMMITTED one,
-#   workflows-chirho/testing-chirho/corpus-runner-chirho/classify_chirho.sh, byte-identical
-#   to the runner worker's copy. Order: TIMEOUT (exit 124), then ABNORMAL (any exit but 0
-#   or 1), then PANIC (a real Rust panic header), then REJECT (`error[E` AND exit 1), then
-#   ACCEPT (exit 0 and no `error[E`). Verdict files are sorted C-collated by their filename
-#   field. Every ACCEPT row exited 0 and every REJECT row exited 1.
-# corpus: ghc-tests-chirho/typecheck-chirho/should_compile — 938 .hs files
-#   Full relative identities include nested directories. The sources list SHA-256,
-#   4cf60c2b36d41e9f7f9f4d70c95d7213b80de8e839ed1f62f89cdd684411dbc6,
-#   equals main's saved receipts'.
+# GHC should_compile — current paired typecheck measurement
+# measured: 2026-10-30T00:04:58.472Z by HASKELUJAH/gpt_chirho.
+# source: ee64da7b7a2c391bf18cee474b327ff774c03aba
+# crates tree: 2d144db46f2e8477d7fbe4cf6bece3dd5ce1522d
+# local development evidence only. No remote push or release is implied.
+# frozen candidate CLI SHA-256: e60d256fc0e66b7621910e186756cc67829d6c0c174a456ebd2150e47925b077
+# frozen pre-semantic baseline CLI SHA-256: 546cce8c0a1ea1d1532431bcb4b064cd5cf4ab08d93af03c12a5626523c3f924
+# The baseline is the controlled post-661 neutral build (ff133d3e crate source), not
+# the October 26 published executable. Its per-file verdict sets were independently
+# compared with that publication before this final run; both sets were equal.
+# Source manifest (full relative paths plus content SHA-256):
+#   4cf60c2b36d41e9f7f9f4d70c95d7213b80de8e839ed1f62f89cdd684411dbc6
+# Candidate verdict-pass SHA-256 (both complete passes):
+#   c22508786b468b411bf1e370c278c340e1004cfa083c85dc2f2a16bd9202a5cc
+# Nonmatching-list SHA-256 (C-collated identities, each newline-terminated):
+#   685434be9b71e92ec2d93414072cbe58434ead71b03af347690f96e72d27a4f2
+# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/final-breakthrough-chirho/paired-measurement-chirho
+# One fresh baseline pass and TWO complete candidate passes per axis. Each candidate
+# pair is byte-identical. Frozen binary hashes and full corpus manifests are checked
+# unchanged before/after. Raw stdout, stderr, exit code and source SHA-256 are retained
+# per file, for every pass. comparison-chirho.json records both axes together.
+# Method: haskelujah check <file>; four workers; 15 seconds/file, each timeout retried
+# alone at 60 seconds. The committed corpus-runner-chirho/classify_chirho.sh rule is
+# unchanged: timeout, abnormal exit, real Rust panic header, then REJECT(error[E+rc1)
+# or ACCEPT(rc0 without error[E). The wrapper refuses every unresolved abnormal,
+# panic, timeout, unclassified row, wrong exit code or denominator mismatch.
+# Scope: recursive ghc-tests-chirho/typecheck-chirho/should_compile, 938 .hs files.
+# These are preserved DIRECTORY-LABEL axes; the runner does not apply all.T options
+# or reconstruct the upstream driver. GHC/all.T disagreements (including tc134,
+# T12104 and T14590) remain explicit protocol boundaries, never relabelled here.
+# Check acceptance/rejection does not establish successful execution or full GHC
+# compatibility. Native arithmetic/Enum improvements have separate execution controls.
+# Fresh GHC 9.14.1 accepts tc135 and rejects tcfail009, confirming those two gains.
+# It also accepts tc087: the candidate's new rejection is a VALID-SOURCE CHECK LOSS,
+# because its Double range now requires the absent Enum Double instance. This loss
+# is explicit, not relabelled or hidden by an unchanged accept total. Row670 is held
+# behind row677: enabling it now exposes a native silent-wrong Fractional composition.
+# Full GHC compatibility remains OPEN.
 #
 # RESULT: PASS=884 FAIL=54 TOTAL=938
-# STABILITY: DETERMINISTIC — two complete byte-identical passes, no exit-code anomalies.
+# STABILITY: DETERMINISTIC — two complete byte-identical candidate passes.
 # QUOTE-AS: ~94% (884 of 938) — do not quote a third significant figure
+# OTHER AXIS (quote together): 253 of 767 = 33.0% — ~32% truncated, ~33% nearest; NO single label
 #
-# QUOTE BOTH AXES TOGETHER: ~94% (884 of 938), and 252 of 767 = 32.9%, without a single
-#   reject label until L.J.'s reporting-policy decision. The reject count reads ~32% by
-#   truncation or ~33% by nearest-integer rounding; this arithmetic does not choose a
-#   uniform policy or relabel earlier artifacts.
+# Fresh baseline -> candidate movers (2):
+#   tc087.hs: ACCEPT -> REJECT
+#   tc135.hs: REJECT -> ACCEPT
+# Previous publication -> candidate: gained 1, lost 1
+#   gained: tc135.hs
+#   lost: tc087.hs
+# The full previous measurement, original gate scopes and older history are retained
+# at Git fb8315ba983fbfbe150a281c49db463ac39ea227:spec-chirho/ghc-should-compile-measurement-chirho.txt.
+# This publication replaces the current record rather than relabelling old execution
+# receipts. Final source gates and limits are in the October 29 compatibility tasklist.
+# Fresh GHC mover verdicts and per-file source hashes are in the receipt directory.
 #
-# CURRENT CHANGE SINCE THE 2026-10-25 PUBLISHED MEASUREMENT: should_compile loses exactly
-#   tc231.hs, ACCEPT to ordinary REJECT. GHC 9.14.1 rejects it too, so this is a
-#   directory-label versus GHC disagreement, recorded and not relabelled. should_fail gains
-#   exactly ten ordinary rejections, each matching GHC 9.14.1: FDsFromGivens2, FunDepOrigin1b,
-#   T18406, T20064, T7368a, T9318, tcfail004, tcfail005, tcfail012 and tcfail182.
-# PREVIOUS PUBLISHED MEASUREMENT (2026-10-25): code 5284fd33, source landing 000d5c45, frozen
-#   CLI aa7b290271f6a87b4b18780bfe99a4683255cb8bb3edca1e74be514d74a746d4, with 885/938
-#   should_compile and 242/767 should_fail. Against 2026-10-17 it moved only T12406 and
-#   T12589 on should_fail. Its full receipts remain retained.
-# EARLIER PUBLISHED MEASUREMENT: code b7a0cd0d, source landing a8e32120, frozen CLI
-#   3ca4fc54ee76f4eb5a1705708fdb3c8229a7950fbec9ff743ba048071e247b49,
-#   with 885/938 should_compile and 240/767 should_fail. Its full receipts remain retained.
-#
-# HISTORICAL STACK EVIDENCE follows: an earlier header measured 0f70ee23 (2026-10-12),
-#   frozen CLI c57e064588404d77d7195429aa76a65762048d8065ce6edff40adb54048d0641.
-#   Historical gates below apply to their named sources, not to the final repair.
-#
-# CHANGE SINCE THE PROPOSED MEASUREMENT OF 4100d02f (#26962): 885 -> 885, ZERO movement, and
-#   the same list file for file. A multi-way if is now ExprChirho::MultiWayIfChirho, the same
-#   guard arms a guarded right-hand side has (pattern guards, `let`, several qualifiers per
-#   arm, all rejected before), with arm results that must agree as an `if`'s branches do.
-#   Gates on 0f70ee23: driver library 1835/0, integration 117/0, unit suites green, zero
-#   compiler warnings and no clippy lint on an added line; replay 289/289; execution 28/35
-#   with the same seven failures; 160 of 163 probes match GHC 9.14.1, the three misses all
-#   pre-existing and outside guards. Receipts: tmp-chirho/multiway-if-corpus-chirho/ and
-#   tmp-chirho/pattern-guards-chirho/.
-#
-# MEASUREMENT OF 4100d02f (2026-10-12), PROPOSED IN #26962, CHANGE SINCE THE PROPOSED
-#   MEASUREMENT OF 49ad05fb (#26960): 885 -> 885, ZERO movement, and
-#   the same list file for file. A do block's `let` and a list comprehension's `let` now go
-#   through the one helper a `let` expression uses: a recursive or forward-referring
-#   function in a do-block `let` crashed on a missing binding, and a comprehension `let`
-#   dropped every pattern binding; invisible to this axis. Gates on 4100d02f: driver library
-#   1831/0, integration 117/0, unit suites green, zero compiler warnings and no clippy lint
-#   on an added line; replay 289/289; execution 28/35 with the same seven failures; 147 of
-#   152 probes match GHC 9.14.1, the five misses all pre-existing. Receipts:
-#   tmp-chirho/local-lets-corpus-chirho/ and tmp-chirho/pattern-guards-chirho/.
-#
-# MEASUREMENT OF 49ad05fb (2026-10-12), PROPOSED IN #26960, CHANGE SINCE THE PROPOSED
-#   MEASUREMENT OF a1c70656 (#26958): 885 -> 885, ZERO movement, and
-#   the same list file for file. A guard's `let` now ends where its bindings do, even on one
-#   line (`| let y = x * 2, y > 10 = y` looped: the layout pass closes an implicit block only
-#   by indentation, so the block ran on over the next qualifier). The parser applies the
-#   Report's parse-error(t) rule for it. Gates on 49ad05fb: driver library 1827/0,
-#   integration 117/0, unit suites green (parser 366), zero compiler warnings and no clippy
-#   lint on an added line; replay 289/289; execution 28/35 with the same seven failures; ten
-#   `let`-guard probes, 24 of 26 guard probes and all 82 earlier pattern probes match GHC
-#   9.14.1. Receipts: tmp-chirho/let-guards-corpus-chirho/ and tmp-chirho/pattern-guards-chirho/.
-#
-# MEASUREMENT OF a1c70656 (2026-10-12), PROPOSED IN #26958, CHANGE SINCE THE PROPOSED
-#   MEASUREMENT OF 6a97e07a (#25478/#25480): 885 -> 885, ZERO
-#   movement, and the same list file for file. A guard arm now carries its qualifiers
-#   (boolean guards, pattern guards `p <- e`, `let`) from the parser on, so any failing
-#   qualifier goes on to the next arm and, after the last, to the next row; the lowering that
-#   turned a pattern guard into one unguarded `if`/`case` (copying the remaining guards per
-#   failing qualifier) is deleted. In execution and invisibly to this axis that repairs a
-#   failing pattern guard raising "Non-exhaustive guards" where GHC goes to the next
-#   equation or alternative. One accept-shaped program the previous tip WRONGLY REJECTED is
-#   repaired too, though no corpus file has its shape: `f x m | Just x <- m, x = 1 |
-#   otherwise = x + 1`, where the old lowering placed the next arm inside the pattern guard's
-#   scope, so `x + 1` saw the shadowing `Bool`. The checker types a boolean guard as an `if`
-#   condition (the companion artifact's one gained file) and a top-level pattern binding's
-#   whole guarded right-hand side. Gates on a1c70656: driver library 1826/0, integration
-#   117/0, unit suites green (parser 361, typing 354, core 129), zero compiler warnings and
-#   no clippy lint on an added line; replay 289/289; execution 28/35 with the same seven
-#   failures; all 82 earlier pattern probes and 22 of 26 guard probes match GHC 9.14.1 (the
-#   four misses: three single-line `let` guards followed by another qualifier, a layout
-#   defect identical on the previous tip, and a multi-way `if` pattern guard rejected on
-#   both). Receipts: tmp-chirho/pattern-guards-corpus-chirho/ and
-#   tmp-chirho/pattern-guards-chirho/.
-#
-# MEASUREMENT OF 6a97e07a (2026-09-30), PROPOSED IN #25478/#25480, CHANGE SINCE THE PROPOSED
-#   MEASUREMENT OF 41eff8f6 (#25474): 885 -> 885, ZERO movement, and the
-#   same list file for file. Every MATCH position now goes through rows over the single-row
-#   matcher - case alternatives, equations, lambdas, do binds and comprehension generators -
-#   and the older per-position machinery is deleted. That repairs, in execution and invisibly
-#   to this axis: literals below a constructor never tested, records bound by listed position,
-#   `[x, y]` alternatives and nested lambda patterns crashing, `~` binding the whole scrutinee,
-#   guards never falling through to the next row, `\case` dropping guarded alternatives, and
-#   every alternative forcing its scrutinee (`case undefined of _ -> 5` failed). The parser now
-#   also starts an alternative's pattern at a leading `!` or `-`, and reads a tight
-#   `whole@(a, b) = e` as the as-pattern binding it is (it was a function head with a visible
-#   type argument); neither moved a verdict. Gates on 6a97e07a: driver library 1817/0,
-#   integration 117/0, unit suites green (parser 361), zero warnings; replay 288/288;
-#   execution 28/35 with the same seven failures; 81 of 82 probes match GHC 9.14.1, the one
-#   miss being a pattern guard's fallthrough. cb1ada98 (CLI b29b839b) measured the same
-#   counts and lists before the binding-parse fix. Receipts: tmp-chirho/x5-corpus-chirho/,
-#   tmp-chirho/match-rows-corpus-chirho/ and tmp-chirho/match-rows-chirho/.
-#
-# MEASUREMENT OF 41eff8f6 (2026-09-30), PROPOSED AS a9548989 IN #25474, CHANGE SINCE MAIN
-#   (e8cd6bf4): 885 -> 885, ZERO movement.
-#   The failure list is identical file for file, its SHA256 below is unchanged, and each
-#   of the two passes reproduces it independently.
-#   What changed is aimed at execution and designed not to move a typecheck verdict,
-#   which the list below measures rather than assumes.
-#   - Do statements: lowering SELECTS each statement's `>>=`, `>>` and `fail` once; a
-#     failability pass clears a `fail` the pattern cannot need, by GHC 9.14.1's measured
-#     rule; Core resolves the binding each statement carries and emits a failure
-#     alternative only where `fail` was selected; the checker records evidence for each
-#     selected operation whose type fits the block's monad, READ-ONLY.
-#   - Pattern bindings, in a do-let, `where`, `let ... in`, at top level, and a `~p <- m`
-#     bind: `$patbind = e`, ONE shared match of the WHOLE pattern through a single-row
-#     matcher, and a selector per variable, as Haskell 2010 §3.17.3 defines it. Nothing is
-#     forced where the binding is made; demanding any variable matches the whole pattern.
-#     A banged binding forces the MATCH before the body, never a variable.
-#   - The parser used to SKIP a binding's leading `!`, so no banged binding ever reached
-#     the desugarer as banged. It is kept now. main got `let !(a, b) = undefined in 5`
-#     right only by accident: every pattern binding there was strict whatever it said.
-#   Repaired in binding positions, each measured against GHC 9.14.1 on this CLI: crashes
-#   on main (a newtype-constructor bind's unbound `fail`; let bindings forcing an unused
-#   `undefined` or non-matching constructor; `[x, y]` bindings; a recursive knot; a
-#   top-level `~` binding that <<loop>>ed) and SILENT wrong answers on main (`let
-#   ~(Just n) = Just 7` printing `Just 7` in three positions; a top-level sibling
-#   mismatch and a literal sibling printing a value where GHC fails; a record pattern
-#   out of declaration order swapping its fields; `let !x = undefined` and an inner bang
-#   not forcing).
-#   TWO REGRESSIONS CAUGHT INSIDE THE UNIT, so both are on the record:
-#   - GHC's T17594f, accepted on main: an intermediate checker capture COMPOSED its
-#     unifier into the do block's substitution, and `Main.do` with `(>>=) = ($)` then
-#     failed with an infinite type. The driver library caught it at 0103d80a (1802 passed,
-#     1 failed) before any corpus run. The capture is read-only, and T17594f is ACCEPT here.
-#   - The WITHDRAWN tip b049713a bound each pattern-binding variable through a selector
-#     that checked only the PATH to it, and made banged bindings lazy: seven execution
-#     regressions against main (W1, W3, W4, W5, B2, B3, B7), silent where main crashed.
-#     Neither typecheck axis can see an execution regression, which is why its corpus
-#     pair below was clean. They were found while measuring the next unit, reported in
-#     the room, confirmed by claude2_chirho, and all seven match GHC on this CLI.
-#   NOT YET COVERED, recorded rather than implied, and identical on main: every MATCH
-#   position - case alternatives, equations, lambdas, a do bind below a constructor -
-#   still uses the older machinery, where a literal below a constructor is never tested,
-#   a record pattern binds fields by listed position, `[x, y]` alternatives and nested
-#   lambda patterns crash, `~` binds the whole scrutinee, guards do not fall through to
-#   the next row, and `\case` drops guarded alternatives. Also `let whole@(a, b) = e`,
-#   which the parser reads as a function binding with a visible type argument.
-# SOURCE-SPECIFIC GATES, all on 41eff8f6 itself: unit suites green (ast 13, core 129,
-#   naming 136, parser 359, th 15, typing 354); driver library 1803 passed / 0 failed /
-#   0 warnings (534.53s); ten integration targets 116 passed, including 31 pattern-binding
-#   controls against GHC 9.14.1, five of them mutation-checked; runner controls 37/37 and
-#   9/9. Logs under tmp-chirho/lazy-positions-chirho/gates-fmt-chirho/, zero warnings in
-#   any. EXECUTION: 28 of 35 predicates, the same seven failures with identical output
-#   (addresses normalised) as the literal carrier's receipt; those 35 exercise none of
-#   the new behaviour. The new behaviour's evidence is the controls and the probe sets
-#   rerun on this very CLI (tmp-chirho/full-match-corpus-chirho/probes-chirho/): every
-#   binding-position probe matches GHC, and the match-position sets are unchanged.
-#   An earlier pair on the pre-rustfmt tree (CLI 62a60f46) gave the same counts and lists
-#   and is kept as a superseded early signal; the formatting commit changed no behaviour.
-#
-# WITHDRAWN MEASUREMENT OF b049713a (2026-09-30, HISTORICAL): 885 -> 885, ZERO movement,
-#   on CLI e6199f92, membership identical, receipts tmp-chirho/do-selection-corpus-chirho/.
-#   Proposed in #25462 and WITHDRAWN in #25463 for the seven execution regressions above.
-#   Its counts were true and are superseded, not corrected.
-#
-# MEASUREMENT OF e8cd6bf4 (2026-09-24, HISTORICAL), CHANGE SINCE 7cfd9b8a: 885 -> 885, ZERO movement.
-#   That measurement ran on the runner as committed at e8cd6bf4, before the line-level
-#   classifier and C-collated ordering repairs; its 3,698 retained verdicts were later
-#   re-derived with the final rule and all agreed, zero PANIC.
-#   The failure list is identical file for file, its SHA256 below is unchanged, and each
-#   of the two passes reproduces that list independently.
-#   What changed is again evidence TRANSPORT, which this typecheck axis cannot see: a
-#   LITERAL now carries an origin minted where it is built, in expressions AND in
-#   patterns, the desugarer copies that origin and the use's role onto the occurrence it
-#   mints, and a literal with an origin is published under that origin ONLY — so no
-#   legacy consumer reaches an owned literal proof by span.
-# TRANSPORT LIMITS OF THE LITERAL CHANNEL, explicit (gpt_chirho #24761 corrected all
-#   three of these against the code, and they are stated here rather than in a message):
-#   - A float literal never becomes `fromRational`. The desugarer converts only an
-#     integer literal (`fromInteger`) and, under OverloadedStrings, a string literal
-#     (`fromString`); a float becomes a raw Core literal. The FractionalLiteral role is
-#     therefore CAPTURE AND CARRIER ONLY, not an end-to-end path.
-#   - Literal evidence is ONE {class, type-key} per origin. It is not role-keyed and not
-#     multi-predicate, so it cannot represent a pattern literal's distinct Num and Eq
-#     operations.
-#   - A pattern literal carries an origin but the checker captures nothing for it, so it
-#     publishes no evidence at all. That is a PRODUCER gap, not a transport gap.
-#   The two placeholder controls test the two ENDS separately — one at capture in the
-#   checker, one at the join in the driver — and are not one integrated
-#   producer-to-consumer execution test.
-# SOURCE-SPECIFIC GATES, each stated against the source it actually ran on.
-#   The four corpus passes and the execution set both ran on e8cd6bf4's frozen CLI
-#   fd0da809. The unit and integration suites ran on 8730d067, which differs from
-#   e8cd6bf4 in NO crate line at all (verified mechanically: the only files that differ
-#   are two spec-chirho documents). Those suites: ast 13, core 129, naming 136, parser
-#   349, th 15, typing 349, driver library 1797 passed / 0 failed (592.73s); and nine
-#   integration targets — canaries 7, curated 3, dictionary evidence 10, instance
-#   obligations 13, method occurrences 7, native laziness 5, numeric hierarchy 5, show
-#   precedence 2, typing integration 33. Zero warnings. 2873 tests.
-#   EXECUTION: 28 of 35 predicates match GHC 9.14.1 byte for byte on fd0da809, and the
-#   same 28 of 35 on main's own CLI e246670e, identical predicate by predicate once heap
-#   pointers and LLVM register numbers are normalised. So the SEVEN failures are
-#   pre-existing and none is caused by this change: derived `Ord`'s `<` in the
-#   interpreter and again natively; a toEnum-built Char in the interpreter's derived
-#   Show; native `mdo`; native `map (subtract 1)`; and derived `Show` dropping
-#   precedence parentheses, on both engines, which this window newly LOCATED rather than
-#   introduced — deriving generates a `show` built by string concatenation and no
-#   `showsPrec` at all, which is why `showsPrec` on a derived type is a missing STG
-#   binding and why the dictionary layer refuses a show-only row at precedence 11.
-#   An earlier execution set on the same branch's CLI 6e34983c is retained as an earlier
-#   receipt. The two CLIs differ in no non-test crate line: the only crate files that
-#   differ between a091b2d0 and e8cd6bf4 are two compiled solely under `cfg(test)`.
-#   Their digests differ because this build is not bit-reproducible; no byte-identity
-#   between the two binaries is claimed anywhere.
-# MEASUREMENT OF 7cfd9b8a (2026-09-22), CHANGE SINCE 11b24799: 885 -> 885, ZERO movement.
-#   The failure list is identical file for file, and its SHA256 below is unchanged.
-#   What changed is evidence TRANSPORT, which this typecheck axis cannot see: each
-#   reference now carries an origin minted by its producer, the checker's records and
-#   the desugarer's occurrences both carry it, and the join matches by origin before
-#   span or position; an origin-owned proof never reaches another occurrence. Corpus
-#   neutrality was measured, not inferred from check-only mode (gpt_chirho #24547).
-#   EXECUTION EVIDENCE on 7cfd9b8a itself: driver library 1793 passed / 0 failed;
-#   nine integration suites green; on the frozen CLI, 26 of 31 execution predicates
-#   match GHC 9.14.1 byte for byte, and main's own CLI at f8eb26bb gives the same 26 of
-#   31 predicate by predicate: the five failures are pre-existing (derived Ord `<` in
-#   the interpreter and natively, a toEnum-built Char in the interpreter's derived Show,
-#   native mdo, native `map (subtract 1)`), none caused by this change.
-#
-# MEASUREMENT OF 11b24799 (2026-09-20), CHANGE SINCE 8d86bc95: 885 -> 885, ZERO movement.
-#   The failure list is identical file for file, and its SHA256 below is unchanged
-#   from the previous artifact. Two repairs landed in this window and neither costs
-#   an accepted file: an instance whose own context cannot hold no longer satisfies
-#   its head (a rejection rule, so this axis is where a false positive would show),
-#   and a class method's evidence is joined to its source reference by SPAN rather
-#   than by position. The second repairs silent WRONG ANSWERS this axis cannot see:
-#   `instance Show W where show (W n) = "W" ++ show n` printed `W3` or `WChirho 3`
-#   depending only on which declaration came first.
-# REPLAY: all 53 failures here, with the other axis's 236 rejections, were re-run one at
-#   a time on the same frozen CLI c57e0645, keeping stdout, stderr, exit code and source
-#   SHA256 per file. All 289 are exit 1 carrying `error[E`, and zero carry a panic
-#   header, timeout or abnormal exit; none rests on the bare `panic` substring. Every
-#   rejection is a diagnostic, not a crash.
-# FAILURE-LIST SHA256: 879cacad3900068f525cfa90c548a46eb81c1ce17dc90755b6ee285c7c9ff30e
-#   DEFINITION: the SHA256 of the bare filenames listed at the end of this file, one per
-#   line, EACH NEWLINE-TERMINATED, sorted C-COLLATED (LC_ALL=C — every uppercase initial
-#   before every lowercase one, so `TcSpecPragmas.hs` precedes `tc134.hs`). The
-#   collation is part of the definition, not an incidental detail: a case-folding locale
-#   sorts this IDENTICAL list to d90fc86ce2b2c0b839837f82717c19142517810b376b87eea6c167a7ba80519d
-#   instead, so a measurer who did not know the collation would read an unchanged result
-#   as movement. Two agents hit exactly that before establishing set equality, and the
-#   runner has since been repaired to sort C-collated (see corpus-runner-chirho/
-#   sort_chirho.sh, with nine controls). The verdict files retained for THIS measurement
-#   were produced by that repaired runner and are C-ordered themselves.
-#   These are typecheck verdicts, not execution; neither upstream corpus fully passes.
-# HISTORICAL EXECUTION EVIDENCE (of the 11b24799 measurement, NOT of the measurement
-#   at the top of this file), each gate stated against the source it actually ran on.
-#   The four corpus passes of THAT measurement ran on 11b24799. Every execution gate ran on 6ed46217, which
-#   differs from 11b24799 only in the comments of one file (verified mechanically:
-#   every changed crate line is a comment): the curated GHC suite passes (486.68s); the
-#   driver library is 1778 passed / 0 failed / 0 ignored / 0 filtered, including five
-#   direct controls on the evidence join's boundaries, two of them mutation-checked;
-#   and the driver integration suites are 202 passed / 0 failed across 19 targets.
-#   Logs are kept in the lane worktree, not OS tmp. An earlier curated/integration
-#   pair on 73560e17 and a driver-library run on the pre-format tree of 11b24799 were
-#   superseded by these rather than relabelled. This does not establish an instance
-#   WITH a context at run time, which is still wrong (`instance Show a => Show (T a)`),
-#   nor generic record Eq/Show dispatch. See
-#   workflows-chirho/testing-chirho/execution-measurement-chirho.md.
-#
-# PREVIOUS MEASUREMENT (8d86bc95, 2026-09-19): 882 -> 885, +3 gained, zero lost.
-#   T15079, tc124: a leading `forall` now scopes over the `=>` and `->` in its body
-#     (flat type grammar; the record-field lowering bug open since 2026-08-02), so a
-#     rank-n record field is lowered as written, and record construction and update
-#     check the field value against that rank-n type (row 484's e028c1a3, carried).
-#   T18831: `(Type :: Type)`: a depth-0 `::` inside a group is a kind annotation, not
-#     an application of the type to its kind.
-#   Held, each lost by a first trial and repaired for GHC's reason: T18802 (a rank-2
-#     field update needs the carried record checking); T23514c (`data P5 :: forall a
-#     . k -> Type`: a header's inline result kind is not under forall-or-nothing;
-#     GHC 9.14.1 probes); T10808 (type-changing update where G T1 = G T2 = Int: `G t8 ~
-#     G t7` on two unsolved variables is deferred, never decomposed; row 484's 327aaef7).
-#   Class, instance and standalone-deriving contexts are lowered with the signature
-#     grammar (tuple members, applied and multi-argument predicates, equalities, explicit
-#     instance foralls). No file moves for that alone; its proof is exact GHC 9.14.1
-#     outputs in tests/declaration_contexts_chirho.rs.
-#
-# PREVIOUS MEASUREMENT (3db3b6a6, 2026-09-10): 880 -> 882, +2 gained, zero lost.
-#   T11811 and T20873: written declaration result kinds retain their head binders;
-#   an inline result tail is no longer treated as the complete kind. Fresh GHC
-#   9.14.1 accepts both unchanged inputs. The first trial lost three valid files;
-#   preserving invisible head binders and visible forall-kind arguments recovered
-#   T22560a/T22762/T23514c without weakening declaration reconciliation.
-#   Five independent GHC-83865 controls now reject mismatched complete/head/tail
-#   contracts. These are behavioral controls, not five upstream corpus gains.
-#   Companion movement is +T22560_fail_b, -tcfail225/-ExplicitSpecificity8; its
-#   header distinguishes a generic-arity rejection from the missing GHC rules.
-#
-# PREVIOUS MEASUREMENT (cb939e35): accept 879 -> 880 (+T14761c, no loss),
-#   reject 223 -> 222 (-T14761a, no gain). Flat [] constructor application and nested
-#   list delimiters repaired; T14761a's genuine GHC-10107 UNPACK warning remains open.
-#
-# PREVIOUS MEASUREMENT (3683dae8): 879 -> 879, zero gained, zero lost.
-#   Kind inference scopes forall/quantified-constraint binders lexically and restores
-#   touched environment/cache entries without discarding newly discovered free names.
-#   Four fresh GHC-confirmed kind-scope execution programs improved outside this subset.
-#
-# PREVIOUS MEASUREMENT (18b7d1c3): 877 -> 879, +2 gained, zero lost.
-#   T23764: lowercase infix type variable retained, and visible type arguments consume
-#     signature binders in lexical first-occurrence order rather than allocator-ID order.
-#   tc156: lowercase infix parameter retained; type-chain grouping uses the existing
-#     fixity table. Parenthesizing the signature independently isolated that second defect.
-#   No corpus input changed. tc192 shares the infix shape but still reaches unsupported
-#     proc/x: the already-mapped arrows_proc_notation_chirho feature, not an infix gain.
-#   That checkpoint did not claim full kind-dependency ordering or forall scope repair.
-#
-# PREVIOUS MEASUREMENT (ffa2561e, 2026-09-07): 877 -> 877. The record-field brick
-#   changed construction/update: a given undeclared field (E0206), an omitted strict
-#   field (E0207, GHC-95909), an omitted lazy field allowed (missing-field thunk), `C {}`
-#   on any constructor. The only `C {}` in this corpus is a pattern (T26346, already
-#   failing on promoted kinds, unchanged); the only construction on a constructor its file
-#   does not declare (T7169, sibling module) still passes.
-#
-# REPRESENTATION LIMITS THAT REMAIN EXPLICIT:
-#   data/newtype instances and `type data` still need real declaration shapes; GADT record
-#   fields have survived since b2027c35, but refined GADT result types still need the agreed
-#   constructor-argument/result AST redesign. A green `check` result around an unrepresented
-#   form is not behavioral evidence; exact-output driver gates remain required.
-#
-# MEASUREMENT TOOLING: the runner is committed at
-# workflows-chirho/testing-chirho/corpus-runner-chirho/ and every script there sources
-# ONE verdict rule (classify_chirho.sh), so no measurement carries a second copy of the
-# pattern. Matching is pure shell, never interactive `grep`, which is shadowed in this
-# environment by a ugrep wrapper with content-dependent `-q` behaviour. The rule's order
-# and the panic-header shape are stated in the method block at the top of this file; the
-# bare substring `panic` is NOT a verdict. Twenty controls cover the rule, including a
-# header quoted inside a diagnostic, an all-digit versus a mixed thread id, and a header
-# glued to output that ended without a newline; nine more cover the ordering. Every
-# repair to those rules was mutation-checked: reverting it fails the control that was
-# added for it.
-#
-# ---- the 54 files we DO NOT ACCEPT ----
+# ---- 54 nonmatching files under the preserved directory-label protocol ----
 FloatFDs.hs
 HardRecordUpdate.hs
 Improvement.hs
@@ -424,8 +101,8 @@ T5490.hs
 T6018.hs
 TcSpecPragmas.hs
 UnliftedNewtypesGnd.hs
+tc087.hs
 tc134.hs
-tc135.hs
 tc192.hs
 tc194.hs
 tc213.hs
