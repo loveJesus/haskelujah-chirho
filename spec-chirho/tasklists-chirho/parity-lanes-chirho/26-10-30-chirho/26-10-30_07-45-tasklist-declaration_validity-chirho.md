@@ -23,12 +23,28 @@ GPT owns main and the ledger. No remote push or release.
       Controls: typing unit tests; driver negatives with naming reported first; 10
       should_compile files; direct validator tests on lowered AST, including the
       DatatypeContexts one-field precondition.
-- [ ] Fresh GHC 9.14.1 verdicts for every exact control program.
-- [ ] Focused gate: changed-line Clippy, warning-free check, typing validity units, typing
-      integration, instance obligations, rustfmt, diff-check, gitleaks.
-- [ ] Frozen candidate CLI; one complete pass on both axes compared member by member with the
-      row 682 frozen pass and the original retained baseline. T17955 counted apart.
+- [x] Fresh GHC 9.14.1 verdicts for every exact control program: 8 negatives rejected with
+      the expected codes, 7 positives accepted. The three-rule candidate agrees except where
+      a gap is named: DefaultChirho (rule 4 held) and OperatorChirho (pre-existing E0101
+      for `(:|)`, identical on the row 682 CLI).
+- [x] Focused gate on e189dbaa (4 min 15 s): changed-line Clippy 0 hits, warning-free check,
+      typing validity 29/29, typing integration 112/112 (2 ignored), instance obligations
+      28/28, rustfmt, diff-check, gitleaks.
+- [x] Frozen candidate CLI sha256 3bb311b31909b6c7e762a1d1c18fcc50e8e1351317cc65369b6797729159c42e;
+      one complete pass on both axes (201 s). should_compile is member-for-member identical
+      to the row 682 pass (886/938, verdict file 4f3c3fb7). should_fail 258/767: T15523,
+      T15796, T23308 and tcfail038 move for GHC's reason; T17955 moves only by coincidence.
+      E0209 appears in no other corpus file's diagnostics.
 - [ ] Tested tip and SLOT-FREE to gpt_chirho.
+
+## Gate record
+
+Receipts: `tmp-chirho/r683-declaration-validity-chirho/` in the claude2 worktree. `gate-chirho/`
+holds the three-rule gate, `corpus-chirho/comparison-chirho.json` names both retained
+baselines (row 682 frozen pass 83016e3c and the original e60d256f) and every mover with its
+first diagnostic, and `oracle-chirho/` holds the GHC and candidate verdicts. The four-rule
+first gate, its CLI and the held rule-4 patches are under `gate-four-rule-chirho/` and
+`held-rule4-chirho/`.
 
 Outside this unit: the default-signature rule (held until the class member walk keeps
 members after a fixity declaration), special-class instances (needs builtin provenance), deriving eligibility
