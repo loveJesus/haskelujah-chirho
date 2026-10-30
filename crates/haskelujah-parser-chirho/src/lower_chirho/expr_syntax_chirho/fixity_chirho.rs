@@ -126,6 +126,7 @@ impl LowerCtxChirho {
 
 /// Return (precedence, associativity) for a known operator.
 /// Follows Haskell's default fixities.
+/// Workflow: compiler-pipeline-chirho/operator-fixity-chirho.
 fn builtin_operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
     match op_chirho {
         "$" | "$!" | "$!!" => (0, AssocChirho::RightChirho),
@@ -134,7 +135,7 @@ fn builtin_operator_fixity_chirho(op_chirho: &str) -> (u8, AssocChirho) {
         "||" => (2, AssocChirho::RightChirho),
         "&&" => (3, AssocChirho::RightChirho),
         "<|>" | "<!>" => (3, AssocChirho::LeftChirho),
-        "==" | "/=" | "<" | "<=" | ">" | ">=" => (4, AssocChirho::NoneChirho),
+        "==" | "/=" | "<" | "<=" | ">" | ">=" | "~" => (4, AssocChirho::NoneChirho),
         "<$>" | "<$" | "<*>" | "<*" | "*>" | "<@>" | "<@" | "@>" | "<@@>" | "<.>" | "<." | ".>"
         | "<.*>" | "<*.>" | "<<.>>" | "<<." | ".>>" => (4, AssocChirho::LeftChirho),
         ":" | ":|" | "++" | ".|." => (5, AssocChirho::RightChirho),

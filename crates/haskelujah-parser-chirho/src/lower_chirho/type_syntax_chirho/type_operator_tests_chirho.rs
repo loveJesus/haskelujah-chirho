@@ -35,6 +35,8 @@ fn signature_in_module_chirho(source_chirho: &str) -> TypeChirho {
 #[test]
 fn infix_type_fixity_and_parentheses_determine_operand_grouping_chirho() {
     for (signature_text_chirho, fixities_chirho, root_chirho, nested_side_chirho, nested_chirho) in [
+        ("1 + 2 ~ 3", "", "~", 0, "+"),
+        ("3 ~ 1 + 2", "", "~", 1, "+"),
         (
             "Int :*: Bool :+: Char",
             "infixl 4 :*:\ninfixl 3 :+:\n",

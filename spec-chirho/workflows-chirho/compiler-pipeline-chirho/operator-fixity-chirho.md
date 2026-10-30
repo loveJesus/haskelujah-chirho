@@ -2,6 +2,20 @@
 
 # Operator fixity resolution
 
+## Type equality (row 682)
+
+The wired equality operator `~` has non-associative precedence 4 in GHC 9.14.1. The shared builtin fixity table supplies this to type-operator lowering, so `1 + 2 ~ 3` groups as `(1 + 2) ~ 3`; treating equality as the default precedence 9 grouped the same source incorrectly. Equality solving itself is unchanged.
+
+```mermaid
+flowchart LR
+    type_chain_chirho[Type operator chain] --> fixities_chirho[Declared or builtin fixities]
+    fixities_chirho --> equality_chirho[Equality at precedence 4 below addition at 6]
+    equality_chirho --> grouped_type_chirho[Grouped type AST]
+    grouped_type_chirho --> check_proof_chirho[Check Refl proof or reject incompatible indices]
+```
+
+Syntax controls inspect grouping with addition on either side. End-to-end controls check both implicit and explicit parentheses on the interpreter, LLVM and Cranelift; false equalities and an invalid chained equality stay rejected. The chained case is not a claim that parser associativity diagnostics now match GHC: it is still refused later with a type mismatch. T18252 is the acceptance witness; T18252a is a rejection hold.
+
 The CST keeps an infix expression flat: its operands in source order and the operators between them. Lowering turns that chain into a tree using the fixity table:
 
 1. the module's own `infixl`, `infixr` and `infix` declarations;

@@ -35,6 +35,8 @@ mod qualified_builtin_aliases_chirho;
 mod qualified_import_lists_chirho;
 #[path = "typing_integration_chirho/qualified_references_chirho.rs"]
 mod qualified_references_chirho;
+#[path = "typing_integration_chirho/type_equality_fixity_chirho.rs"]
+mod type_equality_fixity_chirho;
 
 // Independently executed under GHC 9.14.1: 42 / 7 / 11 / True.
 // The infix and context orders differ from normalized body traversal; the
