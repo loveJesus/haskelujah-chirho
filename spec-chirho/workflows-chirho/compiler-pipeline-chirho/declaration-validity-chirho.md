@@ -10,16 +10,16 @@ finding is reported as `E0209`.
 
 ```mermaid
 flowchart TD
-    lower["Lowering: CST to AST, no diagnostics"] --> prelude["2.1 implicit Prelude import"]
-    prelude --> splices["2.2 Template Haskell splices"]
-    splices --> compute["2.4 declaration rules on the module as written"]
-    compute --> deriving["2.5 deriving appends generated instances"]
-    deriving --> naming["3 name resolution"]
-    naming -->|naming errors| stop1["reject: renamer errors first"]
-    naming --> report{"E0209 findings?"}
-    compute -. findings held .-> report
-    report -->|yes, never deferred| stop2["reject: E0209"]
-    report -->|no| kinds["3.5 kinds, then 4 inference, 4.4 type forms"]
+    lower_chirho["Lowering: CST to AST, no diagnostics"] --> prelude_chirho["2.1 implicit Prelude import"]
+    prelude_chirho --> splices_chirho["2.2 Template Haskell splices"]
+    splices_chirho --> compute_chirho["2.4 declaration rules on the module as written"]
+    compute_chirho --> deriving_chirho["2.5 deriving appends generated instances"]
+    deriving_chirho --> naming_chirho["3 name resolution"]
+    naming_chirho -->|naming errors| naming_stop_chirho["reject: renamer errors first"]
+    naming_chirho --> report_chirho{"E0209 findings?"}
+    compute_chirho -. findings held .-> report_chirho
+    report_chirho -->|yes, never deferred| validity_stop_chirho["reject: E0209"]
+    report_chirho -->|no| kinds_chirho["3.5 kinds, then 4 inference, 4.4 type forms"]
 ```
 
 ## Rules
@@ -31,7 +31,6 @@ flowchart TD
    A context inside an argument is a rank-N field, which GHC allows.
 3. One written instance body binds each name once (`GHC-10498`). Lowering already merges
    adjacent equations, so a repeat was written apart. Signatures are not bindings.
-
 4. A default signature has a default binding (`GHC-59794`). Lowering extracts only
    `default name ::` signatures, so an operator's default signature is not judged.
 
