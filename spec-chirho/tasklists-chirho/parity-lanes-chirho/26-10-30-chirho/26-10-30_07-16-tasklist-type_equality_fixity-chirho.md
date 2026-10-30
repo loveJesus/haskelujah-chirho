@@ -11,7 +11,7 @@ Row 682, from the row 681 complete corpus-frontier audit. Source base a70a11c7 h
 - [x] Parser 401/401 and three integration groups pass. The two positive programs execute with GHC's answers on interpreter, LLVM and Cranelift; negative controls remain refused.
 - [x] Workspace check is warning-free; changed-file Clippy has no diagnostics, formatting and diff-check pass.
 - [x] One complete candidate pass over both axes, compared with the retained complete source-current baseline. The only movers are T18252 and T24845a, both REJECT to ACCEPT; should_fail is unchanged member for member. No abnormal result or fixture change occurred. Published paired artifacts await the combined declaration-validity candidate.
-- [ ] Secret scan, exact source review, local landing and scoped result record.
+- [x] Two-commit secret scan, exact source review and local landing as fbef8a56 + 6ffe8072. Crate tree 8b4a5a175ed94322646c816a526037547e60f318 is byte-identical to the tested source/test tip. Row 682's ledger is closed at that scope; no push or release.
 
 Receipts: `tmp-chirho/equality-fixity-chirho/`. The separate deriving-token prototype is HELD under `tmp-chirho/deriving-token-chirho/`: it checks two corpus files but newly prints wrong explicit-newtype Show output, so its source was restored and is absent from this unit. Its held patch and frozen CLI are retained.
 
