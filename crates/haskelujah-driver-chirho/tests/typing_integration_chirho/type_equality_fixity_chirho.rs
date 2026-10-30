@@ -44,6 +44,22 @@ proofChirho = Refl
 main = return ()
 "#;
 
+const UNRELATED_SUMS_CHIRHO: &str = r#"{-# LANGUAGE DataKinds, GADTs, TypeOperators, FlexibleContexts #-}
+module MChirho where
+import Data.Proxy
+import GHC.TypeNats
+badChirho :: (aChirho + bChirho ~ cChirho + dChirho) => Proxy aChirho -> Proxy bChirho -> Proxy cChirho -> Proxy dChirho -> Proxy cChirho
+badChirho valueChirho _ _ _ = valueChirho
+"#;
+
+const ZERO_PRODUCT_CHIRHO: &str = r#"{-# LANGUAGE DataKinds, GADTs, TypeOperators, NoStarIsType, FlexibleContexts #-}
+module MChirho where
+import Data.Proxy
+import GHC.TypeNats
+badChirho :: (0 * bChirho ~ 0 * cChirho) => Proxy bChirho -> Proxy cChirho
+badChirho valueChirho = valueChirho
+"#;
+
 #[test]
 fn type_equality_binds_below_addition_everywhere_chirho() {
     assert_prints_everywhere_chirho(
@@ -63,10 +79,12 @@ fn explicit_type_equality_parentheses_keep_their_meaning_chirho() {
 }
 
 #[test]
-fn false_and_unparenthesized_chained_equalities_stay_rejected_chirho() {
+fn false_equalities_and_noninjective_arithmetic_stay_rejected_chirho() {
     for (name_chirho, source_chirho) in [
         ("FalseTypeEqualityChirho.hs", FALSE_EQUALITY_CHIRHO),
         ("ChainedTypeEqualityChirho.hs", CHAINED_EQUALITY_CHIRHO),
+        ("UnrelatedTypeSumsChirho.hs", UNRELATED_SUMS_CHIRHO),
+        ("ZeroTypeProductChirho.hs", ZERO_PRODUCT_CHIRHO),
     ] {
         assert!(
             compile_source_chirho(
