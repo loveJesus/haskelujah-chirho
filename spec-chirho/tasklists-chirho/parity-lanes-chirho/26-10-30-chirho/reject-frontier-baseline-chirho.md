@@ -46,7 +46,7 @@ Unless a crate is explicitly named, checker source paths below are relative to `
 
 ### 1. Start with bounded declaration validation, then typed superclass obligations
 
-The most isolated first repair is a parent/constructor validator before registering data/newtype constructors. `infer_chirho/declarations_chirho/module_chirho.rs:366` takes a GADT constructor's entire written signature and registers it without requiring its return head to be the declared parent. For example `T13300.hs` declares `data W where WI :: Int; WD :: Double`; both constructors are not constructors of W. Other source witnesses: `T7175.hs`, `tcfail155.hs`, `tcfail176.hs`, `T18357.hs`, `T18357b.hs`. These six are registered negatives; GHC's syntactic parent rule must be followed before alias/family normalization (the W alias witness is intentional). No candidate flip count is claimed.
+The most isolated next repair is a parent/constructor validator before registering data/newtype constructors. `infer_chirho/declarations_chirho/module_chirho.rs:366` takes a GADT constructor's entire written signature and registers it without requiring its return head to be the declared parent. For example `T13300.hs` declares `data W where WI :: Int; WD :: Double`; neither signature returns W. `T7175.hs`, `tcfail155.hs` and `tcfail176.hs` are other direct wrong-parent witnesses. The exact alias/kind boundary needs a fresh GHC trace: `T18357.hs` involves an alias with a family-valued kind, while `T18357b.hs` already returns the nominal parent T and varies its kind through Star. They remain kind/alias-dependent neighbors, not promised reach of a plain return-head rule. No candidate flip count is claimed.
 
 At `module_chirho.rs:384-425`, ordinary newtype field types are collected and passed to fun_n with no exact-one-field proof. `T15523.hs` has no field; `T23308.hs` has two; `T2126.hs` has no constructor. `T15796.hs` and `T17955.hs` have newtype contexts; `tcfail156.hs` has an existential; `T18891a.hs` and `T21447.hs` are representation-polymorphic GADT newtypes. Keep these as separate validity predicates instead of a blanket ban on GADT-style newtypes. `validity_chirho.rs:131-207` currently licenses rank/qualified types and checks unlifted newtype fields; it is not a full declaration validator. Put new checks in a category module rather than growing that near-limit file.
 
@@ -189,9 +189,9 @@ This is an exact inventory partition, not an exact causal partition. Negative me
 
 ## Complete 514-member ledger
 
-All paths in this table are under `ghc-tests-chirho/typecheck-chirho/should_fail/`. The retained GHC column is the October17 identical-source standalone run, not a fresh oracle. all.T locations and flags in the shared JSON are authoritative over this compact action column. `—` means no stderr diagnostic code, not no source issue. Every file remains an ACCEPT in both current retained candidate passes.
+All paths in this table are under `ghc-tests-chirho/typecheck-chirho/should_fail/`. The retained GHC column is the October17 identical-source standalone run, not a fresh oracle. all.T locations and flags in the shared JSON are authoritative over this compact action column. The last column is unreliable legacy-table extraction metadata, not a current diagnostic inventory: `—` can appear even when the actual stderr contains a GHC code (T13300 has GHC-45219; tcfail106 has GHC-39999). Read the actual retained stderr for a diagnostic claim. Every file was an ACCEPT in both starting retained candidate passes; this is a dated baseline ledger.
 
-| File | all.T action | Retained GHC | Topic | stderr first code |
+| File | all.T action | Retained GHC | Topic | Legacy code metadata (unreliable) |
 | --- | --- | --- | --- | --- |
 | AmbigFDs.hs | compile | REJECT | R02 rigidity / existential / equation consistency | — |
 | AssocTyDef01.hs | compile_fail | REJECT | F03 associated default or class-member declaration | — |
