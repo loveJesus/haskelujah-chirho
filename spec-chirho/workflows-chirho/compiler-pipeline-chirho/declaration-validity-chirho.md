@@ -32,12 +32,18 @@ flowchart TD
 3. One written instance body binds each name once (`GHC-10498`). Lowering already merges
    adjacent equations, so a repeat was written apart. Signatures are not bindings.
 
-A fourth rule, a default signature needs a default binding (`GHC-59794`), is held (#30831).
-`collect_instance_methods_chirho` stops reading a class body at the first non-method member
-after a method, such as a fixity declaration. A default binding written after one is lost,
-while the default signature is read separately from the CST, so the rule would reject
-programs GHC accepts. It returns with the unit that repairs that member walk; its source
-and controls are kept as receipts.
+4. A default signature has a default binding (`GHC-59794`). Lowering extracts only
+   `default name ::` signatures, so an operator's default signature is not judged.
+
+Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
+ends its walk at the first non-method member after a method, a defence against sibling
+declarations leaked by layout. Row 683 held the rule because a legal fixity declaration
+ended the walk and lost a default binding written after it (#30830). Row 685 admits a
+fixity declaration whose operators are all names the class body declares (its method
+signatures and associated families, read from every member first, so the fixity may precede
+them, as in T10816). Every other non-method member still ends the walk. An instance body
+admits no fixity: GHC 9.14.1 rejects one there ("misplaced fixity signature"), and that
+program stays a residual boundary.
 
 ## Why the rules run before deriving and report after naming
 
