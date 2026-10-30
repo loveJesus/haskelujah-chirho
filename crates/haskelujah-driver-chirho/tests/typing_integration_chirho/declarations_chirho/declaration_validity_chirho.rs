@@ -16,7 +16,7 @@ use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
 use haskelujah_span_chirho::{FileIdChirho, SourceMapChirho};
 use haskelujah_typing_chirho::check_module_declaration_validity_chirho;
 
-use super::rejected_like_ghc_chirho;
+use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
 
 // tcfail038 (GHC-10498): each method is bound twice, apart.
 const CONFLICT_SOURCE_CHIRHO: &str = r#"module ConflictChirho where
@@ -26,6 +26,14 @@ instance Eq NumberChirho where
   leftChirho /= rightChirho = False
   leftChirho == rightChirho = False
   leftChirho /= rightChirho = True
+"#;
+
+// MissingDefaultMethodBinding (GHC-59794).
+const MISSING_DEFAULT_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE DefaultSignatures #-}
+module DefaultChirho where
+class SizedChirho a where
+  sizeChirho :: a -> Int
+  default sizeChirho :: Show a => a -> Int
 "#;
 
 // A newtype error and an unknown type: naming reports first.
@@ -72,6 +80,90 @@ instance Show ShapeChirho where
   show CircleChirho = "circle"
   show SquareChirho = "square"
   showsPrec _ shapeChirho restChirho = show shapeChirho ++ restChirho
+"#;
+
+// A binding before its default signature, and an operator's default signature,
+// which lowering does not extract.
+const DEFAULT_ORDER_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE DefaultSignatures #-}
+module DefaultsChirho where
+class ZeroChirho a where
+  zeroChirho :: a
+  zeroChirho = undefined
+  default zeroChirho :: Num a => a
+class JoinChirho a where
+  (<+>) :: a -> a -> a
+  default (<+>) :: Semigroup a => a -> a -> a
+  leftChirho <+> rightChirho = leftChirho <> rightChirho
+"#;
+
+// #30829's boundary: a default signature, then an associated type or data
+// declaration, then the default binding, which must stay attached.
+const ASSOCIATED_BETWEEN_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE DefaultSignatures, TypeFamilies #-}
+module AssociatedChirho where
+class SizedChirho a where
+  sizeChirho :: a -> Int
+  default sizeChirho :: Show a => a -> Int
+  type UnitChirho a
+  sizeChirho valueChirho = length (show valueChirho)
+class CountedChirho a where
+  countChirho :: a -> Int
+  default countChirho :: Enum a => a -> Int
+  data TagChirho a
+  countChirho valueChirho = fromEnum valueChirho
+"#;
+
+// Row 685's counterexample (#30830): a fixity between a default signature and its
+// binding. GHC accepts it; the walk used to end at the fixity and drop the binding.
+const FIXITY_BETWEEN_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE DefaultSignatures #-}
+module FixityBetweenChirho where
+class SizedChirho a where
+  sizeChirho :: a -> Int
+  default sizeChirho :: Show a => a -> Int
+  infixl 6 <+>
+  (<+>) :: a -> a -> a
+  sizeChirho valueChirho = length (show valueChirho)
+"#;
+
+// A fixity for the class's own operator, a function and an instance written after
+// the class stay top-level siblings.
+const SIBLINGS_SOURCE_CHIRHO: &str = r#"module SiblingsChirho where
+class JoinChirho a where
+  (<+>) :: a -> a -> a
+  emptyChirho :: a
+
+-- | Joins to the left.
+infixl 6 <+>
+
+-- | A helper.
+helperChirho :: Int
+helperChirho = 1
+
+instance JoinChirho Bool where
+  leftChirho <+> _ = leftChirho
+  emptyChirho = False
+"#;
+
+// The default body after the fixity runs: Bool inherits it, Int writes its own.
+// GHC 9.14.1 prints 4, 42, 5 and 6.
+const DEFAULT_BODIES_SOURCE_CHIRHO: &str = r#"{-# LANGUAGE DefaultSignatures #-}
+module Main where
+class SizedChirho a where
+  sizeChirho :: a -> Int
+  default sizeChirho :: Show a => a -> Int
+  infixl 6 <+>
+  (<+>) :: a -> a -> a
+  sizeChirho valueChirho = length (show valueChirho)
+instance SizedChirho Bool where
+  leftChirho <+> _ = leftChirho
+instance SizedChirho Int where
+  sizeChirho _ = 42
+  leftChirho <+> rightChirho = leftChirho + rightChirho
+main :: IO ()
+main = do
+  print (sizeChirho True)
+  print (sizeChirho (7 :: Int))
+  print (sizeChirho (False <+> True))
+  print ((1 :: Int) <+> 2 <+> 3)
 "#;
 
 /// GHC accepts the program, so the checker must too.
@@ -123,6 +215,27 @@ fn newtype_constructors_chirho(module_chirho: &ModuleChirho) -> Vec<(String, usi
                     .sum::<usize>(),
             )),
             _ => None,
+        })
+        .collect()
+}
+
+/// Each class method as lowered: its name, and whether a default binding and a
+/// default signature are attached.
+fn class_method_defaults_chirho(module_chirho: &ModuleChirho) -> Vec<(String, bool, bool)> {
+    module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::ClassDeclChirho { methods_chirho, .. } => Some(methods_chirho),
+            _ => None,
+        })
+        .flatten()
+        .map(|method_chirho| {
+            (
+                method_chirho.name_chirho.text_chirho().to_string(),
+                method_chirho.default_chirho.is_some(),
+                method_chirho.default_sig_chirho.is_some(),
+            )
         })
         .collect()
 }
@@ -195,6 +308,18 @@ fn conflicting_instance_bindings_are_rejected_chirho() {
             "E0209",
             "Conflicting definitions for `==`",
             "Conflicting definitions for `/=`",
+        ],
+    );
+}
+
+#[test]
+fn a_default_signature_without_a_binding_is_rejected_chirho() {
+    rejected_like_ghc_chirho(
+        MISSING_DEFAULT_SOURCE_CHIRHO,
+        "DefaultChirho.hs",
+        &[
+            "E0209",
+            "generic-default signature without a binding `sizeChirho`",
         ],
     );
 }
@@ -283,6 +408,57 @@ fn should_compile_newtypes_keep_checking_chirho() {
 }
 
 #[test]
+fn should_compile_default_signatures_keep_checking_chirho() {
+    // Every default signature here has its binding, some with no arguments.
+    for (file_chirho, source_chirho) in [
+        (
+            "DeepSubsumption05.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/DeepSubsumption05.hs"
+            ),
+        ),
+        (
+            "ExplicitSpecificity4.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/ExplicitSpecificity4.hs"
+            ),
+        ),
+        (
+            "T11608.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T11608.hs"
+            ),
+        ),
+        (
+            "T13142.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T13142.hs"
+            ),
+        ),
+        (
+            "T16832.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T16832.hs"
+            ),
+        ),
+        (
+            "T17723a.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T17723a.hs"
+            ),
+        ),
+        (
+            "T26457.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T26457.hs"
+            ),
+        ),
+    ] {
+        checks_like_ghc_chirho(file_chirho, source_chirho);
+    }
+}
+
+#[test]
 fn derived_instances_are_not_judged_as_written_chirho() {
     // syn-perf derives Show and Typeable on two dozen newtypes. Deriving runs after
     // the rules, so no generated instance body is judged as if written.
@@ -335,5 +511,57 @@ fn signatures_and_adjacent_equations_are_not_conflicts_chirho() {
     validator_is_silent_chirho(
         "instance equations",
         &lowered_chirho(EQUATIONS_SOURCE_CHIRHO),
+    );
+}
+
+#[test]
+fn default_bindings_attach_in_any_order_chirho() {
+    validator_is_silent_chirho(
+        "default signatures",
+        &lowered_chirho(DEFAULT_ORDER_SOURCE_CHIRHO),
+    );
+}
+
+#[test]
+fn a_default_binding_after_an_associated_declaration_stays_attached_chirho() {
+    let module_chirho = lowered_chirho(ASSOCIATED_BETWEEN_SOURCE_CHIRHO);
+    let defaults_chirho = class_method_defaults_chirho(&module_chirho);
+    for wanted_chirho in ["sizeChirho", "countChirho"] {
+        assert!(
+            defaults_chirho.contains(&(wanted_chirho.to_string(), true, true)),
+            "{wanted_chirho} must keep its default binding and signature: {defaults_chirho:?}"
+        );
+    }
+    validator_is_silent_chirho("associated declaration between", &module_chirho);
+    checks_like_ghc_chirho("AssociatedChirho.hs", ASSOCIATED_BETWEEN_SOURCE_CHIRHO);
+}
+
+#[test]
+fn a_default_binding_after_a_class_fixity_stays_attached_chirho() {
+    let module_chirho = lowered_chirho(FIXITY_BETWEEN_SOURCE_CHIRHO);
+    let defaults_chirho = class_method_defaults_chirho(&module_chirho);
+    assert!(
+        defaults_chirho.contains(&("sizeChirho".to_string(), true, true)),
+        "sizeChirho must keep its default binding and signature: {defaults_chirho:?}"
+    );
+    validator_is_silent_chirho("fixity between", &module_chirho);
+    checks_like_ghc_chirho("FixityBetweenChirho.hs", FIXITY_BETWEEN_SOURCE_CHIRHO);
+}
+
+#[test]
+fn class_fixities_and_their_top_level_siblings_keep_checking_chirho() {
+    checks_like_ghc_chirho("SiblingsChirho.hs", SIBLINGS_SOURCE_CHIRHO);
+    checks_like_ghc_chirho(
+        "T10816.hs",
+        include_str!("../../../../../ghc-tests-chirho/rename-chirho/should_compile/T10816.hs"),
+    );
+}
+
+#[test]
+fn a_default_body_after_a_class_fixity_runs_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        "DefaultBodiesChirho.hs",
+        DEFAULT_BODIES_SOURCE_CHIRHO,
+        "4\n42\n5\n6\n",
     );
 }

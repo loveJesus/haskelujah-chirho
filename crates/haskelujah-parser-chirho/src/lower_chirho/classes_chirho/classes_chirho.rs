@@ -208,9 +208,12 @@ impl LowerCtxChirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho
                 && n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho
             {
+                let class_names_chirho =
+                    self.class_declared_names_chirho(n_chirho, child_chirho.start_chirho);
                 self.collect_instance_methods_chirho(
                     n_chirho,
                     child_chirho.start_chirho,
+                    Some(&class_names_chirho),
                     &mut where_decls_chirho,
                 );
             }
@@ -360,6 +363,7 @@ impl LowerCtxChirho {
                         self.collect_instance_methods_chirho(
                             n_chirho,
                             child_chirho.start_chirho,
+                            None,
                             &mut method_decls_chirho,
                         );
                     } else if saw_instance_chirho && !saw_where_chirho {
@@ -631,10 +635,20 @@ impl LowerCtxChirho {
 
     /// Collect FunBind (and other decl) children from a WhereClause or similar
     /// node, lowering each into a DeclChirho and appending to `out_chirho`.
+    ///
+    /// The walk ends at the first non-method member once a method has been seen.
+    /// That is the retained layout-leak stop: a sibling declaration leaked into the
+    /// block is cut there, although method-like members before it are already taken.
+    /// A class passes the names its body declares (`class_declared_names_chirho`):
+    /// a fixity declaration for those names only is a legal class member and does
+    /// not end the walk. An instance passes `None`, since GHC rejects a fixity
+    /// declaration in an instance body.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
     fn collect_instance_methods_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
+        class_names_chirho: Option<&HashSet<String>>,
         out_chirho: &mut Vec<DeclChirho>,
     ) {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
@@ -658,6 +672,9 @@ impl LowerCtxChirho {
                 } else if let Some(decl_chirho) =
                     self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
                 {
+                    if declares_class_fixity_chirho(&decl_chirho, class_names_chirho) {
+                        continue;
+                    }
                     let is_method_like_decl_chirho = matches!(
                         decl_chirho,
                         DeclChirho::FunBindChirho { .. }
@@ -678,6 +695,50 @@ impl LowerCtxChirho {
                 }
             }
         }
+    }
+
+    /// The names a class where-block declares: its method signatures and its
+    /// associated type and data families. Every member is read, so a fixity
+    /// declaration may precede the signature it names (T10816). Only signature and
+    /// associated type/data nodes are lowered here, which are type-level: no
+    /// expression is lowered twice and no occurrence origin is minted.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn class_declared_names_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> HashSet<String> {
+        let mut names_chirho = HashSet::new();
+        for child_chirho in &self.semantic_children_chirho(node_chirho, base_chirho) {
+            let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho else {
+                continue;
+            };
+            if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
+                let type_sigs_chirho = self.lower_type_sigs_chirho(
+                    n_chirho,
+                    child_chirho.start_chirho,
+                    self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                );
+                for sig_chirho in type_sigs_chirho {
+                    if let DeclChirho::TypeSigChirho { name_chirho, .. } = sig_chirho {
+                        names_chirho.insert(name_chirho.text_chirho().to_string());
+                    }
+                }
+            } else if matches!(
+                n_chirho.kind_chirho(),
+                SyntaxKindChirho::TypeFamilyDeclChirho
+                    | SyntaxKindChirho::TypeAliasDeclChirho
+                    | SyntaxKindChirho::DataDeclChirho
+            ) && let Some(
+                DeclChirho::TypeFamilyDeclChirho { name_chirho, .. }
+                | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
+                | DeclChirho::DataDeclChirho { name_chirho, .. },
+            ) = self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
+            {
+                names_chirho.insert(name_chirho.text_chirho().to_string());
+            }
+        }
+        names_chirho
     }
 
     /// Try to extract a DefaultSignatures-style default method signature from
@@ -732,4 +793,22 @@ impl LowerCtxChirho {
         }
         None
     }
+}
+
+/// A fixity declaration naming only operators the enclosing class declares, which
+/// is a legal class member (GHC accepts T10816). Without a class's names (an
+/// instance body) no fixity declaration qualifies.
+fn declares_class_fixity_chirho(
+    decl_chirho: &DeclChirho,
+    class_names_chirho: Option<&HashSet<String>>,
+) -> bool {
+    let (Some(names_chirho), DeclChirho::FixityDeclChirho { ops_chirho, .. }) =
+        (class_names_chirho, decl_chirho)
+    else {
+        return false;
+    };
+    !ops_chirho.is_empty()
+        && ops_chirho
+            .iter()
+            .all(|op_chirho| names_chirho.contains(op_chirho.text_chirho()))
 }

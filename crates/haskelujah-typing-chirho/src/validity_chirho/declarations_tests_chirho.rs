@@ -5,7 +5,7 @@
 
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{FieldDeclChirho, StrictnessChirho, TyVarChirho};
-use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::RawNameChirho;
 use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho};
 
@@ -140,6 +140,24 @@ fn instance_chirho(methods_chirho: Vec<LocalBindChirho>) -> DeclChirho {
         types_chirho: vec![con_ty_chirho("T")],
         methods_chirho,
         assoc_tf_instances_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+fn class_chirho(default_sig_chirho: Option<&str>, has_default_chirho: bool) -> DeclChirho {
+    DeclChirho::ClassDeclChirho {
+        context_chirho: vec![],
+        name_chirho: name_chirho("C"),
+        type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("a"))],
+        methods_chirho: vec![ClassMethodChirho {
+            name_chirho: name_chirho("meth"),
+            ty_chirho: var_ty_chirho("a"),
+            default_chirho: has_default_chirho.then(Vec::new),
+            default_sig_chirho: default_sig_chirho.map(str::to_string),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        associated_tfs_chirho: vec![],
+        fundeps_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }
 }
@@ -297,6 +315,18 @@ fn signatures_distinct_names_and_other_instances_are_not_conflicts_chirho() {
         ])
         .is_empty()
     );
+}
+
+#[test]
+fn a_default_signature_needs_a_default_binding_chirho() {
+    // MissingDefaultMethodBinding: `default meth :: Num a => a` and no `meth = ...`.
+    assert_eq!(
+        codes_chirho(vec![class_chirho(Some("Num a => a"), false)]),
+        ["GHC-59794"]
+    );
+    assert!(codes_chirho(vec![class_chirho(Some("Num a => a"), true)]).is_empty());
+    assert!(codes_chirho(vec![class_chirho(None, true)]).is_empty());
+    assert!(codes_chirho(vec![class_chirho(None, false)]).is_empty());
 }
 
 #[test]

@@ -347,3 +347,153 @@ fn lower_real_contravariant_representable_class_matches_expected_shapes_chirho()
         other_chirho => panic!("expected class decl, got {:?}", other_chirho),
     }
 }
+
+/// A class's method and associated-family names, as lowering keeps them.
+fn class_member_names_chirho(decl_chirho: &DeclChirho) -> (Vec<String>, Vec<String>) {
+    let DeclChirho::ClassDeclChirho {
+        methods_chirho,
+        associated_tfs_chirho,
+        ..
+    } = decl_chirho
+    else {
+        panic!("expected a class declaration, got {decl_chirho:?}");
+    };
+    (
+        methods_chirho
+            .iter()
+            .map(|method_chirho| method_chirho.name_chirho.text_chirho().to_string())
+            .collect(),
+        associated_tfs_chirho
+            .iter()
+            .map(|family_chirho| family_chirho.name_chirho.text_chirho().to_string())
+            .collect(),
+    )
+}
+
+#[test]
+fn a_fixity_for_a_declared_method_keeps_the_rest_of_the_class_chirho() {
+    // Row 685: a legal class-member fixity no longer ends the member walk, so the
+    // default body written after it stays attached.
+    let module_chirho = parse_and_lower_chirho(
+        "module M where
+class SizedChirho a where
+  sizeChirho :: a -> Int
+  default sizeChirho :: Show a => a -> Int
+  infixl 6 <+>
+  (<+>) :: a -> a -> a
+  sizeChirho valueChirho = length (show valueChirho)
+",
+    );
+    let DeclChirho::ClassDeclChirho { methods_chirho, .. } =
+        find_class_decl_chirho(&module_chirho, "SizedChirho")
+    else {
+        panic!("SizedChirho should lower to a class declaration");
+    };
+    let size_chirho = find_class_method_chirho(methods_chirho, "sizeChirho");
+    assert!(
+        size_chirho.default_chirho.is_some(),
+        "the default body after the fixity must stay attached"
+    );
+    assert!(size_chirho.default_sig_chirho.is_some());
+    find_class_method_chirho(methods_chirho, "<+>");
+}
+
+#[test]
+fn fixities_for_associated_type_operators_keep_the_rest_of_the_class_chirho() {
+    // T10816 (GHC accepts): fixities between associated type operators and the
+    // methods that share their names.
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeOperators, TypeFamilies #-}
+module T10816 where
+class C a where
+  type a # b
+  infix 4 #
+  type a *** b
+  type a +++ b
+  infixr 5 ***, +++
+  (***), (+++) :: a -> a -> a
+",
+    );
+    let (methods_chirho, families_chirho) =
+        class_member_names_chirho(find_class_decl_chirho(&module_chirho, "C"));
+    assert_eq!(methods_chirho, ["***", "+++"]);
+    assert_eq!(families_chirho, ["#", "***", "+++"]);
+}
+
+#[test]
+fn a_top_level_fixity_function_and_instance_after_a_class_stay_siblings_chirho() {
+    // The layout-leak defense: a fixity for the class's own operator, a function and
+    // an instance written after the class stay top-level, with or without blank
+    // lines and Haddock comments between them.
+    for source_chirho in [
+        "module M where
+class JoinChirho a where
+  (<+>) :: a -> a -> a
+  emptyChirho :: a
+infixl 6 <+>
+helperChirho :: Int
+helperChirho = 1
+instance JoinChirho Bool where
+  leftChirho <+> _ = leftChirho
+  emptyChirho = False
+",
+        "module M where
+class JoinChirho a where
+  (<+>) :: a -> a -> a
+  emptyChirho :: a
+
+-- | Joins to the left.
+infixl 6 <+>
+
+-- | A helper.
+helperChirho :: Int
+helperChirho = 1
+
+instance JoinChirho Bool where
+  leftChirho <+> _ = leftChirho
+  emptyChirho = False
+",
+    ] {
+        let module_chirho = parse_and_lower_chirho(source_chirho);
+        let (methods_chirho, _) =
+            class_member_names_chirho(find_class_decl_chirho(&module_chirho, "JoinChirho"));
+        assert_eq!(methods_chirho, ["<+>", "emptyChirho"], "{source_chirho}");
+        let siblings_chirho: Vec<&str> = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::FixityDeclChirho { .. } => Some("fixity"),
+                DeclChirho::TypeSigChirho { name_chirho, .. }
+                | DeclChirho::FunBindChirho { name_chirho, .. }
+                    if name_chirho.text_chirho() == "helperChirho" =>
+                {
+                    Some("helper")
+                }
+                DeclChirho::InstanceDeclChirho { .. } => Some("instance"),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            siblings_chirho,
+            ["fixity", "helper", "helper", "instance"],
+            "{source_chirho}"
+        );
+    }
+}
+
+#[test]
+fn a_class_fixity_for_an_undeclared_operator_still_ends_the_walk_chirho() {
+    // Only the class's own names make a fixity a member. Any other member after a
+    // method still ends the walk, as the layout-leak defense requires.
+    let module_chirho = parse_and_lower_chirho(
+        "module M where
+class C a where
+  firstChirho :: a
+  infixl 6 <+++>
+  secondChirho :: a
+",
+    );
+    let (methods_chirho, _) =
+        class_member_names_chirho(find_class_decl_chirho(&module_chirho, "C"));
+    assert_eq!(methods_chirho, ["firstChirho"]);
+}

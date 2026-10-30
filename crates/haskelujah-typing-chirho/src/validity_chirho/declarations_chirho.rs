@@ -9,24 +9,24 @@
 //!
 //! 1. a newtype constructor has exactly one field (`GHC-23517`);
 //! 2. a GADT-syntax newtype constructor has no context (`GHC-17440`);
-//! 3. one instance body binds a name once (`GHC-10498`).
+//! 3. one instance body binds a name once (`GHC-10498`);
+//! 4. a default signature has a default binding (`GHC-59794`).
 //!
 //! The driver runs it on the module as written, after splices and before
 //! deriving appends generated instances, and reports it after name resolution.
 //! Shapes that lowering drops are not judged here: a Haskell 98 constructor's
 //! `forall` and context, a missing newtype constructor, and class-body bindings
 //! without a signature wait on the AST
-//! (`spec-chirho/bug-existential-constructor-scope-dropped-chirho.md`). The
-//! default-signature rule (`GHC-59794`) is held: lowering stops reading a class
-//! body at a fixity declaration, so a default binding written after one is lost.
+//! (`spec-chirho/bug-existential-constructor-scope-dropped-chirho.md`).
 //! workflow: compiler-pipeline-chirho/declaration-validity-chirho
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::{ClassMethodChirho, ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::expr_chirho::LocalBindChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{
     DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho, LabelChirho,
@@ -91,6 +91,11 @@ pub fn check_module_declaration_validity_chirho(
             DeclChirho::InstanceDeclChirho { methods_chirho, .. } => {
                 check_instance_bindings_chirho(methods_chirho, &mut errors_chirho);
             }
+            DeclChirho::ClassDeclChirho {
+                name_chirho,
+                methods_chirho,
+                ..
+            } => check_default_signatures_chirho(name_chirho, methods_chirho, &mut errors_chirho),
             _ => {}
         }
     }
@@ -217,6 +222,35 @@ fn check_instance_bindings_chirho(
                 span_chirho: *span_chirho,
                 related_span_chirho: Some(*first_chirho.get()),
             }),
+        }
+    }
+}
+
+/// Rule 4: a default signature has a default binding (`GHC-59794`).
+///
+/// Lowering attaches both to the method by name, and extracts only
+/// `default name ::` signatures, so an operator's default signature never
+/// reaches this rule. The class member walk (`collect_instance_methods_chirho`)
+/// reads past a fixity declaration for the class's own names (row 685), but any
+/// other non-method member after a method still ends it, and a binding written
+/// after such a member is not seen.
+fn check_default_signatures_chirho(
+    class_name_chirho: &NameChirho,
+    methods_chirho: &[ClassMethodChirho],
+    errors_chirho: &mut Vec<DeclarationErrorChirho>,
+) {
+    for method_chirho in methods_chirho {
+        if method_chirho.default_sig_chirho.is_some() && method_chirho.default_chirho.is_none() {
+            errors_chirho.push(DeclarationErrorChirho {
+                ghc_code_chirho: "GHC-59794",
+                message_chirho: format!(
+                    "Class `{}` has a generic-default signature without a binding `{}`",
+                    class_name_chirho.text_chirho(),
+                    method_chirho.name_chirho.text_chirho()
+                ),
+                span_chirho: method_chirho.span_chirho,
+                related_span_chirho: None,
+            });
         }
     }
 }

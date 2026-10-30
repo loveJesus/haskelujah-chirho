@@ -754,3 +754,29 @@ fn lower_real_contravariant_representable_instances_preserve_assoc_type_heads_ch
         other_chirho => panic!("expected Product instance decl, got {:?}", other_chirho),
     }
 }
+
+#[test]
+fn an_instance_fixity_still_ends_the_instance_walk_chirho() {
+    // GHC 9.14.1 rejects a fixity declaration in an instance body (root's oracle,
+    // row 685), so only class bodies admit one; the instance walk stops there.
+    let module_chirho = parse_and_lower_chirho(
+        "module M where
+instance Num T where
+  leftChirho + rightChirho = leftChirho
+  infixl 6 +
+  fromInteger _ = T
+",
+    );
+    let DeclChirho::InstanceDeclChirho { methods_chirho, .. } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("expected an instance declaration");
+    };
+    let names_chirho: Vec<&str> = methods_chirho
+        .iter()
+        .filter_map(|method_chirho| match method_chirho {
+            LocalBindChirho::FunBindChirho { name_chirho, .. } => Some(name_chirho.text_chirho()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(names_chirho, ["+"]);
+}
