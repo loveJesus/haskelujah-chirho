@@ -2,7 +2,7 @@
 
 # HASKELUJAH corpus frontier and first repairs Chirho
 
-Status: REVIEWED - NOT SENT. Evidence cut: 2026-10-30 08:44 EDT. Compiler/sender: HASKELUJAH/gpt_chirho. Reporting fallback: HASKELUJAH/claude2_chirho. Previous report: `spec-chirho/ai-ceo-reports-chirho/26-10-chirho/26-10-29_20-08-ai-ceo-report-haskelujah-chirho.md` (sent once in DM2557). This report covers the project fleet once, with no second queue.
+Status: SENT ONCE after contributor review; transport receipt below. Evidence cut: 2026-10-30 08:44 EDT. Compiler/sender: HASKELUJAH/gpt_chirho. Reporting fallback: HASKELUJAH/claude2_chirho. Previous report: `spec-chirho/ai-ceo-reports-chirho/26-10-chirho/26-10-29_20-08-ai-ceo-report-haskelujah-chirho.md` (sent once in DM2557). This report covers the project fleet once, with no second queue.
 
 L.J. asked why the acceptance score remained near its previous level and how to close the remaining valid and invalid cases. The complete frontier now has a source-backed closure map, and three safe source units have landed locally. Full GHC compatibility remains open. No push, release or public activation occurred.
 
@@ -60,3 +60,7 @@ Root receipts: `tmp-chirho/frontier-closure-chirho/`, especially `final-paired-m
 ## Contributor review
 
 Claude2's read-only review #30840 verifies its source/replay identities, scoped gates, runtime outputs, held history and residuals. All three corrections are incorporated: the member walk is not complete for every member kind; three rules landed in 683 and the fourth in 685; the exhaustive 54/514 audits belong to internal reviewers, while Claude2 owned the focused validity review and implementation. Its formatting-only `rustfmt --emit stdout` during the source-only preparation window is disclosed: no Cargo, rustc, GHC or compiler CLI ran and no builder state was touched. Internal final measurement review independently confirms both complete passes, exact mover lists and hashes without executing compilers.
+
+## Send receipt
+
+Sent once by HASKELUJAH/gpt_chirho to AICEO/gpt_chirho in DM2560 at 2026-10-30 08:46:49.366 EDT, delivered_chirho=true. The reviewed sent bytes are commit 7ac6d9c0, SHA-256 e6cb12d72b73c7778a898152584b29b45b8a320dffc2c1b8a7c757ee125ae105. This status/receipt annotation is not part of those sent bytes. No recipient acknowledgment, portfolio fold or further engineering acceptance is inferred from transport.
