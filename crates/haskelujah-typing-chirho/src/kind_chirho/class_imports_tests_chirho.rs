@@ -148,6 +148,7 @@ fn kind_errors_chirho(
         module_chirho,
         KindImportsChirho {
             builtin_classes_chirho: scope_chirho,
+            written_decl_count_chirho: module_chirho.decls_chirho.len(),
         },
     );
     (
@@ -418,6 +419,36 @@ fn builtin_class_kinds_hold_where_a_constraint_is_expected_chirho() {
         &module_chirho,
     );
     assert_eq!(count_chirho, 0, "{text_chirho}");
+}
+
+#[test]
+fn only_written_builtin_instance_heads_are_judged_chirho() {
+    // Deriving appends its instances after the written declarations, with heads that
+    // apply every type parameter (T3955, T12734); a head past the written count stays
+    // unjudged, while the same head written in source is judged.
+    let module_chirho = module_chirho(
+        &[],
+        vec![
+            flag_chirho(),
+            instance_chirho(name_chirho("Functor"), con_chirho("FlagChirho")),
+        ],
+    );
+    let scope_chirho = scope_chirho(&[("Functor", "Functor", 1)]);
+    for (written_chirho, errors_chirho) in [(2, 1), (1, 0)] {
+        let result_chirho = infer_module_kinds_with_imports_chirho(
+            &module_chirho,
+            KindImportsChirho {
+                builtin_classes_chirho: &scope_chirho,
+                written_decl_count_chirho: written_chirho,
+            },
+        );
+        assert_eq!(
+            result_chirho.diagnostics_chirho.error_count_chirho(),
+            errors_chirho,
+            "written {written_chirho}: {}",
+            result_chirho.diagnostics_chirho
+        );
+    }
 }
 
 #[test]

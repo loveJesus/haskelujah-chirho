@@ -5,7 +5,12 @@
 //! is embedded byte for byte, with its sha256 prefix. Holds must type-check; negatives
 //! must be rejected for the kind their builtin class needs. T5120 is the
 //! parenthesized-element regression: GHC accepts it, and its signature must keep its whole
-//! context.
+//! context. CH02 and CH07 are GHC-valid, but baseline ce999556 already rejects their
+//! `sum` and `concatMap` calls (E0200, Foldable method dispatch), so this unit leaves them
+//! unclaimed; their declaration-only twins CH02D and CH07D carry the kind check.
+//! T3955 and T12734 derive Applicative and Monad by generalized newtype deriving; their
+//! derived heads apply every type parameter and stay unjudged, as only written instance
+//! heads are.
 //! workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 
 use haskelujah_span_chirho::SourceMapChirho;
@@ -145,6 +150,147 @@ main :: IO ()
 main = putStrLn (describeAllChirho (Just (3 :: Int)))
 "##;
 
+/// T3955 (sha256 9999aa26): typecheck should_compile T3955, deriving Applicative and Monad by
+/// generalized newtype deriving. GHC 9.14.1: accepted.
+const T3955_CHIRHO: &str = r##"{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+
+-- Test for #3955
+
+module T3955 where
+
+import Control.Applicative (Applicative(..))
+import Control.Monad (liftM, ap)
+
+class (Monad m) => MonadReader r m
+newtype Reader r a = Reader { runReader :: r -> a }
+
+instance Functor (Reader r) where
+    fmap = liftM
+
+instance Applicative (Reader r) where
+    pure = error "urk"
+    (<*>) = ap
+
+instance Monad (Reader r) where
+  (>>=)  = error "urk"
+
+instance MonadReader r (Reader r)
+
+newtype T a x = T (Reader a x)
+    deriving (Functor, Applicative, Monad, MonadReader a)
+
+{-
+[1 of 1] Compiling Main             ( bug.hs, interpreted )
+mkUsageInfo: internal name? a{tv amy}
+Ok, modules loaded: Main.
+-}
+"##;
+
+/// T12734 (sha256 36c43432): typecheck should_compile T12734, deriving Applicative and Monad by
+/// generalized newtype deriving. GHC 9.14.1: accepted.
+const T12734_CHIRHO: &str = r##"{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE UndecidableInstances      #-}
+{-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE PolyKinds                 #-}
+{-# LANGUAGE TypeApplications          #-}
+
+---------------  The original bug report --------------
+--
+-- See T12734a for a smaller version
+
+module T12734 where
+
+import Prelude
+import Data.Kind
+import Control.Applicative
+import Control.Monad.Fix
+import Control.Monad.Trans.Identity
+import Control.Monad.Trans.Class
+import Control.Monad.IO.Class
+
+
+data A
+data B
+data Net
+data Ty
+
+data Layer4 t l
+data TermStore
+
+-- Helpers: Stack
+
+data Stack layers (t :: Type -> Type) where
+    SLayer :: t l -> Stack ls t -> Stack (l ': ls) t
+    SNull  :: Stack '[] t
+
+instance ( Constructor m (t l)
+         , Constructor m (Stack ls t)) => Constructor m (Stack (l ': ls) t)
+instance Monad m                       => Constructor m (Stack '[]       t)
+
+
+-- Helpers: Expr
+
+newtype Expr  t layers    = Expr (TermStack t layers)
+type TermStack t layers = Stack layers (Layer4 (Expr t layers))
+
+
+-- Helpers: Funny typeclass
+
+class Monad m => Constructor m t
+
+instance ( Monad m, expr ~ Expr t layers, Constructor m (TermStack t layers)
+         ) => Constructor m (Layer4 expr Ty)
+
+
+-- HERE IS A FUNNY BEHAVIOR: the commented line raises context reduction stack
+-- overflow
+test_gr ::
+    ( Constructor m (TermStack t layers), Inferable A layers m, Inferable B t m
+      , bind ~ Expr t layers
+--  ) => m (Expr t layers)
+    ) => m bind
+test_gr = undefined
+
+
+-- Explicit information about a type which could be inferred
+
+class Monad m => Inferable (cls :: Type) (t :: k) m | cls m -> t
+
+newtype KnownTyx (cls :: Type) (t :: k) (m :: Type -> Type) (a :: Type) =
+    KnownTyx (IdentityT m a)
+  deriving (Show, Functor, Monad, MonadIO, MonadFix, MonadTrans,
+            Applicative, Alternative)
+
+instance {-# OVERLAPPABLE #-} (t ~ t', Monad m) =>
+  Inferable cls t (KnownTyx cls t' m)
+instance {-# OVERLAPPABLE #-} (Inferable cls t n, MonadTrans m, Monad (m n)) =>
+  Inferable cls t (m n)
+
+
+runInferenceTx :: forall cls t m a. KnownTyx cls t m a -> m a
+runInferenceTx = undefined
+
+
+
+-- running it
+
+test_ghc_err :: (MonadIO m, MonadFix m)
+        => m (Expr Net '[Ty])
+test_ghc_err = runInferenceTx @B  @Net
+             $ runInferenceTx @A @'[Ty]
+             $ (test_gr)
+"##;
+
 /// T5120 (sha256 9e90d1e0): typecheck should_compile T5120, as GHC measured it. GHC 9.14.1: accepted.
 const T5120_CHIRHO: &str = r##"{-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -269,6 +415,8 @@ fn builtin_class_holds_check_like_ghc_chirho() {
             CH07_CONTEXT_SIGNATURE_CHIRHO,
         ),
         ("T5120.hs", T5120_CHIRHO),
+        ("T3955.hs", T3955_CHIRHO),
+        ("T12734.hs", T12734_CHIRHO),
     ] {
         checks_like_ghc_chirho(file_name_chirho, source_chirho);
     }
