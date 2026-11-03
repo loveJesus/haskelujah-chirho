@@ -168,3 +168,10 @@ The clean frozen candidate 463432b2 (crate tree 28589867293d450e5c8a5b03db8d5f46
 - [ ] Repeat the fixed axes after actual repairs, then complete final warnings, lint, native and hygiene gates.
 
 Receipts: the integration worktree's tmp-chirho/row686-preflight-r3-chirho/comparison-chirho.json, source-snapshot-chirho.json, and the equality-r5-driver-cases-chirho.log and ground-r3-driver-cases-chirho.log files. Existing oversized roots remain code-quality failures; focused green checks do not claim the size bar or final gate is satisfied.
+
+
+### Active structural prerequisites after R3
+
+Row 687 owns the complete GADT constructor carrier in isolated branch gpt-gadt-carrier-chirho, including safe selector availability through interfaces. Row 688 now owns complete kind-argument elaboration in isolated branch gpt-kinded-types-chirho. It must preserve one type/kind binder identity, the declaration reduction boundary, ordinary and promoted constructor schemes, and typed export identity. A guessed hidden argument or registry-only arity change cannot distinguish the three measured T14010, T16502b and T6018a branches. Both units remain active and source-only; their canonical type-role transport is coordinated rather than duplicated.
+
+The focused signed-pre-assumption repair is committed only on integration as 7b8a0547: full typing 576/576, nineteen equality-scope controls green, warning-free CLI build, and zero Clippy diagnostics in its three changed files. Rechecking all 72 R3 movers restores six compile-case accepts and leaves every new fail-axis rejection unchanged. These are focused cells, not replacement full-axis totals. A fresh 93-case GHC pass retained 119 commands with zero timeouts: all seventeen GADT predictions and three signed-binding predictions match. It confirms T23162c is valid despite its should_fail placement and confirms ExPatFail, T26358 and T5481 are plain-GHC negatives. T15368 needs its upstream defer option; T9708 has a plain-GHC ambiguity discrepancy. No denominators or fixture bytes change.
