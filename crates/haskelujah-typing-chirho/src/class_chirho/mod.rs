@@ -22,7 +22,9 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho, TyVarChirho};
 use crate::unify_chirho::unify_chirho;
 
+mod instance_matching_chirho;
 mod tuple_instances_chirho;
+use instance_matching_chirho::match_consistently_chirho;
 pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 
 /// A class predicate: `ClassName Type`, e.g. `Eq Int`, `Show a`.
@@ -237,48 +239,6 @@ impl ClassEnvChirho {
         instances_chirho
             .iter()
             .find_map(|inst_chirho| Self::instance_sub_goals_chirho(inst_chirho, pred_chirho))
-    }
-
-    /// The sub-goals one instance imposes on a predicate it matches: its own
-    /// context under the matching substitution. `None` when the instance does
-    /// not match the predicate at all.
-    /// workflow: language-features-chirho/instance-obligations-chirho
-    pub fn instance_sub_goals_chirho(
-        inst_chirho: &InstDeclChirho,
-        pred_chirho: &PredChirho,
-    ) -> Option<Vec<PredChirho>> {
-        let mut subst_chirho =
-            match_ty_chirho(&inst_chirho.head_ty_chirho, &pred_chirho.ty_chirho)?;
-        if inst_chirho.extra_head_tys_chirho.len() != pred_chirho.extra_tys_chirho.len() {
-            return None;
-        }
-        for (inst_extra_chirho, pred_extra_chirho) in inst_chirho
-            .extra_head_tys_chirho
-            .iter()
-            .zip(pred_chirho.extra_tys_chirho.iter())
-        {
-            // Merge the per-argument substitutions: a variable used twice in the
-            // head must take the same type in both places.
-            let extra_subst_chirho = match_ty_chirho(inst_extra_chirho, pred_extra_chirho)?;
-            if !subst_chirho.merge_chirho(&extra_subst_chirho) {
-                return None;
-            }
-        }
-        Some(
-            inst_chirho
-                .context_chirho
-                .iter()
-                .map(|ctx_pred_chirho| PredChirho {
-                    class_name_chirho: ctx_pred_chirho.class_name_chirho.clone(),
-                    ty_chirho: subst_chirho.apply_ty_chirho(&ctx_pred_chirho.ty_chirho),
-                    extra_tys_chirho: ctx_pred_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
-                        .collect(),
-                })
-                .collect(),
-        )
     }
 
     /// Apply functional dependency improvement to a predicate.
@@ -3370,72 +3330,9 @@ impl ClassEnvChirho {
     }
 }
 
-/// One-way type matching: check if `pattern` (which may contain type variables)
-/// matches `target` (which is ground or more specific). Returns a substitution
-/// if successful.
-///
-/// This is NOT unification — it only instantiates variables in `pattern`,
-/// never in `target`.
-/// One-way matching that keeps a repeated pattern variable consistent
-/// (`C a a` does not match `C Int Bool`), unlike `match_ty_chirho`, which
-/// composes sub-matches without comparing them.
-/// workflow: language-features-chirho/instance-obligations-chirho
-fn match_consistently_chirho(
-    pattern_chirho: &TyChirho,
-    target_chirho: &TyChirho,
-    bindings_chirho: &mut HashMap<TyVarChirho, TyChirho>,
-) -> bool {
-    match (pattern_chirho, target_chirho) {
-        (TyChirho::VarChirho(var_chirho), _) => match bindings_chirho.get(var_chirho) {
-            Some(bound_chirho) => bound_chirho == target_chirho,
-            None => {
-                bindings_chirho.insert(*var_chirho, target_chirho.clone());
-                true
-            }
-        },
-        (
-            TyChirho::FunChirho(pattern_arg_chirho, pattern_res_chirho, _),
-            TyChirho::FunChirho(target_arg_chirho, target_res_chirho, _),
-        ) => {
-            match_consistently_chirho(pattern_arg_chirho, target_arg_chirho, bindings_chirho)
-                && match_consistently_chirho(pattern_res_chirho, target_res_chirho, bindings_chirho)
-        }
-        (
-            TyChirho::AppChirho(pattern_fun_chirho, pattern_arg_chirho),
-            TyChirho::AppChirho(target_fun_chirho, target_arg_chirho),
-        ) => {
-            match_consistently_chirho(pattern_fun_chirho, target_fun_chirho, bindings_chirho)
-                && match_consistently_chirho(pattern_arg_chirho, target_arg_chirho, bindings_chirho)
-        }
-        (TyChirho::ListChirho(pattern_elem_chirho), TyChirho::ListChirho(target_elem_chirho)) => {
-            match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
-        }
-        (
-            TyChirho::ListChirho(pattern_elem_chirho),
-            TyChirho::AppChirho(target_fun_chirho, target_elem_chirho),
-        ) if matches!(target_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") => {
-            match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
-        }
-        (
-            TyChirho::AppChirho(pattern_fun_chirho, pattern_elem_chirho),
-            TyChirho::ListChirho(target_elem_chirho),
-        ) if matches!(pattern_fun_chirho.as_ref(), TyChirho::ConChirho(name_chirho) if name_chirho == "[]") => {
-            match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
-        }
-        (
-            TyChirho::TupleChirho(pattern_elems_chirho),
-            TyChirho::TupleChirho(target_elems_chirho),
-        ) if pattern_elems_chirho.len() == target_elems_chirho.len() => pattern_elems_chirho
-            .iter()
-            .zip(target_elems_chirho)
-            .all(|(pattern_elem_chirho, target_elem_chirho)| {
-                match_consistently_chirho(pattern_elem_chirho, target_elem_chirho, bindings_chirho)
-            }),
-        // Constructors, skolems and quantified types match only themselves.
-        _ => pattern_chirho == target_chirho,
-    }
-}
-
+/// Legacy one-way matching used by functional-dependency improvement. Its
+/// sub-match composition is not a consistent instance-head substitution;
+/// instance selection uses `instance_matching_chirho` instead.
 pub(crate) fn match_ty_chirho(
     pattern_chirho: &TyChirho,
     target_chirho: &TyChirho,
