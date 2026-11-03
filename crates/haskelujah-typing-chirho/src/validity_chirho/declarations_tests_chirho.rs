@@ -369,6 +369,9 @@ fn annotated_record_chirho(strictness_chirho: StrictnessChirho) -> ConDeclChirho
     ConDeclChirho::RecordChirho {
         name_chirho: name_chirho("R"),
         fields_chirho: vec![FieldDeclChirho {
+            multiplicity_chirho: Some(
+                haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::ManyChirho,
+            ),
             names_chirho: vec![name_chirho("fieldChirho")],
             ty_chirho: con_ty_chirho("Int"),
             strictness_chirho,

@@ -6,7 +6,7 @@
 
 use super::{InferCtxChirho, records_chirho};
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
-use haskelujah_ast_chirho::decl_chirho::{GadtConSignatureChirho, StrictnessChirho};
+use haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use std::collections::HashMap;
 
