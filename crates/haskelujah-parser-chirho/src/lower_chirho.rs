@@ -95,6 +95,11 @@ mod occurrence_tests_chirho;
 #[path = "lower_chirho/occurrences_chirho/occurrences_chirho.rs"]
 mod occurrences_chirho;
 #[cfg(test)]
+#[path = "lower_chirho/type_syntax_chirho/paren_element_tests_chirho.rs"]
+mod paren_element_tests_chirho;
+#[path = "lower_chirho/type_syntax_chirho/paren_elements_chirho.rs"]
+mod paren_elements_chirho;
+#[cfg(test)]
 #[path = "lower_chirho/patterns_chirho/pattern_tests_chirho.rs"]
 mod pattern_tests_chirho;
 #[path = "lower_chirho/patterns_chirho/patterns_chirho.rs"]

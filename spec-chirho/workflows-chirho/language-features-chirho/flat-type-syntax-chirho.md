@@ -91,6 +91,17 @@ path and are tested on their own:
   read the annotation as one more argument (`n Nat`). The record-field caller
   also swallowed every `::` after the first, so the annotation never reached the
   grammar; only the first `::` separates field names from the field type.
+- **Every tuple element may carry `:: k`.**
+  - **The old cut.** The CST's parenthesized-type parser read an annotation only after
+    the first element. In `b :: (C t, ?x :: TF t) => t` (T5120, tc218) the group ended at
+    the second `::`, and the signature kept only `(C t, ?x)`.
+  - **Parsing now.** `parse_paren_type_element_chirho` reads `:: k` after every element.
+  - **Lowering now.** `annotated_tuple_elements_chirho` splits the group at its top-level
+    commas, and each element keeps the type before its own `::`. So
+    `Rec (?a :: Int, ?b :: String)` (T12507) keeps both elements.
+  - **What is dropped.** The annotation, a kind or an implicit parameter's type, is
+    dropped exactly as a single `(t :: k)` drops it.
+  - **Unchanged.** A single annotation and the unannotated forms keep their shapes.
 
 - **A pragma is trivia here, as in the lexer.** The lexer counts `{-# ... #-}` as trivia and
   the CST parser skips it, but the lowerer's own trivia set (`is_trivia_token_kind_chirho`)

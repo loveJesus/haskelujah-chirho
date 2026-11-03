@@ -189,7 +189,15 @@ impl LowerCtxChirho {
                     })
                     .collect();
 
-                if let Some(double_colon_index_chirho) = top_level_double_colon_index_chirho {
+                if let Some(elements_chirho) =
+                    self.annotated_tuple_elements_chirho(&children_chirho, span_chirho)
+                {
+                    TypeChirho::TupleChirho {
+                        elements_chirho,
+                        span_chirho,
+                    }
+                } else if let Some(double_colon_index_chirho) = top_level_double_colon_index_chirho
+                {
                     let prefix_children_chirho = &children_chirho[..double_colon_index_chirho];
                     let prefix_type_nodes_chirho: Vec<_> = prefix_children_chirho
                         .iter()
