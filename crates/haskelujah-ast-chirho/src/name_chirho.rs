@@ -43,6 +43,12 @@ pub struct RawNameChirho {
     /// lookups ignore.
     /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
     pub promotion_chirho: Option<PromotionResolutionChirho>,
+    /// Family identity stamped before an exported type leaves its defining scope.
+    /// This is transport metadata, ignored by source-name equality and hashing.
+    pub family_key_chirho: Option<String>,
+    /// An explicit `type` marker on a subordinate export member. This is
+    /// namespace syntax, ignored by source-name equality and hashing.
+    pub explicit_type_member_chirho: bool,
 }
 
 impl PartialEq for RawNameChirho {
@@ -78,6 +84,12 @@ impl fmt::Debug for RawNameChirho {
         if let Some(promotion_chirho) = &self.promotion_chirho {
             debug_chirho.field("promotion_chirho", promotion_chirho);
         }
+        if let Some(family_key_chirho) = &self.family_key_chirho {
+            debug_chirho.field("family_key_chirho", family_key_chirho);
+        }
+        if self.explicit_type_member_chirho {
+            debug_chirho.field("explicit_type_member_chirho", &true);
+        }
         debug_chirho.finish()
     }
 }
@@ -91,6 +103,8 @@ impl RawNameChirho {
             span_chirho,
             origin_chirho: None,
             promotion_chirho: None,
+            family_key_chirho: None,
+            explicit_type_member_chirho: false,
         }
     }
 
@@ -106,6 +120,8 @@ impl RawNameChirho {
             span_chirho,
             origin_chirho: None,
             promotion_chirho: None,
+            family_key_chirho: None,
+            explicit_type_member_chirho: false,
         }
     }
 
@@ -230,6 +246,44 @@ impl NameChirho {
             }
         }
     }
+
+    /// The defining family carried from the scope in which this type was written.
+    pub fn family_key_chirho(&self) -> Option<&str> {
+        match self {
+            Self::RawChirho(name_chirho) => name_chirho.family_key_chirho.as_deref(),
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.family_key_chirho.as_deref()
+            }
+        }
+    }
+
+    pub fn set_family_key_chirho(&mut self, family_key_chirho: String) {
+        match self {
+            Self::RawChirho(name_chirho) => name_chirho.family_key_chirho = Some(family_key_chirho),
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.family_key_chirho = Some(family_key_chirho)
+            }
+        }
+    }
+
+    /// Whether this subordinate export member was explicitly marked `type`.
+    pub fn is_explicit_type_member_chirho(&self) -> bool {
+        match self {
+            Self::RawChirho(name_chirho) => name_chirho.explicit_type_member_chirho,
+            Self::ResolvedChirho(name_chirho) => name_chirho.raw_chirho.explicit_type_member_chirho,
+        }
+    }
+
+    pub fn set_explicit_type_member_chirho(&mut self, explicit_type_member_chirho: bool) {
+        match self {
+            Self::RawChirho(name_chirho) => {
+                name_chirho.explicit_type_member_chirho = explicit_type_member_chirho
+            }
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.explicit_type_member_chirho = explicit_type_member_chirho
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -257,5 +311,23 @@ mod tests_chirho {
             SpanChirho::DUMMY_CHIRHO,
         ));
         assert_eq!(raw_chirho.text_chirho(), "bar");
+    }
+
+    #[test]
+    fn explicit_member_namespace_is_metadata_chirho() {
+        let ordinary_chirho = NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            "#",
+            SpanChirho::DUMMY_CHIRHO,
+        ));
+        let mut typed_chirho = ordinary_chirho.clone();
+        assert!(!typed_chirho.is_explicit_type_member_chirho());
+        typed_chirho.set_explicit_type_member_chirho(true);
+        assert!(typed_chirho.is_explicit_type_member_chirho());
+        assert_eq!(ordinary_chirho, typed_chirho);
+        let mut ordinary_hash_chirho = std::collections::hash_map::DefaultHasher::new();
+        let mut typed_hash_chirho = std::collections::hash_map::DefaultHasher::new();
+        ordinary_chirho.hash(&mut ordinary_hash_chirho);
+        typed_chirho.hash(&mut typed_hash_chirho);
+        assert_eq!(ordinary_hash_chirho.finish(), typed_hash_chirho.finish());
     }
 }

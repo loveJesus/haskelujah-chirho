@@ -12,6 +12,8 @@ mod cabal_build_chirho;
 mod core_merge_chirho;
 #[path = "project_chirho/dependency_packages_chirho.rs"]
 mod dependency_packages_chirho;
+#[path = "project_chirho/family_exports_chirho.rs"]
+mod family_exports_chirho;
 #[path = "project_chirho/import_links_chirho.rs"]
 mod import_links_chirho;
 #[path = "project_chirho/module_discovery_chirho.rs"]
@@ -57,6 +59,11 @@ use dependency_packages_chirho::{
     collect_local_dependency_frontend_artifacts_chirho,
     compile_module_sources_with_extra_ifaces_chirho, find_local_dependency_package_dir_chirho,
     merge_local_dependency_package_index_chirho, scan_dependency_package_ifaces_chirho,
+};
+use family_exports_chirho::{
+    build_family_aware_iface_chirho, build_type_family_scope_chirho,
+    family_frontend_diagnostics_chirho, publish_inferred_family_exports_chirho,
+    stamp_exported_family_references_chirho,
 };
 use package_install_chirho::find_cabal_in_dir_chirho;
 use project_dir_chirho::{
@@ -104,41 +111,18 @@ type ImportedTypeFamiliesChirho = TypeFamilyEnvChirho;
 /// PrimState is defined in the `primitive` package but many packages
 /// use it transitively (aeson, resourcet, vector-builder, etc.).
 fn seed_builtin_type_families_chirho() -> ImportedTypeFamiliesChirho {
-    use haskelujah_typing_chirho::TyChirho;
-    let mut families_chirho = ImportedTypeFamiliesChirho::new();
-
-    // type instance PrimState (ST s) = s
-    let s_var_chirho = TyChirho::VarChirho(haskelujah_typing_chirho::TyVarChirho(9900));
-    families_chirho.insert(
-        "PrimState".to_string(),
-        vec![(
-            vec![TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("ST".to_string())),
-                Box::new(s_var_chirho.clone()),
-            )],
-            s_var_chirho.clone(),
-        )],
-    );
-
-    // type instance PrimState IO = RealWorld
-    families_chirho.get_mut("PrimState").unwrap().push((
-        vec![TyChirho::ConChirho("IO".to_string())],
-        TyChirho::ConChirho("RealWorld".to_string()),
-    ));
-
-    families_chirho
+    haskelujah_typing_chirho::infer_chirho::seed_type_family_registry_chirho()
 }
 
 fn extend_imported_type_families_chirho(
     target_chirho: &mut ImportedTypeFamiliesChirho,
     source_chirho: ImportedTypeFamiliesChirho,
-) {
-    for (family_name_chirho, equations_chirho) in source_chirho {
-        target_chirho
-            .entry(family_name_chirho)
-            .or_default()
-            .extend(equations_chirho);
-    }
+) -> Result<(), String> {
+    target_chirho
+        .merge_chirho(&source_chirho)
+        .map_err(|error_chirho| {
+            format!("conflicting imported type-family snapshots: {error_chirho}")
+        })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -201,12 +185,20 @@ fn merge_stdlib_frontend_artifacts_chirho(
     >,
     imported_type_synonyms_chirho: &mut ImportedTypeSynonymsChirho,
     imported_type_families_chirho: &mut ImportedTypeFamiliesChirho,
-) {
+) -> Result<(), String> {
     let stdlib_artifacts_chirho = STDLIB_FRONTEND_ARTIFACTS_CHIRHO
         .get_or_init(collect_stdlib_frontend_artifacts_uncached_chirho);
 
     match stdlib_artifacts_chirho {
         Ok(stdlib_artifacts_chirho) => {
+            // Registry merge validates its complete replacement plan before
+            // interfaces or schemes from this independent seed are installed.
+            extend_imported_type_families_chirho(
+                imported_type_families_chirho,
+                stdlib_artifacts_chirho
+                    .imported_type_families_chirho
+                    .clone(),
+            )?;
             ifaces_chirho.extend(stdlib_artifacts_chirho.ifaces_chirho.clone());
             *ifaces_chirho = haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
                 std::mem::take(ifaces_chirho),
@@ -217,16 +209,9 @@ fn merge_stdlib_frontend_artifacts_chirho(
                     .imported_type_synonyms_chirho
                     .clone(),
             );
-            extend_imported_type_families_chirho(
-                imported_type_families_chirho,
-                stdlib_artifacts_chirho
-                    .imported_type_families_chirho
-                    .clone(),
-            );
+            Ok(())
         }
-        Err(error_chirho) => {
-            eprintln!("warning: stdlib frontend seed skipped: {}", error_chirho);
-        }
+        Err(error_chirho) => Err(format!("cannot load stdlib frontend seed: {error_chirho}")),
     }
 }
 
@@ -319,7 +304,10 @@ fn collect_type_constructor_names_chirho(
 ) {
     match ty_chirho {
         TypeChirho::ConChirho(name_chirho) => {
-            names_chirho.insert(name_chirho.full_name_chirho());
+            if name_chirho.family_key_chirho().is_none() && name_chirho.promotion_chirho().is_none()
+            {
+                names_chirho.insert(name_chirho.full_name_chirho());
+            }
         }
         TypeChirho::AppChirho {
             fun_chirho,
@@ -406,9 +394,7 @@ fn collect_type_constructor_names_chirho(
                 collect_type_constructor_names_chirho(elem_chirho, names_chirho);
             }
         }
-        TypeChirho::PromotedConChirho { name_chirho, .. } => {
-            names_chirho.insert(name_chirho.full_name_chirho());
-        }
+        TypeChirho::PromotedConChirho { .. } => {}
         TypeChirho::VarChirho(_)
         | TypeChirho::WildcardChirho { .. }
         | TypeChirho::LitChirho { .. } => {}
@@ -483,7 +469,7 @@ fn exported_type_synonyms_from_module_chirho(
     module_chirho: &ModuleChirho,
     iface_chirho: &ModuleIfaceChirho,
     resolved_imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
-    promotion_scope_chirho: Option<&PromotionScopeChirho>,
+    infer_result_chirho: &InferResultChirho,
 ) -> ImportedTypeSynonymsChirho {
     let mut exported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut local_type_alias_names_chirho = std::collections::HashSet::new();
@@ -503,6 +489,11 @@ fn exported_type_synonyms_from_module_chirho(
                 .types_chirho
                 .contains_key(&alias_name_chirho)
             {
+                let exported_rhs_chirho = stamped_synonym_rhs_chirho(
+                    rhs_chirho,
+                    infer_result_chirho,
+                    &iface_chirho.name_chirho,
+                );
                 insert_type_synonym_with_module_alias_chirho(
                     &mut exported_type_synonyms_chirho,
                     &iface_chirho.name_chirho,
@@ -511,12 +502,12 @@ fn exported_type_synonyms_from_module_chirho(
                         .iter()
                         .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
                         .collect(),
-                    stamped_synonym_rhs_chirho(rhs_chirho, promotion_scope_chirho),
+                    exported_rhs_chirho.clone(),
                 );
                 seed_transitive_type_synonyms_chirho(
                     &mut exported_type_synonyms_chirho,
                     &iface_chirho.name_chirho,
-                    rhs_chirho,
+                    &exported_rhs_chirho,
                     resolved_imported_type_synonyms_chirho,
                     &mut transitive_seen_chirho,
                 );
@@ -557,12 +548,18 @@ fn exported_type_synonyms_from_module_chirho(
 /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
 fn stamped_synonym_rhs_chirho(
     rhs_chirho: &TypeChirho,
-    promotion_scope_chirho: Option<&PromotionScopeChirho>,
+    infer_result_chirho: &InferResultChirho,
+    module_name_chirho: &str,
 ) -> TypeChirho {
     let mut exported_rhs_chirho = rhs_chirho.clone();
-    if let Some(scope_chirho) = promotion_scope_chirho {
+    if let Some(scope_chirho) = infer_result_chirho.promotion_scope_chirho.as_deref() {
         stamp_promotions_chirho(&mut exported_rhs_chirho, scope_chirho);
     }
+    stamp_exported_family_references_chirho(
+        &mut exported_rhs_chirho,
+        infer_result_chirho,
+        module_name_chirho,
+    );
     exported_rhs_chirho
 }
 
@@ -1458,6 +1455,10 @@ fn qualify_imported_ast_type_chirho(
 ) -> TypeChirho {
     match ty_chirho {
         TypeChirho::ConChirho(name_chirho) => {
+            if name_chirho.family_key_chirho().is_some() || name_chirho.promotion_chirho().is_some()
+            {
+                return ty_chirho.clone();
+            }
             let bare_name_chirho = name_chirho.text_chirho();
             let should_canonicalize_unqualified_chirho = unqualified_type_names_chirho
                 .contains(bare_name_chirho)
@@ -1613,6 +1614,9 @@ fn qualify_imported_ty_chirho(
 ) -> haskelujah_typing_chirho::TyChirho {
     match ty_chirho {
         haskelujah_typing_chirho::TyChirho::ConChirho(name_chirho) => {
+            if family_exports_chirho::is_opaque_family_or_promotion_key_chirho(name_chirho) {
+                return ty_chirho.clone();
+            }
             let bare_name_chirho = name_chirho
                 .rsplit('.')
                 .next()
@@ -1911,6 +1915,24 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     let promotion_scope_chirho = std::sync::Arc::new(
         haskelujah_naming_chirho::build_promotion_scope_chirho(&module_chirho, ifaces_chirho),
     );
+    let mut merged_imported_type_families_chirho = seed_builtin_type_families_chirho();
+    extend_imported_type_families_chirho(
+        &mut merged_imported_type_families_chirho,
+        imported_type_families_chirho.clone(),
+    )
+    .map_err(|error_chirho| {
+        family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
+    })?;
+    let family_scope_chirho = std::sync::Arc::new(
+        build_type_family_scope_chirho(
+            &module_chirho,
+            ifaces_chirho,
+            &merged_imported_type_families_chirho,
+        )
+        .map_err(|error_chirho| {
+            family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
+        })?,
+    );
     // GHC never defers a declaration-shape error, so the defer flags do not apply.
     if declaration_validity_chirho
         .diagnostics_chirho
@@ -1935,7 +1957,6 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     // rather than reporting them as "unbound variable" (E0202).
     let mut merged_imported_types_chirho = imported_types_chirho.clone();
     let mut merged_imported_type_synonyms_chirho = imported_type_synonyms_chirho.clone();
-    let merged_imported_type_families_chirho = imported_type_families_chirho.clone();
     let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
         String,
         Vec<String>,
@@ -2114,43 +2135,21 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
 
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.
-    let infer_result_chirho = if merged_imported_types_chirho.is_empty()
-        && merged_imported_type_synonyms_chirho.is_empty()
-        && merged_imported_type_families_chirho.is_empty()
-        && merged_imported_record_field_names_chirho.is_empty()
-        && imported_class_env_chirho.classes_chirho.is_empty()
-        && imported_class_env_chirho.instances_chirho.is_empty()
-    {
-        infer_module_with_import_context_chirho(
-            &module_chirho,
-            InferenceImportContextChirho {
-                imported_types_chirho: &std::collections::HashMap::new(),
-                imported_type_synonyms_chirho: &std::collections::HashMap::new(),
-                imported_type_families_chirho: &TypeFamilyEnvChirho::new(),
-                imported_class_env_chirho:
-                    &haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho(),
-                imported_record_field_names_chirho: &std::collections::HashMap::new(),
-                safe_unqualified_imported_type_names_chirho: &std::collections::HashSet::new(),
-                preferred_qualified_type_names_chirho: &std::collections::HashMap::new(),
-                promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
-            },
-        )
-    } else {
-        infer_module_with_import_context_chirho(
-            &module_chirho,
-            InferenceImportContextChirho {
-                imported_types_chirho: &merged_imported_types_chirho,
-                imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
-                imported_type_families_chirho: &merged_imported_type_families_chirho,
-                imported_class_env_chirho,
-                imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
-                safe_unqualified_imported_type_names_chirho:
-                    &safe_unqualified_imported_type_names_chirho,
-                preferred_qualified_type_names_chirho: &preferred_qualified_type_names_chirho,
-                promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
-            },
-        )
-    };
+    let mut infer_result_chirho = infer_module_with_import_context_chirho(
+        &module_chirho,
+        InferenceImportContextChirho {
+            imported_types_chirho: &merged_imported_types_chirho,
+            imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
+            imported_type_families_chirho: &merged_imported_type_families_chirho,
+            imported_class_env_chirho,
+            imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
+            safe_unqualified_imported_type_names_chirho:
+                &safe_unqualified_imported_type_names_chirho,
+            preferred_qualified_type_names_chirho: &preferred_qualified_type_names_chirho,
+            promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
+            family_scope_chirho: Some(family_scope_chirho),
+        },
+    );
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(infer_result_chirho.diagnostics_chirho);
     }
@@ -2218,6 +2217,11 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     warnings_chirho.extend(orphan_warning_strs_chirho);
     warnings_chirho.extend(linearity_warnings_chirho);
     warnings_chirho.extend(infer_warnings_chirho);
+
+    publish_inferred_family_exports_chirho(&module_chirho, ifaces_chirho, &mut infer_result_chirho)
+        .map_err(|error_chirho| {
+            family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
+        })?;
 
     Ok(FrontendResultChirho {
         module_chirho,
@@ -2512,7 +2516,13 @@ fn check_source_file_with_search_path_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )
+        .map_err(|error_chirho| {
+            family_frontend_diagnostics_chirho(
+                error_chirho,
+                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            )
+        })?;
     }
 
     scan_sibling_module_ifaces_chirho(
@@ -2839,7 +2849,13 @@ pub fn compile_source_with_search_path_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )
+        .map_err(|error_chirho| {
+            family_frontend_diagnostics_chirho(
+                error_chirho,
+                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            )
+        })?;
     }
 
     scan_sibling_module_ifaces_chirho(

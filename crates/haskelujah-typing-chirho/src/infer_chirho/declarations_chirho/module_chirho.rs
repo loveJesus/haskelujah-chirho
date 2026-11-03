@@ -6,8 +6,8 @@
 use super::InferCtxChirho;
 use super::{
     GeneralizationScopeChirho, SIGNATURE_MISMATCH_CODE_CHIRHO, ast_type_to_syn_rhs_chirho,
-    binding_groups_chirho, canonical_value_name_text_chirho,
-    collect_free_type_vars_from_ast_chirho, collect_module_shadowed_names_chirho, records_chirho,
+    binding_groups_chirho, canonical_value_name_text_chirho, collect_module_shadowed_names_chirho,
+    records_chirho,
 };
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho};
@@ -24,6 +24,7 @@ impl InferCtxChirho {
     /// substitution, and diagnostics.
     pub fn infer_module_chirho(&mut self, module_chirho: &ModuleChirho) -> SubstChirho {
         let mut subst_chirho = SubstChirho::empty_chirho();
+        self.prepare_family_scope_chirho(module_chirho, self.family_scope_chirho.clone());
 
         // A non-Prelude import can bring instances of SEEDED classes into
         // scope (e.g. a sibling module declaring `instance Show I`) that the
@@ -75,8 +76,17 @@ impl InferCtxChirho {
                     .iter()
                     .map(|v_chirho| v_chirho.text_chirho().to_string())
                     .collect();
+                let mut stamped_rhs_chirho = rhs_chirho.clone();
+                if let Some(scope_chirho) = self.family_scope_chirho.as_deref() {
+                    super::family_registration_chirho::stamp_family_references_chirho(
+                        &mut stamped_rhs_chirho,
+                        scope_chirho,
+                        &self.type_families_chirho,
+                        &self.family_module_name_chirho,
+                    );
+                }
                 let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
-                    rhs_chirho,
+                    &stamped_rhs_chirho,
                     &params_chirho,
                     self.promotion_scope_chirho.as_deref(),
                 );
@@ -139,82 +149,8 @@ impl InferCtxChirho {
             }
         }
 
-        // Phase -0.5: Register type families and type family instances
-        for decl_chirho in &module_chirho.decls_chirho {
-            match decl_chirho {
-                DeclChirho::TypeFamilyDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    equations_chirho,
-                    ..
-                } => {
-                    let family_name_chirho = name_chirho.text_chirho().to_string();
-                    let param_names_chirho: Vec<String> = type_vars_chirho
-                        .iter()
-                        .map(|v_chirho| v_chirho.text_chirho().to_string())
-                        .collect();
-                    // A held equation never reduces, and no later closed equation may
-                    // reduce in its place: register only the equations before it.
-                    let eqs_chirho: Vec<(Vec<TyChirho>, TyChirho)> = equations_chirho
-                        .iter()
-                        .take_while(|eq_chirho| !eq_chirho.is_held_chirho())
-                        .map(|eq_chirho| {
-                            let lhs_chirho: Vec<TyChirho> = eq_chirho
-                                .lhs_types_chirho
-                                .iter()
-                                .map(|t_chirho| {
-                                    ast_type_to_syn_rhs_chirho(
-                                        t_chirho,
-                                        &param_names_chirho,
-                                        self.promotion_scope_chirho.as_deref(),
-                                    )
-                                })
-                                .collect();
-                            let rhs_chirho = ast_type_to_syn_rhs_chirho(
-                                &eq_chirho.rhs_chirho,
-                                &param_names_chirho,
-                                self.promotion_scope_chirho.as_deref(),
-                            );
-                            (lhs_chirho, rhs_chirho)
-                        })
-                        .collect();
-                    self.register_type_family_chirho(family_name_chirho, eqs_chirho);
-                }
-                DeclChirho::TypeFamilyInstanceDeclChirho {
-                    family_name_chirho,
-                    lhs_types_chirho,
-                    rhs_chirho,
-                    ..
-                } => {
-                    let fname_chirho = family_name_chirho.text_chirho().to_string();
-                    // Collect free type variables from LHS types so they become
-                    // ForallVarChirho (matchable pattern vars) in the equation.
-                    let inst_params_chirho =
-                        collect_free_type_vars_from_ast_chirho(lhs_types_chirho);
-                    let lhs_chirho: Vec<TyChirho> = lhs_types_chirho
-                        .iter()
-                        .map(|t_chirho| {
-                            ast_type_to_syn_rhs_chirho(
-                                t_chirho,
-                                &inst_params_chirho,
-                                self.promotion_scope_chirho.as_deref(),
-                            )
-                        })
-                        .collect();
-                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
-                        rhs_chirho,
-                        &inst_params_chirho,
-                        self.promotion_scope_chirho.as_deref(),
-                    );
-                    self.register_type_family_instance_chirho(
-                        fname_chirho,
-                        lhs_chirho,
-                        rhs_ty_chirho,
-                    );
-                }
-                _ => {}
-            }
-        }
+        // Phase -0.5: immutable family declarations and coherent open rows.
+        self.register_module_families_chirho(module_chirho);
 
         for shadowed_name_chirho in collect_module_shadowed_names_chirho(module_chirho) {
             self.env_chirho.remove_chirho(&shadowed_name_chirho);

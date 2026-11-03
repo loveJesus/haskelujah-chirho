@@ -65,6 +65,10 @@ impl InferCtxChirho {
                 TyChirho::VarChirho(tv_chirho)
             }
             TypeChirho::ConChirho(name_chirho) => {
+                if let Some(key_chirho) = self.family_reference_key_chirho(name_chirho) {
+                    return self
+                        .reduce_type_families_in_ty_chirho(&TyChirho::ConChirho(key_chirho));
+                }
                 // An unquoted promoted constructor keeps its identity key (row 686).
                 if let Some(spelling_chirho) = unquoted_promoted_spelling_chirho(
                     name_chirho,

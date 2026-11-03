@@ -386,7 +386,7 @@ impl InferCtxChirho {
                     && !is_unknown_promoted_key_chirho(name_chirho)
                     && !name_chirho.starts_with('?')
                     && !name_chirho.ends_with('#')
-                    && !self.type_families_chirho.contains_key(name_chirho)
+                    && !self.is_type_family_name_chirho(name_chirho)
                     && !self.type_synonyms_chirho.contains_key(name_chirho)
                     && !self
                         .class_env_chirho

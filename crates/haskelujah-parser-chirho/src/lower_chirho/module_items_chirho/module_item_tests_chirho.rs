@@ -419,6 +419,67 @@ lookup = 1
 }
 
 #[test]
+fn lower_explicit_type_operator_export_keeps_its_namespace_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE ExplicitNamespaces, TypeOperators #-}\nmodule MChirho (type (QChirho..), (QChirho..)) where\nimport qualified OriginChirho as QChirho\n",
+    );
+    let exports_chirho = module_chirho
+        .exports_chirho
+        .as_ref()
+        .expect("explicit exports");
+    assert_eq!(exports_chirho.len(), 2);
+    match &exports_chirho[0] {
+        ExportSpecChirho::TyConChirho {
+            name_chirho,
+            members_chirho,
+        } => {
+            assert_eq!(name_chirho.full_name_chirho(), "QChirho..");
+            assert_eq!(*members_chirho, ExportMembersChirho::NoneChirho);
+        }
+        other_chirho => panic!("type marker must survive lowering: {other_chirho:?}"),
+    }
+    match &exports_chirho[1] {
+        ExportSpecChirho::VarChirho(name_chirho) => {
+            assert_eq!(name_chirho.full_name_chirho(), "QChirho..");
+        }
+        other_chirho => panic!("ordinary variable-symbol export stays a value: {other_chirho:?}"),
+    }
+}
+
+#[test]
+fn lower_symbolic_member_namespaces_survive_nested_parentheses_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE ExplicitNamespaces, TypeOperators #-}\nmodule MChirho (CChirho(type (#), (#), type (+), plainChirho)) where\n",
+    );
+    let exports_chirho = module_chirho
+        .exports_chirho
+        .as_ref()
+        .expect("explicit exports");
+    let ExportSpecChirho::TyConChirho {
+        members_chirho: ExportMembersChirho::SomeChirho(members_chirho),
+        ..
+    } = &exports_chirho[0]
+    else {
+        panic!("subordinate member list must survive lowering");
+    };
+    assert_eq!(
+        members_chirho
+            .iter()
+            .map(|name_chirho| (
+                name_chirho.text_chirho(),
+                name_chirho.is_explicit_type_member_chirho()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            ("#", true),
+            ("#", false),
+            ("+", true),
+            ("plainChirho", false),
+        ]
+    );
+}
+
+#[test]
 fn lower_export_list_tycon_all_chirho() {
     // module M (Color(..)) where — exports a type with all members
     let module_chirho = parse_and_lower_chirho(

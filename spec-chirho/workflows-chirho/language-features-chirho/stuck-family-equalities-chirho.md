@@ -73,3 +73,38 @@ flowchart TD
 - Injectivity of user-declared families is not modelled; only the builtin `+` interaction exists.
 - Equalities still stuck on an ambiguous variable at the end of the module are dropped rather
   than reported as ambiguity.
+
+
+## Row 686: identity and ordered reduction
+
+The row 686 combined candidate connects preserved written equations to one immutable family definition. This section describes that candidate's route; the tasklist records its pending combined compiler and corpus gates. A parser carrier or isolated component test does not establish the whole route.
+
+```mermaid
+flowchart TD
+    written_chirho[Written family equations with heads, binders, spans and closedness]
+    written_chirho --> validity_chirho[Naming and written-declaration validity]
+    validity_chirho --> scope_chirho[Resolve the family in the module's actual import scope]
+    scope_chirho --> registry_chirho[One opaque family identity and fixed visible arity]
+    registry_chirho --> registration_chirho[Equation-local variables and distinct wildcard variables]
+    registration_chirho --> compatibility_chirho[Freshen both left and right sides for compatibility]
+    compatibility_chirho --> blockers_chirho[Keep earlier incompatible or uncertain blocker indices]
+    blockers_chirho --> snapshot_chirho[Immutable definition shared by export aliases]
+    snapshot_chirho --> imports_chirho[Replace cumulative snapshots and deduplicate independent merges]
+    imports_chirho --> target_chirho[Normalize a target under one shared work and output budget]
+    target_chirho --> lookup_chirho[Exact selected identity, then one saturation split]
+    lookup_chirho --> match_chirho{One-way branch match?}
+    match_chirho -->|no| next_chirho[Try next written branch]
+    match_chirho -->|yes| apart_chirho{Every blocker surely apart?}
+    apart_chirho -->|yes| rhs_chirho[Substitute RHS, then apply extra result arguments]
+    apart_chirho -->|no or uncertain| stuck_chirho[Leave application stuck]
+    lookup_chirho -->|empty, ambiguous, held or budget exhausted| stuck_chirho
+    rhs_chirho --> target_chirho
+```
+
+`TypeFamilyRegistryChirho` stores definitions once, with stable branch identities and module-owned export aliases. Open definitions require a cold coherence check. Re-importing the same verified rows keeps that proof; adding unverified rows invalidates it. A closed declaration's first held equation prevents every later fallback from bypassing it. Exact lookup never tries a different qualified, bare or builtin definition when the selected family stays stuck.
+
+The apartness unifier and one-way matcher have different jobs. Apartness freshens each branch's left and right sides together, binds both sides' variables, preserves shared stuck applications and compares the substituted results. Occurs failures, unknown heads and exhausted resources are uncertain. Matching binds only the equation's pattern variables. List, tuple and function sugar shares a canonical view, with arrow multiplicity and promoted-constructor identity preserved.
+
+Promoted names use the separate promoted-constructor identity workflow. Ordinary source type spellings do not acquire nominal authority from a qualifier: an import alias may spell a different transitive module's name. The comparison catalogue therefore leaves raw qualified heads unknown unless a producer supplied an opaque identity. Existing exporter stamps, including unresolved stamps, survive later imports unchanged. Diagnostic rendering writes readable family and promoted names without changing internal equality or keys.
+
+The behavioral controls reuse the existing `typing_integration` and `native_symbol_identity` targets. Their single-module and Cabal project programs are copied byte for byte from fresh GHC 9.14.1 runs, including abstract rejection twins and qualified/re-exported identities. The component suite separately checks finite/uncertain/disjoint comparisons, coherence, snapshot deduplication and resource exhaustion. Final claims require the interpreter, LLVM, true Cranelift and both fixed corpus axes on the same candidate.

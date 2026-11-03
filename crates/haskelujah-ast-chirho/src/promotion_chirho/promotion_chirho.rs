@@ -265,13 +265,16 @@ pub fn unquoted_promoted_spelling_chirho(
 pub fn stamp_promotions_chirho(ty_chirho: &mut TypeChirho, scope_chirho: &PromotionScopeChirho) {
     match ty_chirho {
         TypeChirho::PromotedConChirho { name_chirho, .. } => {
-            if compiler_constructor_key_chirho(name_chirho).is_none() {
+            if name_chirho.promotion_chirho().is_none()
+                && compiler_constructor_key_chirho(name_chirho).is_none()
+            {
                 let resolution_chirho = scope_chirho.quoted_chirho(name_chirho);
                 name_chirho.set_promotion_chirho(resolution_chirho);
             }
         }
         TypeChirho::ConChirho(name_chirho) => {
-            if !is_cons_spelling_chirho(name_chirho)
+            if name_chirho.promotion_chirho().is_none()
+                && !is_cons_spelling_chirho(name_chirho)
                 && let Some(resolution_chirho) = scope_chirho.unquoted_chirho(name_chirho)
             {
                 name_chirho.set_promotion_chirho(resolution_chirho);

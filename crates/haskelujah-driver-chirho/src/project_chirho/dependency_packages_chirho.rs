@@ -19,12 +19,12 @@ use super::project_dir_chirho::{
 use super::{
     CompileResultChirho, FrontendResultChirho, FrontendSeedArtifactsChirho,
     ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho, compile_backend_chirho,
-    exported_type_synonyms_from_module_chirho, extend_imported_type_families_chirho,
-    merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_source_with_options_chirho,
-    read_haskell_source_file_chirho, run_frontend_with_type_synonyms_families_and_class_env_chirho,
+    exported_type_synonyms_from_module_chirho, merge_stdlib_frontend_artifacts_chirho,
+    preprocess_cpp_source_with_options_chirho, read_haskell_source_file_chirho,
+    run_frontend_with_type_synonyms_families_and_class_env_chirho,
     seed_builtin_type_families_chirho,
 };
-use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
+use haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho;
 #[cfg(test)]
 use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
 #[cfg(test)]
@@ -401,10 +401,10 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     artifacts_chirho
         .imported_type_synonyms_chirho
         .extend(compiled_artifacts_chirho.imported_type_synonyms_chirho);
-    extend_imported_type_families_chirho(
-        &mut artifacts_chirho.imported_type_families_chirho,
-        compiled_artifacts_chirho.imported_type_families_chirho,
-    );
+    // The compiled package result already contains the initial registry plus
+    // every newly checked module. Replace that cumulative snapshot once.
+    artifacts_chirho.imported_type_families_chirho =
+        compiled_artifacts_chirho.imported_type_families_chirho;
 
     active_chirho.remove(package_name_chirho);
     visited_chirho.insert(package_name_chirho.to_string());
@@ -513,7 +513,10 @@ fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<Modul
                             ParserChirho::new_chirho(&preprocessed_source_chirho, file_id_chirho);
                         let green_chirho = parser_chirho.parse_chirho();
                         let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
-                        build_iface_with_imports_chirho(&module_chirho, ifaces_chirho)
+                        haskelujah_naming_chirho::build_iface_with_imports_chirho(
+                            &module_chirho,
+                            ifaces_chirho,
+                        )
                     }));
 
                 if let Ok(real_iface_chirho) = real_iface_result_chirho {
@@ -633,7 +636,7 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )?;
     }
 
     for scc_chirho in &sccs_chirho {
@@ -680,7 +683,11 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
                 warnings_chirho: _warnings_chirho,
             } = frontend_result_chirho;
 
-            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            let iface_chirho = super::build_family_aware_iface_chirho(
+                &module_chirho,
+                &ifaces_chirho,
+                &infer_result_chirho.type_families_chirho,
+            );
             insert_exported_schemes_into_imports_chirho(
                 &iface_chirho,
                 &infer_result_chirho,
@@ -690,7 +697,7 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
                 &module_chirho,
                 &iface_chirho,
                 &resolved_imported_type_synonyms_chirho,
-                infer_result_chirho.promotion_scope_chirho.as_deref(),
+                &infer_result_chirho,
             ));
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.clone();
@@ -764,7 +771,7 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )?;
     }
     let mut order_chirho: Vec<String> = Vec::new();
 
@@ -819,7 +826,11 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
 
             all_warnings_chirho.extend(warnings_chirho);
 
-            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            let iface_chirho = super::build_family_aware_iface_chirho(
+                &module_chirho,
+                &ifaces_chirho,
+                &infer_result_chirho.type_families_chirho,
+            );
             let extra_dict_param_names_chirho: std::collections::HashSet<String> =
                 imported_types_chirho.keys().cloned().collect();
             insert_exported_schemes_into_imports_chirho(
@@ -831,7 +842,7 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
                 &module_chirho,
                 &iface_chirho,
                 &resolved_imported_type_synonyms_chirho,
-                infer_result_chirho.promotion_scope_chirho.as_deref(),
+                &infer_result_chirho,
             ));
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.clone();

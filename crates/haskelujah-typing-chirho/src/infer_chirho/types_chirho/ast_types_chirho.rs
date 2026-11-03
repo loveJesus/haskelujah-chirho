@@ -36,7 +36,10 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
             }
         }
         TypeChirho::ConChirho(name_chirho) => TyChirho::ConChirho(
-            unquoted_promoted_spelling_chirho(name_chirho, scope_chirho)
+            name_chirho
+                .family_key_chirho()
+                .map(str::to_owned)
+                .or_else(|| unquoted_promoted_spelling_chirho(name_chirho, scope_chirho))
                 .unwrap_or_else(|| name_chirho.full_name_chirho()),
         ),
         TypeChirho::ListChirho { element_chirho, .. } => TyChirho::ListChirho(Box::new(
@@ -208,49 +211,86 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
 
 /// Collect free type variable names from AST types (for type family instances).
 pub(super) fn collect_free_type_vars_from_ast_chirho(types_chirho: &[TypeChirho]) -> Vec<String> {
-    let mut vars_chirho = Vec::new();
-    fn walk_chirho(ty_chirho: &TypeChirho, vars_chirho: &mut Vec<String>) {
+    fn walk_chirho(
+        ty_chirho: &TypeChirho,
+        variables_chirho: &mut Vec<String>,
+        seen_chirho: &mut std::collections::HashSet<String>,
+        bound_chirho: &mut Vec<String>,
+    ) {
         match ty_chirho {
             TypeChirho::VarChirho(name_chirho) => {
-                let text_chirho = name_chirho.text_chirho().to_string();
-                if !vars_chirho.contains(&text_chirho) {
-                    vars_chirho.push(text_chirho);
+                let name_chirho = name_chirho.text_chirho();
+                if !bound_chirho
+                    .iter()
+                    .any(|bound_chirho| bound_chirho == name_chirho)
+                    && seen_chirho.insert(name_chirho.to_owned())
+                {
+                    variables_chirho.push(name_chirho.to_owned());
                 }
             }
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho,
                 ..
-            } => {
-                walk_chirho(fun_chirho, vars_chirho);
-                walk_chirho(arg_chirho, vars_chirho);
             }
-            TypeChirho::FunChirho {
-                arg_chirho,
-                result_chirho,
+            | TypeChirho::FunChirho {
+                arg_chirho: fun_chirho,
+                result_chirho: arg_chirho,
                 ..
             } => {
-                walk_chirho(arg_chirho, vars_chirho);
-                walk_chirho(result_chirho, vars_chirho);
+                walk_chirho(fun_chirho, variables_chirho, seen_chirho, bound_chirho);
+                walk_chirho(arg_chirho, variables_chirho, seen_chirho, bound_chirho);
             }
-            TypeChirho::ListChirho { element_chirho, .. } => {
-                walk_chirho(element_chirho, vars_chirho)
+            TypeChirho::ListChirho { element_chirho, .. }
+            | TypeChirho::ParenChirho {
+                inner_chirho: element_chirho,
+                ..
             }
+            | TypeChirho::QualChirho {
+                body_chirho: element_chirho,
+                ..
+            } => walk_chirho(element_chirho, variables_chirho, seen_chirho, bound_chirho),
             TypeChirho::TupleChirho {
                 elements_chirho, ..
+            }
+            | TypeChirho::PromotedListChirho {
+                elements_chirho, ..
             } => {
-                for e_chirho in elements_chirho {
-                    walk_chirho(e_chirho, vars_chirho);
+                for element_chirho in elements_chirho {
+                    walk_chirho(element_chirho, variables_chirho, seen_chirho, bound_chirho);
                 }
             }
-            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                walk_chirho(inner_chirho, vars_chirho);
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            }
+            | TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                let prior_chirho = bound_chirho.len();
+                bound_chirho.extend(
+                    vars_chirho
+                        .iter()
+                        .map(|variable_chirho| variable_chirho.text_chirho().to_owned()),
+                );
+                walk_chirho(body_chirho, variables_chirho, seen_chirho, bound_chirho);
+                bound_chirho.truncate(prior_chirho);
             }
             _ => {}
         }
     }
+    let mut variables_chirho = Vec::new();
+    let mut seen_chirho = std::collections::HashSet::new();
     for ty_chirho in types_chirho {
-        walk_chirho(ty_chirho, &mut vars_chirho);
+        walk_chirho(
+            ty_chirho,
+            &mut variables_chirho,
+            &mut seen_chirho,
+            &mut Vec::new(),
+        );
     }
-    vars_chirho
+    variables_chirho
 }

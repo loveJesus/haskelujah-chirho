@@ -5,6 +5,7 @@
 //! Moved from `infer_chirho.rs` in row 661.
 
 use super::InferCtxChirho;
+use super::family_definitions_chirho::is_type_family_key_chirho;
 use super::strip_name_qualifier_chirho;
 use crate::ty_chirho::{MultChirho, TyChirho};
 use haskelujah_ast_chirho::promotion_chirho::is_promoted_key_chirho;
@@ -23,8 +24,11 @@ impl InferCtxChirho {
 
     pub(super) fn normalize_imported_type_name_chirho(&self, name_text_chirho: &str) -> String {
         // A promoted-constructor key keeps its whole identity (row 686).
-        if is_promoted_key_chirho(name_text_chirho) {
+        if is_promoted_key_chirho(name_text_chirho) || is_type_family_key_chirho(name_text_chirho) {
             return name_text_chirho.to_string();
+        }
+        if let Some(key_chirho) = self.family_name_key_chirho(name_text_chirho) {
+            return key_chirho;
         }
         let bare_name_chirho = strip_name_qualifier_chirho(name_text_chirho);
         if self
@@ -104,6 +108,9 @@ impl InferCtxChirho {
         &self,
         name_chirho: &str,
     ) -> Option<&(Vec<String>, TyChirho)> {
+        if is_type_family_key_chirho(name_chirho) || is_promoted_key_chirho(name_chirho) {
+            return None;
+        }
         self.type_synonyms_chirho.get(name_chirho).or_else(|| {
             name_chirho
                 .rsplit_once('.')

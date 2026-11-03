@@ -171,29 +171,68 @@ mod tests_chirho {
     #[test]
     fn extend_imported_type_families_preserves_existing_equations_chirho() {
         use crate::extend_imported_type_families_chirho;
-
-        let mut target_families_chirho = std::collections::HashMap::from([(
-            "PrimState".to_string(),
-            vec![(
-                vec![TyChirho::AppChirho(
-                    Box::new(TyChirho::ConChirho("ST".to_string())),
-                    Box::new(TyChirho::ForallVarChirho("s".to_string())),
-                )],
-                TyChirho::ForallVarChirho("s".to_string()),
-            )],
-        )]);
-        let source_families_chirho =
-            std::collections::HashMap::from([("PrimState".to_string(), Vec::new())]);
-
-        extend_imported_type_families_chirho(&mut target_families_chirho, source_families_chirho);
-
-        let prim_state_equations_chirho = target_families_chirho
-            .get("PrimState")
-            .expect("PrimState family should remain present after merge");
+        use haskelujah_typing_chirho::infer_chirho::{
+            TypeFamilyBranchChirho, TypeFamilyBranchIdChirho, TypeFamilyDefinitionChirho,
+            TypeFamilyIdChirho, TypeFamilyReductionChirho, TypeFamilyRegistryChirho,
+        };
+        let identity_chirho = TypeFamilyIdChirho::SourceChirho {
+            module_chirho: "OwnerChirho".to_owned(),
+            name_chirho: "FChirho".to_owned(),
+        };
+        let branch_chirho = TypeFamilyBranchChirho {
+            id_chirho: TypeFamilyBranchIdChirho {
+                family_chirho: identity_chirho.clone(),
+                producer_module_chirho: "InstanceChirho".to_owned(),
+                declaration_start_chirho: 10,
+                equation_index_chirho: 0,
+            },
+            binders_chirho: Vec::new(),
+            lhs_chirho: vec![TyChirho::int_chirho()],
+            rhs_chirho: TyChirho::bool_chirho(),
+            blockers_chirho: Vec::new(),
+            held_chirho: false,
+        };
+        let mut target_families_chirho = TypeFamilyRegistryChirho::new_chirho();
+        target_families_chirho
+            .insert_chirho(
+                TypeFamilyDefinitionChirho::new_chirho(
+                    identity_chirho.clone(),
+                    1,
+                    TypeFamilyReductionChirho::OpenChirho,
+                    vec![branch_chirho.clone()],
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        let mut source_families_chirho = TypeFamilyRegistryChirho::new_chirho();
+        source_families_chirho
+            .insert_chirho(
+                TypeFamilyDefinitionChirho::new_chirho(
+                    identity_chirho.clone(),
+                    1,
+                    TypeFamilyReductionChirho::OpenChirho,
+                    Vec::new(),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        extend_imported_type_families_chirho(&mut target_families_chirho, source_families_chirho)
+            .unwrap();
+        let cumulative_chirho = target_families_chirho.clone();
+        for _repeat_chirho in 0..100 {
+            extend_imported_type_families_chirho(
+                &mut target_families_chirho,
+                cumulative_chirho.clone(),
+            )
+            .unwrap();
+        }
+        assert_eq!(target_families_chirho.definition_count_chirho(), 1);
         assert_eq!(
-            prim_state_equations_chirho.len(),
-            1,
-            "merging an empty family definition should not erase existing equations"
+            target_families_chirho
+                .definition_chirho(&identity_chirho.key_chirho())
+                .unwrap()
+                .branches_chirho(),
+            &[branch_chirho]
         );
     }
 
@@ -294,7 +333,7 @@ mod tests_chirho {
             vec![],
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
-            std::collections::HashMap::new(),
+            haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
             true,
         )
         .expect("real parsec frontend artifacts should build for the core module slice");
@@ -346,7 +385,7 @@ mod tests_chirho {
             vec![],
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
-            std::collections::HashMap::new(),
+            haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
         );
 
         match compile_result_chirho {
@@ -386,7 +425,7 @@ mod tests_chirho {
             vec![],
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
-            std::collections::HashMap::new(),
+            haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
         );
 
         assert!(
@@ -1248,7 +1287,7 @@ treeWordSizeChirho = wordSize\n",
                     &frontend_result_chirho.module_chirho,
                     &iface_chirho,
                     &imported_synonyms_chirho,
-                    None,
+                    &frontend_result_chirho.infer_result_chirho,
                 ));
                 ifaces_chirho.push(iface_chirho);
             }
@@ -1408,7 +1447,7 @@ treeWordSizeChirho = wordSize\n",
                     &frontend_result_chirho.module_chirho,
                     &iface_chirho,
                     &imported_synonyms_chirho,
-                    None,
+                    &frontend_result_chirho.infer_result_chirho,
                 ));
                 ifaces_chirho.push(iface_chirho);
             }
@@ -2663,7 +2702,7 @@ data StateMiniChirho = MkStateMiniChirho\n\
             builtin_module_ifaces_chirho(),
             std::collections::HashMap::new(),
             ImportedTypeSynonymsChirho::new(),
-            ImportedTypeFamiliesChirho::new(),
+            ImportedTypeFamiliesChirho::new_chirho(),
             true,
         )
         .expect("frontend artifact collection should succeed for the defining module");

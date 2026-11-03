@@ -381,12 +381,20 @@ impl TypeFamilyDefinitionChirho {
                 branches_chirho.push(branch_chirho.clone());
             }
         }
-        Self::new_chirho(
+        let verified_chirho = (self.open_coherence_verified_chirho
+            && branches_chirho == self.branches_chirho)
+            || (incoming_chirho.open_coherence_verified_chirho
+                && branches_chirho == incoming_chirho.branches_chirho);
+        let mut merged_chirho = Self::new_chirho(
             self.id_chirho.clone(),
             self.arity_chirho,
             self.reduction_chirho,
             branches_chirho,
-        )
+        )?;
+        // A certificate proves this exact branch snapshot. Re-importing the same
+        // snapshot or a subset keeps it; a genuinely enlarged union needs a new check.
+        merged_chirho.open_coherence_verified_chirho = verified_chirho;
+        Ok(merged_chirho)
     }
 }
 
@@ -425,6 +433,41 @@ impl TypeFamilyRegistryChirho {
 
     pub fn is_empty_chirho(&self) -> bool {
         self.definitions_chirho.is_empty() && self.constructor_origins_chirho.is_empty_chirho()
+    }
+
+    /// Render internal family identities only at a diagnostic boundary. This
+    /// presentation map never participates in lookup, matching or equality.
+    pub fn readable_keys_chirho(&self, text_chirho: &str) -> String {
+        let mut displays_chirho = HashMap::new();
+        for (alias_chirho, keys_chirho) in &self.export_aliases_chirho {
+            for key_chirho in keys_chirho {
+                let selected_chirho = displays_chirho
+                    .entry(key_chirho.as_str())
+                    .or_insert(alias_chirho.as_str());
+                if (alias_chirho.len(), alias_chirho.as_str())
+                    < (selected_chirho.len(), *selected_chirho)
+                {
+                    *selected_chirho = alias_chirho;
+                }
+            }
+        }
+        let mut output_chirho = String::with_capacity(text_chirho.len());
+        let mut remaining_chirho = text_chirho;
+        while let Some(offset_chirho) = remaining_chirho.find("%family:") {
+            output_chirho.push_str(&remaining_chirho[..offset_chirho]);
+            remaining_chirho = &remaining_chirho[offset_chirho..];
+            if let Some((length_chirho, display_chirho)) =
+                diagnostic_family_key_chirho(remaining_chirho, &displays_chirho)
+            {
+                output_chirho.push_str(&display_chirho);
+                remaining_chirho = &remaining_chirho[length_chirho..];
+            } else {
+                output_chirho.push_str("%family:");
+                remaining_chirho = &remaining_chirho["%family:".len()..];
+            }
+        }
+        output_chirho.push_str(remaining_chirho);
+        output_chirho
     }
 
     pub(super) fn constructor_origins_chirho(&self) -> &FamilyConstructorOriginsChirho {
@@ -621,6 +664,45 @@ impl TypeFamilyRegistryChirho {
         self.constructor_origins_chirho = constructor_origins_chirho;
         Ok(())
     }
+}
+
+/// Decode a length-delimited key for display only. Invalid/incomplete text is
+/// preserved verbatim; parsing it confers no compiler identity or authority.
+fn diagnostic_family_key_chirho(
+    text_chirho: &str,
+    displays_chirho: &HashMap<&str, &str>,
+) -> Option<(usize, String)> {
+    let body_chirho = text_chirho.strip_prefix("%family:")?;
+    let (tag_chirho, rest_chirho) = body_chirho.split_once(':')?;
+    if tag_chirho == "intrinsic" {
+        let length_chirho = rest_chirho
+            .find(|char_chirho: char| !char_chirho.is_ascii_alphanumeric() && char_chirho != '_')
+            .unwrap_or(rest_chirho.len());
+        let key_length_chirho = text_chirho.len() - rest_chirho.len() + length_chirho;
+        let key_chirho = &text_chirho[..key_length_chirho];
+        return displays_chirho
+            .get(key_chirho)
+            .map(|display_chirho| (key_length_chirho, (*display_chirho).to_owned()));
+    }
+    if !matches!(tag_chirho, "source" | "seed" | "unresolved") {
+        return None;
+    }
+    let (module_length_chirho, payload_chirho) = rest_chirho.split_once(':')?;
+    let module_length_chirho: usize = module_length_chirho.parse().ok()?;
+    let module_chirho = payload_chirho.get(..module_length_chirho)?;
+    let after_module_chirho = payload_chirho
+        .get(module_length_chirho..)?
+        .strip_prefix(':')?;
+    let (name_length_chirho, name_payload_chirho) = after_module_chirho.split_once(':')?;
+    let name_length_chirho: usize = name_length_chirho.parse().ok()?;
+    let name_chirho = name_payload_chirho.get(..name_length_chirho)?;
+    let key_length_chirho = text_chirho.len() - name_payload_chirho.len() + name_length_chirho;
+    let display_chirho = if module_chirho.is_empty() || tag_chirho == "unresolved" {
+        name_chirho.to_owned()
+    } else {
+        format!("{module_chirho}.{name_chirho}")
+    };
+    Some((key_length_chirho, display_chirho))
 }
 
 #[cfg(test)]

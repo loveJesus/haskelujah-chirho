@@ -761,7 +761,8 @@ fn infer_tuple_pattern_function_arg_chirho() {
 
 #[test]
 fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    ctx_chirho.register_type_family_chirho("Rep".to_owned(), 1, vec![]);
     let product_lhs_chirho = TypeChirho::AppChirho {
         fun_chirho: Box::new(TypeChirho::AppChirho {
             fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Product"))),
@@ -812,15 +813,16 @@ fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
         )],
     );
 
+    let rep_key_chirho = ctx_chirho.family_name_key_chirho("Rep").unwrap();
     assert_eq!(
         reduced_chirho,
         Some(TyChirho::TupleChirho(vec![
             TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("Rep".to_string())),
+                Box::new(TyChirho::ConChirho(rep_key_chirho.clone())),
                 Box::new(TyChirho::ConChirho("Proxy".to_string())),
             ),
             TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("Rep".to_string())),
+                Box::new(TyChirho::ConChirho(rep_key_chirho.clone())),
                 Box::new(TyChirho::ConChirho("U1".to_string())),
             ),
         ])),

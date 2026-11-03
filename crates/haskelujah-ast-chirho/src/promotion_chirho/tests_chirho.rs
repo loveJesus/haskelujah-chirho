@@ -99,3 +99,50 @@ fn two_constructors_sharing_a_spelling_are_qualified_chirho() {
         "one constructor named twice needs no module"
     );
 }
+
+#[test]
+fn imported_promotion_stamps_survive_another_modules_scope_chirho() {
+    for quoted_chirho in [false, true] {
+        for original_chirho in [
+            PromotionResolutionChirho::ResolvedChirho(PromotedKeyChirho::source_chirho(
+                "DefChirho",
+                "TChirho",
+            )),
+            PromotionResolutionChirho::UnresolvedChirho(PromotedKeyChirho::unknown_chirho(
+                "DefChirho",
+                "TChirho",
+            )),
+        ] {
+            let mut imported_name_chirho = name_chirho("TChirho");
+            imported_name_chirho.set_promotion_chirho(original_chirho.clone());
+            let mut ty_chirho = if quoted_chirho {
+                TypeChirho::PromotedConChirho {
+                    name_chirho: imported_name_chirho,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }
+            } else {
+                TypeChirho::ConChirho(imported_name_chirho)
+            };
+            let importing_scope_chirho = PromotionScopeChirho::new_chirho(
+                HashMap::from([(
+                    "TChirho".to_string(),
+                    PromotionResolutionChirho::ResolvedChirho(PromotedKeyChirho::source_chirho(
+                        "ImporterChirho",
+                        "TChirho",
+                    )),
+                )]),
+                HashSet::new(),
+            );
+            stamp_promotions_chirho(&mut ty_chirho, &importing_scope_chirho);
+            let stamped_name_chirho = match &ty_chirho {
+                TypeChirho::PromotedConChirho { name_chirho, .. }
+                | TypeChirho::ConChirho(name_chirho) => name_chirho,
+                _ => unreachable!("the name shape is unchanged"),
+            };
+            assert_eq!(
+                stamped_name_chirho.promotion_chirho(),
+                Some(&original_chirho)
+            );
+        }
+    }
+}

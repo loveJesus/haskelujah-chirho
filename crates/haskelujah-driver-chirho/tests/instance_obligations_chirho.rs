@@ -135,7 +135,7 @@ fn diagnostics_with_collapsed_names_chirho(
         &module_chirho,
         &HashMap::new(),
         &HashMap::new(),
-        &HashMap::new(),
+        &haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
         &class_env_chirho,
         &HashMap::new(),
         &collapsed_chirho

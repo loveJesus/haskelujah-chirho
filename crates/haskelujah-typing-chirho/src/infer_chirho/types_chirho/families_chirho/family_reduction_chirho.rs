@@ -32,6 +32,7 @@ impl Default for FamilyReductionLimitsChirho {
     }
 }
 
+#[cfg(test)]
 pub(super) fn reduce_family_definition_chirho(
     definition_chirho: &TypeFamilyDefinitionChirho,
     arguments_chirho: &[TyChirho],
@@ -45,12 +46,55 @@ pub(super) fn reduce_family_definition_chirho(
     )
 }
 
+/// A completed bounded comparison is distinct from unsupported or exhausted work.
+/// `Blocked` is NOT itself a class-unsolvability proof: callers must retain the
+/// signature's rigid scope and establish irreducibility of nested applications.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum FamilyReductionDecisionChirho {
+    ReducedChirho(TyChirho),
+    NoMatchChirho,
+    BlockedChirho,
+    UnknownChirho,
+}
+
+pub(super) fn decide_family_with_limits_chirho(
+    definition_chirho: &TypeFamilyDefinitionChirho,
+    arguments_chirho: &[TyChirho],
+    classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
+    limits_chirho: FamilyReductionLimitsChirho,
+) -> FamilyReductionDecisionChirho {
+    try_family_decision_chirho(
+        definition_chirho,
+        arguments_chirho,
+        classify_chirho,
+        limits_chirho,
+    )
+    .unwrap_or(FamilyReductionDecisionChirho::UnknownChirho)
+}
+
 pub(super) fn reduce_family_with_limits_chirho(
     definition_chirho: &TypeFamilyDefinitionChirho,
     arguments_chirho: &[TyChirho],
     classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
     limits_chirho: FamilyReductionLimitsChirho,
 ) -> Option<TyChirho> {
+    match decide_family_with_limits_chirho(
+        definition_chirho,
+        arguments_chirho,
+        classify_chirho,
+        limits_chirho,
+    ) {
+        FamilyReductionDecisionChirho::ReducedChirho(result_chirho) => Some(result_chirho),
+        _ => None,
+    }
+}
+
+fn try_family_decision_chirho(
+    definition_chirho: &TypeFamilyDefinitionChirho,
+    arguments_chirho: &[TyChirho],
+    classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
+    limits_chirho: FamilyReductionLimitsChirho,
+) -> Result<FamilyReductionDecisionChirho, MatchFailureChirho> {
     let reduction_chirho = definition_chirho.reduction_chirho();
     if matches!(
         reduction_chirho,
@@ -59,29 +103,31 @@ pub(super) fn reduce_family_with_limits_chirho(
         || (reduction_chirho == TypeFamilyReductionChirho::OpenChirho
             && !definition_chirho.open_coherence_verified_chirho())
     {
-        return None;
+        return Ok(FamilyReductionDecisionChirho::UnknownChirho);
     }
     let (prefix_chirho, extras_chirho) =
         arguments_chirho.split_at(definition_chirho.arity_chirho());
     let mut matcher_chirho = FamilyMatcherChirho::new_chirho(classify_chirho, limits_chirho);
     if reduction_chirho == TypeFamilyReductionChirho::OpenChirho {
         for branch_chirho in definition_chirho.branches_chirho() {
-            matcher_chirho.tick_chirho(0).ok()?;
+            matcher_chirho.tick_chirho(0)?;
             if branch_chirho.held_chirho {
-                return None;
+                return Ok(FamilyReductionDecisionChirho::UnknownChirho);
             }
         }
     }
     let mut targets_chirho = Vec::new();
     for argument_chirho in arguments_chirho {
-        targets_chirho.push(
-            matcher_chirho
-                .convert_chirho(argument_chirho, ConversionModeChirho::TargetChirho, 0)
-                .ok()?,
-        );
+        targets_chirho.push(matcher_chirho.convert_chirho(
+            argument_chirho,
+            ConversionModeChirho::TargetChirho,
+            0,
+        )?);
     }
+    let mut blocked_chirho = false;
+    let mut uncertain_chirho = false;
     for (_index_chirho, branch_chirho) in definition_chirho.reduction_candidates_chirho() {
-        matcher_chirho.tick_chirho(0).ok()?;
+        matcher_chirho.tick_chirho(0)?;
         let mut patterns_chirho = Vec::new();
         let mut supported_chirho = true;
         for pattern_chirho in &branch_chirho.lhs_chirho {
@@ -93,9 +139,12 @@ pub(super) fn reduce_family_with_limits_chirho(
                 Ok(pattern_chirho) => patterns_chirho.push(pattern_chirho),
                 Err(MatchFailureChirho::UnsupportedChirho) => {
                     supported_chirho = false;
+                    uncertain_chirho = true;
                     break;
                 }
-                Err(MatchFailureChirho::ExhaustedChirho) => return None,
+                Err(MatchFailureChirho::ExhaustedChirho) => {
+                    return Err(MatchFailureChirho::ExhaustedChirho);
+                }
             }
         }
         if !supported_chirho {
@@ -106,27 +155,36 @@ pub(super) fn reduce_family_with_limits_chirho(
         {
             Ok(Some(bindings_chirho)) => bindings_chirho,
             Ok(None) => continue,
-            Err(_) => return None,
+            Err(error_chirho) => return Err(error_chirho),
         };
         let mut apart_chirho = true;
         for blocker_chirho in &branch_chirho.blockers_chirho {
             // Reserve the full kernel allowance, even if it returns early. Thus a large
             // number of blockers cannot multiply an otherwise bounded matching budget.
             const BLOCKER_STEPS_CHIRHO: usize = 4096;
-            matcher_chirho.charge_chirho(BLOCKER_STEPS_CHIRHO).ok()?;
-            let blocker_chirho = definition_chirho.branches_chirho().get(*blocker_chirho)?;
-            if blocker_chirho.held_chirho
-                || family_patterns_with_limits_chirho(
-                    &blocker_chirho.lhs_chirho,
-                    prefix_chirho,
-                    classify_chirho,
-                    FamilyUnificationLimitsChirho {
-                        steps_chirho: BLOCKER_STEPS_CHIRHO,
-                        nodes_chirho: matcher_chirho.limits_chirho.nodes_chirho,
-                        depth_chirho: matcher_chirho.limits_chirho.depth_chirho,
-                    },
-                ) != FamilyUnificationChirho::SurelyApartChirho
-            {
+            matcher_chirho.charge_chirho(BLOCKER_STEPS_CHIRHO)?;
+            let blocker_chirho = definition_chirho
+                .branches_chirho()
+                .get(*blocker_chirho)
+                .ok_or(MatchFailureChirho::UnsupportedChirho)?;
+            if blocker_chirho.held_chirho {
+                uncertain_chirho = true;
+                apart_chirho = false;
+                break;
+            }
+            let verdict_chirho = family_patterns_with_limits_chirho(
+                &blocker_chirho.lhs_chirho,
+                prefix_chirho,
+                classify_chirho,
+                FamilyUnificationLimitsChirho {
+                    steps_chirho: BLOCKER_STEPS_CHIRHO,
+                    nodes_chirho: matcher_chirho.limits_chirho.nodes_chirho,
+                    depth_chirho: matcher_chirho.limits_chirho.depth_chirho,
+                },
+            );
+            if verdict_chirho != FamilyUnificationChirho::SurelyApartChirho {
+                uncertain_chirho |= verdict_chirho == FamilyUnificationChirho::UncertainChirho;
+                blocked_chirho |= verdict_chirho == FamilyUnificationChirho::UnifiableChirho;
                 apart_chirho = false;
                 break;
             }
@@ -134,32 +192,42 @@ pub(super) fn reduce_family_with_limits_chirho(
         if !apart_chirho {
             continue;
         }
-        let rhs_chirho = matcher_chirho
-            .convert_chirho(
-                &branch_chirho.rhs_chirho,
-                ConversionModeChirho::ResultChirho,
-                0,
-            )
-            .ok()?;
-        let mut result_chirho = matcher_chirho
-            .materialize_chirho(rhs_chirho, &bindings_chirho, extras_chirho.len())
-            .ok()?;
+        let rhs_chirho = matcher_chirho.convert_chirho(
+            &branch_chirho.rhs_chirho,
+            ConversionModeChirho::ResultChirho,
+            0,
+        )?;
+        let mut result_chirho =
+            matcher_chirho.materialize_chirho(rhs_chirho, &bindings_chirho, extras_chirho.len())?;
         for (index_chirho, extra_chirho) in targets_chirho[prefix_chirho.len()..].iter().enumerate()
         {
             let depth_chirho = extras_chirho.len() - index_chirho;
-            matcher_chirho.output_chirho(depth_chirho - 1).ok()?;
+            matcher_chirho.output_chirho(depth_chirho - 1)?;
             result_chirho = TyChirho::AppChirho(
                 Box::new(result_chirho),
-                Box::new(
-                    matcher_chirho
-                        .materialize_chirho(*extra_chirho, &bindings_chirho, depth_chirho)
-                        .ok()?,
-                ),
+                Box::new(matcher_chirho.materialize_chirho(
+                    *extra_chirho,
+                    &bindings_chirho,
+                    depth_chirho,
+                )?),
             );
         }
-        return Some(result_chirho);
+        return Ok(FamilyReductionDecisionChirho::ReducedChirho(result_chirho));
     }
-    None
+    Ok(
+        if uncertain_chirho
+            || definition_chirho
+                .branches_chirho()
+                .iter()
+                .any(|branch_chirho| branch_chirho.held_chirho)
+        {
+            FamilyReductionDecisionChirho::UnknownChirho
+        } else if blocked_chirho {
+            FamilyReductionDecisionChirho::BlockedChirho
+        } else {
+            FamilyReductionDecisionChirho::NoMatchChirho
+        },
+    )
 }
 
 type MatchNodeIdChirho = usize;

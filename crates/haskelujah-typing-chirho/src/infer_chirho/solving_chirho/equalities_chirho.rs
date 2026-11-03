@@ -8,70 +8,18 @@
 use super::*;
 
 impl InferCtxChirho {
-    /// Builtin type families that reduce only on literals; an application to
-    /// an unsolved variable is stuck, not a mismatch.
-    pub(super) const BUILTIN_TYPE_FAMILIES_CHIRHO: &'static [&'static str] = &[
-        "+",
-        "-",
-        "*",
-        "^",
-        "<=?",
-        "Div",
-        "Mod",
-        "Log2",
-        "AppendSymbol",
-        "CharToNat",
-        "NatToChar",
-        "CmpNat",
-        "CmpSymbol",
-        "If",
-        "Not",
-        "&&",
-        "||",
-    ];
-
-    /// Whether `name_chirho` names a type family known here (declared,
-    /// imported, or builtin).
+    /// Exact selected definitions and unresolved family identities remain non-injective.
     pub(super) fn is_type_family_name_chirho(&self, name_chirho: &str) -> bool {
-        if self.type_families_chirho.contains_key(name_chirho) {
-            return true;
-        }
-        let canonical_chirho = canonical_type_family_name_chirho(name_chirho);
-        Self::BUILTIN_TYPE_FAMILIES_CHIRHO.contains(&canonical_chirho.as_str())
-            || self
-                .type_families_chirho
-                .contains_key(canonical_chirho.as_str())
-            || self
-                .type_families_chirho
-                .keys()
-                .any(|key_chirho| strip_name_qualifier_chirho(key_chirho) == canonical_chirho)
+        super::family_definitions_chirho::is_type_family_key_chirho(name_chirho)
+            || self.is_registered_family_chirho(name_chirho)
     }
 
-    /// Whether the type is an application headed by a known type family.
     pub(super) fn ty_is_family_app_chirho(&self, ty_chirho: &TyChirho) -> bool {
-        let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
-        match &head_chirho {
-            TyChirho::ConChirho(name_chirho) => {
-                !args_chirho.is_empty() && self.is_type_family_name_chirho(name_chirho)
-                    || (args_chirho.is_empty()
-                        && self.type_families_chirho.contains_key(name_chirho))
-            }
-            _ => false,
+        let mut head_chirho = ty_chirho;
+        while let TyChirho::AppChirho(function_chirho, _) = head_chirho {
+            head_chirho = function_chirho;
         }
-    }
-
-    /// Syntactic shape only (no environment): an application whose head is a
-    /// builtin arithmetic / symbol family.
-    pub(super) fn ty_is_type_family_app_chirho(ty_chirho: &TyChirho) -> bool {
-        let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
-        match &head_chirho {
-            TyChirho::ConChirho(name_chirho) => {
-                !args_chirho.is_empty()
-                    && Self::BUILTIN_TYPE_FAMILIES_CHIRHO
-                        .contains(&canonical_type_family_name_chirho(name_chirho).as_str())
-            }
-            _ => false,
-        }
+        matches!(head_chirho, TyChirho::ConChirho(name_chirho) if self.is_type_family_name_chirho(name_chirho))
     }
 
     /// Whether a type family application occurs anywhere in the type.
@@ -288,7 +236,7 @@ impl InferCtxChirho {
         let (right_head_chirho, right_args_chirho) = collect_app_spine_chirho(right_chirho);
         let is_plus_chirho = |head_chirho: &TyChirho| {
             matches!(head_chirho, TyChirho::ConChirho(name_chirho)
-                if canonical_type_family_name_chirho(name_chirho) == "+")
+                if *name_chirho == TypeFamilyIdChirho::IntrinsicChirho(IntrinsicTypeFamilyChirho::AddNatChirho).key_chirho())
         };
         if !is_plus_chirho(&left_head_chirho)
             || !is_plus_chirho(&right_head_chirho)
@@ -628,7 +576,10 @@ mod tests_chirho {
     fn plus_chirho(left_chirho: TyChirho, right_chirho: TyChirho) -> TyChirho {
         TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("+".to_string())),
+                Box::new(TyChirho::ConChirho(
+                    TypeFamilyIdChirho::IntrinsicChirho(IntrinsicTypeFamilyChirho::AddNatChirho)
+                        .key_chirho(),
+                )),
                 Box::new(left_chirho),
             )),
             Box::new(right_chirho),
@@ -637,7 +588,23 @@ mod tests_chirho {
 
     #[test]
     fn imported_boolean_families_reduce_by_their_leading_argument_chirho() {
-        let ctx_chirho = InferCtxChirho::new_chirho();
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let mut scope_chirho = TypeFamilyScopeChirho::new_chirho();
+        for (written_chirho, exported_chirho) in [
+            ("Data.Type.Bool.&&", "Data.Type.Bool.&&"),
+            ("&&", "Data.Type.Bool.&&"),
+            ("If", "Data.Type.Bool.If"),
+            ("Not", "Data.Type.Bool.Not"),
+        ] {
+            scope_chirho.import_export_chirho(
+                written_chirho.to_owned(),
+                exported_chirho,
+                &ctx_chirho.type_families_chirho,
+            );
+        }
+        ctx_chirho.family_scope_chirho = Some(Arc::new(scope_chirho));
+        let and_key_chirho =
+            TypeFamilyIdChirho::IntrinsicChirho(IntrinsicTypeFamilyChirho::AndChirho).key_chirho();
         let true_chirho = TyChirho::ConChirho("True".to_string());
         let false_chirho = TyChirho::ConChirho("False".to_string());
         let value_chirho = TyChirho::ForallVarChirho("value%1".to_string());
@@ -650,8 +617,10 @@ mod tests_chirho {
             Some(value_chirho.clone())
         );
         assert_eq!(
-            ctx_chirho
-                .reduce_type_family_chirho("(&&)", &[false_chirho.clone(), value_chirho.clone()],),
+            ctx_chirho.reduce_type_family_chirho(
+                &and_key_chirho,
+                &[false_chirho.clone(), value_chirho.clone()],
+            ),
             Some(false_chirho.clone())
         );
         assert_eq!(

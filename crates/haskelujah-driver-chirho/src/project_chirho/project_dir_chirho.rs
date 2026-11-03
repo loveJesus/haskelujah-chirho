@@ -9,7 +9,7 @@ use super::{
     read_haskell_source_file_chirho, run_frontend_chirho,
     run_frontend_with_type_synonyms_and_type_families_chirho, seed_builtin_type_families_chirho,
 };
-use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
+use haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use std::path::{Path, PathBuf};
@@ -308,7 +308,11 @@ fn parse_boot_iface_chirho(
         ..
     } = frontend_result_chirho;
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, existing_ifaces_chirho);
+    let iface_chirho = super::build_family_aware_iface_chirho(
+        &module_chirho,
+        existing_ifaces_chirho,
+        &infer_result_chirho.type_families_chirho,
+    );
 
     // Extract type schemes from the boot file
     let mut types_chirho = std::collections::HashMap::new();
@@ -409,7 +413,7 @@ pub fn compile_project_dir_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )?;
     }
 
     // The modules this project compiles and links together (row 629).
@@ -515,7 +519,11 @@ pub fn compile_project_dir_chirho(
             all_warnings_chirho.extend(warnings_chirho);
 
             // Build interface for downstream modules
-            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            let iface_chirho = super::build_family_aware_iface_chirho(
+                &module_chirho,
+                &ifaces_chirho,
+                &infer_result_chirho.type_families_chirho,
+            );
 
             let extra_dict_param_names_chirho: std::collections::HashSet<String> =
                 imported_types_chirho.keys().cloned().collect();
@@ -533,7 +541,7 @@ pub fn compile_project_dir_chirho(
                 &module_chirho,
                 &iface_chirho,
                 &resolved_imported_type_synonyms_chirho,
-                infer_result_chirho.promotion_scope_chirho.as_deref(),
+                &infer_result_chirho,
             ));
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
 

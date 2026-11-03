@@ -23,6 +23,7 @@ use haskelujah_test_harness_chirho::native_chirho::{
     NativeBackendChirho, native_project_round_trip_chirho, native_round_trip_chirho,
 };
 
+mod family_registry_chirho;
 mod import_identity_chirho;
 mod module_exports_chirho;
 mod reexport_origins_chirho;

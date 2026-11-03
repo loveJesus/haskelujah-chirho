@@ -11,7 +11,7 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 
 #[test]
 fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     ctx_chirho.register_type_synonym_chirho(
         "GRep".to_string(),
         vec!["f".to_string()],
@@ -23,6 +23,7 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
             )),
         ),
     );
+    ctx_chirho.register_type_family_chirho("Rep".to_owned(), 1, vec![]);
     ctx_chirho.register_type_family_instance_chirho(
         "Rep".to_string(),
         vec![TyChirho::ForallVarChirho("f".to_string())],
@@ -52,7 +53,7 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
 
 #[test]
 fn normalize_ty_expands_ghc_generics_metadata_aliases_chirho() {
-    let ctx_chirho = InferCtxChirho::new_chirho();
+    let ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     let normalized_d1_chirho = ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
         Box::new(TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
@@ -163,7 +164,7 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
 
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     ctx_chirho.process_class_decl_chirho(&class_decl_ast_chirho);
     ctx_chirho.process_instance_decl_chirho(&instance_decl_ast_chirho);
 
@@ -330,7 +331,7 @@ fn collect_free_type_vars_walks_parenthesized_assoc_family_lhs_chirho() {
 
 #[test]
 fn infer_composition_with_tuple_family_projection_preserves_applied_rep_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     let arg_ty_chirho = ctx_chirho.fresh_var_chirho();
     let h_ty_chirho = TyChirho::fun_chirho(
         arg_ty_chirho,
@@ -374,7 +375,7 @@ fn infer_composition_with_tuple_family_projection_preserves_applied_rep_chirho()
 
 #[test]
 fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
@@ -459,15 +460,7 @@ fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chi
 
 #[test]
 fn unify_normalized_reduces_primstate_before_occurs_check_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
-    ctx_chirho.register_type_family_instance_chirho(
-        "PrimState".to_string(),
-        vec![TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("ST".to_string())),
-            Box::new(TyChirho::ForallVarChirho("s".to_string())),
-        )],
-        TyChirho::ForallVarChirho("s".to_string()),
-    );
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
 
     let state_var_ty_chirho = ctx_chirho.fresh_var_chirho();
     let prim_state_ty_chirho = TyChirho::AppChirho(
@@ -499,15 +492,7 @@ fn unify_normalized_reduces_primstate_before_occurs_check_chirho() {
 
 #[test]
 fn app_unification_renormalizes_after_head_substitution_for_primstate_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
-    ctx_chirho.register_type_family_instance_chirho(
-        "PrimState".to_string(),
-        vec![TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("ST".to_string())),
-            Box::new(TyChirho::ForallVarChirho("s".to_string())),
-        )],
-        TyChirho::ForallVarChirho("s".to_string()),
-    );
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
 
     let monad_ty_chirho = ctx_chirho.fresh_var_chirho();
     let elem_ty_chirho = ctx_chirho.fresh_var_chirho();
@@ -561,15 +546,7 @@ fn app_unification_renormalizes_after_head_substitution_for_primstate_chirho() {
 
 #[test]
 fn unify_normalized_instantiates_forall_before_reducing_primstate_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
-    ctx_chirho.register_type_family_instance_chirho(
-        "PrimState".to_string(),
-        vec![TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("ST".to_string())),
-            Box::new(TyChirho::ForallVarChirho("s".to_string())),
-        )],
-        TyChirho::ForallVarChirho("s".to_string()),
-    );
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
 
     let monad_ty_chirho = ctx_chirho.fresh_var_chirho();
     let elem_ty_chirho = TyChirho::ConChirho("Int".to_string());

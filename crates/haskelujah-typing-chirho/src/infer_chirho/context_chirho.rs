@@ -351,7 +351,9 @@ impl InferCtxChirho {
             given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
-            type_families_chirho: HashMap::new(),
+            type_families_chirho: super::seed_type_family_registry_chirho(),
+            family_module_name_chirho: "Main".to_owned(),
+            family_scope_chirho: None,
             scoped_tyvars_chirho: HashMap::new(),
             checking_binding_pattern_annotations_chirho: false,
             next_skolem_chirho: 0,
@@ -540,6 +542,7 @@ impl InferCtxChirho {
             reference_evidence_chirho: HashMap::new(),
             reference_evidence_by_origin_chirho: HashMap::new(),
             promotion_scope_chirho: self.promotion_scope_chirho,
+            family_scope_chirho: self.family_scope_chirho,
         }
     }
 }

@@ -57,6 +57,7 @@ impl Default for FamilyUnificationLimitsChirho {
     }
 }
 
+#[cfg(test)]
 pub(super) fn family_patterns_unification_chirho(
     left_chirho: &[TyChirho],
     right_chirho: &[TyChirho],

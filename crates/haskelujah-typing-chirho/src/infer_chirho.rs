@@ -143,6 +143,19 @@ mod closed_family_apartness_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_tests_chirho.rs"]
 mod closed_family_apartness_tests_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_constructor_origins_chirho.rs"]
+mod family_constructor_origins_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_definitions_chirho.rs"]
+mod family_definitions_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_reduction_chirho.rs"]
+mod family_reduction_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/family_reduction_tests_chirho.rs"]
+mod family_reduction_tests_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_registration_chirho.rs"]
+mod family_registration_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_scope_chirho.rs"]
+mod family_scope_chirho;
 #[path = "infer_chirho/types_chirho/type_families_chirho.rs"]
 mod type_families_chirho;
 #[path = "infer_chirho/types_chirho/type_synonyms_chirho.rs"]
@@ -162,7 +175,7 @@ pub use evidence_chirho::{
 };
 use expressions_chirho::build_infix_app_expr_chirho;
 use fundep_generalization_chirho::{FundepGeneralizationChirho, GeneralizationScopeChirho};
-use type_families_chirho::{canonical_type_family_name_chirho, substitute_type_vars_chirho};
+use type_families_chirho::substitute_type_vars_chirho;
 use type_synonyms_chirho::{collect_app_spine_chirho, map_ty_chirho, subst_named_var_chirho};
 
 /// Error code range for type inference diagnostics.
@@ -186,7 +199,18 @@ const RECORD_FIELD_CODE_CHIRHO: u16 = 206;
 /// (GHC-95909: "does not have the required strict field").
 const RECORD_STRICT_FIELD_CODE_CHIRHO: u16 = 207;
 
-pub type TypeFamilyEnvChirho = HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>;
+pub use family_definitions_chirho::{
+    IntrinsicTypeFamilyChirho, TypeFamilyAliasResolutionChirho, TypeFamilyBranchChirho,
+    TypeFamilyBranchIdChirho, TypeFamilyDefinitionChirho, TypeFamilyDefinitionErrorChirho,
+    TypeFamilyIdChirho, TypeFamilyReductionChirho, TypeFamilyRegistryChirho,
+    is_type_family_key_chirho,
+};
+pub use family_registration_chirho::{
+    seed_type_family_registry_chirho, stamp_family_references_chirho,
+};
+pub use family_scope_chirho::{TypeFamilyScopeChirho, TypeFamilyScopeResolutionChirho};
+
+pub type TypeFamilyEnvChirho = TypeFamilyRegistryChirho;
 
 /// The default equation of an associated type family, remembered on its
 /// class and instantiated for each instance that does not define the family
@@ -281,6 +305,7 @@ pub struct InferResultChirho {
     /// The promoted-constructor scope inference used (row 686), so a later exporter
     /// stamps this module's synonym right sides from it instead of re-resolving them.
     pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about one
@@ -357,6 +382,8 @@ pub struct InferCtxChirho {
     /// Type family environment: family name → list of equations (lhs patterns, rhs type).
     /// Each equation is (param type patterns as TyChirho, result TyChirho).
     type_families_chirho: TypeFamilyEnvChirho,
+    family_module_name_chirho: String,
+    family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
     /// ScopedTypeVariables: when inside a function body whose type signature has
     /// `forall a b.`, maps those names to their TyVarChirho so that where-clause
     /// type annotations and local signatures use the same type variables.
@@ -535,7 +562,7 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
-    let imported_type_families_chirho = TypeFamilyEnvChirho::new();
+    let imported_type_families_chirho = TypeFamilyEnvChirho::new_chirho();
     infer_module_with_imports_type_synonyms_and_families_chirho(
         module_chirho,
         imported_types_chirho,
@@ -592,6 +619,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
             safe_unqualified_imported_type_names_chirho,
             preferred_qualified_type_names_chirho,
             promotion_scope_chirho: None,
+            family_scope_chirho: None,
         },
     )
 }
@@ -609,6 +637,7 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     pub preferred_qualified_type_names_chirho: &'imports_chirho HashMap<String, String>,
     /// `None` when naming did not run; see `InferCtxChirho::promotion_scope_chirho`.
     pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
 }
 
 /// Run type inference on a module with everything it imports.
@@ -625,6 +654,7 @@ pub fn infer_module_with_import_context_chirho(
         safe_unqualified_imported_type_names_chirho,
         preferred_qualified_type_names_chirho,
         promotion_scope_chirho,
+        family_scope_chirho,
     } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
@@ -633,6 +663,14 @@ pub fn infer_module_with_import_context_chirho(
         preferred_qualified_type_names_chirho,
     );
     ctx_chirho.promotion_scope_chirho = promotion_scope_chirho;
+    if let Err(error_chirho) = ctx_chirho
+        .type_families_chirho
+        .merge_chirho(imported_type_families_chirho)
+    {
+        ctx_chirho
+            .family_registration_error_chirho(error_chirho.to_string(), SpanChirho::DUMMY_CHIRHO);
+    }
+    ctx_chirho.prepare_family_scope_chirho(module_chirho, family_scope_chirho);
     ctx_chirho.overloaded_strings_chirho = module_chirho
         .extensions_chirho
         .iter()
@@ -663,12 +701,6 @@ pub fn infer_module_with_import_context_chirho(
             params_chirho.clone(),
             rhs_ty_chirho,
         );
-    }
-    let mut sorted_type_families_chirho: Vec<_> = imported_type_families_chirho.iter().collect();
-    sorted_type_families_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
-    for (family_name_chirho, equations_chirho) in sorted_type_families_chirho {
-        ctx_chirho
-            .register_type_family_chirho(family_name_chirho.clone(), equations_chirho.clone());
     }
     // Seed the type environment with imported type schemes, but only if
     // placeholder imports do not override precise built-ins, while real
@@ -719,6 +751,10 @@ pub fn infer_module_with_import_context_chirho(
     result_chirho
         .diagnostics_chirho
         .map_text_chirho(readable_promoted_keys_chirho);
+    let families_chirho = &result_chirho.type_families_chirho;
+    result_chirho
+        .diagnostics_chirho
+        .map_text_chirho(|text_chirho| families_chirho.readable_keys_chirho(text_chirho));
     result_chirho.subst_chirho = composed_subst_chirho;
     result_chirho.method_occurrences_chirho = method_occurrences_chirho;
     result_chirho.method_occurrence_totals_chirho = method_occurrence_totals_chirho;

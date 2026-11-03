@@ -564,6 +564,10 @@ fn imported_hidden_type_declarations_cannot_borrow_builtin_comparison_authority_
         .replace_source_module_chirho("Hidden", &[("Int".to_owned(), true)])
         .unwrap();
     assert!(!incoming_chirho.is_empty_chirho());
+    let hidden_identity_chirho = incoming_chirho
+        .constructor_origins_chirho()
+        .identity_chirho("Int")
+        .unwrap();
     registry_chirho.merge_chirho(&incoming_chirho).unwrap();
     assert_eq!(
         registry_chirho
@@ -574,7 +578,7 @@ fn imported_hidden_type_declarations_cannot_borrow_builtin_comparison_authority_
     assert!(
         registry_chirho
             .constructor_origins_chirho()
-            .identity_chirho("Hidden.Int")
+            .identity_chirho(&hidden_identity_chirho)
             .is_some()
     );
 }
@@ -629,5 +633,113 @@ fn merging_new_open_rows_invalidates_a_prior_certificate_chirho() {
             .definition_chirho(&id_chirho.key_chirho())
             .unwrap()
             .open_coherence_verified_chirho()
+    );
+}
+
+#[test]
+fn verifying_the_current_open_snapshot_updates_the_stored_certificate_chirho() {
+    let id_chirho = source_id_chirho("Definition", "F");
+    let branch_chirho = branch_chirho(&id_chirho, "InstanceA", 10, "Int", "Bool");
+    let unverified_chirho = definition_chirho(
+        &id_chirho,
+        TypeFamilyReductionChirho::OpenChirho,
+        vec![branch_chirho],
+    );
+    let verified_chirho = unverified_chirho
+        .verify_open_coherence_chirho(&|_left_chirho, _right_chirho| true, 0)
+        .unwrap();
+    let mut registry_chirho = TypeFamilyRegistryChirho::new_chirho();
+    registry_chirho
+        .insert_chirho(unverified_chirho.clone())
+        .unwrap();
+    registry_chirho.insert_chirho(verified_chirho).unwrap();
+    assert!(
+        registry_chirho
+            .definition_chirho(&id_chirho.key_chirho())
+            .unwrap()
+            .open_coherence_verified_chirho()
+    );
+    registry_chirho.insert_chirho(unverified_chirho).unwrap();
+    assert!(
+        registry_chirho
+            .definition_chirho(&id_chirho.key_chirho())
+            .unwrap()
+            .open_coherence_verified_chirho(),
+        "an older duplicate must not erase the proof"
+    );
+}
+
+#[test]
+fn importing_a_verified_superset_keeps_its_exact_snapshot_certificate_chirho() {
+    let id_chirho = source_id_chirho("Definition", "F");
+    let first_chirho = branch_chirho(&id_chirho, "InstanceA", 10, "Int", "Bool");
+    let second_chirho = branch_chirho(&id_chirho, "InstanceB", 10, "Char", "Int");
+    let subset_chirho = definition_chirho(
+        &id_chirho,
+        TypeFamilyReductionChirho::OpenChirho,
+        vec![first_chirho.clone()],
+    );
+    let verified_chirho = definition_chirho(
+        &id_chirho,
+        TypeFamilyReductionChirho::OpenChirho,
+        vec![first_chirho, second_chirho],
+    )
+    .verify_open_coherence_chirho(&|_left_chirho, _right_chirho| true, 1)
+    .unwrap();
+    let mut registry_chirho = TypeFamilyRegistryChirho::new_chirho();
+    registry_chirho
+        .insert_chirho(subset_chirho.clone())
+        .unwrap();
+    let mut incoming_chirho = TypeFamilyRegistryChirho::new_chirho();
+    incoming_chirho.insert_chirho(verified_chirho).unwrap();
+    registry_chirho.merge_chirho(&incoming_chirho).unwrap();
+    registry_chirho.insert_chirho(subset_chirho).unwrap();
+    let final_chirho = registry_chirho
+        .definition_chirho(&id_chirho.key_chirho())
+        .unwrap();
+    assert_eq!(final_chirho.branches_chirho().len(), 2);
+    assert!(final_chirho.open_coherence_verified_chirho());
+}
+
+#[test]
+fn diagnostics_render_family_names_without_changing_internal_keys_chirho() {
+    let left_chirho = source_id_chirho("LeftChirho", "FChirho");
+    let right_chirho = source_id_chirho("RightChirho", "FChirho");
+    let mut registry_chirho = TypeFamilyRegistryChirho::new_chirho();
+    for id_chirho in [&left_chirho, &right_chirho] {
+        registry_chirho
+            .insert_chirho(definition_chirho(
+                id_chirho,
+                TypeFamilyReductionChirho::ClosedChirho,
+                Vec::new(),
+            ))
+            .unwrap();
+    }
+    let before_chirho = format!(
+        "expected `{} Int`, found `{} Bool`",
+        left_chirho.key_chirho(),
+        right_chirho.key_chirho()
+    );
+    assert_eq!(
+        registry_chirho.readable_keys_chirho(&before_chirho),
+        "expected `LeftChirho.FChirho Int`, found `RightChirho.FChirho Bool`"
+    );
+    assert!(
+        registry_chirho
+            .definition_chirho(&left_chirho.key_chirho())
+            .is_some()
+    );
+    assert!(
+        registry_chirho
+            .definition_chirho("LeftChirho.FChirho")
+            .is_none()
+    );
+    assert_eq!(
+        registry_chirho.readable_keys_chirho("%family:source:99:Short"),
+        "%family:source:99:Short"
+    );
+    assert_eq!(
+        registry_chirho.readable_keys_chirho("%family:unresolved:4:Main:11:QChirho.Foo"),
+        "QChirho.Foo"
     );
 }

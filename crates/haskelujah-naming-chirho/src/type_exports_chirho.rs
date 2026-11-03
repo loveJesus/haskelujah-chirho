@@ -108,6 +108,34 @@ pub(crate) fn selected_associated_type_names_chirho(
     }
 }
 
+/// Export members retain explicit namespaces; import admission keeps its existing
+/// rules until its own carrier is reviewed. A variable-symbol associated type
+/// requires the written `type` marker; constructor-symbol policy is unchanged.
+pub(crate) fn selected_associated_type_export_names_chirho(
+    exports_chirho: &IfaceExportsChirho,
+    parent_name_chirho: &str,
+    members_chirho: &ExportMembersChirho,
+) -> Vec<String> {
+    let selected_chirho =
+        selected_associated_type_names_chirho(exports_chirho, parent_name_chirho, members_chirho);
+    let ExportMembersChirho::SomeChirho(members_chirho) = members_chirho else {
+        return selected_chirho;
+    };
+    selected_chirho
+        .into_iter()
+        .filter(|name_chirho| {
+            name_chirho.starts_with(':')
+                || name_chirho.chars().any(|character_chirho| {
+                    character_chirho.is_alphanumeric() || character_chirho == '_'
+                })
+                || members_chirho.iter().any(|member_chirho| {
+                    member_chirho.is_explicit_type_member_chirho()
+                        && canonical_type_name_chirho(member_chirho.text_chirho()) == *name_chirho
+                })
+        })
+        .collect()
+}
+
 /// Copy selected associated type exports and retain their parent relation.
 pub(crate) fn merge_associated_type_exports_chirho(
     result_chirho: &mut IfaceExportsChirho,

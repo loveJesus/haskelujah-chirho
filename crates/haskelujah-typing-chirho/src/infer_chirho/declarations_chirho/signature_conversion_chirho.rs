@@ -90,8 +90,8 @@ impl InferCtxChirho {
             // is a stuck type-family application (`F a ~ Bool`) — is kept as
             // a `~` predicate: a given rewrite rule when the signature is
             // checked, a deferred equality when it is used.
-            if Self::ty_is_type_family_app_chirho(&self.normalize_ty_chirho(&lhs_sub_chirho))
-                || Self::ty_is_type_family_app_chirho(&self.normalize_ty_chirho(&rhs_sub_chirho))
+            if self.ty_is_family_app_chirho(&self.normalize_ty_chirho(&lhs_sub_chirho))
+                || self.ty_is_family_app_chirho(&self.normalize_ty_chirho(&rhs_sub_chirho))
                 || self.ty_is_family_app_chirho(&lhs_sub_chirho)
                 || self.ty_is_family_app_chirho(&rhs_sub_chirho)
             {

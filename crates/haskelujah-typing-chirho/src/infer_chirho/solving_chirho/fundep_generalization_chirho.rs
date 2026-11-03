@@ -380,7 +380,7 @@ impl InferCtxChirho {
         match ty_chirho {
             TyChirho::ConChirho(name_chirho) => {
                 !contains_skolem_chirho(ty_chirho)
-                    && !self.type_families_chirho.contains_key(name_chirho)
+                    && !self.is_type_family_name_chirho(name_chirho)
                     && !self.type_synonyms_chirho.contains_key(name_chirho)
                     && !name_chirho.ends_with('#')
             }
@@ -455,7 +455,7 @@ impl InferCtxChirho {
         match ty_chirho {
             TyChirho::VarChirho(_) => true,
             TyChirho::ConChirho(name_chirho) => {
-                !self.type_families_chirho.contains_key(name_chirho)
+                !self.is_type_family_name_chirho(name_chirho)
                     && !self.type_synonyms_chirho.contains_key(name_chirho)
                     && !is_prefix_tuple_or_arrow_chirho(name_chirho)
             }

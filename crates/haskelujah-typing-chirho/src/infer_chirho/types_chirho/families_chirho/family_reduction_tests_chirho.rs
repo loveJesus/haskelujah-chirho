@@ -11,7 +11,8 @@ use super::family_definitions_chirho::{
     TypeFamilyDefinitionChirho, TypeFamilyIdChirho, TypeFamilyReductionChirho,
 };
 use super::family_reduction_chirho::{
-    FamilyReductionLimitsChirho, reduce_family_definition_chirho, reduce_family_with_limits_chirho,
+    FamilyReductionDecisionChirho, FamilyReductionLimitsChirho, decide_family_with_limits_chirho,
+    reduce_family_definition_chirho, reduce_family_with_limits_chirho,
 };
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
@@ -745,5 +746,117 @@ fn application_spines_charge_the_physical_depth_of_their_first_argument_chirho()
             }
         )
         .is_none()
+    );
+}
+
+#[test]
+fn completed_stuck_comparisons_are_distinct_from_unknown_work_chirho() {
+    use FamilyReductionDecisionChirho as DChirho;
+    let definition_chirho = closed_chirho(
+        1,
+        vec![
+            branch_chirho(0, vec![con_chirho("Int")], con_chirho("Bool"), vec![]),
+            branch_chirho(
+                1,
+                vec![named_chirho("aChirho")],
+                con_chirho("Char"),
+                vec![0],
+            ),
+        ],
+    );
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &definition_chirho,
+            &[con_chirho("Int")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        DChirho::ReducedChirho(con_chirho("Bool"))
+    );
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &definition_chirho,
+            &[named_chirho("rigidChirho")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        DChirho::BlockedChirho
+    );
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &definition_chirho,
+            &[con_chirho("UnknownChirho")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        DChirho::UnknownChirho
+    );
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &definition_chirho,
+            &[con_chirho("Int")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho {
+                steps_chirho: 0,
+                ..FamilyReductionLimitsChirho::default()
+            }
+        ),
+        DChirho::UnknownChirho
+    );
+    let empty_chirho = closed_chirho(1, Vec::new());
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &empty_chirho,
+            &[con_chirho("Int")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        DChirho::NoMatchChirho
+    );
+}
+
+#[test]
+fn held_and_unverified_definitions_never_certify_a_stuck_result_chirho() {
+    use FamilyReductionDecisionChirho as DChirho;
+    let mut held_chirho =
+        branch_chirho(0, vec![named_chirho("aChirho")], con_chirho("Int"), vec![]);
+    held_chirho.held_chirho = true;
+    let closed_chirho = closed_chirho(1, vec![held_chirho]);
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &closed_chirho,
+            &[con_chirho("Bool")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        DChirho::UnknownChirho
+    );
+    let open_chirho = TypeFamilyDefinitionChirho::new_chirho(
+        family_id_chirho(),
+        1,
+        TypeFamilyReductionChirho::OpenChirho,
+        Vec::new(),
+    )
+    .unwrap();
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &open_chirho,
+            &[con_chirho("Bool")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        DChirho::UnknownChirho
+    );
+    let verified_chirho = open_chirho
+        .verify_open_coherence_chirho(&|_left_chirho, _right_chirho| true, 0)
+        .unwrap();
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &verified_chirho,
+            &[con_chirho("Bool")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        DChirho::NoMatchChirho
     );
 }

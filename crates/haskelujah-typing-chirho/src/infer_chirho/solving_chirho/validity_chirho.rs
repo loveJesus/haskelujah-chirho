@@ -173,7 +173,7 @@ impl InferCtxChirho {
                     // primitive tycons (Int#, ByteArray#) go through solver
                     // paths we deliberately mismodel (unboxed literals are
                     // currently typed via Num), so no verdict on either.
-                    if self.type_families_chirho.contains_key(&head_chirho)
+                    if self.is_type_family_name_chirho(&head_chirho)
                         || self.type_synonyms_chirho.contains_key(&head_chirho)
                         || head_chirho.ends_with('#')
                     {

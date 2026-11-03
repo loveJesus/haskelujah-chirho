@@ -11,7 +11,7 @@ fn unknown_and_ambiguous_spellings_never_supply_constructor_proof_chirho() {
         .unwrap();
     let identity_a_chirho = origins_chirho.identity_chirho("T").unwrap();
     assert_eq!(
-        origins_chirho.identity_chirho("A.T"),
+        origins_chirho.identity_chirho(&identity_a_chirho),
         Some(identity_a_chirho.clone())
     );
     origins_chirho
@@ -19,13 +19,11 @@ fn unknown_and_ambiguous_spellings_never_supply_constructor_proof_chirho() {
         .unwrap();
     assert_eq!(origins_chirho.identity_chirho("T"), None);
     assert_eq!(
-        origins_chirho.identity_chirho("A.T"),
+        origins_chirho.identity_chirho(&identity_a_chirho),
         Some(identity_a_chirho)
     );
-    assert_ne!(
-        origins_chirho.identity_chirho("A.T"),
-        origins_chirho.identity_chirho("B.T")
-    );
+    assert_eq!(origins_chirho.identity_chirho("A.T"), None);
+    assert_eq!(origins_chirho.identity_chirho("B.T"), None);
 }
 
 #[test]
@@ -39,7 +37,7 @@ fn source_shadowing_does_not_inherit_compiler_identity_chirho() {
         .unwrap();
     assert_eq!(origins_chirho.identity_chirho("Int"), None);
     assert_eq!(
-        origins_chirho.identity_chirho("Prelude.Int"),
+        origins_chirho.identity_chirho(&standard_chirho),
         Some(standard_chirho.clone())
     );
     assert_ne!(
@@ -81,7 +79,7 @@ fn invalid_source_replacement_and_conflicting_snapshot_merge_are_atomic_chirho()
     origins_chirho
         .replace_source_module_chirho("A", &[("T".to_owned(), true)])
         .unwrap();
-    let prior_chirho = origins_chirho.identity_chirho("A.T");
+    let prior_chirho = origins_chirho.identity_chirho("T");
     assert!(
         origins_chirho
             .replace_source_module_chirho(
@@ -93,7 +91,7 @@ fn invalid_source_replacement_and_conflicting_snapshot_merge_are_atomic_chirho()
             )
             .is_err()
     );
-    assert_eq!(origins_chirho.identity_chirho("A.T"), prior_chirho);
+    assert_eq!(origins_chirho.identity_chirho("T"), prior_chirho);
     let mut incoming_chirho = FamilyConstructorOriginsChirho::default();
     incoming_chirho
         .replace_source_module_chirho("A", &[("U".to_owned(), true)])
@@ -102,6 +100,31 @@ fn invalid_source_replacement_and_conflicting_snapshot_merge_are_atomic_chirho()
         .replace_source_module_chirho("B", &[("Extra".to_owned(), true)])
         .unwrap();
     assert!(origins_chirho.merge_chirho(&incoming_chirho).is_err());
-    assert_eq!(origins_chirho.identity_chirho("A.T"), prior_chirho);
+    assert_eq!(origins_chirho.identity_chirho("T"), prior_chirho);
     assert_eq!(origins_chirho.identity_chirho("B.Extra"), None);
+}
+
+#[test]
+fn a_raw_import_alias_cannot_borrow_a_transitive_modules_origin_chirho() {
+    let mut origins_chirho = FamilyConstructorOriginsChirho::default();
+    origins_chirho
+        .replace_source_module_chirho("ActualChirho", &[("TChirho".to_owned(), true)])
+        .unwrap();
+    let actual_chirho = origins_chirho.identity_chirho("TChirho").unwrap();
+    origins_chirho
+        .replace_source_module_chirho("AliasChirho", &[("TChirho".to_owned(), true)])
+        .unwrap();
+    // A consumer can write `import qualified ActualChirho as AliasChirho`.
+    // The raw spelling then names ActualChirho's T, not the transitive AliasChirho.T.
+    assert_eq!(origins_chirho.identity_chirho("AliasChirho.TChirho"), None);
+    assert_eq!(
+        origins_chirho.identity_chirho(&actual_chirho),
+        Some(actual_chirho)
+    );
+    origins_chirho.insert_compiler_chirho("Prelude.Int".to_owned(), "GHC.Types.Int".to_owned());
+    assert_eq!(
+        origins_chirho.identity_chirho("Prelude.Int"),
+        None,
+        "Prelude can be a source alias too"
+    );
 }

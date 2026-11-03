@@ -55,12 +55,18 @@ pub(crate) fn typecheck_source_with_ifaces_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )
+        .map_err(|error_chirho| {
+            super::family_frontend_diagnostics_chirho(
+                error_chirho,
+                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            )
+        })?;
     }
 
     let frontend_chirho = if imported_types_chirho.is_empty()
         && imported_type_synonyms_chirho.is_empty()
-        && imported_type_families_chirho.is_empty()
+        && imported_type_families_chirho.definition_count_chirho() == 0
     {
         run_frontend_chirho(
             effective_source_chirho,

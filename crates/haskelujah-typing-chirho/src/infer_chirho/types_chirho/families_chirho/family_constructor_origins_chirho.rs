@@ -131,6 +131,12 @@ impl FamilyConstructorOriginsChirho {
     /// The returned identity is positive and unique. Missing, ambiguous and
     /// non-generative declarations all remain unknown to the comparison kernel.
     pub fn identity_chirho(&self, name_chirho: &str) -> Option<String> {
+        // A written qualifier can be an import alias, even when a transitive
+        // source module has that exact name. Only producer-stamped opaque keys
+        // carry qualified authority; a raw qualifier is not an origin proof.
+        if name_chirho.contains('.') && !name_chirho.starts_with("%constructor:") {
+            return None;
+        }
         let origins_chirho = self.heads_chirho.get(name_chirho)?;
         if origins_chirho.len() != 1 {
             return None;

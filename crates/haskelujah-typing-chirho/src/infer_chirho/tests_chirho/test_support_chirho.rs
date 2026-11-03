@@ -6,6 +6,53 @@
 use super::*;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 
+/// Synthetic data declarations used by low-level family/normalization fixtures.
+/// Production learns these facts from source declarations, not arbitrary Con strings.
+pub(super) fn family_fixture_context_chirho() -> InferCtxChirho {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let declarations_chirho = [
+        "Product", "U1", "GRep", "Rep1", "STGen", "STGenM", "StdGen", "S0",
+    ]
+    .into_iter()
+    .map(|name_chirho| (name_chirho.to_owned(), true))
+    .collect::<Vec<_>>();
+    context_chirho
+        .type_families_chirho
+        .constructor_origins_mut_chirho()
+        .replace_source_module_chirho("FamilyFixtureChirho", &declarations_chirho)
+        .unwrap();
+    context_chirho
+}
+
+pub(super) fn bind_family_fixture_alias_chirho(
+    context_chirho: &mut InferCtxChirho,
+    bare_chirho: &str,
+    alias_chirho: &str,
+) {
+    let key_chirho = context_chirho.family_name_key_chirho(bare_chirho).unwrap();
+    let identity_chirho = context_chirho
+        .type_families_chirho
+        .definition_chirho(&key_chirho)
+        .unwrap()
+        .id_chirho()
+        .clone();
+    context_chirho
+        .type_families_chirho
+        .export_alias_chirho(alias_chirho.to_owned(), &identity_chirho)
+        .unwrap();
+    let mut scope_chirho = context_chirho
+        .family_scope_chirho
+        .as_deref()
+        .cloned()
+        .unwrap();
+    scope_chirho.import_export_chirho(
+        alias_chirho.to_owned(),
+        alias_chirho,
+        &context_chirho.type_families_chirho,
+    );
+    context_chirho.family_scope_chirho = Some(Arc::new(scope_chirho));
+}
+
 pub(super) fn dummy_name_chirho(text_chirho: &str) -> NameChirho {
     NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
         text_chirho,

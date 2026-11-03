@@ -439,7 +439,7 @@ valueChirho = LazyState.liftCallCC'\n"
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     );
 
@@ -2085,7 +2085,7 @@ fn frontend_seed_batch_propagates_associated_type_families_between_modules_chirh
         vec![],
         HashMap::new(),
         crate::ImportedTypeSynonymsChirho::new(),
-        crate::ImportedTypeFamiliesChirho::new(),
+        crate::ImportedTypeFamiliesChirho::new_chirho(),
     );
 
     assert!(
@@ -5539,7 +5539,8 @@ fn frontend_text_case_mapping_frontend_survives_generated_module_size_chirho() {
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )
+        .expect("stdlib family snapshots must merge without conflict");
     }
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -9673,7 +9674,7 @@ fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("hashable FFI frontend artifacts should collect");
@@ -9779,7 +9780,7 @@ fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("hashable FFI frontend artifacts should collect");
@@ -9830,7 +9831,7 @@ fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
         vec![],
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("hashable Mix frontend artifacts should collect with stdlib seed");
@@ -9872,7 +9873,7 @@ fn frontend_package_local_empty_and_insert_override_builtins_chirho() {
         vec![],
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     );
 
@@ -9911,7 +9912,7 @@ fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("warp MultiMap frontend artifacts should collect");
@@ -9997,7 +9998,7 @@ fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     );
 
@@ -10041,7 +10042,7 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("warp MultiMap frontend artifacts should collect");
@@ -10106,7 +10107,7 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("warp MultiMap frontend artifacts should collect");

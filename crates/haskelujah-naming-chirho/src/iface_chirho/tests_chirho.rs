@@ -847,3 +847,148 @@ fn iface_exports_foreign_import_names_chirho() {
         "foreign import names should be exported through module interfaces"
     );
 }
+
+fn family_parent_iface_chirho(module_name_chirho: &str, member_chirho: &str) -> ModuleIfaceChirho {
+    let mut exports_chirho = IfaceExportsChirho::default();
+    for name_chirho in ["CChirho", member_chirho] {
+        exports_chirho.types_chirho.insert(
+            name_chirho.to_owned(),
+            IfaceTypeChirho {
+                name_chirho: name_chirho.to_owned(),
+                constructors_chirho: Vec::new(),
+                methods_chirho: Vec::new(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+    }
+    exports_chirho
+        .associated_types_chirho
+        .insert("CChirho".to_owned(), vec![member_chirho.to_owned()]);
+    ModuleIfaceChirho {
+        name_chirho: module_name_chirho.to_owned(),
+        exports_chirho,
+    }
+}
+
+fn family_export_import_chirho(
+    module_chirho: &str,
+    alias_chirho: &str,
+    name_chirho: &str,
+) -> haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
+    haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
+        module_chirho: mk_name_chirho(module_chirho),
+        qualified_chirho: true,
+        alias_chirho: Some(mk_name_chirho(alias_chirho)),
+        spec_chirho: Some(haskelujah_ast_chirho::module_chirho::ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![
+                haskelujah_ast_chirho::module_chirho::ImportItemChirho::TyConChirho {
+                    name_chirho: mk_name_chirho(name_chirho),
+                    members_chirho: ExportMembersChirho::NoneChirho,
+                },
+            ],
+        }),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+#[test]
+fn qualified_type_exports_use_the_selected_parent_and_latest_interface_chirho() {
+    let mut module_chirho = mk_module_chirho(
+        "UserChirho",
+        Some(vec![ExportSpecChirho::TyConChirho {
+            name_chirho: NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+                "QChirho",
+                "CChirho",
+                SpanChirho::DUMMY_CHIRHO,
+            )),
+            members_chirho: ExportMembersChirho::SomeChirho(vec![mk_name_chirho("FChirho")]),
+        }]),
+        vec![DeclChirho::TypeAliasDeclChirho {
+            name_chirho: mk_name_chirho("CChirho"),
+            type_vars_chirho: Vec::new(),
+            rhs_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+    );
+    module_chirho.imports_chirho = vec![
+        family_export_import_chirho("OriginChirho", "QChirho", "CChirho"),
+        family_export_import_chirho("OriginChirho", "RChirho", "FChirho"),
+    ];
+    let ifaces_chirho = [
+        family_parent_iface_chirho("OriginChirho", "OldChirho"),
+        family_parent_iface_chirho("OriginChirho", "FChirho"),
+    ];
+    let resolve_chirho = |module_chirho: &str, name_chirho: &str| {
+        if module_chirho == "OriginChirho" && name_chirho == "FChirho" {
+            std::collections::BTreeSet::from(["origin-family-chirho".to_owned()])
+        } else {
+            std::collections::BTreeSet::new()
+        }
+    };
+    let iface_chirho = build_iface_with_imports_and_family_identities_chirho(
+        &module_chirho,
+        &ifaces_chirho,
+        &resolve_chirho,
+    );
+    assert!(
+        iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("FChirho")
+    );
+    assert!(
+        !iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("OldChirho")
+    );
+    assert_eq!(
+        iface_chirho.exports_chirho.associated_types_chirho["CChirho"],
+        vec!["FChirho"]
+    );
+}
+
+#[test]
+fn an_associated_namesake_with_another_identity_is_not_exported_chirho() {
+    let mut module_chirho = mk_module_chirho(
+        "UserChirho",
+        Some(vec![ExportSpecChirho::TyConChirho {
+            name_chirho: NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+                "QChirho",
+                "CChirho",
+                SpanChirho::DUMMY_CHIRHO,
+            )),
+            members_chirho: ExportMembersChirho::SomeChirho(vec![mk_name_chirho("FChirho")]),
+        }]),
+        Vec::new(),
+    );
+    module_chirho.imports_chirho = vec![
+        family_export_import_chirho("OriginChirho", "QChirho", "CChirho"),
+        family_export_import_chirho("OtherChirho", "RChirho", "FChirho"),
+    ];
+    let ifaces_chirho = [
+        family_parent_iface_chirho("OriginChirho", "FChirho"),
+        family_parent_iface_chirho("OtherChirho", "FChirho"),
+    ];
+    let resolve_chirho = |module_chirho: &str, _name_chirho: &str| {
+        std::collections::BTreeSet::from([format!("{module_chirho}-family-chirho")])
+    };
+    let iface_chirho = build_iface_with_imports_and_family_identities_chirho(
+        &module_chirho,
+        &ifaces_chirho,
+        &resolve_chirho,
+    );
+    assert!(
+        iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("CChirho")
+    );
+    assert!(
+        !iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("FChirho")
+    );
+}

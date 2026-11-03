@@ -165,7 +165,11 @@ impl InferCtxChirho {
                 .collect();
             for atf_chirho in associated_tfs_chirho {
                 let tf_name_chirho = atf_chirho.name_chirho.text_chirho().to_string();
-                self.register_type_family_chirho(tf_name_chirho.clone(), vec![]);
+                self.register_open_family_chirho(
+                    tf_name_chirho.clone(),
+                    atf_chirho.type_vars_chirho.len(),
+                    atf_chirho.span_chirho,
+                );
                 self.assoc_type_declared_params_chirho.insert(
                     tf_name_chirho.clone(),
                     atf_chirho
@@ -280,7 +284,7 @@ impl InferCtxChirho {
 
             // Register associated type family instances from this instance decl
             for atfi_chirho in assoc_tf_instances_chirho {
-                let fname_chirho = atfi_chirho.family_name_chirho.text_chirho().to_string();
+                let fname_chirho = atfi_chirho.family_name_chirho.full_name_chirho();
                 let inst_params_chirho =
                     collect_free_type_vars_from_ast_chirho(&atfi_chirho.lhs_types_chirho);
                 let lhs_chirho: Vec<TyChirho> = atfi_chirho
@@ -299,7 +303,13 @@ impl InferCtxChirho {
                     &inst_params_chirho,
                     self.promotion_scope_chirho.as_deref(),
                 );
-                self.register_type_family_instance_chirho(fname_chirho, lhs_chirho, rhs_ty_chirho);
+                self.register_family_instance_at_chirho(
+                    fname_chirho,
+                    lhs_chirho,
+                    rhs_ty_chirho,
+                    atfi_chirho.span_chirho,
+                    Some(0),
+                );
             }
 
             // Associated families this instance leaves undefined take the
@@ -310,7 +320,9 @@ impl InferCtxChirho {
                 .cloned()
             {
                 let inst_free_vars_chirho = collect_free_type_vars_from_ast_chirho(types_chirho);
-                for default_chirho in defaults_chirho {
+                for (default_index_chirho, default_chirho) in
+                    defaults_chirho.into_iter().enumerate()
+                {
                     let defined_here_chirho = assoc_tf_instances_chirho.iter().any(|atfi_chirho| {
                         atfi_chirho.family_name_chirho.text_chirho() == default_chirho.family_chirho
                     });
@@ -359,10 +371,12 @@ impl InferCtxChirho {
                     );
                     let rhs_chirho =
                         substitute_type_vars_chirho(&rhs_pattern_chirho, &bindings_chirho);
-                    self.register_type_family_instance_chirho(
+                    self.register_family_instance_at_chirho(
                         default_chirho.family_chirho.clone(),
                         lhs_chirho,
                         rhs_chirho,
+                        *span_chirho,
+                        u32::try_from(default_index_chirho).ok(),
                     );
                 }
             }
