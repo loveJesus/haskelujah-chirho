@@ -15,7 +15,9 @@ Branch `ground-dictionaries-chirho`, on the S1 tip bddc428a (gpt_chirho #31138, 
 ## Core and driver
 - [x] Structured entry `dict_pass_module_with_inputs_chirho`, with a compatibility wrapper.
 - [x] Pre-pass after ownership seeding; admission by the rewrite's own rules.
-- [x] Builder: structural selection, memo before descent (knot), bounds, exact rollback, named refusals, constructor authority for obligations.
+- [x] Builder: structural selection, memo before descent (knot), exact rollback, named refusals, constructor authority for obligations.
+- [x] Type-growth bounds (#31155): module-wide type work, per-goal weight, per-candidate copy preflight before the checker's matcher, settled top-level goals.
+- [x] Bound evidence serves an obligation with an unproven constructor before refusing it (#31155).
 - [x] Hooks: method variable, head replacement, reference slot.
 - [x] Context-leading marks for every paired row with an indexable context.
 - [x] Driver: S1 ground goals through the key join's identity decision; reference ground goals.
@@ -25,6 +27,6 @@ Branch `ground-dictionaries-chirho`, on the S1 tip bddc428a (gpt_chirho #31138, 
 ## Proof (root)
 - [ ] Compile and Clippy once S3 and S4 typing land.
 - [ ] Core unit tests: selection, S3 join.
-- [ ] Three-engine controls: B01 (3, 0, 3), CondTwoContext, repeated list contexts, CondCyclic (7), shadowing hold, CondNoBase rejected.
-- [ ] GHC measurement of the two new controls (repeated list contexts, shadowing hold).
+- [ ] Three-engine controls: B01 (3, 0, 3), CondTwoContext, repeated list contexts, CondCyclic (7), shared sub-goals (32), shadowing hold, CondNoBase rejected, growing context rejected.
+- [ ] GHC measurement of the four new controls (repeated list contexts, shared sub-goals, shadowing hold, growing context).
 - [ ] Corpus axes against the baseline.

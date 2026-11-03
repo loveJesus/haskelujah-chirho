@@ -1040,6 +1040,8 @@ mod generic_heads_chirho;
 // `instance_chirho/ground_dictionaries_chirho/`.
 #[path = "instance_chirho/ground_dictionaries_chirho/ground_admission_chirho.rs"]
 mod ground_admission_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_budget_chirho.rs"]
+mod ground_budget_chirho;
 #[path = "instance_chirho/ground_dictionaries_chirho/ground_builder_chirho.rs"]
 mod ground_builder_chirho;
 #[path = "instance_chirho/ground_dictionaries_chirho/ground_route_chirho.rs"]

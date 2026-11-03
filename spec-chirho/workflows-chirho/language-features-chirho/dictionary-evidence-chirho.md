@@ -1089,14 +1089,21 @@ flowchart TD
 - **Selection and building** (`ground_selection_chirho.rs`, `ground_builder_chirho.rs`).
   - A goal is built only when exactly one instance head matches it structurally (`instance_sub_goals_chirho`) and that instance has a context. Any other goal keeps its existing routes, and so does a goal with a dictionary already filed under its own spelling.
   - The dictionary id is memoized before its obligations are built, so `instance Loop [a] => Loop [a]` ties a knot and prints 7. Every dictionary on a cycle is bound recursive.
-  - Bounds are depth 64, 256 dictionaries and 4096 visits. A failed attempt removes every binding and memo entry it made.
+  - Bounds (`ground_budget_chirho.rs`). Counting dictionaries does not bound the types they are built at, because `instance C (a, a) => C a` doubles its goal each step. So:
+    - each type the pass inspects or copies is charged by weight (one per node plus each name's bytes) against a module-wide type-work allowance;
+    - one goal may weigh at most a fixed limit;
+    - each candidate instance is preflighted before the checker's matcher copies anything. The most its match and substituted context can copy (its pattern weight plus one goal copy per variable occurrence) must fit a per-candidate limit, and is charged.
+    - Measuring stops at its cap. Depth 64, 256 dictionaries and 4096 visits still hold.
+  - A failed attempt removes every binding and memo entry it made.
+  - A top-level goal once decided (not new to the route, or refused) is not selected again for a later occurrence.
+  - An obligation naming a constructor its goal does not is served by a dictionary already bound for exactly it (built here, or filed under its own spelling), and refused only when it would need a new build.
 - **Refusals**, each named with lettered variables, never a row key:
   - no instance, or overlapping instances;
   - rows not in this module, or rows ambiguous at their place;
   - an equality context;
   - a multi-parameter context predicate or goal;
   - a class without a layout;
-  - an obligation naming a constructor its goal does not name (no producer proved its identity);
+  - an obligation naming a constructor its goal does not name, with no dictionary already bound for it (no producer proved its identity);
   - a bound reached.
 - **Hooks.**
   - The method-variable route consults the ground dictionary after its keyed instance routes and before the ambient context dictionary.
@@ -1114,9 +1121,11 @@ flowchart TD
   - two contexts of one class (`int1&yes&int2`);
   - two list contexts of one class;
   - the cyclic dictionary (7);
+  - a finite tree of shared sub-goals (32);
   - a shadowing hold;
-  - the missing base, rejected by name.
-  The S3 join's duplicate-span control is `instance_rows_tests_chirho.rs`.
+  - the missing base, rejected by name;
+  - an ever-growing context, refused by a bound and never a crash.
+  The S3 join's duplicate-span control is `instance_rows_tests_chirho.rs`. The type bounds' controls (a capped measure, a too-heavy goal, a candidate past its copy limit, an exhausted budget) are in `ground_selection_tests_chirho.rs`.
 - **Boundaries.** There is no support for equality contexts, foreign rows or multi-parameter contexts; each is refused by name. Range occurrences keep their own Enum route.
 
 ## Current boundary

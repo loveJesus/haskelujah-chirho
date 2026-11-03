@@ -8,6 +8,7 @@
 
 use std::collections::BTreeSet;
 
+use super::ground_budget_chirho::GroundBudgetChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
@@ -41,7 +42,8 @@ pub(in crate::dict_chirho) enum GroundRefusalChirho {
     UnprovenConstructorChirho(String, String),
     /// A context obligation still holds a variable after the head match.
     OpenObligationChirho(PredChirho),
-    /// The depth, dictionary or visit bound was reached.
+    /// A bound was reached: depth, dictionaries, visits, type work, goal weight or one
+    /// candidate's copy weight.
     BudgetChirho(&'static str, usize),
 }
 
@@ -98,26 +100,38 @@ impl GroundRefusalChirho {
 }
 
 /// The unique instance whose head matches `goal_chirho`, with its context under the matching
-/// substitution, in the instance's own context order.
+/// substitution, in the instance's own context order. Every candidate is preflighted and
+/// charged before the checker's matcher copies anything (`ground_budget_chirho.rs`); every
+/// candidate is tried, so an overlap is never missed.
 pub(in crate::dict_chirho) fn select_ground_instance_chirho<'env_chirho>(
     class_env_chirho: &'env_chirho ClassEnvChirho,
     goal_chirho: &PredChirho,
+    goal_weight_chirho: usize,
+    budget_chirho: &mut GroundBudgetChirho,
 ) -> Result<(&'env_chirho InstDeclChirho, Vec<PredChirho>), GroundRefusalChirho> {
     let instances_chirho = class_env_chirho
         .instances_chirho
         .get(&goal_chirho.class_name_chirho)
         .map(Vec::as_slice)
         .unwrap_or(&[]);
-    let mut matches_chirho = instances_chirho.iter().filter_map(|instance_chirho| {
-        ClassEnvChirho::instance_sub_goals_chirho(instance_chirho, goal_chirho)
-            .map(|sub_goals_chirho| (instance_chirho, sub_goals_chirho))
-    });
-    let Some(selected_chirho) = matches_chirho.next() else {
+    let mut selected_chirho: Option<(&InstDeclChirho, Vec<PredChirho>)> = None;
+    let mut others_chirho: Vec<String> = Vec::new();
+    for instance_chirho in instances_chirho {
+        budget_chirho.candidate_chirho(instance_chirho, goal_weight_chirho)?;
+        let Some(sub_goals_chirho) =
+            ClassEnvChirho::instance_sub_goals_chirho(instance_chirho, goal_chirho)
+        else {
+            continue;
+        };
+        if selected_chirho.is_none() {
+            selected_chirho = Some((instance_chirho, sub_goals_chirho));
+        } else {
+            others_chirho.push(readable_instance_chirho(instance_chirho));
+        }
+    }
+    let Some(selected_chirho) = selected_chirho else {
         return Err(GroundRefusalChirho::UnresolvedChirho(goal_chirho.clone()));
     };
-    let others_chirho: Vec<String> = matches_chirho
-        .map(|(instance_chirho, _)| readable_instance_chirho(instance_chirho))
-        .collect();
     if !others_chirho.is_empty() {
         let mut instances_chirho = vec![readable_instance_chirho(selected_chirho.0)];
         instances_chirho.extend(others_chirho);

@@ -7,19 +7,21 @@
 //! A goal's dictionary id is allocated and memoized before its obligations are built, so a
 //! revisit while it is still being built returns that id. Finite recursive evidence therefore
 //! ties a knot, as GHC's recursive dictionaries do (`instance Loop [a] => Loop [a]` prints 7),
-//! and every dictionary on such a cycle is bound as recursive. Depth, dictionary and visit
-//! bounds refuse an endlessly growing chain by name. A failed top-level attempt removes every
-//! binding and memo entry it made, so no binding refers to a dictionary that was never built.
+//! and every dictionary on such a cycle is bound as recursive. A goal that only grows
+//! (`instance C (a, a) => C a`) reaches a bound of `ground_budget_chirho.rs` instead, by name.
+//! A failed top-level attempt removes every binding and memo entry it made, so no binding
+//! refers to a dictionary that was never built.
 //!
-//! An obligation may name only type constructors its goal names. The checker proves the
-//! goal's constructors, so a constructor written only in an instance context has no proven
-//! identity here and is refused by name. The pass records each refusal, and the rewrite
-//! reports one only for an occurrence that stays unserved.
+//! An obligation that names a type constructor its goal does not is served only by a dictionary
+//! already bound for exactly it. The checker proves the goal's constructors, so a constructor
+//! written only in an instance context has no proven identity for a new build. The pass records
+//! each refusal, and the rewrite reports one only for an occurrence that stays unserved.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use super::DictPassCtxChirho;
+use super::ground_budget_chirho::GroundBudgetChirho;
 use super::ground_selection_chirho::{
     GroundRefusalChirho, goal_registry_key_chirho, instance_registry_key_chirho,
     pred_constructors_chirho, pred_is_ground_chirho, readable_instance_chirho,
@@ -28,27 +30,21 @@ use super::ground_selection_chirho::{
 use super::instance_rows_chirho::RowKeyAbsenceChirho;
 use crate::dict_chirho::{DictLayoutChirho, DictPassDiagnosticChirho};
 use crate::expr_chirho::{CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho};
-use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, PredChirho};
+use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
-/// Nested obligations one goal may descend through.
-const GROUND_DEPTH_LIMIT_CHIRHO: usize = 64;
-/// Conditional dictionaries one module may construct.
-const GROUND_DICTIONARY_LIMIT_CHIRHO: usize = 256;
-/// Goals one module's pre-pass may examine; a memoized revisit costs nothing.
-const GROUND_VISIT_LIMIT_CHIRHO: usize = 4096;
-
-/// The module-wide allowance the pre-pass spends, and the state of the attempt in progress.
+/// The pre-pass's state across one module: its budget, and the attempt in progress.
 #[derive(Default)]
 struct GroundBuildChirho {
-    dictionaries_chirho: usize,
-    visits_chirho: usize,
+    budget_chirho: GroundBudgetChirho,
     /// Dictionaries allocated and not yet bound, outermost first.
     in_progress_chirho: Vec<CoreIdChirho>,
     /// Dictionaries a revisit reached while they were still being built: each is recursive.
     recursive_chirho: HashSet<CoreIdChirho>,
     /// The goals this attempt memoized, removed again if it fails.
     attempt_goals_chirho: Vec<PredChirho>,
+    /// Top-level goals already decided: not new to this route (`None`), or refused.
+    settled_chirho: HashMap<PredChirho, Option<GroundRefusalChirho>>,
 }
 
 impl DictPassCtxChirho {
@@ -87,23 +83,44 @@ impl DictPassCtxChirho {
                 {
                     continue;
                 }
-                // Only a goal whose one matching instance has a context is new to this route;
-                // every other goal keeps the routes it has.
-                match select_ground_instance_chirho(class_env_chirho, goal_chirho) {
-                    Ok((instance_chirho, _)) if !instance_chirho.context_chirho.is_empty() => {}
-                    _ => continue,
-                }
                 let slot_chirho = (occurrence_chirho, goal_chirho.class_name_chirho.clone());
-                match self.ground_dictionary_attempt_chirho(
-                    class_env_chirho,
-                    goal_chirho,
-                    &mut build_chirho,
-                ) {
-                    Ok(dict_id_chirho) => {
+                if let Some(dict_id_chirho) = self.ground_dicts_by_goal_chirho.get(goal_chirho) {
+                    self.ground_goal_dicts_chirho
+                        .insert(slot_chirho, *dict_id_chirho);
+                    continue;
+                }
+                let settled_chirho = build_chirho.settled_chirho.get(goal_chirho).cloned();
+                let decision_chirho = match settled_chirho {
+                    Some(settled_chirho) => settled_chirho.map(Err),
+                    None => {
+                        let attempt_chirho = self.ground_dictionary_attempt_chirho(
+                            class_env_chirho,
+                            goal_chirho,
+                            &mut build_chirho,
+                        );
+                        match &attempt_chirho {
+                            Ok(Some(_)) => {}
+                            Ok(None) => {
+                                build_chirho
+                                    .settled_chirho
+                                    .insert(goal_chirho.clone(), None);
+                            }
+                            Err(refusal_chirho) => {
+                                build_chirho
+                                    .settled_chirho
+                                    .insert(goal_chirho.clone(), Some(refusal_chirho.clone()));
+                            }
+                        }
+                        attempt_chirho.transpose()
+                    }
+                };
+                match decision_chirho {
+                    None => {}
+                    Some(Ok(dict_id_chirho)) => {
                         self.ground_goal_dicts_chirho
                             .insert(slot_chirho, dict_id_chirho);
                     }
-                    Err(refusal_chirho) => {
+                    Some(Err(refusal_chirho)) => {
                         self.ground_goal_refusals_chirho.insert(
                             slot_chirho,
                             DictPassDiagnosticChirho {
@@ -131,17 +148,18 @@ impl DictPassCtxChirho {
             ))
     }
 
-    /// One top-level goal. On a refusal, every binding and memo entry this attempt made is
-    /// removed.
+    /// One top-level goal: its dictionary, `None` when the goal is not new to this route (no
+    /// instance, several, or one without a context keeps its existing routes), or a refusal.
+    /// On a refusal, every binding and memo entry this attempt made is removed.
     fn ground_dictionary_attempt_chirho(
         &mut self,
         class_env_chirho: &ClassEnvChirho,
         goal_chirho: &PredChirho,
         build_chirho: &mut GroundBuildChirho,
-    ) -> Result<CoreIdChirho, GroundRefusalChirho> {
+    ) -> Result<Option<CoreIdChirho>, GroundRefusalChirho> {
         let bindings_before_chirho = self.generated_bindings_chirho.len();
         let attempt_chirho =
-            self.ground_dictionary_chirho(class_env_chirho, goal_chirho, 0, build_chirho);
+            self.top_level_dictionary_chirho(class_env_chirho, goal_chirho, build_chirho);
         if attempt_chirho.is_err() {
             self.generated_bindings_chirho
                 .truncate(bindings_before_chirho);
@@ -155,40 +173,44 @@ impl DictPassCtxChirho {
         attempt_chirho
     }
 
-    /// The dictionary for one ground goal: an existing dictionary filed under the goal's own
-    /// spelling, the memoized one, or one built from the selected instance's context
-    /// dictionaries and its own rows.
-    fn ground_dictionary_chirho(
+    fn top_level_dictionary_chirho(
         &mut self,
         class_env_chirho: &ClassEnvChirho,
         goal_chirho: &PredChirho,
+        build_chirho: &mut GroundBuildChirho,
+    ) -> Result<Option<CoreIdChirho>, GroundRefusalChirho> {
+        let goal_weight_chirho = self.examine_goal_chirho(goal_chirho, 0, build_chirho)?;
+        let selected_chirho = match select_ground_instance_chirho(
+            class_env_chirho,
+            goal_chirho,
+            goal_weight_chirho,
+            &mut build_chirho.budget_chirho,
+        ) {
+            Ok(selected_chirho) if !selected_chirho.0.context_chirho.is_empty() => selected_chirho,
+            Ok(_)
+            | Err(GroundRefusalChirho::UnresolvedChirho(_))
+            | Err(GroundRefusalChirho::OverlapChirho(..)) => return Ok(None),
+            Err(refusal_chirho) => return Err(refusal_chirho),
+        };
+        self.build_selected_chirho(
+            class_env_chirho,
+            goal_chirho,
+            selected_chirho,
+            0,
+            build_chirho,
+        )
+        .map(Some)
+    }
+
+    /// The checks every examined goal passes, with its weight: the visit and depth bounds, a
+    /// ground one-parameter goal of a class the pass lays out, and a weight one goal may have.
+    fn examine_goal_chirho(
+        &self,
+        goal_chirho: &PredChirho,
         depth_chirho: usize,
         build_chirho: &mut GroundBuildChirho,
-    ) -> Result<CoreIdChirho, GroundRefusalChirho> {
-        if let Some(dict_id_chirho) = self.ground_dicts_by_goal_chirho.get(goal_chirho).copied() {
-            if let Some(position_chirho) = build_chirho
-                .in_progress_chirho
-                .iter()
-                .position(|in_progress_chirho| *in_progress_chirho == dict_id_chirho)
-            {
-                let cycle_chirho = build_chirho.in_progress_chirho[position_chirho..].to_vec();
-                build_chirho.recursive_chirho.extend(cycle_chirho);
-            }
-            return Ok(dict_id_chirho);
-        }
-        build_chirho.visits_chirho += 1;
-        if build_chirho.visits_chirho > GROUND_VISIT_LIMIT_CHIRHO {
-            return Err(GroundRefusalChirho::BudgetChirho(
-                "visit",
-                GROUND_VISIT_LIMIT_CHIRHO,
-            ));
-        }
-        if depth_chirho > GROUND_DEPTH_LIMIT_CHIRHO {
-            return Err(GroundRefusalChirho::BudgetChirho(
-                "depth",
-                GROUND_DEPTH_LIMIT_CHIRHO,
-            ));
-        }
+    ) -> Result<usize, GroundRefusalChirho> {
+        build_chirho.budget_chirho.visit_chirho(depth_chirho)?;
         if !pred_is_ground_chirho(goal_chirho) {
             return Err(GroundRefusalChirho::OpenObligationChirho(
                 goal_chirho.clone(),
@@ -199,24 +221,65 @@ impl DictPassCtxChirho {
                 goal_chirho.clone(),
             ));
         }
-        let class_name_chirho = goal_chirho.class_name_chirho.clone();
-        let Some(layout_chirho) = self.layouts_chirho.get(&class_name_chirho).cloned() else {
-            return Err(GroundRefusalChirho::NoLayoutChirho(class_name_chirho));
-        };
-        if let Some(existing_chirho) = self.instance_dicts_chirho.get(&(
-            class_name_chirho.clone(),
-            goal_registry_key_chirho(goal_chirho),
-        )) {
-            return Ok(*existing_chirho);
+        if !self
+            .layouts_chirho
+            .contains_key(&goal_chirho.class_name_chirho)
+        {
+            return Err(GroundRefusalChirho::NoLayoutChirho(
+                goal_chirho.class_name_chirho.clone(),
+            ));
         }
-        let (instance_chirho, obligations_chirho) =
-            select_ground_instance_chirho(class_env_chirho, goal_chirho)?;
+        build_chirho.budget_chirho.goal_weight_chirho(goal_chirho)
+    }
+
+    /// A dictionary already bound for exactly this goal: one built here, or one filed under
+    /// the goal's own spelling.
+    fn bound_dictionary_chirho(&self, goal_chirho: &PredChirho) -> Option<CoreIdChirho> {
+        self.ground_dicts_by_goal_chirho
+            .get(goal_chirho)
+            .or_else(|| {
+                self.instance_dicts_chirho.get(&(
+                    goal_chirho.class_name_chirho.clone(),
+                    goal_registry_key_chirho(goal_chirho),
+                ))
+            })
+            .copied()
+    }
+
+    /// The dictionary for one obligation: a bound one, or one built from the instance its head
+    /// selects.
+    fn ground_dictionary_chirho(
+        &mut self,
+        class_env_chirho: &ClassEnvChirho,
+        goal_chirho: &PredChirho,
+        depth_chirho: usize,
+        build_chirho: &mut GroundBuildChirho,
+    ) -> Result<CoreIdChirho, GroundRefusalChirho> {
+        if let Some(dict_id_chirho) = self.bound_dictionary_chirho(goal_chirho) {
+            if let Some(position_chirho) = build_chirho
+                .in_progress_chirho
+                .iter()
+                .position(|in_progress_chirho| *in_progress_chirho == dict_id_chirho)
+            {
+                let cycle_chirho = build_chirho.in_progress_chirho[position_chirho..].to_vec();
+                build_chirho.recursive_chirho.extend(cycle_chirho);
+            }
+            return Ok(dict_id_chirho);
+        }
+        let goal_weight_chirho =
+            self.examine_goal_chirho(goal_chirho, depth_chirho, build_chirho)?;
+        let (instance_chirho, obligations_chirho) = select_ground_instance_chirho(
+            class_env_chirho,
+            goal_chirho,
+            goal_weight_chirho,
+            &mut build_chirho.budget_chirho,
+        )?;
         if instance_chirho.context_chirho.is_empty() {
             // A context-free instance has its dictionary already, under its own key.
             return self
                 .instance_dicts_chirho
                 .get(&(
-                    class_name_chirho,
+                    goal_chirho.class_name_chirho.clone(),
                     instance_registry_key_chirho(instance_chirho),
                 ))
                 .copied()
@@ -226,6 +289,30 @@ impl DictPassCtxChirho {
                     ))
                 });
         }
+        self.build_selected_chirho(
+            class_env_chirho,
+            goal_chirho,
+            (instance_chirho, obligations_chirho),
+            depth_chirho,
+            build_chirho,
+        )
+    }
+
+    /// Build the dictionary of a selected context instance at `goal_chirho`: its context
+    /// dictionaries, its superclass dictionaries at the same type, and its rows applied to the
+    /// context dictionaries.
+    fn build_selected_chirho(
+        &mut self,
+        class_env_chirho: &ClassEnvChirho,
+        goal_chirho: &PredChirho,
+        (instance_chirho, obligations_chirho): (&InstDeclChirho, Vec<PredChirho>),
+        depth_chirho: usize,
+        build_chirho: &mut GroundBuildChirho,
+    ) -> Result<CoreIdChirho, GroundRefusalChirho> {
+        let class_name_chirho = goal_chirho.class_name_chirho.clone();
+        let Some(layout_chirho) = self.layouts_chirho.get(&class_name_chirho).cloned() else {
+            return Err(GroundRefusalChirho::NoLayoutChirho(class_name_chirho));
+        };
         if let Some(refusal_chirho) = self.context_refusal_chirho(instance_chirho) {
             return Err(refusal_chirho);
         }
@@ -250,9 +337,11 @@ impl DictPassCtxChirho {
         }
         let goal_constructors_chirho = pred_constructors_chirho(goal_chirho);
         for obligation_chirho in &obligations_chirho {
-            if let Some(unproven_chirho) = pred_constructors_chirho(obligation_chirho)
+            let unproven_chirho = pred_constructors_chirho(obligation_chirho)
                 .into_iter()
-                .find(|constructor_chirho| !goal_constructors_chirho.contains(constructor_chirho))
+                .find(|constructor_chirho| !goal_constructors_chirho.contains(constructor_chirho));
+            if let Some(unproven_chirho) = unproven_chirho
+                && self.bound_dictionary_chirho(obligation_chirho).is_none()
             {
                 return Err(GroundRefusalChirho::UnprovenConstructorChirho(
                     obligation_chirho.to_string(),
@@ -260,13 +349,7 @@ impl DictPassCtxChirho {
                 ));
             }
         }
-        build_chirho.dictionaries_chirho += 1;
-        if build_chirho.dictionaries_chirho > GROUND_DICTIONARY_LIMIT_CHIRHO {
-            return Err(GroundRefusalChirho::BudgetChirho(
-                "dictionary",
-                GROUND_DICTIONARY_LIMIT_CHIRHO,
-            ));
-        }
+        build_chirho.budget_chirho.dictionary_chirho()?;
         let dict_binder_chirho = self.fresh_binder_chirho(
             &format!(
                 "$fG{class_name_chirho}{}",
