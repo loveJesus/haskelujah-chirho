@@ -148,12 +148,17 @@ impl ParserChirho<'_> {
     }
 
     pub(super) fn parse_decl_chirho(&mut self) {
+        // Only an instance body's own members are associated declarations: one
+        // nested inside a member (a quote, a local block) parses as usual.
+        let instance_member_chirho = std::mem::replace(&mut self.instance_body_chirho, false);
         self.eat_trivia_chirho();
 
         match self.current_kind_chirho() {
             Some(RawTokenKindChirho::ImportChirho) => self.parse_import_decl_chirho(),
             Some(RawTokenKindChirho::DataChirho) => self.parse_data_decl_chirho(),
-            Some(RawTokenKindChirho::TypeChirho) => self.parse_type_or_family_decl_chirho(),
+            Some(RawTokenKindChirho::TypeChirho) => {
+                self.parse_type_or_family_decl_chirho(instance_member_chirho)
+            }
             Some(RawTokenKindChirho::NewtypeChirho) => self.parse_newtype_decl_chirho(),
             Some(RawTokenKindChirho::ClassChirho) => self.parse_class_decl_chirho(),
             Some(RawTokenKindChirho::InstanceChirho) => self.parse_instance_decl_chirho(),
@@ -174,6 +179,7 @@ impl ParserChirho<'_> {
                 }
             }
         }
+        self.instance_body_chirho = instance_member_chirho;
     }
 
     // -----------------------------------------------------------------------

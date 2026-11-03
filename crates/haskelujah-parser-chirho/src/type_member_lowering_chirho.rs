@@ -124,8 +124,9 @@ pub(crate) fn partition_class_members_chirho(
                 let type_var_names_chirho: Vec<NameChirho> = type_vars_chirho
                     .into_iter()
                     .filter(|type_var_chirho| {
-                        !visible_kind_binder_names_chirho
-                            .contains(type_var_chirho.name_chirho.text_chirho())
+                        type_var_chirho.is_visible_chirho()
+                            && !visible_kind_binder_names_chirho
+                                .contains(type_var_chirho.name_chirho.text_chirho())
                     })
                     .map(|type_var_chirho| type_var_chirho.name_chirho)
                     .collect();

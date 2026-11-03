@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{LocalBindChirho, MatchArmChirho};
-use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{
@@ -438,6 +437,8 @@ impl LowerCtxChirho {
                     ty_chirho,
                     span_chirho,
                 }),
+                // Every associated instance arrives here, written `type F args = rhs`
+                // or `type instance F args = rhs`, with its written arguments in order.
                 DeclChirho::TypeFamilyInstanceDeclChirho {
                     family_name_chirho,
                     lhs_types_chirho,
@@ -450,171 +451,6 @@ impl LowerCtxChirho {
                             lhs_types_chirho,
                             rhs_chirho,
                             span_chirho,
-                        },
-                    );
-                    None
-                }
-                // In instance where-blocks, `type Elem [a] = a` is parsed as
-                // a TypeAliasDeclChirho (no "instance" keyword inside class body).
-                // Convert it to an associated type family instance.
-                DeclChirho::TypeAliasDeclChirho {
-                    name_chirho: ta_name_chirho,
-                    type_vars_chirho: ta_tvs_chirho,
-                    rhs_chirho: ta_rhs_chirho,
-                    span_chirho: ta_span_chirho,
-                } => {
-                    fn collect_type_var_names_from_ast_type_chirho(
-                        ty_chirho: &TypeChirho,
-                        out_chirho: &mut Vec<String>,
-                    ) {
-                        match ty_chirho {
-                            TypeChirho::VarChirho(name_chirho) => {
-                                let name_text_chirho = name_chirho.text_chirho().to_string();
-                                if !out_chirho.contains(&name_text_chirho) {
-                                    out_chirho.push(name_text_chirho);
-                                }
-                            }
-                            TypeChirho::AppChirho {
-                                fun_chirho,
-                                arg_chirho,
-                                ..
-                            } => {
-                                collect_type_var_names_from_ast_type_chirho(fun_chirho, out_chirho);
-                                collect_type_var_names_from_ast_type_chirho(arg_chirho, out_chirho);
-                            }
-                            TypeChirho::FunChirho {
-                                arg_chirho,
-                                result_chirho,
-                                ..
-                            } => {
-                                collect_type_var_names_from_ast_type_chirho(arg_chirho, out_chirho);
-                                collect_type_var_names_from_ast_type_chirho(
-                                    result_chirho,
-                                    out_chirho,
-                                );
-                            }
-                            TypeChirho::TupleChirho {
-                                elements_chirho, ..
-                            }
-                            | TypeChirho::PromotedListChirho {
-                                elements_chirho, ..
-                            } => {
-                                for elem_chirho in elements_chirho {
-                                    collect_type_var_names_from_ast_type_chirho(
-                                        elem_chirho,
-                                        out_chirho,
-                                    );
-                                }
-                            }
-                            TypeChirho::ListChirho { element_chirho, .. }
-                            | TypeChirho::ParenChirho {
-                                inner_chirho: element_chirho,
-                                ..
-                            } => {
-                                collect_type_var_names_from_ast_type_chirho(
-                                    element_chirho,
-                                    out_chirho,
-                                );
-                            }
-                            TypeChirho::QualChirho {
-                                context_chirho,
-                                body_chirho,
-                                ..
-                            } => {
-                                for constraint_chirho in context_chirho {
-                                    collect_type_var_names_from_constraint_chirho(
-                                        constraint_chirho,
-                                        out_chirho,
-                                    );
-                                }
-                                collect_type_var_names_from_ast_type_chirho(
-                                    body_chirho,
-                                    out_chirho,
-                                );
-                            }
-                            TypeChirho::ForallChirho { body_chirho, .. }
-                            | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
-                                collect_type_var_names_from_ast_type_chirho(
-                                    body_chirho,
-                                    out_chirho,
-                                );
-                            }
-                            TypeChirho::ConChirho(_)
-                            | TypeChirho::PromotedConChirho { .. }
-                            | TypeChirho::WildcardChirho { .. }
-                            | TypeChirho::LitChirho { .. } => {}
-                        }
-                    }
-
-                    fn collect_type_var_names_from_constraint_chirho(
-                        constraint_chirho: &ConstraintChirho,
-                        out_chirho: &mut Vec<String>,
-                    ) {
-                        match constraint_chirho {
-                            ConstraintChirho::ClassChirho { args_chirho, .. } => {
-                                for arg_chirho in args_chirho {
-                                    collect_type_var_names_from_ast_type_chirho(
-                                        arg_chirho, out_chirho,
-                                    );
-                                }
-                            }
-                            ConstraintChirho::QuantifiedChirho {
-                                context_chirho,
-                                body_chirho,
-                                ..
-                            } => {
-                                for inner_constraint_chirho in context_chirho {
-                                    collect_type_var_names_from_constraint_chirho(
-                                        inner_constraint_chirho,
-                                        out_chirho,
-                                    );
-                                }
-                                collect_type_var_names_from_constraint_chirho(
-                                    body_chirho,
-                                    out_chirho,
-                                );
-                            }
-                        }
-                    }
-
-                    // In instance bodies, associated type family equations like
-                    // `type Rep Proxy = ()` are temporarily lowered through the
-                    // type-alias path. Concrete heads such as `Proxy` are not
-                    // alias type variables. When the alias lowering captured
-                    // only the free variables from a concrete head like
-                    // `Product f g`, keep the enclosing instance head and only
-                    // append any truly extra associated-family parameters.
-                    let mut instance_head_var_names_chirho = Vec::new();
-                    for instance_head_ty_chirho in &instance_type_chirho {
-                        collect_type_var_names_from_ast_type_chirho(
-                            instance_head_ty_chirho,
-                            &mut instance_head_var_names_chirho,
-                        );
-                    }
-                    let mut lhs_tys_chirho: Vec<TypeChirho> = if instance_type_chirho.is_empty() {
-                        Vec::new()
-                    } else {
-                        instance_type_chirho.clone()
-                    };
-                    for tv_chirho in &ta_tvs_chirho {
-                        let tv_name_text_chirho = tv_chirho.name_chirho.text_chirho().to_string();
-                        if !instance_head_var_names_chirho.contains(&tv_name_text_chirho) {
-                            lhs_tys_chirho
-                                .push(TypeChirho::VarChirho(tv_chirho.name_chirho.clone()));
-                        }
-                    }
-                    if lhs_tys_chirho.is_empty() {
-                        lhs_tys_chirho = ta_tvs_chirho
-                            .iter()
-                            .map(|tv_chirho| TypeChirho::VarChirho(tv_chirho.name_chirho.clone()))
-                            .collect();
-                    }
-                    assoc_tf_insts_chirho.push(
-                        haskelujah_ast_chirho::decl_chirho::AssocTfInstanceChirho {
-                            family_name_chirho: ta_name_chirho,
-                            lhs_types_chirho: lhs_tys_chirho,
-                            rhs_chirho: ta_rhs_chirho,
-                            span_chirho: ta_span_chirho,
                         },
                     );
                     None
@@ -669,9 +505,11 @@ impl LowerCtxChirho {
                     }
                     saw_method_like_decl_chirho = true;
                     out_chirho.extend(type_sigs_chirho);
-                } else if let Some(decl_chirho) =
-                    self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
-                {
+                } else if let Some(decl_chirho) = self.lower_where_member_chirho(
+                    n_chirho,
+                    child_chirho.start_chirho,
+                    class_names_chirho.is_some(),
+                ) {
                     if declares_class_fixity_chirho(&decl_chirho, class_names_chirho) {
                         continue;
                     }
@@ -695,6 +533,28 @@ impl LowerCtxChirho {
                 }
             }
         }
+    }
+
+    /// Lower one `where`-block member. Only a class body passes its declared names,
+    /// and there a `type` member declares an associated family, read by
+    /// `lower_associated_type_decl_chirho` so its arity stops at a result kind.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn lower_where_member_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        class_body_chirho: bool,
+    ) -> Option<DeclChirho> {
+        if class_body_chirho && node_chirho.kind_chirho() == SyntaxKindChirho::TypeAliasDeclChirho {
+            let span_chirho =
+                self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
+            return Some(self.lower_associated_type_decl_chirho(
+                node_chirho,
+                base_chirho,
+                span_chirho,
+            ));
+        }
+        self.lower_decl_chirho(node_chirho, base_chirho)
     }
 
     /// The names a class where-block declares: its method signatures and its

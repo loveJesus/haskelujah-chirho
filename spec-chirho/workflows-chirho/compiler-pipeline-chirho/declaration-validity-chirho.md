@@ -58,6 +58,19 @@ kind the binder kind grammar cannot read, such as `(e :: Either a b)`, stays una
 its whole parenthesized group is skipped. Its `::` is then never taken for the result-kind
 marker, and the binders after it survive (row 686, H01).
 
+An invisible header binder, `@k` or `@(k :: K)`, names an inferred kind and is not a
+visible argument, so `type family F @(k :: Type) (a :: k)` has arity one (row 686, T22560d).
+
+An associated type instance keeps its written arguments, in order. In an instance body,
+`type F args = rhs` and `type instance F args = rhs` are both parsed like a closed equation
+(`parse_associated_type_instance_chirho`), so a wildcard, a promoted argument and an argument
+that is not a class parameter keep their places; nothing is rebuilt from the instance head
+(row 686: V03, T11401, T16008). A class body's associated declaration counts only its
+written parameters: binders read like declaration-head binders, and the result kind after
+`::` binds nothing (`lower_associated_type_decl_chirho`; `type T1 (x :: f a) :: f a` in
+T17566 has one). A top-level `type instance` keeps a bare wildcard argument (V06); its other
+argument forms are unchanged. Ordinary synonyms keep their own lowering.
+
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
 declarations leaked by layout. Row 683 held the rule because a legal fixity declaration

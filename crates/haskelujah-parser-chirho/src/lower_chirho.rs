@@ -14,6 +14,9 @@
 //! helpers, and the three items the child modules name as `super::`.
 
 #[cfg(test)]
+#[path = "lower_chirho/classes_chirho/associated_instance_tests_chirho.rs"]
+mod associated_instance_tests_chirho;
+#[cfg(test)]
 #[path = "lower_chirho/bindings_chirho/binding_tests_chirho.rs"]
 mod binding_tests_chirho;
 #[path = "lower_chirho/bindings_chirho/bindings_chirho.rs"]

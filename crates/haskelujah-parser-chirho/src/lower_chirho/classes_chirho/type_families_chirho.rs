@@ -79,6 +79,79 @@ impl LowerCtxChirho {
         }
     }
 
+    /// A class body's associated type declaration or default,
+    /// `type F binders [:: kind] [= rhs]`. Binders are read like declaration-head
+    /// binders (an `@` binder is invisible, an unreadable kind is one skipped group),
+    /// and the result kind after `::` binds nothing, so the family's arity counts
+    /// only its written parameters: `type T1 (x :: f a) :: f a` has one (row 686,
+    /// T17566). Ordinary synonyms keep `lower_type_alias_decl_chirho`.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    pub(super) fn lower_associated_type_decl_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> DeclChirho {
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut name_chirho = None;
+        let mut type_vars_chirho = Vec::new();
+        let mut rhs_chirho = None;
+        let mut saw_type_chirho = false;
+        let mut saw_result_kind_chirho = false;
+        let mut saw_equals_chirho = false;
+
+        let mut idx_chirho = 0;
+        while idx_chirho < children_chirho.len() {
+            let child_chirho = &children_chirho[idx_chirho];
+            match child_chirho.element_chirho {
+                GreenElementChirho::TokenChirho(tok_chirho) => {
+                    let kind_chirho = tok_chirho.kind_chirho();
+                    if kind_chirho == TokenKindChirho::TypeKeywordChirho {
+                        saw_type_chirho = true;
+                    } else if kind_chirho == TokenKindChirho::EqualsChirho {
+                        saw_equals_chirho = true;
+                    } else if saw_type_chirho && !saw_equals_chirho && !saw_result_kind_chirho {
+                        if kind_chirho == TokenKindChirho::DoubleColonChirho {
+                            saw_result_kind_chirho = true;
+                        } else if name_chirho.is_none()
+                            && matches!(
+                                kind_chirho,
+                                TokenKindChirho::ConIdChirho
+                                    | TokenKindChirho::ConSymChirho
+                                    | TokenKindChirho::VarSymChirho
+                            )
+                        {
+                            let s_chirho = self
+                                .span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                            name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
+                        } else if let Some((binder_chirho, consumed_chirho)) =
+                            self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
+                        {
+                            type_vars_chirho.push(binder_chirho);
+                            idx_chirho += consumed_chirho;
+                            continue;
+                        }
+                    }
+                }
+                GreenElementChirho::NodeChirho(n_chirho) if saw_equals_chirho => {
+                    if rhs_chirho.is_none() {
+                        rhs_chirho =
+                            Some(self.lower_type_chirho(n_chirho, child_chirho.start_chirho));
+                    }
+                }
+                _ => {}
+            }
+            idx_chirho += 1;
+        }
+
+        DeclChirho::TypeAliasDeclChirho {
+            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+            type_vars_chirho,
+            rhs_chirho: rhs_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
+            span_chirho,
+        }
+    }
+
     pub(super) fn lower_type_family_decl_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -157,7 +230,11 @@ impl LowerCtxChirho {
                                     self.unparsed_kind_binder_chirho(&children_chirho, idx_chirho)
                                 })
                         {
-                            type_vars_chirho.push(tv_chirho);
+                            // `@(k :: K)` names an inferred kind like `@k` does: the
+                            // whole group is skipped, never a visible argument (T22560d).
+                            if !std::mem::take(&mut skip_visible_binder_chirho) {
+                                type_vars_chirho.push(tv_chirho);
+                            }
                             idx_chirho += skip_chirho;
                             continue;
                         }
@@ -319,8 +396,29 @@ impl LowerCtxChirho {
                             } else {
                                 lhs_types_chirho.push(TypeChirho::VarChirho(name_chirho));
                             }
+                        } else if family_name_chirho.is_some()
+                            && kind_chirho == TokenKindChirho::UnderscoreReservedIdChirho
+                        {
+                            // A wildcard argument keeps its place (row 686, V06).
+                            lhs_types_chirho.push(TypeChirho::WildcardChirho {
+                                span_chirho: s_chirho,
+                            });
                         }
                     }
+                }
+                // An instance body's equation, in either spelling, is parsed like a
+                // closed family's, so its written arguments keep their order and shape.
+                GreenElementChirho::NodeChirho(n_chirho)
+                    if n_chirho.kind_chirho() == SyntaxKindChirho::TypeFamilyEquationChirho =>
+                {
+                    let equation_chirho = self.lower_family_equation_chirho(
+                        n_chirho,
+                        child_chirho.start_chirho,
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                    );
+                    family_name_chirho = equation_chirho.head_chirho;
+                    lhs_types_chirho = equation_chirho.lhs_types_chirho;
+                    rhs_chirho = Some(equation_chirho.rhs_chirho);
                 }
                 GreenElementChirho::NodeChirho(n_chirho) => {
                     if saw_instance_chirho && !saw_equals_chirho && family_name_chirho.is_some() {

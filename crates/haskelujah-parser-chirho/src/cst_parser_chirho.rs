@@ -72,6 +72,10 @@ pub struct ParserChirho<'src> {
     /// separates those equations, so a variable that opens a continuation line
     /// before `=` belongs to the left side rather than starting a value binding.
     family_equation_lhs_chirho: bool,
+    /// Set while an instance's `where` block is parsed. `parse_decl_chirho` takes it
+    /// for that block's own members only, whose `type` declarations are associated
+    /// instances; a declaration nested inside a member parses as usual (row 686).
+    instance_body_chirho: bool,
 }
 
 impl<'src> ParserChirho<'src> {
@@ -88,6 +92,7 @@ impl<'src> ParserChirho<'src> {
             pos_chirho: 0,
             builder_chirho: GreenBuilderChirho::new_chirho(),
             family_equation_lhs_chirho: false,
+            instance_body_chirho: false,
         }
     }
 

@@ -14,8 +14,10 @@ impl ParserChirho<'_> {
     // Type alias declarations
     // -----------------------------------------------------------------------
 
-    /// Dispatch `type` keyword: check if followed by `family` or `instance`.
-    pub(super) fn parse_type_or_family_decl_chirho(&mut self) {
+    /// Dispatch `type` keyword: check if followed by `family` or `instance`. An
+    /// instance body's own `type` member is an associated instance in either
+    /// spelling, parsed by `parse_associated_type_instance_chirho`.
+    pub(super) fn parse_type_or_family_decl_chirho(&mut self, instance_member_chirho: bool) {
         // Peek ahead past trivia to see if next token is "family" or "instance"
         let mut look_chirho = self.pos_chirho + 1;
         while look_chirho < self.tokens_chirho.len()
@@ -35,6 +37,7 @@ impl ParserChirho<'_> {
         };
         match next_text_chirho {
             "family" => self.parse_type_family_decl_chirho(),
+            "instance" if instance_member_chirho => self.parse_associated_type_instance_chirho(),
             "instance" => self.parse_type_family_instance_decl_chirho(),
             "role" => {
                 // RoleAnnotations: `type role T nominal phantom representational`
@@ -76,6 +79,8 @@ impl ParserChirho<'_> {
                         .start_node_chirho(SyntaxKindChirho::TypeSigDeclChirho);
                     self.eat_until_decl_end_chirho();
                     self.builder_chirho.finish_node_chirho();
+                } else if instance_member_chirho {
+                    self.parse_associated_type_instance_chirho();
                 } else {
                     self.parse_type_alias_decl_chirho();
                 }
@@ -137,25 +142,7 @@ impl ParserChirho<'_> {
                 {
                     break;
                 }
-                // One node per equation. The left side is a type; whatever that
-                // grammar leaves before `=` stays in the node, so lowering reports
-                // an incomplete equation instead of dropping it.
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::TypeFamilyEquationChirho);
-                self.parse_family_equation_lhs_chirho();
-                self.eat_until_any_chirho(&[
-                    RawTokenKindChirho::EqualsChirho,
-                    RawTokenKindChirho::VirtualSemicolonChirho,
-                    RawTokenKindChirho::SemicolonChirho,
-                    RawTokenKindChirho::VirtualRightBraceChirho,
-                    RawTokenKindChirho::RightBraceChirho,
-                ]);
-                if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
-                    self.bump_chirho(); // =
-                    self.eat_trivia_chirho();
-                    self.parse_family_equation_rhs_chirho();
-                }
-                self.builder_chirho.finish_node_chirho();
+                self.parse_family_equation_chirho();
             }
             if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
                 || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
@@ -222,6 +209,48 @@ impl ParserChirho<'_> {
         let outer_chirho = std::mem::replace(&mut self.family_equation_lhs_chirho, true);
         self.parse_type_chirho();
         self.family_equation_lhs_chirho = outer_chirho;
+    }
+
+    /// One equation node, `[forall bs.] lhs = rhs`, for a closed family's `where`
+    /// block and an instance body's associated instance alike. The left side is a
+    /// type; whatever that grammar leaves before `=` stays in the node, so lowering
+    /// reports an incomplete equation instead of dropping it.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_family_equation_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypeFamilyEquationChirho);
+        self.parse_family_equation_lhs_chirho();
+        self.eat_until_any_chirho(&[
+            RawTokenKindChirho::EqualsChirho,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            RawTokenKindChirho::SemicolonChirho,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+            RawTokenKindChirho::RightBraceChirho,
+        ]);
+        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+            self.bump_chirho(); // =
+            self.eat_trivia_chirho();
+            self.parse_family_equation_rhs_chirho();
+        }
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// An instance body's associated type instance, `type F args = rhs` or
+    /// `type instance F args = rhs`. Its equation is parsed like a closed family's,
+    /// so lowering reads the written arguments in order: wildcards, and arguments
+    /// that are not class parameters, keep their places (row 686: V03, T11401).
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_associated_type_instance_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypeFamilyInstanceDeclChirho);
+        self.expect_chirho(RawTokenKindChirho::TypeChirho); // type
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::InstanceChirho) {
+            self.bump_chirho(); // instance
+            self.eat_trivia_chirho();
+        }
+        self.parse_family_equation_chirho();
+        self.builder_chirho.finish_node_chirho();
     }
 
     fn parse_type_family_instance_decl_chirho(&mut self) {
@@ -311,7 +340,10 @@ impl ParserChirho<'_> {
         ]);
 
         if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+            // The block's own members are instance members; see `parse_decl_chirho`.
+            let outer_chirho = std::mem::replace(&mut self.instance_body_chirho, true);
             self.parse_where_block_chirho();
+            self.instance_body_chirho = outer_chirho;
         }
 
         self.builder_chirho.finish_node_chirho();
