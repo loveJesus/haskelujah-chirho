@@ -108,3 +108,31 @@ The apartness unifier and one-way matcher have different jobs. Apartness freshen
 Promoted names use the separate promoted-constructor identity workflow. Ordinary source type spellings do not acquire nominal authority from a qualifier: an import alias may spell a different transitive module's name. The comparison catalogue therefore leaves raw qualified heads unknown unless a producer supplied an opaque identity. Existing exporter stamps, including unresolved stamps, survive later imports unchanged. Diagnostic rendering writes readable family and promoted names without changing internal equality or keys.
 
 The behavioral controls reuse the existing `typing_integration` and `native_symbol_identity` targets. Their single-module and Cabal project programs are copied byte for byte from fresh GHC 9.14.1 runs, including abstract rejection twins and qualified/re-exported identities. The component suite separately checks finite/uncertain/disjoint comparisons, coherence, snapshot deduplication and resource exhaustion. Final claims require the interpreter, LLVM, true Cranelift and both fixed corpus axes on the same candidate.
+
+## A signature's wanted that nothing in scope can serve (row 686, C08)
+
+`twoChirho :: Proxy a -> Proxy b -> TwoChirho (OpaqueChirho a) (OpaqueChirho b); twoChirho _ _ = 3` leaves the literal's wanted, `Num (TwoChirho (OpaqueChirho a) (OpaqueChirho b))`, resolved and meta-free at the signature scope's end. Discharge keeps it, because no given takes part. The scope then truncates its givens, and the module-end check's rigid branch drops it. GHC 9.14.1 rejects the program with GHC-39999.
+
+```mermaid
+flowchart TD
+    scope_chirho["with_signature_givens_chirho: givens and equality rewrites installed"] --> body_chirho["Body checked against the rigid signature; substitutions applied to the wanteds"]
+    body_chirho --> discharge_chirho["Discharge with the givens; retry deferred equalities"]
+    discharge_chirho --> own_chirho{"Names this signature's skolems, carries no inference variable?"}
+    own_chirho -->|No| keep_chirho["Stays deferred, as before"]
+    own_chirho -->|Yes| entailed_chirho{"Entailed under the givens, raw or normalized?"}
+    entailed_chirho -->|Yes| keep_chirho
+    entailed_chirho -->|No| certified_chirho{"An argument is a certified irreducible family application, and no instance head of the visible class is a bare variable at that position?"}
+    certified_chirho -->|No| keep_chirho
+    certified_chirho -->|Yes| report_chirho["no instance for: reported, and removed from the deferred list"]
+    report_chirho --> truncate_chirho["Givens and rewrites leave scope"]
+    keep_chirho --> truncate_chirho
+```
+
+- **Placement.** The check runs at the signature scope's end, from `with_signature_givens_chirho` in `solving_chirho/schemes_chirho.rs`, while the givens and equality rewrites are still installed. Top-level and local signed bindings call it. Instance-obligation scopes keep `with_given_preds_chirho`, unchanged. The rule is in `solving_chirho/signature_wanteds_chirho.rs`.
+- **The certificate.** It consumes the reducer's `decide_family_with_limits_chirho` through exact registry identities.
+  - `NoMatch` certifies a definition that has no equations.
+  - Otherwise, `NoMatch` or `Blocked` certifies only when every rigid variable sits inside a nested application that is itself certified. A pattern's local refinement of a bare rigid argument could select an equation.
+  - Intrinsic, held, unverified, Unknown and exhausted work never certifies.
+- **The class.** Only a bare-variable instance head can match an application that never reduces. Its visibility is trusted only for a fully-known class.
+- **Unchanged:** the module-end rigid refuter, every family blocker, and every other caller. Nothing else calls a stuck family unsolvable.
+- **Controls:** `typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs`, copied byte for byte from fresh GHC 9.14.1 oracle files: three rejected, six accepted.

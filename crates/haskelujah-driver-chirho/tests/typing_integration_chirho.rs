@@ -887,3 +887,5 @@ fn explicit_type_arguments_do_not_accept_reversed_operand_types_chirho() {
 
 #[path = "typing_integration_chirho/declarations_chirho/ordered_family_reduction_chirho.rs"]
 mod ordered_family_reduction_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs"]
+mod signature_wanteds_chirho;

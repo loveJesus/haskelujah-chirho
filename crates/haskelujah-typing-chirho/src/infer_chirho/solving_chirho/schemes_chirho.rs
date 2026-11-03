@@ -173,6 +173,36 @@ impl InferCtxChirho {
     where
         FChirho: FnOnce(&mut Self) -> TChirho,
     {
+        self.with_given_scope_chirho(preds_chirho, None, f_chirho)
+    }
+
+    /// A type signature's scope: the givens of `with_given_preds_chirho`, and before they leave
+    /// scope, a wanted over the signature's own rigid variables that nothing in scope can serve
+    /// is reported (row 686, C08).
+    /// workflow: language-features-chirho/stuck-family-equalities-chirho
+    pub(super) fn with_signature_givens_chirho<TChirho, FChirho>(
+        &mut self,
+        preds_chirho: Vec<PredChirho>,
+        signature_ty_chirho: &TyChirho,
+        f_chirho: FChirho,
+    ) -> TChirho
+    where
+        FChirho: FnOnce(&mut Self) -> TChirho,
+    {
+        let skolems_chirho =
+            Self::signature_scope_skolems_chirho(signature_ty_chirho, &preds_chirho);
+        self.with_given_scope_chirho(preds_chirho, Some(&skolems_chirho), f_chirho)
+    }
+
+    fn with_given_scope_chirho<TChirho, FChirho>(
+        &mut self,
+        preds_chirho: Vec<PredChirho>,
+        signature_skolems_chirho: Option<&HashSet<String>>,
+        f_chirho: FChirho,
+    ) -> TChirho
+    where
+        FChirho: FnOnce(&mut Self) -> TChirho,
+    {
         let given_start_chirho = self.given_preds_chirho.len();
         let rewrites_start_chirho = self.given_rewrites_chirho.len();
         self.install_given_equalities_chirho(&preds_chirho);
@@ -180,6 +210,9 @@ impl InferCtxChirho {
         let result_chirho = f_chirho(self);
         let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
         let _equalities_chirho = self.retry_deferred_equalities_chirho();
+        if let Some(skolems_chirho) = signature_skolems_chirho {
+            self.report_stuck_signature_wanteds_chirho(skolems_chirho);
+        }
         self.given_preds_chirho.truncate(given_start_chirho);
         self.given_rewrites_chirho.truncate(rewrites_start_chirho);
         result_chirho

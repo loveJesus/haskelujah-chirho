@@ -66,6 +66,8 @@ mod inferred_dictionary_owners_chirho;
 mod rigid_chirho;
 #[path = "infer_chirho/solving_chirho/schemes_chirho.rs"]
 mod schemes_chirho;
+#[path = "infer_chirho/solving_chirho/signature_wanteds_chirho.rs"]
+mod signature_wanteds_chirho;
 #[path = "infer_chirho/solving_chirho/unification_chirho.rs"]
 mod unification_chirho;
 #[path = "infer_chirho/solving_chirho/validity_chirho.rs"]

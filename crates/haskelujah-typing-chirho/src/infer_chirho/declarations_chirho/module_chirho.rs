@@ -582,13 +582,17 @@ impl InferCtxChirho {
                         self.scope_signature_for_body_chirho(sig_ast_chirho, &sig_var_map_chirho);
                         skolemized_sigs_chirho
                             .insert(binding_name_chirho.clone(), sig_ty_raw_chirho.clone());
-                        self.with_given_preds_chirho(sig_preds_chirho, |self_chirho| {
-                            self_chirho.infer_matches_against_expected_chirho(
-                                fun_matches_refs_chirho[fi_chirho],
-                                span_chirho,
-                                &sig_ty_raw_chirho,
-                            )
-                        })
+                        self.with_signature_givens_chirho(
+                            sig_preds_chirho,
+                            &sig_ty_raw_chirho,
+                            |self_chirho| {
+                                self_chirho.infer_matches_against_expected_chirho(
+                                    fun_matches_refs_chirho[fi_chirho],
+                                    span_chirho,
+                                    &sig_ty_raw_chirho,
+                                )
+                            },
+                        )
                     } else {
                         self.infer_matches_chirho(fun_matches_refs_chirho[fi_chirho], span_chirho)
                     };
