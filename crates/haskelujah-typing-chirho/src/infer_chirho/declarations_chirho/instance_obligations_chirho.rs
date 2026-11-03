@@ -582,14 +582,33 @@ impl InferCtxChirho {
         }
         let judged_chirho = instance_chirho.context_complete_chirho
             && self.givens_reach_their_superclasses_chirho(&givens_chirho);
+        let own_context_chirho = givens_chirho
+            .iter()
+            .take(instance_chirho.context_chirho.len())
+            .cloned()
+            .collect::<Vec<_>>();
 
         self.with_given_preds_chirho(givens_chirho, |self_chirho| {
-            self_chirho.check_method_body_chirho(
-                matches_chirho,
-                span_chirho,
-                &rigid_ty_chirho,
-                judged_chirho,
-            )
+            if instance_chirho.context_complete_chirho {
+                self_chirho.with_instance_context_evidence_chirho(
+                    &own_context_chirho,
+                    |self_chirho| {
+                        self_chirho.check_method_body_chirho(
+                            matches_chirho,
+                            span_chirho,
+                            &rigid_ty_chirho,
+                            judged_chirho,
+                        )
+                    },
+                )
+            } else {
+                self_chirho.check_method_body_chirho(
+                    matches_chirho,
+                    span_chirho,
+                    &rigid_ty_chirho,
+                    judged_chirho,
+                )
+            }
         })
     }
 

@@ -11,6 +11,8 @@ use super::*;
 #[path = "evidence_chirho/ground_goals_chirho.rs"]
 mod ground_goals_chirho;
 pub(crate) use ground_goals_chirho::ground_pred_chirho;
+#[path = "evidence_chirho/instance_context_chirho.rs"]
+mod instance_context_chirho;
 
 /// One constrained reference's predicate, captured during inference and
 /// finalized into a `MethodOccurrenceRecordChirho` once the module is solved.
@@ -25,6 +27,7 @@ pub(super) struct OccurrenceCaptureChirho {
     pub(super) ty_chirho: TyChirho,
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
+    pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
 }
 
 /// One constrained reference's instantiated predicates, in scheme order.
@@ -33,6 +36,7 @@ pub(super) struct ReferenceCaptureChirho {
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
     pub(super) preds_chirho: Vec<(String, TyChirho)>,
+    pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
 }
 
 /// A recursive reference sees the group's monomorphic assumption before its
@@ -139,6 +143,7 @@ impl InferCtxChirho {
             self.reference_captures_chirho.push(ReferenceCaptureChirho {
                 span_chirho,
                 origin_chirho,
+                instance_context_chirho: self.active_instance_context_chirho.clone(),
                 preds_chirho: scheme_chirho
                     .preds_chirho
                     .iter()
@@ -173,6 +178,7 @@ impl InferCtxChirho {
             origin_chirho,
             class_name_chirho.to_string(),
             ty_chirho.clone(),
+            self.active_instance_context_chirho.clone(),
         ));
     }
 
@@ -207,6 +213,7 @@ impl InferCtxChirho {
                     ty_chirho: pred_chirho.ty_chirho.clone(),
                     span_chirho,
                     origin_chirho,
+                    instance_context_chirho: self.active_instance_context_chirho.clone(),
                 });
         }
     }
@@ -227,6 +234,7 @@ impl InferCtxChirho {
         self.reference_captures_chirho.push(ReferenceCaptureChirho {
             span_chirho,
             origin_chirho,
+            instance_context_chirho: self.active_instance_context_chirho.clone(),
             preds_chirho: preds_chirho
                 .iter()
                 .map(|pred_chirho| {
@@ -409,11 +417,21 @@ impl InferCtxChirho {
                 .iter()
                 .map(|(class_name_chirho, ty_chirho)| {
                     let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
-                    let ty_key_chirho = self.reference_key_chirho(
-                        class_name_chirho,
-                        &resolved_chirho,
-                        final_subst_chirho,
-                    );
+                    let ty_key_chirho = self
+                        .instance_context_key_chirho(
+                            class_name_chirho,
+                            &resolved_chirho,
+                            &[],
+                            capture_chirho.instance_context_chirho.as_deref(),
+                            final_subst_chirho,
+                        )
+                        .or_else(|| {
+                            self.reference_key_chirho(
+                                class_name_chirho,
+                                &resolved_chirho,
+                                final_subst_chirho,
+                            )
+                        });
                     let ground_pred_chirho = if ty_key_chirho
                         .as_deref()
                         .is_some_and(is_own_dictionary_key_chirho)
@@ -469,37 +487,45 @@ impl InferCtxChirho {
             HashMap::new();
         let mut keys_by_origin_chirho: HashMap<OriginIdChirho, Vec<LiteralEvidenceChirho>> =
             HashMap::new();
-        for (span_chirho, origin_chirho, class_name_chirho, ty_chirho) in
+        for (span_chirho, origin_chirho, class_name_chirho, ty_chirho, instance_context_chirho) in
             &self.literal_captures_chirho
         {
             let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
-            let key_chirho = match &resolved_chirho {
-                TyChirho::VarChirho(var_chirho) => self
-                    .local_literal_specialization_key_chirho(
-                        class_name_chirho,
-                        *var_chirho,
-                        final_subst_chirho,
-                    )
-                    .or_else(|| {
-                        (!self.local_generalized_vars_chirho.contains(var_chirho)
-                            && !self
-                                .occurrence_default_hints_chirho
-                                .contains_key(var_chirho))
-                        .then(|| {
-                            self.inferred_dictionary_owner_key_chirho(
-                                class_name_chirho,
-                                *var_chirho,
-                            )
-                        })
-                        .flatten()
-                    }),
-                // A literal at the enclosing signature's rigid variable is the binding's
-                // own dictionary's, as an occurrence there is (row 584).
-                TyChirho::ForallVarChirho(skolem_chirho) => {
-                    self.own_parameter_key_chirho(class_name_chirho, skolem_chirho)
-                }
-                _ => ground_or_head_key_chirho(&resolved_chirho),
-            };
+            let key_chirho = self
+                .instance_context_key_chirho(
+                    class_name_chirho,
+                    &resolved_chirho,
+                    &[],
+                    instance_context_chirho.as_deref(),
+                    final_subst_chirho,
+                )
+                .or_else(|| match &resolved_chirho {
+                    TyChirho::VarChirho(var_chirho) => self
+                        .local_literal_specialization_key_chirho(
+                            class_name_chirho,
+                            *var_chirho,
+                            final_subst_chirho,
+                        )
+                        .or_else(|| {
+                            (!self.local_generalized_vars_chirho.contains(var_chirho)
+                                && !self
+                                    .occurrence_default_hints_chirho
+                                    .contains_key(var_chirho))
+                            .then(|| {
+                                self.inferred_dictionary_owner_key_chirho(
+                                    class_name_chirho,
+                                    *var_chirho,
+                                )
+                            })
+                            .flatten()
+                        }),
+                    // A literal at the enclosing signature's rigid variable is the binding's
+                    // own dictionary's, as an occurrence there is (row 584).
+                    TyChirho::ForallVarChirho(skolem_chirho) => {
+                        self.own_parameter_key_chirho(class_name_chirho, skolem_chirho)
+                    }
+                    _ => ground_or_head_key_chirho(&resolved_chirho),
+                });
             let Some(key_chirho) = key_chirho else {
                 continue;
             };

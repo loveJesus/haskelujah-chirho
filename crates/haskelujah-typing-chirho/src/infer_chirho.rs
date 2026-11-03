@@ -288,6 +288,9 @@ pub struct InferResultChirho {
     pub env_chirho: TyEnvChirho,
     /// The class environment after inference.
     pub class_env_chirho: ClassEnvChirho,
+    /// Actual local instance declarations and their source spans, in registration
+    /// order. Equal spans retain every record; consumers must check the join.
+    pub source_instances_chirho: Vec<(SpanChirho, InstDeclChirho)>,
     /// Type family equations available after inferring this module.
     pub type_families_chirho: TypeFamilyEnvChirho,
     /// Diagnostics collected during inference.
@@ -373,7 +376,13 @@ pub struct InferCtxChirho {
     occurrence_counters_chirho: HashMap<String, u32>,
     /// Literal evidence captures: (span, overloading class, literal type),
     /// finalized by `finalize_literal_evidence_chirho`.
-    literal_captures_chirho: Vec<(SpanChirho, Option<OriginIdChirho>, String, TyChirho)>,
+    literal_captures_chirho: Vec<(
+        SpanChirho,
+        Option<OriginIdChirho>,
+        String,
+        TyChirho,
+        Option<Arc<[PredChirho]>>,
+    )>,
     /// Reference evidence captures: (span, instantiated predicates in scheme
     /// order), finalized by `finalize_reference_evidence_chirho`.
     reference_captures_chirho: Vec<evidence_chirho::ReferenceCaptureChirho>,
@@ -419,6 +428,9 @@ pub struct InferCtxChirho {
     /// parameters, so evidence keys them as open, as the flexible variables
     /// they replaced were (`own_parameter_key_chirho`).
     instance_method_skolems_chirho: HashSet<String>,
+    /// One rigid instance method's own context, shared by its evidence captures.
+    /// Method-local predicates are not parameters of the instance row.
+    active_instance_context_chirho: Option<Arc<[PredChirho]>>,
     /// Whether ScopedTypeVariables is in effect for the module: an explicit
     /// `forall` (or an instance head) then scopes its binders over the body.
     scoped_type_variables_chirho: bool,

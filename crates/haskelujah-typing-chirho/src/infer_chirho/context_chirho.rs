@@ -363,6 +363,7 @@ impl InferCtxChirho {
             next_skolem_chirho: 0,
             skolem_bindings_chirho: SubstChirho::empty_chirho(),
             instance_method_skolems_chirho: HashSet::new(),
+            active_instance_context_chirho: None,
             scoped_type_variables_chirho: true,
             relaxed_poly_rec_chirho: true,
             do_last_expected_chirho: None,
@@ -443,8 +444,26 @@ impl InferCtxChirho {
                      ty_chirho,
                      span_chirho,
                      origin_chirho,
+                     instance_context_chirho,
                  }| {
                     let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                    if let Some(key_chirho) = self.instance_context_key_chirho(
+                        class_chirho,
+                        &resolved_chirho,
+                        &[],
+                        instance_context_chirho.as_deref(),
+                        final_subst_chirho,
+                    ) {
+                        return Some(MethodOccurrenceRecordChirho {
+                            name_chirho: name_chirho.clone(),
+                            ordinal_chirho: *ordinal_chirho,
+                            class_name_chirho: class_chirho.clone(),
+                            ty_key_chirho: key_chirho,
+                            ground_pred_chirho: None,
+                            span_chirho: *span_chirho,
+                            origin_chirho: *origin_chirho,
+                        });
+                    }
                     let hinted_key_chirho = match &resolved_chirho {
                         TyChirho::VarChirho(var_chirho) => self
                             .occurrence_default_hints_chirho
@@ -549,6 +568,11 @@ impl InferCtxChirho {
             subst_chirho: SubstChirho::empty_chirho(),
             env_chirho: self.env_chirho,
             class_env_chirho: self.class_env_chirho,
+            source_instances_chirho: self
+                .local_instances_chirho
+                .into_iter()
+                .map(|local_chirho| (local_chirho.span_chirho, local_chirho.instance_chirho))
+                .collect(),
             type_families_chirho: self.type_families_chirho,
             diagnostics_chirho: self.diagnostics_chirho,
             method_occurrences_chirho: Vec::new(),

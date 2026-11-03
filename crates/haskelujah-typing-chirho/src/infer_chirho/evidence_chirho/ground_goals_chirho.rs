@@ -10,7 +10,7 @@ use super::{InferCtxChirho, PredChirho, ReferenceEvidenceChirho, TyChirho};
 const GROUND_GOAL_WORK_CHIRHO: usize = 100_000;
 const GROUND_GOAL_DEPTH_CHIRHO: usize = 128;
 
-fn reserved_constructor_chirho(name_chirho: &str) -> bool {
+pub(super) fn reserved_constructor_chirho(name_chirho: &str) -> bool {
     matches!(name_chirho, "[]" | "()" | "->")
         || name_chirho
             .strip_prefix('(')
