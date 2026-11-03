@@ -364,6 +364,25 @@ impl LowerCtxChirho {
                                 inst_paren_depth_chirho -= 1;
                                 if inst_paren_depth_chirho > 0 {
                                     inst_paren_tokens_chirho.push((tok_chirho, s_chirho));
+                                } else if family_name_chirho.is_none()
+                                    && lhs_types_chirho.is_empty()
+                                    && let [(operator_chirho, operator_span_chirho)] =
+                                        inst_paren_tokens_chirho.as_slice()
+                                    && matches!(
+                                        operator_chirho.kind_chirho(),
+                                        TokenKindChirho::ConSymChirho
+                                            | TokenKindChirho::VarSymChirho
+                                            | TokenKindChirho::QualifiedConSymChirho
+                                            | TokenKindChirho::QualifiedVarSymChirho
+                                    )
+                                {
+                                    // `type instance (~>) = (->)`: a parenthesized operator
+                                    // before any argument names the family (row 686, T14010).
+                                    family_name_chirho = Some(self.name_from_token_chirho(
+                                        operator_chirho,
+                                        *operator_span_chirho,
+                                    ));
+                                    inst_paren_tokens_chirho.clear();
                                 } else if !inst_paren_tokens_chirho.is_empty() {
                                     let paren_span_chirho = inst_paren_tokens_chirho
                                         .first()

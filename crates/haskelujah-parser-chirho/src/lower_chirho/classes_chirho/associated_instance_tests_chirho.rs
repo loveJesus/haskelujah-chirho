@@ -138,6 +138,37 @@ type instance GChirho Int _ = Bool
 }
 
 #[test]
+fn a_parenthesized_operator_names_its_open_family_chirho() {
+    // T14010: `(~>)` before any argument is the family's name, not an argument.
+    // A parenthesized argument after a named family stays an argument.
+    let module_chirho = parse_and_lower_chirho(
+        "module M where
+type family (~>) :: c -> c -> Type
+type instance (~>) = (->)
+type instance (++) a b = a
+type instance GChirho (Maybe a) = a
+",
+    );
+    let instances_chirho: Vec<String> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::TypeFamilyInstanceDeclChirho {
+                family_name_chirho,
+                lhs_types_chirho,
+                ..
+            } => {
+                let mut words_chirho = vec![family_name_chirho.text_chirho().to_string()];
+                words_chirho.extend(lhs_types_chirho.iter().map(type_shape_chirho));
+                Some(words_chirho.join(" "))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(instances_chirho, ["~>", "++ a b", "GChirho (Maybe a)"]);
+}
+
+#[test]
 fn a_family_over_a_subset_of_class_parameters_keeps_its_written_arguments_chirho() {
     // T11401's shape: each family names only some class parameters, so the old
     // rebuild from the whole instance head gave every equation three arguments.
