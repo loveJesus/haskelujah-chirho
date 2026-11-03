@@ -149,3 +149,22 @@ No semantic source is on main and neither published measurement artifact changes
 - [ ] Run frozen R3 on both complete axes, attribute every movement, then final lint/hygiene/native gates before one combined semantic landing.
 
 Receipts are in the integration worktree under tmp-chirho/row686-preflight-r2-chirho, r2-gain-and-boot-oracle-chirho, r2-remaining-loss-oracle-chirho, default-and-growth-oracle-r1-chirho and the named focused test logs. Main's row 686 stays active.
+
+
+## November 3 complete fixed-axis R3: held pending producer repairs
+
+The clean frozen candidate 463432b2 (crate tree 28589867293d450e5c8a5b03db8d5f463372f94f, CLI 08c5c52cc88cfd7219b92d04c0cae24ea6f63d6ebb42f7ee976b8addf3c87cfb) completed both unchanged axes in 205.65 seconds. Both source manifests equal the retained published-main pass, and the binary stayed unchanged. Main still has no semantic source landing; the published measurement artifacts remain unchanged.
+
+- Raw should_compile: 859 accepted of 938, with seven baseline rejects now accepted and 34 baseline accepts now rejected. The additional rejections cannot be scored as semantic gains from their directory placement. Several are valid programs acquiring artificial family equalities; the signed-binding prepass independently instantiates the same signature twice, then reconciles the unrelated flexible instance with the checked rigid body. The narrow producer repair is assigned. Other measured diagnostics expose malformed complex constructor telescopes, unsupported pattern-synonym signatures, erased ordinary existential contexts, and the existing hidden-kind family seam.
+- Raw should_fail: 290 rejected of 767. All 31 baseline movers are newly rejected; no retained baseline rejection became accepted. Attribution against fresh GHC and the prior audit is still required before calling any of these right-reason gains.
+- Focused typing is green at 573/573 and Core at 214/214. The normal equality driver controls are 18/19: all six isolated negatives and three previously newly accepted corpus negatives reject; ten positive sources execute exactly on interpreter, LLVM and true Cranelift. The remaining RecordContext source checks only because parsing loses later declarations; execution still reports no main, identically on baseline and R2.
+- Ground dictionary controls are 12/13. Positive chains, mixed contexts, list obligations, the shared finite tree, recursive dictionary, lexical shadow, written-body obligation and equal-pair instance execute exactly on all three engines. Missing-base and growing-context cases refuse by name, with the growing case naming its 4096 goal-weight bound. The remaining negative Same (Pair Int Bool) is still wrongly accepted by the frontend: the strict matcher returns no match, but ground generalization currently treats that as unproved and absorbs the wanted. A shared canonical strict-match/refuter repair is assigned; unknown identity must remain unproved.
+- A separate complete GADT carrier unit is active as row 687 in an isolated worktree at 463432b2. It preserves ordered forall/context prefixes, record ownership, fields, strictness, multiplicity and written results together. It is source-only until its oracle and focused build lease; no partial constructor carrier will land.
+
+- [x] Retain both complete R3 axes, exact source and binary provenance, without replacing the published baseline.
+- [ ] Repair the artificial signed-binding equalities while keeping genuine body/call-site obligations checked.
+- [ ] Attribute every new rejection and every compile-axis loss with the exact GHC source and reason.
+- [ ] Complete the GADT carrier, sound ground refutation, and hidden-kind prerequisites before a coherent combined landing.
+- [ ] Repeat the fixed axes after actual repairs, then complete final warnings, lint, native and hygiene gates.
+
+Receipts: the integration worktree's tmp-chirho/row686-preflight-r3-chirho/comparison-chirho.json, source-snapshot-chirho.json, and the equality-r5-driver-cases-chirho.log and ground-r3-driver-cases-chirho.log files. Existing oversized roots remain code-quality failures; focused green checks do not claim the size bar or final gate is satisfied.
