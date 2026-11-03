@@ -1036,7 +1036,7 @@ impl DesugarCtxChirho {
     /// the second arg (already in correct application order).
     /// A written class-method operator with its origin is the exception: it
     /// takes the variable path below, as the infix operator does (R1, rows
-    /// 609 and 610; `desugar_chirho/operator_evidence_chirho.rs`).
+    /// 609 and 610; `desugar_chirho/references_chirho/operator_evidence_chirho.rs`).
     fn build_section_body_chirho(
         &mut self,
         op_chirho: &NameChirho,
@@ -2197,7 +2197,7 @@ impl DesugarCtxChirho {
         match rhs_chirho {
             RhsChirho::UnguardedChirho(expr_chirho) => self.desugar_expr_chirho(expr_chirho),
             // Arms in order, each its qualifiers then its body; when every arm
-            // fails, the fall-through (`desugar_chirho/guards_chirho.rs`).
+            // fails, the fall-through (`desugar_chirho/patterns_chirho/guards_chirho.rs`).
             RhsChirho::GuardedChirho(guards_chirho) => {
                 self.desugar_guards_chirho(guards_chirho, fallthrough_chirho)
             }

@@ -129,7 +129,7 @@ flowchart TD
 ### Code and controls
 
 - **The rule:** `align_preferred_synonym_keys_chirho` in `crates/haskelujah-driver-chirho/src/lib.rs`, called once after the frontend's import loop.
-- **Unit pins:** `crates/haskelujah-driver-chirho/src/synonym_keys_tests_chirho.rs`. A unique exporter adds the bare key; two exporters add none; a missing qualified source adds none; an existing bare key is kept.
+- **Unit pins:** `crates/haskelujah-driver-chirho/src/frontend_chirho/synonym_keys_tests_chirho.rs`. A unique exporter adds the bare key; two exporters add none; a missing qualified source adds none; an existing bare key is kept.
 - **The interpreter's filter:** `compile_modules_chirho` in `crates/haskelujah-driver-chirho/src/project_chirho/multi_module_chirho.rs` (row 668).
 - **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/synonym_closure_chirho.rs`, each on the interpreter, LLVM and true Cranelift. They live in that target for its multi-module harness, not for symbol identity.
   - Row 656: the chain and an import of only the forwarder are exact; the hidden parent and an unimported synonym are refused.

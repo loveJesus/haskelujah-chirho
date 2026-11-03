@@ -88,13 +88,13 @@ flowchart TD
   - The desugarer's `ExprChirho::VarChirho` arm used the full spelling only when it was bound in scope, then fell back to the bare text through the scope chain.
   - The infix and section paths resolved the operator by bare text alone.
   - The checker's fallback read the bare name through every scope, so `L.nonexistentChirho` beside a `let nonexistentChirho` checked, where GHC 9.14.1 reports GHC-76037.
-- **One route.** `resolve_written_reference_chirho` (`desugar_chirho/qualified_references_chirho.rs`) serves the variable arm, the infix fallback and `build_section_body_chirho`.
+- **One route.** `resolve_written_reference_chirho` (`desugar_chirho/references_chirho/qualified_references_chirho.rs`) serves the variable arm, the infix fallback and `build_section_body_chirho`.
 - **A section's operator keeps its qualifier (row 609).** The parser lowers `(2 P.-)` through its right-section fallback whenever the trailing operator was folded into an infix node.
   - That fallback made one unqualified name, `P.-`, of the operator, and of each operator before it (`(1 P.+ 2 P.-)`).
   - The desugarer then built a constructor application named `P.-`. The interpreter printed `[P.- 2 0.5]`, and both natives printed a denormal.
   - The fallback now splits the name with `name_from_text_chirho`, as the direct-token path always did, so the route above sees `P` and `-`.
 - **An operator the program owns keeps its own binding over every shortcut (row 614).**
-  - **Owned:** `names_owned_binding_chirho` (`desugar_chirho/qualified_references_chirho.rs`) asks whether a written operator names a binding the module owns:
+  - **Owned:** `names_owned_binding_chirho` (`desugar_chirho/references_chirho/qualified_references_chirho.rs`) asks whether a written operator names a binding the module owns:
     - unqualified and bound in scope, at top level or locally;
     - or qualified by the module's own name, naming its top-level binding.
   - **Where it is checked:**
@@ -216,6 +216,6 @@ flowchart TD
 
 ### Code and controls
 
-- **The rule:** `crates/haskelujah-core-chirho/src/desugar_chirho/syntax_methods_chirho.rs`, called from the three literal sites in `desugar_chirho.rs`.
-- **The id choice:** two unit tests in `desugar_chirho/provenance_tests_chirho.rs`.
+- **The rule:** `crates/haskelujah-core-chirho/src/desugar_chirho/references_chirho/syntax_methods_chirho.rs`, called from the three literal sites in `desugar_chirho.rs`.
+- **The id choice:** two unit tests in `desugar_chirho/references_chirho/provenance_tests_chirho.rs`.
 - **GHC-measured programs:** the row 660 tables in `crates/haskelujah-driver-chirho/tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`. 14 movers, the 3 RebindableSyntax holds and 6 ordinary holds are exact on the interpreter, LLVM and true Cranelift.
