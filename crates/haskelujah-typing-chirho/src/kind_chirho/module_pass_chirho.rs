@@ -16,12 +16,16 @@ pub struct KindResultChirho {
 }
 
 /// What a module's imports tell the kind pass (K01 C): the builtin classes its class
-/// spellings name, as naming proved them.
+/// spellings name, as naming proved them, and how many of its declarations were written.
 /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 #[derive(Debug, Clone, Copy)]
 pub struct KindImportsChirho<'a> {
     /// The builtin classes the module's spellings name.
     pub builtin_classes_chirho: &'a BuiltinClassScopeChirho,
+    /// The declarations written in source (after splices). Deriving appends its
+    /// instances after them, and only written builtin instance heads are judged: a
+    /// derived head applies every type parameter, which is the deriver's own boundary.
+    pub written_decl_count_chirho: usize,
 }
 
 /// Run kind inference on a module's type declarations and type signatures, knowing
@@ -31,6 +35,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
         module_chirho,
         KindImportsChirho {
             builtin_classes_chirho: &BuiltinClassScopeChirho::default(),
+            written_decl_count_chirho: module_chirho.decls_chirho.len(),
         },
     )
 }
@@ -376,7 +381,7 @@ pub fn infer_module_kinds_with_imports_chirho(
                 || e_chirho == "TypeOperators"
                 || e_chirho == "FlexibleInstances"
         });
-    for decl_chirho in &module_chirho.decls_chirho {
+    for (index_chirho, decl_chirho) in module_chirho.decls_chirho.iter().enumerate() {
         let DeclChirho::InstanceDeclChirho {
             class_chirho,
             types_chirho,
@@ -386,11 +391,13 @@ pub fn infer_module_kinds_with_imports_chirho(
         else {
             continue;
         };
-        if ctx_chirho.check_builtin_instance_head_chirho(
-            &class_chirho.full_name_chirho(),
-            types_chirho,
-            *span_chirho,
-        ) {
+        if index_chirho < imports_chirho.written_decl_count_chirho
+            && ctx_chirho.check_builtin_instance_head_chirho(
+                &class_chirho.full_name_chirho(),
+                types_chirho,
+                *span_chirho,
+            )
+        {
             continue;
         }
         ctx_chirho.check_instance_head_arity_chirho(

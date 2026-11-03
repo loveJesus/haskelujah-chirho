@@ -59,7 +59,7 @@ The driver builds the scope from the interfaces resolution read and passes it to
 - the argument's kind is read without inference, from a constructor declared in this module or a builtin type, after its written arguments (list, tuple and function types are `*`);
 - that kind is variable-free.
 
-A variable head, an imported constructor (its kind is learned from a use) and any malformed shape stay unjudged. A spelling that names a builtin class never falls through to the local-class check.
+A variable head, an imported constructor (its kind is learned from a use) and any malformed shape stay unjudged. Only instance heads written in source are judged: the driver passes the count of declarations after splices (`written_decl_count_chirho`), and deriving appends its instances after them. A derived head applies every type parameter (`Monad (T a x)` for generalized newtype deriving), which is the deriver's own boundary, so derived heads stay unjudged (T3955, T12734). A spelling that names a builtin class never falls through to the local-class check.
 
 **Sort judgments.** The proven spellings join the known heads, so `newtype B = B (Show Int)` reports a constraint written where a type is required. Contexts are not unified with class kinds, and the spelling-based `Typeable` and `Generic` kinds are unchanged.
 

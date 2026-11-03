@@ -1858,6 +1858,10 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         &mut module_chirho.origin_supply_chirho,
     );
     module_chirho.decls_chirho = splice_result_chirho.decls_chirho;
+    // The declarations written in source: deriving (Phase 2.5) appends its instances
+    // after them, and the kind pass judges only written builtin instance heads (K01).
+    // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    let written_decl_count_chirho = module_chirho.decls_chirho.len();
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 
     // Phase 2.4: Declaration validity (row 683), judged on the module as written,
@@ -1909,6 +1913,7 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         &module_chirho,
         haskelujah_typing_chirho::KindImportsChirho {
             builtin_classes_chirho: &builtin_class_scope_chirho,
+            written_decl_count_chirho,
         },
     );
     if !defer_errors_chirho && kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
