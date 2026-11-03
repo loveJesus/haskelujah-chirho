@@ -7,6 +7,7 @@
 //! would license them is not enabled. This module implements that family of
 //! checks (GHC error code `GHC-91510`): a polymorphic type (`forall`) or a
 //! qualified type (`ctx =>`) is only legal in certain syntactic positions.
+//! Tuple source types also obey GHC's 64-element limit (`GHC-94803`).
 //!
 //! Haskell2010 allows a `forall`/context only at the very top of a signature.
 //! Nesting one under an arrow is rank-N and needs `RankNTypes`; putting one in
@@ -24,12 +25,13 @@ use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, Er
 use haskelujah_span_chirho::SpanChirho;
 
 pub mod declarations_chirho;
+mod tuple_arity_chirho;
 
-/// `E0206`: a type form that needs an extension which is not enabled.
+/// `E0206`: a source type form rejected by the syntactic validity rules.
 const ILLEGAL_TYPE_FORM_CODE_CHIRHO: u16 = 206;
 
-/// A source type that is well-kinded but not licensed by the enabled
-/// extensions.
+/// A source type rejected independently of type inference, with an extension
+/// suggestion when an extension can license it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValidityErrorChirho {
     /// Human-readable message, phrased like GHC's `GHC-91510`.
@@ -253,6 +255,7 @@ fn walk_constraint_chirho(
     license_chirho: LicenseChirho,
     errors_chirho: &mut Vec<ValidityErrorChirho>,
 ) {
+    tuple_arity_chirho::check_constraint_tuple_arity_chirho(constraint_chirho, errors_chirho);
     match constraint_chirho {
         ConstraintChirho::QuantifiedChirho { span_chirho, .. } => {
             if !license_chirho.quantified_constraints_chirho {
@@ -493,6 +496,7 @@ fn walk_type_chirho(
     license_chirho: LicenseChirho,
     errors_chirho: &mut Vec<ValidityErrorChirho>,
 ) {
+    tuple_arity_chirho::check_type_tuple_arity_chirho(ty_chirho, errors_chirho);
     match ty_chirho {
         TypeChirho::ForallChirho {
             body_chirho,
