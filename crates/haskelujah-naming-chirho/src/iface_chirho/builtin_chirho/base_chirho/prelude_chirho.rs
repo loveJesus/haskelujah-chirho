@@ -4,8 +4,9 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
-use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
+use crate::iface_chirho::builtin_chirho::{mk_data_type_chirho, mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 
 /// Push the interfaces for `Prelude` and the list, character, `Maybe` and `Either` modules.
 pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
@@ -220,7 +221,10 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Maybe", &["Nothing", "Just"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::MaybeChirho,
+            &["Nothing", "Just"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for con_chirho in &["Nothing", "Just"] {
             let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
@@ -237,13 +241,25 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let mut exports_chirho = IfaceExportsChirho::default();
         // Core types
         for (type_name_chirho, cons_chirho) in &[
-            ("Bool", &["False", "True"][..]),
-            ("Maybe", &["Nothing", "Just"][..]),
-            ("Either", &["Left", "Right"][..]),
-            ("Ordering", &["LT", "EQ", "GT"][..]),
-            ("()", &["()"][..]),
+            (
+                CompilerTypeConstructorChirho::BoolChirho,
+                &["False", "True"][..],
+            ),
+            (
+                CompilerTypeConstructorChirho::MaybeChirho,
+                &["Nothing", "Just"][..],
+            ),
+            (
+                CompilerTypeConstructorChirho::EitherChirho,
+                &["Left", "Right"][..],
+            ),
+            (
+                CompilerTypeConstructorChirho::OrderingChirho,
+                &["LT", "EQ", "GT"][..],
+            ),
+            (CompilerTypeConstructorChirho::UnitChirho, &["()"][..]),
         ] {
-            let (k_chirho, v_chirho) = mk_type_chirho(type_name_chirho, cons_chirho);
+            let (k_chirho, v_chirho) = mk_data_type_chirho(*type_name_chirho, cons_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
             for con_chirho in *cons_chirho {
                 let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
@@ -683,7 +699,10 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         }
         let (k_chirho, v_chirho) = mk_type_chirho("Ord", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Ordering", &["LT", "EQ", "GT"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::OrderingChirho,
+            &["LT", "EQ", "GT"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Down", &["Down"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -757,7 +776,10 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Either", &["Left", "Right"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::EitherChirho,
+            &["Left", "Right"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for con_chirho in &["Left", "Right"] {
             let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
@@ -776,7 +798,10 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Bool", &["False", "True"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::BoolChirho,
+            &["False", "True"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for con_chirho in &["False", "True"] {
             let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);

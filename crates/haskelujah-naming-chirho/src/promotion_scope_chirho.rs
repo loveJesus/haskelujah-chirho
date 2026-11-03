@@ -224,7 +224,7 @@ fn trusted_builtin_parent_chirho(
 
 /// The names a declaration introduces into the type namespace: its type, family or
 /// class, and a class's associated families.
-fn declared_type_names_chirho(decl_chirho: &DeclChirho) -> Vec<&str> {
+pub(crate) fn declared_type_names_chirho(decl_chirho: &DeclChirho) -> Vec<&str> {
     match decl_chirho {
         DeclChirho::DataDeclChirho { name_chirho, .. }
         | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
@@ -310,7 +310,7 @@ impl ScopeBuilderChirho {
 }
 
 /// A spelling as a name writes it: `M.T`, or `T` unqualified.
-fn spelling_chirho(qualifier_chirho: Option<&str>, text_chirho: &str) -> String {
+pub(crate) fn spelling_chirho(qualifier_chirho: Option<&str>, text_chirho: &str) -> String {
     match qualifier_chirho {
         Some(qualifier_chirho) => format!("{qualifier_chirho}.{text_chirho}"),
         None => text_chirho.to_string(),

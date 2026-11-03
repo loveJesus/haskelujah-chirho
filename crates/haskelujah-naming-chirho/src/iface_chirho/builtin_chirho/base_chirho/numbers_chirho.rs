@@ -232,6 +232,7 @@ pub(super) fn push_numbers_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "Bits".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Bits".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![
@@ -264,6 +265,7 @@ pub(super) fn push_numbers_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "FiniteBits".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "FiniteBits".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![

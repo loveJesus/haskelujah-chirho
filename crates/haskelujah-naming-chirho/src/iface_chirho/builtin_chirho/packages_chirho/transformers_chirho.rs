@@ -574,6 +574,7 @@ pub(super) fn push_transformers_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
         exports_chirho.types_chirho.insert(
             "SelectT".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "SelectT".to_string(),
                 constructors_chirho: vec!["SelectT".to_string()],
                 methods_chirho: vec!["runSelectT".to_string()],

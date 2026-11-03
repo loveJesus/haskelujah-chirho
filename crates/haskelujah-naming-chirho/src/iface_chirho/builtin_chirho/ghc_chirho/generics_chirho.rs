@@ -150,6 +150,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(
                 type_name_chirho.to_string(),
                 IfaceTypeChirho {
+                    declaration_chirho: None,
                     name_chirho: type_name_chirho.to_string(),
                     constructors_chirho: constructors_chirho
                         .into_iter()

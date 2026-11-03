@@ -560,6 +560,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "Show".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Show".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![

@@ -17,6 +17,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "Identity".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Identity".to_string(),
                 constructors_chirho: vec!["Identity".to_string()],
                 methods_chirho: vec!["runIdentity".to_string()],
@@ -268,6 +269,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "Identity".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Identity".to_string(),
                 constructors_chirho: vec!["Identity".to_string()],
                 methods_chirho: vec!["runIdentity".to_string()],
@@ -654,6 +656,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "Identity".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Identity".to_string(),
                 constructors_chirho: vec!["Identity".to_string()],
                 methods_chirho: vec!["runIdentity".to_string()],

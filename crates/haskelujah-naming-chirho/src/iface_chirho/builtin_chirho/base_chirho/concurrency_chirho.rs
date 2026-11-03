@@ -181,6 +181,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         exports_chirho.types_chirho.insert(
             "Exception".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Exception".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![

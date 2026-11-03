@@ -455,6 +455,7 @@ fn module_re_export_chirho() {
             e_chirho.types_chirho.insert(
                 "InnerType".to_string(),
                 IfaceTypeChirho {
+                    declaration_chirho: None,
                     name_chirho: "InnerType".to_string(),
                     constructors_chirho: vec!["MkInner".to_string()],
                     methods_chirho: vec![],
@@ -761,6 +762,7 @@ fn explicit_export_list_reexports_imported_type_chirho() {
             exports_chirho.types_chirho.insert(
                 "Parsec".to_string(),
                 IfaceTypeChirho {
+                    declaration_chirho: None,
                     name_chirho: "Parsec".to_string(),
                     constructors_chirho: vec![],
                     methods_chirho: vec![],
@@ -876,6 +878,7 @@ fn family_parent_iface_chirho(module_name_chirho: &str, member_chirho: &str) -> 
         exports_chirho.types_chirho.insert(
             name_chirho.to_owned(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: name_chirho.to_owned(),
                 constructors_chirho: Vec::new(),
                 methods_chirho: Vec::new(),

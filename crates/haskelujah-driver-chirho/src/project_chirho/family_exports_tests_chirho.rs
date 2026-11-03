@@ -35,6 +35,7 @@ fn iface_chirho(
         iface_chirho.exports_chirho.types_chirho.insert(
             (*name_chirho).to_owned(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: (*name_chirho).to_owned(),
                 constructors_chirho: Vec::new(),
                 methods_chirho: Vec::new(),

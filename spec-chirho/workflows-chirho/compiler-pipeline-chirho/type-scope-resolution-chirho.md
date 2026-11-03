@@ -148,3 +148,30 @@ flowchart TD
   - Row 656: the chain and an import of only the forwarder are exact; the hidden parent and an unimported synonym are refused.
   - Row 668: a local and an imported type named like another module's synonym keep their own instances, a synonym used only upstream stays there, and qualified and aliased uses resolve, all exact; qualified-only, hidden and unexported synonyms are refused.
 - **Holds:** `frontend_imported_type_alias_expands_through_parent_alias_chirho` and `frontend_reexported_type_alias_expands_through_hidden_parent_alias_chirho` in `crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs`.
+
+
+## Ordinary type definition proof Chirho
+
+Row 688 adds an inert definition-category transport before the kind-argument elaborator and GADT selector consumer. A declaration role is positive producer evidence, separate from exported constructor membership. A data family can export constructors and is nominally generative; it remains a distinct category from ordinary data/newtype, and a synonym family remains different from both.
+
+```mermaid
+flowchart TD
+  written_chirho[Written ordinary data/newtype header] --> lower_chirho[Lowerer marks its actual defining name]
+  instance_chirho[Skipped data/newtype instance or unrepresented head] --> unknown_chirho[No ordinary-data proof]
+  lower_chirho --> source_chirho[Source interface stores definition identity and category]
+  seed_chirho[Typed compiler data declaration seed] --> builtin_chirho[Builtin interface stores compiler identity and Data category]
+  source_chirho --> exports_chirho[Export filtering and re-exports preserve metadata]
+  builtin_chirho --> exports_chirho
+  exports_chirho --> merge_chirho[Identical snapshots retain proof; weak/conflicting snapshots lose it]
+  merge_chirho --> scope_chirho[Import-list, hiding, alias and qualification admission]
+  unknown_chirho --> scope_chirho
+  scope_chirho --> readers_chirho[One immutable role scope for GADT and kind elaboration consumers]
+```
+
+`RawNameChirho.written_type_declaration_role_chirho` is outside name equality and hashing and is cloned with the AST. The ordinary data/newtype lowerers mark only defining headers after excluding instance syntax. An unannotated directly constructed AST or stub stays unknown. The legacy newtype declaration-context lowering can collect the context-class name instead of the written type head, so that unrepresented case deliberately receives no role proof until its own producer is repaired.
+
+`IfaceTypeChirho.declaration_chirho` carries a source definition's module/name and explicit category, or a typed compiler seed identity. Filtering constructors does not erase the definition, and a re-export does not rename its definer. Merging a weak or conflicting copy clears the proof monotonically: a later known copy cannot restore it by iteration order.
+
+`build_type_constructor_scope_chirho` reads declaration headers and imported interfaces only. It never calls the full interface/export collector, so the GADT selector collector can consume the same scope without a dependency cycle. Local declarations own their bare spellings. Qualified aliases, explicit lists and hiding are admitted through the resolver's import calculation. An alias itself supplies no defining identity.
+
+Builtin proof is created by `mk_data_type_chirho` at a typed declaration seed, not by scanning names or constructor lists. The first converted producers are Bool, Ordering, Maybe, Either, unit and Proxy. Generic builtin entries, stub interfaces and unconverted seeds remain unknown. The role transport changes no ordinary inferred type names, dictionary keys or runtime argument counts; those are later consumers in the complete kind-argument vertical.

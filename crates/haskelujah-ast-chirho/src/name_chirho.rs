@@ -6,6 +6,7 @@
 //! Before name resolution, names are simple strings (`RawNameChirho`).
 //! After resolution, they carry a unique ID (`ResolvedNameChirho`).
 
+use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -49,6 +50,11 @@ pub struct RawNameChirho {
     /// An explicit `type` marker on a subordinate export member. This is
     /// namespace syntax, ignored by source-name equality and hashing.
     pub explicit_type_member_chirho: bool,
+    /// The parser's positive account of a written defining declaration. This is
+    /// never inferred from an exported constructor list or a lowered AST variant:
+    /// skipped data instances can retain a data-shaped recovery declaration.
+    /// Like the other transport metadata, equality and hashing ignore it.
+    pub written_type_declaration_role_chirho: Option<TypeConstructorRoleChirho>,
 }
 
 impl PartialEq for RawNameChirho {
@@ -90,6 +96,9 @@ impl fmt::Debug for RawNameChirho {
         if self.explicit_type_member_chirho {
             debug_chirho.field("explicit_type_member_chirho", &true);
         }
+        if let Some(role_chirho) = &self.written_type_declaration_role_chirho {
+            debug_chirho.field("written_type_declaration_role_chirho", role_chirho);
+        }
         debug_chirho.finish()
     }
 }
@@ -105,6 +114,7 @@ impl RawNameChirho {
             promotion_chirho: None,
             family_key_chirho: None,
             explicit_type_member_chirho: false,
+            written_type_declaration_role_chirho: None,
         }
     }
 
@@ -122,6 +132,7 @@ impl RawNameChirho {
             promotion_chirho: None,
             family_key_chirho: None,
             explicit_type_member_chirho: false,
+            written_type_declaration_role_chirho: None,
         }
     }
 
@@ -266,6 +277,30 @@ impl NameChirho {
         }
     }
 
+    /// The parser's declaration-category account on this defining name.
+    pub fn written_type_declaration_role_chirho(&self) -> Option<TypeConstructorRoleChirho> {
+        match self {
+            Self::RawChirho(name_chirho) => name_chirho.written_type_declaration_role_chirho,
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.written_type_declaration_role_chirho
+            }
+        }
+    }
+
+    pub fn set_written_type_declaration_role_chirho(
+        &mut self,
+        role_chirho: TypeConstructorRoleChirho,
+    ) {
+        match self {
+            Self::RawChirho(name_chirho) => {
+                name_chirho.written_type_declaration_role_chirho = Some(role_chirho)
+            }
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.written_type_declaration_role_chirho = Some(role_chirho)
+            }
+        }
+    }
+
     /// Whether this subordinate export member was explicitly marked `type`.
     pub fn is_explicit_type_member_chirho(&self) -> bool {
         match self {
@@ -283,6 +318,178 @@ impl NameChirho {
                 name_chirho.raw_chirho.explicit_type_member_chirho = explicit_type_member_chirho
             }
         }
+    }
+}
+
+/// A defining type declaration's semantic category. Constructor membership
+/// supplies no category proof: data families can export constructors too.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TypeConstructorRoleChirho {
+    DataChirho,
+    NewtypeChirho,
+    ClassChirho,
+    TypeSynonymChirho,
+    TypeFamilyChirho,
+    DataFamilyChirho,
+    UnknownChirho,
+}
+
+/// Compiler-owned ordinary data declarations, selected at their actual seed
+/// producer. Generic builtin interface entries do not acquire one by spelling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CompilerTypeConstructorChirho {
+    BoolChirho,
+    OrderingChirho,
+    MaybeChirho,
+    EitherChirho,
+    UnitChirho,
+    ProxyChirho,
+}
+
+impl CompilerTypeConstructorChirho {
+    pub fn name_chirho(self) -> &'static str {
+        match self {
+            Self::BoolChirho => "Bool",
+            Self::OrderingChirho => "Ordering",
+            Self::MaybeChirho => "Maybe",
+            Self::EitherChirho => "Either",
+            Self::UnitChirho => "()",
+            Self::ProxyChirho => "Proxy",
+        }
+    }
+}
+
+/// Definition identity survives aliases and re-exports. Source qualifiers are
+/// lookup syntax; only the actual defining producer creates this identity.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TypeConstructorIdentityChirho {
+    SourceChirho {
+        defining_module_chirho: String,
+        name_chirho: String,
+    },
+    CompilerChirho(CompilerTypeConstructorChirho),
+}
+
+impl TypeConstructorIdentityChirho {
+    /// Injective key compatible with the compiler's existing constructor-origin
+    /// catalogue. Its spelling is transport, never a source of proof.
+    pub fn key_chirho(&self) -> String {
+        match self {
+            Self::SourceChirho {
+                defining_module_chirho,
+                name_chirho,
+            } => format!(
+                "%constructor:source:{}:{defining_module_chirho}:{}:{name_chirho}",
+                defining_module_chirho.len(),
+                name_chirho.len()
+            ),
+            Self::CompilerChirho(constructor_chirho) => {
+                let identity_chirho =
+                    format!("compiler-standard:{}", constructor_chirho.name_chirho());
+                format!(
+                    "%constructor:compiler:{}:{identity_chirho}",
+                    identity_chirho.len()
+                )
+            }
+        }
+    }
+}
+
+/// Producer-backed account of one type declaration, not a list of available
+/// members. Filtering constructors never removes or manufactures this account.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeConstructorDeclarationChirho {
+    pub identity_chirho: TypeConstructorIdentityChirho,
+    pub role_chirho: TypeConstructorRoleChirho,
+}
+
+impl TypeConstructorDeclarationChirho {
+    pub fn source_chirho(
+        defining_module_chirho: &str,
+        name_chirho: &str,
+        role_chirho: TypeConstructorRoleChirho,
+    ) -> Self {
+        Self {
+            identity_chirho: TypeConstructorIdentityChirho::SourceChirho {
+                defining_module_chirho: defining_module_chirho.to_owned(),
+                name_chirho: name_chirho.to_owned(),
+            },
+            role_chirho,
+        }
+    }
+
+    pub fn compiler_data_chirho(constructor_chirho: CompilerTypeConstructorChirho) -> Self {
+        Self {
+            identity_chirho: TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho),
+            role_chirho: TypeConstructorRoleChirho::DataChirho,
+        }
+    }
+
+    pub fn is_ordinary_data_chirho(&self) -> bool {
+        matches!(
+            self.role_chirho,
+            TypeConstructorRoleChirho::DataChirho | TypeConstructorRoleChirho::NewtypeChirho
+        )
+    }
+
+    /// Nominal decomposition uses the declaration's positive role. Data
+    /// families are nominally generative too; synonym families are not.
+    /// This does not assert representational injectivity or expose constructors.
+    pub fn is_nominally_generative_chirho(&self) -> bool {
+        matches!(
+            self.role_chirho,
+            TypeConstructorRoleChirho::DataChirho
+                | TypeConstructorRoleChirho::NewtypeChirho
+                | TypeConstructorRoleChirho::ClassChirho
+                | TypeConstructorRoleChirho::DataFamilyChirho
+        )
+    }
+}
+
+/// A module's admitted type spellings. A conflicting or unproven binding is
+/// monotonic: later imports cannot restore a proof that a binding removed.
+#[derive(Debug, Clone, Default)]
+pub struct TypeConstructorScopeChirho {
+    declarations_chirho: HashMap<String, Option<TypeConstructorDeclarationChirho>>,
+}
+
+impl TypeConstructorScopeChirho {
+    pub fn new_chirho() -> Self {
+        Self::default()
+    }
+
+    pub fn declaration_chirho(
+        &self,
+        spelling_chirho: &str,
+    ) -> Option<&TypeConstructorDeclarationChirho> {
+        self.declarations_chirho
+            .get(spelling_chirho)
+            .and_then(Option::as_ref)
+    }
+
+    pub fn bind_chirho(
+        &mut self,
+        spelling_chirho: String,
+        declaration_chirho: Option<TypeConstructorDeclarationChirho>,
+    ) {
+        self.declarations_chirho
+            .entry(spelling_chirho)
+            .and_modify(|existing_chirho| {
+                if existing_chirho.as_ref() != declaration_chirho.as_ref() {
+                    *existing_chirho = None;
+                }
+            })
+            .or_insert(declaration_chirho);
+    }
+
+    pub fn iter_chirho(&self) -> impl Iterator<Item = (&str, &TypeConstructorDeclarationChirho)> {
+        self.declarations_chirho
+            .iter()
+            .filter_map(|(spelling_chirho, declaration_chirho)| {
+                declaration_chirho
+                    .as_ref()
+                    .map(|declaration_chirho| (spelling_chirho.as_str(), declaration_chirho))
+            })
     }
 }
 

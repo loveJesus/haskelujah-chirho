@@ -16,6 +16,9 @@ mod platform_chirho;
 #[cfg(test)]
 mod tests_chirho;
 
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerTypeConstructorChirho, TypeConstructorDeclarationChirho,
+};
 use haskelujah_span_chirho::SpanChirho;
 
 use super::{
@@ -159,6 +162,7 @@ fn mk_type_chirho(name_chirho: &str, cons_chirho: &[&str]) -> (String, IfaceType
     (
         name_chirho.to_string(),
         IfaceTypeChirho {
+            declaration_chirho: None,
             name_chirho: name_chirho.to_string(),
             constructors_chirho: cons_chirho
                 .iter()
@@ -168,6 +172,22 @@ fn mk_type_chirho(name_chirho: &str, cons_chirho: &[&str]) -> (String, IfaceType
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
     )
+}
+
+/// Declare a compiler-owned ordinary data type at its actual interface seed
+/// producer. The typed seed supplies the name and identity together; this never
+/// upgrades a generic entry based on its spelling or constructor membership.
+/// Workflow: compiler-pipeline-chirho/type-scope-resolution-chirho#ordinary-type-definition-proof-chirho.
+fn mk_data_type_chirho(
+    constructor_chirho: CompilerTypeConstructorChirho,
+    cons_chirho: &[&str],
+) -> (String, IfaceTypeChirho) {
+    let (name_chirho, mut ty_chirho) =
+        mk_type_chirho(constructor_chirho.name_chirho(), cons_chirho);
+    ty_chirho.declaration_chirho = Some(TypeConstructorDeclarationChirho::compiler_data_chirho(
+        constructor_chirho,
+    ));
+    (name_chirho, ty_chirho)
 }
 
 /// Build synthetic module interfaces for built-in modules like `Data.Map`,

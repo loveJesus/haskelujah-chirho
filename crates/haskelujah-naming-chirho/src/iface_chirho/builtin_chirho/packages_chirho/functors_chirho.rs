@@ -271,6 +271,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         exports_chirho.types_chirho.insert(
             "Traversable1".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Traversable1".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["traverse1".to_string(), "sequence1".to_string()],
@@ -332,6 +333,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         exports_chirho.types_chirho.insert(
             "Apply".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Apply".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![
@@ -346,6 +348,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         exports_chirho.types_chirho.insert(
             "Bind".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Bind".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![">>-".to_string(), "join".to_string()],
@@ -355,6 +358,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         exports_chirho.types_chirho.insert(
             "Alt".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Alt".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["<!>".to_string(), "some".to_string(), "many".to_string()],
@@ -364,6 +368,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         exports_chirho.types_chirho.insert(
             "Plus".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Plus".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["zero".to_string()],

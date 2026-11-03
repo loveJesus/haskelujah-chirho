@@ -14,6 +14,9 @@ use haskelujah_ast_chirho::decl_chirho::{
     ConDeclChirho, DeclChirho, local_generative_type_names_chirho,
 };
 use haskelujah_ast_chirho::module_chirho::{ExportMembersChirho, ModuleChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
+};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_span_chirho::SpanChirho;
 
@@ -390,6 +393,7 @@ fn ensure_type_export_chirho(
         .types_chirho
         .entry(canonical_name_chirho.clone())
         .or_insert_with(|| IfaceTypeChirho {
+            declaration_chirho: None,
             name_chirho: canonical_name_chirho,
             constructors_chirho: Vec::new(),
             methods_chirho: Vec::new(),
@@ -441,6 +445,9 @@ fn ensure_associated_type_export_chirho(
 }
 
 fn merge_type_members_chirho(target_chirho: &mut IfaceTypeChirho, source_chirho: IfaceTypeChirho) {
+    if target_chirho.declaration_chirho != source_chirho.declaration_chirho {
+        target_chirho.declaration_chirho = None;
+    }
     for constructor_chirho in source_chirho.constructors_chirho {
         if !target_chirho
             .constructors_chirho
@@ -456,6 +463,61 @@ fn merge_type_members_chirho(target_chirho: &mut IfaceTypeChirho, source_chirho:
     }
 }
 
+/// A written ordinary defining header supplies positive algebraic authority.
+/// Direct ASTs and recovery placeholders without that producer mark stay unknown.
+/// Non-algebraic declaration variants can safely retain their explicit category.
+/// Workflow: compiler-pipeline-chirho/type-scope-resolution-chirho#ordinary-type-definition-proof-chirho.
+pub(crate) fn source_type_declaration_chirho(
+    module_chirho: &ModuleChirho,
+    declaration_chirho: &DeclChirho,
+) -> Option<TypeConstructorDeclarationChirho> {
+    let (name_chirho, role_chirho) = match declaration_chirho {
+        DeclChirho::DataDeclChirho { name_chirho, .. } => {
+            if name_chirho.written_type_declaration_role_chirho()
+                != Some(TypeConstructorRoleChirho::DataChirho)
+            {
+                return None;
+            }
+            (name_chirho, TypeConstructorRoleChirho::DataChirho)
+        }
+        DeclChirho::NewtypeDeclChirho { name_chirho, .. } => {
+            if name_chirho.written_type_declaration_role_chirho()
+                != Some(TypeConstructorRoleChirho::NewtypeChirho)
+            {
+                return None;
+            }
+            (name_chirho, TypeConstructorRoleChirho::NewtypeChirho)
+        }
+        DeclChirho::ClassDeclChirho { name_chirho, .. } => {
+            (name_chirho, TypeConstructorRoleChirho::ClassChirho)
+        }
+        DeclChirho::TypeAliasDeclChirho { name_chirho, .. } => {
+            (name_chirho, TypeConstructorRoleChirho::TypeSynonymChirho)
+        }
+        DeclChirho::TypeFamilyDeclChirho {
+            name_chirho,
+            data_family_chirho,
+            ..
+        } => (
+            name_chirho,
+            if *data_family_chirho {
+                TypeConstructorRoleChirho::DataFamilyChirho
+            } else {
+                TypeConstructorRoleChirho::TypeFamilyChirho
+            },
+        ),
+        _ => return None,
+    };
+    if name_chirho.text_chirho().is_empty() {
+        return None;
+    }
+    Some(TypeConstructorDeclarationChirho::source_chirho(
+        &module_chirho.name_chirho.full_name_chirho(),
+        name_chirho.text_chirho(),
+        role_chirho,
+    ))
+}
+
 /// Collect every locally declared value/type name before applying an export list.
 ///
 /// Associated type and data families are exported as type names in their own
@@ -469,6 +531,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
     let defining_module_chirho = Some(module_chirho.name_chirho.full_name_chirho());
 
     for decl_chirho in &module_chirho.decls_chirho {
+        let declaration_chirho = source_type_declaration_chirho(module_chirho, decl_chirho);
         match decl_chirho {
             DeclChirho::DataDeclChirho {
                 name_chirho,
@@ -507,6 +570,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                 exports_chirho.types_chirho.insert(
                     type_name_chirho.clone(),
                     IfaceTypeChirho {
+                        declaration_chirho: declaration_chirho.clone(),
                         name_chirho: type_name_chirho,
                         constructors_chirho: constructor_names_chirho,
                         methods_chirho: field_names_chirho,
@@ -546,6 +610,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                 exports_chirho.types_chirho.insert(
                     type_name_chirho.clone(),
                     IfaceTypeChirho {
+                        declaration_chirho: declaration_chirho.clone(),
                         name_chirho: type_name_chirho,
                         constructors_chirho: vec![constructor_name_chirho],
                         methods_chirho: field_names_chirho,
@@ -567,6 +632,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                     &mut exports_chirho,
                     name_chirho.text_chirho(),
                     *span_chirho,
+                    declaration_chirho.clone(),
                 );
             }
             DeclChirho::ClassDeclChirho {
@@ -602,11 +668,21 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                         canonical_type_name_chirho(family_chirho.name_chirho.text_chirho())
                     })
                     .collect();
-                for associated_name_chirho in &associated_names_chirho {
+                for associated_chirho in associated_tfs_chirho {
+                    let role_chirho = if associated_chirho.data_family_chirho {
+                        TypeConstructorRoleChirho::DataFamilyChirho
+                    } else {
+                        TypeConstructorRoleChirho::TypeFamilyChirho
+                    };
                     insert_type_export_chirho(
                         &mut exports_chirho,
-                        associated_name_chirho,
-                        *span_chirho,
+                        associated_chirho.name_chirho.text_chirho(),
+                        associated_chirho.span_chirho,
+                        Some(TypeConstructorDeclarationChirho::source_chirho(
+                            &module_chirho.name_chirho.full_name_chirho(),
+                            associated_chirho.name_chirho.text_chirho(),
+                            role_chirho,
+                        )),
                     );
                 }
                 if !associated_names_chirho.is_empty() {
@@ -617,6 +693,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                 exports_chirho.types_chirho.insert(
                     class_name_chirho.clone(),
                     IfaceTypeChirho {
+                        declaration_chirho: declaration_chirho.clone(),
                         name_chirho: class_name_chirho,
                         constructors_chirho: Vec::new(),
                         methods_chirho: method_names_chirho,
@@ -806,11 +883,13 @@ fn insert_type_export_chirho(
     exports_chirho: &mut IfaceExportsChirho,
     name_chirho: &str,
     span_chirho: SpanChirho,
+    declaration_chirho: Option<TypeConstructorDeclarationChirho>,
 ) {
     let type_name_chirho = canonical_type_name_chirho(name_chirho);
     exports_chirho.types_chirho.insert(
         type_name_chirho.clone(),
         IfaceTypeChirho {
+            declaration_chirho,
             name_chirho: type_name_chirho,
             constructors_chirho: Vec::new(),
             methods_chirho: Vec::new(),

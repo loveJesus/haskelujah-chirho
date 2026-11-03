@@ -4,8 +4,9 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
-use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
+use crate::iface_chirho::builtin_chirho::{mk_data_type_chirho, mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 
 /// Push the interfaces for `Typeable`, `Data`, type-level and coercion modules.
 pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
@@ -25,7 +26,8 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
     // Data.Proxy
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Proxy", &["Proxy"]);
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::ProxyChirho, &["Proxy"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_val_chirho("Proxy");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
@@ -234,7 +236,8 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("TypeRep", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Proxy", &["Proxy"]);
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::ProxyChirho, &["Proxy"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Typeable".to_string(),
@@ -439,7 +442,8 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
     // Data.Proxy
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        let (k_chirho, v_chirho) = mk_type_chirho("Proxy", &["Proxy"]);
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::ProxyChirho, &["Proxy"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_val_chirho("Proxy");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);

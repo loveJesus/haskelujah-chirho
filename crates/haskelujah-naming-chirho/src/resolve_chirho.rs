@@ -906,6 +906,7 @@ mod tests_chirho {
         types_chirho.insert(
             "Color".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Color".to_string(),
                 constructors_chirho: vec!["Red".to_string(), "Blue".to_string()],
                 methods_chirho: vec![],
@@ -1217,6 +1218,7 @@ mod tests_chirho {
         lib_chirho.exports_chirho.types_chirho.insert(
             "Wrap".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Wrap".to_string(),
                 constructors_chirho: vec!["Wrap".to_string()],
                 methods_chirho: vec!["unwrap".to_string()],

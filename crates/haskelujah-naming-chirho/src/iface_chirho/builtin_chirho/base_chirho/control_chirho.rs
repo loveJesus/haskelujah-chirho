@@ -239,6 +239,7 @@ pub(super) fn push_control_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "Monad".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Monad".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["return".to_string(), ">>=".to_string(), ">>".to_string()],
@@ -248,6 +249,7 @@ pub(super) fn push_control_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "MonadPlus".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "MonadPlus".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["mzero".to_string(), "mplus".to_string()],
@@ -257,6 +259,7 @@ pub(super) fn push_control_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(
             "MonadFail".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "MonadFail".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["fail".to_string()],

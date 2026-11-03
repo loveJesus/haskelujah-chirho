@@ -6,7 +6,7 @@
 use haskelujah_ast_chirho::decl_chirho::{
     ConDeclChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho, StrictnessChirho,
 };
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{NameChirho, TypeConstructorRoleChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
@@ -136,8 +136,17 @@ impl LowerCtxChirho {
             idx_chirho += 1;
         }
 
+        let mut name_chirho = name_chirho.unwrap_or_else(|| self.dummy_name_chirho());
+        if Self::ordinary_type_declaration_header_chirho(
+            &children_chirho,
+            TokenKindChirho::DataKeywordChirho,
+        ) && !name_chirho.text_chirho().is_empty()
+        {
+            name_chirho
+                .set_written_type_declaration_role_chirho(TypeConstructorRoleChirho::DataChirho);
+        }
         DeclChirho::DataDeclChirho {
-            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+            name_chirho,
             type_vars_chirho,
             constructors_chirho,
             deriving_chirho,
@@ -643,6 +652,35 @@ impl LowerCtxChirho {
         result_chirho
     }
 
+    /// A skipped data/newtype instance may still have a data-shaped CST node.
+    /// Only the actual ordinary defining header supplies the positive role.
+    /// Workflow: compiler-pipeline-chirho/type-scope-resolution-chirho#ordinary-type-definition-proof-chirho.
+    fn ordinary_type_declaration_header_chirho(
+        children_chirho: &[ChildChirho<'_>],
+        keyword_chirho: TokenKindChirho,
+    ) -> bool {
+        let mut saw_keyword_chirho = false;
+        for child_chirho in children_chirho {
+            if let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho {
+                match token_chirho.kind_chirho() {
+                    TokenKindChirho::InstanceKeywordChirho => return false,
+                    // The legacy newtype lowerer has not retained the actual
+                    // head after a declaration context. Do not certify its
+                    // accidentally collected context-class name as a newtype.
+                    TokenKindChirho::DoubleArrowChirho
+                        if keyword_chirho == TokenKindChirho::NewtypeKeywordChirho =>
+                    {
+                        return false;
+                    }
+                    TokenKindChirho::EqualsChirho | TokenKindChirho::WhereKeywordChirho => break,
+                    kind_chirho if kind_chirho == keyword_chirho => saw_keyword_chirho = true,
+                    _ => {}
+                }
+            }
+        }
+        saw_keyword_chirho
+    }
+
     pub(super) fn lower_newtype_decl_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -727,8 +765,17 @@ impl LowerCtxChirho {
             ))
         };
 
+        let mut name_chirho = name_chirho.unwrap_or_else(|| self.dummy_name_chirho());
+        if Self::ordinary_type_declaration_header_chirho(
+            &children_chirho,
+            TokenKindChirho::NewtypeKeywordChirho,
+        ) && !name_chirho.text_chirho().is_empty()
+        {
+            name_chirho
+                .set_written_type_declaration_role_chirho(TypeConstructorRoleChirho::NewtypeChirho);
+        }
         DeclChirho::NewtypeDeclChirho {
-            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+            name_chirho,
             type_vars_chirho,
             constructor_chirho: constructor_chirho.unwrap_or_else(|| {
                 ConDeclChirho::OrdinaryChirho {

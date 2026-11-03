@@ -469,6 +469,7 @@ fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<Modul
                             exports_chirho.types_chirho.insert(
                                 name_chirho.clone(),
                                 IfaceTypeChirho {
+                                    declaration_chirho: None,
                                     name_chirho: name_chirho.clone(),
                                     constructors_chirho: vec![],
                                     methods_chirho: vec![],

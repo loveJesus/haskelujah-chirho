@@ -867,3 +867,57 @@ fn lower_mixed_strict_lazy_fields_chirho() {
         _ => panic!("expected DataDeclChirho"),
     }
 }
+
+#[test]
+fn written_data_and_newtype_headers_carry_their_category_proof_chirho() {
+    use haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho;
+    let module_chirho = parse_and_lower_chirho(
+        "module DefChirho where\ndata DataChirho aChirho = DataChirho aChirho\nnewtype NewtypeChirho aChirho = NewtypeChirho aChirho\n",
+    );
+    let roles_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::DataDeclChirho { name_chirho, .. }
+            | DeclChirho::NewtypeDeclChirho { name_chirho, .. } => Some((
+                name_chirho.text_chirho(),
+                name_chirho.written_type_declaration_role_chirho(),
+            )),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        roles_chirho,
+        vec![
+            ("DataChirho", Some(TypeConstructorRoleChirho::DataChirho)),
+            (
+                "NewtypeChirho",
+                Some(TypeConstructorRoleChirho::NewtypeChirho)
+            )
+        ]
+    );
+}
+
+#[test]
+fn skipped_data_instances_never_acquire_an_ordinary_data_role_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeFamilies #-}\nmodule DefChirho where\ndata family FChirho aChirho\ndata instance FChirho Int = MkFChirho Int\n",
+    );
+    for declaration_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::DataDeclChirho { name_chirho, .. } = declaration_chirho {
+            assert_eq!(name_chirho.written_type_declaration_role_chirho(), None);
+        }
+    }
+}
+
+#[test]
+fn unrepresented_newtype_context_heads_do_not_certify_the_context_class_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE DatatypeContexts #-}\nmodule DefChirho where\nnewtype Eq aChirho => NChirho aChirho = NChirho aChirho\n",
+    );
+    for declaration_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::NewtypeDeclChirho { name_chirho, .. } = declaration_chirho {
+            assert_eq!(name_chirho.written_type_declaration_role_chirho(), None);
+        }
+    }
+}

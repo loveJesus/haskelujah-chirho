@@ -23,6 +23,8 @@ use crate::type_exports_chirho::{
 };
 
 mod builtin_chirho;
+mod type_identity_chirho;
+pub use type_identity_chirho::build_type_constructor_scope_chirho;
 #[cfg(test)]
 mod tests_chirho;
 
@@ -60,6 +62,11 @@ pub struct IfaceValueChirho {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IfaceTypeChirho {
     pub name_chirho: String,
+    /// Definition identity and declaration category from the actual producer.
+    /// Unknown/stub entries carry no proof, even when constructors are listed.
+    /// Export filtering and re-exports preserve this account unchanged.
+    pub declaration_chirho:
+        Option<haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho>,
     /// Constructor names that are exported alongside this type.
     pub constructors_chirho: Vec<String>,
     /// Associated value names exported alongside this type or class.
@@ -227,6 +234,7 @@ fn merge_import_item_into_exports_chirho(
                 result_chirho.types_chirho.insert(
                     ty_name_chirho.clone(),
                     IfaceTypeChirho {
+                        declaration_chirho: ty_chirho.declaration_chirho.clone(),
                         name_chirho: ty_chirho.name_chirho.clone(),
                         constructors_chirho,
                         methods_chirho,
@@ -601,6 +609,7 @@ fn imported_type_in_scope_chirho(
         );
         return Some((
             IfaceTypeChirho {
+                declaration_chirho: ty_chirho.declaration_chirho.clone(),
                 name_chirho: ty_chirho.name_chirho.clone(),
                 constructors_chirho,
                 methods_chirho,
@@ -732,6 +741,12 @@ pub fn merge_module_ifaces_chirho(
                     .get_mut(&name_chirho)
                 {
                     Some(existing_type_chirho) => {
+                        // A weak or conflicting snapshot cannot acquire proof
+                        // from a later copy, whatever constructor lists merge.
+                        if existing_type_chirho.declaration_chirho != type_chirho.declaration_chirho
+                        {
+                            existing_type_chirho.declaration_chirho = None;
+                        }
                         for constructor_chirho in type_chirho.constructors_chirho {
                             if !existing_type_chirho
                                 .constructors_chirho
@@ -826,6 +841,7 @@ fn filter_exports_chirho(
                     result_chirho.types_chirho.insert(
                         text_chirho.clone(),
                         IfaceTypeChirho {
+                            declaration_chirho: ty_chirho.declaration_chirho.clone(),
                             name_chirho: ty_chirho.name_chirho.clone(),
                             constructors_chirho: vec![], // bare name = no constructors
                             methods_chirho: vec![],
@@ -911,6 +927,7 @@ fn filter_exports_chirho(
                     result_chirho.types_chirho.insert(
                         text_chirho.clone(),
                         IfaceTypeChirho {
+                            declaration_chirho: ty_chirho.declaration_chirho.clone(),
                             name_chirho: ty_chirho.name_chirho.clone(),
                             constructors_chirho: cons_chirho,
                             methods_chirho,

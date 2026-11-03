@@ -96,6 +96,7 @@ fn iface_chirho(
     exports_chirho.types_chirho.insert(
         type_chirho.to_string(),
         IfaceTypeChirho {
+            declaration_chirho: None,
             name_chirho: type_chirho.to_string(),
             constructors_chirho: constructors_chirho
                 .iter()
