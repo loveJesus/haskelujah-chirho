@@ -98,7 +98,7 @@ impl DictPassCtxChirho {
             let dict_arg_chirho = match dict_id_chirho {
                 Some(dict_id_chirho) => CoreExprChirho::VarChirho(dict_id_chirho),
                 None => {
-                    self.note_unserved_reference_slot_chirho(written_id_chirho, class_name_chirho);
+                    self.note_unserved_slot_chirho(written_id_chirho, class_name_chirho);
                     self.missing_dictionary_chirho(
                         class_name_chirho,
                         evidence_key_chirho.as_deref(),

@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 use super::ground_budget_chirho::GroundBudgetChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
-use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
+use haskelujah_typing_chirho::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
 
 /// Why a ground goal has no constructed dictionary. Each names what could not be decided, in
 /// words a person reads: instances with lettered variables, never a row key.
@@ -21,6 +21,10 @@ pub(in crate::dict_chirho) enum GroundRefusalChirho {
     /// Several instance heads match. No overlap or origin authority is modeled, so none is
     /// chosen.
     OverlapChirho(PredChirho, Vec<String>),
+    /// The checker's matcher accepted the instance's head without proving it: the head repeats
+    /// a type variable, whose occurrences the matcher does not check agree, or an arrow whose
+    /// multiplicity it does not compare.
+    MatchNotProvenChirho(String, &'static str),
     /// The matched instance's rows are not declared in this module.
     RowsElsewhereChirho(String),
     /// The matched instance shares its declaration's place with another, so its rows are
@@ -61,6 +65,9 @@ impl GroundRefusalChirho {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
+            Self::MatchNotProvenChirho(instance_chirho, reason_chirho) => {
+                format!("the match of instance `{instance_chirho}` is not proven: {reason_chirho}")
+            }
             Self::RowsElsewhereChirho(instance_chirho) => {
                 format!("the methods of instance `{instance_chirho}` are not in this module")
             }
@@ -123,6 +130,12 @@ pub(in crate::dict_chirho) fn select_ground_instance_chirho<'env_chirho>(
         else {
             continue;
         };
+        if let Some(reason_chirho) = unproven_match_chirho(instance_chirho, goal_chirho) {
+            return Err(GroundRefusalChirho::MatchNotProvenChirho(
+                readable_instance_chirho(instance_chirho),
+                reason_chirho,
+            ));
+        }
         if selected_chirho.is_none() {
             selected_chirho = Some((instance_chirho, sub_goals_chirho));
         } else {
@@ -141,6 +154,68 @@ pub(in crate::dict_chirho) fn select_ground_instance_chirho<'env_chirho>(
         ));
     }
     Ok(selected_chirho)
+}
+
+/// Why the checker's matcher does not prove a match of this instance, if it does not: a head
+/// that repeats a type variable (`Pair a a` "matches" `Pair Int Bool`), or a linear arrow in the
+/// head or the goal (multiplicities are not compared). Until a consistent matcher is shared, such
+/// a candidate is refused by name rather than chosen.
+fn unproven_match_chirho(
+    instance_chirho: &InstDeclChirho,
+    goal_chirho: &PredChirho,
+) -> Option<&'static str> {
+    let mut seen_chirho: Vec<TyVarChirho> = Vec::new();
+    let mut pending_chirho: Vec<&TyChirho> = std::iter::once(&instance_chirho.head_ty_chirho)
+        .chain(&instance_chirho.extra_head_tys_chirho)
+        .collect();
+    while let Some(ty_chirho) = pending_chirho.pop() {
+        match ty_chirho {
+            TyChirho::VarChirho(var_chirho) => {
+                if seen_chirho.contains(var_chirho) {
+                    return Some("its head repeats a type variable");
+                }
+                seen_chirho.push(*var_chirho);
+            }
+            TyChirho::FunChirho(_, _, MultChirho::OneChirho) => {
+                return Some("its head has a linear arrow");
+            }
+            TyChirho::AppChirho(function_chirho, argument_chirho)
+            | TyChirho::FunChirho(function_chirho, argument_chirho, _) => {
+                pending_chirho.push(function_chirho);
+                pending_chirho.push(argument_chirho);
+            }
+            TyChirho::TupleChirho(elements_chirho) => pending_chirho.extend(elements_chirho),
+            TyChirho::ListChirho(element_chirho) => pending_chirho.push(element_chirho),
+            TyChirho::ForallChirho { body_chirho, .. }
+            | TyChirho::RequiredForallChirho { body_chirho, .. } => {
+                pending_chirho.push(body_chirho)
+            }
+            TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
+        }
+    }
+    let mut pending_chirho: Vec<&TyChirho> = std::iter::once(&goal_chirho.ty_chirho)
+        .chain(&goal_chirho.extra_tys_chirho)
+        .collect();
+    while let Some(ty_chirho) = pending_chirho.pop() {
+        match ty_chirho {
+            TyChirho::FunChirho(_, _, MultChirho::OneChirho) => {
+                return Some("the goal has a linear arrow");
+            }
+            TyChirho::AppChirho(function_chirho, argument_chirho)
+            | TyChirho::FunChirho(function_chirho, argument_chirho, _) => {
+                pending_chirho.push(function_chirho);
+                pending_chirho.push(argument_chirho);
+            }
+            TyChirho::TupleChirho(elements_chirho) => pending_chirho.extend(elements_chirho),
+            TyChirho::ListChirho(element_chirho) => pending_chirho.push(element_chirho),
+            TyChirho::ForallChirho { body_chirho, .. }
+            | TyChirho::RequiredForallChirho { body_chirho, .. } => {
+                pending_chirho.push(body_chirho)
+            }
+            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
+        }
+    }
+    None
 }
 
 /// The dictionary registry's key for a head and its extra heads, spelled exactly as the

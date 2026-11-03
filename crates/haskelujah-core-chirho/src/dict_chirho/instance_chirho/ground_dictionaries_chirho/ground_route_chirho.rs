@@ -3,8 +3,12 @@
 //! The rewrite's read of the ground-dictionary pre-pass. Every caller asks only after each of
 //! its keyed routes has missed and before any ambient one, so a ground dictionary never
 //! displaces a route that already served the proof. A refusal is reported (S2) only for an
-//! occurrence that stays unserved: a method occurrence still standing in the rewritten module,
-//! or a constrained reference slot that ended with no dictionary.
+//! occurrence that stays unserved, so evidence on an occurrence some route still serves is never
+//! reported. Unserved means one of three things:
+//! - a method occurrence still standing in the rewritten module;
+//! - a method occurrence whose head replacement and the rewrite after it left the bare method
+//!   at the head;
+//! - a constrained reference slot that ended with no dictionary.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::HashSet;
@@ -39,18 +43,52 @@ impl DictPassCtxChirho {
             })
     }
 
-    /// Note that a constrained reference's slot of `class_name_chirho` ended with no
-    /// dictionary, so a refusal the pre-pass recorded for it is reported.
-    pub(in crate::dict_chirho) fn note_unserved_reference_slot_chirho(
+    /// Note that an occurrence's slot of `class_name_chirho` ended with no dictionary, so a
+    /// refusal the pre-pass recorded for it is reported.
+    pub(in crate::dict_chirho) fn note_unserved_slot_chirho(
         &self,
         occurrence_chirho: CoreIdChirho,
         class_name_chirho: &str,
     ) {
         let slot_chirho = (occurrence_chirho, class_name_chirho.to_string());
         if self.ground_goal_refusals_chirho.contains_key(&slot_chirho) {
-            self.unserved_reference_slots_chirho
-                .borrow_mut()
-                .insert(slot_chirho);
+            self.unserved_slots_chirho.borrow_mut().insert(slot_chirho);
+        }
+    }
+
+    /// After a method occurrence's head replacement and the rewrite that follows it, which may
+    /// still serve the method through its other routes: if the result's head is still the bare
+    /// method, nothing projected it, so its slot went unserved.
+    pub(in crate::dict_chirho) fn note_unserved_head_chirho(
+        &self,
+        occurrence_chirho: CoreIdChirho,
+        rewritten_chirho: &CoreExprChirho,
+    ) {
+        if self.ground_goal_refusals_chirho.is_empty() {
+            return;
+        }
+        let Some((method_name_chirho, canonical_id_chirho)) =
+            self.method_occurrence_canon_chirho.get(&occurrence_chirho)
+        else {
+            return;
+        };
+        let Some((class_name_chirho, _selector_chirho)) =
+            self.class_method_selector_for_name_chirho(method_name_chirho)
+        else {
+            return;
+        };
+        let mut head_chirho = rewritten_chirho;
+        loop {
+            match head_chirho {
+                CoreExprChirho::AppChirho { fun_chirho, .. } => head_chirho = fun_chirho,
+                CoreExprChirho::TyAppChirho { expr_chirho, .. } => head_chirho = expr_chirho,
+                _ => break,
+            }
+        }
+        if matches!(head_chirho, CoreExprChirho::VarChirho(head_id_chirho)
+            if head_id_chirho == canonical_id_chirho || *head_id_chirho == occurrence_chirho)
+        {
+            self.note_unserved_slot_chirho(occurrence_chirho, &class_name_chirho);
         }
     }
 
@@ -70,22 +108,19 @@ impl DictPassCtxChirho {
                 crate::simplify_chirho::free_vars_chirho(&binding_chirho.rhs_chirho)
             })
             .collect();
-        let unserved_references_chirho = self.unserved_reference_slots_chirho.borrow();
+        let unserved_slots_chirho = self.unserved_slots_chirho.borrow();
         let mut diagnostics_chirho: Vec<DictPassDiagnosticChirho> = self
             .ground_goal_refusals_chirho
             .iter()
             .filter(|(slot_chirho, _diagnostic_chirho)| {
                 let (occurrence_chirho, _class_chirho) = slot_chirho;
                 // A served reference keeps its occurrence id under its dictionary arguments,
-                // so only the slot itself can say it went unserved.
-                if self
-                    .reference_evidence_chirho
-                    .contains_key(occurrence_chirho)
-                {
-                    unserved_references_chirho.contains(*slot_chirho)
-                } else {
-                    surviving_chirho.contains(occurrence_chirho)
-                }
+                // so only a noted slot can say it went unserved.
+                unserved_slots_chirho.contains(*slot_chirho)
+                    || (!self
+                        .reference_evidence_chirho
+                        .contains_key(occurrence_chirho)
+                        && surviving_chirho.contains(occurrence_chirho))
             })
             .map(|(_slot_chirho, diagnostic_chirho)| diagnostic_chirho.clone())
             .collect();

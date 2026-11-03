@@ -281,8 +281,8 @@ pub struct DictPassCtxChirho {
     ground_goal_refusals_chirho: HashMap<(CoreIdChirho, String), DictPassDiagnosticChirho>,
     /// The builder's memo: a ground goal's dictionary id, allocated before descending.
     ground_dicts_by_goal_chirho: HashMap<PredChirho, CoreIdChirho>,
-    /// Constrained-reference slots that ended with no dictionary, for the S2 report.
-    unserved_reference_slots_chirho: RefCell<HashSet<(CoreIdChirho, String)>>,
+    /// Slots whose occurrence the rewrite left with no dictionary, for the S2 report.
+    unserved_slots_chirho: RefCell<HashSet<(CoreIdChirho, String)>>,
     /// The S3 join: each paired module instance's row key.
     instance_rows_chirho: InstanceRowsChirho,
 }
@@ -333,7 +333,7 @@ impl DictPassCtxChirho {
             ground_goal_dicts_chirho: HashMap::new(),
             ground_goal_refusals_chirho: HashMap::new(),
             ground_dicts_by_goal_chirho: HashMap::new(),
-            unserved_reference_slots_chirho: RefCell::new(HashSet::new()),
+            unserved_slots_chirho: RefCell::new(HashSet::new()),
             instance_rows_chirho: InstanceRowsChirho::default(),
         }
     }

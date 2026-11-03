@@ -45,6 +45,9 @@ struct GroundBuildChirho {
     attempt_goals_chirho: Vec<PredChirho>,
     /// Top-level goals already decided: not new to this route (`None`), or refused.
     settled_chirho: HashMap<PredChirho, Option<GroundRefusalChirho>>,
+    /// The names other generators bound before this pre-pass: a row name only they answer is an
+    /// alias or a stub, never an instance's own body.
+    generated_names_chirho: HashSet<String>,
 }
 
 impl DictPassCtxChirho {
@@ -63,7 +66,14 @@ impl DictPassCtxChirho {
             .map(|(occurrence_chirho, goals_chirho)| (*occurrence_chirho, goals_chirho.clone()))
             .collect();
         occurrences_chirho.sort_by_key(|(occurrence_chirho, _)| *occurrence_chirho);
-        let mut build_chirho = GroundBuildChirho::default();
+        let mut build_chirho = GroundBuildChirho {
+            generated_names_chirho: self
+                .generated_bindings_chirho
+                .iter()
+                .map(|binding_chirho| binding_chirho.binder_chirho.name_chirho.clone())
+                .collect(),
+            ..GroundBuildChirho::default()
+        };
         for (occurrence_chirho, goals_chirho) in occurrences_chirho {
             let Some(admission_chirho) = self.ground_goal_admission_chirho(occurrence_chirho)
             else {
@@ -237,17 +247,25 @@ impl DictPassCtxChirho {
     fn bound_dictionary_chirho(&self, goal_chirho: &PredChirho) -> Option<CoreIdChirho> {
         self.ground_dicts_by_goal_chirho
             .get(goal_chirho)
-            .or_else(|| {
-                self.instance_dicts_chirho.get(&(
-                    goal_chirho.class_name_chirho.clone(),
-                    goal_registry_key_chirho(goal_chirho),
-                ))
-            })
+            .copied()
+            .or_else(|| self.registry_dictionary_chirho(goal_chirho))
+    }
+
+    /// The dictionary an existing generator filed under exactly this goal's spelling.
+    fn registry_dictionary_chirho(&self, goal_chirho: &PredChirho) -> Option<CoreIdChirho> {
+        self.instance_dicts_chirho
+            .get(&(
+                goal_chirho.class_name_chirho.clone(),
+                goal_registry_key_chirho(goal_chirho),
+            ))
             .copied()
     }
 
-    /// The dictionary for one obligation: a bound one, or one built from the instance its head
-    /// selects.
+    /// The dictionary for one obligation: the one built here, or one built from the instance
+    /// its head selects when that instance's rows are this module's. A dictionary an existing
+    /// generator filed under the obligation's own spelling serves only where this route cannot
+    /// build: no unique instance, or rows that live elsewhere. The generic list specialization
+    /// files a stub for a user instance whose rows it cannot find by spelling.
     fn ground_dictionary_chirho(
         &mut self,
         class_env_chirho: &ClassEnvChirho,
@@ -255,7 +273,7 @@ impl DictPassCtxChirho {
         depth_chirho: usize,
         build_chirho: &mut GroundBuildChirho,
     ) -> Result<CoreIdChirho, GroundRefusalChirho> {
-        if let Some(dict_id_chirho) = self.bound_dictionary_chirho(goal_chirho) {
+        if let Some(dict_id_chirho) = self.ground_dicts_by_goal_chirho.get(goal_chirho).copied() {
             if let Some(position_chirho) = build_chirho
                 .in_progress_chirho
                 .iter()
@@ -268,12 +286,23 @@ impl DictPassCtxChirho {
         }
         let goal_weight_chirho =
             self.examine_goal_chirho(goal_chirho, depth_chirho, build_chirho)?;
-        let (instance_chirho, obligations_chirho) = select_ground_instance_chirho(
+        let (instance_chirho, obligations_chirho) = match select_ground_instance_chirho(
             class_env_chirho,
             goal_chirho,
             goal_weight_chirho,
             &mut build_chirho.budget_chirho,
-        )?;
+        ) {
+            Ok(selected_chirho) => selected_chirho,
+            Err(
+                refusal_chirho @ (GroundRefusalChirho::UnresolvedChirho(_)
+                | GroundRefusalChirho::OverlapChirho(..)),
+            ) => {
+                return self
+                    .registry_dictionary_chirho(goal_chirho)
+                    .ok_or(refusal_chirho);
+            }
+            Err(refusal_chirho) => return Err(refusal_chirho),
+        };
         if instance_chirho.context_chirho.is_empty() {
             // A context-free instance has its dictionary already, under its own key.
             return self
@@ -289,13 +318,21 @@ impl DictPassCtxChirho {
                     ))
                 });
         }
-        self.build_selected_chirho(
+        match self.build_selected_chirho(
             class_env_chirho,
             goal_chirho,
             (instance_chirho, obligations_chirho),
             depth_chirho,
             build_chirho,
-        )
+        ) {
+            Err(
+                refusal_chirho @ (GroundRefusalChirho::RowsElsewhereChirho(_)
+                | GroundRefusalChirho::RowsAmbiguousChirho(_)),
+            ) => self
+                .registry_dictionary_chirho(goal_chirho)
+                .ok_or(refusal_chirho),
+            built_chirho => built_chirho,
+        }
     }
 
     /// Build the dictionary of a selected context instance at `goal_chirho`: its context
@@ -329,8 +366,12 @@ impl DictPassCtxChirho {
                 ));
             }
         };
-        if !self.instance_rows_are_bound_chirho(&class_name_chirho, &row_key_chirho, &layout_chirho)
-        {
+        if !self.instance_rows_are_bound_chirho(
+            &class_name_chirho,
+            &row_key_chirho,
+            &layout_chirho,
+            &build_chirho.generated_names_chirho,
+        ) {
             return Err(GroundRefusalChirho::RowsElsewhereChirho(
                 readable_instance_chirho(instance_chirho),
             ));
@@ -404,24 +445,29 @@ impl DictPassCtxChirho {
         Ok(dict_id_chirho)
     }
 
-    /// Whether the instance's rows are bound in this module under its declaration's key: at
-    /// least one method row is, or the class has no methods. Rows that live elsewhere are
-    /// never invented here.
+    /// Whether the instance's rows are this module's own under its declaration's key: at least
+    /// one row the declaration wrote or the desugarer bound for it, or no methods at all. A slot
+    /// that only another generator's binding answers refuses the instance: a newtype alias
+    /// (`generate_gnd_dicts_chirho`) shares the written key, so counting it would let an alias
+    /// or a stub stand in for the instance's body. Rows that live elsewhere are never invented
+    /// here.
     fn instance_rows_are_bound_chirho(
         &self,
         class_name_chirho: &str,
         row_key_chirho: &str,
         layout_chirho: &DictLayoutChirho,
+        generated_names_chirho: &HashSet<String>,
     ) -> bool {
-        layout_chirho.method_slots_chirho.is_empty()
-            || layout_chirho
-                .method_slots_chirho
-                .iter()
-                .any(|(method_name_chirho, _)| {
-                    self.lookup_body_backed_name_id_chirho(&format!(
-                        "$prim_{class_name_chirho}_{method_name_chirho}_{row_key_chirho}"
-                    ))
-                    .is_some()
-                })
+        let mut written_chirho = layout_chirho.method_slots_chirho.is_empty();
+        for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
+            let row_name_chirho =
+                format!("$prim_{class_name_chirho}_{method_name_chirho}_{row_key_chirho}");
+            if self.body_backed_names_chirho.contains_key(&row_name_chirho) {
+                written_chirho = true;
+            } else if generated_names_chirho.contains(&row_name_chirho) {
+                return false;
+            }
+        }
+        written_chirho
     }
 }

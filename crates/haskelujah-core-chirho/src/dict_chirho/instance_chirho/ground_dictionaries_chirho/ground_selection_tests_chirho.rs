@@ -190,3 +190,34 @@ fn an_exhausted_budget_refuses_selection_by_name_chirho() {
         Err(GroundRefusalChirho::BudgetChirho("type work", _))
     ));
 }
+
+#[test]
+fn a_head_that_repeats_a_variable_is_refused_not_chosen_chirho() {
+    // The checker's matcher binds `Pair a a` to `Pair Int Bool` without checking that the two
+    // occurrences agree; selection must not take that as proof.
+    let a_chirho = TyChirho::VarChirho(TyVarChirho(9004));
+    let pair_chirho = |left_chirho: TyChirho, right_chirho: TyChirho| {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::AppChirho(
+                Box::new(con_chirho("PairChirho")),
+                Box::new(left_chirho),
+            )),
+            Box::new(right_chirho),
+        )
+    };
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.add_instance_chirho(InstDeclChirho {
+        class_name_chirho: "SameChirho".to_string(),
+        head_ty_chirho: pair_chirho(a_chirho.clone(), a_chirho.clone()),
+        extra_head_tys_chirho: Vec::new(),
+        context_chirho: vec![PredChirho::new_chirho("Show", a_chirho)],
+    });
+    let goal_chirho = PredChirho::new_chirho(
+        "SameChirho",
+        pair_chirho(con_chirho("Int"), con_chirho("Bool")),
+    );
+    assert!(matches!(
+        select_chirho(&env_chirho, &goal_chirho),
+        Err(GroundRefusalChirho::MatchNotProvenChirho(_, _))
+    ));
+}

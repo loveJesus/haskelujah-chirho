@@ -141,13 +141,16 @@ impl DictPassCtxChirho {
                     // A bare reference has no argument to read a key off.
                     &|| None,
                 ) {
-                    return self.rewrite_method_refs_with_locals_chirho(
+                    let rewritten_chirho = self.rewrite_method_refs_with_locals_chirho(
                         &replacement_chirho,
                         dict_vars_chirho,
                         evidence_classes_chirho,
                         local_type_keys_chirho,
                         local_instance_dicts_chirho,
                     );
+                    // workflow: language-features-chirho/dictionary-evidence-chirho
+                    self.note_unserved_head_chirho(*id_chirho, &rewritten_chirho);
+                    return rewritten_chirho;
                 }
                 if let Some(dispatched_chirho) =
                     self.try_dispatch_contextual_return_pure_var_chirho(*id_chirho)
@@ -346,13 +349,16 @@ impl DictPassCtxChirho {
                                     arg_chirho: Box::new((*spine_arg_chirho).clone()),
                                 },
                             );
-                            return self.rewrite_method_refs_with_locals_chirho(
+                            let rewritten_chirho = self.rewrite_method_refs_with_locals_chirho(
                                 &rebuilt_chirho,
                                 dict_vars_chirho,
                                 evidence_classes_chirho,
                                 local_type_keys_chirho,
                                 local_instance_dicts_chirho,
                             );
+                            // workflow: language-features-chirho/dictionary-evidence-chirho
+                            self.note_unserved_head_chirho(*head_id_chirho, &rewritten_chirho);
+                            return rewritten_chirho;
                         }
                     }
                 }

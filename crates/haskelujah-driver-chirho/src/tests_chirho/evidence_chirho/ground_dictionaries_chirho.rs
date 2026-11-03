@@ -3,8 +3,11 @@
 //! Ground dictionaries for conditional instances, on every engine: the STG machine, LLVM and
 //! Cranelift each print GHC's answer. The B01, two-context, missing-base and cyclic programs
 //! were measured on GHC 9.14.1 (root receipts `equality-and-dictionary-oracle-r1-chirho/<case>/`).
-//! The repeated list-context control, the shadowing hold, the growing context and the shared
-//! sub-goal hold are predictions that root measures before the landing.
+//! Root measured the repeated list contexts (`int1int2|yesno`), the shadowing hold (42) and the
+//! shared sub-goal tree (32) on GHC 9.14.1 (#31160). The newtype hold's obligation is GHC's
+//! `wrap(age(int6))`. The growing context has no GHC verdict at the default reduction depth (it
+//! did not finish in 20 s) and is rejected with `-freduction-depth=8` (GHC-40404, #31163). Its
+//! control states this pass's bounded refusal, not a GHC output.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use crate::eval_source_with_machine_chirho;
@@ -247,7 +250,8 @@ main = print (noBaseChirho (Proxy :: Proxy (Maybe (Maybe Int))))",
 
 #[test]
 fn an_ever_growing_context_is_refused_by_a_bound_never_a_crash_chirho() {
-    // Each step doubles the goal; GHC overflows its reduction stack.
+    // Each step doubles the goal. GHC at its default depth does not finish in 20 s; this pass
+    // must refuse it by a named bound, in bounded time.
     let source_chirho = program_chirho(
         "FlexibleInstances, FlexibleContexts, UndecidableInstances",
         "class GrowChirho aChirho where
@@ -264,8 +268,9 @@ main = print (growChirho (Proxy :: Proxy Int))",
         Err(failure_chirho) => failure_chirho,
     };
     assert!(
-        !failure_chirho.contains("missing STG binding"),
-        "a crash is not the refusal: {failure_chirho}"
+        failure_chirho.contains("no dictionary for `GrowChirho Int`")
+            && failure_chirho.contains("bound"),
+        "the refusal names its bound, never a crash: {failure_chirho}"
     );
     for backend_chirho in [
         NativeBackendChirho::LlvmChirho,
@@ -306,4 +311,70 @@ main = print (sizeChirho (Proxy :: Proxy FiveChirho))",
         ),
         "32\n",
     );
+}
+
+#[test]
+fn a_written_newtype_body_serves_an_obligation_chirho() {
+    // A context instance at a newtype is written, not derived: as another instance's obligation
+    // its own body runs (GHC 9.14.1: `wrap(age(int6))`). A top-level call at that newtype still
+    // takes the pre-existing newtype alias by name, with or without this route, and varies from
+    // run to run (`generate_gnd_dicts_chirho`); that call is the producer's to repair.
+    every_engine_prints_chirho(
+        &program_chirho(
+            "FlexibleContexts, ScopedTypeVariables, UndecidableInstances",
+            &format!(
+                "{DESCRIBE_CHIRHO}
+newtype AgeChirho = AgeChirho Int
+
+instance DescribeChirho Int => DescribeChirho AgeChirho where
+  describeChirho (AgeChirho nChirho) = \"age(\" ++ describeChirho nChirho ++ \")\"
+
+newtype WrapChirho aChirho = WrapChirho aChirho
+
+instance DescribeChirho aChirho => DescribeChirho (WrapChirho aChirho) where
+  describeChirho (WrapChirho xChirho) = \"wrap(\" ++ describeChirho xChirho ++ \")\"
+
+main :: IO ()
+main = putStrLn (describeChirho (WrapChirho (AgeChirho 6)))"
+            ),
+        ),
+        "wrap(age(int6))\n",
+    );
+}
+
+#[test]
+fn an_inconsistent_repeated_variable_match_is_never_chosen_chirho() {
+    // `Pair a a` cannot serve `Pair Int Bool`: GHC 9.14.1 rejects it (GHC-39999). The checker's
+    // matcher does not check that a repeated variable's occurrences agree, so this pass refuses
+    // such a head by name instead of choosing it (a candidate once printed `True=True`).
+    let source_chirho = program_chirho(
+        "FlexibleInstances",
+        "data PairChirho aChirho bChirho = PairChirho aChirho bChirho
+
+class SameChirho aChirho where
+  sameChirho :: aChirho -> String
+
+instance Show aChirho => SameChirho (PairChirho aChirho aChirho) where
+  sameChirho (PairChirho xChirho yChirho) = show xChirho ++ \"=\" ++ show yChirho
+
+main :: IO ()
+main = putStrLn (sameChirho (PairChirho (1 :: Int) True))",
+    );
+    let failure_chirho = match stg_run_chirho(&source_chirho) {
+        Ok(printed_chirho) => panic!("GHC rejects this; it printed {printed_chirho:?}"),
+        Err(failure_chirho) => failure_chirho,
+    };
+    assert!(
+        failure_chirho.contains("is not proven"),
+        "the refusal is named, never a crash: {failure_chirho}"
+    );
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        assert!(
+            native_round_trip_chirho(&source_chirho, backend_chirho, "").is_err(),
+            "{backend_chirho:?} must reject it too"
+        );
+    }
 }
