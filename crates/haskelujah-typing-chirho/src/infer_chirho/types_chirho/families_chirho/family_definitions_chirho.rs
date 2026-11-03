@@ -60,6 +60,21 @@ pub enum TypeFamilyIdChirho {
 }
 
 impl TypeFamilyIdChirho {
+    /// Presentation only; callers still select definitions by the complete key.
+    pub fn readable_name_chirho(&self) -> String {
+        match self {
+            Self::SourceChirho {
+                module_chirho,
+                name_chirho,
+            }
+            | Self::CompilerSeedChirho {
+                module_chirho,
+                name_chirho,
+            } => format!("{module_chirho}.{name_chirho}"),
+            Self::IntrinsicChirho(intrinsic_chirho) => format!("{intrinsic_chirho:?}"),
+        }
+    }
+
     /// Injective internal key. No consumer recovers authority by parsing names.
     pub fn key_chirho(&self) -> String {
         match self {
@@ -132,15 +147,86 @@ pub struct TypeFamilyDefinitionChirho {
     open_coherence_verified_chirho: bool,
 }
 
+/// Stable source provenance for a failed cold check, without copying type trees.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TypeFamilyDefinitionContextChirho {
+    BranchChirho {
+        family_chirho: TypeFamilyIdChirho,
+        index_chirho: usize,
+        id_chirho: TypeFamilyBranchIdChirho,
+    },
+    PairChirho {
+        family_chirho: TypeFamilyIdChirho,
+        left_index_chirho: usize,
+        left_id_chirho: TypeFamilyBranchIdChirho,
+        right_index_chirho: usize,
+        right_id_chirho: TypeFamilyBranchIdChirho,
+    },
+}
+
+impl fmt::Display for TypeFamilyDefinitionContextChirho {
+    fn fmt(&self, formatter_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn branch_chirho(id_chirho: &TypeFamilyBranchIdChirho, index_chirho: usize) -> String {
+            format!(
+                "{}:{}#{} (index {index_chirho})",
+                id_chirho.producer_module_chirho,
+                id_chirho.declaration_start_chirho,
+                id_chirho.equation_index_chirho
+            )
+        }
+        match self {
+            Self::BranchChirho {
+                family_chirho,
+                index_chirho,
+                id_chirho,
+            } => write!(
+                formatter_chirho,
+                "family {}; branch {}",
+                family_chirho.readable_name_chirho(),
+                branch_chirho(id_chirho, *index_chirho)
+            ),
+            Self::PairChirho {
+                family_chirho,
+                left_index_chirho,
+                left_id_chirho,
+                right_index_chirho,
+                right_id_chirho,
+            } => write!(
+                formatter_chirho,
+                "family {}; branches {} and {}",
+                family_chirho.readable_name_chirho(),
+                branch_chirho(left_id_chirho, *left_index_chirho),
+                branch_chirho(right_id_chirho, *right_index_chirho)
+            ),
+        }
+    }
+}
+
 /// Invalid or conflicting snapshots cannot silently change a family's meaning.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeFamilyDefinitionErrorChirho {
     message_chirho: String,
+    context_chirho: Option<TypeFamilyDefinitionContextChirho>,
+}
+
+impl TypeFamilyDefinitionErrorChirho {
+    pub fn context_chirho(&self) -> Option<&TypeFamilyDefinitionContextChirho> {
+        self.context_chirho.as_ref()
+    }
+
+    fn with_context_chirho(mut self, context_chirho: TypeFamilyDefinitionContextChirho) -> Self {
+        self.context_chirho = Some(context_chirho);
+        self
+    }
 }
 
 impl fmt::Display for TypeFamilyDefinitionErrorChirho {
     fn fmt(&self, formatter_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter_chirho.write_str(&self.message_chirho)
+        formatter_chirho.write_str(&self.message_chirho)?;
+        if let Some(context_chirho) = &self.context_chirho {
+            write!(formatter_chirho, " ({context_chirho})")?;
+        }
+        Ok(())
     }
 }
 
@@ -151,6 +237,7 @@ pub(super) fn family_definition_error_chirho(
 ) -> TypeFamilyDefinitionErrorChirho {
     TypeFamilyDefinitionErrorChirho {
         message_chirho: message_chirho.into(),
+        context_chirho: None,
     }
 }
 
@@ -301,24 +388,41 @@ impl TypeFamilyDefinitionChirho {
                 "open coherence check requires an open definition",
             ));
         }
-        if self
+        if let Some((index_chirho, branch_chirho)) = self
             .branches_chirho
             .iter()
-            .any(|branch_chirho| branch_chirho.held_chirho)
+            .enumerate()
+            .find(|(_index_chirho, branch_chirho)| branch_chirho.held_chirho)
         {
             return Err(family_definition_error_chirho(
                 "unsupported open branch cannot establish coherence",
-            ));
+            )
+            .with_context_chirho(TypeFamilyDefinitionContextChirho::BranchChirho {
+                family_chirho: self.id_chirho.clone(),
+                index_chirho,
+                id_chirho: branch_chirho.id_chirho.clone(),
+            }));
         }
         for (index_chirho, branch_chirho) in self.branches_chirho.iter().enumerate() {
-            for prior_chirho in &self.branches_chirho[..index_chirho] {
+            for (prior_index_chirho, prior_chirho) in
+                self.branches_chirho[..index_chirho].iter().enumerate()
+            {
+                let context_chirho = || TypeFamilyDefinitionContextChirho::PairChirho {
+                    family_chirho: self.id_chirho.clone(),
+                    left_index_chirho: prior_index_chirho,
+                    left_id_chirho: prior_chirho.id_chirho.clone(),
+                    right_index_chirho: index_chirho,
+                    right_id_chirho: branch_chirho.id_chirho.clone(),
+                };
                 budget_chirho = budget_chirho.checked_sub(1).ok_or_else(|| {
                     family_definition_error_chirho("open-family compatibility budget exhausted")
+                        .with_context_chirho(context_chirho())
                 })?;
                 if !compatible_chirho(prior_chirho, branch_chirho) {
                     return Err(family_definition_error_chirho(
                         "open-family branches have incompatible or unresolved overlap",
-                    ));
+                    )
+                    .with_context_chirho(context_chirho()));
                 }
             }
         }

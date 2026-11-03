@@ -1,5 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
+use super::family_definitions_chirho::TypeFamilyDefinitionContextChirho;
 use super::*;
 
 fn source_id_chirho(module_chirho: &str, name_chirho: &str) -> TypeFamilyIdChirho {
@@ -741,5 +742,65 @@ fn diagnostics_render_family_names_without_changing_internal_keys_chirho() {
     assert_eq!(
         registry_chirho.readable_keys_chirho("%family:unresolved:4:Main:11:QChirho.Foo"),
         "QChirho.Foo"
+    );
+}
+
+#[test]
+fn open_pair_refusals_and_exhaustion_keep_family_and_source_branch_provenance_chirho() {
+    let id_chirho = source_id_chirho("DefinitionChirho", "FChirho");
+    let first_chirho = branch_chirho(&id_chirho, "LeftProducerChirho", 10, "Int", "Bool");
+    let second_chirho = branch_chirho(&id_chirho, "RightProducerChirho", 30, "Int", "Char");
+    let definition_chirho = definition_chirho(
+        &id_chirho,
+        TypeFamilyReductionChirho::OpenChirho,
+        vec![first_chirho.clone(), second_chirho.clone()],
+    );
+    let expected_chirho = TypeFamilyDefinitionContextChirho::PairChirho {
+        family_chirho: id_chirho.clone(),
+        left_index_chirho: 0,
+        left_id_chirho: first_chirho.id_chirho,
+        right_index_chirho: 1,
+        right_id_chirho: second_chirho.id_chirho,
+    };
+    let conflict_chirho = definition_chirho
+        .verify_open_coherence_chirho(
+            &|left_chirho, right_chirho| left_chirho.rhs_chirho == right_chirho.rhs_chirho,
+            1,
+        )
+        .unwrap_err();
+    let exhausted_chirho = definition_chirho
+        .verify_open_coherence_chirho(&|_, _| true, 0)
+        .unwrap_err();
+    for error_chirho in [conflict_chirho, exhausted_chirho] {
+        assert_eq!(error_chirho.context_chirho(), Some(&expected_chirho));
+        let rendered_chirho = error_chirho.to_string();
+        assert!(rendered_chirho.contains("DefinitionChirho.FChirho"));
+        assert!(rendered_chirho.contains("LeftProducerChirho:10#0"));
+        assert!(rendered_chirho.contains("RightProducerChirho:30#0"));
+        assert!(!rendered_chirho.contains("%family:"));
+    }
+    assert!(!definition_chirho.open_coherence_verified_chirho());
+}
+
+#[test]
+fn unsupported_open_branch_keeps_single_branch_provenance_chirho() {
+    let id_chirho = source_id_chirho("DefinitionChirho", "HeldChirho");
+    let mut branch_chirho = branch_chirho(&id_chirho, "ProducerChirho", 50, "Int", "Bool");
+    branch_chirho.held_chirho = true;
+    let definition_chirho = definition_chirho(
+        &id_chirho,
+        TypeFamilyReductionChirho::OpenChirho,
+        vec![branch_chirho.clone()],
+    );
+    let error_chirho = definition_chirho
+        .verify_open_coherence_chirho(&|_, _| true, 1)
+        .unwrap_err();
+    assert_eq!(
+        error_chirho.context_chirho(),
+        Some(&TypeFamilyDefinitionContextChirho::BranchChirho {
+            family_chirho: id_chirho,
+            index_chirho: 0,
+            id_chirho: branch_chirho.id_chirho
+        })
     );
 }
