@@ -9,7 +9,16 @@
 //! downstream consumers never disagree merely because one selects the first
 //! match while another selects the last.
 
+use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use std::collections::BTreeMap;
 use std::path::Path;
+
+#[path = "module_search_chirho/family_discovery_chirho.rs"]
+mod family_discovery_chirho;
+pub(crate) use family_discovery_chirho::{
+    DiscoveredFamilyContextChirho, register_discovered_type_families_chirho,
+};
+pub(crate) type DiscoveredSourceModulesChirho = BTreeMap<String, ModuleChirho>;
 
 use haskelujah_naming_chirho::iface_chirho::{
     IfaceExportsChirho, IfaceValueChirho, ModuleIfaceChirho, build_iface_with_imports_chirho,
@@ -62,11 +71,28 @@ fn sibling_path_matches_declared_module_chirho(
 ///
 /// Workflow: `spec-chirho/workflows-chirho/compiler-pipeline-chirho/
 /// module-search-authority-chirho.md`.
+#[cfg(test)]
 pub(crate) fn scan_sibling_module_ifaces_chirho(
     search_dir_chirho: &Path,
     source_map_chirho: &mut SourceMapChirho,
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
+) {
+    scan_sibling_modules_with_sources_chirho(
+        search_dir_chirho,
+        source_map_chirho,
+        ifaces_chirho,
+        skip_file_chirho,
+        &mut DiscoveredSourceModulesChirho::new(),
+    );
+}
+
+pub(crate) fn scan_sibling_modules_with_sources_chirho(
+    search_dir_chirho: &Path,
+    source_map_chirho: &mut SourceMapChirho,
+    ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
+    skip_file_chirho: &str,
+    modules_chirho: &mut DiscoveredSourceModulesChirho,
 ) {
     if !search_dir_chirho.is_dir() {
         return;
@@ -108,11 +134,15 @@ pub(crate) fn scan_sibling_module_ifaces_chirho(
                 ParserChirho::new_chirho(&sibling_source_chirho, sibling_fid_chirho);
             let green_chirho = parser_chirho.parse_chirho();
             let sibling_module_chirho = lower_module_chirho(&green_chirho, sibling_fid_chirho);
-            build_iface_with_imports_chirho(&sibling_module_chirho, ifaces_chirho)
+            let iface_chirho =
+                build_iface_with_imports_chirho(&sibling_module_chirho, ifaces_chirho);
+            (iface_chirho, sibling_module_chirho)
         }));
-        if let Ok(iface_chirho) = iface_result_chirho
+        if let Ok((iface_chirho, mut module_chirho)) = iface_result_chirho
             && sibling_path_matches_declared_module_chirho(&path_chirho, &iface_chirho.name_chirho)
         {
+            crate::inject_prelude_import_chirho(&mut module_chirho);
+            modules_chirho.insert(iface_chirho.name_chirho.clone(), module_chirho);
             admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
         }
     }
@@ -216,6 +246,7 @@ impl ModuleSearchBoundsChirho {
 ///
 /// Workflow: `spec-chirho/workflows-chirho/compiler-pipeline-chirho/
 /// module-search-authority-chirho.md`.
+#[cfg(test)]
 pub(crate) fn scan_hierarchical_modules_chirho(
     dir_chirho: &Path,
     root_dir_chirho: &Path,
@@ -223,7 +254,28 @@ pub(crate) fn scan_hierarchical_modules_chirho(
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
 ) {
-    let mut bounds_chirho = ModuleSearchBoundsChirho::new_chirho();
+    scan_hierarchical_modules_with_sources_chirho(
+        dir_chirho,
+        root_dir_chirho,
+        source_map_chirho,
+        ifaces_chirho,
+        skip_file_chirho,
+        &mut DiscoveredSourceModulesChirho::new(),
+    );
+}
+
+pub(crate) fn scan_hierarchical_modules_with_sources_chirho(
+    dir_chirho: &Path,
+    root_dir_chirho: &Path,
+    source_map_chirho: &mut SourceMapChirho,
+    ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
+    skip_file_chirho: &str,
+    modules_chirho: &mut DiscoveredSourceModulesChirho,
+) {
+    let mut walk_chirho = ModuleSearchWalkChirho {
+        bounds_chirho: ModuleSearchBoundsChirho::new_chirho(),
+        modules_chirho,
+    };
     scan_hierarchical_modules_bounded_chirho(
         dir_chirho,
         root_dir_chirho,
@@ -231,8 +283,13 @@ pub(crate) fn scan_hierarchical_modules_chirho(
         ifaces_chirho,
         skip_file_chirho,
         0,
-        &mut bounds_chirho,
+        &mut walk_chirho,
     );
+}
+
+struct ModuleSearchWalkChirho<'modules_chirho> {
+    bounds_chirho: ModuleSearchBoundsChirho,
+    modules_chirho: &'modules_chirho mut DiscoveredSourceModulesChirho,
 }
 
 fn scan_hierarchical_modules_bounded_chirho(
@@ -242,7 +299,7 @@ fn scan_hierarchical_modules_bounded_chirho(
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
     depth_chirho: usize,
-    bounds_chirho: &mut ModuleSearchBoundsChirho,
+    walk_chirho: &mut ModuleSearchWalkChirho<'_>,
 ) {
     let entries_chirho = match std::fs::read_dir(dir_chirho) {
         Ok(entries_chirho) => entries_chirho,
@@ -266,7 +323,7 @@ fn scan_hierarchical_modules_bounded_chirho(
         }
         if path_chirho.is_dir() {
             if depth_chirho >= MAX_MODULE_SEARCH_DEPTH_CHIRHO
-                || !bounds_chirho.may_enter_dir_chirho()
+                || !walk_chirho.bounds_chirho.may_enter_dir_chirho()
             {
                 continue;
             }
@@ -277,7 +334,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                 ifaces_chirho,
                 skip_file_chirho,
                 depth_chirho + 1,
-                bounds_chirho,
+                walk_chirho,
             );
             continue;
         }
@@ -316,7 +373,7 @@ fn scan_hierarchical_modules_bounded_chirho(
 
         // Parsing is the real cost of this search, so the budget is spent here
         // rather than per directory entry.
-        if !bounds_chirho.may_read_file_chirho() {
+        if !walk_chirho.bounds_chirho.may_read_file_chirho() {
             continue;
         }
         let Ok(source_chirho) = read_haskell_source_file_chirho(&path_chirho) else {
@@ -335,13 +392,15 @@ fn scan_hierarchical_modules_bounded_chirho(
             if module_chirho.name_chirho.full_name_chirho() != expected_module_name_chirho {
                 return None;
             }
-            Some(build_iface_with_imports_chirho(
-                &module_chirho,
-                ifaces_chirho,
-            ))
+            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, ifaces_chirho);
+            Some((iface_chirho, module_chirho))
         }));
         match iface_result_chirho {
-            Ok(Some(iface_chirho)) => {
+            Ok(Some((iface_chirho, mut module_chirho))) => {
+                crate::inject_prelude_import_chirho(&mut module_chirho);
+                walk_chirho
+                    .modules_chirho
+                    .insert(iface_chirho.name_chirho.clone(), module_chirho);
                 admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
             }
             Ok(None) => {}

@@ -102,7 +102,11 @@ use haskelujah_typing_chirho::infer_chirho::{
     infer_module_with_import_context_chirho,
 };
 
-use module_search_chirho::{scan_hierarchical_modules_chirho, scan_sibling_module_ifaces_chirho};
+use module_search_chirho::{
+    DiscoveredFamilyContextChirho, DiscoveredSourceModulesChirho,
+    register_discovered_type_families_chirho, scan_hierarchical_modules_with_sources_chirho,
+    scan_sibling_modules_with_sources_chirho,
+};
 
 type ImportedTypeSynonymsChirho = std::collections::HashMap<String, (Vec<String>, TypeChirho)>;
 type ImportedTypeFamiliesChirho = TypeFamilyEnvChirho;
@@ -2506,6 +2510,7 @@ fn check_source_file_with_search_path_chirho(
         .unwrap_or_else(|| source_path_chirho.to_string_lossy().to_string());
 
     let mut sibling_source_map_chirho = SourceMapChirho::new_chirho();
+    let mut discovered_sources_chirho = DiscoveredSourceModulesChirho::new();
     let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let mut imported_types_chirho = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
@@ -2525,25 +2530,41 @@ fn check_source_file_with_search_path_chirho(
         })?;
     }
 
-    scan_sibling_module_ifaces_chirho(
+    scan_sibling_modules_with_sources_chirho(
         search_dir_chirho,
         &mut sibling_source_map_chirho,
         &mut all_ifaces_chirho,
         &file_name_chirho,
+        &mut discovered_sources_chirho,
     );
     for _round_chirho in 0..5 {
         let prev_count_chirho = all_ifaces_chirho.len();
-        scan_hierarchical_modules_chirho(
+        scan_hierarchical_modules_with_sources_chirho(
             search_dir_chirho,
             search_dir_chirho,
             &mut sibling_source_map_chirho,
             &mut all_ifaces_chirho,
             &file_name_chirho,
+            &mut discovered_sources_chirho,
         );
         if all_ifaces_chirho.len() == prev_count_chirho {
             break;
         }
     }
+
+    let discovery_parser_chirho = ParserChirho::new_chirho(&source_chirho, file_id_chirho);
+    let discovery_green_chirho = discovery_parser_chirho.parse_chirho();
+    let mut discovery_module_chirho = lower_module_chirho(&discovery_green_chirho, file_id_chirho);
+    inject_prelude_import_chirho(&mut discovery_module_chirho);
+    register_discovered_type_families_chirho(
+        &discovery_module_chirho,
+        DiscoveredFamilyContextChirho {
+            modules_chirho: &discovered_sources_chirho,
+            ifaces_chirho: &mut all_ifaces_chirho,
+            registry_chirho: &mut imported_type_families_chirho,
+            imported_synonyms_chirho: &imported_type_synonyms_chirho,
+        },
+    )?;
 
     let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
         &source_chirho,
@@ -2840,6 +2861,7 @@ pub fn compile_source_with_search_path_chirho(
     let file_id_chirho = source_file_chirho.file_id_chirho();
 
     let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let mut discovered_sources_chirho = DiscoveredSourceModulesChirho::new();
     let mut imported_types_chirho = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
@@ -2858,11 +2880,12 @@ pub fn compile_source_with_search_path_chirho(
         })?;
     }
 
-    scan_sibling_module_ifaces_chirho(
+    scan_sibling_modules_with_sources_chirho(
         search_dir_chirho,
         source_map_chirho,
         &mut all_ifaces_chirho,
         file_name_chirho,
+        &mut discovered_sources_chirho,
     );
 
     // Scan ALL subdirectories recursively for hierarchical module imports
@@ -2870,17 +2893,32 @@ pub fn compile_source_with_search_path_chirho(
     // Fixed-point iteration handles dependency chains between modules.
     for _round_chirho in 0..5 {
         let prev_count_chirho = all_ifaces_chirho.len();
-        scan_hierarchical_modules_chirho(
+        scan_hierarchical_modules_with_sources_chirho(
             search_dir_chirho,
             search_dir_chirho,
             source_map_chirho,
             &mut all_ifaces_chirho,
             file_name_chirho,
+            &mut discovered_sources_chirho,
         );
         if all_ifaces_chirho.len() == prev_count_chirho {
             break;
         }
     }
+
+    let discovery_parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let discovery_green_chirho = discovery_parser_chirho.parse_chirho();
+    let mut discovery_module_chirho = lower_module_chirho(&discovery_green_chirho, file_id_chirho);
+    inject_prelude_import_chirho(&mut discovery_module_chirho);
+    register_discovered_type_families_chirho(
+        &discovery_module_chirho,
+        DiscoveredFamilyContextChirho {
+            modules_chirho: &discovered_sources_chirho,
+            ifaces_chirho: &mut all_ifaces_chirho,
+            registry_chirho: &mut imported_type_families_chirho,
+            imported_synonyms_chirho: &imported_type_synonyms_chirho,
+        },
+    )?;
 
     let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
         source_chirho,

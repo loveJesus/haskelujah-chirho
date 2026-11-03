@@ -270,11 +270,15 @@ fn local_type_names_chirho(
                 names_chirho
                     .insert_chirho(canonical_type_text_chirho(name_chirho.text_chirho()), None)?;
             }
-            DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } => {
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                data_family_chirho,
+                ..
+            } => {
                 let name_chirho = canonical_type_text_chirho(name_chirho.text_chirho());
                 names_chirho.insert_chirho(
                     name_chirho.clone(),
-                    Some(TypeFamilyIdChirho::SourceChirho {
+                    (!*data_family_chirho).then_some(TypeFamilyIdChirho::SourceChirho {
                         module_chirho: module_name_chirho.clone(),
                         name_chirho,
                     }),
@@ -292,10 +296,12 @@ fn local_type_names_chirho(
                         canonical_type_text_chirho(family_chirho.name_chirho.text_chirho());
                     names_chirho.insert_chirho(
                         name_chirho.clone(),
-                        Some(TypeFamilyIdChirho::SourceChirho {
-                            module_chirho: module_name_chirho.clone(),
-                            name_chirho: name_chirho.clone(),
-                        }),
+                        (!family_chirho.data_family_chirho).then_some(
+                            TypeFamilyIdChirho::SourceChirho {
+                                module_chirho: module_name_chirho.clone(),
+                                name_chirho: name_chirho.clone(),
+                            },
+                        ),
                     )?;
                     names_chirho
                         .associated_chirho

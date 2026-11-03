@@ -165,6 +165,8 @@ mod family_scope_chirho;
 mod family_seeds_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_transport_chirho.rs"]
 mod family_transport_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/source_family_registration_chirho.rs"]
+mod source_family_registration_chirho;
 #[path = "infer_chirho/types_chirho/type_families_chirho.rs"]
 mod type_families_chirho;
 #[path = "infer_chirho/types_chirho/type_synonyms_chirho.rs"]
@@ -217,6 +219,10 @@ pub use family_definitions_chirho::{
 pub use family_scope_chirho::{TypeFamilyScopeChirho, TypeFamilyScopeResolutionChirho};
 pub use family_seeds_chirho::seed_type_family_registry_chirho;
 pub use family_transport_chirho::stamp_family_references_chirho;
+pub use source_family_registration_chirho::{
+    SourceFamilyRegistrationContextChirho, SourceFamilyRegistrationResultChirho,
+    predeclare_source_open_families_chirho, register_source_module_families_chirho,
+};
 
 pub type TypeFamilyEnvChirho = TypeFamilyRegistryChirho;
 
