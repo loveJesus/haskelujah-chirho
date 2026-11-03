@@ -681,71 +681,69 @@ impl DesugarCtxChirho {
         args_chirho: Vec<CoreExprChirho>,
     ) -> CoreExprChirho {
         let strictness_chirho = self.con_strictness_chirho.get(&con_name_chirho).cloned();
-        if let Some(strictness_chirho) = strictness_chirho {
-            if strictness_chirho.len() == args_chirho.len() {
-                let mut con_args_chirho = Vec::with_capacity(args_chirho.len());
-                // Collect (let_binder, case_binder, arg_expr) for each strict field
-                let mut strict_bindings_chirho: Vec<(BinderChirho, BinderChirho, CoreExprChirho)> =
-                    Vec::new();
-                for (arg_chirho, s_chirho) in args_chirho.into_iter().zip(strictness_chirho.iter())
-                {
-                    if s_chirho.is_strict_chirho() {
-                        let ty_chirho = TyChirho::VarChirho(
-                            haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
-                        );
-                        let let_binder_chirho = self.fresh_binder_chirho(
-                            "_strict",
-                            ty_chirho.clone(),
-                            SpanChirho::DUMMY_CHIRHO,
-                        );
-                        let case_binder_chirho = self.fresh_binder_chirho(
-                            "_strict_eval",
-                            ty_chirho,
-                            SpanChirho::DUMMY_CHIRHO,
-                        );
-                        con_args_chirho
-                            .push(CoreExprChirho::VarChirho(let_binder_chirho.id_chirho));
-                        strict_bindings_chirho.push((
-                            let_binder_chirho,
-                            case_binder_chirho,
-                            arg_chirho,
-                        ));
-                    } else {
-                        con_args_chirho.push(arg_chirho);
-                    }
+        if let Some(strictness_chirho) = strictness_chirho
+            && strictness_chirho.len() == args_chirho.len()
+        {
+            let mut con_args_chirho = Vec::with_capacity(args_chirho.len());
+            // Collect (let_binder, case_binder, arg_expr) for each strict field
+            let mut strict_bindings_chirho: Vec<(BinderChirho, BinderChirho, CoreExprChirho)> =
+                Vec::new();
+            for (arg_chirho, s_chirho) in args_chirho.into_iter().zip(strictness_chirho.iter()) {
+                if s_chirho.is_strict_chirho() {
+                    let ty_chirho = TyChirho::VarChirho(
+                        haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
+                    );
+                    let let_binder_chirho = self.fresh_binder_chirho(
+                        "_strict",
+                        ty_chirho.clone(),
+                        SpanChirho::DUMMY_CHIRHO,
+                    );
+                    let case_binder_chirho = self.fresh_binder_chirho(
+                        "_strict_eval",
+                        ty_chirho,
+                        SpanChirho::DUMMY_CHIRHO,
+                    );
+                    con_args_chirho.push(CoreExprChirho::VarChirho(let_binder_chirho.id_chirho));
+                    strict_bindings_chirho.push((
+                        let_binder_chirho,
+                        case_binder_chirho,
+                        arg_chirho,
+                    ));
+                } else {
+                    con_args_chirho.push(arg_chirho);
                 }
-                // Build: let s0 = arg0 in case s0 of { _ ->
-                //         let s1 = arg1 in case s1 of { _ ->
-                //           ConApp(name, [s0, s1]) } }
-                let mut result_chirho = CoreExprChirho::ConAppChirho {
-                    con_name_chirho,
-                    args_chirho: con_args_chirho,
-                };
-                for (let_binder_chirho, case_binder_chirho, arg_expr_chirho) in
-                    strict_bindings_chirho.into_iter().rev()
-                {
-                    // case let_var of { _ -> result }  — forces the let binding to WHNF
-                    result_chirho = CoreExprChirho::CaseChirho {
-                        scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
-                            let_binder_chirho.id_chirho,
-                        )),
-                        bind_chirho: case_binder_chirho.clone(),
-                        result_ty_chirho: case_binder_chirho.ty_chirho.clone(),
-                        alts_chirho: vec![CoreAltChirho {
-                            con_chirho: AltConChirho::DefaultChirho,
-                            binders_chirho: vec![],
-                            rhs_chirho: result_chirho,
-                        }],
-                    };
-                    // let s = arg_expr in ...
-                    result_chirho = CoreExprChirho::LetChirho {
-                        rec_chirho: false,
-                        binds_chirho: vec![(let_binder_chirho, arg_expr_chirho)],
-                        body_chirho: Box::new(result_chirho),
-                    };
-                }
-                return result_chirho;
             }
+            // Build: let s0 = arg0 in case s0 of { _ ->
+            //         let s1 = arg1 in case s1 of { _ ->
+            //           ConApp(name, [s0, s1]) } }
+            let mut result_chirho = CoreExprChirho::ConAppChirho {
+                con_name_chirho,
+                args_chirho: con_args_chirho,
+            };
+            for (let_binder_chirho, case_binder_chirho, arg_expr_chirho) in
+                strict_bindings_chirho.into_iter().rev()
+            {
+                // case let_var of { _ -> result }  — forces the let binding to WHNF
+                result_chirho = CoreExprChirho::CaseChirho {
+                    scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
+                        let_binder_chirho.id_chirho,
+                    )),
+                    bind_chirho: case_binder_chirho.clone(),
+                    result_ty_chirho: case_binder_chirho.ty_chirho.clone(),
+                    alts_chirho: vec![CoreAltChirho {
+                        con_chirho: AltConChirho::DefaultChirho,
+                        binders_chirho: vec![],
+                        rhs_chirho: result_chirho,
+                    }],
+                };
+                // let s = arg_expr in ...
+                result_chirho = CoreExprChirho::LetChirho {
+                    rec_chirho: false,
+                    binds_chirho: vec![(let_binder_chirho, arg_expr_chirho)],
+                    body_chirho: Box::new(result_chirho),
+                };
+            }
+            return result_chirho;
         }
         CoreExprChirho::ConAppChirho {
             con_name_chirho,
