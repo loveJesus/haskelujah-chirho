@@ -344,9 +344,9 @@ main = putStrLn (describeChirho (WrapChirho (AgeChirho 6)))"
 
 #[test]
 fn an_inconsistent_repeated_variable_match_is_never_chosen_chirho() {
-    // `Pair a a` cannot serve `Pair Int Bool`: GHC 9.14.1 rejects it (GHC-39999). The checker's
-    // matcher does not check that a repeated variable's occurrences agree, so this pass refuses
-    // such a head by name instead of choosing it (a candidate once printed `True=True`).
+    // `Pair a a` cannot serve `Pair Int Bool`: GHC 9.14.1 rejects it (GHC-39999).
+    // The checker and dictionary pass now share one consistent substitution;
+    // this must fail in the frontend before a row can print the wrong `True=True`.
     let source_chirho = program_chirho(
         "FlexibleInstances",
         "data PairChirho aChirho bChirho = PairChirho aChirho bChirho
@@ -360,13 +360,17 @@ instance Show aChirho => SameChirho (PairChirho aChirho aChirho) where
 main :: IO ()
 main = putStrLn (sameChirho (PairChirho (1 :: Int) True))",
     );
-    let failure_chirho = match stg_run_chirho(&source_chirho) {
-        Ok(printed_chirho) => panic!("GHC rejects this; it printed {printed_chirho:?}"),
-        Err(failure_chirho) => failure_chirho,
+    let failure_chirho = match crate::typecheck_source_chirho(
+        &source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "CondRepeatedVarNegativeChirho.hs",
+    ) {
+        Ok(_) => panic!("GHC rejects the inconsistent repeated head; the frontend accepted it"),
+        Err(failure_chirho) => failure_chirho.to_string(),
     };
     assert!(
-        failure_chirho.contains("is not proven"),
-        "the refusal is named, never a crash: {failure_chirho}"
+        failure_chirho.contains("SameChirho"),
+        "the missing constraint is named: {failure_chirho}"
     );
     for backend_chirho in [
         NativeBackendChirho::LlvmChirho,
@@ -377,4 +381,25 @@ main = putStrLn (sameChirho (PairChirho (1 :: Int) True))",
             "{backend_chirho:?} must reject it too"
         );
     }
+}
+
+#[test]
+fn a_consistent_repeated_variable_instance_uses_its_context_chirho() {
+    // Exact source measured on GHC 9.14.1 by the dictionary unit's oracle.
+    let source_chirho = r##"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE FlexibleInstances #-}
+module Main where
+
+data PairChirho aChirho bChirho = PairChirho aChirho bChirho
+
+class SameChirho aChirho where
+  sameChirho :: aChirho -> String
+
+instance Show aChirho => SameChirho (PairChirho aChirho aChirho) where
+  sameChirho (PairChirho xChirho yChirho) = show xChirho ++ "=" ++ show yChirho
+
+main :: IO ()
+main = putStrLn (sameChirho (PairChirho (1 :: Int) (2 :: Int)))
+"##;
+    every_engine_prints_chirho(source_chirho, "1=2\n");
 }

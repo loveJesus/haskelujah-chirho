@@ -151,7 +151,16 @@ fn pattern_profile_chirho(
     instance_chirho: &InstDeclChirho,
     cap_chirho: usize,
 ) -> Option<PatternProfileChirho> {
-    let mut fixed_weight_chirho = 0;
+    let mut fixed_weight_chirho = 0_usize;
+    // The matcher clones context predicate class names too. Charge their
+    // headers and name bytes before substitution, even when their types are tiny.
+    for predicate_chirho in &instance_chirho.context_chirho {
+        fixed_weight_chirho = fixed_weight_chirho
+            .checked_add(1_usize.saturating_add(predicate_chirho.class_name_chirho.len()))?;
+        if fixed_weight_chirho > cap_chirho {
+            return None;
+        }
+    }
     let mut head_variables_chirho = 0;
     let mut context_variables_chirho = 0;
     let heads_chirho = std::iter::once(&instance_chirho.head_ty_chirho)

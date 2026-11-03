@@ -192,9 +192,9 @@ fn an_exhausted_budget_refuses_selection_by_name_chirho() {
 }
 
 #[test]
-fn a_head_that_repeats_a_variable_is_refused_not_chosen_chirho() {
-    // The checker's matcher binds `Pair a a` to `Pair Int Bool` without checking that the two
-    // occurrences agree; selection must not take that as proof.
+fn repeated_head_variables_choose_only_a_consistent_goal_chirho() {
+    // The checker shares one substitution across the complete head. Repetition
+    // accepts the equal pair and rejects the unequal pair.
     let a_chirho = TyChirho::VarChirho(TyVarChirho(9004));
     let pair_chirho = |left_chirho: TyChirho, right_chirho: TyChirho| {
         TyChirho::AppChirho(
@@ -218,6 +218,34 @@ fn a_head_that_repeats_a_variable_is_refused_not_chosen_chirho() {
     );
     assert!(matches!(
         select_chirho(&env_chirho, &goal_chirho),
-        Err(GroundRefusalChirho::MatchNotProvenChirho(_, _))
+        Err(GroundRefusalChirho::UnresolvedChirho(_))
+    ));
+    let consistent_chirho = PredChirho::new_chirho(
+        "SameChirho",
+        pair_chirho(con_chirho("Int"), con_chirho("Int")),
+    );
+    let (_, context_chirho) = select_chirho(&env_chirho, &consistent_chirho)
+        .expect("the consistent repeated head selects its actual instance");
+    assert_eq!(
+        context_chirho,
+        vec![PredChirho::new_chirho("Show", con_chirho("Int"))]
+    );
+}
+
+#[test]
+fn a_large_context_class_name_is_bounded_before_substitution_chirho() {
+    let instance_chirho = InstDeclChirho {
+        class_name_chirho: "CChirho".to_owned(),
+        head_ty_chirho: TyChirho::VarChirho(TyVarChirho(9020)),
+        extra_head_tys_chirho: Vec::new(),
+        context_chirho: vec![PredChirho::new_chirho(
+            &"LongClassChirho".repeat(GROUND_CANDIDATE_WEIGHT_LIMIT_CHIRHO),
+            con_chirho("Int"),
+        )],
+    };
+    let mut budget_chirho = GroundBudgetChirho::default();
+    assert!(matches!(
+        budget_chirho.candidate_chirho(&instance_chirho, 4),
+        Err(GroundRefusalChirho::BudgetChirho("candidate weight", _))
     ));
 }
