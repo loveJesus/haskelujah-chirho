@@ -1087,7 +1087,9 @@ flowchart TD
   - A constrained reference whose target takes dictionary parameters admits each predicate.
   - A method occurrence admits its method's class only, unless it names a lexical shadow, a program-owned binder or an imported user reference.
 - **Selection and building** (`ground_selection_chirho.rs`, `ground_builder_chirho.rs`).
-  - A goal is built only when exactly one instance head matches it structurally (`instance_sub_goals_chirho`) and that instance has a context. Any other goal keeps its existing routes, and so does a goal with a dictionary already filed under its own spelling.
+  - A top-level goal is built only when exactly one instance head matches it structurally (`instance_sub_goals_chirho`) and that instance has a context. Any other top-level goal keeps its existing routes, and so does one with a dictionary already filed under its own spelling.
+  - An obligation whose instance's rows are this module's is always built here. A dictionary filed under the obligation's own spelling serves only when selection cannot choose or the rows live elsewhere: the generic list specialization files a stub for a user instance whose rows it cannot find by spelling.
+  - A matched head that repeats a type variable, or a head or goal with a linear arrow, is refused by name. The checker's matcher does not check that a repeated variable's occurrences agree (`Pair a a` "matched" `Pair Int Bool`), nor compare multiplicities.
   - The dictionary id is memoized before its obligations are built, so `instance Loop [a] => Loop [a]` ties a knot and prints 7. Every dictionary on a cycle is bound recursive.
   - Bounds (`ground_budget_chirho.rs`). Counting dictionaries does not bound the types they are built at, because `instance C (a, a) => C a` doubles its goal each step. So:
     - each type the pass inspects or copies is charged by weight (one per node plus each name's bytes) against a module-wide type-work allowance;
@@ -1104,13 +1106,18 @@ flowchart TD
   - a multi-parameter context predicate or goal;
   - a class without a layout;
   - an obligation naming a constructor its goal does not name, with no dictionary already bound for it (no producer proved its identity);
+  - a match the checker's matcher does not prove (a repeated head variable, a linear arrow);
+  - rows that only another generator's binding answers (a newtype alias sharing the written key);
   - a bound reached.
 - **Hooks.**
   - The method-variable route consults the ground dictionary after its keyed instance routes and before the ambient context dictionary.
   - The head replacement consults it only when its keyed fallback returns the canonical id unchanged.
   - A reference slot consults it after the evidence and syntactic routes and before the ambient fallback.
 - **S2.**
-  - A recorded refusal is reported only for an occurrence that stays unserved: a method occurrence still free in the rewritten module, or a reference slot that ended in `missing_dictionary_chirho`.
+  - A recorded refusal is reported only for an occurrence that stays unserved, which is one of three things:
+    - a method occurrence still free in the rewritten module;
+    - a method in head position whose head replacement and the rewrite after it left the bare method at the head (the replacement swaps in the canonical id, then re-dispatches by argument shape);
+    - a reference slot that ended in `missing_dictionary_chirho`.
   - The driver places it at the occurrence's span and rewrites promoted and family keys readably.
 - **Context rows.**
   - Every row of a paired instance with an indexable context leads with that context, whatever its head. The exact-head and list rule marks only the rows pairing left unmarked.
@@ -1123,10 +1130,19 @@ flowchart TD
   - the cyclic dictionary (7);
   - a finite tree of shared sub-goals (32);
   - a shadowing hold;
+  - a written newtype body serving an obligation (`wrap(age(int6))`);
   - the missing base, rejected by name;
-  - an ever-growing context, refused by a bound and never a crash.
+  - an ever-growing context, refused by its named bound and never a crash;
+  - an inconsistent repeated-variable match, rejected by name (GHC-39999).
   The S3 join's duplicate-span control is `instance_rows_tests_chirho.rs`. The type bounds' controls (a capped measure, a too-heavy goal, a candidate past its copy limit, an exhausted budget) are in `ground_selection_tests_chirho.rs`.
-- **Boundaries.** There is no support for equality contexts, foreign rows or multi-parameter contexts; each is refused by name. Range occurrences keep their own Enum route.
+- **Boundaries.**
+  - There is no support for equality contexts, foreign rows or multi-parameter contexts; each is refused by name. Range occurrences keep their own Enum route.
+  - A class that one occurrence proves twice (two goals of one class) is an unsupported residual. The pre-pass skips it without a diagnostic, and it keeps its existing routes.
+  - Producer gaps, measured 2026-11-03 and outside this route:
+    - `instance C ()` lowers its argument to a placeholder (`declaration_heads_chirho.rs`), registering a catch-all head, so a goal also matching a real instance is an overlap and is refused.
+    - The checker's matcher accepts inconsistent repeated variables, so the checker accepts `Pair a a` at `Pair Int Bool`, which GHC rejects.
+    - `generate_gnd_dicts_chirho` treats a written context instance at a non-parameterized newtype as newtype-derived. Its alias shares the body's row name, so a top-level call at that newtype runs the alias or the body depending on the run.
+    - The generic list specialization stubs a user list instance whose rows are not spelled `[a]` or `[b]`, which still breaks a top-level call at such an instance.
 
 ## Current boundary
 
