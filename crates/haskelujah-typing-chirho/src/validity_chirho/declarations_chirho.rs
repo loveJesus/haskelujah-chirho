@@ -10,7 +10,10 @@
 //! 1. a newtype constructor has exactly one field (`GHC-23517`);
 //! 2. a GADT-syntax newtype constructor has no context (`GHC-17440`);
 //! 3. one instance body binds a name once (`GHC-10498`);
-//! 4. a default signature has a default binding (`GHC-59794`).
+//! 4. a default signature has a default binding (`GHC-59794`);
+//! 5. a closed type-family equation is complete (`GHC-58481`), headed by a type
+//!    constructor (`GHC-47568`) naming its family (`GHC-88221`), with the
+//!    declared number of arguments (`GHC-12985`), in `family_equations_chirho`.
 //!
 //! The driver runs it on the module as written, after splices and before
 //! deriving appends generated instances, and reports it after name resolution.
@@ -96,6 +99,18 @@ pub fn check_module_declaration_validity_chirho(
                 methods_chirho,
                 ..
             } => check_default_signatures_chirho(name_chirho, methods_chirho, &mut errors_chirho),
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                equations_chirho,
+                ..
+            } => family_equations_chirho::check_family_equations_chirho(
+                &module_chirho.name_chirho,
+                name_chirho,
+                type_vars_chirho,
+                equations_chirho,
+                &mut errors_chirho,
+            ),
             _ => {}
         }
     }
@@ -254,6 +269,9 @@ fn check_default_signatures_chirho(
         }
     }
 }
+
+#[path = "family_equations_chirho.rs"]
+mod family_equations_chirho;
 
 #[cfg(test)]
 #[path = "declarations_tests_chirho.rs"]

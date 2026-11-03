@@ -115,7 +115,7 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::WhereChirho) {
             self.bump_chirho(); // where
             self.eat_trivia_chirho();
-            // Parse equations: each is `F lhs_types = rhs_type`
+            // Parse equations: each is `[forall bs.] lhs = rhs`
             if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
                 || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
             {
@@ -137,7 +137,12 @@ impl ParserChirho<'_> {
                 {
                     break;
                 }
-                // Each equation: lhs = rhs
+                // One node per equation. The left side is a type; whatever that
+                // grammar leaves before `=` stays in the node, so lowering reports
+                // an incomplete equation instead of dropping it.
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::TypeFamilyEquationChirho);
+                self.parse_family_equation_lhs_chirho();
                 self.eat_until_any_chirho(&[
                     RawTokenKindChirho::EqualsChirho,
                     RawTokenKindChirho::VirtualSemicolonChirho,
@@ -150,6 +155,7 @@ impl ParserChirho<'_> {
                     self.eat_trivia_chirho();
                     self.parse_type_chirho(); // rhs
                 }
+                self.builder_chirho.finish_node_chirho();
             }
             if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
                 || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
@@ -159,6 +165,16 @@ impl ParserChirho<'_> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a closed equation's left side as one type. A continuation line
+    /// (`F a⏎    b = …`) is still this left side: layout already separates the
+    /// equations, so the value-binding guard in `parse_btype_chirho` stays off.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_family_equation_lhs_chirho(&mut self) {
+        let outer_chirho = std::mem::replace(&mut self.family_equation_lhs_chirho, true);
+        self.parse_type_chirho();
+        self.family_equation_lhs_chirho = outer_chirho;
     }
 
     fn parse_type_family_instance_decl_chirho(&mut self) {

@@ -268,7 +268,9 @@ impl ParserChirho<'_> {
             if self.at_promoted_constructor_operator_chirho() {
                 break;
             }
-            if self.current_starts_unseparated_value_decl_chirho() {
+            if !self.family_equation_lhs_chirho
+                && self.current_starts_unseparated_value_decl_chirho()
+            {
                 break;
             }
             let before_chirho = self.pos_chirho;

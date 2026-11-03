@@ -68,6 +68,10 @@ pub struct ParserChirho<'src> {
     tokens_chirho: Vec<RawTokenChirho>,
     pos_chirho: usize,
     builder_chirho: GreenBuilderChirho,
+    /// Set while a closed type-family equation's left side is parsed. Layout
+    /// separates those equations, so a variable that opens a continuation line
+    /// before `=` belongs to the left side rather than starting a value binding.
+    family_equation_lhs_chirho: bool,
 }
 
 impl<'src> ParserChirho<'src> {
@@ -83,6 +87,7 @@ impl<'src> ParserChirho<'src> {
             tokens_chirho,
             pos_chirho: 0,
             builder_chirho: GreenBuilderChirho::new_chirho(),
+            family_equation_lhs_chirho: false,
         }
     }
 

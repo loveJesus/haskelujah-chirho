@@ -11,6 +11,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/declarations_chirho/annotated_pattern_bindings_chirho.rs"]
 mod annotated_pattern_bindings_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/closed_family_equations_chirho.rs"]
+mod closed_family_equations_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]
 mod declaration_validity_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
@@ -75,6 +77,17 @@ fn rejected_like_ghc_chirho(source_chirho: &str, file_name_chirho: &str, reasons
                 );
             }
         }
+    }
+}
+
+/// GHC accepts the program, so the checker must too.
+fn checks_like_ghc_chirho(file_name_chirho: &str, source_chirho: &str) {
+    if let Err(error_chirho) = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+    ) {
+        panic!("{file_name_chirho}: GHC accepts this program; we rejected it: {error_chirho}");
     }
 }
 

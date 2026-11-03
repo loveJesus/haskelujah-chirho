@@ -56,6 +56,10 @@ pub enum SyntaxKindChirho {
     TypeFamilyDeclChirho,
     /// `type instance F Int = Bool` — open type family instance.
     TypeFamilyInstanceDeclChirho,
+    /// One closed type-family equation, `[forall bs.] lhs = rhs`, inside a
+    /// `TypeFamilyDeclChirho`'s `where` block. Tokens the left-side type grammar
+    /// could not take stay inside it, so lowering can see an incomplete equation.
+    TypeFamilyEquationChirho,
     /// `newtype Name = Con Type`.
     NewtypeDeclChirho,
     /// `class Ctx => Name a where` — type class declaration.

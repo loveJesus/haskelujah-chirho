@@ -33,6 +33,21 @@ flowchart TD
    adjacent equations, so a repeat was written apart. Signatures are not bindings.
 4. A default signature has a default binding (`GHC-59794`). Lowering extracts only
    `default name ::` signatures, so an operator's default signature is not judged.
+5. A closed type-family equation is complete (`GHC-58481`), headed by a type constructor
+   (`GHC-47568`) that names its own family (`GHC-88221`), with the declared number of
+   visible arguments (`GHC-12985`). The code is `validity_chirho/family_equations_chirho.rs`.
+
+Rule 5 reads the equation carrier row 686 added. The CST gives each closed equation its own
+node and parses its left side as a type, so lowering finds the written head in every form
+GHC accepts: prefix, infix (with the module's fixities, even when declared after the family),
+`(op)` prefix, backtick, a parenthesized partial head `(F a) b`, and a head qualified by the
+module's own name. The AST keeps that head, the arguments in order, the explicit `forall`
+binders as full `TyVarChirho`s, the binders the left side never uses (read from the CST
+before pattern kinds are erased), a malformed flag and a span per equation. An unbound
+head is a naming error first, as in GHC's renamer. An equation that is malformed, headless or
+binds an unused name is held: registration stops at the first held equation, so no later
+closed equation reduces in its place. GHC's unused-binder error (`GHC-30337`) is not a rule
+here; the hold keeps such a program refused rather than newly accepted.
 
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling

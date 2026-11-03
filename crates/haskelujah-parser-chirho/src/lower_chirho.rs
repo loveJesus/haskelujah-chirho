@@ -60,6 +60,11 @@ mod expression_parts_chirho;
 mod expression_tests_chirho;
 #[path = "lower_chirho/expr_syntax_chirho/expressions_chirho.rs"]
 mod expressions_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/classes_chirho/family_equation_tests_chirho.rs"]
+mod family_equation_tests_chirho;
+#[path = "lower_chirho/classes_chirho/family_equations_chirho.rs"]
+mod family_equations_chirho;
 #[path = "lower_chirho/expr_syntax_chirho/fixity_chirho.rs"]
 mod fixity_chirho;
 #[cfg(test)]

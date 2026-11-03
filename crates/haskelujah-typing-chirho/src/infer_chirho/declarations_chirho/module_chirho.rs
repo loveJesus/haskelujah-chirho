@@ -149,8 +149,11 @@ impl InferCtxChirho {
                         .iter()
                         .map(|v_chirho| v_chirho.text_chirho().to_string())
                         .collect();
+                    // A held equation never reduces, and no later closed equation may
+                    // reduce in its place: register only the equations before it.
                     let eqs_chirho: Vec<(Vec<TyChirho>, TyChirho)> = equations_chirho
                         .iter()
+                        .take_while(|eq_chirho| !eq_chirho.is_held_chirho())
                         .map(|eq_chirho| {
                             let lhs_chirho: Vec<TyChirho> = eq_chirho
                                 .lhs_types_chirho

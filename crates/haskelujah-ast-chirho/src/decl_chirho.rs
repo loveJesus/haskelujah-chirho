@@ -30,16 +30,43 @@ pub enum AstKindChirho {
     AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
 }
 
-/// One equation in a closed type family:
-/// `F Int = Bool` or `F [a] = a`.
+/// One equation in a closed type family, as written:
+/// `F Int = Bool`, `Succ a + b = Succ (a + b)` or `forall x. F [x] = x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeFamilyEquationChirho {
-    /// The family arguments on the left-hand side of the equation.
+    /// The type constructor heading the left side, in any written form: prefix,
+    /// infix, `(op)` prefix, backtick or parenthesized (`(F a) b`). `None` when no
+    /// type constructor heads it (`a Int = …`, `3 = …`); validity reports that.
+    pub head_chirho: Option<NameChirho>,
+    /// The `forall` binders written before the equation, with their kinds and
+    /// visibility; `None` when the equation writes no `forall`.
+    pub explicit_binders_chirho: Option<Vec<TyVarChirho>>,
+    /// Explicit binders the left side never uses: free neither in an argument
+    /// pattern, kind annotations included, nor in the kind of a used binder. A
+    /// binder's own declaration and the right side do not count, and an inner
+    /// `forall` that rebinds the name hides it. Read from the CST, before
+    /// lowering erases pattern kinds.
+    pub unwritten_binders_chirho: Vec<NameChirho>,
+    /// The left side's arguments in order; the head is not among them.
     pub lhs_types_chirho: Vec<TypeChirho>,
     /// The reduced result type on the right-hand side.
     pub rhs_chirho: TypeChirho,
-    /// Span covering the whole equation.
+    /// The written equation is incomplete: no `=`, no right side, a context, or
+    /// tokens the left-side type grammar could not take.
+    pub malformed_chirho: bool,
+    /// Span covering this equation only.
     pub span_chirho: SpanChirho,
+}
+
+impl TypeFamilyEquationChirho {
+    /// An equation that must never reduce: incomplete, headless, or binding a
+    /// name its left side never uses. In a closed family no later equation may
+    /// reduce in its place either, so reduction stops at the first held one.
+    pub fn is_held_chirho(&self) -> bool {
+        self.malformed_chirho
+            || self.head_chirho.is_none()
+            || !self.unwritten_binders_chirho.is_empty()
+    }
 }
 
 /// Whether a declaration-head binder consumes an ordinary type argument.

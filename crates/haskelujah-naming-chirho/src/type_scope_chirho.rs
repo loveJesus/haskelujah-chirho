@@ -225,6 +225,17 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 }
                 self.pop_binders_chirho(&pushed_chirho);
                 for equation_chirho in equations_chirho {
+                    // GHC resolves the written head before judging that it names
+                    // this family, so an unbound head is a scope error first.
+                    if let Some(head_chirho) = &equation_chirho.head_chirho {
+                        self.check_type_name_chirho(head_chirho, false);
+                    }
+                    let pushed_chirho = self.push_decl_binders_chirho(
+                        equation_chirho
+                            .explicit_binders_chirho
+                            .as_deref()
+                            .unwrap_or_default(),
+                    );
                     for lhs_ty_chirho in &equation_chirho.lhs_types_chirho {
                         self.walk_type_chirho(lhs_ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                     }
@@ -232,6 +243,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                         &equation_chirho.rhs_chirho,
                         FreeTyVarPolicyChirho::ImplicitChirho,
                     );
+                    self.pop_binders_chirho(&pushed_chirho);
                 }
             }
             DeclChirho::TypeFamilyInstanceDeclChirho {
