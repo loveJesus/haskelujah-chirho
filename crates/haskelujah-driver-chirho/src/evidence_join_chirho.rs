@@ -278,6 +278,20 @@ pub(crate) fn occurrence_keys_chirho(
         .collect()
 }
 
+/// The ground goals (S1) of each joined proof that has any.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(crate) fn occurrence_ground_goals_chirho(
+    proofs_chirho: &HashMap<CoreIdChirho, JoinedProofChirho>,
+) -> HashMap<CoreIdChirho, Vec<PredChirho>> {
+    proofs_chirho
+        .iter()
+        .filter(|(_occ_id_chirho, proof_chirho)| !proof_chirho.ground_preds_chirho.is_empty())
+        .map(|(occ_id_chirho, proof_chirho)| {
+            (*occ_id_chirho, proof_chirho.ground_preds_chirho.clone())
+        })
+        .collect()
+}
+
 /// Join the checker's occurrence records to the desugarer's occurrence ids.
 ///
 /// First by provenance: a record carrying an origin belongs to the occurrence
@@ -648,6 +662,31 @@ pub(crate) fn join_reference_evidence_chirho(
                     })
                     .collect(),
             ))
+        })
+        .collect()
+}
+
+/// The ground goals (S1) of each constrained reference, from the records the evidence join
+/// above reads for it, in scheme order. A reference with none has no entry.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(crate) fn join_reference_ground_goals_chirho(
+    infer_result_chirho: &InferResultChirho,
+    reference_occurrence_spans_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
+    occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
+) -> HashMap<CoreIdChirho, Vec<PredChirho>> {
+    reference_occurrence_spans_chirho
+        .iter()
+        .filter_map(|(occ_id_chirho, span_chirho)| {
+            let goals_chirho: Vec<PredChirho> = reference_records_chirho(
+                infer_result_chirho,
+                occ_id_chirho,
+                span_chirho,
+                occurrence_provenance_chirho,
+            )?
+            .iter()
+            .filter_map(|record_chirho| record_chirho.ground_pred_chirho.clone())
+            .collect();
+            (!goals_chirho.is_empty()).then_some((*occ_id_chirho, goals_chirho))
         })
         .collect()
 }

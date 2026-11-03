@@ -3103,6 +3103,8 @@ fn compile_backend_chirho(
     );
     let mut occurrence_evidence_chirho =
         evidence_join_chirho::occurrence_keys_chirho(&occurrence_proofs_chirho);
+    let mut ground_goals_chirho =
+        evidence_join_chirho::occurrence_ground_goals_chirho(&occurrence_proofs_chirho);
     // Range syntax selected Enum itself, independently of a lexical namesake.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     occurrence_evidence_chirho.retain(|id_chirho, _| {
@@ -3110,6 +3112,26 @@ fn compile_backend_chirho(
             .range_occurrence_spans_chirho
             .contains_key(id_chirho)
     });
+    // A range keeps its own Enum route; the conditional-dictionary route claims none.
+    ground_goals_chirho.retain(|id_chirho, _| {
+        !desugar_output_chirho
+            .range_occurrence_spans_chirho
+            .contains_key(id_chirho)
+    });
+    for (occ_id_chirho, reference_goals_chirho) in
+        evidence_join_chirho::join_reference_ground_goals_chirho(
+            &infer_result_chirho,
+            &desugar_output_chirho.reference_occurrence_spans_chirho,
+            &desugar_output_chirho.occurrence_provenance_chirho,
+        )
+    {
+        let goals_chirho = ground_goals_chirho.entry(occ_id_chirho).or_default();
+        for goal_chirho in reference_goals_chirho {
+            if !goals_chirho.contains(&goal_chirho) {
+                goals_chirho.push(goal_chirho);
+            }
+        }
+    }
     occurrence_evidence_chirho.extend(evidence_join_chirho::join_range_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
@@ -3179,6 +3201,19 @@ fn compile_backend_chirho(
         haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_chirho(&module_chirho);
     let derived_enums_chirho =
         haskelujah_typing_chirho::deriving_chirho::derived_enum_metadata_chirho(&module_chirho);
+    // The checker's typed instance per source declaration, every span kept (S3).
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let instance_declarations_chirho: Vec<haskelujah_core_chirho::InstanceDeclarationChirho> =
+        infer_result_chirho
+            .source_instances_chirho
+            .iter()
+            .map(|(span_chirho, instance_chirho)| {
+                haskelujah_core_chirho::InstanceDeclarationChirho {
+                    span_chirho: *span_chirho,
+                    instance_chirho: instance_chirho.clone(),
+                }
+            })
+            .collect();
     let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_with_inputs_chirho(
         &desugar_output_chirho.module_chirho,
         haskelujah_core_chirho::DictPassInputsChirho {
@@ -3195,11 +3230,8 @@ fn compile_backend_chirho(
                 derived_shows_chirho,
                 derived_enums_chirho,
                 operator_occurrences_chirho: desugar_output_chirho.operator_occurrences_chirho,
-                // The conditional-dictionary route stays inactive until the checker's
-                // instance-row producer (S3) and context indices (S4) land with this join.
-                // workflow: language-features-chirho/dictionary-evidence-chirho
-                ground_goals_chirho: std::collections::HashMap::new(),
-                instance_declarations_chirho: Vec::new(),
+                ground_goals_chirho,
+                instance_declarations_chirho,
                 instance_row_keys_chirho: desugar_output_chirho.instance_row_keys_chirho,
             },
         },
