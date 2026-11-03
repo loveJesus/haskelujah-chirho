@@ -88,13 +88,12 @@ impl KindInferCtxChirho {
         let Some(head_kind_chirho) = self.env_chirho.lookup_chirho(&head_chirho).cloned() else {
             return;
         };
-        let mut result_chirho = self.subst_chirho.apply_chirho(&head_kind_chirho);
-        for _ in args_chirho {
-            let KindChirho::ArrowChirho(_, rest_chirho) = result_chirho else {
-                return;
-            };
-            result_chirho = *rest_chirho;
-        }
+        let Some(result_chirho) = kind_after_arguments_chirho(
+            self.subst_chirho.apply_chirho(&head_kind_chirho),
+            args_chirho.len(),
+        ) else {
+            return;
+        };
         if result_chirho != KindChirho::StarChirho {
             return;
         }
@@ -126,6 +125,7 @@ impl KindInferCtxChirho {
             TypeChirho::ConChirho(name_chirho) => {
                 let text_chirho = name_chirho.full_name_chirho();
                 self.local_kind_decl_names_chirho.contains(&text_chirho)
+                    || self.is_builtin_class_spelling_chirho(&text_chirho)
                     || HOMOGENEOUS_EQUALITY_NAMES_CHIRHO.contains(&text_chirho.as_str())
                     || text_chirho == HETEROGENEOUS_EQUALITY_NAME_CHIRHO
             }
@@ -157,4 +157,19 @@ impl KindInferCtxChirho {
                 span_chirho,
             ));
     }
+}
+
+/// `kind_chirho` after `count_chirho` written arguments, peeling one arrow for each;
+/// `None` when it has fewer arrows than arguments.
+pub(super) fn kind_after_arguments_chirho(
+    mut kind_chirho: KindChirho,
+    count_chirho: usize,
+) -> Option<KindChirho> {
+    for _ in 0..count_chirho {
+        let KindChirho::ArrowChirho(_, rest_chirho) = kind_chirho else {
+            return None;
+        };
+        kind_chirho = *rest_chirho;
+    }
+    Some(kind_chirho)
 }

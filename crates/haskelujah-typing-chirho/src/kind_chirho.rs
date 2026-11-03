@@ -23,10 +23,14 @@ use haskelujah_ast_chirho::decl_chirho::{
     AstKindChirho, DataKindSigChirho, DeclChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, BuiltinClassScopeChirho};
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
+mod class_imports_chirho;
+#[cfg(test)]
+mod class_imports_tests_chirho;
 mod conversion_chirho;
 #[cfg(test)]
 mod declaration_tests_chirho;
@@ -624,6 +628,10 @@ struct KindInferCtxChirho {
     /// Data and newtype names declared in this module, whose kinds end in `*`
     /// (K01 sort judgments).
     local_data_type_names_chirho: std::collections::HashSet<String>,
+    /// The builtin class spellings naming proved for this module, with their classes (K01 C).
+    builtin_classes_chirho: HashMap<String, BuiltinClassChirho>,
+    /// The builtin environment's names, before anything is learned from a use (K01 C).
+    builtin_type_names_chirho: std::collections::HashSet<String>,
     type_kind_synonyms_chirho: HashMap<String, KindTypeSynonymChirho>,
     expanding_type_kind_synonyms_chirho: Vec<String>,
 }
@@ -642,6 +650,8 @@ impl KindInferCtxChirho {
             kind_var_cache_chirho: std::collections::HashMap::new(),
             local_kind_decl_names_chirho: std::collections::HashSet::new(),
             local_data_type_names_chirho: std::collections::HashSet::new(),
+            builtin_classes_chirho: HashMap::new(),
+            builtin_type_names_chirho: std::collections::HashSet::new(),
             type_kind_synonyms_chirho: HashMap::new(),
             expanding_type_kind_synonyms_chirho: Vec::new(),
         }
@@ -1357,8 +1367,32 @@ pub struct KindResultChirho {
     pub diagnostics_chirho: DiagnosticBundleChirho,
 }
 
-/// Run kind inference on a module's type declarations and type signatures.
+/// What a module's imports tell the kind pass (K01 C): the builtin classes its class
+/// spellings name, as naming proved them.
+/// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+#[derive(Debug, Clone, Copy)]
+pub struct KindImportsChirho<'a> {
+    /// The builtin classes the module's spellings name.
+    pub builtin_classes_chirho: &'a BuiltinClassScopeChirho,
+}
+
+/// Run kind inference on a module's type declarations and type signatures, knowing
+/// nothing from its imports: no spelling names a builtin class.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
+    infer_module_kinds_with_imports_chirho(
+        module_chirho,
+        KindImportsChirho {
+            builtin_classes_chirho: &BuiltinClassScopeChirho::default(),
+        },
+    )
+}
+
+/// Run kind inference on a module's type declarations and type signatures, with what its
+/// imports tell the kind pass.
+pub fn infer_module_kinds_with_imports_chirho(
+    module_chirho: &ModuleChirho,
+    imports_chirho: KindImportsChirho<'_>,
+) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
     let mut projection_budget_chirho =
         haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
@@ -1383,6 +1417,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
             .remove(local_kind_decl_name_chirho);
     }
     ctx_chirho.local_kind_decl_names_chirho = local_kind_decl_names_chirho.clone();
+    ctx_chirho.seed_builtin_kinds_chirho(imports_chirho.builtin_classes_chirho);
     let poly_kinds_enabled_chirho = module_chirho
         .extensions_chirho
         .iter()
@@ -1750,6 +1785,13 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
         else {
             continue;
         };
+        if ctx_chirho.check_builtin_instance_head_chirho(
+            &class_chirho.full_name_chirho(),
+            types_chirho,
+            *span_chirho,
+        ) {
+            continue;
+        }
         ctx_chirho.check_instance_head_arity_chirho(
             class_chirho.text_chirho(),
             types_chirho,

@@ -88,10 +88,11 @@ newtype of this module is reported once its arguments leave `*`, as in
 `Dict (Int ~ Int) => Int`. `~` is `k -> k -> Constraint` and `~~` is
 `k1 -> k2 -> Constraint`, fresh at every use. Type variables and imported names are
 never judged: an imported constructor keeps the kind of its first use, so a variable
-can resolve to `Constraint` where GHC's polymorphic kind would not. Builtin classes
-(`Show Int` as a field, `instance Functor Bool`) need class identity from the builtin
-interfaces, a separate seam. Declarations are judged in source order, so a class used
-before its declaration is not yet known.
+can resolve to `Constraint` where GHC's polymorphic kind would not. A builtin class
+spelling that naming proved (`Show Int` as a field) is a known head too; its instance
+heads are judged as described in `compiler-pipeline-chirho/builtin-class-identity-chirho`.
+Declarations are judged in source order, so a class used before its declaration is not
+yet known.
 
 ## Evidence boundary
 

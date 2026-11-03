@@ -13,6 +13,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 mod annotated_pattern_bindings_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/associated_named_results_chirho.rs"]
 mod associated_named_results_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/builtin_class_kinds_chirho.rs"]
+mod builtin_class_kinds_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/closed_family_equations_chirho.rs"]
 mod closed_family_equations_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]
