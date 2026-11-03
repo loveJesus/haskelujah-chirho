@@ -28,11 +28,12 @@ Branch `ground-dictionaries-chirho`, on the S1 tip bddc428a (gpt_chirho #31138, 
 - [x] Head-position refusals reported (growing context refused by its named bound).
 - [x] Obligations built from proven rows; the registry only when selection cannot choose or rows live elsewhere (list contexts).
 - [x] Rows only another generator answers are not a body (newtype alias, #31167).
-- [x] Unproven matches refused by name: repeated head variable, linear arrow (#31163).
+- [x] Unproven matches refused by name: repeated head variable, linear arrow (#31163). Superseded: root removed this interim guard once the strict matcher landed (#31172).
 - [x] GHC-measured holds: newtype body (obligation half), repeated-variable negative and positive.
-- [ ] Parser producer seam: `instance C ()` head (proposed fix measured: 11/11 on three engines).
-- [ ] Typing producer seam: consistent matcher for `instance_sub_goals_chirho` (proposed).
-- [ ] Run the matcher guard's driver control (slot returned first).
+- [x] Parser producer seam: `instance C ()` head, fixed by root at 534ff7d7 (parser 445/445).
+- [x] Typing producer seam: the consistent matcher for `instance_sub_goals_chirho`, fixed by root at 4113102f (typing 563/563, 10 strict controls).
+- [x] The matcher control: root reworked it to require the unequal pair to be rejected (by the frontend) and the equal pair to print `1=2`. It awaits root's run.
+- [x] The preflight charges context class names (root's correction, #31172).
 
 ## Proof (root)
 - [x] Compile: workspace all-targets check warning-free (root, f8c0baf7).
