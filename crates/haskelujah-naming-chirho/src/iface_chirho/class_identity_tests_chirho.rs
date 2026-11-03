@@ -68,6 +68,7 @@ fn import_chirho(
     qualified_chirho: bool,
 ) -> ImportDeclChirho {
     ImportDeclChirho {
+        source_chirho: false,
         module_chirho: name_chirho(module_text_chirho),
         qualified_chirho,
         alias_chirho: alias_chirho.map(name_chirho),
@@ -91,6 +92,7 @@ fn class_iface_chirho(
     exports_chirho.types_chirho.insert(
         class_text_chirho.to_string(),
         IfaceTypeChirho {
+            declaration_chirho: None,
             name_chirho: class_text_chirho.to_string(),
             constructors_chirho: vec![],
             methods_chirho: methods_chirho
