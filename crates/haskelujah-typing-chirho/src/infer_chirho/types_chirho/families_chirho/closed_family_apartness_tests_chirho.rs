@@ -5,9 +5,10 @@
 //! the compatible overlap is the measured B02 `AndChirho` shape.
 
 use super::closed_family_apartness_chirho::{
-    FamilyHeadRoleChirho, FamilyUnificationChirho, FamilyUnificationLimitsChirho,
-    GenerativeIdentityChirho, family_branches_compatible_chirho,
-    family_patterns_unification_chirho, family_patterns_with_limits_chirho,
+    FamilyHeadRoleChirho, FamilyPatternRelationChirho, FamilyUnificationChirho,
+    FamilyUnificationLimitsChirho, GenerativeIdentityChirho, family_branches_compatible_chirho,
+    family_patterns_relation_with_limits_chirho, family_patterns_unification_chirho,
+    family_patterns_with_limits_chirho,
 };
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
@@ -51,6 +52,10 @@ fn classify_chirho(name_chirho: &str) -> FamilyHeadRoleChirho {
         },
         "HChirho" => FamilyHeadRoleChirho::FamilyChirho {
             identity_chirho: "HChirho".to_owned(),
+            arity_chirho: 1,
+        },
+        "OpaqueChirho" => FamilyHeadRoleChirho::FamilyChirho {
+            identity_chirho: "OpaqueChirho".to_owned(),
             arity_chirho: 1,
         },
         "NullChirho" => FamilyHeadRoleChirho::FamilyChirho {
@@ -698,4 +703,89 @@ fn exhausting_each_work_budget_is_conservative_chirho() {
             FamilyUnificationChirho::UncertainChirho
         );
     }
+}
+
+#[test]
+fn measured_c08_has_completed_known_family_overlap_but_c07_is_apart_chirho() {
+    let earlier_chirho = [constructor_chirho("Int"), constructor_chirho("Bool")];
+    let first_chirho = family_chirho("OpaqueChirho", named_variable_chirho("aChirho%1"));
+    let second_chirho = family_chirho("OpaqueChirho", named_variable_chirho("bChirho%2"));
+    assert_eq!(
+        family_patterns_relation_with_limits_chirho(
+            &earlier_chirho,
+            &[first_chirho.clone(), second_chirho.clone()],
+            &classify_chirho,
+            FamilyUnificationLimitsChirho::default()
+        ),
+        FamilyPatternRelationChirho::KnownFamilyOverlapChirho
+    );
+    assert_eq!(
+        family_patterns_relation_with_limits_chirho(
+            &earlier_chirho,
+            &[first_chirho.clone(), first_chirho.clone()],
+            &classify_chirho,
+            FamilyUnificationLimitsChirho::default()
+        ),
+        FamilyPatternRelationChirho::SurelyApartChirho
+    );
+    // The old relation and branch compatibility retain their conservative contract.
+    assert_eq!(
+        unify_chirho(
+            &earlier_chirho,
+            &[first_chirho.clone(), second_chirho.clone()]
+        ),
+        FamilyUnificationChirho::UncertainChirho
+    );
+    assert!(!compatible_chirho(
+        &earlier_chirho,
+        &constructor_chirho("Int"),
+        &[first_chirho, second_chirho],
+        &constructor_chirho("Int")
+    ));
+}
+
+#[test]
+fn known_family_overlap_does_not_hide_other_uncertainty_chirho() {
+    let family_chirho = family_chirho("OpaqueChirho", named_variable_chirho("aChirho%1"));
+    assert_eq!(
+        family_patterns_relation_with_limits_chirho(
+            &[
+                constructor_chirho("Int"),
+                constructor_chirho("UnknownChirho")
+            ],
+            &[family_chirho.clone(), constructor_chirho("Bool")],
+            &classify_chirho,
+            FamilyUnificationLimitsChirho::default()
+        ),
+        FamilyPatternRelationChirho::UnknownChirho
+    );
+    assert_eq!(
+        family_patterns_relation_with_limits_chirho(
+            &[
+                variable_chirho(0),
+                variable_chirho(0),
+                constructor_chirho("Int")
+            ],
+            &[
+                list_chirho(variable_chirho(0)),
+                variable_chirho(0),
+                family_chirho.clone()
+            ],
+            &classify_chirho,
+            FamilyUnificationLimitsChirho::default()
+        ),
+        FamilyPatternRelationChirho::UnknownChirho
+    );
+    assert_eq!(
+        family_patterns_relation_with_limits_chirho(
+            &[constructor_chirho("Int")],
+            &[family_chirho],
+            &classify_chirho,
+            FamilyUnificationLimitsChirho {
+                steps_chirho: 0,
+                ..FamilyUnificationLimitsChirho::default()
+            }
+        ),
+        FamilyPatternRelationChirho::UnknownChirho
+    );
 }

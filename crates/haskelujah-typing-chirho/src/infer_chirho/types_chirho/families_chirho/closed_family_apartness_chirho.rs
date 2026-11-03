@@ -39,6 +39,17 @@ pub(super) enum FamilyUnificationChirho {
     UncertainChirho,
 }
 
+/// A known-family abstraction may have a finite overlap witness without proving
+/// that the original family applications unify. Reduction retains that blocker;
+/// scoped callers may separately establish that its nested applications are stuck.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum FamilyPatternRelationChirho {
+    SurelyApartChirho,
+    UnifiableChirho,
+    KnownFamilyOverlapChirho,
+    UnknownChirho,
+}
+
 /// All work, including canonicalization and chasing substitutions, consumes this budget.
 #[derive(Debug, Clone, Copy)]
 pub(super) struct FamilyUnificationLimitsChirho {
@@ -71,23 +82,58 @@ pub(super) fn family_patterns_unification_chirho(
     )
 }
 
+#[cfg(test)]
 pub(super) fn family_patterns_with_limits_chirho(
     left_chirho: &[TyChirho],
     right_chirho: &[TyChirho],
     classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
     limits_chirho: FamilyUnificationLimitsChirho,
 ) -> FamilyUnificationChirho {
+    match family_patterns_relation_with_limits_chirho(
+        left_chirho,
+        right_chirho,
+        classify_chirho,
+        limits_chirho,
+    ) {
+        FamilyPatternRelationChirho::SurelyApartChirho => {
+            FamilyUnificationChirho::SurelyApartChirho
+        }
+        FamilyPatternRelationChirho::UnifiableChirho => FamilyUnificationChirho::UnifiableChirho,
+        FamilyPatternRelationChirho::KnownFamilyOverlapChirho
+        | FamilyPatternRelationChirho::UnknownChirho => FamilyUnificationChirho::UncertainChirho,
+    }
+}
+
+pub(super) fn family_patterns_relation_with_limits_chirho(
+    left_chirho: &[TyChirho],
+    right_chirho: &[TyChirho],
+    classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
+    limits_chirho: FamilyUnificationLimitsChirho,
+) -> FamilyPatternRelationChirho {
     let mut kernel_chirho = ApartnessKernelChirho::new_chirho(classify_chirho, limits_chirho);
     let mut left_context_chirho = kernel_chirho.context_chirho();
     let mut right_context_chirho = kernel_chirho.context_chirho();
-    kernel_chirho
-        .unify_inputs_chirho(
-            left_chirho,
-            right_chirho,
-            &mut left_context_chirho,
-            &mut right_context_chirho,
-        )
-        .unwrap_or(FamilyUnificationChirho::UncertainChirho)
+    match kernel_chirho.unify_inputs_chirho(
+        left_chirho,
+        right_chirho,
+        &mut left_context_chirho,
+        &mut right_context_chirho,
+    ) {
+        Ok(FamilyUnificationChirho::SurelyApartChirho) => {
+            FamilyPatternRelationChirho::SurelyApartChirho
+        }
+        Ok(FamilyUnificationChirho::UnifiableChirho)
+            if kernel_chirho.flattened_chirho.is_empty() =>
+        {
+            FamilyPatternRelationChirho::UnifiableChirho
+        }
+        Ok(FamilyUnificationChirho::UnifiableChirho) => {
+            FamilyPatternRelationChirho::KnownFamilyOverlapChirho
+        }
+        Ok(FamilyUnificationChirho::UncertainChirho) | Err(()) => {
+            FamilyPatternRelationChirho::UnknownChirho
+        }
+    }
 }
 
 pub(super) fn family_branches_compatible_chirho(
@@ -110,7 +156,9 @@ pub(super) fn family_branches_compatible_chirho(
         &mut right_context_chirho,
     ) {
         Ok(FamilyUnificationChirho::SurelyApartChirho) => true,
-        Ok(FamilyUnificationChirho::UnifiableChirho) => {
+        Ok(FamilyUnificationChirho::UnifiableChirho)
+            if kernel_chirho.flattened_chirho.is_empty() =>
+        {
             // Each RHS uses its own LHS's namespace, never a separately freshened namespace.
             let compared_chirho = (|| {
                 let left_chirho =
@@ -124,7 +172,8 @@ pub(super) fn family_branches_compatible_chirho(
             })();
             compared_chirho.unwrap_or(false)
         }
-        Ok(FamilyUnificationChirho::UncertainChirho) | Err(()) => false,
+        Ok(FamilyUnificationChirho::UnifiableChirho | FamilyUnificationChirho::UncertainChirho)
+        | Err(()) => false,
     }
 }
 
@@ -562,7 +611,6 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
     }
 
     fn flatten_chirho(&mut self, family_chirho: NodeIdChirho) -> Result<NodeIdChirho, ()> {
-        self.uncertain_chirho = true;
         let family_chirho = self.normalize_chirho(family_chirho, 0)?;
         for index_chirho in 0..self.flattened_chirho.len() {
             let (prior_chirho, variable_chirho) = self.flattened_chirho[index_chirho];

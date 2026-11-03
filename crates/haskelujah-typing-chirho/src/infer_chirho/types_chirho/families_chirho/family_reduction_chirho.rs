@@ -8,8 +8,8 @@
 //! Workflow: language-features-chirho/stuck-family-equalities-chirho.md.
 
 use super::closed_family_apartness_chirho::{
-    FamilyHeadRoleChirho, FamilyUnificationChirho, FamilyUnificationLimitsChirho,
-    GenerativeIdentityChirho, family_patterns_with_limits_chirho,
+    FamilyHeadRoleChirho, FamilyPatternRelationChirho, FamilyUnificationLimitsChirho,
+    GenerativeIdentityChirho, family_patterns_relation_with_limits_chirho,
 };
 use super::family_definitions_chirho::{TypeFamilyDefinitionChirho, TypeFamilyReductionChirho};
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
@@ -172,7 +172,7 @@ fn try_family_decision_chirho(
                 apart_chirho = false;
                 break;
             }
-            let verdict_chirho = family_patterns_with_limits_chirho(
+            let verdict_chirho = family_patterns_relation_with_limits_chirho(
                 &blocker_chirho.lhs_chirho,
                 prefix_chirho,
                 classify_chirho,
@@ -182,9 +182,13 @@ fn try_family_decision_chirho(
                     depth_chirho: matcher_chirho.limits_chirho.depth_chirho,
                 },
             );
-            if verdict_chirho != FamilyUnificationChirho::SurelyApartChirho {
-                uncertain_chirho |= verdict_chirho == FamilyUnificationChirho::UncertainChirho;
-                blocked_chirho |= verdict_chirho == FamilyUnificationChirho::UnifiableChirho;
+            if verdict_chirho != FamilyPatternRelationChirho::SurelyApartChirho {
+                uncertain_chirho |= verdict_chirho == FamilyPatternRelationChirho::UnknownChirho;
+                blocked_chirho |= matches!(
+                    verdict_chirho,
+                    FamilyPatternRelationChirho::UnifiableChirho
+                        | FamilyPatternRelationChirho::KnownFamilyOverlapChirho
+                );
                 apart_chirho = false;
                 break;
             }

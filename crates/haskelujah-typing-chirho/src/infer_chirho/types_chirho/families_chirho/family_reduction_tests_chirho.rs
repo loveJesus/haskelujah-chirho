@@ -38,6 +38,10 @@ fn classify_chirho(name_chirho: &str) -> FamilyHeadRoleChirho {
             identity_chirho: "GChirho".to_owned(),
             arity_chirho: 1,
         },
+        "OpaqueChirho" => FamilyHeadRoleChirho::FamilyChirho {
+            identity_chirho: "OpaqueChirho".to_owned(),
+            arity_chirho: 1,
+        },
         "AChirho.TChirho" | "AliasChirho.TChirho" => FamilyHeadRoleChirho::GenerativeChirho {
             identity_chirho: GenerativeIdentityChirho::NominalChirho("AChirho.TChirho".to_owned()),
         },
@@ -160,6 +164,60 @@ fn measured_b02_compatible_overlap_can_pass_an_earlier_nonmatch_chirho() {
     assert_eq!(
         reduce_chirho(&definition_chirho, &[var_chirho(0), var_chirho(1)]),
         None
+    );
+}
+
+#[test]
+fn measured_c08_is_blocked_while_shared_c07_still_reduces_chirho() {
+    let definition_chirho = closed_chirho(
+        2,
+        vec![
+            branch_chirho(
+                0,
+                vec![con_chirho("Int"), con_chirho("Bool")],
+                con_chirho("Char"),
+                vec![],
+            ),
+            branch_chirho(
+                1,
+                vec![named_chirho("xChirho"), named_chirho("yChirho")],
+                con_chirho("Int"),
+                vec![0],
+            ),
+        ],
+    );
+    let first_chirho = app_chirho(con_chirho("OpaqueChirho"), named_chirho("aChirho%1"));
+    let second_chirho = app_chirho(con_chirho("OpaqueChirho"), named_chirho("bChirho%2"));
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &definition_chirho,
+            &[first_chirho.clone(), second_chirho.clone()],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        FamilyReductionDecisionChirho::BlockedChirho
+    );
+    assert_eq!(
+        reduce_chirho(&definition_chirho, &[first_chirho.clone(), second_chirho]),
+        None
+    );
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &definition_chirho,
+            &[first_chirho.clone(), first_chirho],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        FamilyReductionDecisionChirho::ReducedChirho(con_chirho("Int"))
+    );
+    assert_eq!(
+        decide_family_with_limits_chirho(
+            &definition_chirho,
+            &[con_chirho("UnknownChirho"), con_chirho("Bool")],
+            &classify_chirho,
+            FamilyReductionLimitsChirho::default()
+        ),
+        FamilyReductionDecisionChirho::UnknownChirho
     );
 }
 
