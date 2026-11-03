@@ -1036,6 +1036,26 @@ mod enum_defaults_chirho;
 #[path = "instance_chirho/defaults_chirho/equality_defaults_chirho.rs"]
 mod equality_defaults_chirho;
 mod generic_heads_chirho;
+// Ground dictionaries for conditional instances live together in
+// `instance_chirho/ground_dictionaries_chirho/`.
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_admission_chirho.rs"]
+mod ground_admission_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_builder_chirho.rs"]
+mod ground_builder_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_route_chirho.rs"]
+mod ground_route_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_selection_chirho.rs"]
+mod ground_selection_chirho;
+#[cfg(test)]
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_selection_tests_chirho.rs"]
+mod ground_selection_tests_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/instance_rows_chirho.rs"]
+mod instance_rows_chirho;
+#[cfg(test)]
+#[path = "instance_chirho/ground_dictionaries_chirho/instance_rows_tests_chirho.rs"]
+mod instance_rows_tests_chirho;
+pub(in crate::dict_chirho) use instance_rows_chirho::InstanceRowsChirho;
+pub use instance_rows_chirho::{InstanceDeclarationChirho, InstanceRowKeyChirho};
 mod list_orders_chirho;
 #[path = "instance_chirho/defaults_chirho/ordering_defaults_chirho.rs"]
 mod ordering_defaults_chirho;

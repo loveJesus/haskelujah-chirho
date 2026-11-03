@@ -91,6 +91,10 @@ pub struct DesugarOutputChirho {
     /// gives one that primop back where no row serves its proof.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    /// Each source instance declaration's class, span and the key its `$prim` rows were
+    /// named with (S3), for the dictionary pass to pair with the checker's typed instance.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub instance_row_keys_chirho: Vec<crate::dict_chirho::InstanceRowKeyChirho>,
 }
 
 /// A registered pattern synonym definition used during desugaring.
@@ -156,6 +160,8 @@ pub struct DesugarCtxChirho {
     occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
     /// Written infix and section Ord operators' minted occurrences (row 610).
     operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    /// Each source instance declaration's row key (S3).
+    instance_row_keys_chirho: Vec<crate::dict_chirho::InstanceRowKeyChirho>,
     /// The module's promoted-constructor scope (row 686), so a promoted type keys as its
     /// constructor's identity, as the checker's types do. `None` keeps legacy keys.
     /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
@@ -187,6 +193,7 @@ impl DesugarCtxChirho {
             method_occurrence_spans_chirho: HashMap::new(),
             occurrence_provenance_chirho: HashMap::new(),
             operator_occurrences_chirho: HashSet::new(),
+            instance_row_keys_chirho: Vec::new(),
             promotion_scope_chirho: None,
         }
     }
@@ -1278,6 +1285,15 @@ impl DesugarCtxChirho {
                         types_chirho,
                         self.promotion_scope_chirho.as_deref(),
                     );
+                    // The rows below are named by this key; the dictionary pass pairs the
+                    // declaration with the checker's instance by class and span (S3).
+                    // workflow: language-features-chirho/dictionary-evidence-chirho
+                    self.instance_row_keys_chirho
+                        .push(crate::dict_chirho::InstanceRowKeyChirho {
+                            class_name_chirho: class_name_chirho.to_string(),
+                            span_chirho: *span_chirho,
+                            row_key_chirho: type_key_chirho.clone(),
+                        });
                     // Collect provided method names
                     let mut provided_chirho: std::collections::HashSet<String> =
                         std::collections::HashSet::new();
@@ -1849,6 +1865,7 @@ impl DesugarCtxChirho {
             method_occurrence_spans_chirho: self.method_occurrence_spans_chirho.clone(),
             occurrence_provenance_chirho: self.occurrence_provenance_chirho.clone(),
             operator_occurrences_chirho: self.operator_occurrences_chirho.clone(),
+            instance_row_keys_chirho: self.instance_row_keys_chirho.clone(),
         }
     }
 

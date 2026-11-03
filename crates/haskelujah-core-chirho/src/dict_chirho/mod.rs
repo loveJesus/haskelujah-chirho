@@ -20,14 +20,18 @@
 //! - Adding dictionary lambda parameters to constrained top-level bindings
 //! - Generating method selector functions for each class method
 //! - Generating instance dictionary bindings (ground instances)
+//! - Ground dictionaries for conditional instances (`KnownNat n => KnownNat (Succ n)`) at
+//!   the ground goals the checker proved, memoized so recursive evidence ties a knot
+//!   (`instance_chirho/ground_dictionaries_chirho/`)
 //! - Rewriting method call sites to use dictionary projections
 //!
 //! Future work:
-//! - Conditional instance dictionaries (instances with context, e.g. `Eq a => Eq [a]`)
 //! - Superclass dictionary extraction
 //! - Instance method body compilation from source `where` clauses
 
 pub mod instance_chirho;
+use instance_chirho::InstanceRowsChirho;
+pub use instance_chirho::{InstanceDeclarationChirho, InstanceRowKeyChirho};
 pub mod layout_chirho;
 mod monad_fix_chirho;
 mod parameters_chirho;
@@ -42,7 +46,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
 use haskelujah_span_chirho::SpanChirho;
-use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
+use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, PredChirho};
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho};
@@ -74,6 +78,61 @@ pub struct DictPassResultChirho {
     pub names_chirho: HashMap<CoreIdChirho, String>,
     /// Dictionary layouts for each class.
     pub layouts_chirho: HashMap<String, DictLayoutChirho>,
+    /// Ground goals no dictionary could be built for, by name, for the driver to report (S2).
+    pub diagnostics_chirho: Vec<DictPassDiagnosticChirho>,
+}
+
+/// A ground goal the conditional-dictionary pre-pass refused, and why, by name (S2). The rewrite
+/// reports one only for an occurrence that no route served.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DictPassDiagnosticChirho {
+    /// The occurrence whose goal it is, which the driver places by its source span.
+    pub occurrence_chirho: CoreIdChirho,
+    /// The goal: a predicate with no inference meta and no rigid or quantified variable.
+    pub goal_chirho: PredChirho,
+    /// An unresolved or overlapping instance, rows that live elsewhere, or a bound.
+    pub reason_chirho: String,
+}
+
+impl std::fmt::Display for DictPassDiagnosticChirho {
+    fn fmt(&self, f_chirho: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f_chirho,
+            "no dictionary for `{}`: {}",
+            self.goal_chirho, self.reason_chirho
+        )
+    }
+}
+
+/// What the checker and the desugarer prove about a module's occurrences and instances.
+/// `ground_goals_chirho` holds, per occurrence, the structural predicates it was proved at when
+/// they are ground (S1); the pass builds conditional dictionaries only from those. The two S3
+/// producers report each source instance declaration by class and span, the checker with its
+/// typed instance and the desugarer with the key it named the declaration's rows by.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[derive(Default)]
+pub struct DictPassEvidenceChirho {
+    pub method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
+    pub occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    pub reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    pub derived_shows_chirho: HashMap<String, DerivedShowChirho>,
+    pub derived_enums_chirho: HashMap<String, Vec<String>>,
+    pub operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    pub ground_goals_chirho: HashMap<CoreIdChirho, Vec<PredChirho>>,
+    pub instance_declarations_chirho: Vec<InstanceDeclarationChirho>,
+    pub instance_row_keys_chirho: Vec<InstanceRowKeyChirho>,
+}
+
+/// The pass's inputs beyond the module itself.
+pub struct DictPassInputsChirho<'inputs_chirho> {
+    pub names_chirho: HashMap<CoreIdChirho, String>,
+    pub type_env_chirho: &'inputs_chirho TyEnvChirho,
+    pub class_env_chirho: &'inputs_chirho ClassEnvChirho,
+    pub con_types_chirho: HashMap<String, String>,
+    pub newtype_info_chirho: HashMap<String, (String, String)>,
+    pub extra_dict_param_names_chirho: HashSet<String>,
+    pub evidence_chirho: DictPassEvidenceChirho,
 }
 
 /// A final derived-Show answer (row 533). `Renders` holds at the deepest nesting it was
@@ -214,6 +273,18 @@ pub struct DictPassCtxChirho {
     derived_show_bounded_chirho: Cell<bool>,
     /// Derived-Show key → its generated `$prim_Show_showsPrec_<key>` helper.
     derived_show_helpers_chirho: HashMap<String, CoreIdChirho>,
+    /// Per occurrence, the ground predicates it was proved at (S1).
+    ground_goals_chirho: HashMap<CoreIdChirho, Vec<PredChirho>>,
+    /// The pre-pass's constructed dictionary per (occurrence, class), for the rewrite.
+    ground_goal_dicts_chirho: HashMap<(CoreIdChirho, String), CoreIdChirho>,
+    /// The pre-pass's refusal per (occurrence, class), reported only if no route serves it.
+    ground_goal_refusals_chirho: HashMap<(CoreIdChirho, String), DictPassDiagnosticChirho>,
+    /// The builder's memo: a ground goal's dictionary id, allocated before descending.
+    ground_dicts_by_goal_chirho: HashMap<PredChirho, CoreIdChirho>,
+    /// Constrained-reference slots that ended with no dictionary, for the S2 report.
+    unserved_reference_slots_chirho: RefCell<HashSet<(CoreIdChirho, String)>>,
+    /// The S3 join: each paired module instance's row key.
+    instance_rows_chirho: InstanceRowsChirho,
 }
 
 impl DictPassCtxChirho {
@@ -258,6 +329,12 @@ impl DictPassCtxChirho {
             derived_show_provisional_chirho: RefCell::new(HashMap::new()),
             derived_show_bounded_chirho: Cell::new(false),
             derived_show_helpers_chirho: HashMap::new(),
+            ground_goals_chirho: HashMap::new(),
+            ground_goal_dicts_chirho: HashMap::new(),
+            ground_goal_refusals_chirho: HashMap::new(),
+            ground_dicts_by_goal_chirho: HashMap::new(),
+            unserved_reference_slots_chirho: RefCell::new(HashSet::new()),
+            instance_rows_chirho: InstanceRowsChirho::default(),
         }
     }
 
@@ -632,19 +709,62 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     derived_enums_chirho: HashMap<String, Vec<String>>,
     operator_occurrences_chirho: HashSet<CoreIdChirho>,
 ) -> DictPassResultChirho {
+    dict_pass_module_with_inputs_chirho(
+        module_chirho,
+        DictPassInputsChirho {
+            names_chirho,
+            type_env_chirho,
+            class_env_chirho,
+            con_types_chirho,
+            newtype_info_chirho,
+            extra_dict_param_names_chirho,
+            evidence_chirho: DictPassEvidenceChirho {
+                method_occurrence_canon_chirho,
+                occurrence_evidence_chirho,
+                reference_evidence_chirho,
+                derived_shows_chirho,
+                derived_enums_chirho,
+                operator_occurrences_chirho,
+                ..DictPassEvidenceChirho::default()
+            },
+        },
+    )
+}
+
+/// The dictionary pass over one module, from its structured inputs: the evidence entry with the
+/// checker's ground goals (S1) and the instance-row producers (S3), which the
+/// conditional-dictionary pre-pass builds from, and the result's named refusals (S2).
+/// `dict_pass_module_full_with_evidence_chirho` is its compatibility wrapper, with neither.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub fn dict_pass_module_with_inputs_chirho(
+    module_chirho: &CoreModuleChirho,
+    inputs_chirho: DictPassInputsChirho<'_>,
+) -> DictPassResultChirho {
     let max_id_chirho = find_max_id_chirho(module_chirho);
-    let mut ctx_chirho =
-        DictPassCtxChirho::new_chirho(max_id_chirho + 1, names_chirho, con_types_chirho);
-    ctx_chirho.newtype_info_chirho = newtype_info_chirho;
-    ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
-    ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
-    ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
-    ctx_chirho.reference_evidence_chirho = reference_evidence_chirho;
-    ctx_chirho.derived_shows_chirho = derived_shows_chirho;
-    ctx_chirho.derived_enums_chirho = derived_enums_chirho;
-    ctx_chirho.operator_occurrences_chirho = operator_occurrences_chirho;
-    let transformed_chirho =
-        ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
+    let mut ctx_chirho = DictPassCtxChirho::new_chirho(
+        max_id_chirho + 1,
+        inputs_chirho.names_chirho,
+        inputs_chirho.con_types_chirho,
+    );
+    ctx_chirho.newtype_info_chirho = inputs_chirho.newtype_info_chirho;
+    ctx_chirho.extra_dict_param_names_chirho = inputs_chirho.extra_dict_param_names_chirho;
+    let evidence_chirho = inputs_chirho.evidence_chirho;
+    ctx_chirho.method_occurrence_canon_chirho = evidence_chirho.method_occurrence_canon_chirho;
+    ctx_chirho.occurrence_evidence_chirho = evidence_chirho.occurrence_evidence_chirho;
+    ctx_chirho.reference_evidence_chirho = evidence_chirho.reference_evidence_chirho;
+    ctx_chirho.derived_shows_chirho = evidence_chirho.derived_shows_chirho;
+    ctx_chirho.derived_enums_chirho = evidence_chirho.derived_enums_chirho;
+    ctx_chirho.operator_occurrences_chirho = evidence_chirho.operator_occurrences_chirho;
+    ctx_chirho.ground_goals_chirho = evidence_chirho.ground_goals_chirho;
+    ctx_chirho.instance_rows_chirho = InstanceRowsChirho::join_chirho(
+        &evidence_chirho.instance_declarations_chirho,
+        &evidence_chirho.instance_row_keys_chirho,
+    );
+    let transformed_chirho = ctx_chirho.transform_module_chirho(
+        module_chirho,
+        inputs_chirho.type_env_chirho,
+        inputs_chirho.class_env_chirho,
+    );
     ctx_chirho.finish_chirho(transformed_chirho)
 }
 

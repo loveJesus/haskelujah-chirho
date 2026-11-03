@@ -1054,9 +1054,70 @@ GHC's Enum has eight methods, and the four enumerations are methods like the res
   - `enum_slot_structure_chirho.rs` checks Core: no compiler body under an enumeration's source spelling beside a program-owned `enumFromTo`, eight bound slots in every Enum dictionary, and a wrongly typed written enumeration rejected as GHC rejects it.
 - **Boundaries.**
   - Range syntax's proofs are row 665's, landing with this row.
-  - A call site cannot reach a context instance's dictionary.
+  - A call site cannot reach a context instance's dictionary. For a ground goal this is superseded by the ground dictionaries below.
   - Char `enumFrom` steps a Char as an Int in the interpreter.
   - Enum Double waits on row 677's inferred Fractional residual.
+
+## Ground dictionaries for conditional instances (2026-11-03)
+
+A ground goal at an occurrence (`KnownNat (Succ (Succ Zero))`, `Describe (Pair Int (Pair Bool Int))`) is served by a dictionary built for exactly that goal from the instance its head selects. The instance's context dictionaries are built recursively the same way.
+
+```mermaid
+flowchart TD
+    S1[checker: ground_pred_chirho per occurrence and reference record] --> J[driver evidence join: same identity decision as the keys]
+    S3T[checker: source_instances_chirho, span and typed instance] --> R[Core S3 join by class and span, checked]
+    S3D[desugarer: instance_row_keys_chirho, span and row key] --> R
+    J --> A[pre-pass admission: the rewrite's own ownership rules]
+    R --> M[context-leading marks for every paired row, ordered own indices]
+    A --> B[builder: structural selection, memo before descent, bounds]
+    R --> B
+    B -->|built| D[ground_goal_dicts_chirho]
+    B -->|refused by name| F[ground_goal_refusals_chirho]
+    D --> H[hooks: after keyed routes, before ambient ones]
+    F --> U{occurrence unserved after the rewrite?}
+    U -->|yes| E[S2: driver error at the occurrence span, readable keys]
+    U -->|no| X[no report]
+```
+
+- **Producers.**
+  - S1 is the checker's complete closed goal on each `MethodOccurrenceRecordChirho` and `ReferenceEvidenceChirho`. The driver carries it through the one identity decision its key join makes (`JoinedProofChirho` in `evidence_join_chirho.rs`). A class proved twice at one origin with different goals gets none.
+  - S3 is the checker's typed instance per source declaration, every span kept, and the desugarer's row key per declaration (`DesugarOutputChirho.instance_row_keys_chirho`).
+  - The Core join (`instance_rows_chirho.rs`) pairs one typed instance object with one row key at a class and span. Exact repeats are dropped. Any other count makes the place ambiguous, so derived, spliced and synthetic declarations that share a span are never chosen by iteration order.
+- **Admission** (`ground_admission_chirho.rs`) applies the rewrite's own rules before it runs.
+  - A constrained reference whose target takes dictionary parameters admits each predicate.
+  - A method occurrence admits its method's class only, unless it names a lexical shadow, a program-owned binder or an imported user reference.
+- **Selection and building** (`ground_selection_chirho.rs`, `ground_builder_chirho.rs`).
+  - A goal is built only when exactly one instance head matches it structurally (`instance_sub_goals_chirho`) and that instance has a context. Any other goal keeps its existing routes, and so does a goal with a dictionary already filed under its own spelling.
+  - The dictionary id is memoized before its obligations are built, so `instance Loop [a] => Loop [a]` ties a knot and prints 7. Every dictionary on a cycle is bound recursive.
+  - Bounds are depth 64, 256 dictionaries and 4096 visits. A failed attempt removes every binding and memo entry it made.
+- **Refusals**, each named with lettered variables, never a row key:
+  - no instance, or overlapping instances;
+  - rows not in this module, or rows ambiguous at their place;
+  - an equality context;
+  - a multi-parameter context predicate or goal;
+  - a class without a layout;
+  - an obligation naming a constructor its goal does not name (no producer proved its identity);
+  - a bound reached.
+- **Hooks.**
+  - The method-variable route consults the ground dictionary after its keyed instance routes and before the ambient context dictionary.
+  - The head replacement consults it only when its keyed fallback returns the canonical id unchanged.
+  - A reference slot consults it after the evidence and syntactic routes and before the ambient fallback.
+- **S2.**
+  - A recorded refusal is reported only for an occurrence that stays unserved: a method occurrence still free in the rewritten module, or a reference slot that ended in `missing_dictionary_chirho`.
+  - The driver places it at the occurrence's span and rewrites promoted and family keys readably.
+- **Context rows.**
+  - Every row of a paired instance with an indexable context leads with that context, whatever its head. The exact-head and list rule marks only the rows pairing left unmarked.
+  - Each leading binder is also registered under `$own:<i>`, the index the checker gives an occurrence of exactly that context predicate (S4).
+  - A class the context writes twice gets no class-wide entry, so `Describe [a]` and `Describe [b]` are told apart only by index.
+- **Controls** (`tests_chirho/evidence_chirho/ground_dictionaries_chirho.rs`) run each program on the STG machine, LLVM and Cranelift:
+  - B01's promoted chain (3), its base (0) and its ordinary twin (3);
+  - two contexts of one class (`int1&yes&int2`);
+  - two list contexts of one class;
+  - the cyclic dictionary (7);
+  - a shadowing hold;
+  - the missing base, rejected by name.
+  The S3 join's duplicate-span control is `instance_rows_tests_chirho.rs`.
+- **Boundaries.** There is no support for equality contexts, foreign rows or multi-parameter contexts; each is refused by name. Range occurrences keep their own Enum route.
 
 ## Current boundary
 

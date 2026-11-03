@@ -3000,6 +3000,7 @@ fn compile_source_with_search_context_chirho(
 }
 
 mod evidence_join_chirho;
+#[cfg(test)]
 pub(crate) use evidence_join_chirho::join_occurrence_evidence_chirho;
 
 /// Run the back-end pipeline phases (5 through 7) on an already-front-end-compiled
@@ -3091,13 +3092,17 @@ fn compile_backend_chirho(
         &desugar_output_chirho.reference_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
     );
-    let mut occurrence_evidence_chirho = join_occurrence_evidence_chirho(
+    // One identity decision per occurrence gives both its key and its ground goals (S1).
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let occurrence_proofs_chirho = evidence_join_chirho::join_occurrence_proofs_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
         &desugar_output_chirho.literal_occurrence_spans_chirho,
         &desugar_output_chirho.method_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
     );
+    let mut occurrence_evidence_chirho =
+        evidence_join_chirho::occurrence_keys_chirho(&occurrence_proofs_chirho);
     // Range syntax selected Enum itself, independently of a lexical namesake.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     occurrence_evidence_chirho.retain(|id_chirho, _| {
@@ -3174,21 +3179,65 @@ fn compile_backend_chirho(
         haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_chirho(&module_chirho);
     let derived_enums_chirho =
         haskelujah_typing_chirho::deriving_chirho::derived_enum_metadata_chirho(&module_chirho);
-    let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_with_evidence_chirho(
+    let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_with_inputs_chirho(
         &desugar_output_chirho.module_chirho,
-        desugar_output_chirho.names_chirho,
-        &infer_result_chirho.env_chirho,
-        &infer_result_chirho.class_env_chirho,
-        con_types_chirho,
-        newtype_info_chirho,
-        extra_dict_param_names_chirho,
-        desugar_output_chirho.method_occurrences_chirho,
-        occurrence_evidence_chirho,
-        reference_evidence_chirho,
-        derived_shows_chirho,
-        derived_enums_chirho,
-        desugar_output_chirho.operator_occurrences_chirho,
+        haskelujah_core_chirho::DictPassInputsChirho {
+            names_chirho: desugar_output_chirho.names_chirho,
+            type_env_chirho: &infer_result_chirho.env_chirho,
+            class_env_chirho: &infer_result_chirho.class_env_chirho,
+            con_types_chirho,
+            newtype_info_chirho,
+            extra_dict_param_names_chirho,
+            evidence_chirho: haskelujah_core_chirho::DictPassEvidenceChirho {
+                method_occurrence_canon_chirho: desugar_output_chirho.method_occurrences_chirho,
+                occurrence_evidence_chirho,
+                reference_evidence_chirho,
+                derived_shows_chirho,
+                derived_enums_chirho,
+                operator_occurrences_chirho: desugar_output_chirho.operator_occurrences_chirho,
+                // The conditional-dictionary route stays inactive until the checker's
+                // instance-row producer (S3) and context indices (S4) land with this join.
+                // workflow: language-features-chirho/dictionary-evidence-chirho
+                ground_goals_chirho: std::collections::HashMap::new(),
+                instance_declarations_chirho: Vec::new(),
+                instance_row_keys_chirho: desugar_output_chirho.instance_row_keys_chirho,
+            },
+        },
     );
+    // A ground goal no route served and the pass refused by name is an error at its
+    // occurrence, with promoted and family keys written as people read them (S2).
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    if !dict_result_chirho.diagnostics_chirho.is_empty() {
+        let mut bundle_chirho = DiagnosticBundleChirho::new_chirho(
+            dict_result_chirho
+                .diagnostics_chirho
+                .iter()
+                .map(|diagnostic_chirho| {
+                    let message_chirho = diagnostic_chirho.to_string();
+                    match desugar_output_chirho
+                        .method_occurrence_spans_chirho
+                        .get(&diagnostic_chirho.occurrence_chirho)
+                        .or_else(|| {
+                            desugar_output_chirho
+                                .reference_occurrence_spans_chirho
+                                .get(&diagnostic_chirho.occurrence_chirho)
+                        }) {
+                        Some(span_chirho) => {
+                            DiagnosticChirho::error_chirho(message_chirho, *span_chirho)
+                        }
+                        None => DiagnosticChirho::error_no_span_chirho(message_chirho),
+                    }
+                })
+                .collect(),
+        );
+        bundle_chirho.map_text_chirho(
+            haskelujah_ast_chirho::promotion_chirho::readable_promoted_keys_chirho,
+        );
+        let families_chirho = &infer_result_chirho.type_families_chirho;
+        bundle_chirho
+            .map_text_chirho(|text_chirho| families_chirho.readable_keys_chirho(text_chirho));
+        return Err(bundle_chirho);
+    }
     let core_chirho = dict_result_chirho.module_chirho;
 
     // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)

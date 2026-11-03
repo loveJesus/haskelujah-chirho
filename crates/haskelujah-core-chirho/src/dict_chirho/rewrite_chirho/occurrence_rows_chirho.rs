@@ -118,12 +118,23 @@ impl DictPassCtxChirho {
     /// Record, before any binding is rewritten, each module `$prim` row whose
     /// instance has a context, with that context: exactly the rows the pass
     /// gives leading dictionary parameters, whatever order it rewrites them in.
+    /// A row of a declaration the producers pair (S3) takes its own instance's context,
+    /// whatever its head; the exact-head and list rule below serves only rows that pairing
+    /// left unmarked.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn record_context_leading_rows_chirho(
         &mut self,
         module_chirho: &CoreModuleChirho,
         class_env_chirho: &ClassEnvChirho,
     ) {
+        self.record_structural_context_rows_chirho();
         for binding_chirho in &module_chirho.bindings_chirho {
+            if self
+                .context_leading_rows_chirho
+                .contains_key(&binding_chirho.binder_chirho.id_chirho)
+            {
+                continue;
+            }
             let Some((class_name_chirho, _method_name_chirho, type_key_chirho)) =
                 self.parse_prim_binding_info_chirho(&binding_chirho.binder_chirho.name_chirho)
             else {

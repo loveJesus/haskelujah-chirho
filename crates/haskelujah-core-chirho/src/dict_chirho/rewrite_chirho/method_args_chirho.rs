@@ -211,6 +211,15 @@ impl DictPassCtxChirho {
                     }
                 }
 
+                // A ground goal of a conditional instance takes the dictionary the pre-pass
+                // built for this occurrence (S1): after every keyed route, before any ambient.
+                // workflow: language-features-chirho/dictionary-evidence-chirho
+                if let Some(projection_chirho) =
+                    self.ground_goal_projection_chirho(id_chirho, &class_name_chirho, sel_id_chirho)
+                {
+                    return projection_chirho;
+                }
+
                 // Fall back only to dictionaries backed by real local evidence.
                 // Ambient seeded defaults are not proof for an unresolved method
                 // use and used to pick arbitrary semantics.
