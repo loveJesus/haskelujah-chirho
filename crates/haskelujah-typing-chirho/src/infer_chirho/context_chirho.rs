@@ -480,6 +480,7 @@ impl InferCtxChirho {
                                 ordinal_chirho: *ordinal_chirho,
                                 class_name_chirho: class_chirho.clone(),
                                 ty_key_chirho: key_chirho,
+                                ground_pred_chirho: None,
                                 span_chirho: *span_chirho,
                                 origin_chirho: *origin_chirho,
                             });
@@ -502,6 +503,7 @@ impl InferCtxChirho {
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
                             ty_key_chirho: key_chirho,
+                            ground_pred_chirho: None,
                             span_chirho: *span_chirho,
                             origin_chirho: *origin_chirho,
                         });
@@ -525,6 +527,12 @@ impl InferCtxChirho {
                         ordinal_chirho: *ordinal_chirho,
                         class_name_chirho: class_chirho.clone(),
                         ty_key_chirho: key_chirho,
+                        ground_pred_chirho: evidence_chirho::ground_pred_chirho(
+                            self,
+                            class_chirho,
+                            &resolved_chirho,
+                            &[],
+                        ),
                         span_chirho: *span_chirho,
                         origin_chirho: *origin_chirho,
                     })

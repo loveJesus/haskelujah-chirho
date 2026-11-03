@@ -338,6 +338,9 @@ pub struct MethodOccurrenceRecordChirho {
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,
     pub ty_key_chirho: String,
+    /// The complete closed goal after final substitution and normalization.
+    /// Missing argument captures or an own dictionary never supply this proof.
+    pub ground_pred_chirho: Option<PredChirho>,
     pub span_chirho: SpanChirho,
     pub origin_chirho: Option<OriginIdChirho>,
 }

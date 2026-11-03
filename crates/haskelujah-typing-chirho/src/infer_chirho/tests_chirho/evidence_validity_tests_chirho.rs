@@ -85,6 +85,7 @@ fn occurrence_record_defaults_unresolved_standard_class_chirho() {
             ordinal_chirho: 0,
             class_name_chirho: "Num".to_string(),
             ty_key_chirho: "Int".to_string(),
+            ground_pred_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             origin_chirho: None,
         }]

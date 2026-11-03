@@ -31,6 +31,7 @@ pub(super) fn record_chirho(
     span_chirho: SpanChirho,
 ) -> MethodOccurrenceRecordChirho {
     MethodOccurrenceRecordChirho {
+        ground_pred_chirho: None,
         name_chirho: name_chirho.to_string(),
         ordinal_chirho,
         class_name_chirho: "Show".to_string(),

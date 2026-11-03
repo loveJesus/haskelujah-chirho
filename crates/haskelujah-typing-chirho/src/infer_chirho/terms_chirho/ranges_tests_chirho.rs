@@ -47,6 +47,10 @@ fn a_range_solves_enum_for_its_endpoints_past_a_lexical_shadow_chirho() {
         Some(&vec![ReferenceEvidenceChirho {
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: Some("Char".to_string()),
+            ground_pred_chirho: Some(crate::class_chirho::PredChirho::new_chirho(
+                "Enum",
+                TyChirho::char_chirho()
+            )),
         }]),
     );
 }

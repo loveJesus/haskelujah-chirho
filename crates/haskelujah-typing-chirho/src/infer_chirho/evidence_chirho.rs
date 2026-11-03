@@ -8,6 +8,10 @@
 
 use super::*;
 
+#[path = "evidence_chirho/ground_goals_chirho.rs"]
+mod ground_goals_chirho;
+pub(crate) use ground_goals_chirho::ground_pred_chirho;
+
 /// One constrained reference's predicate, captured during inference and
 /// finalized into a `MethodOccurrenceRecordChirho` once the module is solved.
 /// The origin is the reference's identity; the span stays for diagnostics and
@@ -100,6 +104,8 @@ pub fn is_own_dictionary_key_chirho(key_chirho: &str) -> bool {
 pub struct ReferenceEvidenceChirho {
     pub class_name_chirho: String,
     pub ty_key_chirho: Option<String>,
+    /// Full closed goal, preserving every class argument; never a partial MPTC goal.
+    pub ground_pred_chirho: Option<PredChirho>,
 }
 
 /// The solved instance of one overloaded literal.
@@ -401,13 +407,28 @@ impl InferCtxChirho {
             let records_chirho: Vec<ReferenceEvidenceChirho> = capture_chirho
                 .preds_chirho
                 .iter()
-                .map(|(class_name_chirho, ty_chirho)| ReferenceEvidenceChirho {
-                    class_name_chirho: class_name_chirho.clone(),
-                    ty_key_chirho: self.reference_key_chirho(
+                .map(|(class_name_chirho, ty_chirho)| {
+                    let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                    let ty_key_chirho = self.reference_key_chirho(
                         class_name_chirho,
-                        &final_subst_chirho.apply_ty_chirho(ty_chirho),
+                        &resolved_chirho,
                         final_subst_chirho,
-                    ),
+                    );
+                    let ground_pred_chirho = if ty_key_chirho
+                        .as_deref()
+                        .is_some_and(is_own_dictionary_key_chirho)
+                    {
+                        None
+                    } else {
+                        // Captures currently retain only the primary argument.
+                        // The helper refuses a class that needs uncaptured extras.
+                        ground_pred_chirho(self, class_name_chirho, &resolved_chirho, &[])
+                    };
+                    ReferenceEvidenceChirho {
+                        class_name_chirho: class_name_chirho.clone(),
+                        ty_key_chirho,
+                        ground_pred_chirho,
+                    }
                 })
                 .collect();
             match capture_chirho.origin_chirho {
@@ -423,8 +444,8 @@ impl InferCtxChirho {
             }
         }
         (
-            agreeing_chirho(by_span_chirho),
-            agreeing_chirho(by_origin_chirho),
+            ground_goals_chirho::agreeing_reference_goals_chirho(by_span_chirho),
+            ground_goals_chirho::agreeing_reference_goals_chirho(by_origin_chirho),
         )
     }
 

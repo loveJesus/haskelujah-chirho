@@ -207,6 +207,7 @@ fn legacy_reference_join_chirho(
     use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
     let evidence_chirho = |key_chirho: &str| {
         vec![ReferenceEvidenceChirho {
+            ground_pred_chirho: None,
             class_name_chirho: "Show".to_string(),
             ty_key_chirho: Some(key_chirho.to_string()),
         }]
