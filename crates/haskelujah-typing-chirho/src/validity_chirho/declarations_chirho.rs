@@ -178,16 +178,15 @@ pub fn check_module_declaration_validity_chirho(
     errors_chirho
 }
 
-/// Rules 1, 2 and 5, GHC's `checkNewDataCon` on the shapes lowering keeps.
-/// Rule 5 holds at any `StrictData` setting and covers `!`, UNPACK and the
+/// Rules 1, 2 and 6, GHC's `checkNewDataCon` on the shapes lowering keeps.
+/// Rule 6 holds at any `StrictData` setting and covers `!`, UNPACK and the
 /// explicit `~` alike; like GHC, it is judged only once rule 1 holds.
 ///
 /// A Haskell 98 constructor is judged only when lowering found its name. The
 /// empty name is lowering's placeholder for a constructor it could not read
 /// (`newtype N = (:|) Int`, which GHC accepts, or none at all), and the fields
-/// beside a placeholder mean nothing. A GADT-syntax constructor is judged for
-/// its context only: its result type and record form still wait on the AST
-/// (`spec-chirho/bug-gadt-record-fields-dropped-chirho.md`).
+/// beside a placeholder mean nothing. Canonical GADT signatures expose their
+/// real field count, context and written field annotations to the same checks.
 fn check_newtype_constructor_chirho(
     constructor_chirho: &ConDeclChirho,
     errors_chirho: &mut Vec<DeclarationErrorChirho>,

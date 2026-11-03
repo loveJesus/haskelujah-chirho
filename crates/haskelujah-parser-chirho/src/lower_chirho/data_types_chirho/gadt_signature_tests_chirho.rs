@@ -145,21 +145,26 @@ fn balanced_forall_annotations_keep_binders_without_approximating_their_kinds_ch
 #[test]
 fn strict_and_lazy_gadt_arguments_do_not_become_type_applications_chirho() {
     let signature_chirho = first_gadt_chirho(
-        "{-# LANGUAGE GADTs #-}\nmodule Main where\ndata BoxChirho where\n  MkBoxChirho :: !Int -> Bool -> BoxChirho\n",
+        "{-# LANGUAGE GADTs #-}\nmodule Main where\ndata BoxChirho where\n  MkBoxChirho :: !Int -> ~Char -> Bool -> BoxChirho\n",
     );
     let GadtConArgsChirho::PositionalChirho(fields_chirho) = signature_chirho.args_chirho else {
         panic!("positional");
     };
-    assert_eq!(fields_chirho.len(), 2);
+    assert_eq!(fields_chirho.len(), 3);
     assert_eq!(
         fields_chirho[0].strictness_chirho,
         StrictnessChirho::StrictChirho
     );
     assert_eq!(
         fields_chirho[1].strictness_chirho,
+        StrictnessChirho::ExplicitLazyChirho
+    );
+    assert_eq!(
+        fields_chirho[2].strictness_chirho,
         StrictnessChirho::LazyChirho
     );
     assert_eq!(type_shape_chirho(&fields_chirho[0].ty_chirho), "Int");
+    assert_eq!(type_shape_chirho(&fields_chirho[1].ty_chirho), "Char");
 }
 
 #[test]

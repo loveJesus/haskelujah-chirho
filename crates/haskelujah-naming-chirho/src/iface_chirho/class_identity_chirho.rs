@@ -312,8 +312,6 @@ fn bind_chirho(
     }
 }
 
-/// The names a declaration introduces into the type namespace: its type, family or
-/// class, and a class's associated families.
 #[cfg(test)]
 #[path = "class_identity_tests_chirho.rs"]
 mod tests_chirho;
