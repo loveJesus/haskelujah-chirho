@@ -11,6 +11,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/declarations_chirho/annotated_pattern_bindings_chirho.rs"]
 mod annotated_pattern_bindings_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/associated_named_results_chirho.rs"]
+mod associated_named_results_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/closed_family_equations_chirho.rs"]
 mod closed_family_equations_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]

@@ -277,13 +277,18 @@ fn lower_class_method_type_preserves_assoc_family_application_chirho() {
 
 #[test]
 fn lower_assoc_type_family_placeholder_rhs_does_not_become_default_chirho() {
+    // random-1.3.1's `FrozenGen` (src/System/Random/Internal.hs:419): a named
+    // result with its injectivity annotation is a bodiless declaration. This
+    // fixture once dropped `| g -> f`; GHC 9.14.1 rejects that pipe-less form
+    // with GHC-58481 (row 686), kept as a frontend negative in the driver suite.
     let module_chirho = parse_and_lower_chirho(
-        "module M where\nclass FrozenGen f m where\n  type MutableGen f m = (g :: Type)\n  thawGen :: f -> m (MutableGen f m)\n",
+        "module M where\nclass FrozenGen f m where\n  type MutableGen f m = (g :: Type) | g -> f\n  thawGen :: f -> m (MutableGen f m)\n",
     );
     let class_decl_chirho = find_class_decl_chirho(&module_chirho, "FrozenGen");
     match class_decl_chirho {
         DeclChirho::ClassDeclChirho {
             associated_tfs_chirho,
+            methods_chirho,
             ..
         } => {
             assert_eq!(associated_tfs_chirho.len(), 1);
@@ -293,9 +298,12 @@ fn lower_assoc_type_family_placeholder_rhs_does_not_become_default_chirho() {
             );
             assert!(
                 associated_tfs_chirho[0].default_rhs_chirho.is_none(),
-                "placeholder associated type family rhs should not lower as a default equation: {:?}",
+                "a named result with its injectivity annotation is no default equation: {:?}",
                 associated_tfs_chirho[0].default_rhs_chirho
             );
+            // The annotation stays with its declaration; the method after it survives.
+            assert_eq!(methods_chirho.len(), 1);
+            assert_eq!(methods_chirho[0].name_chirho.text_chirho(), "thawGen");
         }
         other_chirho => panic!("expected class decl, got {:?}", other_chirho),
     }

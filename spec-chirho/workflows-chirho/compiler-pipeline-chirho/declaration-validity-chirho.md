@@ -75,7 +75,10 @@ An associated family's injectivity annotation, `type F a = r | r -> a`, belongs 
 its own declaration: the CST keeps `| r -> a` inside that declaration's node, never
 as a stray class member, and lowering reads `= r` as the family's result binder, so
 the declaration is bodiless and `r` is neither a default nor a family parameter.
-No injectivity is checked or solved yet.
+No injectivity is checked or solved yet. Without its `|`, a named result is no
+declaration form in a class: GHC 9.14.1 rejects `type F a = (r :: K)` there with
+GHC-58481, and the checker rejects it as a default whose `r` is not in scope
+(`associated_named_results_chirho.rs`).
 
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
