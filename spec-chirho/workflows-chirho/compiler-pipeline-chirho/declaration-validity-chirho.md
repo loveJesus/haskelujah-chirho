@@ -33,6 +33,12 @@ flowchart TD
    adjacent equations, so a repeat was written apart. Signatures are not bindings.
 4. A default signature has a default binding (`GHC-59794`). Lowering extracts only
    `default name ::` signatures, so an operator's default signature is not judged.
+5. A named Haskell 98 newtype constructor's field has no strictness annotation
+   (`GHC-04049`): `!`, UNPACK and `~` alike, at any `StrictData` setting. As in GHC, it is
+   judged only once rule 1 holds.
+6. A data constructor field's lazy annotation (`~T`) needs `StrictData`, or `Strict`, which
+   implies it (`GHC-81601`). The flags are read in GHC's order: the last mention wins, and
+   `NoStrict` leaves `StrictData` as it was.
 
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
@@ -43,6 +49,20 @@ signatures and associated families, read from every member first, so the fixity 
 them, as in T10816). Every other non-method member still ends the walk. An instance body
 admits no fixity: GHC 9.14.1 rejects one there ("misplaced fixity signature"), and that
 program stays a residual boundary.
+
+## Explicit lazy fields, not the StrictData default
+
+Rules 5 and 6 read the field annotation lowering keeps. The CST reads a `~` before a field
+type as it reads `!`, and lowering records `StrictnessChirho::ExplicitLazyChirho` apart from
+the unannotated default, leaving the type without the `~`. A `~` inside a record field's type
+is type equality and stays in the type. Every strictness consumer asks
+`is_strict_chirho()`, so an explicitly lazy field stays lazy in desugaring and in the
+required-strict-field checks (`GHC-95909`, tcfail112).
+
+This is the explicit override only. The module-wide `StrictData` default, which makes
+unannotated fields strict, is not implemented: those fields stay lazy, and only rule 6 reads
+the extension. A GADT constructor's arguments carry no strictness, so a `~` there is not
+judged (L07 is GHC-valid and unclaimed).
 
 ## Why the rules run before deriving and report after naming
 
@@ -64,4 +84,5 @@ resolution keeps GHC's order: a renamer error is reported before a validity erro
 Typing unit tests on hand-built AST sit beside the rules. Driver controls live in
 `tests/typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs`:
 negatives through the frontend, should_compile files that check clean, and direct
-validator tests on the AST lowering really produces.
+validator tests on the AST lowering really produces. The explicit lazy field controls,
+GHC-measured programs embedded byte for byte, live in `lazy_fields_chirho.rs` beside it.

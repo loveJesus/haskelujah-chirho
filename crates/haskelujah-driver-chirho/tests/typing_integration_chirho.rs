@@ -23,6 +23,8 @@ mod import_scope_chirho;
 mod inferred_evidence_chirho;
 #[path = "typing_integration_chirho/infix_definition_spacing_chirho.rs"]
 mod infix_definition_spacing_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/lazy_fields_chirho.rs"]
+mod lazy_fields_chirho;
 #[path = "typing_integration_chirho/maybe_helper_schemes_chirho.rs"]
 mod maybe_helper_schemes_chirho;
 #[path = "typing_integration_chirho/method_ownership_chirho.rs"]

@@ -403,7 +403,7 @@ impl DesugarCtxChirho {
                             .collect();
                         if strictness_chirho
                             .iter()
-                            .any(|s_chirho| *s_chirho != StrictnessChirho::LazyChirho)
+                            .any(|s_chirho| s_chirho.is_strict_chirho())
                         {
                             self.con_strictness_chirho
                                 .insert(name_chirho.text_chirho().to_string(), strictness_chirho);
@@ -426,7 +426,7 @@ impl DesugarCtxChirho {
                             .collect();
                         if strictness_chirho
                             .iter()
-                            .any(|s_chirho| *s_chirho != StrictnessChirho::LazyChirho)
+                            .any(|s_chirho| s_chirho.is_strict_chirho())
                         {
                             self.con_strictness_chirho
                                 .insert(name_chirho.text_chirho().to_string(), strictness_chirho);
@@ -689,7 +689,7 @@ impl DesugarCtxChirho {
                     Vec::new();
                 for (arg_chirho, s_chirho) in args_chirho.into_iter().zip(strictness_chirho.iter())
                 {
-                    if *s_chirho != StrictnessChirho::LazyChirho {
+                    if s_chirho.is_strict_chirho() {
                         let ty_chirho = TyChirho::VarChirho(
                             haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
                         );
