@@ -3,7 +3,7 @@
 //! Type synonyms, type families and their instances.
 //! Part of CST-to-AST lowering (`lower_chirho.rs`), split by category in row 641.
 
-use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TypeFamilyEquationChirho};
+use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TyVarChirho, TypeFamilyEquationChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
@@ -12,7 +12,7 @@ use haskelujah_syntax_chirho::green_chirho::{
 };
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
-use super::LowerCtxChirho;
+use super::{ChildChirho, LowerCtxChirho};
 
 impl LowerCtxChirho {
     pub(super) fn lower_type_alias_decl_chirho(
@@ -150,6 +150,9 @@ impl LowerCtxChirho {
                         } else if kind_chirho == TokenKindChirho::LeftParenChirho
                             && let Some((tv_chirho, skip_chirho)) = self
                                 .try_parse_kind_annotated_tyvar_chirho(&children_chirho, idx_chirho)
+                                .or_else(|| {
+                                    self.unparsed_kind_binder_chirho(&children_chirho, idx_chirho)
+                                })
                         {
                             type_vars_chirho.push(tv_chirho);
                             idx_chirho += skip_chirho;
@@ -185,6 +188,59 @@ impl LowerCtxChirho {
             equations_chirho,
             span_chirho,
         }
+    }
+
+    /// A header group `( v :: kind )` whose kind the binder kind grammar does not parse,
+    /// such as `(e :: Either a b)`: the binder `v`, unannotated as before, and the group's
+    /// token count through its balanced `)`. Skipping the whole group keeps its `::` from
+    /// being read as the result-kind marker, so the binders after it survive (row 686, H01).
+    /// `None` unless the group opens with a binder name and `::`.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn unparsed_kind_binder_chirho(
+        &self,
+        children_chirho: &[ChildChirho<'_>],
+        idx_chirho: usize,
+    ) -> Option<(TyVarChirho, usize)> {
+        let binder_child_chirho = children_chirho.get(idx_chirho + 1)?;
+        let GreenElementChirho::TokenChirho(binder_token_chirho) =
+            binder_child_chirho.element_chirho
+        else {
+            return None;
+        };
+        if !Self::is_head_binder_name_chirho(binder_token_chirho.kind_chirho()) {
+            return None;
+        }
+        let GreenElementChirho::TokenChirho(colons_chirho) =
+            children_chirho.get(idx_chirho + 2)?.element_chirho
+        else {
+            return None;
+        };
+        if colons_chirho.kind_chirho() != TokenKindChirho::DoubleColonChirho {
+            return None;
+        }
+        let mut depth_chirho = 0usize;
+        for (offset_chirho, child_chirho) in children_chirho[idx_chirho..].iter().enumerate() {
+            let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho else {
+                continue;
+            };
+            match token_chirho.kind_chirho() {
+                TokenKindChirho::LeftParenChirho => depth_chirho += 1,
+                TokenKindChirho::RightParenChirho => {
+                    depth_chirho -= 1;
+                    if depth_chirho == 0 {
+                        let span_chirho = self.span_chirho(
+                            binder_child_chirho.start_chirho,
+                            binder_child_chirho.end_chirho,
+                        );
+                        let binder_chirho =
+                            self.name_from_token_chirho(binder_token_chirho, span_chirho);
+                        return Some((binder_chirho.into(), offset_chirho + 1));
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
     }
 
     pub(super) fn lower_type_family_instance_decl_chirho(

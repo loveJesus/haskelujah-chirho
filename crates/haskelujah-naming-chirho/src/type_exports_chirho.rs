@@ -19,7 +19,7 @@ use crate::iface_chirho::{
     IfaceExportsChirho, IfaceTypeChirho, IfaceValueChirho, ModuleIfaceChirho,
 };
 
-const RUNTIME_REP_CONSTRUCTORS_CHIRHO: &[&str] = &[
+pub(crate) const RUNTIME_REP_CONSTRUCTORS_CHIRHO: &[&str] = &[
     "BoxedRep",
     "IntRep",
     "Int8Rep",
@@ -39,7 +39,7 @@ const RUNTIME_REP_CONSTRUCTORS_CHIRHO: &[&str] = &[
     "VecRep",
 ];
 
-const LEVITY_CONSTRUCTORS_CHIRHO: &[&str] = &["Lifted", "Unlifted"];
+pub(crate) const LEVITY_CONSTRUCTORS_CHIRHO: &[&str] = &["Lifted", "Unlifted"];
 const MULTIPLICITY_CONSTRUCTORS_CHIRHO: &[&str] = &["One", "Many"];
 const VEC_COUNT_CONSTRUCTORS_CHIRHO: &[&str] = &["Vec2", "Vec4", "Vec8", "Vec16", "Vec32", "Vec64"];
 const VEC_ELEM_CONSTRUCTORS_CHIRHO: &[&str] = &[

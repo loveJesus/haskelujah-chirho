@@ -11,7 +11,9 @@ use haskelujah_ast_chirho::promotion_chirho::{
 };
 use haskelujah_span_chirho::SpanChirho;
 
-use crate::iface_chirho::{IfaceTypeChirho, IfaceValueChirho, builtin_module_ifaces_chirho};
+use crate::iface_chirho::{
+    IfaceExportsChirho, IfaceTypeChirho, IfaceValueChirho, builtin_module_ifaces_chirho,
+};
 
 fn name_chirho(text_chirho: &str) -> NameChirho {
     NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -430,4 +432,118 @@ fn a_value_no_exported_type_lists_is_no_promotion_chirho() {
     assert!(is_unknown_chirho(
         &scope_chirho.quoted_chirho(&name_chirho("MkPatternChirho"))
     ));
+}
+
+#[test]
+fn trusted_providers_give_standard_constructors_the_compilers_identity_chirho() {
+    // H01's 'Nothing/'Just and 'Left/'Right, H02's 'Lifted/'Unlifted and H03's RuntimeRep:
+    // the ordered reducer needs them as distinct, proven constructors.
+    let builtins_chirho = builtin_module_ifaces_chirho();
+    let scope_chirho = build_promotion_scope_chirho(
+        &module_chirho(
+            vec![],
+            vec![
+                import_chirho("Prelude", None, false),
+                import_chirho("GHC.Exts", None, false),
+            ],
+        ),
+        &builtins_chirho,
+    );
+    for (constructor_chirho, defining_chirho) in [
+        ("Nothing", "GHC.Maybe"),
+        ("Just", "GHC.Maybe"),
+        ("Left", "Data.Either"),
+        ("Right", "Data.Either"),
+        ("Lifted", "GHC.Types"),
+        ("Unlifted", "GHC.Types"),
+        ("IntRep", "GHC.Types"),
+        ("BoxedRep", "GHC.Types"),
+    ] {
+        assert_eq!(
+            scope_chirho.quoted_chirho(&name_chirho(constructor_chirho)),
+            PromotionResolutionChirho::ResolvedChirho(PromotedKeyChirho::builtin_chirho(
+                defining_chirho,
+                constructor_chirho,
+            )),
+            "'{constructor_chirho}"
+        );
+    }
+}
+
+#[test]
+fn builtin_homonyms_and_source_forwarders_prove_nothing_chirho() {
+    // A builtin interface outside Maybe's named providers (a strict Maybe) and a source
+    // module forwarding the standard constructors are no proof of the standard identity.
+    for provider_chirho in [
+        iface_chirho(
+            "Data.Strict.Maybe",
+            "Maybe",
+            &["Nothing", "Just"],
+            None,
+            IfaceOriginChirho::BuiltinChirho,
+        ),
+        iface_chirho(
+            "ForwarderChirho",
+            "Maybe",
+            &["Nothing", "Just"],
+            None,
+            IfaceOriginChirho::SourceChirho,
+        ),
+    ] {
+        let imported_chirho = provider_chirho.name_chirho.clone();
+        let scope_chirho = build_promotion_scope_chirho(
+            &module_chirho(vec![], vec![import_chirho(&imported_chirho, None, false)]),
+            &[provider_chirho],
+        );
+        assert!(
+            is_unknown_chirho(&scope_chirho.quoted_chirho(&name_chirho("Just"))),
+            "{imported_chirho}"
+        );
+    }
+}
+
+#[test]
+fn every_trusted_parent_is_listed_by_exactly_its_named_providers_chirho() {
+    // A parent that names its providers is listed, with constructors, by those builtin
+    // interfaces and no others, and every listing of a table parent has the table's
+    // constructors. A future builtin homonym fails here instead of sharing base's identity.
+    let builtins_chirho = builtin_module_ifaces_chirho();
+    for entry_chirho in BUILTIN_PROMOTED_PARENTS_CHIRHO {
+        let expected_chirho: std::collections::BTreeSet<&str> =
+            entry_chirho.constructors_chirho.iter().copied().collect();
+        let mut listing_chirho: Vec<&str> = Vec::new();
+        for iface_chirho in &builtins_chirho {
+            let Some(ty_chirho) = iface_chirho
+                .exports_chirho
+                .types_chirho
+                .get(entry_chirho.parent_chirho)
+            else {
+                continue;
+            };
+            if ty_chirho.constructors_chirho.is_empty() {
+                continue;
+            }
+            let listed_chirho: std::collections::BTreeSet<&str> = ty_chirho
+                .constructors_chirho
+                .iter()
+                .map(String::as_str)
+                .collect();
+            assert_eq!(
+                listed_chirho, expected_chirho,
+                "{} lists {}",
+                iface_chirho.name_chirho, entry_chirho.parent_chirho
+            );
+            listing_chirho.push(iface_chirho.name_chirho.as_str());
+        }
+        if let Some(providers_chirho) = entry_chirho.providers_chirho {
+            listing_chirho.sort_unstable();
+            let mut named_chirho = providers_chirho.to_vec();
+            named_chirho.sort_unstable();
+            assert_eq!(
+                listing_chirho, named_chirho,
+                "{}",
+                entry_chirho.parent_chirho
+            );
+        }
+    }
 }

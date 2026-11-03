@@ -2,7 +2,9 @@
 
 //! Lowering tests: closed type-family equations keep their written head, their
 //! arguments in order, their explicit binders and the binders left unused (row 686).
-//! The shapes are the row 686 oracle programs GHC 9.14.1 measured.
+//! The shapes are the row 686 oracle programs GHC 9.14.1 measured. Family headers keep
+//! every binder, equations may annotate their right side's kind, and promoted forms that
+//! open with `'(` keep their elements.
 
 use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TypeFamilyEquationChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -394,4 +396,229 @@ type family LeftoverChirho aChirho where
         equations_of_chirho(source_chirho, "LeftoverChirho")[0].malformed_chirho,
         "tokens the left-side type grammar leaves before `=`"
     );
+}
+
+/// One family declaration's binder names, result kind and equations.
+fn family_decl_chirho(
+    source_chirho: &str,
+    family_chirho: &str,
+) -> (
+    Vec<String>,
+    Option<TypeChirho>,
+    Vec<TypeFamilyEquationChirho>,
+) {
+    parse_and_lower_chirho(source_chirho)
+        .decls_chirho
+        .into_iter()
+        .find_map(|decl_chirho| match decl_chirho {
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                result_kind_chirho,
+                equations_chirho,
+                ..
+            } if name_chirho.text_chirho() == family_chirho => Some((
+                type_vars_chirho
+                    .iter()
+                    .map(|binder_chirho| binder_chirho.text_chirho().to_string())
+                    .collect(),
+                result_kind_chirho,
+                equations_chirho,
+            )),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("no family `{family_chirho}` in the module"))
+}
+
+/// Every synonym's right side in `source_chirho`, rendered, in order.
+fn synonyms_chirho(source_chirho: &str) -> Vec<String> {
+    parse_and_lower_chirho(source_chirho)
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } => Some(render_chirho(rhs_chirho)),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn promoted_tuples_keep_their_elements_chirho() {
+    // G01's '(x, y): the tuple constructor applied to the elements, which the parser
+    // used to leave outside the promoted node after `'(`.
+    let source_chirho = "{-# LANGUAGE DataKinds, TypeFamilies, PolyKinds #-}
+module Main where
+import Data.Kind (Type)
+type family FstChirho (p :: (a, b)) :: a where
+  FstChirho '(x, y) = x
+type PairChirho = '(Int, Bool)
+type TripleChirho = '(Int, Bool, Char)
+type KindedChirho b = '( '[Int, Bool] :: [Type], b )
+";
+    assert_eq!(
+        shapes_chirho(source_chirho, "FstChirho"),
+        ["FstChirho (('(,) x) y)"]
+    );
+    assert_eq!(
+        synonyms_chirho(source_chirho),
+        [
+            "(('(,) Int) Bool)",
+            "((('(,,) Int) Bool) Char)",
+            "(('(,) '[Int,Bool]) b)",
+        ]
+    );
+}
+
+#[test]
+fn prefix_promoted_forms_name_one_constructor_chirho() {
+    // T19984's '(:) Int '[], the pair constructor and the unit.
+    let source_chirho = "{-# LANGUAGE DataKinds, TypeOperators #-}
+module Main where
+type ConsChirho = '(:) Int '[]
+type PairChirho = '(,) Int Bool
+type TripleConChirho = '(,,)
+type UnitChirho = '()
+";
+    assert_eq!(
+        synonyms_chirho(source_chirho),
+        ["((': Int) '[])", "(('(,) Int) Bool)", "'(,,)", "'()"]
+    );
+}
+
+#[test]
+fn a_right_side_may_carry_a_kind_chirho() {
+    // KindSigs' `Foo a = Int :: Type`: the annotation belongs to the right side and
+    // starts no equation of its own.
+    let source_chirho = "{-# LANGUAGE TypeFamilies #-}
+module Main where
+import Data.Kind (Type)
+type family FooChirho a where
+  FooChirho Int = Int :: Type
+  FooChirho b = Bool
+";
+    let equations_chirho = equations_of_chirho(source_chirho, "FooChirho");
+    assert_eq!(equations_chirho.len(), 2);
+    assert!(
+        equations_chirho
+            .iter()
+            .all(|equation_chirho| !equation_chirho.malformed_chirho)
+    );
+    assert_eq!(render_chirho(&equations_chirho[0].rhs_chirho), "Int");
+    let kind_sigs_chirho =
+        include_str!("../../../../../ghc-tests-chirho/parser-chirho/should_compile/KindSigs.hs");
+    let foo_chirho = equations_of_chirho(kind_sigs_chirho, "Foo");
+    assert_eq!(foo_chirho.len(), 1, "KindSigs.hs, which GHC accepts");
+    assert!(!foo_chirho[0].malformed_chirho);
+}
+
+#[test]
+fn a_kind_annotation_needs_a_type_and_a_kind_chirho() {
+    // GHC rejects both with a parse error; each leaves an incomplete equation.
+    for source_chirho in [
+        "{-# LANGUAGE TypeFamilies #-}
+module Main where
+type family FooChirho a where
+  FooChirho a = Int ::
+",
+        "{-# LANGUAGE TypeFamilies #-}
+module Main where
+import Data.Kind (Type)
+type family FooChirho a where
+  FooChirho a = :: Type
+",
+    ] {
+        assert!(
+            equations_of_chirho(source_chirho, "FooChirho")
+                .iter()
+                .any(|equation_chirho| equation_chirho.malformed_chirho),
+            "{source_chirho}"
+        );
+    }
+}
+
+#[test]
+fn binders_after_an_applied_kind_survive_chirho() {
+    // H01's `(e :: Either a b) (d :: a)`: the first kind is beyond the binder kind
+    // grammar, so its group is skipped whole; `d` and the result kind `a` survive.
+    let source_chirho = "{-# LANGUAGE DataKinds, TypeFamilies, PolyKinds #-}
+module Main where
+type family FromLeftChirho (e :: Either a b) (d :: a) :: a where
+  FromLeftChirho ('Left x) d = x
+  FromLeftChirho ('Right y) d = d
+";
+    let (binders_chirho, result_kind_chirho, equations_chirho) =
+        family_decl_chirho(source_chirho, "FromLeftChirho");
+    assert_eq!(binders_chirho, ["e", "d"]);
+    assert_eq!(
+        result_kind_chirho.as_ref().map(render_chirho).as_deref(),
+        Some("a")
+    );
+    assert!(
+        equations_chirho
+            .iter()
+            .all(|equation_chirho| equation_chirho.lhs_types_chirho.len() == 2)
+    );
+}
+
+#[test]
+fn measured_headers_keep_every_binder_chirho() {
+    // Accepted should_compile programs whose closed families put an applied-kind binder
+    // before another binder: each family keeps its declared arity, and so does every
+    // equation, which the arity check (GHC-12985) compares.
+    let files_chirho: [(&str, &str, &[(&str, usize)]); 5] = [
+        (
+            "T15473.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T15473.hs"
+            ),
+            &[("LetInterleave", 6)],
+        ),
+        (
+            "T15772.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T15772.hs"
+            ),
+            &[("Curry", 4), ("Tail", 1)],
+        ),
+        (
+            "T19682.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T19682.hs"
+            ),
+            &[("SameShapeAs", 2), ("AllEqF", 2), ("Head", 1), ("Tail", 1)],
+        ),
+        (
+            "T25597.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T25597.hs"
+            ),
+            &[("Func", 3), ("FuncU", 3), ("FuncS", 3)],
+        ),
+        (
+            "type_in_type_hole_fits.hs",
+            include_str!(
+                "../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/type_in_type_hole_fits.hs"
+            ),
+            &[("^.", 2), ("*.", 2), ("OCmp", 2), ("OGEq", 2)],
+        ),
+    ];
+    for (file_chirho, source_chirho, families_chirho) in files_chirho {
+        for (family_chirho, arity_chirho) in families_chirho {
+            let (binders_chirho, _, equations_chirho) =
+                family_decl_chirho(source_chirho, family_chirho);
+            assert_eq!(
+                binders_chirho.len(),
+                *arity_chirho,
+                "{file_chirho}: {family_chirho} binders {binders_chirho:?}"
+            );
+            for equation_chirho in &equations_chirho {
+                assert_eq!(
+                    equation_chirho.lhs_types_chirho.len(),
+                    *arity_chirho,
+                    "{file_chirho}: {}",
+                    shape_chirho(equation_chirho)
+                );
+            }
+        }
+    }
 }

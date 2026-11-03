@@ -473,23 +473,7 @@ impl ParserChirho<'_> {
                 }
                 self.builder_chirho.finish_node_chirho();
             }
-            Some(RawTokenKindChirho::LeftParenChirho) => {
-                // Promoted tuple or unit: '(), '(,), '(,,)
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
-                self.bump_chirho(); // tick
-                self.bump_chirho(); // (
-                self.eat_trivia_chirho();
-                // Eat commas for promoted tuple constructors
-                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
-                    self.bump_chirho();
-                    self.eat_trivia_chirho();
-                }
-                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                    self.bump_chirho();
-                }
-                self.builder_chirho.finish_node_chirho();
-            }
+            Some(RawTokenKindChirho::LeftParenChirho) => self.parse_promoted_paren_type_chirho(),
             _ => {
                 // Fallback: just consume the tick as an error
                 self.builder_chirho
@@ -498,6 +482,84 @@ impl ParserChirho<'_> {
                 self.builder_chirho.finish_node_chirho();
             }
         }
+    }
+
+    /// Parse a promoted form opening with `'(`. The unit `'()`, the tuple constructors
+    /// `'(,)`, `'(,,)`, … and a prefix operator constructor such as `'(:)` or `'(:+:)` are
+    /// one promoted constructor. Anything else is a promoted tuple `'(t1, t2, …)`, whose
+    /// elements are types (row 686).
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    fn parse_promoted_paren_type_chirho(&mut self) {
+        let [after_paren_chirho, after_operator_chirho] = self.peek_kinds_after_tick_paren_chirho();
+        let constructor_form_chirho = match after_paren_chirho {
+            Some(RawTokenKindChirho::RightParenChirho | RawTokenKindChirho::CommaChirho) => true,
+            Some(RawTokenKindChirho::ConSymChirho) => {
+                after_operator_chirho == Some(RawTokenKindChirho::RightParenChirho)
+            }
+            _ => false,
+        };
+        if constructor_form_chirho {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
+            self.bump_chirho(); // tick
+            self.bump_chirho(); // (
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::ConSymChirho) {
+                self.bump_chirho(); // the operator constructor
+                self.eat_trivia_chirho();
+            }
+            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::PromotedTupleTypeChirho);
+        self.bump_chirho(); // tick
+        self.bump_chirho(); // (
+        self.eat_trivia_chirho();
+        self.parse_promoted_tuple_element_chirho();
+        while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            self.bump_chirho(); // ,
+            self.eat_trivia_chirho();
+            self.parse_promoted_tuple_element_chirho();
+        }
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            self.bump_chirho(); // )
+        }
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// One promoted tuple element: a type with an optional kind annotation, kept as one
+    /// kind-annotated type (`'( [Int, Bool] :: [Type], b )`).
+    fn parse_promoted_tuple_element_chirho(&mut self) {
+        let element_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_type_chirho();
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.builder_chirho
+                .start_node_at_chirho(element_chirho, SyntaxKindChirho::KindAnnotTypeChirho);
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // the kind
+            self.builder_chirho.finish_node_chirho();
+            self.eat_trivia_chirho();
+        }
+    }
+
+    /// The kinds of the first two non-trivia tokens after the `'(` at the cursor.
+    fn peek_kinds_after_tick_paren_chirho(&self) -> [Option<RawTokenKindChirho>; 2] {
+        let mut kinds_chirho = self.tokens_chirho[self.pos_chirho..]
+            .iter()
+            .map(|token_chirho| token_chirho.kind_chirho)
+            .filter(|kind_chirho| !kind_chirho.is_trivia_chirho())
+            .skip(2);
+        [kinds_chirho.next(), kinds_chirho.next()]
     }
 
     /// Check if the next non-trivia token after current is a ConId.

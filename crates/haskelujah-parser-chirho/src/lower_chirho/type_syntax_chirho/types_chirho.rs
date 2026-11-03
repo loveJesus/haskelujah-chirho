@@ -6,6 +6,7 @@
 use haskelujah_ast_chirho::decl_chirho::{AstKindChirho, TyVarChirho};
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+use haskelujah_span_chirho::SpanChirho;
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenElementChirho, GreenNodeChirho};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
@@ -463,14 +464,16 @@ impl LowerCtxChirho {
                         self.placeholder_type_chirho()
                     }
                 } else {
-                    // Promoted tuple: '() — extract text from all tokens
-                    TypeChirho::PromotedConChirho {
-                        name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                            "()",
-                            span_chirho,
-                        )),
-                        span_chirho,
-                    }
+                    // The unit '() and the tuple constructors '(,), '(,,), …: one comma
+                    // per component after the first.
+                    let commas_chirho = children_chirho
+                        .iter()
+                        .filter(|c_chirho| {
+                            matches!(c_chirho.element_chirho, GreenElementChirho::TokenChirho(t_chirho)
+                                if t_chirho.kind_chirho() == TokenKindChirho::CommaChirho)
+                        })
+                        .count();
+                    promoted_tuple_constructor_chirho(commas_chirho, span_chirho)
                 }
             }
             SyntaxKindChirho::PromotedListTypeChirho => {
@@ -490,6 +493,39 @@ impl LowerCtxChirho {
                 TypeChirho::PromotedListChirho {
                     elements_chirho,
                     span_chirho,
+                }
+            }
+            SyntaxKindChirho::PromotedTupleTypeChirho => {
+                // DataKinds promoted tuple '(t1, …, tn): the tuple constructor '(,…,)
+                // applied to its elements, the shape naming, kinds and the promotion
+                // identity already handle (row 686).
+                // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+                let elements_chirho: Vec<TypeChirho> = children_chirho
+                    .iter()
+                    .filter(|c_chirho| {
+                        matches!(c_chirho.element_chirho, GreenElementChirho::NodeChirho(n_chirho)
+                            if is_type_kind_chirho(n_chirho.kind_chirho()))
+                    })
+                    .map(|tc_chirho| self.lower_type_from_child_chirho(tc_chirho))
+                    .collect();
+                if elements_chirho.len() < 2 {
+                    // `'(t)` names no promoted tuple: the element stands alone.
+                    elements_chirho
+                        .into_iter()
+                        .next()
+                        .unwrap_or_else(|| self.placeholder_type_chirho())
+                } else {
+                    let constructor_chirho =
+                        promoted_tuple_constructor_chirho(elements_chirho.len() - 1, span_chirho);
+                    elements_chirho.into_iter().fold(
+                        constructor_chirho,
+                        |fun_chirho, arg_chirho| TypeChirho::AppChirho {
+                            fun_chirho: Box::new(fun_chirho),
+                            arg_chirho: Box::new(arg_chirho),
+                            span_chirho,
+                        },
+                    )
                 }
             }
             SyntaxKindChirho::WildcardTypeChirho => {
@@ -863,4 +899,16 @@ fn is_qualified_symbol_type_operator_chirho(ty_chirho: &TypeChirho) -> bool {
         && text_chirho
             .chars()
             .all(|char_chirho| !char_chirho.is_alphanumeric() && char_chirho != '_')
+}
+
+/// The promoted unit `'()` (no commas) or tuple constructor `'(,…,)` with `commas_chirho`
+/// commas, as a promoted constructor name.
+fn promoted_tuple_constructor_chirho(commas_chirho: usize, span_chirho: SpanChirho) -> TypeChirho {
+    TypeChirho::PromotedConChirho {
+        name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            format!("({})", ",".repeat(commas_chirho)),
+            span_chirho,
+        )),
+        span_chirho,
+    }
 }

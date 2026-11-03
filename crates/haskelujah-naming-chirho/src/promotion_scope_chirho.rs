@@ -23,15 +23,66 @@ use haskelujah_ast_chirho::promotion_chirho::{
 };
 
 use crate::env_chirho::NamespaceChirho;
-use crate::iface_chirho::{IfaceExportsChirho, IfaceOriginChirho, ModuleIfaceChirho};
+use crate::iface_chirho::{IfaceOriginChirho, ModuleIfaceChirho};
 use crate::resolve_chirho::compute_imported_names_chirho;
+use crate::type_exports_chirho::{LEVITY_CONSTRUCTORS_CHIRHO, RUNTIME_REP_CONSTRUCTORS_CHIRHO};
 
-/// The constructors the compiler itself defines, by parent type: the only constructors a
-/// builtin interface can give a builtin key. List, unit and tuple constructors are
-/// written with their own syntax and keyed by the converters.
-const BUILTIN_PROMOTED_CONSTRUCTORS_CHIRHO: &[(&str, &[&str])] = &[
-    ("Bool", &["False", "True"]),
-    ("Ordering", &["LT", "EQ", "GT"]),
+/// A datatype the compiler itself defines, whose constructors a trusted builtin interface
+/// gives the compiler's identity.
+struct BuiltinParentChirho {
+    /// The parent type as interfaces list it.
+    parent_chirho: &'static str,
+    /// The module the key names: where GHC defines the type.
+    module_chirho: &'static str,
+    /// Its constructors.
+    constructors_chirho: &'static [&'static str],
+    /// The builtin interfaces trusted to provide it. `None` is any builtin interface, the
+    /// Bool and Ordering rule since 686b. Every later entry names its providers exactly,
+    /// so a builtin homonym anywhere else stays unproven.
+    providers_chirho: Option<&'static [&'static str]>,
+}
+
+/// The constructors the compiler itself defines: the only constructors a builtin
+/// interface can give a builtin key. List, unit and tuple constructors are written with
+/// their own syntax and keyed by the converters.
+/// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+const BUILTIN_PROMOTED_PARENTS_CHIRHO: &[BuiltinParentChirho] = &[
+    BuiltinParentChirho {
+        parent_chirho: "Bool",
+        module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+        constructors_chirho: &["False", "True"],
+        providers_chirho: None,
+    },
+    BuiltinParentChirho {
+        parent_chirho: "Ordering",
+        module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+        constructors_chirho: &["LT", "EQ", "GT"],
+        providers_chirho: None,
+    },
+    BuiltinParentChirho {
+        parent_chirho: "Maybe",
+        module_chirho: "GHC.Maybe",
+        constructors_chirho: &["Nothing", "Just"],
+        providers_chirho: Some(&["Prelude", "Data.Maybe"]),
+    },
+    BuiltinParentChirho {
+        parent_chirho: "Either",
+        module_chirho: "Data.Either",
+        constructors_chirho: &["Left", "Right"],
+        providers_chirho: Some(&["Prelude", "Data.Either"]),
+    },
+    BuiltinParentChirho {
+        parent_chirho: "Levity",
+        module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+        constructors_chirho: LEVITY_CONSTRUCTORS_CHIRHO,
+        providers_chirho: Some(&["GHC.Exts"]),
+    },
+    BuiltinParentChirho {
+        parent_chirho: "RuntimeRep",
+        module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+        constructors_chirho: RUNTIME_REP_CONSTRUCTORS_CHIRHO,
+        providers_chirho: Some(&["GHC.Exts"]),
+    },
 ];
 
 /// One module's promoted-constructor scope, built from its declarations and the
@@ -88,7 +139,7 @@ pub fn build_promotion_scope_chirho(
                 }
                 NamespaceChirho::ValueChirho => {
                     let Some(resolution_chirho) =
-                        imported_constructor_chirho(&iface_chirho.exports_chirho, &name_chirho)
+                        imported_constructor_chirho(iface_chirho, &name_chirho)
                     else {
                         continue;
                     };
@@ -117,9 +168,10 @@ pub fn build_promotion_scope_chirho(
 /// What an imported value names when it is a constructor; `None` when no exported type
 /// lists it, so it is no promotion at all.
 fn imported_constructor_chirho(
-    exports_chirho: &IfaceExportsChirho,
+    iface_chirho: &ModuleIfaceChirho,
     name_chirho: &str,
 ) -> Option<PromotionResolutionChirho> {
+    let exports_chirho = &iface_chirho.exports_chirho;
     let parent_chirho = exports_chirho.types_chirho.values().find(|ty_chirho| {
         ty_chirho
             .constructors_chirho
@@ -132,12 +184,13 @@ fn imported_constructor_chirho(
         .and_then(|value_chirho| value_chirho.defining_module_chirho.as_deref());
     let key_chirho = if let Some(module_chirho) = defining_module_chirho {
         PromotedKeyChirho::source_chirho(module_chirho, name_chirho)
-    } else if exports_chirho.origin_chirho == IfaceOriginChirho::BuiltinChirho
-        && is_builtin_constructor_chirho(&parent_chirho.name_chirho, name_chirho)
+    } else if let Some(builtin_chirho) =
+        trusted_builtin_parent_chirho(iface_chirho, &parent_chirho.name_chirho, name_chirho)
     {
-        PromotedKeyChirho::builtin_chirho(BUILTIN_CONSTRUCTOR_MODULE_CHIRHO, name_chirho)
+        PromotedKeyChirho::builtin_chirho(builtin_chirho.module_chirho, name_chirho)
     } else {
-        // A stub interface, or a builtin constructor outside the compiler's table.
+        // A stub interface, a source forwarder, an untrusted provider, or a builtin
+        // constructor outside the compiler's table.
         return Some(PromotionResolutionChirho::UnresolvedChirho(
             PromotedKeyChirho::unknown_chirho("", name_chirho),
         ));
@@ -145,14 +198,28 @@ fn imported_constructor_chirho(
     Some(PromotionResolutionChirho::ResolvedChirho(key_chirho))
 }
 
-/// Whether the compiler itself defines `constructor` as a constructor of `parent`.
-fn is_builtin_constructor_chirho(parent_chirho: &str, constructor_chirho: &str) -> bool {
-    BUILTIN_PROMOTED_CONSTRUCTORS_CHIRHO.iter().any(
-        |(builtin_parent_chirho, constructors_chirho)| {
-            *builtin_parent_chirho == parent_chirho
-                && constructors_chirho.contains(&constructor_chirho)
-        },
-    )
+/// The table entry that trusts `iface_chirho` to give `constructor_chirho` of
+/// `parent_chirho` the compiler's identity: a builtin interface, a parent in the table that
+/// has the constructor and, where the entry names its providers, one of them.
+fn trusted_builtin_parent_chirho(
+    iface_chirho: &ModuleIfaceChirho,
+    parent_chirho: &str,
+    constructor_chirho: &str,
+) -> Option<&'static BuiltinParentChirho> {
+    if iface_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::BuiltinChirho {
+        return None;
+    }
+    BUILTIN_PROMOTED_PARENTS_CHIRHO.iter().find(|entry_chirho| {
+        entry_chirho.parent_chirho == parent_chirho
+            && entry_chirho
+                .constructors_chirho
+                .contains(&constructor_chirho)
+            && entry_chirho
+                .providers_chirho
+                .is_none_or(|providers_chirho| {
+                    providers_chirho.contains(&iface_chirho.name_chirho.as_str())
+                })
+    })
 }
 
 /// The names a declaration introduces into the type namespace: its type, family or

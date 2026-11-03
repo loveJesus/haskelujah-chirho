@@ -238,6 +238,7 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::ContextChirho
             | SyntaxKindChirho::PromotedConTypeChirho
             | SyntaxKindChirho::PromotedListTypeChirho
+            | SyntaxKindChirho::PromotedTupleTypeChirho
             | SyntaxKindChirho::InfixTypeChirho
             | SyntaxKindChirho::WildcardTypeChirho
             | SyntaxKindChirho::LitTypeChirho

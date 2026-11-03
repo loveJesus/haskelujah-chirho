@@ -220,6 +220,8 @@ pub enum SyntaxKindChirho {
     PromotedConTypeChirho,
     /// DataKinds promoted list type (`'[Int, Bool]`).
     PromotedListTypeChirho,
+    /// DataKinds promoted tuple type (`'(Int, Bool)`).
+    PromotedTupleTypeChirho,
     /// Infix type operator (`a :+: b`, `a `Either` b`).
     InfixTypeChirho,
     /// PartialTypeSignatures wildcard type (`_`).
@@ -351,6 +353,7 @@ impl SyntaxKindChirho {
                 | Self::KindAnnotTypeChirho
                 | Self::PromotedConTypeChirho
                 | Self::PromotedListTypeChirho
+                | Self::PromotedTupleTypeChirho
                 | Self::InfixTypeChirho
                 | Self::WildcardTypeChirho
                 | Self::LitTypeChirho

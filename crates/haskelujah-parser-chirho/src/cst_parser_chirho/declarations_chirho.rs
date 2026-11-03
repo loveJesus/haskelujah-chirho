@@ -153,7 +153,7 @@ impl ParserChirho<'_> {
                 if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
                     self.bump_chirho(); // =
                     self.eat_trivia_chirho();
-                    self.parse_type_chirho(); // rhs
+                    self.parse_family_equation_rhs_chirho();
                 }
                 self.builder_chirho.finish_node_chirho();
             }
@@ -165,6 +165,53 @@ impl ParserChirho<'_> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a closed equation's right side with GHC's optional kind annotation
+    /// (`F a = Int :: Type`), kept as one kind-annotated type. A `::` that ends the
+    /// equation (`F a = Int ::`) stays a bare token in the equation node, so lowering
+    /// reports the equation incomplete, as GHC rejects it (row 686, KindSigs).
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_family_equation_rhs_chirho(&mut self) {
+        let rhs_start_chirho = self.pos_chirho;
+        let rhs_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_type_chirho();
+        if self.pos_chirho == rhs_start_chirho
+            || self.next_non_trivia_kind_chirho(0) != Some(RawTokenKindChirho::ColonColonChirho)
+        {
+            return;
+        }
+        self.eat_trivia_chirho();
+        let kind_follows_chirho = !matches!(
+            self.next_non_trivia_kind_chirho(1),
+            None | Some(
+                RawTokenKindChirho::VirtualSemicolonChirho
+                    | RawTokenKindChirho::SemicolonChirho
+                    | RawTokenKindChirho::VirtualRightBraceChirho
+                    | RawTokenKindChirho::RightBraceChirho
+                    | RawTokenKindChirho::EofChirho
+            )
+        );
+        if !kind_follows_chirho {
+            self.bump_chirho(); // a `::` with no kind
+            return;
+        }
+        self.builder_chirho
+            .start_node_at_chirho(rhs_chirho, SyntaxKindChirho::KindAnnotTypeChirho);
+        self.bump_chirho(); // ::
+        self.eat_trivia_chirho();
+        self.parse_type_chirho(); // the kind
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// The kind of the non-trivia token `skip_chirho` places past the next one at or after
+    /// the cursor: 0 is the next non-trivia token itself.
+    fn next_non_trivia_kind_chirho(&self, skip_chirho: usize) -> Option<RawTokenKindChirho> {
+        self.tokens_chirho[self.pos_chirho.min(self.tokens_chirho.len())..]
+            .iter()
+            .map(|token_chirho| token_chirho.kind_chirho)
+            .filter(|kind_chirho| !kind_chirho.is_trivia_chirho())
+            .nth(skip_chirho)
     }
 
     /// Parse a closed equation's left side as one type. A continuation line

@@ -281,3 +281,37 @@ fn split_wd_checks_once_its_infix_equations_have_their_heads_chirho() {
         include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/SplitWD.hs"),
     );
 }
+
+/// `K02KindWithoutKindChirho.hs`, sha256 1770b46f2287ebb6: a right-side `::` with no kind, which
+/// GHC rejects as a parse error (prediction; the K set is queued for GHC 9.14.1).
+const K02_KIND_WITHOUT_KIND_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+-- Row 686 follow-up control K02 (#31070): the malformed boundary of a right-side kind
+-- annotation, a `::` with no kind. Predicted GHC 9.14.1: rejected (parse error).
+{-# LANGUAGE TypeFamilies #-}
+module Main where
+
+type family FooChirho a where
+  FooChirho a = Int ::
+
+main :: IO ()
+main = pure ()
+"#;
+
+#[test]
+fn a_right_side_kind_annotation_checks_like_ghc_chirho() {
+    // KindSigs, which GHC accepts: `Foo a = Int :: Type` is one equation, where the
+    // 686a carrier read its annotation as a second, incomplete one.
+    checks_like_ghc_chirho(
+        "KindSigs.hs",
+        include_str!("../../../../../ghc-tests-chirho/parser-chirho/should_compile/KindSigs.hs"),
+    );
+}
+
+#[test]
+fn a_kind_annotation_without_a_kind_stays_incomplete_chirho() {
+    rejected_like_ghc_chirho(
+        K02_KIND_WITHOUT_KIND_CHIRHO,
+        "K02KindWithoutKindChirho.hs",
+        &["E0209", "GHC-58481"],
+    );
+}

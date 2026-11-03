@@ -49,6 +49,15 @@ binds an unused name is held: registration stops at the first held equation, so 
 closed equation reduces in its place. GHC's unused-binder error (`GHC-30337`) is not a rule
 here; the hold keeps such a program refused rather than newly accepted.
 
+The right side may carry a kind annotation, as GHC's KindSigs writes `Foo a = Int :: Type`.
+It parses as one kind-annotated type. A `::` with no kind after it leaves the equation
+incomplete, as GHC rejects it.
+
+The arity check counts the header's binders, so the header keeps every one. A binder whose
+kind the binder kind grammar cannot read, such as `(e :: Either a b)`, stays unannotated and
+its whole parenthesized group is skipped. Its `::` is then never taken for the result-kind
+marker, and the binders after it survive (row 686, H01).
+
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
 declarations leaked by layout. Row 683 held the rule because a legal fixity declaration
