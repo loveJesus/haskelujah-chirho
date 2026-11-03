@@ -110,10 +110,10 @@ fn scope_chirho(spellings_chirho: &[(&str, &'static str, u8)]) -> BuiltinClassSc
     BuiltinClassScopeChirho::new_chirho(
         spellings_chirho
             .iter()
-            .map(|(spelling_chirho, class_text_chirho, arity_chirho)| {
+            .map(|&(spelling_chirho, class_text_chirho, arity_chirho)| {
                 (
                     spelling_chirho.to_string(),
-                    builtin_class_chirho(*class_text_chirho, *arity_chirho),
+                    builtin_class_chirho(class_text_chirho, arity_chirho),
                 )
             })
             .collect(),
