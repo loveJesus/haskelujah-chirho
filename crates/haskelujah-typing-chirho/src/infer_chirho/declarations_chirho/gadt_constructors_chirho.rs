@@ -39,7 +39,7 @@ impl InferCtxChirho {
             self.ast_type_to_scheme_seeded_chirho(&ty_chirho, seed_chirho, false);
         if signature_chirho
             .positional_fields_chirho()
-            .any(|field_chirho| field_chirho.strictness_chirho != StrictnessChirho::LazyChirho)
+            .any(|field_chirho| field_chirho.strictness_chirho.is_strict_chirho())
         {
             self.strict_positional_constructors_chirho
                 .insert(name_chirho.text_chirho().to_string());

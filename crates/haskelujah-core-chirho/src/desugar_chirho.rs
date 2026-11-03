@@ -638,7 +638,7 @@ impl DesugarCtxChirho {
                     Vec::new();
                 for (arg_chirho, s_chirho) in args_chirho.into_iter().zip(strictness_chirho.iter())
                 {
-                    if *s_chirho != StrictnessChirho::LazyChirho {
+                    if s_chirho.is_strict_chirho() {
                         let ty_chirho = TyChirho::VarChirho(
                             haskelujah_typing_chirho::ty_chirho::TyVarChirho(self.next_id_chirho),
                         );

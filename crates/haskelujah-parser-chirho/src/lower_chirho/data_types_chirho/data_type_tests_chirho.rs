@@ -921,3 +921,85 @@ fn unrepresented_newtype_context_heads_do_not_certify_the_context_class_chirho()
         }
     }
 }
+
+#[test]
+fn lower_explicit_lazy_fields_keep_their_annotation_chirho() {
+    // A leading `~` marks a positional, infix, record or newtype field explicitly
+    // lazy and leaves the type without it; `!` and the default keep theirs. Before
+    // the CST read `~`, a positional constructor stopped there (L01: no fields).
+    let module_chirho = parse_and_lower_chirho(
+        "module M where\n\
+data PairChirho = PairChirho ~Int !Int Int\n\
+data OpChirho = ~Int :&&: Int\n\
+data BoxChirho = BoxChirho { lazyChirho :: ~(Maybe Int), plainChirho :: Int }\n\
+newtype WrapChirho = WrapChirho ~Int\n",
+    );
+    let fields_chirho: Vec<Vec<(StrictnessChirho, String)>> = module_chirho
+        .decls_chirho
+        .iter()
+        .map(|decl_chirho| {
+            let constructor_chirho = match decl_chirho {
+                DeclChirho::DataDeclChirho {
+                    constructors_chirho,
+                    ..
+                } => &constructors_chirho[0],
+                DeclChirho::NewtypeDeclChirho {
+                    constructor_chirho, ..
+                } => constructor_chirho,
+                other_chirho => {
+                    panic!("expected a data or newtype declaration, got {other_chirho:?}")
+                }
+            };
+            match constructor_chirho {
+                ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => fields_chirho
+                    .iter()
+                    .map(|(strictness_chirho, ty_chirho)| {
+                        (*strictness_chirho, type_shape_chirho(ty_chirho))
+                    })
+                    .collect(),
+                ConDeclChirho::RecordChirho { fields_chirho, .. } => fields_chirho
+                    .iter()
+                    .map(|field_chirho| {
+                        (
+                            field_chirho.strictness_chirho,
+                            type_shape_chirho(&field_chirho.ty_chirho),
+                        )
+                    })
+                    .collect(),
+                other_chirho => panic!("expected a Haskell 98 constructor, got {other_chirho:?}"),
+            }
+        })
+        .collect();
+    let lazy_mark_chirho = StrictnessChirho::ExplicitLazyChirho;
+    let default_chirho = StrictnessChirho::LazyChirho;
+    let expected_chirho: Vec<Vec<(StrictnessChirho, String)>> = [
+        vec![
+            (lazy_mark_chirho, "Int"),
+            (StrictnessChirho::StrictChirho, "Int"),
+            (default_chirho, "Int"),
+        ],
+        vec![(lazy_mark_chirho, "Int"), (default_chirho, "Int")],
+        vec![(lazy_mark_chirho, "(Maybe Int)"), (default_chirho, "Int")],
+        vec![(lazy_mark_chirho, "Int")],
+    ]
+    .into_iter()
+    .map(|row_chirho| {
+        row_chirho
+            .into_iter()
+            .map(|(strictness_chirho, shape_chirho)| (strictness_chirho, shape_chirho.to_string()))
+            .collect()
+    })
+    .collect();
+    assert_eq!(fields_chirho, expected_chirho);
+    // Only `!` and UNPACK make the constructor evaluate the field.
+    assert_eq!(
+        [
+            default_chirho,
+            StrictnessChirho::StrictChirho,
+            StrictnessChirho::UnpackChirho,
+            lazy_mark_chirho,
+        ]
+        .map(StrictnessChirho::is_strict_chirho),
+        [false, true, true, false]
+    );
+}

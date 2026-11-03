@@ -7,13 +7,13 @@
 use super::*;
 
 /// The names of a record constructor's strict fields (`f :: !T`, unpacked or not).
+/// An explicitly lazy field (`f :: ~T`) is not one.
 pub(super) fn strict_field_names_chirho(
     fields_chirho: &[haskelujah_ast_chirho::decl_chirho::FieldDeclChirho],
 ) -> Vec<String> {
-    use haskelujah_ast_chirho::decl_chirho::StrictnessChirho;
     fields_chirho
         .iter()
-        .filter(|fd_chirho| fd_chirho.strictness_chirho != StrictnessChirho::LazyChirho)
+        .filter(|fd_chirho| fd_chirho.strictness_chirho.is_strict_chirho())
         .flat_map(|fd_chirho| {
             fd_chirho
                 .names_chirho

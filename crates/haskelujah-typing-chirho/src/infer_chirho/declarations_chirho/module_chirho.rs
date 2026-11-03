@@ -254,8 +254,7 @@ impl InferCtxChirho {
                                 ..
                             } => {
                                 if fields_chirho.iter().any(|(strictness_chirho, _ty_chirho)| {
-                                    *strictness_chirho
-                                        != haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho
+                                    strictness_chirho.is_strict_chirho()
                                 }) {
                                     self.strict_positional_constructors_chirho
                                         .insert(name_chirho.text_chirho().to_string());

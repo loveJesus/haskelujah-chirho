@@ -77,7 +77,7 @@ impl ParserChirho<'_> {
             gadt_fields_chirho && self.at_chirho(RawTokenKindChirho::LeftBraceChirho);
         if record_argument_chirho {
             self.parse_record_fields_chirho();
-        } else if gadt_fields_chirho && self.at_strict_prefix_chirho() {
+        } else if gadt_fields_chirho && self.at_strictness_prefix_chirho() {
             self.parse_gadt_field_type_chirho();
         } else {
             self.parse_btype_chirho();

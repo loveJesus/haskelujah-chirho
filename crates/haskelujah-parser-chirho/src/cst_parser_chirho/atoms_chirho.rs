@@ -728,9 +728,14 @@ impl ParserChirho<'_> {
         ) && !self.current_is_qualified_operator_chirho()
     }
 
-    /// Is the current token a `!` strictness annotation prefix?
-    pub(super) fn at_strict_prefix_chirho(&self) -> bool {
-        self.current_kind_chirho() == Some(RawTokenKindChirho::VarSymChirho)
-            && self.current_text_chirho() == "!"
+    /// Is the current token a field strictness annotation: `!` (strict) or `~`
+    /// (explicitly lazy, which GHC allows under `StrictData`; validity judges
+    /// that)? Constructor declarations read it before a field type.
+    pub(super) fn at_strictness_prefix_chirho(&self) -> bool {
+        match self.current_kind_chirho() {
+            Some(RawTokenKindChirho::VarSymChirho) => self.current_text_chirho() == "!",
+            Some(RawTokenKindChirho::TildeChirho) => true,
+            _ => false,
+        }
     }
 }

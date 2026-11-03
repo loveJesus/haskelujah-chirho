@@ -801,6 +801,8 @@ fn th_gadt_strictness_chirho(bang_chirho: &ThBangChirho) -> StrictnessChirho {
         StrictnessChirho::UnpackChirho
     } else if bang_chirho.src_strictness_chirho == ThSourceStrictnessChirho::SourceStrictChirho {
         StrictnessChirho::StrictChirho
+    } else if bang_chirho.src_strictness_chirho == ThSourceStrictnessChirho::SourceLazyChirho {
+        StrictnessChirho::ExplicitLazyChirho
     } else {
         StrictnessChirho::LazyChirho
     }

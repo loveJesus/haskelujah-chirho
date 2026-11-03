@@ -420,6 +420,12 @@ pub enum PatSynDirChirho {
 }
 
 /// Field strictness annotation for data constructor fields.
+///
+/// The written lazy annotation (`~Type`) is its own variant, apart from the
+/// unannotated default: validity judges it (GHC allows it only under
+/// `StrictData` or `Strict`), and the field stays lazy. The default is lazy as
+/// well today: the module-wide `StrictData` default (unannotated fields strict)
+/// is not implemented, and no consumer reads that extension.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum StrictnessChirho {
     /// Default (lazy) field.
@@ -428,6 +434,16 @@ pub enum StrictnessChirho {
     StrictChirho,
     /// Strict and unpacked field (`{-# UNPACK #-} !Type`).
     UnpackChirho,
+    /// Explicitly lazy field (`~Type`), lazy even where `StrictData` is on.
+    ExplicitLazyChirho,
+}
+
+impl StrictnessChirho {
+    /// Whether applying the constructor evaluates the field: `!` and UNPACK
+    /// fields are strict; the default and the explicit `~` are lazy.
+    pub fn is_strict_chirho(self) -> bool {
+        matches!(self, Self::StrictChirho | Self::UnpackChirho)
+    }
 }
 
 /// A data constructor declaration.

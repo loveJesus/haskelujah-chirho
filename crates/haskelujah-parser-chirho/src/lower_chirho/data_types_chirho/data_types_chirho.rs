@@ -297,7 +297,7 @@ impl LowerCtxChirho {
             }
         }
 
-        let mut pending_strict_chirho = false;
+        let mut pending_annotation_chirho: Option<StrictnessChirho> = None;
         for child_chirho in children_chirho.iter().skip(start_idx_chirho) {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
@@ -308,10 +308,8 @@ impl LowerCtxChirho {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
-                        && tok_chirho.text_chirho() == "!"
-                    {
-                        pending_strict_chirho = true;
+                    } else if let Some(annotation_chirho) = field_annotation_chirho(tok_chirho) {
+                        pending_annotation_chirho = Some(annotation_chirho);
                     } else if name_chirho.is_some()
                         && (tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
                             || tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho)
@@ -327,12 +325,9 @@ impl LowerCtxChirho {
                         } else {
                             TypeChirho::ConChirho(n_chirho)
                         };
-                        let strictness_chirho = if pending_strict_chirho {
-                            pending_strict_chirho = false;
-                            StrictnessChirho::StrictChirho
-                        } else {
-                            StrictnessChirho::LazyChirho
-                        };
+                        let strictness_chirho = pending_annotation_chirho
+                            .take()
+                            .unwrap_or(StrictnessChirho::LazyChirho);
                         fields_chirho.push((strictness_chirho, ty_chirho));
                     }
                 }
@@ -342,12 +337,9 @@ impl LowerCtxChirho {
                         record_fields_chirho =
                             self.lower_record_fields_chirho(n_chirho, child_chirho.start_chirho);
                     } else if is_type_kind_chirho(n_chirho.kind_chirho()) {
-                        let strictness_chirho = if pending_strict_chirho {
-                            pending_strict_chirho = false;
-                            StrictnessChirho::StrictChirho
-                        } else {
-                            StrictnessChirho::LazyChirho
-                        };
+                        let strictness_chirho = pending_annotation_chirho
+                            .take()
+                            .unwrap_or(StrictnessChirho::LazyChirho);
                         let ty_chirho = self.lower_type_chirho(n_chirho, child_chirho.start_chirho);
                         fields_chirho.push((strictness_chirho, ty_chirho));
                     }
@@ -405,16 +397,13 @@ impl LowerCtxChirho {
         children_chirho: &[ChildChirho<'_>],
         span_chirho: SpanChirho,
     ) -> Option<(StrictnessChirho, TypeChirho)> {
-        let mut pending_strict_chirho = false;
+        let mut pending_annotation_chirho: Option<StrictnessChirho> = None;
         let mut strictness_chirho = StrictnessChirho::LazyChirho;
         let mut parts_chirho: Vec<TypeChirho> = Vec::new();
 
         for child_chirho in children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => match tok_chirho.kind_chirho() {
-                    TokenKindChirho::VarSymChirho if tok_chirho.text_chirho() == "!" => {
-                        pending_strict_chirho = true;
-                    }
                     TokenKindChirho::VarIdChirho | TokenKindChirho::ConIdChirho => {
                         let s_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
@@ -425,20 +414,22 @@ impl LowerCtxChirho {
                         } else {
                             TypeChirho::ConChirho(name_chirho)
                         };
-                        if pending_strict_chirho {
-                            strictness_chirho = StrictnessChirho::StrictChirho;
-                            pending_strict_chirho = false;
+                        if let Some(annotation_chirho) = pending_annotation_chirho.take() {
+                            strictness_chirho = annotation_chirho;
                         }
                         parts_chirho.push(ty_chirho);
                     }
-                    _ => {}
+                    _ => {
+                        if let Some(annotation_chirho) = field_annotation_chirho(tok_chirho) {
+                            pending_annotation_chirho = Some(annotation_chirho);
+                        }
+                    }
                 },
                 GreenElementChirho::NodeChirho(node_chirho)
                     if is_type_kind_chirho(node_chirho.kind_chirho()) =>
                 {
-                    if pending_strict_chirho {
-                        strictness_chirho = StrictnessChirho::StrictChirho;
-                        pending_strict_chirho = false;
+                    if let Some(annotation_chirho) = pending_annotation_chirho.take() {
+                        strictness_chirho = annotation_chirho;
                     }
                     parts_chirho
                         .push(self.lower_type_chirho(node_chirho, child_chirho.start_chirho));
@@ -817,7 +808,7 @@ impl LowerCtxChirho {
         let mut ty_chirho: Option<TypeChirho> = None;
         let mut saw_double_colon_chirho = false;
         let mut type_children_chirho: Vec<&ChildChirho> = Vec::new();
-        let mut pending_strict_chirho = false;
+        let mut annotation_chirho: Option<StrictnessChirho> = None;
         let mut in_multiplicity_chirho = false;
         let mut multiplicity_children_chirho = Vec::new();
 
@@ -858,13 +849,16 @@ impl LowerCtxChirho {
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                         names_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
                     } else if saw_double_colon_chirho {
-                        // Detect `!` strictness annotations on field types
-                        if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho
-                            && tok_chirho.text_chirho() == "!"
-                        {
-                            pending_strict_chirho = true;
-                        } else {
-                            type_children_chirho.push(child_chirho);
+                        // A strictness annotation on the field type: `!` wherever it
+                        // stands, as before, and `~` only as the type's first token,
+                        // since a `~` inside the type is type equality.
+                        let leading_chirho = ty_chirho.is_none() && type_children_chirho.is_empty();
+                        match field_annotation_chirho(tok_chirho) {
+                            Some(StrictnessChirho::ExplicitLazyChirho) if !leading_chirho => {
+                                type_children_chirho.push(child_chirho);
+                            }
+                            Some(found_chirho) => annotation_chirho = Some(found_chirho),
+                            None => type_children_chirho.push(child_chirho),
                         }
                     }
                 }
@@ -892,13 +886,12 @@ impl LowerCtxChirho {
             GreenElementChirho::TokenChirho(token_chirho) if token_chirho.kind_chirho() == TokenKindChirho::PragmaChirho
                 && token_chirho.text_chirho().strip_prefix("{-#").and_then(|body_chirho| body_chirho.strip_suffix("#-}")).is_some_and(|body_chirho| body_chirho.trim() == "UNPACK")
         ));
-        let strictness_chirho = if pending_strict_chirho && unpacked_chirho {
-            StrictnessChirho::UnpackChirho
-        } else if pending_strict_chirho {
-            StrictnessChirho::StrictChirho
-        } else {
-            StrictnessChirho::LazyChirho
-        };
+        let strictness_chirho =
+            if annotation_chirho == Some(StrictnessChirho::StrictChirho) && unpacked_chirho {
+                StrictnessChirho::UnpackChirho
+            } else {
+                annotation_chirho.unwrap_or(StrictnessChirho::LazyChirho)
+            };
 
         FieldDeclChirho {
             names_chirho,
@@ -908,5 +901,19 @@ impl LowerCtxChirho {
                 .lower_arrow_multiplicity_chirho(&multiplicity_children_chirho),
             span_chirho,
         }
+    }
+}
+
+/// The strictness a field annotation gives the field type after it: `!` makes the
+/// field strict and `~` explicitly lazy (validity judges where GHC allows `~`).
+/// Any other token is no annotation.
+/// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+fn field_annotation_chirho(tok_chirho: &GreenTokenChirho) -> Option<StrictnessChirho> {
+    match tok_chirho.kind_chirho() {
+        TokenKindChirho::VarSymChirho if tok_chirho.text_chirho() == "!" => {
+            Some(StrictnessChirho::StrictChirho)
+        }
+        TokenKindChirho::TildeChirho => Some(StrictnessChirho::ExplicitLazyChirho),
+        _ => None,
     }
 }

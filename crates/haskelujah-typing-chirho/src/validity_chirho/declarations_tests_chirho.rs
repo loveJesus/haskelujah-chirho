@@ -348,3 +348,169 @@ fn findings_become_e0209_diagnostics_naming_the_ghc_code_chirho() {
     assert!(rendered_chirho.contains("E0209"), "{rendered_chirho}");
     assert!(rendered_chirho.contains("GHC-23517"), "{rendered_chirho}");
 }
+
+/// One positional constructor whose `Int` fields carry these annotations.
+fn annotated_chirho(
+    con_name_chirho: &str,
+    strictness_chirho: &[StrictnessChirho],
+) -> ConDeclChirho {
+    ConDeclChirho::OrdinaryChirho {
+        name_chirho: name_chirho(con_name_chirho),
+        fields_chirho: strictness_chirho
+            .iter()
+            .map(|&annotation_chirho| (annotation_chirho, con_ty_chirho("Int")))
+            .collect(),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+/// A one-field record constructor whose field carries this annotation.
+fn annotated_record_chirho(strictness_chirho: StrictnessChirho) -> ConDeclChirho {
+    ConDeclChirho::RecordChirho {
+        name_chirho: name_chirho("R"),
+        fields_chirho: vec![FieldDeclChirho {
+            names_chirho: vec![name_chirho("fieldChirho")],
+            ty_chirho: con_ty_chirho("Int"),
+            strictness_chirho,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+fn data_decl_chirho(constructors_chirho: Vec<ConDeclChirho>) -> DeclChirho {
+    DeclChirho::DataDeclChirho {
+        name_chirho: name_chirho("D"),
+        type_vars_chirho: vec![],
+        constructors_chirho,
+        deriving_chirho: vec![],
+        kind_sig_chirho: None,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+/// The GHC codes for these declarations under these LANGUAGE extensions, in order.
+fn codes_with_chirho(
+    extensions_chirho: &[&str],
+    decls_chirho: Vec<DeclChirho>,
+) -> Vec<&'static str> {
+    let mut test_module_chirho = module_chirho(decls_chirho);
+    test_module_chirho.extensions_chirho = extensions_chirho
+        .iter()
+        .map(|extension_chirho| extension_chirho.to_string())
+        .collect();
+    check_module_declaration_validity_chirho(&test_module_chirho)
+        .iter()
+        .map(|error_chirho| {
+            error_chirho
+                .ghc_code_chirho
+                .expect("strictness controls produce semantic GHC diagnostics")
+        })
+        .collect()
+}
+
+#[test]
+fn a_newtype_field_takes_no_strictness_annotation_chirho() {
+    // L04/L08 (`~`, with and without StrictData) and readFail008 (`!`): GHC-04049,
+    // never GHC-81601 as well.
+    for extensions_chirho in [&[][..], &["StrictData"][..]] {
+        for annotation_chirho in [
+            StrictnessChirho::ExplicitLazyChirho,
+            StrictnessChirho::StrictChirho,
+            StrictnessChirho::UnpackChirho,
+        ] {
+            for constructor_chirho in [
+                annotated_chirho("N", &[annotation_chirho]),
+                annotated_record_chirho(annotation_chirho),
+            ] {
+                assert_eq!(
+                    codes_with_chirho(extensions_chirho, vec![newtype_chirho(constructor_chirho)]),
+                    ["GHC-04049"],
+                    "{annotation_chirho:?} under {extensions_chirho:?}"
+                );
+            }
+        }
+        assert!(
+            codes_with_chirho(
+                extensions_chirho,
+                vec![newtype_chirho(annotated_chirho(
+                    "N",
+                    &[StrictnessChirho::LazyChirho]
+                ))]
+            )
+            .is_empty()
+        );
+    }
+    // Rule 1 comes first, as in GHC: two annotated fields are one GHC-23517.
+    assert_eq!(
+        codes_with_chirho(
+            &[],
+            vec![newtype_chirho(annotated_chirho(
+                "N",
+                &[
+                    StrictnessChirho::StrictChirho,
+                    StrictnessChirho::StrictChirho
+                ]
+            ))]
+        ),
+        ["GHC-23517"]
+    );
+}
+
+#[test]
+fn a_lazy_annotation_needs_strict_data_chirho() {
+    // L05/L06: `~` without StrictData is GHC-81601 at each constructor; Strict
+    // implies StrictData, and the last mention wins.
+    let lazy_decls_chirho = || {
+        vec![data_decl_chirho(vec![
+            annotated_chirho(
+                "Pair",
+                &[
+                    StrictnessChirho::ExplicitLazyChirho,
+                    StrictnessChirho::LazyChirho,
+                ],
+            ),
+            annotated_record_chirho(StrictnessChirho::ExplicitLazyChirho),
+        ])]
+    };
+    assert_eq!(
+        codes_with_chirho(&[], lazy_decls_chirho()),
+        ["GHC-81601", "GHC-81601"]
+    );
+    assert!(codes_with_chirho(&["StrictData"], lazy_decls_chirho()).is_empty());
+    assert!(codes_with_chirho(&["Strict"], lazy_decls_chirho()).is_empty());
+    assert_eq!(
+        codes_with_chirho(&["StrictData", "NoStrictData"], lazy_decls_chirho()),
+        ["GHC-81601", "GHC-81601"]
+    );
+}
+
+#[test]
+fn strict_and_unannotated_data_fields_need_no_extension_chirho() {
+    // `!`, UNPACK and the default are legal in any module; lowering's placeholder
+    // constructor is not judged.
+    assert!(
+        codes_with_chirho(
+            &[],
+            vec![data_decl_chirho(vec![annotated_chirho(
+                "Pair",
+                &[
+                    StrictnessChirho::StrictChirho,
+                    StrictnessChirho::UnpackChirho,
+                    StrictnessChirho::LazyChirho,
+                ],
+            )])]
+        )
+        .is_empty()
+    );
+    assert!(
+        codes_with_chirho(
+            &[],
+            vec![data_decl_chirho(vec![annotated_chirho(
+                "",
+                &[StrictnessChirho::ExplicitLazyChirho],
+            )])]
+        )
+        .is_empty()
+    );
+}

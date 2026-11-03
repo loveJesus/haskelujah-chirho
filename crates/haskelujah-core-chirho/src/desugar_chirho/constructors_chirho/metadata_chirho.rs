@@ -50,7 +50,7 @@ impl DesugarCtxChirho {
                             .collect();
                         if strictness_chirho
                             .iter()
-                            .any(|s_chirho| *s_chirho != StrictnessChirho::LazyChirho)
+                            .any(|s_chirho| s_chirho.is_strict_chirho())
                         {
                             self.con_strictness_chirho
                                 .insert(name_chirho.text_chirho().to_string(), strictness_chirho);
@@ -73,7 +73,7 @@ impl DesugarCtxChirho {
                             .collect();
                         if strictness_chirho
                             .iter()
-                            .any(|s_chirho| *s_chirho != StrictnessChirho::LazyChirho)
+                            .any(|s_chirho| s_chirho.is_strict_chirho())
                         {
                             self.con_strictness_chirho
                                 .insert(name_chirho.text_chirho().to_string(), strictness_chirho);
@@ -108,9 +108,10 @@ impl DesugarCtxChirho {
                             name_chirho.text_chirho().to_string(),
                             strictness_chirho.len(),
                         );
-                        if strictness_chirho.iter().any(|strictness_chirho| {
-                            *strictness_chirho != StrictnessChirho::LazyChirho
-                        }) {
+                        if strictness_chirho
+                            .iter()
+                            .any(|strictness_chirho| strictness_chirho.is_strict_chirho())
+                        {
                             self.con_strictness_chirho
                                 .insert(name_chirho.text_chirho().to_string(), strictness_chirho);
                         }

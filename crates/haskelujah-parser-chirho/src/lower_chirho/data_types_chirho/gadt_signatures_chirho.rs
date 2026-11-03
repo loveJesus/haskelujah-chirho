@@ -423,7 +423,12 @@ impl LowerCtxChirho {
                             return;
                         };
                         field_body_chirho = inner_chirho;
-                        StrictnessChirho::StrictChirho
+                        if field_children_chirho.iter().any(|child_chirho| matches!(child_chirho.element_chirho,
+                            GreenElementChirho::TokenChirho(token_chirho) if token_chirho.text_chirho() == "~")) {
+                            StrictnessChirho::ExplicitLazyChirho
+                        } else {
+                            StrictnessChirho::StrictChirho
+                        }
                     } else {
                         StrictnessChirho::LazyChirho
                     };

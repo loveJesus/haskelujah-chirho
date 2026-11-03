@@ -406,6 +406,8 @@ fn gadt_bang_to_th_chirho(strictness_chirho: StrictnessChirho) -> ThBangChirho {
         },
         src_strictness_chirho: if strictness_chirho == StrictnessChirho::LazyChirho {
             ThSourceStrictnessChirho::NoSourceStrictnessChirho
+        } else if strictness_chirho == StrictnessChirho::ExplicitLazyChirho {
+            ThSourceStrictnessChirho::SourceLazyChirho
         } else {
             ThSourceStrictnessChirho::SourceStrictChirho
         },
