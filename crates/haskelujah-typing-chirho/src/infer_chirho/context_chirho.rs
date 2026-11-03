@@ -22,6 +22,8 @@ impl InferCtxChirho {
         class_env_chirho.seed_standard_chirho();
         let fully_known_class_names_chirho: HashSet<String> =
             class_env_chirho.classes_chirho.keys().cloned().collect();
+        // The seed producer's own output (row 686, C08).
+        let seeded_class_names_chirho = fully_known_class_names_chirho.clone();
         seed_builtins_chirho(&mut env_chirho);
         let mut type_synonyms_chirho = HashMap::new();
         // Built-in type synonym: type String = [Char]
@@ -375,6 +377,8 @@ impl InferCtxChirho {
             module_default_types_chirho: Vec::new(),
             overloaded_strings_chirho: false,
             fully_known_class_names_chirho,
+            seeded_class_names_chirho,
+            unmodeled_pattern_evidence_seen_chirho: false,
             constraint_generation_faithful_chirho: true,
             derived_instance_heads_chirho: HashSet::new(),
             safe_unqualified_imported_type_names_chirho: HashSet::new(),
@@ -394,6 +398,7 @@ impl InferCtxChirho {
             // classes may have instances in modules we cannot see. Only
             // classes declared in THIS module stay fully known.
             ctx_chirho.fully_known_class_names_chirho.clear();
+            ctx_chirho.seeded_class_names_chirho.clear();
         }
         ctx_chirho
     }

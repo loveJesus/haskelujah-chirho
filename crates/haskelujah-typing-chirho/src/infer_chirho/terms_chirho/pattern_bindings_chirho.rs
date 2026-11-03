@@ -144,6 +144,7 @@ impl InferCtxChirho {
                 has_wildcard_chirho,
                 span_chirho: pat_span_chirho,
             } => {
+                self.note_constructor_pattern_evidence_chirho(con_chirho);
                 self.report_record_pattern_fields_chirho(con_chirho, fields_chirho);
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut field_type_map_chirho = HashMap::new();
@@ -366,6 +367,7 @@ impl InferCtxChirho {
         scrutinee_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> SubstChirho {
+        self.note_constructor_pattern_evidence_chirho(con_chirho);
         let scheme_chirho = self
             .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
                 &con_chirho.full_name_chirho(),

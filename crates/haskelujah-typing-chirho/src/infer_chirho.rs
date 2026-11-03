@@ -463,6 +463,16 @@ pub struct InferCtxChirho {
     /// never declare an instance of a class it cannot see, so for these — and
     /// only these — "no potentially matching instance" is a sound rejection.
     fully_known_class_names_chirho: HashSet<String>,
+    /// The class names the standard seed itself produced, captured beside the fully-known set.
+    /// An ordinary import never clears it: only a whole-environment replacement does, and a
+    /// source declaration of a class removes that name. Base declares no bare-variable instance
+    /// head for these classes; an orphan universal instance in an uncompiled package is the
+    /// explicit boundary (row 686, C08).
+    seeded_class_names_chirho: HashSet<String>,
+    /// Whether a pattern has matched a constructor whose context or refined result the checker
+    /// does not install as local evidence. Once set it stays set for the module, and every later
+    /// signature-scope closure stays off, nested scopes included (row 686, C08).
+    unmodeled_pattern_evidence_seen_chirho: bool,
     /// Whether the class constraints we generate for this module faithfully
     /// reflect the source. Cleared by extensions whose constraints we are
     /// known to mis-generate, so no unsolvable verdict is reached on a wanted

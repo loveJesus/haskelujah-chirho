@@ -242,6 +242,8 @@ impl InferCtxChirho {
             .ok()?;
         let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho);
         for (skolem_chirho, ty_chirho) in outcome_chirho.refinements_chirho {
+            // A local refinement is evidence no signature closure can see (row 686, C08).
+            self.unmodeled_pattern_evidence_seen_chirho = true;
             self.env_chirho
                 .add_refinement_chirho(skolem_chirho, ty_chirho);
         }

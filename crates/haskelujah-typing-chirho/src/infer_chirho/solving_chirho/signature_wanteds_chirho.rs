@@ -4,6 +4,13 @@
 //! scope (row 686, control C08): GHC's "No instance for" over a family application that cannot
 //! reduce. Only wanteds over the signature's own rigid variables are judged here; no other path
 //! calls a stuck family unsolvable.
+//!
+//! Two boundaries are deliberate. A class's bare-variable instance heads are trusted only when it
+//! is fully known or produced by the standard seed, and an orphan universal instance in an
+//! uncompiled package stays outside that view. And once any pattern has matched a constructor
+//! whose context or refinement the checker does not install as local evidence, every later
+//! closure in the module stays off, so an unrelated later signature can stay unchecked. Installing
+//! real pattern-local givens is the later repair.
 //! workflow: language-features-chirho/stuck-family-equalities-chirho
 
 use super::InferCtxChirho;
@@ -14,9 +21,11 @@ use super::family_reduction_chirho::{
     FamilyReductionDecisionChirho, FamilyReductionLimitsChirho, decide_family_with_limits_chirho,
 };
 use super::family_registration_chirho::family_head_role_chirho;
+use super::is_placeholder_import_scheme_chirho;
 use crate::class_chirho::PredChirho;
 use crate::skolem_chirho::rewrite_skolems_chirho;
 use crate::ty_chirho::TyChirho;
+use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 use std::collections::HashSet;
 
@@ -54,7 +63,10 @@ impl InferCtxChirho {
         &mut self,
         scope_skolems_chirho: &HashSet<String>,
     ) {
-        if !self.constraint_generation_faithful_chirho || scope_skolems_chirho.is_empty() {
+        if !self.constraint_generation_faithful_chirho
+            || self.unmodeled_pattern_evidence_seen_chirho
+            || scope_skolems_chirho.is_empty()
+        {
             return;
         }
         let givens_chirho = self.given_preds_chirho.clone();
@@ -179,10 +191,33 @@ impl InferCtxChirho {
     }
 
     /// Whether every instance that could match an application that never reduces is visible
-    /// here. Only a fully-known class qualifies: the class environment records no evidence of
-    /// which classes the standard seed produced (row 686 C08 tasklist, the seam reported).
+    /// here: the class is fully known, or the standard seed produced it and no source declaration
+    /// or whole-environment replacement has displaced it. Base declares no bare-variable instance
+    /// head for a seeded class.
     fn class_instance_heads_visible_chirho(&self, class_chirho: &str) -> bool {
         self.fully_known_class_names_chirho.contains(class_chirho)
+            || self.seeded_class_names_chirho.contains(class_chirho)
+    }
+
+    /// A pattern matched `con_chirho`: if its context or refined result is evidence the checker
+    /// does not install, or its scheme is unknown, every later signature closure in the module
+    /// stays off. A nested signature can inherit the evidence before its own scope begins.
+    pub(super) fn note_constructor_pattern_evidence_chirho(&mut self, con_chirho: &NameChirho) {
+        if self.unmodeled_pattern_evidence_seen_chirho {
+            return;
+        }
+        let context_free_chirho = self
+            .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                &con_chirho.full_name_chirho(),
+                con_chirho.text_chirho(),
+            )
+            .is_some_and(|scheme_chirho| {
+                !is_placeholder_import_scheme_chirho(&scheme_chirho)
+                    && scheme_chirho.preds_chirho.is_empty()
+            });
+        if !context_free_chirho || self.constructor_name_refines_chirho(con_chirho) {
+            self.unmodeled_pattern_evidence_seen_chirho = true;
+        }
     }
 
     /// The reducer's certificate that a family application cannot reduce under any refinement of

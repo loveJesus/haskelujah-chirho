@@ -32,9 +32,17 @@
   - `solving_chirho/signature_wanteds_chirho.rs`, the closure and the certificate over `decide_family_with_limits_chirho`.
   - rustfmt is clean.
 - [x] **Controls:** `signature_wanteds_chirho.rs`, nine programs byte-identical to the oracle files.
-- [ ] **Seam 1, criterion 8:** seed-producer evidence for the standard classes. C08, C08Where and C08OpenOnly import `Data.Proxy` and need it; until it lands, only C08LocalProxy can be reported.
-- [ ] **Seam 2, pattern-context wanteds:** `bind_constructor_pattern_chirho` instantiates a constructor's scheme, which defers the constructor's context as a wanted.
-  - Such a wanted can be certified and reported falsely.
-  - Probe: `pending-measurement-chirho/C08PatternContextChirho.hs`, predicted accepted by GHC, not yet measured.
-  - The closure must not land without this seam.
+- [x] **Seam 1, criterion 8 (GO #31107):** `seeded_class_names_chirho`.
+  - Captured from the seed producer's output in `new_chirho`.
+  - Cleared with the whole-environment replacement, and a name is removed by a source class declaration.
+  - Not cleared for `Data.Proxy`.
+  - Boundary: an orphan universal instance in an uncompiled package.
+- [x] **Seam 2, unmodeled pattern evidence (GO #31107, with the inherited-evidence correction):** `unmodeled_pattern_evidence_seen_chirho`, a module-wide flag that never resets.
+  - It is set in `bind_constructor_pattern_chirho` and in the record-pattern arm, for a constructor with a context, with a refined result, or with an unknown scheme.
+  - It is also set where a GADT refinement is added (`rigid_chirho.rs`).
+  - Once set, later closures stay off, nested scopes included.
+  - Residual: an unrelated later signature can stay unchecked.
+- [x] **Holds:**
+  - C08PatternContext: root measured GHC 9.14.1, main ce999556 and R2 all checking rc 0 (`c08-pattern-evidence-oracle-chirho`).
+  - C08NestedPatternContext: a `where`-bound signature that inherits the enclosing pattern's evidence. Its GHC measurement is pending.
 - [ ] Root replays the patch and runs Cargo, or grants a build lease. Then the focused gate and the corpus measurement.

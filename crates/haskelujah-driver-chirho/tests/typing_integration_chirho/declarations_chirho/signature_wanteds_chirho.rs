@@ -72,9 +72,13 @@ openChirho _ = 3
 ];
 
 /// GHC 9.14.1 accepts each: a given or a superclass of one serves the wanted, given equalities
-/// let the family reduce, an unsigned binding infers the constraint, and ordinary Num functions
-/// and contextual family constraints are untouched.
-const SERVED_SIGNATURE_WANTEDS_CHIRHO: [(&str, &str); 6] = [
+/// let the family reduce, an unsigned binding infers the constraint, ordinary Num functions and
+/// contextual family constraints are untouched, and a constructor pattern's context serves the
+/// wanted, directly or inherited by a nested signature. The checker does not install that
+/// pattern evidence, so its closure must stay off there. C08PatternContext was measured by root
+/// (`c08-pattern-evidence-oracle-chirho/receipt-chirho.json`); C08NestedPatternContext awaits
+/// its GHC 9.14.1 measurement.
+const SERVED_SIGNATURE_WANTEDS_CHIRHO: [(&str, &str); 8] = [
     (
         "C08GivenChirho.hs",
         r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
@@ -206,6 +210,45 @@ main :: IO ()
 main = do
   putStrLn (contextChirho (Proxy :: Proxy Bool) 41)
   print (reducingChirho (Proxy :: Proxy Bool))
+"###,
+    ),
+    (
+        "C08PatternContextChirho.hs",
+        r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+-- A constructor's context, matched in a pattern, serves a wanted over a family application that never reduces. Predicted GHC 9.14.1: accepted. NOT YET MEASURED.
+{-# LANGUAGE TypeFamilies, GADTs #-}
+module C08PatternContextChirho where
+
+type family OpaqueChirho aChirho
+
+data BoxChirho aChirho where
+  MkBoxChirho :: Num (OpaqueChirho aChirho) => OpaqueChirho aChirho -> BoxChirho aChirho
+
+bumpArmChirho :: BoxChirho aChirho -> OpaqueChirho aChirho
+bumpArmChirho (MkBoxChirho xChirho) = xChirho + 1
+
+bumpCaseChirho :: BoxChirho aChirho -> OpaqueChirho aChirho
+bumpCaseChirho boxChirho = case boxChirho of
+  MkBoxChirho xChirho -> xChirho + 1
+"###,
+    ),
+    (
+        "C08NestedPatternContextChirho.hs",
+        r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+-- A where-bound signature over the enclosing rigid variable inherits the evidence an enclosing constructor pattern provides. Predicted GHC 9.14.1: accepted. NOT YET MEASURED.
+{-# LANGUAGE TypeFamilies, GADTs, ScopedTypeVariables #-}
+module C08NestedPatternContextChirho where
+
+type family OpaqueChirho aChirho
+
+data BoxChirho aChirho where
+  MkBoxChirho :: Num (OpaqueChirho aChirho) => OpaqueChirho aChirho -> BoxChirho aChirho
+
+bumpNestedChirho :: forall aChirho. BoxChirho aChirho -> OpaqueChirho aChirho
+bumpNestedChirho (MkBoxChirho xChirho) = innerChirho xChirho
+  where
+    innerChirho :: OpaqueChirho aChirho -> OpaqueChirho aChirho
+    innerChirho yChirho = yChirho + 1
 "###,
     ),
 ];

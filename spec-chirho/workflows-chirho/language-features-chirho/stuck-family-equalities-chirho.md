@@ -133,6 +133,13 @@ flowchart TD
   - `NoMatch` certifies a definition that has no equations.
   - Otherwise, `NoMatch` or `Blocked` certifies only when every rigid variable sits inside a nested application that is itself certified. A pattern's local refinement of a bare rigid argument could select an equation.
   - Intrinsic, held, unverified, Unknown and exhausted work never certifies.
-- **The class.** Only a bare-variable instance head can match an application that never reduces. Its visibility is trusted only for a fully-known class.
+- **The class.** Only a bare-variable instance head can match an application that never reduces. Its visibility is trusted for a fully-known class, or for a class the standard seed itself produced (`seeded_class_names_chirho`).
+  - That set is captured from the seed producer's output.
+  - An ordinary import such as `Data.Proxy` leaves it alone; a whole-environment replacement clears it, and a source declaration of a class removes that name.
+  - Boundary: an orphan universal instance in an uncompiled package stays outside this view.
+- **Unmodeled pattern evidence.** A constructor's context, and a GADT refinement, are not installed as pattern-local givens: pattern instantiation even defers the context as a wanted.
+  - So `unmodeled_pattern_evidence_seen_chirho` is set the first time any pattern matches such a constructor, or one whose scheme is unknown, and the first time a refinement is added.
+  - Once set, every later closure in the module stays off, nested signatures included, since a nested signature can inherit the evidence before its own scope begins.
+  - Residual: an unrelated later signature can stay unchecked. Installing real pattern-local givens is the later repair.
 - **Unchanged:** the module-end rigid refuter, every family blocker, and every other caller. Nothing else calls a stuck family unsolvable.
-- **Controls:** `typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs`, copied byte for byte from fresh GHC 9.14.1 oracle files: three rejected, six accepted.
+- **Controls:** `typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs`, copied byte for byte from fresh GHC 9.14.1 oracle files: three rejected, and eight accepted, the two constructor-pattern holds among them.

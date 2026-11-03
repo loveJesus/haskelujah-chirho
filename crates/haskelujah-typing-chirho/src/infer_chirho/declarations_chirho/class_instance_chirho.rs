@@ -145,6 +145,8 @@ impl InferCtxChirho {
 
             self.fully_known_class_names_chirho
                 .insert(class_name_chirho.clone());
+            // A source declaration replaces the seed's class of that name (row 686, C08).
+            self.seeded_class_names_chirho.remove(&class_name_chirho);
             self.class_env_chirho.add_class_chirho(ClassDeclChirho {
                 name_chirho: class_name_chirho.clone(),
                 supers_chirho,
