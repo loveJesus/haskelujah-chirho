@@ -75,7 +75,11 @@ impl InferCtxChirho {
                     .iter()
                     .map(|v_chirho| v_chirho.text_chirho().to_string())
                     .collect();
-                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &params_chirho);
+                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
+                    rhs_chirho,
+                    &params_chirho,
+                    self.promotion_scope_chirho.as_deref(),
+                );
                 self.register_type_synonym_chirho(syn_name_chirho, params_chirho, rhs_ty_chirho);
             }
         }
@@ -159,12 +163,17 @@ impl InferCtxChirho {
                                 .lhs_types_chirho
                                 .iter()
                                 .map(|t_chirho| {
-                                    ast_type_to_syn_rhs_chirho(t_chirho, &param_names_chirho)
+                                    ast_type_to_syn_rhs_chirho(
+                                        t_chirho,
+                                        &param_names_chirho,
+                                        self.promotion_scope_chirho.as_deref(),
+                                    )
                                 })
                                 .collect();
                             let rhs_chirho = ast_type_to_syn_rhs_chirho(
                                 &eq_chirho.rhs_chirho,
                                 &param_names_chirho,
+                                self.promotion_scope_chirho.as_deref(),
                             );
                             (lhs_chirho, rhs_chirho)
                         })
@@ -184,9 +193,19 @@ impl InferCtxChirho {
                         collect_free_type_vars_from_ast_chirho(lhs_types_chirho);
                     let lhs_chirho: Vec<TyChirho> = lhs_types_chirho
                         .iter()
-                        .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &inst_params_chirho))
+                        .map(|t_chirho| {
+                            ast_type_to_syn_rhs_chirho(
+                                t_chirho,
+                                &inst_params_chirho,
+                                self.promotion_scope_chirho.as_deref(),
+                            )
+                        })
                         .collect();
-                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &inst_params_chirho);
+                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
+                        rhs_chirho,
+                        &inst_params_chirho,
+                        self.promotion_scope_chirho.as_deref(),
+                    );
                     self.register_type_family_instance_chirho(
                         fname_chirho,
                         lhs_chirho,

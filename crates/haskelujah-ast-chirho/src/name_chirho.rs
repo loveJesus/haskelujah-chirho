@@ -11,6 +11,7 @@ use std::hash::{Hash, Hasher};
 
 use haskelujah_span_chirho::SpanChirho;
 
+use crate::promotion_chirho::PromotionResolutionChirho;
 use crate::provenance_chirho::OriginIdChirho;
 
 /// A name as written in source code, before resolution.
@@ -35,6 +36,13 @@ pub struct RawNameChirho {
     /// occurrence takes a fresh one from the module's supply.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub origin_chirho: Option<OriginIdChirho>,
+    /// The promoted constructor this spelling names, stamped only where an AST leaves
+    /// its module (an exported synonym), so an importer never resolves it in its own
+    /// scope. `None` is unannotated: a module's own names are resolved by its
+    /// `PromotionScopeChirho`. Like the origin, it is metadata that equality, hashing and
+    /// lookups ignore.
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    pub promotion_chirho: Option<PromotionResolutionChirho>,
 }
 
 impl PartialEq for RawNameChirho {
@@ -67,6 +75,9 @@ impl fmt::Debug for RawNameChirho {
         if let Some(origin_chirho) = &self.origin_chirho {
             debug_chirho.field("origin_chirho", origin_chirho);
         }
+        if let Some(promotion_chirho) = &self.promotion_chirho {
+            debug_chirho.field("promotion_chirho", promotion_chirho);
+        }
         debug_chirho.finish()
     }
 }
@@ -79,6 +90,7 @@ impl RawNameChirho {
             qualifier_chirho: None,
             span_chirho,
             origin_chirho: None,
+            promotion_chirho: None,
         }
     }
 
@@ -93,6 +105,7 @@ impl RawNameChirho {
             qualifier_chirho: Some(qualifier_chirho.into()),
             span_chirho,
             origin_chirho: None,
+            promotion_chirho: None,
         }
     }
 
@@ -198,6 +211,24 @@ impl NameChirho {
     pub fn without_origin_chirho(mut self) -> Self {
         self.set_origin_chirho(None);
         self
+    }
+
+    /// The promoted constructor stamped on this spelling, if it left its module with one.
+    pub fn promotion_chirho(&self) -> Option<&PromotionResolutionChirho> {
+        match self {
+            Self::RawChirho(n_chirho) => n_chirho.promotion_chirho.as_ref(),
+            Self::ResolvedChirho(n_chirho) => n_chirho.raw_chirho.promotion_chirho.as_ref(),
+        }
+    }
+
+    /// Stamp the promoted constructor this spelling names.
+    pub fn set_promotion_chirho(&mut self, promotion_chirho: PromotionResolutionChirho) {
+        match self {
+            Self::RawChirho(n_chirho) => n_chirho.promotion_chirho = Some(promotion_chirho),
+            Self::ResolvedChirho(n_chirho) => {
+                n_chirho.raw_chirho.promotion_chirho = Some(promotion_chirho);
+            }
+        }
     }
 }
 

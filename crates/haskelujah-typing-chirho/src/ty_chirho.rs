@@ -7,6 +7,7 @@
 //! variables (`TyVarChirho`) that get filled in during inference, unlike the
 //! surface-syntax `TypeChirho` from the AST.
 
+use haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho;
 use std::fmt;
 
 /// Multiplicity for LinearTypes: tracks whether a function arrow is linear or unrestricted.
@@ -90,24 +91,46 @@ pub enum TyChirho {
 }
 
 impl TyChirho {
-    /// Canonical promoted list: nil stays distinct from the list type `[]`,
-    /// while cons has the same spelling as a parsed type-level infix `:`.
+    /// Canonical promoted list. With promotion keys (naming resolved the module, row
+    /// 686) nil and cons are the compiler's own constructors. Without them nil keeps a
+    /// legacy spelling distinct from the list type `[]`, and cons the spelling of a
+    /// parsed type-level infix `:`.
     /// workflow: language-features-chirho/pattern-matching-chirho
     pub(crate) fn promoted_list_chirho(
         elements_chirho: impl DoubleEndedIterator<Item = Self>,
+        keyed_chirho: bool,
     ) -> Self {
-        elements_chirho.rev().fold(
-            Self::ConChirho("'[]".to_string()),
-            |tail_chirho, head_chirho| {
+        let nil_chirho = if keyed_chirho {
+            PromotedKeyChirho::builtin_nil_chirho()
+                .as_str_chirho()
+                .to_string()
+        } else {
+            "'[]".to_string()
+        };
+        elements_chirho
+            .rev()
+            .fold(Self::ConChirho(nil_chirho), |tail_chirho, head_chirho| {
                 Self::AppChirho(
                     Box::new(Self::AppChirho(
-                        Box::new(Self::ConChirho(":".to_string())),
+                        Box::new(Self::ConChirho(Self::promoted_cons_name_chirho(
+                            keyed_chirho,
+                        ))),
                         Box::new(head_chirho),
                     )),
                     Box::new(tail_chirho),
                 )
-            },
-        )
+            })
+    }
+
+    /// The name promoted cons carries, keyed or legacy as `promoted_list_chirho`.
+    pub(crate) fn promoted_cons_name_chirho(keyed_chirho: bool) -> String {
+        if keyed_chirho {
+            PromotedKeyChirho::builtin_cons_chirho()
+                .as_str_chirho()
+                .to_string()
+        } else {
+            ":".to_string()
+        }
     }
 
     /// Convenience: the `Int` type.

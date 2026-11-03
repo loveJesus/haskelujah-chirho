@@ -7,6 +7,7 @@
 use super::InferCtxChirho;
 use super::strip_name_qualifier_chirho;
 use crate::ty_chirho::{MultChirho, TyChirho};
+use haskelujah_ast_chirho::promotion_chirho::is_promoted_key_chirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
@@ -21,6 +22,10 @@ impl InferCtxChirho {
     }
 
     pub(super) fn normalize_imported_type_name_chirho(&self, name_text_chirho: &str) -> String {
+        // A promoted-constructor key keeps its whole identity (row 686).
+        if is_promoted_key_chirho(name_text_chirho) {
+            return name_text_chirho.to_string();
+        }
         let bare_name_chirho = strip_name_qualifier_chirho(name_text_chirho);
         if self
             .safe_unqualified_imported_type_names_chirho

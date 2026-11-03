@@ -15,6 +15,8 @@ mod lazy_patterns_chirho;
 mod match_rows_chirho;
 mod matches_chirho;
 mod operator_evidence_chirho;
+#[cfg(test)]
+mod promoted_keys_tests_chirho;
 mod provenance_chirho;
 #[cfg(test)]
 mod provenance_tests_chirho;
@@ -27,6 +29,7 @@ mod syntax_methods_chirho;
 use match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::Arc;
 
 use haskelujah_ast_chirho::decl_chirho::{
     ConDeclChirho, DeclChirho, PatSynDirChirho, StrictnessChirho,
@@ -36,6 +39,9 @@ use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::promotion_chirho::{
+    PromotionScopeChirho, quoted_promoted_spelling_chirho, unquoted_promoted_spelling_chirho,
+};
 use haskelujah_ast_chirho::provenance_chirho::{OccurrenceRoleChirho, ProvenanceChirho};
 use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -150,6 +156,10 @@ pub struct DesugarCtxChirho {
     occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
     /// Written infix and section Ord operators' minted occurrences (row 610).
     operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    /// The module's promoted-constructor scope (row 686), so a promoted type keys as its
+    /// constructor's identity, as the checker's types do. `None` keeps legacy keys.
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
 }
 
 impl DesugarCtxChirho {
@@ -177,6 +187,7 @@ impl DesugarCtxChirho {
             method_occurrence_spans_chirho: HashMap::new(),
             occurrence_provenance_chirho: HashMap::new(),
             operator_occurrences_chirho: HashSet::new(),
+            promotion_scope_chirho: None,
         }
     }
 
@@ -1115,20 +1126,35 @@ impl DesugarCtxChirho {
 
     /// Derive the type key string from an AST `TypeChirho`, matching
     /// the format produced by `Display for TyChirho` in the typing layer
-    /// so that the `$prim_` binding names align with `dict_chirho.rs`.
-    pub fn type_key_from_ast_chirho(ty_chirho: &TypeChirho) -> String {
+    /// so that the `$prim_` binding names align with `dict_chirho.rs`. A promoted
+    /// constructor keys as its identity under the module's scope (row 686), as the
+    /// checker spells it; with no scope it keeps the legacy key (`_` when quoted).
+    pub fn type_key_from_ast_chirho(
+        ty_chirho: &TypeChirho,
+        scope_chirho: Option<&PromotionScopeChirho>,
+    ) -> String {
         match ty_chirho {
-            TypeChirho::ConChirho(name_chirho) => name_chirho.text_chirho().to_string(),
+            TypeChirho::ConChirho(name_chirho) => {
+                unquoted_promoted_spelling_chirho(name_chirho, scope_chirho)
+                    .unwrap_or_else(|| name_chirho.text_chirho().to_string())
+            }
+            TypeChirho::PromotedConChirho { name_chirho, .. } => {
+                quoted_promoted_spelling_chirho(name_chirho, scope_chirho)
+                    .unwrap_or_else(|| "_".to_string())
+            }
             TypeChirho::VarChirho(name_chirho) => name_chirho.text_chirho().to_string(),
             TypeChirho::ListChirho { element_chirho, .. } => {
-                format!("[{}]", Self::type_key_from_ast_chirho(element_chirho))
+                format!(
+                    "[{}]",
+                    Self::type_key_from_ast_chirho(element_chirho, scope_chirho)
+                )
             }
             TypeChirho::TupleChirho {
                 elements_chirho, ..
             } => {
                 let inner_chirho: Vec<String> = elements_chirho
                     .iter()
-                    .map(|e_chirho| Self::type_key_from_ast_chirho(e_chirho))
+                    .map(|e_chirho| Self::type_key_from_ast_chirho(e_chirho, scope_chirho))
                     .collect();
                 format!("({})", inner_chirho.join(", "))
             }
@@ -1139,12 +1165,12 @@ impl DesugarCtxChirho {
             } => {
                 format!(
                     "{} {}",
-                    Self::type_key_from_ast_chirho(fun_chirho),
-                    Self::type_key_from_ast_chirho(arg_chirho)
+                    Self::type_key_from_ast_chirho(fun_chirho, scope_chirho),
+                    Self::type_key_from_ast_chirho(arg_chirho, scope_chirho)
                 )
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
-                Self::type_key_from_ast_chirho(inner_chirho)
+                Self::type_key_from_ast_chirho(inner_chirho, scope_chirho)
             }
             _ => "_".to_string(),
         }
@@ -1154,15 +1180,18 @@ impl DesugarCtxChirho {
     /// For single-parameter classes: just the first type key.
     /// For multi-parameter classes: head_key + "_" + extra keys joined by "_".
     /// Matches the format used in `dict_chirho.rs::generate_instance_dicts_chirho`.
-    pub fn instance_type_key_chirho(types_chirho: &[TypeChirho]) -> String {
+    pub fn instance_type_key_chirho(
+        types_chirho: &[TypeChirho],
+        scope_chirho: Option<&PromotionScopeChirho>,
+    ) -> String {
         if types_chirho.is_empty() {
             "_".to_string()
         } else if types_chirho.len() == 1 {
-            Self::type_key_from_ast_chirho(&types_chirho[0])
+            Self::type_key_from_ast_chirho(&types_chirho[0], scope_chirho)
         } else {
             let keys_chirho: Vec<String> = types_chirho
                 .iter()
-                .map(|t_chirho| Self::type_key_from_ast_chirho(t_chirho))
+                .map(|t_chirho| Self::type_key_from_ast_chirho(t_chirho, scope_chirho))
                 .collect();
             keys_chirho.join("_")
         }
@@ -1245,7 +1274,10 @@ impl DesugarCtxChirho {
                     ..
                 } => {
                     let class_name_chirho = class_chirho.text_chirho();
-                    let type_key_chirho = Self::instance_type_key_chirho(types_chirho);
+                    let type_key_chirho = Self::instance_type_key_chirho(
+                        types_chirho,
+                        self.promotion_scope_chirho.as_deref(),
+                    );
                     // Collect provided method names
                     let mut provided_chirho: std::collections::HashSet<String> =
                         std::collections::HashSet::new();
@@ -1467,7 +1499,10 @@ impl DesugarCtxChirho {
                     ..
                 } => {
                     let class_name_chirho = class_chirho.text_chirho();
-                    let type_key_chirho = Self::instance_type_key_chirho(types_chirho);
+                    let type_key_chirho = Self::instance_type_key_chirho(
+                        types_chirho,
+                        self.promotion_scope_chirho.as_deref(),
+                    );
                     let mut provided_chirho: std::collections::HashSet<String> =
                         std::collections::HashSet::new();
                     for method_chirho in methods_chirho {
@@ -2946,7 +2981,10 @@ impl DesugarCtxChirho {
                 ..
             } => {
                 let inner_core_chirho = self.desugar_expr_chirho(inner_chirho);
-                let type_key_chirho = Self::type_key_from_ast_chirho(ty_chirho);
+                let type_key_chirho = Self::type_key_from_ast_chirho(
+                    ty_chirho,
+                    self.promotion_scope_chirho.as_deref(),
+                );
                 if type_key_chirho == "_" {
                     inner_core_chirho
                 } else {
@@ -4044,6 +4082,9 @@ pub struct DesugarInputsChirho {
     /// definer's identity (rows 629 and 642).
     /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
     pub import_suppliers_chirho: ImportSuppliersChirho,
+    /// The module's promoted-constructor scope (row 686); `None` keeps legacy type keys.
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
 }
 
 /// Like [`desugar_module_with_method_occurrences_chirho`] with the full set of
@@ -4058,6 +4099,7 @@ pub fn desugar_module_with_inputs_chirho(
     ctx_chirho.set_constrained_names_chirho(inputs_chirho.constrained_names_chirho);
     ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
     ctx_chirho.import_suppliers_chirho = inputs_chirho.import_suppliers_chirho;
+    ctx_chirho.promotion_scope_chirho = inputs_chirho.promotion_scope_chirho;
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 

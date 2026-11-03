@@ -6,6 +6,7 @@
 //! Robinson unification for `TyChirho`. Produces a substitution that makes two
 //! types identical, or an error explaining why they cannot be unified.
 
+use haskelujah_ast_chirho::promotion_chirho::is_promoted_key_chirho;
 use haskelujah_span_chirho::SpanChirho;
 
 /// Strip qualified import alias prefix from a type constructor name.
@@ -19,6 +20,10 @@ fn has_qualifier_chirho(name_chirho: &str) -> bool {
 }
 
 fn same_tycon_name_chirho(left_name_chirho: &str, right_name_chirho: &str) -> bool {
+    // A promoted-constructor key is opaque (row 686): only the whole key identifies it.
+    if is_promoted_key_chirho(left_name_chirho) || is_promoted_key_chirho(right_name_chirho) {
+        return left_name_chirho == right_name_chirho;
+    }
     left_name_chirho == right_name_chirho
         || (has_qualifier_chirho(left_name_chirho)
             && has_qualifier_chirho(right_name_chirho)

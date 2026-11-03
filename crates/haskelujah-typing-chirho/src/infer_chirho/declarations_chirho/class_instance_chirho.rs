@@ -286,10 +286,19 @@ impl InferCtxChirho {
                 let lhs_chirho: Vec<TyChirho> = atfi_chirho
                     .lhs_types_chirho
                     .iter()
-                    .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &inst_params_chirho))
+                    .map(|t_chirho| {
+                        ast_type_to_syn_rhs_chirho(
+                            t_chirho,
+                            &inst_params_chirho,
+                            self.promotion_scope_chirho.as_deref(),
+                        )
+                    })
                     .collect();
-                let rhs_ty_chirho =
-                    ast_type_to_syn_rhs_chirho(&atfi_chirho.rhs_chirho, &inst_params_chirho);
+                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
+                    &atfi_chirho.rhs_chirho,
+                    &inst_params_chirho,
+                    self.promotion_scope_chirho.as_deref(),
+                );
                 self.register_type_family_instance_chirho(fname_chirho, lhs_chirho, rhs_ty_chirho);
             }
 
@@ -334,6 +343,7 @@ impl InferCtxChirho {
                                 let head_ty_chirho = ast_type_to_syn_rhs_chirho(
                                     &types_chirho[index_chirho],
                                     &inst_free_vars_chirho,
+                                    self.promotion_scope_chirho.as_deref(),
                                 );
                                 bindings_chirho
                                     .insert(param_chirho.clone(), head_ty_chirho.clone());
@@ -345,6 +355,7 @@ impl InferCtxChirho {
                     let rhs_pattern_chirho = ast_type_to_syn_rhs_chirho(
                         &default_chirho.rhs_chirho,
                         &default_chirho.family_params_chirho,
+                        self.promotion_scope_chirho.as_deref(),
                     );
                     let rhs_chirho =
                         substitute_type_vars_chirho(&rhs_pattern_chirho, &bindings_chirho);

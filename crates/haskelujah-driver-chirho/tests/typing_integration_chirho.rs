@@ -31,6 +31,8 @@ mod method_ownership_chirho;
 mod operator_ownership_chirho;
 #[path = "typing_integration_chirho/paren_infix_definitions_chirho.rs"]
 mod paren_infix_definitions_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/promoted_constructor_identity_chirho.rs"]
+mod promoted_constructor_identity_chirho;
 #[path = "typing_integration_chirho/qualified_alias_agreement_chirho.rs"]
 mod qualified_alias_agreement_chirho;
 #[path = "typing_integration_chirho/qualified_builtin_aliases_chirho.rs"]

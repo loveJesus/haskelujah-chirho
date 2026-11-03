@@ -385,6 +385,27 @@ impl DiagnosticBundleChirho {
         self.diagnostics_chirho
             .extend(other_chirho.diagnostics_chirho);
     }
+
+    /// Rewrite the prose a reader sees in every diagnostic: messages, label messages,
+    /// notes and suggestion descriptions. Spans, codes and suggested replacement code are
+    /// kept as they are.
+    pub fn map_text_chirho(&mut self, rewrite_chirho: impl Fn(&str) -> String) {
+        for diagnostic_chirho in &mut self.diagnostics_chirho {
+            diagnostic_chirho.message_chirho = rewrite_chirho(&diagnostic_chirho.message_chirho);
+            for label_chirho in &mut diagnostic_chirho.labels_chirho {
+                if let Some(message_chirho) = &mut label_chirho.message_chirho {
+                    *message_chirho = rewrite_chirho(message_chirho);
+                }
+            }
+            for note_chirho in &mut diagnostic_chirho.notes_chirho {
+                *note_chirho = rewrite_chirho(note_chirho);
+            }
+            for suggestion_chirho in &mut diagnostic_chirho.suggestions_chirho {
+                suggestion_chirho.description_chirho =
+                    rewrite_chirho(&suggestion_chirho.description_chirho);
+            }
+        }
+    }
 }
 
 impl From<DiagnosticChirho> for DiagnosticBundleChirho {

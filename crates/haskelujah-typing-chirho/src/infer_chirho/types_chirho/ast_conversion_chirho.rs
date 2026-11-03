@@ -10,6 +10,9 @@ use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 
 use super::InferCtxChirho;
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
+use haskelujah_ast_chirho::promotion_chirho::{
+    quoted_promoted_spelling_chirho, unquoted_promoted_spelling_chirho,
+};
 
 impl InferCtxChirho {
     /// Open every declaration-head binder lexically, but apply only visible
@@ -62,6 +65,13 @@ impl InferCtxChirho {
                 TyChirho::VarChirho(tv_chirho)
             }
             TypeChirho::ConChirho(name_chirho) => {
+                // An unquoted promoted constructor keeps its identity key (row 686).
+                if let Some(spelling_chirho) = unquoted_promoted_spelling_chirho(
+                    name_chirho,
+                    self.promotion_scope_chirho.as_deref(),
+                ) {
+                    return TyChirho::ConChirho(spelling_chirho);
+                }
                 let text_chirho =
                     self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho());
                 let raw_chirho = TyChirho::ConChirho(text_chirho);
@@ -142,15 +152,25 @@ impl InferCtxChirho {
                 }
             }
             // DataKinds: promoted constructor is a type-level constant
-            TypeChirho::PromotedConChirho { name_chirho, .. } => {
-                TyChirho::ConChirho(name_chirho.full_name_chirho())
-            }
+            // A promoted constructor converts to its identity key under naming's scope
+            // (row 686); a caller that never ran naming keeps the legacy spelling.
+            TypeChirho::PromotedConChirho { name_chirho, .. } => TyChirho::ConChirho(
+                quoted_promoted_spelling_chirho(
+                    name_chirho,
+                    self.promotion_scope_chirho.as_deref(),
+                )
+                .unwrap_or_else(|| name_chirho.full_name_chirho()),
+            ),
             TypeChirho::PromotedListChirho {
                 elements_chirho, ..
             } => {
-                TyChirho::promoted_list_chirho(elements_chirho.iter().map(|element_chirho| {
-                    self.ast_type_to_ty_chirho(element_chirho, var_map_chirho)
-                }))
+                let keyed_chirho = self.promotion_scope_chirho.is_some();
+                TyChirho::promoted_list_chirho(
+                    elements_chirho.iter().map(|element_chirho| {
+                        self.ast_type_to_ty_chirho(element_chirho, var_map_chirho)
+                    }),
+                    keyed_chirho,
+                )
             }
             // PartialTypeSignatures: `_` in a type signature is a wildcard that
             // becomes a fresh unification variable. Emit warning W4201 so the

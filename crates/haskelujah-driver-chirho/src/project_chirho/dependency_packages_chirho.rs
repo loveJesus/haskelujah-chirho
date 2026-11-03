@@ -690,6 +690,7 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
                 &module_chirho,
                 &iface_chirho,
                 &resolved_imported_type_synonyms_chirho,
+                infer_result_chirho.promotion_scope_chirho.as_deref(),
             ));
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.clone();
@@ -830,6 +831,7 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
                 &module_chirho,
                 &iface_chirho,
                 &resolved_imported_type_synonyms_chirho,
+                infer_result_chirho.promotion_scope_chirho.as_deref(),
             ));
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.clone();

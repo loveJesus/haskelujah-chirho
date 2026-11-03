@@ -10,6 +10,7 @@ use crate::ty_chirho::{SchemeChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::promotion_chirho::unquoted_promoted_spelling_chirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
@@ -161,7 +162,17 @@ impl InferCtxChirho {
                         .get(text_chirho)
                         .copied()
                         .map(TyChirho::VarChirho)
-                        .unwrap_or_else(|| TyChirho::ConChirho(name_chirho.full_name_chirho())),
+                        .unwrap_or_else(|| {
+                            // A constructor here is promoted, as an unquoted name in a type
+                            // is (row 686).
+                            TyChirho::ConChirho(
+                                unquoted_promoted_spelling_chirho(
+                                    name_chirho,
+                                    self.promotion_scope_chirho.as_deref(),
+                                )
+                                .unwrap_or_else(|| name_chirho.full_name_chirho()),
+                            )
+                        }),
                 )
             }
             ExprChirho::AppChirho {
@@ -184,6 +195,7 @@ impl InferCtxChirho {
                     .collect::<Option<Vec<_>>>()?;
                 Some(TyChirho::promoted_list_chirho(
                     converted_chirho.into_iter().rev(),
+                    self.promotion_scope_chirho.is_some(),
                 ))
             }
             ExprChirho::TupleChirho {

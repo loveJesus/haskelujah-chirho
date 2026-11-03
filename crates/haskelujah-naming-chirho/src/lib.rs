@@ -17,6 +17,7 @@
 
 pub mod env_chirho;
 pub mod iface_chirho;
+mod promotion_scope_chirho;
 pub mod resolve_chirho;
 mod type_exports_chirho;
 mod type_scope_chirho;
@@ -27,6 +28,7 @@ pub use iface_chirho::{
     IfaceOriginChirho, ModuleIfaceChirho, build_iface_chirho, build_iface_with_imports_chirho,
     builtin_module_ifaces_chirho,
 };
+pub use promotion_scope_chirho::build_promotion_scope_chirho;
 pub use resolve_chirho::{
     check_orphan_instances_chirho, resolve_module_chirho, resolve_module_with_imports_chirho,
 };

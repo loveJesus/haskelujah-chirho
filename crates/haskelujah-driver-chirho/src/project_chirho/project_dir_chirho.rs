@@ -533,6 +533,7 @@ pub fn compile_project_dir_chirho(
                 &module_chirho,
                 &iface_chirho,
                 &resolved_imported_type_synonyms_chirho,
+                infer_result_chirho.promotion_scope_chirho.as_deref(),
             ));
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
 

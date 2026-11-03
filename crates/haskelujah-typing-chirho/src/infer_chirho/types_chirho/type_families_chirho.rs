@@ -10,6 +10,7 @@ use crate::ty_chirho::{MultChirho, TyChirho};
 use haskelujah_ast_chirho::lit_chirho::{
     parse_haskell_char_body_chirho, render_haskell_char_body_chirho,
 };
+use haskelujah_ast_chirho::promotion_chirho::{PromotedKeyChirho, is_promoted_key_chirho};
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
@@ -107,7 +108,11 @@ impl InferCtxChirho {
                 }
             }
         }
-        reduce_builtin_type_family_application_chirho(family_name_chirho, args_chirho)
+        reduce_builtin_type_family_application_chirho(
+            family_name_chirho,
+            args_chirho,
+            self.promotion_scope_chirho.is_some(),
+        )
     }
 
     fn lookup_type_family_equation_sets_chirho(
@@ -250,6 +255,10 @@ impl InferCtxChirho {
 }
 
 pub(super) fn canonical_type_family_name_chirho(name_chirho: &str) -> String {
+    // A promoted-constructor key is no family name, and its dots are no qualifier.
+    if is_promoted_key_chirho(name_chirho) {
+        return name_chirho.to_string();
+    }
     let bare_name_chirho = strip_name_qualifier_chirho(name_chirho);
     if bare_name_chirho.starts_with('(')
         && bare_name_chirho.ends_with(')')
@@ -279,14 +288,28 @@ fn nat_type_con_chirho(value_chirho: u128) -> TyChirho {
     TyChirho::ConChirho(value_chirho.to_string())
 }
 
-fn bool_type_con_chirho(value_chirho: bool) -> TyChirho {
-    TyChirho::ConChirho(if value_chirho { "True" } else { "False" }.to_string())
+/// The compiler's promoted `True` or `False`: its builtin identity key when the module's
+/// promoted names are keyed (row 686), the legacy spelling otherwise.
+fn bool_type_con_chirho(value_chirho: bool, keyed_chirho: bool) -> TyChirho {
+    TyChirho::ConChirho(if keyed_chirho {
+        PromotedKeyChirho::builtin_bool_chirho(value_chirho)
+            .as_str_chirho()
+            .to_string()
+    } else {
+        if value_chirho { "True" } else { "False" }.to_string()
+    })
 }
 
 fn bool_type_literal_chirho(ty_chirho: &TyChirho) -> Option<bool> {
     let TyChirho::ConChirho(name_chirho) = ty_chirho else {
         return None;
     };
+    // A key is opaque: compare it whole before any `.` is read as a qualifier.
+    if is_promoted_key_chirho(name_chirho) {
+        return [true, false].into_iter().find(|value_chirho| {
+            PromotedKeyChirho::builtin_bool_chirho(*value_chirho).as_str_chirho() == name_chirho
+        });
+    }
     match strip_name_qualifier_chirho(name_chirho).trim_start_matches('\'') {
         "True" => Some(true),
         "False" => Some(false),
@@ -342,6 +365,7 @@ fn apply_extra_type_family_args_chirho(
 fn reduce_builtin_type_family_application_chirho(
     family_name_chirho: &str,
     args_chirho: &[TyChirho],
+    keyed_chirho: bool,
 ) -> Option<TyChirho> {
     let family_chirho = canonical_type_family_name_chirho(family_name_chirho);
     match (family_chirho.as_str(), args_chirho) {
@@ -455,7 +479,7 @@ fn reduce_builtin_type_family_application_chirho(
             })
             .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1)),
         ("<=?", [left_chirho, right_chirho, ..]) => if left_chirho == right_chirho {
-            Some(bool_type_con_chirho(true))
+            Some(bool_type_con_chirho(true, keyed_chirho))
         } else {
             match (
                 nat_type_literal_chirho(left_chirho),
@@ -463,6 +487,7 @@ fn reduce_builtin_type_family_application_chirho(
             ) {
                 (Some(left_value_chirho), Some(right_value_chirho)) => Some(bool_type_con_chirho(
                     left_value_chirho <= right_value_chirho,
+                    keyed_chirho,
                 )),
                 _ => None,
             }
@@ -479,21 +504,21 @@ fn reduce_builtin_type_family_application_chirho(
         }
         .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 3)),
         ("Not", [value_chirho, ..]) => bool_type_literal_chirho(value_chirho)
-            .map(|value_chirho| bool_type_con_chirho(!value_chirho))
+            .map(|value_chirho| bool_type_con_chirho(!value_chirho, keyed_chirho))
             .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1)),
         ("&&", [left_chirho, right_chirho, ..]) => bool_type_literal_chirho(left_chirho)
             .map(|left_chirho| {
                 if left_chirho {
                     right_chirho.clone()
                 } else {
-                    bool_type_con_chirho(false)
+                    bool_type_con_chirho(false, keyed_chirho)
                 }
             })
             .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
         ("||", [left_chirho, right_chirho, ..]) => bool_type_literal_chirho(left_chirho)
             .map(|left_chirho| {
                 if left_chirho {
-                    bool_type_con_chirho(true)
+                    bool_type_con_chirho(true, keyed_chirho)
                 } else {
                     right_chirho.clone()
                 }

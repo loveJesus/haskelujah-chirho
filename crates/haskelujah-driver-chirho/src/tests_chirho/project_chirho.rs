@@ -1248,6 +1248,7 @@ treeWordSizeChirho = wordSize\n",
                     &frontend_result_chirho.module_chirho,
                     &iface_chirho,
                     &imported_synonyms_chirho,
+                    None,
                 ));
                 ifaces_chirho.push(iface_chirho);
             }
@@ -1407,6 +1408,7 @@ treeWordSizeChirho = wordSize\n",
                     &frontend_result_chirho.module_chirho,
                     &iface_chirho,
                     &imported_synonyms_chirho,
+                    None,
                 ));
                 ifaces_chirho.push(iface_chirho);
             }

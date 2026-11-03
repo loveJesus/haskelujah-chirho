@@ -21,11 +21,15 @@ use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::promotion_chirho::{
+    PromotionScopeChirho, readable_promoted_keys_chirho,
+};
 use haskelujah_ast_chirho::provenance_chirho::OriginIdChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 mod builtins_chirho;
 #[path = "infer_chirho/context_chirho.rs"]
@@ -108,6 +112,9 @@ mod inferred_dictionary_owners_tests_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/tests_chirho/pattern_tests_chirho.rs"]
 mod pattern_tests_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/tests_chirho/promotion_identity_tests_chirho.rs"]
+mod promotion_identity_tests_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/tests_chirho/signature_newtype_tests_chirho.rs"]
 mod signature_newtype_tests_chirho;
@@ -271,6 +278,9 @@ pub struct InferResultChirho {
     /// holds generated references, whose placeholder span the span map skips.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub reference_evidence_by_origin_chirho: HashMap<OriginIdChirho, Vec<ReferenceEvidenceChirho>>,
+    /// The promoted-constructor scope inference used (row 686), so a later exporter
+    /// stamps this module's synonym right sides from it instead of re-resolving them.
+    pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about one
@@ -432,6 +442,11 @@ pub struct InferCtxChirho {
     safe_unqualified_imported_type_names_chirho: HashSet<String>,
     /// Canonical module qualifiers for imported type constructors.
     preferred_qualified_type_names_chirho: HashMap<String, String>,
+    /// The module's promoted-constructor scope from naming (row 686). `None` for a
+    /// direct caller that never ran naming: promoted spellings then keep their legacy
+    /// form, which is not the corrected identity.
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -554,6 +569,8 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
     )
 }
 
+/// Compatibility entry for callers that never ran naming: no promoted-constructor
+/// scope, so promoted spellings keep their legacy form.
 pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     module_chirho: &ModuleChirho,
     imported_types_chirho: &HashMap<String, SchemeChirho>,
@@ -564,12 +581,58 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
+    infer_module_with_import_context_chirho(
+        module_chirho,
+        InferenceImportContextChirho {
+            imported_types_chirho,
+            imported_type_synonyms_chirho,
+            imported_type_families_chirho,
+            imported_class_env_chirho,
+            imported_record_field_names_chirho,
+            safe_unqualified_imported_type_names_chirho,
+            preferred_qualified_type_names_chirho,
+            promotion_scope_chirho: None,
+        },
+    )
+}
+
+/// What a module's inference brings in from the rest of the program, borrowed for one
+/// call, with the module's own promoted-constructor scope from naming.
+/// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+pub struct InferenceImportContextChirho<'imports_chirho> {
+    pub imported_types_chirho: &'imports_chirho HashMap<String, SchemeChirho>,
+    pub imported_type_synonyms_chirho: &'imports_chirho HashMap<String, (Vec<String>, TypeChirho)>,
+    pub imported_type_families_chirho: &'imports_chirho TypeFamilyEnvChirho,
+    pub imported_class_env_chirho: &'imports_chirho ClassEnvChirho,
+    pub imported_record_field_names_chirho: &'imports_chirho HashMap<String, Vec<String>>,
+    pub safe_unqualified_imported_type_names_chirho: &'imports_chirho HashSet<String>,
+    pub preferred_qualified_type_names_chirho: &'imports_chirho HashMap<String, String>,
+    /// `None` when naming did not run; see `InferCtxChirho::promotion_scope_chirho`.
+    pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+}
+
+/// Run type inference on a module with everything it imports.
+pub fn infer_module_with_import_context_chirho(
+    module_chirho: &ModuleChirho,
+    context_chirho: InferenceImportContextChirho<'_>,
+) -> InferResultChirho {
+    let InferenceImportContextChirho {
+        imported_types_chirho,
+        imported_type_synonyms_chirho,
+        imported_type_families_chirho,
+        imported_class_env_chirho,
+        imported_record_field_names_chirho,
+        safe_unqualified_imported_type_names_chirho,
+        preferred_qualified_type_names_chirho,
+        promotion_scope_chirho,
+    } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,
         preferred_qualified_type_names_chirho,
     );
+    ctx_chirho.promotion_scope_chirho = promotion_scope_chirho;
     ctx_chirho.overloaded_strings_chirho = module_chirho
         .extensions_chirho
         .iter()
@@ -580,10 +643,21 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     // runs of the same binary on the same source. Sort by key so the order is a
     // function of the program, not of the hasher.
     // See spec-chirho/bug-nondeterministic-typecheck-chirho.md
+    // An imported right side is resolved by its exporter: its names carry the stamps.
+    // Under a scope it still converts keyed (compiler nil and cons), with nothing to
+    // resolve locally.
+    let imported_promotion_scope_chirho = ctx_chirho
+        .promotion_scope_chirho
+        .as_ref()
+        .map(|_| PromotionScopeChirho::default());
     let mut sorted_type_synonyms_chirho: Vec<_> = imported_type_synonyms_chirho.iter().collect();
     sorted_type_synonyms_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
     for (name_chirho, (params_chirho, rhs_ast_chirho)) in sorted_type_synonyms_chirho {
-        let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_ast_chirho, params_chirho);
+        let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
+            rhs_ast_chirho,
+            params_chirho,
+            imported_promotion_scope_chirho.as_ref(),
+        );
         ctx_chirho.register_type_synonym_chirho(
             name_chirho.clone(),
             params_chirho.clone(),
@@ -640,6 +714,11 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     let (reference_evidence_chirho, reference_evidence_by_origin_chirho) =
         ctx_chirho.finalize_reference_evidence_chirho(&composed_subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
+    // Promoted keys are the checker's identities; people read the constructors (row 686).
+    // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    result_chirho
+        .diagnostics_chirho
+        .map_text_chirho(readable_promoted_keys_chirho);
     result_chirho.subst_chirho = composed_subst_chirho;
     result_chirho.method_occurrences_chirho = method_occurrences_chirho;
     result_chirho.method_occurrence_totals_chirho = method_occurrence_totals_chirho;

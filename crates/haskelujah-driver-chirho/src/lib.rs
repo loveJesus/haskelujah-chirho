@@ -75,6 +75,7 @@ use std::sync::OnceLock;
 
 use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use haskelujah_ast_chirho::promotion_chirho::{PromotionScopeChirho, stamp_promotions_chirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
@@ -90,8 +91,8 @@ use haskelujah_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::{
-    InferResultChirho, TypeFamilyEnvChirho, infer_module_chirho,
-    infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
+    InferResultChirho, InferenceImportContextChirho, TypeFamilyEnvChirho,
+    infer_module_with_import_context_chirho,
 };
 
 use module_search_chirho::{scan_hierarchical_modules_chirho, scan_sibling_module_ifaces_chirho};
@@ -482,6 +483,7 @@ fn exported_type_synonyms_from_module_chirho(
     module_chirho: &ModuleChirho,
     iface_chirho: &ModuleIfaceChirho,
     resolved_imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
+    promotion_scope_chirho: Option<&PromotionScopeChirho>,
 ) -> ImportedTypeSynonymsChirho {
     let mut exported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
     let mut local_type_alias_names_chirho = std::collections::HashSet::new();
@@ -509,7 +511,7 @@ fn exported_type_synonyms_from_module_chirho(
                         .iter()
                         .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
                         .collect(),
-                    rhs_chirho.clone(),
+                    stamped_synonym_rhs_chirho(rhs_chirho, promotion_scope_chirho),
                 );
                 seed_transitive_type_synonyms_chirho(
                     &mut exported_type_synonyms_chirho,
@@ -547,6 +549,21 @@ fn exported_type_synonyms_from_module_chirho(
         }
     }
     exported_type_synonyms_chirho
+}
+
+/// A local synonym's right side as it leaves this module: its promoted names stamped with
+/// what this module's scope resolves them to (row 686), so an importer never resolves
+/// them itself. Re-exported right sides already carry their exporter's stamps.
+/// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+fn stamped_synonym_rhs_chirho(
+    rhs_chirho: &TypeChirho,
+    promotion_scope_chirho: Option<&PromotionScopeChirho>,
+) -> TypeChirho {
+    let mut exported_rhs_chirho = rhs_chirho.clone();
+    if let Some(scope_chirho) = promotion_scope_chirho {
+        stamp_promotions_chirho(&mut exported_rhs_chirho, scope_chirho);
+    }
+    exported_rhs_chirho
 }
 
 const CPP_GLASGOW_HASKELL_VERSION_CHIRHO: &str = "810";
@@ -1888,6 +1905,12 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     if !defer_errors_chirho && resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(resolve_result_chirho.diagnostics_chirho);
     }
+    // Phase 3.05: promoted constructors' identity (row 686), from the same interfaces
+    // resolution read. Every typing conversion and Core type key reads it.
+    // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    let promotion_scope_chirho = std::sync::Arc::new(
+        haskelujah_naming_chirho::build_promotion_scope_chirho(&module_chirho, ifaces_chirho),
+    );
     // GHC never defers a declaration-shape error, so the defer flags do not apply.
     if declaration_validity_chirho
         .diagnostics_chirho
@@ -2098,17 +2121,34 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         && imported_class_env_chirho.classes_chirho.is_empty()
         && imported_class_env_chirho.instances_chirho.is_empty()
     {
-        infer_module_chirho(&module_chirho)
-    } else {
-        infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
+        infer_module_with_import_context_chirho(
             &module_chirho,
-            &merged_imported_types_chirho,
-            &merged_imported_type_synonyms_chirho,
-            &merged_imported_type_families_chirho,
-            imported_class_env_chirho,
-            &merged_imported_record_field_names_chirho,
-            &safe_unqualified_imported_type_names_chirho,
-            &preferred_qualified_type_names_chirho,
+            InferenceImportContextChirho {
+                imported_types_chirho: &std::collections::HashMap::new(),
+                imported_type_synonyms_chirho: &std::collections::HashMap::new(),
+                imported_type_families_chirho: &TypeFamilyEnvChirho::new(),
+                imported_class_env_chirho:
+                    &haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho(),
+                imported_record_field_names_chirho: &std::collections::HashMap::new(),
+                safe_unqualified_imported_type_names_chirho: &std::collections::HashSet::new(),
+                preferred_qualified_type_names_chirho: &std::collections::HashMap::new(),
+                promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
+            },
+        )
+    } else {
+        infer_module_with_import_context_chirho(
+            &module_chirho,
+            InferenceImportContextChirho {
+                imported_types_chirho: &merged_imported_types_chirho,
+                imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
+                imported_type_families_chirho: &merged_imported_type_families_chirho,
+                imported_class_env_chirho,
+                imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
+                safe_unqualified_imported_type_names_chirho:
+                    &safe_unqualified_imported_type_names_chirho,
+                preferred_qualified_type_names_chirho: &preferred_qualified_type_names_chirho,
+                promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
+            },
         )
     };
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
@@ -2623,6 +2663,7 @@ fn build_con_type_map_chirho(
 /// Build a mapping from newtype type name to (constructor name, underlying type key).
 fn build_newtype_info_chirho(
     module_chirho: &ModuleChirho,
+    promotion_scope_chirho: Option<&PromotionScopeChirho>,
 ) -> std::collections::HashMap<String, (String, String)> {
     let mut map_chirho = std::collections::HashMap::new();
     for decl_chirho in &module_chirho.decls_chirho {
@@ -2642,7 +2683,7 @@ fn build_newtype_info_chirho(
                     let underlying_chirho = fields_chirho
                         .first()
                         .map(|(_s_chirho, ty_chirho)| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(ty_chirho)
+                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(ty_chirho, promotion_scope_chirho)
                         })
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
@@ -2655,7 +2696,7 @@ fn build_newtype_info_chirho(
                     let underlying_chirho = fields_chirho
                         .first()
                         .map(|fd_chirho| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&fd_chirho.ty_chirho)
+                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&fd_chirho.ty_chirho, promotion_scope_chirho)
                         })
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
@@ -2669,7 +2710,7 @@ fn build_newtype_info_chirho(
                     // E.g. `forall a. Ctx => Int -> T a` → underlying is `Int`.
                     let underlying_chirho = extract_first_fun_arg_chirho(ty_chirho)
                         .map(|arg_ty_chirho| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&arg_ty_chirho)
+                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&arg_ty_chirho, promotion_scope_chirho)
                         })
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
@@ -2935,6 +2976,7 @@ fn compile_backend_chirho(
             // definer's identity, seen through any re-export (rows 629 and 642).
             // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
             import_suppliers_chirho,
+            promotion_scope_chirho: infer_result_chirho.promotion_scope_chirho.clone(),
         },
     );
     let reference_evidence_chirho = evidence_join_chirho::join_reference_evidence_chirho(
@@ -2964,7 +3006,10 @@ fn compile_backend_chirho(
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
     let con_types_chirho = build_con_type_map_chirho(&module_chirho);
-    let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
+    let newtype_info_chirho = build_newtype_info_chirho(
+        &module_chirho,
+        infer_result_chirho.promotion_scope_chirho.as_deref(),
+    );
     let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
         .map(|(con_name_chirho, _)| con_name_chirho.clone())

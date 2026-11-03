@@ -377,6 +377,7 @@ impl InferCtxChirho {
             derived_instance_heads_chirho: HashSet::new(),
             safe_unqualified_imported_type_names_chirho: HashSet::new(),
             preferred_qualified_type_names_chirho: HashMap::new(),
+            promotion_scope_chirho: None,
         }
     }
 
@@ -538,6 +539,7 @@ impl InferCtxChirho {
             literal_evidence_by_origin_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
             reference_evidence_by_origin_chirho: HashMap::new(),
+            promotion_scope_chirho: self.promotion_scope_chirho,
         }
     }
 }

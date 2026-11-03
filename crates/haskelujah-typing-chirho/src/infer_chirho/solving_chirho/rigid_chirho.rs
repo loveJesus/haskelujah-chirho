@@ -6,6 +6,7 @@
 //! workflow: language-features-chirho/rigid-type-variables-chirho
 
 use super::*;
+use haskelujah_ast_chirho::promotion_chirho::is_unknown_promoted_key_chirho;
 
 impl InferCtxChirho {
     /// Instantiate a signature scheme for CHECKING a binding against it:
@@ -381,6 +382,8 @@ impl InferCtxChirho {
             | TyChirho::RequiredForallChirho { .. } => false,
             TyChirho::ConChirho(name_chirho) => {
                 !name_chirho.starts_with('\'')
+                    // A promoted constructor naming could not prove is Unknown (row 686).
+                    && !is_unknown_promoted_key_chirho(name_chirho)
                     && !name_chirho.starts_with('?')
                     && !name_chirho.ends_with('#')
                     && !self.type_families_chirho.contains_key(name_chirho)
