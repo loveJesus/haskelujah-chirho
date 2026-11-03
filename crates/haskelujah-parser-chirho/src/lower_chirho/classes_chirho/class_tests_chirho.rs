@@ -497,3 +497,46 @@ class C a where
         class_member_names_chirho(find_class_decl_chirho(&module_chirho, "C"));
     assert_eq!(methods_chirho, ["firstChirho"]);
 }
+
+#[test]
+fn data_family_flavor_survives_top_level_and_associated_lowering_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeFamilies #-}\nmodule DataCarrierChirho where\ndata family D1Chirho aChirho\ndata family D2Chirho :: Type -> Type\ntype family TChirho aChirho\nclass HasPayloadChirho aChirho where\n  data PayloadChirho aChirho\n  type ResultChirho aChirho\n",
+    );
+    let headers_chirho: Vec<_> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|declaration_chirho| match declaration_chirho {
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                data_family_chirho,
+                ..
+            } => Some((name_chirho.text_chirho(), *data_family_chirho)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        headers_chirho,
+        [("D1Chirho", true), ("D2Chirho", true), ("TChirho", false)]
+    );
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, "HasPayloadChirho")
+    else {
+        panic!("class retained")
+    };
+    let associated_chirho: Vec<_> = associated_tfs_chirho
+        .iter()
+        .map(|family_chirho| {
+            (
+                family_chirho.name_chirho.text_chirho(),
+                family_chirho.data_family_chirho,
+            )
+        })
+        .collect();
+    assert_eq!(
+        associated_chirho,
+        [("PayloadChirho", true), ("ResultChirho", false)]
+    );
+}

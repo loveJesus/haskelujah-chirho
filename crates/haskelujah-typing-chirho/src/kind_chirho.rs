@@ -2537,6 +2537,7 @@ mod tests_chirho {
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
                 name_chirho: mk_name_chirho("Rep"),
                 type_vars_chirho: vec![mk_name_chirho("f")],
+                data_family_chirho: false,
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -2806,6 +2807,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("TrivialFamily"),
                 type_vars_chirho: vec![t_var_chirho.clone()],
                 result_kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
+                data_family_chirho: false,
                 closed_chirho: false,
                 equations_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -2847,6 +2849,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("FamilyChirho"),
                 type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
                 result_kind_chirho: None,
+                data_family_chirho: false,
                 closed_chirho: false,
                 equations_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

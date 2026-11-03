@@ -158,6 +158,7 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("Rep"),
             type_vars_chirho: vec![dummy_name_chirho("f")],
+            data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::AppChirho {
                 fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
                 arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
@@ -216,6 +217,7 @@ fn instance_assoc_type_family_override_beats_class_default_chirho() {
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("Rep"),
             type_vars_chirho: vec![dummy_name_chirho("f")],
+            data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::AppChirho {
                 fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
                 arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("f"))),
@@ -730,6 +732,7 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
                 haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                     name_chirho: dummy_name_chirho("RepChirho"),
                     type_vars_chirho: vec![dummy_name_chirho("aChirho")],
+                    data_family_chirho: false,
                     default_rhs_chirho: (!written_chirho)
                         .then(|| rhs_chirho(TypeChirho::VarChirho(dummy_name_chirho("aChirho")))),
                     default_params_chirho: vec![],
@@ -798,6 +801,7 @@ fn rhs_shape_module_chirho(rhs_chirho: TypeChirho) -> ModuleChirho {
             name_chirho: dummy_name_chirho("HeldRhsChirho"),
             type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
             result_kind_chirho: None,
+            data_family_chirho: false,
             closed_chirho: true,
             equations_chirho: vec![
                 equation_chirho(TypeChirho::ConChirho(dummy_name_chirho("Int")), rhs_chirho),

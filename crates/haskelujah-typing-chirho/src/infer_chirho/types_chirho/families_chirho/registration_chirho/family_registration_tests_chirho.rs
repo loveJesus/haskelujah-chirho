@@ -57,6 +57,7 @@ fn family_decl_chirho(
             .map(|name_chirho| dummy_name_chirho(name_chirho).into())
             .collect(),
         result_kind_chirho: None,
+        data_family_chirho: false,
         closed_chirho: true,
         equations_chirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -428,6 +429,7 @@ fn associated_header_and_default_supply_one_catalogue_declaration_chirho() {
         |default_chirho: bool| haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("RepChirho"),
             type_vars_chirho: vec![dummy_name_chirho("aChirho")],
+            data_family_chirho: false,
             default_rhs_chirho: default_chirho.then(|| syntax_app_chirho("Int", vec![])),
             default_params_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -471,4 +473,51 @@ fn two_genuine_data_declarations_are_not_catalogue_deduplicated_chirho() {
     let mut ctx_chirho = family_fixture_context_chirho();
     ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
     assert!(ctx_chirho.diagnostics_chirho.has_errors_chirho());
+}
+
+#[test]
+fn data_family_heads_are_generative_but_type_family_heads_remain_opaque_chirho() {
+    // T17067's distinction: distinct DATA family heads are nominally apart.
+    // The same syntax built with TYPE families supplies no such evidence.
+    for data_family_chirho in [false, true] {
+        let header_chirho = |name_chirho| DeclChirho::TypeFamilyDeclChirho {
+            name_chirho: dummy_name_chirho(name_chirho),
+            type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
+            result_kind_chirho: None,
+            data_family_chirho,
+            closed_chirho: false,
+            equations_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let module_chirho =
+            module_chirho(vec![header_chirho("D1Chirho"), header_chirho("D2Chirho")]);
+        let mut ctx_chirho = family_fixture_context_chirho();
+        ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
+        ctx_chirho.register_module_families_chirho(&module_chirho);
+        ctx_chirho.register_open_family_chirho("FChirho".to_owned(), 1, SpanChirho::DUMMY_CHIRHO);
+        for (name_chirho, rhs_chirho) in [
+            ("D1Chirho", TyChirho::int_chirho()),
+            ("D2Chirho", TyChirho::char_chirho()),
+        ] {
+            ctx_chirho.register_type_family_instance_chirho(
+                "FChirho".to_owned(),
+                vec![type_family_app1_chirho(
+                    name_chirho,
+                    TyChirho::ForallVarChirho("aChirho".to_owned()),
+                )],
+                rhs_chirho,
+            );
+        }
+        assert_eq!(
+            ctx_chirho.reduce_type_family_chirho(
+                "FChirho",
+                &[type_family_app1_chirho("D2Chirho", TyChirho::bool_chirho())]
+            ),
+            data_family_chirho.then(TyChirho::char_chirho)
+        );
+        assert_eq!(
+            ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            !data_family_chirho
+        );
+    }
 }

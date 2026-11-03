@@ -256,7 +256,7 @@ pub enum DeclChirho {
         /// Span covering the whole type alias.
         span_chirho: SpanChirho,
     },
-    /// Type family declaration (open or closed).
+    /// Type or data family declaration (type families may be open or closed).
     /// Open: `type family F a :: *`
     /// Closed: `type family F a where { F Int = Bool; ... }`
     TypeFamilyDeclChirho {
@@ -266,6 +266,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Optional result kind annotation after `::`.
         result_kind_chirho: Option<TypeChirho>,
+        /// A written `data family` is nominally generative, unlike a type family.
+        data_family_chirho: bool,
         /// Whether a written `where` closes the family's equation set. An
         /// empty closed family is different from an extensible open family.
         closed_chirho: bool,
@@ -482,6 +484,8 @@ pub struct AssocTypeFamilyChirho {
     pub name_chirho: NameChirho,
     /// Family parameters declared in the class body.
     pub type_vars_chirho: Vec<NameChirho>,
+    /// Whether the class member is a data family rather than a type family.
+    pub data_family_chirho: bool,
     /// Optional default: `type FamilyName a = DefaultType`.
     pub default_rhs_chirho: Option<TypeChirho>,
     /// The binders the default equation was written with (`type F a x = …`

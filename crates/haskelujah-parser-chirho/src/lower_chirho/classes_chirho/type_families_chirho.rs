@@ -91,6 +91,7 @@ impl LowerCtxChirho {
         let mut equations_chirho: Vec<TypeFamilyEquationChirho> = Vec::new();
         let mut result_kind_chirho = None;
         let mut saw_family_chirho = false;
+        let mut data_family_chirho = false;
         let mut saw_where_chirho = false;
         let mut saw_double_colon_chirho = false;
         let mut saw_injectivity_result_chirho = false;
@@ -102,7 +103,9 @@ impl LowerCtxChirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     let kind_chirho = tok_chirho.kind_chirho();
-                    if kind_chirho == TokenKindChirho::TypeKeywordChirho {
+                    if kind_chirho == TokenKindChirho::DataKeywordChirho {
+                        data_family_chirho = true;
+                    } else if kind_chirho == TokenKindChirho::TypeKeywordChirho {
                         // skip
                     } else if tok_chirho.text_chirho() == "family" {
                         saw_family_chirho = true;
@@ -184,6 +187,7 @@ impl LowerCtxChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
             result_kind_chirho,
+            data_family_chirho,
             closed_chirho: saw_where_chirho,
             equations_chirho,
             span_chirho,

@@ -57,6 +57,7 @@ pub(crate) fn partition_class_members_chirho(
                 if associated_kind_sig_spans_chirho.contains(&span_chirho) {
                     associated_types_chirho.push(AssocTypeFamilyChirho {
                         name_chirho,
+                        data_family_chirho: false,
                         type_vars_chirho: Vec::new(),
                         default_rhs_chirho: None,
                         default_params_chirho: Vec::new(),
@@ -78,6 +79,7 @@ pub(crate) fn partition_class_members_chirho(
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
                 type_vars_chirho,
+                data_family_chirho,
                 equations_chirho,
                 span_chirho,
                 ..
@@ -99,6 +101,7 @@ pub(crate) fn partition_class_members_chirho(
                 };
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
+                    data_family_chirho,
                     type_vars_chirho: type_vars_chirho
                         .into_iter()
                         .filter(|type_var_chirho| {
@@ -136,6 +139,7 @@ pub(crate) fn partition_class_members_chirho(
                     .then_some(rhs_chirho);
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
+                    data_family_chirho: false,
                     type_vars_chirho: type_var_names_chirho,
                     default_rhs_chirho,
                     default_params_chirho: Vec::new(),
@@ -150,6 +154,7 @@ pub(crate) fn partition_class_members_chirho(
             } => {
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
+                    data_family_chirho: true,
                     type_vars_chirho: type_vars_chirho
                         .into_iter()
                         .filter(|type_var_chirho| {

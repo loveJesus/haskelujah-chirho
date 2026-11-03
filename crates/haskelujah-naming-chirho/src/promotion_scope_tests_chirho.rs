@@ -195,6 +195,7 @@ fn a_class_associated_family_is_in_the_type_namespace_chirho() {
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: name_chirho("FamChirho"),
             type_vars_chirho: vec![name_chirho("a")],
+            data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: Vec::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,

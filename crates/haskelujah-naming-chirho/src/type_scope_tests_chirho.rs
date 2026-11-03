@@ -133,6 +133,7 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
                 name_chirho: name_chirho("FamilyChirho"),
                 type_vars_chirho: vec![name_chirho("aChirho")],
+                data_family_chirho: false,
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -231,6 +232,7 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
             name_chirho: name_chirho("FamilyChirho"),
             type_vars_chirho: vec![name_chirho("aChirho")],
+            data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("bChirho"))),
             default_params_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -253,6 +255,7 @@ fn associated_family_default_uses_its_equation_binders_chirho() {
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
             name_chirho: name_chirho("FamilyChirho"),
             type_vars_chirho: vec![name_chirho("aChirho"), name_chirho("bChirho")],
+            data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("xChirho"))),
             default_params_chirho: vec![name_chirho("aChirho"), name_chirho("xChirho")],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -450,6 +453,7 @@ fn family_result_kind_resolves_type_namespace_names_chirho() {
             result_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Constraint"))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }),
+        data_family_chirho: false,
         closed_chirho: false,
         equations_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,

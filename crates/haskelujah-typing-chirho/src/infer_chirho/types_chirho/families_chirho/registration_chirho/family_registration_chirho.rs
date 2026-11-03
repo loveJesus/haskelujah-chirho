@@ -63,7 +63,11 @@ impl InferCtxChirho {
                 | DeclChirho::NewtypeDeclChirho { name_chirho, .. } => (name_chirho, true, true),
                 DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
                 | DeclChirho::ClassDeclChirho { name_chirho, .. } => (name_chirho, false, true),
-                DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } => (name_chirho, false, false),
+                DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    data_family_chirho,
+                    ..
+                } => (name_chirho, *data_family_chirho, *data_family_chirho),
                 _ => continue,
             };
             declarations_chirho.push((name_chirho.text_chirho().to_owned(), generative_chirho));
@@ -102,10 +106,13 @@ impl InferCtxChirho {
                 // Lowering may retain a written associated header and its default
                 // as two records. They declare one non-generative type identity.
                 // Do not collapse duplicate headers or duplicate defaults.
-                let mut associated_shapes_chirho = HashMap::<String, (usize, usize)>::new();
+                let mut associated_shapes_chirho = HashMap::<(String, bool), (usize, usize)>::new();
                 for associated_chirho in associated_tfs_chirho {
                     let counts_chirho = associated_shapes_chirho
-                        .entry(associated_chirho.name_chirho.full_name_chirho())
+                        .entry((
+                            associated_chirho.name_chirho.full_name_chirho(),
+                            associated_chirho.data_family_chirho,
+                        ))
                         .or_default();
                     if associated_chirho.default_rhs_chirho.is_some() {
                         counts_chirho.1 += 1;
@@ -115,13 +122,14 @@ impl InferCtxChirho {
                 }
                 for associated_chirho in associated_tfs_chirho {
                     if associated_chirho.default_rhs_chirho.is_none()
-                        || associated_shapes_chirho
-                            .get(&associated_chirho.name_chirho.full_name_chirho())
-                            != Some(&(1, 1))
+                        || associated_shapes_chirho.get(&(
+                            associated_chirho.name_chirho.full_name_chirho(),
+                            associated_chirho.data_family_chirho,
+                        )) != Some(&(1, 1))
                     {
                         declarations_chirho.push((
                             associated_chirho.name_chirho.text_chirho().to_owned(),
-                            false,
+                            associated_chirho.data_family_chirho,
                         ));
                     }
                     let id_chirho = TypeFamilyIdChirho::SourceChirho {
@@ -136,9 +144,12 @@ impl InferCtxChirho {
                             associated_chirho.name_chirho.text_chirho()
                         ),
                     ] {
-                        if let Err(error_chirho) =
+                        let result_chirho = if associated_chirho.data_family_chirho {
+                            scope_chirho.bind_other_local_type_chirho(written_chirho)
+                        } else {
                             scope_chirho.bind_local_family_chirho(written_chirho, &id_chirho)
-                        {
+                        };
+                        if let Err(error_chirho) = result_chirho {
                             self.family_registration_error_chirho(
                                 error_chirho.to_string(),
                                 associated_chirho.span_chirho,
@@ -587,7 +598,10 @@ impl InferCtxChirho {
                 ..
             } = declaration_chirho
             {
-                for associated_chirho in associated_tfs_chirho {
+                for associated_chirho in associated_tfs_chirho
+                    .iter()
+                    .filter(|family_chirho| !family_chirho.data_family_chirho)
+                {
                     self.register_open_family_chirho(
                         associated_chirho.name_chirho.text_chirho().to_owned(),
                         associated_chirho.type_vars_chirho.len(),
@@ -600,12 +614,16 @@ impl InferCtxChirho {
                 type_vars_chirho,
                 equations_chirho,
                 closed_chirho,
+                data_family_chirho,
                 span_chirho,
                 ..
             } = declaration_chirho
             else {
                 continue;
             };
+            if *data_family_chirho {
+                continue;
+            }
             let arity_chirho = type_vars_chirho
                 .iter()
                 .filter(|variable_chirho| variable_chirho.is_visible_chirho())
@@ -829,6 +847,7 @@ fn predeclared_family_arities_chirho(
             DeclChirho::TypeFamilyDeclChirho {
                 name_chirho,
                 type_vars_chirho,
+                data_family_chirho: false,
                 ..
             } => {
                 let id_chirho = TypeFamilyIdChirho::SourceChirho {
@@ -847,7 +866,10 @@ fn predeclared_family_arities_chirho(
                 associated_tfs_chirho,
                 ..
             } => {
-                for family_chirho in associated_tfs_chirho {
+                for family_chirho in associated_tfs_chirho
+                    .iter()
+                    .filter(|family_chirho| !family_chirho.data_family_chirho)
+                {
                     let id_chirho = TypeFamilyIdChirho::SourceChirho {
                         module_chirho: module_name_chirho.to_owned(),
                         name_chirho: family_chirho.name_chirho.text_chirho().to_owned(),
