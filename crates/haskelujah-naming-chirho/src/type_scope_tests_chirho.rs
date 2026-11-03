@@ -450,6 +450,7 @@ fn family_result_kind_resolves_type_namespace_names_chirho() {
             result_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Constraint"))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }),
+        closed_chirho: false,
         equations_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };

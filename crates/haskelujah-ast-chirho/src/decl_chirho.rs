@@ -266,7 +266,10 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Optional result kind annotation after `::`.
         result_kind_chirho: Option<TypeChirho>,
-        /// Equations for closed families; empty for open families.
+        /// Whether a written `where` closes the family's equation set. An
+        /// empty closed family is different from an extensible open family.
+        closed_chirho: bool,
+        /// Equations for closed families; either kind may have no equations.
         equations_chirho: Vec<TypeFamilyEquationChirho>,
         /// Span covering the whole family declaration.
         span_chirho: SpanChirho,

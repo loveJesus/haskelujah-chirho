@@ -181,6 +181,7 @@ impl LowerCtxChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
             result_kind_chirho,
+            closed_chirho: saw_where_chirho,
             equations_chirho,
             span_chirho,
         }

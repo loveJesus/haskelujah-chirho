@@ -131,6 +131,11 @@ mod ast_conversion_chirho;
 mod ast_conversion_tests_chirho;
 #[path = "infer_chirho/types_chirho/ast_types_chirho.rs"]
 mod ast_types_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_chirho.rs"]
+mod closed_family_apartness_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_tests_chirho.rs"]
+mod closed_family_apartness_tests_chirho;
 #[path = "infer_chirho/types_chirho/type_families_chirho.rs"]
 mod type_families_chirho;
 #[path = "infer_chirho/types_chirho/type_synonyms_chirho.rs"]

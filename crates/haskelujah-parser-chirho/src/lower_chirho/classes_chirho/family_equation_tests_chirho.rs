@@ -9,6 +9,38 @@ use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
 use super::test_support_chirho::parse_and_lower_chirho;
 
+#[test]
+fn empty_closed_families_retain_their_written_closure_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeFamilies #-}\nmodule CarrierChirho where\ntype family OpenChirho aChirho\ntype family ClosedChirho aChirho where {}\n",
+    );
+    let families_chirho: Vec<_> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| {
+            if let DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                closed_chirho,
+                equations_chirho,
+                ..
+            } = decl_chirho
+            {
+                Some((
+                    name_chirho.text_chirho(),
+                    *closed_chirho,
+                    equations_chirho.len(),
+                ))
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(
+        families_chirho,
+        vec![("OpenChirho", false, 0), ("ClosedChirho", true, 0)]
+    );
+}
+
 /// The equations of the closed family `family_chirho` in `source_chirho`.
 fn equations_of_chirho(source_chirho: &str, family_chirho: &str) -> Vec<TypeFamilyEquationChirho> {
     parse_and_lower_chirho(source_chirho)
