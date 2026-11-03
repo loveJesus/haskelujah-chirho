@@ -1900,8 +1900,17 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     let orphan_warnings_chirho =
         haskelujah_naming_chirho::check_orphan_instances_chirho(&module_chirho);
 
-    // Phase 3.5: Kind inference
-    let kind_result_chirho = haskelujah_typing_chirho::infer_module_kinds_chirho(&module_chirho);
+    // Phase 3.5: Kind inference, knowing the builtin classes the module's class spellings
+    // name, proven from the same interfaces resolution read (K01).
+    // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    let builtin_class_scope_chirho =
+        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
+    let kind_result_chirho = haskelujah_typing_chirho::infer_module_kinds_with_imports_chirho(
+        &module_chirho,
+        haskelujah_typing_chirho::KindImportsChirho {
+            builtin_classes_chirho: &builtin_class_scope_chirho,
+        },
+    );
     if !defer_errors_chirho && kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(kind_result_chirho.diagnostics_chirho);
     }

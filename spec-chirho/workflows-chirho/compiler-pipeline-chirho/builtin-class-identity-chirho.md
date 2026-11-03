@@ -2,7 +2,7 @@
 
 # Builtin class identity Chirho
 
-K01 (#31175, #31176). A class spelling names one of the compiler's own classes only when naming proves it from a trusted builtin interface, never by its spelling. The kind pass reads the scope for builtin class kinds, such as `Functor :: (Type -> Type) -> Constraint`. That consumer is activated only after GHC has measured the supplier, kind and instance-head oracles.
+K01 (#31175, #31176, #31203). A class spelling names one of the compiler's own classes only when naming proves it from a trusted builtin interface, never by its spelling. The kind pass reads that scope for builtin class kinds, such as `Functor :: (Type -> Type) -> Constraint`. GHC 9.14.1 measured every supplier, the kinds and the instance-head controls (#31202) before the consumer was wired.
 
 ```mermaid
 flowchart TD
@@ -10,7 +10,10 @@ flowchart TD
     ifaces_chirho["interfaces: origin, type exports and their methods"] --> build_chirho
     table_chirho["BUILTIN_CLASSES_CHIRHO: class, base home, parameter kinds, witness method, exact providers"] --> build_chirho
     build_chirho --> scope_chirho["ast: BuiltinClassScopeChirho, spelling to BuiltinClassChirho"]
-    scope_chirho -. "after GHC measurement" .-> kinds_chirho["typing: kind pass, instance heads and sort judgments"]
+    scope_chirho --> driver_chirho["driver Phase 3.5: KindImportsChirho"]
+    driver_chirho --> seed_chirho["typing: seed_builtin_kinds_chirho binds each proven spelling to its class kind"]
+    seed_chirho --> heads_chirho["typing: check_builtin_instance_head_chirho"]
+    seed_chirho --> sorts_chirho["typing: sort judgments know the builtin class heads"]
 ```
 
 ## Trust
@@ -43,11 +46,34 @@ The table holds seventeen classes, all monomorphic in GHC 9.14.1:
 
 Read, Real, RealFrac and RealFloat are left out, because their builtin entries list no real method. The kind environment's existing spelling-based `Typeable` and `Generic` kinds remain a named residual.
 
+## Consumer
+
+The driver builds the scope from the interfaces resolution read and passes it to `infer_module_kinds_with_imports_chirho` in a `KindImportsChirho`. `infer_module_kinds_chirho` stays the direct path with an empty scope, so no spelling names a builtin class there.
+
+**Seeding.** `seed_builtin_kinds_chirho` does two things:
+- It records the builtin environment's names, before anything is learned from a use.
+- It binds each proven spelling to its class kind. A local declaration is skipped, even if a scope were to list it.
+
+**Instance heads.** A builtin class's instance head is judged whatever the representability switch says, but only under all of these conditions:
+- the class has a single parameter, and the head has exactly one written argument, which cannot be misaligned;
+- the argument's kind is read without inference, from a constructor declared in this module or a builtin type, after its written arguments (list, tuple and function types are `*`);
+- that kind is variable-free.
+
+A variable head, an imported constructor (its kind is learned from a use) and any malformed shape stay unjudged. A spelling that names a builtin class never falls through to the local-class check.
+
+**Sort judgments.** The proven spellings join the known heads, so `newtype B = B (Show Int)` reports a constraint written where a type is required. Contexts are not unified with class kinds, and the spelling-based `Typeable` and `Generic` kinds are unchanged.
+
 ## Controls
 
 - **Naming:** `iface_chirho/class_identity_tests_chirho.rs`.
   - The trust and exclusion rules, on hand-built interfaces.
   - The supplier guard over the real builtin interfaces: every listed provider exports the class entry with its witness, and every builtin class export is either a listed provider or a named untrusted one.
+- **Typing:** `kind_chirho/class_imports_tests_chirho.rs`, covering:
+  - the movers' and holds' shapes under their extensions;
+  - qualified spellings;
+  - a local homonym;
+  - the direct path.
+- **Driver:** `declarations_chirho/builtin_class_kinds_chirho.rs`, with the GHC-measured holds and negatives and T5120 embedded byte for byte.
 - **GHC:** the `oracle-classes-chirho` set.
   - One supplier program per class and provider.
   - A `:kind` probe.
