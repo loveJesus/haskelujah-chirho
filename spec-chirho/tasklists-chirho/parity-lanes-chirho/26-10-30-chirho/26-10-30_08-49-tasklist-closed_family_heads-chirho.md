@@ -124,3 +124,28 @@ One frozen candidate completed both unchanged axes in 229.39 seconds, with sourc
 Ownership: Claude has a bounded compiler lease from 45bea1ff to diagnose and repair his C08 seam; root runs no compiler alongside it. Claude2 is source-only on written associated equation arguments. Internal source-only lanes own authoritative import-family discovery/registration, data-family flavor provenance, and scoped wanted-equality design. No blanket arity bypass, spelling-based constructor authority, fabricated closed placeholder, or module-end rejection of all unresolved equalities is authorized. Main and both published measurement artifacts remain unchanged.
 
 Receipts: integration worktree tmp-chirho/row686-preflight-r1-chirho/comparison-chirho.json, rejection-movers-oracle-chirho/receipts-chirho.json, c08-exfalso-oracle-chirho/receipt-chirho.json, and combined_third_candidate_chirho/single-module-receipts-chirho.json. Every proposed source repair requires focused behavior and a new complete fixed-axis comparison before the combined landing.
+
+
+## November 3 fixed-axis R2 and integration repair checkpoint
+
+No semantic source is on main and neither published measurement artifact changes. The second complete frozen pass (6ff89763, CLI ea5e770c3bc92c880f51f96027a4869c4160f47031ab8696f633895eba16e899) took 214.51 seconds; both fixed source manifests equal the retained baseline.
+
+- Raw candidate should_compile: 879 accepted of 938, with five baseline rejections now accepted and twelve baseline accepts now rejected. Fresh GHC 9.14.1 accepts all five gains: T14451, T17772, T20922, T21010 and T21205. Ten of the twelve losses are fresh GHC accepts and require repair. T26358 and T5481 are rejected by GHC too; their fixed-axis losses and upstream expectation discrepancies remain visible.
+- Raw candidate should_fail: 268 rejected of 767. Four new wrong accepts still block publication: T12042, T16512a, T23162b and T23162d. Accidental catalogue/arity rejections are not semantic gains.
+- Interpreter, LLVM and true Cranelift pass all eight imported-family/promotion project controls (8/8, 35.98 seconds), including same-named family isolation, distinct promoted constructors, alias/re-export identity and stamped exported synonyms.
+- The C08 signature tables now pass 3/3, including blocked and irreducible negatives and eight accepted holds. The finite overlap verdict stays stuck; only its nested irreducibility certificate authorizes the missing-constraint report.
+- Source instance declarations and unique exact instance-context parameter indices are retained (606fe75c). Full typing passed 532/532 before the next carrier pair, and driver all-targets checking is warning-free. The subsequent family-kind/default-scope pair passes naming 174/174 and typing 534/534 after two mechanical fixture fields; parser is RED at an inherited FrozenGen default-versus-result expectation (443/444). GHC rejects that exact source with a parse error; production behavior and the existing test must be reconciled from its producer rather than hiding the failure.
+- The reached-SOURCE contract repair (562d72e8) passes all nine driver controls and both parser SOURCE controls. It catches T12042's explicit abstract-data-versus-synonym contradiction, ignores unused nearby boots, and runs the matching SOURCE-cycle file control to 3. This is a bounded contract check, not full hs-boot equivalence.
+- The combined branch now also contains Claude2's standalone-family-kind and own-default-scope carriers (12cec61a, 576c9952) and Claude's ground conditional-dictionary prototype A-D (ad5489e8, 92630a5e, 928d076e, f8c0baf7). Those remain integration candidates, not landed features. Fresh GHC confirms list contexts, method shadowing and the shared finite tree outputs. The unbounded growing-instance GHC command timed out at 20 seconds; it is not recorded as a rejection or a parity pass.
+
+- [x] Retain exact R2 outcomes and fresh oracle verdicts without changing denominators.
+- [x] Repair source-class/Generic authority, retaining actual source shadows and compiler identities only from producers.
+- [x] Preserve source-instance identity and full context evidence through typing.
+- [x] Test the bounded reached-SOURCE contract repair.
+- [ ] Reconcile the inherited FrozenGen parser expectation and execute the full associated-default oracle set; the intended-positive nested-forall G05 is GHC-invalid and retained separately.
+- [ ] Compile and execute ground dictionaries on interpreter, LLVM and true Cranelift, including the valid cyclic dictionary (7), mixed repeated classes and rollback/growth bounds.
+- [ ] Complete real wanted-equality/pattern implication scopes and the seventeen paired GHC controls; retain invalid-source and valid-pattern twins.
+- [ ] Repair or accurately preserve invisible-kind family branches and remaining R2 regressions.
+- [ ] Run frozen R3 on both complete axes, attribute every movement, then final lint/hygiene/native gates before one combined semantic landing.
+
+Receipts are in the integration worktree under tmp-chirho/row686-preflight-r2-chirho, r2-gain-and-boot-oracle-chirho, r2-remaining-loss-oracle-chirho, default-and-growth-oracle-r1-chirho and the named focused test logs. Main's row 686 stays active.
