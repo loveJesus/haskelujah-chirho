@@ -3,8 +3,8 @@
 //! Ground dictionaries for conditional instances, on every engine: the STG machine, LLVM and
 //! Cranelift each print GHC's answer. The B01, two-context, missing-base and cyclic programs
 //! were measured on GHC 9.14.1 (root receipts `equality-and-dictionary-oracle-r1-chirho/<case>/`).
-//! The repeated list-context control and the shadowing hold are predictions that root measures
-//! before the landing.
+//! The repeated list-context control, the shadowing hold, the growing context and the shared
+//! sub-goal hold are predictions that root measures before the landing.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use crate::eval_source_with_machine_chirho;
@@ -243,4 +243,67 @@ main = print (noBaseChirho (Proxy :: Proxy (Maybe (Maybe Int))))",
             "{backend_chirho:?} must reject it too"
         );
     }
+}
+
+#[test]
+fn an_ever_growing_context_is_refused_by_a_bound_never_a_crash_chirho() {
+    // Each step doubles the goal; GHC overflows its reduction stack.
+    let source_chirho = program_chirho(
+        "FlexibleInstances, FlexibleContexts, UndecidableInstances",
+        "class GrowChirho aChirho where
+  growChirho :: Proxy aChirho -> Int
+
+instance GrowChirho (aChirho, aChirho) => GrowChirho aChirho where
+  growChirho _ = 1
+
+main :: IO ()
+main = print (growChirho (Proxy :: Proxy Int))",
+    );
+    let failure_chirho = match stg_run_chirho(&source_chirho) {
+        Ok(printed_chirho) => panic!("GHC rejects this; it printed {printed_chirho:?}"),
+        Err(failure_chirho) => failure_chirho,
+    };
+    assert!(
+        !failure_chirho.contains("missing STG binding"),
+        "a crash is not the refusal: {failure_chirho}"
+    );
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        assert!(
+            native_round_trip_chirho(&source_chirho, backend_chirho, "").is_err(),
+            "{backend_chirho:?} must reject it too"
+        );
+    }
+}
+
+#[test]
+fn a_finite_tree_of_shared_sub_goals_is_built_once_each_chirho() {
+    // 32 leaves, five distinct goals: each repeated sub-goal reuses its dictionary.
+    every_engine_prints_chirho(
+        &program_chirho(
+            "ScopedTypeVariables",
+            "class SizeChirho aChirho where
+  sizeChirho :: Proxy aChirho -> Int
+
+instance SizeChirho () where
+  sizeChirho _ = 1
+
+data PairChirho aChirho bChirho = PairChirho aChirho bChirho
+
+instance (SizeChirho aChirho, SizeChirho bChirho) => SizeChirho (PairChirho aChirho bChirho) where
+  sizeChirho _ = sizeChirho (Proxy :: Proxy aChirho) + sizeChirho (Proxy :: Proxy bChirho)
+
+type OneChirho = PairChirho () ()
+type TwoChirho = PairChirho OneChirho OneChirho
+type ThreeChirho = PairChirho TwoChirho TwoChirho
+type FourChirho = PairChirho ThreeChirho ThreeChirho
+type FiveChirho = PairChirho FourChirho FourChirho
+
+main :: IO ()
+main = print (sizeChirho (Proxy :: Proxy FiveChirho))",
+        ),
+        "32\n",
+    );
 }
