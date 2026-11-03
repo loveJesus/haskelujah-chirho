@@ -9,6 +9,7 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+#[path = "desugar_chirho/builtin_routes_chirho/builtin_routes_chirho.rs"]
 mod builtin_routes_chirho;
 mod guards_chirho;
 mod lazy_patterns_chirho;
