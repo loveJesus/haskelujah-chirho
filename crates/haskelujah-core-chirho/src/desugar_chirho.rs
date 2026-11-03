@@ -9,19 +9,31 @@
 //! - Converts if/where/guards into Core let/case
 //! - Removes syntactic sugar (do notation, list comprehensions, etc.)
 
+#[path = "desugar_chirho/references_chirho/builtin_routes_chirho.rs"]
 mod builtin_routes_chirho;
+#[path = "desugar_chirho/patterns_chirho/guards_chirho.rs"]
 mod guards_chirho;
+#[path = "desugar_chirho/patterns_chirho/lazy_patterns_chirho.rs"]
 mod lazy_patterns_chirho;
+#[path = "desugar_chirho/patterns_chirho/match_rows_chirho.rs"]
 mod match_rows_chirho;
+#[path = "desugar_chirho/patterns_chirho/matches_chirho.rs"]
 mod matches_chirho;
+#[path = "desugar_chirho/references_chirho/operator_evidence_chirho.rs"]
 mod operator_evidence_chirho;
+#[path = "desugar_chirho/references_chirho/provenance_chirho.rs"]
 mod provenance_chirho;
 #[cfg(test)]
+#[path = "desugar_chirho/references_chirho/provenance_tests_chirho.rs"]
 mod provenance_tests_chirho;
+#[path = "desugar_chirho/references_chirho/qualified_references_chirho.rs"]
 mod qualified_references_chirho;
 pub use qualified_references_chirho::ImportSuppliersChirho;
+#[path = "desugar_chirho/sugar_chirho/rec_desugar_chirho.rs"]
 mod rec_desugar_chirho;
+#[path = "desugar_chirho/patterns_chirho/row_match_chirho.rs"]
 mod row_match_chirho;
+#[path = "desugar_chirho/references_chirho/syntax_methods_chirho.rs"]
 mod syntax_methods_chirho;
 
 use match_rows_chirho::{MatchRowChirho, RowBodyChirho};
