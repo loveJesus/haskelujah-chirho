@@ -58,6 +58,16 @@ mod signature_conversion_chirho;
 mod deferred_predicates_chirho;
 #[path = "infer_chirho/solving_chirho/equalities_chirho.rs"]
 mod equalities_chirho;
+#[path = "infer_chirho/solving_chirho/equality_normalization_chirho.rs"]
+mod equality_normalization_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/solving_chirho/equality_normalization_tests_chirho.rs"]
+mod equality_normalization_tests_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/solving_chirho/equality_scope_tests_chirho.rs"]
+mod equality_scope_tests_chirho;
+#[path = "infer_chirho/solving_chirho/equality_scopes_chirho.rs"]
+mod equality_scopes_chirho;
 #[path = "infer_chirho/solving_chirho/fundep_generalization_chirho.rs"]
 mod fundep_generalization_chirho;
 #[path = "infer_chirho/solving_chirho/inferred_dictionary_owners_chirho.rs"]
@@ -77,6 +87,8 @@ mod validity_chirho;
 mod bindings_chirho;
 #[path = "infer_chirho/terms_chirho/conditionals_chirho.rs"]
 mod conditionals_chirho;
+#[path = "infer_chirho/terms_chirho/constructor_patterns_chirho.rs"]
+mod constructor_patterns_chirho;
 #[path = "infer_chirho/terms_chirho/do_operations_chirho.rs"]
 mod do_operations_chirho;
 #[path = "infer_chirho/terms_chirho/expected_chirho.rs"]
@@ -453,7 +465,14 @@ pub struct InferCtxChirho {
     /// Wanted equalities that could not be decided yet because a type-family
     /// application on one side is stuck on an unsolved variable; retried when
     /// givens change and at the end of the module.
-    deferred_equalities_chirho: Vec<(TyChirho, TyChirho, SpanChirho)>,
+    deferred_equalities_chirho: Vec<equality_scopes_chirho::WantedEqualityChirho>,
+    equality_scopes_chirho: Vec<equality_scopes_chirho::EqualityScopeChirho>,
+    active_equality_scope_chirho: usize,
+    equality_substitutions_chirho: SubstChirho,
+    equality_generalizing_owners_chirho: HashSet<usize>,
+    equality_pattern_depth_chirho: usize,
+    equality_substitution_events_chirho: Vec<TyVarChirho>,
+    equality_substitution_events_exhausted_chirho: bool,
     /// Source spelling of type variables introduced from signatures, so
     /// skolems and diagnostics carry the programmer's names.
     tyvar_source_names_chirho: HashMap<TyVarChirho, String>,

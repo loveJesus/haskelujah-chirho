@@ -154,11 +154,11 @@ impl InferCtxChirho {
     pub(super) fn defer_pred_chirho(&mut self, pred_chirho: PredChirho, span_chirho: SpanChirho) {
         if pred_chirho.class_name_chirho == "~" {
             if let Some(rhs_chirho) = pred_chirho.extra_tys_chirho.first() {
-                self.deferred_equalities_chirho.push((
+                self.defer_equality_chirho(
                     pred_chirho.ty_chirho.clone(),
                     rhs_chirho.clone(),
                     span_chirho,
-                ));
+                );
             }
             return;
         }
@@ -205,7 +205,16 @@ impl InferCtxChirho {
     {
         let given_start_chirho = self.given_preds_chirho.len();
         let rewrites_start_chirho = self.given_rewrites_chirho.len();
+        let equality_owner_chirho =
+            self.begin_equality_scope_chirho(if signature_skolems_chirho.is_some() {
+                super::equality_scopes_chirho::EqualityScopeKindChirho::CheckedChirho
+            } else {
+                super::equality_scopes_chirho::EqualityScopeKindChirho::GivenChirho
+            });
         self.install_given_equalities_chirho(&preds_chirho);
+        self.record_equality_rewrites_chirho(
+            self.given_rewrites_chirho[rewrites_start_chirho..].to_vec(),
+        );
         self.given_preds_chirho.extend(preds_chirho);
         let result_chirho = f_chirho(self);
         let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
@@ -215,6 +224,7 @@ impl InferCtxChirho {
         }
         self.given_preds_chirho.truncate(given_start_chirho);
         self.given_rewrites_chirho.truncate(rewrites_start_chirho);
+        self.end_equality_scope_chirho(equality_owner_chirho);
         result_chirho
     }
 
@@ -271,7 +281,7 @@ impl InferCtxChirho {
 
         // Partition deferred predicates: those whose type vars are all being
         // generalized go into the scheme; the rest stay deferred.
-        let mut scheme_preds_chirho = Vec::new();
+        let mut scheme_preds_chirho = self.generalizable_equality_preds_chirho(&vars_chirho);
         let mut remaining_chirho = Vec::new();
         let drained_preds_chirho: Vec<(PredChirho, SpanChirho)> =
             self.deferred_preds_chirho.drain(..).collect();
@@ -487,6 +497,17 @@ impl InferCtxChirho {
 
     /// Apply a substitution to the type environment and deferred predicates.
     pub(super) fn apply_subst_all_chirho(&mut self, subst_chirho: &SubstChirho) {
+        for (var_chirho, ty_chirho) in subst_chirho.iter_chirho() {
+            if self.equality_pattern_depth_chirho > 0 {
+                if self.equality_substitution_events_chirho.len() < 16_384 {
+                    self.equality_substitution_events_chirho.push(*var_chirho);
+                } else {
+                    self.equality_substitution_events_exhausted_chirho = true;
+                }
+            }
+            self.equality_substitutions_chirho
+                .insert_chirho(*var_chirho, ty_chirho.clone());
+        }
         self.env_chirho.apply_subst_chirho(subst_chirho);
         self.substitute_inferred_dictionary_owners_chirho(subst_chirho);
         self.recursive_references_chirho
@@ -507,9 +528,9 @@ impl InferCtxChirho {
                 *extra_ty_chirho = subst_chirho.apply_ty_chirho(extra_ty_chirho);
             }
         }
-        for (left_chirho, right_chirho, _span_chirho) in &mut self.deferred_equalities_chirho {
-            *left_chirho = subst_chirho.apply_ty_chirho(left_chirho);
-            *right_chirho = subst_chirho.apply_ty_chirho(right_chirho);
+        for wanted_chirho in &mut self.deferred_equalities_chirho {
+            wanted_chirho.lhs_chirho = subst_chirho.apply_ty_chirho(&wanted_chirho.lhs_chirho);
+            wanted_chirho.rhs_chirho = subst_chirho.apply_ty_chirho(&wanted_chirho.rhs_chirho);
         }
         for (lhs_chirho, rhs_chirho) in &mut self.given_rewrites_chirho {
             *lhs_chirho = subst_chirho.apply_ty_chirho(lhs_chirho);

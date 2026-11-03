@@ -73,7 +73,7 @@ impl InferCtxChirho {
             })
     }
 
-    fn reduce_families_bounded_chirho(
+    pub(super) fn reduce_families_bounded_chirho(
         &self,
         ty_chirho: &TyChirho,
         depth_chirho: usize,

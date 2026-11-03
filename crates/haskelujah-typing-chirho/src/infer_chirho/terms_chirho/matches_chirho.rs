@@ -73,6 +73,7 @@ impl InferCtxChirho {
 
         for match_arm_chirho in matches_chirho {
             self.env_chirho.push_scope_chirho();
+            let pattern_frame_chirho = self.begin_pattern_implication_chirho();
 
             // Each equation gets its own fresh param/result types so GADT
             // pattern matching can refine types independently per equation.
@@ -100,7 +101,6 @@ impl InferCtxChirho {
                         Vec::new(),
                     )
                 };
-            let given_start_chirho = self.given_preds_chirho.len();
             if authoritative_seed_chirho {
                 self.given_preds_chirho.extend(eq_given_preds_chirho);
             }
@@ -185,16 +185,13 @@ impl InferCtxChirho {
                 }
             }
 
+            let solved_chirho = self.end_pattern_implication_chirho(
+                pattern_frame_chirho,
+                &subst_chirho.apply_ty_chirho(&eq_result_ty_chirho),
+                span_chirho,
+            );
+            subst_chirho = solved_chirho.compose_chirho(&subst_chirho);
             self.env_chirho.pop_scope_chirho();
-            let improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
-            if !improvement_chirho.is_empty_chirho() {
-                subst_chirho = improvement_chirho.compose_chirho(&subst_chirho);
-            }
-            let equalities_chirho = self.retry_deferred_equalities_chirho();
-            if !equalities_chirho.is_empty_chirho() {
-                subst_chirho = equalities_chirho.compose_chirho(&subst_chirho);
-            }
-            self.given_preds_chirho.truncate(given_start_chirho);
         }
 
         // Build the function type: param1 -> param2 -> ... -> result
@@ -388,6 +385,7 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) -> (SubstChirho, TyChirho) {
         self.env_chirho.push_scope_chirho();
+        let pattern_frame_chirho = self.begin_pattern_implication_chirho();
 
         let mut param_subst_chirho = SubstChirho::empty_chirho();
         for (pat_chirho, pat_ty_chirho) in pats_chirho.iter().zip(param_tys_chirho.iter()) {
@@ -421,6 +419,12 @@ impl InferCtxChirho {
             }
         }
 
+        let solved_chirho = self.end_pattern_implication_chirho(
+            pattern_frame_chirho,
+            &final_subst_chirho.apply_ty_chirho(&result_ty_chirho),
+            span_chirho,
+        );
+        final_subst_chirho = solved_chirho.compose_chirho(&final_subst_chirho);
         self.env_chirho.pop_scope_chirho();
 
         let mut result_fun_ty_chirho = final_subst_chirho.apply_ty_chirho(&result_ty_chirho);

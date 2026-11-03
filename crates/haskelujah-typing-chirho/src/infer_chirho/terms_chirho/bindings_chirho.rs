@@ -320,11 +320,20 @@ impl InferCtxChirho {
         );
 
         for group_chirho in &groups_chirho {
+            let mut equality_owners_chirho = Vec::new();
             let mut group_inferred_chirho: Vec<(String, TyChirho, SpanChirho)> = Vec::new();
             for &fun_index_chirho in group_chirho {
                 let name_str_chirho = fun_names_chirho[fun_index_chirho].clone();
                 let span_chirho = fun_spans_chirho[fun_index_chirho];
                 let prev_scoped_chirho = self.scoped_tyvars_chirho.clone();
+                let equality_owner_chirho = self.begin_equality_scope_chirho(
+                    if local_sigs_chirho.contains_key(&name_str_chirho) {
+                        super::equality_scopes_chirho::EqualityScopeKindChirho::CheckedChirho
+                    } else {
+                        super::equality_scopes_chirho::EqualityScopeKindChirho::BindingChirho
+                    },
+                );
+                equality_owners_chirho.push(equality_owner_chirho);
 
                 let (fun_subst_chirho, inferred_ty_chirho) =
                     if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
@@ -369,9 +378,25 @@ impl InferCtxChirho {
 
                 group_inferred_chirho.push((name_str_chirho, inferred_ty_chirho, span_chirho));
                 self.scoped_tyvars_chirho = prev_scoped_chirho;
+                self.end_equality_scope_chirho(equality_owner_chirho);
             }
 
-            for (name_str_chirho, inferred_ty_chirho, span_chirho) in group_inferred_chirho {
+            let inferred_equality_types_chirho = group_inferred_chirho
+                .iter()
+                .filter(|(name_chirho, _, _)| !local_sigs_chirho.contains_key(name_chirho))
+                .map(|(_, ty_chirho, _)| subst_chirho.apply_ty_chirho(ty_chirho))
+                .collect::<Vec<_>>();
+            let previous_generalizing_chirho = std::mem::replace(
+                &mut self.equality_generalizing_owners_chirho,
+                equality_owners_chirho.iter().copied().collect(),
+            );
+            for ((name_str_chirho, inferred_ty_chirho, span_chirho), equality_owner_chirho) in
+                group_inferred_chirho
+                    .into_iter()
+                    .zip(&equality_owners_chirho)
+            {
+                let previous_owner_chirho = self.active_equality_scope_chirho;
+                self.active_equality_scope_chirho = *equality_owner_chirho;
                 let mut binding_scheme_chirho = None;
                 if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                     let sig_scheme_chirho = self.ast_type_to_scheme_chirho(sig_ast_chirho);
@@ -414,7 +439,13 @@ impl InferCtxChirho {
                     .extend(generalized_chirho.vars_chirho.iter().copied());
                 self.env_chirho
                     .bind_chirho(name_str_chirho, generalized_chirho);
+                self.active_equality_scope_chirho = previous_owner_chirho;
             }
+            self.equality_generalizing_owners_chirho = previous_generalizing_chirho;
+            self.finish_equality_binding_group_chirho(
+                &equality_owners_chirho,
+                &inferred_equality_types_chirho,
+            );
         }
 
         for bind_chirho in binds_chirho {

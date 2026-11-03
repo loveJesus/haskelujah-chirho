@@ -121,6 +121,7 @@ impl InferCtxChirho {
 
                 for alt_chirho in alts_chirho {
                     self.env_chirho.push_scope_chirho();
+                    let pattern_frame_chirho = self.begin_pattern_implication_chirho();
 
                     self.bind_pat_against_chirho(
                         &alt_chirho.pat_chirho,
@@ -158,6 +159,12 @@ impl InferCtxChirho {
                         self.apply_subst_all_chirho(&unify_subst_chirho);
                     }
 
+                    let solved_chirho = self.end_pattern_implication_chirho(
+                        pattern_frame_chirho,
+                        &subst_chirho.apply_ty_chirho(expected_ty_chirho),
+                        alt_chirho.span_chirho,
+                    );
+                    subst_chirho = solved_chirho.compose_chirho(&subst_chirho);
                     self.env_chirho.pop_scope_chirho();
                 }
 

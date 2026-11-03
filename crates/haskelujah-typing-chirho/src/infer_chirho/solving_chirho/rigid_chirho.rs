@@ -87,6 +87,12 @@ impl InferCtxChirho {
         scrutinee_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Option<SubstChirho> {
+        if refining_chirho
+            && let Some(subst_chirho) =
+                self.match_gadt_result_chirho(con_result_chirho, scrutinee_chirho, span_chirho)
+        {
+            return Some(subst_chirho);
+        }
         let unify_err_chirho =
             match self.unify_normalized_chirho(con_result_chirho, scrutinee_chirho, span_chirho) {
                 Ok(subst_chirho) => return Some(subst_chirho),
@@ -242,6 +248,10 @@ impl InferCtxChirho {
             .ok()?;
         let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho);
         for (skolem_chirho, ty_chirho) in outcome_chirho.refinements_chirho {
+            self.record_equality_rewrites_chirho(vec![(
+                TyChirho::ForallVarChirho(skolem_chirho.clone()),
+                ty_chirho.clone(),
+            )]);
             // A local refinement is evidence no signature closure can see (row 686, C08).
             self.unmodeled_pattern_evidence_seen_chirho = true;
             self.env_chirho

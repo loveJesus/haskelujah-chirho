@@ -148,40 +148,15 @@ impl InferCtxChirho {
                 self.report_record_pattern_fields_chirho(con_chirho, fields_chirho);
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut field_type_map_chirho = HashMap::new();
-                if let Some((field_names_chirho, field_tys_chirho, result_ty_chirho)) =
-                    self.lookup_record_constructor_field_bundle_chirho(con_chirho)
-                {
-                    let refining_chirho = self.constructor_name_refines_chirho(con_chirho);
-                    let result_subst_opt_chirho = self.unify_constructor_result_chirho(
-                        refining_chirho,
-                        &result_ty_chirho,
-                        ty_chirho,
-                        *pat_span_chirho,
-                    );
-                    if let Some(result_subst_chirho) = result_subst_opt_chirho {
-                        self.apply_subst_all_chirho(&result_subst_chirho);
-                        subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
-                    }
-                    for (field_name_chirho, field_ty_chirho) in field_names_chirho
-                        .into_iter()
-                        .zip(field_tys_chirho.into_iter())
-                    {
-                        field_type_map_chirho.insert(
-                            field_name_chirho,
-                            subst_chirho.apply_ty_chirho(&field_ty_chirho),
-                        );
-                    }
-                } else if let Some(scheme_chirho) = self
+                if let Some(scheme_chirho) = self
                     .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
                         &con_chirho.full_name_chirho(),
                         con_chirho.text_chirho(),
                     )
                     .filter(|scheme_chirho| !is_placeholder_import_scheme_chirho(scheme_chirho))
                 {
-                    // Positional C {} still constrains the scrutinee even
-                    // though there is no declared record-field bundle.
-                    let con_ty_chirho = self.instantiate_chirho(&scheme_chirho, *pat_span_chirho);
-                    let result_ty_chirho = self.constructor_result_type_chirho(con_ty_chirho);
+                    let (field_tys_chirho, result_ty_chirho, predicates_chirho) =
+                        self.instantiate_constructor_pattern_chirho(&scheme_chirho);
                     if let Some(result_subst_chirho) = self.unify_constructor_result_chirho(
                         constructor_result_refines_chirho(&scheme_chirho.ty_chirho),
                         &result_ty_chirho,
@@ -191,6 +166,39 @@ impl InferCtxChirho {
                         self.apply_subst_all_chirho(&result_subst_chirho);
                         subst_chirho = result_subst_chirho;
                     }
+                    let predicates_chirho = predicates_chirho
+                        .into_iter()
+                        .map(|pred_chirho| PredChirho {
+                            class_name_chirho: pred_chirho.class_name_chirho,
+                            ty_chirho: subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                            extra_tys_chirho: pred_chirho
+                                .extra_tys_chirho
+                                .iter()
+                                .map(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
+                                .collect(),
+                        })
+                        .collect();
+                    self.install_pattern_givens_chirho(predicates_chirho);
+                    if let Some(field_names_chirho) = self
+                        .con_field_names_chirho
+                        .get(con_chirho.text_chirho())
+                        .or_else(|| {
+                            self.con_field_names_chirho
+                                .get(&con_chirho.full_name_chirho())
+                        })
+                    {
+                        for (field_name_chirho, field_ty_chirho) in
+                            field_names_chirho.iter().zip(field_tys_chirho)
+                        {
+                            field_type_map_chirho.insert(
+                                field_name_chirho.clone(),
+                                subst_chirho.apply_ty_chirho(&field_ty_chirho),
+                            );
+                        }
+                    }
+                } else {
+                    self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                        .complete_chirho = false;
                 }
                 for field_chirho in fields_chirho {
                     let field_name_key_chirho = record_field_key_chirho(&field_chirho.name_chirho);
@@ -377,26 +385,10 @@ impl InferCtxChirho {
         let mut field_tys_chirho = Vec::with_capacity(args_chirho.len());
         let mut subst_chirho = SubstChirho::empty_chirho();
         if let Some(scheme_chirho) = scheme_chirho {
-            let instantiated_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
-            let mut remaining_chirho = self.open_constructor_forall_chirho(instantiated_chirho);
-            let mut complete_chirho = true;
-            for _arg_chirho in args_chirho {
-                remaining_chirho = self.open_constructor_forall_chirho(remaining_chirho);
-                match remaining_chirho {
-                    TyChirho::FunChirho(field_ty_chirho, result_ty_chirho, _) => {
-                        // Do not open a forall inside this higher-rank field.
-                        field_tys_chirho.push(*field_ty_chirho);
-                        remaining_chirho = *result_ty_chirho;
-                    }
-                    other_chirho => {
-                        complete_chirho = false;
-                        field_tys_chirho.push(self.fresh_var_chirho());
-                        remaining_chirho = other_chirho;
-                    }
-                }
-            }
-            if complete_chirho {
-                let result_chirho = self.open_constructor_forall_chirho(remaining_chirho);
+            let (fields_chirho, result_chirho, predicates_chirho) =
+                self.instantiate_constructor_pattern_chirho(&scheme_chirho);
+            if fields_chirho.len() == args_chirho.len() {
+                field_tys_chirho = fields_chirho;
                 if let Some(result_subst_chirho) = self.unify_constructor_result_chirho(
                     constructor_result_refines_chirho(&scheme_chirho.ty_chirho),
                     &result_chirho,
@@ -406,9 +398,35 @@ impl InferCtxChirho {
                     self.apply_subst_all_chirho(&result_subst_chirho);
                     subst_chirho = result_subst_chirho;
                 }
+                let predicates_chirho = predicates_chirho
+                    .into_iter()
+                    .map(|pred_chirho| PredChirho {
+                        class_name_chirho: pred_chirho.class_name_chirho,
+                        ty_chirho: subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
+                            .collect(),
+                    })
+                    .collect();
+                self.install_pattern_givens_chirho(predicates_chirho);
+            } else {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(TYPE_MISMATCH_CODE_CHIRHO),
+                        format!(
+                            "constructor pattern supplies {} field(s), but its constructor has {}",
+                            args_chirho.len(),
+                            fields_chirho.len()
+                        ),
+                        span_chirho,
+                    ));
+                field_tys_chirho.extend(args_chirho.iter().map(|_| self.fresh_var_chirho()));
             }
         } else {
             // Imported placeholders do not supply trusted constructor shape.
+            self.equality_scopes_chirho[self.active_equality_scope_chirho].complete_chirho = false;
             field_tys_chirho.extend(args_chirho.iter().map(|_| self.fresh_var_chirho()));
         }
         for (arg_chirho, field_ty_chirho) in args_chirho.iter().zip(field_tys_chirho) {

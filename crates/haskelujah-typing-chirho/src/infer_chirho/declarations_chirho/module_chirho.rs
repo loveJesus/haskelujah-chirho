@@ -333,9 +333,13 @@ impl InferCtxChirho {
                                     name_chirho,
                                     ty_chirho,
                                 );
-                                let con_ty_chirho =
-                                    self.ast_type_to_ty_chirho(ty_chirho, &mut tv_map_chirho);
-                                let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
+                                // Constructor contexts are givens when this scheme is
+                                // opened by a pattern, and wanteds at an expression use.
+                                let (gen_scheme_chirho, _) = self.ast_type_to_scheme_seeded_chirho(
+                                    ty_chirho,
+                                    &tv_map_chirho,
+                                    false,
+                                );
                                 self.env_chirho.bind_chirho(
                                     name_chirho.text_chirho().to_string(),
                                     gen_scheme_chirho,
@@ -454,11 +458,11 @@ impl InferCtxChirho {
                                 con_name_chirho,
                                 ty_chirho,
                             );
-                            let con_ty_chirho = self.ast_type_to_ty_chirho(
+                            let (gen_scheme_chirho, _) = self.ast_type_to_scheme_seeded_chirho(
                                 ty_chirho,
-                                &mut std::collections::HashMap::new(),
+                                &nt_tv_map_chirho,
+                                false,
                             );
-                            let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
                             self.env_chirho.bind_chirho(
                                 con_name_chirho.text_chirho().to_string(),
                                 gen_scheme_chirho,
@@ -568,12 +572,21 @@ impl InferCtxChirho {
         // The rigid form of each checked signature, for the Phase 3c check.
         let mut skolemized_sigs_chirho: HashMap<String, TyChirho> = HashMap::new();
         for group_chirho in &groups_chirho {
+            let mut equality_owners_chirho = Vec::new();
             // Infer each function body in the group
             let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho)> = Vec::new();
             for &fi_chirho in group_chirho {
                 let binding_name_chirho = &fun_names_chirho[fi_chirho];
                 let pre_ty_chirho = &fun_pre_tys_chirho[fi_chirho];
                 let span_chirho = fun_spans_chirho[fi_chirho];
+                let equality_owner_chirho = self.begin_equality_scope_chirho(
+                    if type_sigs_chirho.contains_key(binding_name_chirho) {
+                        super::equality_scopes_chirho::EqualityScopeKindChirho::CheckedChirho
+                    } else {
+                        super::equality_scopes_chirho::EqualityScopeKindChirho::BindingChirho
+                    },
+                );
+                equality_owners_chirho.push(equality_owner_chirho);
 
                 // ScopedTypeVariables: an explicit `forall` scopes the
                 // signature's own binders (the same variables the rigid seed
@@ -632,12 +645,26 @@ impl InferCtxChirho {
 
                 // Restore scoped type variables
                 self.scoped_tyvars_chirho = prev_scoped_chirho;
+                self.end_equality_scope_chirho(equality_owner_chirho);
             }
 
+            let inferred_equality_types_chirho = group_inferred_chirho
+                .iter()
+                .filter(|(_, name_chirho, _, _)| !type_sigs_chirho.contains_key(name_chirho))
+                .map(|(_, _, ty_chirho, _)| subst_chirho.apply_ty_chirho(ty_chirho))
+                .collect::<Vec<_>>();
+            let previous_generalizing_chirho = std::mem::replace(
+                &mut self.equality_generalizing_owners_chirho,
+                equality_owners_chirho.iter().copied().collect(),
+            );
             // Generalize all functions in the group together
-            for (fi_chirho, binding_name_chirho, inferred_ty_chirho, span_chirho) in
-                &group_inferred_chirho
+            for (
+                (fi_chirho, binding_name_chirho, inferred_ty_chirho, span_chirho),
+                equality_owner_chirho,
+            ) in group_inferred_chirho.iter().zip(&equality_owners_chirho)
             {
+                let previous_owner_chirho = self.active_equality_scope_chirho;
+                self.active_equality_scope_chirho = *equality_owner_chirho;
                 self.env_chirho.remove_chirho(binding_name_chirho);
 
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
@@ -711,7 +738,13 @@ impl InferCtxChirho {
                 );
                 self.env_chirho
                     .bind_chirho(binding_name_chirho.clone(), binding_scheme_chirho);
+                self.active_equality_scope_chirho = previous_owner_chirho;
             }
+            self.equality_generalizing_owners_chirho = previous_generalizing_chirho;
+            self.finish_equality_binding_group_chirho(
+                &equality_owners_chirho,
+                &inferred_equality_types_chirho,
+            );
         }
 
         // Phase 3d: Handle top-level pattern bindings

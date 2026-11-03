@@ -26,7 +26,10 @@ flowchart TD
     assign_chirho -->|no: would invert family arguments| wanted_chirho
     wanted_chirho --> retry_chirho[retry_deferred_equalities_chirho at equation end, given scope end, module end]
     retry_chirho -->|solved side| unify2_chirho[Unify and apply]
-    retry_chirho -->|still stuck| wait_chirho[Keep waiting; dropped at module end]
+    retry_chirho -->|still stuck| owner_chirho[Keep the equality with its implication owner and evidence]
+    owner_chirho --> inferred_chirho[Inferred binding: retain a generalizable ~ predicate]
+    owner_chirho --> checked_chirho[Checked binding or SCC closure: prove, retain valid generalization, or report]
+    owner_chirho --> legacy_chirho[Unmodeled or unowned legacy path: conservative terminal handling]
     retry_chirho -->|closed mismatch| report_chirho[E0200 at the original span]
     assoc_chirho[Associated family default] --> instance_chirho[Instantiated per instance that leaves the family undefined]
     instance_chirho --> normalize_chirho
@@ -71,8 +74,9 @@ flowchart TD
   class constraint headed by `+`; the `+` interaction rule is therefore only reachable through
   the AST shapes the lowering produces today (parser lane).
 - Injectivity of user-declared families is not modelled; only the builtin `+` interaction exists.
-- Equalities still stuck on an ambiguous variable at the end of the module are dropped rather
-  than reported as ambiguity.
+- The owned equality route below rejects an unsolved checked/SCC obligation even when both
+  sides remain open or the signature introduces no skolem. Unowned and unsupported legacy paths
+  retain their conservative terminal behavior; this is not a complete ambiguity checker.
 
 
 ## Row 686: identity and ordered reduction
@@ -109,7 +113,9 @@ Promoted names use the separate promoted-constructor identity workflow. Ordinary
 
 The behavioral controls reuse the existing `typing_integration` and `native_symbol_identity` targets. Their single-module and Cabal project programs are copied byte for byte from fresh GHC 9.14.1 runs, including abstract rejection twins and qualified/re-exported identities. The component suite separately checks finite/uncertain/disjoint comparisons, coherence, snapshot deduplication and resource exhaustion. Final claims require the interpreter, LLVM, true Cranelift and both fixed corpus axes on the same candidate.
 
-## A signature's wanted that nothing in scope can serve (row 686, C08)
+## A signature's wanted that nothing in scope can serve (row 686, C08 prototype)
+
+This records the original C08 prototype and its support boundary. The R5 owner-frame route below supersedes its description of equality ownership and locally produced constructor contexts. The conservative C08 class-wanted guard still exists; it never decides whether an owned `~` obligation is valid.
 
 `twoChirho :: Proxy a -> Proxy b -> TwoChirho (OpaqueChirho a) (OpaqueChirho b); twoChirho _ _ = 3` leaves the literal's wanted, `Num (TwoChirho (OpaqueChirho a) (OpaqueChirho b))`, resolved and meta-free at the signature scope's end. Discharge keeps it, because no given takes part. The scope then truncates its givens, and the module-end check's rigid branch drops it. GHC 9.14.1 rejects the program with GHC-39999.
 
@@ -137,18 +143,64 @@ flowchart TD
   - That set is captured from the seed producer's output.
   - An ordinary import such as `Data.Proxy` leaves it alone; a whole-environment replacement clears it, and a source declaration of a class removes that name.
   - Boundary: an orphan universal instance in an uncompiled package stays outside this view.
-- **Unmodeled pattern evidence.** A constructor's context, and a GADT refinement, are not installed as pattern-local givens: pattern instantiation even defers the context as a wanted.
+- **Original unmodeled pattern-evidence boundary.** The initial prototype did not install constructor contexts or GADT refinements as pattern-local givens; constructor instantiation deferred a context as a wanted.
   - So `unmodeled_pattern_evidence_seen_chirho` is set the first time any pattern matches such a constructor, or one whose scheme is unknown, and the first time a refinement is added.
   - Once set, every later closure in the module stays off, nested signatures included, since a nested signature can inherit the evidence before its own scope begins.
-  - Residual: an unrelated later signature can stay unchecked. Installing real pattern-local givens is the later repair.
-  - A GADT constructor's scheme drops its written context. So the declaration producer marks a constructor whose written type carries a leading context (`context_constructors_chirho`), and a pattern on it sets the flag.
-  - Residual: an imported GADT constructor's context is not transported, so the mark covers only this module's constructors.
-- **What the reducer decides.**
+  - The module-wide guard remains conservative for the C08 class refuter: an unrelated later signature can stay unchecked. R5 adds actual local typing givens, but does not remove that guard or establish runtime constructor dictionary transport.
+  - The original GADT scheme producer dropped its written context, so the declaration producer added `context_constructors_chirho`. R5 preserves locally produced contexts through signature conversion; the earlier source mark and flag remain.
+  - Imported placeholder/stub schemes still supply no complete constructor-context evidence. R5 can use a real supplied scheme, but does not claim complete imported-constructor transport.
+- **Initial reducer measurement, retained as history.**
   - `TwoChirho (OpaqueChirho a) (OpaqueChirho b)`, two different stuck applications against the blocker `TwoChirho Int Bool`, decides `Unknown`, not `Blocked`: the apartness kernel stays uncertain.
-  - So C08 and its twins stay accepted until the reducer gives that blocker a definite verdict.
+  - Those initial C08 acceptances were RED. Later reducer/blocker work and the existing C08 controls are separate from the owner-frame measurements below; the initial Unknown result is not a current acceptance claim.
   - A single open family with no equations (C08OpenOnly) decides `NoMatch` and is reported.
 - **Unchanged:** the module-end rigid refuter, every family blocker, and every other caller. Nothing else calls a stuck family unsolvable.
 - **Controls:** `typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs`, copied byte for byte from fresh GHC 9.14.1 oracle files.
   - One irreducible negative.
   - Two negatives that wait on the reducer's verdict on the blocker.
   - Eight accepted programs, the two constructor-pattern holds among them.
+
+
+## R5: owned equality implications and constructor-pattern evidence
+
+This is the held November 3 integration candidate, not a completed row or a compatibility publication. An equality wanted now stores its source span and implication owner. A scope retains only its new evidence plus a shared parent link; entering a pattern does not clone the growing type environment. The implementation lives in `solving_chirho/equality_scopes_chirho.rs`, `solving_chirho/equality_normalization_chirho.rs` and `terms_chirho/constructor_patterns_chirho.rs`, with short hooks in equations, cases, lambdas and binding groups.
+
+```mermaid
+flowchart TD
+    binding_chirho[Enter source binding: inferred or checked owner]
+    binding_chirho --> pattern_chirho[Enter equation, case alternative or lambda implication]
+    pattern_chirho --> constructor_chirho[Open the real constructor scheme]
+    constructor_chirho --> universal_chirho[Result binders determined through generative structure become flexible]
+    constructor_chirho --> existential_chirho[Field-only or family-hidden binders become local rigid skolems]
+    constructor_chirho --> unknown_chirho[Unknown constructor shape supplies no invented evidence]
+    universal_chirho --> result_chirho[Meet constructor result with the same datatype head]
+    existential_chirho --> result_chirho
+    result_chirho --> givens_chirho[Install actual result equalities and written constructor contexts as local givens]
+    givens_chirho --> body_chirho[Infer body and nested bindings; wanteds retain their owner]
+    body_chirho --> solve_chirho[Discharge and retry before evidence or environment scopes pop]
+    solve_chirho --> escape_chirho[Check outgoing type and changed older metas for existential escape]
+    escape_chirho --> public_chirho[Materialize safe public images; overlay replacements after normal substitution composition]
+    public_chirho --> pop_chirho[Pop local givens and refinements]
+    pop_chirho --> group_chirho[Source SCC closure]
+    group_chirho --> generalized_chirho[Retain only equalities actually included in every inferred member scheme]
+    group_chirho --> rejected_chirho[Report unresolved checked or nongeneralizable obligation]
+    unknown_chirho --> boundary_chirho[Keep unsupported implication boundary explicit]
+    solve_chirho --> budget_chirho[Shared normalization work or output allowance exhausted]
+    budget_chirho --> unproved_chirho[Keep unproved; never certify or generalize; owning check reports bounded failure]
+```
+
+- A checked binding cannot silently acquire a missing equality, including a monomorphic signature whose result leaves hidden inference variables in a wanted. An inferred local binding has its own generalization boundary even inside an outer checked function. Generalization retains a complete `~` predicate; free-variable occurrence alone is not proof that another recursive group member retained it. An unresolved equality cannot be certified through a checked sibling whose temporary inferred scheme is later replaced by its written signature.
+- Pattern instantiation is distinct from expression instantiation. Universals are recognized through positively generative datatype/list/tuple/function structure and resolved promoted constructors. A family or unknown promoted head supplies no injectivity. Field-only existential variables remain rigid. Expression uses retain flexible ordinary instantiation and wanted constraints; a pattern's givens are not a license to invent evidence at an expression use.
+- A GADT result comparison keeps family components whole. A result such as `Equal (Opaque a) Int` can provide the local equality needed by `Refl`; it does not prove equality of the arguments of a noninjective family. Each case alternative must meet the common result under its own evidence. Discarding a mismatch after an earlier alternative fixed that result was the measured R3 `CaseLeakedBranch` wrong acceptance; R5 refuses it.
+- Scope exit examines both the outgoing result and the delta of substitutions for metas created before the pattern. Thus an existential cannot escape through an older function argument while the result itself is closed. If local evidence eliminates the existential, the safe public image is installed and carried out explicitly. Ordinary substitution composition preserves older same-domain images, so the pattern solution separately overlays these public replacements during accumulation.
+- One equality normalization allowance covers evidence preparation, name comparisons, sparse substitution chasing, synonym expansion, every fixed-point pass and family reduction: at most 10,000,000 work units, 16,384 output units and depth 128, with an additional 100-pass limit. The changed-meta log is capped at 16,384 keys. A growing rewrite, cyclic rewrite or overlong evidence chain yields an explicit unproved/exhausted result. It is never equal to a fabricated sentinel, removed as solved or generalized as a successful constraint. The owning supported check reports the bounded failure.
+- Unknown family heads, held branches, incomplete constructor schemes and unsupported legacy paths do not gain a proof from this machinery. The C08 module-wide class-wanted guard remains a separate conservative boundary. There is no unconditional module-final rejection of every pending equality.
+
+### Measured checkpoint and remaining boundaries
+
+Root executed the frozen R5 integration source: the typing library passes 573/573 and Core passes 214/214. The 21 new typing controls cover normalization growth/cycles, ownership and generalization, SCC predicate retention, local givens, generative/promotion identity, rigid existentials, older-meta escape, public-image materialization and the case mismatch. The driver normal run passes 18/19 tests: all six measured negative programs are refused, all eleven positive programs check, and ten positive programs match fresh GHC 9.14.1 on the interpreter, LLVM and true Cranelift. The exact tracked T16512a, T23162b and T23162d sources are refused. These are focused results, not fresh fixed-axis totals or implementation of the missing user-family injectivity annotations.
+
+Receipts are `tmp-chirho/equality-r5-sorts-core-tests-r3-chirho.log` and `tmp-chirho/equality-r5-driver-cases-chirho.log`; the earlier R3 RED is retained in `tmp-chirho/equality-frames-r3-driver-tests-chirho.log`.
+
+The sole driver RED is `RecordContext`: it checks, but its interpreter run reports `no binding named main`. That parser/complete GADT-record carrier gap is pre-existing on the retained baseline, and a separate writer owns it. This run stops that individual program at the interpreter failure; it establishes no native runtime result for that program. Imported constructor contexts are usable only when a real complete scheme reaches inference; placeholder interfaces do not prove their field/context shape. Installing a class predicate as a typing given does not prove that runtime constructor dictionary packing/extraction exists. The separate class-context probes and source SCC/local-owner probes remain required boundaries, not runtime wins attributed to this equality unit.
+
+Row 686 remains held for the combined source, regression and fixed-axis gates. The unchanged fixture manifests and both committed measurement artifacts remain the authority for published compatibility numbers.

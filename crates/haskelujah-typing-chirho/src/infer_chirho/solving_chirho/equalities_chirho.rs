@@ -78,11 +78,7 @@ impl InferCtxChirho {
         {
             return false;
         }
-        self.deferred_equalities_chirho.push((
-            left_chirho.clone(),
-            right_chirho.clone(),
-            span_chirho,
-        ));
+        self.defer_equality_chirho(left_chirho.clone(), right_chirho.clone(), span_chirho);
         true
     }
 
@@ -262,9 +258,23 @@ impl InferCtxChirho {
     /// determine, and ambiguity is not modelled.
     pub(super) fn report_unsolved_deferred_equalities_chirho(&mut self) {
         let pending_chirho = std::mem::take(&mut self.deferred_equalities_chirho);
-        for (left_chirho, right_chirho, span_chirho) in pending_chirho {
-            let left_norm_chirho = self.normalize_ty_chirho(&left_chirho);
-            let right_norm_chirho = self.normalize_ty_chirho(&right_chirho);
+        for wanted_chirho in pending_chirho {
+            if wanted_chirho.generalized_chirho {
+                continue;
+            }
+            let (Ok(left_norm_chirho), Ok(right_norm_chirho)) = (
+                self.normalize_equality_type_chirho(
+                    &wanted_chirho.lhs_chirho,
+                    wanted_chirho.owner_chirho,
+                ),
+                self.normalize_equality_type_chirho(
+                    &wanted_chirho.rhs_chirho,
+                    wanted_chirho.owner_chirho,
+                ),
+            ) else {
+                self.report_equality_normalization_exhausted_chirho(wanted_chirho.span_chirho);
+                continue;
+            };
             if left_norm_chirho == right_norm_chirho
                 || Self::contains_polymorphic_component_chirho(&left_norm_chirho)
                 || Self::contains_polymorphic_component_chirho(&right_norm_chirho)
@@ -279,7 +289,7 @@ impl InferCtxChirho {
                 self.report_unify_error_chirho(&UnifyErrorChirho::MismatchChirho {
                     expected_chirho: left_norm_chirho,
                     actual_chirho: right_norm_chirho,
-                    span_chirho,
+                    span_chirho: wanted_chirho.span_chirho,
                 });
             }
         }
@@ -299,11 +309,21 @@ impl InferCtxChirho {
             let pending_chirho = std::mem::take(&mut self.deferred_equalities_chirho);
             let mut progressed_chirho = false;
             let mut still_pending_chirho = Vec::new();
-            for (left_chirho, right_chirho, span_chirho) in pending_chirho {
-                let left_sub_chirho =
-                    self.normalize_ty_chirho(&total_chirho.apply_ty_chirho(&left_chirho));
-                let right_sub_chirho =
-                    self.normalize_ty_chirho(&total_chirho.apply_ty_chirho(&right_chirho));
+            for mut wanted_chirho in pending_chirho {
+                let span_chirho = wanted_chirho.span_chirho;
+                let (Ok(left_sub_chirho), Ok(right_sub_chirho)) = (
+                    self.normalize_equality_type_chirho(
+                        &wanted_chirho.lhs_chirho,
+                        wanted_chirho.owner_chirho,
+                    ),
+                    self.normalize_equality_type_chirho(
+                        &wanted_chirho.rhs_chirho,
+                        wanted_chirho.owner_chirho,
+                    ),
+                ) else {
+                    still_pending_chirho.push(wanted_chirho);
+                    continue;
+                };
                 if left_sub_chirho == right_sub_chirho {
                     progressed_chirho = true;
                     continue;
@@ -314,13 +334,15 @@ impl InferCtxChirho {
                 if Self::contains_polymorphic_component_chirho(&left_sub_chirho)
                     || Self::contains_polymorphic_component_chirho(&right_sub_chirho)
                 {
-                    progressed_chirho = true;
+                    still_pending_chirho.push(wanted_chirho);
                     continue;
                 }
                 if self.ty_is_stuck_family_on_var_chirho(&left_sub_chirho)
                     || self.ty_is_stuck_family_on_var_chirho(&right_sub_chirho)
                 {
-                    still_pending_chirho.push((left_sub_chirho, right_sub_chirho, span_chirho));
+                    wanted_chirho.lhs_chirho = left_sub_chirho;
+                    wanted_chirho.rhs_chirho = right_sub_chirho;
+                    still_pending_chirho.push(wanted_chirho);
                     continue;
                 }
                 progressed_chirho = true;
@@ -335,7 +357,12 @@ impl InferCtxChirho {
                     // consistent and left unsolved.
                     Err(UnifyErrorChirho::OccursCheckChirho { .. })
                         if self.ty_mentions_family_chirho(&left_sub_chirho)
-                            || self.ty_mentions_family_chirho(&right_sub_chirho) => {}
+                            || self.ty_mentions_family_chirho(&right_sub_chirho) =>
+                    {
+                        wanted_chirho.lhs_chirho = left_sub_chirho;
+                        wanted_chirho.rhs_chirho = right_sub_chirho;
+                        still_pending_chirho.push(wanted_chirho);
+                    }
                     Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
                 }
             }

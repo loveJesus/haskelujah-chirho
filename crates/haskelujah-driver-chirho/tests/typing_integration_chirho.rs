@@ -19,6 +19,8 @@ mod closed_family_equations_chirho;
 mod declaration_validity_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
 mod dollar_ownership_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/equality_scopes_chirho.rs"]
+mod equality_scopes_chirho;
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
 #[path = "typing_integration_chirho/inferred_evidence_chirho.rs"]
