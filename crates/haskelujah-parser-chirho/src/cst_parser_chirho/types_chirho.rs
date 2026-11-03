@@ -414,17 +414,8 @@ impl ParserChirho<'_> {
             }
         }
 
-        // Parse first type
-        self.parse_type_chirho();
-        self.eat_trivia_chirho();
-
-        // Kind annotation: (a :: k) — consume :: and the kind type
-        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
-            self.bump_chirho(); // ::
-            self.eat_trivia_chirho();
-            self.parse_type_chirho(); // the kind
-            self.eat_trivia_chirho();
-        }
+        // Parse the first element
+        self.parse_paren_type_element_chirho();
 
         if self.at_chirho(RawTokenKindChirho::CommaChirho) {
             // It's a tuple type — change the node kind would be ideal,
@@ -432,8 +423,7 @@ impl ParserChirho<'_> {
             while self.at_chirho(RawTokenKindChirho::CommaChirho) {
                 self.bump_chirho(); // ,
                 self.eat_trivia_chirho();
-                self.parse_type_chirho();
-                self.eat_trivia_chirho();
+                self.parse_paren_type_element_chirho();
             }
         }
 
@@ -442,6 +432,20 @@ impl ParserChirho<'_> {
         }
 
         self.builder_chirho.finish_node_chirho();
+    }
+
+    /// One parenthesized element: a type and an optional `:: k`, the kind of `(a :: k)`
+    /// or an implicit parameter's type in `(C t, ?x :: TF t)`. Every element may carry
+    /// one, not only the first (T5120, tc218, T12507).
+    fn parse_paren_type_element_chirho(&mut self) {
+        self.parse_type_chirho();
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // the annotation
+            self.eat_trivia_chirho();
+        }
     }
 
     /// Parse a list type: [type]
