@@ -91,6 +91,21 @@ impl LowerCtxChirho {
         standalone_kind_sigs_chirho: &HashMap<String, TypeChirho>,
     ) -> Vec<DeclChirho> {
         for decl_chirho in &mut decls_chirho {
+            // A family keeps its whole signature apart from its inline result
+            // kind; kind inference reconciles the two (row 686).
+            if let DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                standalone_kind_chirho,
+                ..
+            } = decl_chirho
+            {
+                if let Some(signature_chirho) =
+                    standalone_kind_sigs_chirho.get(name_chirho.text_chirho())
+                {
+                    *standalone_kind_chirho = Some(signature_chirho.clone());
+                }
+                continue;
+            }
             let (name_chirho, kind_sig_chirho) = match decl_chirho {
                 DeclChirho::DataDeclChirho {
                     name_chirho,

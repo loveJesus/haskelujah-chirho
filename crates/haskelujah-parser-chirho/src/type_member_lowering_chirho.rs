@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use haskelujah_ast_chirho::decl_chirho::{AssocTypeFamilyChirho, ClassMethodChirho, DeclChirho};
 use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
-use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 /// Partition lowered class-body declarations into value methods and type members.
@@ -130,14 +130,15 @@ pub(crate) fn partition_class_members_chirho(
                     })
                     .map(|type_var_chirho| type_var_chirho.name_chirho)
                     .collect();
-                let declared_names_chirho: HashSet<String> = type_var_names_chirho
-                    .iter()
-                    .map(|name_chirho| name_chirho.text_chirho().to_string())
-                    .collect();
-                let rhs_free_names_chirho = free_type_variable_names_chirho(&rhs_chirho);
-                let default_rhs_chirho = rhs_free_names_chirho
-                    .is_subset(&declared_names_chirho)
-                    .then_some(rhs_chirho);
+                // A bodiless declaration's right side is lowering's placeholder,
+                // a variable with an empty name. Every written default is kept,
+                // even one naming another class parameter (row 686, T5481).
+                let bodiless_chirho = matches!(
+                    &rhs_chirho,
+                    TypeChirho::VarChirho(placeholder_chirho)
+                        if placeholder_chirho.text_chirho().is_empty()
+                );
+                let default_rhs_chirho = (!bodiless_chirho).then_some(rhs_chirho);
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
                     data_family_chirho: false,
@@ -174,101 +175,4 @@ pub(crate) fn partition_class_members_chirho(
     }
 
     (methods_chirho, associated_types_chirho)
-}
-
-fn free_type_variable_names_chirho(ty_chirho: &TypeChirho) -> HashSet<String> {
-    match ty_chirho {
-        TypeChirho::VarChirho(name_chirho) => {
-            std::iter::once(name_chirho.text_chirho().to_string()).collect()
-        }
-        TypeChirho::ConChirho(_) => HashSet::new(),
-        TypeChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
-            ..
-        } => {
-            let mut names_chirho = free_type_variable_names_chirho(fun_chirho);
-            names_chirho.extend(free_type_variable_names_chirho(arg_chirho));
-            names_chirho
-        }
-        TypeChirho::FunChirho {
-            arg_chirho,
-            result_chirho,
-            ..
-        } => {
-            let mut names_chirho = free_type_variable_names_chirho(arg_chirho);
-            names_chirho.extend(free_type_variable_names_chirho(result_chirho));
-            names_chirho
-        }
-        TypeChirho::TupleChirho {
-            elements_chirho, ..
-        }
-        | TypeChirho::PromotedListChirho {
-            elements_chirho, ..
-        } => elements_chirho
-            .iter()
-            .flat_map(free_type_variable_names_chirho)
-            .collect(),
-        TypeChirho::ListChirho { element_chirho, .. }
-        | TypeChirho::ParenChirho {
-            inner_chirho: element_chirho,
-            ..
-        } => free_type_variable_names_chirho(element_chirho),
-        TypeChirho::QualChirho {
-            context_chirho,
-            body_chirho,
-            ..
-        } => {
-            let mut names_chirho: HashSet<String> = context_chirho
-                .iter()
-                .flat_map(free_constraint_variable_names_chirho)
-                .collect();
-            names_chirho.extend(free_type_variable_names_chirho(body_chirho));
-            names_chirho
-        }
-        TypeChirho::ForallChirho {
-            vars_chirho,
-            body_chirho,
-            ..
-        }
-        | TypeChirho::RequiredForallChirho {
-            vars_chirho,
-            body_chirho,
-            ..
-        } => {
-            let mut names_chirho = free_type_variable_names_chirho(body_chirho);
-            for type_var_chirho in vars_chirho {
-                names_chirho.remove(type_var_chirho.text_chirho());
-            }
-            names_chirho
-        }
-        TypeChirho::PromotedConChirho { .. }
-        | TypeChirho::WildcardChirho { .. }
-        | TypeChirho::LitChirho { .. } => HashSet::new(),
-    }
-}
-
-fn free_constraint_variable_names_chirho(constraint_chirho: &ConstraintChirho) -> HashSet<String> {
-    match constraint_chirho {
-        ConstraintChirho::ClassChirho { args_chirho, .. } => args_chirho
-            .iter()
-            .flat_map(free_type_variable_names_chirho)
-            .collect(),
-        ConstraintChirho::QuantifiedChirho {
-            vars_chirho,
-            context_chirho,
-            body_chirho,
-            ..
-        } => {
-            let mut names_chirho: HashSet<String> = context_chirho
-                .iter()
-                .flat_map(free_constraint_variable_names_chirho)
-                .collect();
-            names_chirho.extend(free_constraint_variable_names_chirho(body_chirho));
-            for type_var_chirho in vars_chirho {
-                names_chirho.remove(type_var_chirho.text_chirho());
-            }
-            names_chirho
-        }
-    }
 }

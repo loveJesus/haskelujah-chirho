@@ -802,6 +802,7 @@ fn rhs_shape_module_chirho(rhs_chirho: TypeChirho) -> ModuleChirho {
             type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
             result_kind_chirho: None,
             data_family_chirho: false,
+            standalone_kind_chirho: None,
             closed_chirho: true,
             equations_chirho: vec![
                 equation_chirho(TypeChirho::ConChirho(dummy_name_chirho("Int")), rhs_chirho),

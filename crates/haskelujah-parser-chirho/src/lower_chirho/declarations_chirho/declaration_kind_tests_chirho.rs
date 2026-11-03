@@ -1,5 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
+use super::test_support_chirho::{parse_and_lower_chirho, type_shape_chirho};
 use super::{DataKindSigChirho, DeclChirho, FileIdChirho, TypeChirho, lower_module_chirho};
 use crate::cst_parser_chirho::parse_to_cst_chirho;
 
@@ -185,6 +186,95 @@ fn composite_inline_kind_span_covers_only_the_written_tail_chirho() {
             &source_chirho[span_chirho.start_chirho().as_usize_chirho()
                 ..span_chirho.end_chirho().as_usize_chirho()],
             "Type -> Type"
+        );
+    }
+}
+
+/// The name and whole standalone signature of every family in `source_chirho`.
+fn family_signatures_chirho(source_chirho: &str) -> Vec<(String, Option<String>, Option<String>)> {
+    parse_and_lower_chirho(source_chirho)
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                result_kind_chirho,
+                standalone_kind_chirho,
+                ..
+            } => Some((
+                name_chirho.text_chirho().to_string(),
+                standalone_kind_chirho.as_ref().map(type_shape_chirho),
+                result_kind_chirho.as_ref().map(type_shape_chirho),
+            )),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn an_operator_signature_is_a_standalone_kind_not_a_synonym_chirho() {
+    // T15079: `type (:==) :: j -> k -> Type` once lowered as a synonym named
+    // `:==` beside the real newtype, a duplicate declaration.
+    let module_chirho = parse_and_lower_chirho(
+        "module M where
+type (:==) :: j -> k -> Type
+newtype (:==) a b = EqChirho a
+",
+    );
+    assert!(
+        !module_chirho
+            .decls_chirho
+            .iter()
+            .any(|decl_chirho| matches!(decl_chirho, DeclChirho::TypeAliasDeclChirho { .. })),
+        "the signature must not lower as a synonym"
+    );
+    let signature_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|decl_chirho| match decl_chirho {
+            DeclChirho::NewtypeDeclChirho {
+                kind_sig_chirho:
+                    Some(DataKindSigChirho::StandaloneChirho {
+                        signature_chirho, ..
+                    }),
+                ..
+            } => Some(type_shape_chirho(signature_chirho)),
+            _ => None,
+        })
+        .expect("the newtype keeps its standalone signature");
+    assert_eq!(signature_chirho, "(j -> (k -> Type))");
+}
+
+#[test]
+fn a_family_keeps_its_standalone_signature_apart_from_its_result_chirho() {
+    // SplitWD writes its family as an operator; the signature is the family's
+    // whole kind and the inline result kind stays separate.
+    let signatures_chirho = family_signatures_chirho(
+        "module M where
+type FamChirho :: Type -> Type -> Type
+type family FamChirho a
+type (+++) :: Type -> Type -> Type
+type family a +++ b
+type ResultChirho :: Type -> Type
+type family ResultChirho a :: Type
+",
+    );
+    let expected_chirho = [
+        ("FamChirho", Some("(Type -> (Type -> Type))"), None),
+        ("+++", Some("(Type -> (Type -> Type))"), None),
+        ("ResultChirho", Some("(Type -> Type)"), Some("Type")),
+    ];
+    assert_eq!(signatures_chirho.len(), expected_chirho.len());
+    for ((name_chirho, signature_chirho, result_chirho), expected_row_chirho) in
+        signatures_chirho.iter().zip(expected_chirho)
+    {
+        assert_eq!(
+            (
+                name_chirho.as_str(),
+                signature_chirho.as_deref(),
+                result_chirho.as_deref()
+            ),
+            expected_row_chirho
         );
     }
 }

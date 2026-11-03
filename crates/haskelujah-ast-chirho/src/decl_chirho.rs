@@ -266,6 +266,9 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Optional result kind annotation after `::`.
         result_kind_chirho: Option<TypeChirho>,
+        /// The whole standalone kind signature, `type F :: k1 -> k2 -> k`, kept
+        /// apart from the inline result kind (row 686).
+        standalone_kind_chirho: Option<TypeChirho>,
         /// A written `data family` is nominally generative, unlike a type family.
         data_family_chirho: bool,
         /// Whether a written `where` closes the family's equation set. An

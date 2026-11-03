@@ -284,6 +284,50 @@ class C a where
 }
 
 #[test]
+fn crossed_class_defaults_are_kept_chirho() {
+    // T5481: each default names the other class parameter, which is not one of
+    // its family's own; it is still the written default, and each bodiless
+    // declaration stays without one.
+    let module_chirho = parse_and_lower_chirho(
+        "module M where
+class Foo a b where
+    type X a
+    type X a = b
+    type Y b
+    type Y b = a
+",
+    );
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, "Foo")
+    else {
+        panic!("expected a class declaration");
+    };
+    let defaults_chirho: Vec<(&str, Option<String>)> = associated_tfs_chirho
+        .iter()
+        .map(|family_chirho| {
+            (
+                family_chirho.name_chirho.text_chirho(),
+                family_chirho
+                    .default_rhs_chirho
+                    .as_ref()
+                    .map(type_shape_chirho),
+            )
+        })
+        .collect();
+    assert_eq!(
+        defaults_chirho,
+        [
+            ("X", None),
+            ("X", Some("b".to_string())),
+            ("Y", None),
+            ("Y", Some("a".to_string()))
+        ]
+    );
+}
+
+#[test]
 fn a_synonym_after_an_instance_stays_a_synonym_chirho() {
     // The instance-body reading ends with the instance's own members.
     let module_chirho = parse_and_lower_chirho(

@@ -455,6 +455,7 @@ fn family_result_kind_resolves_type_namespace_names_chirho() {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }),
         data_family_chirho: false,
+        standalone_kind_chirho: None,
         closed_chirho: false,
         equations_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,

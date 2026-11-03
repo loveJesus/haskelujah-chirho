@@ -49,23 +49,13 @@ impl ParserChirho<'_> {
             }
             _ => {
                 // StandaloneKindSignatures: `type T :: Kind`
-                // Detect pattern: `type ConId ::` (no `=` before `::`)
+                // Detect pattern: `type ConId ::` or `type (op) ::` (no `=` before `::`)
                 // by scanning ahead for `::` before `=` or decl boundary.
                 let mut scan_chirho = look_chirho;
                 let mut is_kind_sig_chirho = false;
-                // Skip past the name token (ConId) to check for ::
+                // Skip past the declared name, a ConId or `(op)`, to check for ::
                 if scan_chirho < self.tokens_chirho.len() {
-                    scan_chirho += 1; // past ConId
-                    while scan_chirho < self.tokens_chirho.len()
-                        && matches!(
-                            self.tokens_chirho[scan_chirho].kind_chirho,
-                            RawTokenKindChirho::WhitespaceChirho
-                                | RawTokenKindChirho::LineCommentChirho
-                                | RawTokenKindChirho::BlockCommentChirho
-                        )
-                    {
-                        scan_chirho += 1;
-                    }
+                    scan_chirho = self.past_declared_type_name_chirho(scan_chirho);
                     if scan_chirho < self.tokens_chirho.len()
                         && self.tokens_chirho[scan_chirho].kind_chirho
                             == RawTokenKindChirho::ColonColonChirho
@@ -86,6 +76,45 @@ impl ParserChirho<'_> {
                 }
             }
         }
+    }
+
+    /// The index after a declared type's name and the trivia that follows it.
+    /// The name is one token, or an operator in parentheses: `type (:==) :: k`
+    /// is a standalone kind signature, not a synonym (row 686, T15079, SplitWD).
+    /// workflow: language-features-chirho/declaration-kinds-chirho
+    fn past_declared_type_name_chirho(&self, name_chirho: usize) -> usize {
+        let kind_at_chirho = |index_chirho: usize| {
+            self.tokens_chirho
+                .get(index_chirho)
+                .map(|token_chirho| token_chirho.kind_chirho)
+        };
+        if kind_at_chirho(name_chirho) == Some(RawTokenKindChirho::LeftParenChirho) {
+            let operator_chirho = self.past_raw_trivia_chirho(name_chirho + 1);
+            let close_chirho = self.past_raw_trivia_chirho(operator_chirho + 1);
+            if matches!(
+                kind_at_chirho(operator_chirho),
+                Some(RawTokenKindChirho::VarSymChirho | RawTokenKindChirho::ConSymChirho)
+            ) && kind_at_chirho(close_chirho) == Some(RawTokenKindChirho::RightParenChirho)
+            {
+                return self.past_raw_trivia_chirho(close_chirho + 1);
+            }
+        }
+        self.past_raw_trivia_chirho(name_chirho + 1)
+    }
+
+    /// The first index at or after `index_chirho` that is not trivia.
+    fn past_raw_trivia_chirho(&self, mut index_chirho: usize) -> usize {
+        while index_chirho < self.tokens_chirho.len()
+            && matches!(
+                self.tokens_chirho[index_chirho].kind_chirho,
+                RawTokenKindChirho::WhitespaceChirho
+                    | RawTokenKindChirho::LineCommentChirho
+                    | RawTokenKindChirho::BlockCommentChirho
+            )
+        {
+            index_chirho += 1;
+        }
+        index_chirho
     }
 
     pub(super) fn parse_type_family_decl_chirho(&mut self) {

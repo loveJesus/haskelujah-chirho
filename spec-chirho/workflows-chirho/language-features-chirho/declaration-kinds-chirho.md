@@ -24,6 +24,8 @@ flowchart TD
   LowerChirho --> VisibilityChirho[Keep every head binder and its visibility]
   VisibilityChirho --> SchemesChirho[Open all binders but apply visible parameters in constructor and selector types]
   VisibilityChirho --> DerivingChirho[Visible parameters form derived instance heads]
+  LowerChirho --> FamilyChirho[Families retain a standalone signature beside their inline result]
+  FamilyChirho --> ReconcileChirho
 ```
 
 The standalone conversion swaps the kind-name cache instead of cloning the
@@ -59,6 +61,19 @@ of the existing Type/Constraint unification compatibility. Binder annotations
 are not result annotations; local Constraint shadowing retains its previous
 boundary. No broadening of that compatibility rule is part of this repair.
 
+## Type families
+
+A family keeps its standalone signature in `standalone_kind_chirho`, apart from its
+inline result kind, and `infer_type_family_decl_kind_chirho` reconciles the two as a
+data declaration's are: the signature is converted with the kind-name cache swapped
+out, the head composes its parameter kinds with the inline result, and the two unify.
+Unlike data, a family with a signature and no inline result leaves its result to the
+signature, since a family may return an arrow kind: `type F :: Type -> Type -> Type`
+with `type family F a` gives `F a :: Type -> Type`. A name written as an operator is a
+standalone signature too, `type (:==) :: j -> k -> Type`, never a synonym (row 686:
+T15079, SplitWD). The signature fixes the family's kind only; it adds no kind-indexed
+reduction.
+
 ## Evidence boundary
 
 Lowering controls retain both annotations and their exact source-slice spans, and keep
@@ -73,8 +88,8 @@ unit tasklist, not inferred from these source-level controls.
 Still outside scope: rigid kind skolems, complete polymorphic kind schemes,
 arbitrary promoted/named kinds, imported authoritative kind metadata, and the
 separate data-family/type-data/refined-GADT-result AST decisions.
-Symbolic standalone signatures, attachment to non-data/newtype declarations,
-and duplicate/orphan signature diagnostics remain separate parser limitations.
+Attachment to synonyms and classes, and duplicate/orphan signature diagnostics,
+remain separate parser limitations.
 The representation repair is not full TypeAbstractions checking: inferred versus
 specified binder matching, dependent constructor/selector quantifier metadata,
 TH reification visibility, and authoritative cross-module kind schemes remain

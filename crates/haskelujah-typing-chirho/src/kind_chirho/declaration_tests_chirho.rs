@@ -278,3 +278,53 @@ fn both_constraint_contracts_report_once_and_keep_local_shadow_boundary_chirho()
     );
     assert!(shadow_ctx_chirho.diagnostics_chirho.is_empty_chirho());
 }
+
+#[test]
+fn a_consistent_family_signature_leaves_the_result_to_the_signature_chirho() {
+    // `type FamChirho :: Type -> Type -> Type; type family FamChirho a`: one
+    // binder, so the family returns `Type -> Type` (row 686).
+    let mut ctx_chirho = context_chirho();
+    let signature_chirho = arrow_chirho(type_chirho(), arrow_chirho(type_chirho(), type_chirho()));
+    ctx_chirho.infer_type_family_decl_kind_chirho(
+        "FamChirho",
+        &[TyVarChirho::plain_chirho(name_chirho("aChirho"))],
+        None,
+        Some(&signature_chirho),
+        SpanChirho::DUMMY_CHIRHO,
+        false,
+    );
+    assert!(ctx_chirho.diagnostics_chirho.is_empty_chirho());
+    assert_eq!(
+        ctx_chirho.env_chirho.lookup_chirho("FamChirho"),
+        Some(&KindChirho::arrow_chirho(
+            KindChirho::StarChirho,
+            KindChirho::arrow_chirho(KindChirho::StarChirho, KindChirho::StarChirho)
+        ))
+    );
+}
+
+#[test]
+fn a_conflicting_family_signature_is_rejected_at_its_declaration_chirho() {
+    // `type FamChirho :: Type -> Type; type family FamChirho a b`: two
+    // parameters cannot fit a one-argument signature.
+    let mut ctx_chirho = context_chirho();
+    let signature_chirho = arrow_chirho(type_chirho(), type_chirho());
+    ctx_chirho.infer_type_family_decl_kind_chirho(
+        "FamChirho",
+        &[
+            TyVarChirho::plain_chirho(name_chirho("aChirho")),
+            TyVarChirho::plain_chirho(name_chirho("bChirho")),
+        ],
+        None,
+        Some(&signature_chirho),
+        SpanChirho::DUMMY_CHIRHO,
+        false,
+    );
+    assert_eq!(ctx_chirho.diagnostics_chirho.error_count_chirho(), 1);
+    assert!(
+        ctx_chirho
+            .diagnostics_chirho
+            .to_string()
+            .contains("type family declaration signature")
+    );
+}

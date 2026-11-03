@@ -265,6 +265,7 @@ impl LowerCtxChirho {
             type_vars_chirho,
             result_kind_chirho,
             data_family_chirho,
+            standalone_kind_chirho: None,
             closed_chirho: saw_where_chirho,
             equations_chirho,
             span_chirho,

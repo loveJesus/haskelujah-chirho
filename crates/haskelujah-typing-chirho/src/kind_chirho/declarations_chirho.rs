@@ -1,6 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Compose result-kind tails and reconcile complete data/newtype signatures.
+//! Compose result-kind tails and reconcile complete data/newtype and type family
+//! signatures.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
 use super::{
@@ -86,6 +87,79 @@ impl KindInferCtxChirho {
         }
         self.env_chirho
             .bind_chirho(name_chirho.to_owned(), kind_chirho);
+    }
+
+    /// Process a type family declaration to determine the kind of the family.
+    /// A standalone signature, `type F :: k1 -> k2 -> k`, is the family's
+    /// complete kind: it is read with the outer kind-name cache swapped out, as
+    /// a data declaration's is, and unified with the head's parameters and
+    /// result. With a signature and no inline result kind the result is left to
+    /// the signature, since a family may return an arrow kind (row 686).
+    /// Moved here from `kind_chirho.rs` intact before the signature was added.
+    pub(super) fn infer_type_family_decl_kind_chirho(
+        &mut self,
+        name_chirho: &str,
+        type_vars_chirho: &[TyVarChirho],
+        result_kind_chirho: Option<&TypeChirho>,
+        standalone_kind_chirho: Option<&TypeChirho>,
+        span_chirho: SpanChirho,
+        poly_kinds_enabled_chirho: bool,
+    ) {
+        // Standalone binders do not scope over the declaration: swap only the
+        // name cache, O(1), as `infer_data_decl_kind_chirho` does.
+        let complete_kind_chirho = standalone_kind_chirho.map(|signature_chirho| {
+            let outer_names_chirho = std::mem::take(&mut self.kind_var_cache_chirho);
+            let kind_chirho = self.type_to_kind_chirho(signature_chirho);
+            self.kind_var_cache_chirho = outer_names_chirho;
+            kind_chirho
+        });
+
+        let mut param_kinds_chirho = Vec::new();
+        for tv_chirho in type_vars_chirho {
+            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
+                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
+            } else {
+                self.fresh_kind_chirho()
+            };
+            self.env_chirho
+                .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
+            param_kinds_chirho.push(k_chirho);
+        }
+
+        let open_result_chirho = poly_kinds_enabled_chirho || complete_kind_chirho.is_some();
+        let result_kind_chirho = result_kind_chirho
+            .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
+            .unwrap_or_else(|| {
+                if open_result_chirho {
+                    self.fresh_kind_chirho()
+                } else {
+                    KindChirho::StarChirho
+                }
+            });
+        let head_kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho);
+        let kind_chirho = if let Some(complete_kind_chirho) = complete_kind_chirho {
+            self.unify_chirho(
+                &complete_kind_chirho,
+                &head_kind_chirho,
+                "type family declaration signature",
+                span_chirho,
+            );
+            complete_kind_chirho
+        } else {
+            head_kind_chirho
+        };
+
+        if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
+            let existing_chirho = existing_chirho.clone();
+            self.unify_chirho(
+                &existing_chirho,
+                &kind_chirho,
+                "type family declaration",
+                span_chirho,
+            );
+        }
+        self.env_chirho
+            .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
     /// GHC-55233: the return kind of data/newtype cannot be Constraint. This

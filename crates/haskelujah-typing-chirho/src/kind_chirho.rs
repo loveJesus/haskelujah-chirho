@@ -1292,51 +1292,6 @@ impl KindInferCtxChirho {
             .bind_chirho(name_chirho.to_string(), kind_chirho);
     }
 
-    /// Process a type family declaration to determine the kind of the family.
-    fn infer_type_family_decl_kind_chirho(
-        &mut self,
-        name_chirho: &str,
-        type_vars_chirho: &[TyVarChirho],
-        result_kind_chirho: Option<&TypeChirho>,
-        span_chirho: SpanChirho,
-        poly_kinds_enabled_chirho: bool,
-    ) {
-        let mut param_kinds_chirho = Vec::new();
-        for tv_chirho in type_vars_chirho {
-            let k_chirho = if let Some(ann_chirho) = &tv_chirho.kind_annotation_chirho {
-                self.ast_kind_to_kind_ctx_chirho(ann_chirho)
-            } else {
-                self.fresh_kind_chirho()
-            };
-            self.env_chirho
-                .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-            param_kinds_chirho.push(k_chirho);
-        }
-
-        let result_kind_chirho = result_kind_chirho
-            .map(|kind_ty_chirho| self.type_to_kind_chirho(kind_ty_chirho))
-            .unwrap_or_else(|| {
-                if poly_kinds_enabled_chirho {
-                    self.fresh_kind_chirho()
-                } else {
-                    KindChirho::StarChirho
-                }
-            });
-        let kind_chirho = KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho);
-
-        if let Some(existing_chirho) = self.env_chirho.lookup_chirho(name_chirho) {
-            let existing_chirho = existing_chirho.clone();
-            self.unify_chirho(
-                &existing_chirho,
-                &kind_chirho,
-                "type family declaration",
-                span_chirho,
-            );
-        }
-        self.env_chirho
-            .bind_chirho(name_chirho.to_string(), kind_chirho);
-    }
-
     /// Finalize: apply substitution to all kinds in the environment.
     /// When PolyKinds is NOT enabled, default unconstrained kind variables to *.
     /// When PolyKinds IS enabled, preserve kind variables to allow polymorphic kinds.
@@ -1576,6 +1531,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                 name_chirho,
                 type_vars_chirho,
                 result_kind_chirho,
+                standalone_kind_chirho,
                 span_chirho,
                 ..
             } => {
@@ -1583,6 +1539,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                     name_chirho.text_chirho(),
                     type_vars_chirho,
                     result_kind_chirho.as_ref(),
+                    standalone_kind_chirho.as_ref(),
                     *span_chirho,
                     poly_kinds_enabled_chirho,
                 );
@@ -2808,6 +2765,7 @@ mod tests_chirho {
                 type_vars_chirho: vec![t_var_chirho.clone()],
                 result_kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
                 data_family_chirho: false,
+                standalone_kind_chirho: None,
                 closed_chirho: false,
                 equations_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -2850,6 +2808,7 @@ mod tests_chirho {
                 type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
                 result_kind_chirho: None,
                 data_family_chirho: false,
+                standalone_kind_chirho: None,
                 closed_chirho: false,
                 equations_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
