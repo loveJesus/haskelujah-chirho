@@ -1,6 +1,5 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-use super::family_definitions_chirho::TypeFamilyDefinitionContextChirho;
 use super::*;
 
 fn source_id_chirho(module_chirho: &str, name_chirho: &str) -> TypeFamilyIdChirho {
