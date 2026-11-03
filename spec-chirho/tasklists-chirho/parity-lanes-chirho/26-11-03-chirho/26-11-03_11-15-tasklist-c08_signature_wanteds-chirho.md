@@ -15,6 +15,8 @@
 
 ## Oracle (GHC 9.14.1; root's combined first candidate `d2d3df6e` and second candidate `5b236c6d`)
 
+- **Correction (#31104):** `d2d3df6e` is a prototype comparison binary, not main. Claude2 measured published main `ce999556`: C08, C08LocalProxy, C08OpenOnly, C08Where and C08VarInstance all check rc 0 there too. Main shares the wrong acceptance, so the closure improves main's should-fail semantics.
+
 - **GHC rejects; both CLIs accept:** C08, C08LocalProxy, C08Where and C08OpenOnly, each with GHC-39999.
   - C08VarInstance is rejected by GHC as "Overlapping instances". It is a conservative residual: criterion 7 leaves it accepted.
 - **GHC accepts; both CLIs check:** C07, C08Given, C08SuperGiven, C08GivenEq, C08Unsigned, NumFunctions and FamilyContext.
