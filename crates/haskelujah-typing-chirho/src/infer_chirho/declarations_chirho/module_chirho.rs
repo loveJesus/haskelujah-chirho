@@ -78,7 +78,7 @@ impl InferCtxChirho {
                     .collect();
                 let mut stamped_rhs_chirho = rhs_chirho.clone();
                 if let Some(scope_chirho) = self.family_scope_chirho.as_deref() {
-                    super::family_registration_chirho::stamp_family_references_chirho(
+                    super::stamp_family_references_chirho(
                         &mut stamped_rhs_chirho,
                         scope_chirho,
                         &self.type_families_chirho,

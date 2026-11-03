@@ -152,10 +152,17 @@ mod family_reduction_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/types_chirho/families_chirho/family_reduction_tests_chirho.rs"]
 mod family_reduction_tests_chirho;
-#[path = "infer_chirho/types_chirho/families_chirho/family_registration_chirho.rs"]
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_registration_chirho.rs"]
 mod family_registration_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_registration_tests_chirho.rs"]
+mod family_registration_tests_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/family_scope_chirho.rs"]
 mod family_scope_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_seeds_chirho.rs"]
+mod family_seeds_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_transport_chirho.rs"]
+mod family_transport_chirho;
 #[path = "infer_chirho/types_chirho/type_families_chirho.rs"]
 mod type_families_chirho;
 #[path = "infer_chirho/types_chirho/type_synonyms_chirho.rs"]
@@ -205,10 +212,9 @@ pub use family_definitions_chirho::{
     TypeFamilyIdChirho, TypeFamilyReductionChirho, TypeFamilyRegistryChirho,
     is_type_family_key_chirho,
 };
-pub use family_registration_chirho::{
-    seed_type_family_registry_chirho, stamp_family_references_chirho,
-};
 pub use family_scope_chirho::{TypeFamilyScopeChirho, TypeFamilyScopeResolutionChirho};
+pub use family_seeds_chirho::seed_type_family_registry_chirho;
+pub use family_transport_chirho::stamp_family_references_chirho;
 
 pub type TypeFamilyEnvChirho = TypeFamilyRegistryChirho;
 
@@ -671,6 +677,7 @@ pub fn infer_module_with_import_context_chirho(
             .family_registration_error_chirho(error_chirho.to_string(), SpanChirho::DUMMY_CHIRHO);
     }
     ctx_chirho.prepare_family_scope_chirho(module_chirho, family_scope_chirho);
+    ctx_chirho.verify_imported_open_families_chirho();
     ctx_chirho.overloaded_strings_chirho = module_chirho
         .extensions_chirho
         .iter()

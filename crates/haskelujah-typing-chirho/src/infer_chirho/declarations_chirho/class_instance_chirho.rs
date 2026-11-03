@@ -284,29 +284,10 @@ impl InferCtxChirho {
 
             // Register associated type family instances from this instance decl
             for atfi_chirho in assoc_tf_instances_chirho {
-                let fname_chirho = atfi_chirho.family_name_chirho.full_name_chirho();
-                let inst_params_chirho =
-                    collect_free_type_vars_from_ast_chirho(&atfi_chirho.lhs_types_chirho);
-                let lhs_chirho: Vec<TyChirho> = atfi_chirho
-                    .lhs_types_chirho
-                    .iter()
-                    .map(|t_chirho| {
-                        ast_type_to_syn_rhs_chirho(
-                            t_chirho,
-                            &inst_params_chirho,
-                            self.promotion_scope_chirho.as_deref(),
-                        )
-                    })
-                    .collect();
-                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
+                self.register_family_instance_ast_chirho(
+                    atfi_chirho.family_name_chirho.full_name_chirho(),
+                    &atfi_chirho.lhs_types_chirho,
                     &atfi_chirho.rhs_chirho,
-                    &inst_params_chirho,
-                    self.promotion_scope_chirho.as_deref(),
-                );
-                self.register_family_instance_at_chirho(
-                    fname_chirho,
-                    lhs_chirho,
-                    rhs_ty_chirho,
                     atfi_chirho.span_chirho,
                     Some(0),
                 );
@@ -327,6 +308,16 @@ impl InferCtxChirho {
                         atfi_chirho.family_name_chirho.text_chirho() == default_chirho.family_chirho
                     });
                     if defined_here_chirho {
+                        continue;
+                    }
+                    if !super::family_transport_chirho::family_rhs_is_supported_chirho(
+                        &default_chirho.rhs_chirho,
+                    ) {
+                        self.register_held_family_instance_chirho(
+                            default_chirho.family_chirho.clone(),
+                            *span_chirho,
+                            u32::try_from(default_index_chirho).ok(),
+                        );
                         continue;
                     }
                     // Family parameter `i` names class parameter `j` when the
