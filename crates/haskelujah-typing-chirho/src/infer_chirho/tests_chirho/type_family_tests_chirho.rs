@@ -165,6 +165,7 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }),
             default_params_chirho: vec![],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -224,6 +225,7 @@ fn instance_assoc_type_family_override_beats_class_default_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }),
             default_params_chirho: vec![],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -736,6 +738,7 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
                     default_rhs_chirho: (!written_chirho)
                         .then(|| rhs_chirho(TypeChirho::VarChirho(dummy_name_chirho("aChirho")))),
                     default_params_chirho: vec![],
+                    default_binders_chirho: None,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             ],

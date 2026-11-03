@@ -325,6 +325,18 @@ impl ParserChirho<'_> {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
             self.parse_type_chirho();
+            // `= r | r -> a` is an injectivity annotation. It belongs to this
+            // declaration, an associated family's result binder, never to the
+            // class body's next member (row 686: T6018, T26255a).
+            if self.next_non_trivia_kind_chirho(0) == Some(RawTokenKindChirho::PipeChirho) {
+                self.eat_trivia_chirho();
+                self.eat_until_any_chirho(&[
+                    RawTokenKindChirho::VirtualSemicolonChirho,
+                    RawTokenKindChirho::SemicolonChirho,
+                    RawTokenKindChirho::VirtualRightBraceChirho,
+                    RawTokenKindChirho::RightBraceChirho,
+                ]);
+            }
         }
 
         self.builder_chirho.finish_node_chirho();

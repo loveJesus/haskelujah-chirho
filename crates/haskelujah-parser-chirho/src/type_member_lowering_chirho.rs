@@ -61,6 +61,7 @@ pub(crate) fn partition_class_members_chirho(
                         type_vars_chirho: Vec::new(),
                         default_rhs_chirho: None,
                         default_params_chirho: Vec::new(),
+                        default_binders_chirho: None,
                         span_chirho,
                     });
                     continue;
@@ -112,6 +113,7 @@ pub(crate) fn partition_class_members_chirho(
                         .collect(),
                     default_rhs_chirho,
                     default_params_chirho,
+                    default_binders_chirho: None,
                     span_chirho,
                 });
             }
@@ -121,6 +123,16 @@ pub(crate) fn partition_class_members_chirho(
                 rhs_chirho,
                 span_chirho,
             } => {
+                // A bodiless declaration's right side is lowering's placeholder,
+                // a variable with an empty name. Every written default is kept,
+                // even one naming another class parameter (row 686, T5481); its
+                // own binders, the kind variables included, scope its right side.
+                let bodiless_chirho = matches!(
+                    &rhs_chirho,
+                    TypeChirho::VarChirho(placeholder_chirho)
+                        if placeholder_chirho.text_chirho().is_empty()
+                );
+                let default_binders_chirho = (!bodiless_chirho).then(|| type_vars_chirho.clone());
                 let type_var_names_chirho: Vec<NameChirho> = type_vars_chirho
                     .into_iter()
                     .filter(|type_var_chirho| {
@@ -130,14 +142,6 @@ pub(crate) fn partition_class_members_chirho(
                     })
                     .map(|type_var_chirho| type_var_chirho.name_chirho)
                     .collect();
-                // A bodiless declaration's right side is lowering's placeholder,
-                // a variable with an empty name. Every written default is kept,
-                // even one naming another class parameter (row 686, T5481).
-                let bodiless_chirho = matches!(
-                    &rhs_chirho,
-                    TypeChirho::VarChirho(placeholder_chirho)
-                        if placeholder_chirho.text_chirho().is_empty()
-                );
                 let default_rhs_chirho = (!bodiless_chirho).then_some(rhs_chirho);
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
@@ -145,6 +149,7 @@ pub(crate) fn partition_class_members_chirho(
                     type_vars_chirho: type_var_names_chirho,
                     default_rhs_chirho,
                     default_params_chirho: Vec::new(),
+                    default_binders_chirho,
                     span_chirho,
                 });
             }
@@ -167,6 +172,7 @@ pub(crate) fn partition_class_members_chirho(
                         .collect(),
                     default_rhs_chirho: None,
                     default_params_chirho: Vec::new(),
+                    default_binders_chirho: None,
                     span_chirho,
                 });
             }

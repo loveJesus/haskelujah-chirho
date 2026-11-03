@@ -495,6 +495,11 @@ pub struct AssocTypeFamilyChirho {
     /// may name them differently from the family declaration); empty when
     /// they coincide with `type_vars_chirho`.
     pub default_params_chirho: Vec<NameChirho>,
+    /// The binders a written default equation writes, with the kind variables
+    /// their kinds bind, which alone scope its right side (row 686). `None` when
+    /// that scope is unknown, as for a directly built AST, whose default keeps
+    /// the class's binders in scope.
+    pub default_binders_chirho: Option<Vec<TyVarChirho>>,
     /// Span covering the whole associated type declaration.
     pub span_chirho: SpanChirho,
 }

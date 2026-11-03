@@ -275,8 +275,14 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 for method_chirho in methods_chirho {
                     self.walk_signature_type_chirho(&method_chirho.ty_chirho);
                 }
-                for associated_tf_chirho in associated_tfs_chirho {
-                    let default_binders_chirho = if associated_tf_chirho.default_params_chirho.len()
+                // Without a recorded default scope (a directly built AST), a
+                // default keeps the class's binders in scope, as before.
+                for associated_tf_chirho in
+                    associated_tfs_chirho.iter().filter(|associated_tf_chirho| {
+                        associated_tf_chirho.default_binders_chirho.is_none()
+                    })
+                {
+                    let legacy_binders_chirho = if associated_tf_chirho.default_params_chirho.len()
                         == associated_tf_chirho.type_vars_chirho.len()
                     {
                         &associated_tf_chirho.default_params_chirho
@@ -284,7 +290,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                         &associated_tf_chirho.type_vars_chirho
                     };
                     let associated_pushed_chirho = self.push_name_binders_chirho(
-                        default_binders_chirho
+                        legacy_binders_chirho
                             .iter()
                             .map(|name_chirho| name_chirho.text_chirho().to_string()),
                     );
@@ -297,6 +303,25 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.pop_binders_chirho(&associated_pushed_chirho);
                 }
                 self.pop_binders_chirho(&pushed_chirho);
+                // A written default is its own equation: its right side sees only
+                // the binders its left side writes and the kind variables they
+                // bind, never the class's other parameters (GHC-76037, row 686).
+                for associated_tf_chirho in associated_tfs_chirho {
+                    if let (Some(binders_chirho), Some(default_rhs_chirho)) = (
+                        &associated_tf_chirho.default_binders_chirho,
+                        &associated_tf_chirho.default_rhs_chirho,
+                    ) {
+                        let default_pushed_chirho =
+                            self.push_name_binders_chirho(binders_chirho.iter().map(
+                                |binder_chirho| binder_chirho.name_chirho.text_chirho().to_string(),
+                            ));
+                        self.walk_type_chirho(
+                            default_rhs_chirho,
+                            FreeTyVarPolicyChirho::RequireBoundChirho,
+                        );
+                        self.pop_binders_chirho(&default_pushed_chirho);
+                    }
+                }
             }
             DeclChirho::InstanceDeclChirho {
                 context_chirho,
@@ -1188,6 +1213,9 @@ fn name_parts_chirho(name_chirho: &NameChirho) -> (Option<&str>, &str) {
     }
 }
 
+#[cfg(test)]
+#[path = "default_scope_tests_chirho.rs"]
+mod default_scope_tests_chirho;
 #[cfg(test)]
 #[path = "type_scope_tests_chirho.rs"]
 mod tests_chirho;

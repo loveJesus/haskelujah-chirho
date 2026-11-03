@@ -71,6 +71,12 @@ written parameters: binders read like declaration-head binders, and the result k
 T17566 has one). A top-level `type instance` keeps a bare wildcard argument (V06); its other
 argument forms are unchanged. Ordinary synonyms keep their own lowering.
 
+An associated family's injectivity annotation, `type F a = r | r -> a`, belongs to
+its own declaration: the CST keeps `| r -> a` inside that declaration's node, never
+as a stray class member, and lowering reads `= r` as the family's result binder, so
+the declaration is bodiless and `r` is neither a default nor a family parameter.
+No injectivity is checked or solved yet.
+
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
 declarations leaked by layout. Row 683 held the rule because a legal fixity declaration

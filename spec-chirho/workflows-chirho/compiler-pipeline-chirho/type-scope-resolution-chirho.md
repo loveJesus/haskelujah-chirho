@@ -103,6 +103,19 @@ The kind/type layer uses the same faithful shape downstream: required foralls co
 
 Two deliberately narrow AST trust boundaries remain. The record-field branch covers `bug-record-field-forall-lowering-chirho.md`; ordinary and required-forall fields remain checked. The constructor-prefix branch covers `bug-existential-constructor-scope-dropped-chirho.md`; it requires a prefix constructor name whose source span begins after its enclosing constructor span, excludes infix constructors, and defers only that constructor's field-variable scope. Both branches should disappear when the AST can carry the source binders and contexts directly.
 
+## Associated default scope (row 686)
+
+A written associated default is its own equation. Its right side sees only the
+binders its left side writes and the kind variables those binders' kinds write,
+never the class's other parameters: GHC 9.14.1 rejects `type X a = b` in
+`class Foo a b` with GHC-76037, and this walk reports `b` as a type variable not
+in scope. Lowering records that scope in `AssocTypeFamilyChirho::default_binders_chirho`.
+Kind variables are read from each binder group's CST tokens, so a kind the binder
+grammar cannot read, such as `[k]`, still binds `k`; a `forall` in a binder's kind
+binds its names only within the parenthesized group it is written in. The walk
+runs after the class binders are popped. A default with no recorded scope, as in
+a directly built AST, keeps the class's binders in scope as before.
+
 ## Imported synonym expansion keys (row 656)
 
 Naming above decides which imported type names a source may write. Separately, the driver frontend (`run_frontend_with_type_synonyms_families_and_class_env_chirho`) hands inference one table of imported type synonyms per module, and that table decides only how a synonym expands. Every multi-module path shares it: the project directory, both dependency-package paths behind `haskelujah build-run`, and the interpreter.

@@ -69,6 +69,7 @@ fn associated_class_chirho() -> DeclChirho {
                 data_family_chirho: false,
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],
+                default_binders_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             AssocTypeFamilyChirho {
@@ -77,6 +78,7 @@ fn associated_class_chirho() -> DeclChirho {
                 data_family_chirho: false,
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],
+                default_binders_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         ],

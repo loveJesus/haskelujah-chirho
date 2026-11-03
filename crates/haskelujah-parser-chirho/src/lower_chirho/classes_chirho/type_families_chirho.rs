@@ -3,7 +3,10 @@
 //! Type synonyms, type families and their instances.
 //! Part of CST-to-AST lowering (`lower_chirho.rs`), split by category in row 641.
 
-use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TyVarChirho, TypeFamilyEquationChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    DeclChirho, TyVarChirho, TyVarVisibilityChirho, TypeFamilyEquationChirho,
+};
+use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
@@ -99,6 +102,8 @@ impl LowerCtxChirho {
         let mut saw_type_chirho = false;
         let mut saw_result_kind_chirho = false;
         let mut saw_equals_chirho = false;
+        let mut saw_injectivity_chirho = false;
+        let mut kind_names_chirho = Vec::new();
 
         let mut idx_chirho = 0;
         while idx_chirho < children_chirho.len() {
@@ -110,6 +115,8 @@ impl LowerCtxChirho {
                         saw_type_chirho = true;
                     } else if kind_chirho == TokenKindChirho::EqualsChirho {
                         saw_equals_chirho = true;
+                    } else if saw_equals_chirho && kind_chirho == TokenKindChirho::PipeChirho {
+                        saw_injectivity_chirho = true;
                     } else if saw_type_chirho && !saw_equals_chirho && !saw_result_kind_chirho {
                         if kind_chirho == TokenKindChirho::DoubleColonChirho {
                             saw_result_kind_chirho = true;
@@ -127,6 +134,10 @@ impl LowerCtxChirho {
                         } else if let Some((binder_chirho, consumed_chirho)) =
                             self.declaration_head_binder_chirho(&children_chirho, idx_chirho)
                         {
+                            self.collect_group_kind_names_chirho(
+                                &children_chirho[idx_chirho..idx_chirho + consumed_chirho],
+                                &mut kind_names_chirho,
+                            );
                             type_vars_chirho.push(binder_chirho);
                             idx_chirho += consumed_chirho;
                             continue;
@@ -144,11 +155,97 @@ impl LowerCtxChirho {
             idx_chirho += 1;
         }
 
+        // The kind variables the binders' kinds write are bound by this equation
+        // too. They are invisible binders, so never family parameters.
+        for kind_name_chirho in kind_names_chirho {
+            if !type_vars_chirho.iter().any(|binder_chirho: &TyVarChirho| {
+                binder_chirho.name_chirho.text_chirho() == kind_name_chirho.text_chirho()
+            }) {
+                let mut binder_chirho = TyVarChirho::plain_chirho(kind_name_chirho);
+                binder_chirho.visibility_chirho = TyVarVisibilityChirho::InvisibleChirho;
+                type_vars_chirho.push(binder_chirho);
+            }
+        }
+        // `= r | r -> a` names the family's result; it is never a default.
+        if saw_injectivity_chirho {
+            rhs_chirho = None;
+        }
+
         DeclChirho::TypeAliasDeclChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
             rhs_chirho: rhs_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
             span_chirho,
+        }
+    }
+
+    /// The kind variables a binder group `(v :: kind)` writes free in its kind,
+    /// read from the CST tokens, so a kind the binder grammar cannot read still
+    /// binds them (row 686). A `forall` binds its own names up to the end of the
+    /// parenthesized group it is written in.
+    /// workflow: compiler-pipeline-chirho/type-scope-resolution-chirho
+    fn collect_group_kind_names_chirho(
+        &self,
+        group_chirho: &[ChildChirho<'_>],
+        out_chirho: &mut Vec<NameChirho>,
+    ) {
+        let Some(colon_chirho) = group_chirho.iter().position(|child_chirho| {
+            matches!(
+                child_chirho.element_chirho,
+                GreenElementChirho::TokenChirho(tok_chirho)
+                    if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+            )
+        }) else {
+            return;
+        };
+        let mut depth_chirho = 0usize;
+        let mut foralls_chirho: Vec<(usize, Vec<String>)> = Vec::new();
+        let mut in_telescope_chirho = false;
+        for child_chirho in &group_chirho[colon_chirho + 1..] {
+            let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho else {
+                continue;
+            };
+            let kind_chirho = tok_chirho.kind_chirho();
+            let text_chirho = tok_chirho.text_chirho();
+            if kind_chirho == TokenKindChirho::ForallKeywordChirho
+                || (kind_chirho == TokenKindChirho::VarIdChirho && text_chirho == "forall")
+            {
+                in_telescope_chirho = true;
+                foralls_chirho.push((depth_chirho, Vec::new()));
+                continue;
+            }
+            match kind_chirho {
+                TokenKindChirho::LeftParenChirho | TokenKindChirho::LeftBracketChirho => {
+                    depth_chirho += 1;
+                }
+                TokenKindChirho::RightParenChirho | TokenKindChirho::RightBracketChirho => {
+                    depth_chirho = depth_chirho.saturating_sub(1);
+                    foralls_chirho.retain(|(scope_chirho, _)| *scope_chirho <= depth_chirho);
+                }
+                TokenKindChirho::VarIdChirho if in_telescope_chirho => {
+                    if let Some((_, bound_chirho)) = foralls_chirho.last_mut() {
+                        bound_chirho.push(text_chirho.to_owned());
+                    }
+                }
+                TokenKindChirho::VarIdChirho => {
+                    let bound_by_forall_chirho = foralls_chirho.iter().any(|(_, bound_chirho)| {
+                        bound_chirho
+                            .iter()
+                            .any(|bound_name_chirho| bound_name_chirho == text_chirho)
+                    });
+                    let seen_chirho = out_chirho
+                        .iter()
+                        .any(|name_chirho| name_chirho.text_chirho() == text_chirho);
+                    if !bound_by_forall_chirho && !seen_chirho {
+                        let span_chirho =
+                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+                        out_chirho.push(self.name_from_token_chirho(tok_chirho, span_chirho));
+                    }
+                }
+                TokenKindChirho::VarSymChirho if text_chirho == "." => in_telescope_chirho = false,
+                TokenKindChirho::RightArrowChirho => in_telescope_chirho = false,
+                _ => {}
+            }
         }
     }
 

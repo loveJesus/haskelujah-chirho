@@ -433,6 +433,7 @@ fn associated_header_and_default_supply_one_catalogue_declaration_chirho() {
             data_family_chirho: false,
             default_rhs_chirho: default_chirho.then(|| syntax_app_chirho("Int", vec![])),
             default_params_chirho: vec![],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
     for (shapes_chirho, errors_chirho) in [

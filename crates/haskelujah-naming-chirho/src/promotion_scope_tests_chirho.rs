@@ -199,6 +199,7 @@ fn a_class_associated_family_is_in_the_type_namespace_chirho() {
             data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: Vec::new(),
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: Vec::new(),
