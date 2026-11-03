@@ -24,6 +24,8 @@ flowchart TD
   LowerChirho --> VisibilityChirho[Keep every head binder and its visibility]
   VisibilityChirho --> SchemesChirho[Open all binders but apply visible parameters in constructor and selector types]
   VisibilityChirho --> DerivingChirho[Visible parameters form derived instance heads]
+  FieldsChirho --> SortsChirho[Judge sorts at type-required and constraint positions]
+  SortsChirho --> ResultChirho
 ```
 
 The standalone conversion swaps the kind-name cache instead of cloning the
@@ -58,6 +60,24 @@ GHC-55233 is checked on both written contracts with one diagnostic, independentl
 of the existing Type/Constraint unification compatibility. Binder annotations
 are not result annotations; local Constraint shadowing retains its previous
 boundary. No broadening of that compatibility rule is part of this repair.
+
+## Sort judgments
+
+Type/Constraint unification stays compatible (`Dict :: Constraint -> Type` relies
+on it), so `kind_chirho/sorts_chirho.rs` judges sorts where a position fixes one
+(K01 reject frontier). A signature, a class method signature, either side of an arrow and a
+constructor field require a type: one that resolves to `Constraint` and is headed by
+an equality or by a name the module declares is reported, as in `SCon (SClass a)` or
+`f :: (a ~ Int) -> Int`. A context requires a constraint: one headed by a data type or
+newtype of this module is reported once its arguments leave `*`, as in
+`Dict (Int ~ Int) => Int`. `~` is `k -> k -> Constraint` and `~~` is
+`k1 -> k2 -> Constraint`, fresh at every use. Type variables and imported names are
+never judged: an imported constructor keeps the kind of its first use, so a variable
+can resolve to `Constraint` where GHC's polymorphic kind would not. A builtin class
+spelling that naming proved (`Show Int` as a field) is a known head too; its instance
+heads are judged as described in `compiler-pipeline-chirho/builtin-class-identity-chirho`.
+Declarations are judged in source order, so a class used before its declaration is not
+yet known.
 
 ## Evidence boundary
 

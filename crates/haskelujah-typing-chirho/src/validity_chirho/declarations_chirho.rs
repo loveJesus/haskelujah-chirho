@@ -10,7 +10,13 @@
 //! 1. a newtype constructor has exactly one field (`GHC-23517`);
 //! 2. a GADT-syntax newtype constructor has no context (`GHC-17440`);
 //! 3. one instance body binds a name once (`GHC-10498`);
-//! 4. a default signature has a default binding (`GHC-59794`).
+//! 4. a default signature has a default binding (`GHC-59794`);
+//! 5. a newtype constructor's field has no strictness annotation (`GHC-04049`);
+//! 6. a lazy field annotation (`~T`) needs `StrictData` or `Strict` (`GHC-81601`).
+//!
+//! Rule 6 judges the written override only. The module-wide `StrictData`
+//! default (unannotated fields strict) is not implemented: such fields stay
+//! lazy, and no rule here depends on it.
 //!
 //! The driver runs it on the module as written, after splices and before
 //! deriving appends generated instances, and reports it after name resolution.
@@ -23,7 +29,9 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use haskelujah_ast_chirho::decl_chirho::{ClassMethodChirho, ConDeclChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    ClassMethodChirho, ConDeclChirho, DeclChirho, StrictnessChirho,
+};
 use haskelujah_ast_chirho::expr_chirho::LocalBindChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
@@ -83,11 +91,18 @@ pub fn check_module_declaration_validity_chirho(
     module_chirho: &ModuleChirho,
 ) -> Vec<DeclarationErrorChirho> {
     let mut errors_chirho = Vec::new();
+    let strict_data_chirho = strict_data_enabled_chirho(module_chirho);
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
             DeclChirho::NewtypeDeclChirho {
                 constructor_chirho, ..
             } => check_newtype_constructor_chirho(constructor_chirho, &mut errors_chirho),
+            DeclChirho::DataDeclChirho {
+                constructors_chirho,
+                ..
+            } if !strict_data_chirho => {
+                check_lazy_annotations_chirho(constructors_chirho, &mut errors_chirho);
+            }
             DeclChirho::InstanceDeclChirho { methods_chirho, .. } => {
                 check_instance_bindings_chirho(methods_chirho, &mut errors_chirho);
             }
@@ -102,7 +117,9 @@ pub fn check_module_declaration_validity_chirho(
     errors_chirho
 }
 
-/// Rules 1 and 2, GHC's `checkNewDataCon` on the shapes lowering keeps.
+/// Rules 1, 2 and 5, GHC's `checkNewDataCon` on the shapes lowering keeps.
+/// Rule 5 holds at any `StrictData` setting and covers `!`, UNPACK and the
+/// explicit `~` alike; like GHC, it is judged only once rule 1 holds.
 ///
 /// A Haskell 98 constructor is judged only when lowering found its name. The
 /// empty name is lowering's placeholder for a constructor it could not read
@@ -114,12 +131,21 @@ fn check_newtype_constructor_chirho(
     constructor_chirho: &ConDeclChirho,
     errors_chirho: &mut Vec<DeclarationErrorChirho>,
 ) {
-    let (name_chirho, field_count_chirho, span_chirho) = match constructor_chirho {
+    // A written annotation is anything but the unannotated default.
+    let (name_chirho, field_count_chirho, annotated_chirho, span_chirho) = match constructor_chirho
+    {
         ConDeclChirho::OrdinaryChirho {
             name_chirho,
             fields_chirho,
             span_chirho,
-        } => (name_chirho, fields_chirho.len(), *span_chirho),
+        } => (
+            name_chirho,
+            fields_chirho.len(),
+            fields_chirho.iter().any(|(strictness_chirho, _ty_chirho)| {
+                *strictness_chirho != StrictnessChirho::LazyChirho
+            }),
+            *span_chirho,
+        ),
         ConDeclChirho::RecordChirho {
             name_chirho,
             fields_chirho,
@@ -130,6 +156,9 @@ fn check_newtype_constructor_chirho(
                 .iter()
                 .map(|field_chirho| field_chirho.names_chirho.len())
                 .sum::<usize>(),
+            fields_chirho
+                .iter()
+                .any(|field_chirho| field_chirho.strictness_chirho != StrictnessChirho::LazyChirho),
             *span_chirho,
         ),
         ConDeclChirho::GadtChirho {
@@ -151,19 +180,99 @@ fn check_newtype_constructor_chirho(
             return;
         }
     };
-    if name_chirho.text_chirho().is_empty() || field_count_chirho == 1 {
+    if name_chirho.text_chirho().is_empty() {
         return;
     }
-    errors_chirho.push(DeclarationErrorChirho {
-        ghc_code_chirho: "GHC-23517",
-        message_chirho: format!(
-            "A newtype constructor must have exactly one field, but `{}` has {}",
-            name_chirho.text_chirho(),
-            spoken_count_chirho(field_count_chirho)
-        ),
-        span_chirho,
-        related_span_chirho: None,
-    });
+    if field_count_chirho != 1 {
+        errors_chirho.push(DeclarationErrorChirho {
+            ghc_code_chirho: "GHC-23517",
+            message_chirho: format!(
+                "A newtype constructor must have exactly one field, but `{}` has {}",
+                name_chirho.text_chirho(),
+                spoken_count_chirho(field_count_chirho)
+            ),
+            span_chirho,
+            related_span_chirho: None,
+        });
+    } else if annotated_chirho {
+        errors_chirho.push(DeclarationErrorChirho {
+            ghc_code_chirho: "GHC-04049",
+            message_chirho: format!(
+                "A newtype constructor must not have a strictness annotation, but `{}` has one",
+                name_chirho.text_chirho()
+            ),
+            span_chirho,
+            related_span_chirho: None,
+        });
+    }
+}
+
+/// Rule 6: a written lazy annotation (`~T`) on a data constructor's field needs
+/// `StrictData`, or `Strict`, which implies it; without it GHC reports
+/// `GHC-81601` at the constructor. The caller runs it only when `StrictData` is
+/// off. This is the explicit override alone, not the `StrictData` default. A
+/// GADT constructor's arguments carry no strictness in the AST and stay unjudged,
+/// as does lowering's unnamed placeholder constructor.
+fn check_lazy_annotations_chirho(
+    constructors_chirho: &[ConDeclChirho],
+    errors_chirho: &mut Vec<DeclarationErrorChirho>,
+) {
+    for constructor_chirho in constructors_chirho {
+        let (name_chirho, lazy_chirho, span_chirho) = match constructor_chirho {
+            ConDeclChirho::OrdinaryChirho {
+                name_chirho,
+                fields_chirho,
+                span_chirho,
+            } => (
+                name_chirho,
+                fields_chirho.iter().any(|(strictness_chirho, _ty_chirho)| {
+                    *strictness_chirho == StrictnessChirho::ExplicitLazyChirho
+                }),
+                *span_chirho,
+            ),
+            ConDeclChirho::RecordChirho {
+                name_chirho,
+                fields_chirho,
+                span_chirho,
+            } => (
+                name_chirho,
+                fields_chirho.iter().any(|field_chirho| {
+                    field_chirho.strictness_chirho == StrictnessChirho::ExplicitLazyChirho
+                }),
+                *span_chirho,
+            ),
+            ConDeclChirho::GadtChirho { .. } => continue,
+        };
+        if lazy_chirho && !name_chirho.text_chirho().is_empty() {
+            errors_chirho.push(DeclarationErrorChirho {
+                ghc_code_chirho: "GHC-81601",
+                message_chirho: format!(
+                    "Lazy field annotations (~) are disabled without StrictData, but `{}` has one",
+                    name_chirho.text_chirho()
+                ),
+                span_chirho,
+                related_span_chirho: None,
+            });
+        }
+    }
+}
+
+/// Whether `StrictData` is on, in GHC's flag order: `Strict` turns it on as an
+/// implied flag, `NoStrictData` turns it off, and the last mention wins.
+/// `NoStrict` leaves it as it was: GHC applies implied flags only when turning
+/// a flag on.
+fn strict_data_enabled_chirho(module_chirho: &ModuleChirho) -> bool {
+    module_chirho
+        .extensions_chirho
+        .iter()
+        .fold(
+            false,
+            |enabled_chirho, extension_chirho| match extension_chirho.as_str() {
+                "StrictData" | "Strict" => true,
+                "NoStrictData" => false,
+                _ => enabled_chirho,
+            },
+        )
 }
 
 /// Whether a constructor signature's own context is non-empty, looking through

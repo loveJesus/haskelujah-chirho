@@ -11,6 +11,8 @@ use haskelujah_test_harness_chirho::native_chirho::{
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/declarations_chirho/annotated_pattern_bindings_chirho.rs"]
 mod annotated_pattern_bindings_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/builtin_class_kinds_chirho.rs"]
+mod builtin_class_kinds_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]
 mod declaration_validity_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
@@ -21,6 +23,8 @@ mod import_scope_chirho;
 mod inferred_evidence_chirho;
 #[path = "typing_integration_chirho/infix_definition_spacing_chirho.rs"]
 mod infix_definition_spacing_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/lazy_fields_chirho.rs"]
+mod lazy_fields_chirho;
 #[path = "typing_integration_chirho/maybe_helper_schemes_chirho.rs"]
 mod maybe_helper_schemes_chirho;
 #[path = "typing_integration_chirho/method_ownership_chirho.rs"]

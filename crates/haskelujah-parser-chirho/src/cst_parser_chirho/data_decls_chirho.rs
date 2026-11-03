@@ -210,9 +210,9 @@ impl ParserChirho<'_> {
         let starts_infix_con_decl_chirho = self.starts_infix_con_decl_chirho();
 
         if starts_infix_con_decl_chirho {
-            while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+            while self.can_start_atype_chirho() || self.at_strictness_prefix_chirho() {
                 let before_chirho = self.pos_chirho;
-                if self.at_strict_prefix_chirho() {
+                if self.at_strictness_prefix_chirho() {
                     self.bump_chirho();
                     self.eat_trivia_chirho();
                 }
@@ -238,9 +238,9 @@ impl ParserChirho<'_> {
             if self.at_chirho(RawTokenKindChirho::ConSymChirho) {
                 self.bump_chirho(); // constructor operator
                 self.eat_trivia_chirho();
-                while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+                while self.can_start_atype_chirho() || self.at_strictness_prefix_chirho() {
                     let before_chirho = self.pos_chirho;
-                    if self.at_strict_prefix_chirho() {
+                    if self.at_strictness_prefix_chirho() {
                         self.bump_chirho();
                         self.eat_trivia_chirho();
                     }
@@ -263,12 +263,12 @@ impl ParserChirho<'_> {
                 self.parse_record_fields_chirho();
             } else {
                 // Ordinary constructor: parse atomic types as fields
-                // Handle strictness annotations: `!` before a field type
-                while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+                // Handle strictness annotations: `!` or `~` before a field type
+                while self.can_start_atype_chirho() || self.at_strictness_prefix_chirho() {
                     let before_chirho = self.pos_chirho;
-                    // Consume `!` strictness annotation if present
-                    if self.at_strict_prefix_chirho() {
-                        self.bump_chirho(); // !
+                    // Consume a `!` or `~` strictness annotation if present
+                    if self.at_strictness_prefix_chirho() {
+                        self.bump_chirho(); // ! or ~
                         self.eat_trivia_chirho();
                     }
                     if self.can_start_atype_chirho() {
@@ -280,10 +280,10 @@ impl ParserChirho<'_> {
                     }
                 }
             }
-        } else if self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+        } else if self.can_start_atype_chirho() || self.at_strictness_prefix_chirho() {
             // Infix constructor declaration: `!a :*: !b`
             let before_left_chirho = self.pos_chirho;
-            if self.at_strict_prefix_chirho() {
+            if self.at_strictness_prefix_chirho() {
                 self.bump_chirho();
                 self.eat_trivia_chirho();
             }
@@ -297,15 +297,15 @@ impl ParserChirho<'_> {
             {
                 self.bump_chirho(); // constructor operator
                 self.eat_trivia_chirho();
-                if self.at_strict_prefix_chirho() {
+                if self.at_strictness_prefix_chirho() {
                     self.bump_chirho();
                     self.eat_trivia_chirho();
                 }
                 // Right operand may be a type application (e.g. `Seq a`
                 // in `a :< Seq a`), so parse all atomic types, not just one.
-                while self.can_start_atype_chirho() || self.at_strict_prefix_chirho() {
+                while self.can_start_atype_chirho() || self.at_strictness_prefix_chirho() {
                     let before_chirho = self.pos_chirho;
-                    if self.at_strict_prefix_chirho() {
+                    if self.at_strictness_prefix_chirho() {
                         self.bump_chirho();
                         self.eat_trivia_chirho();
                     }

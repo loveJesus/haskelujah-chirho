@@ -6,6 +6,7 @@
 //! Before name resolution, names are simple strings (`RawNameChirho`).
 //! After resolution, they carry a unique ID (`ResolvedNameChirho`).
 
+use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -198,6 +199,47 @@ impl NameChirho {
     pub fn without_origin_chirho(mut self) -> Self {
         self.set_origin_chirho(None);
         self
+    }
+}
+
+/// A class the compiler itself defines, as naming proves it from a trusted builtin
+/// interface (K01). Each parameter's kind is the number of `Type` arguments it takes:
+/// `[0]` is `Type -> Constraint` and `[1]` is `(Type -> Type) -> Constraint`.
+/// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BuiltinClassChirho {
+    /// The base module documented as the class's home.
+    pub module_chirho: &'static str,
+    /// The class name as interfaces list it.
+    pub name_chirho: &'static str,
+    /// One entry per class parameter, in order.
+    pub parameter_arities_chirho: &'static [u8],
+}
+
+/// The class spellings one module can write (`Eq`, `P.Eq`) that name a builtin class.
+/// A spelling that names anything else, or was ever bound ambiguously, is absent.
+/// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+#[derive(Debug, Clone, Default)]
+pub struct BuiltinClassScopeChirho {
+    classes_chirho: HashMap<String, BuiltinClassChirho>,
+}
+
+impl BuiltinClassScopeChirho {
+    /// A scope binding each spelling to the builtin class naming proved for it.
+    pub fn new_chirho(classes_chirho: HashMap<String, BuiltinClassChirho>) -> Self {
+        Self { classes_chirho }
+    }
+
+    /// The builtin class `spelling_chirho` names, if naming proved one.
+    pub fn class_chirho(&self, spelling_chirho: &str) -> Option<&BuiltinClassChirho> {
+        self.classes_chirho.get(spelling_chirho)
+    }
+
+    /// Every proven spelling with its class.
+    pub fn iter_chirho(&self) -> impl Iterator<Item = (&str, &BuiltinClassChirho)> {
+        self.classes_chirho
+            .iter()
+            .map(|(spelling_chirho, class_chirho)| (spelling_chirho.as_str(), class_chirho))
     }
 }
 

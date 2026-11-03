@@ -22,10 +22,12 @@ use crate::type_exports_chirho::{
 };
 
 mod builtin_chirho;
+mod class_identity_chirho;
 #[cfg(test)]
 mod tests_chirho;
 
 pub use builtin_chirho::builtin_module_ifaces_chirho;
+pub use class_identity_chirho::build_builtin_class_scope_chirho;
 
 // ---------------------------------------------------------------------------
 // Interface types
