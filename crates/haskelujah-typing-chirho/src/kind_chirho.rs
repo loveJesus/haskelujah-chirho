@@ -34,6 +34,9 @@ mod declarations_chirho;
 mod scope_chirho;
 #[cfg(test)]
 mod scope_tests_chirho;
+mod sorts_chirho;
+#[cfg(test)]
+mod sorts_tests_chirho;
 
 // ---------------------------------------------------------------------------
 // Kind representation
@@ -618,6 +621,9 @@ struct KindInferCtxChirho {
     /// Cache for PolyKinds: maps source-level kind variable names to allocated KindVarChirho.
     kind_var_cache_chirho: std::collections::HashMap<String, KindVarChirho>,
     local_kind_decl_names_chirho: std::collections::HashSet<String>,
+    /// Data and newtype names declared in this module, whose kinds end in `*`
+    /// (K01 sort judgments).
+    local_data_type_names_chirho: std::collections::HashSet<String>,
     type_kind_synonyms_chirho: HashMap<String, KindTypeSynonymChirho>,
     expanding_type_kind_synonyms_chirho: Vec<String>,
 }
@@ -635,6 +641,7 @@ impl KindInferCtxChirho {
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             kind_var_cache_chirho: std::collections::HashMap::new(),
             local_kind_decl_names_chirho: std::collections::HashSet::new(),
+            local_data_type_names_chirho: std::collections::HashSet::new(),
             type_kind_synonyms_chirho: HashMap::new(),
             expanding_type_kind_synonyms_chirho: Vec::new(),
         }
@@ -1466,6 +1473,10 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                                     "data constructor field",
                                     *span_chirho,
                                 );
+                                ctx_chirho.report_constraint_at_type_position_chirho(
+                                    field_ty_chirho,
+                                    &k_chirho,
+                                );
                             }
                         }
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
@@ -1480,6 +1491,10 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                                     &KindChirho::StarChirho,
                                     "data constructor field",
                                     *span_chirho,
+                                );
+                                ctx_chirho.report_constraint_at_type_position_chirho(
+                                    &field_decl_chirho.ty_chirho,
+                                    &k_chirho,
                                 );
                             }
                         }
@@ -1527,6 +1542,10 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                                 "newtype constructor field",
                                 *span_chirho,
                             );
+                            ctx_chirho.report_constraint_at_type_position_chirho(
+                                field_ty_chirho,
+                                &k_chirho,
+                            );
                         }
                     }
                     haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
@@ -1541,6 +1560,10 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                                 &KindChirho::StarChirho,
                                 "newtype constructor field",
                                 *span_chirho,
+                            );
+                            ctx_chirho.report_constraint_at_type_position_chirho(
+                                &field_decl_chirho.ty_chirho,
+                                &k_chirho,
                             );
                         }
                     }
@@ -1647,6 +1670,10 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                         "class method type",
                         method_chirho.span_chirho,
                     );
+                    ctx_chirho.report_constraint_at_type_position_chirho(
+                        &method_chirho.ty_chirho,
+                        &k_chirho,
+                    );
                 }
             }
             DeclChirho::TypeSigChirho {
@@ -1662,6 +1689,7 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                     "type signature",
                     *span_chirho,
                 );
+                ctx_chirho.report_constraint_at_type_position_chirho(ty_chirho, &k_chirho);
             }
             _ => {}
         }

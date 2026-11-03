@@ -38,7 +38,16 @@ impl KindInferCtxChirho {
         constraint_chirho: &ConstraintChirho,
     ) -> KindChirho {
         match constraint_chirho {
-            ConstraintChirho::ClassChirho { args_chirho, .. } => {
+            ConstraintChirho::ClassChirho {
+                class_chirho,
+                args_chirho,
+                span_chirho,
+            } => {
+                self.report_type_at_constraint_position_chirho(
+                    class_chirho,
+                    args_chirho,
+                    *span_chirho,
+                );
                 for arg_chirho in args_chirho {
                     let _k_chirho = self.infer_type_kind_chirho(arg_chirho);
                 }
@@ -190,6 +199,9 @@ impl KindInferCtxChirho {
             }
             TypeChirho::ConChirho(name_chirho) => {
                 let text_chirho = name_chirho.full_name_chirho();
+                if let Some(k_chirho) = self.equality_constraint_kind_chirho(&text_chirho) {
+                    return k_chirho;
+                }
                 if let Some(k_chirho) = self.env_chirho.lookup_chirho(&text_chirho) {
                     let k_chirho = k_chirho.clone();
                     // Poly-kinded constructors instantiate at each use site.
@@ -249,6 +261,8 @@ impl KindInferCtxChirho {
                     "function type result",
                     *span_chirho,
                 );
+                self.report_constraint_at_type_position_chirho(arg_chirho, &k_a_chirho);
+                self.report_constraint_at_type_position_chirho(result_chirho, &k_b_chirho);
                 KindChirho::StarChirho
             }
             TypeChirho::ListChirho {
