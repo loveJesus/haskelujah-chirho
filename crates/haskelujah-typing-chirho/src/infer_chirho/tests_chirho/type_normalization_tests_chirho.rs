@@ -12,6 +12,35 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 #[test]
 fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
     let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    // Use the production declaration prepass: a raw result spelling alone is
+    // not nominal proof, even when this low-level fixture writes the family.
+    let module_chirho = ModuleChirho {
+        name_chirho: dummy_name_chirho("SynonymResultFixtureChirho"),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![DeclChirho::DataDeclChirho {
+            name_chirho: dummy_name_chirho("GRep'"),
+            type_vars_chirho: vec![dummy_name_chirho("fChirho").into()],
+            constructors_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
+                    name_chirho: dummy_name_chirho("MkGRepChirho"),
+                    fields_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        extensions_chirho: vec![],
+        inline_pragmas_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    };
+    ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
     ctx_chirho.register_type_synonym_chirho(
         "GRep".to_string(),
         vec!["f".to_string()],
@@ -23,7 +52,7 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
             )),
         ),
     );
-    ctx_chirho.register_type_family_chirho("Rep".to_owned(), 1, vec![]);
+    ctx_chirho.register_open_family_chirho("Rep".to_owned(), 1, SpanChirho::DUMMY_CHIRHO);
     ctx_chirho.register_type_family_instance_chirho(
         "Rep".to_string(),
         vec![TyChirho::ForallVarChirho("f".to_string())],
@@ -31,6 +60,18 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
             Box::new(TyChirho::ConChirho("GRep".to_string())),
             Box::new(TyChirho::ForallVarChirho("f".to_string())),
         ),
+    );
+
+    assert_eq!(
+        ctx_chirho.reduce_type_family_chirho("Rep", &[TyChirho::ConChirho("Proxy".to_owned())]),
+        Some(TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("GRep'".to_owned())),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Rep1".to_owned())),
+                Box::new(TyChirho::ConChirho("Proxy".to_owned())),
+            )),
+        )),
+        "the declared result datatype remains reducible after synonym expansion"
     );
 
     let normalized_chirho = ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
@@ -636,5 +677,45 @@ fn unify_normalized_instantiates_forall_before_reducing_primstate_chirho() {
             "expected normalized actual type to remain an application, got {:?}",
             other_chirho
         ),
+    }
+}
+
+#[test]
+fn synonym_expansion_and_associated_substitution_preserve_arrow_multiplicity_chirho() {
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    for mult_chirho in [
+        crate::ty_chirho::MultChirho::OneChirho,
+        crate::ty_chirho::MultChirho::ManyChirho,
+    ] {
+        let variable_chirho = TyChirho::ForallVarChirho("aChirho".to_owned());
+        let rhs_chirho = TyChirho::FunChirho(
+            Box::new(variable_chirho.clone()),
+            Box::new(variable_chirho),
+            mult_chirho,
+        );
+        ctx_chirho.register_type_synonym_chirho(
+            "IdentityArrowChirho".to_owned(),
+            vec!["aChirho".to_owned()],
+            rhs_chirho.clone(),
+        );
+        let expected_chirho = TyChirho::FunChirho(
+            Box::new(TyChirho::int_chirho()),
+            Box::new(TyChirho::int_chirho()),
+            mult_chirho,
+        );
+        assert_eq!(
+            ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("IdentityArrowChirho".to_owned())),
+                Box::new(TyChirho::int_chirho())
+            )),
+            expected_chirho
+        );
+        assert_eq!(
+            super::substitute_type_vars_chirho(
+                &rhs_chirho,
+                &HashMap::from([("aChirho".to_owned(), TyChirho::int_chirho())])
+            ),
+            expected_chirho
+        );
     }
 }

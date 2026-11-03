@@ -11,7 +11,7 @@ use super::family_reduction_chirho::{
 };
 use super::family_registration_chirho::family_head_role_chirho;
 use super::strip_name_qualifier_chirho;
-use crate::ty_chirho::{MultChirho, TyChirho};
+use crate::ty_chirho::TyChirho;
 use haskelujah_ast_chirho::lit_chirho::{
     parse_haskell_char_body_chirho, render_haskell_char_body_chirho,
 };
@@ -588,10 +588,10 @@ pub(super) fn substitute_type_vars_chirho(
             Box::new(substitute_type_vars_chirho(f_chirho, bindings_chirho)),
             Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
         ),
-        TyChirho::FunChirho(a_chirho, r_chirho, _) => TyChirho::FunChirho(
+        TyChirho::FunChirho(a_chirho, r_chirho, mult_chirho) => TyChirho::FunChirho(
             Box::new(substitute_type_vars_chirho(a_chirho, bindings_chirho)),
             Box::new(substitute_type_vars_chirho(r_chirho, bindings_chirho)),
-            MultChirho::ManyChirho,
+            *mult_chirho,
         ),
         TyChirho::ListChirho(inner_chirho) => TyChirho::ListChirho(Box::new(
             substitute_type_vars_chirho(inner_chirho, bindings_chirho),

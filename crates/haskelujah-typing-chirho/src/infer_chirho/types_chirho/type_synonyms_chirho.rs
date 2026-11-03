@@ -7,7 +7,7 @@
 use super::InferCtxChirho;
 use super::family_definitions_chirho::is_type_family_key_chirho;
 use super::strip_name_qualifier_chirho;
-use crate::ty_chirho::{MultChirho, TyChirho};
+use crate::ty_chirho::TyChirho;
 use haskelujah_ast_chirho::promotion_chirho::is_promoted_key_chirho;
 use std::collections::{HashMap, HashSet};
 
@@ -169,10 +169,10 @@ impl InferCtxChirho {
                 let ea_chirho = self.expand_syn_chirho(arg_chirho, depth_chirho);
                 TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
             }
-            TyChirho::FunChirho(a_chirho, b_chirho, _) => TyChirho::FunChirho(
+            TyChirho::FunChirho(a_chirho, b_chirho, mult_chirho) => TyChirho::FunChirho(
                 Box::new(self.expand_syn_chirho(a_chirho, depth_chirho)),
                 Box::new(self.expand_syn_chirho(b_chirho, depth_chirho)),
-                MultChirho::ManyChirho,
+                *mult_chirho,
             ),
             TyChirho::ListChirho(el_chirho) => {
                 TyChirho::ListChirho(Box::new(self.expand_syn_chirho(el_chirho, depth_chirho)))
@@ -400,7 +400,7 @@ pub(super) fn subst_named_var_chirho(
                 replacement_chirho,
             )),
         ),
-        TyChirho::FunChirho(a_chirho, b_chirho, _) => TyChirho::FunChirho(
+        TyChirho::FunChirho(a_chirho, b_chirho, mult_chirho) => TyChirho::FunChirho(
             Box::new(subst_named_var_chirho(
                 a_chirho,
                 name_chirho,
@@ -411,7 +411,7 @@ pub(super) fn subst_named_var_chirho(
                 name_chirho,
                 replacement_chirho,
             )),
-            MultChirho::ManyChirho,
+            *mult_chirho,
         ),
         TyChirho::ListChirho(el_chirho) => TyChirho::ListChirho(Box::new(subst_named_var_chirho(
             el_chirho,
