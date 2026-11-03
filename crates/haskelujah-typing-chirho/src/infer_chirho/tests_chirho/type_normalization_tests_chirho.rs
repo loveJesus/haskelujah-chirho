@@ -207,8 +207,32 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
     };
 
     let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    // The real module prepass binds this class's Rep before converting method
+    // schemes; GHC.Generics.Rep is a different family with the same bare spelling.
+    let module_chirho = ModuleChirho {
+        name_chirho: dummy_name_chirho("RepresentableFixtureChirho"),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![
+            class_decl_ast_chirho.clone(),
+            instance_decl_ast_chirho.clone(),
+        ],
+        extensions_chirho: vec![],
+        inline_pragmas_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    };
+    ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
     ctx_chirho.process_class_decl_chirho(&class_decl_ast_chirho);
     ctx_chirho.process_instance_decl_chirho(&instance_decl_ast_chirho);
+    assert!(
+        !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+        "{}",
+        ctx_chirho.diagnostics_chirho
+    );
 
     let class_decl_chirho = ctx_chirho
         .class_env_chirho
@@ -238,7 +262,8 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
                 TyChirho::FunChirho(_, inner_result_chirho, _) => {
                     assert!(
                         matches!(*inner_result_chirho, TyChirho::TupleChirho(ref elems_chirho) if elems_chirho.len() == 2),
-                        "tabulate argument should return a 2-tuple after associated family reduction"
+                        "tabulate argument should return a 2-tuple after associated family reduction; got {inner_result_chirho}; {}",
+                        ctx_chirho.diagnostics_chirho
                     );
                 }
                 other_chirho => panic!("expected function argument, got {:?}", other_chirho),

@@ -58,11 +58,14 @@ impl InferCtxChirho {
             .unwrap_or_else(|| legacy_family_scope_chirho(&self.type_families_chirho));
         let mut declarations_chirho = Vec::new();
         for declaration_chirho in &module_chirho.decls_chirho {
+            // GHC's class TyCons are algebraic: at nominal role their heads are
+            // generative, including when a family returns a constraint constructor.
+            // Synonyms do not provide that authority.
             let (name_chirho, generative_chirho, family_chirho) = match declaration_chirho {
                 DeclChirho::DataDeclChirho { name_chirho, .. }
-                | DeclChirho::NewtypeDeclChirho { name_chirho, .. } => (name_chirho, true, true),
-                DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
-                | DeclChirho::ClassDeclChirho { name_chirho, .. } => (name_chirho, false, true),
+                | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
+                | DeclChirho::ClassDeclChirho { name_chirho, .. } => (name_chirho, true, true),
+                DeclChirho::TypeAliasDeclChirho { name_chirho, .. } => (name_chirho, false, true),
                 DeclChirho::TypeFamilyDeclChirho {
                     name_chirho,
                     data_family_chirho,
@@ -70,6 +73,13 @@ impl InferCtxChirho {
                 } => (name_chirho, *data_family_chirho, *data_family_chirho),
                 _ => continue,
             };
+            // A written non-synonym declaration owns its bare type name. In
+            // particular DATA family D1 must not expand the seeded Generic D1
+            // alias while its instance patterns are normalized. Qualified
+            // imported aliases remain in the synonym table under their keys.
+            if !matches!(declaration_chirho, DeclChirho::TypeAliasDeclChirho { .. }) {
+                self.type_synonyms_chirho.remove(name_chirho.text_chirho());
+            }
             declarations_chirho.push((name_chirho.text_chirho().to_owned(), generative_chirho));
             let names_chirho = [
                 name_chirho.text_chirho().to_owned(),
@@ -121,6 +131,8 @@ impl InferCtxChirho {
                     }
                 }
                 for associated_chirho in associated_tfs_chirho {
+                    self.type_synonyms_chirho
+                        .remove(associated_chirho.name_chirho.text_chirho());
                     if associated_chirho.default_rhs_chirho.is_none()
                         || associated_shapes_chirho.get(&(
                             associated_chirho.name_chirho.full_name_chirho(),

@@ -521,3 +521,287 @@ fn data_family_heads_are_generative_but_type_family_heads_remain_opaque_chirho()
         );
     }
 }
+
+#[test]
+fn source_d1_data_family_shadows_the_bare_generic_alias_only_chirho() {
+    // Literal names are essential: T17067 collides with the compiler's D1 alias.
+    let header_chirho = |name_chirho, data_family_chirho| DeclChirho::TypeFamilyDeclChirho {
+        name_chirho: dummy_name_chirho(name_chirho),
+        type_vars_chirho: if name_chirho == "D2" {
+            vec![]
+        } else {
+            vec![dummy_name_chirho("aChirho").into()]
+        },
+        result_kind_chirho: (name_chirho == "D2").then(|| TypeChirho::FunChirho {
+            arg_chirho: Box::new(syntax_app_chirho("Type", vec![])),
+            mult_chirho: None,
+            result_chirho: Box::new(syntax_app_chirho("Type", vec![])),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }),
+        data_family_chirho,
+        closed_chirho: false,
+        equations_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let instance_chirho = |name_chirho, start_chirho| DeclChirho::TypeFamilyInstanceDeclChirho {
+        family_name_chirho: dummy_name_chirho("F"),
+        lhs_types_chirho: vec![syntax_app_chirho(
+            name_chirho,
+            vec![syntax_var_chirho("aChirho")],
+        )],
+        rhs_chirho: syntax_var_chirho("aChirho"),
+        span_chirho: SpanChirho::new_chirho(
+            haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+            haskelujah_span_chirho::ByteOffsetChirho::new_chirho(start_chirho),
+            haskelujah_span_chirho::ByteOffsetChirho::new_chirho(start_chirho + 10),
+        ),
+    };
+    let module_chirho = module_chirho(vec![
+        header_chirho("D1", true),
+        header_chirho("D2", true),
+        header_chirho("F", false),
+        instance_chirho("D1", 10),
+        instance_chirho("D2", 30),
+    ]);
+    let mut ctx_chirho = family_fixture_context_chirho();
+    ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
+    ctx_chirho.register_module_families_chirho(&module_chirho);
+    assert!(
+        !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+        "{}",
+        ctx_chirho.diagnostics_chirho
+    );
+    for (name_chirho, argument_chirho) in [
+        ("D1", TyChirho::int_chirho()),
+        ("D2", TyChirho::bool_chirho()),
+    ] {
+        assert_eq!(
+            ctx_chirho.reduce_type_family_chirho(
+                "F",
+                &[type_family_app1_chirho(
+                    name_chirho,
+                    argument_chirho.clone()
+                )]
+            ),
+            Some(argument_chirho)
+        );
+    }
+    let local_chirho = type_family_app1_chirho("D1", TyChirho::int_chirho());
+    assert_eq!(
+        ctx_chirho.expand_type_synonyms_chirho(&local_chirho),
+        local_chirho
+    );
+    assert_eq!(
+        ctx_chirho.expand_type_synonyms_chirho(&type_family_app1_chirho(
+            "GHC.Generics.D1",
+            TyChirho::int_chirho()
+        )),
+        type_family_app2_chirho(
+            "M1",
+            TyChirho::ConChirho("D".to_owned()),
+            TyChirho::int_chirho()
+        )
+    );
+}
+
+#[test]
+fn generic_nominal_seeds_do_not_authorize_synonyms_or_source_collisions_chirho() {
+    for name_chirho in ["Par1", "M1", "V1"] {
+        let mut registry_chirho = seed_type_family_registry_chirho();
+        assert!(matches!(
+            super::family_registration_chirho::family_head_role_chirho(
+                &registry_chirho,
+                name_chirho
+            ),
+            super::closed_family_apartness_chirho::FamilyHeadRoleChirho::GenerativeChirho { .. }
+        ));
+        registry_chirho
+            .constructor_origins_mut_chirho()
+            .replace_source_module_chirho(
+                "SourceCollisionChirho",
+                &[(name_chirho.to_owned(), true)],
+            )
+            .unwrap();
+        assert!(matches!(
+            super::family_registration_chirho::family_head_role_chirho(
+                &registry_chirho,
+                name_chirho
+            ),
+            super::closed_family_apartness_chirho::FamilyHeadRoleChirho::UnknownChirho
+        ));
+    }
+    let registry_chirho = seed_type_family_registry_chirho();
+    for name_chirho in ["D1", "C1", "Rec0"] {
+        assert!(
+            registry_chirho
+                .constructor_origins_chirho()
+                .identity_chirho(name_chirho)
+                .is_none()
+        );
+    }
+}
+
+#[test]
+fn generic_rep_seed_is_open_and_enters_scope_only_by_its_export_chirho() {
+    let registry_chirho = seed_type_family_registry_chirho();
+    let id_chirho = TypeFamilyIdChirho::CompilerSeedChirho {
+        module_chirho: "GHC.Generics".to_owned(),
+        name_chirho: "Rep".to_owned(),
+    };
+    let key_chirho = id_chirho.key_chirho();
+    let definition_chirho = registry_chirho.definition_chirho(&key_chirho).unwrap();
+    assert_eq!(definition_chirho.arity_chirho(), 1);
+    assert_eq!(
+        definition_chirho.reduction_chirho(),
+        TypeFamilyReductionChirho::OpenChirho
+    );
+    let mut scope_chirho = TypeFamilyScopeChirho::new_chirho();
+    assert!(matches!(
+        scope_chirho.resolve_chirho("Rep", &registry_chirho),
+        TypeFamilyScopeResolutionChirho::MissingChirho
+    ));
+    scope_chirho.import_export_chirho("Rep".to_owned(), "GHC.Generics.Rep", &registry_chirho);
+    let mut ctx_chirho = family_fixture_context_chirho();
+    ctx_chirho.family_scope_chirho = Some(Arc::new(scope_chirho));
+    ctx_chirho.register_type_family_instance_chirho(
+        "Rep".to_owned(),
+        vec![TyChirho::bool_chirho()],
+        TyChirho::int_chirho(),
+    );
+    assert_eq!(
+        ctx_chirho.reduce_type_family_chirho("Rep", &[TyChirho::bool_chirho()]),
+        Some(TyChirho::int_chirho())
+    );
+    assert_eq!(
+        ctx_chirho.family_name_key_chirho("Rep"),
+        Some(key_chirho.clone())
+    );
+    ctx_chirho.register_open_family_chirho("Rep".to_owned(), 1, SpanChirho::DUMMY_CHIRHO);
+    assert_ne!(ctx_chirho.family_name_key_chirho("Rep"), Some(key_chirho));
+}
+
+fn nominal_class_chirho(
+    name_chirho: &str,
+    associated_tfs_chirho: Vec<haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho>,
+) -> DeclChirho {
+    DeclChirho::ClassDeclChirho {
+        context_chirho: vec![],
+        name_chirho: dummy_name_chirho(name_chirho),
+        type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
+        methods_chirho: vec![],
+        associated_tfs_chirho,
+        fundeps_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+#[test]
+fn source_class_valued_associated_rhs_reduces_and_reapplies_extra_arguments_chirho() {
+    // T5655's `type C ETwice = Twice`: the result is a real class constructor,
+    // not an arbitrary raw name granted Result-mode authority.
+    let module_chirho = module_chirho(vec![
+        nominal_class_chirho("Twice", vec![]),
+        DeclChirho::DataDeclChirho {
+            name_chirho: dummy_name_chirho("ETwice"),
+            type_vars_chirho: vec![],
+            constructors_chirho: vec![],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        },
+        nominal_class_chirho(
+            "E",
+            vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                name_chirho: dummy_name_chirho("C"),
+                type_vars_chirho: vec![dummy_name_chirho("aChirho")],
+                data_family_chirho: false,
+                default_rhs_chirho: None,
+                default_params_chirho: vec![],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+        ),
+    ]);
+    let mut ctx_chirho = family_fixture_context_chirho();
+    ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
+    ctx_chirho.register_module_families_chirho(&module_chirho);
+    ctx_chirho.register_family_instance_ast_chirho(
+        "C".to_owned(),
+        &[syntax_app_chirho("ETwice", vec![])],
+        &syntax_app_chirho("Twice", vec![]),
+        SpanChirho::DUMMY_CHIRHO,
+        Some(0),
+    );
+    assert!(
+        !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+        "{}",
+        ctx_chirho.diagnostics_chirho
+    );
+    assert_eq!(
+        ctx_chirho.reduce_type_family_chirho("C", &[TyChirho::ConChirho("ETwice".to_owned())]),
+        Some(TyChirho::ConChirho("Twice".to_owned()))
+    );
+    assert_eq!(
+        ctx_chirho.reduce_type_family_chirho(
+            "C",
+            &[
+                TyChirho::ConChirho("ETwice".to_owned()),
+                TyChirho::int_chirho()
+            ]
+        ),
+        Some(type_family_app1_chirho("Twice", TyChirho::int_chirho()))
+    );
+}
+
+#[test]
+fn source_classes_are_nominally_apart_but_synonyms_and_collisions_stay_unknown_chirho() {
+    use super::closed_family_apartness_chirho::{
+        FamilyHeadRoleChirho, FamilyUnificationChirho, family_patterns_unification_chirho,
+    };
+    let source_module_chirho = module_chirho(vec![
+        nominal_class_chirho("FirstClassChirho", vec![]),
+        nominal_class_chirho("SecondClassChirho", vec![]),
+        DeclChirho::TypeAliasDeclChirho {
+            name_chirho: dummy_name_chirho("ClassAliasChirho"),
+            type_vars_chirho: vec![],
+            rhs_chirho: syntax_app_chirho("FirstClassChirho", vec![]),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        },
+    ]);
+    let mut ctx_chirho = family_fixture_context_chirho();
+    ctx_chirho.prepare_family_scope_chirho(&source_module_chirho, None);
+    let classify_chirho = |name_chirho: &str| {
+        super::family_registration_chirho::family_head_role_chirho(
+            &ctx_chirho.type_families_chirho,
+            name_chirho,
+        )
+    };
+    assert_eq!(
+        family_patterns_unification_chirho(
+            &[type_family_app1_chirho(
+                "FirstClassChirho",
+                TyChirho::int_chirho()
+            )],
+            &[type_family_app1_chirho(
+                "SecondClassChirho",
+                TyChirho::int_chirho()
+            )],
+            &classify_chirho
+        ),
+        FamilyUnificationChirho::SurelyApartChirho
+    );
+    assert!(matches!(
+        classify_chirho("ClassAliasChirho"),
+        FamilyHeadRoleChirho::UnknownChirho
+    ));
+    let mut collision_chirho =
+        module_chirho(vec![nominal_class_chirho("FirstClassChirho", vec![])]);
+    collision_chirho.name_chirho = dummy_name_chirho("OtherClassModuleChirho");
+    ctx_chirho.prepare_family_scope_chirho(&collision_chirho, None);
+    assert!(matches!(
+        super::family_registration_chirho::family_head_role_chirho(
+            &ctx_chirho.type_families_chirho,
+            "FirstClassChirho"
+        ),
+        FamilyHeadRoleChirho::UnknownChirho
+    ));
+}

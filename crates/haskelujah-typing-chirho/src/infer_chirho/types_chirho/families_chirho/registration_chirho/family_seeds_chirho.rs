@@ -125,6 +125,38 @@ pub fn seed_type_family_registry_chirho() -> TypeFamilyRegistryChirho {
                 format!("compiler-standard:{name_chirho}"),
             );
     }
+    // These are real data/newtype heads, also supplied with their constructors
+    // by naming's builtin GHC.Generics interface. D1/C1/Rec0 are synonyms and
+    // deliberately do not donate nominal authority here.
+    for name_chirho in ["Par1", "M1", "V1"] {
+        registry_chirho
+            .constructor_origins_mut_chirho()
+            .insert_compiler_chirho(
+                name_chirho.to_owned(),
+                format!("compiler:GHC.Generics:{name_chirho}"),
+            );
+    }
+    // Generic's associated family is an extensible declaration, not a spelling
+    // fallback. The driver's naming-approved imports admit this export alias.
+    let generic_rep_chirho = TypeFamilyIdChirho::CompilerSeedChirho {
+        module_chirho: "GHC.Generics".to_owned(),
+        name_chirho: "Rep".to_owned(),
+    };
+    let generic_rep_definition_chirho = TypeFamilyDefinitionChirho::new_chirho(
+        generic_rep_chirho.clone(),
+        1,
+        TypeFamilyReductionChirho::OpenChirho,
+        Vec::new(),
+    )
+    .expect("static Generic.Rep header is well formed")
+    .verify_open_coherence_chirho(&|_, _| true, FAMILY_SEED_WORK_CHIRHO)
+    .expect("an empty Generic.Rep header has no overlaps");
+    registry_chirho
+        .insert_chirho(generic_rep_definition_chirho)
+        .expect("static Generic.Rep seed is unique");
+    registry_chirho
+        .export_alias_chirho("GHC.Generics.Rep".to_owned(), &generic_rep_chirho)
+        .expect("Generic.Rep seed exists");
     let id_chirho = TypeFamilyIdChirho::CompilerSeedChirho {
         module_chirho: "Control.Monad.Primitive".to_owned(),
         name_chirho: "PrimState".to_owned(),
@@ -234,6 +266,7 @@ pub(super) fn legacy_family_scope_chirho(
         }
     }
     for (name_chirho, export_chirho) in [
+        ("Rep", "GHC.Generics.Rep"),
         ("PrimState", "Control.Monad.Primitive.PrimState"),
         ("CmpNat", "GHC.TypeLits.CmpNat"),
         ("CmpSymbol", "GHC.TypeLits.CmpSymbol"),

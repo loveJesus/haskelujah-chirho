@@ -67,15 +67,17 @@ impl InferCtxChirho {
         // type S1 = M1 S
         for (metadata_alias_chirho, metadata_tag_chirho) in [("D1", "D"), ("C1", "C"), ("S1", "S")]
         {
+            let rhs_chirho = TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("M1".to_owned())),
+                Box::new(TyChirho::ConChirho(metadata_tag_chirho.to_owned())),
+            );
             type_synonyms_chirho.insert(
                 metadata_alias_chirho.to_string(),
-                (
-                    vec![],
-                    TyChirho::AppChirho(
-                        Box::new(TyChirho::ConChirho("M1".to_string())),
-                        Box::new(TyChirho::ConChirho(metadata_tag_chirho.to_string())),
-                    ),
-                ),
+                (vec![], rhs_chirho.clone()),
+            );
+            type_synonyms_chirho.insert(
+                format!("GHC.Generics.{metadata_alias_chirho}"),
+                (vec![], rhs_chirho),
             );
         }
         // type FilePath = String
