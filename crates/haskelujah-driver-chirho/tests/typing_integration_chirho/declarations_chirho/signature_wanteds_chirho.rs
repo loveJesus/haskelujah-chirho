@@ -8,8 +8,29 @@
 
 use super::{checks_like_ghc_chirho, rejected_like_ghc_chirho};
 
-/// GHC 9.14.1 rejects each with GHC-39999, "No instance for ... arising from the literal 3".
-const UNSERVABLE_SIGNATURE_WANTEDS_CHIRHO: [(&str, &str, &str); 3] = [
+/// GHC 9.14.1 rejects it with GHC-39999, "No instance for ... arising from the literal 3": the
+/// open family has no equations, so the reducer decides `NoMatch` and the closure reports.
+const IRREDUCIBLE_SIGNATURE_WANTEDS_CHIRHO: [(&str, &str, &str); 1] = [(
+    "C08OpenOnlyChirho.hs",
+    r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+-- A literal at a stuck open family application alone. Predicted GHC 9.14.1: rejected.
+{-# LANGUAGE TypeFamilies #-}
+module C08OpenOnlyChirho where
+
+import Data.Proxy (Proxy (..))
+
+type family OpaqueChirho aChirho
+
+openChirho :: Proxy aChirho -> OpaqueChirho aChirho
+openChirho _ = 3
+"###,
+    "OpaqueChirho",
+)];
+
+/// GHC 9.14.1 rejects each with GHC-39999. Two different stuck applications block
+/// `TwoChirho Int Bool`, and the reducer's decision on them is `Unknown`, not `Blocked`, so
+/// nothing certifies the wanted yet: these stay red until the reducer settles that blocker.
+const BLOCKED_SIGNATURE_WANTEDS_CHIRHO: [(&str, &str, &str); 2] = [
     (
         "C08LocalProxyChirho.hs",
         r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
@@ -52,22 +73,6 @@ outerChirho = 0
     innerChirho _ _ = 3
 "###,
         "TwoChirho",
-    ),
-    (
-        "C08OpenOnlyChirho.hs",
-        r###"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
--- A literal at a stuck open family application alone. Predicted GHC 9.14.1: rejected.
-{-# LANGUAGE TypeFamilies #-}
-module C08OpenOnlyChirho where
-
-import Data.Proxy (Proxy (..))
-
-type family OpaqueChirho aChirho
-
-openChirho :: Proxy aChirho -> OpaqueChirho aChirho
-openChirho _ = 3
-"###,
-        "OpaqueChirho",
     ),
 ];
 
@@ -254,8 +259,19 @@ bumpNestedChirho (MkBoxChirho xChirho) = innerChirho xChirho
 ];
 
 #[test]
-fn an_unservable_signature_wanted_is_rejected_like_ghc_chirho() {
-    for (file_name_chirho, source_chirho, family_chirho) in UNSERVABLE_SIGNATURE_WANTEDS_CHIRHO {
+fn an_irreducible_signature_wanted_is_rejected_like_ghc_chirho() {
+    for (file_name_chirho, source_chirho, family_chirho) in IRREDUCIBLE_SIGNATURE_WANTEDS_CHIRHO {
+        rejected_like_ghc_chirho(
+            source_chirho,
+            file_name_chirho,
+            &["no instance for", family_chirho],
+        );
+    }
+}
+
+#[test]
+fn a_blocked_family_signature_wanted_is_rejected_like_ghc_chirho() {
+    for (file_name_chirho, source_chirho, family_chirho) in BLOCKED_SIGNATURE_WANTEDS_CHIRHO {
         rejected_like_ghc_chirho(
             source_chirho,
             file_name_chirho,

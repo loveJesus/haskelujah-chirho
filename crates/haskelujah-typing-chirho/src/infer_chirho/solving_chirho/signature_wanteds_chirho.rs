@@ -26,6 +26,7 @@ use crate::class_chirho::PredChirho;
 use crate::skolem_chirho::rewrite_skolems_chirho;
 use crate::ty_chirho::TyChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 use std::collections::HashSet;
 
@@ -215,8 +216,42 @@ impl InferCtxChirho {
                 !is_placeholder_import_scheme_chirho(&scheme_chirho)
                     && scheme_chirho.preds_chirho.is_empty()
             });
-        if !context_free_chirho || self.constructor_name_refines_chirho(con_chirho) {
+        if !context_free_chirho
+            || self
+                .context_constructors_chirho
+                .contains(con_chirho.text_chirho())
+            || self.constructor_name_refines_chirho(con_chirho)
+        {
             self.unmodeled_pattern_evidence_seen_chirho = true;
+        }
+    }
+
+    /// The constructor-declaration producer's mark: a GADT constructor whose written type
+    /// carries a leading context (`MkBox :: Num (F a) => F a -> Box a`). Its scheme drops the
+    /// context, so a pattern on it must be counted as unmodeled evidence.
+    pub(super) fn note_written_constructor_context_chirho(
+        &mut self,
+        con_chirho: &NameChirho,
+        written_chirho: &TypeChirho,
+    ) {
+        let mut current_chirho = written_chirho;
+        loop {
+            match current_chirho {
+                TypeChirho::ForallChirho { body_chirho, .. } => current_chirho = body_chirho,
+                TypeChirho::QualChirho {
+                    context_chirho,
+                    body_chirho,
+                    ..
+                } => {
+                    if !context_chirho.is_empty() {
+                        self.context_constructors_chirho
+                            .insert(con_chirho.text_chirho().to_string());
+                        return;
+                    }
+                    current_chirho = body_chirho;
+                }
+                _ => return,
+            }
         }
     }
 

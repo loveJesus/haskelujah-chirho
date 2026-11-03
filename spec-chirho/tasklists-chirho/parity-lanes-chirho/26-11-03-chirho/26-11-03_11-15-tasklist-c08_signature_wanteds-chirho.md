@@ -45,4 +45,40 @@
 - [x] **Holds:**
   - C08PatternContext: root measured GHC 9.14.1, main ce999556 and R2 all checking rc 0 (`c08-pattern-evidence-oracle-chirho`).
   - C08NestedPatternContext: a `where`-bound signature that inherits the enclosing pattern's evidence. Its GHC measurement is pending.
-- [ ] Root replays the patch and runs Cargo, or grants a build lease. Then the focused gate and the corpus measurement.
+- [x] **Root replay (#31114).**
+  - `8aa021bc`, `672e2151` and `2655b23f` replayed onto root `43163cf0` as `b819a64c`, `451da7e4` and `0ee7d42b`.
+  - `cargo check -p haskelujah-driver --all-targets -j2` passes with no warning. No semantic claim yet.
+- [x] **C08NestedPatternContext:** fresh GHC 9.14.1 accepts it, and its sha matches the probe (root `tmp-chirho/final-extra-oracle-chirho/receipts-chirho.json`).
+- [ ] **Root's run:** the full typing unit pass, then the CLI, check and interpreter controls, and the unchanged corpus axes. Receipts for any failure will be routed here.
+
+- [x] **The insoluble-given review (#31117), refuted by measurement (#31121).**
+  - The case: `fChirho :: forall a. (Int ~ Bool) => ProxyChirho a -> OpaqueChirho a; fChirho _ = 3`.
+  - Fresh GHC 9.14.1 REJECTS it with GHC-39999, "Could not deduce Num (OpaqueChirho a) ... from the context Int ~ Bool".
+  - The candidate rejects it with E0204; published main wrongly accepts it.
+  - It is a measured NEGATIVE: no insoluble-given skip, and the proposed bypass (#31119) is withdrawn.
+  - Root's `tmp-chirho/c08-exfalso-oracle-chirho/C08ContradictoryGivenChirho.hs` (sha256 8fd098fc…) is the measured source. Its non-comment lines equal this unit's `pending-measurement-chirho/C08InsolubleGivenChirho` probe once the module name is normalized.
+
+- [x] **Focused lease (#31124), on root `45bea1ff`** (the lane was replayed; the earlier tip is kept on `c08-signature-wanteds-r1-chirho`).
+  - **Measured cause of the accepted C08 cases:** `decide_family_with_limits_chirho` on `TwoChirho (OpaqueChirho a) (OpaqueChirho b)` returns `UnknownChirho`, over 2 branches. The apartness kernel (`closed_family_apartness_chirho.rs`) stays uncertain for two different stuck applications against `TwoChirho Int Bool`, so nothing certifies.
+  - **It is not the import.** `OpaqueChirho a` decides NoMatch over 0 branches and is reported with `import Data.Proxy` (`visible=true`); the seeded classes work. That came from a temporary env-gated trace, removed afterwards.
+  - **Measured cause of C08PatternContext's four false reports:** the data and newtype GADT registration builds the constructor's scheme from `ast_type_to_ty_chirho`, which drops `Num (OpaqueChirho a) =>`, so the pattern hook saw no context.
+  - **Fix:** `context_constructors_chirho`, a private InferCtx set, marked by the declaration producer at both GADT registration sites (`note_written_constructor_context_chirho`) and read by the pattern hook.
+  - **Results:**
+    - the irreducible negative and the 8 accepted programs pass;
+    - the 2 blocked negatives fail, as measured (`C08LocalProxyChirho.hs: GHC rejects this program; we accepted it`);
+    - the ordered-family table is 8/10: C08 for the same reducer cause, and B01 for the known missing `natValChirho` STG binding;
+    - the typing library passes 502/502;
+    - the driver all-targets check has no warning, and Clippy (typing and driver tests) finds nothing in the changed files.
+  - **Logs:** `tmp-chirho/c08-lease-chirho/r1-*`.
+  - **Residual:** an imported GADT constructor's context is not transported, so the mark covers only this module's constructors.
+
+## Caveats kept in the record
+
+- **The pattern-evidence boundary is module-wide and conservative.**
+  - Once any pattern matches a constructor whose context or refinement the checker does not install, or whose scheme is unknown, and once any GADT refinement is added, every later signature closure in that module stays off.
+  - An unrelated later signature can therefore stay unchecked.
+  - Real pattern-local givens are the later repair.
+- **Class-origin trust is inherited from the seed producer.** A seeded standard class is trusted on base's guarantee that it declares no bare-variable instance head.
+  - A whole-environment replacement clears that trust, and a source class declaration of the same name removes it.
+  - An orphan universal instance in an uncompiled package stays outside the view.
+- **C08VarInstance stays accepted.** GHC rejects it as "Overlapping instances", but criterion 7 leaves any class with a bare-variable head unjudged.

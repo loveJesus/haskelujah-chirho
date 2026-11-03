@@ -379,6 +379,7 @@ impl InferCtxChirho {
             fully_known_class_names_chirho,
             seeded_class_names_chirho,
             unmodeled_pattern_evidence_seen_chirho: false,
+            context_constructors_chirho: HashSet::new(),
             constraint_generation_faithful_chirho: true,
             derived_instance_heads_chirho: HashSet::new(),
             safe_unqualified_imported_type_names_chirho: HashSet::new(),

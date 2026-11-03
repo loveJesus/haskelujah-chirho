@@ -473,6 +473,9 @@ pub struct InferCtxChirho {
     /// does not install as local evidence. Once set it stays set for the module, and every later
     /// signature-scope closure stays off, nested scopes included (row 686, C08).
     unmodeled_pattern_evidence_seen_chirho: bool,
+    /// Constructors whose written GADT type carries a leading context. Their schemes drop
+    /// it, so a pattern on one brings evidence the checker does not install (row 686, C08).
+    context_constructors_chirho: HashSet<String>,
     /// Whether the class constraints we generate for this module faithfully
     /// reflect the source. Cleared by extensions whose constraints we are
     /// known to mis-generate, so no unsolvable verdict is reached on a wanted

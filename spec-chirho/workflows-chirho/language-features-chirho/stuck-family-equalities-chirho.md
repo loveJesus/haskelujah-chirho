@@ -141,5 +141,14 @@ flowchart TD
   - So `unmodeled_pattern_evidence_seen_chirho` is set the first time any pattern matches such a constructor, or one whose scheme is unknown, and the first time a refinement is added.
   - Once set, every later closure in the module stays off, nested signatures included, since a nested signature can inherit the evidence before its own scope begins.
   - Residual: an unrelated later signature can stay unchecked. Installing real pattern-local givens is the later repair.
+  - A GADT constructor's scheme drops its written context. So the declaration producer marks a constructor whose written type carries a leading context (`context_constructors_chirho`), and a pattern on it sets the flag.
+  - Residual: an imported GADT constructor's context is not transported, so the mark covers only this module's constructors.
+- **What the reducer decides.**
+  - `TwoChirho (OpaqueChirho a) (OpaqueChirho b)`, two different stuck applications against the blocker `TwoChirho Int Bool`, decides `Unknown`, not `Blocked`: the apartness kernel stays uncertain.
+  - So C08 and its twins stay accepted until the reducer gives that blocker a definite verdict.
+  - A single open family with no equations (C08OpenOnly) decides `NoMatch` and is reported.
 - **Unchanged:** the module-end rigid refuter, every family blocker, and every other caller. Nothing else calls a stuck family unsolvable.
-- **Controls:** `typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs`, copied byte for byte from fresh GHC 9.14.1 oracle files: three rejected, and eight accepted, the two constructor-pattern holds among them.
+- **Controls:** `typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs`, copied byte for byte from fresh GHC 9.14.1 oracle files.
+  - One irreducible negative.
+  - Two negatives that wait on the reducer's verdict on the blocker.
+  - Eight accepted programs, the two constructor-pattern holds among them.

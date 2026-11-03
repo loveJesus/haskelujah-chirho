@@ -329,6 +329,10 @@ impl InferCtxChirho {
                                 // Convert the full GADT type signature to TyChirho.
                                 // The return type comes from the signature itself,
                                 // NOT from the auto-constructed `T a b c`.
+                                self.note_written_constructor_context_chirho(
+                                    name_chirho,
+                                    ty_chirho,
+                                );
                                 let con_ty_chirho =
                                     self.ast_type_to_ty_chirho(ty_chirho, &mut tv_map_chirho);
                                 let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
@@ -446,6 +450,10 @@ impl InferCtxChirho {
                             ..
                         } => {
                             // Newtype GADT: convert the full type signature.
+                            self.note_written_constructor_context_chirho(
+                                con_name_chirho,
+                                ty_chirho,
+                            );
                             let con_ty_chirho = self.ast_type_to_ty_chirho(
                                 ty_chirho,
                                 &mut std::collections::HashMap::new(),
