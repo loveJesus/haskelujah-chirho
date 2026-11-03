@@ -421,3 +421,54 @@ fn nonempty_compiler_seed_is_generative_until_a_source_collision_chirho() {
             .is_none()
     );
 }
+
+#[test]
+fn associated_header_and_default_supply_one_catalogue_declaration_chirho() {
+    let associated_chirho =
+        |default_chirho: bool| haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            name_chirho: dummy_name_chirho("RepChirho"),
+            type_vars_chirho: vec![dummy_name_chirho("aChirho")],
+            default_rhs_chirho: default_chirho.then(|| syntax_app_chirho("Int", vec![])),
+            default_params_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+    for (shapes_chirho, errors_chirho) in [
+        (vec![false, true], false),
+        (vec![true, false], false),
+        (vec![false, false], true),
+        (vec![true, true], true),
+        (vec![false, true, true], true),
+    ] {
+        let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+            context_chirho: vec![],
+            name_chirho: dummy_name_chirho("HasRepChirho"),
+            type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
+            methods_chirho: vec![],
+            associated_tfs_chirho: shapes_chirho.into_iter().map(associated_chirho).collect(),
+            fundeps_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }]);
+        let mut ctx_chirho = family_fixture_context_chirho();
+        ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
+        assert_eq!(
+            ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+            errors_chirho
+        );
+    }
+}
+
+#[test]
+fn two_genuine_data_declarations_are_not_catalogue_deduplicated_chirho() {
+    let declaration_chirho = DeclChirho::DataDeclChirho {
+        name_chirho: dummy_name_chirho("DuplicateChirho"),
+        type_vars_chirho: vec![],
+        constructors_chirho: vec![],
+        deriving_chirho: vec![],
+        kind_sig_chirho: None,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let module_chirho = module_chirho(vec![declaration_chirho.clone(), declaration_chirho]);
+    let mut ctx_chirho = family_fixture_context_chirho();
+    ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
+    assert!(ctx_chirho.diagnostics_chirho.has_errors_chirho());
+}

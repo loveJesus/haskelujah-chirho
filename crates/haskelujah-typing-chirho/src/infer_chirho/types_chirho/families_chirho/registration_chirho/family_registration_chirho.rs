@@ -99,11 +99,31 @@ impl InferCtxChirho {
                 ..
             } = declaration_chirho
             {
+                // Lowering may retain a written associated header and its default
+                // as two records. They declare one non-generative type identity.
+                // Do not collapse duplicate headers or duplicate defaults.
+                let mut associated_shapes_chirho = HashMap::<String, (usize, usize)>::new();
                 for associated_chirho in associated_tfs_chirho {
-                    declarations_chirho.push((
-                        associated_chirho.name_chirho.text_chirho().to_owned(),
-                        false,
-                    ));
+                    let counts_chirho = associated_shapes_chirho
+                        .entry(associated_chirho.name_chirho.full_name_chirho())
+                        .or_default();
+                    if associated_chirho.default_rhs_chirho.is_some() {
+                        counts_chirho.1 += 1;
+                    } else {
+                        counts_chirho.0 += 1;
+                    }
+                }
+                for associated_chirho in associated_tfs_chirho {
+                    if associated_chirho.default_rhs_chirho.is_none()
+                        || associated_shapes_chirho
+                            .get(&associated_chirho.name_chirho.full_name_chirho())
+                            != Some(&(1, 1))
+                    {
+                        declarations_chirho.push((
+                            associated_chirho.name_chirho.text_chirho().to_owned(),
+                            false,
+                        ));
+                    }
                     let id_chirho = TypeFamilyIdChirho::SourceChirho {
                         module_chirho: self.family_module_name_chirho.clone(),
                         name_chirho: associated_chirho.name_chirho.text_chirho().to_owned(),
