@@ -26,6 +26,8 @@ flowchart TD
   VisibilityChirho --> DerivingChirho[Visible parameters form derived instance heads]
   LowerChirho --> FamilyChirho[Families retain a standalone signature beside their inline result]
   FamilyChirho --> ReconcileChirho
+  FieldsChirho --> SortsChirho[Judge sorts at type-required and constraint positions]
+  SortsChirho --> ResultChirho
 ```
 
 The standalone conversion swaps the kind-name cache instead of cloning the
@@ -73,6 +75,23 @@ with `type family F a` gives `F a :: Type -> Type`. A name written as an operato
 standalone signature too, `type (:==) :: j -> k -> Type`, never a synonym (row 686:
 T15079, SplitWD). The signature fixes the family's kind only; it adds no kind-indexed
 reduction.
+
+## Sort judgments
+
+Type/Constraint unification stays compatible (`Dict :: Constraint -> Type` relies
+on it), so `kind_chirho/sorts_chirho.rs` judges sorts where a position fixes one
+(K01 reject frontier). A signature, a class method signature, either side of an arrow and a
+constructor field require a type: one that resolves to `Constraint` and is headed by
+an equality or by a name the module declares is reported, as in `SCon (SClass a)` or
+`f :: (a ~ Int) -> Int`. A context requires a constraint: one headed by a data type or
+newtype of this module is reported once its arguments leave `*`, as in
+`Dict (Int ~ Int) => Int`. `~` is `k -> k -> Constraint` and `~~` is
+`k1 -> k2 -> Constraint`, fresh at every use. Type variables and imported names are
+never judged: an imported constructor keeps the kind of its first use, so a variable
+can resolve to `Constraint` where GHC's polymorphic kind would not. Builtin classes
+(`Show Int` as a field, `instance Functor Bool`) need class identity from the builtin
+interfaces, a separate seam. Declarations are judged in source order, so a class used
+before its declaration is not yet known.
 
 ## Evidence boundary
 

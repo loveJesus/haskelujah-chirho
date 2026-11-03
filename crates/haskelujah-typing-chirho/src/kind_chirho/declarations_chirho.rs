@@ -85,6 +85,8 @@ impl KindInferCtxChirho {
                 span_chirho,
             );
         }
+        self.local_data_type_names_chirho
+            .insert(name_chirho.to_owned());
         self.env_chirho
             .bind_chirho(name_chirho.to_owned(), kind_chirho);
     }

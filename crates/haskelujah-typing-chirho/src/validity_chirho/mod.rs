@@ -635,8 +635,8 @@ fn report_if_unlicensed_chirho(
     });
 }
 
-/// Compact rendering used only inside diagnostics.
-fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
+/// Compact rendering used only inside diagnostics (validity and kind sorts).
+pub(crate) fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
     match ty_chirho {
         TypeChirho::VarChirho(name_chirho) | TypeChirho::ConChirho(name_chirho) => {
             name_chirho.text_chirho().to_string()
