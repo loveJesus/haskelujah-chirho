@@ -129,6 +129,8 @@ fn normalize_builtin_class_exports_chirho(modules_chirho: &mut [ModuleIfaceChirh
                         .values_chirho
                         .entry(method_name_chirho.clone())
                         .or_insert_with(|| IfaceValueChirho {
+                            availability_chirho:
+                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                             name_chirho: method_name_chirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                             defining_module_chirho: None,
@@ -144,6 +146,7 @@ fn mk_val_chirho(name_chirho: &str) -> (String, IfaceValueChirho) {
     (
         canonical_value_name_chirho(name_chirho),
         IfaceValueChirho {
+            availability_chirho: crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
             name_chirho: name_chirho.to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,

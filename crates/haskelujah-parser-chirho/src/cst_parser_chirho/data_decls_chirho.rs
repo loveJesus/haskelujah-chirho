@@ -400,28 +400,14 @@ impl ParserChirho<'_> {
             self.eat_trivia_chirho();
         }
 
-        // GADT record syntax: `MkT :: { f :: Int, x :: Char } -> T`. The braces are
-        // NOT a type, so `parse_type_chirho` cannot read them — it meets `{` in type
-        // position and the damage cascades past the declaration, taking the rest of
-        // the module's bindings with it. Parse the fields with the same routine the
-        // ordinary record path uses, then the `->` and the result type.
-        if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
-            self.parse_record_fields_chirho();
-            self.eat_trivia_chirho();
-            if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
-                self.bump_chirho(); // ->
-                self.eat_trivia_chirho();
-                self.parse_type_chirho();
-            }
-        } else {
-            // Parse the type signature
-            self.parse_type_chirho();
-        }
+        // A constructor signature owns record braces even after forall/context
+        // prefixes. Ordinary type parsing cannot consume those field braces.
+        self.parse_type_mode_chirho(true);
 
         self.builder_chirho.finish_node_chirho();
     }
 
-    fn parse_record_fields_chirho(&mut self) {
+    pub(super) fn parse_record_fields_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::RecordFieldsChirho);
 
@@ -438,6 +424,7 @@ impl ParserChirho<'_> {
             let mut paren_depth_chirho = 0usize;
             let mut bracket_depth_chirho = 0usize;
             let mut brace_depth_chirho = 0usize;
+            let mut saw_type_separator_chirho = false;
 
             // field names, ::, type
             while !self.at_decl_boundary_chirho() && !self.at_eof_chirho() {
@@ -449,7 +436,8 @@ impl ParserChirho<'_> {
                 let should_end_field_chirho =
                     match self.current_chirho().map(|t_chirho| t_chirho.kind_chirho) {
                         Some(RawTokenKindChirho::CommaChirho) => {
-                            paren_depth_chirho == 0
+                            saw_type_separator_chirho
+                                && paren_depth_chirho == 0
                                 && bracket_depth_chirho == 0
                                 && brace_depth_chirho == 0
                         }
@@ -465,6 +453,13 @@ impl ParserChirho<'_> {
                 }
 
                 match self.current_chirho().map(|t_chirho| t_chirho.kind_chirho) {
+                    Some(RawTokenKindChirho::ColonColonChirho)
+                        if paren_depth_chirho == 0
+                            && bracket_depth_chirho == 0
+                            && brace_depth_chirho == 0 =>
+                    {
+                        saw_type_separator_chirho = true;
+                    }
                     Some(RawTokenKindChirho::LeftParenChirho) => paren_depth_chirho += 1,
                     Some(RawTokenKindChirho::RightParenChirho) => {
                         paren_depth_chirho = paren_depth_chirho.saturating_sub(1);

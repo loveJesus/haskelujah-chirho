@@ -40,6 +40,8 @@ mod evidence_chirho;
 mod class_instance_chirho;
 #[path = "infer_chirho/declarations_chirho/dependency_chirho.rs"]
 mod dependency_chirho;
+#[path = "infer_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
+mod gadt_constructors_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_obligations_chirho.rs"]
 mod instance_obligations_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_signatures_chirho.rs"]

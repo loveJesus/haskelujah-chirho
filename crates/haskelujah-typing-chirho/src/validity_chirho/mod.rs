@@ -233,7 +233,10 @@ fn walk_con_decl_chirho(
         }
         // Skipped on purpose — see the note on `check_module_type_validity_chirho`.
         ConDeclChirho::RecordChirho { .. } => {}
-        ConDeclChirho::GadtChirho { ty_chirho, .. } => {
+        ConDeclChirho::GadtChirho {
+            signature_chirho, ..
+        } => {
+            let ty_chirho = &signature_chirho.as_type_chirho();
             walk_type_chirho(
                 ty_chirho,
                 TyPositionChirho::TopChirho,
@@ -1036,6 +1039,7 @@ mod tests_chirho {
             constructors_chirho: vec![ConDeclChirho::RecordChirho {
                 name_chirho: mk_name_chirho("Con"),
                 fields_chirho: vec![FieldDeclChirho {
+                    multiplicity_chirho: None,
                     names_chirho: vec![mk_name_chirho("fld")],
                     ty_chirho: mk_poly_id_chirho(),
                     strictness_chirho: StrictnessChirho::LazyChirho,

@@ -463,67 +463,27 @@ impl LowerCtxChirho {
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         let mut name_chirho = None;
-        let mut sig_type_chirho = None;
-        let mut record_fields_chirho: Option<Vec<FieldDeclChirho>> = None;
 
         for child_chirho in &children_chirho {
-            match child_chirho.element_chirho {
-                GreenElementChirho::NodeChirho(n_chirho)
-                    if n_chirho.kind_chirho() == SyntaxKindChirho::RecordFieldsChirho =>
-                {
-                    record_fields_chirho =
-                        Some(self.lower_record_fields_chirho(n_chirho, child_chirho.start_chirho));
-                }
-                GreenElementChirho::TokenChirho(tok_chirho) => {
-                    if matches!(
-                        tok_chirho.kind_chirho(),
-                        TokenKindChirho::ConIdChirho
-                            | TokenKindChirho::ConSymChirho
-                            | TokenKindChirho::QualifiedConSymChirho
-                    ) && name_chirho.is_none()
-                    {
-                        let s_chirho =
-                            self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        name_chirho = Some(self.name_from_token_chirho(tok_chirho, s_chirho));
-                    }
-                }
-                GreenElementChirho::NodeChirho(n_chirho)
-                    if is_type_kind_chirho(n_chirho.kind_chirho()) =>
-                {
-                    if sig_type_chirho.is_none() {
-                        sig_type_chirho =
-                            Some(self.lower_type_chirho(n_chirho, child_chirho.start_chirho));
-                    }
-                }
-                _ => {}
+            if let GreenElementChirho::TokenChirho(token_chirho) = child_chirho.element_chirho
+                && matches!(
+                    token_chirho.kind_chirho(),
+                    TokenKindChirho::ConIdChirho
+                        | TokenKindChirho::ConSymChirho
+                        | TokenKindChirho::QualifiedConSymChirho
+                )
+                && name_chirho.is_none()
+            {
+                name_chirho = Some(self.name_from_token_chirho(
+                    token_chirho,
+                    self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                ));
             }
         }
-
-        let con_name_chirho = name_chirho.unwrap_or_else(|| self.dummy_name_chirho());
-        // A GADT constructor written with record syntax. Its fields are real and are
-        // recovered here; its RESULT type is still dropped, because no ConDeclChirho
-        // shape can hold named fields AND a refined result at once — that half waits
-        // on the AST decision (spec-chirho/bug-gadt-record-fields-dropped-chirho.md).
-        // For `data T where MkT :: { .. } -> T` the result is the declaration head, so
-        // nothing is lost; for a refined result it is, exactly as before this change.
-        if let Some(fields_chirho) = record_fields_chirho {
-            return ConDeclChirho::RecordChirho {
-                name_chirho: con_name_chirho,
-                fields_chirho,
-                span_chirho,
-            };
-        }
-        match sig_type_chirho {
-            Some(ty_chirho) => ConDeclChirho::GadtChirho {
-                name_chirho: con_name_chirho,
-                ty_chirho,
-                span_chirho,
-            },
-            None => ConDeclChirho::OrdinaryChirho {
-                name_chirho: con_name_chirho,
-                fields_chirho: Vec::new(),
-                span_chirho,
-            },
+        ConDeclChirho::GadtChirho {
+            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+            signature_chirho: self.lower_gadt_signature_chirho(node_chirho, base_chirho),
+            span_chirho,
         }
     }
 
@@ -794,6 +754,15 @@ impl LowerCtxChirho {
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
     ) -> FieldDeclChirho {
+        self.lower_field_decl_mode_chirho(node_chirho, base_chirho, false)
+    }
+
+    pub(super) fn lower_field_decl_mode_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+        gadt_field_chirho: bool,
+    ) -> FieldDeclChirho {
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
@@ -802,6 +771,8 @@ impl LowerCtxChirho {
         let mut saw_double_colon_chirho = false;
         let mut type_children_chirho: Vec<&ChildChirho> = Vec::new();
         let mut pending_strict_chirho = false;
+        let mut in_multiplicity_chirho = false;
+        let mut multiplicity_children_chirho = Vec::new();
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
@@ -814,6 +785,25 @@ impl LowerCtxChirho {
                         && !saw_double_colon_chirho
                     {
                         saw_double_colon_chirho = true;
+                    } else if gadt_field_chirho
+                        && !saw_double_colon_chirho
+                        && tok_chirho.text_chirho() == "%"
+                    {
+                        in_multiplicity_chirho = true;
+                        multiplicity_children_chirho.push(ChildChirho {
+                            element_chirho: child_chirho.element_chirho,
+                            start_chirho: child_chirho.start_chirho,
+                            end_chirho: child_chirho.end_chirho,
+                        });
+                    } else if gadt_field_chirho
+                        && !saw_double_colon_chirho
+                        && in_multiplicity_chirho
+                    {
+                        multiplicity_children_chirho.push(ChildChirho {
+                            element_chirho: child_chirho.element_chirho,
+                            start_chirho: child_chirho.start_chirho,
+                            end_chirho: child_chirho.end_chirho,
+                        });
                     } else if !saw_double_colon_chirho
                         && tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
                     {
@@ -851,7 +841,13 @@ impl LowerCtxChirho {
                 Some(self.type_from_flat_children_chirho(&type_children_chirho, span_chirho));
         }
 
-        let strictness_chirho = if pending_strict_chirho {
+        let unpacked_chirho = gadt_field_chirho && node_chirho.children_chirho().iter().any(|child_chirho| matches!(child_chirho,
+            GreenElementChirho::TokenChirho(token_chirho) if token_chirho.kind_chirho() == TokenKindChirho::PragmaChirho
+                && token_chirho.text_chirho().strip_prefix("{-#").and_then(|body_chirho| body_chirho.strip_suffix("#-}")).is_some_and(|body_chirho| body_chirho.trim() == "UNPACK")
+        ));
+        let strictness_chirho = if pending_strict_chirho && unpacked_chirho {
+            StrictnessChirho::UnpackChirho
+        } else if pending_strict_chirho {
             StrictnessChirho::StrictChirho
         } else {
             StrictnessChirho::LazyChirho
@@ -861,6 +857,8 @@ impl LowerCtxChirho {
             names_chirho,
             ty_chirho: ty_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
             strictness_chirho,
+            multiplicity_chirho: self
+                .lower_arrow_multiplicity_chirho(&multiplicity_children_chirho),
             span_chirho,
         }
     }

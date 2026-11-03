@@ -72,6 +72,23 @@ pub fn resolve_module_with_imports_chirho(
             } => {
                 bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
                 for con_chirho in constructors_chirho {
+                    if let haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                        signature_chirho,
+                        ..
+                    } = con_chirho
+                    {
+                        for field_chirho in
+                            signature_chirho.record_fields_chirho().unwrap_or_default()
+                        {
+                            for field_name_chirho in &field_chirho.names_chirho {
+                                bind_name_chirho(
+                                    &mut env_chirho,
+                                    field_name_chirho,
+                                    NamespaceChirho::ValueChirho,
+                                );
+                            }
+                        }
+                    }
                     match con_chirho {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho,
@@ -117,6 +134,22 @@ pub fn resolve_module_with_imports_chirho(
                 ..
             } => {
                 bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::TypeChirho);
+                if let haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                    signature_chirho,
+                    ..
+                } = constructor_chirho
+                {
+                    for field_chirho in signature_chirho.record_fields_chirho().unwrap_or_default()
+                    {
+                        for field_name_chirho in &field_chirho.names_chirho {
+                            bind_name_chirho(
+                                &mut env_chirho,
+                                field_name_chirho,
+                                NamespaceChirho::ValueChirho,
+                            );
+                        }
+                    }
+                }
                 match constructor_chirho {
                     haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                         name_chirho: con_name_chirho,
@@ -831,6 +864,8 @@ mod tests_chirho {
         values_chirho.insert(
             "sort".to_string(),
             IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: "sort".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
@@ -839,6 +874,8 @@ mod tests_chirho {
         values_chirho.insert(
             "map".to_string(),
             IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: "map".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
@@ -847,6 +884,8 @@ mod tests_chirho {
         values_chirho.insert(
             "Red".to_string(),
             IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: "Red".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
@@ -855,6 +894,8 @@ mod tests_chirho {
         values_chirho.insert(
             "Blue".to_string(),
             IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: "Blue".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
@@ -1156,6 +1197,8 @@ mod tests_chirho {
         lib_chirho.exports_chirho.values_chirho.insert(
             "Wrap".to_string(),
             IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: "Wrap".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
@@ -1164,6 +1207,8 @@ mod tests_chirho {
         lib_chirho.exports_chirho.values_chirho.insert(
             "unwrap".to_string(),
             IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: "unwrap".to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
@@ -1305,6 +1350,8 @@ mod tests_chirho {
                 values_chirho: [(
                     "oldOnly".to_string(),
                     IfaceValueChirho {
+                        availability_chirho:
+                            crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                         name_chirho: "oldOnly".to_string(),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                         defining_module_chirho: None,
@@ -1324,6 +1371,8 @@ mod tests_chirho {
                 values_chirho: [(
                     "newOnly".to_string(),
                     IfaceValueChirho {
+                        availability_chirho:
+                            crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                         name_chirho: "newOnly".to_string(),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                         defining_module_chirho: None,
@@ -1472,6 +1521,7 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("MkPerson"),
                     fields_chirho: vec![
                         FieldDeclChirho {
+                            multiplicity_chirho: None,
                             names_chirho: vec![dummy_name_chirho("personName")],
                             ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                                 dummy_name_chirho("String"),
@@ -1481,6 +1531,7 @@ mod tests_chirho {
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
                         FieldDeclChirho {
+                            multiplicity_chirho: None,
                             names_chirho: vec![dummy_name_chirho("personAge")],
                             ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                                 dummy_name_chirho("Int"),
@@ -1630,6 +1681,7 @@ mod tests_chirho {
                 constructor_chirho: ConDeclChirho::RecordChirho {
                     name_chirho: dummy_name_chirho("MkAge"),
                     fields_chirho: vec![FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![dummy_name_chirho("getAge")],
                         ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                             dummy_name_chirho("Int"),

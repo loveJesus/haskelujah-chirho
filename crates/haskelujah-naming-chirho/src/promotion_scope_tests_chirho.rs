@@ -109,6 +109,8 @@ fn iface_chirho(
         exports_chirho.values_chirho.insert(
             constructor_chirho.to_string(),
             IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: constructor_chirho.to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: defining_chirho.map(str::to_string),
@@ -418,6 +420,7 @@ fn a_value_no_exported_type_lists_is_no_promotion_chirho() {
     functions_chirho.exports_chirho.values_chirho.insert(
         "MkPatternChirho".to_string(),
         IfaceValueChirho {
+            availability_chirho: crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
             name_chirho: "MkPatternChirho".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: Some("FunctionsChirho".to_string()),

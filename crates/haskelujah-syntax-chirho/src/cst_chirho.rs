@@ -209,6 +209,7 @@ pub enum SyntaxKindChirho {
     /// Type constructor.
     ConTypeChirho,
     /// Qualified type with context (`Eq a => a -> a`).
+    GadtFieldTypeChirho,
     QualTypeChirho,
     /// Context (class constraints before `=>`).
     ContextChirho,
@@ -347,6 +348,7 @@ impl SyntaxKindChirho {
                 | Self::ListTypeChirho
                 | Self::VarTypeChirho
                 | Self::ConTypeChirho
+                | Self::GadtFieldTypeChirho
                 | Self::QualTypeChirho
                 | Self::ContextChirho
                 | Self::ForallTypeChirho

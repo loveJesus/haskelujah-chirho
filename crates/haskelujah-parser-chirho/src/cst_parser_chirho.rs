@@ -38,6 +38,7 @@ pub(crate) use cursor_chirho::split_qualified_name_chirho;
 mod data_decls_chirho;
 mod declarations_chirho;
 mod expressions_chirho;
+mod gadt_signatures_chirho;
 #[cfg(test)]
 #[path = "cst_parser_chirho/tests_chirho/guard_let_tests_chirho.rs"]
 mod guard_let_tests_chirho;

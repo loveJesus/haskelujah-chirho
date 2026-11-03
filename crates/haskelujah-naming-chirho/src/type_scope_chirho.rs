@@ -435,7 +435,10 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     }
                 }
             }
-            ConDeclChirho::GadtChirho { ty_chirho, .. } => {
+            ConDeclChirho::GadtChirho {
+                signature_chirho, ..
+            } => {
+                let ty_chirho = &signature_chirho.as_type_chirho();
                 self.walk_signature_type_chirho(ty_chirho);
             }
         }

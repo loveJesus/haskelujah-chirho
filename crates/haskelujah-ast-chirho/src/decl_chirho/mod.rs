@@ -13,6 +13,12 @@ use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
 use crate::ty_chirho::{ConstraintChirho, TypeChirho};
 
+mod gadt_constructor_chirho;
+pub use gadt_constructor_chirho::{
+    GadtConArgsChirho, GadtConFieldChirho, GadtConFieldRefChirho, GadtConPrefixChirho,
+    GadtConSignatureChirho, local_generative_type_names_chirho,
+};
+
 /// AST-level kind annotation (written in source code with KindSignatures).
 ///
 /// Represents kind expressions like `*`, `* -> *`, `(* -> *) -> *`.
@@ -442,11 +448,25 @@ pub enum ConDeclChirho {
     GadtChirho {
         /// Constructor name.
         name_chirho: NameChirho,
-        /// The full type signature after `::`.
-        ty_chirho: TypeChirho,
+        /// Canonical prefixes, argument details and written result after `::`.
+        signature_chirho: GadtConSignatureChirho,
         /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },
+}
+
+impl ConDeclChirho {
+    /// The named arguments of either record constructor syntax. A GADT record
+    /// remains a GADT; exposing its fields must not discard its signature.
+    pub fn record_fields_chirho(&self) -> Option<&[FieldDeclChirho]> {
+        match self {
+            Self::RecordChirho { fields_chirho, .. } => Some(fields_chirho),
+            Self::GadtChirho {
+                signature_chirho, ..
+            } => signature_chirho.record_fields_chirho(),
+            Self::OrdinaryChirho { .. } => None,
+        }
+    }
 }
 
 /// A record field declaration (`fieldName :: !Type`).
@@ -458,6 +478,9 @@ pub struct FieldDeclChirho {
     pub ty_chirho: TypeChirho,
     /// Strictness annotation attached to the field.
     pub strictness_chirho: StrictnessChirho,
+    /// A GADT record field's written multiplicity (`field %1 :: a`).
+    /// Ordinary records keep their existing interpretation in this unit.
+    pub multiplicity_chirho: Option<crate::ty_chirho::MultiplicityChirho>,
     /// Span covering the whole field declaration.
     pub span_chirho: SpanChirho,
 }

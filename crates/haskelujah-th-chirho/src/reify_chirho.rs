@@ -11,7 +11,8 @@
 //! (`DeclChirho`, `TypeChirho`, etc.) to TH types (`ThDecChirho`, `ThTypeChirho`, etc.).
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, TyVarChirho,
+    ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, GadtConPrefixChirho,
+    StrictnessChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
@@ -212,67 +213,84 @@ pub fn ast_con_to_th_chirho(con_chirho: &ConDeclChirho) -> ThConChirho {
         }
         ConDeclChirho::GadtChirho {
             name_chirho,
-            ty_chirho,
+            signature_chirho,
             ..
         } => {
-            // Extract argument types and return type from the GADT type signature.
-            let mut arg_types_chirho: Vec<TypeChirho> = Vec::new();
-            extract_gadt_fun_args_chirho(ty_chirho, &mut arg_types_chirho);
-            let ret_ty_chirho = extract_gadt_return_type_chirho(ty_chirho);
-            let bang_types_chirho: Vec<ThBangTypeChirho> = arg_types_chirho
-                .iter()
-                .map(|arg_chirho| ThBangTypeChirho {
-                    bang_chirho: ThBangChirho::default_bang_chirho(),
-                    ty_chirho: ast_type_to_th_chirho(arg_chirho),
-                })
-                .collect();
-            ThConChirho::GadtCChirho(
-                vec![ThNameChirho::mk_name_chirho(name_chirho.text_chirho())],
-                bang_types_chirho,
-                Box::new(ast_type_to_th_chirho(&ret_ty_chirho)),
-            )
+            let ret_ty_chirho = Box::new(ast_type_to_th_chirho(&signature_chirho.result_ty_chirho));
+            let names_chirho = vec![ThNameChirho::mk_name_chirho(name_chirho.text_chirho())];
+            let mut con_chirho =
+                if let Some(fields_chirho) = signature_chirho.record_fields_chirho() {
+                    ThConChirho::RecGadtCChirho(
+                        names_chirho,
+                        fields_chirho
+                            .iter()
+                            .flat_map(|field_chirho| {
+                                field_chirho.names_chirho.iter().map(move |name_chirho| {
+                                    ThVarBangTypeChirho {
+                                        name_chirho: ThNameChirho::mk_name_chirho(
+                                            name_chirho.text_chirho(),
+                                        ),
+                                        bang_chirho: gadt_bang_to_th_chirho(
+                                            field_chirho.strictness_chirho,
+                                        ),
+                                        ty_chirho: ast_type_to_th_chirho(&field_chirho.ty_chirho),
+                                    }
+                                })
+                            })
+                            .collect(),
+                        ret_ty_chirho,
+                    )
+                } else {
+                    ThConChirho::GadtCChirho(
+                        names_chirho,
+                        signature_chirho
+                            .positional_fields_chirho()
+                            .map(|field_chirho| ThBangTypeChirho {
+                                bang_chirho: gadt_bang_to_th_chirho(field_chirho.strictness_chirho),
+                                ty_chirho: ast_type_to_th_chirho(field_chirho.ty_chirho),
+                            })
+                            .collect(),
+                        ret_ty_chirho,
+                    )
+                };
+            for prefix_chirho in signature_chirho.prefix_chirho.iter().rev() {
+                con_chirho = match prefix_chirho {
+                    GadtConPrefixChirho::ForallChirho { vars_chirho, .. } => {
+                        ThConChirho::ForallCChirho(
+                            vars_chirho.iter().map(ast_tyvar_to_th_chirho).collect(),
+                            vec![],
+                            Box::new(con_chirho),
+                        )
+                    }
+                    GadtConPrefixChirho::ContextChirho {
+                        constraints_chirho, ..
+                    } => ThConChirho::ForallCChirho(
+                        vec![],
+                        constraints_chirho
+                            .iter()
+                            .map(ast_constraint_to_th_chirho)
+                            .collect(),
+                        Box::new(con_chirho),
+                    ),
+                };
+            }
+            con_chirho
         }
     }
 }
 
-/// Extract argument types from a GADT function type chain, peeling forall/qual.
-fn extract_gadt_fun_args_chirho(ty_chirho: &TypeChirho, out_chirho: &mut Vec<TypeChirho>) {
-    match ty_chirho {
-        TypeChirho::FunChirho {
-            arg_chirho,
-            result_chirho,
-            ..
-        } => {
-            out_chirho.push((**arg_chirho).clone());
-            extract_gadt_fun_args_chirho(result_chirho, out_chirho);
-        }
-        TypeChirho::ForallChirho { body_chirho, .. } => {
-            extract_gadt_fun_args_chirho(body_chirho, out_chirho);
-        }
-        TypeChirho::QualChirho { body_chirho, .. } => {
-            extract_gadt_fun_args_chirho(body_chirho, out_chirho);
-        }
-        TypeChirho::ParenChirho { inner_chirho, .. } => {
-            extract_gadt_fun_args_chirho(inner_chirho, out_chirho);
-        }
-        _ => {} // Return type — not an argument
-    }
-}
-
-/// Extract the final return type from a GADT function type chain.
-fn extract_gadt_return_type_chirho(ty_chirho: &TypeChirho) -> TypeChirho {
-    match ty_chirho {
-        TypeChirho::FunChirho { result_chirho, .. } => {
-            extract_gadt_return_type_chirho(result_chirho)
-        }
-        TypeChirho::ForallChirho { body_chirho, .. } => {
-            extract_gadt_return_type_chirho(body_chirho)
-        }
-        TypeChirho::QualChirho { body_chirho, .. } => extract_gadt_return_type_chirho(body_chirho),
-        TypeChirho::ParenChirho { inner_chirho, .. } => {
-            extract_gadt_return_type_chirho(inner_chirho)
-        }
-        other_chirho => other_chirho.clone(),
+fn gadt_bang_to_th_chirho(strictness_chirho: StrictnessChirho) -> ThBangChirho {
+    ThBangChirho {
+        src_unpackedness_chirho: if strictness_chirho == StrictnessChirho::UnpackChirho {
+            ThSourceUnpackednessChirho::SourceUnpackChirho
+        } else {
+            ThSourceUnpackednessChirho::NoSourceUnpackednessChirho
+        },
+        src_strictness_chirho: if strictness_chirho == StrictnessChirho::LazyChirho {
+            ThSourceStrictnessChirho::NoSourceStrictnessChirho
+        } else {
+            ThSourceStrictnessChirho::SourceStrictChirho
+        },
     }
 }
 
@@ -458,6 +476,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("Person"),
                 fields_chirho: vec![
                     FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("_name")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("String")),
                         strictness_chirho:
@@ -465,6 +484,7 @@ mod tests_chirho {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("_age")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
                         strictness_chirho:

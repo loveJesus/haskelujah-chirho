@@ -130,6 +130,7 @@ fn only_a_binary_symbolic_constructor_renders_infix_chirho() {
 #[test]
 fn record_labels_and_field_types_keep_declaration_order_chirho() {
     let field_chirho = |names_chirho: &[&str], ty_chirho: TypeChirho| FieldDeclChirho {
+        multiplicity_chirho: None,
         names_chirho: names_chirho
             .iter()
             .map(|name_chirho| var_name_chirho(name_chirho))
@@ -207,7 +208,10 @@ fn types_not_deriving_show_or_with_a_gadt_constructor_are_left_out_chirho() {
             "GadtChirho",
             vec![ConDeclChirho::GadtChirho {
                 name_chirho: var_name_chirho("MkGadtChirho"),
-                ty_chirho: con_type_chirho("GadtChirho"),
+                signature_chirho:
+                    haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                        con_type_chirho("GadtChirho"),
+                    ),
                 span_chirho: gen_span_chirho(),
             }],
             &["Show"],

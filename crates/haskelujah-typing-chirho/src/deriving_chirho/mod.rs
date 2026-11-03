@@ -707,42 +707,13 @@ fn con_name_chirho(con_chirho: &ConDeclChirho) -> &str {
 fn con_field_count_chirho(con_chirho: &ConDeclChirho) -> usize {
     match con_chirho {
         ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => fields_chirho.len(),
-        ConDeclChirho::RecordChirho { fields_chirho, .. } => fields_chirho.len(),
-        ConDeclChirho::GadtChirho { ty_chirho, .. } => {
-            // Count function arguments in the GADT type signature.
-            extract_gadt_arg_count_chirho(ty_chirho)
-        }
-    }
-}
-
-/// Count function arguments in a GADT type signature.
-/// Walks through FunChirho, ForallChirho, and QualChirho to count arrow arguments.
-fn extract_gadt_arg_count_chirho(ty_chirho: &TypeChirho) -> usize {
-    match ty_chirho {
-        TypeChirho::FunChirho { result_chirho, .. } => {
-            1 + extract_gadt_arg_count_chirho(result_chirho)
-        }
-        TypeChirho::ForallChirho { body_chirho, .. } => extract_gadt_arg_count_chirho(body_chirho),
-        TypeChirho::QualChirho { body_chirho, .. } => extract_gadt_arg_count_chirho(body_chirho),
-        _ => 0, // Return type — not an argument
-    }
-}
-
-/// Extract argument types from a GADT type signature (everything before the final return type).
-fn extract_gadt_args_chirho(ty_chirho: &TypeChirho) -> Vec<TypeChirho> {
-    match ty_chirho {
-        TypeChirho::FunChirho {
-            arg_chirho,
-            result_chirho,
-            ..
-        } => {
-            let mut args_chirho = vec![(**arg_chirho).clone()];
-            args_chirho.extend(extract_gadt_args_chirho(result_chirho));
-            args_chirho
-        }
-        TypeChirho::ForallChirho { body_chirho, .. } => extract_gadt_args_chirho(body_chirho),
-        TypeChirho::QualChirho { body_chirho, .. } => extract_gadt_args_chirho(body_chirho),
-        _ => vec![], // Return type — not an argument
+        ConDeclChirho::RecordChirho { fields_chirho, .. } => fields_chirho
+            .iter()
+            .map(|field_chirho| field_chirho.names_chirho.len())
+            .sum(),
+        ConDeclChirho::GadtChirho {
+            signature_chirho, ..
+        } => signature_chirho.positional_fields_chirho().count(),
     }
 }
 
@@ -1470,13 +1441,13 @@ fn derive_newtype_gnd_chirho(
             .first()
             .map(|fd_chirho| fd_chirho.ty_chirho.clone())
             .unwrap_or_else(|| TypeChirho::ConChirho(var_name_chirho("()"))),
-        ConDeclChirho::GadtChirho { ty_chirho, .. } => {
-            // For newtype GADT, the first function argument is the underlying type.
-            extract_gadt_args_chirho(ty_chirho)
-                .into_iter()
-                .next()
-                .unwrap_or_else(|| TypeChirho::ConChirho(var_name_chirho("()")))
-        }
+        ConDeclChirho::GadtChirho {
+            signature_chirho, ..
+        } => signature_chirho
+            .positional_fields_chirho()
+            .next()
+            .map(|field_chirho| field_chirho.ty_chirho.clone())
+            .unwrap_or_else(|| TypeChirho::ConChirho(var_name_chirho("()"))),
     };
 
     // Build context: ClassChirho underlyingType
@@ -1513,7 +1484,12 @@ fn con_field_types_chirho(con_chirho: &ConDeclChirho) -> Vec<TypeChirho> {
             .iter()
             .map(|f_chirho| f_chirho.ty_chirho.clone())
             .collect(),
-        ConDeclChirho::GadtChirho { ty_chirho, .. } => extract_gadt_args_chirho(ty_chirho),
+        ConDeclChirho::GadtChirho {
+            signature_chirho, ..
+        } => signature_chirho
+            .positional_fields_chirho()
+            .map(|field_chirho| field_chirho.ty_chirho.clone())
+            .collect(),
     }
 }
 

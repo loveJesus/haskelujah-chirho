@@ -683,6 +683,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
                 fields_chirho: var_bang_types_chirho
                     .iter()
                     .map(|vbt_chirho| FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![th_name_to_ast_chirho(&vbt_chirho.name_chirho)],
                         ty_chirho: th_type_to_ast_chirho(&vbt_chirho.ty_chirho),
                         strictness_chirho: StrictnessChirho::LazyChirho,
@@ -693,28 +694,115 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
             })
         }
         ThConChirho::GadtCChirho(names_chirho, bang_types_chirho, ret_ty_chirho) => {
-            // Use the first name for the GADT constructor.
-            let con_name_chirho = names_chirho
-                .first()
-                .map(|n_chirho| th_name_to_ast_chirho(n_chirho))
-                .unwrap_or_else(|| mk_ast_name_chirho("__UNKNOWN_GADT__"));
-            // Build the full type: arg1 -> arg2 -> ... -> ret_ty
-            let mut full_ty_chirho = th_type_to_ast_chirho(ret_ty_chirho);
-            for bt_chirho in bang_types_chirho.iter().rev() {
-                full_ty_chirho = TypeChirho::FunChirho {
-                    arg_chirho: Box::new(th_type_to_ast_chirho(&bt_chirho.ty_chirho)),
-                    mult_chirho: None,
-                    result_chirho: Box::new(full_ty_chirho),
-                    span_chirho: TH_SPAN_CHIRHO,
-                };
-            }
+            let con_name_chirho = names_chirho.first().map(th_name_to_ast_chirho)?;
             Some(ConDeclChirho::GadtChirho {
                 name_chirho: con_name_chirho,
-                ty_chirho: full_ty_chirho,
+                signature_chirho: haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho {
+                    prefix_chirho: vec![],
+                    args_chirho:
+                        haskelujah_ast_chirho::decl_chirho::GadtConArgsChirho::PositionalChirho(
+                            bang_types_chirho
+                                .iter()
+                                .map(|field_chirho| {
+                                    haskelujah_ast_chirho::decl_chirho::GadtConFieldChirho {
+                                        strictness_chirho: th_gadt_strictness_chirho(
+                                            &field_chirho.bang_chirho,
+                                        ),
+                                        multiplicity_chirho: None,
+                                        ty_chirho: th_type_to_ast_chirho(&field_chirho.ty_chirho),
+                                        span_chirho: TH_SPAN_CHIRHO,
+                                    }
+                                })
+                                .collect(),
+                        ),
+                    result_ty_chirho: th_type_to_ast_chirho(ret_ty_chirho),
+                    malformed_chirho: false,
+                    span_chirho: TH_SPAN_CHIRHO,
+                },
                 span_chirho: TH_SPAN_CHIRHO,
             })
         }
-        _ => None, // Infix/RecGadtC constructors not yet supported
+        ThConChirho::RecGadtCChirho(names_chirho, fields_chirho, ret_ty_chirho) => {
+            Some(ConDeclChirho::GadtChirho {
+                name_chirho: names_chirho.first().map(th_name_to_ast_chirho)?,
+                signature_chirho: haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho {
+                    prefix_chirho: vec![],
+                    args_chirho:
+                        haskelujah_ast_chirho::decl_chirho::GadtConArgsChirho::RecordChirho(
+                            fields_chirho
+                                .iter()
+                                .map(|field_chirho| FieldDeclChirho {
+                                    names_chirho: vec![th_name_to_ast_chirho(
+                                        &field_chirho.name_chirho,
+                                    )],
+                                    strictness_chirho: th_gadt_strictness_chirho(
+                                        &field_chirho.bang_chirho,
+                                    ),
+                                    multiplicity_chirho: None,
+                                    ty_chirho: th_type_to_ast_chirho(&field_chirho.ty_chirho),
+                                    span_chirho: TH_SPAN_CHIRHO,
+                                })
+                                .collect(),
+                        ),
+                    result_ty_chirho: th_type_to_ast_chirho(ret_ty_chirho),
+                    malformed_chirho: false,
+                    span_chirho: TH_SPAN_CHIRHO,
+                },
+                span_chirho: TH_SPAN_CHIRHO,
+            })
+        }
+        ThConChirho::ForallCChirho(vars_chirho, context_chirho, con_chirho) => {
+            let mut con_chirho = th_con_to_ast_chirho(con_chirho)?;
+            let ConDeclChirho::GadtChirho {
+                signature_chirho, ..
+            } = &mut con_chirho
+            else {
+                return None;
+            };
+            if !context_chirho.is_empty() {
+                signature_chirho.prefix_chirho.insert(
+                    0,
+                    haskelujah_ast_chirho::decl_chirho::GadtConPrefixChirho::ContextChirho {
+                        constraints_chirho: context_chirho
+                            .iter()
+                            .filter_map(th_type_to_constraint_chirho)
+                            .collect(),
+                        span_chirho: TH_SPAN_CHIRHO,
+                    },
+                );
+            }
+            if !vars_chirho.is_empty() {
+                signature_chirho.prefix_chirho.insert(
+                    0,
+                    haskelujah_ast_chirho::decl_chirho::GadtConPrefixChirho::ForallChirho {
+                        vars_chirho: vars_chirho.iter().map(th_tyvar_to_ast_chirho).collect(),
+                        required_chirho: false,
+                        span_chirho: TH_SPAN_CHIRHO,
+                    },
+                );
+            }
+            Some(con_chirho)
+        }
+        _ => None, // Infix constructors are unchanged.
+    }
+}
+
+fn th_tyvar_to_ast_chirho(var_chirho: &ThTyVarBndrChirho) -> TyVarChirho {
+    match var_chirho {
+        ThTyVarBndrChirho::PlainTVChirho(name_chirho)
+        | ThTyVarBndrChirho::KindedTVChirho(name_chirho, _) => {
+            TyVarChirho::plain_chirho(th_name_to_ast_chirho(name_chirho))
+        }
+    }
+}
+
+fn th_gadt_strictness_chirho(bang_chirho: &ThBangChirho) -> StrictnessChirho {
+    if bang_chirho.src_unpackedness_chirho == ThSourceUnpackednessChirho::SourceUnpackChirho {
+        StrictnessChirho::UnpackChirho
+    } else if bang_chirho.src_strictness_chirho == ThSourceStrictnessChirho::SourceStrictChirho {
+        StrictnessChirho::StrictChirho
+    } else {
+        StrictnessChirho::LazyChirho
     }
 }
 

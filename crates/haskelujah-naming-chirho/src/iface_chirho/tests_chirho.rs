@@ -344,6 +344,7 @@ fn record_field_selectors_exported_chirho() {
                 name_chirho: mk_name_chirho("LanguageDefChirho"),
                 fields_chirho: vec![
                     haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("opLetterChirho")],
                         ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                             mk_name_chirho("String"),
@@ -353,6 +354,7 @@ fn record_field_selectors_exported_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("reservedNamesChirho")],
                         ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ListChirho {
                             element_chirho: Box::new(
@@ -443,6 +445,8 @@ fn module_re_export_chirho() {
             e_chirho.values_chirho.insert(
                 "innerFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "innerFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
@@ -460,6 +464,8 @@ fn module_re_export_chirho() {
             e_chirho.values_chirho.insert(
                 "MkInner".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "MkInner".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
@@ -542,6 +548,8 @@ fn module_alias_re_export_chirho() {
             e_chirho.values_chirho.insert(
                 "innerFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "innerFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
@@ -594,6 +602,8 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
             e_chirho.values_chirho.insert(
                 "leftFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "leftFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
@@ -602,6 +612,8 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
             e_chirho.values_chirho.insert(
                 "hiddenLeft".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "hiddenLeft".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
@@ -617,6 +629,8 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
             e_chirho.values_chirho.insert(
                 "rightFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "rightFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
@@ -695,6 +709,8 @@ fn explicit_export_list_reexports_imported_value_chirho() {
             exports_chirho.values_chirho.insert(
                 "choice".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "choice".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,

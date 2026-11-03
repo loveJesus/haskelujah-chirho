@@ -393,6 +393,7 @@ fn a_source_derived_type_closes_on_its_complete_members_chirho() {
             constructors_chirho: vec![ConDeclChirho::RecordChirho {
                 name_chirho: name_chirho("X"),
                 fields_chirho: vec![FieldDeclChirho {
+                    multiplicity_chirho: None,
                     names_chirho: vec![name_chirho("name")],
                     ty_chirho: TypeChirho::ConChirho(name_chirho("String")),
                     strictness_chirho: StrictnessChirho::LazyChirho,

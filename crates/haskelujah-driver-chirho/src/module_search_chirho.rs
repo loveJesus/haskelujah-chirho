@@ -438,6 +438,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                     exports_chirho.values_chirho.insert(
                         name_chirho.clone(),
                         IfaceValueChirho {
+                            availability_chirho: haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                             name_chirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                             defining_module_chirho: None,

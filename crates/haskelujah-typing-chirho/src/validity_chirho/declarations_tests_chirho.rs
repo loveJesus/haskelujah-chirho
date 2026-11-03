@@ -6,7 +6,7 @@
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{FieldDeclChirho, StrictnessChirho, TyVarChirho};
 use haskelujah_ast_chirho::name_chirho::RawNameChirho;
-use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
+use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho};
 
 fn span_at_chirho(start_chirho: u32) -> SpanChirho {
@@ -104,6 +104,7 @@ fn record_chirho(field_names_chirho: &[&str]) -> ConDeclChirho {
     ConDeclChirho::RecordChirho {
         name_chirho: name_chirho("R"),
         fields_chirho: vec![FieldDeclChirho {
+            multiplicity_chirho: None,
             names_chirho: field_names_chirho
                 .iter()
                 .copied()
@@ -120,7 +121,8 @@ fn record_chirho(field_names_chirho: &[&str]) -> ConDeclChirho {
 fn gadt_chirho(ty_chirho: TypeChirho) -> ConDeclChirho {
     ConDeclChirho::GadtChirho {
         name_chirho: name_chirho("MkN"),
-        ty_chirho,
+        signature_chirho:
+            haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(ty_chirho),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }
 }

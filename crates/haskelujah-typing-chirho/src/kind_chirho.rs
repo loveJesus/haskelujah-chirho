@@ -1454,9 +1454,10 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                             }
                         }
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                            ty_chirho,
+                            signature_chirho,
                             ..
                         } => {
+                            let ty_chirho = &signature_chirho.as_type_chirho();
                             // Kind-check the full GADT type signature.
                             let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
                             ctx_chirho.unify_chirho(
@@ -1523,9 +1524,10 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                         }
                     }
                     haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                        ty_chirho,
+                        signature_chirho,
                         ..
                     } => {
+                        let ty_chirho = &signature_chirho.as_type_chirho();
                         // Kind-check the full GADT type signature.
                         let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
                         ctx_chirho.unify_chirho(
@@ -2434,6 +2436,7 @@ mod tests_chirho {
                 constructor_chirho: ConDeclChirho::RecordChirho {
                     name_chirho: mk_name_chirho("Tagged"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("unTagged")],
                         strictness_chirho: StrictnessChirho::LazyChirho,
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
@@ -3001,10 +3004,13 @@ mod tests_chirho {
             ],
             constructors_chirho: vec![ConDeclChirho::GadtChirho {
                 name_chirho: mk_name_chirho("SLayer"),
-                ty_chirho: mk_fun_chirho(
-                    mk_app_chirho(t_chirho, l_chirho),
-                    mk_fun_chirho(stack_ls_t_chirho, stack_cons_t_chirho),
-                ),
+                signature_chirho:
+                    haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                        mk_fun_chirho(
+                            mk_app_chirho(t_chirho, l_chirho),
+                            mk_fun_chirho(stack_ls_t_chirho, stack_cons_t_chirho),
+                        ),
+                    ),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             deriving_chirho: vec![],

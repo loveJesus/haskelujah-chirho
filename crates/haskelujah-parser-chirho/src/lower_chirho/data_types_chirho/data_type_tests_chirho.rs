@@ -738,7 +738,10 @@ data aChirho :-> cChirho where
                 module_chirho.decls_chirho
             );
             match &constructors_chirho[0] {
-                ConDeclChirho::GadtChirho { ty_chirho, .. } => {
+                ConDeclChirho::GadtChirho {
+                    signature_chirho, ..
+                } => {
+                    let ty_chirho = &signature_chirho.as_type_chirho();
                     assert!(
                         matches!(ty_chirho, TypeChirho::FunChirho { .. }),
                         "PairChirho signature should stay a function type, got {:?}",

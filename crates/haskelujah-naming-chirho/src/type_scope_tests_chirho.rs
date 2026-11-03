@@ -823,6 +823,7 @@ fn ordinary_record_field_type_is_still_resolved_chirho() {
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
+                multiplicity_chirho: None,
                 names_chirho: vec![name_chirho("fieldChirho")],
                 ty_chirho: TypeChirho::ConChirho(name_chirho("MissingChirho")),
                 strictness_chirho: StrictnessChirho::LazyChirho,
@@ -862,6 +863,7 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
         constructor_chirho: ConDeclChirho::RecordChirho {
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
+                multiplicity_chirho: None,
                 names_chirho: vec![name_chirho("fieldChirho")],
                 ty_chirho: malformed_field_ty_chirho,
                 strictness_chirho: StrictnessChirho::LazyChirho,
@@ -890,6 +892,7 @@ fn required_forall_record_field_remains_checkable_chirho() {
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
+                multiplicity_chirho: None,
                 names_chirho: vec![name_chirho("fieldChirho")],
                 ty_chirho: TypeChirho::RequiredForallChirho {
                     vars_chirho: vec![tyvar_chirho("typeChirho")],
@@ -1082,17 +1085,20 @@ fn gadt_outer_forall_requires_every_variable_binder_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: name_chirho("MkTChirho"),
-            ty_chirho: TypeChirho::ForallChirho {
-                vars_chirho: vec![tyvar_chirho("bChirho")],
-                body_chirho: Box::new(TypeChirho::TupleChirho {
-                    elements_chirho: vec![
-                        TypeChirho::VarChirho(name_chirho("aChirho")),
-                        TypeChirho::VarChirho(name_chirho("bChirho")),
-                    ],
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                }),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            },
+            signature_chirho:
+                haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                    TypeChirho::ForallChirho {
+                        vars_chirho: vec![tyvar_chirho("bChirho")],
+                        body_chirho: Box::new(TypeChirho::TupleChirho {
+                            elements_chirho: vec![
+                                TypeChirho::VarChirho(name_chirho("aChirho")),
+                                TypeChirho::VarChirho(name_chirho("bChirho")),
+                            ],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],
@@ -1114,7 +1120,10 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: name_chirho("MkTChirho"),
-            ty_chirho: TypeChirho::VarChirho(name_chirho("aChirho")),
+            signature_chirho:
+                haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                    TypeChirho::VarChirho(name_chirho("aChirho")),
+                ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],

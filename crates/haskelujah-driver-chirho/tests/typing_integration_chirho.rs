@@ -21,6 +21,8 @@ mod declaration_validity_chirho;
 mod dollar_ownership_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/equality_scopes_chirho.rs"]
 mod equality_scopes_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
+mod gadt_constructors_chirho;
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
 #[path = "typing_integration_chirho/inferred_evidence_chirho.rs"]

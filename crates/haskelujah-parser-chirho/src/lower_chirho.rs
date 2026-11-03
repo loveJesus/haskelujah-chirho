@@ -78,6 +78,11 @@ mod flat_types_chirho;
 #[path = "lower_chirho/declarations_chirho/foreign_chirho.rs"]
 mod foreign_chirho;
 #[cfg(test)]
+#[path = "lower_chirho/data_types_chirho/gadt_signature_tests_chirho.rs"]
+mod gadt_signature_tests_chirho;
+#[path = "lower_chirho/data_types_chirho/gadt_signatures_chirho.rs"]
+mod gadt_signatures_chirho;
+#[cfg(test)]
 #[path = "lower_chirho/bindings_chirho/guard_do_tests_chirho.rs"]
 mod guard_do_tests_chirho;
 #[cfg(test)]
@@ -235,6 +240,7 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::ListTypeChirho
             | SyntaxKindChirho::VarTypeChirho
             | SyntaxKindChirho::ConTypeChirho
+            | SyntaxKindChirho::GadtFieldTypeChirho
             | SyntaxKindChirho::QualTypeChirho
             | SyntaxKindChirho::ForallTypeChirho
             | SyntaxKindChirho::KindAnnotTypeChirho

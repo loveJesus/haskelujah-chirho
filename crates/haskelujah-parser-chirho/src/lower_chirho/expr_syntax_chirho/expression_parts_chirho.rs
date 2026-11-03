@@ -116,17 +116,7 @@ impl LowerCtxChirho {
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
     ) -> Vec<FieldDeclChirho> {
-        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        let mut result_chirho = Vec::new();
-        for child_chirho in &children_chirho {
-            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho
-                && n_chirho.kind_chirho() == SyntaxKindChirho::FieldDeclChirho
-            {
-                result_chirho
-                    .push(self.lower_field_decl_chirho(n_chirho, child_chirho.start_chirho));
-            }
-        }
-        result_chirho
+        self.lower_record_fields_mode_chirho(node_chirho, base_chirho, false)
     }
 
     /// Lower a `FieldAssignChirho` CST node to an AST `FieldAssignChirho`.

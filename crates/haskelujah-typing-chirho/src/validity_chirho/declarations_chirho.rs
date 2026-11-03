@@ -30,7 +30,6 @@ use haskelujah_ast_chirho::decl_chirho::{ClassMethodChirho, ConDeclChirho, DeclC
 use haskelujah_ast_chirho::expr_chirho::LocalBindChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
-use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{
     DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho, LabelChirho,
 };
@@ -87,6 +86,35 @@ pub fn check_module_declaration_validity_chirho(
 ) -> Vec<DeclarationErrorChirho> {
     let mut errors_chirho = Vec::new();
     for decl_chirho in &module_chirho.decls_chirho {
+        let constructors_chirho = match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho,
+                ..
+            } => constructors_chirho.as_slice(),
+            DeclChirho::NewtypeDeclChirho {
+                constructor_chirho, ..
+            } => std::slice::from_ref(constructor_chirho),
+            _ => &[],
+        };
+        for constructor_chirho in constructors_chirho {
+            if let ConDeclChirho::GadtChirho {
+                name_chirho,
+                signature_chirho,
+                span_chirho,
+            } = constructor_chirho
+                && signature_chirho.malformed_chirho
+            {
+                errors_chirho.push(DeclarationErrorChirho {
+                    ghc_code_chirho: "GHC-58481",
+                    message_chirho: format!(
+                        "Malformed GADT constructor signature for `{}`",
+                        name_chirho.text_chirho()
+                    ),
+                    span_chirho: *span_chirho,
+                    related_span_chirho: None,
+                });
+            }
+        }
         match decl_chirho {
             DeclChirho::NewtypeDeclChirho {
                 constructor_chirho, ..
@@ -149,10 +177,10 @@ fn check_newtype_constructor_chirho(
         ),
         ConDeclChirho::GadtChirho {
             name_chirho,
-            ty_chirho,
+            signature_chirho,
             span_chirho,
         } => {
-            if signature_has_context_chirho(ty_chirho) {
+            if signature_chirho.has_context_chirho() {
                 errors_chirho.push(DeclarationErrorChirho {
                     ghc_code_chirho: "GHC-17440",
                     message_chirho: format!(
@@ -163,7 +191,11 @@ fn check_newtype_constructor_chirho(
                     related_span_chirho: None,
                 });
             }
-            return;
+            (
+                name_chirho,
+                signature_chirho.positional_fields_chirho().count(),
+                *span_chirho,
+            )
         }
     };
     if name_chirho.text_chirho().is_empty() || field_count_chirho == 1 {
@@ -179,21 +211,6 @@ fn check_newtype_constructor_chirho(
         span_chirho,
         related_span_chirho: None,
     });
-}
-
-/// Whether a constructor signature's own context is non-empty, looking through
-/// its leading quantifiers. A context inside an argument belongs to a rank-N
-/// field type, which GHC allows.
-fn signature_has_context_chirho(ty_chirho: &TypeChirho) -> bool {
-    match ty_chirho {
-        TypeChirho::ForallChirho { body_chirho, .. }
-        | TypeChirho::ParenChirho {
-            inner_chirho: body_chirho,
-            ..
-        } => signature_has_context_chirho(body_chirho),
-        TypeChirho::QualChirho { context_chirho, .. } => !context_chirho.is_empty(),
-        _ => false,
-    }
 }
 
 /// GHC's spelling of a field count (`speakN`).

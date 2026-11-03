@@ -478,6 +478,7 @@ fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<Modul
                             exports_chirho.values_chirho.insert(
                                 name_chirho.clone(),
                                 IfaceValueChirho {
+                            availability_chirho: haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                                     name_chirho: name_chirho.clone(),
                                     span_chirho,
                                     defining_module_chirho: None,
@@ -487,6 +488,7 @@ fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<Modul
                             exports_chirho.values_chirho.insert(
                                 name_chirho.clone(),
                                 IfaceValueChirho {
+                            availability_chirho: haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                                     name_chirho: name_chirho.clone(),
                                     span_chirho,
                                     defining_module_chirho: None,

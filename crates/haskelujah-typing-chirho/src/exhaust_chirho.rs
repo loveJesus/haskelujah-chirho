@@ -23,7 +23,6 @@ use haskelujah_ast_chirho::expr_chirho::{
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
-use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -235,16 +234,6 @@ impl TypeConEnvChirho {
     }
 }
 
-/// Count function arguments in a GADT type signature for arity computation.
-fn extract_gadt_arity_chirho(ty_chirho: &TypeChirho) -> usize {
-    match ty_chirho {
-        TypeChirho::FunChirho { result_chirho, .. } => 1 + extract_gadt_arity_chirho(result_chirho),
-        TypeChirho::ForallChirho { body_chirho, .. } => extract_gadt_arity_chirho(body_chirho),
-        TypeChirho::QualChirho { body_chirho, .. } => extract_gadt_arity_chirho(body_chirho),
-        _ => 0, // Return type — not an argument
-    }
-}
-
 fn con_decl_to_info_chirho(decl_chirho: &ConDeclChirho) -> ConInfoChirho {
     match decl_chirho {
         ConDeclChirho::OrdinaryChirho {
@@ -268,11 +257,11 @@ fn con_decl_to_info_chirho(decl_chirho: &ConDeclChirho) -> ConInfoChirho {
         },
         ConDeclChirho::GadtChirho {
             name_chirho,
-            ty_chirho,
+            signature_chirho,
             ..
         } => ConInfoChirho {
             name_chirho: name_chirho.text_chirho().to_string(),
-            arity_chirho: extract_gadt_arity_chirho(ty_chirho),
+            arity_chirho: signature_chirho.positional_fields_chirho().count(),
         },
     }
 }

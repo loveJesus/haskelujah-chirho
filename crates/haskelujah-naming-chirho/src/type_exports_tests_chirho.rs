@@ -486,6 +486,7 @@ fn a_source_module_marks_the_types_it_declares_complete_chirho() {
                 vec![ConDeclChirho::RecordChirho {
                     name_chirho: name_chirho("RecordChirho"),
                     fields_chirho: vec![FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![name_chirho("nameChirho")],
                         ty_chirho: TypeChirho::ConChirho(name_chirho("Int")),
                         strictness_chirho: StrictnessChirho::LazyChirho,
@@ -507,7 +508,10 @@ fn a_source_module_marks_the_types_it_declares_complete_chirho() {
                 "GadtChirho",
                 vec![ConDeclChirho::GadtChirho {
                     name_chirho: name_chirho("MkGadtChirho"),
-                    ty_chirho: TypeChirho::ConChirho(name_chirho("GadtChirho")),
+                    signature_chirho:
+                        haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                            TypeChirho::ConChirho(name_chirho("GadtChirho")),
+                        ),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }],
             ),

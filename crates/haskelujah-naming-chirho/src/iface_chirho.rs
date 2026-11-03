@@ -32,9 +32,20 @@ pub use builtin_chirho::builtin_module_ifaces_chirho;
 // Interface types
 // ---------------------------------------------------------------------------
 
-/// An exported value (function, variable, data constructor).
+/// Whether a named field also has a callable selector. A field label remains
+/// available to record patterns even when existential variables prohibit a
+/// selector. Importers must never fill that absence with a placeholder scheme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum IfaceValueAvailabilityChirho {
+    #[default]
+    AvailableChirho,
+    FieldLabelOnlyChirho,
+}
+
+/// An exported value or record field label (function, variable, constructor).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IfaceValueChirho {
+    pub availability_chirho: IfaceValueAvailabilityChirho,
     pub name_chirho: String,
     pub span_chirho: SpanChirho,
     /// The source module that defines the value (row 642). It is `Some` only for a source
@@ -704,6 +715,14 @@ pub fn merge_module_ifaces_chirho(
                     .exports_chirho
                     .values_chirho
                     .entry(name_chirho)
+                    .and_modify(|existing_value_chirho| {
+                        if value_chirho.availability_chirho
+                            == IfaceValueAvailabilityChirho::FieldLabelOnlyChirho
+                        {
+                            existing_value_chirho.availability_chirho =
+                                IfaceValueAvailabilityChirho::FieldLabelOnlyChirho;
+                        }
+                    })
                     .or_insert(value_chirho);
             }
             for (name_chirho, type_chirho) in module_chirho.exports_chirho.types_chirho {

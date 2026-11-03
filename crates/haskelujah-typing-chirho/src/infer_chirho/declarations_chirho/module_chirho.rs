@@ -204,6 +204,9 @@ impl InferCtxChirho {
         // workflow: language-features-chirho/instance-obligations-chirho
         self.check_local_instance_obligations_chirho(module_chirho);
 
+        let generative_names_chirho =
+            haskelujah_ast_chirho::decl_chirho::local_generative_type_names_chirho(module_chirho);
+
         // Phase 2: Bind data and newtype constructor types
         for decl_chirho in &module_chirho.decls_chirho {
             match decl_chirho {
@@ -323,26 +326,14 @@ impl InferCtxChirho {
                             }
                             haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                                 name_chirho,
-                                ty_chirho,
+                                signature_chirho,
                                 ..
                             } => {
-                                // Convert the full GADT type signature to TyChirho.
-                                // The return type comes from the signature itself,
-                                // NOT from the auto-constructed `T a b c`.
-                                self.note_written_constructor_context_chirho(
+                                self.bind_gadt_constructor_chirho(
                                     name_chirho,
-                                    ty_chirho,
-                                );
-                                // Constructor contexts are givens when this scheme is
-                                // opened by a pattern, and wanteds at an expression use.
-                                let (gen_scheme_chirho, _) = self.ast_type_to_scheme_seeded_chirho(
-                                    ty_chirho,
+                                    signature_chirho,
                                     &tv_map_chirho,
-                                    false,
-                                );
-                                self.env_chirho.bind_chirho(
-                                    name_chirho.text_chirho().to_string(),
-                                    gen_scheme_chirho,
+                                    &generative_names_chirho,
                                 );
                             }
                         }
@@ -450,22 +441,14 @@ impl InferCtxChirho {
                         }
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                             name_chirho: con_name_chirho,
-                            ty_chirho,
+                            signature_chirho,
                             ..
                         } => {
-                            // Newtype GADT: convert the full type signature.
-                            self.note_written_constructor_context_chirho(
+                            self.bind_gadt_constructor_chirho(
                                 con_name_chirho,
-                                ty_chirho,
-                            );
-                            let (gen_scheme_chirho, _) = self.ast_type_to_scheme_seeded_chirho(
-                                ty_chirho,
+                                signature_chirho,
                                 &nt_tv_map_chirho,
-                                false,
-                            );
-                            self.env_chirho.bind_chirho(
-                                con_name_chirho.text_chirho().to_string(),
-                                gen_scheme_chirho,
+                                &generative_names_chirho,
                             );
                         }
                     }

@@ -36,32 +36,7 @@ impl LowerCtxChirho {
                     })
                     .collect();
 
-                // Detect multiplicity: look for ⊸ or %1/%Many/%m tokens
-                let mut mult_chirho: Option<haskelujah_ast_chirho::ty_chirho::MultiplicityChirho> =
-                    None;
-                for child_chirho in &children_chirho {
-                    if let GreenElementChirho::TokenChirho(tok_chirho) =
-                        &child_chirho.element_chirho
-                    {
-                        let txt_chirho = tok_chirho.text_chirho();
-                        if tok_chirho.kind_chirho() == TokenKindChirho::LinearArrowChirho {
-                            // ⊸ = linear
-                            mult_chirho = Some(
-                                haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho,
-                            );
-                        } else if txt_chirho == "1" {
-                            // %1 = linear
-                            mult_chirho = Some(
-                                haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho,
-                            );
-                        } else if txt_chirho == "Many" {
-                            // %Many = unrestricted
-                            mult_chirho = Some(
-                                haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::ManyChirho,
-                            );
-                        }
-                    }
-                }
+                let mult_chirho = self.lower_arrow_multiplicity_chirho(&children_chirho);
 
                 if type_nodes_chirho.len() >= 2 {
                     let arg_chirho = self.lower_type_from_child_chirho(type_nodes_chirho[0]);
@@ -319,33 +294,14 @@ impl LowerCtxChirho {
                 )
             }
             SyntaxKindChirho::QualTypeChirho => {
-                // context => type — lower with proper constraint preservation
-                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let mut saw_arrow_chirho = false;
-                let mut pre_arrow_chirho: Vec<&ChildChirho<'_>> = Vec::new();
-                let mut post_arrow_chirho: Vec<&ChildChirho<'_>> = Vec::new();
-
-                for child_chirho in &children_chirho {
-                    if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho
-                        && tok_chirho.kind_chirho() == TokenKindChirho::DoubleArrowChirho
-                    {
-                        saw_arrow_chirho = true;
-                        continue;
-                    }
-                    if saw_arrow_chirho {
-                        post_arrow_chirho.push(child_chirho);
-                    } else {
-                        pre_arrow_chirho.push(child_chirho);
-                    }
-                }
-
-                let body_chirho =
-                    self.type_from_flat_children_chirho(&post_arrow_chirho, span_chirho);
-                let context_ty_chirho =
-                    self.type_from_flat_children_chirho(&pre_arrow_chirho, span_chirho);
-                let mut context_chirho =
-                    Self::type_to_constraints_chirho(&context_ty_chirho, span_chirho);
-
+                let parts_chirho = self.lower_context_parts_chirho(node_chirho, base_chirho);
+                let body_chirho = parts_chirho
+                    .body_chirho
+                    .map(|body_chirho| {
+                        self.lower_type_chirho(body_chirho.node_chirho, body_chirho.base_chirho)
+                    })
+                    .unwrap_or_else(|| self.placeholder_type_chirho());
+                let mut context_chirho = parts_chirho.constraints_chirho;
                 if context_chirho.is_empty() {
                     body_chirho
                 } else if let TypeChirho::QualChirho {
@@ -369,71 +325,24 @@ impl LowerCtxChirho {
                 }
             }
             SyntaxKindChirho::ForallTypeChirho => {
-                // workflow: language-features-chirho/rank-n-visible-type-application-chirho
-                // `forall a. Type` and required `forall a -> Type`.
-                let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-                let mut vars_chirho = Vec::new();
-                let mut saw_delimiter_chirho = false;
-                let mut required_chirho = false;
-                let mut body_chirho = None;
-
-                for child_chirho in &children_chirho {
-                    match child_chirho.element_chirho {
-                        GreenElementChirho::TokenChirho(tok_chirho) => {
-                            let kind_chirho = tok_chirho.kind_chirho();
-                            if kind_chirho == TokenKindChirho::VarIdChirho && !saw_delimiter_chirho
-                            {
-                                let s_chirho = self.span_chirho(
-                                    child_chirho.start_chirho,
-                                    child_chirho.end_chirho,
-                                );
-                                vars_chirho
-                                    .push(self.name_from_token_chirho(tok_chirho, s_chirho).into());
-                            } else if kind_chirho == TokenKindChirho::VarSymChirho
-                                && tok_chirho.text_chirho() == "."
-                            {
-                                saw_delimiter_chirho = true;
-                            } else if kind_chirho == TokenKindChirho::RightArrowChirho {
-                                saw_delimiter_chirho = true;
-                                required_chirho = true;
-                            }
-                        }
-                        GreenElementChirho::NodeChirho(n_chirho) if !saw_delimiter_chirho => {
-                            // Before the delimiter: handle kind-annotated binders.
-                            if n_chirho.kind_chirho() == SyntaxKindChirho::ParenTypeChirho
-                                && let Some(tv_chirho) = self
-                                    .try_lower_kind_annotated_forall_binder_chirho(
-                                        n_chirho,
-                                        child_chirho.start_chirho,
-                                    )
-                            {
-                                vars_chirho.push(tv_chirho);
-                            }
-                        }
-                        GreenElementChirho::NodeChirho(n_chirho)
-                            if is_type_kind_chirho(n_chirho.kind_chirho()) =>
-                        {
-                            if body_chirho.is_none() && saw_delimiter_chirho {
-                                body_chirho = Some(
-                                    self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
-                                );
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                let body_chirho =
-                    Box::new(body_chirho.unwrap_or_else(|| self.placeholder_type_chirho()));
-                if required_chirho {
+                let parts_chirho = self.lower_forall_parts_chirho(node_chirho, base_chirho);
+                let body_chirho = Box::new(
+                    parts_chirho
+                        .body_chirho
+                        .map(|body_chirho| {
+                            self.lower_type_chirho(body_chirho.node_chirho, body_chirho.base_chirho)
+                        })
+                        .unwrap_or_else(|| self.placeholder_type_chirho()),
+                );
+                if parts_chirho.required_chirho {
                     TypeChirho::RequiredForallChirho {
-                        vars_chirho,
+                        vars_chirho: parts_chirho.vars_chirho,
                         body_chirho,
                         span_chirho,
                     }
                 } else {
                     TypeChirho::ForallChirho {
-                        vars_chirho,
+                        vars_chirho: parts_chirho.vars_chirho,
                         body_chirho,
                         span_chirho,
                     }

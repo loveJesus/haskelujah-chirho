@@ -10,7 +10,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    ConDeclChirho, DeclChirho, local_generative_type_names_chirho,
+};
 use haskelujah_ast_chirho::module_chirho::{ExportMembersChirho, ModuleChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -409,6 +411,8 @@ fn ensure_type_export_chirho(
             .values_chirho
             .entry(canonical_constructor_chirho.clone())
             .or_insert_with(|| IfaceValueChirho {
+                availability_chirho:
+                    crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                 name_chirho: canonical_constructor_chirho,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
@@ -492,6 +496,8 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                     exports_chirho.values_chirho.insert(
                         value_name_chirho.clone(),
                         IfaceValueChirho {
+                            availability_chirho:
+                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                             name_chirho: value_name_chirho.clone(),
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
@@ -529,6 +535,8 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                     exports_chirho.values_chirho.insert(
                         value_name_chirho.clone(),
                         IfaceValueChirho {
+                            availability_chirho:
+                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                             name_chirho: value_name_chirho.clone(),
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
@@ -579,6 +587,8 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                     exports_chirho.values_chirho.insert(
                         method_name_chirho.clone(),
                         IfaceValueChirho {
+                            availability_chirho:
+                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                             name_chirho: method_name_chirho.clone(),
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
@@ -633,6 +643,8 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                 exports_chirho.values_chirho.insert(
                     value_name_chirho.clone(),
                     IfaceValueChirho {
+                        availability_chirho:
+                            crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                         name_chirho: value_name_chirho,
                         span_chirho: *span_chirho,
                         defining_module_chirho: defining_module_chirho.clone(),
@@ -649,6 +661,8 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                     exports_chirho.values_chirho.insert(
                         value_name_chirho.clone(),
                         IfaceValueChirho {
+                            availability_chirho:
+                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                             name_chirho: value_name_chirho,
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
@@ -663,6 +677,44 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
             | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
             | DeclChirho::SpliceDeclChirho { .. }
             | DeclChirho::StandaloneDerivingDeclChirho { .. } => {}
+        }
+    }
+
+    let generative_names_chirho = local_generative_type_names_chirho(module_chirho);
+    for decl_chirho in &module_chirho.decls_chirho {
+        let constructors_chirho = match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho,
+                ..
+            } => constructors_chirho.as_slice(),
+            DeclChirho::NewtypeDeclChirho {
+                constructor_chirho, ..
+            } => std::slice::from_ref(constructor_chirho),
+            _ => continue,
+        };
+        for con_chirho in constructors_chirho {
+            if let ConDeclChirho::GadtChirho {
+                signature_chirho, ..
+            } = con_chirho
+            {
+                for field_chirho in signature_chirho.record_fields_chirho().unwrap_or_default() {
+                    if !signature_chirho.field_selector_available_chirho(
+                        field_chirho,
+                        &|name_chirho| {
+                            generative_names_chirho.contains(&name_chirho.full_name_chirho())
+                        },
+                    ) {
+                        for name_chirho in &field_chirho.names_chirho {
+                            if let Some(value_chirho) = exports_chirho
+                                .values_chirho
+                                .get_mut(name_chirho.text_chirho())
+                            {
+                                value_chirho.availability_chirho = crate::iface_chirho::IfaceValueAvailabilityChirho::FieldLabelOnlyChirho;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -776,18 +828,17 @@ fn con_decl_name_chirho(decl_chirho: &ConDeclChirho) -> &str {
 }
 
 fn con_decl_field_names_chirho(decl_chirho: &ConDeclChirho) -> Vec<String> {
-    match decl_chirho {
-        ConDeclChirho::RecordChirho { fields_chirho, .. } => fields_chirho
-            .iter()
-            .flat_map(|field_chirho| {
-                field_chirho
-                    .names_chirho
-                    .iter()
-                    .map(|name_chirho| name_chirho.text_chirho().to_string())
-            })
-            .collect(),
-        _ => Vec::new(),
-    }
+    decl_chirho
+        .record_fields_chirho()
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|field_chirho| {
+            field_chirho
+                .names_chirho
+                .iter()
+                .map(|name_chirho| name_chirho.text_chirho().to_string())
+        })
+        .collect()
 }
 
 fn pat_bound_names_chirho(pat_chirho: &PatChirho) -> Vec<String> {

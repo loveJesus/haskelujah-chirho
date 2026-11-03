@@ -2066,6 +2066,15 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
             for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
                 if ns_chirho == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::ValueChirho
                 {
+                    // An existential field label is legal in a record pattern,
+                    // but is not a value whose absent type may be guessed.
+                    if iface_chirho.exports_chirho.values_chirho.get(name_chirho)
+                        .is_some_and(|value_chirho| value_chirho.availability_chirho == haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::FieldLabelOnlyChirho)
+                    {
+                        merged_imported_types_chirho.remove(&format!("{qualifier_chirho}.{name_chirho}"));
+                        if !import_chirho.qualified_chirho { merged_imported_types_chirho.remove(name_chirho); }
+                        continue;
+                    }
                     let module_qualified_name_chirho =
                         format!("{module_name_chirho}.{name_chirho}");
                     let base_scheme_chirho = merged_imported_types_chirho
@@ -2736,9 +2745,10 @@ fn build_newtype_info_chirho(
                 }
                 haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                     name_chirho: cn_chirho,
-                    ty_chirho,
+                    signature_chirho,
                     ..
                 } => {
+                    let ty_chirho = &signature_chirho.as_type_chirho();
                     // Extract the first argument type from the GADT type signature.
                     // E.g. `forall a. Ctx => Int -> T a` → underlying is `Int`.
                     let underlying_chirho = extract_first_fun_arg_chirho(ty_chirho)
