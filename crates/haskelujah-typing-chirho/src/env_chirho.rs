@@ -12,6 +12,23 @@ use crate::skolem_chirho::rewrite_skolems_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
+/// A lexical entry is either a value or an explicit absence. A masked field
+/// label must stop lookup before an outer Prelude seed can be considered.
+#[derive(Debug, Clone)]
+enum EnvEntryChirho {
+    ValueChirho(SchemeChirho),
+    MaskedChirho,
+}
+
+impl EnvEntryChirho {
+    fn scheme_chirho(&self) -> Option<&SchemeChirho> {
+        match self {
+            Self::ValueChirho(scheme_chirho) => Some(scheme_chirho),
+            Self::MaskedChirho => None,
+        }
+    }
+}
+
 /// A type environment: maps variable names to type schemes.
 ///
 /// Each scope also carries the *type refinements* (local given equalities
@@ -21,7 +38,7 @@ use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 #[derive(Debug, Clone, Default)]
 pub struct TyEnvChirho {
     /// Stack of scopes. The last entry is the innermost scope.
-    scopes_chirho: Vec<HashMap<String, SchemeChirho>>,
+    scopes_chirho: Vec<HashMap<String, EnvEntryChirho>>,
     /// One refinement list per scope, parallel to `scopes_chirho`.
     refinements_chirho: Vec<Vec<(String, TyChirho)>>,
 }
@@ -95,8 +112,26 @@ impl TyEnvChirho {
     /// Bind a name to a type scheme in the current (innermost) scope.
     pub fn bind_chirho(&mut self, name_chirho: String, scheme_chirho: SchemeChirho) {
         if let Some(scope_chirho) = self.scopes_chirho.last_mut() {
-            scope_chirho.insert(name_chirho, scheme_chirho);
+            scope_chirho.insert(name_chirho, EnvEntryChirho::ValueChirho(scheme_chirho));
         }
+    }
+
+    /// Make this name unavailable in the current scope. A later real binding
+    /// replaces the mask, and an inner lexical binding shadows it normally.
+    pub fn mask_chirho(&mut self, name_chirho: String) {
+        if let Some(scope_chirho) = self.scopes_chirho.last_mut() {
+            scope_chirho.insert(name_chirho, EnvEntryChirho::MaskedChirho);
+        }
+    }
+
+    /// Whether the first lexical entry is an explicit absence. Qualified
+    /// lookup uses this before considering any suffix or bare-name fallback.
+    pub fn is_masked_chirho(&self, name_chirho: &str) -> bool {
+        self.scopes_chirho
+            .iter()
+            .rev()
+            .find_map(|scope_chirho| scope_chirho.get(name_chirho))
+            .is_some_and(|entry_chirho| matches!(entry_chirho, EnvEntryChirho::MaskedChirho))
     }
 
     /// Remove a name from the current (innermost) scope.
@@ -113,13 +148,14 @@ impl TyEnvChirho {
         self.scopes_chirho
             .first()
             .and_then(|scope_chirho| scope_chirho.get(name_chirho))
+            .and_then(EnvEntryChirho::scheme_chirho)
     }
 
     /// Look up a name, searching from innermost to outermost scope.
     pub fn lookup_chirho(&self, name_chirho: &str) -> Option<&SchemeChirho> {
         for scope_chirho in self.scopes_chirho.iter().rev() {
-            if let Some(scheme_chirho) = scope_chirho.get(name_chirho) {
-                return Some(scheme_chirho);
+            if let Some(entry_chirho) = scope_chirho.get(name_chirho) {
+                return entry_chirho.scheme_chirho();
             }
         }
         None
@@ -130,10 +166,8 @@ impl TyEnvChirho {
     /// monomorphic as the pattern that introduced it).
     pub fn free_vars_chirho(&self) -> Vec<TyVarChirho> {
         let mut vars_chirho = Vec::new();
-        for scope_chirho in &self.scopes_chirho {
-            for scheme_chirho in scope_chirho.values() {
-                vars_chirho.extend(scheme_chirho.free_vars_chirho());
-            }
+        for (_, scheme_chirho) in self.all_bindings_chirho() {
+            vars_chirho.extend(scheme_chirho.free_vars_chirho());
         }
         for scope_chirho in &self.refinements_chirho {
             for (_name_chirho, ty_chirho) in scope_chirho {
@@ -145,30 +179,41 @@ impl TyEnvChirho {
         vars_chirho
     }
 
-    /// Iterate over all bindings across all scopes (outermost first).
-    /// If a name appears in multiple scopes, only the innermost is yielded.
+    /// Borrow every entry in innermost-first order, including tombstones.
+    /// A budgeted caller charges and records the first name before skipping a
+    /// missing scheme; otherwise a same-named outer value could reappear.
+    pub(crate) fn bindings_in_scope_order_chirho(
+        &self,
+    ) -> impl Iterator<Item = (&String, Option<&SchemeChirho>)> {
+        self.scopes_chirho.iter().rev().flat_map(|scope_chirho| {
+            scope_chirho
+                .iter()
+                .map(|(name_chirho, entry_chirho)| (name_chirho, entry_chirho.scheme_chirho()))
+        })
+    }
+
+    /// Iterate over usable visible bindings, innermost first. A masked entry
+    /// suppresses an outer value without appearing as an exported scheme.
     pub fn all_bindings_chirho(&self) -> Vec<(&String, &SchemeChirho)> {
         let mut seen_chirho = std::collections::HashSet::new();
         let mut result_chirho = Vec::new();
-        for scope_chirho in self.scopes_chirho.iter().rev() {
-            for (name_chirho, scheme_chirho) in scope_chirho {
-                if seen_chirho.insert(name_chirho) {
-                    result_chirho.push((name_chirho, scheme_chirho));
-                }
+        for (name_chirho, scheme_chirho) in self.bindings_in_scope_order_chirho() {
+            if seen_chirho.insert(name_chirho)
+                && let Some(scheme_chirho) = scheme_chirho
+            {
+                result_chirho.push((name_chirho, scheme_chirho));
             }
         }
         result_chirho
     }
 
-    /// Collect all visible names across all scopes (deduplicated, innermost wins).
+    /// Collect usable visible names, with masked entries suppressing outer names.
     pub fn all_names_chirho(&self) -> Vec<&str> {
         let mut seen_chirho = std::collections::HashSet::new();
         let mut names_chirho = Vec::new();
-        for scope_chirho in self.scopes_chirho.iter().rev() {
-            for name_chirho in scope_chirho.keys() {
-                if seen_chirho.insert(name_chirho.as_str()) {
-                    names_chirho.push(name_chirho.as_str());
-                }
+        for (name_chirho, scheme_chirho) in self.bindings_in_scope_order_chirho() {
+            if seen_chirho.insert(name_chirho.as_str()) && scheme_chirho.is_some() {
+                names_chirho.push(name_chirho.as_str());
             }
         }
         names_chirho
@@ -178,8 +223,10 @@ impl TyEnvChirho {
     /// refinement targets.
     pub fn apply_subst_chirho(&mut self, subst_chirho: &SubstChirho) {
         for scope_chirho in &mut self.scopes_chirho {
-            for scheme_chirho in scope_chirho.values_mut() {
-                *scheme_chirho = subst_chirho.apply_scheme_chirho(scheme_chirho);
+            for entry_chirho in scope_chirho.values_mut() {
+                if let EnvEntryChirho::ValueChirho(scheme_chirho) = entry_chirho {
+                    *scheme_chirho = subst_chirho.apply_scheme_chirho(scheme_chirho);
+                }
             }
         }
         for scope_chirho in &mut self.refinements_chirho {
@@ -298,5 +345,60 @@ mod tests_chirho {
             env_chirho.lookup_chirho("x").unwrap().ty_chirho,
             TyChirho::int_chirho()
         );
+    }
+    #[test]
+    fn a_mask_stops_lookup_and_export_but_a_real_lexical_value_shadows_it_chirho() {
+        let mut env_chirho = TyEnvChirho::new_chirho();
+        env_chirho.bind_chirho(
+            "head".to_owned(),
+            SchemeChirho::mono_chirho(TyChirho::VarChirho(TyVarChirho(91))),
+        );
+        env_chirho.push_scope_chirho();
+        env_chirho.mask_chirho("head".to_owned());
+        assert!(env_chirho.lookup_chirho("head").is_none());
+        assert!(env_chirho.is_masked_chirho("head"));
+        assert!(!env_chirho.all_names_chirho().contains(&"head"));
+        assert!(env_chirho.all_bindings_chirho().is_empty());
+        assert!(!env_chirho.free_vars_chirho().contains(&TyVarChirho(91)));
+        let entries_chirho = env_chirho
+            .bindings_in_scope_order_chirho()
+            .collect::<Vec<_>>();
+        assert_eq!(entries_chirho.len(), 2);
+        assert!(entries_chirho[0].1.is_none());
+        env_chirho.push_scope_chirho();
+        env_chirho.bind_chirho(
+            "head".to_owned(),
+            SchemeChirho::mono_chirho(TyChirho::int_chirho()),
+        );
+        assert!(!env_chirho.is_masked_chirho("head"));
+        assert_eq!(
+            env_chirho.lookup_chirho("head").unwrap().ty_chirho,
+            TyChirho::int_chirho()
+        );
+        env_chirho.pop_scope_chirho();
+        assert!(env_chirho.is_masked_chirho("head"));
+        env_chirho.bind_chirho(
+            "head".to_owned(),
+            SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+        );
+        assert!(!env_chirho.is_masked_chirho("head"));
+        assert_eq!(
+            env_chirho.lookup_chirho("head").unwrap().ty_chirho,
+            TyChirho::bool_chirho()
+        );
+    }
+
+    #[test]
+    fn a_qualified_mask_is_exact_and_substitution_preserves_it_chirho() {
+        let mut env_chirho = TyEnvChirho::new_chirho();
+        env_chirho.bind_chirho(
+            "PChirho.head".to_owned(),
+            SchemeChirho::mono_chirho(TyChirho::int_chirho()),
+        );
+        env_chirho.mask_chirho("HChirho.head".to_owned());
+        env_chirho.apply_subst_chirho(&SubstChirho::empty_chirho());
+        assert!(env_chirho.lookup_chirho("HChirho.head").is_none());
+        assert!(env_chirho.is_masked_chirho("HChirho.head"));
+        assert!(env_chirho.lookup_chirho("PChirho.head").is_some());
     }
 }

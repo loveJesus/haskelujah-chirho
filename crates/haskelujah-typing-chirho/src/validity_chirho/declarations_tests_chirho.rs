@@ -168,7 +168,11 @@ fn class_chirho(default_sig_chirho: Option<&str>, has_default_chirho: bool) -> D
 fn codes_chirho(decls_chirho: Vec<DeclChirho>) -> Vec<&'static str> {
     check_module_declaration_validity_chirho(&module_chirho(decls_chirho))
         .iter()
-        .map(|error_chirho| error_chirho.ghc_code_chirho)
+        .map(|error_chirho| {
+            error_chirho
+                .ghc_code_chirho
+                .expect("this semantic declaration rule has a measured GHC code")
+        })
         .collect()
 }
 
@@ -280,7 +284,9 @@ fn a_name_bound_apart_in_one_instance_is_reported_at_each_repeat_chirho() {
         .iter()
         .map(|error_chirho| {
             (
-                error_chirho.ghc_code_chirho,
+                error_chirho
+                    .ghc_code_chirho
+                    .expect("this semantic declaration rule has a measured GHC code"),
                 error_chirho.span_chirho,
                 error_chirho.related_span_chirho,
             )

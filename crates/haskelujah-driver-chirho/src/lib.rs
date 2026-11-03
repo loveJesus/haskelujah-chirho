@@ -172,6 +172,8 @@ pub struct FrontendResultChirho {
 #[derive(Debug, Default, Clone)]
 struct FrontendSeedArtifactsChirho {
     ifaces_chirho: Vec<ModuleIfaceChirho>,
+    interface_sources_chirho:
+        Option<std::sync::Arc<dependency_packages_chirho::DependencyInterfaceSourcesChirho>>,
     imported_types_chirho:
         std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
     imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
@@ -1945,6 +1947,13 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         return Err(declaration_validity_chirho.diagnostics_chirho);
     }
 
+    let type_constructor_scope_chirho = std::sync::Arc::new(
+        haskelujah_naming_chirho::build_type_constructor_scope_chirho(
+            &module_chirho,
+            ifaces_chirho,
+        ),
+    );
+
     // Phase 3.1: Orphan instance detection
     let orphan_warnings_chirho =
         haskelujah_naming_chirho::check_orphan_instances_chirho(&module_chirho);
@@ -1960,6 +1969,7 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     // the type checker to see imported names as polymorphic variables
     // rather than reporting them as "unbound variable" (E0202).
     let mut merged_imported_types_chirho = imported_types_chirho.clone();
+    let mut unavailable_selectors_chirho = std::collections::HashSet::new();
     let mut merged_imported_type_synonyms_chirho = imported_type_synonyms_chirho.clone();
     let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
         String,
@@ -2071,6 +2081,8 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
                     if iface_chirho.exports_chirho.values_chirho.get(name_chirho)
                         .is_some_and(|value_chirho| value_chirho.availability_chirho == haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::FieldLabelOnlyChirho)
                     {
+                        unavailable_selectors_chirho.insert(format!("{qualifier_chirho}.{name_chirho}"));
+                        if !import_chirho.qualified_chirho { unavailable_selectors_chirho.insert(name_chirho.clone()); }
                         merged_imported_types_chirho.remove(&format!("{qualifier_chirho}.{name_chirho}"));
                         if !import_chirho.qualified_chirho { merged_imported_types_chirho.remove(name_chirho); }
                         continue;
@@ -2155,12 +2167,14 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
             imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
             imported_type_families_chirho: &merged_imported_type_families_chirho,
             imported_class_env_chirho,
+            unavailable_selectors_chirho: &unavailable_selectors_chirho,
             imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
             safe_unqualified_imported_type_names_chirho:
                 &safe_unqualified_imported_type_names_chirho,
             preferred_qualified_type_names_chirho: &preferred_qualified_type_names_chirho,
             promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
             family_scope_chirho: Some(family_scope_chirho),
+            type_constructor_scope_chirho: Some(type_constructor_scope_chirho),
         },
     );
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
@@ -2232,9 +2246,7 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     warnings_chirho.extend(infer_warnings_chirho);
 
     publish_inferred_family_exports_chirho(&module_chirho, ifaces_chirho, &mut infer_result_chirho)
-        .map_err(|error_chirho| {
-            family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
-        })?;
+        .map_err(|error_chirho| error_chirho.into_diagnostics_chirho(module_chirho.span_chirho))?;
 
     Ok(FrontendResultChirho {
         module_chirho,
@@ -2620,22 +2632,6 @@ pub struct CompileResultChirho {
     pub newtype_cons_chirho: std::collections::HashSet<String>,
 }
 
-/// Extract the first argument type from a GADT type signature.
-/// Peels through forall and qualified types, then returns the first `arg` from
-/// `arg -> result`.  Returns `None` for non-function types (nullary GADT ctors).
-fn extract_first_fun_arg_chirho(
-    ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
-) -> Option<haskelujah_ast_chirho::ty_chirho::TypeChirho> {
-    use haskelujah_ast_chirho::ty_chirho::TypeChirho;
-    match ty_chirho {
-        TypeChirho::FunChirho { arg_chirho, .. } => Some((**arg_chirho).clone()),
-        TypeChirho::ForallChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
-        TypeChirho::QualChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
-        TypeChirho::ParenChirho { inner_chirho, .. } => extract_first_fun_arg_chirho(inner_chirho),
-        _ => None,
-    }
-}
-
 /// Build a mapping from data constructor names to their parent type name.
 /// Used by the dictionary-passing transform to select the correct instance
 /// dictionary when a class method is applied to a constructor value.
@@ -2748,13 +2744,8 @@ fn build_newtype_info_chirho(
                     signature_chirho,
                     ..
                 } => {
-                    let ty_chirho = &signature_chirho.as_type_chirho();
-                    // Extract the first argument type from the GADT type signature.
-                    // E.g. `forall a. Ctx => Int -> T a` → underlying is `Int`.
-                    let underlying_chirho = extract_first_fun_arg_chirho(ty_chirho)
-                        .map(|arg_ty_chirho| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&arg_ty_chirho, promotion_scope_chirho)
-                        })
+                    let underlying_chirho = signature_chirho.positional_fields_chirho().next()
+                        .map(|field_chirho| haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(field_chirho.ty_chirho, promotion_scope_chirho))
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
                 }
@@ -3095,8 +3086,21 @@ fn compile_backend_chirho(
             // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
             import_suppliers_chirho,
             promotion_scope_chirho: infer_result_chirho.promotion_scope_chirho.clone(),
+            type_constructor_scope_chirho: infer_result_chirho
+                .type_constructor_scope_chirho
+                .clone(),
         },
-    );
+    )
+    .map_err(|error_chirho| {
+        let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
+        diagnostics_chirho.push_chirho(
+            haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
+                error_chirho.to_string(),
+                error_chirho.span_chirho(),
+            ),
+        );
+        diagnostics_chirho
+    })?;
     let reference_evidence_chirho = evidence_join_chirho::join_reference_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.reference_occurrence_spans_chirho,

@@ -51,6 +51,7 @@ impl TypeScopeIssueChirho {
 }
 
 struct TypeScopeWalkerChirho<'scope_chirho> {
+    projection_budget_chirho: haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
     env_chirho: &'scope_chirho NameEnvChirho,
     diagnostics_chirho: &'scope_chirho mut DiagnosticBundleChirho,
     module_name_chirho: String,
@@ -72,6 +73,8 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         diagnostics_chirho: &'scope_chirho mut DiagnosticBundleChirho,
     ) -> Self {
         Self {
+            projection_budget_chirho:
+                haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
             env_chirho,
             diagnostics_chirho,
             module_name_chirho: module_chirho.name_chirho.full_name_chirho(),
@@ -438,7 +441,19 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             ConDeclChirho::GadtChirho {
                 signature_chirho, ..
             } => {
-                let ty_chirho = &signature_chirho.as_type_chirho();
+                let ty_chirho = &match signature_chirho
+                    .try_as_type_chirho(&mut self.projection_budget_chirho)
+                {
+                    Ok(ty_chirho) => ty_chirho,
+                    Err(error_chirho) => {
+                        self.diagnostics_chirho
+                            .push_chirho(DiagnosticChirho::error_chirho(
+                                error_chirho.to_string(),
+                                error_chirho.span_chirho(),
+                            ));
+                        return;
+                    }
+                };
                 self.walk_signature_type_chirho(ty_chirho);
             }
         }

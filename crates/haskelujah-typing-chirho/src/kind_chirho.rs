@@ -1360,6 +1360,8 @@ pub struct KindResultChirho {
 /// Run kind inference on a module's type declarations and type signatures.
 pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    let mut projection_budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
     let local_kind_decl_names_chirho: std::collections::HashSet<String> = module_chirho
         .decls_chirho
         .iter()
@@ -1389,6 +1391,21 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
     // Phase 1: Process all type/data/newtype/class declarations to establish
     // the kind of each type constructor.
     for decl_chirho in &module_chirho.decls_chirho {
+        if let Err(error_chirho) =
+            haskelujah_ast_chirho::decl_chirho::check_declaration_projection_chirho(
+                decl_chirho,
+                &mut projection_budget_chirho,
+                1,
+            )
+        {
+            ctx_chirho
+                .diagnostics_chirho
+                .push_chirho(DiagnosticChirho::error_chirho(
+                    error_chirho.to_string(),
+                    error_chirho.span_chirho,
+                ));
+            continue;
+        }
         // Reset kind variable cache between declarations so that kind
         // variables from one declaration don't leak into the next.
         ctx_chirho.kind_var_cache_chirho.clear();
@@ -1457,7 +1474,20 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                             signature_chirho,
                             ..
                         } => {
-                            let ty_chirho = &signature_chirho.as_type_chirho();
+                            let ty_chirho = &match signature_chirho
+                                .try_as_type_chirho(&mut projection_budget_chirho)
+                            {
+                                Ok(ty_chirho) => ty_chirho,
+                                Err(error_chirho) => {
+                                    ctx_chirho.diagnostics_chirho.push_chirho(
+                                        DiagnosticChirho::error_chirho(
+                                            error_chirho.to_string(),
+                                            error_chirho.span_chirho(),
+                                        ),
+                                    );
+                                    continue;
+                                }
+                            };
                             // Kind-check the full GADT type signature.
                             let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
                             ctx_chirho.unify_chirho(
@@ -1527,7 +1557,20 @@ pub fn infer_module_kinds_chirho(module_chirho: &ModuleChirho) -> KindResultChir
                         signature_chirho,
                         ..
                     } => {
-                        let ty_chirho = &signature_chirho.as_type_chirho();
+                        let ty_chirho = &match signature_chirho
+                            .try_as_type_chirho(&mut projection_budget_chirho)
+                        {
+                            Ok(ty_chirho) => ty_chirho,
+                            Err(error_chirho) => {
+                                ctx_chirho.diagnostics_chirho.push_chirho(
+                                    DiagnosticChirho::error_chirho(
+                                        error_chirho.to_string(),
+                                        error_chirho.span_chirho(),
+                                    ),
+                                );
+                                continue;
+                            }
+                        };
                         // Kind-check the full GADT type signature.
                         let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
                         ctx_chirho.unify_chirho(

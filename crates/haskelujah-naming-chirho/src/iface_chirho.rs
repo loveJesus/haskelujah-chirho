@@ -628,7 +628,10 @@ fn imported_type_in_scope_chirho(
 
 /// Build a module interface from a parsed module. Applies the export list
 /// to determine which names are publicly visible.
-pub fn build_iface_chirho(module_chirho: &ModuleChirho) -> ModuleIfaceChirho {
+pub fn build_iface_chirho(
+    module_chirho: &ModuleChirho,
+) -> Result<ModuleIfaceChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
     build_iface_with_imports_chirho(module_chirho, &[])
 }
 
@@ -637,7 +640,8 @@ pub fn build_iface_chirho(module_chirho: &ModuleChirho) -> ModuleIfaceChirho {
 pub fn build_iface_with_imports_chirho(
     module_chirho: &ModuleChirho,
     imported_ifaces_chirho: &[ModuleIfaceChirho],
-) -> ModuleIfaceChirho {
+) -> Result<ModuleIfaceChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
     build_iface_with_family_resolver_chirho(module_chirho, imported_ifaces_chirho, None)
 }
 
@@ -650,7 +654,8 @@ pub fn build_iface_with_imports_and_family_identities_chirho(
     module_chirho: &ModuleChirho,
     imported_ifaces_chirho: &[ModuleIfaceChirho],
     family_identities_chirho: &FamilyExportIdentityResolverChirho<'_>,
-) -> ModuleIfaceChirho {
+) -> Result<ModuleIfaceChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
     build_iface_with_family_resolver_chirho(
         module_chirho,
         imported_ifaces_chirho,
@@ -662,13 +667,30 @@ fn build_iface_with_family_resolver_chirho(
     module_chirho: &ModuleChirho,
     imported_ifaces_chirho: &[ModuleIfaceChirho],
     family_identities_chirho: Option<&FamilyExportIdentityResolverChirho<'_>>,
-) -> ModuleIfaceChirho {
+) -> Result<ModuleIfaceChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
+    haskelujah_ast_chirho::decl_chirho::check_module_constructor_signatures_chirho(module_chirho)?;
+    let mut projection_budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
+    haskelujah_ast_chirho::decl_chirho::check_module_projection_chirho(
+        module_chirho,
+        &mut projection_budget_chirho,
+        3,
+    )?;
     // Use full_name_chirho to preserve qualified module names (e.g., "Sub.Helper"
     // instead of just "Helper"). This is critical for hierarchical module imports.
     let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
 
     // First, collect ALL definitions in the module.
-    let all_exports_chirho = collect_all_definitions_chirho(module_chirho);
+    let type_constructor_scope_chirho = type_identity_chirho::build_type_constructor_scope_chirho(
+        module_chirho,
+        imported_ifaces_chirho,
+    );
+    let all_exports_chirho = collect_all_definitions_chirho(
+        module_chirho,
+        &type_constructor_scope_chirho,
+        &mut projection_budget_chirho,
+    )?;
 
     // Then filter by the export list.
     let mut exports_chirho = match &module_chirho.exports_chirho {
@@ -688,10 +710,10 @@ fn build_iface_with_family_resolver_chirho(
     // workflow: compiler-pipeline-chirho/value-scope-resolution-chirho
     exports_chirho.complete_member_types_chirho =
         locally_complete_type_names_chirho(module_chirho, &exports_chirho);
-    ModuleIfaceChirho {
+    Ok(ModuleIfaceChirho {
         name_chirho: module_name_chirho,
         exports_chirho,
-    }
+    })
 }
 
 /// Merge module interfaces that share the same module name, preserving the

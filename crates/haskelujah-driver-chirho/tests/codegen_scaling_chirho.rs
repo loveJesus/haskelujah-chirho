@@ -69,7 +69,8 @@ fn pattern_compilation_grows_with_input_not_alternative_suffixes_chirho() {
         .expect("well-typed list-length pattern family");
         let desugared_chirho = haskelujah_core_chirho::desugar_chirho::desugar_module_chirho(
             &frontend_chirho.module_chirho,
-        );
+        )
+        .expect("finite scaling fixture fits constructor projection budget");
         let size_chirho: usize = desugared_chirho
             .module_chirho
             .bindings_chirho

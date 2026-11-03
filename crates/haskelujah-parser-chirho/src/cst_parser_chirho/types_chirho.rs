@@ -103,7 +103,7 @@ impl ParserChirho<'_> {
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
             if record_argument_chirho {
                 self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                    .start_node_chirho(SyntaxKindChirho::GadtRecordArrowErrorChirho);
                 self.bump_chirho();
                 self.builder_chirho.finish_node_chirho();
             } else {
@@ -121,7 +121,7 @@ impl ParserChirho<'_> {
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
             if record_argument_chirho {
                 self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                    .start_node_chirho(SyntaxKindChirho::GadtRecordArrowErrorChirho);
             }
             self.bump_chirho(); // %
             self.eat_trivia_chirho();

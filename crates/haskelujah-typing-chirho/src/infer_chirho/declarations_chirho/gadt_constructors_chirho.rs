@@ -8,7 +8,7 @@ use super::{InferCtxChirho, records_chirho};
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
 use haskelujah_ast_chirho::decl_chirho::{GadtConSignatureChirho, StrictnessChirho};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 impl InferCtxChirho {
     pub(super) fn bind_gadt_constructor_chirho(
@@ -16,9 +16,24 @@ impl InferCtxChirho {
         name_chirho: &NameChirho,
         signature_chirho: &GadtConSignatureChirho,
         seed_chirho: &HashMap<String, TyVarChirho>,
-        generative_names_chirho: &HashSet<String>,
+        type_constructor_scope_chirho: Option<
+            &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
+        >,
+        module_name_chirho: &str,
+        projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
     ) {
-        let ty_chirho = signature_chirho.as_type_chirho();
+        let ty_chirho = match signature_chirho.try_as_type_chirho(projection_budget_chirho) {
+            Ok(ty_chirho) => ty_chirho,
+            Err(error_chirho) => {
+                self.diagnostics_chirho.push_chirho(
+                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
+                        error_chirho.to_string(),
+                        error_chirho.span_chirho(),
+                    ),
+                );
+                return;
+            }
+        };
         self.note_written_constructor_context_chirho(name_chirho, &ty_chirho);
         let (scheme_chirho, _) =
             self.ast_type_to_scheme_seeded_chirho(&ty_chirho, seed_chirho, false);
@@ -52,14 +67,31 @@ impl InferCtxChirho {
                 argument_tys_chirho.push(arg_chirho.as_ref());
                 result_ty_chirho = result_chirho;
             }
+            let availability_chirho = match signature_chirho.selector_availability_chirho(
+                projection_budget_chirho,
+                &|head_chirho| {
+                    type_constructor_scope_chirho
+                        .and_then(|scope_chirho| {
+                            scope_chirho.declaration_chirho(&head_chirho.full_name_chirho())
+                        })
+                        .is_some_and(|declaration_chirho| {
+                            declaration_chirho.is_nominally_generative_chirho()
+                        })
+                },
+            ) {
+                Ok(availability_chirho) => availability_chirho,
+                Err(error_chirho) => {
+                    self.diagnostics_chirho.push_chirho(
+                        haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
+                            error_chirho.to_string(),
+                            error_chirho.span_chirho(),
+                        ),
+                    );
+                    return;
+                }
+            };
             let mut field_index_chirho = 0_usize;
-            for field_chirho in fields_chirho {
-                let available_chirho = signature_chirho.field_selector_available_chirho(
-                    field_chirho,
-                    &|head_chirho| {
-                        generative_names_chirho.contains(&head_chirho.full_name_chirho())
-                    },
-                );
+            for (field_chirho, available_chirho) in fields_chirho.iter().zip(availability_chirho) {
                 for field_name_chirho in &field_chirho.names_chirho {
                     if available_chirho
                         && let Some(field_ty_chirho) = argument_tys_chirho.get(field_index_chirho)
@@ -71,9 +103,20 @@ impl InferCtxChirho {
                         );
                         let selector_scheme_chirho = self.generalize_chirho(&selector_ty_chirho);
                         self.env_chirho.bind_chirho(
+                            format!("{module_name_chirho}.{}", field_name_chirho.text_chirho()),
+                            selector_scheme_chirho.clone(),
+                        );
+                        self.env_chirho.bind_chirho(
                             field_name_chirho.text_chirho().to_string(),
                             selector_scheme_chirho,
                         );
+                    } else if !available_chirho {
+                        self.env_chirho
+                            .mask_chirho(field_name_chirho.text_chirho().to_string());
+                        self.env_chirho.mask_chirho(format!(
+                            "{module_name_chirho}.{}",
+                            field_name_chirho.text_chirho()
+                        ));
                     }
                     field_index_chirho += 1;
                 }

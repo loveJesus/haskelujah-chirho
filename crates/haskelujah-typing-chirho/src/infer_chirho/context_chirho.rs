@@ -397,6 +397,7 @@ impl InferCtxChirho {
             safe_unqualified_imported_type_names_chirho: HashSet::new(),
             preferred_qualified_type_names_chirho: HashMap::new(),
             promotion_scope_chirho: None,
+            type_constructor_scope_chirho: None,
         }
     }
 
@@ -591,6 +592,7 @@ impl InferCtxChirho {
             reference_evidence_chirho: HashMap::new(),
             reference_evidence_by_origin_chirho: HashMap::new(),
             promotion_scope_chirho: self.promotion_scope_chirho,
+            type_constructor_scope_chirho: self.type_constructor_scope_chirho,
             family_scope_chirho: self.family_scope_chirho,
         }
     }

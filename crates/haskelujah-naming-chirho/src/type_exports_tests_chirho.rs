@@ -162,7 +162,9 @@ fn class_all_exports_associated_types_and_relation_chirho() {
         vec![],
         vec![associated_class_chirho()],
     );
-    let exports_chirho = build_iface_chirho(&module_chirho).exports_chirho;
+    let exports_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget")
+        .exports_chirho;
 
     assert!(exports_chirho.types_chirho.contains_key("ElementChirho"));
     assert!(exports_chirho.types_chirho.contains_key("IndexChirho"));
@@ -183,7 +185,9 @@ fn class_selected_export_keeps_only_selected_associated_type_chirho() {
         vec![],
         vec![associated_class_chirho()],
     );
-    let exports_chirho = build_iface_chirho(&module_chirho).exports_chirho;
+    let exports_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget")
+        .exports_chirho;
 
     assert!(exports_chirho.types_chirho.contains_key("ElementChirho"));
     assert!(!exports_chirho.types_chirho.contains_key("IndexChirho"));
@@ -202,7 +206,8 @@ fn module_reexport_respects_selected_associated_import_chirho() {
         vec![],
         vec![associated_class_chirho()],
     );
-    let source_iface_chirho = build_iface_chirho(&source_module_chirho);
+    let source_iface_chirho = build_iface_chirho(&source_module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     let facade_module_chirho = module_chirho(
         "FacadeChirho",
         Some(vec![ExportSpecChirho::ModuleChirho(name_chirho(
@@ -228,6 +233,7 @@ fn module_reexport_respects_selected_associated_import_chirho() {
     );
     let exports_chirho =
         build_iface_with_imports_chirho(&facade_module_chirho, &[source_iface_chirho])
+            .expect("small source interface fixture fits constructor projection budget")
             .exports_chirho;
 
     assert!(exports_chirho.types_chirho.contains_key("ContainerChirho"));
@@ -247,7 +253,8 @@ fn module_reexport_hiding_all_removes_associated_types_chirho() {
         vec![],
         vec![associated_class_chirho()],
     );
-    let source_iface_chirho = build_iface_chirho(&source_module_chirho);
+    let source_iface_chirho = build_iface_chirho(&source_module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     let facade_module_chirho = module_chirho(
         "FacadeChirho",
         Some(vec![ExportSpecChirho::ModuleChirho(name_chirho(
@@ -271,6 +278,7 @@ fn module_reexport_hiding_all_removes_associated_types_chirho() {
     );
     let exports_chirho =
         build_iface_with_imports_chirho(&facade_module_chirho, &[source_iface_chirho])
+            .expect("small source interface fixture fits constructor projection budget")
             .exports_chirho;
 
     assert!(!exports_chirho.types_chirho.contains_key("ContainerChirho"));
@@ -287,7 +295,8 @@ fn selected_associated_import_reaches_unqualified_type_scope_chirho() {
         vec![],
         vec![associated_class_chirho()],
     );
-    let source_iface_chirho = build_iface_chirho(&source_module_chirho);
+    let source_iface_chirho = build_iface_chirho(&source_module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     let consumer_module_chirho = module_chirho(
         "ConsumerChirho",
         None,
@@ -339,7 +348,8 @@ fn selected_associated_import_reaches_qualified_alias_scope_chirho() {
         vec![],
         vec![associated_class_chirho()],
     );
-    let source_iface_chirho = build_iface_chirho(&source_module_chirho);
+    let source_iface_chirho = build_iface_chirho(&source_module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     let consumer_module_chirho = module_chirho(
         "ConsumerChirho",
         None,
@@ -439,7 +449,8 @@ fn an_unrepresented_item_reexports_and_hides_nothing_chirho() {
         None,
         vec![],
         vec![associated_class_chirho()],
-    ));
+    ))
+    .expect("small source interface fixture fits constructor projection budget");
     let unrepresented_chirho = vec![ImportItemChirho::UnrepresentedChirho(
         SpanChirho::DUMMY_CHIRHO,
     )];
@@ -451,6 +462,7 @@ fn an_unrepresented_item_reexports_and_hides_nothing_chirho() {
         }),
         std::slice::from_ref(&source_iface_chirho),
     )
+    .expect("small source interface fixture fits constructor projection budget")
     .exports_chirho;
     assert!(listed_chirho.types_chirho.is_empty());
     assert!(listed_chirho.values_chirho.is_empty());
@@ -462,6 +474,7 @@ fn an_unrepresented_item_reexports_and_hides_nothing_chirho() {
         }),
         std::slice::from_ref(&source_iface_chirho),
     )
+    .expect("small source interface fixture fits constructor projection budget")
     .exports_chirho;
     for type_name_chirho in ["ContainerChirho", "ElementChirho", "IndexChirho"] {
         assert!(
@@ -516,7 +529,7 @@ fn a_source_module_marks_the_types_it_declares_complete_chirho() {
                 }],
             ),
         ],
-    ));
+    )).expect("small source interface fixture fits constructor projection budget");
     let exports_chirho = &iface_chirho.exports_chirho;
     for type_name_chirho in ["RecordChirho", "WrapChirho", "ContainerChirho"] {
         assert!(
@@ -564,6 +577,7 @@ fn a_module_that_can_bundle_pattern_synonyms_marks_nothing_chirho() {
     );
     assert!(
         build_iface_chirho(&declaring_chirho)
+            .expect("small source interface fixture fits constructor projection budget")
             .exports_chirho
             .complete_member_types_chirho
             .is_empty()
@@ -583,6 +597,7 @@ fn a_module_that_can_bundle_pattern_synonyms_marks_nothing_chirho() {
         .push("PatternSynonyms".to_string());
     assert!(
         build_iface_chirho(&enabling_chirho)
+            .expect("small source interface fixture fits constructor projection budget")
             .exports_chirho
             .complete_member_types_chirho
             .is_empty()
@@ -598,7 +613,8 @@ fn a_reexported_type_is_not_marked_by_the_reexporting_module_chirho() {
         None,
         vec![],
         vec![associated_class_chirho()],
-    ));
+    ))
+    .expect("small source interface fixture fits constructor projection budget");
     assert!(
         source_iface_chirho
             .exports_chirho
@@ -614,7 +630,8 @@ fn a_reexported_type_is_not_marked_by_the_reexporting_module_chirho() {
             }],
         }),
         std::slice::from_ref(&source_iface_chirho),
-    );
+    )
+    .expect("small source interface fixture fits constructor projection budget");
     assert!(
         facade_chirho
             .exports_chirho
@@ -683,7 +700,8 @@ fn the_builtin_non_empty_entry_is_complete_and_a_disjoint_merge_keeps_it_chirho(
             "ExtraChirho",
             vec![ordinary_constructor_chirho("ExtraChirho")],
         )],
-    ));
+    ))
+    .expect("small source interface fixture fits constructor projection budget");
     let merged_chirho = merge_module_ifaces_chirho(vec![non_empty_chirho.clone(), source_chirho]);
     assert_eq!(merged_chirho.len(), 1);
     let marks_chirho = &merged_chirho[0].exports_chirho.complete_member_types_chirho;
@@ -717,6 +735,7 @@ fn merged_copy_chirho(
             .push("PatternSynonyms".to_string());
     }
     build_iface_chirho(&copy_chirho)
+        .expect("small source interface fixture fits constructor projection budget")
 }
 
 /// The sorted marks of the one interface these copies merge into.

@@ -1148,7 +1148,8 @@ treeWordSizeChirho = wordSize\n",
         let bitutil_iface_chirho = build_iface_with_imports_chirho(
             &bitutil_frontend_chirho.module_chirho,
             &builtin_ifaces_chirho,
-        );
+        )
+        .expect("small source interface fixture fits constructor projection budget");
 
         let inttreecommons_source_chirho =
             read_haskell_source_file_chirho(&inttreecommons_path_chirho).unwrap();
@@ -1282,7 +1283,8 @@ treeWordSizeChirho = wordSize\n",
                 let iface_chirho = build_iface_with_imports_chirho(
                     &frontend_result_chirho.module_chirho,
                     &ifaces_chirho,
-                );
+                )
+                .expect("small source interface fixture fits constructor projection budget");
                 imported_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
                     &frontend_result_chirho.module_chirho,
                     &iface_chirho,
@@ -1306,11 +1308,11 @@ treeWordSizeChirho = wordSize\n",
             crate::scan_dependency_package_ifaces_chirho(&project_dir_chirho);
         assert!(
             dependency_ifaces_chirho
-                .iter()
+                .ifaces_chirho()
                 .any(|iface_chirho| iface_chirho.name_chirho == "Utils.Containers.Internal.BitUtil"),
             "expected dependency seed to include BitUtil; sample={:?}",
             dependency_ifaces_chirho
-                .iter()
+                .ifaces_chirho()
                 .map(|iface_chirho| iface_chirho.name_chirho.clone())
                 .take(60)
                 .collect::<Vec<_>>()
@@ -1350,7 +1352,10 @@ treeWordSizeChirho = wordSize\n",
             &all_deps_chirho,
         )
         .unwrap();
-        let mut extra_ifaces_chirho = dep_ifaces_chirho;
+        let mut extra_ifaces_chirho = dep_ifaces_chirho
+            .ifaces_chirho()
+            .cloned()
+            .collect::<Vec<_>>();
         extra_ifaces_chirho.extend(dep_frontend_artifacts_chirho.ifaces_chirho.clone());
 
         let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
@@ -1362,6 +1367,10 @@ treeWordSizeChirho = wordSize\n",
                 read_haskell_source_file_chirho(path_chirho).unwrap(),
             ));
         }
+
+        dep_ifaces_chirho
+            .validate_sources_chirho(&module_sources_chirho)
+            .expect("selected containers imports have no failed scanned interface");
 
         let mut dep_graph_chirho = DepGraphChirho::new_chirho();
         let known_modules_chirho: std::collections::HashSet<String> = module_sources_chirho
@@ -1442,7 +1451,8 @@ treeWordSizeChirho = wordSize\n",
                 let iface_chirho = build_iface_with_imports_chirho(
                     &frontend_result_chirho.module_chirho,
                     &ifaces_chirho,
-                );
+                )
+                .expect("small source interface fixture fits constructor projection budget");
                 imported_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
                     &frontend_result_chirho.module_chirho,
                     &iface_chirho,

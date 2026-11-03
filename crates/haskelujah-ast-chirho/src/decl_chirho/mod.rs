@@ -14,9 +14,17 @@ use crate::pat_chirho::PatChirho;
 use crate::ty_chirho::{ConstraintChirho, TypeChirho};
 
 mod gadt_constructor_chirho;
+mod gadt_projection_chirho;
 pub use gadt_constructor_chirho::{
-    GadtConArgsChirho, GadtConFieldChirho, GadtConFieldRefChirho, GadtConPrefixChirho,
-    GadtConSignatureChirho, local_generative_type_names_chirho,
+    ConstructorSignatureErrorChirho, GadtConArgsChirho, GadtConFieldChirho, GadtConFieldRefChirho,
+    GadtConMalformedChirho, GadtConPrefixChirho, GadtConSignatureChirho,
+    check_constructor_signature_chirho, check_module_constructor_signatures_chirho,
+};
+pub use gadt_projection_chirho::{
+    GadtProjectionBudgetChirho, GadtProjectionErrorChirho, GadtProjectionLimitChirho,
+    GadtProjectionLimitsChirho, check_constructor_projection_chirho,
+    check_declaration_projection_chirho, check_module_projection_chirho, check_projection_chirho,
+    check_record_accessors_projection_chirho,
 };
 
 /// AST-level kind annotation (written in source code with KindSignatures).

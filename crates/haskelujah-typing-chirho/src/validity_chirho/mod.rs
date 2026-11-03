@@ -154,7 +154,23 @@ pub fn check_module_type_validity_chirho(module_chirho: &ModuleChirho) -> Vec<Va
     };
 
     let mut errors_chirho = Vec::new();
+    let mut projection_budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
     for decl_chirho in &module_chirho.decls_chirho {
+        if let Err(error_chirho) =
+            haskelujah_ast_chirho::decl_chirho::check_declaration_projection_chirho(
+                decl_chirho,
+                &mut projection_budget_chirho,
+                1,
+            )
+        {
+            errors_chirho.push(ValidityErrorChirho {
+                message_chirho: error_chirho.to_string(),
+                span_chirho: error_chirho.span_chirho,
+                suggested_extension_chirho: None,
+            });
+            continue;
+        }
         match decl_chirho {
             DeclChirho::TypeSigChirho { ty_chirho, .. } => {
                 walk_type_chirho(
@@ -191,13 +207,23 @@ pub fn check_module_type_validity_chirho(module_chirho: &ModuleChirho) -> Vec<Va
                 ..
             } => {
                 for constructor_chirho in constructors_chirho {
-                    walk_con_decl_chirho(constructor_chirho, license_chirho, &mut errors_chirho);
+                    walk_con_decl_chirho(
+                        constructor_chirho,
+                        license_chirho,
+                        &mut errors_chirho,
+                        &mut projection_budget_chirho,
+                    );
                 }
             }
             DeclChirho::NewtypeDeclChirho {
                 constructor_chirho, ..
             } => {
-                walk_con_decl_chirho(constructor_chirho, license_chirho, &mut errors_chirho);
+                walk_con_decl_chirho(
+                    constructor_chirho,
+                    license_chirho,
+                    &mut errors_chirho,
+                    &mut projection_budget_chirho,
+                );
             }
             _ => {}
         }
@@ -216,6 +242,7 @@ fn walk_con_decl_chirho(
     con_chirho: &ConDeclChirho,
     license_chirho: LicenseChirho,
     errors_chirho: &mut Vec<ValidityErrorChirho>,
+    projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
 ) {
     if license_chirho.datatype_contexts_chirho {
         return;
@@ -236,7 +263,17 @@ fn walk_con_decl_chirho(
         ConDeclChirho::GadtChirho {
             signature_chirho, ..
         } => {
-            let ty_chirho = &signature_chirho.as_type_chirho();
+            let ty_chirho = &match signature_chirho.try_as_type_chirho(projection_budget_chirho) {
+                Ok(ty_chirho) => ty_chirho,
+                Err(error_chirho) => {
+                    errors_chirho.push(ValidityErrorChirho {
+                        message_chirho: error_chirho.to_string(),
+                        suggested_extension_chirho: None,
+                        span_chirho: error_chirho.span_chirho(),
+                    });
+                    return;
+                }
+            };
             walk_type_chirho(
                 ty_chirho,
                 TyPositionChirho::TopChirho,

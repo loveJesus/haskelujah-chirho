@@ -204,11 +204,28 @@ impl InferCtxChirho {
         // workflow: language-features-chirho/instance-obligations-chirho
         self.check_local_instance_obligations_chirho(module_chirho);
 
-        let generative_names_chirho =
-            haskelujah_ast_chirho::decl_chirho::local_generative_type_names_chirho(module_chirho);
+        let type_constructor_scope_chirho = self.type_constructor_scope_chirho.clone();
+        let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
+
+        let mut projection_budget_chirho =
+            haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
 
         // Phase 2: Bind data and newtype constructor types
         for decl_chirho in &module_chirho.decls_chirho {
+            if let Err(error_chirho) =
+                haskelujah_ast_chirho::decl_chirho::check_declaration_projection_chirho(
+                    decl_chirho,
+                    &mut projection_budget_chirho,
+                    1,
+                )
+            {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_chirho(
+                        error_chirho.to_string(),
+                        error_chirho.span_chirho,
+                    ));
+                continue;
+            }
             match decl_chirho {
                 DeclChirho::DataDeclChirho {
                     name_chirho,
@@ -333,7 +350,9 @@ impl InferCtxChirho {
                                     name_chirho,
                                     signature_chirho,
                                     &tv_map_chirho,
-                                    &generative_names_chirho,
+                                    type_constructor_scope_chirho.as_deref(),
+                                    &module_name_chirho,
+                                    &mut projection_budget_chirho,
                                 );
                             }
                         }
@@ -448,7 +467,9 @@ impl InferCtxChirho {
                                 con_name_chirho,
                                 signature_chirho,
                                 &nt_tv_map_chirho,
-                                &generative_names_chirho,
+                                type_constructor_scope_chirho.as_deref(),
+                                &module_name_chirho,
+                                &mut projection_budget_chirho,
                             );
                         }
                     }

@@ -7,8 +7,10 @@
 
 use std::collections::HashSet;
 
-use super::{DeclChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho};
-use crate::module_chirho::ModuleChirho;
+use super::{
+    FieldDeclChirho, GadtProjectionBudgetChirho, GadtProjectionErrorChirho, StrictnessChirho,
+    TyVarChirho, check_projection_chirho,
+};
 use crate::name_chirho::NameChirho;
 use crate::ty_chirho::{ConstraintChirho, MultiplicityChirho, TypeChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -40,13 +42,96 @@ pub enum GadtConArgsChirho {
     RecordChirho(Vec<FieldDeclChirho>),
 }
 
+/// The producer retains why a constructor signature cannot be consumed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GadtConMalformedChirho {
+    IncompleteChirho,
+    IllegalRecordArrowChirho,
+    UnsupportedMultiplicityChirho,
+    ResourceChirho,
+}
+
+impl GadtConMalformedChirho {
+    pub fn ghc_code_chirho(self) -> Option<&'static str> {
+        match self {
+            Self::IncompleteChirho => Some("GHC-58481"),
+            Self::IllegalRecordArrowChirho => Some("GHC-37475"),
+            Self::UnsupportedMultiplicityChirho | Self::ResourceChirho => None,
+        }
+    }
+
+    pub fn description_chirho(self) -> &'static str {
+        match self {
+            Self::IncompleteChirho => "Malformed GADT constructor signature",
+            Self::IllegalRecordArrowChirho => {
+                "Record constructors in GADTs must use an ordinary, non-linear arrow"
+            }
+            Self::UnsupportedMultiplicityChirho => "Unsupported GADT constructor multiplicity",
+            Self::ResourceChirho => {
+                "GADT constructor signature exceeds the compiler's bounded parser work"
+            }
+        }
+    }
+}
+
+/// A retained malformed producer and a resource refusal are distinct failures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConstructorSignatureErrorChirho {
+    MalformedChirho {
+        reason_chirho: GadtConMalformedChirho,
+        span_chirho: SpanChirho,
+    },
+    ProjectionChirho(GadtProjectionErrorChirho),
+}
+
+impl ConstructorSignatureErrorChirho {
+    pub fn span_chirho(self) -> SpanChirho {
+        match self {
+            Self::MalformedChirho { span_chirho, .. } => span_chirho,
+            Self::ProjectionChirho(error_chirho) => error_chirho.span_chirho,
+        }
+    }
+    pub fn ghc_code_chirho(self) -> Option<&'static str> {
+        match self {
+            Self::MalformedChirho { reason_chirho, .. } => reason_chirho.ghc_code_chirho(),
+            Self::ProjectionChirho(_) => None,
+        }
+    }
+}
+impl From<GadtProjectionErrorChirho> for ConstructorSignatureErrorChirho {
+    fn from(error_chirho: GadtProjectionErrorChirho) -> Self {
+        Self::ProjectionChirho(error_chirho)
+    }
+}
+impl std::fmt::Display for ConstructorSignatureErrorChirho {
+    fn fmt(&self, formatter_chirho: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MalformedChirho { reason_chirho, .. } => {
+                if let Some(ghc_code_chirho) = reason_chirho.ghc_code_chirho() {
+                    write!(
+                        formatter_chirho,
+                        "{} ({ghc_code_chirho})",
+                        reason_chirho.description_chirho()
+                    )
+                } else {
+                    formatter_chirho.write_str(reason_chirho.description_chirho())
+                }
+            }
+            Self::ProjectionChirho(error_chirho) => {
+                std::fmt::Display::fmt(error_chirho, formatter_chirho)
+            }
+        }
+    }
+}
+impl std::error::Error for ConstructorSignatureErrorChirho {}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct GadtConSignatureChirho {
     pub prefix_chirho: Vec<GadtConPrefixChirho>,
     pub args_chirho: GadtConArgsChirho,
     pub result_ty_chirho: TypeChirho,
     /// Recovery must not fabricate a valid zero-argument constructor.
-    pub malformed_chirho: bool,
+    pub malformed_chirho: Option<GadtConMalformedChirho>,
     pub span_chirho: SpanChirho,
 }
 
@@ -131,7 +216,7 @@ impl GadtConSignatureChirho {
             prefix_chirho,
             args_chirho: GadtConArgsChirho::PositionalChirho(fields_chirho),
             result_ty_chirho: ty_chirho,
-            malformed_chirho: false,
+            malformed_chirho: None,
             span_chirho,
         }
     }
@@ -181,40 +266,60 @@ impl GadtConSignatureChirho {
         ))
     }
 
-    /// A selector may expose only variables recoverable from the written
-    /// result through positively known generative constructors. Type-synonym
-    /// families and heads whose role is unknown supply no proof.
-    /// The same decision is read by typing, Core and source interfaces.
-    pub fn field_selector_available_chirho(
+    pub fn check_written_signature_chirho(&self) -> Result<(), ConstructorSignatureErrorChirho> {
+        if let Some(reason_chirho) = self.malformed_chirho {
+            return Err(ConstructorSignatureErrorChirho::MalformedChirho {
+                reason_chirho,
+                span_chirho: self.span_chirho,
+            });
+        }
+        Ok(())
+    }
+
+    /// Decide once per stored field whether a selector can expose its type.
+    /// Result recovery is scanned once, and grouped labels reuse one decision.
+    /// Unknown semantic recovery is false; resource exhaustion is a named Err.
+    pub fn selector_availability_chirho(
         &self,
-        field_chirho: &FieldDeclChirho,
+        budget_chirho: &mut GadtProjectionBudgetChirho,
         generative_head_chirho: &impl Fn(&NameChirho) -> bool,
-    ) -> bool {
+    ) -> Result<Vec<bool>, ConstructorSignatureErrorChirho> {
+        self.check_written_signature_chirho()?;
+        check_projection_chirho(self, budget_chirho, 1)?;
         let mut recoverable_chirho = HashSet::new();
-        let mut remaining_chirho = 65_536_usize;
-        if !recoverable_result_vars_chirho(
+        recoverable_result_vars_chirho(
             &self.result_ty_chirho,
             generative_head_chirho,
             &mut recoverable_chirho,
-            &mut remaining_chirho,
-        ) {
-            return false;
+        );
+        recoverable_binder_kinds_chirho(&self.prefix_chirho, &mut recoverable_chirho);
+        let mut availability_chirho = Vec::new();
+        for field_chirho in self.record_fields_chirho().unwrap_or_default() {
+            let mut field_vars_chirho = HashSet::new();
+            let faithful_chirho = field_free_vars_chirho(
+                &field_chirho.ty_chirho,
+                &mut HashSet::new(),
+                &mut field_vars_chirho,
+            );
+            availability_chirho
+                .push(faithful_chirho && field_vars_chirho.is_subset(&recoverable_chirho));
         }
-        let mut field_vars_chirho = HashSet::new();
-        if !field_free_vars_chirho(
-            &field_chirho.ty_chirho,
-            &mut HashSet::new(),
-            &mut field_vars_chirho,
-            &mut remaining_chirho,
-        ) {
-            return false;
-        }
-        field_vars_chirho.is_subset(&recoverable_chirho)
+        Ok(availability_chirho)
+    }
+
+    /// Reconstruct only after the whole amplified output has been charged.
+    pub fn try_as_type_chirho(
+        &self,
+        budget_chirho: &mut GadtProjectionBudgetChirho,
+    ) -> Result<TypeChirho, ConstructorSignatureErrorChirho> {
+        self.check_written_signature_chirho()?;
+        check_projection_chirho(self, budget_chirho, 1)?;
+        Ok(self.reconstruct_type_chirho())
     }
 
     /// Reconstruct the signature at the old Type consumer boundary. Field
     /// strictness is constructor metadata, not an ordinary type wrapper.
-    pub fn as_type_chirho(&self) -> TypeChirho {
+    fn reconstruct_type_chirho(&self) -> TypeChirho {
         let mut ty_chirho = self.result_ty_chirho.clone();
         for field_chirho in self.positional_fields_chirho().rev() {
             let span_chirho = field_chirho
@@ -263,44 +368,45 @@ impl GadtConSignatureChirho {
     }
 }
 
-/// Source declarations are positive generativity authority. Merely knowing a
-/// type's spelling, including an imported abstract type or synonym, is not.
-/// Structural list, tuple and function types are handled by the shared walk.
-pub fn local_generative_type_names_chirho(module_chirho: &ModuleChirho) -> HashSet<String> {
-    let mut names_chirho = HashSet::new();
-    for decl_chirho in &module_chirho.decls_chirho {
-        if let DeclChirho::DataDeclChirho { name_chirho, .. }
-        | DeclChirho::NewtypeDeclChirho { name_chirho, .. } = decl_chirho
-        {
-            names_chirho.insert(name_chirho.text_chirho().to_string());
-            names_chirho.insert(format!(
-                "{}.{}",
-                module_chirho.name_chirho.full_name_chirho(),
-                name_chirho.text_chirho()
-            ));
-        }
+/// Check only the retained producer's malformed state, never broader language validity.
+pub fn check_constructor_signature_chirho(
+    con_chirho: &super::ConDeclChirho,
+) -> Result<(), ConstructorSignatureErrorChirho> {
+    if let super::ConDeclChirho::GadtChirho {
+        signature_chirho, ..
+    } = con_chirho
+    {
+        signature_chirho.check_written_signature_chirho()?;
     }
-    names_chirho
+    Ok(())
 }
 
-fn spend_selector_work_chirho(remaining_chirho: &mut usize) -> bool {
-    if *remaining_chirho == 0 {
-        false
-    } else {
-        *remaining_chirho -= 1;
-        true
+pub fn check_module_constructor_signatures_chirho(
+    module_chirho: &crate::module_chirho::ModuleChirho,
+) -> Result<(), ConstructorSignatureErrorChirho> {
+    for decl_chirho in &module_chirho.decls_chirho {
+        let constructors_chirho = match decl_chirho {
+            super::DeclChirho::DataDeclChirho {
+                constructors_chirho,
+                ..
+            } => constructors_chirho.as_slice(),
+            super::DeclChirho::NewtypeDeclChirho {
+                constructor_chirho, ..
+            } => std::slice::from_ref(constructor_chirho),
+            _ => continue,
+        };
+        for constructor_chirho in constructors_chirho {
+            check_constructor_signature_chirho(constructor_chirho)?;
+        }
     }
+    Ok(())
 }
 
 fn recoverable_result_vars_chirho(
     ty_chirho: &TypeChirho,
     generative_head_chirho: &impl Fn(&NameChirho) -> bool,
     variables_chirho: &mut HashSet<String>,
-    remaining_chirho: &mut usize,
-) -> bool {
-    if !spend_selector_work_chirho(remaining_chirho) {
-        return false;
-    }
+) {
     match ty_chirho {
         TypeChirho::VarChirho(name_chirho) => {
             variables_chirho.insert(name_chirho.text_chirho().to_string());
@@ -314,9 +420,6 @@ fn recoverable_result_vars_chirho(
                 ..
             } = head_chirho
             {
-                if !spend_selector_work_chirho(remaining_chirho) {
-                    return false;
-                }
                 args_chirho.push(arg_chirho.as_ref());
                 head_chirho = fun_chirho;
             }
@@ -324,14 +427,11 @@ fn recoverable_result_vars_chirho(
                 && generative_head_chirho(name_chirho)
             {
                 for arg_chirho in args_chirho {
-                    if !recoverable_result_vars_chirho(
+                    recoverable_result_vars_chirho(
                         arg_chirho,
                         generative_head_chirho,
                         variables_chirho,
-                        remaining_chirho,
-                    ) {
-                        return false;
-                    }
+                    );
                 }
             }
         }
@@ -339,14 +439,11 @@ fn recoverable_result_vars_chirho(
             elements_chirho, ..
         } => {
             for element_chirho in elements_chirho {
-                if !recoverable_result_vars_chirho(
+                recoverable_result_vars_chirho(
                     element_chirho,
                     generative_head_chirho,
                     variables_chirho,
-                    remaining_chirho,
-                ) {
-                    return false;
-                }
+                );
             }
         }
         TypeChirho::ListChirho { element_chirho, .. }
@@ -354,12 +451,7 @@ fn recoverable_result_vars_chirho(
             inner_chirho: element_chirho,
             ..
         } => {
-            return recoverable_result_vars_chirho(
-                element_chirho,
-                generative_head_chirho,
-                variables_chirho,
-                remaining_chirho,
-            );
+            recoverable_result_vars_chirho(element_chirho, generative_head_chirho, variables_chirho)
         }
         TypeChirho::FunChirho {
             arg_chirho,
@@ -370,32 +462,95 @@ fn recoverable_result_vars_chirho(
             if let Some(MultiplicityChirho::MultVarChirho(name_chirho)) = mult_chirho {
                 variables_chirho.insert(name_chirho.text_chirho().to_string());
             }
-            return recoverable_result_vars_chirho(
-                arg_chirho,
-                generative_head_chirho,
-                variables_chirho,
-                remaining_chirho,
-            ) && recoverable_result_vars_chirho(
-                result_chirho,
-                generative_head_chirho,
-                variables_chirho,
-                remaining_chirho,
-            );
+            recoverable_result_vars_chirho(arg_chirho, generative_head_chirho, variables_chirho);
+            recoverable_result_vars_chirho(result_chirho, generative_head_chirho, variables_chirho);
         }
         _ => {}
     }
-    true
+}
+
+/// A result variable determines its own directly written kind. Only names
+/// proved to be constructor telescope binders form dependencies; an applied
+/// kind can be a noninjective family, so it supplies no decomposition proof.
+/// The projection preflight already charged the stored names/kind nodes. Each
+/// dependency and recovered binder is visited once in this bounded worklist.
+fn recoverable_binder_kinds_chirho(
+    prefix_chirho: &[GadtConPrefixChirho],
+    recoverable_chirho: &mut HashSet<String>,
+) {
+    let binder_names_chirho = prefix_chirho
+        .iter()
+        .filter_map(|prefix_chirho| {
+            if let GadtConPrefixChirho::ForallChirho { vars_chirho, .. } = prefix_chirho {
+                Some(vars_chirho)
+            } else {
+                None
+            }
+        })
+        .flatten()
+        .map(|variable_chirho| variable_chirho.name_chirho.text_chirho().to_owned())
+        .collect::<HashSet<_>>();
+    let mut dependencies_chirho = std::collections::HashMap::<String, Vec<String>>::new();
+    for prefix_chirho in prefix_chirho {
+        if let GadtConPrefixChirho::ForallChirho { vars_chirho, .. } = prefix_chirho {
+            for variable_chirho in vars_chirho {
+                let mut names_chirho = Vec::new();
+                if let Some(kind_chirho) = &variable_chirho.kind_annotation_chirho {
+                    direct_kind_dependencies_chirho(
+                        kind_chirho,
+                        &binder_names_chirho,
+                        &mut names_chirho,
+                    );
+                }
+                // A later telescope binder replaces an outer same-named one,
+                // including an unannotated binder with no dependencies.
+                dependencies_chirho.insert(
+                    variable_chirho.name_chirho.text_chirho().to_owned(),
+                    names_chirho,
+                );
+            }
+        }
+    }
+    let mut pending_chirho = recoverable_chirho
+        .iter()
+        .cloned()
+        .collect::<std::collections::VecDeque<_>>();
+    while let Some(name_chirho) = pending_chirho.pop_front() {
+        if let Some(dependencies_chirho) = dependencies_chirho.remove(&name_chirho) {
+            for dependency_chirho in dependencies_chirho {
+                if recoverable_chirho.insert(dependency_chirho.clone()) {
+                    pending_chirho.push_back(dependency_chirho);
+                }
+            }
+        }
+    }
+}
+
+fn direct_kind_dependencies_chirho(
+    kind_chirho: &super::AstKindChirho,
+    binders_chirho: &HashSet<String>,
+    dependencies_chirho: &mut Vec<String>,
+) {
+    match kind_chirho {
+        super::AstKindChirho::VarChirho(name_chirho) if binders_chirho.contains(name_chirho) => {
+            dependencies_chirho.push(name_chirho.clone())
+        }
+        super::AstKindChirho::ArrowChirho(left_chirho, right_chirho) => {
+            direct_kind_dependencies_chirho(left_chirho, binders_chirho, dependencies_chirho);
+            direct_kind_dependencies_chirho(right_chirho, binders_chirho, dependencies_chirho);
+        }
+        super::AstKindChirho::VarChirho(_)
+        | super::AstKindChirho::AppChirho(_, _)
+        | super::AstKindChirho::StarChirho
+        | super::AstKindChirho::ConstraintChirho => {}
+    }
 }
 
 fn field_free_vars_chirho(
     ty_chirho: &TypeChirho,
     bound_chirho: &mut HashSet<String>,
     free_chirho: &mut HashSet<String>,
-    remaining_chirho: &mut usize,
 ) -> bool {
-    if !spend_selector_work_chirho(remaining_chirho) {
-        return false;
-    }
     match ty_chirho {
         TypeChirho::VarChirho(name_chirho) => {
             if !bound_chirho.contains(name_chirho.text_chirho()) {
@@ -420,8 +575,8 @@ fn field_free_vars_chirho(
             {
                 free_chirho.insert(name_chirho.text_chirho().to_string());
             }
-            return field_free_vars_chirho(fun_chirho, bound_chirho, free_chirho, remaining_chirho)
-                && field_free_vars_chirho(arg_chirho, bound_chirho, free_chirho, remaining_chirho);
+            return field_free_vars_chirho(fun_chirho, bound_chirho, free_chirho)
+                && field_free_vars_chirho(arg_chirho, bound_chirho, free_chirho);
         }
         TypeChirho::TupleChirho {
             elements_chirho, ..
@@ -430,12 +585,7 @@ fn field_free_vars_chirho(
             elements_chirho, ..
         } => {
             for element_chirho in elements_chirho {
-                if !field_free_vars_chirho(
-                    element_chirho,
-                    bound_chirho,
-                    free_chirho,
-                    remaining_chirho,
-                ) {
+                if !field_free_vars_chirho(element_chirho, bound_chirho, free_chirho) {
                     return false;
                 }
             }
@@ -444,14 +594,7 @@ fn field_free_vars_chirho(
         | TypeChirho::ParenChirho {
             inner_chirho: element_chirho,
             ..
-        } => {
-            return field_free_vars_chirho(
-                element_chirho,
-                bound_chirho,
-                free_chirho,
-                remaining_chirho,
-            );
-        }
+        } => return field_free_vars_chirho(element_chirho, bound_chirho, free_chirho),
         TypeChirho::ForallChirho {
             vars_chirho,
             body_chirho,
@@ -471,12 +614,16 @@ fn field_free_vars_chirho(
                         .then_some(name_chirho)
                 })
                 .collect::<Vec<_>>();
-            let success_chirho =
-                field_free_vars_chirho(body_chirho, bound_chirho, free_chirho, remaining_chirho);
+            for variable_chirho in vars_chirho {
+                if let Some(kind_chirho) = &variable_chirho.kind_annotation_chirho {
+                    kind_free_vars_chirho(kind_chirho, bound_chirho, free_chirho);
+                }
+            }
+            let faithful_chirho = field_free_vars_chirho(body_chirho, bound_chirho, free_chirho);
             for name_chirho in added_chirho {
                 bound_chirho.remove(&name_chirho);
             }
-            return success_chirho;
+            return faithful_chirho;
         }
         TypeChirho::QualChirho {
             context_chirho,
@@ -484,21 +631,11 @@ fn field_free_vars_chirho(
             ..
         } => {
             for pred_chirho in context_chirho {
-                if !constraint_free_vars_chirho(
-                    pred_chirho,
-                    bound_chirho,
-                    free_chirho,
-                    remaining_chirho,
-                ) {
+                if !constraint_free_vars_chirho(pred_chirho, bound_chirho, free_chirho) {
                     return false;
                 }
             }
-            return field_free_vars_chirho(
-                body_chirho,
-                bound_chirho,
-                free_chirho,
-                remaining_chirho,
-            );
+            return field_free_vars_chirho(body_chirho, bound_chirho, free_chirho);
         }
         TypeChirho::WildcardChirho { .. } => return false,
         _ => {}
@@ -510,15 +647,11 @@ fn constraint_free_vars_chirho(
     pred_chirho: &ConstraintChirho,
     bound_chirho: &mut HashSet<String>,
     free_chirho: &mut HashSet<String>,
-    remaining_chirho: &mut usize,
 ) -> bool {
-    if !spend_selector_work_chirho(remaining_chirho) {
-        return false;
-    }
     match pred_chirho {
-        ConstraintChirho::ClassChirho { args_chirho, .. } => args_chirho.iter().all(|arg_chirho| {
-            field_free_vars_chirho(arg_chirho, bound_chirho, free_chirho, remaining_chirho)
-        }),
+        ConstraintChirho::ClassChirho { args_chirho, .. } => args_chirho
+            .iter()
+            .all(|arg_chirho| field_free_vars_chirho(arg_chirho, bound_chirho, free_chirho)),
         ConstraintChirho::QuantifiedChirho {
             vars_chirho,
             context_chirho,
@@ -534,24 +667,40 @@ fn constraint_free_vars_chirho(
                         .then_some(name_chirho)
                 })
                 .collect::<Vec<_>>();
-            let success_chirho = context_chirho.iter().all(|pred_chirho| {
-                constraint_free_vars_chirho(
-                    pred_chirho,
-                    bound_chirho,
-                    free_chirho,
-                    remaining_chirho,
-                )
-            }) && constraint_free_vars_chirho(
-                body_chirho,
-                bound_chirho,
-                free_chirho,
-                remaining_chirho,
-            );
+            for variable_chirho in vars_chirho {
+                if let Some(kind_chirho) = &variable_chirho.kind_annotation_chirho {
+                    kind_free_vars_chirho(kind_chirho, bound_chirho, free_chirho);
+                }
+            }
+            let faithful_chirho =
+                context_chirho.iter().all(|pred_chirho| {
+                    constraint_free_vars_chirho(pred_chirho, bound_chirho, free_chirho)
+                }) && constraint_free_vars_chirho(body_chirho, bound_chirho, free_chirho);
             for name_chirho in added_chirho {
                 bound_chirho.remove(&name_chirho);
             }
-            success_chirho
+            faithful_chirho
         }
+    }
+}
+
+fn kind_free_vars_chirho(
+    kind_chirho: &super::AstKindChirho,
+    bound_chirho: &HashSet<String>,
+    free_chirho: &mut HashSet<String>,
+) {
+    match kind_chirho {
+        super::AstKindChirho::VarChirho(name_chirho) => {
+            if !bound_chirho.contains(name_chirho) {
+                free_chirho.insert(name_chirho.clone());
+            }
+        }
+        super::AstKindChirho::ArrowChirho(left_chirho, right_chirho)
+        | super::AstKindChirho::AppChirho(left_chirho, right_chirho) => {
+            kind_free_vars_chirho(left_chirho, bound_chirho, free_chirho);
+            kind_free_vars_chirho(right_chirho, bound_chirho, free_chirho);
+        }
+        super::AstKindChirho::StarChirho | super::AstKindChirho::ConstraintChirho => {}
     }
 }
 

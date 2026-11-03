@@ -63,7 +63,11 @@ fn codes_chirho(
     );
     errors_chirho
         .iter()
-        .map(|error_chirho| error_chirho.ghc_code_chirho)
+        .map(|error_chirho| {
+            error_chirho
+                .ghc_code_chirho
+                .expect("this semantic declaration rule has a measured GHC code")
+        })
         .collect()
 }
 

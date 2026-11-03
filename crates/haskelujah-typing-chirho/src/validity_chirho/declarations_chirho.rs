@@ -44,7 +44,7 @@ const INVALID_DECLARATION_CODE_CHIRHO: u16 = 209;
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeclarationErrorChirho {
     /// GHC's code for the rule that fired, such as `GHC-23517`.
-    pub ghc_code_chirho: &'static str,
+    pub ghc_code_chirho: Option<&'static str>,
     /// Human-readable message, phrased like GHC's.
     pub message_chirho: String,
     /// The offending part of the declaration.
@@ -64,11 +64,11 @@ pub fn check_module_declaration_validity_diagnostics_chirho(
             ErrorCodeChirho::error_chirho(INVALID_DECLARATION_CODE_CHIRHO),
             error_chirho.message_chirho,
             error_chirho.span_chirho,
-        )
-        .with_note_chirho(format!(
-            "GHC reports this as {}",
-            error_chirho.ghc_code_chirho
-        ));
+        );
+        if let Some(ghc_code_chirho) = error_chirho.ghc_code_chirho {
+            diagnostic_chirho = diagnostic_chirho
+                .with_note_chirho(format!("GHC reports this as {ghc_code_chirho}"));
+        }
         if let Some(related_chirho) = error_chirho.related_span_chirho {
             diagnostic_chirho = diagnostic_chirho.with_label_chirho(LabelChirho::secondary_chirho(
                 related_chirho,
@@ -85,7 +85,24 @@ pub fn check_module_declaration_validity_chirho(
     module_chirho: &ModuleChirho,
 ) -> Vec<DeclarationErrorChirho> {
     let mut errors_chirho = Vec::new();
+    let mut projection_budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
     for decl_chirho in &module_chirho.decls_chirho {
+        if let Err(error_chirho) =
+            haskelujah_ast_chirho::decl_chirho::check_declaration_projection_chirho(
+                decl_chirho,
+                &mut projection_budget_chirho,
+                1,
+            )
+        {
+            errors_chirho.push(DeclarationErrorChirho {
+                ghc_code_chirho: None,
+                message_chirho: error_chirho.to_string(),
+                span_chirho: error_chirho.span_chirho,
+                related_span_chirho: None,
+            });
+            continue;
+        }
         let constructors_chirho = match decl_chirho {
             DeclChirho::DataDeclChirho {
                 constructors_chirho,
@@ -102,12 +119,13 @@ pub fn check_module_declaration_validity_chirho(
                 signature_chirho,
                 span_chirho,
             } = constructor_chirho
-                && signature_chirho.malformed_chirho
+                && let Some(reason_chirho) = signature_chirho.malformed_chirho
             {
                 errors_chirho.push(DeclarationErrorChirho {
-                    ghc_code_chirho: "GHC-58481",
+                    ghc_code_chirho: reason_chirho.ghc_code_chirho(),
                     message_chirho: format!(
-                        "Malformed GADT constructor signature for `{}`",
+                        "{} for `{}`",
+                        reason_chirho.description_chirho(),
                         name_chirho.text_chirho()
                     ),
                     span_chirho: *span_chirho,
@@ -182,7 +200,7 @@ fn check_newtype_constructor_chirho(
         } => {
             if signature_chirho.has_context_chirho() {
                 errors_chirho.push(DeclarationErrorChirho {
-                    ghc_code_chirho: "GHC-17440",
+                    ghc_code_chirho: Some("GHC-17440"),
                     message_chirho: format!(
                         "A newtype constructor must not have a context in its type: `{}`",
                         name_chirho.text_chirho()
@@ -202,7 +220,7 @@ fn check_newtype_constructor_chirho(
         return;
     }
     errors_chirho.push(DeclarationErrorChirho {
-        ghc_code_chirho: "GHC-23517",
+        ghc_code_chirho: Some("GHC-23517"),
         message_chirho: format!(
             "A newtype constructor must have exactly one field, but `{}` has {}",
             name_chirho.text_chirho(),
@@ -246,7 +264,7 @@ fn check_instance_bindings_chirho(
                 vacant_chirho.insert(*span_chirho);
             }
             Entry::Occupied(first_chirho) => errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-10498",
+                ghc_code_chirho: Some("GHC-10498"),
                 message_chirho: format!(
                     "Conflicting definitions for `{}` in one instance declaration",
                     name_chirho.text_chirho()
@@ -274,7 +292,7 @@ fn check_default_signatures_chirho(
     for method_chirho in methods_chirho {
         if method_chirho.default_sig_chirho.is_some() && method_chirho.default_chirho.is_none() {
             errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-59794",
+                ghc_code_chirho: Some("GHC-59794"),
                 message_chirho: format!(
                     "Class `{}` has a generic-default signature without a binding `{}`",
                     class_name_chirho.text_chirho(),

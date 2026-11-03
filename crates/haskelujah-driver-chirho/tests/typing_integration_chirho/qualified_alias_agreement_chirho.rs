@@ -402,6 +402,7 @@ fn source_iface_chirho(
         &lower_module_chirho(&green_chirho, FileIdChirho::SYNTHETIC_CHIRHO),
         imported_chirho,
     )
+    .expect("small source interface fixture fits constructor projection budget")
 }
 
 fn seeded_iface_chirho(name_chirho: &str) -> ModuleIfaceChirho {

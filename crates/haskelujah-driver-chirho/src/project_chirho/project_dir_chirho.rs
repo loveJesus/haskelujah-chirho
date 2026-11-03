@@ -312,7 +312,10 @@ fn parse_boot_iface_chirho(
         &module_chirho,
         existing_ifaces_chirho,
         &infer_result_chirho.type_families_chirho,
-    );
+    )
+    .map_err(|error_chirho| {
+        error_chirho.source_message_chirho(boot_path_chirho, source_map_chirho)
+    })?;
 
     // Extract type schemes from the boot file
     let mut types_chirho = std::collections::HashMap::new();
@@ -523,7 +526,10 @@ pub fn compile_project_dir_chirho(
                 &module_chirho,
                 &ifaces_chirho,
                 &infer_result_chirho.type_families_chirho,
-            );
+            )
+            .map_err(|error_chirho| {
+                error_chirho.source_message_chirho(file_name_chirho, source_map_chirho)
+            })?;
 
             let extra_dict_param_names_chirho: std::collections::HashSet<String> =
                 imported_types_chirho.keys().cloned().collect();

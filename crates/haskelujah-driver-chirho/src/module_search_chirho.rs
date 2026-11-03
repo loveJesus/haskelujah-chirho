@@ -9,6 +9,7 @@
 //! downstream consumers never disagree merely because one selects the first
 //! match while another selects the last.
 
+use haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -24,8 +25,27 @@ pub(crate) use family_discovery_chirho::{
 pub(crate) struct DiscoveredSourceModuleChirho {
     pub(crate) module_chirho: ModuleChirho,
     pub(crate) path_chirho: PathBuf,
+    pub(crate) interface_error_chirho: Option<DiscoveredInterfaceErrorChirho>,
 }
 pub(crate) type DiscoveredSourceModulesChirho = BTreeMap<String, DiscoveredSourceModuleChirho>;
+
+pub(crate) struct DiscoveredInterfaceErrorChirho {
+    pub(crate) error_chirho: ConstructorSignatureErrorChirho,
+    pub(crate) location_chirho: Option<haskelujah_span_chirho::LineColChirho>,
+}
+
+fn discovered_interface_error_chirho(
+    error_chirho: ConstructorSignatureErrorChirho,
+    source_map_chirho: &SourceMapChirho,
+) -> DiscoveredInterfaceErrorChirho {
+    let span_chirho = error_chirho.span_chirho();
+    DiscoveredInterfaceErrorChirho {
+        error_chirho,
+        location_chirho: source_map_chirho
+            .line_index_chirho(span_chirho.file_id_chirho())
+            .map(|index_chirho| index_chirho.line_col_chirho(span_chirho.start_chirho())),
+    }
+}
 
 use haskelujah_naming_chirho::iface_chirho::{
     IfaceExportsChirho, IfaceValueChirho, ModuleIfaceChirho, build_iface_with_imports_chirho,
@@ -125,14 +145,9 @@ pub(crate) fn scan_sibling_modules_with_sources_chirho(
         let Ok(sibling_source_chirho) = read_haskell_source_file_chirho(&path_chirho) else {
             continue;
         };
-        let sibling_name_chirho = path_chirho
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
         let sibling_file_chirho = SourceFileChirho::from_source_map_chirho(
             source_map_chirho,
-            &sibling_name_chirho,
+            &path_chirho,
             &sibling_source_chirho,
         );
         let sibling_fid_chirho = sibling_file_chirho.file_id_chirho();
@@ -141,22 +156,39 @@ pub(crate) fn scan_sibling_modules_with_sources_chirho(
                 ParserChirho::new_chirho(&sibling_source_chirho, sibling_fid_chirho);
             let green_chirho = parser_chirho.parse_chirho();
             let sibling_module_chirho = lower_module_chirho(&green_chirho, sibling_fid_chirho);
+            if !sibling_path_matches_declared_module_chirho(
+                &path_chirho,
+                &sibling_module_chirho.name_chirho.full_name_chirho(),
+            ) {
+                return None;
+            }
             let iface_chirho =
                 build_iface_with_imports_chirho(&sibling_module_chirho, ifaces_chirho);
-            (iface_chirho, sibling_module_chirho)
+            Some((iface_chirho, sibling_module_chirho))
         }));
-        if let Ok((iface_chirho, mut module_chirho)) = iface_result_chirho
-            && sibling_path_matches_declared_module_chirho(&path_chirho, &iface_chirho.name_chirho)
-        {
+        if let Ok(Some((iface_chirho, mut module_chirho))) = iface_result_chirho {
             crate::inject_prelude_import_chirho(&mut module_chirho);
+            let (iface_chirho, interface_error_chirho) = match iface_chirho {
+                Ok(iface_chirho) => (Some(iface_chirho), None),
+                Err(error_chirho) => (
+                    None,
+                    Some(discovered_interface_error_chirho(
+                        error_chirho,
+                        source_map_chirho,
+                    )),
+                ),
+            };
             modules_chirho.insert(
-                iface_chirho.name_chirho.clone(),
+                module_chirho.name_chirho.full_name_chirho(),
                 DiscoveredSourceModuleChirho {
                     module_chirho,
                     path_chirho: path_chirho.clone(),
+                    interface_error_chirho,
                 },
             );
-            admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
+            if let Some(iface_chirho) = iface_chirho {
+                admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
+            }
         }
     }
 }
@@ -394,7 +426,7 @@ fn scan_hierarchical_modules_bounded_chirho(
         };
         let sibling_file_chirho = SourceFileChirho::from_source_map_chirho(
             source_map_chirho,
-            &file_name_chirho,
+            &path_chirho,
             &source_chirho,
         );
         let file_id_chirho = sibling_file_chirho.file_id_chirho();
@@ -411,14 +443,27 @@ fn scan_hierarchical_modules_bounded_chirho(
         match iface_result_chirho {
             Ok(Some((iface_chirho, mut module_chirho))) => {
                 crate::inject_prelude_import_chirho(&mut module_chirho);
+                let (iface_chirho, interface_error_chirho) = match iface_chirho {
+                    Ok(iface_chirho) => (Some(iface_chirho), None),
+                    Err(error_chirho) => (
+                        None,
+                        Some(discovered_interface_error_chirho(
+                            error_chirho,
+                            source_map_chirho,
+                        )),
+                    ),
+                };
                 walk_chirho.modules_chirho.insert(
-                    iface_chirho.name_chirho.clone(),
+                    module_chirho.name_chirho.full_name_chirho(),
                     DiscoveredSourceModuleChirho {
                         module_chirho,
                         path_chirho: path_chirho.clone(),
+                        interface_error_chirho,
                     },
                 );
-                admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
+                if let Some(iface_chirho) = iface_chirho {
+                    admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
+                }
             }
             Ok(None) => {}
             Err(_) => {

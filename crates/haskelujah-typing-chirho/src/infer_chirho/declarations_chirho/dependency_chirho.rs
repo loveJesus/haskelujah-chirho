@@ -262,6 +262,16 @@ pub(super) fn collect_module_shadowed_names_chirho(
                 ..
             } => {
                 for constructor_chirho in constructors_chirho {
+                    if let Some(fields_chirho) = constructor_chirho.record_fields_chirho() {
+                        for field_chirho in fields_chirho {
+                            names_chirho.extend(
+                                field_chirho
+                                    .names_chirho
+                                    .iter()
+                                    .map(|name_chirho| name_chirho.text_chirho().to_string()),
+                            );
+                        }
+                    }
                     match constructor_chirho {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho,
@@ -291,30 +301,42 @@ pub(super) fn collect_module_shadowed_names_chirho(
             }
             DeclChirho::NewtypeDeclChirho {
                 constructor_chirho, ..
-            } => match constructor_chirho {
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
-                    name_chirho,
-                    ..
+            } => {
+                if let Some(fields_chirho) = constructor_chirho.record_fields_chirho() {
+                    for field_chirho in fields_chirho {
+                        names_chirho.extend(
+                            field_chirho
+                                .names_chirho
+                                .iter()
+                                .map(|name_chirho| name_chirho.text_chirho().to_string()),
+                        );
+                    }
                 }
-                | haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                    name_chirho,
-                    ..
-                } => {
-                    names_chirho.insert(name_chirho.text_chirho().to_string());
-                }
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                    name_chirho,
-                    fields_chirho,
-                    ..
-                } => {
-                    names_chirho.insert(name_chirho.text_chirho().to_string());
-                    for field_decl_chirho in fields_chirho {
-                        for field_name_chirho in &field_decl_chirho.names_chirho {
-                            names_chirho.insert(field_name_chirho.text_chirho().to_string());
+                match constructor_chirho {
+                    haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
+                        name_chirho,
+                        ..
+                    }
+                    | haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
+                        name_chirho,
+                        ..
+                    } => {
+                        names_chirho.insert(name_chirho.text_chirho().to_string());
+                    }
+                    haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
+                        name_chirho,
+                        fields_chirho,
+                        ..
+                    } => {
+                        names_chirho.insert(name_chirho.text_chirho().to_string());
+                        for field_decl_chirho in fields_chirho {
+                            for field_name_chirho in &field_decl_chirho.names_chirho {
+                                names_chirho.insert(field_name_chirho.text_chirho().to_string());
+                            }
                         }
                     }
                 }
-            },
+            }
             _ => {}
         }
     }

@@ -210,6 +210,8 @@ pub enum SyntaxKindChirho {
     ConTypeChirho,
     /// Qualified type with context (`Eq a => a -> a`).
     GadtFieldTypeChirho,
+    /// An explicitly annotated arrow after a whole GADT record is illegal.
+    GadtRecordArrowErrorChirho,
     QualTypeChirho,
     /// Context (class constraints before `=>`).
     ContextChirho,

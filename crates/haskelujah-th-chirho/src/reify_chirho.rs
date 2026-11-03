@@ -14,9 +14,60 @@ use haskelujah_ast_chirho::decl_chirho::{
     ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, GadtConPrefixChirho,
     StrictnessChirho, TyVarChirho,
 };
-use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
+use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, MultiplicityChirho, TypeChirho};
+use haskelujah_span_chirho::SpanChirho;
 
 use crate::th_ast_chirho::*;
+
+/// Source validity, resource limits and TH's representational limit stay distinct.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThReificationErrorChirho {
+    ConstructorSignatureChirho(haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho),
+    UnsupportedVisibleForallChirho { span_chirho: SpanChirho },
+}
+
+impl ThReificationErrorChirho {
+    pub fn span_chirho(self) -> SpanChirho {
+        match self {
+            Self::ConstructorSignatureChirho(error_chirho) => error_chirho.span_chirho(),
+            Self::UnsupportedVisibleForallChirho { span_chirho } => span_chirho,
+        }
+    }
+    pub fn ghc_code_chirho(self) -> Option<&'static str> {
+        match self {
+            Self::ConstructorSignatureChirho(error_chirho) => error_chirho.ghc_code_chirho(),
+            Self::UnsupportedVisibleForallChirho { .. } => Some("GHC-75721"),
+        }
+    }
+}
+impl From<haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+    for ThReificationErrorChirho
+{
+    fn from(
+        error_chirho: haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho,
+    ) -> Self {
+        Self::ConstructorSignatureChirho(error_chirho)
+    }
+}
+impl From<haskelujah_ast_chirho::decl_chirho::GadtProjectionErrorChirho>
+    for ThReificationErrorChirho
+{
+    fn from(error_chirho: haskelujah_ast_chirho::decl_chirho::GadtProjectionErrorChirho) -> Self {
+        Self::ConstructorSignatureChirho(error_chirho.into())
+    }
+}
+impl std::fmt::Display for ThReificationErrorChirho {
+    fn fmt(&self, formatter_chirho: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ConstructorSignatureChirho(error_chirho) => {
+                std::fmt::Display::fmt(error_chirho, formatter_chirho)
+            }
+            Self::UnsupportedVisibleForallChirho { .. } => formatter_chirho
+                .write_str("Cannot represent visible forall in Template Haskell (GHC-75721)"),
+        }
+    }
+}
+impl std::error::Error for ThReificationErrorChirho {}
 
 fn ast_constraint_to_th_chirho(constraint_chirho: &ConstraintChirho) -> ThTypeChirho {
     match constraint_chirho {
@@ -71,14 +122,37 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
         TypeChirho::FunChirho {
             arg_chirho,
             result_chirho,
+            mult_chirho,
             ..
-        } => ThTypeChirho::AppTChirho(
-            Box::new(ThTypeChirho::AppTChirho(
-                Box::new(ThTypeChirho::ArrowTChirho),
-                Box::new(ast_type_to_th_chirho(arg_chirho)),
-            )),
-            Box::new(ast_type_to_th_chirho(result_chirho)),
-        ),
+        } => {
+            let multiplicity_ty_chirho = match mult_chirho {
+                None | Some(MultiplicityChirho::ManyChirho) => None,
+                Some(MultiplicityChirho::OneChirho) => Some(ThTypeChirho::PromotedTChirho(
+                    ThNameChirho::mk_name_chirho("One"),
+                )),
+                Some(MultiplicityChirho::MultVarChirho(name_chirho)) => {
+                    Some(ThTypeChirho::VarTChirho(ThNameChirho::mk_name_chirho(
+                        name_chirho.text_chirho(),
+                    )))
+                }
+            };
+            let arrow_chirho = multiplicity_ty_chirho.map_or(
+                ThTypeChirho::ArrowTChirho,
+                |multiplicity_ty_chirho| {
+                    ThTypeChirho::AppTChirho(
+                        Box::new(ThTypeChirho::MulArrowTChirho),
+                        Box::new(multiplicity_ty_chirho),
+                    )
+                },
+            );
+            ThTypeChirho::AppTChirho(
+                Box::new(ThTypeChirho::AppTChirho(
+                    Box::new(arrow_chirho),
+                    Box::new(ast_type_to_th_chirho(arg_chirho)),
+                )),
+                Box::new(ast_type_to_th_chirho(result_chirho)),
+            )
+        }
         TypeChirho::ListChirho { element_chirho, .. } => ThTypeChirho::AppTChirho(
             Box::new(ThTypeChirho::ListTChirho),
             Box::new(ast_type_to_th_chirho(element_chirho)),
@@ -100,11 +174,6 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
             vars_chirho,
             body_chirho,
             ..
-        }
-        | TypeChirho::RequiredForallChirho {
-            vars_chirho,
-            body_chirho,
-            ..
         } => {
             let bndrs_chirho: Vec<ThTyVarBndrChirho> = vars_chirho
                 .iter()
@@ -116,6 +185,14 @@ pub fn ast_type_to_th_chirho(ty_chirho: &TypeChirho) -> ThTypeChirho {
                 Box::new(ast_type_to_th_chirho(body_chirho)),
             )
         }
+        TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => ThTypeChirho::ForallVisTChirho(
+            vars_chirho.iter().map(ast_tyvar_to_th_chirho).collect(),
+            Box::new(ast_type_to_th_chirho(body_chirho)),
+        ),
         TypeChirho::QualChirho {
             context_chirho,
             body_chirho,
@@ -169,7 +246,45 @@ pub fn ast_tyvar_to_th_chirho(tv_chirho: &TyVarChirho) -> ThTyVarBndrChirho {
 }
 
 /// Convert a haskelujah constructor declaration to a TH constructor.
-pub fn ast_con_to_th_chirho(con_chirho: &ConDeclChirho) -> ThConChirho {
+pub fn ast_con_to_th_chirho(
+    con_chirho: &ConDeclChirho,
+    budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
+) -> Result<ThConChirho, ThReificationErrorChirho> {
+    haskelujah_ast_chirho::decl_chirho::check_constructor_signature_chirho(con_chirho)?;
+    haskelujah_ast_chirho::decl_chirho::check_constructor_projection_chirho(
+        con_chirho,
+        budget_chirho,
+        3,
+    )?;
+    check_constructor_th_representation_chirho(con_chirho)?;
+    Ok(project_con_to_th_chirho(con_chirho))
+}
+
+fn check_constructor_th_representation_chirho(
+    con_chirho: &ConDeclChirho,
+) -> Result<(), ThReificationErrorChirho> {
+    if let ConDeclChirho::GadtChirho {
+        signature_chirho, ..
+    } = con_chirho
+    {
+        for prefix_chirho in &signature_chirho.prefix_chirho {
+            if let GadtConPrefixChirho::ForallChirho {
+                required_chirho: true,
+                span_chirho,
+                ..
+            } = prefix_chirho
+            {
+                return Err(ThReificationErrorChirho::UnsupportedVisibleForallChirho {
+                    span_chirho: *span_chirho,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Reached only after one public constructor or declaration preflight.
+fn project_con_to_th_chirho(con_chirho: &ConDeclChirho) -> ThConChirho {
     match con_chirho {
         ConDeclChirho::OrdinaryChirho {
             name_chirho,
@@ -218,6 +333,9 @@ pub fn ast_con_to_th_chirho(con_chirho: &ConDeclChirho) -> ThConChirho {
         } => {
             let ret_ty_chirho = Box::new(ast_type_to_th_chirho(&signature_chirho.result_ty_chirho));
             let names_chirho = vec![ThNameChirho::mk_name_chirho(name_chirho.text_chirho())];
+            // GHC's TyConI BangType representation intentionally contains no
+            // field-arrow multiplicity. DataConI's complete type uses the
+            // shared type converter above, which retains MulArrowT.
             let mut con_chirho =
                 if let Some(fields_chirho) = signature_chirho.record_fields_chirho() {
                     ThConChirho::RecGadtCChirho(
@@ -297,8 +415,32 @@ fn gadt_bang_to_th_chirho(strictness_chirho: StrictnessChirho) -> ThBangChirho {
 /// Reify a top-level declaration into TH `Info`.
 ///
 /// This is the main entry point for `reify` when the target is a locally-defined name.
-pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
-    match decl_chirho {
+pub fn reify_decl_chirho(
+    decl_chirho: &DeclChirho,
+    budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
+) -> Result<Option<ThInfoChirho>, ThReificationErrorChirho> {
+    let constructors_chirho = match decl_chirho {
+        DeclChirho::DataDeclChirho {
+            constructors_chirho,
+            ..
+        } => constructors_chirho.as_slice(),
+        DeclChirho::NewtypeDeclChirho {
+            constructor_chirho, ..
+        } => std::slice::from_ref(constructor_chirho),
+        _ => &[],
+    };
+    for constructor_chirho in constructors_chirho {
+        haskelujah_ast_chirho::decl_chirho::check_constructor_signature_chirho(constructor_chirho)?;
+    }
+    haskelujah_ast_chirho::decl_chirho::check_declaration_projection_chirho(
+        decl_chirho,
+        budget_chirho,
+        3,
+    )?;
+    for constructor_chirho in constructors_chirho {
+        check_constructor_th_representation_chirho(constructor_chirho)?;
+    }
+    Ok(match decl_chirho {
         DeclChirho::DataDeclChirho {
             name_chirho,
             type_vars_chirho,
@@ -313,7 +455,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
                 .collect();
             let th_cons_chirho: Vec<ThConChirho> = constructors_chirho
                 .iter()
-                .map(|c_chirho| ast_con_to_th_chirho(c_chirho))
+                .map(project_con_to_th_chirho)
                 .collect();
             let th_deriving_chirho: Vec<ThDerivClauseChirho> = if deriving_chirho.is_empty() {
                 vec![]
@@ -352,7 +494,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
                 .iter()
                 .map(|tv_chirho| ast_tyvar_to_th_chirho(tv_chirho))
                 .collect();
-            let th_con_chirho = ast_con_to_th_chirho(constructor_chirho);
+            let th_con_chirho = project_con_to_th_chirho(constructor_chirho);
             let th_deriving_chirho: Vec<ThDerivClauseChirho> = if deriving_chirho.is_empty() {
                 vec![]
             } else {
@@ -447,7 +589,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
             )))
         }
         _ => None, // Other declaration types not yet reifiable
-    }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -499,7 +641,12 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
-        let info_chirho = reify_decl_chirho(&decl_chirho).unwrap();
+        let info_chirho = reify_decl_chirho(
+            &decl_chirho,
+            &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
+        )
+        .expect("small TH fixture fits projection budget")
+        .expect("supported TH declaration");
         match info_chirho {
             ThInfoChirho::TyConIChirho(ThDecChirho::DataDChirho(
                 _cxt,
@@ -535,7 +682,12 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
 
-        let info_chirho = reify_decl_chirho(&decl_chirho).unwrap();
+        let info_chirho = reify_decl_chirho(
+            &decl_chirho,
+            &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
+        )
+        .expect("small TH fixture fits projection budget")
+        .expect("supported TH declaration");
         match info_chirho {
             ThInfoChirho::TyConIChirho(ThDecChirho::TySynDChirho(name_chirho, _, rhs_chirho)) => {
                 assert_eq!(name_chirho.occ_chirho, "MyString");
@@ -567,5 +719,118 @@ mod tests_chirho {
             },
             _ => panic!("expected AppT"),
         }
+    }
+
+    #[test]
+    fn complete_constructor_types_keep_multiplicity_while_bang_types_project_it_chirho() {
+        let arrow_chirho = |multiplicity_chirho| TypeChirho::FunChirho {
+            arg_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("Int"))),
+            mult_chirho: multiplicity_chirho,
+            result_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("BoxChirho"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let mut projected_chirho = Vec::new();
+        for multiplicity_chirho in [
+            None,
+            Some(MultiplicityChirho::OneChirho),
+            Some(MultiplicityChirho::MultVarChirho(mk_name_chirho("mChirho"))),
+        ] {
+            let ty_chirho = arrow_chirho(multiplicity_chirho.clone());
+            let ThTypeChirho::AppTChirho(argument_chirho, _) = ast_type_to_th_chirho(&ty_chirho)
+            else {
+                panic!("function result application")
+            };
+            let ThTypeChirho::AppTChirho(arrow_chirho, _) = *argument_chirho else {
+                panic!("function argument application")
+            };
+            match multiplicity_chirho {
+                None => assert_eq!(*arrow_chirho, ThTypeChirho::ArrowTChirho),
+                Some(multiplicity_chirho) => {
+                    let ThTypeChirho::AppTChirho(operator_chirho, value_chirho) = *arrow_chirho
+                    else {
+                        panic!("multiplicity application")
+                    };
+                    assert_eq!(*operator_chirho, ThTypeChirho::MulArrowTChirho);
+                    match multiplicity_chirho {
+                        MultiplicityChirho::OneChirho => assert!(
+                            matches!(*value_chirho, ThTypeChirho::PromotedTChirho(name_chirho) if name_chirho.occ_chirho == "One")
+                        ),
+                        MultiplicityChirho::MultVarChirho(_) => assert!(
+                            matches!(*value_chirho, ThTypeChirho::VarTChirho(name_chirho) if name_chirho.occ_chirho == "mChirho")
+                        ),
+                        MultiplicityChirho::ManyChirho => panic!("not a test input"),
+                    }
+                }
+            }
+            let constructor_chirho = ConDeclChirho::GadtChirho {
+                name_chirho: mk_name_chirho("MkBoxChirho"),
+                signature_chirho:
+                    haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                        ty_chirho,
+                    ),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            };
+            projected_chirho.push(
+                ast_con_to_th_chirho(
+                    &constructor_chirho,
+                    &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(
+                    ),
+                )
+                .expect("GHC projects all three into a BangType"),
+            );
+        }
+        assert_eq!(projected_chirho[0], projected_chirho[1]);
+        assert_eq!(projected_chirho[1], projected_chirho[2]);
+        let unrestricted_chirho = arrow_chirho(Some(MultiplicityChirho::ManyChirho));
+        assert_eq!(
+            ast_type_to_th_chirho(&unrestricted_chirho),
+            ast_type_to_th_chirho(&arrow_chirho(None))
+        );
+    }
+
+    #[test]
+    fn visible_forall_reification_failure_is_not_malformed_source_chirho() {
+        let ty_chirho = TypeChirho::RequiredForallChirho {
+            vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("aChirho"))],
+            body_chirho: Box::new(TypeChirho::ConChirho(mk_name_chirho("BoxChirho"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        assert!(matches!(
+            ast_type_to_th_chirho(&ty_chirho),
+            ThTypeChirho::ForallVisTChirho(_, _)
+        ));
+        let signature_chirho =
+            haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(ty_chirho);
+        assert!(signature_chirho.check_written_signature_chirho().is_ok());
+        let constructor_chirho = ConDeclChirho::GadtChirho {
+            name_chirho: mk_name_chirho("MkBoxChirho"),
+            signature_chirho,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        let error_chirho = ast_con_to_th_chirho(
+            &constructor_chirho,
+            &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
+        )
+        .expect_err("GHC cannot represent a visible constructor forall in TH declarations");
+        assert!(matches!(
+            error_chirho,
+            ThReificationErrorChirho::UnsupportedVisibleForallChirho { .. }
+        ));
+        assert_eq!(error_chirho.ghc_code_chirho(), Some("GHC-75721"));
+        let declaration_chirho = DeclChirho::DataDeclChirho {
+            name_chirho: mk_name_chirho("BoxChirho"),
+            type_vars_chirho: vec![],
+            constructors_chirho: vec![constructor_chirho],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        assert!(matches!(
+            reify_decl_chirho(
+                &declaration_chirho,
+                &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho()
+            ),
+            Err(ThReificationErrorChirho::UnsupportedVisibleForallChirho { .. })
+        ));
     }
 }

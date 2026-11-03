@@ -22,6 +22,12 @@ impl InferCtxChirho {
     ) -> Option<SchemeChirho> {
         let canonical_full_name_chirho = canonical_value_name_text_chirho(full_name_chirho);
         let canonical_bare_name_chirho = canonical_value_name_text_chirho(bare_name_chirho);
+        if self
+            .env_chirho
+            .is_masked_chirho(&canonical_full_name_chirho)
+        {
+            return None;
+        }
         if canonical_full_name_chirho == canonical_bare_name_chirho {
             return self
                 .env_chirho

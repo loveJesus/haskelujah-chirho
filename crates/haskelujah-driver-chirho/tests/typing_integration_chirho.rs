@@ -23,6 +23,10 @@ mod dollar_ownership_chirho;
 mod equality_scopes_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
 mod gadt_constructors_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/gadt_projection_channels_chirho.rs"]
+mod gadt_projection_channels_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/gadt_selector_scope_chirho.rs"]
+mod gadt_selector_scope_chirho;
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
 #[path = "typing_integration_chirho/inferred_evidence_chirho.rs"]

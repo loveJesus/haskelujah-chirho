@@ -34,7 +34,10 @@ use match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
-use haskelujah_ast_chirho::decl_chirho::{DeclChirho, PatSynDirChirho, StrictnessChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    DeclChirho, GadtProjectionBudgetChirho, PatSynDirChirho, StrictnessChirho,
+    check_module_projection_chirho,
+};
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
@@ -167,6 +170,8 @@ pub struct DesugarCtxChirho {
     /// constructor's identity, as the checker's types do. `None` keeps legacy keys.
     /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
     promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 impl DesugarCtxChirho {
@@ -196,6 +201,7 @@ impl DesugarCtxChirho {
             operator_occurrences_chirho: HashSet::new(),
             instance_row_keys_chirho: Vec::new(),
             promotion_scope_chirho: None,
+            type_constructor_scope_chirho: None,
         }
     }
 
@@ -1130,7 +1136,26 @@ impl DesugarCtxChirho {
     }
 
     /// Desugar an entire AST module into a Core module with name map.
-    pub fn desugar_module_chirho(&mut self, module_chirho: &ModuleChirho) -> DesugarOutputChirho {
+    pub fn desugar_module_chirho(
+        &mut self,
+        module_chirho: &ModuleChirho,
+    ) -> Result<
+        DesugarOutputChirho,
+        haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho,
+    > {
+        haskelujah_ast_chirho::decl_chirho::check_module_constructor_signatures_chirho(
+            module_chirho,
+        )?;
+        let mut projection_budget_chirho = GadtProjectionBudgetChirho::with_limits_chirho(
+            haskelujah_ast_chirho::decl_chirho::GadtProjectionLimitsChirho {
+                work_chirho: 1 << 27,
+                output_chirho: 1 << 24,
+                depth_chirho: 512,
+            },
+        );
+        check_module_projection_chirho(module_chirho, &mut projection_budget_chirho, 3)?;
+        let record_selector_plans_chirho =
+            self.record_selector_plans_chirho(module_chirho, &mut projection_budget_chirho)?;
         self.current_module_name_chirho = Some(module_chirho.name_chirho.text_chirho().to_string());
 
         // Pass -1: Collect constructor strictness annotations for strict field enforcement
@@ -1279,7 +1304,7 @@ impl DesugarCtxChirho {
             }
         }
 
-        self.prebind_record_accessors_chirho(module_chirho);
+        self.prebind_record_accessors_chirho(&record_selector_plans_chirho);
 
         // Convert AST inline pragmas to Core inline annotations
         let inline_pragmas_chirho = &module_chirho.inline_pragmas_chirho;
@@ -1502,9 +1527,9 @@ impl DesugarCtxChirho {
         }
 
         // Generate record field accessor functions.
-        self.generate_record_accessors_chirho(module_chirho, &mut bindings_chirho);
+        self.generate_record_accessors_chirho(&record_selector_plans_chirho, &mut bindings_chirho);
 
-        DesugarOutputChirho {
+        Ok(DesugarOutputChirho {
             module_chirho: CoreModuleChirho {
                 name_chirho: module_chirho.name_chirho.text_chirho().to_string(),
                 bindings_chirho,
@@ -1535,7 +1560,7 @@ impl DesugarCtxChirho {
             occurrence_provenance_chirho: self.occurrence_provenance_chirho.clone(),
             operator_occurrences_chirho: self.operator_occurrences_chirho.clone(),
             instance_row_keys_chirho: self.instance_row_keys_chirho.clone(),
-        }
+        })
     }
 
     /// Desugar a set of match arms into a Core expression.
@@ -3723,7 +3748,10 @@ fn extract_var_name_from_pat_chirho(pat_chirho: &PatChirho) -> Option<String> {
 }
 
 /// Desugar a module from AST to Core, returning the Core module and a name map.
-pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> DesugarOutputChirho {
+pub fn desugar_module_chirho(
+    module_chirho: &ModuleChirho,
+) -> Result<DesugarOutputChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.desugar_module_chirho(module_chirho)
@@ -3736,7 +3764,8 @@ pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> DesugarOutputChirh
 pub fn desugar_module_with_method_occurrences_chirho(
     module_chirho: &ModuleChirho,
     method_names_chirho: HashSet<String>,
-) -> DesugarOutputChirho {
+) -> Result<DesugarOutputChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
     desugar_module_with_inputs_chirho(
         module_chirho,
         DesugarInputsChirho {
@@ -3768,6 +3797,8 @@ pub struct DesugarInputsChirho {
     /// The module's promoted-constructor scope (row 686); `None` keeps legacy type keys.
     /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
     pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    pub type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 /// Like [`desugar_module_with_method_occurrences_chirho`] with the full set of
@@ -3775,7 +3806,8 @@ pub struct DesugarInputsChirho {
 pub fn desugar_module_with_inputs_chirho(
     module_chirho: &ModuleChirho,
     inputs_chirho: DesugarInputsChirho,
-) -> DesugarOutputChirho {
+) -> Result<DesugarOutputChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);
@@ -3783,6 +3815,7 @@ pub fn desugar_module_with_inputs_chirho(
     ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
     ctx_chirho.import_suppliers_chirho = inputs_chirho.import_suppliers_chirho;
     ctx_chirho.promotion_scope_chirho = inputs_chirho.promotion_scope_chirho;
+    ctx_chirho.type_constructor_scope_chirho = inputs_chirho.type_constructor_scope_chirho;
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 
@@ -3899,7 +3932,8 @@ mod tests_chirho {
             origin_supply_chirho: Default::default(),
         };
 
-        let output_chirho = desugar_module_chirho(&module_chirho);
+        let output_chirho = desugar_module_chirho(&module_chirho)
+            .expect("small Core fixture fits constructor projection budget");
         let core_chirho = &output_chirho.module_chirho;
         assert_eq!(core_chirho.name_chirho, "Test");
         assert_eq!(core_chirho.bindings_chirho.len(), 1);
@@ -4025,7 +4059,8 @@ mod tests_chirho {
             origin_supply_chirho: Default::default(),
         };
 
-        let desugar_out_chirho = desugar_module_chirho(&module_chirho);
+        let desugar_out_chirho = desugar_module_chirho(&module_chirho)
+            .expect("small Core fixture fits constructor projection budget");
         let output_chirho =
             crate::pretty_chirho::pretty_module_chirho(&desugar_out_chirho.module_chirho);
         assert!(output_chirho.contains("-- module Pretty"));
@@ -4354,7 +4389,8 @@ mod tests_chirho {
             origin_supply_chirho: Default::default(),
         };
 
-        let output_chirho = desugar_module_chirho(&module_chirho);
+        let output_chirho = desugar_module_chirho(&module_chirho)
+            .expect("small Core fixture fits constructor projection budget");
         let binding_chirho = &output_chirho.module_chirho.bindings_chirho[0];
         assert_eq!(binding_chirho.binder_chirho.name_chirho, "f");
 
@@ -4944,7 +4980,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             origin_supply_chirho: Default::default(),
         };
-        let output_chirho = desugar_module_chirho(&module_chirho);
+        let output_chirho = desugar_module_chirho(&module_chirho)
+            .expect("small Core fixture fits constructor projection budget");
         let f_rhs_chirho = &output_chirho.module_chirho.bindings_chirho[0].rhs_chirho;
         // f = \arg0 -> case arg0 of { Just x -> x; Nothing -> 0 }
         if let CoreExprChirho::LamChirho { body_chirho, .. } = f_rhs_chirho {
@@ -5056,7 +5093,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             origin_supply_chirho: Default::default(),
         };
-        let output_chirho = desugar_module_chirho(&module_chirho);
+        let output_chirho = desugar_module_chirho(&module_chirho)
+            .expect("small Core fixture fits constructor projection budget");
         assert!(
             output_chirho.module_chirho.bindings_chirho[0].is_rec_chirho,
             "top-level bindings should be marked recursive"
@@ -5169,7 +5207,8 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             origin_supply_chirho: Default::default(),
         };
-        let output_chirho = desugar_module_chirho(&module_chirho);
+        let output_chirho = desugar_module_chirho(&module_chirho)
+            .expect("small Core fixture fits constructor projection budget");
         let f_rhs_chirho = &output_chirho.module_chirho.bindings_chirho[0].rhs_chirho;
         // Should be \x -> x (bang on simple var pattern is a simple lambda)
         assert!(matches!(f_rhs_chirho, CoreExprChirho::LamChirho { .. }));

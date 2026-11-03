@@ -67,7 +67,8 @@ fn export_all_when_no_export_list_chirho() {
         ],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert_eq!(iface_chirho.name_chirho, "Lib");
     assert!(
         iface_chirho
@@ -135,7 +136,8 @@ fn export_list_filters_chirho() {
         ],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -185,7 +187,8 @@ fn export_type_without_constructors_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -232,7 +235,8 @@ fn export_some_constructors_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -271,7 +275,8 @@ fn export_parenthesized_operator_type_with_constructor_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho.exports_chirho.types_chirho.contains_key(":-"),
         "parenthesized operator type export should match the operator type key"
@@ -313,7 +318,8 @@ fn class_methods_exported_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -377,7 +383,8 @@ fn record_field_selectors_exported_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -415,7 +422,8 @@ fn newtype_exported_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -504,7 +512,8 @@ fn module_re_export_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
 
     // Re-exported names from Inner should be present.
     assert!(
@@ -583,7 +592,8 @@ fn module_alias_re_export_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -678,7 +688,8 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
     };
 
     let iface_chirho =
-        build_iface_with_imports_chirho(&module_chirho, &[left_iface_chirho, right_iface_chirho]);
+        build_iface_with_imports_chirho(&module_chirho, &[left_iface_chirho, right_iface_chirho])
+            .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -742,7 +753,8 @@ fn explicit_export_list_reexports_imported_value_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -794,7 +806,8 @@ fn explicit_export_list_reexports_imported_type_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -825,7 +838,8 @@ fn self_re_export_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     // Self re-export means export all local definitions.
     assert!(
         iface_chirho
@@ -862,7 +876,8 @@ fn iface_exports_foreign_import_names_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -956,7 +971,8 @@ fn qualified_type_exports_use_the_selected_parent_and_latest_interface_chirho() 
         &module_chirho,
         &ifaces_chirho,
         &resolve_chirho,
-    );
+    )
+    .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -1004,7 +1020,8 @@ fn an_associated_namesake_with_another_identity_is_not_exported_chirho() {
         &module_chirho,
         &ifaces_chirho,
         &resolve_chirho,
-    );
+    )
+    .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho

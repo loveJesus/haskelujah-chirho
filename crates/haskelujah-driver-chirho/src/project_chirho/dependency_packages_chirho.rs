@@ -6,10 +6,6 @@ use super::cabal_build_chirho::{
     collect_library_package_deps_chirho, package_module_cpp_options_map_chirho,
 };
 use super::module_discovery_chirho::discover_library_modules_chirho;
-#[cfg(test)]
-use super::module_search_chirho::{
-    extract_exported_names_from_source_chirho, extract_module_name_from_source_chirho,
-};
 use super::package_install_chirho::find_cabal_in_dir_chirho;
 use super::project_dir_chirho::{
     ProjectCompileResultChirho, extract_imports_chirho,
@@ -25,58 +21,18 @@ use super::{
     seed_builtin_type_families_chirho,
 };
 use haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho;
-#[cfg(test)]
-use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
-#[cfg(test)]
-use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::InferResultChirho;
 use std::path::{Path, PathBuf};
 
-/// Scan downloaded dependency packages in .haskelujah-packages-chirho/ for stub
-/// module interfaces. This enables cross-package module resolution.
+#[path = "dependency_scan_chirho.rs"]
+mod dependency_scan_chirho;
 #[cfg(test)]
-pub(crate) fn scan_dependency_package_ifaces_chirho(
-    project_dir_chirho: &Path,
-) -> Vec<ModuleIfaceChirho> {
-    let mut ifaces_chirho = Vec::new();
-    let current_package_dir_chirho = std::fs::canonicalize(project_dir_chirho)
-        .unwrap_or_else(|_| project_dir_chirho.to_path_buf());
-
-    // Look for .haskelujah-packages-chirho/ relative to project dir ancestors
-    let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) else {
-        return ifaces_chirho;
-    };
-
-    // Seed the current package first when the caller itself lives under
-    // .haskelujah-packages-chirho/. This gives tests and package-scan callers
-    // forward module stubs for same-package imports such as containers'
-    // Utils.Containers.Internal.BitUtil.
-    scan_package_hs_files_chirho(project_dir_chirho, &mut ifaces_chirho);
-
-    // Scan each package directory
-    let entries_chirho = match std::fs::read_dir(&packages_dir_chirho) {
-        Ok(e_chirho) => e_chirho,
-        Err(_) => return ifaces_chirho,
-    };
-
-    for entry_chirho in entries_chirho.flatten() {
-        let pkg_dir_chirho = entry_chirho.path();
-        if !pkg_dir_chirho.is_dir() {
-            continue;
-        }
-        let canonical_pkg_dir_chirho =
-            std::fs::canonicalize(&pkg_dir_chirho).unwrap_or_else(|_| pkg_dir_chirho.clone());
-        if canonical_pkg_dir_chirho == current_package_dir_chirho {
-            continue;
-        }
-        // Recursively find .hs files and generate stub interfaces
-        scan_package_hs_files_chirho(&pkg_dir_chirho, &mut ifaces_chirho);
-    }
-
-    ifaces_chirho
-}
+pub(crate) use dependency_scan_chirho::scan_dependency_package_ifaces_chirho;
+pub(crate) use dependency_scan_chirho::{
+    DependencyInterfaceSourcesChirho, FrontendInterfaceSeedsChirho,
+};
 
 pub(crate) fn find_dependency_packages_dir_chirho(project_dir_chirho: &Path) -> Option<PathBuf> {
     let mut search_dir_chirho = project_dir_chirho.to_path_buf();
@@ -254,6 +210,7 @@ pub(crate) fn collect_local_dependency_frontend_artifacts_chirho(
     // Seed PrimState type family equations so dependency packages like
     // primitive can resolve PrimState (ST s) = s during compilation.
     let mut artifacts_chirho = FrontendSeedArtifactsChirho {
+        interface_sources_chirho: None,
         imported_type_families_chirho: seed_builtin_type_families_chirho(),
         ..Default::default()
     };
@@ -378,7 +335,10 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     let compiled_artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
         module_sources_chirho,
         source_map_chirho,
-        artifacts_chirho.ifaces_chirho.clone(),
+        FrontendInterfaceSeedsChirho {
+            ifaces_chirho: artifacts_chirho.ifaces_chirho.clone(),
+            interface_sources_chirho: artifacts_chirho.interface_sources_chirho.clone(),
+        },
         artifacts_chirho.imported_types_chirho.clone(),
         artifacts_chirho.imported_type_synonyms_chirho.clone(),
         artifacts_chirho.imported_type_families_chirho.clone(),
@@ -391,6 +351,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
         )
     })?;
 
+    artifacts_chirho.interface_sources_chirho = compiled_artifacts_chirho.interface_sources_chirho;
     artifacts_chirho.ifaces_chirho =
         haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
             compiled_artifacts_chirho.ifaces_chirho,
@@ -409,127 +370,6 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     active_chirho.remove(package_name_chirho);
     visited_chirho.insert(package_name_chirho.to_string());
     Ok(())
-}
-
-/// Recursively scan a package directory for .hs files and generate stub interfaces.
-#[cfg(test)]
-fn scan_package_hs_files_chirho(dir_chirho: &Path, ifaces_chirho: &mut Vec<ModuleIfaceChirho>) {
-    let entries_chirho = match std::fs::read_dir(dir_chirho) {
-        Ok(e_chirho) => e_chirho,
-        Err(_) => return,
-    };
-
-    for entry_chirho in entries_chirho.flatten() {
-        let path_chirho = entry_chirho.path();
-        if path_chirho.is_dir() {
-            let dir_name_chirho = path_chirho
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy();
-            // Skip hidden dirs, dist, test, bench directories
-            if dir_name_chirho.starts_with('.')
-                || dir_name_chirho == "dist-chirho"
-                || dir_name_chirho == "tests"
-                || dir_name_chirho == "test"
-                || dir_name_chirho == "bench"
-                || dir_name_chirho == "benchmarks"
-            {
-                continue;
-            }
-            scan_package_hs_files_chirho(&path_chirho, ifaces_chirho);
-        } else if path_chirho.extension().is_some_and(|extension_chirho| {
-            extension_chirho == "hs" || extension_chirho == "lhs" || extension_chirho == "hsc"
-        }) {
-            let file_name_chirho = path_chirho
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy();
-            if file_name_chirho == "Setup.hs"
-                || file_name_chirho == "Setup.lhs"
-                || file_name_chirho == "Setup.hsc"
-            {
-                continue;
-            }
-            // Read source and extract module name + exports
-            if let Ok(preprocessed_source_chirho) = read_haskell_source_file_chirho(&path_chirho) {
-                let mut stub_iface_chirho = None;
-                if let Some(mod_name_chirho) =
-                    extract_module_name_from_source_chirho(&preprocessed_source_chirho)
-                {
-                    use haskelujah_naming_chirho::iface_chirho::{
-                        IfaceExportsChirho, IfaceTypeChirho, IfaceValueChirho,
-                    };
-                    let span_chirho = haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO;
-                    let mut exports_chirho = IfaceExportsChirho::default();
-                    for name_chirho in
-                        extract_exported_names_from_source_chirho(&preprocessed_source_chirho)
-                    {
-                        let first_char_chirho = name_chirho.chars().next().unwrap_or('a');
-                        if first_char_chirho.is_uppercase() {
-                            exports_chirho.types_chirho.insert(
-                                name_chirho.clone(),
-                                IfaceTypeChirho {
-                                    declaration_chirho: None,
-                                    name_chirho: name_chirho.clone(),
-                                    constructors_chirho: vec![],
-                                    methods_chirho: vec![],
-                                    span_chirho,
-                                },
-                            );
-                            exports_chirho.values_chirho.insert(
-                                name_chirho.clone(),
-                                IfaceValueChirho {
-                            availability_chirho: haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
-                                    name_chirho: name_chirho.clone(),
-                                    span_chirho,
-                                    defining_module_chirho: None,
-                                },
-                            );
-                        } else {
-                            exports_chirho.values_chirho.insert(
-                                name_chirho.clone(),
-                                IfaceValueChirho {
-                            availability_chirho: haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
-                                    name_chirho: name_chirho.clone(),
-                                    span_chirho,
-                                    defining_module_chirho: None,
-                                },
-                            );
-                        }
-                    }
-                    stub_iface_chirho = Some(ModuleIfaceChirho {
-                        name_chirho: mod_name_chirho,
-                        exports_chirho,
-                    });
-                }
-
-                let real_iface_result_chirho =
-                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        let mut source_map_chirho = SourceMapChirho::new_chirho();
-                        let source_file_chirho = SourceFileChirho::from_source_map_chirho(
-                            &mut source_map_chirho,
-                            &path_chirho,
-                            &preprocessed_source_chirho,
-                        );
-                        let file_id_chirho = source_file_chirho.file_id_chirho();
-                        let parser_chirho =
-                            ParserChirho::new_chirho(&preprocessed_source_chirho, file_id_chirho);
-                        let green_chirho = parser_chirho.parse_chirho();
-                        let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
-                        haskelujah_naming_chirho::build_iface_with_imports_chirho(
-                            &module_chirho,
-                            ifaces_chirho,
-                        )
-                    }));
-
-                if let Ok(real_iface_chirho) = real_iface_result_chirho {
-                    ifaces_chirho.push(real_iface_chirho);
-                } else if let Some(stub_iface_chirho) = stub_iface_chirho {
-                    ifaces_chirho.push(stub_iface_chirho);
-                }
-            }
-        }
-    }
 }
 
 pub(crate) fn insert_exported_schemes_into_imports_chirho(
@@ -580,7 +420,7 @@ pub(crate) fn insert_exported_schemes_into_imports_chirho(
 pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
     module_sources_chirho: Vec<(String, String, String)>,
     source_map_chirho: &mut SourceMapChirho,
-    extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
+    extra_ifaces_chirho: impl Into<FrontendInterfaceSeedsChirho>,
     initial_imported_types_chirho: std::collections::HashMap<
         String,
         haskelujah_typing_chirho::ty_chirho::SchemeChirho,
@@ -589,8 +429,18 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
     initial_imported_type_families_chirho: ImportedTypeFamiliesChirho,
     seed_stdlib_frontend_artifacts_chirho: bool,
 ) -> Result<FrontendSeedArtifactsChirho, String> {
+    let mut seed_chirho = extra_ifaces_chirho.into();
+    if let Some(sources_chirho) = &seed_chirho.interface_sources_chirho {
+        sources_chirho
+            .validate_sources_chirho(&module_sources_chirho)
+            .map_err(|errors_chirho| errors_chirho.to_string())?;
+        seed_chirho.interface_sources_chirho = Some(std::sync::Arc::new(
+            sources_chirho.including_compiled_sources_chirho(&module_sources_chirho),
+        ));
+    }
     if module_sources_chirho.is_empty() {
         return Ok(FrontendSeedArtifactsChirho {
+            interface_sources_chirho: seed_chirho.interface_sources_chirho,
             ifaces_chirho: haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
                 haskelujah_naming_chirho::builtin_module_ifaces_chirho(),
             ),
@@ -621,7 +471,7 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
     let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
         haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     // Add cross-package dependency interfaces
-    ifaces_chirho.extend(extra_ifaces_chirho);
+    ifaces_chirho.extend(seed_chirho.ifaces_chirho);
     let mut ifaces_chirho =
         haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(ifaces_chirho);
     let mut imported_types_chirho = initial_imported_types_chirho;
@@ -690,7 +540,10 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
                 &module_chirho,
                 &ifaces_chirho,
                 &infer_result_chirho.type_families_chirho,
-            );
+            )
+            .map_err(|error_chirho| {
+                error_chirho.source_message_chirho(file_name_chirho, source_map_chirho)
+            })?;
             insert_exported_schemes_into_imports_chirho(
                 &iface_chirho,
                 &infer_result_chirho,
@@ -709,6 +562,7 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
     }
 
     Ok(FrontendSeedArtifactsChirho {
+        interface_sources_chirho: seed_chirho.interface_sources_chirho,
         ifaces_chirho,
         imported_types_chirho,
         imported_type_synonyms_chirho,
@@ -833,7 +687,10 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
                 &module_chirho,
                 &ifaces_chirho,
                 &infer_result_chirho.type_families_chirho,
-            );
+            )
+            .map_err(|error_chirho| {
+                error_chirho.source_message_chirho(file_name_chirho, source_map_chirho)
+            })?;
             let extra_dict_param_names_chirho: std::collections::HashSet<String> =
                 imported_types_chirho.keys().cloned().collect();
             insert_exported_schemes_into_imports_chirho(

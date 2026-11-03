@@ -80,7 +80,8 @@ fn discovery_with_boots_chirho(
         let iface_chirho = haskelujah_naming_chirho::build_iface_with_imports_chirho(
             &module_chirho,
             &ifaces_chirho,
-        );
+        )
+        .expect("valid source has a complete constructor interface");
         admit_authoritative_iface_chirho(&mut ifaces_chirho, iface_chirho);
         let name_chirho = module_chirho.name_chirho.full_name_chirho();
         let path_chirho = scratch_chirho
@@ -96,6 +97,7 @@ fn discovery_with_boots_chirho(
             DiscoveredSourceModuleChirho {
                 module_chirho,
                 path_chirho,
+                interface_error_chirho: None,
             },
         );
     }
@@ -237,6 +239,7 @@ fn failed_registration_leaves_registry_and_interfaces_unchanged_chirho() {
         DiscoveredSourceModuleChirho {
             module_chirho: bad_chirho,
             path_chirho: std::path::PathBuf::new(),
+            interface_error_chirho: None,
         },
     );
     let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
@@ -256,4 +259,134 @@ fn failed_registration_leaves_registry_and_interfaces_unchanged_chirho() {
     assert!(result_chirho.is_err());
     assert_eq!(format!("{ifaces_chirho:?}"), before_ifaces_chirho);
     assert_eq!(format!("{registry_chirho:?}"), before_registry_chirho);
+}
+
+#[test]
+fn a_discovered_constructor_error_is_reached_only_and_never_published_chirho() {
+    let scratch_chirho = SourceScratchChirho::new_chirho();
+    let bad_path_chirho = scratch_chirho.0.join("BadChirho.hs");
+    std::fs::write(
+        &bad_path_chirho,
+        "{-# LANGUAGE GADTs, LinearTypes #-}\nmodule BadChirho where\ndata BoxChirho aChirho where\n  MkBoxChirho :: { payloadChirho :: aChirho } %1 -> BoxChirho aChirho\n",
+    ).expect("write malformed constructor source");
+    for hierarchical_chirho in [false, true] {
+        // This map is intentionally separate from any checked-source map.
+        // The sibling gets FileId 0; rendering it against main would be wrong.
+        let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+        let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+        let mut sources_chirho = DiscoveredSourceModulesChirho::new();
+        if hierarchical_chirho {
+            super::super::scan_hierarchical_modules_with_sources_chirho(
+                &scratch_chirho.0,
+                &scratch_chirho.0,
+                &mut source_map_chirho,
+                &mut ifaces_chirho,
+                "CheckedChirho.hs",
+                &mut sources_chirho,
+            );
+        } else {
+            super::super::scan_sibling_modules_with_sources_chirho(
+                &scratch_chirho.0,
+                &mut source_map_chirho,
+                &mut ifaces_chirho,
+                "CheckedChirho.hs",
+                &mut sources_chirho,
+            );
+        }
+        let failure_chirho = sources_chirho["BadChirho"]
+            .interface_error_chirho
+            .as_ref()
+            .expect("discovery retains the source builder's typed error");
+        assert_eq!(
+            failure_chirho
+                .error_chirho
+                .span_chirho()
+                .file_id_chirho()
+                .as_raw_chirho(),
+            0
+        );
+        assert!(failure_chirho.location_chirho.is_some());
+        assert!(
+            !ifaces_chirho
+                .iter()
+                .any(|iface_chirho| iface_chirho.name_chirho == "BadChirho")
+        );
+        let mut registry_chirho = seed_type_family_registry_chirho();
+        let unused_chirho = module_chirho("module CheckedChirho where\nvalueChirho = 3\n");
+        register_discovered_type_families_chirho(
+            &unused_chirho,
+            DiscoveredFamilyContextChirho {
+                modules_chirho: &sources_chirho,
+                ifaces_chirho: &mut ifaces_chirho,
+                registry_chirho: &mut registry_chirho,
+                imported_synonyms_chirho: &ImportedTypeSynonymsChirho::new(),
+                checked_path_chirho: None,
+            },
+        )
+        .expect("an unused malformed neighbor cannot poison the checked source");
+        let before_ifaces_chirho = format!("{ifaces_chirho:?}");
+        let before_registry_chirho = format!("{registry_chirho:?}");
+        let importing_chirho = module_chirho("module CheckedChirho where\nimport BadChirho\n");
+        let errors_chirho = register_discovered_type_families_chirho(
+            &importing_chirho,
+            DiscoveredFamilyContextChirho {
+                modules_chirho: &sources_chirho,
+                ifaces_chirho: &mut ifaces_chirho,
+                registry_chirho: &mut registry_chirho,
+                imported_synonyms_chirho: &ImportedTypeSynonymsChirho::new(),
+                checked_path_chirho: None,
+            },
+        )
+        .expect_err("an imported malformed constructor must be reported");
+        let diagnostics_chirho = errors_chirho.diagnostics_chirho();
+        assert_eq!(diagnostics_chirho.len(), 1);
+        assert!(diagnostics_chirho[0].message_chirho.contains("BadChirho"));
+        assert!(
+            diagnostics_chirho[0].labels_chirho.is_empty(),
+            "a foreign FileId must not label the importing source map"
+        );
+        assert!(
+            diagnostics_chirho[0]
+                .notes_chirho
+                .iter()
+                .any(|note_chirho| note_chirho
+                    .contains(bad_path_chirho.to_str().expect("fixture path"))
+                    && note_chirho.contains("byte range"))
+        );
+        assert_eq!(format!("{ifaces_chirho:?}"), before_ifaces_chirho);
+        assert_eq!(format!("{registry_chirho:?}"), before_registry_chirho);
+    }
+}
+
+#[test]
+fn discovery_checks_path_authority_before_building_a_constructor_interface_chirho() {
+    let scratch_chirho = SourceScratchChirho::new_chirho();
+    std::fs::write(
+        scratch_chirho.0.join("WrongPathChirho.hs"),
+        "{-# LANGUAGE GADTs, LinearTypes #-}\nmodule BadChirho where\ndata BoxChirho aChirho where\n  MkBoxChirho :: { payloadChirho :: aChirho } %1 -> BoxChirho aChirho\n",
+    ).expect("write non-authoritative malformed neighbor");
+    let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+    let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let mut sources_chirho = DiscoveredSourceModulesChirho::new();
+    super::super::scan_sibling_modules_with_sources_chirho(
+        &scratch_chirho.0,
+        &mut source_map_chirho,
+        &mut ifaces_chirho,
+        "CheckedChirho.hs",
+        &mut sources_chirho,
+    );
+    super::super::scan_hierarchical_modules_with_sources_chirho(
+        &scratch_chirho.0,
+        &scratch_chirho.0,
+        &mut source_map_chirho,
+        &mut ifaces_chirho,
+        "CheckedChirho.hs",
+        &mut sources_chirho,
+    );
+    assert!(sources_chirho.is_empty());
+    assert!(
+        !ifaces_chirho
+            .iter()
+            .any(|iface_chirho| iface_chirho.name_chirho == "BadChirho")
+    );
 }

@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::FileIdChirho;
 
@@ -30,11 +30,10 @@ fn types_chirho(type_text_chirho: &str, gadt_chirho: bool) -> (TypeChirho, TypeC
                 ..
             } => {
                 for constructor_chirho in constructors_chirho {
-                    if let ConDeclChirho::RecordChirho { fields_chirho, .. } = constructor_chirho {
+                    if let Some(fields_chirho) = constructor_chirho.record_fields_chirho() {
                         field_chirho = fields_chirho
-                            .into_iter()
-                            .next()
-                            .map(|field_chirho| field_chirho.ty_chirho);
+                            .first()
+                            .map(|field_chirho| field_chirho.ty_chirho.clone());
                     }
                 }
             }

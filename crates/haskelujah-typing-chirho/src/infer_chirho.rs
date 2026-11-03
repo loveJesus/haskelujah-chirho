@@ -337,6 +337,8 @@ pub struct InferResultChirho {
     /// stamps this module's synonym right sides from it instead of re-resolving them.
     pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
     pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
+    pub type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about one
@@ -537,6 +539,8 @@ pub struct InferCtxChirho {
     /// form, which is not the corrected identity.
     /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
     promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -679,10 +683,12 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
             imported_type_families_chirho,
             imported_class_env_chirho,
             imported_record_field_names_chirho,
+            unavailable_selectors_chirho: &HashSet::new(),
             safe_unqualified_imported_type_names_chirho,
             preferred_qualified_type_names_chirho,
             promotion_scope_chirho: None,
             family_scope_chirho: None,
+            type_constructor_scope_chirho: None,
         },
     )
 }
@@ -695,12 +701,16 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     pub imported_type_synonyms_chirho: &'imports_chirho HashMap<String, (Vec<String>, TypeChirho)>,
     pub imported_type_families_chirho: &'imports_chirho TypeFamilyEnvChirho,
     pub imported_class_env_chirho: &'imports_chirho ClassEnvChirho,
+    /// Exact admitted spellings that are field labels without callable selectors.
+    pub unavailable_selectors_chirho: &'imports_chirho HashSet<String>,
     pub imported_record_field_names_chirho: &'imports_chirho HashMap<String, Vec<String>>,
     pub safe_unqualified_imported_type_names_chirho: &'imports_chirho HashSet<String>,
     pub preferred_qualified_type_names_chirho: &'imports_chirho HashMap<String, String>,
     /// `None` when naming did not run; see `InferCtxChirho::promotion_scope_chirho`.
     pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
     pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
+    pub type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 /// Run type inference on a module with everything it imports.
@@ -714,10 +724,12 @@ pub fn infer_module_with_import_context_chirho(
         imported_type_families_chirho,
         imported_class_env_chirho,
         imported_record_field_names_chirho,
+        unavailable_selectors_chirho,
         safe_unqualified_imported_type_names_chirho,
         preferred_qualified_type_names_chirho,
         promotion_scope_chirho,
         family_scope_chirho,
+        type_constructor_scope_chirho,
     } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
@@ -726,6 +738,7 @@ pub fn infer_module_with_import_context_chirho(
         preferred_qualified_type_names_chirho,
     );
     ctx_chirho.promotion_scope_chirho = promotion_scope_chirho;
+    ctx_chirho.type_constructor_scope_chirho = type_constructor_scope_chirho;
     if let Err(error_chirho) = ctx_chirho
         .type_families_chirho
         .merge_chirho(imported_type_families_chirho)
@@ -792,6 +805,9 @@ pub fn infer_module_with_import_context_chirho(
         ctx_chirho
             .con_field_names_chirho
             .insert(constructor_name_chirho.clone(), field_names_chirho.clone());
+    }
+    for name_chirho in unavailable_selectors_chirho {
+        ctx_chirho.env_chirho.mask_chirho(name_chirho.clone());
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
     let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);

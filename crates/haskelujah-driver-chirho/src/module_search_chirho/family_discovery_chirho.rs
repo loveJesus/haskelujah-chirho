@@ -7,11 +7,14 @@
 use super::boot_contract_chirho::{
     BootContractContextChirho, validate_reached_boot_contracts_chirho,
 };
-use super::{DiscoveredSourceModulesChirho, admit_authoritative_iface_chirho};
+use super::{
+    DiscoveredSourceModuleChirho, DiscoveredSourceModulesChirho, admit_authoritative_iface_chirho,
+};
 use crate::ImportedTypeSynonymsChirho;
 use crate::family_exports_chirho::{
-    build_family_aware_iface_chirho, build_type_family_scope_chirho,
-    family_frontend_diagnostics_chirho, publish_type_family_exports_chirho,
+    FamilyExportsErrorChirho, build_family_aware_iface_chirho, build_type_family_scope_chirho,
+    constructor_signature_diagnostic_chirho, family_frontend_diagnostics_chirho,
+    publish_type_family_exports_chirho,
 };
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
@@ -49,6 +52,62 @@ fn has_closed_families_chirho(module_chirho: &ModuleChirho) -> bool {
 }
 
 const DISCOVERY_WORK_CHIRHO: usize = 100_000;
+
+/// Discovery may own a different SourceMap from the checked source. Keep the
+/// foreign producer's span as metadata, but render its actual path explicitly
+/// instead of interpreting its FileId in the importing caller's SourceMap.
+fn discovered_signature_diagnostics_chirho(
+    error_chirho: haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho,
+    module_name_chirho: &str,
+    source_chirho: &DiscoveredSourceModuleChirho,
+) -> DiagnosticBundleChirho {
+    let mut diagnostic_chirho =
+        constructor_signature_diagnostic_chirho(error_chirho, module_name_chirho);
+    diagnostic_chirho.labels_chirho.clear();
+    let location_chirho = source_chirho
+        .interface_error_chirho
+        .as_ref()
+        .filter(|record_chirho| {
+            record_chirho.error_chirho.span_chirho() == error_chirho.span_chirho()
+        })
+        .and_then(|record_chirho| record_chirho.location_chirho)
+        .map(|location_chirho| {
+            format!(
+                ":{}:{}",
+                location_chirho.line_chirho, location_chirho.col_chirho
+            )
+        })
+        .unwrap_or_default();
+    diagnostic_chirho.notes_chirho.push(format!(
+        "source: {}{location_chirho}; constructor signature byte range {}..{}",
+        source_chirho.path_chirho.display(),
+        error_chirho.span_chirho().start_chirho().as_u32_chirho(),
+        error_chirho.span_chirho().end_chirho().as_u32_chirho(),
+    ));
+    DiagnosticBundleChirho::new_chirho(vec![diagnostic_chirho])
+}
+
+struct SourceInterfaceDiagnosticsChirho<'source_chirho> {
+    sources_chirho: &'source_chirho DiscoveredSourceModulesChirho,
+    checked_name_chirho: &'source_chirho str,
+}
+
+fn source_family_diagnostics_chirho(
+    error_chirho: FamilyExportsErrorChirho,
+    module_chirho: &ModuleChirho,
+    context_chirho: &SourceInterfaceDiagnosticsChirho<'_>,
+) -> DiagnosticBundleChirho {
+    if let FamilyExportsErrorChirho::ConstructorSignatureChirho {
+        module_chirho: name_chirho,
+        error_chirho,
+    } = &error_chirho
+        && name_chirho != context_chirho.checked_name_chirho
+        && let Some(source_chirho) = context_chirho.sources_chirho.get(name_chirho)
+    {
+        return discovered_signature_diagnostics_chirho(*error_chirho, name_chirho, source_chirho);
+    }
+    error_chirho.into_diagnostics_chirho(module_chirho.span_chirho)
+}
 
 fn reachable_chirho(
     name_chirho: &str,
@@ -120,6 +179,7 @@ fn publish_headers_chirho(
     module_chirho: &ModuleChirho,
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     registry_chirho: &mut TypeFamilyRegistryChirho,
+    diagnostics_chirho: &SourceInterfaceDiagnosticsChirho<'_>,
 ) -> Result<(), DiagnosticBundleChirho> {
     let scope_chirho =
         build_type_family_scope_chirho(module_chirho, ifaces_chirho, registry_chirho).map_err(
@@ -128,7 +188,11 @@ fn publish_headers_chirho(
             },
         )?;
     let mut iface_chirho =
-        build_family_aware_iface_chirho(module_chirho, ifaces_chirho, registry_chirho);
+        build_family_aware_iface_chirho(module_chirho, ifaces_chirho, registry_chirho).map_err(
+            |error_chirho| {
+                source_family_diagnostics_chirho(error_chirho, module_chirho, diagnostics_chirho)
+            },
+        )?;
     iface_chirho
         .exports_chirho
         .types_chirho
@@ -162,6 +226,7 @@ fn propagate_headers_chirho(
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     registry_chirho: &mut TypeFamilyRegistryChirho,
     work_chirho: &mut usize,
+    diagnostics_chirho: &SourceInterfaceDiagnosticsChirho<'_>,
 ) -> Result<(), DiagnosticBundleChirho> {
     for _round_chirho in 0..=modules_chirho.len() {
         let before_chirho = alias_snapshot_chirho(modules_chirho, ifaces_chirho, registry_chirho);
@@ -172,7 +237,12 @@ fn propagate_headers_chirho(
                     module_chirho.span_chirho,
                 )
             })?;
-            publish_headers_chirho(module_chirho, ifaces_chirho, registry_chirho)?;
+            publish_headers_chirho(
+                module_chirho,
+                ifaces_chirho,
+                registry_chirho,
+                diagnostics_chirho,
+            )?;
         }
         if alias_snapshot_chirho(modules_chirho, ifaces_chirho, registry_chirho) == before_chirho {
             return Ok(());
@@ -197,11 +267,30 @@ pub(crate) fn register_discovered_type_families_chirho(
         .collect::<BTreeMap<_, _>>();
     let checked_name_chirho = checked_chirho.name_chirho.full_name_chirho();
     modules_chirho.insert(checked_name_chirho.clone(), checked_chirho);
+    let diagnostics_chirho = SourceInterfaceDiagnosticsChirho {
+        sources_chirho: context_chirho.modules_chirho,
+        checked_name_chirho: &checked_name_chirho,
+    };
     let mut work_chirho = DISCOVERY_WORK_CHIRHO;
     let reached_chirho = reachable_chirho(&checked_name_chirho, &modules_chirho, &mut work_chirho)
         .map_err(|error_chirho| {
             family_frontend_diagnostics_chirho(error_chirho, checked_chirho.span_chirho)
         })?;
+    for name_chirho in &reached_chirho {
+        // The checked AST overrides a candidate with the same declared name.
+        if name_chirho == &checked_name_chirho {
+            continue;
+        }
+        if let Some(source_chirho) = context_chirho.modules_chirho.get(name_chirho)
+            && let Some(failure_chirho) = &source_chirho.interface_error_chirho
+        {
+            return Err(discovered_signature_diagnostics_chirho(
+                failure_chirho.error_chirho,
+                name_chirho,
+                source_chirho,
+            ));
+        }
+    }
     let mut paths_chirho = context_chirho
         .modules_chirho
         .iter()
@@ -282,6 +371,7 @@ pub(crate) fn register_discovered_type_families_chirho(
         &mut ifaces_chirho,
         &mut registry_chirho,
         &mut work_chirho,
+        &diagnostics_chirho,
     )?;
     let mut pending_chirho = ordered_chirho.clone();
     let mut closed_registered_chirho = BTreeSet::new();
@@ -331,7 +421,14 @@ pub(crate) fn register_discovered_type_families_chirho(
         )?;
         registry_chirho = result_chirho.registry_chirho;
         let iface_chirho =
-            build_family_aware_iface_chirho(module_chirho, &ifaces_chirho, &registry_chirho);
+            build_family_aware_iface_chirho(module_chirho, &ifaces_chirho, &registry_chirho)
+                .map_err(|error_chirho| {
+                    source_family_diagnostics_chirho(
+                        error_chirho,
+                        module_chirho,
+                        &diagnostics_chirho,
+                    )
+                })?;
         publish_type_family_exports_chirho(
             module_chirho,
             &iface_chirho,
@@ -350,6 +447,7 @@ pub(crate) fn register_discovered_type_families_chirho(
                 &mut ifaces_chirho,
                 &mut registry_chirho,
                 &mut work_chirho,
+                &diagnostics_chirho,
             )?;
         }
     }
@@ -361,7 +459,14 @@ pub(crate) fn register_discovered_type_families_chirho(
                     family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
                 })?;
         let iface_chirho =
-            build_family_aware_iface_chirho(module_chirho, &ifaces_chirho, &registry_chirho);
+            build_family_aware_iface_chirho(module_chirho, &ifaces_chirho, &registry_chirho)
+                .map_err(|error_chirho| {
+                    source_family_diagnostics_chirho(
+                        error_chirho,
+                        module_chirho,
+                        &diagnostics_chirho,
+                    )
+                })?;
         publish_type_family_exports_chirho(
             module_chirho,
             &iface_chirho,

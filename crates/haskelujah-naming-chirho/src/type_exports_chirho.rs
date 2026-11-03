@@ -10,9 +10,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskelujah_ast_chirho::decl_chirho::{
-    ConDeclChirho, DeclChirho, local_generative_type_names_chirho,
-};
+use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::{ExportMembersChirho, ModuleChirho};
 use haskelujah_ast_chirho::name_chirho::{
     TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
@@ -524,7 +522,12 @@ pub(crate) fn source_type_declaration_chirho(
 /// right while retaining their parent-class relationship for `Class(..)`.
 /// Workflow: `spec-chirho/workflows-chirho/compiler-pipeline-chirho/
 /// type-scope-resolution-chirho.md`.
-pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> IfaceExportsChirho {
+pub(crate) fn collect_all_definitions_chirho(
+    module_chirho: &ModuleChirho,
+    type_constructor_scope_chirho: &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
+    projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
+) -> Result<IfaceExportsChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
+{
     let mut exports_chirho = IfaceExportsChirho::default();
     // Every value collected here is this module's own definition (row 642).
     // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
@@ -757,7 +760,6 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
         }
     }
 
-    let generative_names_chirho = local_generative_type_names_chirho(module_chirho);
     for decl_chirho in &module_chirho.decls_chirho {
         let constructors_chirho = match decl_chirho {
             DeclChirho::DataDeclChirho {
@@ -774,13 +776,23 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
                 signature_chirho, ..
             } = con_chirho
             {
-                for field_chirho in signature_chirho.record_fields_chirho().unwrap_or_default() {
-                    if !signature_chirho.field_selector_available_chirho(
-                        field_chirho,
-                        &|name_chirho| {
-                            generative_names_chirho.contains(&name_chirho.full_name_chirho())
-                        },
-                    ) {
+                let availability_chirho = signature_chirho.selector_availability_chirho(
+                    projection_budget_chirho,
+                    &|name_chirho| {
+                        type_constructor_scope_chirho
+                            .declaration_chirho(&name_chirho.full_name_chirho())
+                            .is_some_and(|declaration_chirho| {
+                                declaration_chirho.is_nominally_generative_chirho()
+                            })
+                    },
+                )?;
+                for (field_chirho, available_chirho) in signature_chirho
+                    .record_fields_chirho()
+                    .unwrap_or_default()
+                    .iter()
+                    .zip(availability_chirho)
+                {
+                    if !available_chirho {
                         for name_chirho in &field_chirho.names_chirho {
                             if let Some(value_chirho) = exports_chirho
                                 .values_chirho
@@ -795,7 +807,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
         }
     }
 
-    exports_chirho
+    Ok(exports_chirho)
 }
 
 /// The types and classes this module declares whose exported member lists are

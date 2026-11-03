@@ -76,7 +76,7 @@ fn equation_error_chirho(
         )
     };
     Some(DeclarationErrorChirho {
-        ghc_code_chirho,
+        ghc_code_chirho: Some(ghc_code_chirho),
         message_chirho,
         span_chirho: equation_chirho.span_chirho,
         related_span_chirho: None,

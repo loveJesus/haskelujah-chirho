@@ -83,6 +83,7 @@ pub(super) fn infer_result_chirho(
         reference_evidence_chirho: HashMap::new(),
         reference_evidence_by_origin_chirho: HashMap::new(),
         promotion_scope_chirho: None,
+        type_constructor_scope_chirho: None,
         family_scope_chirho: None,
     }
 }

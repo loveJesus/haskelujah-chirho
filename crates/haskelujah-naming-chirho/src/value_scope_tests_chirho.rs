@@ -405,7 +405,8 @@ fn a_source_derived_type_closes_on_its_complete_members_chirho() {
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
-    ));
+    ))
+    .expect("small source interface fixture fits constructor projection budget");
     let messages_chirho = messages_chirho(
         vec![import_chirho(
             "RecordsChirho",
@@ -443,7 +444,8 @@ fn a_bare_type_item_supplies_no_constructor_of_the_same_name_chirho() {
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
-    ));
+    ))
+    .expect("small source interface fixture fits constructor projection budget");
     let bare_type_chirho = ImportItemChirho::TyConChirho {
         name_chirho: name_chirho("T"),
         members_chirho: ExportMembersChirho::NoneChirho,
@@ -593,6 +595,7 @@ fn exported_values_chirho(
     let mut exporter_chirho = module_chirho(module_text_chirho, imports_chirho, decls_chirho);
     exporter_chirho.exports_chirho = Some(exports_chirho);
     build_iface_with_imports_chirho(&exporter_chirho, &builtin_module_ifaces_chirho())
+        .expect("small source interface fixture fits constructor projection budget")
         .exports_chirho
         .values_chirho
         .into_keys()

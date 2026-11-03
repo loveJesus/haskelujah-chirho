@@ -8,7 +8,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use haskelujah_ast_chirho::decl_chirho::{ConstructorSignatureErrorChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::{ExportMembersChirho, ExportSpecChirho, ModuleChirho};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -23,6 +23,10 @@ use haskelujah_typing_chirho::infer_chirho::{
 
 #[derive(Debug)]
 pub(crate) enum FamilyExportsErrorChirho {
+    ConstructorSignatureChirho {
+        module_chirho: String,
+        error_chirho: ConstructorSignatureErrorChirho,
+    },
     ScopeChirho(TypeFamilyDefinitionErrorChirho),
     ConflictingLocalTypeChirho(String),
     MissingDefinitionChirho(String),
@@ -40,6 +44,13 @@ pub(crate) enum FamilyExportsErrorChirho {
 impl fmt::Display for FamilyExportsErrorChirho {
     fn fmt(&self, formatter_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::ConstructorSignatureChirho {
+                module_chirho,
+                error_chirho,
+            } => write!(
+                formatter_chirho,
+                "constructor signature in module {module_chirho}: {error_chirho}"
+            ),
             Self::ScopeChirho(error_chirho) => fmt::Display::fmt(error_chirho, formatter_chirho),
             Self::ConflictingLocalTypeChirho(name_chirho) => write!(
                 formatter_chirho,
@@ -72,6 +83,80 @@ impl fmt::Display for FamilyExportsErrorChirho {
 }
 
 impl std::error::Error for FamilyExportsErrorChirho {}
+
+impl FamilyExportsErrorChirho {
+    /// Project callers return strings, so preserve the real source path and
+    /// signature location before crossing that existing error boundary.
+    pub(crate) fn source_message_chirho(
+        &self,
+        path_chirho: &str,
+        source_map_chirho: &haskelujah_span_chirho::SourceMapChirho,
+    ) -> String {
+        if let Self::ConstructorSignatureChirho { error_chirho, .. } = self {
+            let span_chirho = error_chirho.span_chirho();
+            if let Some(index_chirho) =
+                source_map_chirho.line_index_chirho(span_chirho.file_id_chirho())
+            {
+                let location_chirho = index_chirho.line_col_chirho(span_chirho.start_chirho());
+                return format!(
+                    "{path_chirho}:{}:{}: {self}",
+                    location_chirho.line_chirho, location_chirho.col_chirho
+                );
+            }
+            return format!(
+                "{path_chirho}: {self} (signature byte range {}..{})",
+                span_chirho.start_chirho().as_u32_chirho(),
+                span_chirho.end_chirho().as_u32_chirho()
+            );
+        }
+        format!("{path_chirho}: {self}")
+    }
+
+    /// Signature failures retain their producer's span. Other family errors
+    /// still use the caller's existing declaration context.
+    pub(crate) fn into_diagnostics_chirho(
+        self,
+        fallback_span_chirho: haskelujah_span_chirho::SpanChirho,
+    ) -> DiagnosticBundleChirho {
+        match self {
+            Self::ConstructorSignatureChirho {
+                module_chirho,
+                error_chirho,
+            } => DiagnosticBundleChirho::new_chirho(vec![constructor_signature_diagnostic_chirho(
+                error_chirho,
+                &module_chirho,
+            )]),
+            error_chirho => family_frontend_diagnostics_chirho(error_chirho, fallback_span_chirho),
+        }
+    }
+}
+
+/// Malformed source and a bounded projection refusal remain distinct errors.
+/// The caller owns any foreign-source rendering note; this preserves the
+/// producer's actual span and never substitutes the importing module's span.
+pub(crate) fn constructor_signature_diagnostic_chirho(
+    error_chirho: ConstructorSignatureErrorChirho,
+    module_chirho: &str,
+) -> DiagnosticChirho {
+    let message_chirho = format!("constructor signature in module {module_chirho}: {error_chirho}");
+    let mut diagnostic_chirho = match error_chirho {
+        ConstructorSignatureErrorChirho::MalformedChirho { .. } => {
+            DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(209),
+                message_chirho,
+                error_chirho.span_chirho(),
+            )
+        }
+        ConstructorSignatureErrorChirho::ProjectionChirho(_) => {
+            DiagnosticChirho::error_chirho(message_chirho, error_chirho.span_chirho())
+        }
+    };
+    if let Some(code_chirho) = error_chirho.ghc_code_chirho() {
+        diagnostic_chirho =
+            diagnostic_chirho.with_note_chirho(format!("GHC reports this as {code_chirho}"));
+    }
+    diagnostic_chirho
+}
 
 impl From<TypeFamilyDefinitionErrorChirho> for FamilyExportsErrorChirho {
     fn from(error_chirho: TypeFamilyDefinitionErrorChirho) -> Self {
@@ -131,7 +216,7 @@ pub(crate) fn publish_inferred_family_exports_chirho(
         module_chirho,
         ifaces_chirho,
         &infer_result_chirho.type_families_chirho,
-    );
+    )?;
     publish_type_family_exports_chirho(
         module_chirho,
         &iface_chirho,
@@ -147,7 +232,7 @@ pub(crate) fn build_family_aware_iface_chirho(
     module_chirho: &ModuleChirho,
     ifaces_chirho: &[ModuleIfaceChirho],
     registry_chirho: &TypeFamilyRegistryChirho,
-) -> ModuleIfaceChirho {
+) -> Result<ModuleIfaceChirho, FamilyExportsErrorChirho> {
     let resolve_chirho = |module_name_chirho: &str, name_chirho: &str| {
         match registry_chirho.resolve_export_chirho(&qualified_name_chirho(module_name_chirho, name_chirho)) {
             haskelujah_typing_chirho::infer_chirho::TypeFamilyAliasResolutionChirho::MissingChirho => BTreeSet::new(),
@@ -159,6 +244,12 @@ pub(crate) fn build_family_aware_iface_chirho(
         module_chirho,
         ifaces_chirho,
         &resolve_chirho,
+    )
+    .map_err(
+        |error_chirho| FamilyExportsErrorChirho::ConstructorSignatureChirho {
+            module_chirho: module_chirho.name_chirho.full_name_chirho(),
+            error_chirho,
+        },
     )
 }
 

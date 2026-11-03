@@ -7,8 +7,8 @@
 use std::collections::HashSet;
 
 use haskelujah_ast_chirho::decl_chirho::{
-    FieldDeclChirho, GadtConArgsChirho, GadtConFieldChirho, GadtConPrefixChirho,
-    GadtConSignatureChirho, StrictnessChirho, TyVarChirho,
+    FieldDeclChirho, GadtConArgsChirho, GadtConFieldChirho, GadtConMalformedChirho,
+    GadtConPrefixChirho, GadtConSignatureChirho, StrictnessChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, MultiplicityChirho};
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
@@ -208,19 +208,24 @@ impl LowerCtxChirho {
             prefix_chirho: Vec::new(),
             args_chirho: GadtConArgsChirho::PositionalChirho(Vec::new()),
             result_ty_chirho: self.placeholder_type_chirho(),
-            malformed_chirho: false,
+            malformed_chirho: None,
             span_chirho,
         };
         let mut pending_chirho = vec![node_chirho];
         let mut remaining_chirho = 65_536_usize;
         while let Some(current_chirho) = pending_chirho.pop() {
             if remaining_chirho == 0 {
-                signature_chirho.malformed_chirho = true;
+                signature_chirho.malformed_chirho = Some(GadtConMalformedChirho::ResourceChirho);
                 break;
             }
             remaining_chirho -= 1;
-            if current_chirho.kind_chirho() == SyntaxKindChirho::ErrorNodeChirho {
-                signature_chirho.malformed_chirho = true;
+            if current_chirho.kind_chirho() == SyntaxKindChirho::GadtRecordArrowErrorChirho {
+                signature_chirho.malformed_chirho =
+                    Some(GadtConMalformedChirho::IllegalRecordArrowChirho);
+            } else if current_chirho.kind_chirho() == SyntaxKindChirho::ErrorNodeChirho
+                && signature_chirho.malformed_chirho.is_none()
+            {
+                signature_chirho.malformed_chirho = Some(GadtConMalformedChirho::IncompleteChirho);
             }
             for child_chirho in current_chirho.children_chirho() {
                 if let GreenElementChirho::NodeChirho(inner_chirho) = child_chirho {
@@ -230,13 +235,13 @@ impl LowerCtxChirho {
         }
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let Some(body_chirho) = children_chirho.iter().find_map(type_body_chirho) else {
-            signature_chirho.malformed_chirho = true;
+            signature_chirho.malformed_chirho = Some(GadtConMalformedChirho::IncompleteChirho);
             return signature_chirho;
         };
         self.lower_gadt_spine_chirho(body_chirho, &mut signature_chirho, 0);
         let Some(unpacked_chirho) = unpacked_argument_offsets_chirho(node_chirho, base_chirho)
         else {
-            signature_chirho.malformed_chirho = true;
+            signature_chirho.malformed_chirho = Some(GadtConMalformedChirho::ResourceChirho);
             return signature_chirho;
         };
         if let GadtConArgsChirho::PositionalChirho(fields_chirho) =
@@ -244,7 +249,8 @@ impl LowerCtxChirho {
         {
             for field_chirho in fields_chirho {
                 if field_chirho.strictness_chirho == StrictnessChirho::StrictChirho
-                    && unpacked_chirho.contains(&field_chirho.span_chirho.start_chirho().as_usize_chirho())
+                    && unpacked_chirho
+                        .contains(&field_chirho.span_chirho.start_chirho().as_usize_chirho())
                 {
                     field_chirho.strictness_chirho = StrictnessChirho::UnpackChirho;
                 }
@@ -260,7 +266,7 @@ impl LowerCtxChirho {
         depth_chirho: usize,
     ) {
         if depth_chirho > 128 {
-            signature_chirho.malformed_chirho = true;
+            signature_chirho.malformed_chirho = Some(GadtConMalformedChirho::ResourceChirho);
             return;
         }
         let node_chirho = body_chirho.node_chirho;
@@ -290,7 +296,8 @@ impl LowerCtxChirho {
                 if let Some(next_chirho) = parts_chirho.body_chirho {
                     self.lower_gadt_spine_chirho(next_chirho, signature_chirho, depth_chirho + 1);
                 } else {
-                    signature_chirho.malformed_chirho = true;
+                    signature_chirho.malformed_chirho =
+                        Some(GadtConMalformedChirho::IncompleteChirho);
                 }
             }
             SyntaxKindChirho::QualTypeChirho => {
@@ -304,7 +311,8 @@ impl LowerCtxChirho {
                 if let Some(next_chirho) = parts_chirho.body_chirho {
                     self.lower_gadt_spine_chirho(next_chirho, signature_chirho, depth_chirho + 1);
                 } else {
-                    signature_chirho.malformed_chirho = true;
+                    signature_chirho.malformed_chirho =
+                        Some(GadtConMalformedChirho::IncompleteChirho);
                 }
             }
             SyntaxKindChirho::ParenTypeChirho => {
@@ -312,7 +320,8 @@ impl LowerCtxChirho {
                 if let Some(next_chirho) = children_chirho.iter().find_map(type_body_chirho) {
                     self.lower_gadt_spine_chirho(next_chirho, signature_chirho, depth_chirho + 1);
                 } else {
-                    signature_chirho.malformed_chirho = true;
+                    signature_chirho.malformed_chirho =
+                        Some(GadtConMalformedChirho::IncompleteChirho);
                 }
             }
             SyntaxKindChirho::FunTypeChirho => {
@@ -322,7 +331,8 @@ impl LowerCtxChirho {
                     .filter_map(type_body_chirho)
                     .collect::<Vec<_>>();
                 if nodes_chirho.len() != 2 {
-                    signature_chirho.malformed_chirho = true;
+                    signature_chirho.malformed_chirho =
+                        Some(GadtConMalformedChirho::IncompleteChirho);
                     return;
                 }
                 let field_chirho = nodes_chirho[0];
@@ -332,13 +342,15 @@ impl LowerCtxChirho {
                     child_chirho.element_chirho, GreenElementChirho::TokenChirho(token_chirho) if token_chirho.text_chirho() == "%"
                 ));
                 if wrote_percent_chirho && multiplicity_chirho.is_none() {
-                    signature_chirho.malformed_chirho = true;
+                    signature_chirho.malformed_chirho =
+                        Some(GadtConMalformedChirho::UnsupportedMultiplicityChirho);
                 }
                 if field_chirho.node_chirho.kind_chirho() == SyntaxKindChirho::RecordFieldsChirho {
                     if !matches!(&signature_chirho.args_chirho, GadtConArgsChirho::PositionalChirho(fields_chirho) if fields_chirho.is_empty())
                         || multiplicity_chirho.is_some()
                     {
-                        signature_chirho.malformed_chirho = true;
+                        signature_chirho.malformed_chirho =
+                            Some(GadtConMalformedChirho::IncompleteChirho);
                     }
                     let fields_chirho = self.lower_record_fields_mode_chirho(
                         field_chirho.node_chirho,
@@ -377,7 +389,8 @@ impl LowerCtxChirho {
                                     .lower_arrow_multiplicity_chirho(&multiplicity_chirho)
                                     .is_none()
                             {
-                                signature_chirho.malformed_chirho = true;
+                                signature_chirho.malformed_chirho =
+                                    Some(GadtConMalformedChirho::UnsupportedMultiplicityChirho);
                             }
                         }
                     }
@@ -388,7 +401,8 @@ impl LowerCtxChirho {
                             | SyntaxKindChirho::RecordFieldsChirho
                             | SyntaxKindChirho::FunTypeChirho
                     ) {
-                        signature_chirho.malformed_chirho = true;
+                        signature_chirho.malformed_chirho =
+                            Some(GadtConMalformedChirho::IncompleteChirho);
                     }
                     signature_chirho.result_ty_chirho = self
                         .lower_type_chirho(result_chirho.node_chirho, result_chirho.base_chirho);
@@ -404,7 +418,8 @@ impl LowerCtxChirho {
                         let Some(inner_chirho) =
                             field_children_chirho.iter().find_map(type_body_chirho)
                         else {
-                            signature_chirho.malformed_chirho = true;
+                            signature_chirho.malformed_chirho =
+                                Some(GadtConMalformedChirho::IncompleteChirho);
                             return;
                         };
                         field_body_chirho = inner_chirho;
@@ -430,13 +445,14 @@ impl LowerCtxChirho {
                             ),
                         });
                     } else {
-                        signature_chirho.malformed_chirho = true;
+                        signature_chirho.malformed_chirho =
+                            Some(GadtConMalformedChirho::IncompleteChirho);
                     }
                     self.lower_gadt_spine_chirho(result_chirho, signature_chirho, depth_chirho + 1);
                 }
             }
             SyntaxKindChirho::GadtFieldTypeChirho | SyntaxKindChirho::RecordFieldsChirho => {
-                signature_chirho.malformed_chirho = true;
+                signature_chirho.malformed_chirho = Some(GadtConMalformedChirho::IncompleteChirho);
             }
             _ => {
                 signature_chirho.result_ty_chirho = self.lower_type_chirho(node_chirho, base_chirho)

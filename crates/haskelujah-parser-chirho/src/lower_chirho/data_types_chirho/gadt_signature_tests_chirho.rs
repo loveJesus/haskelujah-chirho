@@ -33,7 +33,7 @@ fn forall_context_record_keeps_its_signature_and_following_declarations_chirho()
     let module_chirho = parse_and_lower_chirho(source_chirho);
     assert_eq!(module_chirho.decls_chirho.len(), 3);
     let signature_chirho = first_gadt_chirho(source_chirho);
-    assert!(!signature_chirho.malformed_chirho);
+    assert!(signature_chirho.malformed_chirho.is_none());
     assert!(
         matches!(&signature_chirho.prefix_chirho[..], [GadtConPrefixChirho::ForallChirho { vars_chirho, .. }, GadtConPrefixChirho::ContextChirho { .. }] if vars_chirho.len() == 1)
     );
@@ -109,7 +109,10 @@ fn positional_and_named_gadt_multiplicities_are_distinct_from_record_arrow_chirh
     let illegal_chirho = first_gadt_chirho(
         "{-# LANGUAGE GADTs, LinearTypes #-}\nmodule Main where\ndata BoxChirho aChirho where\n  MkBoxChirho :: { payloadChirho :: aChirho } %1 -> BoxChirho aChirho\n",
     );
-    assert!(illegal_chirho.malformed_chirho);
+    assert_eq!(
+        illegal_chirho.malformed_chirho,
+        Some(haskelujah_ast_chirho::decl_chirho::GadtConMalformedChirho::IllegalRecordArrowChirho)
+    );
 }
 
 #[test]
@@ -124,7 +127,10 @@ fn balanced_forall_annotations_keep_binders_without_approximating_their_kinds_ch
             "{{-# LANGUAGE GADTs, PolyKinds, RankNTypes, DataKinds #-}}\nmodule Main where\ndata BoxChirho where\n  MkBoxChirho :: forall (fChirho :: {annotation_chirho}). Int -> BoxChirho\n"
         );
         let signature_chirho = first_gadt_chirho(&source_chirho);
-        assert!(!signature_chirho.malformed_chirho, "{annotation_chirho}");
+        assert!(
+            signature_chirho.malformed_chirho.is_none(),
+            "{annotation_chirho}"
+        );
         assert!(
             matches!(&signature_chirho.prefix_chirho[0], GadtConPrefixChirho::ForallChirho { vars_chirho, .. } if vars_chirho.len() == 1 && vars_chirho[0].name_chirho.text_chirho() == "fChirho")
         );
@@ -133,7 +139,7 @@ fn balanced_forall_annotations_keep_binders_without_approximating_their_kinds_ch
     let malformed_chirho = first_gadt_chirho(
         "{-# LANGUAGE GADTs, ExplicitForAll #-}\nmodule Main where\ndata BoxChirho where\n  MkBoxChirho :: forall (aChirho :: Type) Int -> BoxChirho\n",
     );
-    assert!(malformed_chirho.malformed_chirho);
+    assert!(malformed_chirho.malformed_chirho.is_some());
 }
 
 #[test]
@@ -212,7 +218,7 @@ fn retained_corpus_strict_fields_keep_their_real_arities_chirho() {
                 }
             })
             .expect("retained corpus constructor");
-        assert!(!signature_chirho.malformed_chirho, "{name_chirho}");
+        assert!(signature_chirho.malformed_chirho.is_none(), "{name_chirho}");
         assert_eq!(
             signature_chirho.positional_fields_chirho().count(),
             arity_chirho,
@@ -238,7 +244,7 @@ fn higher_rank_forall_binders_keep_the_real_corpus_constructor_fields_chirho() {
         include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T18986b.hs"),
     ] {
         let signature_chirho = first_gadt_chirho(source_chirho);
-        assert!(!signature_chirho.malformed_chirho);
+        assert!(signature_chirho.malformed_chirho.is_none());
         assert_eq!(signature_chirho.positional_fields_chirho().count(), 2);
     }
 }

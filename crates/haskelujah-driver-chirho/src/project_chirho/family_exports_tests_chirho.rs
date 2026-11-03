@@ -799,7 +799,8 @@ fn exported_synonym_family_identity_wins_over_the_importers_namesake_chirho() {
         &exporter_chirho.module_chirho,
         &ifaces_chirho,
         &exporter_chirho.infer_result_chirho.type_families_chirho,
-    );
+    )
+    .expect("valid source has a complete constructor interface");
     let synonyms_chirho = crate::exported_type_synonyms_from_module_chirho(
         &exporter_chirho.module_chirho,
         &exported_iface_chirho,
@@ -864,7 +865,8 @@ fn central_frontend_preserves_an_associated_member_through_a_real_forwarder_chir
             &frontend_chirho.module_chirho,
             &ifaces_chirho,
             &frontend_chirho.infer_result_chirho.type_families_chirho,
-        );
+        )
+        .expect("valid source has a complete constructor interface");
         assert!(
             iface_chirho
                 .exports_chirho
@@ -896,7 +898,8 @@ fn central_frontend_keeps_explicit_operator_type_exports_out_of_the_value_namesp
         &origin_chirho.module_chirho,
         &ifaces_chirho,
         &origin_chirho.infer_result_chirho.type_families_chirho,
-    );
+    )
+    .expect("valid source has a complete constructor interface");
     assert!(
         origin_iface_chirho
             .exports_chirho
@@ -935,7 +938,8 @@ fn central_frontend_keeps_explicit_operator_type_exports_out_of_the_value_namesp
             &forwarded_chirho.module_chirho,
             &ifaces_chirho,
             &forwarded_chirho.infer_result_chirho.type_families_chirho,
-        );
+        )
+        .expect("valid source has a complete constructor interface");
         assert_eq!(
             forwarded_iface_chirho
                 .exports_chirho
@@ -1000,11 +1004,14 @@ fn symbolic_associated_members_keep_their_written_export_namespace_chirho() {
         &crate::seed_builtin_type_families_chirho(),
     )
     .expect("the class declares the symbolic name in each namespace");
-    ifaces_chirho.push(build_family_aware_iface_chirho(
-        &origin_chirho.module_chirho,
-        &ifaces_chirho,
-        &origin_chirho.infer_result_chirho.type_families_chirho,
-    ));
+    ifaces_chirho.push(
+        build_family_aware_iface_chirho(
+            &origin_chirho.module_chirho,
+            &ifaces_chirho,
+            &origin_chirho.infer_result_chirho.type_families_chirho,
+        )
+        .expect("valid source has a complete constructor interface"),
+    );
     for (member_chirho, exports_type_chirho) in [("(#)", false), ("type (#)", true)] {
         for local_chirho in [false, true] {
             let source_chirho = if local_chirho {
@@ -1029,7 +1036,8 @@ fn symbolic_associated_members_keep_their_written_export_namespace_chirho() {
                 &frontend_chirho.module_chirho,
                 &ifaces_chirho,
                 &frontend_chirho.infer_result_chirho.type_families_chirho,
-            );
+            )
+            .expect("valid source has a complete constructor interface");
             assert!(
                 actual_chirho
                     .exports_chirho
@@ -1085,4 +1093,53 @@ fn self_module_export_keeps_local_and_admitted_self_alias_entities_chirho() {
         BTreeSet::from([imported_chirho])
     );
     assert!(export_identities_chirho(&registry_chirho, "SelfChirho.HChirho").is_empty());
+}
+
+#[test]
+fn constructor_interface_failures_keep_their_own_span_and_resource_kind_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::{
+        ConstructorSignatureErrorChirho, GadtConMalformedChirho, GadtProjectionErrorChirho,
+        GadtProjectionLimitChirho,
+    };
+    use haskelujah_span_chirho::{ByteOffsetChirho, SourceMapChirho, SpanChirho};
+    let mut sources_chirho = SourceMapChirho::new_chirho();
+    let file_chirho =
+        sources_chirho.add_file_chirho("ActualChirho.hs", "module ActualChirho where\n");
+    let span_chirho = SpanChirho::new_chirho(
+        file_chirho,
+        ByteOffsetChirho::new_chirho(7),
+        ByteOffsetChirho::new_chirho(12),
+    );
+    for (error_chirho, semantic_chirho) in [
+        (
+            ConstructorSignatureErrorChirho::MalformedChirho {
+                reason_chirho: GadtConMalformedChirho::IncompleteChirho,
+                span_chirho,
+            },
+            true,
+        ),
+        (
+            ConstructorSignatureErrorChirho::ProjectionChirho(GadtProjectionErrorChirho {
+                span_chirho,
+                limit_chirho: GadtProjectionLimitChirho::WorkChirho,
+            }),
+            false,
+        ),
+    ] {
+        let diagnostics_chirho = FamilyExportsErrorChirho::ConstructorSignatureChirho {
+            module_chirho: "ActualChirho".to_owned(),
+            error_chirho,
+        }
+        .into_diagnostics_chirho(SpanChirho::DUMMY_CHIRHO);
+        let diagnostic_chirho = &diagnostics_chirho.diagnostics_chirho()[0];
+        assert_eq!(diagnostic_chirho.primary_span_chirho(), Some(span_chirho));
+        assert_eq!(diagnostic_chirho.code_chirho.is_some(), semantic_chirho);
+        let source_message_chirho = FamilyExportsErrorChirho::ConstructorSignatureChirho {
+            module_chirho: "ActualChirho".to_owned(),
+            error_chirho,
+        }
+        .source_message_chirho("/actual/source/ActualChirho.hs", &sources_chirho);
+        assert!(source_message_chirho.contains("/actual/source/ActualChirho.hs:1:8"));
+        assert!(source_message_chirho.contains("ActualChirho"));
+    }
 }

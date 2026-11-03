@@ -3244,7 +3244,8 @@ fn clock_iface_exports_normalize_and_s2ns_chirho() {
         "System.Clock should retain explicit exports; module name={}",
         module_chirho.name_chirho.full_name_chirho()
     );
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[])
+        .expect("small source interface fixture fits constructor projection budget");
 
     assert!(
         iface_chirho
@@ -3559,7 +3560,8 @@ answer = withFrozenCallStack id (42 :: Int)
     let safe_util_module_chirho =
         lower_module_chirho(&safe_util_green_chirho, safe_util_file_id_chirho);
     let safe_util_iface_chirho =
-        build_iface_with_imports_chirho(&safe_util_module_chirho, &ifaces_chirho);
+        build_iface_with_imports_chirho(&safe_util_module_chirho, &ifaces_chirho)
+            .expect("small source interface fixture fits constructor projection budget");
     ifaces_chirho.push(safe_util_iface_chirho);
 
     let main_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -9785,6 +9787,14 @@ fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
     )
     .expect("hashable FFI frontend artifacts should collect");
 
+    artifacts_chirho
+        .validate_scanned_source_chirho(
+            "Data.Hashable.XXH3",
+            &xxh3_path_chirho.display().to_string(),
+            &xxh3_source_chirho,
+        )
+        .expect("XXH3 imports retain the scanned source authority");
+
     let xxh3_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
         &xxh3_path_chirho,
@@ -10047,6 +10057,14 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
     )
     .expect("warp MultiMap frontend artifacts should collect");
 
+    multimap_artifacts_chirho
+        .validate_scanned_source_chirho(
+            "Network.Wai.Handler.Warp.FdCache",
+            &fdcache_path_chirho.display().to_string(),
+            &fdcache_source_chirho,
+        )
+        .expect("FdCache imports retain the scanned source authority");
+
     let fdcache_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
         &fdcache_path_chirho,
@@ -10112,6 +10130,14 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     )
     .expect("warp MultiMap frontend artifacts should collect");
 
+    multimap_artifacts_chirho
+        .validate_scanned_source_chirho(
+            "Network.Wai.Handler.Warp.FdCache",
+            &fdcache_path_chirho.display().to_string(),
+            &fdcache_source_chirho,
+        )
+        .expect("FdCache imports retain the scanned source authority");
+
     let fdcache_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
         &fdcache_path_chirho,
@@ -10122,7 +10148,8 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, fdcache_file_chirho.file_id_chirho());
     let _iface_chirho =
-        build_iface_with_imports_chirho(&module_chirho, &multimap_artifacts_chirho.ifaces_chirho);
+        build_iface_with_imports_chirho(&module_chirho, &multimap_artifacts_chirho.ifaces_chirho)
+            .expect("small source interface fixture fits constructor projection budget");
 
     let mut merged_imported_types_chirho = multimap_artifacts_chirho.imported_types_chirho.clone();
     for (builtin_name_chirho, builtin_scheme_chirho) in

@@ -139,6 +139,7 @@ fn an_actual_written_data_header_supplies_its_defining_identity_chirho() {
     );
     assert_eq!(
         build_iface_chirho(&module_chirho)
+            .expect("small source interface fixture fits constructor projection budget")
             .exports_chirho
             .types_chirho["TChirho"]
             .declaration_chirho
@@ -329,7 +330,8 @@ fn reexports_and_constructor_hiding_keep_the_original_definition_chirho() {
         name_chirho: name_chirho("TChirho"),
         members_chirho: ExportMembersChirho::NoneChirho,
     }]);
-    let forwarded_chirho = build_iface_with_imports_chirho(&forward_chirho, &[exported_chirho]);
+    let forwarded_chirho = build_iface_with_imports_chirho(&forward_chirho, &[exported_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         forwarded_chirho.exports_chirho.types_chirho["TChirho"]
             .constructors_chirho

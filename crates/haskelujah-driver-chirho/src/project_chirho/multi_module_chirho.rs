@@ -92,7 +92,8 @@ pub fn compile_modules_chirho(
             &module_chirho,
             &ifaces_chirho,
             &infer_result_chirho.type_families_chirho,
-        );
+        )
+        .map_err(|error_chirho| error_chirho.into_diagnostics_chirho(module_chirho.span_chirho))?;
 
         let extra_dict_param_names_chirho: std::collections::HashSet<String> =
             imported_types_chirho.keys().cloned().collect();
@@ -676,7 +677,8 @@ pub fn compile_modules_incremental_chirho(
             &module_chirho,
             &ifaces_chirho,
             &infer_result_chirho.type_families_chirho,
-        );
+        )
+        .map_err(|error_chirho| error_chirho.into_diagnostics_chirho(module_chirho.span_chirho))?;
 
         if recompiled_chirho {
             // Record compilation fingerprint for incremental tracking.

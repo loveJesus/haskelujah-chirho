@@ -320,7 +320,7 @@ fn wrong_results_escaping_existentials_and_many_as_linear_are_rejected_chirho() 
     rejected_like_ghc_chirho(
         G15ILLEGALRECORDARROWCHIRHO_CHIRHO,
         "G15IllegalRecordArrowChirho.hs",
-        &["Malformed GADT"],
+        &["ordinary, non-linear arrow", "GHC-37475"],
     );
 }
 

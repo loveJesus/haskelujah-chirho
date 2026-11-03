@@ -741,7 +741,7 @@ data aChirho :-> cChirho where
                 ConDeclChirho::GadtChirho {
                     signature_chirho, ..
                 } => {
-                    let ty_chirho = &signature_chirho.as_type_chirho();
+                    let ty_chirho = &signature_chirho.try_as_type_chirho(&mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho()).expect("small parser fixture fits projection budget");
                     assert!(
                         matches!(ty_chirho, TypeChirho::FunChirho { .. }),
                         "PairChirho signature should stay a function type, got {:?}",
