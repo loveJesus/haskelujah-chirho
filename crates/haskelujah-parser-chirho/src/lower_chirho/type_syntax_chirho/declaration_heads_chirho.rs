@@ -113,14 +113,23 @@ impl LowerCtxChirho {
                             .1
                             .merge_chirho(head_tokens_chirho[end_idx_chirho].1)
                             .unwrap_or(span_chirho);
-                        let inner_ty_chirho = self.lower_type_from_token_slice_chirho(
-                            inner_tokens_chirho,
-                            head_span_chirho,
-                        );
-                        types_chirho.push(TypeChirho::ParenChirho {
-                            inner_chirho: Box::new(inner_ty_chirho),
-                            span_chirho: head_span_chirho,
-                        });
+                        if inner_tokens_chirho.is_empty() {
+                            // Unit is a concrete instance head, never a fresh
+                            // placeholder that matches every type (row 686).
+                            types_chirho.push(TypeChirho::TupleChirho {
+                                elements_chirho: Vec::new(),
+                                span_chirho: head_span_chirho,
+                            });
+                        } else {
+                            let inner_ty_chirho = self.lower_type_from_token_slice_chirho(
+                                inner_tokens_chirho,
+                                head_span_chirho,
+                            );
+                            types_chirho.push(TypeChirho::ParenChirho {
+                                inner_chirho: Box::new(inner_ty_chirho),
+                                span_chirho: head_span_chirho,
+                            });
+                        }
                         idx_chirho = end_idx_chirho + 1;
                     } else {
                         idx_chirho += 1;

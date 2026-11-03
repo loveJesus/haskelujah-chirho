@@ -780,3 +780,21 @@ instance Num T where
         .collect();
     assert_eq!(names_chirho, ["+"]);
 }
+
+#[test]
+fn a_unit_instance_head_is_concrete_beside_a_context_instance_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "module Main where\nclass SizeChirho aChirho where\n  sizeChirho :: aChirho -> Int\ninstance SizeChirho () where\n  sizeChirho _ = 0\ninstance SizeChirho aChirho => SizeChirho (Maybe aChirho) where\n  sizeChirho _ = 1\n",
+    );
+    let heads_chirho: Vec<_> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::InstanceDeclChirho { types_chirho, .. } => Some(types_chirho),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(heads_chirho.len(), 2);
+    assert_eq!(type_shape_chirho(&heads_chirho[0][0]), "()");
+    assert_eq!(type_shape_chirho(&heads_chirho[1][0]), "(Maybe aChirho)");
+}
