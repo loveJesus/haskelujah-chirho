@@ -399,6 +399,15 @@ impl LowerCtxChirho {
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
     ) -> ImportDeclChirho {
+        // SOURCE is pragma trivia to the ordinary semantic walk, but its
+        // import edge must survive lowering for reached hs-boot contracts.
+        let source_chirho = node_chirho.children_chirho().iter().any(|element_chirho| {
+            matches!(element_chirho, GreenElementChirho::TokenChirho(token_chirho)
+                if token_chirho.kind_chirho() == TokenKindChirho::PragmaChirho
+                    && token_chirho.text_chirho().strip_prefix("{-#")
+                        .and_then(|body_chirho| body_chirho.strip_suffix("#-}"))
+                        .is_some_and(|body_chirho| body_chirho.trim() == "SOURCE"))
+        });
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut qualified_chirho = false;
         let mut module_name_chirho = None;
@@ -462,6 +471,7 @@ impl LowerCtxChirho {
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         ImportDeclChirho {
+            source_chirho,
             module_chirho: module_name_chirho.unwrap_or_else(|| {
                 NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                     "",

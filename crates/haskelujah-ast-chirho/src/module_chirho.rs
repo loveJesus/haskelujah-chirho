@@ -91,6 +91,8 @@ pub enum ExportMembersChirho {
 pub struct ImportDeclChirho {
     /// The imported module name.
     pub module_chirho: NameChirho,
+    /// Whether this import explicitly selects the target's hs-boot interface.
+    pub source_chirho: bool,
     /// Whether this is a qualified import.
     pub qualified_chirho: bool,
     /// Optional alias (`as Alias`).
@@ -223,6 +225,7 @@ mod tests_chirho {
                 "Data.List",
                 SpanChirho::DUMMY_CHIRHO,
             )),
+            source_chirho: false,
             qualified_chirho: true,
             alias_chirho: Some(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                 "L",
@@ -249,6 +252,7 @@ mod tests_chirho {
     fn non_empty_import_chirho(spec_chirho: Option<ImportSpecChirho>) -> ImportDeclChirho {
         ImportDeclChirho {
             module_chirho: plain_name_chirho("Data.List.NonEmpty"),
+            source_chirho: false,
             qualified_chirho: true,
             alias_chirho: Some(plain_name_chirho("NE")),
             spec_chirho,

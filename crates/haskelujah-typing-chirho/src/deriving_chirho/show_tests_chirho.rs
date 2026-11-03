@@ -298,6 +298,7 @@ fn a_kind_signature_tail_gives_the_metadata_the_instance_heads_parameters_chirho
 fn non_empty_import_chirho() -> ImportDeclChirho {
     ImportDeclChirho {
         module_chirho: var_name_chirho("Data.List.NonEmpty"),
+        source_chirho: false,
         qualified_chirho: true,
         alias_chirho: Some(var_name_chirho("NE")),
         spec_chirho: None,

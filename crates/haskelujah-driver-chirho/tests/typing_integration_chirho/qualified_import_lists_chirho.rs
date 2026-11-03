@@ -37,6 +37,7 @@ fn naming_messages_chirho(source_chirho: &str) -> Vec<String> {
                 "Prelude",
                 SpanChirho::DUMMY_CHIRHO,
             )),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,

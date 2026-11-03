@@ -15,7 +15,7 @@ use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
 use haskelujah_driver_chirho::{
-    check_source_path_with_source_map_chirho, compile_source_chirho, eval_source_outcome_chirho,
+    check_source_path_with_source_map_chirho, eval_source_file_outcome_chirho,
     render_diagnostics_chirho, render_summary_chirho,
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
@@ -232,15 +232,21 @@ fn run_command_chirho(
         }
     };
 
-    let file_name_chirho = Path::new(&path_chirho)
-        .file_name()
-        .and_then(|os_str_chirho| os_str_chirho.to_str())
-        .unwrap_or(&path_chirho);
+    let checked_path_chirho = Path::new(&path_chirho);
+    let search_dir_chirho = checked_path_chirho
+        .parent()
+        .filter(|parent_chirho| !parent_chirho.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
 
     // If any dump flags are set, compile first to get Core/LLVM IR.
     if flags_chirho.dump_core_chirho || flags_chirho.dump_llvm_chirho {
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        match compile_source_chirho(&source_text_chirho, &mut sm_chirho, file_name_chirho) {
+        match haskelujah_driver_chirho::compile_source_file_with_search_path_chirho(
+            &source_text_chirho,
+            &mut sm_chirho,
+            checked_path_chirho,
+            search_dir_chirho,
+        ) {
             Ok(result_chirho) => {
                 if flags_chirho.dump_core_chirho {
                     eprintln!("=== Core IR ===");
@@ -265,10 +271,10 @@ fn run_command_chirho(
     // linking successfully.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
-    match eval_source_outcome_chirho(
+    match eval_source_file_outcome_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
-        file_name_chirho,
+        checked_path_chirho,
         None,
     ) {
         Ok(outcome_chirho) => {
@@ -327,11 +333,6 @@ fn compile_command_chirho(
             return ExitCode::from(1);
         }
     };
-
-    let file_name_chirho = Path::new(&path_chirho)
-        .file_name()
-        .and_then(|os_str_chirho| os_str_chirho.to_str())
-        .unwrap_or(&path_chirho);
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
@@ -428,10 +429,10 @@ fn compile_command_chirho(
         }
     };
     let search_dir_chirho = search_dir_chirho.as_path();
-    match haskelujah_driver_chirho::compile_source_with_search_path_chirho(
+    match haskelujah_driver_chirho::compile_source_file_with_search_path_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
-        file_name_chirho,
+        Path::new(&path_chirho),
         search_dir_chirho,
     ) {
         Ok(result_chirho) => {

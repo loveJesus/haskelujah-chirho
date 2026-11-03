@@ -3,6 +3,7 @@
 //! Behavioral controls for declaration-only discovery. Compiler execution is
 //! confined to the ordinary test runner; these tests never invoke external tools.
 
+use super::super::DiscoveredSourceModuleChirho;
 use super::*;
 use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
 use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
@@ -21,7 +22,57 @@ fn discovery_chirho(
     checked_chirho: &str,
     sources_chirho: &[&str],
 ) -> (TypeFamilyRegistryChirho, Vec<ModuleIfaceChirho>) {
+    discovery_with_boots_chirho(checked_chirho, sources_chirho, &[])
+}
+
+struct SourceScratchChirho(std::path::PathBuf);
+
+impl SourceScratchChirho {
+    fn new_chirho() -> Self {
+        static NEXT_CHIRHO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let path_chirho = std::env::temp_dir().join(format!(
+            "source_family_boot_chirho_{}_{}",
+            std::process::id(),
+            NEXT_CHIRHO.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&path_chirho).expect("create source family boot fixture");
+        Self(path_chirho)
+    }
+}
+
+impl Drop for SourceScratchChirho {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn discovery_with_boots_chirho(
+    checked_chirho: &str,
+    sources_chirho: &[&str],
+    boots_chirho: &[(&str, &str)],
+) -> (TypeFamilyRegistryChirho, Vec<ModuleIfaceChirho>) {
     let checked_module_chirho = module_chirho(checked_chirho);
+    let scratch_chirho = (!boots_chirho.is_empty()).then(SourceScratchChirho::new_chirho);
+    let checked_path_chirho = scratch_chirho.as_ref().map(|scratch_chirho| {
+        scratch_chirho.0.join(format!(
+            "{}.hs",
+            checked_module_chirho.name_chirho.full_name_chirho()
+        ))
+    });
+    if let Some(path_chirho) = &checked_path_chirho {
+        std::fs::write(path_chirho, checked_chirho).expect("write checked source fixture");
+    }
+    for (name_chirho, source_chirho) in boots_chirho {
+        std::fs::write(
+            scratch_chirho
+                .as_ref()
+                .expect("boot fixture directory")
+                .0
+                .join(name_chirho),
+            source_chirho,
+        )
+        .expect("write boot fixture");
+    }
     let mut modules_chirho = DiscoveredSourceModulesChirho::new();
     let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     for source_chirho in sources_chirho {
@@ -31,7 +82,22 @@ fn discovery_chirho(
             &ifaces_chirho,
         );
         admit_authoritative_iface_chirho(&mut ifaces_chirho, iface_chirho);
-        modules_chirho.insert(module_chirho.name_chirho.full_name_chirho(), module_chirho);
+        let name_chirho = module_chirho.name_chirho.full_name_chirho();
+        let path_chirho = scratch_chirho
+            .as_ref()
+            .map_or_else(std::path::PathBuf::new, |scratch_chirho| {
+                scratch_chirho.0.join(format!("{name_chirho}.hs"))
+            });
+        if scratch_chirho.is_some() {
+            std::fs::write(&path_chirho, source_chirho).expect("write companion fixture");
+        }
+        modules_chirho.insert(
+            name_chirho,
+            DiscoveredSourceModuleChirho {
+                module_chirho,
+                path_chirho,
+            },
+        );
     }
     let mut registry_chirho = seed_type_family_registry_chirho();
     register_discovered_type_families_chirho(
@@ -41,6 +107,7 @@ fn discovery_chirho(
             ifaces_chirho: &mut ifaces_chirho,
             registry_chirho: &mut registry_chirho,
             imported_synonyms_chirho: &ImportedTypeSynonymsChirho::new(),
+            checked_path_chirho: checked_path_chirho.as_deref(),
         },
     )
     .expect("authoritative source family declarations register");
@@ -86,11 +153,15 @@ fn imported_closed_family_is_registered_from_its_source_chirho() {
 #[test]
 fn source_companion_can_instance_the_checked_modules_open_family_chirho() {
     let source_chirho = "{-# LANGUAGE TypeFamilies #-}\nmodule OwnerChirho where\nimport InstancesChirho\ntype family FChirho aChirho\ntype family UnrelatedChirho aChirho where\n  UnrelatedChirho aChirho = Int\nvalueChirho :: FChirho Int\nvalueChirho = 3\n";
-    let (registry_chirho, ifaces_chirho) = discovery_chirho(
+    let (registry_chirho, ifaces_chirho) = discovery_with_boots_chirho(
         source_chirho,
         &[
             "{-# LANGUAGE TypeFamilies #-}\nmodule InstancesChirho where\nimport {-# SOURCE #-} OwnerChirho\ntype instance FChirho Int = Int\n",
         ],
+        &[(
+            "OwnerChirho.hs-boot",
+            "{-# LANGUAGE TypeFamilies #-}\nmodule OwnerChirho where\ntype family FChirho aChirho\n",
+        )],
     );
     let TypeFamilyAliasResolutionChirho::UniqueChirho(definition_chirho) =
         registry_chirho.resolve_export_chirho("OwnerChirho.FChirho")
@@ -161,7 +232,13 @@ fn failed_registration_leaves_registry_and_interfaces_unchanged_chirho() {
         "{-# LANGUAGE TypeFamilies #-}\nmodule BadChirho where\ntype instance MissingChirho Int = Bool\n",
     );
     let mut modules_chirho = DiscoveredSourceModulesChirho::new();
-    modules_chirho.insert("BadChirho".to_owned(), bad_chirho);
+    modules_chirho.insert(
+        "BadChirho".to_owned(),
+        DiscoveredSourceModuleChirho {
+            module_chirho: bad_chirho,
+            path_chirho: std::path::PathBuf::new(),
+        },
+    );
     let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let before_ifaces_chirho = format!("{ifaces_chirho:?}");
     let mut registry_chirho = seed_type_family_registry_chirho();
@@ -173,6 +250,7 @@ fn failed_registration_leaves_registry_and_interfaces_unchanged_chirho() {
             ifaces_chirho: &mut ifaces_chirho,
             registry_chirho: &mut registry_chirho,
             imported_synonyms_chirho: &ImportedTypeSynonymsChirho::new(),
+            checked_path_chirho: None,
         },
     );
     assert!(result_chirho.is_err());

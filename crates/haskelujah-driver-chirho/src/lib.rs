@@ -2267,6 +2267,7 @@ fn inject_prelude_import_chirho(module_chirho: &mut ModuleChirho) {
                     haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
                 ),
             ),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -2563,6 +2564,7 @@ fn check_source_file_with_search_path_chirho(
             ifaces_chirho: &mut all_ifaces_chirho,
             registry_chirho: &mut imported_type_families_chirho,
             imported_synonyms_chirho: &imported_type_synonyms_chirho,
+            checked_path_chirho: Some(&source_path_chirho),
         },
     )?;
 
@@ -2853,6 +2855,56 @@ pub fn compile_source_with_search_path_chirho(
     file_name_chirho: &str,
     search_dir_chirho: &Path,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    compile_source_with_search_context_chirho(
+        source_chirho,
+        source_map_chirho,
+        SourceSearchContextChirho {
+            file_name_chirho,
+            search_dir_chirho,
+            checked_path_chirho: None,
+        },
+    )
+}
+
+/// The file-reading caller supplies the checked file's actual path. An in-memory
+/// source name alone cannot select an hs-boot contract for a SOURCE back-edge.
+pub fn compile_source_file_with_search_path_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    checked_path_chirho: &Path,
+    search_dir_chirho: &Path,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    let file_name_chirho = checked_path_chirho
+        .file_name()
+        .unwrap_or(checked_path_chirho.as_os_str())
+        .to_string_lossy();
+    compile_source_with_search_context_chirho(
+        source_chirho,
+        source_map_chirho,
+        SourceSearchContextChirho {
+            file_name_chirho: &file_name_chirho,
+            search_dir_chirho,
+            checked_path_chirho: Some(checked_path_chirho),
+        },
+    )
+}
+
+struct SourceSearchContextChirho<'source_chirho> {
+    file_name_chirho: &'source_chirho str,
+    search_dir_chirho: &'source_chirho Path,
+    checked_path_chirho: Option<&'source_chirho Path>,
+}
+
+fn compile_source_with_search_context_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    context_chirho: SourceSearchContextChirho<'_>,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    let SourceSearchContextChirho {
+        file_name_chirho,
+        search_dir_chirho,
+        checked_path_chirho,
+    } = context_chirho;
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         source_map_chirho,
         file_name_chirho,
@@ -2917,6 +2969,7 @@ pub fn compile_source_with_search_path_chirho(
             ifaces_chirho: &mut all_ifaces_chirho,
             registry_chirho: &mut imported_type_families_chirho,
             imported_synonyms_chirho: &imported_type_synonyms_chirho,
+            checked_path_chirho,
         },
     )?;
 
@@ -3219,6 +3272,33 @@ pub fn eval_source_outcome_chirho(
         compile_source_chirho(source_chirho, source_map_chirho, file_name_chirho)
             .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
 
+    stg_lower_chirho::lower_and_run_outcome_chirho(
+        &compile_result_chirho.core_chirho,
+        entry_name_chirho,
+        compile_result_chirho.newtype_cons_chirho,
+    )
+}
+
+/// A file-reading caller keeps path authority through discovery and boot checks.
+/// Siblings supply frontend metadata here; their Core is not linked into this
+/// single-module interpreter entry point.
+pub fn eval_source_file_outcome_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    checked_path_chirho: &Path,
+    entry_name_chirho: Option<&str>,
+) -> Result<stg_lower_chirho::RunOutcomeChirho, String> {
+    let search_dir_chirho = checked_path_chirho
+        .parent()
+        .filter(|parent_chirho| !parent_chirho.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let compile_result_chirho = compile_source_file_with_search_path_chirho(
+        source_chirho,
+        source_map_chirho,
+        checked_path_chirho,
+        search_dir_chirho,
+    )
+    .map_err(|diagnostics_chirho| format!("compilation error: {diagnostics_chirho:?}"))?;
     stg_lower_chirho::lower_and_run_outcome_chirho(
         &compile_result_chirho.core_chirho,
         entry_name_chirho,

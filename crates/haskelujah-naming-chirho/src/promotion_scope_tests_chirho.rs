@@ -72,6 +72,7 @@ fn import_chirho(
 ) -> ImportDeclChirho {
     ImportDeclChirho {
         module_chirho: name_chirho(module_chirho),
+        source_chirho: false,
         qualified_chirho,
         alias_chirho: alias_chirho.map(name_chirho),
         spec_chirho: None,

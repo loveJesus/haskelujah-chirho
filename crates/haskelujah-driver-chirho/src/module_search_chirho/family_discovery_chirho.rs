@@ -4,6 +4,9 @@
 //! cold declaration pass; siblings' expressions are not inferred or linked.
 //! Workflow: compiler-pipeline-chirho/module-search-authority-chirho.md.
 
+use super::boot_contract_chirho::{
+    BootContractContextChirho, validate_reached_boot_contracts_chirho,
+};
 use super::{DiscoveredSourceModulesChirho, admit_authoritative_iface_chirho};
 use crate::ImportedTypeSynonymsChirho;
 use crate::family_exports_chirho::{
@@ -20,6 +23,7 @@ use haskelujah_typing_chirho::infer_chirho::{
     predeclare_source_open_families_chirho, register_source_module_families_chirho,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::Path;
 use std::sync::Arc;
 
 pub(crate) struct DiscoveredFamilyContextChirho<'source_chirho> {
@@ -27,6 +31,8 @@ pub(crate) struct DiscoveredFamilyContextChirho<'source_chirho> {
     pub(crate) ifaces_chirho: &'source_chirho mut Vec<ModuleIfaceChirho>,
     pub(crate) registry_chirho: &'source_chirho mut TypeFamilyRegistryChirho,
     pub(crate) imported_synonyms_chirho: &'source_chirho ImportedTypeSynonymsChirho,
+    /// A synthetic source name has no authority to locate an hs-boot file.
+    pub(crate) checked_path_chirho: Option<&'source_chirho Path>,
 }
 
 fn has_closed_families_chirho(module_chirho: &ModuleChirho) -> bool {
@@ -187,7 +193,7 @@ pub(crate) fn register_discovered_type_families_chirho(
     let mut modules_chirho = context_chirho
         .modules_chirho
         .iter()
-        .map(|(name_chirho, module_chirho)| (name_chirho.clone(), module_chirho))
+        .map(|(name_chirho, source_chirho)| (name_chirho.clone(), &source_chirho.module_chirho))
         .collect::<BTreeMap<_, _>>();
     let checked_name_chirho = checked_chirho.name_chirho.full_name_chirho();
     modules_chirho.insert(checked_name_chirho.clone(), checked_chirho);
@@ -196,6 +202,26 @@ pub(crate) fn register_discovered_type_families_chirho(
         .map_err(|error_chirho| {
             family_frontend_diagnostics_chirho(error_chirho, checked_chirho.span_chirho)
         })?;
+    let mut paths_chirho = context_chirho
+        .modules_chirho
+        .iter()
+        .map(|(name_chirho, source_chirho)| {
+            (name_chirho.clone(), source_chirho.path_chirho.as_path())
+        })
+        .collect::<BTreeMap<_, _>>();
+    if let Some(path_chirho) = context_chirho.checked_path_chirho {
+        paths_chirho.insert(checked_name_chirho.clone(), path_chirho);
+    } else {
+        // The checked source overrides any candidate sharing its declared name.
+        paths_chirho.remove(&checked_name_chirho);
+    }
+    validate_reached_boot_contracts_chirho(
+        &modules_chirho,
+        BootContractContextChirho {
+            paths_chirho: &paths_chirho,
+            reached_chirho: &reached_chirho,
+        },
+    )?;
     let ordered_chirho = reached_chirho
         .iter()
         .filter_map(|name_chirho| modules_chirho.get(name_chirho).copied())

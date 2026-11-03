@@ -55,6 +55,29 @@ fn items_chirho(import_chirho: &ImportDeclChirho) -> &[ImportItemChirho] {
 }
 
 #[test]
+fn source_import_pragma_is_preserved_on_its_actual_edge_chirho() {
+    let import_chirho = only_import_chirho(
+        "module MChirho where\nimport {-# SOURCE #-} qualified AChirho as QChirho (TChirho)\n",
+    );
+    assert!(import_chirho.source_chirho);
+    assert!(import_chirho.qualified_chirho);
+    assert_eq!(import_chirho.module_chirho.full_name_chirho(), "AChirho");
+    assert_eq!(import_chirho.effective_qualifier_chirho(), "QChirho");
+    assert_eq!(items_chirho(&import_chirho).len(), 1);
+}
+
+#[test]
+fn source_text_in_comments_is_not_a_source_import_chirho() {
+    for source_chirho in [
+        "module MChirho where\nimport AChirho -- SOURCE\n",
+        "module MChirho where\nimport {- SOURCE -} AChirho\n",
+        "module MChirho where\nimport AChirho\n",
+    ] {
+        assert!(!only_import_chirho(source_chirho).source_chirho);
+    }
+}
+
+#[test]
 fn a_namespace_wildcard_is_kept_as_unrepresented_chirho() {
     for source_chirho in [
         "module M where\nimport qualified Data.Proxy as D (data ..)\n",

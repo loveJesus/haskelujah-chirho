@@ -477,6 +477,7 @@ fn module_re_export_chirho() {
         ]),
         imports_chirho: vec![ImportDeclChirho {
             module_chirho: mk_name_chirho("Inner"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -557,6 +558,7 @@ fn module_alias_re_export_chirho() {
         ))]),
         imports_chirho: vec![ImportDeclChirho {
             module_chirho: mk_name_chirho("Inner"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: Some(mk_name_chirho("Alias")),
             spec_chirho: None,
@@ -632,6 +634,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
         imports_chirho: vec![
             ImportDeclChirho {
                 module_chirho: mk_name_chirho("LeftMod"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: Some(mk_name_chirho("Alias")),
                 spec_chirho: Some(ImportSpecChirho {
@@ -642,6 +645,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
             },
             ImportDeclChirho {
                 module_chirho: mk_name_chirho("RightMod"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: Some(mk_name_chirho("Alias")),
                 spec_chirho: None,
@@ -705,6 +709,7 @@ fn explicit_export_list_reexports_imported_value_chirho() {
         exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("choice"))]),
         imports_chirho: vec![ImportDeclChirho {
             module_chirho: mk_name_chirho("InnerChoice"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -755,6 +760,7 @@ fn explicit_export_list_reexports_imported_type_chirho() {
         exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("Parsec"))]),
         imports_chirho: vec![ImportDeclChirho {
             module_chirho: mk_name_chirho("InnerParsec"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -877,6 +883,7 @@ fn family_export_import_chirho(
 ) -> haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
     haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
         module_chirho: mk_name_chirho(module_chirho),
+        source_chirho: false,
         qualified_chirho: true,
         alias_chirho: Some(mk_name_chirho(alias_chirho)),
         spec_chirho: Some(haskelujah_ast_chirho::module_chirho::ImportSpecChirho {

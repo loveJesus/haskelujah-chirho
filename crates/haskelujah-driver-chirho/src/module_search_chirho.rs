@@ -11,14 +11,21 @@
 
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+#[path = "module_search_chirho/boot_contract_chirho.rs"]
+mod boot_contract_chirho;
 
 #[path = "module_search_chirho/family_discovery_chirho.rs"]
 mod family_discovery_chirho;
 pub(crate) use family_discovery_chirho::{
     DiscoveredFamilyContextChirho, register_discovered_type_families_chirho,
 };
-pub(crate) type DiscoveredSourceModulesChirho = BTreeMap<String, ModuleChirho>;
+pub(crate) struct DiscoveredSourceModuleChirho {
+    pub(crate) module_chirho: ModuleChirho,
+    pub(crate) path_chirho: PathBuf,
+}
+pub(crate) type DiscoveredSourceModulesChirho = BTreeMap<String, DiscoveredSourceModuleChirho>;
 
 use haskelujah_naming_chirho::iface_chirho::{
     IfaceExportsChirho, IfaceValueChirho, ModuleIfaceChirho, build_iface_with_imports_chirho,
@@ -142,7 +149,13 @@ pub(crate) fn scan_sibling_modules_with_sources_chirho(
             && sibling_path_matches_declared_module_chirho(&path_chirho, &iface_chirho.name_chirho)
         {
             crate::inject_prelude_import_chirho(&mut module_chirho);
-            modules_chirho.insert(iface_chirho.name_chirho.clone(), module_chirho);
+            modules_chirho.insert(
+                iface_chirho.name_chirho.clone(),
+                DiscoveredSourceModuleChirho {
+                    module_chirho,
+                    path_chirho: path_chirho.clone(),
+                },
+            );
             admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
         }
     }
@@ -398,9 +411,13 @@ fn scan_hierarchical_modules_bounded_chirho(
         match iface_result_chirho {
             Ok(Some((iface_chirho, mut module_chirho))) => {
                 crate::inject_prelude_import_chirho(&mut module_chirho);
-                walk_chirho
-                    .modules_chirho
-                    .insert(iface_chirho.name_chirho.clone(), module_chirho);
+                walk_chirho.modules_chirho.insert(
+                    iface_chirho.name_chirho.clone(),
+                    DiscoveredSourceModuleChirho {
+                        module_chirho,
+                        path_chirho: path_chirho.clone(),
+                    },
+                );
                 admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
             }
             Ok(None) => {}
