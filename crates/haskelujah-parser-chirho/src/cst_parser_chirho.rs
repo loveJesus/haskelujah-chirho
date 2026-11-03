@@ -34,6 +34,7 @@ mod bindings_chirho;
 #[path = "cst_parser_chirho/tests_chirho/comprehension_let_tests_chirho.rs"]
 mod comprehension_let_tests_chirho;
 mod cursor_chirho;
+pub(crate) use cursor_chirho::split_qualified_name_chirho;
 mod data_decls_chirho;
 mod declarations_chirho;
 mod expressions_chirho;

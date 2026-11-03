@@ -696,6 +696,9 @@ impl<'src> LexerChirho<'src> {
         let Some(next_byte_chirho) = self.peek_at_chirho(2) else {
             return true;
         };
+        if next_byte_chirho == b')' {
+            return false;
+        }
         if is_symbol_char_chirho(next_byte_chirho)
             && next_byte_chirho != b'#'
             && next_byte_chirho != b'|'

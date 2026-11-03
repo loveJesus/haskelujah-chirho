@@ -41,7 +41,35 @@ fn is_symbol_start_char_chirho(ch_chirho: char) -> bool {
 }
 
 pub(super) fn qualified_local_text_chirho(text_chirho: &str) -> &str {
-    text_chirho.rsplit('.').next().unwrap_or(text_chirho)
+    split_qualified_name_chirho(text_chirho).map_or(text_chirho, |(_, local_chirho)| local_chirho)
+}
+
+/// Qualification ends before an operator's dots; `Q..` names the operator `.`.
+pub(crate) fn split_qualified_name_chirho(text_chirho: &str) -> Option<(&str, &str)> {
+    let mut segment_start_chirho = 0;
+    let mut split_chirho = None;
+    for (index_chirho, character_chirho) in text_chirho.char_indices() {
+        if character_chirho != '.' {
+            continue;
+        }
+        let mut segment_chirho = text_chirho[segment_start_chirho..index_chirho].chars();
+        if !segment_chirho.next().is_some_and(char::is_uppercase)
+            || !segment_chirho.all(|character_chirho| {
+                character_chirho.is_alphanumeric() || matches!(character_chirho, '_' | '\'')
+            })
+        {
+            break;
+        }
+        let local_start_chirho = index_chirho + 1;
+        if local_start_chirho < text_chirho.len() {
+            split_chirho = Some((
+                &text_chirho[..index_chirho],
+                &text_chirho[local_start_chirho..],
+            ));
+        }
+        segment_start_chirho = local_start_chirho;
+    }
+    split_chirho
 }
 
 pub(super) fn qualified_name_is_operator_chirho(text_chirho: &str) -> bool {

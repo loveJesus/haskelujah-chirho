@@ -205,25 +205,14 @@ impl LowerCtxChirho {
         // Split qualified names like "Data.List.sort" or "Data.List.+", but
         // do NOT treat bare operator names like ":.:" as qualified just
         // because they contain a dot character.
-        if let Some(dot_pos_chirho) = text_chirho.rfind('.') {
-            let qualifier_chirho = &text_chirho[..dot_pos_chirho];
-            let local_chirho = &text_chirho[dot_pos_chirho + 1..];
-            let qualifier_is_module_path_chirho = qualifier_chirho.split('.').all(|seg_chirho| {
-                !seg_chirho.is_empty()
-                    && seg_chirho
-                        .chars()
-                        .all(|c_chirho| c_chirho.is_ascii_alphanumeric() || c_chirho == '_')
-            });
-            if qualifier_is_module_path_chirho
-                && !qualifier_chirho.is_empty()
-                && !local_chirho.is_empty()
-            {
-                return NameChirho::RawChirho(RawNameChirho::qualified_chirho(
-                    qualifier_chirho,
-                    local_chirho,
-                    span_chirho,
-                ));
-            }
+        if let Some((qualifier_chirho, local_chirho)) =
+            crate::cst_parser_chirho::split_qualified_name_chirho(text_chirho)
+        {
+            return NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+                qualifier_chirho,
+                local_chirho,
+                span_chirho,
+            ));
         }
         NameChirho::RawChirho(RawNameChirho::unqualified_chirho(text_chirho, span_chirho))
     }
