@@ -43,7 +43,7 @@ changed no behaviour and every gate above was rerun after it.
 
 ### What changed
 
-- One single-row matcher, `desugar_chirho/row_match_chirho.rs`: one pattern against one
+- One single-row matcher, `desugar_chirho/patterns_chirho/row_match_chirho.rs`: one pattern against one
   variable, for every shape, testing a literal wherever it appears and matching record fields at
   their DECLARED positions.
 - Pattern bindings (do-let, `where`, `let ... in`, top level, `~p <- m`): `$patbind = e`, one

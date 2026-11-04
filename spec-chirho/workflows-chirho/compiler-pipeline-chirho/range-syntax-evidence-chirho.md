@@ -23,6 +23,6 @@ flowchart TD
     endpoints_chirho --> invalid_chirho[Reject incompatible endpoints or a missing Enum instance]
 ```
 
-Implementation: typing's `infer_chirho/terms_chirho/ranges_chirho.rs`, core's `desugar_chirho/syntax_methods_chirho.rs`, and driver's `evidence_join_chirho.rs`. Controls live in `tests/dictionary_evidence_chirho/enum_chirho/range_syntax_chirho.rs`.
+Implementation: typing's `infer_chirho/terms_chirho/ranges_chirho.rs`, core's `desugar_chirho/references_chirho/syntax_methods_chirho.rs`, and driver's `evidence_join_chirho.rs`. Controls live in `tests/dictionary_evidence_chirho/enum_chirho/range_syntax_chirho.rs`.
 
 Row 665's finite controls are GHC-exact on the interpreter and both native backends, including an imported source namesake. Endpoint rejection also covers the unchanged GHC fixture `tcfail009.hs`. The source is held until rows 670 and 671 supply the Double and polymorphic dictionary routes: without Enum Double, its new obligation refuses a Double range that the baseline accepted and then failed to run.

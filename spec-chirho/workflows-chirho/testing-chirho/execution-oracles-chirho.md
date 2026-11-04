@@ -67,7 +67,7 @@ is optimized in debug compiler builds while retaining debug checks and informati
 
 These execution bounds do not by themselves bound in-process compilation.
 The bulk failure was reduced to T2045: shared case suffixes grew during
-desugaring, before LLVM. `desugar_chirho/matches_chirho.rs` now lowers each row
+desugaring, before LLVM. `desugar_chirho/patterns_chirho/matches_chirho.rs` now lowers each row
 once, preserving source order and sharing lazy failure continuations. The
 `codegen_scaling_chirho` integration target separately bounds full T2045
 compilation in a child (90 seconds, 1 GiB sampled physical memory on macOS,

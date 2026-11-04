@@ -266,7 +266,7 @@ flowchart LR
     - a lambda-bound Double at NaN or `-0.0` was ordered as integer bits;
     - a program's hidden-and-redefined `(<)`, and a `where`-bound `(<=)`, lost to the primop;
     - a first-class or prefix `(<)` had no binding at all.
-  - **Desugar** (`desugar_chirho/operator_evidence_chirho.rs` since row 609): a written Ord operator that carries its origin, and is opted in to occurrences, resolves as a reference, infix and section alike, as R1's `==` section does. Its minted occurrence is recorded in `DesugarOutputChirho::operator_occurrences_chirho`, which the driver passes to the dictionary pass. Without an origin it keeps its primop.
+  - **Desugar** (`desugar_chirho/references_chirho/operator_evidence_chirho.rs` since row 609): a written Ord operator that carries its origin, and is opted in to occurrences, resolves as a reference, infix and section alike, as R1's `==` section does. Its minted occurrence is recorded in `DesugarOutputChirho::operator_occurrences_chirho`, which the driver passes to the dictionary pass. Without an origin it keeps its primop.
   - **Answers** (`instance_chirho/ordering_operators_chirho.rs`), at a concrete proved key:
     - the instance's own row for that operator, where the program's instance defines one;
     - Int, Char and Bool: the Int primop, as before;
@@ -298,7 +298,7 @@ flowchart LR
     - Row 554 retargeted such a primop only where an operand's key could be read.
     - A program's own hidden-and-redefined `(+)` lost to the primop.
     - Fractional's `/` minted no occurrence, so `(/ 2)`, `zipWith (/)` and the `0 / 0` under a comparison section had no binding at all.
-  - **Desugar** (`desugar_chirho/operator_evidence_chirho.rs`): one predicate, `takes_operator_evidence_chirho`, decides which written operators skip the primop table.
+  - **Desugar** (`desugar_chirho/references_chirho/operator_evidence_chirho.rs`): one predicate, `takes_operator_evidence_chirho`, decides which written operators skip the primop table.
     - With its origin, a section of `==` (R1, folded in from its table guard), `+`, `-` or `*` takes its method's route, as the infix operator does. Each has a method binding, so the route serves it with or without a minted occurrence.
     - Ord's operators take row 610's route when opted in.
     - Without an origin, a section keeps its primop.

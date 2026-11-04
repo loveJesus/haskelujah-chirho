@@ -16,6 +16,7 @@ mod dependency_packages_chirho;
 mod import_links_chirho;
 #[path = "project_chirho/module_discovery_chirho.rs"]
 mod module_discovery_chirho;
+#[path = "frontend_chirho/module_search_chirho.rs"]
 mod module_search_chirho;
 #[path = "project_chirho/multi_module_chirho.rs"]
 mod multi_module_chirho;
@@ -2865,6 +2866,7 @@ pub fn compile_source_with_search_path_chirho(
     )
 }
 
+#[path = "backend_chirho/evidence_join_chirho.rs"]
 mod evidence_join_chirho;
 pub(crate) use evidence_join_chirho::join_occurrence_evidence_chirho;
 
@@ -3235,6 +3237,7 @@ pub fn render_summary_chirho(check_summary_chirho: &CheckSummaryChirho) -> Strin
 }
 
 #[cfg(test)]
+#[path = "frontend_chirho/synonym_keys_tests_chirho.rs"]
 mod synonym_keys_tests_chirho;
 #[cfg(test)]
 mod tests_chirho;

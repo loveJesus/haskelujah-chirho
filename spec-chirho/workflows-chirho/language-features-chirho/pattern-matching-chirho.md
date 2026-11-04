@@ -5,7 +5,7 @@ How a pattern becomes Core. Functions on this DAG carry a
 `workflow: language-features-chirho/pattern-matching-chirho` comment.
 
 There is ONE single-row matcher, `match_row_chirho`
-(`crates/haskelujah-core-chirho/src/desugar_chirho/row_match_chirho.rs`): it matches one
+(`crates/haskelujah-core-chirho/src/desugar_chirho/patterns_chirho/row_match_chirho.rs`): it matches one
 pattern against one variable, left to right and depth first, continues with a success
 expression once every variable of the pattern is in scope, and evaluates a failure expression
 otherwise. It handles every pattern shape: a literal is tested wherever it appears, a record
