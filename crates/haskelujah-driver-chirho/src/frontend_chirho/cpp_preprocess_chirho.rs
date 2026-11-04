@@ -144,57 +144,53 @@ fn discover_cpp_package_versions_chirho(
     let canonical_path_chirho = path_chirho
         .canonicalize()
         .unwrap_or_else(|_| path_chirho.to_path_buf());
-    if let Some(project_dir_chirho) = canonical_path_chirho.parent() {
-        if let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) {
-            if let Ok(entries_chirho) = std::fs::read_dir(packages_dir_chirho) {
-                for entry_chirho in entries_chirho.flatten() {
-                    let package_dir_chirho = entry_chirho.path();
-                    if !package_dir_chirho.is_dir() {
-                        continue;
-                    }
-                    let Some(dir_name_chirho) = package_dir_chirho
-                        .file_name()
-                        .and_then(|file_name_chirho| file_name_chirho.to_str())
-                    else {
-                        continue;
-                    };
-                    let Some((package_name_chirho, version_chirho)) =
-                        parse_package_name_and_version_from_dir_chirho(dir_name_chirho)
-                    else {
-                        continue;
-                    };
-                    insert_cpp_package_version_chirho(
-                        &mut package_versions_chirho,
-                        &package_name_chirho,
-                        version_chirho,
-                    );
-                }
+    if let Some(project_dir_chirho) = canonical_path_chirho.parent()
+        && let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho)
+        && let Ok(entries_chirho) = std::fs::read_dir(packages_dir_chirho)
+    {
+        for entry_chirho in entries_chirho.flatten() {
+            let package_dir_chirho = entry_chirho.path();
+            if !package_dir_chirho.is_dir() {
+                continue;
             }
+            let Some(dir_name_chirho) = package_dir_chirho
+                .file_name()
+                .and_then(|file_name_chirho| file_name_chirho.to_str())
+            else {
+                continue;
+            };
+            let Some((package_name_chirho, version_chirho)) =
+                parse_package_name_and_version_from_dir_chirho(dir_name_chirho)
+            else {
+                continue;
+            };
+            insert_cpp_package_version_chirho(
+                &mut package_versions_chirho,
+                &package_name_chirho,
+                version_chirho,
+            );
         }
     }
 
-    if let Some(package_dir_chirho) = find_enclosing_cabal_dir_chirho(path_chirho) {
-        if let Some(cabal_path_chirho) = find_cabal_in_dir_chirho(&package_dir_chirho) {
-            if let Ok(cabal_text_chirho) = std::fs::read_to_string(cabal_path_chirho) {
-                let package_chirho =
-                    haskelujah_package_chirho::parse_cabal_chirho(&cabal_text_chirho);
-                if !package_chirho.name_chirho.is_empty() {
-                    let package_version_chirho =
-                        package_chirho.version_chirho.clone().or_else(|| {
-                            package_dir_chirho
-                                .file_name()
-                                .and_then(|file_name_chirho| file_name_chirho.to_str())
-                                .and_then(parse_package_name_and_version_from_dir_chirho)
-                                .map(|(_, version_chirho)| version_chirho)
-                        });
-                    if let Some(version_chirho) = package_version_chirho {
-                        insert_cpp_package_version_chirho(
-                            &mut package_versions_chirho,
-                            &package_chirho.name_chirho,
-                            version_chirho,
-                        );
-                    }
-                }
+    if let Some(package_dir_chirho) = find_enclosing_cabal_dir_chirho(path_chirho)
+        && let Some(cabal_path_chirho) = find_cabal_in_dir_chirho(&package_dir_chirho)
+        && let Ok(cabal_text_chirho) = std::fs::read_to_string(cabal_path_chirho)
+    {
+        let package_chirho = haskelujah_package_chirho::parse_cabal_chirho(&cabal_text_chirho);
+        if !package_chirho.name_chirho.is_empty() {
+            let package_version_chirho = package_chirho.version_chirho.clone().or_else(|| {
+                package_dir_chirho
+                    .file_name()
+                    .and_then(|file_name_chirho| file_name_chirho.to_str())
+                    .and_then(parse_package_name_and_version_from_dir_chirho)
+                    .map(|(_, version_chirho)| version_chirho)
+            });
+            if let Some(version_chirho) = package_version_chirho {
+                insert_cpp_package_version_chirho(
+                    &mut package_versions_chirho,
+                    &package_chirho.name_chirho,
+                    version_chirho,
+                );
             }
         }
     }
