@@ -8,6 +8,8 @@
 
 #[path = "project_chirho/cabal_build_chirho.rs"]
 mod cabal_build_chirho;
+#[path = "backend_chirho/compile_backend_chirho.rs"]
+mod compile_backend_chirho;
 #[path = "native_link_chirho/core_merge_chirho.rs"]
 mod core_merge_chirho;
 #[path = "frontend_chirho/cpp_preprocess_chirho.rs"]
@@ -108,6 +110,9 @@ use type_names_chirho::{
     exported_type_synonyms_from_module_chirho, extend_imported_type_families_chirho,
     seed_builtin_type_families_chirho,
 };
+
+// The moved backend helpers that lib.rs and other driver modules reach (row 691).
+use compile_backend_chirho::compile_backend_chirho;
 
 use source_chirho::cpp_chirho::{configure_cpp_command_chirho, temporary_source_file_chirho};
 use std::io;
@@ -749,218 +754,6 @@ pub fn compile_source_with_search_path_chirho(
 #[path = "backend_chirho/evidence_join_chirho.rs"]
 mod evidence_join_chirho;
 pub(crate) use evidence_join_chirho::join_occurrence_evidence_chirho;
-
-/// Run the back-end pipeline phases (5 through 7) on an already-front-end-compiled
-/// module, producing a [`CompileResultChirho`].
-///
-/// Phases: desugar → dict pass → simplify → LLVM IR → Wasm bytes.
-fn compile_backend_chirho(
-    module_chirho: ModuleChirho,
-    infer_result_chirho: InferResultChirho,
-    extra_dict_param_names_chirho: std::collections::HashSet<String>,
-    ifaces_chirho: &[ModuleIfaceChirho],
-    program_modules_chirho: &std::collections::HashSet<String>,
-) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
-    // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
-    // per-occurrence ids for the method-occurrence names).
-    // Dictionary evidence: every name whose scheme carries class predicates
-    // gets an occurrence id per reference, so the checker's per-reference
-    // evidence can reach the dictionary pass.
-    // workflow: language-features-chirho/dictionary-evidence-chirho
-    // Class selectors are not references to constrained functions and are not
-    // minted here: the method-occurrence names (the standard set and this
-    // module's own single-parameter class methods) get their ids from the
-    // method-occurrence mechanism, and every other selector keeps its canonical id.
-    // A source-owned value with that spelling remains a constrained reference (663/664).
-    // workflow: language-features-chirho/own-class-method-occurrences-chirho
-    let class_method_names_chirho: std::collections::HashSet<&String> = infer_result_chirho
-        .class_env_chirho
-        .classes_chirho
-        .values()
-        .flat_map(|class_chirho| class_chirho.methods_chirho.keys())
-        .collect();
-    let import_suppliers_chirho = native_provenance_chirho::import_suppliers_chirho(
-        &module_chirho,
-        ifaces_chirho,
-        program_modules_chirho,
-    );
-    let mut source_value_names_chirho =
-        evidence_join_chirho::source_value_names_chirho(&module_chirho);
-    source_value_names_chirho.extend(
-        import_suppliers_chirho
-            .value_names_chirho()
-            .map(str::to_string),
-    );
-    let constrained_names_chirho: std::collections::HashSet<String> = infer_result_chirho
-        .env_chirho
-        .all_bindings_chirho()
-        .into_iter()
-        .filter(|(name_chirho, scheme_chirho)| {
-            !scheme_chirho.preds_chirho.is_empty()
-                && (!class_method_names_chirho.contains(name_chirho)
-                    || source_value_names_chirho.contains(*name_chirho))
-        })
-        .map(|(name_chirho, _scheme_chirho)| name_chirho.clone())
-        .collect();
-    // Constructor arities, imported constructors included: `C {}` on a
-    // positional constructor fills every argument with a missing-field thunk.
-    // workflow: language-features-chirho/rigid-type-variables-chirho (records)
-    let constructor_arities_chirho: std::collections::HashMap<String, usize> = infer_result_chirho
-        .env_chirho
-        .all_bindings_chirho()
-        .into_iter()
-        .filter(|(name_chirho, _scheme_chirho)| {
-            name_chirho
-                .chars()
-                .next()
-                .is_some_and(|first_chirho| first_chirho.is_uppercase())
-        })
-        .map(|(name_chirho, scheme_chirho)| {
-            (name_chirho.clone(), scheme_chirho.spine_arity_chirho())
-        })
-        .collect();
-    let desugar_output_chirho = haskelujah_core_chirho::desugar_module_with_inputs_chirho(
-        &module_chirho,
-        haskelujah_core_chirho::DesugarInputsChirho {
-            method_names_chirho: evidence_join_chirho::method_occurrence_names_chirho(
-                &module_chirho,
-            ),
-            constrained_names_chirho,
-            constructor_arities_chirho,
-            // A reference to a value another module of this program defines takes its
-            // definer's identity, seen through any re-export (rows 629 and 642).
-            // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
-            import_suppliers_chirho,
-        },
-    );
-    let reference_evidence_chirho = evidence_join_chirho::join_reference_evidence_chirho(
-        &infer_result_chirho,
-        &desugar_output_chirho.reference_occurrence_spans_chirho,
-        &desugar_output_chirho.occurrence_provenance_chirho,
-    );
-    let mut occurrence_evidence_chirho = join_occurrence_evidence_chirho(
-        &infer_result_chirho,
-        &desugar_output_chirho.method_occurrences_chirho,
-        &desugar_output_chirho.literal_occurrence_spans_chirho,
-        &desugar_output_chirho.method_occurrence_spans_chirho,
-        &desugar_output_chirho.occurrence_provenance_chirho,
-    );
-    // Range syntax selected Enum itself, independently of a lexical namesake.
-    // workflow: language-features-chirho/dictionary-evidence-chirho
-    occurrence_evidence_chirho.retain(|id_chirho, _| {
-        !desugar_output_chirho
-            .range_occurrence_spans_chirho
-            .contains_key(id_chirho)
-    });
-    occurrence_evidence_chirho.extend(evidence_join_chirho::join_range_evidence_chirho(
-        &infer_result_chirho,
-        &desugar_output_chirho.method_occurrences_chirho,
-        &desugar_output_chirho.range_occurrence_spans_chirho,
-    ));
-
-    // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
-    let con_types_chirho = build_con_type_map_chirho(&module_chirho);
-    let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
-    let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
-        .values()
-        .map(|(con_name_chirho, _)| con_name_chirho.clone())
-        .collect();
-    if !con_types_chirho.contains_key("Identity")
-        && module_chirho.imports_chirho.iter().any(|import_chirho| {
-            matches!(
-                import_chirho.module_chirho.full_name_chirho().as_str(),
-                "Data.Functor.Identity" | "Control.Monad.Identity"
-            )
-        })
-    {
-        newtype_cons_chirho.insert("Identity".to_string());
-    }
-    if !con_types_chirho.contains_key("Const")
-        && module_chirho.imports_chirho.iter().any(|import_chirho| {
-            import_chirho.module_chirho.full_name_chirho() == "Data.Functor.Const"
-        })
-    {
-        newtype_cons_chirho.insert("Const".to_string());
-    }
-    if !con_types_chirho.contains_key("Down")
-        && module_chirho
-            .imports_chirho
-            .iter()
-            .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Data.Ord")
-    {
-        newtype_cons_chirho.insert("Down".to_string());
-    }
-    if module_chirho
-        .imports_chirho
-        .iter()
-        .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Data.Semigroup")
-    {
-        for con_name_chirho in ["Min", "Max", "Endo"] {
-            if !con_types_chirho.contains_key(con_name_chirho) {
-                newtype_cons_chirho.insert(con_name_chirho.to_string());
-            }
-        }
-    }
-    if module_chirho
-        .imports_chirho
-        .iter()
-        .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Data.Monoid")
-    {
-        for con_name_chirho in ["First", "Last", "Endo"] {
-            if !con_types_chirho.contains_key(con_name_chirho) {
-                newtype_cons_chirho.insert(con_name_chirho.to_string());
-            }
-        }
-    }
-    // Constructor metadata for every type that derives Show (row 533) or Enum (row 669).
-    // workflow: print-show-evidence-chirho
-    let derived_shows_chirho =
-        haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_chirho(&module_chirho);
-    let derived_enums_chirho =
-        haskelujah_typing_chirho::deriving_chirho::derived_enum_metadata_chirho(&module_chirho);
-    let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_with_evidence_chirho(
-        &desugar_output_chirho.module_chirho,
-        desugar_output_chirho.names_chirho,
-        &infer_result_chirho.env_chirho,
-        &infer_result_chirho.class_env_chirho,
-        con_types_chirho,
-        newtype_info_chirho,
-        extra_dict_param_names_chirho,
-        desugar_output_chirho.method_occurrences_chirho,
-        occurrence_evidence_chirho,
-        reference_evidence_chirho,
-        derived_shows_chirho,
-        derived_enums_chirho,
-        desugar_output_chirho.operator_occurrences_chirho,
-    );
-    let core_chirho = dict_result_chirho.module_chirho;
-
-    // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
-    let config_chirho = SimplifyConfigChirho::default();
-    let mut core_chirho = simplify_module_chirho(&core_chirho, &config_chirho);
-
-    // Phase 6.5: Native provenance — the module's entry candidate and its builtin
-    // references, from its imports (row 628).
-    // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
-    native_provenance_chirho::record_module_provenance_chirho(
-        &module_chirho,
-        &mut core_chirho,
-        ifaces_chirho,
-        program_modules_chirho,
-    );
-
-    // Phase 7: Backend lowering
-    let llvm_ir_chirho = compile_core_to_llvm_chirho(&core_chirho);
-    let wasm_bytes_chirho = compile_core_to_wasm_chirho(&core_chirho);
-
-    Ok(CompileResultChirho {
-        module_chirho,
-        core_chirho,
-        llvm_ir_chirho,
-        wasm_bytes_chirho,
-        newtype_cons_chirho,
-    })
-}
 
 /// Compile and evaluate a Haskell source program through the full pipeline,
 /// returning the final runtime value of the named entry point.
