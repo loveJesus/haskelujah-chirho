@@ -212,9 +212,47 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     // imported values that don't have explicit type schemes. This allows
     // the type checker to see imported names as polymorphic variables
     // rather than reporting them as "unbound variable" (E0202).
-    let mut merged_imported_types_chirho = imported_types_chirho.clone();
+    let mut qualification_budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::with_limits_chirho(
+            haskelujah_ast_chirho::decl_chirho::GadtProjectionLimitsChirho {
+                work_chirho: 1 << 25,
+                output_chirho: 1 << 24,
+                depth_chirho: 1024,
+            },
+        );
+    let mut merged_imported_types_chirho =
+        std::collections::HashMap::with_hasher(imported_types_chirho.hasher().clone());
+    let mut merged_imported_type_synonyms_chirho =
+        ImportedTypeSynonymsChirho::with_hasher(imported_type_synonyms_chirho.hasher().clone());
+    {
+        let names_chirho = std::collections::HashSet::new();
+        let preferred_chirho = std::collections::HashMap::new();
+        let mut transport_chirho = ImportQualificationChirho {
+            iface_chirho: None,
+            type_names_chirho: &names_chirho,
+            qualifier_chirho: "",
+            safe_chirho: &names_chirho,
+            preferred_chirho: &preferred_chirho,
+            budget_chirho: &mut qualification_budget_chirho,
+            span_chirho: module_chirho.span_chirho,
+        };
+        for (key_chirho, scheme_chirho) in imported_types_chirho {
+            merged_imported_types_chirho.insert(
+                transport_chirho.key_chirho(key_chirho)?,
+                transport_chirho.scheme_chirho(scheme_chirho, false)?,
+            );
+        }
+        for (key_chirho, (parameters_chirho, rhs_chirho)) in imported_type_synonyms_chirho {
+            merged_imported_type_synonyms_chirho.insert(
+                transport_chirho.key_chirho(key_chirho)?,
+                (
+                    transport_chirho.parameters_chirho(parameters_chirho)?,
+                    transport_chirho.ast_chirho(rhs_chirho)?,
+                ),
+            );
+        }
+    }
     let mut unavailable_selectors_chirho = std::collections::HashSet::new();
-    let mut merged_imported_type_synonyms_chirho = imported_type_synonyms_chirho.clone();
     let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
         String,
         Vec<String>,
@@ -263,6 +301,15 @@ pub(crate) fn run_frontend_under_deferral_chirho(
                 .as_ref()
                 .map(|a_chirho| a_chirho.text_chirho().to_string())
                 .unwrap_or_else(|| module_name_chirho.clone());
+            let mut qualification_chirho = ImportQualificationChirho {
+                iface_chirho: Some(iface_chirho),
+                type_names_chirho: &qualifiable_type_names_chirho,
+                qualifier_chirho: &qualifier_chirho,
+                safe_chirho: &safe_unqualified_imported_type_names_chirho,
+                preferred_chirho: &preferred_qualified_type_names_chirho,
+                budget_chirho: &mut qualification_budget_chirho,
+                span_chirho: import_chirho.module_chirho.span_chirho(),
+            };
             if !import_chirho.qualified_chirho {
                 for type_info_chirho in iface_chirho.exports_chirho.types_chirho.values() {
                     if type_info_chirho.methods_chirho.is_empty()
@@ -294,25 +341,24 @@ pub(crate) fn run_frontend_under_deferral_chirho(
                         format!("{module_name_chirho}.{name_chirho}");
                     if let Some((params_chirho, rhs_chirho)) = imported_type_synonyms_chirho
                         .get(&module_qualified_name_chirho)
-                        .cloned()
-                        .or_else(|| imported_type_synonyms_chirho.get(name_chirho).cloned())
+                        .or_else(|| imported_type_synonyms_chirho.get(name_chirho))
                     {
-                        let rewritten_rhs_chirho = qualify_imported_ast_type_chirho(
-                            &rhs_chirho,
-                            &qualifiable_type_names_chirho,
-                            &qualifier_chirho,
-                            &safe_unqualified_imported_type_names_chirho,
-                            &preferred_qualified_type_names_chirho,
-                        );
+                        let rewritten_rhs_chirho = qualification_chirho.ast_chirho(rhs_chirho)?;
                         if !import_chirho.qualified_chirho {
                             merged_imported_type_synonyms_chirho.insert(
                                 name_chirho.clone(),
-                                (params_chirho.clone(), rewritten_rhs_chirho.clone()),
+                                (
+                                    qualification_chirho.parameters_chirho(params_chirho)?,
+                                    qualification_chirho.ast_chirho(&rewritten_rhs_chirho)?,
+                                ),
                             );
                         }
                         merged_imported_type_synonyms_chirho.insert(
                             format!("{qualifier_chirho}.{name_chirho}"),
-                            (params_chirho, rewritten_rhs_chirho),
+                            (
+                                qualification_chirho.parameters_chirho(params_chirho)?,
+                                rewritten_rhs_chirho,
+                            ),
                         );
                     }
                 }
@@ -333,22 +379,25 @@ pub(crate) fn run_frontend_under_deferral_chirho(
                     }
                     let module_qualified_name_chirho =
                         format!("{module_name_chirho}.{name_chirho}");
-                    let base_scheme_chirho = merged_imported_types_chirho
-                        .get(&module_qualified_name_chirho)
-                        .cloned()
+                    // Retain the positive builtin producer through type transport.
+                    // A source or weak interface never selects that seed by spelling.
+                    let builtin_seed_chirho = qualified_import_alias_scheme_chirho(
+                        iface_chirho,
+                        name_chirho,
+                        &builtin_value_schemes_chirho,
+                    );
+                    let trusted_builtin_seed_chirho = builtin_seed_chirho.is_some();
+                    let base_scheme_chirho = builtin_seed_chirho
+                        .map(std::borrow::Cow::Owned)
                         .or_else(|| {
-                            if import_chirho.qualified_chirho {
-                                // Row 608: a builtin alias takes its bare scheme only where
-                                // GHC 9.14.1 types the export exactly so; otherwise the placeholder.
-                                // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
-                                qualified_import_alias_scheme_chirho(
-                                    iface_chirho,
-                                    name_chirho,
-                                    &builtin_value_schemes_chirho,
-                                )
-                            } else {
-                                merged_imported_types_chirho.get(name_chirho).cloned()
-                            }
+                            merged_imported_types_chirho
+                                .get(&module_qualified_name_chirho)
+                                .or_else(|| {
+                                    (!import_chirho.qualified_chirho)
+                                        .then(|| merged_imported_types_chirho.get(name_chirho))
+                                        .flatten()
+                                })
+                                .map(std::borrow::Cow::Borrowed)
                         })
                         .unwrap_or_else(|| {
                             // Assign a fully polymorphic type: forall a. a
@@ -357,29 +406,29 @@ pub(crate) fn run_frontend_under_deferral_chirho(
                             let fresh_var_chirho = haskelujah_typing_chirho::TyVarChirho(
                                 9000 + merged_imported_types_chirho.len() as u32,
                             );
-                            haskelujah_typing_chirho::SchemeChirho {
+                            std::borrow::Cow::Owned(haskelujah_typing_chirho::SchemeChirho {
                                 vars_chirho: vec![fresh_var_chirho],
                                 preds_chirho: vec![],
                                 ty_chirho: haskelujah_typing_chirho::TyChirho::VarChirho(
                                     fresh_var_chirho,
                                 ),
-                            }
+                            })
                         });
-                    let in_scope_seed_scheme_chirho = qualify_imported_scheme_for_iface_chirho(
-                        &base_scheme_chirho,
-                        &qualifiable_type_names_chirho,
-                        &qualifier_chirho,
-                        &safe_unqualified_imported_type_names_chirho,
-                        &preferred_qualified_type_names_chirho,
-                    );
+                    let in_scope_seed_scheme_chirho = qualification_chirho
+                        .scheme_chirho(&base_scheme_chirho, trusted_builtin_seed_chirho)?;
                     if !import_chirho.qualified_chirho {
                         // Current-module imports should win over broadly seeded
                         // dependency names. Otherwise a previously compiled
                         // module can pin an unqualified name like `choice` or
                         // `pack` to the wrong specialized scheme in later
                         // modules that explicitly import a different source.
-                        merged_imported_types_chirho
-                            .insert(name_chirho.clone(), in_scope_seed_scheme_chirho.clone());
+                        merged_imported_types_chirho.insert(
+                            qualification_chirho.key_chirho(name_chirho)?,
+                            qualification_chirho.scheme_chirho(
+                                &in_scope_seed_scheme_chirho,
+                                trusted_builtin_seed_chirho,
+                            )?,
+                        );
                     }
                     let qualified_name_chirho = format!("{qualifier_chirho}.{name_chirho}");
                     if should_override_imported_scheme_chirho(
@@ -400,7 +449,9 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     align_preferred_synonym_keys_chirho(
         &mut merged_imported_type_synonyms_chirho,
         &preferred_qualified_type_names_chirho,
-    );
+        &mut qualification_budget_chirho,
+        module_chirho.span_chirho,
+    )?;
 
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.

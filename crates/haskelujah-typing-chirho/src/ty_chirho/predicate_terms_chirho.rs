@@ -48,6 +48,25 @@ impl<'predicate_chirho> PredicateTermsChirho<'predicate_chirho> {
             extra_tys_chirho: self.extra_tys_chirho.iter().map(map_chirho).collect(),
         }
     }
+
+    pub fn try_mapped_chirho<ErrorChirho>(
+        self,
+        mut map_chirho: impl FnMut(&TyChirho) -> Result<TyChirho, ErrorChirho>,
+    ) -> Result<MappedPredicateTermsChirho, ErrorChirho> {
+        Ok(MappedPredicateTermsChirho {
+            kind_tys_chirho: self
+                .kind_tys_chirho
+                .iter()
+                .map(&mut map_chirho)
+                .collect::<Result<_, _>>()?,
+            ty_chirho: map_chirho(self.ty_chirho)?,
+            extra_tys_chirho: self
+                .extra_tys_chirho
+                .iter()
+                .map(map_chirho)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
 /// Both predicate representations use this one conflation contract.

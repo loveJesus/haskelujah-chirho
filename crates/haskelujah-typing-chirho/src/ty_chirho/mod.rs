@@ -472,6 +472,22 @@ impl SchemePredChirho {
         )
     }
 
+    pub fn try_mapped_chirho<ErrorChirho>(
+        &self,
+        map_chirho: impl FnMut(&TyChirho) -> Result<TyChirho, ErrorChirho>,
+    ) -> Result<Self, ErrorChirho> {
+        let terms_chirho = self.terms_chirho().try_mapped_chirho(map_chirho)?;
+        Ok(Self::from_producer_chirho(
+            SchemePredPartsChirho {
+                kind_tys_chirho: terms_chirho.kind_tys_chirho,
+                class_name_chirho: self.class_name_chirho.clone(),
+                ty_chirho: terms_chirho.ty_chirho,
+                extra_tys_chirho: terms_chirho.extra_tys_chirho,
+            },
+            self.class_identity_chirho.clone(),
+        ))
+    }
+
     pub fn semantic_tys_chirho(&self) -> impl Iterator<Item = &TyChirho> {
         self.terms_chirho().iter_chirho()
     }

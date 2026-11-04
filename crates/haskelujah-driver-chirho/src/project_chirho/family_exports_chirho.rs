@@ -177,11 +177,6 @@ pub(crate) fn family_frontend_diagnostics_chirho(
     diagnostics_chirho
 }
 
-pub(crate) fn is_opaque_family_or_promotion_key_chirho(name_chirho: &str) -> bool {
-    haskelujah_typing_chirho::infer_chirho::is_type_family_key_chirho(name_chirho)
-        || haskelujah_ast_chirho::promotion_chirho::is_promoted_key_chirho(name_chirho)
-}
-
 pub(crate) fn stamp_exported_family_references_chirho(
     ty_chirho: &mut TypeChirho,
     infer_result_chirho: &InferResultChirho,

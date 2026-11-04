@@ -84,6 +84,20 @@ impl Default for GadtProjectionBudgetChirho {
 }
 
 impl GadtProjectionBudgetChirho {
+    /// Share the same latched allowance with transport-generated names and
+    /// typed terms, before allocating their new output.
+    pub fn reserve_transport_chirho(
+        &mut self,
+        weight_chirho: usize,
+        depth_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> Result<(), GadtProjectionErrorChirho> {
+        checked_chirho(span_chirho, self, |budget_chirho| {
+            budget_chirho.depth_chirho(depth_chirho, 1, 1)?;
+            budget_chirho.charge_chirho(weight_chirho, 1, 1)
+        })
+    }
+
     pub fn new_chirho() -> Self {
         Self::with_limits_chirho(GadtProjectionLimitsChirho::default())
     }
@@ -138,6 +152,23 @@ impl GadtProjectionBudgetChirho {
             Ok(())
         }
     }
+}
+
+/// Preflight a retained type before transport clones it. All kind arguments,
+/// quantifier annotations and constraint contexts use the common borrowed walk.
+pub fn check_type_projection_chirho(
+    ty_chirho: &TypeChirho,
+    budget_chirho: &mut GadtProjectionBudgetChirho,
+) -> Result<(), GadtProjectionErrorChirho> {
+    checked_chirho(ty_chirho.span_chirho(), budget_chirho, |budget_chirho| {
+        walk_chirho(
+            ProjectionNodeChirho::TypeChirho(ty_chirho),
+            1,
+            1,
+            1,
+            budget_chirho,
+        )
+    })
 }
 
 /// Check every source component and the entire expanded signature before any

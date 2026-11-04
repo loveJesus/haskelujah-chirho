@@ -118,10 +118,12 @@ use hsc_preprocess_chirho::{
     lower_maybe_like_unboxed_sums_chirho, path_is_hsc_chirho,
     preprocess_hsc_source_with_options_chirho, read_haskell_source_file_chirho,
 };
+#[cfg(test)]
+use import_qualification_chirho::qualify_imported_scheme_for_iface_chirho;
 use import_qualification_chirho::{
-    align_preferred_synonym_keys_chirho, collect_preferred_qualified_type_names_chirho,
-    collect_safe_unqualified_imported_type_names_chirho, qualify_imported_ast_type_chirho,
-    qualify_imported_scheme_for_iface_chirho, should_override_imported_scheme_chirho,
+    ImportQualificationChirho, align_preferred_synonym_keys_chirho,
+    collect_preferred_qualified_type_names_chirho,
+    collect_safe_unqualified_imported_type_names_chirho, should_override_imported_scheme_chirho,
 };
 use linearity_chirho::check_module_linearity_chirho;
 use stdlib_seed_chirho::{FrontendSeedArtifactsChirho, merge_stdlib_frontend_artifacts_chirho};

@@ -22,6 +22,7 @@ use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 
 mod deferral_flags_chirho;
+mod kind_import_transport_chirho;
 mod kind_repair_chirho;
 mod ordinary_elaboration_chirho;
 mod qualified_do_chirho;

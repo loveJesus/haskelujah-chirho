@@ -76,7 +76,13 @@ fn a_unique_exporters_synonym_gets_its_bare_key_chirho() {
     );
     let mut merged_chirho: ImportedTypeSynonymsChirho =
         HashMap::from([("A.Parent".to_string(), synonym_chirho("Int"))]);
-    align_preferred_synonym_keys_chirho(&mut merged_chirho, &preferred_chirho);
+    align_preferred_synonym_keys_chirho(
+        &mut merged_chirho,
+        &preferred_chirho,
+        &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
+        SpanChirho::DUMMY_CHIRHO,
+    )
+    .expect("bounded synonym alignment");
     assert_eq!(merged_chirho.get("Parent"), Some(&synonym_chirho("Int")));
 }
 
@@ -101,7 +107,13 @@ fn a_name_two_imports_export_gets_no_bare_key_chirho() {
         ("A.Parent".to_string(), synonym_chirho("Int")),
         ("B.Parent".to_string(), synonym_chirho("Bool")),
     ]);
-    align_preferred_synonym_keys_chirho(&mut merged_chirho, &preferred_chirho);
+    align_preferred_synonym_keys_chirho(
+        &mut merged_chirho,
+        &preferred_chirho,
+        &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
+        SpanChirho::DUMMY_CHIRHO,
+    )
+    .expect("bounded synonym alignment");
     assert!(!merged_chirho.contains_key("Parent"), "{merged_chirho:?}");
 }
 
@@ -116,7 +128,13 @@ fn no_bare_key_without_the_exporters_qualified_synonym_chirho() {
     );
     let mut merged_chirho: ImportedTypeSynonymsChirho =
         HashMap::from([("C.Parent".to_string(), synonym_chirho("Int"))]);
-    align_preferred_synonym_keys_chirho(&mut merged_chirho, &preferred_chirho);
+    align_preferred_synonym_keys_chirho(
+        &mut merged_chirho,
+        &preferred_chirho,
+        &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
+        SpanChirho::DUMMY_CHIRHO,
+    )
+    .expect("bounded synonym alignment");
     assert!(!merged_chirho.contains_key("Parent"), "{merged_chirho:?}");
 }
 
@@ -132,6 +150,12 @@ fn an_existing_bare_key_is_never_overwritten_chirho() {
         ("A.Parent".to_string(), synonym_chirho("Int")),
         ("Parent".to_string(), synonym_chirho("Bool")),
     ]);
-    align_preferred_synonym_keys_chirho(&mut merged_chirho, &preferred_chirho);
+    align_preferred_synonym_keys_chirho(
+        &mut merged_chirho,
+        &preferred_chirho,
+        &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
+        SpanChirho::DUMMY_CHIRHO,
+    )
+    .expect("bounded synonym alignment");
     assert_eq!(merged_chirho.get("Parent"), Some(&synonym_chirho("Bool")));
 }

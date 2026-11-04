@@ -195,3 +195,21 @@ fn a_polykinded_default_cannot_specialize_the_class_header_chirho() {
     .expect("a default cannot constrain an already generalized hidden kind");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
+
+#[test]
+fn qualified_proxy_keeps_its_producer_beside_a_local_homonym_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/qualification-chirho/QualifiedProxyHomonymChirho.hs"
+    ))
+    .expect("actual selected builtin producer retains Proxy's complete kind seed");
+}
+
+#[test]
+fn qualified_proxy_never_borrows_a_source_namesakes_origin_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/qualification-chirho/QualifiedProxyWrongOriginChirho.hs"
+    ))
+    .err()
+    .expect("source and builtin Proxy remain different nominal types");
+    assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
+}
