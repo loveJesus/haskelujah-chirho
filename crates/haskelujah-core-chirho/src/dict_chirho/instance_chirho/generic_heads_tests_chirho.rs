@@ -138,7 +138,7 @@ fn class_env_chirho(
                 },
             )
         })
-        .collect()
+        .collect::<Vec<InstDeclChirho>>()
     {
         env_chirho.add_instance_chirho(instance_chirho);
     }
