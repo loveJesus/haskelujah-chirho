@@ -10,8 +10,9 @@
 
 #[allow(unused_imports)]
 use crate::{
-    check_source_file_chirho, compile_source_chirho, eval_source_chirho,
-    eval_source_with_machine_chirho, frontend_warnings_chirho,
+    FrontendOptionsChirho, check_source_file_chirho, compile_source_chirho, eval_source_chirho,
+    eval_source_with_machine_chirho, eval_source_with_options_chirho, frontend_warnings_chirho,
+    frontend_warnings_with_options_chirho,
 };
 #[allow(unused_imports)]
 use haskelujah_runtime_chirho::{ExecutionModeChirho, ValueChirho};
@@ -20,10 +21,12 @@ use haskelujah_span_chirho::SourceMapChirho;
 #[allow(unused_imports)]
 use haskelujah_syntax_chirho::SourceFileChirho;
 
+mod deferral_flags_chirho;
 mod qualified_do_chirho;
 mod recursive_do_chirho;
 mod required_type_arguments_chirho;
 mod type_level_character_families_chirho;
+mod typed_hole_policy_chirho;
 
 // ── TypeOperators ─────────────────────────────────────────────────────────
 
@@ -548,10 +551,17 @@ fn magic_hash_lexer_con_chirho() {
 // ── TypeSynonymInstances ────────────────────────────────────────────────
 
 // ── TypedHoles ──────────────────────────────────────────────────────────
+// A hole is an error unless deferred (row 695), so these three ask for
+// `-fdefer-typed-holes` explicitly; their sources and expectations are unchanged.
+// The default-rejection and flag-order controls are in `typed_hole_policy_chirho`.
+
+fn defer_typed_holes_chirho() -> FrontendOptionsChirho {
+    FrontendOptionsChirho::from_ghc_options_chirho(["-fdefer-typed-holes"])
+}
 
 #[test]
 fn typed_hole_compiles_chirho() {
-    // `_` in expression position should compile (as a typed hole warning)
+    // `_` in expression position compiles as a deferred typed hole warning
     // We just check that it doesn't error out at the type-checking stage
     let src_chirho = "\
 module Test where
@@ -561,13 +571,20 @@ main = 42
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
     // This should succeed — the hole function is defined but never called
-    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "TypedHole.hs", None);
+    let result_chirho = eval_source_with_options_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "TypedHole.hs",
+        None,
+        &defer_typed_holes_chirho(),
+    )
+    .map(|(value_chirho, _machine_chirho)| value_chirho);
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
 #[test]
 fn typed_hole_named_compiles_chirho() {
-    // Named holes like `_foo` should also compile
+    // Named holes like `_foo` defer the same way
     let src_chirho = "\
 module Test where
 g :: Int -> Int -> Int
@@ -575,13 +592,20 @@ g x y = _result
 main = 42
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let result_chirho = eval_source_chirho(src_chirho, &mut sm_chirho, "NamedHole.hs", None);
+    let result_chirho = eval_source_with_options_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "NamedHole.hs",
+        None,
+        &defer_typed_holes_chirho(),
+    )
+    .map(|(value_chirho, _machine_chirho)| value_chirho);
     assert_eq!(result_chirho.unwrap(), ValueChirho::IntChirho(42));
 }
 
 #[test]
 fn typed_hole_warning_emitted_chirho() {
-    // The typed hole should produce a warning
+    // A deferred typed hole produces a warning
     let src_chirho = "\
 module Test where
 f :: Int -> Int
@@ -589,7 +613,12 @@ f = _
 main = 42
 ";
     let mut sm_chirho = SourceMapChirho::new_chirho();
-    let warnings_chirho = frontend_warnings_chirho(src_chirho, &mut sm_chirho, "HoleWarn.hs");
+    let warnings_chirho = frontend_warnings_with_options_chirho(
+        src_chirho,
+        &mut sm_chirho,
+        "HoleWarn.hs",
+        &defer_typed_holes_chirho(),
+    );
     let has_hole_warning_chirho = warnings_chirho.iter().any(|w_chirho| {
         let msg_chirho = format!("{:?}", w_chirho);
         msg_chirho.contains("hole") || msg_chirho.contains("4200")

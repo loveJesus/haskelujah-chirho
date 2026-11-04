@@ -252,7 +252,7 @@ impl InferCtxChirho {
             if earlier_local_chirho || non_local_chirho {
                 self.diagnostics_chirho
                     .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                        ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+                        ErrorCodeChirho::error_chirho(DUPLICATE_INSTANCE_CODE_CHIRHO),
                         format!(
                             "duplicate instance declarations: instance {}",
                             instance_head_text_chirho(later_chirho)

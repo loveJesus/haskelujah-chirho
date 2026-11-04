@@ -8,9 +8,13 @@
 //! module reads only actual pragma tokens, computes the extension state, and reclassifies those
 //! two words before layout. Strings and ordinary comments cannot accidentally enable an extension.
 //!
-//! workflow: recursive-do-chirho
+//! The module header's `OPTIONS_GHC` option words are read here from the same real pragma
+//! tokens, for the driver's error-deferral policy.
+//!
+//! workflow: recursive-do-chirho, compiler-pipeline-chirho/error-deferral-chirho
 
-use crate::lexer_chirho::{RawTokenChirho, RawTokenKindChirho};
+use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
+use haskelujah_span_chirho::FileIdChirho;
 
 /// Extensions enabled by GHC2021.
 ///
@@ -87,9 +91,7 @@ pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
             .collect();
     }
 
-    if keyword_chirho.eq_ignore_ascii_case("OPTIONS_GHC")
-        || keyword_chirho.eq_ignore_ascii_case("OPTIONS")
-    {
+    if is_options_keyword_chirho(keyword_chirho) {
         return rest_chirho
             .split_whitespace()
             .filter_map(|word_chirho| word_chirho.strip_prefix("-X"))
@@ -99,6 +101,117 @@ pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
     }
 
     Vec::new()
+}
+
+/// `OPTIONS_GHC`, or its legacy spelling `OPTIONS`; pragma keywords ignore case.
+fn is_options_keyword_chirho(keyword_chirho: &str) -> bool {
+    keyword_chirho.eq_ignore_ascii_case("OPTIONS_GHC")
+        || keyword_chirho.eq_ignore_ascii_case("OPTIONS")
+}
+
+/// The option words of one `OPTIONS_GHC` pragma, given the text between `{-#` and `#-}`, in
+/// source order. Every other pragma has none.
+pub fn pragma_ghc_options_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
+    match inner_chirho.trim().split_once(char::is_whitespace) {
+        Some((keyword_chirho, rest_chirho)) if is_options_keyword_chirho(keyword_chirho) => {
+            ghc_option_words_chirho(rest_chirho).unwrap_or_default()
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// An `OPTIONS_GHC` body read as GHC's `toArgs` reads it (row 695).
+/// - Whitespace separates words.
+/// - A word that starts with `"` is a Haskell string literal, taken without its quotes.
+/// - A `"` inside a word opens a quoted part, which keeps its quotes and may hold spaces.
+/// - Either quoted form must end the word.
+/// - Single quotes are ordinary characters, so `'-fdefer-typed-holes'` names no switch.
+///
+/// A body GHC cannot read (an unterminated or misplaced quote) gives `None`, because GHC
+/// rejects such a pragma. The `["..."]` list form GHC also reads is not modeled.
+fn ghc_option_words_chirho(body_chirho: &str) -> Option<Vec<String>> {
+    let mut words_chirho = Vec::new();
+    let mut rest_chirho = body_chirho.trim_start();
+    while !rest_chirho.is_empty() {
+        let word_chirho = if let Some(after_open_chirho) = rest_chirho.strip_prefix('"') {
+            let (text_chirho, after_close_chirho) = split_quoted_chirho(after_open_chirho)?;
+            rest_chirho = after_close_chirho;
+            text_chirho
+        } else {
+            let end_chirho = rest_chirho
+                .find(|char_chirho: char| char_chirho.is_whitespace() || char_chirho == '"')
+                .unwrap_or(rest_chirho.len());
+            let (plain_chirho, after_plain_chirho) = rest_chirho.split_at(end_chirho);
+            if let Some(after_open_chirho) = after_plain_chirho.strip_prefix('"') {
+                let (_, after_close_chirho) = split_quoted_chirho(after_open_chirho)?;
+                let quoted_len_chirho = after_plain_chirho.len() - after_close_chirho.len();
+                rest_chirho = after_close_chirho;
+                format!("{plain_chirho}{}", &after_plain_chirho[..quoted_len_chirho])
+            } else {
+                rest_chirho = after_plain_chirho;
+                plain_chirho.to_string()
+            }
+        };
+        if rest_chirho.starts_with(|char_chirho: char| !char_chirho.is_whitespace()) {
+            return None;
+        }
+        words_chirho.push(word_chirho);
+        rest_chirho = rest_chirho.trim_start();
+    }
+    Some(words_chirho)
+}
+
+/// A Haskell string literal after its opening `"`: the text, and what follows the closing
+/// `"`. Only `\"` and `\\` are decoded. Any other escape is kept as written, so it never
+/// spells a deferral switch. `None` when the literal never closes.
+fn split_quoted_chirho(after_open_chirho: &str) -> Option<(String, &str)> {
+    let mut text_chirho = String::new();
+    let mut chars_chirho = after_open_chirho.char_indices();
+    while let Some((index_chirho, char_chirho)) = chars_chirho.next() {
+        match char_chirho {
+            '"' => return Some((text_chirho, &after_open_chirho[index_chirho + 1..])),
+            '\\' => match chars_chirho.next() {
+                Some((_, escaped_chirho @ ('"' | '\\'))) => text_chirho.push(escaped_chirho),
+                Some((_, other_chirho)) => {
+                    text_chirho.push('\\');
+                    text_chirho.push(other_chirho);
+                }
+                None => return None,
+            },
+            other_chirho => text_chirho.push(other_chirho),
+        }
+    }
+    None
+}
+
+/// The option words of the module header's `OPTIONS_GHC` pragmas, in source order.
+///
+/// GHC reads them only from the file header: the pragmas before the first token that is
+/// neither a pragma nor a comment. Only real pragma tokens count, so a flag spelled in a
+/// comment, in a string literal or in a pragma after the header is not an option. Lexing
+/// stops where the header ends.
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn header_ghc_options_chirho(source_chirho: &str, file_id_chirho: FileIdChirho) -> Vec<String> {
+    let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
+    let mut options_chirho = Vec::new();
+    loop {
+        let token_chirho = lexer_chirho.next_token_chirho();
+        match token_chirho.kind_chirho {
+            RawTokenKindChirho::PragmaChirho => {
+                let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
+                let end_chirho = token_chirho.span_chirho.end_chirho().as_usize_chirho();
+                if let Some(inner_chirho) = source_chirho
+                    .get(start_chirho..end_chirho)
+                    .and_then(|text_chirho| text_chirho.strip_prefix("{-#"))
+                    .and_then(|text_chirho| text_chirho.strip_suffix("#-}"))
+                {
+                    options_chirho.extend(pragma_ghc_options_from_inner_chirho(inner_chirho));
+                }
+            }
+            kind_chirho if kind_chirho.is_trivia_chirho() => {}
+            _ => return options_chirho,
+        }
+    }
 }
 
 /// Parse a complete pragma token such as `{-# LANGUAGE RecursiveDo #-}`.
@@ -194,8 +307,6 @@ pub fn classify_contextual_keywords_chirho(
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use crate::lexer_chirho::LexerChirho;
-    use haskelujah_span_chirho::FileIdChirho;
 
     fn classified_kinds_chirho(source_chirho: &str) -> Vec<RawTokenKindChirho> {
         let mut lexer_chirho =

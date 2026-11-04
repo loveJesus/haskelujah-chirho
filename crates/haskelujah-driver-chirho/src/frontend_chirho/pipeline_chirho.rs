@@ -7,6 +7,19 @@
 
 use super::*;
 
+/// What one module is checked against: the interfaces name resolution reads and the
+/// environment imported with them.
+pub struct FrontendImportsChirho<'imports_chirho> {
+    pub ifaces_chirho: &'imports_chirho [ModuleIfaceChirho],
+    pub types_chirho:
+        &'imports_chirho std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho>,
+    pub type_synonyms_chirho: &'imports_chirho ImportedTypeSynonymsChirho,
+    pub type_families_chirho: &'imports_chirho ImportedTypeFamiliesChirho,
+    pub class_env_chirho: &'imports_chirho haskelujah_typing_chirho::class_chirho::ClassEnvChirho,
+}
+
+/// The frontend with no caller options: only the module header's own `OPTIONS_GHC` pragmas
+/// can defer an error.
 pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     source_chirho: &str,
     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
@@ -19,10 +32,61 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
     imported_type_families_chirho: &ImportedTypeFamiliesChirho,
     imported_class_env_chirho: &haskelujah_typing_chirho::class_chirho::ClassEnvChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
-    // Check for -fdefer-type-errors / -fdefer-out-of-scope-variables
-    // These GHC flags cause type errors to be deferred as warnings.
-    let defer_errors_chirho = source_chirho.contains("-fdefer-type-errors")
-        || source_chirho.contains("-fdefer-out-of-scope-variables");
+    run_frontend_with_options_chirho(
+        source_chirho,
+        file_id_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho,
+            types_chirho: imported_types_chirho,
+            type_synonyms_chirho: imported_type_synonyms_chirho,
+            type_families_chirho: imported_type_families_chirho,
+            class_env_chirho: imported_class_env_chirho,
+        },
+        &FrontendOptionsChirho::default(),
+    )
+}
+
+/// The frontend phases under the caller's options (row 695). The caller's options apply
+/// first and the `OPTIONS_GHC` pragmas in the header of `source_chirho` after them. Together
+/// they decide which inference errors defer; every other phase's errors stop the module.
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn run_frontend_with_options_chirho(
+    source_chirho: &str,
+    file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+    imports_chirho: FrontendImportsChirho<'_>,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    let deferral_chirho = DeferralPolicyChirho::resolve_chirho(
+        &options_chirho.ghc_options_chirho,
+        &haskelujah_parser_chirho::pragma_chirho::header_ghc_options_chirho(
+            source_chirho,
+            file_id_chirho,
+        ),
+    );
+    run_frontend_under_deferral_chirho(
+        source_chirho,
+        file_id_chirho,
+        imports_chirho,
+        deferral_chirho,
+    )
+}
+
+/// The frontend phases under a deferral policy the caller already resolved: the source path
+/// reads the module's header before CPP rewrites the text (row 695).
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub(crate) fn run_frontend_under_deferral_chirho(
+    source_chirho: &str,
+    file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+    imports_chirho: FrontendImportsChirho<'_>,
+    deferral_chirho: DeferralPolicyChirho,
+) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    let FrontendImportsChirho {
+        ifaces_chirho,
+        types_chirho: imported_types_chirho,
+        type_synonyms_chirho: imported_type_synonyms_chirho,
+        type_families_chirho: imported_type_families_chirho,
+        class_env_chirho: imported_class_env_chirho,
+    } = imports_chirho;
 
     // Phase 1: CST parse (lex + layout + recursive-descent)
     let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
@@ -74,9 +138,11 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         &mut module_chirho,
     );
 
-    // Phase 3: Name resolution
+    // Phase 3: Name resolution. Its errors never defer: GHC's out-of-scope switch reaches only
+    // variables, and resolution's one out-of-scope value code also covers data constructors.
+    // workflow: compiler-pipeline-chirho/error-deferral-chirho
     let resolve_result_chirho = resolve_module_with_imports_chirho(&module_chirho, ifaces_chirho);
-    if !defer_errors_chirho && resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
+    if resolve_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(resolve_result_chirho.diagnostics_chirho);
     }
     // GHC never defers a declaration-shape error, so the defer flags do not apply.
@@ -103,7 +169,8 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
             written_decl_count_chirho,
         },
     );
-    if !defer_errors_chirho && kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
+    // A kind error is fatal under every deferral switch.
+    if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(kind_result_chirho.diagnostics_chirho);
     }
 
@@ -292,7 +359,7 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
 
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.
-    let infer_result_chirho = if merged_imported_types_chirho.is_empty()
+    let mut infer_result_chirho = if merged_imported_types_chirho.is_empty()
         && merged_imported_type_synonyms_chirho.is_empty()
         && merged_imported_type_families_chirho.is_empty()
         && merged_imported_record_field_names_chirho.is_empty()
@@ -312,19 +379,21 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
             &preferred_qualified_type_names_chirho,
         )
     };
-    if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
+    // Only the inference errors the deferral policy defers become warnings. Any other error
+    // stops the module, reported with the whole bundle.
+    if !deferral_chirho.settle_inference_chirho(&mut infer_result_chirho.diagnostics_chirho) {
         return Err(infer_result_chirho.diagnostics_chirho);
     }
 
     // Phase 4.4: Source-type validity — reject type forms whose licensing
     // extension is not enabled (GHC's GHC-91510: illegal polymorphic /
     // qualified type).
+    // A validity error is structural and never defers.
     let validity_result_chirho =
         haskelujah_typing_chirho::check_module_type_validity_diagnostics_chirho(&module_chirho);
-    if !defer_errors_chirho
-        && validity_result_chirho
-            .diagnostics_chirho
-            .has_errors_chirho()
+    if validity_result_chirho
+        .diagnostics_chirho
+        .has_errors_chirho()
     {
         return Err(validity_result_chirho.diagnostics_chirho);
     }
@@ -363,7 +432,7 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
         Vec::new()
     };
 
-    // Collect non-fatal warnings from type inference (e.g. typed holes W4200).
+    // Collect non-fatal warnings from type inference, deferred errors included.
     let infer_warnings_chirho: Vec<String> = infer_result_chirho
         .diagnostics_chirho
         .diagnostics_chirho()

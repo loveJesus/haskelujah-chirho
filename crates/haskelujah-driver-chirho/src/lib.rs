@@ -18,6 +18,10 @@ mod core_merge_chirho;
 mod cpp_preprocess_chirho;
 #[path = "project_chirho/dependency_packages_chirho.rs"]
 mod dependency_packages_chirho;
+#[path = "frontend_chirho/error_deferral_chirho.rs"]
+mod error_deferral_chirho;
+pub(crate) use error_deferral_chirho::DeferralPolicyChirho;
+pub use error_deferral_chirho::FrontendOptionsChirho;
 #[path = "frontend_chirho/hsc_preprocess_chirho.rs"]
 mod hsc_preprocess_chirho;
 #[path = "project_chirho/import_links_chirho.rs"]
@@ -39,7 +43,11 @@ mod native_provenance_chirho;
 mod package_install_chirho;
 #[path = "frontend_chirho/pipeline_chirho.rs"]
 mod pipeline_chirho;
-pub use pipeline_chirho::run_frontend_with_type_synonyms_families_and_class_env_chirho;
+pub(crate) use pipeline_chirho::run_frontend_under_deferral_chirho;
+pub use pipeline_chirho::{
+    FrontendImportsChirho, run_frontend_with_options_chirho,
+    run_frontend_with_type_synonyms_families_and_class_env_chirho,
+};
 #[path = "project_chirho/project_dir_chirho.rs"]
 mod project_dir_chirho;
 #[path = "native_link_chirho/rts_snapshot_chirho.rs"]
@@ -448,6 +456,23 @@ pub fn frontend_warnings_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<Vec<String>, DiagnosticBundleChirho> {
+    frontend_warnings_with_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        &FrontendOptionsChirho::default(),
+    )
+}
+
+/// [`frontend_warnings_chirho`] under the caller's GHC options, which apply before the
+/// module header's own `OPTIONS_GHC` pragmas (row 695).
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn frontend_warnings_with_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<Vec<String>, DiagnosticBundleChirho> {
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         source_map_chirho,
         file_name_chirho,
@@ -457,12 +482,21 @@ pub fn frontend_warnings_chirho(
 
     let builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let empty_imported_types_chirho = std::collections::HashMap::new();
+    let imported_type_families_chirho = seed_builtin_type_families_chirho();
+    let imported_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
 
-    let frontend_result_chirho = run_frontend_chirho(
+    let frontend_result_chirho = run_frontend_with_options_chirho(
         source_chirho,
         file_id_chirho,
-        &builtin_ifaces_chirho,
-        &empty_imported_types_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho: &builtin_ifaces_chirho,
+            types_chirho: &empty_imported_types_chirho,
+            type_synonyms_chirho: &ImportedTypeSynonymsChirho::new(),
+            type_families_chirho: &imported_type_families_chirho,
+            class_env_chirho: &imported_class_env_chirho,
+        },
+        options_chirho,
     )?;
 
     Ok(frontend_result_chirho.warnings_chirho)
@@ -499,11 +533,29 @@ pub fn compile_source_chirho(
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    compile_source_with_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        &FrontendOptionsChirho::default(),
+    )
+}
+
+/// [`compile_source_chirho`] under the caller's GHC options, which apply before the module
+/// header's own `OPTIONS_GHC` pragmas (row 695).
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn compile_source_with_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     let (frontend_result_chirho, ifaces_chirho) =
-        source_chirho::typecheck_source_with_ifaces_chirho(
+        source_chirho::typecheck_source_with_ifaces_and_options_chirho(
             source_chirho,
             source_map_chirho,
             file_name_chirho,
+            options_chirho,
         )?;
 
     let FrontendResultChirho {
@@ -655,15 +707,62 @@ pub fn eval_source_outcome_chirho(
     file_name_chirho: &str,
     entry_name_chirho: Option<&str>,
 ) -> Result<stg_lower_chirho::RunOutcomeChirho, String> {
-    let compile_result_chirho =
-        compile_source_chirho(source_chirho, source_map_chirho, file_name_chirho)
-            .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+    eval_source_outcome_with_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        entry_name_chirho,
+        &FrontendOptionsChirho::default(),
+    )
+}
+
+/// [`eval_source_outcome_chirho`] under the caller's GHC options, which apply before the
+/// module header's own `OPTIONS_GHC` pragmas (row 695).
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn eval_source_outcome_with_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    entry_name_chirho: Option<&str>,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<stg_lower_chirho::RunOutcomeChirho, String> {
+    let compile_result_chirho = compile_source_with_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        options_chirho,
+    )
+    .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
 
     stg_lower_chirho::lower_and_run_outcome_chirho(
         &compile_result_chirho.core_chirho,
         entry_name_chirho,
         compile_result_chirho.newtype_cons_chirho,
     )
+}
+
+/// [`eval_source_with_machine_chirho`] under the caller's GHC options (row 695).
+pub fn eval_source_with_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    entry_name_chirho: Option<&str>,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<
+    (
+        haskelujah_runtime_chirho::ValueChirho,
+        haskelujah_runtime_chirho::eval_chirho::MachineChirho,
+    ),
+    String,
+> {
+    eval_source_outcome_with_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        entry_name_chirho,
+        options_chirho,
+    )?
+    .into_result_chirho()
 }
 
 /// Like `eval_source_with_machine_chirho` but with stdin input lines pre-loaded.

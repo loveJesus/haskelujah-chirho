@@ -569,7 +569,7 @@ impl InferCtxChirho {
                 self.diagnostics_chirho.push_chirho(
                     haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
                         haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
-                            super::SIGNATURE_MISMATCH_CODE_CHIRHO,
+                            super::SIGNATURE_SCOPE_INVARIANT_CODE_CHIRHO,
                         ),
                         "signature result scope does not match its converted type",
                         ast_ty_chirho.span_chirho(),
