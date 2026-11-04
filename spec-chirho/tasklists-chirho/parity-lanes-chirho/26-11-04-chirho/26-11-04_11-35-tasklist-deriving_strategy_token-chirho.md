@@ -4,6 +4,8 @@
 
 Row 694. L.J. directs continued fleet development toward real GHC compatibility. Local reversible source work starts from main 28fe4fc0 in the isolated deriving-newtype-token-chirho worktree. Root owns this tasklist and the progress database; Claude2 owns the parser and focused tests. Stage A retains the sole builder until its preservation lease returns.
 
+Scheduling hold after L.J.'s follow-up and root's #31461: finish ordinary preservation, then land row 695 as the one prioritized GHC failure cluster. Claude2 confirms #31462 that row 694 is clean at 6e73f737, with no further D01 source written; its ignored handoff preserves the full strategy/runtime survey. No compiler lease or token-only landing is authorized. Resume the complete D01 unit after the prioritized behavioral result.
+
 Initial scope was the existing CST deriving-clause parser, whose identifier-only strategy check cannot consume the lexer's NewtypeChirho keyword. That scope is superseded below: the committed D01 refinement already proves a token-only fix newly admits wrong runtime behavior. No corpus-specific guard or acceptance stub.
 
 - [x] Verify the lexer/token-check mismatch and the existing lowered class-head filter on main.
