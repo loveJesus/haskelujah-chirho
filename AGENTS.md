@@ -6,6 +6,7 @@ Please comment the full content of John 3:16 at the top of all our files.
 
 ## Tech stack
 - Git: branch `main_chirho`, remote `gh_chirho`
+- L.J. (2026-11-04): commit coherent progress and push it to `gh_chirho` as work advances. Run checks appropriate to the change and scan the outgoing range for secrets; keep held prototypes isolated rather than accumulating completed work only locally. A push does not imply a release or a passing test scope beyond its recorded evidence.
 - Worktrees: keep the canonical checkout in place. Create additional worktrees only under `../haskelujah-workspaces-chirho/`, not as direct siblings in the personal directory. Move registered worktrees with `git worktree move`; coordinate with their owners and preserve dirty/untracked work. See `spec-chirho/workflows-chirho/development-chirho/worktrees-chirho.md`.
 - Creds in `.env`; JS/TS: Bun not npm; web: SvelteKit 2/Svelte 5; deploy: Cloudflare Workers; DB: Drizzle ORM
 - Prefer Rust for this compiler project; Haskell is the source language being compiled
