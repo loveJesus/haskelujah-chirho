@@ -430,9 +430,8 @@ impl ClassEnvChirho {
         };
         let origin_chirho = InstanceIdentityChirho::SeedChirho(self.next_seed_instance_chirho);
         self.next_seed_instance_chirho = next_chirho;
-        let identity_chirho = PredicateClassIdentityChirho::CompilerChirho(identity_chirho);
         let proof_chirho = self
-            .class_record_by_identity_chirho(&identity_chirho)
+            .compiler_class_record_chirho(identity_chirho)
             .map(|class_chirho| class_chirho.class_identity_chirho().clone())
             .unwrap_or(PredicateClassProofChirho::UnknownChirho(
                 ClassIdentityUnknownChirho::AmbiguousChirho,
@@ -444,30 +443,25 @@ impl ClassEnvChirho {
         ));
     }
 
-    pub fn class_record_by_identity_chirho(
+    /// Finite compiler identity lookup for explicit compiler producers. A full
+    /// source-identity query requires Stage B's separate bounded proof API.
+    pub fn compiler_class_record_chirho(
         &self,
-        identity_chirho: &PredicateClassIdentityChirho,
+        identity_chirho: CompilerClassChirho,
     ) -> Option<&Arc<ClassDeclChirho>> {
         if self.error_chirho.is_some() {
             return None;
         }
-        match self.class_identities_chirho.get(identity_chirho)? {
+        match self
+            .class_identities_chirho
+            .get(&PredicateClassIdentityChirho::CompilerChirho(
+                identity_chirho,
+            ))? {
             ClassIdentityEntryChirho::UniqueChirho(id_chirho) => {
                 self.class_record_chirho(id_chirho)
             }
             ClassIdentityEntryChirho::AmbiguousChirho => None,
         }
-    }
-
-    pub fn instance_records_by_identity_chirho(
-        &self,
-        identity_chirho: &PredicateClassIdentityChirho,
-    ) -> impl Iterator<Item = &Arc<InstDeclChirho>> {
-        self.instance_identities_chirho
-            .get(identity_chirho)
-            .into_iter()
-            .flatten()
-            .filter_map(|id_chirho| self.instance_record_chirho(id_chirho))
     }
 }
 

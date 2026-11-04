@@ -159,9 +159,7 @@ fn actual_seed_records_own_compiler_proof_even_when_spelling_is_shadowed_chirho(
     );
     assert!(
         env_chirho
-            .class_record_by_identity_chirho(&PredicateClassIdentityChirho::CompilerChirho(
-                CompilerClassChirho::NumChirho
-            ))
+            .compiler_class_record_chirho(CompilerClassChirho::NumChirho)
             .is_some()
     );
 }
@@ -170,17 +168,16 @@ fn actual_seed_records_own_compiler_proof_even_when_spelling_is_shadowed_chirho(
 fn distinct_records_with_one_claimed_identity_do_not_choose_by_order_chirho() {
     let mut env_chirho = ClassEnvChirho::new_chirho();
     env_chirho.seed_standard_chirho();
-    let identity_chirho =
-        PredicateClassIdentityChirho::CompilerChirho(CompilerClassChirho::NumChirho);
+    let identity_chirho = CompilerClassChirho::NumChirho;
     let old_chirho = env_chirho
-        .class_record_by_identity_chirho(&identity_chirho)
+        .compiler_class_record_chirho(identity_chirho)
         .expect("seed")
         .as_ref()
         .clone();
     env_chirho.add_class_chirho(old_chirho);
     assert!(
         env_chirho
-            .class_record_by_identity_chirho(&identity_chirho)
+            .compiler_class_record_chirho(identity_chirho)
             .is_none()
     );
 }
