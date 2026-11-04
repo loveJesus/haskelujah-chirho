@@ -64,6 +64,7 @@ fn associated_class_chirho() -> DeclChirho {
         }],
         associated_tfs_chirho: vec![
             AssocTypeFamilyChirho {
+                default_arguments_chirho: None,
                 name_chirho: name_chirho("ElementChirho"),
                 result_kind_chirho: None,
                 type_vars_chirho: vec![name_chirho("itemChirho").into()],
@@ -74,6 +75,7 @@ fn associated_class_chirho() -> DeclChirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             AssocTypeFamilyChirho {
+                default_arguments_chirho: None,
                 name_chirho: name_chirho("IndexChirho"),
                 result_kind_chirho: None,
                 type_vars_chirho: vec![name_chirho("itemChirho").into()],

@@ -11,6 +11,31 @@ use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
 
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn copy_name_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+    ) -> Result<NameChirho, ElaborationErrorChirho> {
+        let mut weight_chirho = name_chirho
+            .text_chirho()
+            .len()
+            .saturating_add(name_chirho.qualifier_chirho().map_or(0, str::len))
+            .saturating_add(name_chirho.family_key_chirho().map_or(0, str::len))
+            .saturating_add(1);
+        if let Some(declaration_chirho) = name_chirho.type_constructor_chirho()
+            && let TypeConstructorIdentityChirho::SourceChirho {
+                defining_module_chirho,
+                name_chirho,
+            } = &declaration_chirho.identity_chirho
+        {
+            weight_chirho = weight_chirho
+                .saturating_add(defining_module_chirho.len())
+                .saturating_add(name_chirho.len());
+        }
+        self.state_chirho
+            .charge_chirho(weight_chirho, weight_chirho, name_chirho.span_chirho())?;
+        Ok(name_chirho.clone())
+    }
+
     pub(super) fn written_name_chirho(
         &mut self,
         name_chirho: &NameChirho,

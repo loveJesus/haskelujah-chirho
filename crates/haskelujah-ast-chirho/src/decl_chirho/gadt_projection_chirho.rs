@@ -1258,6 +1258,11 @@ fn walk_chirho(
                 if let Some(rhs_chirho) = &family_chirho.default_rhs_chirho {
                     push_chirho(ProjectionNodeChirho::TypeChirho(rhs_chirho))?;
                 }
+                if let Some((kinds_chirho, types_chirho)) = &family_chirho.default_arguments_chirho
+                {
+                    push_chirho(ProjectionNodeChirho::TypesChirho(kinds_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypesChirho(types_chirho))?;
+                }
             }
             ProjectionNodeChirho::MethodChirho(method_chirho) => {
                 push_chirho(ProjectionNodeChirho::NameChirho(&method_chirho.name_chirho))?;

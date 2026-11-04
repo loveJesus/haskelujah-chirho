@@ -4,6 +4,7 @@
 //! terms; the public KindChirho representation is a compatibility view only.
 //! Workflow: language-features-chirho/declaration-kinds-chirho.
 
+mod associated_chirho;
 mod compiler_schemes_chirho;
 mod constructors_chirho;
 mod declarations_chirho;

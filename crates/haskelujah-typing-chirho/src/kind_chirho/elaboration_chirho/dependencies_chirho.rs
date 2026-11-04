@@ -554,6 +554,19 @@ impl TypeElaboratorChirho<'_> {
                     )?;
                 }
                 for family_chirho in associated_tfs_chirho {
+                    if let Some((kinds_chirho, types_chirho)) =
+                        &family_chirho.default_arguments_chirho
+                    {
+                        for argument_chirho in kinds_chirho.iter().chain(types_chirho) {
+                            self.type_references_chirho(
+                                argument_chirho,
+                                indices_chirho,
+                                constructor_owners_chirho,
+                                references_chirho,
+                                0,
+                            )?;
+                        }
+                    }
                     for binder_chirho in &family_chirho.type_vars_chirho {
                         if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
                             self.type_references_chirho(

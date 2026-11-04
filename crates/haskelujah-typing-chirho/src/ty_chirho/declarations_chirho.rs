@@ -30,10 +30,34 @@ pub struct SourceDeclarationVariableChirho {
     pub specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho,
 }
 
+/// Association is declared by the class producer, independent of which member
+/// spellings an importer admits. A default is an equation, never a synonym.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum DeclarationAssociationChirho {
+    #[default]
+    NoneChirho,
+    ClassChirho {
+        families_chirho: Vec<Arc<str>>,
+    },
+    FamilyChirho {
+        class_chirho: Arc<str>,
+        /// Family slot -> enclosing class slot, including shared kind slots.
+        correspondence_chirho: Vec<(TyVarChirho, TyVarChirho)>,
+        default_chirho: Option<AssociatedDefaultEquationChirho>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssociatedDefaultEquationChirho {
+    pub lhs_chirho: Vec<TyChirho>,
+    pub rhs_chirho: TyChirho,
+}
+
 /// A declaration boundary is independent of arrows in its result kind.
 /// A nullary family returning an arrow has zero required reduction arguments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeclarationSchemeChirho {
+    pub association_chirho: DeclarationAssociationChirho,
     pub identity_chirho: Arc<str>,
     /// A provisional local header may mention this solver's unquantified
     /// metas. Published/imported schemes always have None and quantify all IDs.
@@ -77,6 +101,53 @@ pub struct DeclarationSchemesChirho {
 }
 
 impl DeclarationSchemesChirho {
+    pub(crate) fn complete_association_chirho(
+        &mut self,
+        identity_chirho: &str,
+        association_chirho: DeclarationAssociationChirho,
+    ) -> Result<(), String> {
+        let previous_chirho = self
+            .definitions_chirho
+            .get(identity_chirho)
+            .ok_or_else(|| "missing associated declaration telescope".to_owned())?;
+        let mut completed_chirho = previous_chirho.as_ref().clone();
+        completed_chirho.association_chirho = association_chirho;
+        if completed_chirho.owner_chirho.is_none() {
+            validate_published_chirho(&completed_chirho)?;
+            if let DeclarationAssociationChirho::FamilyChirho {
+                class_chirho,
+                correspondence_chirho,
+                ..
+            } = &completed_chirho.association_chirho
+            {
+                let parent_chirho = self.definitions_chirho.get(class_chirho).ok_or_else(|| {
+                    "associated family has no published class telescope".to_owned()
+                })?;
+                if parent_chirho.owner_chirho.is_some()
+                    || parent_chirho.role_chirho != TypeConstructorRoleChirho::ClassChirho
+                {
+                    return Err("associated owner is not a checked class".to_owned());
+                }
+                let class_slots_chirho = parent_chirho
+                    .binders_chirho
+                    .iter()
+                    .map(|binder_chirho| binder_chirho.variable_chirho)
+                    .collect::<std::collections::HashSet<_>>();
+                if correspondence_chirho
+                    .iter()
+                    .any(|(_, class_slot_chirho)| !class_slots_chirho.contains(class_slot_chirho))
+                {
+                    return Err("associated correspondence has an unbound class slot".to_owned());
+                }
+            }
+        }
+        self.definitions_chirho.insert(
+            completed_chirho.identity_chirho.clone(),
+            Arc::new(completed_chirho),
+        );
+        Ok(())
+    }
+
     pub fn is_empty_chirho(&self) -> bool {
         self.definitions_chirho.is_empty()
     }
@@ -209,6 +280,61 @@ fn validate_published_chirho(scheme_chirho: &DeclarationSchemeChirho) -> Result<
         return Err("published declaration contains an unquantified kind/type variable".to_owned());
     }
     let mut source_chirho = std::collections::HashSet::new();
+    match &scheme_chirho.association_chirho {
+        DeclarationAssociationChirho::ClassChirho { families_chirho } => {
+            let unique_chirho = families_chirho
+                .iter()
+                .collect::<std::collections::HashSet<_>>();
+            if scheme_chirho.role_chirho != TypeConstructorRoleChirho::ClassChirho
+                || unique_chirho.len() != families_chirho.len()
+            {
+                return Err("associated owner is not a class or repeats a family".to_owned());
+            }
+        }
+        DeclarationAssociationChirho::FamilyChirho { default_chirho, .. } => {
+            if !matches!(
+                scheme_chirho.role_chirho,
+                TypeConstructorRoleChirho::TypeFamilyChirho
+                    | TypeConstructorRoleChirho::DataFamilyChirho
+            ) || (default_chirho.is_some()
+                && scheme_chirho.role_chirho != TypeConstructorRoleChirho::TypeFamilyChirho)
+            {
+                return Err("only an associated type family owns a default equation".to_owned());
+            }
+        }
+        DeclarationAssociationChirho::NoneChirho => {}
+    }
+    if let DeclarationAssociationChirho::FamilyChirho {
+        correspondence_chirho,
+        default_chirho,
+        ..
+    } = &scheme_chirho.association_chirho
+    {
+        let mut family_slots_chirho = std::collections::HashSet::new();
+        if correspondence_chirho.iter().any(|(family_slot_chirho, _)| {
+            !bound_chirho.contains(family_slot_chirho)
+                || !family_slots_chirho.insert(*family_slot_chirho)
+        }) {
+            return Err(
+                "associated correspondence has an unbound or duplicate family slot".to_owned(),
+            );
+        }
+        if let Some(default_chirho) = default_chirho
+            && (default_chirho.lhs_chirho.len() != scheme_chirho.reduction_arity_chirho
+                || default_chirho
+                    .lhs_chirho
+                    .iter()
+                    .chain(std::iter::once(&default_chirho.rhs_chirho))
+                    .any(|term_chirho| {
+                        term_chirho
+                            .free_vars_chirho()
+                            .iter()
+                            .any(|variable_chirho| !bound_chirho.contains(variable_chirho))
+                    }))
+        {
+            return Err("associated default lost its complete bound telescope".to_owned());
+        }
+    }
     for mapping_chirho in &scheme_chirho.source_variables_chirho {
         if !matches!(
             mapping_chirho.source_chirho,

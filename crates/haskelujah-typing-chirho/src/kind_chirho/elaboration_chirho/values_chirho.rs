@@ -45,13 +45,15 @@ impl TypeElaboratorChirho<'_> {
                     lhs_types_chirho,
                     rhs_chirho,
                     span_chirho,
-                } => this_chirho.elaborate_family_application_chirho(
-                    family_name_chirho,
-                    kind_args_chirho,
-                    lhs_types_chirho,
-                    rhs_chirho,
-                    *span_chirho,
-                ),
+                } => this_chirho
+                    .elaborate_family_application_chirho(
+                        family_name_chirho,
+                        kind_args_chirho,
+                        lhs_types_chirho,
+                        rhs_chirho,
+                        *span_chirho,
+                    )
+                    .map(|_| ()),
                 // The cold declaration projection retains no method bodies.
                 // Reuse the ordinary context/head scope before its equations.
                 DeclChirho::InstanceDeclChirho { .. } => {
@@ -156,13 +158,15 @@ impl TypeElaboratorChirho<'_> {
                 lhs_types_chirho,
                 rhs_chirho,
                 span_chirho,
-            } => self.elaborate_family_application_chirho(
-                family_name_chirho,
-                kind_args_chirho,
-                lhs_types_chirho,
-                rhs_chirho,
-                *span_chirho,
-            )?,
+            } => self
+                .elaborate_family_application_chirho(
+                    family_name_chirho,
+                    kind_args_chirho,
+                    lhs_types_chirho,
+                    rhs_chirho,
+                    *span_chirho,
+                )
+                .map(|_| ())?,
             DeclChirho::StandaloneDerivingDeclChirho {
                 context_chirho,
                 class_chirho,

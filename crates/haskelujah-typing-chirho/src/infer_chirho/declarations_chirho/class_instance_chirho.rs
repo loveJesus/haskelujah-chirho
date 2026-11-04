@@ -39,6 +39,7 @@ impl InferCtxChirho {
                         .get_chirho(&declaration_chirho.type_key_chirho())
                 })
                 .cloned();
+            let checked_association_chirho = schema_chirho.as_ref().is_some_and(|header_chirho| matches!(header_chirho.association_chirho, crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::ClassChirho { .. }));
             let (kind_tys_chirho, visible_tys_chirho) = if let Some(schema_chirho) = schema_chirho {
                 let (hidden_chirho, visible_chirho): (Vec<_>, Vec<_>) = schema_chirho.binders_chirho.iter().zip(arguments_chirho).partition(|(binder_chirho, _)| binder_chirho.visibility_chirho != crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::RequiredChirho);
                 (
@@ -193,6 +194,13 @@ impl InferCtxChirho {
                         defaults_chirho: defaults_map_chirho,
                     },
                 ));
+
+            // The live frontend already registered these checked declarations;
+            // defaults and slot correspondence live only in that catalogue.
+            // Raw inference API clients keep the legacy compatibility path.
+            if checked_association_chirho {
+                return;
+            }
 
             // Register associated type families as open type families. A
             // default equation is NOT a general equation of the family (that
@@ -353,7 +361,7 @@ impl InferCtxChirho {
                     span_chirho: *span_chirho,
                 });
             self.class_env_chirho
-                .add_shared_instance_chirho(instance_chirho);
+                .add_shared_instance_chirho(instance_chirho.clone());
 
             // Register associated type family instances from this instance decl
             for atfi_chirho in assoc_tf_instances_chirho {
@@ -369,6 +377,15 @@ impl InferCtxChirho {
                     atfi_chirho.span_chirho,
                     Some(0),
                 );
+            }
+
+            if self.instantiate_checked_associated_defaults_chirho(
+                class_chirho,
+                &instance_chirho,
+                assoc_tf_instances_chirho,
+                *span_chirho,
+            ) {
+                return;
             }
 
             // Associated families this instance leaves undefined take the

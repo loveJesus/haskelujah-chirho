@@ -7,6 +7,10 @@
 use super::*;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
+#[cfg(test)]
+#[path = "checked_family_scope_tests_chirho.rs"]
+mod scope_tests_chirho;
+
 impl InferCtxChirho {
     pub(super) fn checked_family_arity_chirho(&self, name_chirho: &str) -> Option<usize> {
         let key_chirho = self.family_name_key_chirho(name_chirho)?;
@@ -41,25 +45,49 @@ impl InferCtxChirho {
             .map(|ty_chirho| self.expand_type_synonyms_chirho(ty_chirho))
             .collect::<Vec<_>>();
         let rhs_chirho = self.expand_type_synonyms_chirho(&rhs_chirho);
+        self.abstract_checked_family_terms_chirho(&lhs_chirho, &rhs_chirho)
+    }
+
+    pub(super) fn abstract_checked_family_terms_chirho(
+        &mut self,
+        lhs_chirho: &[TyChirho],
+        rhs_chirho: &TyChirho,
+    ) -> Option<(Vec<TyChirho>, TyChirho, Vec<String>)> {
+        self.specialize_checked_family_terms_chirho(
+            lhs_chirho,
+            rhs_chirho,
+            &HashMap::new(),
+            &mut 100_000_usize,
+        )
+    }
+
+    pub(super) fn specialize_checked_family_terms_chirho(
+        &mut self,
+        lhs_chirho: &[TyChirho],
+        rhs_chirho: &TyChirho,
+        images_chirho: &HashMap<TyVarChirho, std::borrow::Cow<'_, TyChirho>>,
+        work_chirho: &mut usize,
+    ) -> Option<(Vec<TyChirho>, TyChirho, Vec<String>)> {
         let mut binders_chirho = HashMap::new();
-        let mut work_chirho = 100_000_usize;
         let lhs_chirho = lhs_chirho
             .iter()
             .map(|ty_chirho| {
                 quantify_family_term_chirho(
                     ty_chirho,
+                    Some(images_chirho),
                     &mut binders_chirho,
                     true,
-                    &mut work_chirho,
+                    work_chirho,
                     0,
                 )
             })
             .collect::<Option<Vec<_>>>();
         let rhs_chirho = quantify_family_term_chirho(
-            &rhs_chirho,
+            rhs_chirho,
+            Some(images_chirho),
             &mut binders_chirho,
             false,
-            &mut work_chirho,
+            work_chirho,
             0,
         );
         match lhs_chirho.zip(rhs_chirho) {
@@ -69,7 +97,8 @@ impl InferCtxChirho {
                 Some((lhs_chirho, rhs_chirho, names_chirho))
             }
             None => {
-                let diagnostic_chirho = DiagnosticChirho::error_chirho(
+                let diagnostic_chirho = DiagnosticChirho::error_with_code_chirho(
+                    ErrorCodeChirho::error_chirho(300),
                     "checked family variable scope or conversion resource bound failed",
                     SpanChirho::DUMMY_CHIRHO,
                 );
@@ -85,6 +114,7 @@ impl InferCtxChirho {
 
 fn quantify_family_term_chirho(
     ty_chirho: &TyChirho,
+    images_chirho: Option<&HashMap<TyVarChirho, std::borrow::Cow<'_, TyChirho>>>,
     binders_chirho: &mut HashMap<TyVarChirho, String>,
     introduce_chirho: bool,
     work_chirho: &mut usize,
@@ -94,9 +124,28 @@ fn quantify_family_term_chirho(
     if depth_chirho > 128 {
         return None;
     }
+    if let TyChirho::TupleChirho(elements_chirho) = ty_chirho
+        && elements_chirho.len() > *work_chirho
+    {
+        return None;
+    }
+    if let TyChirho::VarChirho(variable_chirho) = ty_chirho
+        && let Some(image_chirho) =
+            images_chirho.and_then(|images_chirho| images_chirho.get(variable_chirho))
+    {
+        return quantify_family_term_chirho(
+            image_chirho.as_ref(),
+            None,
+            binders_chirho,
+            introduce_chirho,
+            work_chirho,
+            depth_chirho + 1,
+        );
+    }
     let mut child_chirho = |ty_chirho: &TyChirho| {
         quantify_family_term_chirho(
             ty_chirho,
+            images_chirho,
             binders_chirho,
             introduce_chirho,
             work_chirho,
@@ -134,12 +183,16 @@ fn quantify_family_term_chirho(
         TyChirho::ListChirho(element_chirho) => {
             TyChirho::ListChirho(Box::new(child_chirho(element_chirho)?))
         }
-        TyChirho::TupleChirho(elements_chirho) => TyChirho::TupleChirho(
-            elements_chirho
-                .iter()
-                .map(&mut child_chirho)
-                .collect::<Option<Vec<_>>>()?,
-        ),
+        TyChirho::TupleChirho(elements_chirho) => {
+            // Each child consumes at least one node, so the borrowed width
+            // preflight also bounds the output vector before allocation.
+            TyChirho::TupleChirho(
+                elements_chirho
+                    .iter()
+                    .map(&mut child_chirho)
+                    .collect::<Option<Vec<_>>>()?,
+            )
+        }
         // Higher-rank equations are not representable by first-order branch
         // matching. No inner universal becomes an equation wildcard.
         TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => return None,

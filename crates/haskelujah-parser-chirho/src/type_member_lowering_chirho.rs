@@ -55,6 +55,7 @@ pub(crate) fn partition_class_members_chirho(
                 }
                 if associated_kind_sig_spans_chirho.contains(&span_chirho) {
                     associated_types_chirho.push(AssocTypeFamilyChirho {
+                        default_arguments_chirho: None,
                         name_chirho,
                         data_family_chirho: false,
                         type_vars_chirho: Vec::new(),
@@ -86,7 +87,7 @@ pub(crate) fn partition_class_members_chirho(
                 span_chirho,
                 ..
             } => {
-                let default_equation_chirho = (equations_chirho.len() == 1)
+                let mut default_equation_chirho = (equations_chirho.len() == 1)
                     .then(|| equations_chirho.pop().expect("one equation"));
                 let default_params_chirho = default_equation_chirho
                     .as_ref()
@@ -102,6 +103,13 @@ pub(crate) fn partition_class_members_chirho(
                             .unwrap_or_default()
                     })
                     .unwrap_or_default();
+                let default_arguments_chirho =
+                    default_equation_chirho.as_mut().map(|equation_chirho| {
+                        (
+                            std::mem::take(&mut equation_chirho.kind_args_chirho),
+                            std::mem::take(&mut equation_chirho.lhs_types_chirho),
+                        )
+                    });
                 let default_rhs_chirho =
                     default_equation_chirho.map(|equation_chirho| equation_chirho.rhs_chirho);
                 // A default owns the complete scoped CST binder account,
@@ -111,6 +119,7 @@ pub(crate) fn partition_class_members_chirho(
                     .as_ref()
                     .map(|_| type_vars_chirho.clone());
                 associated_types_chirho.push(AssocTypeFamilyChirho {
+                    default_arguments_chirho,
                     name_chirho,
                     data_family_chirho,
                     type_vars_chirho,
@@ -139,6 +148,7 @@ pub(crate) fn partition_class_members_chirho(
                 let default_binders_chirho = (!bodiless_chirho).then(|| type_vars_chirho.clone());
                 let default_rhs_chirho = (!bodiless_chirho).then_some(rhs_chirho);
                 associated_types_chirho.push(AssocTypeFamilyChirho {
+                    default_arguments_chirho: None,
                     name_chirho,
                     data_family_chirho: false,
                     type_vars_chirho,
@@ -157,6 +167,7 @@ pub(crate) fn partition_class_members_chirho(
                 ..
             } => {
                 associated_types_chirho.push(AssocTypeFamilyChirho {
+            default_arguments_chirho: None,
                     name_chirho,
                     data_family_chirho: true,
                     type_vars_chirho,

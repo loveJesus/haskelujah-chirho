@@ -36,6 +36,8 @@ mod builtins_chirho;
 mod context_chirho;
 mod evidence_chirho;
 // Declarations and modules live together in `infer_chirho/declarations_chirho/`.
+#[path = "infer_chirho/declarations_chirho/associated_defaults_chirho.rs"]
+mod associated_defaults_chirho;
 #[path = "infer_chirho/declarations_chirho/class_instance_chirho.rs"]
 mod class_instance_chirho;
 #[path = "infer_chirho/declarations_chirho/dependency_chirho.rs"]

@@ -210,6 +210,7 @@ fn class_associated_type_family_shadows_builtin_rep_chirho() {
             },
         ],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+            default_arguments_chirho: None,
             name_chirho: mk_name_chirho("Rep"),
             result_kind_chirho: None,
             type_vars_chirho: vec![mk_name_chirho("f").into()],

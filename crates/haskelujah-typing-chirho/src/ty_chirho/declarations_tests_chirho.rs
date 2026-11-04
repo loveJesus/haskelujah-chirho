@@ -8,6 +8,8 @@ use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::{
 
 fn header_chirho(identity_chirho: &str) -> DeclarationSchemeChirho {
     DeclarationSchemeChirho {
+        association_chirho:
+            crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
         identity_chirho: Arc::from(identity_chirho),
         owner_chirho: None,
         role_chirho: TypeConstructorRoleChirho::TypeFamilyChirho,
@@ -105,5 +107,72 @@ fn result_arrows_never_add_reduction_parameters_chirho() {
             .insert_chirho(header_chirho)
             .unwrap_err()
             .contains("boundary")
+    );
+}
+
+#[test]
+fn associated_owner_and_default_slots_are_validated_before_publication_chirho() {
+    let mut class_chirho = header_chirho("classChirho");
+    class_chirho.role_chirho = TypeConstructorRoleChirho::ClassChirho;
+    class_chirho.binders_chirho.push(DeclarationBinderChirho {
+        variable_chirho: TyVarChirho(0),
+        kind_chirho: TyChirho::ConChirho("TypeChirho".to_owned()),
+        visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
+    });
+    class_chirho.visible_arity_chirho = 1;
+    class_chirho.reduction_arity_chirho = 1;
+    let mut family_chirho = class_chirho.clone();
+    family_chirho.identity_chirho = Arc::from("familyChirho");
+    family_chirho.role_chirho = TypeConstructorRoleChirho::TypeFamilyChirho;
+    let mut declarations_chirho = DeclarationSchemesChirho::default();
+    declarations_chirho.insert_chirho(class_chirho).unwrap();
+    declarations_chirho.insert_chirho(family_chirho).unwrap();
+    let invalid_chirho = DeclarationAssociationChirho::FamilyChirho {
+        class_chirho: Arc::from("classChirho"),
+        correspondence_chirho: vec![(TyVarChirho(0), TyVarChirho(9))],
+        default_chirho: None,
+    };
+    assert!(
+        declarations_chirho
+            .complete_association_chirho("familyChirho", invalid_chirho)
+            .is_err()
+    );
+    assert_eq!(
+        declarations_chirho
+            .get_chirho("familyChirho")
+            .unwrap()
+            .association_chirho,
+        DeclarationAssociationChirho::NoneChirho
+    );
+    let valid_chirho = DeclarationAssociationChirho::FamilyChirho {
+        class_chirho: Arc::from("classChirho"),
+        correspondence_chirho: vec![(TyVarChirho(0), TyVarChirho(0))],
+        default_chirho: Some(AssociatedDefaultEquationChirho {
+            lhs_chirho: vec![TyChirho::VarChirho(TyVarChirho(0))],
+            rhs_chirho: TyChirho::VarChirho(TyVarChirho(0)),
+        }),
+    };
+    declarations_chirho
+        .complete_association_chirho("familyChirho", valid_chirho.clone())
+        .unwrap();
+    let mut invalid_chirho = valid_chirho.clone();
+    if let DeclarationAssociationChirho::FamilyChirho {
+        default_chirho: Some(default_chirho),
+        ..
+    } = &mut invalid_chirho
+    {
+        default_chirho.rhs_chirho = TyChirho::VarChirho(TyVarChirho(77));
+    }
+    assert!(
+        declarations_chirho
+            .complete_association_chirho("familyChirho", invalid_chirho)
+            .is_err()
+    );
+    assert_eq!(
+        declarations_chirho
+            .get_chirho("familyChirho")
+            .unwrap()
+            .association_chirho,
+        valid_chirho
     );
 }

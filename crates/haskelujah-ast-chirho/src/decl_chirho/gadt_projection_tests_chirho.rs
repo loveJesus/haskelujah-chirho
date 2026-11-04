@@ -715,6 +715,7 @@ fn hidden_family_and_instance_prefixes_and_written_kinds_are_precharged_chirho()
             type_vars_chirho: vec![],
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                default_arguments_chirho: None,
                 name_chirho: name_chirho("FChirho"),
                 type_vars_chirho: if component_chirho == 0 {
                     vec![TyVarChirho::annotated_chirho(

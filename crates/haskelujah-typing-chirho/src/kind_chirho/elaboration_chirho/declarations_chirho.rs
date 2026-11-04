@@ -49,23 +49,18 @@ impl TypeElaboratorChirho<'_> {
         }
         for declaration_chirho in &mut module_chirho.decls_chirho {
             if let DeclChirho::ClassDeclChirho {
+                name_chirho,
                 associated_tfs_chirho,
                 ..
             } = declaration_chirho
             {
-                for family_chirho in associated_tfs_chirho {
-                    self.predeclare_header_chirho(
-                        &mut family_chirho.name_chirho,
-                        &mut family_chirho.type_vars_chirho,
-                        false,
-                    )?;
-                }
+                self.predeclare_associated_chirho(name_chirho, associated_tfs_chirho)?;
             }
         }
         Ok(())
     }
 
-    fn predeclare_header_chirho(
+    pub(super) fn predeclare_header_chirho(
         &mut self,
         name_chirho: &mut haskelujah_ast_chirho::name_chirho::NameChirho,
         binders_chirho: &mut [AstTyVarChirho],
@@ -135,6 +130,7 @@ impl TypeElaboratorChirho<'_> {
             })
             .count();
         let scheme_chirho = DeclarationSchemeChirho {
+            association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
             source_variables_chirho: binders_chirho.iter().enumerate().zip(telescope_chirho.iter()).map(|((index_chirho, binder_chirho), typed_chirho)| crate::ty_chirho::declarations_chirho::SourceDeclarationVariableChirho {
                 source_chirho: haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho: key_chirho.clone(), index_chirho: index_chirho as u32 },
                 variable_chirho: typed_chirho.variable_chirho,
@@ -271,14 +267,15 @@ impl TypeElaboratorChirho<'_> {
 
     pub(super) fn finish_catalogue_chirho(
         &mut self,
-        keys_chirho: Vec<Arc<str>>,
+        keys_chirho: &[Arc<str>],
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
+        let mut associations_chirho = Vec::new();
         for key_chirho in keys_chirho {
             let Some(scheme_chirho) = self
                 .registry_chirho
                 .declaration_schemes_chirho()
-                .get_chirho(&key_chirho)
+                .get_chirho(key_chirho)
                 .cloned()
             else {
                 return Err(Self::error_chirho(
@@ -379,7 +376,7 @@ impl TypeElaboratorChirho<'_> {
                 inferred_chirho.push(DeclarationBinderChirho {
                     variable_chirho,
                     kind_chirho,
-                    visibility_chirho: if !self.declaration_variables_chirho.get(&key_chirho).is_some_and(|variables_chirho| variables_chirho.constructor_inferred_chirho.contains(&variable_chirho)) && self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho) { TelescopeVisibilityChirho::SpecifiedChirho } else { TelescopeVisibilityChirho::InferredChirho },
+                    visibility_chirho: if !self.declaration_variables_chirho.get(key_chirho).is_some_and(|variables_chirho| variables_chirho.constructor_inferred_chirho.contains(&variable_chirho)) && self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho) { TelescopeVisibilityChirho::SpecifiedChirho } else { TelescopeVisibilityChirho::InferredChirho },
                 });
             }
             inferred_chirho.extend(binders_chirho);
@@ -431,7 +428,22 @@ impl TypeElaboratorChirho<'_> {
                     )
                 })
                 .collect::<Result<Vec<_>, ElaborationErrorChirho>>()?;
+            let association_weight_chirho = match &scheme_chirho.association_chirho {
+                crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::ClassChirho { families_chirho } => families_chirho.len(),
+                crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::FamilyChirho { correspondence_chirho, default_chirho: None, .. } => correspondence_chirho.len(),
+                crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::FamilyChirho { default_chirho: Some(_), .. } => return Err(Self::error_chirho("associated default precedes its checked telescope", span_chirho)),
+                crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho => 0,
+            };
+            self.state_chirho.charge_chirho(
+                association_weight_chirho + 1,
+                association_weight_chirho + 1,
+                span_chirho,
+            )?;
+            associations_chirho
+                .push((key_chirho.clone(), scheme_chirho.association_chirho.clone()));
             let exported_chirho = DeclarationSchemeChirho {
+                association_chirho:
+                    crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 source_variables_chirho,
                 identity_chirho: key_chirho.clone(),
                 owner_chirho: None,
@@ -445,14 +457,6 @@ impl TypeElaboratorChirho<'_> {
                 promoted_chirho: scheme_chirho.promoted_chirho,
                 held_chirho: scheme_chirho.held_chirho,
             };
-            if let Some(contract_chirho) = self.declaration_contracts_chirho.get(&key_chirho)
-                && contract_chirho.as_ref() != &exported_chirho
-            {
-                return Err(Self::error_chirho(
-                    "source declaration does not match its imported or boot telescope",
-                    span_chirho,
-                ));
-            }
             self.declaration_variables_chirho
                 .entry(key_chirho.clone())
                 .or_default()
@@ -462,6 +466,6 @@ impl TypeElaboratorChirho<'_> {
                 .publish_chirho(exported_chirho)
                 .map_err(|message_chirho| Self::error_chirho(message_chirho, span_chirho))?;
         }
-        Ok(())
+        self.publish_associations_chirho(associations_chirho, span_chirho)
     }
 }

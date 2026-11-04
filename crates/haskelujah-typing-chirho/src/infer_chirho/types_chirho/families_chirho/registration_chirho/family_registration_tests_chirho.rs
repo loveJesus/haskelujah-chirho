@@ -431,6 +431,7 @@ fn nonempty_compiler_seed_is_generative_until_a_source_collision_chirho() {
 fn associated_header_and_default_supply_one_catalogue_declaration_chirho() {
     let associated_chirho =
         |default_chirho: bool| haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("RepChirho"),
             result_kind_chirho: None,
             type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
@@ -721,6 +722,7 @@ fn source_class_valued_associated_rhs_reduces_and_reapplies_extra_arguments_chir
         nominal_class_chirho(
             "E",
             vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                default_arguments_chirho: None,
                 name_chirho: dummy_name_chirho("C"),
                 result_kind_chirho: None,
                 type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],

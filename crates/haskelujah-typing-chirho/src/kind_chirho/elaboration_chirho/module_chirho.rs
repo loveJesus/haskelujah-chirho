@@ -56,6 +56,21 @@ impl TypeElaboratorChirho<'_> {
                             self.elaborate_equation_chirho(equation_chirho, &key_chirho)?;
                         }
                     }
+                    DeclChirho::ClassDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        associated_tfs_chirho,
+                        ..
+                    } => {
+                        let key_chirho = self.local_key_chirho(name_chirho)?;
+                        self.scoped_chirho(|this_chirho| {
+                            this_chirho
+                                .bind_header_scope_chirho(&key_chirho, name_chirho.span_chirho())?;
+                            this_chirho.check_binder_annotations_chirho(type_vars_chirho)?;
+                            this_chirho
+                                .elaborate_associated_chirho(associated_tfs_chirho, &mut Vec::new())
+                        })?;
+                    }
                     _ => {}
                 }
             }
@@ -98,7 +113,7 @@ impl TypeElaboratorChirho<'_> {
         Ok(typed_chirho.term_chirho)
     }
 
-    fn local_key_chirho(
+    pub(super) fn local_key_chirho(
         &mut self,
         name_chirho: &NameChirho,
     ) -> Result<Arc<str>, ElaborationErrorChirho> {
@@ -111,7 +126,7 @@ impl TypeElaboratorChirho<'_> {
         self.declaration_key_chirho(&declaration_chirho, name_chirho.span_chirho())
     }
 
-    fn result_kind_chirho(
+    pub(super) fn result_kind_chirho(
         &mut self,
         key_chirho: &str,
         span_chirho: SpanChirho,
@@ -125,7 +140,7 @@ impl TypeElaboratorChirho<'_> {
             .copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho)
     }
 
-    fn check_kind_contract_chirho(
+    pub(super) fn check_kind_contract_chirho(
         &mut self,
         key_chirho: &str,
         result_chirho: Option<&mut TypeChirho>,
@@ -245,8 +260,9 @@ impl TypeElaboratorChirho<'_> {
                     .get_chirho(key_chirho)
                     .is_some_and(|scheme_chirho| scheme_chirho.promoted_chirho)
             });
-            self.finish_catalogue_chirho(keys_chirho, module_chirho.span_chirho)?;
+            self.finish_catalogue_chirho(&keys_chirho, module_chirho.span_chirho)?;
             self.recheck_declaration_bodies_chirho(module_chirho, &group_chirho)?;
+            self.check_declaration_contracts_chirho(&keys_chirho, module_chirho.span_chirho)?;
         }
         Ok(())
     }
@@ -352,52 +368,7 @@ impl TypeElaboratorChirho<'_> {
                         this_chirho.check_type_chirho(&mut method_chirho.ty_chirho)
                     })?;
                 }
-                for family_chirho in associated_tfs_chirho {
-                    let family_key_chirho = self.local_key_chirho(&family_chirho.name_chirho)?;
-                    self.scoped_chirho(|this_chirho| {
-                        this_chirho.bind_header_scope_chirho(
-                            &family_key_chirho,
-                            family_chirho.span_chirho,
-                        )?;
-                        this_chirho
-                            .check_binder_annotations_chirho(&mut family_chirho.type_vars_chirho)?;
-                        if family_chirho.result_kind_chirho.is_none() {
-                            let expected_chirho = this_chirho.result_kind_chirho(
-                                &family_key_chirho,
-                                family_chirho.span_chirho,
-                            )?;
-                            this_chirho.state_chirho.unify_chirho(
-                                &expected_chirho,
-                                &ElaborationStateChirho::type_universe_chirho(),
-                                family_chirho.span_chirho,
-                            )?;
-                        }
-                        this_chirho.check_kind_contract_chirho(
-                            &family_key_chirho,
-                            family_chirho.result_kind_chirho.as_mut(),
-                            None,
-                            family_chirho.span_chirho,
-                        )?;
-                        if let Some(rhs_chirho) = &mut family_chirho.default_rhs_chirho {
-                            if let Some(binders_chirho) = &mut family_chirho.default_binders_chirho
-                            {
-                                this_chirho.bind_forall_chirho(binders_chirho)?;
-                            }
-                            let typed_chirho = this_chirho.infer_type_chirho(rhs_chirho)?;
-                            let expected_chirho = this_chirho.result_kind_chirho(
-                                &family_key_chirho,
-                                family_chirho.span_chirho,
-                            )?;
-                            this_chirho.state_chirho.unify_chirho(
-                                &expected_chirho,
-                                &typed_chirho.kind_chirho,
-                                family_chirho.span_chirho,
-                            )?;
-                        }
-                        Ok(())
-                    })?;
-                    keys_chirho.push(family_key_chirho);
-                }
+                self.elaborate_associated_chirho(associated_tfs_chirho, keys_chirho)?;
             }
             _ => {}
         }
@@ -460,13 +431,15 @@ impl TypeElaboratorChirho<'_> {
             let head_chirho = equation_chirho.head_chirho.as_mut().ok_or_else(|| {
                 Self::error_chirho("family equation has no head", equation_chirho.span_chirho)
             })?;
-            this_chirho.elaborate_family_application_chirho(
-                head_chirho,
-                &mut equation_chirho.kind_args_chirho,
-                &mut equation_chirho.lhs_types_chirho,
-                &mut equation_chirho.rhs_chirho,
-                equation_chirho.span_chirho,
-            )
+            this_chirho
+                .elaborate_family_application_chirho(
+                    head_chirho,
+                    &mut equation_chirho.kind_args_chirho,
+                    &mut equation_chirho.lhs_types_chirho,
+                    &mut equation_chirho.rhs_chirho,
+                    equation_chirho.span_chirho,
+                )
+                .map(|_| ())
         })
     }
 
@@ -477,7 +450,7 @@ impl TypeElaboratorChirho<'_> {
         visible_chirho: &mut Vec<TypeChirho>,
         rhs_chirho: &mut TypeChirho,
         span_chirho: SpanChirho,
-    ) -> Result<(), ElaborationErrorChirho> {
+    ) -> Result<(Vec<TyChirho>, TyChirho), ElaborationErrorChirho> {
         let mut constraint_chirho = ConstraintChirho::ClassChirho {
             class_chirho: head_chirho.clone(),
             kind_args_chirho: std::mem::take(hidden_chirho),
@@ -511,7 +484,7 @@ impl TypeElaboratorChirho<'_> {
             };
         }
         let left_chirho = self.infer_type_chirho(&mut syntax_chirho)?;
-        self.infer_type_at_kind_chirho(rhs_chirho, &left_chirho.kind_chirho)?;
+        let right_chirho = self.infer_type_at_kind_chirho(rhs_chirho, &left_chirho.kind_chirho)?;
         loop {
             match syntax_chirho {
                 TypeChirho::AppChirho {
@@ -544,6 +517,14 @@ impl TypeElaboratorChirho<'_> {
         }
         visible_chirho.reverse();
         hidden_chirho.reverse();
-        Ok(())
+        let mut term_chirho = left_chirho.term_chirho;
+        let mut arguments_chirho = Vec::new();
+        while let TyChirho::AppChirho(fun_chirho, argument_chirho) = term_chirho {
+            self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+            arguments_chirho.push(*argument_chirho);
+            term_chirho = *fun_chirho;
+        }
+        arguments_chirho.reverse();
+        Ok((arguments_chirho, right_chirho.term_chirho))
     }
 }

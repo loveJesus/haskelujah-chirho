@@ -124,3 +124,78 @@ fn checked_synonym_reexports_keep_the_defining_supplier_across_homonyms_chirho()
     );
     checks_chirho(source_chirho, &registry_chirho, &ifaces_chirho);
 }
+
+const ASSOCIATED_ORIGIN_CHIRHO: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/cold-chirho/OriginChirho.hs"
+));
+
+#[test]
+fn imported_class_instantiates_its_unnameable_associated_default_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/cold-chirho/CheckedChirho.hs"
+    ));
+    let (registry_chirho, ifaces_chirho) =
+        discovery_chirho(source_chirho, &[ASSOCIATED_ORIGIN_CHIRHO]);
+    assert!(
+        !ifaces_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == "OriginChirho")
+            .unwrap()
+            .exports_chirho
+            .types_chirho
+            .contains_key("FChirho")
+    );
+    let result_chirho = crate::run_frontend_with_type_synonyms_and_type_families_chirho(
+        source_chirho,
+        FileIdChirho::SYNTHETIC_CHIRHO,
+        &ifaces_chirho,
+        &std::collections::HashMap::new(),
+        &ImportedTypeSynonymsChirho::new(),
+        &registry_chirho,
+    )
+    .expect("GHC-positive imported class default checks");
+    let key_chirho = TypeFamilyIdChirho::SourceChirho {
+        module_chirho: "OriginChirho".to_owned(),
+        name_chirho: "FChirho".to_owned(),
+    }
+    .key_chirho();
+    let family_chirho = result_chirho
+        .infer_result_chirho
+        .type_families_chirho
+        .definition_chirho(&key_chirho)
+        .expect("private default has the defining family key");
+    assert_eq!(family_chirho.branches_chirho().len(), 1);
+    assert_eq!(family_chirho.branches_chirho()[0].lhs_chirho.len(), 2);
+}
+
+#[test]
+fn imported_private_default_does_not_accept_a_wrong_result_chirho() {
+    let source_chirho = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/cold-chirho/WrongChirho.hs"
+    ));
+    let (registry_chirho, ifaces_chirho) =
+        discovery_chirho(source_chirho, &[ASSOCIATED_ORIGIN_CHIRHO]);
+    let errors_chirho = crate::run_frontend_with_type_synonyms_and_type_families_chirho(
+        source_chirho,
+        FileIdChirho::SYNTHETIC_CHIRHO,
+        &ifaces_chirho,
+        &std::collections::HashMap::new(),
+        &ImportedTypeSynonymsChirho::new(),
+        &registry_chirho,
+    )
+    .err()
+    .expect("GHC-negative imported default result rejects");
+    assert!(
+        errors_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho
+                .code_chirho
+                .as_ref()
+                .is_some_and(|code_chirho| code_chirho.to_string() == "E0200")),
+        "{errors_chirho:?}"
+    );
+}

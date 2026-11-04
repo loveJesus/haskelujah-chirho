@@ -57,6 +57,8 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                association_chirho:
+                    crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 identity_chirho: key_chirho,
                 owner_chirho: None,
                 declaration_chirho: Some(proof_chirho),
@@ -152,6 +154,8 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                association_chirho:
+                    crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 identity_chirho,
                 owner_chirho: None,
                 role_chirho: TypeConstructorRoleChirho::ClassChirho,
@@ -239,6 +243,8 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                association_chirho:
+                    crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 source_variables_chirho: Vec::new(),
                 identity_chirho: key_chirho.clone(),
                 owner_chirho: None,
@@ -397,6 +403,8 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                association_chirho:
+                    crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 source_variables_chirho: Vec::new(),
                 identity_chirho,
                 owner_chirho: None,

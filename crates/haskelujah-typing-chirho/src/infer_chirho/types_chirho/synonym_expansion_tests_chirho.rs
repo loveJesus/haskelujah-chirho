@@ -25,6 +25,8 @@ fn alias_chirho(
         .type_families_chirho
         .declaration_schemes_mut_chirho()
         .insert_chirho(DeclarationSchemeChirho {
+            association_chirho:
+                crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
             identity_chirho: key_chirho.clone().into(),
             owner_chirho: None,
             role_chirho: TypeConstructorRoleChirho::TypeSynonymChirho,

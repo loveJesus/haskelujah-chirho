@@ -13,6 +13,8 @@ use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
 use crate::ty_chirho::{ConstraintChirho, TypeChirho};
 
+#[cfg(test)]
+mod associated_projection_tests_chirho;
 mod gadt_constructor_chirho;
 mod gadt_projection_chirho;
 pub use gadt_constructor_chirho::{
@@ -559,6 +561,9 @@ pub struct AssocTypeFamilyChirho {
     pub data_family_chirho: bool,
     /// Optional default: `type FamilyName a = DefaultType`.
     pub default_rhs_chirho: Option<TypeChirho>,
+    /// Complete written default application: hidden kind arguments and visible
+    /// type arguments. Legacy hand-built ASTs may leave this absent.
+    pub default_arguments_chirho: Option<(Vec<TypeChirho>, Vec<TypeChirho>)>,
     /// The binders the default equation was written with (`type F a x = …`
     /// may name them differently from the family declaration); empty when
     /// they coincide with `type_vars_chirho`.

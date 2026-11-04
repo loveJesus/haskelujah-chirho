@@ -343,6 +343,16 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     };
                     let associated_pushed_chirho =
                         self.push_name_binders_chirho(legacy_names_chirho);
+                    if let Some((kinds_chirho, types_chirho)) =
+                        &associated_tf_chirho.default_arguments_chirho
+                    {
+                        for argument_chirho in kinds_chirho.iter().chain(types_chirho) {
+                            self.walk_type_chirho(
+                                argument_chirho,
+                                FreeTyVarPolicyChirho::RequireBoundChirho,
+                            );
+                        }
+                    }
                     if let Some(default_rhs_chirho) = &associated_tf_chirho.default_rhs_chirho {
                         self.walk_type_chirho(
                             default_rhs_chirho,
@@ -368,6 +378,16 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                             if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
                                 self.walk_type_chirho(
                                     kind_chirho,
+                                    FreeTyVarPolicyChirho::RequireBoundChirho,
+                                );
+                            }
+                        }
+                        if let Some((kinds_chirho, types_chirho)) =
+                            &associated_tf_chirho.default_arguments_chirho
+                        {
+                            for argument_chirho in kinds_chirho.iter().chain(types_chirho) {
+                                self.walk_type_chirho(
+                                    argument_chirho,
                                     FreeTyVarPolicyChirho::RequireBoundChirho,
                                 );
                             }
